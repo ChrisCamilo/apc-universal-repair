@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.turbo/
+
+# Env
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# Prisma
+apps/api/prisma/*.db
+apps/api/src/generated/
+
+# React Native / Android
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+apps/mobile/android/local.properties
+apps/mobile/android/*.keystore
+!apps/mobile/android/debug.keystore
+apps/mobile/ios/build/
+apps/mobile/ios/Pods/
+apps/mobile/.metro-health-check*
