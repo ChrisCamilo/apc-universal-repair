@@ -97,6 +97,11 @@ The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard/Nav
 Every task (an issue labeled `task`) must have, before work starts:
 
 - **Estimate** in story points, using the Modified Fibonacci scale: `0`, `0.5`, `1`, `2`, `3`, `5`, `8`, `13`, `20`, `40`, `100`. Set it in the `Estimate` field of the [APC Universal Repair project](https://github.com/users/ChrisCamilo/projects/1).
+- **Priority** in the project's `Priority` field:
+  - `P0`: foundation work that other tasks depend on; the epic cannot start without it.
+  - `P1`: required to close the epic.
+  - `P2`: comes last in the epic, including phase 2 work.
+- **Size** in the project's `Size` field: `XS`, `S`, `M`, `L` or `XL`, a quick read of relative effort that stays consistent with the estimate.
 - **Assignee**: `@ChrisCamilo`.
 - **Epic reference**: `Part of #<epic>` in the issue body, with the task linked as a sub-issue of that epic.
 - **Blockers**: `Blocked by #<task>` in the issue body for every task that must be finished first, also registered as a "blocked by" relationship on GitHub. Omit the line only when nothing blocks the task.
