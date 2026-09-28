@@ -75,7 +75,7 @@ Epics group work by product area and are referenced by their slug in branch name
 | EP-01 | `setup` | Project scaffolding, tooling, CI/CD, base config |
 | EP-02 | `design-system` | Reusable UI components, theme, colors, typography |
 | EP-03 | `auth` | Login screen only — mock/static, no real auth backend yet |
-| EP-04 | `dashboard` | Dashboard shell + tabs/side menu to switch between brands and cars |
+| EP-04 | `dashboard` | Dashboard shell with top-level tabs (Catalog, Inventory); the Catalog tab holds the side menu to switch between brands and cars |
 | EP-05 | `car-specs` | General vehicle spec sheet display (fuel consumption, equipment/features, etc.) using mocked/static car data |
 
 ### Post-MVP epics (deferred, reserved for later)
