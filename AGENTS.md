@@ -92,6 +92,22 @@ Epics group work by product area and are referenced by their slug in branch name
 
 The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard/Navigation → Inventory → Car Specs. Inventory (EP-12) takes priority over Car Specs. Car data and login are mocked/static for the MVP, while inventory items are persisted through the API; 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to post-MVP epics.
 
+## Task Conventions
+
+Every task (an issue labeled `task`) must have, before work starts:
+
+- **Estimate** in story points, using the Modified Fibonacci scale: `0`, `0.5`, `1`, `2`, `3`, `5`, `8`, `13`, `20`, `40`, `100`. Set it in the `Estimate` field of the [APC Universal Repair project](https://github.com/users/ChrisCamilo/projects/1).
+- **Assignee**: `@ChrisCamilo`.
+- **Epic reference**: `Part of #<epic>` in the issue body, with the task linked as a sub-issue of that epic.
+- **Blockers**: `Blocked by #<task>` in the issue body for every task that must be finished first, also registered as a "blocked by" relationship on GitHub. Omit the line only when nothing blocks the task.
+
+The references go at the end of the issue body:
+
+```
+Blocked by #21, #27
+Part of #20
+```
+
 ## General Contribution Notes
 
 - Keep commits atomic and `main` always deployable.
