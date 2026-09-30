@@ -113,6 +113,20 @@ Blocked by #21, #27
 Part of #20
 ```
 
+## Supported Screen Sizes
+
+Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical resolution of the screen.
+
+| Platform | Minimum supported | Design reference |
+|---|---|---|
+| Desktop (web) | 1280×720 | — |
+| Mobile | 360×780 | 390×844 |
+
+- **Desktop, 1280×720:** covers 1366×768 notebooks and 1920×1080 screens at 125% and 150% Windows scaling. At 720 of screen height, the browser and OS bars leave about 600px of usable height, so forms, dialogs and the tutorial must fit in 600px, scrolling inside when needed.
+- **Mobile, 360×780:** covers mid-range and premium phones from 2020 on. The 360 width comes from Samsung Galaxy S20–S23 at their default setting; the 780 height from the S22 and S23. Screens are designed at 390×844 (iPhone 12–14) and adapt up and down from there.
+- Below the minimum, the app keeps working with its responsive layout, but the layout is not guaranteed.
+- Every UI task is checked at the minimum sizes before it is done: on web with Cypress viewports, on mobile with a 360×780 emulator.
+
 ## General Contribution Notes
 
 - Keep commits atomic and `main` always deployable.
