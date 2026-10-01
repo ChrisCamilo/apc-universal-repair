@@ -49,10 +49,12 @@ A **pnpm** + **Turborepo** monorepo:
 
 | Package | What it is |
 |---|---|
-| `apps/web` | Web app — React 19, Vite, Playwright (E2E tests in TypeScript) |
+| `apps/web` | Web app — React 19, Vite, Vitest and Playwright (tests in TypeScript) |
 | `apps/mobile` | Mobile app — React Native 0.87 |
 | `apps/api` | API — Fastify, Zod, Prisma on PostgreSQL |
 | `packages/shared` | Zod schemas and types shared by web, mobile and API |
+
+Web tests are written in TypeScript: component tests with **Vitest Browser Mode**, which runs them in Chromium, and end-to-end tests with **Playwright**, at 1280×720 and 360×780. Vitest comes with the first Design System components. See [AGENTS.md](AGENTS.md#testing) for details.
 
 CI (GitHub Actions) runs lint, build and the Playwright E2E tests on every pull request.
 
@@ -148,10 +150,12 @@ Monorepo com **pnpm** + **Turborepo**:
 
 | Pacote | O que é |
 |---|---|
-| `apps/web` | App web — React 19, Vite, Playwright (testes E2E em TypeScript) |
+| `apps/web` | App web — React 19, Vite, Vitest e Playwright (testes em TypeScript) |
 | `apps/mobile` | App para celular — React Native 0.87 |
 | `apps/api` | API — Fastify, Zod, Prisma com PostgreSQL |
 | `packages/shared` | Schemas Zod e tipos compartilhados entre web, celular e API |
+
+Os testes da web são escritos em TypeScript: testes de componente com o **Vitest Browser Mode**, que os roda no Chromium, e testes de ponta a ponta com o **Playwright**, em 1280×720 e 360×780. O Vitest entra junto com os primeiros componentes do Design System. Os detalhes estão no [AGENTS.md](AGENTS.md#testing).
 
 O CI (GitHub Actions) roda lint, build e os testes E2E do Playwright em todo pull request.
 
