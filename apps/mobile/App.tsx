@@ -25,6 +25,11 @@ function Home() {
   );
 }
 
+/**
+ * Builds the home screen styles from the active theme.
+ * @param theme Tokens of the active style and mode.
+ * @returns Styles for the container, the title and the API status line.
+ */
 function makeStyles(theme: ActiveTheme) {
   const titleSize = scales.fontSize.xl;
   return StyleSheet.create({
