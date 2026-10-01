@@ -135,6 +135,30 @@ All web tests are written in TypeScript. Each kind of test has one tool:
 - **E2E tests** check a user flow across the app, with the API and the web app running.
 - Do not use Playwright's experimental component testing (`@playwright/experimental-ct-react`): its API is not stable and props cross a Node/browser boundary.
 
+### Writing tests
+
+These rules apply to every test, whatever the tool (Playwright, Vitest, Jest, `node:test`).
+
+- **Each test has a short description** in a comment right above it: what it checks and why, up to 3 lines (5 or more only when it really needs it).
+- **Each test title starts with where the test lives,** followed by a colon and the behavior in English:
+
+  | Prefix | Tests in |
+  |---|---|
+  | `Web:` | `apps/web` |
+  | `Mobile:` | `apps/mobile` |
+  | `API:` | `apps/api` |
+  | `Shared:` | `packages/shared` |
+
+  The prefix goes on every `test`/`it` title, also inside a `describe`, so a failing test is identified by its title alone in any report.
+
+```ts
+// Switches style and mode on <html> and checks the page picks up that combination's colors and display font.
+// Runs for every style and mode, at both screen sizes.
+test(`Web: resolves the ${style}/${mode} tokens`, async ({ page }) => {
+  // ...
+});
+```
+
 ## Supported Screen Sizes
 
 Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical resolution of the screen.
