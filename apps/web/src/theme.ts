@@ -3,15 +3,49 @@ import { MODES, STYLES, scales, themes, type Mode, type Theme } from '@apc/share
 // Turns the shared tokens into CSS variables: the scales on :root and one block per
 // [data-style][data-mode] pair, so switching style or mode is just changing two attributes on <html>.
 
-const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())
-const px = (n: number) => `${n}px`
-const decls = (vars: Record<string, string>) =>
-  Object.entries(vars).map(([k, v]) => `--${k}:${v};`).join('')
+/**
+ * Converts a camelCase token name to the kebab-case used by CSS variables.
+ * @param name Token name, e.g. "panelRaised".
+ * @returns Kebab-case name, e.g. "panel-raised".
+ */
+function kebab(name: string): string {
+  return name.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())
+}
 
-function font(family: string, fallback: string) {
+/**
+ * Formats a number as a CSS pixel length.
+ * @param n Length in px.
+ * @returns CSS length, e.g. "14px".
+ */
+function px(n: number): string {
+  return `${n}px`
+}
+
+/**
+ * Writes CSS custom property declarations.
+ * @param vars Variable names (without the leading `--`) mapped to their values.
+ * @returns Declarations joined on one line, e.g. "--canvas:#0B0C0E;--panel:#15171A;".
+ */
+function decls(vars: Record<string, string>): string {
+  return Object.entries(vars).map(([k, v]) => `--${k}:${v};`).join('')
+}
+
+/**
+ * Builds a CSS font-family stack with the given family first.
+ * @param family Font family, e.g. "Barlow Condensed".
+ * @param fallback Fallback families, already formatted for CSS.
+ * @returns The quoted family followed by the fallback.
+ */
+function font(family: string, fallback: string): string {
   return `'${family}', ${fallback}`
 }
 
+/**
+ * Lists the CSS variables of one style in one mode: colors, display face, radii, glow and sheen.
+ * @param theme Tokens of the style and mode.
+ * @param mode Mode the tokens belong to; decides whether the sheen is white (night) or black (day).
+ * @returns Variable names (without `--`) mapped to CSS values.
+ */
 function themeVars(theme: Theme, mode: Mode): Record<string, string> {
   const vars: Record<string, string> = {}
   for (const [token, value] of Object.entries(theme.colors)) {
@@ -31,6 +65,11 @@ function themeVars(theme: Theme, mode: Mode): Record<string, string> {
   }
 }
 
+/**
+ * Lists the CSS variables shared by every style: spacing unit, font sizes, hairline, radii, motion,
+ * focus ring and the body and mono faces.
+ * @returns Variable names (without `--`) mapped to CSS values.
+ */
 function scaleVars(): Record<string, string> {
   const vars: Record<string, string> = {
     'space-unit': px(scales.space.s1),
@@ -48,6 +87,11 @@ function scaleVars(): Record<string, string> {
   return vars
 }
 
+/**
+ * Writes the stylesheet with every theme variable: the scales on `:root` and one rule per
+ * `[data-style][data-mode]` pair.
+ * @returns CSS text, one rule per line.
+ */
 export function themeCss(): string {
   const blocks = STYLES.flatMap((style) =>
     MODES.map((mode) => `:root[data-style="${style}"][data-mode="${mode}"]{${decls(themeVars(themes[style][mode], mode))}}`),
@@ -55,8 +99,10 @@ export function themeCss(): string {
   return [`:root{${decls(scaleVars())}}`, ...blocks].join('\n')
 }
 
-/** Adds the theme variables to the page before the first render. */
-export function injectThemeCss() {
+/**
+ * Adds the theme variables to the page in a `<style id="theme-tokens">`; call it before the first render.
+ */
+export function injectThemeCss(): void {
   const tag = document.createElement('style')
   tag.id = 'theme-tokens'
   tag.textContent = themeCss()

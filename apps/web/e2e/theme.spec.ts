@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { MODES, STYLES, scales, themes } from "@apc/shared/theme";
 
-function rgb(hex: string) {
+/**
+ * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
+ * @param hex Color as `#RRGGBB`.
+ * @returns The same color as `rgb(r, g, b)`.
+ */
+function rgb(hex: string): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
   return `rgb(${r}, ${g}, ${b})`;
 }
