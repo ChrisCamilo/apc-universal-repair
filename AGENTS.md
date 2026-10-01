@@ -75,11 +75,17 @@ Epics group work by product area and are referenced by their slug in branch name
 | EP-01 | `setup` | Project scaffolding, tooling, CI/CD, base config |
 | EP-02 | `design-system` | Reusable UI components, theme, colors, typography |
 | EP-03 | `auth` | Login screen only — mock/static, no real auth backend yet |
-| EP-04 | `dashboard` | Dashboard shell with top-level tabs (Catalog, Inventory); the Catalog tab holds the side menu to switch between brands and cars |
-| EP-12 | `inventory` | Inventory tab: item list with search by name and filters (category, compatible brand, stock status), add/edit/delete items persisted through the API. Phase 2 of the epic: item photo/thumbnail upload (max 3 MB) and CSV batch import |
+| EP-04 | `dashboard` | Dashboard shell: header, top-level tabs and the user menu. In the MVP the only tab is Inventory; the Catalog tab comes in phase 2 |
+| EP-12 | `inventory` | Inventory tab: item list with search by name or part code and filters, add/edit/delete items persisted through the API, up to 3 photos per item (max 3 MB each) and CSV batch import |
+
+### Phase 2 epics (right after the MVP)
+
+| Epic ID | Slug | Scope |
+|---|---|---|
+| EP-04 | `dashboard` | Catalog tab: side menu to switch between brands and vehicles, model tree, vehicle detail, and catalog search by brand, model or part code |
 | EP-05 | `car-specs` | General vehicle spec sheet display (fuel consumption, equipment/features, etc.) using mocked/static car data |
 
-### Post-MVP epics (deferred, reserved for later)
+### Later epics (deferred, after phase 2)
 
 | Epic ID | Slug | Scope |
 |---|---|---|
@@ -90,7 +96,9 @@ Epics group work by product area and are referenced by their slug in branch name
 | EP-10 | `backend` | Real authentication + real data persistence, replacing MVP mocks |
 | EP-11 | `i18n` | EN/PT-BR parity across the app UI (beyond the README) |
 
-The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard/Navigation → Inventory → Car Specs. Inventory (EP-12) takes priority over Car Specs. Car data and login are mocked/static for the MVP, while inventory items are persisted through the API; 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to post-MVP epics.
+The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard → Inventory. Login is mocked/static for the MVP, while inventory items, photos included, are persisted through the API. Phase 2 adds the Catalog tab (EP-04) and Car Specs (EP-05), both on mocked/static vehicle data. 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to later epics.
+
+Tasks that belong to phase 2 end their title with `(phase 2)` and state it in the body: `**Phase:** 2 — together with ...`.
 
 ## Task Conventions
 
