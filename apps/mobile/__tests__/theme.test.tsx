@@ -17,7 +17,9 @@ function Probe() {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    test(`hands the ${style}/${mode} tokens to components`, async () => {
+    // Wraps a probe component in a ThemeProvider set to one style and mode and checks the probe
+    // receives that combination's colors through useTheme().
+    test(`Mobile: hands the ${style}/${mode} tokens to components`, async () => {
       let tree: ReactTestRenderer.ReactTestRenderer | undefined;
       await ReactTestRenderer.act(() => {
         tree = ReactTestRenderer.create(
@@ -35,7 +37,9 @@ for (const style of STYLES) {
   }
 }
 
-test('every font the themes use is linked into the Android and iOS apps', () => {
+// Checks every font file the themes ask for (body, mono and each display face) appears in the Android
+// and iOS asset manifests, so no text falls back to the system font on a device.
+test('Mobile: every font the themes use is linked into the Android and iOS apps', () => {
   const used: [string, FontWeight[]][] = [
     [scales.bodyFont, [400, 500, 600]],
     [scales.monoFont, [400, 500]],

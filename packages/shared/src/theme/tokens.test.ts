@@ -39,7 +39,9 @@ function contrast(a: string, b: string): number {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    test(`${style}/${mode} meets AA contrast`, () => {
+    // Checks every text-bearing color pair of one style and mode reaches WCAG AA (4.5:1),
+    // so text, muted text and the accent stay readable on canvas and panels.
+    test(`Shared: ${style}/${mode} colors meet AA contrast`, () => {
       const { colors } = themes[style][mode];
       for (const [fg, bg] of PAIRS) {
         const ratio = contrast(colors[fg], colors[bg]);

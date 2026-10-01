@@ -13,7 +13,9 @@ function rgb(hex: string): string {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    test(`resolves the ${style}/${mode} tokens`, async ({ page }) => {
+    // Switches style and mode on <html> and checks the page picks up that combination's canvas, text,
+    // muted text, display font and tracking. Runs for every style and mode, at both screen sizes.
+    test(`Web: resolves the ${style}/${mode} tokens`, async ({ page }) => {
       const theme = themes[style][mode];
       await page.goto("/");
       await page.evaluate(
