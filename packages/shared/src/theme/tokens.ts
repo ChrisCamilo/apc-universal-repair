@@ -7,7 +7,6 @@ const eighties = {
   radiusPanel: 14,
   radiusTile: 12,
 };
-
 const gt4 = {
   displayFont: "Titillium Web",
   displayTracking: 0.08,
@@ -15,9 +14,7 @@ const gt4 = {
   radiusTile: 4,
   glow: null,
 };
-
 export const MODES = ["night", "day"] as const;
-
 /** Scales shared by every style. */
 export const scales = {
   /** Spacing steps in px. */
@@ -32,9 +29,7 @@ export const scales = {
   bodyFont: "Barlow",
   monoFont: "JetBrains Mono",
 } as const;
-
 export const STYLES = ["eighties", "gt4"] as const;
-
 export const themes: Record<Style, Record<Mode, Theme>> = {
   eighties: {
     night: {
@@ -101,9 +96,7 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
 };
 
 export type Style = (typeof STYLES)[number];
-
 export type Mode = (typeof MODES)[number];
-
 export type ColorToken =
   | "canvas"
   | "panel"
@@ -113,7 +106,6 @@ export type ColorToken =
   | "textMuted"
   | "accent"
   | "onAccent";
-
 export interface Theme {
   colors: Record<ColorToken, string>;
   /** Display face family, e.g. "Barlow Condensed". */

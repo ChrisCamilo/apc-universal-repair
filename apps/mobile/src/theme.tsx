@@ -4,11 +4,9 @@ import { themes, type Mode, type Style, type Theme } from '@apc/shared/theme';
 // Hands the shared tokens to the components. Switching style and mode at runtime comes with #8.
 
 const ThemeContext = createContext<ActiveTheme>({ ...themes.eighties.night, style: 'eighties', mode: 'night' });
-
 const WEIGHTS = { 400: 'Regular', 500: 'Medium', 600: 'SemiBold', 700: 'Bold' } as const;
 
 export type ActiveTheme = Theme & { style: Style; mode: Mode };
-
 export type FontWeight = keyof typeof WEIGHTS;
 
 /**
