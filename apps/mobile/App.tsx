@@ -12,19 +12,6 @@ import { fontFamily, ThemeProvider, useTheme, type ActiveTheme } from './src/the
 
 const placeholderStatus: HealthResponse['status'] = 'ok';
 
-function Home() {
-  const theme = useTheme();
-  const styles = makeStyles(theme);
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
-      <Text style={styles.title}>APC Universal Repair</Text>
-      <Text style={styles.status}>API status: {placeholderStatus}</Text>
-    </View>
-  );
-}
-
 /**
  * Builds the home screen styles from the active theme.
  * @param theme Tokens of the active style and mode.
@@ -53,6 +40,19 @@ function makeStyles(theme: ActiveTheme) {
       color: theme.colors.textMuted,
     },
   });
+}
+
+function Home() {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
+      <Text style={styles.title}>APC Universal Repair</Text>
+      <Text style={styles.status}>API status: {placeholderStatus}</Text>
+    </View>
+  );
 }
 
 function App() {

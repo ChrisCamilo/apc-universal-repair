@@ -1,7 +1,21 @@
 // Semantic design tokens: the single source of truth for every visual style and mode.
 // Components never use raw values; web turns these into CSS variables and mobile reads them from the theme context.
 
-export const STYLES = ["eighties", "gt4"] as const;
+const eighties = {
+  displayFont: "Barlow Condensed",
+  displayTracking: 0.14,
+  radiusPanel: 14,
+  radiusTile: 12,
+};
+
+const gt4 = {
+  displayFont: "Titillium Web",
+  displayTracking: 0.08,
+  radiusPanel: 6,
+  radiusTile: 4,
+  glow: null,
+};
+
 export const MODES = ["night", "day"] as const;
 
 /** Scales shared by every style. */
@@ -19,20 +33,7 @@ export const scales = {
   monoFont: "JetBrains Mono",
 } as const;
 
-const eighties = {
-  displayFont: "Barlow Condensed",
-  displayTracking: 0.14,
-  radiusPanel: 14,
-  radiusTile: 12,
-};
-
-const gt4 = {
-  displayFont: "Titillium Web",
-  displayTracking: 0.08,
-  radiusPanel: 6,
-  radiusTile: 4,
-  glow: null,
-};
+export const STYLES = ["eighties", "gt4"] as const;
 
 export const themes: Record<Style, Record<Mode, Theme>> = {
   eighties: {
@@ -100,6 +101,7 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
 };
 
 export type Style = (typeof STYLES)[number];
+
 export type Mode = (typeof MODES)[number];
 
 export type ColorToken =

@@ -14,6 +14,17 @@ const PAIRS: [ColorToken, ColorToken][] = [
 ];
 
 /**
+ * Computes the WCAG contrast ratio between two colors; the order of the colors doesn't matter.
+ * @param a First color as `#RRGGBB`.
+ * @param b Second color as `#RRGGBB`.
+ * @returns Ratio from 1 (same color) to 21 (black on white).
+ */
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
  * Computes the WCAG 2.x relative luminance of a color.
  * @param hex Color as `#RRGGBB`.
  * @returns Luminance from 0 (black) to 1 (white).
@@ -24,17 +35,6 @@ function luminance(hex: string): number {
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   });
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/**
- * Computes the WCAG contrast ratio between two colors; the order of the colors doesn't matter.
- * @param a First color as `#RRGGBB`.
- * @param b Second color as `#RRGGBB`.
- * @returns Ratio from 1 (same color) to 21 (black on white).
- */
-function contrast(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
 }
 
 for (const style of STYLES) {
