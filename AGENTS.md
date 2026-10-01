@@ -149,6 +149,34 @@ Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical reso
 - Below the minimum, the app keeps working with its responsive layout, but the layout is not guaranteed.
 - Every UI task is checked at the minimum sizes before it is done: on web with the Playwright `desktop` (1280×720) and `mobile` (360×780) projects, on mobile with a 360×780 emulator.
 
+## Code Conventions
+
+Applies to every TypeScript/JavaScript file, tests included.
+
+- **Constants right below the imports.** Every module-level `const` (values, lookup tables, regexes, styles, React contexts) sits right after the imports, before any type, function or component, so a file's fixed values are read in one place. `const`s inside a function stay where they are used.
+- **Helpers are `function` declarations,** not arrow functions assigned to a `const`, so the block of constants only holds values.
+- **Every function is documented** with a JSDoc comment:
+  - a short description of what it does, up to 3 lines (5 or more only when it really needs it);
+  - `@param` for each argument;
+  - `@returns` with what it gives back (left out only when the function returns nothing).
+- **Exception:** components that render UI (screens and components such as `App` or `Home`) and providers such as `ThemeProvider` don't need the JSDoc block.
+
+```ts
+import { scales } from '@apc/shared/theme';
+
+const WEIGHTS = { 400: 'Regular', 600: 'SemiBold' } as const;
+
+/**
+ * Names the bundled font file for a family and weight.
+ * @param family Font family, e.g. "Barlow Condensed".
+ * @param weight Font weight; defaults to 400.
+ * @returns File name without extension, e.g. "BarlowCondensed-SemiBold".
+ */
+export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): string {
+  return `${family.replace(/\s+/g, '')}-${WEIGHTS[weight]}`;
+}
+```
+
 ## General Contribution Notes
 
 - Keep commits atomic and `main` always deployable.
