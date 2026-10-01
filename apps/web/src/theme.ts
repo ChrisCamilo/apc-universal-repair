@@ -1,7 +1,9 @@
-import { MODES, STYLES, scales, themes, type Mode, type Theme } from '@apc/shared/theme'
+import { MODES, STYLES, scales, THEME_STORAGE_KEYS, themes, type Mode, type Theme } from '@apc/shared/theme'
 
 // Turns the shared tokens into CSS variables: the scales on :root and one block per
 // [data-style][data-mode] pair, so switching style or mode is just changing two attributes on <html>.
+// The Vite config writes both the variables and the boot script into index.html, so the saved theme
+// is in place before the first paint.
 
 /**
  * Writes CSS custom property declarations.
@@ -20,16 +22,6 @@ function decls(vars: Record<string, string>): string {
  */
 function font(family: string, fallback: string): string {
   return `'${family}', ${fallback}`
-}
-
-/**
- * Adds the theme variables to the page in a `<style id="theme-tokens">`; call it before the first render.
- */
-export function injectThemeCss(): void {
-  const tag = document.createElement('style')
-  tag.id = 'theme-tokens'
-  tag.textContent = themeCss()
-  document.head.prepend(tag)
 }
 
 /**
@@ -70,6 +62,28 @@ function scaleVars(): Record<string, string> {
     vars[`font-size-${step}`] = `${size / 16}rem`
   }
   return vars
+}
+
+/**
+ * Writes the inline script that stamps `data-style` and `data-mode` on `<html>` before the first paint:
+ * the saved choice when there is one, otherwise the first style and the system color scheme.
+ * Reading storage can throw (private mode), so it falls back to the defaults.
+ * @returns Plain ES5 script text, meant to run in `<head>` before any stylesheet.
+ */
+export function themeBootScript(): string {
+  return `(function () {
+  var styles = ${JSON.stringify(STYLES)}, modes = ${JSON.stringify(MODES)}, style = null, mode = null;
+  try {
+    style = localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEYS.style)});
+    mode = localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEYS.mode)});
+  } catch (e) {}
+  if (styles.indexOf(style) === -1) { style = styles[0]; }
+  if (modes.indexOf(mode) === -1) {
+    mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'day' : 'night';
+  }
+  document.documentElement.setAttribute('data-style', style);
+  document.documentElement.setAttribute('data-mode', mode);
+})();`
 }
 
 /**
