@@ -4,34 +4,6 @@
 export const STYLES = ["eighties", "gt4"] as const;
 export const MODES = ["night", "day"] as const;
 
-export type Style = (typeof STYLES)[number];
-export type Mode = (typeof MODES)[number];
-
-export type ColorToken =
-  | "canvas"
-  | "panel"
-  | "panelRaised"
-  | "hairline"
-  | "text"
-  | "textMuted"
-  | "accent"
-  | "onAccent";
-
-export interface Theme {
-  colors: Record<ColorToken, string>;
-  /** Display face family, e.g. "Barlow Condensed". */
-  displayFont: string;
-  /** Letter spacing of display text, in em. */
-  displayTracking: number;
-  /** Corner radius in px. */
-  radiusPanel: number;
-  radiusTile: number;
-  /** Glow around active elements: blur in px and accent opacity; null when the style has no glow. */
-  glow: { blur: number; opacity: number } | null;
-  /** Top-down highlight on panels: white at night, black by day, at this opacity. */
-  sheen: number;
-}
-
 /** Scales shared by every style. */
 export const scales = {
   /** Spacing steps in px. */
@@ -126,3 +98,31 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
     },
   },
 };
+
+export type Style = (typeof STYLES)[number];
+export type Mode = (typeof MODES)[number];
+
+export type ColorToken =
+  | "canvas"
+  | "panel"
+  | "panelRaised"
+  | "hairline"
+  | "text"
+  | "textMuted"
+  | "accent"
+  | "onAccent";
+
+export interface Theme {
+  colors: Record<ColorToken, string>;
+  /** Display face family, e.g. "Barlow Condensed". */
+  displayFont: string;
+  /** Letter spacing of display text, in em. */
+  displayTracking: number;
+  /** Corner radius in px. */
+  radiusPanel: number;
+  radiusTile: number;
+  /** Glow around active elements: blur in px and accent opacity; null when the style has no glow. */
+  glow: { blur: number; opacity: number } | null;
+  /** Top-down highlight on panels: white at night, black by day, at this opacity. */
+  sheen: number;
+}
