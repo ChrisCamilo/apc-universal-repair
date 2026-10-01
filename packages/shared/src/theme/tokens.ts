@@ -30,6 +30,8 @@ export const scales = {
   monoFont: "JetBrains Mono",
 } as const;
 export const STYLES = ["eighties", "gt4"] as const;
+/** localStorage (web) and AsyncStorage (mobile) keys of the chosen style and mode. */
+export const THEME_STORAGE_KEYS = { style: "apc-style", mode: "apc-mode" } as const;
 export const themes: Record<Style, Record<Mode, Theme>> = {
   eighties: {
     night: {
@@ -119,4 +121,22 @@ export interface Theme {
   glow: { blur: number; opacity: number } | null;
   /** Top-down highlight on panels: white at night, black by day, at this opacity. */
   sheen: number;
+}
+
+/**
+ * Tells whether a value, e.g. one read back from storage, is a known mode.
+ * @param value Any value.
+ * @returns True when the value is "night" or "day".
+ */
+export function isMode(value: unknown): value is Mode {
+  return MODES.includes(value as Mode);
+}
+
+/**
+ * Tells whether a value, e.g. one read back from storage, is a known style.
+ * @param value Any value.
+ * @returns True when the value is one of STYLES.
+ */
+export function isStyle(value: unknown): value is Style {
+  return STYLES.includes(value as Style);
 }

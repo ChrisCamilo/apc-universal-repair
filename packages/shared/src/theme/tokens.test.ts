@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MODES, STYLES, themes, type ColorToken } from "./tokens.ts";
+import { isMode, isStyle, MODES, STYLES, themes, type ColorToken } from "./tokens.ts";
 
 // Text-bearing pairs that must meet WCAG AA (4.5:1) in every style and mode.
 const PAIRS: [ColorToken, ColorToken][] = [
@@ -50,3 +50,14 @@ for (const style of STYLES) {
     });
   }
 }
+
+// Checks the guards accept every known style and mode and reject anything else, since they decide
+// whether a value read back from storage can be used.
+test("Shared: isStyle and isMode accept only known values", () => {
+  for (const style of STYLES) assert.ok(isStyle(style));
+  for (const mode of MODES) assert.ok(isMode(mode));
+  for (const bad of [null, undefined, "", "dark", "light", "GT4", 1]) {
+    assert.equal(isStyle(bad), false);
+    assert.equal(isMode(bad), false);
+  }
+});

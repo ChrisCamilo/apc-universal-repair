@@ -31,11 +31,11 @@ jobs:
       - name: Build
         run: pnpm turbo run build
 
-      - name: Unit tests
-        run: pnpm turbo run test
-
       - name: Install Playwright browser
         run: pnpm --filter @apc/web exec playwright install --with-deps chromium
+
+      - name: Unit tests
+        run: pnpm turbo run test
 
       - name: Playwright E2E (web)
         run: pnpm --filter @apc/web run test:e2e

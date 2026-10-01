@@ -12,13 +12,13 @@ import '@fontsource/titillium-web/700.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
 import './index.css'
-import { injectThemeCss } from './theme.ts'
+import { ThemeProvider } from './ThemeProvider.tsx'
 import App from './App.tsx'
-
-injectThemeCss()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </StrictMode>,
 )
