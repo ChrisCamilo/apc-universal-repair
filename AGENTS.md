@@ -135,6 +135,30 @@ All web tests are written in TypeScript. Each kind of test has one tool:
 - **E2E tests** check a user flow across the app, with the API and the web app running.
 - Do not use Playwright's experimental component testing (`@playwright/experimental-ct-react`): its API is not stable and props cross a Node/browser boundary.
 
+### Writing tests
+
+These rules apply to every test, whatever the tool (Playwright, Vitest, Jest, `node:test`).
+
+- **Each test has a short description** in a comment right above it: what it checks and why, up to 3 lines (5 or more only when it really needs it).
+- **Each test title starts with where the test lives,** followed by a colon and the behavior in English:
+
+  | Prefix | Tests in |
+  |---|---|
+  | `Web:` | `apps/web` |
+  | `Mobile:` | `apps/mobile` |
+  | `API:` | `apps/api` |
+  | `Shared:` | `packages/shared` |
+
+  The prefix goes on every `test`/`it` title, also inside a `describe`, so a failing test is identified by its title alone in any report.
+
+```ts
+// Switches style and mode on <html> and checks the page picks up that combination's colors and display font.
+// Runs for every style and mode, at both screen sizes.
+test(`Web: resolves the ${style}/${mode} tokens`, async ({ page }) => {
+  // ...
+});
+```
+
 ## Supported Screen Sizes
 
 Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical resolution of the screen.
@@ -148,6 +172,45 @@ Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical reso
 - **Mobile, 360×780:** covers mid-range and premium phones from 2020 on. The 360 width comes from Samsung Galaxy S20–S23 at their default setting; the 780 height from the S22 and S23. Screens are designed at 390×844 (iPhone 12–14) and adapt up and down from there.
 - Below the minimum, the app keeps working with its responsive layout, but the layout is not guaranteed.
 - Every UI task is checked at the minimum sizes before it is done: on web with the Playwright `desktop` (1280×720) and `mobile` (360×780) projects, on mobile with a 360×780 emulator.
+
+## Code Conventions
+
+Applies to every TypeScript/JavaScript file, tests included.
+
+- **Constants right below the imports.** Every module-level `const` (values, lookup tables, regexes, styles, React contexts) sits right after the imports, before any type, function or component, so a file's fixed values are read in one place. `const`s inside a function stay where they are used.
+- **Helpers are `function` declarations,** not arrow functions assigned to a `const`, so the block of constants only holds values.
+- **Every function is documented** with a JSDoc comment:
+  - a short description of what it does, up to 3 lines (5 or more only when it really needs it);
+  - `@param` for each argument;
+  - `@returns` with what it gives back (left out only when the function returns nothing).
+- **Exception:** components that render UI (screens and components such as `App` or `Home`) and providers such as `ThemeProvider` don't need the JSDoc block.
+- **Alphabetical order.** Module-level constants are sorted alphabetically by name, ignoring case, and so are functions. Components that render UI and providers are left out of the sorting and come after the functions, in the order that reads best. The one exception: when a constant uses another constant, the one it uses goes first, since JavaScript can't read a `const` before its declaration.
+- **File layout:** imports → constants (A–Z) → types → functions (A–Z) → components and providers.
+- **Constants and types are blocks.** Consecutive `const` declarations sit on adjacent lines with no blank line between them, and so do `type`/`interface` declarations; a JSDoc comment stays attached to the declaration it describes. One blank line separates the blocks from each other and from the imports, and one blank line separates each function and component.
+
+```ts
+const ThemeContext = createContext<ActiveTheme>(defaultTheme);
+const WEIGHTS = { 400: 'Regular', 600: 'SemiBold' } as const;
+
+export type ActiveTheme = Theme & { style: Style; mode: Mode };
+export type FontWeight = keyof typeof WEIGHTS;
+```
+
+```ts
+import { scales } from '@apc/shared/theme';
+
+const WEIGHTS = { 400: 'Regular', 600: 'SemiBold' } as const;
+
+/**
+ * Names the bundled font file for a family and weight.
+ * @param family Font family, e.g. "Barlow Condensed".
+ * @param weight Font weight; defaults to 400.
+ * @returns File name without extension, e.g. "BarlowCondensed-SemiBold".
+ */
+export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): string {
+  return `${family.replace(/\s+/g, '')}-${WEIGHTS[weight]}`;
+}
+```
 
 ## General Contribution Notes
 
