@@ -131,7 +131,7 @@ All web tests are written in TypeScript. Each kind of test has one tool:
 | End-to-end (web) | Playwright Test, `desktop` (1280×720) and `mobile` (360×780) projects | `apps/web/e2e/*.spec.ts` |
 | Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` |
 
-- **Component tests** check one component alone: every style (`eighties`, `gt4`, `bmw90`) and mode (light, dark), keyboard and focus, and the minimum screen sizes. They run in a real browser, so CSS and tokens apply as they do in the app. Vitest is added by the first Design System task that needs a component test.
+- **Component tests** check one component alone: every style (`eighties`, `gt4`, `bmw90`, `fiat90`) and mode (light, dark), keyboard and focus, and the minimum screen sizes. They run in a real browser, so CSS and tokens apply as they do in the app. Vitest is added by the first Design System task that needs a component test.
 - **E2E tests** check a user flow across the app, with the API and the web app running.
 - Do not use Playwright's experimental component testing (`@playwright/experimental-ct-react`): its API is not stable and props cross a Node/browser boundary.
 

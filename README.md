@@ -22,7 +22,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🖼️ Up to 3 photos per part, with a large viewer
 - 📄 Batch import of parts from CSV
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
-- 🎨 Three visual styles — **Anos 80**, **GT4** and **BMW 90** — each with light and dark modes
+- 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes
 
 **Phase 2**
 
@@ -98,20 +98,20 @@ Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisC
 
 ### MVP Estimate
 
-Estimate as of October 2026: about **340 hours** of work to finish the MVP (between 225 and 450 hours).
+Estimate as of October 2026: about **340 hours** of work to finish the MVP (between 230 and 455 hours).
 
 | | Story points | Hours |
 |---|---|---|
-| Design System, Auth, Dashboard and Inventory (47 tasks) | 225 | ~340 |
-| **MVP total** | **225** | **~340** |
+| Design System, Auth, Dashboard and Inventory (48 tasks) | 228 | ~340 |
+| **MVP total** | **228** | **~340** |
 | Phase 2: Catalog tab and Car Specs (after the MVP) | ~55 | ~80 |
 
 | Pace | Calendar time |
 |---|---|
 | Full time, ~30 productive hours a week | ~2.5 months (2 to 3.5) |
-| Part time, ~10 hours a week | ~8 months (5 to 10) |
+| Part time, ~10 hours a week | ~8 months (5 to 10.5) |
 
-1 story point ≈ 1.5 hours (1 to 2), since every UI task ships on web and mobile in three styles and two modes, with tests. There is no delivery history yet to measure the real pace, so the estimate will be revised as the first tasks close.
+1 story point ≈ 1.5 hours (1 to 2), since every UI task ships on web and mobile in four styles and two modes, with tests. There is no delivery history yet to measure the real pace, so the estimate will be revised as the first tasks close.
 
 ### Contributing
 
@@ -145,7 +145,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande
 - 📄 Importação de peças em lote por CSV
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
-- 🎨 Três estilos visuais — **Anos 80**, **GT4** e **BMW 90** — cada um com modo claro e escuro
+- 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro
 
 **Fase 2**
 
@@ -221,20 +221,20 @@ O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https:
 
 ### Estimativa do MVP
 
-Estimativa de outubro de 2026: cerca de **340 horas** de trabalho para terminar o MVP (entre 225 e 450 horas).
+Estimativa de outubro de 2026: cerca de **340 horas** de trabalho para terminar o MVP (entre 230 e 455 horas).
 
 | | Story points | Horas |
 |---|---|---|
-| Design System, Auth, Dashboard e Estoque (47 tasks) | 225 | ~340 |
-| **Total do MVP** | **225** | **~340** |
+| Design System, Auth, Dashboard e Estoque (48 tasks) | 228 | ~340 |
+| **Total do MVP** | **228** | **~340** |
 | Fase 2: aba Catálogo e Ficha técnica (depois do MVP) | ~55 | ~80 |
 
 | Ritmo | Prazo |
 |---|---|
 | Tempo integral, ~30 horas produtivas por semana | ~2,5 meses (2 a 3,5) |
-| Meio período, ~10 horas por semana | ~8 meses (5 a 10) |
+| Meio período, ~10 horas por semana | ~8 meses (5 a 10,5) |
 
-1 story point ≈ 1,5 hora (de 1 a 2), já que toda task de interface sai na web e no celular, em três estilos e dois modos, com testes. Ainda não há histórico de entregas para medir o ritmo real, então a estimativa será revisada conforme as primeiras tasks forem fechadas.
+1 story point ≈ 1,5 hora (de 1 a 2), já que toda task de interface sai na web e no celular, em quatro estilos e dois modos, com testes. Ainda não há histórico de entregas para medir o ritmo real, então a estimativa será revisada conforme as primeiras tasks forem fechadas.
 
 ### Como Contribuir
 
