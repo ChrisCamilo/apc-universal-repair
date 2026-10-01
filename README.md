@@ -49,12 +49,12 @@ A **pnpm** + **Turborepo** monorepo:
 
 | Package | What it is |
 |---|---|
-| `apps/web` | Web app — React 19, Vite, Cypress (E2E and component tests) |
+| `apps/web` | Web app — React 19, Vite, Playwright (E2E tests in TypeScript) |
 | `apps/mobile` | Mobile app — React Native 0.87 |
 | `apps/api` | API — Fastify, Zod, Prisma on PostgreSQL |
 | `packages/shared` | Zod schemas and types shared by web, mobile and API |
 
-CI (GitHub Actions) runs lint, build and the Cypress E2E tests on every pull request.
+CI (GitHub Actions) runs lint, build and the Playwright E2E tests on every pull request.
 
 ### Getting Started
 
@@ -66,12 +66,19 @@ cp apps/api/.env.example apps/api/.env   # then set DATABASE_URL
 pnpm dev                                  # API on :3333, web on :5173
 ```
 
+Before the first E2E run, download the browser Playwright uses:
+
+```bash
+pnpm --filter @apc/web exec playwright install chromium
+```
+
 | Command | What it does |
 |---|---|
 | `pnpm dev` | Runs every app in development mode |
 | `pnpm build` | Builds every package |
 | `pnpm lint` | Lints every package |
-| `pnpm test:e2e` | Runs the web E2E tests (starts the API and the web app) |
+| `pnpm test:e2e` | Runs the web E2E tests at 1280×720 and 360×780 (starts the API and the web app) |
+| `pnpm --filter @apc/web test:e2e:ui` | Opens the Playwright UI to run and debug the tests |
 | `pnpm --filter @apc/mobile start` | Starts the React Native bundler |
 | `pnpm --filter @apc/mobile android` | Runs the mobile app on Android |
 
@@ -141,12 +148,12 @@ Monorepo com **pnpm** + **Turborepo**:
 
 | Pacote | O que é |
 |---|---|
-| `apps/web` | App web — React 19, Vite, Cypress (testes E2E e de componente) |
+| `apps/web` | App web — React 19, Vite, Playwright (testes E2E em TypeScript) |
 | `apps/mobile` | App para celular — React Native 0.87 |
 | `apps/api` | API — Fastify, Zod, Prisma com PostgreSQL |
 | `packages/shared` | Schemas Zod e tipos compartilhados entre web, celular e API |
 
-O CI (GitHub Actions) roda lint, build e os testes E2E do Cypress em todo pull request.
+O CI (GitHub Actions) roda lint, build e os testes E2E do Playwright em todo pull request.
 
 ### Como Rodar
 
@@ -158,12 +165,19 @@ cp apps/api/.env.example apps/api/.env   # depois ajuste o DATABASE_URL
 pnpm dev                                  # API na porta 3333, web na 5173
 ```
 
+Antes de rodar os testes E2E pela primeira vez, baixe o navegador que o Playwright usa:
+
+```bash
+pnpm --filter @apc/web exec playwright install chromium
+```
+
 | Comando | O que faz |
 |---|---|
 | `pnpm dev` | Roda todos os apps em modo de desenvolvimento |
 | `pnpm build` | Gera o build de todos os pacotes |
 | `pnpm lint` | Roda o lint em todos os pacotes |
-| `pnpm test:e2e` | Roda os testes E2E da web (sobe a API e o app web) |
+| `pnpm test:e2e` | Roda os testes E2E da web em 1280×720 e 360×780 (sobe a API e o app web) |
+| `pnpm --filter @apc/web test:e2e:ui` | Abre a interface do Playwright para rodar e depurar os testes |
 | `pnpm --filter @apc/mobile start` | Inicia o bundler do React Native |
 | `pnpm --filter @apc/mobile android` | Roda o app no Android |
 

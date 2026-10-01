@@ -8,10 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "cy:open": "cypress open",
-    "cy:run": "cypress run",
-    "test:e2e": "start-server-and-test \"pnpm --filter @apc/api run dev\" http://localhost:3333/health dev http://localhost:5173 \"cypress run --e2e\"",
-    "test:component": "cypress run --component"
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@apc/shared": "workspace:*",
@@ -19,13 +17,12 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
-    "cypress": "^16.0.0",
     "oxlint": "^1.81.0",
-    "start-server-and-test": "^3.0.12",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
   }

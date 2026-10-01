@@ -26,10 +26,11 @@ Thumbs.db
 # Claude Code local settings
 .claude/settings.local.json
 
-# Cypress
-cypress/videos/
-cypress/screenshots/
-cypress/downloads/
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Prisma
 apps/api/prisma/*.db
