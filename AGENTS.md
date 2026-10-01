@@ -184,6 +184,8 @@ Applies to every TypeScript/JavaScript file, tests included.
   - `@param` for each argument;
   - `@returns` with what it gives back (left out only when the function returns nothing).
 - **Exception:** components that render UI (screens and components such as `App` or `Home`) and providers such as `ThemeProvider` don't need the JSDoc block.
+- **Alphabetical order.** Module-level constants are sorted alphabetically by name, ignoring case, and so are functions. Components that render UI and providers are left out of the sorting and come after the functions, in the order that reads best. The one exception: when a constant uses another constant, the one it uses goes first, since JavaScript can't read a `const` before its declaration.
+- **File layout:** imports → constants (A–Z) → types → functions (A–Z) → components and providers.
 
 ```ts
 import { scales } from '@apc/shared/theme';
