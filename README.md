@@ -98,13 +98,12 @@ Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisC
 
 ### MVP Estimate
 
-Estimate as of October 2026: about **330 hours** of work to finish the MVP (between 220 and 445 hours).
+Estimate as of October 2026: about **340 hours** of work to finish the MVP (between 225 and 450 hours).
 
 | | Story points | Hours |
 |---|---|---|
-| Planned tasks: Design System, Dashboard and Inventory (42 tasks) | 212 | ~320 |
-| Not yet split into tasks: Auth (login) | ~10 | ~15 |
-| **MVP total** | **~222** | **~330** |
+| Design System, Auth, Dashboard and Inventory (47 tasks) | 225 | ~340 |
+| **MVP total** | **225** | **~340** |
 | Phase 2: Catalog tab and Car Specs (after the MVP) | ~55 | ~80 |
 
 | Pace | Calendar time |
@@ -222,13 +221,12 @@ O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https:
 
 ### Estimativa do MVP
 
-Estimativa de outubro de 2026: cerca de **330 horas** de trabalho para terminar o MVP (entre 220 e 445 horas).
+Estimativa de outubro de 2026: cerca de **340 horas** de trabalho para terminar o MVP (entre 225 e 450 horas).
 
 | | Story points | Horas |
 |---|---|---|
-| Tasks planejadas: Design System, Dashboard e Estoque (42 tasks) | 212 | ~320 |
-| Ainda sem tasks: Auth (login) | ~10 | ~15 |
-| **Total do MVP** | **~222** | **~330** |
+| Design System, Auth, Dashboard e Estoque (47 tasks) | 225 | ~340 |
+| **Total do MVP** | **225** | **~340** |
 | Fase 2: aba Catálogo e Ficha técnica (depois do MVP) | ~55 | ~80 |
 
 | Ritmo | Prazo |
