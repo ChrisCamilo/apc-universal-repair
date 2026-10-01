@@ -16,18 +16,22 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 
 **MVP (in progress)**
 
-- 📚 Vehicle catalog organized by brand, model, generation, version, year and engine
-- 🔎 Catalog search by brand, model or the code of a part in stock
 - 📦 Parts inventory: add, view, edit and delete parts, each with its part code, category, part brand, vehicle brand and model, position, side, color, location, quantity, minimum stock and unit price (R$)
 - 🧭 Inventory search by name or part code, filters, sorting on every column and pagination (25, 50 or 100 per page)
 - 🚦 Low-stock and out-of-stock rows highlighted in color
+- 🖼️ Up to 3 photos per part, with a large viewer
+- 📄 Batch import of parts from CSV
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
 - 🎨 Three visual styles — **Anos 80**, **GT4** and **BMW 90** — each with light and dark modes
 
-**Next phases**
+**Phase 2**
 
-- 🖼️ Up to 3 photos per part, with a large viewer
-- 📄 Batch import of parts from CSV
+- 📚 Vehicle catalog organized by brand, model, generation, version, year and engine
+- 🔎 Catalog search by brand, model or the code of a part in stock
+- 📋 Vehicle spec sheet: fuel consumption, equipment and features
+
+**Later**
+
 - 🧩 Interactive 3D vehicle models
 - 🔩 Original assembly reference for every part
 - ⚙️ Technical specs: bolt/screw sizes and torque values
@@ -88,24 +92,25 @@ pnpm --filter @apc/web exec playwright install chromium
 
 Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisCamilo/apc-universal-repair/issues?q=label%3Aepic).
 
-- **MVP:** Setup ✅ → Design System → Auth (login) → Dashboard → Inventory → Car Specs
+- **MVP:** Setup ✅ → Design System → Auth (login) → Dashboard → Inventory (with photos and CSV import)
+- **Phase 2:** Catalog tab and Car Specs
 - **Later:** 3D viewer, maintenance specs, diagnostics, reference prices, real backend and full EN/PT-BR app UI
 
 ### MVP Estimate
 
-Estimate as of October 2026: about **370 hours** of work to finish the MVP (between 250 and 490 hours).
+Estimate as of October 2026: about **330 hours** of work to finish the MVP (between 220 and 445 hours).
 
 | | Story points | Hours |
 |---|---|---|
-| Planned tasks: Design System, Dashboard and Inventory (41 tasks) | 201 | ~300 |
-| Not yet split into tasks: Auth (login), Catalog tab and Car Specs | ~45 | ~70 |
-| **MVP total** | **~246** | **~370** |
-| Inventory phase 2: photos and CSV import (after the MVP) | 31 | ~45 |
+| Planned tasks: Design System, Dashboard and Inventory (42 tasks) | 212 | ~320 |
+| Not yet split into tasks: Auth (login) | ~10 | ~15 |
+| **MVP total** | **~222** | **~330** |
+| Phase 2: Catalog tab and Car Specs (after the MVP) | ~55 | ~80 |
 
 | Pace | Calendar time |
 |---|---|
-| Full time, ~30 productive hours a week | ~3 months (2 to 4) |
-| Part time, ~10 hours a week | ~9 months (6 to 11) |
+| Full time, ~30 productive hours a week | ~2.5 months (2 to 3.5) |
+| Part time, ~10 hours a week | ~8 months (5 to 10) |
 
 1 story point ≈ 1.5 hours (1 to 2), since every UI task ships on web and mobile in three styles and two modes, with tests. There is no delivery history yet to measure the real pace, so the estimate will be revised as the first tasks close.
 
@@ -135,18 +140,22 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 
 **MVP (em andamento)**
 
-- 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor
-- 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque
 - 📦 Estoque de peças: adicionar, ver, editar e excluir peças, cada uma com código da peça, categoria, marca da peça, marca e modelo do veículo, posição, lado, cor, local, quantidade, estoque mínimo e valor unitário (R$)
 - 🧭 Busca no estoque por nome ou código da peça, filtros, ordenação em todas as colunas e paginação (25, 50 ou 100 por página)
 - 🚦 Linhas com estoque baixo e esgotado destacadas por cor
+- 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande
+- 📄 Importação de peças em lote por CSV
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
 - 🎨 Três estilos visuais — **Anos 80**, **GT4** e **BMW 90** — cada um com modo claro e escuro
 
-**Próximas fases**
+**Fase 2**
 
-- 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande
-- 📄 Importação de peças em lote por CSV
+- 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor
+- 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque
+- 📋 Ficha técnica do veículo: consumo, equipamentos e itens de série
+
+**Depois**
+
 - 🧩 Modelos 3D interativos dos veículos
 - 🔩 Referência de montagem original de cada peça
 - ⚙️ Ficha técnica: medidas de parafusos e torque
@@ -207,24 +216,25 @@ pnpm --filter @apc/web exec playwright install chromium
 
 O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https://github.com/ChrisCamilo/apc-universal-repair/issues?q=label%3Aepic).
 
-- **MVP:** Setup ✅ → Design System → Auth (login) → Dashboard → Estoque → Ficha técnica
+- **MVP:** Setup ✅ → Design System → Auth (login) → Dashboard → Estoque (com fotos e importação por CSV)
+- **Fase 2:** aba Catálogo e Ficha técnica
 - **Depois:** visualizador 3D, ficha de manutenção, diagnósticos, valores de referência, backend real e interface completa em inglês e português
 
 ### Estimativa do MVP
 
-Estimativa de outubro de 2026: cerca de **370 horas** de trabalho para terminar o MVP (entre 250 e 490 horas).
+Estimativa de outubro de 2026: cerca de **330 horas** de trabalho para terminar o MVP (entre 220 e 445 horas).
 
 | | Story points | Horas |
 |---|---|---|
-| Tasks planejadas: Design System, Dashboard e Estoque (41 tasks) | 201 | ~300 |
-| Ainda sem tasks: Auth (login), aba Catálogo e Ficha técnica | ~45 | ~70 |
-| **Total do MVP** | **~246** | **~370** |
-| Fase 2 do Estoque: fotos e importação por CSV (depois do MVP) | 31 | ~45 |
+| Tasks planejadas: Design System, Dashboard e Estoque (42 tasks) | 212 | ~320 |
+| Ainda sem tasks: Auth (login) | ~10 | ~15 |
+| **Total do MVP** | **~222** | **~330** |
+| Fase 2: aba Catálogo e Ficha técnica (depois do MVP) | ~55 | ~80 |
 
 | Ritmo | Prazo |
 |---|---|
-| Tempo integral, ~30 horas produtivas por semana | ~3 meses (2 a 4) |
-| Meio período, ~10 horas por semana | ~9 meses (6 a 11) |
+| Tempo integral, ~30 horas produtivas por semana | ~2,5 meses (2 a 3,5) |
+| Meio período, ~10 horas por semana | ~8 meses (5 a 10) |
 
 1 story point ≈ 1,5 hora (de 1 a 2), já que toda task de interface sai na web e no celular, em três estilos e dois modos, com testes. Ainda não há histórico de entregas para medir o ritmo real, então a estimativa será revisada conforme as primeiras tasks forem fechadas.
 
