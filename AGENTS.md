@@ -186,6 +186,15 @@ Applies to every TypeScript/JavaScript file, tests included.
 - **Exception:** components that render UI (screens and components such as `App` or `Home`) and providers such as `ThemeProvider` don't need the JSDoc block.
 - **Alphabetical order.** Module-level constants are sorted alphabetically by name, ignoring case, and so are functions. Components that render UI and providers are left out of the sorting and come after the functions, in the order that reads best. The one exception: when a constant uses another constant, the one it uses goes first, since JavaScript can't read a `const` before its declaration.
 - **File layout:** imports → constants (A–Z) → types → functions (A–Z) → components and providers.
+- **Constants and types are blocks.** Consecutive `const` declarations sit on adjacent lines with no blank line between them, and so do `type`/`interface` declarations; a JSDoc comment stays attached to the declaration it describes. One blank line separates the blocks from each other and from the imports, and one blank line separates each function and component.
+
+```ts
+const ThemeContext = createContext<ActiveTheme>(defaultTheme);
+const WEIGHTS = { 400: 'Regular', 600: 'SemiBold' } as const;
+
+export type ActiveTheme = Theme & { style: Style; mode: Mode };
+export type FontWeight = keyof typeof WEIGHTS;
+```
 
 ```ts
 import { scales } from '@apc/shared/theme';
