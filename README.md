@@ -91,6 +91,24 @@ Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisC
 - **MVP:** Setup ✅ → Design System → Auth (login) → Dashboard → Inventory → Car Specs
 - **Later:** 3D viewer, maintenance specs, diagnostics, reference prices, real backend and full EN/PT-BR app UI
 
+### MVP Estimate
+
+Estimate as of October 2026: about **370 hours** of work to finish the MVP (between 250 and 490 hours).
+
+| | Story points | Hours |
+|---|---|---|
+| Planned tasks: Design System, Dashboard and Inventory (41 tasks) | 201 | ~300 |
+| Not yet split into tasks: Auth (login), Catalog tab and Car Specs | ~45 | ~70 |
+| **MVP total** | **~246** | **~370** |
+| Inventory phase 2: photos and CSV import (after the MVP) | 31 | ~45 |
+
+| Pace | Calendar time |
+|---|---|
+| Full time, ~30 productive hours a week | ~3 months (2 to 4) |
+| Part time, ~10 hours a week | ~9 months (6 to 11) |
+
+1 story point ≈ 1.5 hours (1 to 2), since every UI task ships on web and mobile in three styles and two modes, with tests. There is no delivery history yet to measure the real pace, so the estimate will be revised as the first tasks close.
+
 ### Contributing
 
 Commit messages, branch names, epics and task conventions are defined in [AGENTS.md](AGENTS.md). Every task has an estimate, priority, size, assignee, its epic and the tasks that block it.
@@ -191,6 +209,24 @@ O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https:
 
 - **MVP:** Setup ✅ → Design System → Auth (login) → Dashboard → Estoque → Ficha técnica
 - **Depois:** visualizador 3D, ficha de manutenção, diagnósticos, valores de referência, backend real e interface completa em inglês e português
+
+### Estimativa do MVP
+
+Estimativa de outubro de 2026: cerca de **370 horas** de trabalho para terminar o MVP (entre 250 e 490 horas).
+
+| | Story points | Horas |
+|---|---|---|
+| Tasks planejadas: Design System, Dashboard e Estoque (41 tasks) | 201 | ~300 |
+| Ainda sem tasks: Auth (login), aba Catálogo e Ficha técnica | ~45 | ~70 |
+| **Total do MVP** | **~246** | **~370** |
+| Fase 2 do Estoque: fotos e importação por CSV (depois do MVP) | 31 | ~45 |
+
+| Ritmo | Prazo |
+|---|---|
+| Tempo integral, ~30 horas produtivas por semana | ~3 meses (2 a 4) |
+| Meio período, ~10 horas por semana | ~9 meses (6 a 11) |
+
+1 story point ≈ 1,5 hora (de 1 a 2), já que toda task de interface sai na web e no celular, em três estilos e dois modos, com testes. Ainda não há histórico de entregas para medir o ritmo real, então a estimativa será revisada conforme as primeiras tasks forem fechadas.
 
 ### Como Contribuir
 
