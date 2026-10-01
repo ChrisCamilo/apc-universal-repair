@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import type { HealthResponse } from "@apc/shared";
-import "./App.css";
 
 function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -14,9 +13,9 @@ function App() {
   }, []);
 
   return (
-    <main>
-      <h1>APC Universal Repair</h1>
-      <p data-testid="health-status">
+    <main className="mx-auto max-w-xl px-6 py-16 text-center">
+      <h1 className="font-display text-4xl font-bold uppercase tracking-display">APC Universal Repair</h1>
+      <p data-testid="health-status" className="mt-4 text-text-muted">
         {error ? error : health ? `API status: ${health.status}` : "Checking API status..."}
       </p>
     </main>
