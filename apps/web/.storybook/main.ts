@@ -4,6 +4,8 @@ import type { StorybookConfig } from '@storybook/react-vite'
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.@(ts|tsx)'],
   framework: '@storybook/react-vite',
+  // Forces :hover, :active and :focus-visible in stories, so every state can be seen without interacting.
+  addons: ['storybook-addon-pseudo-states'],
   core: { disableTelemetry: true },
 }
 
