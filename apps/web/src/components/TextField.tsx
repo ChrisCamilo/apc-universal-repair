@@ -20,7 +20,7 @@ const INPUT =
   'disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none'
 const TRAILING_BUTTON =
   'grid shrink-0 place-items-center rounded-pill text-text-muted outline-none transition-colors ' +
-  'enabled:hover:text-text focus-visible:shadow-ring disabled:cursor-not-allowed'
+  'enabled:cursor-pointer enabled:hover:text-text focus-visible:shadow-ring disabled:cursor-not-allowed'
 
 type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'size' | 'children'>
 type SearchFieldProps = InputProps & {

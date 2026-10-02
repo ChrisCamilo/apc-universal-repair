@@ -91,13 +91,15 @@ test('Web: field kinds set the input type, autofill and keyboard', async () => {
 })
 
 // Reveals and hides a password with the eye toggle and checks the input type and the toggle's name
-// and pressed state follow.
+// and pressed state follow, and that the toggle shows the hand cursor like any clickable control.
 test('Web: password fields hide the text until revealed', async () => {
   const screen = await render(<TextField label="Senha" kind="password" value="opala4100" onValueChange={() => {}} />)
   const input = screen.getByLabelText('Senha')
   await expect.element(input).toHaveAttribute('type', 'password')
+  const show = screen.getByRole('button', { name: 'Mostrar senha' })
+  expect(getComputedStyle(show.element()).cursor).toBe('pointer')
 
-  await screen.getByRole('button', { name: 'Mostrar senha' }).click()
+  await show.click()
   await expect.element(input).toHaveAttribute('type', 'text')
   const hide = screen.getByRole('button', { name: 'Ocultar senha' })
   await expect.element(hide).toHaveAttribute('aria-pressed', 'true')
@@ -114,7 +116,9 @@ test('Web: search shows a clear button once there is content', async () => {
   await expect.element(screen.getByRole('button', { name: 'Limpar busca' })).not.toBeInTheDocument()
 
   await search.fill('Opala')
-  await screen.getByRole('button', { name: 'Limpar busca' }).click()
+  const clear = screen.getByRole('button', { name: 'Limpar busca' })
+  expect(getComputedStyle(clear.element()).cursor).toBe('pointer')
+  await clear.click()
   await expect.element(search).toHaveValue('')
   await expect.element(search).toHaveFocus()
 
