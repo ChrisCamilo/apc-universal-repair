@@ -11,3 +11,15 @@ test("Web: home page shows the API status", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("health-status")).toContainText("API status:");
 });
+
+// Opens the home page and checks the APC badge is shown whole inside the viewport, at the desktop
+// and mobile minimum sizes, until the login screen takes it over.
+test("Web: home page shows the APC badge inside the viewport", async ({ page }) => {
+  await page.goto("/");
+  const badge = page.getByRole("img", { name: "APC Universal Repair" });
+  await expect(badge).toBeVisible();
+  const box = (await badge.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+});

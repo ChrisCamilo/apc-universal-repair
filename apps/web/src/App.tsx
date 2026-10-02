@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { HealthResponse } from "@apc/shared";
+import { BrandMark } from "./components/BrandMark.tsx";
 
 function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -14,6 +15,7 @@ function App() {
 
   return (
     <main className="mx-auto max-w-xl px-6 py-16 text-center">
+      <BrandMark variant="badge" size={200} className="mx-auto mb-6" />
       <h1 className="font-display text-4xl font-bold uppercase tracking-display">APC Universal Repair</h1>
       <p data-testid="health-status" className="mt-4 text-text-muted">
         {error ? error : health ? `API status: ${health.status}` : "Checking API status..."}
