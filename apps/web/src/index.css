@@ -16,6 +16,8 @@
   --color-text-muted: var(--text-muted);
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
 
   --font-body: var(--body-face);
   --font-display: var(--display-face);
