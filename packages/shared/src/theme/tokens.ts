@@ -45,6 +45,8 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         textMuted: "#8A9198",
         accent: "#FFA31A",
         onAccent: "#0B0C0E",
+        danger: "#FF6B5E",
+        onDanger: "#0B0C0E",
       },
       glow: { blur: 22, opacity: 0.2 },
       sheen: 0.045,
@@ -60,6 +62,8 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         textMuted: "#5F666D",
         accent: "#9A5B00",
         onAccent: "#FFFFFF",
+        danger: "#B3261E",
+        onDanger: "#FFFFFF",
       },
       glow: { blur: 18, opacity: 0.14 },
       sheen: 0.022,
@@ -77,6 +81,8 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         textMuted: "#93A1AD",
         accent: "#4FA3D9",
         onAccent: "#0E1114",
+        danger: "#F07A73",
+        onDanger: "#0E1114",
       },
       sheen: 0.03,
     },
@@ -91,6 +97,8 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         textMuted: "#55606A",
         accent: "#1F6F9E",
         onAccent: "#FFFFFF",
+        danger: "#B42318",
+        onDanger: "#FFFFFF",
       },
       sheen: 0.018,
     },
@@ -107,7 +115,9 @@ export type ColorToken =
   | "text"
   | "textMuted"
   | "accent"
-  | "onAccent";
+  | "onAccent"
+  | "danger"
+  | "onDanger";
 export interface Theme {
   colors: Record<ColorToken, string>;
   /** Display face family, e.g. "Barlow Condensed". */

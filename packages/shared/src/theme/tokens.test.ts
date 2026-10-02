@@ -11,6 +11,9 @@ const PAIRS: [ColorToken, ColorToken][] = [
   ["accent", "canvas"],
   ["accent", "panel"],
   ["onAccent", "accent"],
+  ["danger", "canvas"],
+  ["danger", "panel"],
+  ["onDanger", "danger"],
 ];
 
 /**
