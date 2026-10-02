@@ -72,7 +72,7 @@ cp apps/api/.env.example apps/api/.env   # then set DATABASE_URL
 pnpm dev                                  # API on :3333, web on :5173
 ```
 
-Before the first E2E run, download the browser Playwright uses:
+Before the first test run, download the browser that the component and E2E tests use:
 
 ```bash
 pnpm --filter @apc/web exec playwright install chromium
@@ -83,8 +83,10 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm dev` | Runs every app in development mode |
 | `pnpm build` | Builds every package |
 | `pnpm lint` | Lints every package |
+| `pnpm test` | Runs the unit and component tests (shared, web in Chromium, mobile) |
 | `pnpm test:e2e` | Runs the web E2E tests at 1280×720 and 360×780 (starts the API and the web app) |
 | `pnpm --filter @apc/web test:e2e:ui` | Opens the Playwright UI to run and debug the tests |
+| `pnpm --filter @apc/web storybook` | Opens Storybook on :6006, with the design system foundations and components |
 | `pnpm --filter @apc/mobile start` | Starts the React Native bundler |
 | `pnpm --filter @apc/mobile android` | Runs the mobile app on Android |
 
@@ -195,7 +197,7 @@ cp apps/api/.env.example apps/api/.env   # depois ajuste o DATABASE_URL
 pnpm dev                                  # API na porta 3333, web na 5173
 ```
 
-Antes de rodar os testes E2E pela primeira vez, baixe o navegador que o Playwright usa:
+Antes de rodar os testes pela primeira vez, baixe o navegador que os testes de componente e E2E usam:
 
 ```bash
 pnpm --filter @apc/web exec playwright install chromium
@@ -206,8 +208,10 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm dev` | Roda todos os apps em modo de desenvolvimento |
 | `pnpm build` | Gera o build de todos os pacotes |
 | `pnpm lint` | Roda o lint em todos os pacotes |
+| `pnpm test` | Roda os testes unitários e de componente (shared, web no Chromium, celular) |
 | `pnpm test:e2e` | Roda os testes E2E da web em 1280×720 e 360×780 (sobe a API e o app web) |
 | `pnpm --filter @apc/web test:e2e:ui` | Abre a interface do Playwright para rodar e depurar os testes |
+| `pnpm --filter @apc/web storybook` | Abre o Storybook na porta 6006, com as bases e os componentes do design system |
 | `pnpm --filter @apc/mobile start` | Inicia o bundler do React Native |
 | `pnpm --filter @apc/mobile android` | Roda o app no Android |
 
