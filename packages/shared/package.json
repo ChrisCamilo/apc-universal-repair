@@ -10,7 +10,8 @@
     "./theme": "./src/theme/tokens.ts",
     "./icons": "./src/icons/icons.ts",
     "./typography": "./src/typography/typography.ts",
-    "./button": "./src/button/button.ts"
+    "./button": "./src/button/button.ts",
+    "./field": "./src/field/field.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
