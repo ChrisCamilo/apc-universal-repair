@@ -26,6 +26,12 @@ Thumbs.db
 # Claude Code local settings
 .claude/settings.local.json
 
+# Storybook
+storybook-static/
+
+# Vitest (failure screenshots)
+.vitest/
+
 # Playwright
 test-results/
 playwright-report/
