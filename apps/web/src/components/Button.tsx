@@ -10,7 +10,7 @@ import { Icon } from './Icon.tsx'
 const BASE =
   'relative inline-flex items-center justify-center gap-2 rounded-pill border outline-none ' +
   'transition-[transform,background-color,color,border-color,box-shadow] enabled:active:translate-y-px ' +
-  'focus-visible:shadow-ring disabled:cursor-not-allowed disabled:opacity-50'
+  'enabled:cursor-pointer focus-visible:shadow-ring disabled:cursor-not-allowed disabled:opacity-50'
 const FRAMED = 'font-display font-semibold uppercase tracking-display'
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   md: 'px-6 py-3 text-sm',

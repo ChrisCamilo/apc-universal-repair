@@ -65,13 +65,14 @@ test('Web: secondary buttons turn accent on hover', async () => {
 })
 
 // Reaches the button with Tab and checks it shows the focus ring and runs its action with Enter and
-// with Space, so it works without a mouse.
+// with Space, so it works without a mouse; with a mouse it shows the hand cursor.
 test('Web: buttons are keyboard operable with a visible focus ring', async () => {
   const onClick = vi.fn()
   const screen = await render(<Button onClick={onClick}>Entrar</Button>)
   await userEvent.keyboard('{Tab}')
   const button = screen.getByRole('button', { name: 'Entrar' })
   await expect.element(button).toHaveFocus()
+  expect(getComputedStyle(button.element()).cursor).toBe('pointer')
   // the ring fades in with the theme's motion, so wait for the end of the transition
   await expect.poll(() => getComputedStyle(button.element()).boxShadow).toContain('0px 0px 0px 3px')
 
@@ -81,7 +82,7 @@ test('Web: buttons are keyboard operable with a visible focus ring', async () =>
 })
 
 // Clicks a disabled and a loading button and checks neither runs its action; the loading one is
-// marked busy and shows its spinner while keeping its name.
+// marked busy, shows its spinner while keeping its name, and the not-allowed cursor.
 test('Web: disabled and loading buttons do not run their action', async () => {
   const onClick = vi.fn()
   const screen = await render(
@@ -91,6 +92,7 @@ test('Web: disabled and loading buttons do not run their action', async () => {
     </>,
   )
   const loading = screen.getByRole('button', { name: 'Entrando' })
+  expect(getComputedStyle(loading.element()).cursor).toBe('not-allowed')
   await screen.getByRole('button', { name: 'Desligado' }).click({ force: true })
   await loading.click({ force: true })
   expect(onClick).not.toHaveBeenCalled()
