@@ -35,6 +35,7 @@
     "oxlint": "^1.81.0",
     "playwright": "^1.63.0",
     "storybook": "^10.6.1",
+    "storybook-addon-pseudo-states": "^10.6.1",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
