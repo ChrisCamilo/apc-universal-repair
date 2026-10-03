@@ -58,6 +58,8 @@ function scaleVars(): Record<string, string> {
     'danger-soft': `color-mix(in srgb, var(--danger) ${scales.statusTint.danger * 100}%, transparent)`,
     'danger-soft-hover': `color-mix(in srgb, var(--danger) ${scales.statusTint.dangerHover * 100}%, transparent)`,
     'pop-shadow': popShadow(),
+    backdrop: `color-mix(in srgb, var(--canvas) ${scales.backdrop.opacity * 100}%, transparent)`,
+    'backdrop-blur': px(scales.backdrop.blur),
     'pill-radius': px(scales.radiusPill),
     'motion-duration': `${scales.motion.durationMs}ms`,
     'motion-easing': `cubic-bezier(${scales.motion.easing.join(', ')})`,
