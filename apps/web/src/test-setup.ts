@@ -8,6 +8,8 @@ declare module 'vitest/browser' {
   interface BrowserCommands {
     /** Moves the pointer to the page's bottom-right corner, where no test renders anything. */
     parkPointer: () => Promise<void>
+    /** Turns the system's "reduce motion" setting on or off for the page, as prefers-reduced-motion reads it. */
+    reduceMotion: (on: boolean) => Promise<void>
   }
 }
 

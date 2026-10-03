@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View, type ImageStyle, type ViewStyle } from 'react-native';
+import { Image, StyleSheet, View, type ImageStyle, type ViewStyle } from 'react-native';
 import { imageIcon } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
 import { softHairline, useInPanel } from './Panel';
+import { Spinner } from './Spinner';
 import { useTheme, type ActiveTheme } from './theme';
 import { Text } from './Typography';
 
@@ -80,7 +81,7 @@ export function ImageFrame({
           style={[StyleSheet.absoluteFill, state !== 'loaded' && HIDDEN]}
         />
       )}
-      {state === 'loading' && <ActivityIndicator testID="image-spinner" color={theme.colors.textMuted} />}
+      {state === 'loading' && <Spinner testID="image-spinner" />}
       {missing && (
         <View style={EMPTY_STYLE}>
           <Icon icon={imageIcon} size={EMPTY_ICON_SIZE} color={theme.colors.textMuted} />

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native';
+import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native';
 import { BUTTON_SIZES, type ButtonSize, type ButtonVariant } from '@apc/shared/button';
 import type { IconShape } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
+import { Spinner } from './Spinner';
 import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
 
 // Actions in the theme's look, the same variants and sizes as the web (see @apc/shared/button). Pressing
@@ -127,7 +128,7 @@ export function Button({
           return (
             <>
               {loading ? (
-                <ActivityIndicator testID="button-spinner" size="small" color={colors.label} />
+                <Spinner size="sm" color={colors.label} testID="button-spinner" />
               ) : (
                 icon && <Icon icon={icon} size={isLink ? 14 : 16} color={colors.label} />
               )}

@@ -3,11 +3,12 @@
  */
 
 import React from 'react';
-import { ActivityIndicator, Image } from 'react-native';
+import { Image } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, sheenGradient, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { ImageFrame } from '../src/ImageFrame';
 import { Divider, Panel } from '../src/Panel';
+import { Spinner } from '../src/Spinner';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 const PHOTO = 'https://fotos.example/opala.jpg';
@@ -116,11 +117,11 @@ test('Mobile: frames keep their ratio and never stretch the photo', async () => 
   expect(styleOf(tree, 'frame').aspectRatio).toBeCloseTo(16 / 9);
   expect(image().props).toMatchObject({ resizeMode: 'contain', accessibilityLabel: 'Opala de frente' });
   expect(viewOf(tree, 'frame').props.accessibilityState).toEqual({ busy: true });
-  expect(tree.root.findAllByType(ActivityIndicator)).toHaveLength(1);
+  expect(tree.root.findAllByType(Spinner)).toHaveLength(1);
 
   await ReactTestRenderer.act(async () => image().props.onLoad());
   expect(viewOf(tree, 'frame').props.accessibilityState).toEqual({ busy: false });
-  expect(tree.root.findAllByType(ActivityIndicator)).toHaveLength(0);
+  expect(tree.root.findAllByType(Spinner)).toHaveLength(0);
   expect(Object.assign({}, ...[image().props.style].flat().filter(Boolean)).opacity).toBeUndefined();
 });
 
@@ -128,7 +129,7 @@ test('Mobile: frames keep their ratio and never stretch the photo', async () => 
 // the photo fails to load.
 test('Mobile: frames show loading and missing photos', async () => {
   const loading = await mount('gt4', 'day', <ImageFrame testID="frame" loading alt="Opala" />);
-  expect(loading.root.findAllByType(ActivityIndicator)).toHaveLength(1);
+  expect(loading.root.findAllByType(Spinner)).toHaveLength(1);
   expect(loading.root.findAllByType(Image)).toHaveLength(0);
 
   const none = await mount('gt4', 'day', <ImageFrame src={null} alt="Opala" />);
