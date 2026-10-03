@@ -3,10 +3,11 @@
  */
 
 import React from 'react';
-import { ActivityIndicator, Text } from 'react-native';
+import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Button } from '../src/Button';
+import { Spinner } from '../src/Spinner';
 import { fontFamily, themeStorage, ThemeProvider } from '../src/theme';
 
 /**
@@ -133,5 +134,5 @@ test('Mobile: disabled and loading buttons are blocked and announced', async () 
   expect(frame(disabled, false).opacity).toBe(0.5);
   expect(loading.props.disabled).toBe(true);
   expect(loading.props.accessibilityState).toEqual({ disabled: true, busy: true });
-  expect(tree.root.findAllByType(ActivityIndicator)).toHaveLength(1);
+  expect(tree.root.findAllByType(Spinner)).toHaveLength(1);
 });
