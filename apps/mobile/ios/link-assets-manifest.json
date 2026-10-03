@@ -34,6 +34,18 @@
       "sha1": "898ddb2e35ec8bc699c86d0a5e26da10a32a2600"
     },
     {
+      "path": "assets/fonts/SairaSemiCondensed-Bold.ttf",
+      "sha1": "50f93024eb79a2f4afaf8d5148d86b7eb9431e9f"
+    },
+    {
+      "path": "assets/fonts/SairaSemiCondensed-Medium.ttf",
+      "sha1": "947e6c37f821cdc2c87c617a1296443e1ac8bc45"
+    },
+    {
+      "path": "assets/fonts/SairaSemiCondensed-SemiBold.ttf",
+      "sha1": "65e72c2a0951ab852cbd11f74f287a4e035ed3eb"
+    },
+    {
       "path": "assets/fonts/TitilliumWeb-Bold.ttf",
       "sha1": "1de05d92173edf1cf44696d3c8a5842ebbf1e75f"
     },
