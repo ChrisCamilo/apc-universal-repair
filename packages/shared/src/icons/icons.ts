@@ -2,6 +2,7 @@
 // 16×16 grid with no color of its own: renderers draw them with the current text color.
 // Import only the icons you use, so the others are left out of the bundle.
 
+export const checkIcon: IconShape[] = [{ kind: "path", d: "M3.5 8.4l3 3 6-6.4" }];
 export const chevronIcon: IconShape[] = [{ kind: "path", d: "M6 3.5l4.5 4.5L6 12.5" }];
 export const closeIcon: IconShape[] = [{ kind: "path", d: "M3.5 3.5l9 9M12.5 3.5l-9 9" }];
 export const cubeIcon: IconShape[] = [
@@ -16,6 +17,7 @@ export const eyeIcon: IconShape[] = [
   { kind: "path", d: "M1.5 8S4 3.6 8 3.6 14.5 8 14.5 8 12 12.4 8 12.4 1.5 8 1.5 8z" },
   { kind: "circle", cx: 8, cy: 8, r: 2.1 },
 ];
+export const filterIcon: IconShape[] = [{ kind: "path", d: "M2 3h12l-4.6 5.4v4.4l-2.8 1.4V8.4L2 3z" }];
 export const imageIcon: IconShape[] = [
   { kind: "rect", x: 2, y: 3, width: 12, height: 10, rx: 1.6 },
   { kind: "circle", cx: 5.8, cy: 6.4, r: 1.2 },
@@ -39,11 +41,13 @@ export const userIcon: IconShape[] = [
 ];
 /** Every icon by name, for catalogs such as Storybook and tests; app code imports single icons. */
 export const ICONS = {
+  check: checkIcon,
   chevron: chevronIcon,
   close: closeIcon,
   cube: cubeIcon,
   document: documentIcon,
   eye: eyeIcon,
+  filter: filterIcon,
   image: imageIcon,
   lock: lockIcon,
   search: searchIcon,
