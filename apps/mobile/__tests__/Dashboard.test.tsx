@@ -43,7 +43,7 @@ beforeEach(async () => {
 for (const style of STYLES) {
   for (const mode of MODES) {
     // Opens the Dashboard in one style and mode and checks the page sits on the canvas, the APC mark heads it
-    // and the Inventory tab is open and selected by default.
+    // and the Inventory tab is open, with its search, and selected by default.
     test(`Mobile: the Dashboard opens on the Inventory tab in ${style}/${mode}`, async () => {
       const tree = await mount(style, mode, <Dashboard />);
       const page = tree.root.findAllByType(ScrollView)[0];
@@ -52,7 +52,7 @@ for (const style of STYLES) {
       const tab = tree.root.find((n) => n.props.accessibilityRole === 'tab' && typeof n.type !== 'string');
       expect(tab.props.accessibilityState).toEqual({ selected: true });
       expect(shows(tree, 'Estoque')).toBe(true);
-      expect(shows(tree, 'A lista de peças do estoque aparece aqui.')).toBe(true);
+      expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Procure pelo nome ou código da peça').length).toBeGreaterThan(0);
     });
   }
 }
@@ -63,7 +63,7 @@ test('Mobile: the tab bar scrolls sideways and a stale saved tab falls back', as
   const tree = await mount('gt4', 'night', <Dashboard />);
   const bar = tree.root.find((n) => n.props.testID === 'dashboard-tab-bar' && typeof n.type !== 'string');
   expect(bar.props.horizontal).toBe(true);
-  expect(shows(tree, 'A lista de peças do estoque aparece aqui.')).toBe(true);
+  expect(shows(tree, 'Nenhum item encontrado.')).toBe(true);
 });
 
 // Checks the user menu slot shows what the Dashboard is given, at the right of the header.

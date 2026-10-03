@@ -1,0 +1,108 @@
+/**
+ * @format
+ */
+
+import React from 'react';
+import { Text, TextInput } from 'react-native';
+import ReactTestRenderer from 'react-test-renderer';
+import type { Item } from '@apc/shared/items';
+import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
+import { InventoryTab } from '../src/dashboard/InventoryTab';
+import { themeStorage, ThemeProvider } from '../src/theme';
+
+const ITEMS: Item[] = [
+  item({ code: 'W 712/95', name: 'Filtro de óleo', quantity: 8, minQuantity: 2 }),
+  item({ code: 'BP-1020', name: 'Pastilha de freio', category: 'Freios', partBrand: 'Cobreq', position: 'D', quantity: 2, minQuantity: 3, unitPriceCents: 123456 }),
+  item({ code: 'BA-77', name: "Bomba d'água", quantity: 0, minQuantity: 1 }),
+];
+
+/**
+ * Fills in an item with the fields the list doesn't look at.
+ * @param fields The fields that matter for the test.
+ * @returns A complete item.
+ */
+function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
+  return {
+    id: crypto.randomUUID(),
+    category: 'Motor',
+    partBrand: 'Mann',
+    vehicleBrand: 'Volkswagen',
+    vehicleModel: null,
+    position: 'N/A',
+    side: 'N/A',
+    color: 'N/A',
+    location: null,
+    quantity: 1,
+    minQuantity: 0,
+    unitPriceCents: 3990,
+    createdAt: '2026-10-03T12:00:00.000Z',
+    updatedAt: '2026-10-03T12:00:00.000Z',
+    ...fields,
+  };
+}
+
+/**
+ * Answers the items request with the test items and renders the Inventory tab once they load.
+ * @returns The rendered tree.
+ */
+async function mount() {
+  (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
+  await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(
+      <ThemeProvider>
+        <InventoryTab />
+      </ThemeProvider>,
+    );
+  });
+  return tree!;
+}
+
+/**
+ * Lists the texts on screen, joined, to check what shows.
+ * @param tree Rendered tree.
+ * @returns Every Text's content, one per entry.
+ */
+function texts(tree: ReactTestRenderer.ReactTestRenderer): string[] {
+  return tree.root.findAll((n) => n.type === Text && typeof n.props.children !== 'object').map((n) => String(n.props.children));
+}
+
+beforeEach(async () => {
+  await themeStorage.clear();
+});
+
+// Loads the items from the API and checks every card shows with its details, the counter of the total and
+// the stock alerts, and the low and out-of-stock cards tinted.
+test('Mobile: the inventory lists every item with its stock alerts', async () => {
+  const tree = await mount();
+  expect(global.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/items$/), expect.anything());
+  const shown = texts(tree);
+  expect(shown).toContain('3 de 3 itens · 1 baixo · 1 esgotado');
+  expect(shown).toContain('Pastilha de freio');
+  expect(shown.some((t) => t.replace(/\s/g, ' ').startsWith('Freios · Cobreq · Volkswagen · D · R$ 1.234,56'))).toBe(true);
+
+  const cards = tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string');
+  const { colors } = themes.eighties.night;
+  expect(cards).toHaveLength(3);
+  expect(cards[1].props.style.borderLeftColor).toBe(colors.warn);
+  expect(cards[2].props.style.borderLeftColor).toBe(colors.danger);
+});
+
+// Searches by part code without separators and by name without accents, and for something that isn't there,
+// checking the cards and the counter follow.
+test('Mobile: the search finds items by name or part code', async () => {
+  const tree = await mount();
+  const search = () => tree.root.findByType(TextInput);
+  const cards = () => tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string');
+
+  await ReactTestRenderer.act(async () => search().props.onChangeText('w712'));
+  expect(cards()).toHaveLength(1);
+  expect(texts(tree)).toContain('1 de 3 itens · 1 baixo · 1 esgotado');
+
+  await ReactTestRenderer.act(async () => search().props.onChangeText('AGUA'));
+  expect(texts(tree)).toContain("Bomba d'água");
+
+  await ReactTestRenderer.act(async () => search().props.onChangeText('parafuso'));
+  expect(texts(tree)).toContain('Nenhum item encontrado.');
+});

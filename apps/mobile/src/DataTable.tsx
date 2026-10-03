@@ -68,7 +68,8 @@ type TableThumbnailProps = {
   src?: string | null;
   /** Accessible name of the button, e.g. "Ver foto de Pastilha de freio". */
   label: string;
-  onOpen: () => void;
+  /** Opens a larger view; without it the thumbnail is a plain picture, not a button. */
+  onOpen?: () => void;
 };
 
 /**
@@ -100,6 +101,26 @@ function cardStyle(theme: ActiveTheme, tone: RowTone | undefined): ViewStyle {
  */
 function inArea<Row>(columns: Column<Row>[], area: CardArea): Column<Row>[] {
   return columns.filter((column) => column.card === area);
+}
+
+/**
+ * Styles the thumbnail: raised fill in a soft frame, the frame lit in the accent while pressed.
+ * @param theme Active theme.
+ * @param pressed Whether the thumbnail is being pressed.
+ * @returns Style for the thumbnail.
+ */
+function thumbnailStyle(theme: ActiveTheme, pressed: boolean): ViewStyle {
+  return {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: scales.hairline,
+    borderColor: pressed ? theme.colors.accent : softHairline(theme),
+    borderRadius: theme.radiusTile,
+    backgroundColor: theme.colors.panelRaised,
+  };
 }
 
 export function DataTable<Row>({
@@ -189,28 +210,26 @@ export function RowAction({ icon, label, onPress, tone = 'default' }: RowActionP
 
 export function TableThumbnail({ src, label, onOpen }: TableThumbnailProps) {
   const theme = useTheme();
+  const content = src ? (
+    <Image source={{ uri: src }} resizeMode="cover" style={{ width: THUMB_SIZE, height: THUMB_SIZE }} />
+  ) : (
+    <Icon icon={cubeIcon} size={20} color={theme.colors.textMuted} />
+  );
+  if (!onOpen) {
+    return (
+      <View testID="table-thumbnail" style={thumbnailStyle(theme, false)}>
+        {content}
+      </View>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onOpen}
-      style={({ pressed }) => ({
-        width: THUMB_SIZE,
-        height: THUMB_SIZE,
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        borderWidth: scales.hairline,
-        borderColor: pressed ? theme.colors.accent : softHairline(theme),
-        borderRadius: theme.radiusTile,
-        backgroundColor: theme.colors.panelRaised,
-      })}
+      style={({ pressed }) => thumbnailStyle(theme, pressed)}
     >
-      {src ? (
-        <Image source={{ uri: src }} resizeMode="cover" style={{ width: THUMB_SIZE, height: THUMB_SIZE }} />
-      ) : (
-        <Icon icon={cubeIcon} size={20} color={theme.colors.textMuted} />
-      )}
+      {content}
     </Pressable>
   );
 }
