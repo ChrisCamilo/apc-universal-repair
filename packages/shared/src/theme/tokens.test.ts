@@ -30,6 +30,22 @@ function contrast(a: string, b: string): number {
 }
 
 /**
+ * Finds the hue of a color on the color wheel.
+ * @param hex Color as `#RRGGBB`.
+ * @returns Hue in degrees, from 0 to 360.
+ */
+function hue(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const max = Math.max(r, g, b);
+  const span = max - Math.min(r, g, b);
+  if (span === 0) {
+    return 0;
+  }
+  const sector = max === r ? (g - b) / span : max === g ? 2 + (b - r) / span : 4 + (r - g) / span;
+  return (sector * 60 + 360) % 360;
+}
+
+/**
  * Computes the WCAG 2.x relative luminance of a color.
  * @param hex Color as `#RRGGBB`.
  * @returns Luminance from 0 (black) to 1 (white).
@@ -120,6 +136,19 @@ for (const style of STYLES) {
           assert.ok(ratio >= 4.5, `text on ${row} is ${ratio.toFixed(2)}:1`);
         }
       }
+    });
+  }
+}
+
+for (const style of STYLES) {
+  for (const mode of MODES) {
+    // Measures how far apart on the color wheel danger and the accent sit, and checks it is at least 20°, so
+    // an out-of-stock row never reads as a selection, even in styles whose accent is red.
+    test(`Shared: ${style}/${mode} danger reads apart from the accent`, () => {
+      const { colors } = themes[style][mode];
+      const apart = Math.abs(hue(colors.danger) - hue(colors.accent));
+      const distance = Math.min(apart, 360 - apart);
+      assert.ok(distance >= 20, `danger ${colors.danger} is ${distance.toFixed(1)}° from the accent ${colors.accent}`);
     });
   }
 }
