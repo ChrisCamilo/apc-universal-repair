@@ -79,7 +79,8 @@ type TableThumbnailProps = {
   src?: string | null
   /** Accessible name of the button, e.g. "Ver foto de Pastilha de freio". */
   label: string
-  onOpen: () => void
+  /** Opens a larger view; without it the thumbnail is a plain picture, not a button. */
+  onOpen?: () => void
 }
 
 /**
@@ -217,14 +218,23 @@ export function RowAction({ icon, label, onClick, tone = 'default' }: RowActionP
 }
 
 export function TableThumbnail({ src, label, onOpen }: TableThumbnailProps) {
+  const frame = 'grid size-11 place-items-center overflow-hidden rounded-tile border border-hairline-soft bg-panel-raised text-text-muted'
+  const content = src ? <img src={src} alt="" className="size-full object-cover" /> : <Icon icon={cubeIcon} size={20} />
+  if (!onOpen) {
+    return (
+      <span data-testid="table-thumbnail" className={frame}>
+        {content}
+      </span>
+    )
+  }
   return (
     <button
       type="button"
       aria-label={label}
-      className="grid size-11 cursor-zoom-in place-items-center overflow-hidden rounded-tile border border-hairline-soft bg-panel-raised text-text-muted outline-none transition-[border-color,box-shadow] hover:border-accent hover:shadow-glow focus-visible:shadow-ring"
+      className={`${frame} cursor-zoom-in outline-none transition-[border-color,box-shadow] hover:border-accent hover:shadow-glow focus-visible:shadow-ring`}
       onClick={onOpen}
     >
-      {src ? <img src={src} alt="" className="size-full object-cover" /> : <Icon icon={cubeIcon} size={20} />}
+      {content}
     </button>
   )
 }
