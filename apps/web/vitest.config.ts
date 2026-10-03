@@ -11,6 +11,11 @@ const parkPointer: BrowserCommand<[]> = async ({ page }) => {
   await page.mouse.move(width - 1, height - 1)
 }
 
+/** Turns the system's "reduce motion" setting on or off for the page, as prefers-reduced-motion reads it. */
+const reduceMotion: BrowserCommand<[boolean]> = async ({ page }, on) => {
+  await page.emulateMedia({ reducedMotion: on ? 'reduce' : 'no-preference' })
+}
+
 export default mergeConfig(
   viteConfig,
   defineConfig({
@@ -26,7 +31,7 @@ export default mergeConfig(
         headless: true,
         provider: playwright(),
         instances: [{ browser: 'chromium' }],
-        commands: { parkPointer },
+        commands: { parkPointer, reduceMotion },
       },
     },
   }),
