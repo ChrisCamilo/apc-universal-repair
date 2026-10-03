@@ -1,27 +1,19 @@
-import { useEffect, useState } from "react";
-import type { HealthResponse } from "@apc/shared";
-import { BrandMark } from "./components/BrandMark.tsx";
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
+import { InventoryTab } from './dashboard/InventoryTab.tsx'
 
-function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+// The app's routes. The Dashboard frames every tab, each at its own path; "/" opens the last tab used (the
+// Inventory tab the first time) and any unknown path goes back there.
 
-  useEffect(() => {
-    fetch("/api/health")
-      .then((res) => res.json())
-      .then((data: HealthResponse) => setHealth(data))
-      .catch(() => setError("Could not reach the API."));
-  }, []);
-
+export default function App() {
   return (
-    <main className="mx-auto max-w-xl px-6 py-16 text-center">
-      <BrandMark variant="badge" size={200} className="mx-auto mb-6" />
-      <h1 className="font-display text-4xl font-bold uppercase tracking-display">APC Universal Repair</h1>
-      <p data-testid="health-status" className="mt-4 text-text-muted">
-        {error ? error : health ? `API status: ${health.status}` : "Checking API status..."}
-      </p>
-    </main>
-  );
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<DashboardLayout />}>
+          <Route path="inventory" element={<InventoryTab />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
 }
-
-export default App;
