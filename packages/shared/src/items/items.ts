@@ -112,6 +112,18 @@ export function codeKey(code: string): string {
 }
 
 /**
+ * Finds the option a typed text stands for, ignoring case, accents and extra spaces, so "freios" is saved as
+ * "Freios" and the filter lists don't split.
+ * @param options The existing options, e.g. the categories.
+ * @param text Text as typed.
+ * @returns The option's own spelling, or undefined when no option matches.
+ */
+export function findOption(options: readonly string[], text: string): string | undefined {
+  const key = searchKey(text.trim().replace(/\s+/g, " "));
+  return key ? options.find((option) => searchKey(option) === key) : undefined;
+}
+
+/**
  * Writes a price in cents as Brazilian reais.
  * @param cents Price in cents.
  * @returns E.g. "R$ 1.234,56".
@@ -162,6 +174,21 @@ export function itemDetails(item: Omit<Item, "id" | "code" | "name" | "quantity"
 export function matchesSearch(item: Pick<Item, "name" | "code">, search: string): boolean {
   const byCode = codeKey(search);
   return searchKey(item.name).includes(searchKey(search.trim())) || (byCode !== "" && codeKey(item.code).includes(byCode));
+}
+
+/**
+ * Lists the options a Combobox shows for a typed text: every option while the text is empty or names one of
+ * them, otherwise the options that contain it, ignoring case and accents.
+ * @param options The existing options.
+ * @param text Text as typed.
+ * @returns The options to list, in their order.
+ */
+export function matchingOptions(options: readonly string[], text: string): string[] {
+  if (findOption(options, text) !== undefined) {
+    return [...options];
+  }
+  const key = searchKey(text.trim());
+  return options.filter((option) => searchKey(option).includes(key));
 }
 
 /**
