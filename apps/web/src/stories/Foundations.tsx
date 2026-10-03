@@ -10,6 +10,15 @@ const RADII = [
   { name: 'tile', className: 'rounded-tile', variable: 'tile-radius' },
   { name: 'pill', className: 'rounded-pill', variable: 'pill-radius' },
 ]
+const TINTS = [
+  { name: 'accent-soft', use: 'Chips and buttons that are on' },
+  { name: 'hairline-soft', use: 'Panel borders and dividers' },
+  { name: 'warn-soft', use: 'Low-stock rows' },
+  { name: 'warn-soft-hover', use: 'Low-stock rows on hover' },
+  { name: 'danger-soft', use: 'Out-of-stock rows' },
+  { name: 'danger-soft-hover', use: 'Out-of-stock rows on hover' },
+  { name: 'backdrop', use: 'Behind dialogs' },
+]
 
 /**
  * Reads a theme CSS variable as resolved on `<html>` right now.
@@ -42,6 +51,18 @@ export function PaletteSheet() {
             <b className="text-sm font-semibold">{token}</b>
             <code className="font-mono text-xs text-text-muted">--{kebab(token)}</code>
             <code data-testid="value" className="font-mono text-xs">{cssVar(kebab(token))}</code>
+          </li>
+        ))}
+      </ul>
+      <h3 className="m-0 font-display text-lg font-semibold uppercase tracking-display">Tints</h3>
+      <p className="m-0 text-sm text-text-muted">Theme colors at a set opacity, shown over the canvas.</p>
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
+        {TINTS.map((tint) => (
+          <li key={tint.name} data-testid={`tint-${tint.name}`} className="grid gap-2">
+            <span className="block h-12 rounded-tile border border-hairline" style={{ backgroundColor: `var(--${tint.name})` }} />
+            <b className="text-sm font-semibold">{tint.name}</b>
+            <code className="font-mono text-xs text-text-muted">--{tint.name}</code>
+            <span className="text-xs text-text-muted">{tint.use}</span>
           </li>
         ))}
       </ul>
