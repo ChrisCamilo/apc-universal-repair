@@ -51,6 +51,7 @@ function scaleVars(): Record<string, string> {
   const vars: Record<string, string> = {
     'space-unit': px(scales.space.s1),
     'hairline-width': px(scales.hairline),
+    'hairline-soft': `color-mix(in srgb, var(--hairline) ${scales.hairlineSoft * 100}%, transparent)`,
     'pill-radius': px(scales.radiusPill),
     'motion-duration': `${scales.motion.durationMs}ms`,
     'motion-easing': `cubic-bezier(${scales.motion.easing.join(', ')})`,
