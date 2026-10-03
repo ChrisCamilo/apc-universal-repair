@@ -11,3 +11,27 @@ model Brand {
   id   String @id @default(uuid())
   name String @unique
 }
+
+/// An inventory item. nameKey and codeKey hold the name without accents in lowercase and the code with
+/// letters and digits only, so searches ignore accents and separators (see @apc/shared/items).
+model Item {
+  id             String   @id @default(uuid())
+  /// Part code, stored in uppercase and unique.
+  code           String   @unique
+  codeKey        String
+  name           String
+  nameKey        String
+  category       String
+  partBrand      String
+  vehicleBrand   String
+  vehicleModel   String?
+  position       String   @default("N/A")
+  side           String   @default("N/A")
+  color          String   @default("N/A")
+  location       String?
+  quantity       Int      @default(0)
+  minQuantity    Int      @default(0)
+  unitPriceCents Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
