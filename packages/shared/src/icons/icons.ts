@@ -31,10 +31,12 @@ export const lockIcon: IconShape[] = [
   { kind: "rect", x: 3, y: 7, width: 10, height: 7, rx: 1.6 },
   { kind: "path", d: "M5.4 7V5.2a2.6 2.6 0 015.2 0V7" },
 ];
+export const pencilIcon: IconShape[] = [{ kind: "path", d: "M10.6 2.8l2.6 2.6-7.7 7.7-3.2.6.6-3.2 7.7-7.7z" }];
 export const searchIcon: IconShape[] = [
   { kind: "circle", cx: 7, cy: 7, r: 4.6 },
   { kind: "path", d: "M10.4 10.4L14 14" },
 ];
+export const trashIcon: IconShape[] = [{ kind: "path", d: "M2.8 4.4h10.4M6.4 4.4V2.9h3.2v1.5M4.2 4.4l.7 8.7h6.2l.7-8.7" }];
 export const userIcon: IconShape[] = [
   { kind: "circle", cx: 8, cy: 5.2, r: 2.8 },
   { kind: "path", d: "M2.6 14c.5-3 2.7-4.5 5.4-4.5S12.9 11 13.4 14" },
@@ -50,7 +52,9 @@ export const ICONS = {
   filter: filterIcon,
   image: imageIcon,
   lock: lockIcon,
+  pencil: pencilIcon,
   search: searchIcon,
+  trash: trashIcon,
   user: userIcon,
 };
 

@@ -26,6 +26,8 @@ export const scales = {
   hairlineSoft: 0.48,
   /** Soft accent: the accent color at this opacity, behind chips and buttons that are on. */
   accentSoft: 0.13,
+  /** Status tints behind rows: the warn and danger colors at these opacities, at rest and on hover. */
+  statusTint: { warn: 0.15, danger: 0.13, warnHover: 0.24, dangerHover: 0.22 },
   radiusPill: 999,
   motion: { durationMs: 180, easing: [0.2, 0.6, 0.2, 1] as const },
   /** Shadow under floating lists and menus: black at this opacity, offset down and blurred, in px. */
@@ -53,6 +55,7 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         onAccent: "#0B0C0E",
         danger: "#FF6B5E",
         onDanger: "#0B0C0E",
+        warn: "#F2C94C",
       },
       glow: { blur: 22, opacity: 0.2 },
       sheen: 0.045,
@@ -70,6 +73,7 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         onAccent: "#FFFFFF",
         danger: "#B3261E",
         onDanger: "#FFFFFF",
+        warn: "#8A6100",
       },
       glow: { blur: 18, opacity: 0.14 },
       sheen: 0.022,
@@ -89,6 +93,7 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         onAccent: "#0E1114",
         danger: "#F07A73",
         onDanger: "#0E1114",
+        warn: "#E8B04A",
       },
       sheen: 0.03,
     },
@@ -105,6 +110,7 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         onAccent: "#FFFFFF",
         danger: "#B42318",
         onDanger: "#FFFFFF",
+        warn: "#8A6100",
       },
       sheen: 0.018,
     },
@@ -123,7 +129,8 @@ export type ColorToken =
   | "accent"
   | "onAccent"
   | "danger"
-  | "onDanger";
+  | "onDanger"
+  | "warn";
 export interface Theme {
   colors: Record<ColorToken, string>;
   /** Display face family, e.g. "Barlow Condensed". */
