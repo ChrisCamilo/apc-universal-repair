@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isMode, isStyle, MODES, sheenGradient, STYLES, themes, type ColorToken } from "./tokens.ts";
+import { isMode, isStyle, MODES, popShadow, sheenGradient, STYLES, themes, type ColorToken } from "./tokens.ts";
 
 // Text-bearing pairs that must meet WCAG AA (4.5:1) in every style and mode.
 const PAIRS: [ColorToken, ColorToken][] = [
@@ -69,4 +69,9 @@ test("Shared: isStyle and isMode accept only known values", () => {
 test("Shared: the sheen lightens at night and darkens by day", () => {
   assert.equal(sheenGradient(0.045, "night"), "linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 45%)");
   assert.equal(sheenGradient(0.022, "day"), "linear-gradient(180deg, rgba(0, 0, 0, 0.022), transparent 45%)");
+});
+
+// Checks the shadow under floating lists is the black, offset and blurred shadow of the visual direction.
+test("Shared: floating lists cast a soft black shadow", () => {
+  assert.equal(popShadow(), "0px 14px 32px rgba(0, 0, 0, 0.28)");
 });

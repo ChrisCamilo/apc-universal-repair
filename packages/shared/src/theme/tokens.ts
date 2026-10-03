@@ -24,8 +24,12 @@ export const scales = {
   hairline: 1,
   /** Soft hairline: the hairline color at this opacity, for panel borders and dividers. */
   hairlineSoft: 0.48,
+  /** Soft accent: the accent color at this opacity, behind chips and buttons that are on. */
+  accentSoft: 0.13,
   radiusPill: 999,
   motion: { durationMs: 180, easing: [0.2, 0.6, 0.2, 1] as const },
+  /** Shadow under floating lists and menus: black at this opacity, offset down and blurred, in px. */
+  popShadow: { offsetY: 14, blur: 32, opacity: 0.28 },
   /** Focus ring: accent at this opacity, this many px wide. */
   focusRing: { width: 3, opacity: 0.38 },
   bodyFont: "Barlow",
@@ -151,6 +155,15 @@ export function isMode(value: unknown): value is Mode {
  */
 export function isStyle(value: unknown): value is Style {
   return STYLES.includes(value as Style);
+}
+
+/**
+ * Writes the shadow under floating lists and menus as a CSS box-shadow, which both the web and React Native draw.
+ * @returns E.g. "0px 14px 32px rgba(0, 0, 0, 0.28)".
+ */
+export function popShadow(): string {
+  const { offsetY, blur, opacity } = scales.popShadow;
+  return `0px ${offsetY}px ${blur}px rgba(0, 0, 0, ${opacity})`;
 }
 
 /**

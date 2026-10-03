@@ -16,6 +16,7 @@
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
   --color-danger: var(--danger);
   --color-on-danger: var(--on-danger);
@@ -40,6 +41,7 @@
   --radius-pill: var(--pill-radius);
   --shadow-glow: var(--glow);
   --shadow-ring: var(--ring);
+  --shadow-pop: var(--pop-shadow);
 
   --default-transition-duration: var(--motion-duration);
   --default-transition-timing-function: var(--motion-easing);
