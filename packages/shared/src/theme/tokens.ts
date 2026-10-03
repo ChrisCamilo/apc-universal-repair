@@ -30,6 +30,8 @@ export const scales = {
   statusTint: { warn: 0.15, danger: 0.13, warnHover: 0.24, dangerHover: 0.22 },
   radiusPill: 999,
   motion: { durationMs: 180, easing: [0.2, 0.6, 0.2, 1] as const },
+  /** Backdrop behind dialogs: the canvas at this opacity, over a light blur of this many px. */
+  backdrop: { opacity: 0.72, blur: 2 },
   /** Shadow under floating lists and menus: black at this opacity, offset down and blurred, in px. */
   popShadow: { offsetY: 14, blur: 32, opacity: 0.28 },
   /** Focus ring: accent at this opacity, this many px wide. */

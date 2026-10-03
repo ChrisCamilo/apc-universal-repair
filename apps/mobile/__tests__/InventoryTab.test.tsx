@@ -11,19 +11,20 @@ import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 const ITEMS: Item[] = [
-  item({ code: 'W 712/95', name: 'Filtro de óleo', quantity: 8, minQuantity: 2 }),
-  item({ code: 'BP-1020', name: 'Pastilha de freio', category: 'Freios', partBrand: 'Cobreq', position: 'D', quantity: 2, minQuantity: 3, unitPriceCents: 123456 }),
-  item({ code: 'BA-77', name: "Bomba d'água", quantity: 0, minQuantity: 1 }),
+  item(1, { code: 'W 712/95', name: 'Filtro de óleo', quantity: 8, minQuantity: 2 }),
+  item(2, { code: 'BP-1020', name: 'Pastilha de freio', category: 'Freios', partBrand: 'Cobreq', position: 'D', quantity: 2, minQuantity: 3, unitPriceCents: 123456 }),
+  item(3, { code: 'BA-77', name: "Bomba d'água", quantity: 0, minQuantity: 1 }),
 ];
 
 /**
  * Fills in an item with the fields the list doesn't look at.
+ * @param n Number of the item, which sets its id.
  * @param fields The fields that matter for the test.
  * @returns A complete item.
  */
-function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
+function item(n: number, fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
   return {
-    id: crypto.randomUUID(),
+    id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
     category: 'Motor',
     partBrand: 'Mann',
     vehicleBrand: 'Volkswagen',
@@ -46,7 +47,7 @@ function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
  * @returns The rendered tree.
  */
 async function mount() {
-  (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
@@ -76,7 +77,7 @@ beforeEach(async () => {
 // the stock alerts, and the low and out-of-stock cards tinted.
 test('Mobile: the inventory lists every item with its stock alerts', async () => {
   const tree = await mount();
-  expect(global.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/items$/), expect.anything());
+  expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/items$/), expect.anything());
   const shown = texts(tree);
   expect(shown).toContain('3 de 3 itens · 1 baixo · 1 esgotado');
   expect(shown).toContain('Pastilha de freio');

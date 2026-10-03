@@ -8,6 +8,7 @@
 /* Utility names point at the CSS variables generated from @apc/shared/theme (see src/theme.ts),
    so bg-canvas, text-accent, rounded-panel, font-display… follow the active style and mode. */
 @theme inline {
+  --color-backdrop: var(--backdrop);
   --color-canvas: var(--canvas);
   --color-panel: var(--panel);
   --color-panel-raised: var(--panel-raised);
@@ -47,6 +48,7 @@
   --shadow-glow: var(--glow);
   --shadow-ring: var(--ring);
   --shadow-pop: var(--pop-shadow);
+  --blur-backdrop: var(--backdrop-blur);
 
   --default-transition-duration: var(--motion-duration);
   --default-transition-timing-function: var(--motion-easing);
