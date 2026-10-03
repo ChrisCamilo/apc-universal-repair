@@ -2,6 +2,10 @@
 // 16×16 grid with no color of its own: renderers draw them with the current text color.
 // Import only the icons you use, so the others are left out of the bundle.
 
+export const alertIcon: IconShape[] = [
+  { kind: "path", d: "M8 2.2l6.2 10.9H1.8L8 2.2z" },
+  { kind: "path", d: "M8 6.4v3.2M8 11.4v.1" },
+];
 export const checkIcon: IconShape[] = [{ kind: "path", d: "M3.5 8.4l3 3 6-6.4" }];
 export const chevronIcon: IconShape[] = [{ kind: "path", d: "M6 3.5l4.5 4.5L6 12.5" }];
 export const closeIcon: IconShape[] = [{ kind: "path", d: "M3.5 3.5l9 9M12.5 3.5l-9 9" }];
@@ -43,6 +47,7 @@ export const userIcon: IconShape[] = [
 ];
 /** Every icon by name, for catalogs such as Storybook and tests; app code imports single icons. */
 export const ICONS = {
+  alert: alertIcon,
   check: checkIcon,
   chevron: chevronIcon,
   close: closeIcon,
