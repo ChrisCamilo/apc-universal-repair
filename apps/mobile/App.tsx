@@ -4,54 +4,20 @@
  * @format
  */
 
-import { StatusBar, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import type { HealthResponse } from '@apc/shared';
-import { scales } from '@apc/shared/theme';
-import { fontFamily, ThemeProvider, useTheme, type ActiveTheme } from './src/theme';
+import { StatusBar } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Dashboard } from './src/dashboard/Dashboard';
+import { ThemeProvider, useTheme } from './src/theme';
 
-const placeholderStatus: HealthResponse['status'] = 'ok';
+const SCREEN_STYLE = { flex: 1 };
 
-/**
- * Builds the home screen styles from the active theme.
- * @param theme Tokens of the active style and mode.
- * @returns Styles for the container, the title and the API status line.
- */
-function makeStyles(theme: ActiveTheme) {
-  const titleSize = scales.fontSize.xl;
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.canvas,
-    },
-    title: {
-      fontFamily: fontFamily(theme.displayFont, 700),
-      fontSize: titleSize,
-      letterSpacing: theme.displayTracking * titleSize,
-      textTransform: 'uppercase',
-      color: theme.colors.text,
-      marginBottom: scales.space.s2,
-    },
-    status: {
-      fontFamily: fontFamily(scales.bodyFont),
-      fontSize: scales.fontSize.base,
-      color: theme.colors.textMuted,
-    },
-  });
-}
-
-function Home() {
+function Screen() {
   const theme = useTheme();
-  const styles = makeStyles(theme);
-
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[SCREEN_STYLE, { backgroundColor: theme.colors.canvas }]}>
       <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
-      <Text style={styles.title}>APC Universal Repair</Text>
-      <Text style={styles.status}>API status: {placeholderStatus}</Text>
-    </View>
+      <Dashboard />
+    </SafeAreaView>
   );
 }
 
@@ -59,7 +25,7 @@ function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <Home />
+        <Screen />
       </ThemeProvider>
     </SafeAreaProvider>
   );
