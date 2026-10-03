@@ -14,7 +14,8 @@
     "./field": "./src/field/field.ts",
     "./tabs": "./src/tabs/tabs.ts",
     "./filters": "./src/filters/filters.ts",
-    "./table": "./src/table/table.ts"
+    "./table": "./src/table/table.ts",
+    "./items": "./src/items/items.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
