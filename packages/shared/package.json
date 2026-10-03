@@ -12,7 +12,8 @@
     "./typography": "./src/typography/typography.ts",
     "./button": "./src/button/button.ts",
     "./field": "./src/field/field.ts",
-    "./tabs": "./src/tabs/tabs.ts"
+    "./tabs": "./src/tabs/tabs.ts",
+    "./filters": "./src/filters/filters.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
