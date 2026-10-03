@@ -50,9 +50,12 @@ export function Dialog({ open, onClose, title, size = 'form', actions, children 
         maxHeight: `calc(100dvh - ${DIALOG_HEIGHT_INSET}px)`,
       }}
       onCancel={(event) => {
-        // Escape: let the owner close it, so `open` stays the one source of truth.
-        event.preventDefault()
-        onClose()
+        // A file picker closed without a choice also fires "cancel", which bubbles up to here: only the
+        // dialog's own Escape closes it, and the owner does, so `open` stays the one source of truth.
+        if (event.target === dialog.current) {
+          event.preventDefault()
+          onClose()
+        }
       }}
     >
       {open && (

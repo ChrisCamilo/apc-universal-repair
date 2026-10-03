@@ -94,6 +94,22 @@ test('Web: Cancel closes the dialog', async () => {
 })
 
 // Opens a long form at 1280×720 and at 360×780 and checks it fits the screen with its content scrolling
+// Cancels a file picker opened from a field inside the dialog, whose "cancel" event bubbles up to the dialog,
+// and checks the dialog stays open; Escape on the dialog still asks the owner to close it.
+test('Web: a canceled file picker leaves the dialog open', async () => {
+  const onClose = vi.fn()
+  const screen = await render(
+    <Dialog open onClose={onClose} title="Novo item" actions={null}>
+      <input type="file" aria-label="Fotos" />
+    </Dialog>,
+  )
+  screen.getByLabelText('Fotos').element().dispatchEvent(new Event('cancel', { bubbles: true }))
+  expect(onClose).not.toHaveBeenCalled()
+  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  expect(onClose).toHaveBeenCalledTimes(1)
+})
+
 // while Save stays visible without scrolling, and that each size keeps its width.
 test('Web: long dialogs scroll inside with the actions pinned', async () => {
   for (const [width, height] of [
