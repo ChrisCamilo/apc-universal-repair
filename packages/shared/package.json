@@ -17,7 +17,8 @@
     "./table": "./src/table/table.ts",
     "./items": "./src/items/items.ts",
     "./dialog": "./src/dialog/dialog.ts",
-    "./pagination": "./src/pagination/pagination.ts"
+    "./pagination": "./src/pagination/pagination.ts",
+    "./tour": "./src/tour/tour.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

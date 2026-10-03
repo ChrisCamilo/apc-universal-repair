@@ -34,6 +34,8 @@ export const scales = {
   backdrop: { opacity: 0.72, blur: 2 },
   /** Shadow under floating lists and menus: black at this opacity, offset down and blurred, in px. */
   popShadow: { offsetY: 14, blur: 32, opacity: 0.28 },
+  /** Dim over everything but a guided tour's target: black at this opacity, in every style and mode. */
+  spotlightDim: 0.5,
   /** Focus ring: accent at this opacity, this many px wide. */
   focusRing: { width: 3, opacity: 0.38 },
   bodyFont: "Barlow",
@@ -184,4 +186,12 @@ export function popShadow(): string {
 export function sheenGradient(sheen: number, mode: Mode): string {
   const base = mode === "night" ? "255, 255, 255" : "0, 0, 0";
   return `linear-gradient(180deg, rgba(${base}, ${sheen}), transparent 45%)`;
+}
+
+/**
+ * Writes the dim a guided tour lays over everything but its target, as a CSS color both platforms draw.
+ * @returns E.g. "rgba(0, 0, 0, 0.5)".
+ */
+export function spotlightDim(): string {
+  return `rgba(0, 0, 0, ${scales.spotlightDim})`;
 }

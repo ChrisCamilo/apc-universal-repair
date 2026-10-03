@@ -26,6 +26,7 @@
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-warn-soft-hover: var(--warn-soft-hover);
+  --color-spotlight-dim: var(--spotlight-dim);
 
   --font-body: var(--body-face);
   --font-display: var(--display-face);

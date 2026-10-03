@@ -1,4 +1,4 @@
-import { MODES, popShadow, STYLES, scales, sheenGradient, THEME_STORAGE_KEYS, themes, type Mode, type Theme } from '@apc/shared/theme'
+import { MODES, popShadow, STYLES, scales, sheenGradient, spotlightDim, THEME_STORAGE_KEYS, themes, type Mode, type Theme } from '@apc/shared/theme'
 
 // Turns the shared tokens into CSS variables: the scales on :root and one block per
 // [data-style][data-mode] pair, so switching style or mode is just changing two attributes on <html>.
@@ -60,6 +60,7 @@ function scaleVars(): Record<string, string> {
     'pop-shadow': popShadow(),
     backdrop: `color-mix(in srgb, var(--canvas) ${scales.backdrop.opacity * 100}%, transparent)`,
     'backdrop-blur': px(scales.backdrop.blur),
+    'spotlight-dim': spotlightDim(),
     'pill-radius': px(scales.radiusPill),
     'motion-duration': `${scales.motion.durationMs}ms`,
     'motion-easing': `cubic-bezier(${scales.motion.easing.join(', ')})`,
