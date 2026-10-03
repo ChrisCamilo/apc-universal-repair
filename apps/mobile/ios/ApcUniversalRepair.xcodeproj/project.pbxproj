@@ -19,6 +19,9 @@
 		A10DBE68C54A4B0DA57D2EA2 /* BarlowCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC09A834F4F748CE8B4A3259 /* BarlowCondensed-SemiBold.ttf */; };
 		C3601F5C14754500A5CC49E7 /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7D2818FD5ED3461DAFCA9D4D /* JetBrainsMono-Medium.ttf */; };
 		2E8A34EB8EEE48D7A1A85009 /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBB6444A18D74FA6862C3B66 /* JetBrainsMono-Regular.ttf */; };
+		890268D8DC54564F9AA797CF /* Rajdhani-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5AC5BE21ED09464D8618E199 /* Rajdhani-Bold.ttf */; };
+		1E6AFD57AC1C8A249B1307A9 /* Rajdhani-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CE9F6C8798A4B8EFB5D5AE9D /* Rajdhani-Medium.ttf */; };
+		550046DB41068401006AAE1E /* Rajdhani-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 10CBA29D98A4CEEE0BD5B519 /* Rajdhani-SemiBold.ttf */; };
 		1D0C448109CC75E1E0508387 /* SairaSemiCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C00ADBD4C9F6D643A5ED71F3 /* SairaSemiCondensed-Bold.ttf */; };
 		0645999F4007F479671D59BF /* SairaSemiCondensed-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7E943BCBBB1DA1BE56F16AC2 /* SairaSemiCondensed-Medium.ttf */; };
 		4E52D28978AA0F282A697044 /* SairaSemiCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C11BF7F3EE871D1E821316F5 /* SairaSemiCondensed-SemiBold.ttf */; };
@@ -46,6 +49,9 @@
 		FC09A834F4F748CE8B4A3259 /* BarlowCondensed-SemiBold.ttf */ = {isa = PBXFileReference; name = "BarlowCondensed-SemiBold.ttf"; path = "../assets/fonts/BarlowCondensed-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		7D2818FD5ED3461DAFCA9D4D /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; name = "JetBrainsMono-Medium.ttf"; path = "../assets/fonts/JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		BBB6444A18D74FA6862C3B66 /* JetBrainsMono-Regular.ttf */ = {isa = PBXFileReference; name = "JetBrainsMono-Regular.ttf"; path = "../assets/fonts/JetBrainsMono-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		5AC5BE21ED09464D8618E199 /* Rajdhani-Bold.ttf */ = {isa = PBXFileReference; name = "Rajdhani-Bold.ttf"; path = "../assets/fonts/Rajdhani-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		CE9F6C8798A4B8EFB5D5AE9D /* Rajdhani-Medium.ttf */ = {isa = PBXFileReference; name = "Rajdhani-Medium.ttf"; path = "../assets/fonts/Rajdhani-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		10CBA29D98A4CEEE0BD5B519 /* Rajdhani-SemiBold.ttf */ = {isa = PBXFileReference; name = "Rajdhani-SemiBold.ttf"; path = "../assets/fonts/Rajdhani-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		C00ADBD4C9F6D643A5ED71F3 /* SairaSemiCondensed-Bold.ttf */ = {isa = PBXFileReference; name = "SairaSemiCondensed-Bold.ttf"; path = "../assets/fonts/SairaSemiCondensed-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		7E943BCBBB1DA1BE56F16AC2 /* SairaSemiCondensed-Medium.ttf */ = {isa = PBXFileReference; name = "SairaSemiCondensed-Medium.ttf"; path = "../assets/fonts/SairaSemiCondensed-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		C11BF7F3EE871D1E821316F5 /* SairaSemiCondensed-SemiBold.ttf */ = {isa = PBXFileReference; name = "SairaSemiCondensed-SemiBold.ttf"; path = "../assets/fonts/SairaSemiCondensed-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
@@ -137,6 +143,9 @@
 				FC09A834F4F748CE8B4A3259 /* BarlowCondensed-SemiBold.ttf */,
 				7D2818FD5ED3461DAFCA9D4D /* JetBrainsMono-Medium.ttf */,
 				BBB6444A18D74FA6862C3B66 /* JetBrainsMono-Regular.ttf */,
+				5AC5BE21ED09464D8618E199 /* Rajdhani-Bold.ttf */,
+				CE9F6C8798A4B8EFB5D5AE9D /* Rajdhani-Medium.ttf */,
+				10CBA29D98A4CEEE0BD5B519 /* Rajdhani-SemiBold.ttf */,
 				C00ADBD4C9F6D643A5ED71F3 /* SairaSemiCondensed-Bold.ttf */,
 				7E943BCBBB1DA1BE56F16AC2 /* SairaSemiCondensed-Medium.ttf */,
 				C11BF7F3EE871D1E821316F5 /* SairaSemiCondensed-SemiBold.ttf */,
@@ -218,6 +227,9 @@
 				A10DBE68C54A4B0DA57D2EA2 /* BarlowCondensed-SemiBold.ttf in Resources */,
 				C3601F5C14754500A5CC49E7 /* JetBrainsMono-Medium.ttf in Resources */,
 				2E8A34EB8EEE48D7A1A85009 /* JetBrainsMono-Regular.ttf in Resources */,
+				890268D8DC54564F9AA797CF /* Rajdhani-Bold.ttf in Resources */,
+				1E6AFD57AC1C8A249B1307A9 /* Rajdhani-Medium.ttf in Resources */,
+				550046DB41068401006AAE1E /* Rajdhani-SemiBold.ttf in Resources */,
 				1D0C448109CC75E1E0508387 /* SairaSemiCondensed-Bold.ttf in Resources */,
 				0645999F4007F479671D59BF /* SairaSemiCondensed-Medium.ttf in Resources */,
 				4E52D28978AA0F282A697044 /* SairaSemiCondensed-SemiBold.ttf in Resources */,
