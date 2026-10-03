@@ -18,12 +18,14 @@ import { fontFamily, useTheme, type ActiveTheme } from './theme';
 
 const BODY_LINE_HEIGHT = 1.6;
 
-type HeadingProps = { level?: HeadingLevel; tone?: Tone; children: ReactNode };
+type HeadingProps = { level?: HeadingLevel; tone?: Tone; align?: TextStyle['textAlign']; children: ReactNode };
 type LabelProps = { tone?: Tone; children: ReactNode };
 type ReadoutProps = { tone?: Tone; children: ReactNode };
 type TextProps = {
   size?: TextSize;
   tone?: Tone;
+  /** Lines up wrapped text, e.g. "center" in an empty state. */
+  align?: TextStyle['textAlign'];
   /** Cuts the text after this many lines with an ellipsis. */
   lines?: number;
   children: ReactNode;
@@ -55,17 +57,17 @@ function displayStyle(
   };
 }
 
-export function Heading({ level = 2, tone = 'default', children }: HeadingProps) {
+export function Heading({ level = 2, tone = 'default', align, children }: HeadingProps) {
   const theme = useTheme();
   const { size, weight } = HEADING_LEVELS[level];
   return (
-    <NativeText accessibilityRole="header" style={displayStyle(theme, size, weight, HEADING_TRACKING, tone)}>
+    <NativeText accessibilityRole="header" style={{ ...displayStyle(theme, size, weight, HEADING_TRACKING, tone), textAlign: align }}>
       {children}
     </NativeText>
   );
 }
 
-export function Text({ size = 'base', tone = 'default', lines, children }: TextProps) {
+export function Text({ size = 'base', tone = 'default', lines, align, children }: TextProps) {
   const theme = useTheme();
   const fontSize = scales.fontSize[size];
   return (
@@ -76,6 +78,7 @@ export function Text({ size = 'base', tone = 'default', lines, children }: TextP
         fontSize,
         lineHeight: fontSize * BODY_LINE_HEIGHT,
         color: theme.colors[TONES[tone]],
+        textAlign: align,
       }}
     >
       {children}
