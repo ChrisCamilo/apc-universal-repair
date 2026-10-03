@@ -2,6 +2,7 @@ import { useState, type HTMLAttributes } from 'react'
 import { imageIcon } from '@apc/shared/icons'
 import { Icon } from './Icon.tsx'
 import { useInPanel } from './panelContext.ts'
+import { Spinner } from './Spinner.tsx'
 
 // The car photo frame. It keeps its aspect ratio whatever the photo's size and never stretches the photo:
 // the whole photo shows, letterboxed on the raised fill. While the photo loads the frame shows a spinner
@@ -54,11 +55,7 @@ export function ImageFrame({ src, loading = false, alt, ratio = DEFAULT_RATIO, e
         />
       )}
       {state === 'loading' && (
-        <span
-          data-testid="image-spinner"
-          aria-hidden="true"
-          className="absolute size-6 rounded-pill border-2 border-current border-r-transparent motion-safe:animate-spin"
-        />
+        <Spinner className="absolute" data-testid="image-spinner" />
       )}
       {missing && (
         <span className="grid justify-items-center gap-2 p-4 text-center font-body text-sm">

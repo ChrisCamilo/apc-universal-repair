@@ -2,6 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import type { ButtonSize, ButtonVariant } from '@apc/shared/button'
 import type { IconShape } from '@apc/shared/icons'
 import { Icon } from './Icon.tsx'
+import { Spinner } from './Spinner.tsx'
 
 // Actions in the theme's look: pill shape, display face in uppercase with the style's tracking. Hover and
 // press only apply while enabled; focus-visible draws the theme's ring; loading blocks presses and says so.
@@ -55,11 +56,7 @@ export function Button({
       {...rest}
     >
       {loading ? (
-        <span
-          data-testid="button-spinner"
-          aria-hidden="true"
-          className="size-[1em] animate-spin rounded-pill border-2 border-current border-r-transparent"
-        />
+        <Spinner size="sm" data-testid="button-spinner" />
       ) : (
         icon && <Icon icon={icon} size={variant === 'link' ? 14 : 16} />
       )}
