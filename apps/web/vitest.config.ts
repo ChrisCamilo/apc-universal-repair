@@ -14,10 +14,10 @@ const parkPointer: BrowserCommand<[]> = async ({ page }) => {
 export default mergeConfig(
   viteConfig,
   defineConfig({
-    // Pre-bundle the dependencies Vite would otherwise discover only mid-run (react-dom/client from the test
-    // renderer, react-router from the app's routes), so it doesn't re-optimize and reload the page under a test
-    // file that is still loading.
-    optimizeDeps: { include: ['react-dom/client', 'react-router'] },
+    // Pre-bundle every dependency before the run, so Vite doesn't discover one mid-run, re-optimize and reload
+    // the page under a test file that is still loading: scan all of src (the app's own imports, such as
+    // react-router or zod, not only the tests'), plus react-dom/client, which the test renderer imports.
+    optimizeDeps: { entries: ['src/**/*.{ts,tsx}'], include: ['react-dom/client'] },
     test: {
       include: ['src/**/*.test.{ts,tsx}'],
       setupFiles: ['./src/test-setup.ts'],
