@@ -9,6 +9,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Dashboard } from './src/dashboard/Dashboard';
 import { ThemeProvider, useTheme } from './src/theme';
 import { ToastProvider } from './src/Toast';
+import { TourProvider } from './src/Tour';
 
 const SCREEN_STYLE = { flex: 1 };
 
@@ -27,7 +28,9 @@ function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <ToastProvider>
-          <Screen />
+          <TourProvider>
+            <Screen />
+          </TourProvider>
         </ToastProvider>
       </ThemeProvider>
     </SafeAreaProvider>
