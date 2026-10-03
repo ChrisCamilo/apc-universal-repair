@@ -1,4 +1,4 @@
-import { MODES, STYLES, scales, sheenGradient, THEME_STORAGE_KEYS, themes, type Mode, type Theme } from '@apc/shared/theme'
+import { MODES, popShadow, STYLES, scales, sheenGradient, THEME_STORAGE_KEYS, themes, type Mode, type Theme } from '@apc/shared/theme'
 
 // Turns the shared tokens into CSS variables: the scales on :root and one block per
 // [data-style][data-mode] pair, so switching style or mode is just changing two attributes on <html>.
@@ -52,6 +52,8 @@ function scaleVars(): Record<string, string> {
     'space-unit': px(scales.space.s1),
     'hairline-width': px(scales.hairline),
     'hairline-soft': `color-mix(in srgb, var(--hairline) ${scales.hairlineSoft * 100}%, transparent)`,
+    'accent-soft': `color-mix(in srgb, var(--accent) ${scales.accentSoft * 100}%, transparent)`,
+    'pop-shadow': popShadow(),
     'pill-radius': px(scales.radiusPill),
     'motion-duration': `${scales.motion.durationMs}ms`,
     'motion-easing': `cubic-bezier(${scales.motion.easing.join(', ')})`,
