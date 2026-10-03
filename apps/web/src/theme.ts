@@ -1,4 +1,4 @@
-import { MODES, STYLES, scales, THEME_STORAGE_KEYS, themes, type Mode, type Theme } from '@apc/shared/theme'
+import { MODES, STYLES, scales, sheenGradient, THEME_STORAGE_KEYS, themes, type Mode, type Theme } from '@apc/shared/theme'
 
 // Turns the shared tokens into CSS variables: the scales on :root and one block per
 // [data-style][data-mode] pair, so switching style or mode is just changing two attributes on <html>.
@@ -51,6 +51,7 @@ function scaleVars(): Record<string, string> {
   const vars: Record<string, string> = {
     'space-unit': px(scales.space.s1),
     'hairline-width': px(scales.hairline),
+    'hairline-soft': `color-mix(in srgb, var(--hairline) ${scales.hairlineSoft * 100}%, transparent)`,
     'pill-radius': px(scales.radiusPill),
     'motion-duration': `${scales.motion.durationMs}ms`,
     'motion-easing': `cubic-bezier(${scales.motion.easing.join(', ')})`,
@@ -109,7 +110,6 @@ function themeVars(theme: Theme, mode: Mode): Record<string, string> {
   for (const [token, value] of Object.entries(theme.colors)) {
     vars[kebab(token)] = value
   }
-  const sheenBase = mode === 'night' ? '255, 255, 255' : '0, 0, 0'
   return {
     ...vars,
     'display-face': font(theme.displayFont, `'${scales.bodyFont}', sans-serif`),
@@ -119,6 +119,6 @@ function themeVars(theme: Theme, mode: Mode): Record<string, string> {
     glow: theme.glow
       ? `0 0 ${px(theme.glow.blur)} color-mix(in srgb, var(--accent) ${theme.glow.opacity * 100}%, transparent)`
       : 'none',
-    sheen: `linear-gradient(180deg, rgba(${sheenBase}, ${theme.sheen}), transparent 45%)`,
+    sheen: sheenGradient(theme.sheen, mode),
   }
 }

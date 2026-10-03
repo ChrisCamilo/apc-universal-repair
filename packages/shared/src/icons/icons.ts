@@ -16,6 +16,11 @@ export const eyeIcon: IconShape[] = [
   { kind: "path", d: "M1.5 8S4 3.6 8 3.6 14.5 8 14.5 8 12 12.4 8 12.4 1.5 8 1.5 8z" },
   { kind: "circle", cx: 8, cy: 8, r: 2.1 },
 ];
+export const imageIcon: IconShape[] = [
+  { kind: "rect", x: 2, y: 3, width: 12, height: 10, rx: 1.6 },
+  { kind: "circle", cx: 5.8, cy: 6.4, r: 1.2 },
+  { kind: "path", d: "M2.5 11.6l3.6-3.4 2.6 2.4 2-1.8 2.8 2.6" },
+];
 /** Stroke width on the 16×16 grid. */
 export const ICON_STROKE = 1.3;
 /** Size of the grid every icon is drawn on. */
@@ -39,6 +44,7 @@ export const ICONS = {
   cube: cubeIcon,
   document: documentIcon,
   eye: eyeIcon,
+  image: imageIcon,
   lock: lockIcon,
   search: searchIcon,
   user: userIcon,

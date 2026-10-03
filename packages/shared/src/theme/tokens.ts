@@ -22,6 +22,8 @@ export const scales = {
   /** Font sizes in px. */
   fontSize: { xs: 12, sm: 14, base: 16, lg: 18, xl: 20, "2xl": 24, "3xl": 30, "4xl": 36 },
   hairline: 1,
+  /** Soft hairline: the hairline color at this opacity, for panel borders and dividers. */
+  hairlineSoft: 0.48,
   radiusPill: 999,
   motion: { durationMs: 180, easing: [0.2, 0.6, 0.2, 1] as const },
   /** Focus ring: accent at this opacity, this many px wide. */
@@ -149,4 +151,15 @@ export function isMode(value: unknown): value is Mode {
  */
 export function isStyle(value: unknown): value is Style {
   return STYLES.includes(value as Style);
+}
+
+/**
+ * Writes a theme's top-down sheen as a CSS gradient, which both the web and React Native draw.
+ * @param sheen Opacity of the highlight, from the theme's `sheen`.
+ * @param mode Mode the theme belongs to: the highlight is white at night and black by day.
+ * @returns A `linear-gradient(...)` that fades out by 45% of the height.
+ */
+export function sheenGradient(sheen: number, mode: Mode): string {
+  const base = mode === "night" ? "255, 255, 255" : "0, 0, 0";
+  return `linear-gradient(180deg, rgba(${base}, ${sheen}), transparent 45%)`;
 }

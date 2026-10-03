@@ -14,6 +14,9 @@ const parkPointer: BrowserCommand<[]> = async ({ page }) => {
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    // Pre-bundle what the tests import but the app's entry doesn't reach, so Vite doesn't discover it mid-run,
+    // re-optimize and reload the page under a test file that is still loading.
+    optimizeDeps: { include: ['react-dom/client'] },
     test: {
       include: ['src/**/*.test.{ts,tsx}'],
       setupFiles: ['./src/test-setup.ts'],

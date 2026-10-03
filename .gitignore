@@ -25,6 +25,7 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+.claude/launch.json
 
 # Storybook
 storybook-static/

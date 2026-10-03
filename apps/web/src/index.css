@@ -12,6 +12,7 @@
   --color-panel: var(--panel);
   --color-panel-raised: var(--panel-raised);
   --color-hairline: var(--hairline);
+  --color-hairline-soft: var(--hairline-soft);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-accent: var(--accent);
