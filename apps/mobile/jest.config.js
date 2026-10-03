@@ -6,4 +6,7 @@ module.exports = {
     'node_modules/(?!(\\.pnpm/)?((jest-)?react-native(-svg)?|@react-native(-community|-async-storage)?)[/+@_])',
   ],
   setupFiles: ['./jest.setup.js'],
+  // The first test of a file that opens a Modal or a ScrollView pays for React Native loading and transforming them,
+  // which on a cold CI runner with files running in parallel can pass Jest's 5s default.
+  testTimeout: 20000,
 };
