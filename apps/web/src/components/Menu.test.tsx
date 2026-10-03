@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { themeCss } from '../theme.ts'
@@ -129,6 +129,23 @@ test('Web: the menu fits the screen under its trigger', async () => {
   expect(menu.top - button.bottom).toBeLessThan(8)
 })
 
+// Opens the menu on a 360×780 phone and checks the four themes sit below the "Tema" label, all inside the menu.
+test('Web: on a phone the theme choice sits below its label and fits the menu', async () => {
+  await page.viewport(360, 780)
+  try {
+    const screen = await render(<UserMenu onTutorial={() => {}} />)
+    await screen.getByRole('button', { name: 'Menu do usuário' }).click()
+    const menu = screen.getByRole('menu').element().getBoundingClientRect()
+    const label = screen.getByText('Tema', { exact: true }).element().getBoundingClientRect()
+    const choice = screen.getByRole('group', { name: 'Tema' }).element().getBoundingClientRect()
+    expect(choice.top).toBeGreaterThanOrEqual(label.bottom)
+    expect(choice.left).toBeGreaterThanOrEqual(menu.left)
+    expect(choice.right).toBeLessThanOrEqual(menu.right)
+  } finally {
+    await page.viewport(1280, 720)
+  }
+})
+
 function UserMenu({ onTutorial }: { onTutorial: () => void }) {
   const [dark, setDark] = useState(true)
   const [style, setStyle] = useState('eighties')
@@ -145,6 +162,8 @@ function UserMenu({ onTutorial }: { onTutorial: () => void }) {
         options={[
           { value: 'eighties', label: 'Anos 80' },
           { value: 'gt4', label: 'GT4' },
+          { value: 'bmw90', label: 'BMW 90' },
+          { value: 'fiat90', label: 'Fiat 90' },
         ]}
         value={style}
         onValueChange={setStyle}

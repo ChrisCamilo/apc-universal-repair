@@ -34,6 +34,18 @@
       "sha1": "898ddb2e35ec8bc699c86d0a5e26da10a32a2600"
     },
     {
+      "path": "assets/fonts/Rajdhani-Bold.ttf",
+      "sha1": "fb82c1992ff13cb2bc6fa12c29ffcb89974adb7b"
+    },
+    {
+      "path": "assets/fonts/Rajdhani-Medium.ttf",
+      "sha1": "7837ff8a9aea59e742e894ba8956c18fb7c16d4b"
+    },
+    {
+      "path": "assets/fonts/Rajdhani-SemiBold.ttf",
+      "sha1": "631daaffec8f19b9b0c23a80b3465a278993e22a"
+    },
+    {
       "path": "assets/fonts/SairaSemiCondensed-Bold.ttf",
       "sha1": "50f93024eb79a2f4afaf8d5148d86b7eb9431e9f"
     },
