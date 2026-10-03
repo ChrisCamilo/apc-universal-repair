@@ -4,8 +4,8 @@
 export const DIALOG_HEIGHT_INSET = 48;
 /** Room a dialog leaves to the side edges of the screen, in px, so it fits at 360px wide. */
 export const DIALOG_SCREEN_INSET = 32;
-/** Widest size of each dialog, in px: forms such as the item form, and short confirmations. */
-export const DIALOG_WIDTHS = { form: 560, confirm: 420 } as const;
+/** Widest size of each dialog, in px: forms such as the item form, short confirmations, and the photo viewer. */
+export const DIALOG_WIDTHS = { form: 560, confirm: 420, viewer: 760 } as const;
 /** How long a toast stays on screen, in ms, before it hides on its own. */
 export const TOAST_DURATION_MS = 2200;
 
