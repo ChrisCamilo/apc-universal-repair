@@ -312,6 +312,9 @@ importers:
       '@fontsource/jetbrains-mono':
         specifier: ^5.3.0
         version: 5.3.0
+      '@fontsource/saira-semi-condensed':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@fontsource/titillium-web':
         specifier: ^5.3.0
         version: 5.3.0
@@ -1331,6 +1334,9 @@ packages:
 
   '@fontsource/jetbrains-mono@5.3.0':
     resolution: {integrity: sha512-fqDfB5I9f1p1TV486aUgB9t8zP84P0O1FtQR5Ol9vjwPy+S+EIGlVYm1cvj2W5shcZMTg2nZFdVMoH5wFu8a1A==}
+
+  '@fontsource/saira-semi-condensed@5.3.0':
+    resolution: {integrity: sha512-ODnnx0osErt7pRMY+MhxqwXOpPEKlRNW6Bb1Ci70Y37JMnISFAUZYo6ZGv/VOWc2x/IetzdmMaiiEVNPtWMi9Q==}
 
   '@fontsource/titillium-web@5.3.0':
     resolution: {integrity: sha512-+nO3ACtHoBgBgq5rzKYImyJqcbRR5cG7D5O73Iu9qMEVlpQ4KVpdDs+XJexZ6Tgcek4xSlkCI82Xd3yLNF++6w==}
@@ -7373,6 +7379,8 @@ snapshots:
   '@fontsource/barlow@5.3.0': {}
 
   '@fontsource/jetbrains-mono@5.3.0': {}
+
+  '@fontsource/saira-semi-condensed@5.3.0': {}
 
   '@fontsource/titillium-web@5.3.0': {}
 
