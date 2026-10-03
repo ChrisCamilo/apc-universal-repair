@@ -8,9 +8,10 @@ export const BUTTON_SIZES = {
 } as const;
 /**
  * Variants: primary (accent fill, glow where the style has one), secondary (outline, accent on hover),
- * ghost (no frame, raised surface on hover) and link (inline text action).
+ * ghost (no frame, raised surface on hover), link (inline text action) and danger (danger fill, for
+ * destructive confirmations such as deleting an item).
  */
-export const BUTTON_VARIANTS = ["primary", "secondary", "ghost", "link"] as const;
+export const BUTTON_VARIANTS = ["primary", "secondary", "ghost", "link", "danger"] as const;
 
 export type ButtonSize = keyof typeof BUTTON_SIZES;
 export type ButtonVariant = (typeof BUTTON_VARIANTS)[number];

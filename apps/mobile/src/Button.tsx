@@ -11,7 +11,7 @@ import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
 // loading blocks presses and says so.
 
 const DISABLED_OPACITY = 0.5;
-const PRESSED_PRIMARY_OPACITY = 0.86;
+const PRESSED_FILLED_OPACITY = 0.86;
 
 type ButtonProps = {
   variant?: ButtonVariant;
@@ -48,6 +48,8 @@ function variantColors(theme: ActiveTheme, variant: ButtonVariant, pressed: bool
       return { background: pressed ? colors.panelRaised : 'transparent', border: 'transparent', label: colors.text };
     case 'link':
       return { background: 'transparent', border: 'transparent', label: pressed ? colors.accent : colors.textMuted };
+    case 'danger':
+      return { background: colors.danger, border: 'transparent', label: colors.onDanger };
   }
 }
 
@@ -105,7 +107,7 @@ export function Button({
             backgroundColor: colors.background,
             paddingHorizontal: isLink ? 0 : scales.space[padX],
             paddingVertical: isLink ? 0 : scales.space[padY],
-            opacity: inactive ? DISABLED_OPACITY : pressed && variant === 'primary' ? PRESSED_PRIMARY_OPACITY : 1,
+            opacity: inactive ? DISABLED_OPACITY : pressed && (variant === 'primary' || variant === 'danger') ? PRESSED_FILLED_OPACITY : 1,
             transform: [{ translateY: pressed && !inactive ? 1 : 0 }],
             ...glow,
           };

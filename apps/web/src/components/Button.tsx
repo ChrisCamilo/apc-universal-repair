@@ -21,6 +21,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   secondary: `${FRAMED} border-hairline text-text enabled:hover:border-accent enabled:hover:text-accent`,
   ghost: `${FRAMED} border-transparent text-text enabled:hover:bg-panel-raised`,
   link: 'border-transparent font-body text-text-muted underline underline-offset-4 enabled:hover:text-accent',
+  danger: `${FRAMED} border-transparent bg-danger text-on-danger enabled:hover:bg-[color-mix(in_srgb,var(--danger)_86%,var(--text))]`,
 }
 
 type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {

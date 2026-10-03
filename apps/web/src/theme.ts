@@ -58,6 +58,8 @@ function scaleVars(): Record<string, string> {
     'danger-soft': `color-mix(in srgb, var(--danger) ${scales.statusTint.danger * 100}%, transparent)`,
     'danger-soft-hover': `color-mix(in srgb, var(--danger) ${scales.statusTint.dangerHover * 100}%, transparent)`,
     'pop-shadow': popShadow(),
+    backdrop: `color-mix(in srgb, var(--canvas) ${scales.backdrop.opacity * 100}%, transparent)`,
+    'backdrop-blur': px(scales.backdrop.blur),
     'pill-radius': px(scales.radiusPill),
     'motion-duration': `${scales.motion.durationMs}ms`,
     'motion-easing': `cubic-bezier(${scales.motion.easing.join(', ')})`,
@@ -95,12 +97,16 @@ export function themeBootScript(): string {
 
 /**
  * Writes the stylesheet with every theme variable: the scales on `:root` and one rule per
- * `[data-style][data-mode]` pair.
+ * `[data-style][data-mode]` pair, which also sets the color scheme of the mode.
  * @returns CSS text, one rule per line.
  */
 export function themeCss(): string {
   const blocks = STYLES.flatMap((style) =>
-    MODES.map((mode) => `:root[data-style="${style}"][data-mode="${mode}"]{${decls(themeVars(themes[style][mode], mode))}}`),
+    // color-scheme lets the browser draw scrollbars and native controls dark at night and light by day.
+    MODES.map(
+      (mode) =>
+        `:root[data-style="${style}"][data-mode="${mode}"]{color-scheme:${mode === 'night' ? 'dark' : 'light'};${decls(themeVars(themes[style][mode], mode))}}`,
+    ),
   )
   return [`:root{${decls(scaleVars())}}`, ...blocks].join('\n')
 }

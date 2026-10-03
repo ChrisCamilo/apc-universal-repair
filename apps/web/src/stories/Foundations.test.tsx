@@ -33,6 +33,9 @@ for (const style of STYLES) {
       for (const [token, value] of Object.entries(theme.colors)) {
         await expect.element(screen.getByTestId(`color-${token}`).getByTestId('value')).toHaveTextContent(value)
       }
+      for (const tint of ['accent-soft', 'hairline-soft', 'warn-soft', 'danger-soft', 'backdrop']) {
+        await expect.element(screen.getByTestId(`tint-${tint}`)).toBeVisible()
+      }
       await expect.element(screen.getByTestId('radius-panel').getByTestId('value')).toHaveTextContent(`${theme.radiusPanel}px`)
       await expect.element(screen.getByTestId('radius-tile').getByTestId('value')).toHaveTextContent(`${theme.radiusTile}px`)
       for (const step of Object.keys(scales.fontSize)) {
