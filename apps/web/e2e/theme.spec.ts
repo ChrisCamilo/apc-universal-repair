@@ -13,8 +13,9 @@ function rgb(hex: string): string {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    // Switches style and mode on <html> and checks the page picks up that combination's canvas, text,
-    // muted text, display font and tracking. Runs for every style and mode, at both screen sizes.
+    // Switches style and mode on <html> and checks the Dashboard picks up that combination's canvas and text,
+    // and the selected tab its accent, display font and tracking. Runs for every style and mode, at both
+    // screen sizes.
     test(`Web: resolves the ${style}/${mode} tokens`, async ({ page }) => {
       const theme = themes[style][mode];
       await page.goto("/");
@@ -28,12 +29,12 @@ for (const style of STYLES) {
 
       await expect(page.locator("body")).toHaveCSS("background-color", rgb(theme.colors.canvas));
       await expect(page.locator("body")).toHaveCSS("color", rgb(theme.colors.text));
-      await expect(page.getByTestId("health-status")).toHaveCSS("color", rgb(theme.colors.textMuted));
 
-      const heading = page.getByRole("heading", { name: "APC Universal Repair" });
-      await expect(heading).toHaveCSS("font-family", new RegExp(`^"?${theme.displayFont}`));
-      const tracking = +(theme.displayTracking * scales.fontSize["4xl"]).toFixed(2);
-      await expect(heading).toHaveCSS("letter-spacing", `${tracking}px`);
+      const tab = page.getByRole("tab", { name: "Estoque" });
+      await expect(tab).toHaveCSS("color", rgb(theme.colors.accent));
+      await expect(tab).toHaveCSS("font-family", new RegExp(`^"?${theme.displayFont}`));
+      const tracking = +(theme.displayTracking * scales.fontSize.sm).toFixed(2);
+      await expect(tab).toHaveCSS("letter-spacing", `${tracking}px`);
     });
   }
 }
