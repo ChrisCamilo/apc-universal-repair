@@ -1,6 +1,7 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
 import { selectionSummary, toggleValue } from '@apc/shared/filters'
 import { checkIcon, chevronIcon } from '@apc/shared/icons'
+import { SELECT_LIST_CLASSES, SELECT_OPTION_CLASSES } from './fieldStyles.ts'
 import { Icon } from './Icon.tsx'
 
 // A pick-only dropdown with its own list instead of the native one, so the list looks the same in every
@@ -9,13 +10,6 @@ import { Icon } from './Icon.tsx'
 // In a multiple choice the list shows checkboxes and stays open while the user picks; the button shows
 // the first choice plus a count ("Freios +2"), with the full list in its tooltip, and "All" clears it.
 
-// The list is 5 options of h-9 plus its p-1 padding: 5 × 9 + 2 = 47 spacing units (SELECT_VISIBLE_OPTIONS).
-const LIST =
-  'absolute inset-x-0 top-full z-10 mt-1 max-h-47 overflow-y-auto overscroll-contain rounded-tile ' +
-  'border border-hairline-soft bg-panel p-1 shadow-pop'
-const OPTION =
-  'relative flex h-9 cursor-pointer items-center gap-2 truncate rounded-tile px-2.5 font-body text-sm text-text ' +
-  'aria-selected:text-accent data-active:bg-panel-raised'
 const TRIGGER =
   'flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-pill border bg-panel px-3 py-1.5 text-left font-body ' +
   'text-sm text-text outline-none transition-[border-color,box-shadow] focus-visible:shadow-ring ' +
@@ -135,7 +129,7 @@ export function Select(props: SelectProps) {
         />
       </button>
       {open && (
-        <ul ref={list} id={listId} role="listbox" aria-multiselectable={props.multiple || undefined} className={LIST}>
+        <ul ref={list} id={listId} role="listbox" aria-multiselectable={props.multiple || undefined} className={SELECT_LIST_CLASSES}>
           {items.map((item, index) => {
             const selected = isSelected(item)
             return (
@@ -145,7 +139,7 @@ export function Select(props: SelectProps) {
                 role="option"
                 aria-selected={selected}
                 data-active={index === active || undefined}
-                className={OPTION}
+                className={SELECT_OPTION_CLASSES}
                 // Keep the focus on the button, so the list stays open and the keyboard keeps working.
                 onMouseDown={(event) => {
                   event.preventDefault()

@@ -1,26 +1,13 @@
 import { useId, useRef, useState, type InputHTMLAttributes } from 'react'
 import { FIELD_KINDS, type FieldKind } from '@apc/shared/field'
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons'
+import { FIELD_BORDER_CLASSES, FIELD_BUTTON_CLASSES, FIELD_FRAME_CLASSES, FIELD_INPUT_CLASSES } from './fieldStyles.ts'
 import { Icon } from './Icon.tsx'
 import { Label, Text } from './Typography.tsx'
 
 // The pill-shaped inputs of the login and the dashboard searches. The frame lights up in the accent with
 // the theme's ring while focused, and in the danger color when there is an error. Each field kind sets
 // the input type, autofill hint and keyboard (see @apc/shared/field).
-
-const FRAME =
-  'flex min-w-0 items-center gap-2 rounded-pill border bg-panel px-4 py-2.5 transition-[border-color,box-shadow] ' +
-  'focus-within:shadow-ring'
-const FRAME_BORDER = {
-  idle: 'border-hairline focus-within:border-accent',
-  error: 'border-danger',
-}
-const INPUT =
-  'min-w-0 flex-1 bg-transparent font-body text-base text-text outline-none placeholder:text-text-muted ' +
-  'text-ellipsis disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none'
-const TRAILING_BUTTON =
-  'grid shrink-0 place-items-center rounded-pill text-text-muted outline-none transition-colors ' +
-  'enabled:cursor-pointer enabled:hover:text-text focus-visible:shadow-ring disabled:cursor-not-allowed'
 
 type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'size' | 'children'>
 type SearchFieldProps = InputProps & {
@@ -66,7 +53,7 @@ export function TextField({
   return (
     <div className={`grid gap-1.5 ${disabled ? 'opacity-50' : ''}`}>
       <Label htmlFor={inputId}>{label}</Label>
-      <div className={`${FRAME} ${error ? FRAME_BORDER.error : FRAME_BORDER.idle}`}>
+      <div className={`${FIELD_FRAME_CLASSES} ${error ? FIELD_BORDER_CLASSES.error : FIELD_BORDER_CLASSES.idle}`}>
         {icon && (
           <span className="flex text-text-muted">
             <Icon icon={icon} />
@@ -82,13 +69,13 @@ export function TextField({
           disabled={disabled}
           aria-invalid={error ? true : undefined}
           aria-describedby={note ? noteId : undefined}
-          className={INPUT}
+          className={FIELD_INPUT_CLASSES}
           {...rest}
         />
         {isPassword && (
           <button
             type="button"
-            className={TRAILING_BUTTON}
+            className={FIELD_BUTTON_CLASSES}
             aria-label={revealed ? 'Ocultar senha' : 'Mostrar senha'}
             aria-pressed={revealed}
             disabled={disabled}
@@ -123,7 +110,7 @@ export function SearchField({ label, value, onValueChange, disabled, onKeyDown, 
   }
 
   return (
-    <div className={`${FRAME} ${FRAME_BORDER.idle} ${disabled ? 'opacity-50' : ''}`}>
+    <div className={`${FIELD_FRAME_CLASSES} ${FIELD_BORDER_CLASSES.idle} ${disabled ? 'opacity-50' : ''}`}>
       <span className="flex text-text-muted">
         <Icon icon={searchIcon} />
       </span>
@@ -144,11 +131,11 @@ export function SearchField({ label, value, onValueChange, disabled, onKeyDown, 
           onKeyDown?.(event)
         }}
         disabled={disabled}
-        className={INPUT}
+        className={FIELD_INPUT_CLASSES}
         {...rest}
       />
       {value && !disabled && (
-        <button type="button" className={TRAILING_BUTTON} aria-label="Limpar busca" onClick={clear}>
+        <button type="button" className={FIELD_BUTTON_CLASSES} aria-label="Limpar busca" onClick={clear}>
           <Icon icon={closeIcon} />
         </button>
       )}
