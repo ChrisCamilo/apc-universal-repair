@@ -15,7 +15,8 @@
     "./tabs": "./src/tabs/tabs.ts",
     "./filters": "./src/filters/filters.ts",
     "./table": "./src/table/table.ts",
-    "./items": "./src/items/items.ts"
+    "./items": "./src/items/items.ts",
+    "./dialog": "./src/dialog/dialog.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
