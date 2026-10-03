@@ -27,8 +27,9 @@ beforeAll(() => {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    // Renders a primary and a secondary button in one style and mode and checks the accent fill, the
-    // glow only where the style has one, the outline, and the display face in uppercase.
+    // Renders a primary, a secondary and a danger button in one style and mode and checks the accent fill,
+    // the glow only where the style has one, the outline, the danger fill without glow, and the display face
+    // in uppercase.
     test(`Web: buttons follow the ${style}/${mode} theme`, async () => {
       const theme = themes[style][mode]
       root.dataset.style = style
@@ -37,6 +38,7 @@ for (const style of STYLES) {
         <>
           <Button>Entrar</Button>
           <Button variant="secondary">Ver em 3D</Button>
+          <Button variant="danger">Excluir</Button>
         </>,
       )
       const primary = getComputedStyle(screen.getByRole('button', { name: 'Entrar' }).element())
@@ -49,6 +51,10 @@ for (const style of STYLES) {
       expect(primary.textTransform).toBe('uppercase')
       expect(secondary.borderColor).toBe(rgb(theme.colors.hairline))
       expect(secondary.color).toBe(rgb(theme.colors.text))
+      const danger = getComputedStyle(screen.getByRole('button', { name: 'Excluir' }).element())
+      expect(danger.backgroundColor).toBe(rgb(theme.colors.danger))
+      expect(danger.color).toBe(rgb(theme.colors.onDanger))
+      expect(danger.boxShadow).toBe('none')
     })
   }
 }
