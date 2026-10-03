@@ -8,6 +8,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Dashboard } from './src/dashboard/Dashboard';
 import { ThemeProvider, useTheme } from './src/theme';
+import { ToastProvider } from './src/Toast';
 
 const SCREEN_STYLE = { flex: 1 };
 
@@ -25,7 +26,9 @@ function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <Screen />
+        <ToastProvider>
+          <Screen />
+        </ToastProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
