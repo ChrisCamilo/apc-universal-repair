@@ -3,12 +3,14 @@ import { test } from "node:test";
 import {
   capitalizeFirst,
   codeKey,
+  findOption,
   formatPrice,
   includeBoth,
   itemCreateSchema,
   itemDetails,
   itemListQuerySchema,
   matchesSearch,
+  matchingOptions,
   resultSummary,
   searchKey,
   stockStatus,
@@ -108,4 +110,22 @@ test("Shared: item details fit in one line without what doesn't apply", () => {
     unitPriceCents: 8990,
   });
   assert.equal(details.replace(/\s/g, " "), "Freios · Cobreq · Chevrolet · D · R$ 89,90");
+});
+
+// Finds the option a typed text names whatever its case, accents or spaces, and nothing for a new value.
+test("Shared: typed text maps to the existing option's spelling", () => {
+  const options = ["Arrefecimento", "Elétrica", "Freios"];
+  assert.equal(findOption(options, "  freios "), "Freios");
+  assert.equal(findOption(options, "ELETRICA"), "Elétrica");
+  assert.equal(findOption(options, "Freio"), undefined);
+  assert.equal(findOption(options, ""), undefined);
+});
+
+// Lists every option for an empty text or one that names an option, and otherwise the ones containing it.
+test("Shared: the combobox list filters by the typed text", () => {
+  const options = ["Arrefecimento", "Elétrica", "Freios", "Ignição"];
+  assert.deepEqual(matchingOptions(options, ""), options);
+  assert.deepEqual(matchingOptions(options, "freios"), options);
+  assert.deepEqual(matchingOptions(options, "ic"), ["Elétrica", "Ignição"]);
+  assert.deepEqual(matchingOptions(options, "suspensão"), []);
 });
