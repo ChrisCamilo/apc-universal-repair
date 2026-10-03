@@ -13,6 +13,12 @@ const eighties = {
   radiusPanel: 14,
   radiusTile: 12,
 };
+const fiat90 = {
+  displayFont: "Rajdhani",
+  displayTracking: 0.1,
+  radiusPanel: 12,
+  radiusTile: 8,
+};
 const gt4 = {
   displayFont: "Titillium Web",
   displayTracking: 0.08,
@@ -47,7 +53,7 @@ export const scales = {
   bodyFont: "Barlow",
   monoFont: "JetBrains Mono",
 } as const;
-export const STYLES = ["eighties", "gt4", "bmw90"] as const;
+export const STYLES = ["eighties", "gt4", "bmw90", "fiat90"] as const;
 /** localStorage (web) and AsyncStorage (mobile) keys of the chosen style and mode. */
 export const THEME_STORAGE_KEYS = { style: "apc-style", mode: "apc-mode" } as const;
 export const themes: Record<Style, Record<Mode, Theme>> = {
@@ -158,6 +164,46 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         accent: "#B93E0B",
         onAccent: "#FFFFFF",
         danger: "#A3123A",
+        onDanger: "#FFFFFF",
+        warn: "#8A6100",
+      },
+      glow: { blur: 16, opacity: 0.14 },
+      sheen: 0.02,
+    },
+  },
+  // The green lighting of a lit instrument panel on green-black. The accent is green, so danger stays red
+  // and warn amber, both far from it.
+  fiat90: {
+    night: {
+      ...fiat90,
+      colors: {
+        canvas: "#070A08",
+        panel: "#101511",
+        panelRaised: "#161D18",
+        hairline: "#33463A",
+        text: "#E2EFE5",
+        textMuted: "#8AA293",
+        accent: "#62E38A",
+        onAccent: "#070A08",
+        danger: "#FF6B5E",
+        onDanger: "#070A08",
+        warn: "#F2C94C",
+      },
+      glow: { blur: 22, opacity: 0.32 },
+      sheen: 0.035,
+    },
+    day: {
+      ...fiat90,
+      colors: {
+        canvas: "#EDF2EE",
+        panel: "#FFFFFF",
+        panelRaised: "#F5F9F6",
+        hairline: "#C5D2C8",
+        text: "#121A14",
+        textMuted: "#536158",
+        accent: "#1C7A3E",
+        onAccent: "#FFFFFF",
+        danger: "#B3261E",
         onDanger: "#FFFFFF",
         warn: "#8A6100",
       },
