@@ -84,6 +84,7 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm dev` | Runs every app in development mode |
 | `pnpm build` | Builds every package |
 | `pnpm lint` | Lints every package |
+| `pnpm typecheck` | Typechecks the code the build doesn't check (API tests, mobile) |
 | `pnpm test` | Runs the unit and component tests (shared, API, web in Chromium, mobile) |
 | `pnpm test:e2e` | Runs the web E2E tests at 1280×720 and 360×780 (starts the API and the web app) |
 | `pnpm --filter @apc/web test:e2e:ui` | Opens the Playwright UI to run and debug the tests |
@@ -210,6 +211,7 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm dev` | Roda todos os apps em modo de desenvolvimento |
 | `pnpm build` | Gera o build de todos os pacotes |
 | `pnpm lint` | Roda o lint em todos os pacotes |
+| `pnpm typecheck` | Checa os tipos do código que o build não checa (testes da API, celular) |
 | `pnpm test` | Roda os testes unitários e de componente (shared, API, web no Chromium, celular) |
 | `pnpm test:e2e` | Roda os testes E2E da web em 1280×720 e 360×780 (sobe a API e o app web) |
 | `pnpm --filter @apc/web test:e2e:ui` | Abre a interface do Playwright para rodar e depurar os testes |
