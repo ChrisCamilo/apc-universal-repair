@@ -65,7 +65,7 @@ async function readSaved(): Promise<SavedTheme> {
  * @param key Storage key.
  * @param value Value to save.
  */
-function save(key: string, value: string): void {
+export function save(key: string, value: string): void {
   themeStorage.setItem(key, value).catch(() => {});
 }
 
@@ -75,6 +75,16 @@ function save(key: string, value: string): void {
  */
 export function useTheme(): ActiveTheme {
   return useContext(ThemeContext);
+}
+
+/**
+ * Adds an opacity to a hex token color, for tints such as the focus ring.
+ * @param hex Color as `#RRGGBB`.
+ * @param opacity Opacity from 0 to 1.
+ * @returns The color as `#RRGGBBAA`.
+ */
+export function withAlpha(hex: string, opacity: number): string {
+  return hex + Math.round(opacity * 255).toString(16).padStart(2, '0').toUpperCase();
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

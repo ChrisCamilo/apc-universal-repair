@@ -4,7 +4,7 @@ import { FIELD_KINDS, type FieldKind } from '@apc/shared/field';
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
-import { fontFamily, useTheme, type ActiveTheme } from './theme';
+import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
 import { Label, Text } from './Typography';
 
 // The pill-shaped inputs, the same as the web: the frame lights up in the accent with a focus ring while
@@ -89,16 +89,6 @@ function inputStyle(theme: ActiveTheme): TextStyle {
     fontSize: scales.fontSize.base,
     color: theme.colors.text,
   };
-}
-
-/**
- * Adds an opacity to a hex token color, for tints such as the focus ring.
- * @param hex Color as `#RRGGBB`.
- * @param opacity Opacity from 0 to 1.
- * @returns The color as `#RRGGBBAA`.
- */
-function withAlpha(hex: string, opacity: number): string {
-  return hex + Math.round(opacity * 255).toString(16).padStart(2, '0').toUpperCase();
 }
 
 export function TextField({

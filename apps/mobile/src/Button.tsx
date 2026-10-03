@@ -4,7 +4,7 @@ import { BUTTON_SIZES, type ButtonSize, type ButtonVariant } from '@apc/shared/b
 import type { IconShape } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
-import { fontFamily, useTheme, type ActiveTheme } from './theme';
+import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
 
 // Actions in the theme's look, the same variants and sizes as the web (see @apc/shared/button). Pressing
 // shows what hover shows on the web; a focus ring frames the button when it gets keyboard focus, and
@@ -49,16 +49,6 @@ function variantColors(theme: ActiveTheme, variant: ButtonVariant, pressed: bool
     case 'link':
       return { background: 'transparent', border: 'transparent', label: pressed ? colors.accent : colors.textMuted };
   }
-}
-
-/**
- * Adds an opacity to a hex token color, for tints such as the focus ring.
- * @param hex Color as `#RRGGBB`.
- * @param opacity Opacity from 0 to 1.
- * @returns The color as `#RRGGBBAA`.
- */
-function withAlpha(hex: string, opacity: number): string {
-  return hex + Math.round(opacity * 255).toString(16).padStart(2, '0').toUpperCase();
 }
 
 export function Button({
