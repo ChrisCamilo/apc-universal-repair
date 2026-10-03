@@ -20,6 +20,11 @@
   --color-on-accent: var(--on-accent);
   --color-danger: var(--danger);
   --color-on-danger: var(--on-danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-soft-hover: var(--danger-soft-hover);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-soft-hover: var(--warn-soft-hover);
 
   --font-body: var(--body-face);
   --font-display: var(--display-face);
