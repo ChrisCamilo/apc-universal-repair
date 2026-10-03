@@ -1,17 +1,17 @@
 import { useRef, useState, type ComponentRef } from 'react';
-import { Pressable, Text as NativeText, TextInput, View, type TextStyle, type ViewStyle } from 'react-native';
+import { Pressable, Text as NativeText, TextInput, View } from 'react-native';
 import { FIELD_KINDS, type FieldKind } from '@apc/shared/field';
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
+import { fieldStyle, frameStyles, inputStyle } from './fieldStyles';
 import { Icon } from './Icon';
-import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
+import { fontFamily, useTheme } from './theme';
 import { Label, Text } from './Typography';
 
 // The pill-shaped inputs, the same as the web: the frame lights up in the accent with a focus ring while
 // focused and in the danger color on error. Each field kind sets the keyboard, autofill hint and
 // capitalization (see @apc/shared/field).
 
-const DISABLED_OPACITY = 0.5;
 const TRAILING_HIT_SLOP = 8;
 
 type SearchFieldProps = {
@@ -36,60 +36,6 @@ type TextFieldProps = {
   placeholder?: string;
   disabled?: boolean;
 };
-
-/**
- * Spaces the label, frame and note of a field, and dims it while disabled.
- * @param disabled Whether the field is disabled.
- * @returns Style for the field's outer view.
- */
-function fieldStyle(disabled: boolean): ViewStyle {
-  return { gap: scales.space.s1, opacity: disabled ? DISABLED_OPACITY : 1 };
-}
-
-/**
- * Builds the pill frame and the focus-ring frame around it.
- * @param theme Active theme.
- * @param focused Whether the input has focus.
- * @param error Whether the field shows an error.
- * @returns Styles for the outer ring and the inner frame.
- */
-function frameStyles(theme: ActiveTheme, focused: boolean, error: boolean): { ring: ViewStyle; frame: ViewStyle } {
-  const { colors } = theme;
-  return {
-    ring: {
-      borderRadius: scales.radiusPill,
-      borderWidth: scales.focusRing.width,
-      borderColor: focused ? withAlpha(error ? colors.danger : colors.accent, scales.focusRing.opacity) : 'transparent',
-    },
-    frame: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: scales.space.s2,
-      borderRadius: scales.radiusPill,
-      borderWidth: scales.hairline,
-      borderColor: error ? colors.danger : focused ? colors.accent : colors.hairline,
-      backgroundColor: colors.panel,
-      paddingHorizontal: scales.space.s4,
-      paddingVertical: scales.space.s2,
-    },
-  };
-}
-
-/**
- * Styles the typed text: body face in the text color, filling the frame.
- * @param theme Active theme.
- * @returns Style for the TextInput.
- */
-function inputStyle(theme: ActiveTheme): TextStyle {
-  return {
-    flex: 1,
-    minWidth: 0,
-    paddingVertical: scales.space.s1,
-    fontFamily: fontFamily(scales.bodyFont),
-    fontSize: scales.fontSize.base,
-    color: theme.colors.text,
-  };
-}
 
 export function TextField({
   label,

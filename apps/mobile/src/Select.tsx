@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native';
-import { SELECT_VISIBLE_OPTIONS, selectionSummary, toggleValue } from '@apc/shared/filters';
+import { Pressable, ScrollView, Text, View, type ViewStyle } from 'react-native';
+import { selectionSummary, toggleValue } from '@apc/shared/filters';
 import { checkIcon, chevronIcon } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
+import { listStyle, OPTION_HEIGHT, optionTextStyle } from './fieldStyles';
 import { Icon } from './Icon';
-import { softHairline } from './Panel';
-import { fontFamily, useTheme, type ActiveTheme } from './theme';
+import { useTheme, type ActiveTheme } from './theme';
 
 // A pick-only dropdown, the same as the web: at most SELECT_VISIBLE_OPTIONS options show at once and the
 // rest scroll. On a phone the list opens right under the button and pushes what follows down, so it works
@@ -15,7 +15,6 @@ import { fontFamily, useTheme, type ActiveTheme } from './theme';
 
 const CHECKBOX_SIZE = 14;
 const DISABLED_OPACITY = 0.5;
-const OPTION_HEIGHT = scales.space.s7;
 
 type Option = { value: string; label: string };
 type SelectProps = {
@@ -51,37 +50,6 @@ function checkboxStyle(theme: ActiveTheme, checked: boolean): ViewStyle {
     borderColor: checked ? colors.accent : colors.hairline,
     borderRadius: theme.radiusTile / 4,
     backgroundColor: checked ? colors.accent : colors.panel,
-  };
-}
-
-/**
- * Styles the list under the button: soft frame, room for SELECT_VISIBLE_OPTIONS options, scrolling past that.
- * @param theme Active theme.
- * @returns Style for the list ScrollView.
- */
-function listStyle(theme: ActiveTheme): ViewStyle {
-  return {
-    marginTop: scales.space.s1,
-    maxHeight: OPTION_HEIGHT * SELECT_VISIBLE_OPTIONS + scales.space.s1 * 2 + scales.hairline * 2,
-    borderWidth: scales.hairline,
-    borderColor: softHairline(theme),
-    borderRadius: theme.radiusTile,
-    backgroundColor: theme.colors.panel,
-  };
-}
-
-/**
- * Styles the text of the button and the options: body face, text color or accent when chosen.
- * @param theme Active theme.
- * @param chosen Whether the option is chosen.
- * @returns Style for a Text.
- */
-function textStyle(theme: ActiveTheme, chosen: boolean): TextStyle {
-  return {
-    flex: 1,
-    fontFamily: fontFamily(scales.bodyFont),
-    fontSize: scales.fontSize.sm,
-    color: chosen ? theme.colors.accent : theme.colors.text,
   };
 }
 
@@ -145,7 +113,7 @@ export function Select(props: SelectProps) {
         style={triggerStyle(theme, props.multiple === true && chosen.length > 0, disabled)}
         testID="select-button"
       >
-        <Text numberOfLines={1} style={textStyle(theme, false)}>
+        <Text numberOfLines={1} style={optionTextStyle(theme, false)}>
           {shown}
         </Text>
         <View style={{ transform: [{ rotate: open ? '-90deg' : '90deg' }] }}>
@@ -177,7 +145,7 @@ export function Select(props: SelectProps) {
                     {selected && <Icon icon={checkIcon} size={10} color={theme.colors.onAccent} />}
                   </View>
                 )}
-                <Text numberOfLines={1} style={textStyle(theme, selected)}>
+                <Text numberOfLines={1} style={optionTextStyle(theme, selected)}>
                   {item.label}
                 </Text>
                 {!props.multiple && selected && <Icon icon={checkIcon} size={12} color={theme.colors.accent} />}
