@@ -1,6 +1,12 @@
 // Semantic design tokens: the single source of truth for every visual style and mode.
 // Components never use raw values; web turns these into CSS variables and mobile reads them from the theme context.
 
+const bmw90 = {
+  displayFont: "Saira Semi Condensed",
+  displayTracking: 0.06,
+  radiusPanel: 10,
+  radiusTile: 8,
+};
 const eighties = {
   displayFont: "Barlow Condensed",
   displayTracking: 0.14,
@@ -41,7 +47,7 @@ export const scales = {
   bodyFont: "Barlow",
   monoFont: "JetBrains Mono",
 } as const;
-export const STYLES = ["eighties", "gt4"] as const;
+export const STYLES = ["eighties", "gt4", "bmw90"] as const;
 /** localStorage (web) and AsyncStorage (mobile) keys of the chosen style and mode. */
 export const THEME_STORAGE_KEYS = { style: "apc-style", mode: "apc-mode" } as const;
 export const themes: Record<Style, Record<Mode, Theme>> = {
@@ -117,6 +123,46 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         warn: "#8A6100",
       },
       sheen: 0.018,
+    },
+  },
+  // Red-orange lighting on matte black. The accent is already red, so danger is a crimson set well apart from
+  // it and warn stays amber.
+  bmw90: {
+    night: {
+      ...bmw90,
+      colors: {
+        canvas: "#0A0A0B",
+        panel: "#141415",
+        panelRaised: "#1C1B1C",
+        hairline: "#463C3A",
+        text: "#F2E9E4",
+        textMuted: "#A0918C",
+        accent: "#FF5A1F",
+        onAccent: "#0A0A0B",
+        danger: "#F0364F",
+        onDanger: "#0A0A0B",
+        warn: "#F2B33D",
+      },
+      glow: { blur: 20, opacity: 0.3 },
+      sheen: 0.035,
+    },
+    day: {
+      ...bmw90,
+      colors: {
+        canvas: "#F1EEEC",
+        panel: "#FFFFFF",
+        panelRaised: "#F8F5F4",
+        hairline: "#D3CAC6",
+        text: "#1A1718",
+        textMuted: "#5D5553",
+        accent: "#B93E0B",
+        onAccent: "#FFFFFF",
+        danger: "#A3123A",
+        onDanger: "#FFFFFF",
+        warn: "#8A6100",
+      },
+      glow: { blur: 16, opacity: 0.14 },
+      sheen: 0.02,
     },
   },
 };

@@ -27,7 +27,7 @@ The tests need Chromium once: `pnpm exec playwright install chromium`.
 
 ### Storybook
 
-- The toolbar has a **style** switcher (`eighties`, `gt4`) and a **mode** switcher (`night`, `day`), so every story can be seen in all four combinations.
+- The toolbar has a **style** switcher (`eighties`, `gt4`, `bmw90`) and a **mode** switcher (`night`, `day`), so every story can be seen in all six combinations.
 - The **viewport** menu has the supported sizes: Desktop 1280×720, Mobile design 390×844 and Mobile minimum 360×780.
 - **Foundations** shows the tokens as the active style and mode resolve them: palette, type scale, spacing, radii and motion.
 - Stories live next to the code as `*.stories.tsx` and use the same Tailwind setup as the app.
@@ -57,7 +57,7 @@ Os testes precisam do Chromium uma vez: `pnpm exec playwright install chromium`.
 
 ### Storybook
 
-- A barra de ferramentas tem um seletor de **estilo** (`eighties`, `gt4`) e um de **modo** (`night`, `day`), para ver qualquer story nas quatro combinações.
+- A barra de ferramentas tem um seletor de **estilo** (`eighties`, `gt4`, `bmw90`) e um de **modo** (`night`, `day`), para ver qualquer story nas seis combinações.
 - O menu de **viewport** tem os tamanhos suportados: Desktop 1280×720, Mobile design 390×844 e Mobile mínimo 360×780.
 - **Foundations** mostra os tokens como o estilo e o modo ativos os resolvem: paleta, escala tipográfica, espaçamento, raios e movimento.
 - As stories ficam junto do código como `*.stories.tsx` e usam o mesmo Tailwind do app.
