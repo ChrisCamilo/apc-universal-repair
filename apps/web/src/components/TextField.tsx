@@ -17,7 +17,7 @@ const FRAME_BORDER = {
 }
 const INPUT =
   'min-w-0 flex-1 bg-transparent font-body text-base text-text outline-none placeholder:text-text-muted ' +
-  'disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none'
+  'text-ellipsis disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none'
 const TRAILING_BUTTON =
   'grid shrink-0 place-items-center rounded-pill text-text-muted outline-none transition-colors ' +
   'enabled:cursor-pointer enabled:hover:text-text focus-visible:shadow-ring disabled:cursor-not-allowed'
