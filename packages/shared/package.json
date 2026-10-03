@@ -13,7 +13,8 @@
     "./button": "./src/button/button.ts",
     "./field": "./src/field/field.ts",
     "./tabs": "./src/tabs/tabs.ts",
-    "./filters": "./src/filters/filters.ts"
+    "./filters": "./src/filters/filters.ts",
+    "./table": "./src/table/table.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
