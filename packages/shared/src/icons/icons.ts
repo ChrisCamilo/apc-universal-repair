@@ -22,6 +22,10 @@ export const eyeIcon: IconShape[] = [
   { kind: "circle", cx: 8, cy: 8, r: 2.1 },
 ];
 export const filterIcon: IconShape[] = [{ kind: "path", d: "M2 3h12l-4.6 5.4v4.4l-2.8 1.4V8.4L2 3z" }];
+// Six dots in two columns: the handle a reorderable tab is dragged by.
+export const gripIcon: IconShape[] = [6, 10].flatMap((cx) =>
+  [4, 8, 12].map((cy) => ({ kind: "circle" as const, cx, cy, r: 0.6 })),
+);
 export const imageIcon: IconShape[] = [
   { kind: "rect", x: 2, y: 3, width: 12, height: 10, rx: 1.6 },
   { kind: "circle", cx: 5.8, cy: 6.4, r: 1.2 },
@@ -55,6 +59,7 @@ export const ICONS = {
   document: documentIcon,
   eye: eyeIcon,
   filter: filterIcon,
+  grip: gripIcon,
   image: imageIcon,
   lock: lockIcon,
   pencil: pencilIcon,

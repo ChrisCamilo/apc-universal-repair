@@ -3,10 +3,11 @@
  */
 
 import React from 'react';
-import { Text } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { cubeIcon, documentIcon } from '@apc/shared/icons';
+import { cubeIcon, documentIcon, gripIcon, searchIcon } from '@apc/shared/icons';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { Icon } from '../src/Icon';
 import { Tabs, useStoredTab } from '../src/Tabs';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
@@ -97,7 +98,8 @@ test('Mobile: pressing a tab selects it', async () => {
   expect(tabNamed(tree, 'Estoque').props.accessibilityState).toEqual({ selected: true });
   expect(tabNamed(tree, 'Catálogo').props.accessibilityState).toEqual({ selected: false });
 
-  const pressedLabel = tabNamed(tree, 'Catálogo').props.children({ pressed: true }).props.children[1];
+  const pressed: React.ReactElement<{ children?: unknown; style: { color: string } }>[] = tabNamed(tree, 'Catálogo').props.children({ pressed: true }).props.children;
+  const pressedLabel = pressed.find((child) => child?.props?.children === 'Catálogo')!;
   expect(pressedLabel.props.style.color).toBe(themes.eighties.night.colors.text);
 
   await ReactTestRenderer.act(async () => tabNamed(tree, 'Catálogo').props.onPress());
@@ -120,6 +122,99 @@ test('Mobile: tabs reopen on the last tab used', async () => {
   expect(tabNamed(stale, 'Estoque').props.accessibilityState).toEqual({ selected: true });
 });
 
+/**
+ * Lays the tabs out side by side, 100px wide each, as onLayout would report them, and picks one up with a
+ * long press 10px into it, with the list starting 40px from the left of the screen.
+ * @param tree Rendered tree.
+ * @param label Visible label of the tab to pick up.
+ */
+async function pickUp(tree: ReactTestRenderer.ReactTestRenderer, label: string) {
+  const labels = ['Estoque', 'Catálogo', 'Fichas'];
+  await ReactTestRenderer.act(async () => {
+    labels.forEach((name, i) => tabNamed(tree, name).props.onLayout({ nativeEvent: { layout: { x: i * 100, y: 0, width: 100, height: 40 } } }));
+  });
+  const x = labels.indexOf(label) * 100;
+  await ReactTestRenderer.act(async () => tabNamed(tree, label).props.onLongPress({ nativeEvent: { pageX: 40 + x + 10, locationX: 10 } }));
+}
+
+/**
+ * Finds the tab list, which follows the finger while a tab is picked up.
+ * @param tree Rendered tree.
+ * @returns The list's host View.
+ */
+function tabList(tree: ReactTestRenderer.ReactTestRenderer): ReactTestRenderer.ReactTestInstance {
+  return tree.root.find((node) => node.props.accessibilityRole === 'tablist' && typeof node.type === 'string');
+}
+
+for (const style of STYLES) {
+  for (const mode of MODES) {
+    // Picks a tab up and slides it over another in one style and mode, and checks the grips are muted, the
+    // tab picked up shows through, and the line where it will land is the accent.
+    test(`Mobile: reorderable tabs follow the ${style}/${mode} theme`, async () => {
+      const { colors } = themes[style][mode];
+      const tree = await mount(style, mode, <Reorderable />);
+      const grips = tree.root.findAllByType(Icon).filter((icon) => icon.props.icon === gripIcon);
+      expect(grips.map((grip) => grip.props.color)).toEqual(Array(3).fill(colors.textMuted));
+      await pickUp(tree, 'Fichas');
+      expect(StyleSheet.flatten(tabNamed(tree, 'Fichas').props.style).opacity).toBeLessThan(1);
+      await ReactTestRenderer.act(async () => tabList(tree).props.onResponderMove({ nativeEvent: { pageX: 40 + 15 } }));
+      const line = tree.root.find((node) => node.props.testID === 'tab-drop' && typeof node.type === 'string');
+      expect(StyleSheet.flatten(line.props.style)).toMatchObject({ backgroundColor: colors.accent, left: 0 });
+    });
+  }
+}
+
+// Renders tabs without the option and checks they have no grip, no long press and no move actions.
+test('Mobile: tabs are not reorderable unless asked', async () => {
+  const tree = await mount('eighties', 'night', <Reorderable reorderable={false} />);
+  expect(tree.root.findAllByType(Icon).filter((icon) => icon.props.icon === gripIcon)).toHaveLength(0);
+  expect(tabNamed(tree, 'Estoque').props.onLongPress).toBeUndefined();
+  expect(tabNamed(tree, 'Estoque').props.accessibilityActions).toBeUndefined();
+});
+
+// Picks the last tab up, slides it over the left half of the first and lets go, and checks it lands before
+// it, the owner gets the new order and the new position is announced; a tab picked up and let go without
+// sliding goes back to normal.
+test('Mobile: a tab picked up and slid lands on the marked side', async () => {
+  const onReorder = jest.fn();
+  const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+  const tree = await mount('gt4', 'day', <Reorderable onReorder={onReorder} />);
+  await pickUp(tree, 'Fichas');
+  expect(tabList(tree).props.onMoveShouldSetResponderCapture()).toBe(true);
+  expect(tabList(tree).props.onResponderTerminationRequest()).toBe(false);
+  await ReactTestRenderer.act(async () => tabList(tree).props.onResponderMove({ nativeEvent: { pageX: 40 + 30 } }));
+  await ReactTestRenderer.act(async () => tabList(tree).props.onResponderRelease());
+  expect(onReorder).toHaveBeenCalledWith(['specs', 'stock', 'catalog']);
+  expect(announce).toHaveBeenCalledWith('Aba Fichas na posição 1 de 3');
+  expect(tree.root.findAll((node) => node.props.testID === 'tab-drop')).toHaveLength(0);
+
+  await pickUp(tree, 'Estoque');
+  await ReactTestRenderer.act(async () => tabNamed(tree, 'Estoque').props.onPressOut());
+  expect(StyleSheet.flatten(tabNamed(tree, 'Estoque').props.style).opacity).toBeUndefined();
+  expect(tabList(tree).props.onMoveShouldSetResponderCapture()).toBe(false);
+  announce.mockRestore();
+});
+
+// Moves a tab with the screen reader actions and checks it moves one place each way, stops at the end, and
+// each new position is announced.
+test('Mobile: screen reader actions move a tab', async () => {
+  const onReorder = jest.fn();
+  const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+  const tree = await mount('bmw90', 'night', <Reorderable onReorder={onReorder} />);
+  const act = (label: string, actionName: string) =>
+    ReactTestRenderer.act(async () => tabNamed(tree, label).props.onAccessibilityAction({ nativeEvent: { actionName } }));
+  expect(tabNamed(tree, 'Estoque').props.accessibilityActions.map((a: { label: string }) => a.label)).toEqual([
+    'Mover para a esquerda',
+    'Mover para a direita',
+  ]);
+  await act('Estoque', 'moveRight');
+  expect(onReorder).toHaveBeenLastCalledWith(['catalog', 'stock', 'specs']);
+  expect(announce).toHaveBeenLastCalledWith('Aba Estoque na posição 2 de 3');
+  await act('Catálogo', 'moveLeft');
+  expect(onReorder).toHaveBeenCalledTimes(1);
+  announce.mockRestore();
+});
+
 function DashboardTabs() {
   const [tab, setTab] = useStoredTab(STORAGE_KEY, IDS);
   if (!tab) {
@@ -134,6 +229,29 @@ function DashboardTabs() {
       ]}
       selected={tab}
       onSelect={setTab}
+    />
+  );
+}
+
+function Reorderable({ reorderable = true, onReorder }: { reorderable?: boolean; onReorder?: (ids: string[]) => void }) {
+  const [tab, setTab] = React.useState('stock');
+  const [order, setOrder] = React.useState(['stock', 'catalog', 'specs']);
+  const all: Record<string, { id: string; label: string; icon: typeof cubeIcon }> = {
+    stock: { id: 'stock', label: 'Estoque', icon: cubeIcon },
+    catalog: { id: 'catalog', label: 'Catálogo', icon: documentIcon },
+    specs: { id: 'specs', label: 'Fichas', icon: searchIcon },
+  };
+  return (
+    <Tabs
+      label="Seções do Dashboard"
+      tabs={order.map((id) => all[id])}
+      selected={tab}
+      onSelect={setTab}
+      reorderable={reorderable}
+      onReorder={(ids) => {
+        setOrder(ids);
+        onReorder?.(ids);
+      }}
     />
   );
 }
