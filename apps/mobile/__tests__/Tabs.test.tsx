@@ -97,7 +97,8 @@ test('Mobile: pressing a tab selects it', async () => {
   expect(tabNamed(tree, 'Estoque').props.accessibilityState).toEqual({ selected: true });
   expect(tabNamed(tree, 'Catálogo').props.accessibilityState).toEqual({ selected: false });
 
-  const pressedLabel = tabNamed(tree, 'Catálogo').props.children({ pressed: true }).props.children[1];
+  const pressed: React.ReactElement<{ children?: unknown; style: { color: string } }>[] = tabNamed(tree, 'Catálogo').props.children({ pressed: true }).props.children;
+  const pressedLabel = pressed.find((child) => child?.props?.children === 'Catálogo')!;
   expect(pressedLabel.props.style.color).toBe(themes.eighties.night.colors.text);
 
   await ReactTestRenderer.act(async () => tabNamed(tree, 'Catálogo').props.onPress());
