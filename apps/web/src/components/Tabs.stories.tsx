@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { cubeIcon, documentIcon } from '@apc/shared/icons'
+import { cubeIcon, documentIcon, searchIcon, userIcon } from '@apc/shared/icons'
 import { DASHBOARD_TAB_STORAGE_KEY } from '@apc/shared/tabs'
 import { Text } from './Typography.tsx'
 import { TabPanel, Tabs } from './Tabs.tsx'
@@ -8,7 +8,8 @@ import { useStoredTab } from './useStoredTab.ts'
 
 // The Dashboard tabs. Hover and focus-visible are forced by storybook-addon-pseudo-states through the classes
 // below; switch Style and Mode in the toolbar to see each combination. The Dashboard story remembers the last
-// tab, so it reopens on it after a reload.
+// tab, so it reopens on it after a reload. In the Reorderable story, drag a tab by its grip (the accent line
+// shows where it lands) or focus one and press Alt + Left/Right.
 
 const DASHBOARD_TABS = ['stock', 'catalog'] as const
 const STATES = [
@@ -23,6 +24,9 @@ const meta = {
 } satisfies Meta<typeof Tabs>
 export const Dashboard: Story = {
   render: () => <DashboardTabs />,
+}
+export const Reorderable: Story = {
+  render: () => <ReorderableTabs />,
 }
 export const States: Story = {
   parameters: { pseudo: { hover: ['.hover button:not([aria-selected=true])'], focusVisible: ['.focus button[aria-selected=true]'] } },
@@ -79,6 +83,25 @@ function DashboardTabs() {
       <TabPanel id="catalog" selected={tab}>
         <Text>Catálogo de modelos (fase 2).</Text>
       </TabPanel>
+    </div>
+  )
+}
+
+function ReorderableTabs() {
+  const [tab, setTab] = useState('stock')
+  const [order, setOrder] = useState(['stock', 'catalog', 'specs', 'clients'])
+  const all = {
+    stock: { id: 'stock', label: 'Estoque', icon: cubeIcon, count: 12 },
+    catalog: { id: 'catalog', label: 'Catálogo', icon: documentIcon },
+    specs: { id: 'specs', label: 'Fichas', icon: searchIcon },
+    clients: { id: 'clients', label: 'Clientes', icon: userIcon },
+  } as Record<string, { id: string; label: string; icon: typeof cubeIcon; count?: number }>
+  return (
+    <div className="grid gap-3 p-6">
+      <div className="border-b border-hairline">
+        <Tabs label="Seções do Dashboard" tabs={order.map((id) => all[id])} selected={tab} onSelect={setTab} reorderable onReorder={setOrder} />
+      </div>
+      <span className="font-mono text-xs text-text-muted">Ordem: {order.join(', ')}</span>
     </div>
   )
 }
