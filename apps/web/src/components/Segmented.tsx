@@ -1,5 +1,6 @@
 import { useId, useRef, type KeyboardEvent } from 'react'
 import { useMenu } from './menuContext.ts'
+import { arrowTarget } from './radioKeys.ts'
 
 // A compact single choice, e.g. the theme. The chosen option fills with the accent, glowing where the style
 // has a glow. On its own it is a radio group: one Tab stop on the chosen option, and the arrows move the
@@ -24,23 +25,6 @@ type SegmentedProps = {
   onValueChange: (value: string) => void
   /** Short explanation under the label, inside a menu. */
   description?: string
-}
-
-/**
- * Finds the option an arrow key moves the choice to in a radio group; the arrows wrap around the ends.
- * @param key Pressed key.
- * @param index Index of the chosen option.
- * @param count Number of options.
- * @returns Index of the option to choose, or null when the key doesn't move the choice.
- */
-function arrowTarget(key: string, index: number, count: number): number | null {
-  if (key === 'ArrowRight' || key === 'ArrowDown') {
-    return (index + 1) % count
-  }
-  if (key === 'ArrowLeft' || key === 'ArrowUp') {
-    return (index - 1 + count) % count
-  }
-  return null
 }
 
 export function Segmented({ label, options, value, onValueChange, description }: SegmentedProps) {
