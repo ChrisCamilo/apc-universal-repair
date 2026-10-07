@@ -11,7 +11,8 @@ import { Label } from './Typography.tsx'
 // A row's status (low stock, out of stock) tints the whole row with a stripe at its start, and is also
 // written out for screen readers, since color alone doesn't reach them; the cell text keeps the text color,
 // so it stays readable on every tint. Below TABLE_CARD_BREAKPOINT (720px) each row becomes a card
-// (thumbnail | main | end and actions), the header hides and a "Sort by" select takes its place.
+// (thumbnail | main | end and actions), the header hides and a "Sort by" select takes its place. TableTitle is
+// the main cell: the name, the code under it and, on a card, a line with what the hidden columns said.
 // Tailwind only builds classes it finds written out, hence the literal class maps below.
 
 const CARD_AREA_CLASSES: Record<CardArea, string> = {
@@ -74,6 +75,14 @@ type RowActionProps = {
   tone?: 'default' | 'danger'
 }
 type RowTone = 'warn' | 'danger'
+type TableTitleProps = {
+  /** The row's name, e.g. "Pastilha de freio dianteira". */
+  title: string
+  /** Its code, in the mono face, e.g. "FR-0142". */
+  code: string
+  /** What the columns left off a phone card say, shown only on the card, e.g. "Freios · Cobreq · A-2". */
+  details?: string
+}
 type TableThumbnailProps = {
   /** Photo URL; without one the thumbnail shows a placeholder icon. */
   src?: string | null
@@ -236,5 +245,15 @@ export function TableThumbnail({ src, label, onOpen }: TableThumbnailProps) {
     >
       {content}
     </button>
+  )
+}
+
+export function TableTitle({ title, code, details }: TableTitleProps) {
+  return (
+    <span className="grid min-w-0">
+      <b className="font-semibold">{title}</b>
+      <code className="font-mono text-xs text-text-muted">{code}</code>
+      {details && <span className="hidden text-xs text-text-muted max-[720px]:block">{details}</span>}
+    </span>
   )
 }

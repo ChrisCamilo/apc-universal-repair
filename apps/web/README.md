@@ -30,6 +30,7 @@ The tests need Chromium once: `pnpm exec playwright install chromium`.
 - The toolbar has a **style** switcher (`eighties`, `gt4`, `bmw90`, `fiat90`) and a **mode** switcher (`night`, `day`), so every story can be seen in all eight combinations.
 - The **viewport** menu has the supported sizes: Desktop 1280×720, Mobile design 390×844 and Mobile minimum 360×780.
 - **Foundations** shows the tokens as the active style and mode resolve them: palette, type scale, spacing, radii and motion.
+- **Screens** rebuilds the wireframe screens from the design system alone: the Login, and the Dashboard on its Catalog and Inventory tabs, with sample data.
 - Stories live next to the code as `*.stories.tsx` and use the same Tailwind setup as the app.
 
 ---
@@ -60,4 +61,5 @@ Os testes precisam do Chromium uma vez: `pnpm exec playwright install chromium`.
 - A barra de ferramentas tem um seletor de **estilo** (`eighties`, `gt4`, `bmw90`, `fiat90`) e um de **modo** (`night`, `day`), para ver qualquer story nas oito combinações.
 - O menu de **viewport** tem os tamanhos suportados: Desktop 1280×720, Mobile design 390×844 e Mobile mínimo 360×780.
 - **Foundations** mostra os tokens como o estilo e o modo ativos os resolvem: paleta, escala tipográfica, espaçamento, raios e movimento.
+- **Screens** remonta as telas do wireframe só com o design system: o Login e o Dashboard nas abas Catálogo e Estoque, com dados de exemplo.
 - As stories ficam junto do código como `*.stories.tsx` e usam o mesmo Tailwind do app.

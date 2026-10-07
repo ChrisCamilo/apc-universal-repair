@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { pencilIcon, trashIcon } from '@apc/shared/icons'
 import { sortRows, type Sort } from '@apc/shared/table'
-import { DataTable, RowAction, TableThumbnail } from './DataTable.tsx'
+import { DataTable, RowAction, TableThumbnail, TableTitle } from './DataTable.tsx'
 import { Text } from './Typography.tsx'
 
 // The inventory table with rows in every status (in stock, low, out), with and without a photo, sortable by
@@ -89,13 +89,7 @@ function SampleInventory({ items }: { items: Item[] }) {
             sortable: true,
             card: 'main',
             cell: (item) => (
-              <span className="grid min-w-0">
-                <b className="font-semibold">{item.name}</b>
-                <code className="font-mono text-xs text-text-muted">{item.code}</code>
-                <span className="hidden text-xs text-text-muted max-[720px]:block">
-                  {[item.cat, item.part, item.loc, money(item.price)].join(' · ')}
-                </span>
-              </span>
+              <TableTitle title={item.name} code={item.code} details={[item.cat, item.part, item.loc, money(item.price)].join(' · ')} />
             ),
           },
           { key: 'cat', header: 'Categoria', sortable: true, cell: (item) => item.cat },

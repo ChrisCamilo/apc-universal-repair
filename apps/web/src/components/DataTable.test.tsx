@@ -7,7 +7,7 @@ import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { themeCss } from '../theme.ts'
-import { DataTable, RowAction, TableThumbnail } from './DataTable.tsx'
+import { DataTable, RowAction, TableThumbnail, TableTitle } from './DataTable.tsx'
 
 const ITEMS: Item[] = [
   { code: 'FR-0142', name: 'Pastilha de freio', loc: 'A-10', qty: 12, photo: null },
@@ -186,6 +186,39 @@ test('Web: at phone width rows become cards sorted by a select', async () => {
     await select.click()
     await screen.getByRole('option', { name: 'Quantidade (maior → menor)' }).click()
     expect(quantities()).toEqual(['12', '2', '0'])
+  } finally {
+    await page.viewport(1280, 720)
+  }
+})
+
+// Shows a row's name, code and details in the title cell, and checks the code takes the mono face and the muted
+// color, and the details line stays hidden on the desktop table, where its columns show, and appears on a card.
+test('Web: the title cell shows the code, and the details only on a phone card', async () => {
+  root.dataset.style = 'gt4'
+  root.dataset.mode = 'day'
+  const screen = await render(
+    <DataTable
+      label="Itens do estoque"
+      rows={ITEMS.slice(0, 1)}
+      rowKey={(item) => item.code}
+      sort={null}
+      onSortChange={() => {}}
+      unsortedLabel="Ordem de cadastro"
+      empty={null}
+      columns={[
+        { key: 'name', header: 'Item', card: 'main', cell: (item) => <TableTitle title={item.name} code={item.code} details={`Freios · ${item.loc}`} /> },
+        { key: 'loc', header: 'Local', cell: (item) => item.loc },
+      ]}
+    />,
+  )
+  const code = getComputedStyle(screen.getByText('FR-0142').element())
+  expect(code.fontFamily).toMatch(/JetBrains Mono/)
+  expect(code.color).toBe(rgb(themes.gt4.day.colors.textMuted))
+  await expect.element(screen.getByText('Pastilha de freio')).toBeVisible()
+  await expect.element(screen.getByText('Freios · A-10')).not.toBeVisible()
+  await page.viewport(360, 780)
+  try {
+    await expect.element(screen.getByText('Freios · A-10')).toBeVisible()
   } finally {
     await page.viewport(1280, 720)
   }

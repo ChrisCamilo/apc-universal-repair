@@ -11,7 +11,7 @@ import {
   stockStatus,
   type Item,
 } from '@apc/shared/items'
-import { DataTable, TableThumbnail } from '../components/DataTable.tsx'
+import { DataTable, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
 import { Panel } from '../components/Panel.tsx'
 import { SearchField } from '../components/TextField.tsx'
 import { Text } from '../components/Typography.tsx'
@@ -34,13 +34,7 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
     key: 'name',
     header: 'Item',
     card: 'main',
-    cell: (item) => (
-      <span className="grid min-w-0">
-        <b className="font-semibold">{item.name}</b>
-        <code className="font-mono text-xs text-text-muted">{item.code}</code>
-        <span className="hidden text-xs text-text-muted max-[720px]:block">{itemDetails(item)}</span>
-      </span>
-    ),
+    cell: (item) => <TableTitle title={item.name} code={item.code} details={itemDetails(item)} />,
   },
   { key: 'category', header: 'Categoria', cell: (item) => item.category },
   { key: 'partBrand', header: 'Marca', cell: (item) => item.partBrand },
