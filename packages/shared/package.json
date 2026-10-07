@@ -19,7 +19,8 @@
     "./dialog": "./src/dialog/dialog.ts",
     "./pagination": "./src/pagination/pagination.ts",
     "./photos": "./src/photos/photos.ts",
-    "./tour": "./src/tour/tour.ts"
+    "./tour": "./src/tour/tour.ts",
+    "./tree": "./src/tree/tree.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
