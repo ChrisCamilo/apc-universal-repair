@@ -1,3 +1,5 @@
+// Reads apps/api/.env (DATABASE_URL, PORT, PHOTOS_DIR) before anything uses it; variables already set win.
+import "dotenv/config";
 import { buildApp } from "./app.js";
 
 const app = buildApp();
