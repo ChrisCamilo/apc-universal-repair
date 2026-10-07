@@ -19,7 +19,7 @@ import { TourProvider } from './src/Tour';
 const SCREEN_STYLE = { flex: 1 };
 
 // Starts on the Dashboard when a session is saved on the device and on the login otherwise, going on to the
-// Dashboard once the AuthService accepts the login. Nothing but the canvas shows while the saved session is read,
+// Dashboard once the AuthService accepts the login, and back to the login after "Sair". Nothing but the canvas shows while the saved session is read,
 // so neither screen flashes before the right one.
 function Screen() {
   const theme = useTheme();
@@ -35,11 +35,17 @@ function Screen() {
     };
   }, []);
 
+  /** Ends the session and goes back to the login. */
+  const logout = async () => {
+    await auth.logout();
+    setUser(null);
+  };
+
   return (
     <SafeAreaView style={[SCREEN_STYLE, { backgroundColor: theme.colors.canvas }]}>
       <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
       {user === undefined ? null : user ? (
-        <Dashboard userMenu={<UserMenu user={user} />} />
+        <Dashboard userMenu={<UserMenu user={user} onLogout={logout} />} />
       ) : (
         <LoginScreen auth={auth} onLoggedIn={setUser} />
       )}

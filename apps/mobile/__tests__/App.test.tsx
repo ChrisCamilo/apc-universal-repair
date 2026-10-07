@@ -7,6 +7,7 @@ import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { createAsyncStorage } from '@react-native-async-storage/async-storage';
 import { initials, SESSION_STORAGE_KEY, type SessionUser } from '@apc/shared/auth';
+import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
 import { TEST_USERS } from '@apc/shared/test-users';
 import App from '../App';
 import { auth } from '../src/auth/auth';
@@ -95,4 +96,20 @@ test('Mobile: nothing but the canvas shows while the session is read', async () 
   expect(showsDashboard(tree)).toBe(false);
   await ReactTestRenderer.act(async () => answer(null));
   expect(showsLogin(tree)).toBe(true);
+});
+
+// Starts on the Dashboard with a saved session and a saved theme, picks "Sair" in the user menu, and checks the
+// login takes the Dashboard's place, the session is gone and the theme stays on the device.
+test('Mobile: Sair goes back to the login and keeps the preferences', async () => {
+  const session = { id: USER.id, username: USER.username, displayName: USER.displayName, initials: initials(USER.displayName) };
+  await STORAGE.setMany({ [SESSION_STORAGE_KEY]: JSON.stringify(session), [THEME_STORAGE_KEYS.style]: 'fiat90' });
+  const tree = await mountApp();
+  const pressable = (name: string) =>
+    tree.root.find((n) => typeof n.type !== 'string' && typeof n.props.onPress === 'function' && n.props.accessibilityLabel === name);
+  await ReactTestRenderer.act(async () => pressable('Menu do usuário').props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Sair').props.onPress());
+  expect(showsLogin(tree)).toBe(true);
+  expect(showsDashboard(tree)).toBe(false);
+  expect(await STORAGE.getItem(SESSION_STORAGE_KEY)).toBeNull();
+  expect(await STORAGE.getItem(THEME_STORAGE_KEYS.style)).toBe('fiat90');
 });

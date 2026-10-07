@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { SESSION_STORAGE_KEY } from "@apc/shared/auth";
+import { THEME_STORAGE_KEYS } from "@apc/shared/theme";
+import { TEST_USERS } from "@apc/shared/test-users";
 import { signIn } from "./session.ts";
+
+const USER = TEST_USERS[0];
 
 // The page starts at night, following a dark system, so turning dark mode off is a change.
 test.use({ colorScheme: "dark" });
@@ -40,4 +45,23 @@ test("Web: the user menu changes and keeps the display preferences", async ({ pa
   await page.reload();
   await expect(html).toHaveAttribute("data-style", "gt4");
   await expect(html).toHaveAttribute("data-mode", "day");
+});
+
+// Picks GT4, then "Sair" at the end of the menu, and checks the app is on the login with the session gone and GT4
+// still applied and saved; logging in again goes back to the Dashboard.
+test("Web: Sair ends the session and keeps the preferences", async ({ page }) => {
+  await page.goto("/inventory");
+  await page.getByRole("button", { name: "Menu do usuário" }).click();
+  await page.getByRole("menuitemradio", { name: "GT4" }).click();
+  await page.getByRole("menuitem", { name: "Sair" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByLabel("Usuário", { exact: true })).toBeVisible();
+  expect(await page.evaluate((key) => localStorage.getItem(key), SESSION_STORAGE_KEY)).toBeNull();
+  await expect(page.locator("html")).toHaveAttribute("data-style", "gt4");
+  expect(await page.evaluate((key) => localStorage.getItem(key), THEME_STORAGE_KEYS.style)).toBe("gt4");
+
+  await page.getByLabel("Usuário", { exact: true }).fill(USER.username);
+  await page.getByLabel("Senha", { exact: true }).fill(USER.password);
+  await page.getByLabel("Senha", { exact: true }).press("Enter");
+  await expect(page).toHaveURL(/\/inventory$/);
 });

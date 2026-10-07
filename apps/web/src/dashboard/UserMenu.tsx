@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme'
+import { auth } from '../auth/auth.ts'
 import { useSession } from '../auth/sessionContext.ts'
-import { Menu, MenuHeader, MenuLabel, UserBadge } from '../components/Menu.tsx'
+import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../components/Menu.tsx'
+import { Divider } from '../components/Panel.tsx'
 import { Segmented } from '../components/Segmented.tsx'
 import { Switch } from '../components/Switch.tsx'
 import { readStored, writeStored } from '../storage.ts'
@@ -11,14 +14,21 @@ import { useTheme } from '../useTheme.ts'
 // The user menu at the right of the Dashboard header: the logged user's initials and username on the trigger
 // (initials only on phones), and the display preferences. Dark mode and the theme go through the ThemeProvider,
 // which applies and saves them at once; "Arrastar para reordenar" is saved on the device, off until turned on,
-// and the tabs follow it (#42). Every choice keeps the menu open, so several can be changed in a row.
+// and the tabs follow it (#42). Every choice keeps the menu open, so several can be changed in a row. "Sair", at
+// the end and set apart from the preferences, ends the session and goes back to /login; the preferences stay on
+// the device for the next login.
 
 const STYLE_OPTIONS = STYLES.map((style) => ({ value: style, label: STYLE_LABELS[style] }))
 
 export function UserMenu() {
-  const user = useSession().user!
+  const { user, setUser } = useSession()
+  const navigate = useNavigate()
   const { style, mode, setStyle, setMode } = useTheme()
   const [reorder, setReorder] = useState(() => readStored(REORDER_TABS_STORAGE_KEY) === 'true')
+  // Nobody to show for a moment after "Sair", until the app leaves the Dashboard.
+  if (!user) {
+    return null
+  }
   return (
     <Menu label="Menu do usuário" trigger={<UserBadge initials={user.initials} name={user.username} />}>
       <MenuHeader title={user.username} subtitle={user.displayName} />
@@ -38,6 +48,16 @@ export function UserMenu() {
       >
         Arrastar para reordenar
       </Switch>
+      <Divider />
+      <MenuItem
+        onSelect={async () => {
+          await auth.logout()
+          setUser(null)
+          navigate('/login', { replace: true })
+        }}
+      >
+        Sair
+      </MenuItem>
     </Menu>
   )
 }
