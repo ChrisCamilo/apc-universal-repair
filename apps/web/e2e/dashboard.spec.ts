@@ -23,17 +23,23 @@ test("Web: the Dashboard opens on the Inventory tab", async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
 });
 
-// Opens a tab by its link, an unknown path and "/" with a stale saved tab, and checks each lands on a real
-// tab, and that the open tab is remembered.
+// Opens a tab by its link and another by its tab, an unknown path and "/" with the last tab and with a stale saved
+// tab, and checks each lands on a real tab, and that the open tab is remembered.
 test("Web: tabs have their own routes and the last one is remembered", async ({ page }) => {
   await page.goto("/inventory");
   await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
   expect(await page.evaluate(() => localStorage.getItem("apc-tab"))).toBe("inventory");
 
-  await page.goto("/nao-existe");
-  await expect(page).toHaveURL(/\/inventory$/);
+  await page.getByRole("tab", { name: "Catálogo" }).click();
+  await expect(page).toHaveURL(/\/catalog$/);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("apc-tab"))).toBe("catalog");
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/catalog$/);
 
-  await page.evaluate(() => localStorage.setItem("apc-tab", "catalog"));
+  await page.goto("/nao-existe");
+  await expect(page).toHaveURL(/\/catalog$/);
+
+  await page.evaluate(() => localStorage.setItem("apc-tab", "specs"));
   await page.goto("/");
   await expect(page).toHaveURL(/\/inventory$/);
 });
