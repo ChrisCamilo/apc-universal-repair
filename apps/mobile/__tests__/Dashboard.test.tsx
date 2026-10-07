@@ -42,13 +42,14 @@ beforeEach(async () => {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    // Opens the Dashboard in one style and mode and checks the page sits on the canvas, the APC mark heads it
-    // and the Inventory tab is open, with its search, and selected by default.
+    // Opens the Dashboard in one style and mode and checks the page sits on the canvas, the compact APC mark heads
+    // it and the Inventory tab is open, with its search, and selected by default.
     test(`Mobile: the Dashboard opens on the Inventory tab in ${style}/${mode}`, async () => {
       const tree = await mount(style, mode, <Dashboard />);
       const page = tree.root.findAllByType(ScrollView)[0];
       expect([page.props.style].flat().find((s) => s?.backgroundColor)?.backgroundColor).toBe(themes[style][mode].colors.canvas);
-      expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'APC Universal Repair' && typeof n.type !== 'string').length).toBeGreaterThan(0);
+      const mark = tree.root.find((n) => n.props.accessibilityLabel === 'APC Universal Repair' && n.props.viewBox !== undefined);
+      expect([mark.props.viewBox, mark.props.width]).toEqual(['0 0 48 48', 32]);
       const tab = tree.root.find((n) => n.props.accessibilityRole === 'tab' && typeof n.type !== 'string');
       expect(tab.props.accessibilityState).toEqual({ selected: true });
       expect(shows(tree, 'Estoque')).toBe(true);
