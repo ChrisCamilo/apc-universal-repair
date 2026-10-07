@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { documentIcon } from '@apc/shared/icons'
 import { userEvent, within } from 'storybook/test'
-import { Menu, MenuHeader, MenuItem, MenuLabel } from './Menu.tsx'
+import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from './Menu.tsx'
 import { Segmented } from './Segmented.tsx'
 import { Switch } from './Switch.tsx'
 
@@ -39,12 +39,7 @@ function UserMenu() {
     <div className="flex min-h-[calc(var(--spacing)*130)] justify-end p-6">
       <Menu
         label="Menu do usuário"
-        trigger={
-          <>
-            <span className="grid size-7 place-items-center rounded-pill bg-accent font-display text-xs font-bold text-on-accent">CC</span>
-            <span className="font-mono text-xs">christian.camilo</span>
-          </>
-        }
+        trigger={<UserBadge initials="CC" name="christian.camilo" />}
       >
         <MenuHeader title="christian.camilo" subtitle="Oficina APC" />
         <MenuLabel>Aparência</MenuLabel>
