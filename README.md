@@ -73,6 +73,8 @@ pnpm --filter @apc/api exec prisma migrate deploy   # creates the database table
 pnpm dev                                  # API on :3333, web on :5173
 ```
 
+Login is mocked until the real backend (EP-10): sign in with a test user from `packages/shared/src/auth/testUsers.ts`, such as `christian.camilo` / `opala4100`. These are test values only.
+
 Before the first test run, download the browser that the component and E2E tests use:
 
 ```bash
@@ -199,6 +201,8 @@ cp apps/api/.env.example apps/api/.env   # depois ajuste o DATABASE_URL
 pnpm --filter @apc/api exec prisma migrate deploy   # cria as tabelas do banco
 pnpm dev                                  # API na porta 3333, web na 5173
 ```
+
+O login é simulado até o backend real (EP-10): entre com um usuário de teste de `packages/shared/src/auth/testUsers.ts`, como `christian.camilo` / `opala4100`. São valores só de teste.
 
 Antes de rodar os testes pela primeira vez, baixe o navegador que os testes de componente e E2E usam:
 
