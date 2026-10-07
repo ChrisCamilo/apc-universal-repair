@@ -19,7 +19,8 @@ import { Heading, NumericReadout, Text } from './Typography';
 // on the ×, on the back button and on a tap outside. "Remover esta foto" asks first, naming the item and
 // warning when the photo is the cover; the next photo takes its place. "Trocar esta foto" replaces the one on
 // screen and "Adicionar foto" shows while there is room, both through the owner's picker and with the
-// ImageUpload rules and messages. Toasts show inside the viewer, above the rest of the app.
+// ImageUpload rules and messages. The owner may save each change as it happens: when it says the change couldn't be
+// saved, the toast says so instead of confirming it. Toasts show inside the viewer, above the rest of the app.
 
 const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: scales.space.s2 };
 const BODY_STYLE: ViewStyle = { gap: scales.space.s3, padding: scales.space.s4 };
@@ -48,7 +49,8 @@ type ImageViewerProps = {
   /** Item code, shown under the name. */
   code: string;
   photos: readonly UploadPhoto[];
-  onPhotosChange: (photos: UploadPhoto[]) => void;
+  /** Takes the changed photos; resolving to false says they couldn't be saved. */
+  onPhotosChange: (photos: UploadPhoto[]) => void | Promise<boolean>;
   /** Most photos the item holds, e.g. ITEM_PHOTO_LIMIT. */
   limit: number;
   /** Opens the phone's photo picker and resolves with the photos chosen, none when the user cancels. */
@@ -191,6 +193,12 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
   /** Moves to the previous or the next photo, wrapping around the ends. */
   const step = (delta: number) => setIndex((current + delta + count) % count);
 
+  /** Hands the changed photos over, then confirms the change or says it couldn't be saved. */
+  const change = async (next: UploadPhoto[], done: string) => {
+    const saved = await onPhotosChange(next);
+    toast(saved === false ? 'Não foi possível salvar as fotos. Tente de novo.' : done);
+  };
+
   /** Opens the picker and adds the photo chosen, or puts it in place of the one on screen. */
   const choose = async (replace: boolean) => {
     const [file] = await onPick();
@@ -204,21 +212,24 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
     }
     const photo = { url: file.url, file };
     if (replace) {
-      onPhotosChange(photos.map((p, i) => (i === current ? photo : p)));
-      toast('Foto trocada');
+      await change(
+        photos.map((p, i) => (i === current ? photo : p)),
+        'Foto trocada',
+      );
     } else {
-      onPhotosChange([...photos, photo]);
       setIndex(count);
-      toast('Foto adicionada');
+      await change([...photos, photo], 'Foto adicionada');
     }
   };
 
   /** Removes the photo on screen after the confirmation; the next one takes its place. */
-  const remove = () => {
-    onPhotosChange(photos.filter((_, i) => i !== current));
+  const remove = async () => {
     setConfirming(false);
     setProblems([]);
-    toast('Foto removida');
+    await change(
+      photos.filter((_, i) => i !== current),
+      'Foto removida',
+    );
   };
 
   return (
