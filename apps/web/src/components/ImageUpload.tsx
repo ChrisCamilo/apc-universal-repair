@@ -2,12 +2,13 @@ import { useId, useState, type DragEvent } from 'react'
 import { closeIcon, imageIcon } from '@apc/shared/icons'
 import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/shared/photos'
 import { Icon } from './Icon.tsx'
-import { Label } from './Typography.tsx'
+import { Label, Text } from './Typography.tsx'
 
 // The photo field of the item form. Photos show as thumbnails, the first one marked as the cover, each with
 // an × to remove it. Under them, a drop area that is also clickable takes several files at once and says how
 // many more fit; it disappears once the limit is reached. Only JPG, PNG and WebP up to 3 MB are taken: files
-// that break the rule or go past the limit are left out, and a message names each one and says why.
+// that break the rule or go past the limit are left out, and a message names each one and says why. Read-only,
+// as in the item details, it only shows the photos, or says there are none: no ×, no drop area.
 
 const CHIP = 'absolute rounded-pill bg-backdrop text-text'
 
@@ -19,9 +20,11 @@ type ImageUploadProps = {
   onPhotosChange: (photos: UploadPhoto[]) => void
   /** Most photos the field holds, e.g. ITEM_PHOTO_LIMIT. */
   limit: number
+  /** Only shows the photos; nothing can be added or removed. */
+  readOnly?: boolean
 }
 
-export function ImageUpload({ label, photos, onPhotosChange, limit }: ImageUploadProps) {
+export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = false }: ImageUploadProps) {
   const labelId = useId()
   const inputId = useId()
   const [problems, setProblems] = useState<string[]>([])
@@ -70,19 +73,22 @@ export function ImageUpload({ label, photos, onPhotosChange, limit }: ImageUploa
                   capa
                 </span>
               )}
-              <button
-                type="button"
-                aria-label={`Remover foto ${index + 1}`}
-                className={`${CHIP} top-1 right-1 grid size-5.5 cursor-pointer place-items-center outline-none transition-colors hover:bg-danger hover:text-on-danger focus-visible:shadow-ring`}
-                onClick={() => remove(index)}
-              >
-                <Icon icon={closeIcon} size={10} />
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  aria-label={`Remover foto ${index + 1}`}
+                  className={`${CHIP} top-1 right-1 grid size-5.5 cursor-pointer place-items-center outline-none transition-colors hover:bg-danger hover:text-on-danger focus-visible:shadow-ring`}
+                  onClick={() => remove(index)}
+                >
+                  <Icon icon={closeIcon} size={10} />
+                </button>
+              )}
             </li>
           ))}
         </ul>
       )}
-      {left > 0 && (
+      {readOnly && photos.length === 0 && <Text tone="muted">Sem fotos</Text>}
+      {!readOnly && left > 0 && (
         <label
           htmlFor={inputId}
           data-dragging={dragging || undefined}

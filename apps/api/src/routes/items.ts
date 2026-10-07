@@ -9,10 +9,12 @@ import {
   itemUpdateSchema,
 } from "@apc/shared/items";
 import { prisma } from "../db/client.js";
-import { createData, itemWhere, toItem, updateData } from "../items/items.js";
+import { createData, itemWhere, toItem, updateData, WITH_PHOTOS } from "../items/items.js";
+import { removePhotoFiles } from "../photos/photos.js";
 
 // CRUD of inventory items. The list keeps the order the items were added in. A part code is unique: creating
 // or editing to a code another item uses is rejected with 409, naming that item, so the form can say which.
+// Deleting an item also deletes its photos' files.
 
 /**
  * Answers 409 for a part code another item already uses.
@@ -36,7 +38,7 @@ function codeTaken(reply: FastifyReply, code: string, owner: { id: string; name:
  * @param reply Reply to send.
  * @returns The sent reply.
  */
-function notFound(reply: FastifyReply) {
+export function notFound(reply: FastifyReply) {
   return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "Item not found." });
 }
 
@@ -50,6 +52,7 @@ export function registerItemRoutes(app: FastifyInstance) {
       const rows = await prisma.item.findMany({
         where: itemWhere(request.query, prisma.item.fields.minQuantity),
         orderBy: { createdAt: "asc" },
+        include: WITH_PHOTOS,
       });
       return { items: rows.map(toItem) };
     },
@@ -64,7 +67,7 @@ export function registerItemRoutes(app: FastifyInstance) {
       if (owner) {
         return codeTaken(reply, data.code, owner);
       }
-      const row = await prisma.item.create({ data });
+      const row = await prisma.item.create({ data, include: WITH_PHOTOS });
       return reply.status(201).send(toItem(row));
     },
   );
@@ -84,12 +87,18 @@ export function registerItemRoutes(app: FastifyInstance) {
           return codeTaken(reply, data.code, owner);
         }
       }
-      return toItem(await prisma.item.update({ where: { id }, data }));
+      return toItem(await prisma.item.update({ where: { id }, data, include: WITH_PHOTOS }));
     },
   );
 
   routes.delete("/items/:id", { schema: { params: itemIdParamsSchema } }, async (request, reply) => {
-    const { count } = await prisma.item.deleteMany({ where: { id: request.params.id } });
-    return count === 0 ? notFound(reply) : reply.status(204).send();
+    const { id } = request.params;
+    const photos = await prisma.itemPhoto.findMany({ where: { itemId: id } });
+    const { count } = await prisma.item.deleteMany({ where: { id } });
+    if (count === 0) {
+      return notFound(reply);
+    }
+    await removePhotoFiles(photos.flatMap((photo) => [photo.file, photo.thumbFile]));
+    return reply.status(204).send();
   });
 }

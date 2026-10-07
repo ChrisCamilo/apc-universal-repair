@@ -4,7 +4,9 @@
     "outDir": "dist",
     "rootDir": "src",
     "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "moduleResolution": "NodeNext",
+    // The shared modules it compiles import each other by their .ts names; this keeps that legal.
+    "rewriteRelativeImportExtensions": true
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]

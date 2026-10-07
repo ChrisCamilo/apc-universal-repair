@@ -12,7 +12,8 @@ import { Label, Text } from './Typography';
 // the cover, each with an × to remove it. Under them, an area to tap opens the owner's photo picker, which
 // may return several photos at once, and says how many more fit; it disappears once the limit is reached.
 // Only JPG, PNG and WebP up to 3 MB are taken: photos that break the rule or go past the limit are left out,
-// and a message names each one and says why.
+// and a message names each one and says why. Read-only, as in the item details, it only shows the photos, or says
+// there are none: no ×, no area to tap.
 
 const COVER_STYLE: ViewStyle = { position: 'absolute', left: scales.space.s1, bottom: scales.space.s1 };
 const IMAGE_STYLE: ImageStyle = { width: '100%', height: '100%' };
@@ -44,6 +45,8 @@ type ImageUploadProps = {
   limit: number;
   /** Opens the phone's photo picker and resolves with the photos chosen, none when the user cancels. */
   onPick: () => Promise<PickedPhoto[]>;
+  /** Only shows the photos; nothing can be added or removed. */
+  readOnly?: boolean;
 };
 
 /**
@@ -123,7 +126,7 @@ function tileStyle(theme: ActiveTheme, fill: string): ViewStyle {
   };
 }
 
-export function ImageUpload({ label, photos, onPhotosChange, limit, onPick }: ImageUploadProps) {
+export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, readOnly = false }: ImageUploadProps) {
   const theme = useTheme();
   const [problems, setProblems] = useState<string[]>([]);
   const left = limit - photos.length;
@@ -166,20 +169,23 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick }: Im
                     <NativeText style={coverTextStyle(theme)}>capa</NativeText>
                   </View>
                 )}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remover foto ${index + 1}`}
-                  hitSlop={scales.space.s2}
-                  onPress={() => remove(index)}
-                  style={({ pressed }) => [REMOVE_STYLE, chipStyle(theme, pressed)]}
-                >
-                  {({ pressed }) => <Icon icon={closeIcon} size={10} color={pressed ? theme.colors.onDanger : theme.colors.text} />}
-                </Pressable>
+                {!readOnly && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remover foto ${index + 1}`}
+                    hitSlop={scales.space.s2}
+                    onPress={() => remove(index)}
+                    style={({ pressed }) => [REMOVE_STYLE, chipStyle(theme, pressed)]}
+                  >
+                    {({ pressed }) => <Icon icon={closeIcon} size={10} color={pressed ? theme.colors.onDanger : theme.colors.text} />}
+                  </Pressable>
+                )}
               </View>
             ))}
           </View>
         )}
-        {left > 0 && (
+        {readOnly && photos.length === 0 && <Text tone="muted">Sem fotos</Text>}
+        {!readOnly && left > 0 && (
           <Pressable accessibilityRole="button" onPress={pick} style={({ pressed }) => dropStyle(theme, pressed)} testID="upload-drop">
             <View style={tileStyle(theme, theme.colors.panel)}>
               <Icon icon={imageIcon} size={22} color={theme.colors.textMuted} />

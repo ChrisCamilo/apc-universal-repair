@@ -15,9 +15,9 @@ model Brand {
 /// An inventory item. nameKey and codeKey hold the name without accents in lowercase and the code with
 /// letters and digits only, so searches ignore accents and separators (see @apc/shared/items).
 model Item {
-  id             String   @id @default(uuid())
+  id             String      @id @default(uuid())
   /// Part code, stored in uppercase and unique.
-  code           String   @unique
+  code           String      @unique
   codeKey        String
   name           String
   nameKey        String
@@ -25,13 +25,30 @@ model Item {
   partBrand      String
   vehicleBrand   String
   vehicleModel   String?
-  position       String   @default("N/A")
-  side           String   @default("N/A")
-  color          String   @default("N/A")
+  position       String      @default("N/A")
+  side           String      @default("N/A")
+  color          String      @default("N/A")
   location       String?
-  quantity       Int      @default(0)
-  minQuantity    Int      @default(0)
+  quantity       Int         @default(0)
+  minQuantity    Int         @default(0)
   unitPriceCents Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  /// Photos in order, the first one the cover.
+  photos         ItemPhoto[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+/// A photo of an item. The original file and its thumbnail are stored by the API under PHOTOS_DIR, named after the
+/// photo's id; position orders the item's photos from 0, the cover.
+model ItemPhoto {
+  id        String @id @default(uuid())
+  itemId    String
+  item      Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  position  Int
+  /// Name of the original file, e.g. "<id>.jpg".
+  file      String
+  /// Name of the thumbnail, e.g. "<id>-thumb.webp".
+  thumbFile String
+
+  @@unique([itemId, position])
 }

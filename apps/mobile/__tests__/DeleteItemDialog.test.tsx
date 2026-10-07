@@ -27,6 +27,7 @@ const FILTER: Item = {
   quantity: 4,
   minQuantity: 1,
   unitPriceCents: 3990,
+  photos: [],
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z',
 };

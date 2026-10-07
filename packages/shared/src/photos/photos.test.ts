@@ -1,8 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, photoCount, photoProblem, takePhotos } from "./photos.ts";
+import type { ItemPhoto } from "../items/items.ts";
+import {
+  heldPhotos,
+  ITEM_PHOTO_LIMIT,
+  PHOTO_MAX_BYTES,
+  photoCount,
+  photoParts,
+  photoProblem,
+  photosChanged,
+  takePhotos,
+} from "./photos.ts";
 
 const MB = 1024 * 1024;
+const SAVED: ItemPhoto[] = ["a", "b"].map((id) => ({ id, url: `/photos/${id}.jpg`, thumbUrl: `/photos/${id}-thumb.webp` }));
 
 // Checks JPG, PNG and WebP up to 3 MB pass, and other types and larger photos are refused with the reason,
 // the size written in pt-BR.
@@ -38,4 +49,24 @@ test("Shared: taking photos stops at the limit and names each file left out", ()
 test("Shared: photo counts read in pt-BR", () => {
   assert.equal(photoCount(1), "1 foto");
   assert.equal(photoCount(3), "3 fotos");
+});
+
+// Holds an item's two saved photos through the API's address, then checks the parts that save a field: unchanged
+// keeps both in order and sends nothing; swapped, one removed, or one replaced by a new file each send the change.
+test("Shared: a field's photos become the parts that save them, only when changed", () => {
+  const held = heldPhotos(SAVED, "/api");
+  assert.deepEqual(held, [{ url: "/api/photos/a.jpg" }, { url: "/api/photos/b.jpg" }]);
+
+  const same = photoParts(held, SAVED, "/api");
+  assert.deepEqual(same, [{ keep: "a" }, { keep: "b" }]);
+  assert.equal(photosChanged(same, SAVED), false);
+
+  const swapped = photoParts([held[1], held[0]], SAVED, "/api");
+  assert.deepEqual(swapped, [{ keep: "b" }, { keep: "a" }]);
+  assert.equal(photosChanged(swapped, SAVED), true);
+  assert.equal(photosChanged(photoParts([held[0]], SAVED, "/api"), SAVED), true);
+
+  const replaced = photoParts([{ url: "blob:nova", file: "nova.png" }, held[1]], SAVED, "/api");
+  assert.deepEqual(replaced, [{ file: "nova.png" }, { keep: "b" }]);
+  assert.equal(photosChanged(replaced, SAVED), true);
 });

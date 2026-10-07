@@ -9,10 +9,14 @@ import {
   type ItemListQuery,
   type ItemUpdate,
 } from "@apc/shared/items";
-import type { Item as ItemRow, Prisma } from "../generated/prisma/client.js";
+import type { Item as ItemRow, ItemPhoto as ItemPhotoRow, Prisma } from "../generated/prisma/client.js";
+import { photoOf } from "../photos/photos.js";
 
 // Translates between the items API and the database: the writing rule and search keys applied on create and
-// update, the filters of the list, and the row sent back.
+// update, the filters of the list, and the row sent back with its photos.
+
+/** What every item query includes: the item's photos, in order. */
+export const WITH_PHOTOS = { photos: { orderBy: { position: "asc" } } } satisfies Prisma.ItemInclude;
 
 /**
  * Builds the row of a new item: text values start with a capital, the code is uppercase, the search keys are
@@ -91,11 +95,11 @@ function textOrNull(value: string | undefined): string | null {
 }
 
 /**
- * Turns a database row into the item the API sends, without the search keys.
- * @param row Item row.
+ * Turns a database row into the item the API sends, without the search keys, with its photos in order.
+ * @param row Item row, read with WITH_PHOTOS.
  * @returns The item as described by itemSchema.
  */
-export function toItem(row: ItemRow): Item {
+export function toItem(row: ItemRow & { photos: ItemPhotoRow[] }): Item {
   return {
     id: row.id,
     code: row.code,
@@ -111,6 +115,7 @@ export function toItem(row: ItemRow): Item {
     quantity: row.quantity,
     minQuantity: row.minQuantity,
     unitPriceCents: row.unitPriceCents,
+    photos: row.photos.map(photoOf),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

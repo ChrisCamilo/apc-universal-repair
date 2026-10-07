@@ -16,16 +16,19 @@ import {
   type ItemForm,
   type ItemFormErrors,
 } from '@apc/shared/item-form';
+import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { scales } from '@apc/shared/theme';
 import { API_URL } from '../api';
 import { Button } from '../Button';
 import { Combobox } from '../Combobox';
 import { Dialog } from '../Dialog';
 import { FieldValue } from '../FieldValue';
+import { ImageUpload, type UploadPhoto } from '../ImageUpload';
 import { Segmented } from '../Segmented';
 import { TextField } from '../TextField';
 import { useToast } from '../Toast';
 import { Label } from '../Typography';
+import { pickPhotos, savePhotos } from './photos';
 
 // The form that creates a new item or edits one, the same as the web, in one column: the content scrolls inside the
 // dialog while Cancel and Save stay at the bottom. Category, part brand and the vehicle's brand and model are
@@ -33,13 +36,16 @@ import { Label } from '../Typography';
 // stays locked until a brand is chosen and clears when the brand changes to one without it. The code turns
 // uppercase while typing; the texts start with a capital letter when leaving the field and again on save, and the
 // price is shown back in reais. Saving checks the required fields and a code another item uses, then sends the item
-// to the API, shows a toast and hands the saved item over. Opened on an item's details, the same dialog shows each
+// to the API, shows a toast and hands the saved item over, then sends its photos when they changed: up to 3, the
+// first the cover, picked from the phone's library. When the item is saved but its photos aren't, the toast says so.
+// Opened on an item's details, the same dialog shows each
 // field as text in the form's layout, with Fechar and Editar: nothing can be changed or saved until Editar unlocks
 // the fields in place, on the first one, and the buttons turn into Cancelar and Salvar alterações, which save like
 // the edit form.
 
 const CHOICE_STYLE: ViewStyle = { gap: scales.space.s2 };
 const FIELDS_STYLE: ViewStyle = { gap: scales.space.s3 };
+const PHOTOS_LABEL = 'Fotos do item';
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }));
 const SIDE_OPTIONS = SIDES.map((value) => ({ value, label: value }));
 
@@ -61,6 +67,7 @@ export function ItemFormDialog({ open, item, details = false, items, onClose, on
   const [viewing, setViewing] = useState(details && item !== undefined);
   const code = useRef<ComponentRef<typeof TextInput>>(null);
   const [form, setForm] = useState<ItemForm>(() => (item ? itemFormOf(item) : EMPTY_ITEM_FORM));
+  const [photos, setPhotos] = useState<UploadPhoto[]>(() => (item ? heldPhotos(item.photos, API_URL) : []));
   const [errors, setErrors] = useState<ItemFormErrors>({});
   const [saving, setSaving] = useState(false);
   const options = itemFormOptions(items);
@@ -104,19 +111,27 @@ export function ItemFormDialog({ open, item, details = false, items, onClose, on
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(itemFormBody(form, options.colors)),
     }).catch(() => null);
-    setSaving(false);
     if (response?.status === 409) {
+      setSaving(false);
       const { details: clashes } = await response.json();
       setErrors({ code: codeTakenMessage(clashes[0].itemName) });
       return;
     }
     if (!response?.ok) {
+      setSaving(false);
       toast('Não foi possível salvar o item. Tente de novo.');
       return;
     }
     const saved = itemSchema.parse(await response.json());
+    const withPhotos = await savePhotos(saved, photos);
+    setSaving(false);
+    if (!withPhotos) {
+      toast(`Item “${saved.name}” salvo, mas as fotos não foram salvas. Tente de novo.`);
+      onSaved(saved);
+      return;
+    }
     toast(item ? `Item “${saved.name}” salvo.` : `Item “${saved.name}” cadastrado.`);
-    onSaved(saved);
+    onSaved(withPhotos);
   };
 
   return (
@@ -148,12 +163,21 @@ export function ItemFormDialog({ open, item, details = false, items, onClose, on
     >
       {viewing && item ? (
         <View style={FIELDS_STYLE}>
+          <ImageUpload
+            label={PHOTOS_LABEL}
+            photos={photos}
+            onPhotosChange={setPhotos}
+            limit={ITEM_PHOTO_LIMIT}
+            onPick={pickPhotos}
+            readOnly
+          />
           {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
             <FieldValue key={field} label={ITEM_FIELD_LABELS[field as keyof ItemForm]} value={text} />
           ))}
         </View>
       ) : (
         <View style={FIELDS_STYLE}>
+          <ImageUpload label={PHOTOS_LABEL} photos={photos} onPhotosChange={setPhotos} limit={ITEM_PHOTO_LIMIT} onPick={pickPhotos} />
           <TextField
             ref={code}
             label={ITEM_FIELD_LABELS.code}

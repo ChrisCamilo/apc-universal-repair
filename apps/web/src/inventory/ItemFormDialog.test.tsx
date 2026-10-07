@@ -11,6 +11,8 @@ import '../index.css'
 import { themeCss } from '../theme.ts'
 import { ItemFormDialog } from './ItemFormDialog.tsx'
 
+// A photo the API saved, as items carry it.
+const SAVED_PHOTO = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.png', thumbUrl: '/photos/aa-thumb.webp' }
 const FILTER = item({ code: 'W 712/95', name: 'Filtro de óleo', vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', color: 'Preto' })
 const PADS = item({ code: 'FRA-1000', name: 'Pastilha de freio', vehicleBrand: 'Chevrolet', vehicleModel: 'Opala 4.1' })
 const ITEMS = [FILTER, PADS, item({ code: 'J-1', name: 'Junta', vehicleBrand: 'Volkswagen', vehicleModel: 'Santana' })]
@@ -66,10 +68,21 @@ function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
     quantity: 1,
     minQuantity: 0,
     unitPriceCents: 3990,
+    photos: [],
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
   }
+}
+
+/**
+ * Makes a small PNG file, as the file picker would hand over.
+ * @param name File name.
+ * @returns The file.
+ */
+function png(name: string): File {
+  const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0))
+  return new File([bytes], name, { type: 'image/png' })
 }
 
 /**
@@ -260,26 +273,86 @@ test('Web: the details show the item as text and change nothing', async () => {
   expect(fetch).not.toHaveBeenCalled()
 })
 
-// Opens the details, presses Editar and checks the fields unlock in place, each where its value was, with the focus
-// on the first, Cancelar and Salvar alterações; then changes the quantity and checks it is patched like an edit.
+// Opens the details, presses Editar and checks the fields unlock in place, each where its value was under the photos
+// (whose field grows a drop area), with the focus on the first, Cancelar and Salvar alterações; then changes the quantity and checks it is patched like an edit.
 test('Web: Editar unlocks the details in place and saves like an edit', async () => {
   const fetch = answerSave(200)
   const onSaved = vi.fn()
   const screen = await render(<Sample item={FILTER} details onSaved={onSaved} />)
+  const photos = () => screen.getByRole('group', { name: 'Fotos do item' }).element().getBoundingClientRect().bottom
+  const below = (rect: DOMRect) => rect.top - photos()
   const before = screen.getByText('W 712/95').element().getBoundingClientRect()
+  const beforeGap = below(before)
   await screen.getByRole('button', { name: 'Editar' }).click()
   await expect.element(screen.getByRole('heading', { name: 'Editar item' })).toBeVisible()
   const code = screen.getByLabelText('Código da peça')
   await expect.element(code).toHaveFocus()
   await expect.element(code).toHaveValue('W 712/95')
   const after = code.element().parentElement!.getBoundingClientRect()
-  expect([after.top, after.left, after.height]).toEqual([before.top, before.left, before.height])
+  expect([below(after), after.left, after.height]).toEqual([beforeGap, before.left, before.height])
   await expect.element(screen.getByRole('button', { name: 'Cancelar' })).toBeVisible()
   await screen.getByLabelText('Quantidade', { exact: true }).fill('7')
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
   expect(sent(fetch)).toMatchObject({ url: `/api/items/${FILTER.id}`, method: 'PATCH', body: { quantity: 7 } })
   await expect.element(screen.getByText('Item “Filtro de óleo” salvo.')).toBeVisible()
+})
+
+// Saves a new item with two photos chosen, and checks the item is posted first, then its photos are sent to it in
+// order as files, and the item handed over carries the photos the API saved.
+test('Web: a new item is saved with its photos', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+    if (String(url).endsWith('/photos')) {
+      return new Response(JSON.stringify({ ...item({ code: 'NGK-B7', name: 'Vela' }), photos: [SAVED_PHOTO] }), { status: 200 })
+    }
+    return new Response(JSON.stringify({ ...item({ code: 'NGK-B7', name: 'Vela' }), ...JSON.parse(String(init?.body)) }), { status: 201 })
+  })
+  const onSaved = vi.fn()
+  const screen = await render(<Sample onSaved={onSaved} />)
+  await fill(screen, { code: 'ngk-b7', name: 'vela', category: 'Ignição', partBrand: 'NGK', vehicleBrand: 'Fiat', price: '10' })
+  await userEvent.upload(screen.getByLabelText(/Arraste até 3 fotos/), [png('frente.png'), png('lado.png')])
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+  const [[firstUrl], [photosUrl, photosInit]] = fetch.mock.calls
+  expect(firstUrl).toBe('/api/items')
+  expect(photosInit?.method).toBe('PUT')
+  expect(photosUrl).toMatch(/^\/api\/items\/[0-9a-f-]+\/photos$/)
+  const parts = [...(photosInit!.body as FormData).entries()].map(([name, value]) => [name, (value as File).name])
+  expect(parts).toEqual([
+    ['photo', 'frente.png'],
+    ['photo', 'lado.png'],
+  ])
+  expect(onSaved.mock.calls[0][0].photos).toEqual([SAVED_PHOTO])
+  await expect.element(screen.getByText('Item “Vela” cadastrado.')).toBeVisible()
+})
+
+// Edits an item whose photos can't be saved, and checks the toast says the item was saved without its photos and
+// the item is still handed over; unchanged photos aren't sent at all.
+test('Web: photos that fail to save are reported, and unchanged ones are not sent', async () => {
+  const withPhoto = { ...FILTER, photos: [SAVED_PHOTO] }
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
+    String(url).endsWith('/photos') ? new Response(null, { status: 500 }) : new Response(JSON.stringify(withPhoto), { status: 200 }),
+  )
+  const onSaved = vi.fn()
+  const screen = await render(<Sample item={withPhoto} onSaved={onSaved} />)
+  await expect.element(screen.getByRole('img', { name: 'Foto 1, capa' })).toHaveAttribute('src', '/api/photos/aa.png')
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await vi.waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+  expect(fetch).toHaveBeenCalledTimes(1)
+
+  const again = await render(<Sample item={withPhoto} onSaved={onSaved} />)
+  await again.getByRole('button', { name: 'Remover foto 1' }).last().click()
+  await again.getByRole('button', { name: 'Salvar alterações' }).last().click()
+  await expect.element(again.getByText('Item “Filtro de óleo” salvo, mas as fotos não foram salvas. Tente de novo.')).toBeVisible()
+  expect(onSaved).toHaveBeenLastCalledWith(withPhoto)
+})
+
+// Opens the details of an item with a photo and checks it shows read-only, with no way to remove it or add more.
+test('Web: the details show the photos read-only', async () => {
+  const screen = await render(<Sample item={{ ...FILTER, photos: [SAVED_PHOTO] }} details />)
+  await expect.element(screen.getByRole('img', { name: 'Foto 1, capa' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Remover foto 1' }).elements()).toHaveLength(0)
+  expect(document.querySelector('dialog input[type="file"]')).toBeNull()
 })
 
 function Sample({

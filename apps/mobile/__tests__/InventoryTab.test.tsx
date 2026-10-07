@@ -3,7 +3,8 @@
  */
 
 import React from 'react';
-import { Modal, Text, TextInput } from 'react-native';
+import { Image, Modal, Text, TextInput } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { OPEN_ITEM_ON_ROW_STORAGE_KEY, type Item } from '@apc/shared/items';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
@@ -11,11 +12,17 @@ import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
+// A photo the API saved, as items carry it.
+const COVER = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.jpg', thumbUrl: '/photos/aa-thumb.webp' };
 const ITEMS: Item[] = [
-  item(1, { code: 'W 712/95', name: 'Filtro de óleo', quantity: 8, minQuantity: 2 }),
+  item(1, { code: 'W 712/95', name: 'Filtro de óleo', quantity: 8, minQuantity: 2, photos: [COVER] }),
   item(2, { code: 'BP-1020', name: 'Pastilha de freio', category: 'Freios', partBrand: 'Cobreq', position: 'D', quantity: 2, minQuantity: 3, unitPriceCents: 123456 }),
   item(3, { code: 'BA-77', name: "Bomba d'água", quantity: 0, minQuantity: 1 }),
 ];
+// Trees the test rendered, unmounted after it so a toast's hide timer doesn't outlive the test.
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
+// A phone's screen with no notch, so the toasts have their insets.
+const SAFE_AREA = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 
 /**
  * Fills in an item with the fields the list doesn't look at.
@@ -37,6 +44,7 @@ function item(n: number, fields: Partial<Item> & Pick<Item, 'code' | 'name'>): I
     quantity: 1,
     minQuantity: 0,
     unitPriceCents: 3990,
+    photos: [],
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
@@ -53,13 +61,16 @@ async function mount() {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
-      <ThemeProvider>
-        <Preferences>
-          <InventoryTab />
-        </Preferences>
-      </ThemeProvider>,
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>
+          <Preferences>
+            <InventoryTab />
+          </Preferences>
+        </ThemeProvider>
+      </SafeAreaProvider>,
     );
   });
+  mounted.push(tree!);
   return tree!;
 }
 
@@ -71,6 +82,10 @@ async function mount() {
 function texts(tree: ReactTestRenderer.ReactTestRenderer): string[] {
   return tree.root.findAll((n) => n.type === Text && typeof n.props.children !== 'object').map((n) => String(n.props.children));
 }
+
+afterEach(async () => {
+  await ReactTestRenderer.act(async () => mounted.splice(0).forEach((tree) => tree.unmount()));
+});
 
 beforeEach(async () => {
   await themeStorage.clear();
@@ -192,3 +207,33 @@ test('Mobile: a card opens the item details while the option is on', async () =>
 function Preferences({ children }: { children: React.ReactNode }) {
   return <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>{children}</OpenItemOnRowContext.Provider>;
 }
+
+// Checks a card's thumbnail shows the item's cover from the API and opens its photos large; removing the photo there
+// sends the set left, empty, and the list loads again.
+test('Mobile: the thumbnail opens the item photos, saved as they change', async () => {
+  const tree = await mount();
+  const thumbnail = tree.root.find(
+    (n) => n.props.accessibilityLabel === 'Ver fotos de Filtro de óleo' && typeof n.props.onPress === 'function',
+  );
+  expect(thumbnail.findByType(Image).props.source.uri).toMatch(/\/photos\/aa-thumb\.webp$/);
+  await ReactTestRenderer.act(async () => thumbnail.props.onPress());
+  const pressable = (name: string) =>
+    tree.root.findAll(
+      (n) =>
+        typeof n.props.onPress === 'function' &&
+        (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+    );
+  await ReactTestRenderer.act(async () => pressable('Remover esta foto')[0].props.onPress());
+  (fetch as jest.Mock).mockClear();
+  (fetch as jest.Mock)
+    .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ ...ITEMS[0], photos: [] }) })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
+  const remove = pressable('Remover').filter((n) => typeof n.type !== 'string');
+  await ReactTestRenderer.act(async () => remove[remove.length - 1].props.onPress());
+  const [photosUrl, photosInit] = (fetch as jest.Mock).mock.calls[0];
+  expect(photosUrl).toMatch(new RegExp(`/items/${ITEMS[0].id}/photos$`));
+  expect(photosInit.method).toBe('PUT');
+  expect(photosInit.body.getParts()).toEqual([]);
+  expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items$/);
+  expect(texts(tree)).toContain('Foto removida');
+});

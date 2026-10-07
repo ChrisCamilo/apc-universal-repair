@@ -53,3 +53,6 @@ apps/mobile/android/*.keystore
 apps/mobile/ios/build/
 apps/mobile/ios/Pods/
 apps/mobile/.metro-health-check*
+
+# Item photos the API stores while running locally
+uploads/

@@ -176,6 +176,17 @@ test('Mobile: removing a photo asks first and the next one takes its place', asy
   expect(texts(toast)).toEqual(['Foto removida']);
 });
 
+// Removes a photo while the owner can't save it, and checks the toast says so instead of confirming the removal, and
+// the photos stay as the owner keeps them.
+test('Mobile: a change the owner could not save is reported', async () => {
+  const tree = await mount('gt4', 'day', <Sample initial={PHOTOS} failSave />);
+  await press(tree.root, 'Remover esta foto');
+  await press(tree.root.findAllByType(Modal)[1], 'Remover');
+  const toast = viewer(tree).find((n) => n.props.testID === 'toast' && typeof n.type === 'string');
+  expect(texts(toast)).toEqual(['Não foi possível salvar as fotos. Tente de novo.']);
+  expect(onScreen(tree)).toBe(`Foto 1 de 3 · ${NAME}`);
+});
+
 // Adds a photo, changes the one on screen and tries a GIF, and checks the new photo is shown and counted,
 // "Adicionar foto" leaves at the limit, the change replaces the photo in place, and the GIF is refused with
 // the ImageUpload message.
@@ -204,7 +215,17 @@ test('Mobile: adding and changing photos follow the upload rules', async () => {
   expect(tree.root.findAllByType(Image)[0].props.source.uri).toBe('file:///picked/troca.jpg');
 });
 
-function Sample({ initial, onClose, picks = [] }: { initial: UploadPhoto[]; onClose?: () => void; picks?: PickedPhoto[][] }) {
+function Sample({
+  initial,
+  onClose,
+  picks = [],
+  failSave = false,
+}: {
+  initial: UploadPhoto[];
+  onClose?: () => void;
+  picks?: PickedPhoto[][];
+  failSave?: boolean;
+}) {
   const [photos, setPhotos] = useState(initial);
   const [queue] = useState(() => [...picks]);
   return (
@@ -214,7 +235,7 @@ function Sample({ initial, onClose, picks = [] }: { initial: UploadPhoto[]; onCl
       name={NAME}
       code="FR-0142"
       photos={photos}
-      onPhotosChange={setPhotos}
+      onPhotosChange={failSave ? async () => false : setPhotos}
       limit={ITEM_PHOTO_LIMIT}
       onPick={async () => queue.shift() ?? []}
     />

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { itemListQuerySchema } from "@apc/shared/items";
-import type { Item as ItemRow, Prisma } from "../generated/prisma/client.js";
+import type { Item as ItemRow, ItemPhoto as ItemPhotoRow, Prisma } from "../generated/prisma/client.js";
 import { createData, itemWhere, toItem, updateData } from "./items.js";
 
 const MIN_QUANTITY = { name: "minQuantity" } as unknown as Prisma.FieldRef<"Item", "Int">;
@@ -58,10 +58,10 @@ test("API: list filters match the search, any of the values and the status", () 
   });
 });
 
-// Turns a row into the item the API sends: dates as ISO text and no search keys.
-test("API: items leave out the search keys", () => {
+// Turns a row into the item the API sends: dates as ISO text, no search keys and the photos at their paths.
+test("API: items leave out the search keys and carry their photos", () => {
   const date = new Date("2026-10-03T12:00:00.000Z");
-  const row: ItemRow = {
+  const row: ItemRow & { photos: ItemPhotoRow[] } = {
     id: "0f0e8a4c-3c4e-4b8e-9a5c-1f2d3e4c5b6a",
     code: "W 712/95",
     codeKey: "W71295",
@@ -78,10 +78,12 @@ test("API: items leave out the search keys", () => {
     quantity: 4,
     minQuantity: 2,
     unitPriceCents: 3990,
+    photos: [{ id: "p1", itemId: "i1", position: 0, file: "p1.jpg", thumbFile: "p1-thumb.webp" }],
     createdAt: date,
     updatedAt: date,
   };
   const item = toItem(row);
   assert.equal(item.createdAt, "2026-10-03T12:00:00.000Z");
   assert.equal("codeKey" in item || "nameKey" in item, false);
+  assert.deepEqual(item.photos, [{ id: "p1", url: "/photos/p1.jpg", thumbUrl: "/photos/p1-thumb.webp" }]);
 });

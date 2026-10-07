@@ -43,6 +43,7 @@ function part(fields: Partial<Item> & Pick<Item, "code">): Item {
     quantity: 1,
     minQuantity: 0,
     unitPriceCents: 100,
+    photos: [],
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
     ...fields,

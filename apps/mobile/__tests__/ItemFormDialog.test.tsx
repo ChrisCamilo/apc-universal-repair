@@ -3,7 +3,8 @@
  */
 
 import React from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Image, Text, TextInput, View } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form';
@@ -22,6 +23,8 @@ const FILTER = item({
   vehicleModel: 'Gol',
   color: 'Preto',
 });
+// A photo the API saved, as items carry it.
+const SAVED_PHOTO = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.jpg', thumbUrl: '/photos/aa-thumb.webp' };
 // A phone's screen with no notch, so the toast has its insets.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 const ITEMS = [
@@ -71,6 +74,7 @@ function item(fields: Partial<Item> & Pick<Item, 'id' | 'code' | 'name'>): Item 
     quantity: 1,
     minQuantity: 0,
     unitPriceCents: 3990,
+    photos: [],
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
@@ -297,4 +301,66 @@ test('Mobile: Editar unlocks the details and saves like an edit', async () => {
   expect(url).toMatch(new RegExp(`/items/${FILTER.id}$`));
   expect(init.method).toBe('PATCH');
   expect(onSaved).toHaveBeenCalledTimes(1);
+});
+
+// Picks two photos for a new item and saves it, and checks the item is posted first, then its photos are sent to it
+// in order as files from the phone, and the item handed over carries the photos the API saved.
+test('Mobile: a new item is saved with its photos', async () => {
+  const onSaved = jest.fn();
+  const tree = await mount(undefined, { onSaved });
+  (launchImageLibrary as jest.Mock).mockResolvedValueOnce({
+    assets: ['frente', 'lado'].map((name) => ({ uri: `file:///fotos/${name}.jpg`, fileName: `${name}.jpg`, type: 'image/jpeg', fileSize: 1024 })),
+  });
+  const drop = tree.root.find((n) => n.props.testID === 'upload-drop' && typeof n.props.onPress === 'function');
+  await ReactTestRenderer.act(async () => drop.props.onPress());
+  expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual(['file:///fotos/frente.jpg', 'file:///fotos/lado.jpg']);
+  (fetch as jest.Mock).mockClear();
+  answerSave();
+  (fetch as jest.Mock).mockImplementationOnce(async () => ({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({ ...FILTER, id: '00000000-0000-4000-8000-000000000009', photos: [SAVED_PHOTO] }),
+  }));
+  await type(tree, 'Código da peça', 'ngk-b7');
+  await type(tree, 'Nome', 'vela');
+  await type(tree, 'Categoria', 'Ignição');
+  await type(tree, 'Marca da peça', 'NGK');
+  await type(tree, 'Marca do veículo', 'Fiat');
+  await type(tree, 'Valor unitário (R$)', '10');
+  await press(tree, 'Salvar');
+  const [[postUrl], [photosUrl, photosInit]] = (fetch as jest.Mock).mock.calls;
+  expect(postUrl).toMatch(/\/items$/);
+  expect(photosUrl).toMatch(/\/items\/00000000-0000-4000-8000-000000000009\/photos$/);
+  expect(photosInit.method).toBe('PUT');
+  expect(photosInit.body.getParts().map((part: { fieldName: string; name: string }) => [part.fieldName, part.name])).toEqual([
+    ['photo', 'frente.jpg'],
+    ['photo', 'lado.jpg'],
+  ]);
+  expect(onSaved.mock.calls[0][0].photos).toEqual([SAVED_PHOTO]);
+});
+
+// Edits an item, removes its photo while the API can't save photos, and checks the toast says the item was saved
+// without its photos and the item is still handed over.
+test('Mobile: photos that fail to save are reported', async () => {
+  const withPhoto = { ...FILTER, photos: [SAVED_PHOTO] };
+  const onSaved = jest.fn();
+  const tree = await mount(withPhoto, { onSaved });
+  await press(tree, 'Remover foto 1');
+  (fetch as jest.Mock).mockClear();
+  (fetch as jest.Mock)
+    .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(withPhoto) })
+    .mockResolvedValueOnce({ ok: false, status: 500 });
+  await press(tree, 'Salvar alterações');
+  expect((fetch as jest.Mock).mock.calls[1][1].method).toBe('PUT');
+  expect(shows(tree, 'Item “Filtro de óleo” salvo, mas as fotos não foram salvas. Tente de novo.')).toBe(true);
+  expect(onSaved).toHaveBeenCalledWith(withPhoto);
+});
+
+// Opens the details of an item with a photo and checks it shows read-only, from the API, with no way to remove it or
+// pick more.
+test('Mobile: the details show the photos read-only', async () => {
+  const tree = await mount({ ...FILTER, photos: [SAVED_PHOTO] }, { details: true });
+  expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual([expect.stringMatching(/\/photos\/aa\.jpg$/)]);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Remover foto 1')).toHaveLength(0);
+  expect(tree.root.findAll((n) => n.props.testID === 'upload-drop')).toHaveLength(0);
 });

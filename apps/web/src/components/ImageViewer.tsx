@@ -16,8 +16,9 @@ import { Heading, NumericReadout, Text } from './Typography.tsx'
 // screen and jump to a photo. It closes on the ×, on Escape and on a click outside, over the blurred backdrop.
 // "Remover esta foto" asks first, naming the item and warning when the photo is the cover; the next photo
 // takes its place. "Trocar esta foto" replaces the one on screen and "Adicionar foto" shows while there is
-// room, both with the ImageUpload rules and messages. Toasts show inside the viewer, the only part of the
-// page that stays visible and announced while it is open.
+// room, both with the ImageUpload rules and messages. The owner may save each change as it happens: when it says
+// the change couldn't be saved, the toast says so instead of confirming it. Toasts show inside the viewer, the only
+// part of the page that stays visible and announced while it is open.
 
 const NAV_BUTTON =
   'absolute top-1/2 grid size-10 -translate-y-1/2 cursor-pointer place-items-center rounded-pill border border-hairline bg-panel text-text outline-none transition-[border-color,color,box-shadow] hover:border-accent hover:text-accent hover:shadow-glow focus-visible:shadow-ring'
@@ -31,7 +32,8 @@ type ImageViewerProps = {
   /** Item code, shown under the name. */
   code: string
   photos: readonly UploadPhoto[]
-  onPhotosChange: (photos: UploadPhoto[]) => void
+  /** Takes the changed photos; resolving to false says they couldn't be saved. */
+  onPhotosChange: (photos: UploadPhoto[]) => void | Promise<boolean>
   /** Most photos the item holds, e.g. ITEM_PHOTO_LIMIT. */
   limit: number
 }
@@ -129,6 +131,12 @@ function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limi
     input.current?.click()
   }
 
+  /** Hands the changed photos over, then confirms the change or says it couldn't be saved. */
+  const change = async (next: UploadPhoto[], done: string) => {
+    const saved = await onPhotosChange(next)
+    toast(saved === false ? 'Não foi possível salvar as fotos. Tente de novo.' : done)
+  }
+
   /** Checks the chosen file and adds it, or puts it in place of the photo on screen. */
   const take = (file: File) => {
     const { accepted, problems: leftOut } = replacing ? takePhotos([file], 0, 1) : takePhotos([file], count, limit)
@@ -139,22 +147,25 @@ function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limi
     const photo = { url: URL.createObjectURL(file), file }
     if (replacing) {
       release(photos[current])
-      onPhotosChange(photos.map((p, i) => (i === current ? photo : p)))
-      toast('Foto trocada')
+      change(
+        photos.map((p, i) => (i === current ? photo : p)),
+        'Foto trocada',
+      )
     } else {
-      onPhotosChange([...photos, photo])
       setIndex(count)
-      toast('Foto adicionada')
+      change([...photos, photo], 'Foto adicionada')
     }
   }
 
   /** Removes the photo on screen after the confirmation; the next one takes its place. */
   const remove = () => {
     release(photos[current])
-    onPhotosChange(photos.filter((_, i) => i !== current))
     setConfirming(false)
     setProblems([])
-    toast('Foto removida')
+    change(
+      photos.filter((_, i) => i !== current),
+      'Foto removida',
+    )
   }
 
   return (

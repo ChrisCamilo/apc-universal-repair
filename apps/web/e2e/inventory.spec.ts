@@ -29,6 +29,7 @@ function item(fields: Partial<Item> & Pick<Item, "code" | "name">): Item {
     quantity: 1,
     minQuantity: 0,
     unitPriceCents: 100,
+    photos: [],
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
     ...fields,
@@ -240,4 +241,65 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
   await rows.first().getByText("Filtro de óleo").click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(rows.first()).not.toHaveAttribute("tabindex");
+});
+
+// Works with an item's photos against an API that keeps what it is sent: the row shows the cover's thumbnail, which
+// opens the photos large; "Adicionar foto" sends the kept photo and the new file, in order, and the viewer and the
+// list follow; removing the cover sends what is left. Then a photo added in the edit form is sent after the item.
+test("Web: item photos are added and removed from the list and the form", async ({ page }) => {
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  const cover = { id: crypto.randomUUID(), url: "/photos/cover.png", thumbUrl: "/photos/cover-thumb.webp" };
+  const stock = ITEMS.map((it, index) => (index === 0 ? { ...it, photos: [cover] } : it));
+  const sent: string[][] = [];
+  await page.route("**/api/photos/*", (route) => route.fulfill({ body: png, contentType: "image/png" }));
+  await page.route("**/api/items", (route) => route.fulfill({ json: { items: stock } }));
+  await page.route("**/api/items/*", (route) => {
+    const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
+    stock[index] = { ...stock[index], ...route.request().postDataJSON() };
+    return route.fulfill({ json: stock[index] });
+  });
+  await page.route("**/api/items/*/photos", (route) => {
+    const index = stock.findIndex((it) => route.request().url().endsWith(`${it.id}/photos`));
+    const body = route.request().postDataBuffer()!.toString("latin1");
+    const parts = [...body.matchAll(/name="(keep|photo)"(?:; filename="([^"]+)")?[^\r]*\r\n(?:Content-Type[^\r]*\r\n)?\r\n([^\r]*)/g)];
+    sent.push(parts.map(([, name, file, value]) => (name === "keep" ? `keep ${value}` : `photo ${file}`)));
+    const photos = parts.map(([, name, , value], position) =>
+      name === "keep"
+        ? stock[index].photos.find((photo) => photo.id === value)!
+        : { id: crypto.randomUUID(), url: `/photos/new-${position}.png`, thumbUrl: `/photos/new-${position}-thumb.webp` },
+    );
+    stock[index] = { ...stock[index], photos };
+    return route.fulfill({ json: stock[index] });
+  });
+  await page.goto("/inventory");
+
+  const thumbnail = page.getByRole("button", { name: "Ver fotos de Filtro de óleo" });
+  await expect(thumbnail.locator("img")).toHaveAttribute("src", "/api/photos/cover-thumb.webp");
+  await thumbnail.click();
+  const viewer = page.getByRole("dialog", { name: "Filtro de óleo" });
+  await expect(viewer.getByRole("img")).toHaveAttribute("src", "/api/photos/cover.png");
+  await viewer.locator('input[type="file"]').setInputFiles({ name: "lado.png", mimeType: "image/png", buffer: png });
+  await expect(viewer.getByText("Foto adicionada")).toBeVisible();
+  expect(sent).toEqual([[`keep ${cover.id}`, "photo lado.png"]]);
+  await expect(viewer.getByRole("button", { name: /^Foto \d$/ })).toHaveCount(2);
+
+  await viewer.getByRole("button", { name: "Foto 1" }).click();
+  await viewer.getByRole("button", { name: "Remover esta foto" }).click();
+  await page.getByRole("dialog", { name: "Remover esta foto?" }).getByRole("button", { name: "Remover" }).click();
+  await expect(viewer.getByText("Foto removida")).toBeVisible();
+  expect(sent[1]).toEqual([`keep ${stock[0].photos[0].id}`]);
+  await viewer.getByRole("button", { name: "Fechar" }).click();
+  await expect(thumbnail.locator("img")).toHaveAttribute("src", "/api/photos/new-1-thumb.webp");
+
+  await page.getByRole("button", { name: "Editar Pastilha de freio" }).click();
+  const edit = page.getByRole("dialog", { name: "Editar item" });
+  await edit.locator('input[type="file"]').setInputFiles({ name: "frente.png", mimeType: "image/png", buffer: png });
+  await edit.getByRole("button", { name: "Salvar alterações" }).click();
+  await expect(page.getByText("Item “Pastilha de freio” salvo.")).toBeVisible();
+  expect(sent[2]).toEqual(["photo frente.png"]);
+  const padsThumbnail = page.getByRole("button", { name: "Ver fotos de Pastilha de freio" }).locator("img");
+  await expect(padsThumbnail).toHaveAttribute("src", "/api/photos/new-0-thumb.webp");
 });

@@ -162,6 +162,7 @@ function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
     quantity: 1,
     minQuantity: 0,
     unitPriceCents: 100,
+    photos: [],
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
@@ -332,7 +333,7 @@ function InventoryTab() {
       (filters.part.length === 0 || filters.part.includes(row.partBrand)) &&
       (status === null || stockStatus(row.quantity, row.minQuantity) === status),
   )
-  const sorted = sort ? sortRows(shown, (row) => row[sort.key as keyof Item] ?? '', sort.dir) : shown
+  const sorted = sort ? sortRows(shown, (row) => row[sort.key as keyof Omit<Item, 'photos'>] ?? '', sort.dir) : shown
 
   return (
     <Panel className="grid min-w-0 gap-3">
