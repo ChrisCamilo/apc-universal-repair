@@ -100,7 +100,7 @@ test("Web: the search finds items by name or part code", async ({ page }) => {
   await expect(rows.first()).toContainText("Bomba d'água");
 
   await search.fill("parafuso");
-  await expect(page.getByText("Nenhum item encontrado.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nenhum item encontrado" })).toBeVisible();
   await expect(page.getByTestId("inventory-count")).toHaveText("0 de 4 itens · 1 baixo · 1 esgotado");
 
   await page.getByRole("button", { name: "Limpar busca" }).click();
@@ -347,7 +347,7 @@ test("Web: the filters narrow the list through the API query", async ({ page }) 
   const low = page.getByRole("button", { name: "Estoque baixo" });
   const out = page.getByRole("button", { name: "Esgotado" });
   await low.click();
-  await expect(page.getByText("Nenhum item encontrado.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nenhum item encontrado" })).toBeVisible();
   expect(queries.at(-1)).toContain("status=low");
   await out.click();
   await expect(out).toHaveAttribute("aria-pressed", "true");
@@ -368,4 +368,46 @@ test("Web: the filters narrow the list through the API query", async ({ page }) 
   await expect(rows).toHaveCount(4);
   await expect(page.getByRole("button", { name: "Filtros", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Limpar filtros" })).toHaveCount(0);
+});
+
+// Follows the list's feedback: skeleton rows while the API takes its time, then the error state when it fails, whose
+// "Tentar de novo" loads the list once the API answers; a search that finds nothing offers "Limpar filtros", which
+// brings every item back; and an empty stock offers "Novo item", which opens the form.
+test("Web: the inventory shows loading, error and empty states", async ({ page }) => {
+  let answer: "slow" | "fail" | "items" | "empty" = "slow";
+  let release = () => {};
+  await page.route("**/api/items", async (route) => {
+    if (answer === "slow") {
+      await new Promise<void>((resolve) => (release = resolve));
+      return route.fulfill({ status: 500 });
+    }
+    if (answer === "fail") {
+      return route.fulfill({ status: 500 });
+    }
+    return route.fulfill({ json: { items: answer === "items" ? ITEMS : [] } });
+  });
+  await page.goto("/inventory");
+  await expect(page.getByTestId("loading-row")).toHaveCount(5);
+  await expect(page.getByRole("status", { name: "Carregando o estoque" })).toBeAttached();
+
+  answer = "fail";
+  release();
+  const error = page.getByRole("alert").filter({ hasText: "Não foi possível carregar o estoque" });
+  await expect(error).toBeVisible();
+  await expect(page.getByRole("table")).toHaveCount(0);
+  answer = "items";
+  await error.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(4);
+
+  await page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" }).fill("parafuso");
+  await expect(page.getByRole("heading", { name: "Nenhum item encontrado" })).toBeVisible();
+  await page.getByRole("button", { name: "Limpar filtros" }).last().click();
+  await expect(page.locator("tbody tr")).toHaveCount(4);
+  await expect(page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" })).toHaveValue("");
+
+  answer = "empty";
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Nenhum item cadastrado" })).toBeVisible();
+  await page.getByRole("button", { name: "Novo item" }).last().click();
+  await expect(page.getByRole("dialog", { name: "Novo item" })).toBeVisible();
 });
