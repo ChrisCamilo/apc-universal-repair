@@ -5,7 +5,9 @@
     "rootDir": "src",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "declaration": true
+    "declaration": true,
+    // Lets modules import each other by their .ts names, as the tests run them, and writes .js names in dist.
+    "rewriteRelativeImportExtensions": true
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]

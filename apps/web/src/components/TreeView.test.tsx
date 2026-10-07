@@ -236,6 +236,19 @@ test('Web: the tree scrolls inside its own height on a phone', async () => {
   }
 })
 
+// Points out a model and checks its row takes the accent like the selected leaf and is marked aria-current, while the
+// rows around it keep the text color.
+test('Web: a pointed-out row takes the accent and is marked current', async () => {
+  root.dataset.style = 'gt4'
+  root.dataset.mode = 'day'
+  const { colors } = themes.gt4.day
+  const screen = await render(<TreeView label="Modelos" nodes={MODELS} onSelect={() => {}} highlighted="opala" />)
+  await expect.element(screen.getByRole('treeitem', { name: 'Opala', exact: true })).toHaveAttribute('aria-current', 'true')
+  await expect.element(screen.getByRole('treeitem', { name: 'Chevette' })).not.toHaveAttribute('aria-current')
+  expect(getComputedStyle(row('Opala')).color).toBe(rgb(colors.accent))
+  expect(getComputedStyle(row('Chevette')).color).toBe(rgb(colors.text))
+})
+
 function Sample({ onSelect, ...props }: { onSelect?: (id: string) => void; selected?: string }) {
   const [selected, setSelected] = useState<string | undefined>('selected' in props ? props.selected : LEAF)
   return (
