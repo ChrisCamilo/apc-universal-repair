@@ -13,7 +13,7 @@ import { readStored, writeStored } from '../storage.ts'
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id)
 
 type DashboardLayoutProps = {
-  /** The user menu, at the right of the header (#41). */
+  /** The user menu, at the right of the header. */
   userMenu?: ReactNode
 }
 

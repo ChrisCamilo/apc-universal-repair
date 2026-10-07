@@ -46,5 +46,5 @@ test("Web: a logged user skips the login", async ({ page }) => {
   await page.goto("/login");
   await expect(page).toHaveURL(/\/inventory$/);
   await expect(page.getByRole("tab", { name: "Estoque" })).toBeVisible();
-  await expect(page.getByLabel("Usuário")).toHaveCount(0);
+  await expect(page.getByLabel("Usuário", { exact: true })).toHaveCount(0);
 });

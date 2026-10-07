@@ -6,6 +6,7 @@ import { SessionProvider } from './auth/SessionProvider.tsx'
 import { useSession } from './auth/sessionContext.ts'
 import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
 import { InventoryTab } from './dashboard/InventoryTab.tsx'
+import { UserMenu } from './dashboard/UserMenu.tsx'
 
 // The app's routes. /login is the login screen; the Dashboard, behind it, frames every tab at its own path. "/"
 // opens the last tab used (the Inventory tab the first time) and any unknown path goes back there. Only a logged
@@ -21,7 +22,7 @@ export default function App() {
             path="/"
             element={
               <RequireSession>
-                <DashboardLayout />
+                <DashboardLayout userMenu={<UserMenu />} />
               </RequireSession>
             }
           >

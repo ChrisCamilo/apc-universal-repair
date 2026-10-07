@@ -11,6 +11,7 @@ import type { SessionUser } from '@apc/shared/auth';
 import { auth } from './src/auth/auth';
 import { LoginScreen } from './src/auth/LoginScreen';
 import { Dashboard } from './src/dashboard/Dashboard';
+import { UserMenu } from './src/dashboard/UserMenu';
 import { ThemeProvider, useTheme } from './src/theme';
 import { ToastProvider } from './src/Toast';
 import { TourProvider } from './src/Tour';
@@ -37,7 +38,11 @@ function Screen() {
   return (
     <SafeAreaView style={[SCREEN_STYLE, { backgroundColor: theme.colors.canvas }]}>
       <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
-      {user === undefined ? null : user ? <Dashboard /> : <LoginScreen auth={auth} onLoggedIn={setUser} />}
+      {user === undefined ? null : user ? (
+        <Dashboard userMenu={<UserMenu user={user} />} />
+      ) : (
+        <LoginScreen auth={auth} onLoggedIn={setUser} />
+      )}
     </SafeAreaView>
   );
 }

@@ -53,6 +53,8 @@ export const scales = {
   bodyFont: "Barlow",
   monoFont: "JetBrains Mono",
 } as const;
+/** Name of each style as the user menu shows it. */
+export const STYLE_LABELS: Record<Style, string> = { eighties: "Anos 80", gt4: "GT4", bmw90: "BMW 90", fiat90: "Fiat 90" };
 export const STYLES = ["eighties", "gt4", "bmw90", "fiat90"] as const;
 /** localStorage (web) and AsyncStorage (mobile) keys of the chosen style and mode. */
 export const THEME_STORAGE_KEYS = { style: "apc-style", mode: "apc-mode" } as const;

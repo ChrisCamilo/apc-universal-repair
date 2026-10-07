@@ -9,14 +9,19 @@ import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
 
 // A dropdown menu, the same as the web, such as the Dashboard's user menu: a trigger and a popover anchored
 // under it. Checkbox and radio items (Switch, Segmented) keep the menu open when chosen, and only plain action
-// items (MenuItem) close it. A tap outside, the back button or the trigger closes the menu.
+// items (MenuItem) close it. A tap outside, the back button or the trigger closes the menu. UserBadge is the user
+// menu's trigger content, as on the web: the initials on the accent, then the username, which phones leave out.
 
+/** Side of the initials' circle, as on the web (size-7). */
+const AVATAR_SIZE = scales.space.s1 * 7;
 const LABEL_STYLE: ViewStyle = { flex: 1 };
 /** Room the menu leaves around it, and its widest size, as on the web: min(290px, 100vw - 64px). */
 const MENU_INSET = 64;
 const MENU_MAX_WIDTH = 290;
 /** Gap between the trigger and the menu, as on the web (mt-1). */
 const MENU_OFFSET = scales.space.s1;
+/** Screen width from which the trigger also shows the username: the web's sm breakpoint. */
+const NAME_MIN_WIDTH = 640;
 
 type Anchor = { top: number; right: number };
 type MenuItemProps = {
@@ -37,6 +42,22 @@ type MenuProps = {
 };
 
 /**
+ * Styles the initials' circle: the accent fill, the initials centered.
+ * @param theme Active theme.
+ * @returns Style for the circle View.
+ */
+function avatarStyle(theme: ActiveTheme): ViewStyle {
+  return {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: scales.radiusPill,
+    backgroundColor: theme.colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
+}
+
+/**
  * Styles the header: room around the user's name and role, with a soft hairline below.
  * @param theme Active theme.
  * @returns Style for the header View.
@@ -50,6 +71,15 @@ function headerStyle(theme: ActiveTheme): ViewStyle {
     borderBottomWidth: scales.hairline,
     borderBottomColor: softHairline(theme),
   };
+}
+
+/**
+ * Styles the initials: the display face, bold, in the accent's contrast color.
+ * @param theme Active theme.
+ * @returns Style for the initials Text.
+ */
+function initialsStyle(theme: ActiveTheme): TextStyle {
+  return { fontFamily: fontFamily(theme.displayFont, 700), fontSize: scales.fontSize.xs, color: theme.colors.onAccent };
 }
 
 /**
@@ -126,6 +156,15 @@ function triggerStyle(theme: ActiveTheme, open: boolean): ViewStyle {
     paddingLeft: scales.space.s1,
     paddingRight: scales.space.s3,
   };
+}
+
+/**
+ * Styles the username on the trigger: small mono text in the text color.
+ * @param theme Active theme.
+ * @returns Style for the username Text.
+ */
+function usernameStyle(theme: ActiveTheme): TextStyle {
+  return { fontFamily: fontFamily(scales.monoFont), fontSize: scales.fontSize.xs, color: theme.colors.text };
 }
 
 export function Menu({ label, trigger, children }: MenuProps) {
@@ -211,5 +250,18 @@ export function MenuLabel({ children }: { children: string }) {
     <Text accessibilityRole="header" style={sectionLabelStyle(theme)}>
       {children}
     </Text>
+  );
+}
+
+export function UserBadge({ initials, name }: { initials: string; name: string }) {
+  const theme = useTheme();
+  const { width } = useWindowDimensions();
+  return (
+    <>
+      <View style={avatarStyle(theme)} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        <Text style={initialsStyle(theme)}>{initials}</Text>
+      </View>
+      {width >= NAME_MIN_WIDTH && <Text style={usernameStyle(theme)}>{name}</Text>}
+    </>
   );
 }
