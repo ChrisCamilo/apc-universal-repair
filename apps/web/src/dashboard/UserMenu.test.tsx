@@ -1,6 +1,8 @@
-import type { SessionUser } from '@apc/shared/auth'
+import { SESSION_STORAGE_KEY, type SessionUser } from '@apc/shared/auth'
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme'
+import { useState } from 'react'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeAll, beforeEach, expect, test } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -68,12 +70,36 @@ test('Web: the tab reorder choice is saved and comes back', async () => {
   await expect.element(again.getByRole('menuitemcheckbox', { name: /Arrastar para reordenar/ })).toHaveAttribute('aria-checked', 'true')
 })
 
+// Saves a session and some preferences, picks "Sair" at the end of the menu, and checks the session is gone, nobody
+// is logged in any more and the app is on /login, while the theme and the reorder choice stay on the device.
+test('Web: Sair ends the session and goes to the login, keeping the preferences', async () => {
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(USER))
+  localStorage.setItem(THEME_STORAGE_KEYS.style, 'fiat90')
+  localStorage.setItem(REORDER_TABS_STORAGE_KEY, 'true')
+  const screen = await render(<Sample />)
+  await screen.getByRole('button', { name: 'Menu do usuário' }).click()
+  const items = screen.getByRole('menu').element().querySelectorAll('[role^="menuitem"]')
+  expect(items[items.length - 1].textContent).toBe('Sair')
+  await expect.element(screen.getByRole('menu').getByRole('separator')).toBeInTheDocument()
+  await screen.getByRole('menuitem', { name: 'Sair' }).click()
+  await expect.element(screen.getByText('Tela de login, ninguém logado')).toBeVisible()
+  expect(localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull()
+  expect(localStorage.getItem(THEME_STORAGE_KEYS.style)).toBe('fiat90')
+  expect(localStorage.getItem(REORDER_TABS_STORAGE_KEY)).toBe('true')
+})
+
 function Sample() {
+  const [user, setUser] = useState<SessionUser | null>(USER)
   return (
-    <ThemeProvider>
-      <SessionContext.Provider value={{ user: USER, setUser: () => {} }}>
-        <UserMenu />
-      </SessionContext.Provider>
-    </ThemeProvider>
+    <MemoryRouter initialEntries={['/inventory']}>
+      <ThemeProvider>
+        <SessionContext.Provider value={{ user, setUser }}>
+          <Routes>
+            <Route path="/inventory" element={<UserMenu />} />
+            <Route path="/login" element={<p>Tela de login, {user ? 'alguém logado' : 'ninguém logado'}</p>} />
+          </Routes>
+        </SessionContext.Provider>
+      </ThemeProvider>
+    </MemoryRouter>
   )
 }
