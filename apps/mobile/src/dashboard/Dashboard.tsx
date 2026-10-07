@@ -7,6 +7,7 @@ import { BrandMark } from '../BrandMark';
 import { softHairline } from '../Panel';
 import { Tabs, useStoredTab } from '../Tabs';
 import { save, themeStorage, useTheme, type ActiveTheme } from '../theme';
+import { CatalogTab } from './CatalogTab';
 import { InventoryTab } from './InventoryTab';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 
@@ -26,7 +27,7 @@ const PAGE_STYLE: ViewStyle = { flex: 1 };
 const TAB_BAR_CONTENT_STYLE: ViewStyle = { paddingBottom: scales.hairline };
 const TAB_BAR_STYLE: ViewStyle = { flexGrow: 0, marginBottom: -scales.hairline };
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id);
-const TAB_SCREENS: Record<string, ReactNode> = { inventory: <InventoryTab /> };
+const TAB_SCREENS: Record<string, ReactNode> = { inventory: <InventoryTab />, catalog: <CatalogTab /> };
 // Each tab as the tab bar draws it, by id.
 const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon }) => [id, { id, label, icon: ICONS[icon] }]));
 
