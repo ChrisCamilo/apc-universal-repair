@@ -74,13 +74,15 @@ test('Mobile: with no session the app opens on the login and goes on to the Dash
   expect(showsLogin(tree)).toBe(false);
 });
 
-// Saves a test user's session, as a previous login would, and checks the app starts straight on the Dashboard.
+// Saves a test user's session, as a previous login would, and checks the app starts straight on the Dashboard,
+// with the user menu in its header.
 test('Mobile: with a saved session the app opens on the Dashboard', async () => {
   const session = { id: USER.id, username: USER.username, displayName: USER.displayName, initials: initials(USER.displayName) };
   await STORAGE.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
   const tree = await mountApp();
   expect(showsDashboard(tree)).toBe(true);
   expect(showsLogin(tree)).toBe(false);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Menu do usuário' && typeof n.type === 'string')).toHaveLength(1);
 });
 
 // Holds the read of the saved session and checks neither the login nor the Dashboard shows meanwhile, so the wrong
