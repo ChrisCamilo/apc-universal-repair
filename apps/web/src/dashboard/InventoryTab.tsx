@@ -12,13 +12,17 @@ import {
   stockStatus,
   type Item,
 } from '@apc/shared/items'
+import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
 import { Button } from '../components/Button.tsx'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
+import type { UploadPhoto } from '../components/ImageUpload.tsx'
+import { ImageViewer } from '../components/ImageViewer.tsx'
 import { Panel } from '../components/Panel.tsx'
 import { SearchField } from '../components/TextField.tsx'
 import { Text } from '../components/Typography.tsx'
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
 import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
+import { API_BASE, savePhotos } from '../inventory/savePhotos.ts'
 import { useItems } from '../inventory/useItems.ts'
 import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 
@@ -26,17 +30,11 @@ import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 // a counter of the items shown, the total and the stock alerts. "Novo item" and each row's pencil open the item
 // form, each row's trash asks to confirm deleting the item, and the list loads again once an item is saved or
 // deleted. While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or Enter on it) opens the
-// item's details. Low and out-of-stock rows are tinted by the table. At phone width the row becomes a card and the
+// item's details. Each row's thumbnail shows the item's cover and opens its photos in the ImageViewer, where each
+// photo removed, changed or added is saved at once and the list follows. Low and out-of-stock rows are tinted by the table. At phone width the row becomes a card and the
 // columns that leave it show as one line under the name.
 
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
-  {
-    key: 'photo',
-    header: 'Foto',
-    headerHidden: true,
-    card: 'thumb',
-    cell: (item) => <TableThumbnail label={`Foto de ${item.name}`} />,
-  },
   {
     key: 'name',
     header: 'Item',
@@ -84,8 +82,30 @@ export function InventoryTab() {
   })
   // The item the delete confirmation asks about, while it is open.
   const [removing, setRemoving] = useState<Item>()
+  // The item whose photos the viewer shows, while it is open, with the photos on screen.
+  const [viewer, setViewer] = useState<{ item: Item; photos: UploadPhoto[] }>()
   const items = state.status === 'ready' ? state.items : []
   const shown = items.filter((item) => matchesSearch(item, search))
+
+  /**
+   * Saves the photos the viewer changed, showing them at once and going back to the saved ones if they can't be saved.
+   * @param photos The item's photos after the change.
+   * @returns Whether they were saved.
+   */
+  const changePhotos = async (photos: UploadPhoto[]) => {
+    if (!viewer) {
+      return false
+    }
+    setViewer({ ...viewer, photos })
+    const saved = await savePhotos(viewer.item, photos)
+    if (!saved) {
+      setViewer((current) => current && { ...current, photos: viewer.photos })
+      return false
+    }
+    setViewer((current) => current && { item: saved, photos: heldPhotos(saved.photos, API_BASE) })
+    state.reload()
+    return true
+  }
 
   /** Opens the item form on a new item, an item to edit, or an item's details. */
   const openForm = (item?: Item, details = false) =>
@@ -107,6 +127,19 @@ export function InventoryTab() {
           <DataTable
             label="Itens do estoque"
             columns={[
+              {
+                key: 'photo',
+                header: 'Foto',
+                headerHidden: true,
+                card: 'thumb',
+                cell: (item) => (
+                  <TableThumbnail
+                    src={item.photos[0] && `${API_BASE}${item.photos[0].thumbUrl}`}
+                    label={`Ver fotos de ${item.name}`}
+                    onOpen={() => setViewer({ item, photos: heldPhotos(item.photos, API_BASE) })}
+                  />
+                ),
+              },
               ...COLUMNS,
               {
                 key: 'actions',
@@ -153,6 +186,15 @@ export function InventoryTab() {
           setForm((current) => ({ ...current, open: false }))
           state.reload()
         }}
+      />
+      <ImageViewer
+        open={viewer !== undefined}
+        onClose={() => setViewer(undefined)}
+        name={viewer?.item.name ?? ''}
+        code={viewer?.item.code ?? ''}
+        photos={viewer?.photos ?? []}
+        onPhotosChange={changePhotos}
+        limit={ITEM_PHOTO_LIMIT}
       />
       <DeleteItemDialog
         open={removing !== undefined}
