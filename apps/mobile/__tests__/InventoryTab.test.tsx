@@ -137,3 +137,30 @@ test('Mobile: "Novo item" and the pencil open the item form, and a save reloads 
   expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items$/);
   expect(dialog()).toBeUndefined();
 });
+
+// Presses a card's trash and checks the confirmation names the item and its code, then confirms and checks the item
+// is deleted by its id, the list loads again without it and the confirmation closes.
+test('Mobile: the trash asks to confirm, and a delete reloads the list', async () => {
+  const tree = await mount();
+  const dialog = () => tree.root.findAllByType(Modal).find((modal) => modal.props.visible);
+  const pressable = (name: string) =>
+    tree.root.findAll(
+      (n) =>
+        typeof n.props.onPress === 'function' &&
+        (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+    )[0];
+  await ReactTestRenderer.act(async () => pressable("Excluir Bomba d'água").props.onPress());
+  expect(texts(tree)).toContain('Excluir item?');
+  expect(texts(tree)).toContain("Bomba d'água (BA-77) sai do estoque. Essa ação não pode ser desfeita.");
+  (fetch as jest.Mock).mockClear();
+  (fetch as jest.Mock)
+    .mockResolvedValueOnce({ ok: true, status: 204 })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS.slice(0, 2) }) });
+  const confirm = dialog()!.findAll(
+    (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Excluir').length > 0,
+  )[0];
+  await ReactTestRenderer.act(async () => confirm.props.onPress());
+  expect(fetch).toHaveBeenNthCalledWith(1, expect.stringMatching(new RegExp(`/items/${ITEMS[2].id}$`)), { method: 'DELETE' });
+  expect(dialog()).toBeUndefined();
+  expect(texts(tree)).toContain('2 de 2 itens · 1 baixo · 0 esgotados');
+});
