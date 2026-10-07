@@ -10,6 +10,8 @@ export const DASHBOARD_TAB_STORAGE_KEY = "apc-tab";
  * (`/inventory`). The Catalog tab joins in phase 2.
  */
 export const DASHBOARD_TABS: readonly DashboardTab[] = [{ id: "inventory", label: "Estoque", icon: "cube" }];
+/** localStorage (web) and AsyncStorage (mobile) key of the "Arrastar para reordenar" choice; off when not saved. */
+export const REORDER_TABS_STORAGE_KEY = "apc-reorder-tabs";
 
 /** A Dashboard tab: its id (and web route), label and the name of its icon in ICONS (@apc/shared/icons). */
 export type DashboardTab = { id: string; label: string; icon: IconName };
