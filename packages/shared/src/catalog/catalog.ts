@@ -1,9 +1,12 @@
+import { codeKey, searchKey, type Item } from "../items/items.ts";
 import type { TreeNode } from "../tree/tree.ts";
 
 // The vehicle catalog of the Catalog tab, mocked until the real data (EP-10): each brand's models as a tree, model →
 // generation → version → year → engine, and each engine's sheet. Branches whose data is still to come are empty
 // branches (see TreeNode), so every engine in a tree has a sheet. Engine ids are unique across brands, as the sheets
-// are looked up by them.
+// are looked up by them. The Catalog search finds brands and models by name, ignoring case and accents, and parts
+// of the inventory by their code; a part leads to its vehicle in the catalog: the same brand, the model by the start
+// of the part's model name ("Opala 4.1" → Opala) and the engine by the displacement ("4.1" → "4.1 L 6 cilindros").
 
 /** The brands of the catalog, in the order of the rail, each with its model tree. */
 export const CATALOG: readonly CatalogBrand[] = [
@@ -157,10 +160,65 @@ export const ENGINE_SHEETS: Readonly<Record<string, EngineSheet>> = {
   },
 };
 
+/** Least letters and digits of a part code before the search looks for parts. */
+export const PART_CODE_MIN_LENGTH = 3;
+/** Most parts the code search lists at once. */
+export const PART_RESULTS_LIMIT = 5;
+/** Vehicle brand of the parts that fit any vehicle. */
+export const UNIVERSAL_BRAND = "Universal";
+
 /** A brand of the catalog: its id, the name on its tile and its model tree. */
 export type CatalogBrand = { id: string; name: string; models: TreeNode[] };
 /** An engine's sheet: its title, the readouts under it and a short summary. */
 export type EngineSheet = { title: string; specs: string[]; summary: string };
+/** Where a part's vehicle is in the catalog: its brand, and its model and engine when the catalog has them. */
+export type PartLocation = { brandId: string; modelId?: string; engineId?: string };
+/** The parts a code search lists, and how many more matched past the limit. */
+export type PartResults = { parts: Item[]; more: number };
+/** What a part needs to be placed in the catalog: its vehicle brand and model. */
+type PartVehicle = Pick<Item, "vehicleBrand" | "vehicleModel">;
+
+/**
+ * Lists the brands whose name contains a search, ignoring case and accents.
+ * @param query The brand search as typed; an empty search lists every brand.
+ * @returns The matching brands, in rail order.
+ */
+export function brandsNamed(query: string): CatalogBrand[] {
+  return CATALOG.filter((brand) => searchKey(brand.name).includes(searchKey(query.trim())));
+}
+
+/**
+ * Finds the brand to show for a model search: the chosen brand while it has a model with that name, otherwise the
+ * first brand that has one.
+ * @param brandId The chosen brand.
+ * @param query The model search as typed.
+ * @returns The brand's id, or null when no brand has a model with that name.
+ */
+export function brandWithModel(brandId: string, query: string): string | null {
+  const has = (brand: CatalogBrand) => modelsNamed(brand.models, query).length > 0;
+  const chosen = CATALOG.find((brand) => brand.id === brandId);
+  if (chosen && has(chosen)) {
+    return brandId;
+  }
+  return CATALOG.find(has)?.id ?? null;
+}
+
+/**
+ * Lists the inventory parts whose code contains a search, ignoring case, spaces and separators, once the search has
+ * enough letters and digits: the exact codes first, then the others, up to the limit.
+ * @param items Every inventory item.
+ * @param query The search as typed, e.g. "fra1000" for "FRA-1000".
+ * @returns The parts to list and how many more matched; no parts while the search is too short.
+ */
+export function findParts(items: readonly Item[], query: string): PartResults {
+  const key = codeKey(query);
+  if (key.length < PART_CODE_MIN_LENGTH) {
+    return { parts: [], more: 0 };
+  }
+  const found = items.filter((item) => codeKey(item.code).includes(key));
+  const exactFirst = [...found.filter((item) => codeKey(item.code) === key), ...found.filter((item) => codeKey(item.code) !== key)];
+  return { parts: exactFirst.slice(0, PART_RESULTS_LIMIT), more: Math.max(0, found.length - PART_RESULTS_LIMIT) };
+}
 
 /**
  * Finds the first engine with a sheet in a model tree, depth first, to show when a brand opens.
@@ -178,4 +236,69 @@ export function firstSheet(nodes: readonly TreeNode[]): string | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * Lists the leaves of a tree: the engines under a model.
+ * @param node A node of the tree.
+ * @returns Its leaves, depth first.
+ */
+function leaves(node: TreeNode): TreeNode[] {
+  return node.children ? node.children.flatMap(leaves) : [node];
+}
+
+/**
+ * Places a part's vehicle in the catalog: the brand with the same name, the model the part's model name starts
+ * with, and in it the first engine whose name starts with the displacement in the part's model name.
+ * @param part The part's vehicle brand and model.
+ * @returns Its brand, model and engine as far as the catalog has them; null when the brand isn't in the catalog.
+ */
+export function locatePart(part: PartVehicle): PartLocation | null {
+  const brand = CATALOG.find((b) => searchKey(b.name) === searchKey(part.vehicleBrand));
+  if (!brand) {
+    return null;
+  }
+  const name = searchKey(part.vehicleModel ?? "");
+  const model = brand.models.find((m) => name === searchKey(m.label) || name.startsWith(`${searchKey(m.label)} `));
+  if (!model) {
+    return { brandId: brand.id };
+  }
+  const displacement = part.vehicleModel?.match(/\d\.\d/)?.[0];
+  const engine = displacement ? leaves(model).find((leaf) => leaf.label.startsWith(displacement)) : undefined;
+  return { brandId: brand.id, modelId: model.id, engineId: engine?.id };
+}
+
+/**
+ * Lists the nodes of a tree with a search in their name, at its top level: the models of a brand.
+ * @param models A brand's models.
+ * @param query The model search as typed; an empty search lists every model.
+ * @returns The matching models, in tree order.
+ */
+export function modelsNamed(models: readonly TreeNode[], query: string): TreeNode[] {
+  return models.filter((model) => searchKey(model.label).includes(searchKey(query.trim())));
+}
+
+/**
+ * Says which vehicle a part fits, as the code search lists it: any vehicle for universal parts, its vehicle when
+ * the catalog has its engine, or what the catalog is still missing.
+ * @param part The part's vehicle brand and model.
+ * @returns E.g. "Serve no Chevrolet Opala 4.1" or "Ford Escort (modelo ainda sem ficha no catálogo)".
+ */
+export function partFit(part: PartVehicle): string {
+  if (searchKey(part.vehicleBrand) === searchKey(UNIVERSAL_BRAND)) {
+    return "Serve em qualquer veículo";
+  }
+  const location = locatePart(part);
+  if (!location) {
+    return `${part.vehicleBrand} não está no catálogo`;
+  }
+  if (!part.vehicleModel) {
+    return `Serve em qualquer ${part.vehicleBrand}`;
+  }
+  const vehicle = `${part.vehicleBrand} ${part.vehicleModel}`;
+  const model = CATALOG.find((b) => b.id === location.brandId)!.models.find((m) => m.id === location.modelId);
+  if (!model || !firstSheet([model])) {
+    return `${vehicle} (modelo ainda sem ficha no catálogo)`;
+  }
+  return location.engineId ? `Serve no ${vehicle}` : `${vehicle} (motor ainda sem ficha no catálogo)`;
 }
