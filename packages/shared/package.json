@@ -14,6 +14,7 @@
     "./button": "./src/button/button.ts",
     "./field": "./src/field/field.ts",
     "./tabs": "./src/tabs/tabs.ts",
+    "./test-users": "./src/auth/testUsers.ts",
     "./filters": "./src/filters/filters.ts",
     "./table": "./src/table/table.ts",
     "./items": "./src/items/items.ts",

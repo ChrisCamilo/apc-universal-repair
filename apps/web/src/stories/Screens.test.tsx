@@ -1,3 +1,5 @@
+import { createMockAuth } from '@apc/shared/auth'
+import { TEST_USERS } from '@apc/shared/test-users'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -10,6 +12,8 @@ import { DashboardScreen } from './Screens.tsx'
 import screensSource from './Screens.tsx?raw'
 import storiesSource from './Screens.stories.tsx?raw'
 
+// A login that keeps no session; these tests never send it.
+const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}, removeItem: async () => {} }, TEST_USERS)
 // The minimum supported sizes from AGENTS.md.
 const SIZES = [
   { name: 'desktop', width: 1280, height: 720 },
@@ -76,7 +80,7 @@ for (const style of STYLES) {
       await page.viewport(1280, 720)
       const screen = await render(
         <>
-          <LoginScreen onSubmit={() => {}} />
+          <LoginScreen auth={AUTH} onLoggedIn={() => {}} />
           <DashboardScreen initialTab="inventory" />
         </>,
       )
@@ -104,7 +108,7 @@ for (const size of SIZES) {
   // on desktop and above it on the phone.
   test(`Web: the Login fits the ${size.name} size`, async () => {
     await page.viewport(size.width, size.height)
-    const screen = await render(<LoginScreen onSubmit={() => {}} />)
+    const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
     const mark = screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
     const field = screen.getByLabelText('Usuário').element().getBoundingClientRect()
     if (size.name === 'desktop') {

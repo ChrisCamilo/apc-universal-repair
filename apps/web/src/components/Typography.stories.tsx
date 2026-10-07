@@ -11,7 +11,7 @@ const LONG_TEXT =
   'pressa. Vem com tração traseira e opção de câmbio manual de quatro marchas ou automático de três. O acabamento ' +
   'topo de linha traz revestimento em veludo, console completo e rodas de liga. É o item mais procurado da linha ' +
   'quando o assunto é restauração, e as peças de reposição continuam fáceis de achar.'
-const TONES = ['default', 'muted', 'accent'] as const
+const TONES = ['default', 'muted', 'accent', 'danger'] as const
 const meta = { title: 'Components/Typography' } satisfies Meta
 export const BodyText: Story = {
   render: () => (

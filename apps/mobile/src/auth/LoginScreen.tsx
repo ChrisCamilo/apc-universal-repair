@@ -1,18 +1,21 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, TextInput, View, type ViewStyle } from 'react-native';
-import { loginErrors, type Credentials, type LoginErrors } from '@apc/shared/auth';
+import { LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/shared/auth';
 import { lockIcon, userIcon } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { BrandMark } from '../BrandMark';
 import { Button } from '../Button';
 import { Panel } from '../Panel';
 import { TextField } from '../TextField';
+import { Text } from '../Typography';
 
 // The first screen of the app, the same as the web's /login on a phone: the APC badge on a panel above the form.
 // "Entrar", or the keyboard's "go" key in the password, sends the login, and "next" in the user moves on to the
 // password. An empty field isn't sent but shows its message under it, and the cursor goes to the first empty
-// one. A field's message goes away once it is typed into. "Esqueceu a senha?" opens its dialog in a later task
-// (#66).
+// one. A field's message goes away once it is typed into. While the login runs, "Entrar" shows it is busy and
+// neither it nor the "go" key sends it again. A refused login shows one message above the form, without saying
+// which field was wrong, and empties and focuses the password. "Esqueceu a senha?" opens its dialog in a later
+// task (#66).
 
 const ACTIONS_STYLE: ViewStyle = { alignItems: 'flex-start', gap: scales.space.s2 };
 // The badge at the size the web gives it on a phone (w-36).
@@ -33,13 +36,17 @@ const MARK_PANEL_STYLE: ViewStyle = { alignItems: 'center', paddingVertical: sca
 const PAGE_STYLE: ViewStyle = { flex: 1 };
 
 type LoginScreenProps = {
-  /** Called with the filled-in fields; the owner logs in with them. */
-  onSubmit: (credentials: Credentials) => void;
+  /** Checks the user and password. */
+  auth: AuthService;
+  /** Called with the user once the login is accepted, e.g. to open the Dashboard. */
+  onLoggedIn: (user: SessionUser) => void;
 };
 
-export function LoginScreen({ onSubmit }: LoginScreenProps) {
+export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
   const [credentials, setCredentials] = useState<Credentials>({ username: '', password: '' });
   const [errors, setErrors] = useState<LoginErrors>({});
+  const [sending, setSending] = useState(false);
+  const [refused, setRefused] = useState(false);
   const usernameInput = useRef<ComponentRef<typeof TextInput>>(null);
   const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
 
@@ -50,7 +57,10 @@ export function LoginScreen({ onSubmit }: LoginScreenProps) {
   };
 
   /** Sends the login, or shows the message of each empty field and moves to the first one. */
-  const submit = () => {
+  const submit = async () => {
+    if (sending) {
+      return;
+    }
     const found = loginErrors(credentials);
     setErrors(found);
     const empty = FIELD_ORDER.find((field) => found[field]);
@@ -59,7 +69,17 @@ export function LoginScreen({ onSubmit }: LoginScreenProps) {
       input.current?.focus();
       return;
     }
-    onSubmit(credentials);
+    setRefused(false);
+    setSending(true);
+    const user = await auth.login(credentials);
+    setSending(false);
+    if (!user) {
+      setRefused(true);
+      setCredentials((typed) => ({ ...typed, password: '' }));
+      passwordInput.current?.focus();
+      return;
+    }
+    onLoggedIn(user);
   };
 
   return (
@@ -70,6 +90,13 @@ export function LoginScreen({ onSubmit }: LoginScreenProps) {
         </View>
       </Panel>
       <View style={FORM_STYLE}>
+        {refused && (
+          <View accessibilityRole="alert" accessibilityLiveRegion="polite">
+            <Text size="sm" tone="danger">
+              {LOGIN_MESSAGES.failed}
+            </Text>
+          </View>
+        )}
         <TextField
           ref={usernameInput}
           label="Usuário"
@@ -93,7 +120,9 @@ export function LoginScreen({ onSubmit }: LoginScreenProps) {
           onSubmitEditing={submit}
         />
         <View style={ACTIONS_STYLE}>
-          <Button onPress={submit}>Entrar</Button>
+          <Button onPress={submit} loading={sending}>
+            Entrar
+          </Button>
           <Button variant="link">Esqueceu a senha?</Button>
         </View>
       </View>

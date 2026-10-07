@@ -37,8 +37,8 @@ beforeAll(() => {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    // Renders a heading and a label in one style and mode and checks they use that style's display
-    // face and tracking, uppercase, in the text and muted colors.
+    // Renders a heading, a label and a danger text in one style and mode and checks the heading and label use that
+    // style's display face and tracking, uppercase, in the text and muted colors, and the danger text its danger.
     test(`Web: headings and labels follow the ${style}/${mode} display face and colors`, async () => {
       const theme = themes[style][mode]
       root.dataset.style = style
@@ -47,6 +47,7 @@ for (const style of STYLES) {
         <>
           <Heading level={1}>Opala Diplomata</Heading>
           <Label data-testid="label">Cilindrada</Label>
+          <Text tone="danger">Usuário ou senha incorretos.</Text>
         </>,
       )
       const heading = getComputedStyle(screen.getByRole('heading', { level: 1 }).element())
@@ -61,6 +62,7 @@ for (const style of STYLES) {
       expect(label.fontFamily).toMatch(new RegExp(`^"?${theme.displayFont}`))
       expect(label.letterSpacing).toBe(trackingPx(theme.displayTracking, scales.fontSize[LABEL_TYPE.size]))
       expect(label.color).toBe(rgb(theme.colors.textMuted))
+      expect(getComputedStyle(screen.getByText('Usuário ou senha incorretos.').element()).color).toBe(rgb(theme.colors.danger))
     })
   }
 }

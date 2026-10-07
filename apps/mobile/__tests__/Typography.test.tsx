@@ -79,18 +79,20 @@ test('Mobile: heading levels step down in size', async () => {
   expect(styles[3].style.fontFamily).toBe(fontFamily(themes.eighties.night.displayFont, 600));
 });
 
-// Checks body text takes its size and tone, and cuts after the given number of lines, as the
-// Dashboard's five-line summary needs.
+// Checks body text takes its size and tone (the danger tone too, for a refused login), and cuts after the given
+// number of lines, as the Dashboard's five-line summary needs.
 test('Mobile: body text sizes, tones and line clamping', async () => {
-  const [small, clamped] = await textStyles(
+  const [small, clamped, alert] = await textStyles(
     'gt4',
     'day',
     <>
       <Text size="sm" tone="accent">Ver ficha técnica</Text>
       <Text lines={5}>Resumo longo do motor</Text>
+      <Text tone="danger">Usuário ou senha incorretos.</Text>
     </>,
   );
   expect(small.style).toMatchObject({ fontSize: scales.fontSize.sm, color: themes.gt4.day.colors.accent });
+  expect(alert.style.color).toBe(themes.gt4.day.colors.danger);
   expect(small.numberOfLines).toBeUndefined();
   expect(clamped.numberOfLines).toBe(5);
   expect(clamped.style.fontFamily).toBe(fontFamily(scales.bodyFont));

@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router'
+import { auth } from './auth/auth.ts'
 import { LoginScreen } from './auth/LoginScreen.tsx'
 import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
 import { InventoryTab } from './dashboard/InventoryTab.tsx'
@@ -20,8 +21,8 @@ export default function App() {
   )
 }
 
-// Goes on to the Dashboard once the login is sent; the mocked check of the user and password comes with #63.
+// Logs in through the app's AuthService and goes on to the Dashboard.
 function LoginPage() {
   const navigate = useNavigate()
-  return <LoginScreen onSubmit={() => navigate('/')} />
+  return <LoginScreen auth={auth} onLoggedIn={() => navigate('/')} />
 }

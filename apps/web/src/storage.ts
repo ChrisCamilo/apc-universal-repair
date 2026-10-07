@@ -15,6 +15,19 @@ export function readStored(key: string): string | null {
 }
 
 /**
+ * Removes a saved value, ignoring blocked storage.
+ * @param key Storage key.
+ */
+export function removeStored(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // storage unavailable: nothing was saved
+  }
+}
+
+
+/**
  * Saves a value, ignoring blocked storage: the choice then lasts until the page reloads.
  * @param key Storage key.
  * @param value Value to save.
