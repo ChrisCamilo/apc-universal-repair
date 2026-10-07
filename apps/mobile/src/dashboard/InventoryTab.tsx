@@ -2,11 +2,16 @@ import { useState, type ComponentProps } from 'react';
 import { View, type ViewStyle } from 'react-native';
 import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import { itemDetails, matchesSearch, resultSummary, STOCK_STATUS_LABELS, stockStatus, type Item } from '@apc/shared/items';
+import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { scales } from '@apc/shared/theme';
+import { API_URL } from '../api';
 import { Button } from '../Button';
 import { DataTable, RowAction, TableThumbnail } from '../DataTable';
+import type { UploadPhoto } from '../ImageUpload';
+import { ImageViewer } from '../ImageViewer';
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog';
 import { ItemFormDialog } from '../inventory/ItemFormDialog';
+import { pickPhotos, savePhotos } from '../inventory/photos';
 import { useItems } from '../inventory/useItems';
 import { Panel } from '../Panel';
 import { SearchField } from '../TextField';
@@ -17,11 +22,11 @@ import { useOpenItemOnRow } from './openItemOnRowContext';
 // of the items shown, the total and the stock alerts. Low and out-of-stock cards are tinted by the table.
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
 // the list loads again once an item is saved or deleted. While "Abrir item ao clicar na linha" is on in the user
-// menu, a tap on a card opens the item's details.
+// menu, a tap on a card opens the item's details. Each card's thumbnail shows the item's cover and opens its photos
+// in the ImageViewer, where each photo removed, changed or added is saved at once and the list follows.
 
 const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', gap: scales.space.s1 };
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
-  { key: 'photo', header: 'Foto', card: 'thumb', cell: (item) => <TableThumbnail label={`Foto de ${item.name}`} /> },
   {
     key: 'name',
     header: 'Item',
@@ -39,6 +44,26 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (item) => <NumericReadout>{item.quantity}</NumericReadout> },
 ];
 const TAB_STYLE: ViewStyle = { gap: scales.space.s3 };
+
+/**
+ * Builds the column of each card's thumbnail: the item's cover, which opens its photos.
+ * @param onOpen Opens an item's photos in the viewer.
+ * @returns The photo column.
+ */
+function photoColumn(onOpen: (item: Item) => void): ComponentProps<typeof DataTable<Item>>['columns'][number] {
+  return {
+    key: 'photo',
+    header: 'Foto',
+    card: 'thumb',
+    cell: (item) => (
+      <TableThumbnail
+        src={item.photos[0] && `${API_URL}${item.photos[0].thumbUrl}`}
+        label={`Ver fotos de ${item.name}`}
+        onOpen={() => onOpen(item)}
+      />
+    ),
+  };
+}
 
 /**
  * Builds the column of each card's actions: the pencil that opens the item to edit and the trash that deletes it.
@@ -84,8 +109,30 @@ export function InventoryTab() {
   });
   // The item the delete confirmation asks about, while it is open.
   const [removing, setRemoving] = useState<Item>();
+  // The item whose photos the viewer shows, while it is open, with the photos on screen.
+  const [viewer, setViewer] = useState<{ item: Item; photos: UploadPhoto[] }>();
   const items = state.status === 'ready' ? state.items : [];
   const shown = items.filter((item) => matchesSearch(item, search));
+
+  /**
+   * Saves the photos the viewer changed, showing them at once and going back to the saved ones if they can't be saved.
+   * @param photos The item's photos after the change.
+   * @returns Whether they were saved.
+   */
+  const changePhotos = async (photos: UploadPhoto[]) => {
+    if (!viewer) {
+      return false;
+    }
+    setViewer({ ...viewer, photos });
+    const saved = await savePhotos(viewer.item, photos);
+    if (!saved) {
+      setViewer((current) => current && { ...current, photos: viewer.photos });
+      return false;
+    }
+    setViewer((current) => current && { item: saved, photos: heldPhotos(saved.photos, API_URL) });
+    state.reload();
+    return true;
+  };
 
   /** Opens the item form on a new item, an item to edit, or an item's details. */
   const openForm = (item?: Item, details = false) =>
@@ -101,7 +148,11 @@ export function InventoryTab() {
             <NumericReadout tone="muted">{resultSummary(shown.length, items)}</NumericReadout>
             <DataTable
               label="Itens do estoque"
-              columns={[...COLUMNS, actionsColumn((item) => openForm(item), setRemoving)]}
+              columns={[
+                photoColumn((item) => setViewer({ item, photos: heldPhotos(item.photos, API_URL) })),
+                ...COLUMNS,
+                actionsColumn((item) => openForm(item), setRemoving),
+              ]}
               rows={shown}
               rowKey={(item) => item.id}
               rowStatus={rowStatus}
@@ -125,6 +176,16 @@ export function InventoryTab() {
           setForm((current) => ({ ...current, open: false }));
           state.reload();
         }}
+      />
+      <ImageViewer
+        open={viewer !== undefined}
+        onClose={() => setViewer(undefined)}
+        name={viewer?.item.name ?? ''}
+        code={viewer?.item.code ?? ''}
+        photos={viewer?.photos ?? []}
+        onPhotosChange={changePhotos}
+        limit={ITEM_PHOTO_LIMIT}
+        onPick={pickPhotos}
       />
       <DeleteItemDialog
         open={removing !== undefined}
