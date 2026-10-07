@@ -16,7 +16,7 @@ import { Label, Text } from './Typography.tsx'
 // lets them create a new option without leaving the field: when the text names no option, the list ends with
 // "+ Criar <noun> “<text>”". The chevron opens the full list. It is an editable combobox (WAI-ARIA): Up/Down
 // move through the list, Enter picks, Escape closes only the list, not a dialog around it. On blur, a text
-// that names an option takes that option's spelling. It looks like the TextField, with its error and hint,
+// that names an option takes that option's spelling, and any other text starts with a capital letter. It looks like the TextField, with its error and hint,
 // and its list is the Select's, showing at most five options.
 
 type Entry = { kind: 'option'; value: string } | { kind: 'create'; value: string }
@@ -144,8 +144,9 @@ export function Combobox({
             }}
             onBlur={() => {
               show(false)
-              if (current && current !== value) {
-                onValueChange(current)
+              const written = current ?? (typed ? capitalizeFirst(typed) : value)
+              if (written !== value) {
+                onValueChange(written)
               }
             }}
             onKeyDown={onKeyDown}
