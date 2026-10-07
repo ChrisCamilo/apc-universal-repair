@@ -1,7 +1,8 @@
 import type { IconName } from "../icons/icons.ts";
 
-// Tab behavior shared by the web and mobile Dashboard tabs: which tabs there are, where the last tab is
-// saved, which tab opens first, and how dragging or moving a tab changes their order.
+// Tab behavior shared by the web and mobile Dashboard tabs: which tabs there are, where the last tab and the
+// tab order are saved, which tab opens first, how dragging or moving a tab changes their order, and how a saved
+// order is put back.
 
 /** localStorage (web) and AsyncStorage (mobile) key of the last selected Dashboard tab. */
 export const DASHBOARD_TAB_STORAGE_KEY = "apc-tab";
@@ -12,6 +13,8 @@ export const DASHBOARD_TAB_STORAGE_KEY = "apc-tab";
 export const DASHBOARD_TABS: readonly DashboardTab[] = [{ id: "inventory", label: "Estoque", icon: "cube" }];
 /** localStorage (web) and AsyncStorage (mobile) key of the "Arrastar para reordenar" choice; off when not saved. */
 export const REORDER_TABS_STORAGE_KEY = "apc-reorder-tabs";
+/** localStorage (web) and AsyncStorage (mobile) key of the Dashboard tab order the user set, as a JSON list of ids. */
+export const TAB_ORDER_STORAGE_KEY = "apc-tab-order";
 
 /** A Dashboard tab: its id (and web route), label and the name of its icon in ICONS (@apc/shared/icons). */
 export type DashboardTab = { id: string; label: string; icon: IconName };
@@ -61,4 +64,30 @@ export function moveTab<T extends string>(ids: readonly T[], id: T, step: -1 | 1
   const next = [...ids];
   [next[from], next[to]] = [next[to], next[from]];
   return next;
+}
+
+/**
+ * Puts a saved tab order back: the saved tabs that still exist, in their saved order, then the tabs added since,
+ * in display order. Anything that isn't a saved order (nothing saved, broken JSON) leaves the display order.
+ * @param ids Tab ids in display order.
+ * @param saved Value read back from storage, possibly missing, stale or broken.
+ * @returns The tab ids in the order to show.
+ */
+export function orderTabs<T extends string>(ids: readonly T[], saved: string | null): T[] {
+  const kept = [...new Set(readOrder(saved))].filter((id): id is T => ids.includes(id as T));
+  return [...kept, ...ids.filter((id) => !kept.includes(id))];
+}
+
+/**
+ * Reads a saved tab order, treating anything but a JSON list as nothing saved.
+ * @param saved Value read back from storage.
+ * @returns The saved entries, or an empty list.
+ */
+function readOrder(saved: string | null): unknown[] {
+  try {
+    const order: unknown = saved === null ? [] : JSON.parse(saved);
+    return Array.isArray(order) ? order : [];
+  } catch {
+    return [];
+  }
 }
