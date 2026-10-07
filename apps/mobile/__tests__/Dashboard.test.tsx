@@ -50,8 +50,8 @@ for (const style of STYLES) {
       expect([page.props.style].flat().find((s) => s?.backgroundColor)?.backgroundColor).toBe(themes[style][mode].colors.canvas);
       const mark = tree.root.find((n) => n.props.accessibilityLabel === 'APC Universal Repair' && n.props.viewBox !== undefined);
       expect([mark.props.viewBox, mark.props.width]).toEqual(['0 0 48 48', 32]);
-      const tab = tree.root.find((n) => n.props.accessibilityRole === 'tab' && typeof n.type !== 'string');
-      expect(tab.props.accessibilityState).toEqual({ selected: true });
+      const tabs = tree.root.findAll((n) => n.props.accessibilityRole === 'tab' && typeof n.type === 'string');
+      expect(tabs.map((tab) => tab.props.accessibilityState)).toEqual([{ selected: true }, { selected: false }]);
       expect(shows(tree, 'Estoque')).toBe(true);
       expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Procure pelo nome ou código da peça').length).toBeGreaterThan(0);
     });
@@ -60,7 +60,7 @@ for (const style of STYLES) {
 
 // Checks the tab bar scrolls sideways when the tabs don't fit, and a stale saved tab falls back to Inventory.
 test('Mobile: the tab bar scrolls sideways and a stale saved tab falls back', async () => {
-  await themeStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, 'catalog');
+  await themeStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, 'specs');
   const tree = await mount('gt4', 'night', <Dashboard />);
   const bar = tree.root.find((n) => n.props.testID === 'dashboard-tab-bar' && typeof n.type !== 'string');
   expect(bar.props.horizontal).toBe(true);
