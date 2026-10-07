@@ -146,6 +146,17 @@ test('Web: removing a photo asks first and the next one takes its place', async 
   expect(toast.element().closest('dialog')).toBe(screen.getByRole('dialog', { name: NAME }).element())
 })
 
+// Removes a photo while the owner can't save it, and checks the toast says so instead of confirming the removal, and
+// the photos stay as the owner keeps them.
+test('Web: a change the owner could not save is reported', async () => {
+  const screen = await render(<Sample initial={PHOTOS} failSave />)
+  await screen.getByRole('button', { name: 'Remover esta foto' }).click()
+  await screen.getByRole('dialog', { name: 'Remover esta foto?' }).getByRole('button', { name: 'Remover' }).click()
+  await expect.element(screen.getByRole('status').filter({ hasText: 'Não foi possível salvar as fotos. Tente de novo.' })).toBeVisible()
+  expect(screen.getByRole('status').filter({ hasText: 'Foto removida' }).elements()).toHaveLength(0)
+  expect(screen.getByRole('button', { name: /^Foto \d$/ }).elements()).toHaveLength(3)
+})
+
 // Adds a photo, changes the one on screen and tries a GIF, and checks the new photo is shown and counted,
 // "Adicionar foto" leaves at the limit, the change replaces the photo in place, and the GIF is refused with
 // the ImageUpload message.
@@ -183,7 +194,17 @@ test('Web: the viewer fits a phone', async () => {
   }
 })
 
-function Sample({ initial, onClose, keepOpen = false }: { initial: UploadPhoto[]; onClose?: () => void; keepOpen?: boolean }) {
+function Sample({
+  initial,
+  onClose,
+  keepOpen = false,
+  failSave = false,
+}: {
+  initial: UploadPhoto[]
+  onClose?: () => void
+  keepOpen?: boolean
+  failSave?: boolean
+}) {
   const [open, setOpen] = useState(true)
   const [photos, setPhotos] = useState(initial)
   return (
@@ -198,7 +219,7 @@ function Sample({ initial, onClose, keepOpen = false }: { initial: UploadPhoto[]
       name={NAME}
       code="FR-0142"
       photos={photos}
-      onPhotosChange={setPhotos}
+      onPhotosChange={failSave ? async () => false : setPhotos}
       limit={ITEM_PHOTO_LIMIT}
     />
   )
