@@ -33,6 +33,22 @@ export const EMPTY_ITEM_FORM: ItemForm = {
   location: "",
   price: "",
 };
+/** Label of each field of the item form, in the order the form shows them. */
+export const ITEM_FIELD_LABELS: Record<keyof ItemForm, string> = {
+  code: "Código da peça",
+  name: "Nome",
+  category: "Categoria",
+  partBrand: "Marca da peça",
+  vehicleBrand: "Marca do veículo",
+  vehicleModel: "Modelo do veículo",
+  quantity: "Quantidade",
+  minQuantity: "Quantidade mínima",
+  position: "Posição",
+  side: "Lado",
+  color: "Cor",
+  location: "Local",
+  price: "Valor unitário (R$)",
+};
 /** Message under each field that can't be saved as it is. */
 export const ITEM_FORM_MESSAGES = {
   code: "Informe o código da peça.",
