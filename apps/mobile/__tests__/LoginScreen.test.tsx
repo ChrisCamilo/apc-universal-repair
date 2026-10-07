@@ -5,10 +5,15 @@
 import React from 'react';
 import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { LOGIN_MESSAGES } from '@apc/shared/auth';
+import { createMockAuth, LOGIN_MESSAGES, type AuthService, type SessionUser } from '@apc/shared/auth';
+import { TEST_USERS } from '@apc/shared/test-users';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { LoginScreen } from '../src/auth/LoginScreen';
 import { themeStorage, ThemeProvider } from '../src/theme';
+
+// A login that keeps no session and answers at once.
+const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}, removeItem: async () => {} }, TEST_USERS, 0);
+const USER = TEST_USERS[0];
 
 /**
  * Finds a button by the label it shows.
@@ -87,7 +92,7 @@ for (const style of STYLES) {
     // panel in the panel color, and "Entrar" is filled with the accent.
     test(`Mobile: the login follows the ${style}/${mode} theme`, async () => {
       const { colors } = themes[style][mode];
-      const tree = await mount(style, mode, <LoginScreen onSubmit={() => {}} />);
+      const tree = await mount(style, mode, <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
       const header = tree.root.find((n) => n.props.accessibilityRole === 'header' && typeof n.type === 'string');
       expect(header.find((n) => n.props.accessibilityLabel === 'APC Universal Repair' && n.props.viewBox === '0 0 220 180')).toBeDefined();
       expect(tree.root.find((n) => n.props.testID === 'badge-needle').props.stroke).toBe(colors.accent);
@@ -101,9 +106,9 @@ for (const style of STYLES) {
 // Presses "Entrar" with both fields empty, then with only the user, and checks nothing is sent: each empty field
 // shows its message, the cursor goes to the first empty one, and a message goes away once its field is typed in.
 test('Mobile: empty fields are not sent and the cursor goes to the first one', async () => {
-  const onSubmit = jest.fn();
+  const login = jest.spyOn(AUTH, 'login');
   const focus = jest.spyOn(TextInput.prototype, 'focus');
-  const tree = await mount('eighties', 'night', <LoginScreen onSubmit={onSubmit} />);
+  const tree = await mount('eighties', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
   await press(tree, 'Entrar');
   expect(shows(tree, LOGIN_MESSAGES.username)).toBe(true);
   expect(shows(tree, LOGIN_MESSAGES.password)).toBe(true);
@@ -114,32 +119,71 @@ test('Mobile: empty fields are not sent and the cursor goes to the first one', a
   await press(tree, 'Entrar');
   expect(shows(tree, LOGIN_MESSAGES.password)).toBe(true);
   expect(focus.mock.contexts.at(-1)).toBe(field(tree, 'Senha').instance);
-  expect(onSubmit).not.toHaveBeenCalled();
+  expect(login).not.toHaveBeenCalled();
+  login.mockRestore();
   focus.mockRestore();
 });
 
-// Fills the user and presses "next", then fills the password and presses "go", and checks "next" moves the cursor
-// to the password and "go" sends the login with what was typed.
+// Fills in a test user, pressing "next" after the user and "go" after the password, and checks "next" moves the
+// cursor to the password and "go" sends the login, which, accepted, hands the user over.
 test('Mobile: the keyboard keys move to the password and send the login', async () => {
-  const onSubmit = jest.fn();
+  const onLoggedIn = jest.fn();
   const focus = jest.spyOn(TextInput.prototype, 'focus');
-  const tree = await mount('gt4', 'day', <LoginScreen onSubmit={onSubmit} />);
+  const tree = await mount('gt4', 'day', <LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} />);
   expect(field(tree, 'Usuário').props.returnKeyType).toBe('next');
   expect(field(tree, 'Senha').props.returnKeyType).toBe('go');
-  await type(tree, 'Usuário', 'christian.camilo');
+  await type(tree, 'Usuário', USER.username);
   await ReactTestRenderer.act(async () => field(tree, 'Usuário').props.onSubmitEditing());
   expect(focus.mock.contexts.at(-1)).toBe(field(tree, 'Senha').instance);
-  await type(tree, 'Senha', 'opala4100');
+  await type(tree, 'Senha', USER.password);
   await ReactTestRenderer.act(async () => field(tree, 'Senha').props.onSubmitEditing());
-  expect(onSubmit).toHaveBeenCalledWith({ username: 'christian.camilo', password: 'opala4100' });
+  expect(onLoggedIn).toHaveBeenCalledWith(expect.objectContaining({ username: USER.username, initials: 'CC' }));
   focus.mockRestore();
+});
+
+// Sends a wrong password and checks one message shows above the form without blaming a field, the password is
+// emptied and focused, and nothing is handed over.
+test('Mobile: a refused login says so above the form and empties the password', async () => {
+  const onLoggedIn = jest.fn();
+  const focus = jest.spyOn(TextInput.prototype, 'focus');
+  const tree = await mount('bmw90', 'day', <LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} />);
+  await type(tree, 'Usuário', USER.username);
+  await type(tree, 'Senha', 'errada');
+  await press(tree, 'Entrar');
+  const alert = tree.root.find((n) => n.props.accessibilityRole === 'alert' && typeof n.type === 'string');
+  expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES.failed)).not.toHaveLength(0);
+  expect(field(tree, 'Senha').props.value).toBe('');
+  expect(field(tree, 'Usuário').props.value).toBe(USER.username);
+  expect(focus.mock.contexts.at(-1)).toBe(field(tree, 'Senha').instance);
+  expect(onLoggedIn).not.toHaveBeenCalled();
+  focus.mockRestore();
+});
+
+// Holds the login's answer, presses "Entrar" and the "go" key again meanwhile, and checks "Entrar" says it is busy
+// and the login is sent only once.
+test('Mobile: Entrar shows it is busy and the login is sent only once', async () => {
+  let answer: (user: SessionUser | null) => void = () => {};
+  const slow: AuthService = { ...AUTH, login: jest.fn(() => new Promise<SessionUser | null>((resolve) => (answer = resolve))) };
+  const tree = await mount('eighties', 'day', <LoginScreen auth={slow} onLoggedIn={() => {}} />);
+  await type(tree, 'Usuário', USER.username);
+  await type(tree, 'Senha', USER.password);
+  // the press starts the login without waiting for its answer, which the test holds
+  await ReactTestRenderer.act(async () => {
+    button(tree, 'Entrar').props.onPress();
+  });
+  expect(button(tree, 'Entrar').props.accessibilityState).toMatchObject({ busy: true, disabled: true });
+  await ReactTestRenderer.act(async () => field(tree, 'Senha').props.onSubmitEditing());
+  expect(slow.login).toHaveBeenCalledTimes(1);
+  await ReactTestRenderer.act(async () => answer(null));
+  expect(button(tree, 'Entrar').props.accessibilityState).toMatchObject({ busy: false });
 });
 
 // Presses "Esqueceu a senha?" and checks it sends nothing and shows no message, as its dialog comes later.
 test('Mobile: the forgotten-password link sends nothing', async () => {
-  const onSubmit = jest.fn();
-  const tree = await mount('fiat90', 'night', <LoginScreen onSubmit={onSubmit} />);
+  const login = jest.spyOn(AUTH, 'login');
+  const tree = await mount('fiat90', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
   await press(tree, 'Esqueceu a senha?');
-  expect(onSubmit).not.toHaveBeenCalled();
+  expect(login).not.toHaveBeenCalled();
+  login.mockRestore();
   expect(shows(tree, LOGIN_MESSAGES.username)).toBe(false);
 });
