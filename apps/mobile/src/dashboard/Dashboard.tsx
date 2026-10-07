@@ -9,6 +9,7 @@ import { Tabs, useStoredTab } from '../Tabs';
 import { save, themeStorage, useTheme, type ActiveTheme } from '../theme';
 import { CatalogTab } from './CatalogTab';
 import { InventoryTab } from './InventoryTab';
+import { OpenItemOnRowContext, useOpenItemOnRowChoice } from './openItemOnRowContext';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 
 // The frame of the Dashboard, the same as the web: a header with the APC mark, the tab bar and the user menu
@@ -16,7 +17,8 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 // header wraps and scrolls away with the page, and the tab bar scrolls sideways when the tabs don't fit. While
 // "Arrastar para reordenar" is on in the user menu, the tabs can be picked up with a long press (or moved with
 // the screen reader's actions) into a new order, which is saved and comes back, with tabs added later at its end;
-// the open tab stays open.
+// the open tab stays open. The Dashboard also holds "Abrir item ao clicar na linha", which the user menu switches and
+// the Inventory tab's cards follow.
 
 const CONTENT_STYLE: ViewStyle = { paddingHorizontal: scales.space.s4, paddingVertical: scales.space.s3 };
 const MARK_STYLE: ViewStyle = { paddingBottom: scales.space.s2 };
@@ -59,6 +61,7 @@ export function Dashboard({ userMenu }: DashboardProps) {
   const theme = useTheme();
   const [tab, setTab] = useStoredTab(DASHBOARD_TAB_STORAGE_KEY, TAB_IDS);
   const reorder = useReorderChoice();
+  const openItemOnRow = useOpenItemOnRowChoice();
   const [order, setOrder] = useState<string[] | null>(null);
 
   // Read the saved tab order.
@@ -80,34 +83,36 @@ export function Dashboard({ userMenu }: DashboardProps) {
 
   return (
     <TabReorderContext.Provider value={reorder}>
-      <ScrollView style={[PAGE_STYLE, { backgroundColor: theme.colors.canvas }]}>
-        <View style={headerStyle(theme)}>
-          <View accessibilityRole="header" style={MARK_STYLE}>
-            <BrandMark variant="compact" size={32} />
+      <OpenItemOnRowContext.Provider value={openItemOnRow}>
+        <ScrollView style={[PAGE_STYLE, { backgroundColor: theme.colors.canvas }]}>
+          <View style={headerStyle(theme)}>
+            <View accessibilityRole="header" style={MARK_STYLE}>
+              <BrandMark variant="compact" size={32} />
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={TAB_BAR_STYLE}
+              contentContainerStyle={TAB_BAR_CONTENT_STYLE}
+              testID="dashboard-tab-bar"
+            >
+              <Tabs
+                label="Seções do Dashboard"
+                tabs={order.map((id) => TABS[id])}
+                selected={tab}
+                onSelect={setTab}
+                reorderable={reorder.reorderable}
+                onReorder={(ids) => {
+                  setOrder(ids);
+                  save(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids));
+                }}
+              />
+            </ScrollView>
+            {userMenu && <View style={MENU_SLOT_STYLE}>{userMenu}</View>}
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={TAB_BAR_STYLE}
-            contentContainerStyle={TAB_BAR_CONTENT_STYLE}
-            testID="dashboard-tab-bar"
-          >
-            <Tabs
-              label="Seções do Dashboard"
-              tabs={order.map((id) => TABS[id])}
-              selected={tab}
-              onSelect={setTab}
-              reorderable={reorder.reorderable}
-              onReorder={(ids) => {
-                setOrder(ids);
-                save(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids));
-              }}
-            />
-          </ScrollView>
-          {userMenu && <View style={MENU_SLOT_STYLE}>{userMenu}</View>}
-        </View>
-        <View style={CONTENT_STYLE}>{TAB_SCREENS[tab]}</View>
-      </ScrollView>
+          <View style={CONTENT_STYLE}>{TAB_SCREENS[tab]}</View>
+        </ScrollView>
+      </OpenItemOnRowContext.Provider>
     </TabReorderContext.Provider>
   );
 }
