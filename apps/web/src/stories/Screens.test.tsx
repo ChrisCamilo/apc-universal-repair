@@ -2,11 +2,13 @@ import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
+import { LoginScreen } from '../auth/LoginScreen.tsx'
+import loginSource from '../auth/LoginScreen.tsx?raw'
 import '../index.css'
 import { themeCss } from '../theme.ts'
+import { DashboardScreen } from './Screens.tsx'
 import screensSource from './Screens.tsx?raw'
 import storiesSource from './Screens.stories.tsx?raw'
-import { DashboardScreen, LoginScreen } from './Screens.tsx'
 
 // The minimum supported sizes from AGENTS.md.
 const SIZES = [
@@ -53,10 +55,10 @@ afterEach(async () => {
   await page.viewport(1280, 720)
 })
 
-// Reads the screens and their stories as written, and checks they set no inline style and no raw color, so every
-// color, face, border and radius comes from the design-system components.
+// Reads the screens, their stories and the login screen they show as written, and checks they set no inline
+// style and no raw color, so every color, face, border and radius comes from the design-system components.
 test('Web: the screens use no local styles or raw colors', () => {
-  for (const source of [screensSource, storiesSource]) {
+  for (const source of [screensSource, storiesSource, loginSource]) {
     expect(source).not.toMatch(/style=\{/)
     expect(source).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i)
     expect(source).not.toMatch(/\b(?:bg|text|border|shadow|rounded|font)-(?:\[|canvas|panel|accent|hairline|danger|warn|on-|display|mono|body)/)
@@ -74,7 +76,7 @@ for (const style of STYLES) {
       await page.viewport(1280, 720)
       const screen = await render(
         <>
-          <LoginScreen />
+          <LoginScreen onSubmit={() => {}} />
           <DashboardScreen initialTab="inventory" />
         </>,
       )
@@ -102,7 +104,7 @@ for (const size of SIZES) {
   // on desktop and above it on the phone.
   test(`Web: the Login fits the ${size.name} size`, async () => {
     await page.viewport(size.width, size.height)
-    const screen = await render(<LoginScreen />)
+    const screen = await render(<LoginScreen onSubmit={() => {}} />)
     const mark = screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
     const field = screen.getByLabelText('Usuário').element().getBoundingClientRect()
     if (size.name === 'desktop') {
