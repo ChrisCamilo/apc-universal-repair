@@ -58,6 +58,22 @@ test("API: list filters match the search, any of the values and the status", () 
   });
 });
 
+// Filters by two vehicle models of brands that share a model name, and checks each matches with its own brand,
+// leaving out a value without one.
+test("API: a vehicle model filter matches the model with its brand", () => {
+  const query = itemListQuerySchema.parse({ vehicleModel: ["Ford|Gol", "Volkswagen|Gol", "Gol"] });
+  assert.deepEqual(itemWhere(query, MIN_QUANTITY), {
+    AND: [
+      {
+        OR: [
+          { vehicleBrand: "Ford", vehicleModel: "Gol" },
+          { vehicleBrand: "Volkswagen", vehicleModel: "Gol" },
+        ],
+      },
+    ],
+  });
+});
+
 // Turns a row into the item the API sends: dates as ISO text, no search keys and the photos at their paths.
 test("API: items leave out the search keys and carry their photos", () => {
   const date = new Date("2026-10-03T12:00:00.000Z");
