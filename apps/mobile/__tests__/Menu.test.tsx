@@ -3,10 +3,10 @@
  */
 
 import React, { useState } from 'react';
-import { Modal, Text } from 'react-native';
+import { Dimensions, Modal, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { Menu, MenuHeader, MenuItem, MenuLabel } from '../src/Menu';
+import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../src/Menu';
 import { Segmented } from '../src/Segmented';
 import { Switch } from '../src/Switch';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -153,6 +153,35 @@ test('Mobile: back, a tap outside and the trigger close the menu', async () => {
   await press(tree, 'Menu do usuário');
   await press(tree, 'Menu do usuário');
   expect(modal().props.visible).toBe(false);
+});
+
+// Puts the user badge in a trigger on a 390dp phone, then widens the screen to a 768dp tablet, and checks the
+// initials sit on the accent in its contrast color, hidden from screen readers since the trigger is named, and the
+// username shows only once the screen is wide.
+test('Mobile: the user badge shows the initials, and the username only on wider screens', async () => {
+  const { colors } = themes.eighties.night;
+  const screen = (width: number, height: number) =>
+    ReactTestRenderer.act(() => Dimensions.set({ window: { width, height, scale: 2, fontScale: 1 }, screen: { width, height, scale: 2, fontScale: 1 } }));
+  const before = Dimensions.get('window');
+  const badge = (
+    <Menu label="Menu do usuário" trigger={<UserBadge initials="CC" name="christian.camilo" />}>
+      <MenuLabel>Aparência</MenuLabel>
+    </Menu>
+  );
+  const shown = (tree: ReactTestRenderer.ReactTestRenderer, text: string) =>
+    tree.root.findAll((n) => n.type === Text && n.props.children === text);
+
+  await screen(390, 844);
+  const phone = await mount('eighties', 'night', badge);
+  const [initials] = shown(phone, 'CC');
+  expect(initials.props.style.color).toBe(colors.onAccent);
+  const circle = phone.root.find((n) => typeof n.type === 'string' && n.props.style?.backgroundColor === colors.accent && n.props.accessibilityElementsHidden);
+  expect(circle.props.importantForAccessibility).toBe('no-hide-descendants');
+  expect(shown(phone, 'christian.camilo')).toHaveLength(0);
+
+  await screen(768, 1024);
+  expect(shown(phone, 'christian.camilo')).toHaveLength(1);
+  await screen(before.width, before.height);
 });
 
 function Controls() {
