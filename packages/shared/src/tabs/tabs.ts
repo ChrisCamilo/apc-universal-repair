@@ -8,9 +8,12 @@ import type { IconName } from "../icons/icons.ts";
 export const DASHBOARD_TAB_STORAGE_KEY = "apc-tab";
 /**
  * The Dashboard tabs, in display order; the first is the default. Each id is also the tab's route on the web
- * (`/inventory`). The Catalog tab joins in phase 2.
+ * (`/inventory`).
  */
-export const DASHBOARD_TABS: readonly DashboardTab[] = [{ id: "inventory", label: "Estoque", icon: "cube" }];
+export const DASHBOARD_TABS: readonly DashboardTab[] = [
+  { id: "inventory", label: "Estoque", icon: "cube" },
+  { id: "catalog", label: "Catálogo", icon: "document" },
+];
 /** localStorage (web) and AsyncStorage (mobile) key of the "Arrastar para reordenar" choice; off when not saved. */
 export const REORDER_TABS_STORAGE_KEY = "apc-reorder-tabs";
 /** localStorage (web) and AsyncStorage (mobile) key of the Dashboard tab order the user set, as a JSON list of ids. */

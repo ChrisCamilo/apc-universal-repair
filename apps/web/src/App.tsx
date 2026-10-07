@@ -4,6 +4,7 @@ import { LoginScreen } from './auth/LoginScreen.tsx'
 import { RequireSession } from './auth/RequireSession.tsx'
 import { SessionProvider } from './auth/SessionProvider.tsx'
 import { useSession } from './auth/sessionContext.ts'
+import { CatalogTab } from './dashboard/CatalogTab.tsx'
 import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
 import { InventoryTab } from './dashboard/InventoryTab.tsx'
 import { UserMenu } from './dashboard/UserMenu.tsx'
@@ -27,6 +28,7 @@ export default function App() {
             }
           >
             <Route path="inventory" element={<InventoryTab />} />
+            <Route path="catalog" element={<CatalogTab />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
