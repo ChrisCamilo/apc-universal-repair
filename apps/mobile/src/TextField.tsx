@@ -41,6 +41,8 @@ type TextFieldProps = {
   returnKeyType?: ReturnKeyTypeOptions;
   /** Called when the keyboard's return key is pressed. */
   onSubmitEditing?: () => void;
+  /** Called when the field loses focus, e.g. to fix how its text is written. */
+  onBlur?: () => void;
 };
 
 export function TextField({
@@ -56,6 +58,7 @@ export function TextField({
   disabled = false,
   returnKeyType,
   onSubmitEditing,
+  onBlur,
 }: TextFieldProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -88,7 +91,10 @@ export function TextField({
             accessibilityLabel={label}
             accessibilityHint={error ?? helper}
             onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onBlur={() => {
+              setFocused(false);
+              onBlur?.();
+            }}
             style={inputStyle(theme)}
           />
           {isPassword && (

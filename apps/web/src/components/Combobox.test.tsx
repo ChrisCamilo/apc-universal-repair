@@ -110,7 +110,7 @@ test('Web: Escape closes only the list, not the dialog around it', async () => {
 })
 
 // Types an option in another case and without its accent, leaves the field, and checks it takes the option's
-// spelling; a new value is left as typed.
+// spelling; a new value starts with a capital letter and keeps the rest as typed.
 test('Web: leaving the field normalizes a known option to its spelling', async () => {
   const screen = await render(
     <>
@@ -123,9 +123,9 @@ test('Web: leaving the field normalizes a known option to its spelling', async (
   await userEvent.keyboard('{Tab}')
   await expect.element(field).toHaveValue('Elétrica')
 
-  await field.fill('cabos')
+  await field.fill('cabos NGK')
   await userEvent.keyboard('{Tab}')
-  await expect.element(field).toHaveValue('cabos')
+  await expect.element(field).toHaveValue('Cabos NGK')
 })
 
 // Opens the full list with the chevron while the field holds a filtering text, and checks it shows only five

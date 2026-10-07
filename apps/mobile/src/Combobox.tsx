@@ -13,7 +13,8 @@ import { Label, Text } from './Typography';
 // don't matter, and when the text names no option the list ends with "+ Criar <noun> “<text>”", which creates
 // it without leaving the field. The chevron opens the full list. On a phone the list opens right under the
 // field and pushes what follows down; tapping an option keeps the keyboard and the focus in the field. On
-// blur the list closes, and a text that names an option takes that option's spelling.
+// blur the list closes, a text that names an option takes that option's spelling, and any other text starts with
+// a capital letter.
 
 const CHEVRON_HIT_SLOP = scales.space.s2;
 const LIST_CONTENT_STYLE: ViewStyle = { padding: scales.space.s1 };
@@ -128,8 +129,9 @@ export function Combobox({
             onBlur={() => {
               setFocused(false);
               show(false);
-              if (current && current !== value) {
-                onValueChange(current);
+              const written = current ?? (typed ? capitalizeFirst(typed) : value);
+              if (written !== value) {
+                onValueChange(written);
               }
             }}
             style={inputStyle(theme)}

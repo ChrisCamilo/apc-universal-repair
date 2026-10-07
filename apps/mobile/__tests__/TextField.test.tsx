@@ -125,6 +125,16 @@ test('Mobile: a ref, the return key and its handler reach the field input', asyn
   expect(onSubmitEditing).toHaveBeenCalledTimes(1);
 });
 
+// Leaves a field and checks the owner hears it, e.g. to fix how its text is written.
+test('Mobile: leaving a field tells the owner', async () => {
+  const onBlur = jest.fn();
+  const tree = await mount('eighties', 'night', <TextField label="Nome" value="vela" onValueChange={() => {}} onBlur={onBlur} />);
+  const input = tree.root.findByType(TextInput);
+  await ReactTestRenderer.act(async () => input.props.onFocus());
+  await ReactTestRenderer.act(async () => input.props.onBlur());
+  expect(onBlur).toHaveBeenCalledTimes(1);
+});
+
 // Checks the search shows its clear button only with content and that it empties the search.
 test('Mobile: search shows a clear button once there is content', async () => {
   const onValueChange = jest.fn();

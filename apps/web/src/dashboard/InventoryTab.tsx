@@ -1,4 +1,5 @@
 import { useState, type ComponentProps } from 'react'
+import { pencilIcon } from '@apc/shared/icons'
 import {
   formatPrice,
   itemDetails,
@@ -11,14 +12,17 @@ import {
   stockStatus,
   type Item,
 } from '@apc/shared/items'
-import { DataTable, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
+import { Button } from '../components/Button.tsx'
+import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
 import { Panel } from '../components/Panel.tsx'
 import { SearchField } from '../components/TextField.tsx'
 import { Text } from '../components/Typography.tsx'
+import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
 import { useItems } from '../inventory/useItems.ts'
 
-// The Inventory tab (/inventory), the default and, in the MVP, the only tab: every item in the DataTable, a
-// search by name or part code, and a counter of the items shown, the total and the stock alerts. Low and
+// The Inventory tab (/inventory), the default tab: every item in the DataTable, a search by name or part code, and
+// a counter of the items shown, the total and the stock alerts. "Novo item" and each row's pencil open the item
+// form, and the list loads again once an item is saved. Low and
 // out-of-stock rows are tinted by the table. At phone width the row becomes a card and the columns that
 // leave it show as one line under the name.
 
@@ -69,13 +73,21 @@ function rowStatus(item: Item): { tone: 'warn' | 'danger'; label: string } | und
 export function InventoryTab() {
   const state = useItems()
   const [search, setSearch] = useState('')
+  // The item form: closed, open on a new item, or open on an item to edit. Each opening starts a new form.
+  const [form, setForm] = useState<{ open: boolean; item?: Item; session: number }>({ open: false, session: 0 })
   const items = state.status === 'ready' ? state.items : []
   const shown = items.filter((item) => matchesSearch(item, search))
 
+  /** Opens the item form on a new item, or on an item to edit. */
+  const openForm = (item?: Item) => setForm((current) => ({ open: true, item, session: current.session + 1 }))
+
   return (
     <Panel className="grid min-w-0 gap-3">
-      <div className="max-w-xl">
-        <SearchField label="Procure pelo nome ou código da peça" value={search} onValueChange={setSearch} />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-[1_1_calc(var(--spacing)*64)] sm:max-w-xl">
+          <SearchField label="Procure pelo nome ou código da peça" value={search} onValueChange={setSearch} />
+        </div>
+        <Button onClick={() => openForm()}>Novo item</Button>
       </div>
       {state.status === 'ready' && (
         <>
@@ -84,7 +96,17 @@ export function InventoryTab() {
           </p>
           <DataTable
             label="Itens do estoque"
-            columns={COLUMNS}
+            columns={[
+              ...COLUMNS,
+              {
+                key: 'actions',
+                header: 'Ações',
+                headerHidden: true,
+                numeric: true,
+                card: 'actions',
+                cell: (item) => <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => openForm(item)} />,
+              },
+            ]}
             rows={shown}
             rowKey={(item) => item.id}
             rowStatus={rowStatus}
@@ -99,6 +121,17 @@ export function InventoryTab() {
           />
         </>
       )}
+      <ItemFormDialog
+        key={form.session}
+        open={form.open}
+        item={form.item}
+        items={items}
+        onClose={() => setForm((current) => ({ ...current, open: false }))}
+        onSaved={() => {
+          setForm((current) => ({ ...current, open: false }))
+          state.reload()
+        }}
+      />
     </Panel>
   )
 }
