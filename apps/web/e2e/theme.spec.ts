@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { MODES, STYLES, scales, themes } from "@apc/shared/theme";
+import { signIn } from "./session.ts";
 
 /**
  * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
@@ -10,6 +11,11 @@ function rgb(hex: string): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
   return `rgb(${r}, ${g}, ${b})`;
 }
+
+// Every test here starts on the Dashboard, so a test user is logged in first.
+test.beforeEach(async ({ page }) => {
+  await signIn(page);
+});
 
 for (const style of STYLES) {
   for (const mode of MODES) {

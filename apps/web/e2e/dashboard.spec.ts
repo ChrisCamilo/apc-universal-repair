@@ -1,4 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { signIn } from "./session.ts";
+
+// Every test here starts on the Dashboard, so a test user is logged in first.
+test.beforeEach(async ({ page }) => {
+  await signIn(page);
+});
 
 // Opens the app at "/" and checks it lands on the Inventory tab at /inventory: the APC mark heads the page,
 // the tab is selected and its content shows, and nothing scrolls sideways.
@@ -36,6 +42,8 @@ test("Web: tabs have their own routes and the last one is remembered", async ({ 
 // with the page at phone width, where it would otherwise take too much of the screen.
 test("Web: the header is pinned on desktop and scrolls on phones", async ({ page }, testInfo) => {
   await page.goto("/inventory");
+  // the Dashboard is drawn once the saved session is read
+  await expect(page.getByRole("main")).toBeVisible();
   await page.evaluate(() => {
     const filler = document.createElement("div");
     filler.style.height = "3000px";
