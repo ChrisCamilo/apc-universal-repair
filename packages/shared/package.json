@@ -12,6 +12,7 @@
     "./icons": "./src/icons/icons.ts",
     "./typography": "./src/typography/typography.ts",
     "./button": "./src/button/button.ts",
+    "./catalog": "./src/catalog/catalog.ts",
     "./field": "./src/field/field.ts",
     "./tabs": "./src/tabs/tabs.ts",
     "./test-users": "./src/auth/testUsers.ts",
