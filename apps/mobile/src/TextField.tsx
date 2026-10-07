@@ -1,5 +1,5 @@
-import { useRef, useState, type ComponentRef } from 'react';
-import { Pressable, Text as NativeText, TextInput, View } from 'react-native';
+import { useRef, useState, type ComponentRef, type Ref } from 'react';
+import { Pressable, Text as NativeText, TextInput, View, type ReturnKeyTypeOptions } from 'react-native';
 import { FIELD_KINDS, type FieldKind } from '@apc/shared/field';
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
@@ -22,6 +22,8 @@ type SearchFieldProps = {
   disabled?: boolean;
 };
 type TextFieldProps = {
+  /** The input itself, e.g. to focus it. */
+  ref?: Ref<ComponentRef<typeof TextInput>>;
   label: string;
   value: string;
   onValueChange: (value: string) => void;
@@ -35,9 +37,14 @@ type TextFieldProps = {
   error?: string;
   placeholder?: string;
   disabled?: boolean;
+  /** Label of the keyboard's return key, e.g. "next" to move on to the next field or "go" to send a form. */
+  returnKeyType?: ReturnKeyTypeOptions;
+  /** Called when the keyboard's return key is pressed. */
+  onSubmitEditing?: () => void;
 };
 
 export function TextField({
+  ref,
   label,
   value,
   onValueChange,
@@ -47,6 +54,8 @@ export function TextField({
   error,
   placeholder,
   disabled = false,
+  returnKeyType,
+  onSubmitEditing,
 }: TextFieldProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -62,8 +71,11 @@ export function TextField({
         <View style={frame} testID="field-frame">
           {icon && <Icon icon={icon} color={theme.colors.textMuted} />}
           <TextInput
+            ref={ref}
             value={value}
             onChangeText={onValueChange}
+            returnKeyType={returnKeyType}
+            onSubmitEditing={onSubmitEditing}
             placeholder={placeholder}
             placeholderTextColor={theme.colors.textMuted}
             editable={!disabled}
