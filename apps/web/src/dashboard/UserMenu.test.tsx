@@ -1,7 +1,7 @@
 import { SESSION_STORAGE_KEY, type SessionUser } from '@apc/shared/auth'
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeAll, beforeEach, expect, test } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -10,6 +10,7 @@ import '../index.css'
 import { SessionContext } from '../auth/sessionContext.ts'
 import { themeCss } from '../theme.ts'
 import { ThemeProvider } from '../ThemeProvider.tsx'
+import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 import { UserMenu } from './UserMenu.tsx'
 
 const root = document.documentElement
@@ -95,11 +96,22 @@ function Sample() {
       <ThemeProvider>
         <SessionContext.Provider value={{ user, setUser }}>
           <Routes>
-            <Route path="/inventory" element={<UserMenu />} />
+            <Route
+              path="/inventory"
+              element={
+                <Reorder>
+                  <UserMenu />
+                </Reorder>
+              }
+            />
             <Route path="/login" element={<p>Tela de login, {user ? 'alguém logado' : 'ninguém logado'}</p>} />
           </Routes>
         </SessionContext.Provider>
       </ThemeProvider>
     </MemoryRouter>
   )
+}
+
+function Reorder({ children }: { children: ReactNode }) {
+  return <TabReorderContext.Provider value={useReorderChoice()}>{children}</TabReorderContext.Provider>
 }
