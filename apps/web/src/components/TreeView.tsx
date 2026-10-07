@@ -13,13 +13,15 @@ import { Icon } from './Icon.tsx'
 // widening it.
 
 const CHEVRON_SIZE = 12
-// A branch's children open by growing the one grid row they sit in from nothing to their full height.
-const GROUP = 'grid transition-[grid-template-rows,visibility] motion-reduce:transition-none'
+// A branch's children open by growing the one grid row they sit in from nothing to their full height. They show
+// at once when it opens, so the keyboard can move into them straight away, and hide only once it has closed.
+const GROUP_CLOSED = 'invisible grid grid-rows-[0fr] transition-[grid-template-rows,visibility] motion-reduce:transition-none'
 // The box that cuts the children off while they open reaches a little past them, so the focus ring of a row
 // inside isn't cut off too.
 const GROUP_CLIP = '-m-1 min-h-0 overflow-hidden p-1'
 // Guide hanging under the chevron's center: the row's padding plus half the chevron.
 const GROUP_LIST = 'ml-3.5 border-l border-hairline-soft pl-2'
+const GROUP_OPEN = 'visible grid grid-rows-[1fr] transition-[grid-template-rows] motion-reduce:transition-none'
 const ROW = 'relative flex min-w-0 items-center gap-2 overflow-hidden rounded-tile px-2 py-1 text-sm transition-[color,background-color,box-shadow]'
 const SELECTED =
   'bg-accent-soft font-medium text-accent shadow-glow ' +
@@ -183,7 +185,7 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
         {node.detail && <span className="shrink-0 font-mono text-xs font-normal text-text-muted">{node.detail}</span>}
       </div>
       {branch && (
-        <div role="none" className={[GROUP, open ? 'visible grid-rows-[1fr]' : 'invisible grid-rows-[0fr]'].join(' ')}>
+        <div role="none" className={open ? GROUP_OPEN : GROUP_CLOSED}>
           <div role="none" className={GROUP_CLIP}>
             <ul role="group" className={GROUP_LIST}>
               {node.children!.map((child) => (
