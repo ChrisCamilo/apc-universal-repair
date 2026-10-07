@@ -14,7 +14,9 @@ import { Label } from './Typography';
 // The detailed filters of a list, the same as the web: a button that opens a panel with one row per filter.
 // A row holds a multiple-choice Select, or toggle chips split into labeled groups; a row with any value
 // chosen lights up. Nothing changes until Apply; Clear resets every row and applies right away; the back
-// button or a tap outside closes the panel without applying. The button counts the filters on.
+// button or a tap outside closes the panel without applying. The button counts the filters on. Rows may depend on
+// what is chosen in the panel, e.g. the vehicle models of the chosen brands: a value a row stops offering leaves the
+// choice.
 
 const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', justifyContent: 'flex-end', gap: scales.space.s2 };
 const CHIPS_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', columnGap: scales.space.s4, rowGap: scales.space.s2 };
@@ -32,11 +34,13 @@ type FilterMenuProps = {
   label: string;
   /** Heading at the top of the panel, e.g. "Filtrar estoque". */
   title: string;
-  rows: (SelectRow | ChipsRow)[];
+  /** The rows, or the rows for what is chosen in the panel so far. */
+  rows: Row[] | ((draft: FilterValues) => Row[]);
   /** Applied values per filter key. */
   values: FilterValues;
   onApply: (values: FilterValues) => void;
 };
+type Row = SelectRow | ChipsRow;
 type SelectRow = {
   key: string;
   label: string;
@@ -65,6 +69,22 @@ function countStyle(theme: ActiveTheme): TextStyle {
 }
 
 /**
+ * Drops from each Select row the values it no longer offers, once the rest of the choice changed what it lists.
+ * @param draft Values chosen in the panel.
+ * @param rows The rows for those values.
+ * @returns The values each row still offers.
+ */
+function offered(draft: FilterValues, rows: Row[]): FilterValues {
+  const kept = { ...draft };
+  for (const row of rows) {
+    if (!('groups' in row) && kept[row.key]) {
+      kept[row.key] = kept[row.key].filter((value) => row.options.some((option) => option.value === value));
+    }
+  }
+  return kept;
+}
+
+/**
  * Places the panel near the top of the screen, as wide as the web's min(360px, 100vw - 80px), with the
  * floating shadow.
  * @param theme Active theme.
@@ -86,7 +106,7 @@ function panelFrameStyle(theme: ActiveTheme, screenWidth: number): ViewStyle {
  * @param row A Select or chips row.
  * @returns The row's filter keys.
  */
-function rowKeys(row: SelectRow | ChipsRow): string[] {
+function rowKeys(row: Row): string[] {
   return 'groups' in row ? row.groups.map((group) => group.key) : [row.key];
 }
 
@@ -129,11 +149,12 @@ function triggerStyle(theme: ActiveTheme, active: boolean): ViewStyle {
   };
 }
 
-export function FilterMenu({ label, title, rows, values, onApply }: FilterMenuProps) {
+export function FilterMenu({ label, title, rows: rowsFor, values, onApply }: FilterMenuProps) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(values);
+  const rows = typeof rowsFor === 'function' ? rowsFor(draft) : rowsFor;
   const count = activeFilterCount(values);
   const tint = count ? theme.colors.accent : theme.colors.text;
 
@@ -149,8 +170,12 @@ export function FilterMenu({ label, title, rows, values, onApply }: FilterMenuPr
     setOpen(false);
   };
 
-  /** Changes one filter in the panel, without applying it. */
-  const change = (key: string, chosen: string[]) => setDraft((prev) => ({ ...prev, [key]: chosen }));
+  /** Changes one filter in the panel, without applying it, dropping what the other rows stop offering. */
+  const change = (key: string, chosen: string[]) =>
+    setDraft((prev) => {
+      const next = { ...prev, [key]: chosen };
+      return typeof rowsFor === 'function' ? offered(next, rowsFor(next)) : next;
+    });
 
   return (
     <>
