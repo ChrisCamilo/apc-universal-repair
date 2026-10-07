@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Text, TextInput } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form';
@@ -89,17 +89,20 @@ async function leave(tree: ReactTestRenderer.ReactTestRenderer, label: string) {
 /**
  * Renders the form inside the theme and toast providers.
  * @param editing The item to edit; a new item when left out.
- * @param onSaved Called with the saved item.
+ * @param props What else the owner hands the form: onSaved, details and onClose.
  * @returns The rendered tree.
  */
-async function mount(editing?: Item, onSaved: (saved: Item) => void = () => {}) {
+async function mount(
+  editing?: Item,
+  { onSaved = () => {}, details = false, onClose = () => {} }: { onSaved?: (saved: Item) => void; details?: boolean; onClose?: () => void } = {},
+) {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
           <ToastProvider>
-            <ItemFormDialog open item={editing} items={ITEMS} onClose={() => {}} onSaved={onSaved} />
+            <ItemFormDialog open item={editing} details={details} items={ITEMS} onClose={onClose} onSaved={onSaved} />
           </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>,
@@ -215,7 +218,7 @@ test('Mobile: leaving a field writes it back by the rules', async () => {
 // and the saved item is handed over.
 test('Mobile: a new item is posted, announced and handed over', async () => {
   const onSaved = jest.fn();
-  const tree = await mount(undefined, onSaved);
+  const tree = await mount(undefined, { onSaved });
   (fetch as jest.Mock).mockClear();
   answerSave();
   await type(tree, 'Código da peça', 'ngk-b7');
@@ -245,9 +248,53 @@ test('Mobile: an item opens filled in and is patched on save', async () => {
   answerSave(200, { ...FILTER, quantity: 7 });
   await type(tree, 'Quantidade', '7a');
   expect(value(tree, 'Quantidade')).toBe('7');
-  await press(tree, 'Salvar');
+  await press(tree, 'Salvar alterações');
   const [url, init] = (fetch as jest.Mock).mock.calls[0];
   expect(url).toMatch(new RegExp(`/items/${FILTER.id}$`));
   expect(init.method).toBe('PATCH');
   expect(shows(tree, 'Item “Filtro de óleo” salvo.')).toBe(true);
+});
+
+// Opens an item's details and checks every field shows as text with its label, what doesn't apply said in words and
+// the price in reais, nothing can be typed in, and Fechar closes it.
+test('Mobile: the details show the item as text and change nothing', async () => {
+  const onClose = jest.fn();
+  const tree = await mount(FILTER, { details: true, onClose });
+  expect(shows(tree, 'Detalhes do item')).toBe(true);
+  const values = tree.root.findAll((n) => n.type === View && typeof n.props.accessibilityLabel === 'string' && n.props.accessible);
+  const labels = values.map((n) => n.props.accessibilityLabel.replace(/\s/g, ' '));
+  expect(labels).toEqual(
+    expect.arrayContaining([
+      'Código da peça: W 712/95',
+      'Modelo do veículo: Gol',
+      'Posição: Não se aplica',
+      'Cor: Preto',
+      'Local: Não informado',
+      'Valor unitário (R$): R$ 39,90',
+    ]),
+  );
+  expect(tree.root.findAllByType(TextInput)).toHaveLength(0);
+  (fetch as jest.Mock).mockClear();
+  await press(tree, 'Fechar');
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+// Opens the details, presses Editar and checks the fields unlock filled in, with Cancelar and Salvar alterações, then
+// changes the quantity and checks it is patched like an edit.
+test('Mobile: Editar unlocks the details and saves like an edit', async () => {
+  const onSaved = jest.fn();
+  const tree = await mount(FILTER, { onSaved, details: true });
+  await press(tree, 'Editar');
+  expect(shows(tree, 'Editar item')).toBe(true);
+  expect(value(tree, 'Código da peça')).toBe('W 712/95');
+  expect(shows(tree, 'Cancelar')).toBe(true);
+  (fetch as jest.Mock).mockClear();
+  answerSave(200, { ...FILTER, quantity: 7 });
+  await type(tree, 'Quantidade', '7');
+  await press(tree, 'Salvar alterações');
+  const [url, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(url).toMatch(new RegExp(`/items/${FILTER.id}$`));
+  expect(init.method).toBe('PATCH');
+  expect(onSaved).toHaveBeenCalledTimes(1);
 });
