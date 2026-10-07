@@ -8,6 +8,8 @@ import '../index.css'
 import { themeCss } from '../theme.ts'
 import { ClearFilters, FilterMenu } from './FilterMenu.tsx'
 
+// Vehicle models by brand, for rows that depend on the choice.
+const MODELS: Record<string, string[]> = { Chevrolet: ['Chevette', 'Opala'], Fiat: ['Uno'] }
 const NO_FILTERS: FilterValues = { cat: [], pos: [], side: [] }
 const ROWS = [
   {
@@ -142,6 +144,41 @@ test('Web: the clear filters link shows only with a filter on', async () => {
   const on = await render(<ClearFilters active onClear={onClear} />)
   await on.getByRole('button', { name: 'Limpar filtros' }).click()
   expect(onClear).toHaveBeenCalledOnce()
+})
+
+// Picks two brands and a model of each with rows that list only the chosen brands' models, then unchecks one brand,
+// and checks its model leaves the choice and the list, and Apply sends what is left.
+test('Web: rows that depend on the choice drop what they stop offering', async () => {
+  const onApply = vi.fn()
+  const brandRows = (draft: FilterValues) => {
+    const brands = draft.brand?.length ? draft.brand : Object.keys(MODELS)
+    const options = (values: string[]) => values.map((value) => ({ value, label: value }))
+    return [
+      { key: 'brand', label: 'Marca', allLabel: 'Todas', options: options(Object.keys(MODELS)) },
+      { key: 'model', label: 'Modelo', allLabel: 'Todos', options: options(brands.flatMap((brand) => MODELS[brand])) },
+    ]
+  }
+  const screen = await render(
+    <FilterMenu label="Filtros" title="Filtrar" rows={brandRows} values={{ brand: [], model: [] }} onApply={onApply} />,
+  )
+  await screen.getByRole('button', { name: 'Filtros' }).click()
+  await screen.getByRole('combobox', { name: 'Marca' }).click()
+  await screen.getByRole('option', { name: 'Chevrolet' }).click()
+  await screen.getByRole('option', { name: 'Fiat' }).click()
+  await userEvent.keyboard('{Escape}')
+  await screen.getByRole('combobox', { name: 'Modelo' }).click()
+  await screen.getByRole('option', { name: 'Opala' }).click()
+  await screen.getByRole('option', { name: 'Uno' }).click()
+  await userEvent.keyboard('{Escape}')
+
+  await screen.getByRole('combobox', { name: 'Marca' }).click()
+  await screen.getByRole('option', { name: 'Fiat' }).click()
+  await userEvent.keyboard('{Escape}')
+  await screen.getByRole('combobox', { name: 'Modelo' }).click()
+  expect(screen.getByRole('option').elements().map((option) => option.textContent)).toEqual(['Todos', 'Chevette', 'Opala'])
+  await userEvent.keyboard('{Escape}')
+  await screen.getByRole('button', { name: 'Aplicar' }).click()
+  expect(onApply).toHaveBeenCalledWith({ brand: ['Chevrolet'], model: ['Opala'] })
 })
 
 function Menu({ initial, onApplied }: { initial: FilterValues; onApplied: (values: FilterValues) => void }) {

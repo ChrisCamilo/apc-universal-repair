@@ -11,7 +11,9 @@ import { Label } from './Typography.tsx'
 // The detailed filters of a list: a button that opens a panel with one row per filter. A row holds a
 // multiple-choice Select, or toggle chips split into labeled groups for small fixed sets of values; a row
 // with any value chosen lights up. Nothing changes until Apply; Clear resets every row and applies right
-// away; Escape or a click outside closes the panel without applying. The button counts the filters on.
+// away; Escape or a click outside closes the panel without applying. The button counts the filters on. Rows may
+// depend on what is chosen in the panel, e.g. the vehicle models of the chosen brands: a value a row stops
+// offering leaves the choice.
 
 const TRIGGER =
   'inline-flex cursor-pointer items-center gap-2 rounded-pill border px-4 py-2 font-display text-xs font-semibold ' +
@@ -32,11 +34,13 @@ type FilterMenuProps = {
   label: string
   /** Heading at the top of the panel, e.g. "Filtrar estoque". */
   title: string
-  rows: (SelectRow | ChipsRow)[]
+  /** The rows, or the rows for what is chosen in the panel so far. */
+  rows: Row[] | ((draft: FilterValues) => Row[])
   /** Applied values per filter key. */
   values: FilterValues
   onApply: (values: FilterValues) => void
 }
+type Row = SelectRow | ChipsRow
 type SelectRow = {
   key: string
   label: string
@@ -46,15 +50,31 @@ type SelectRow = {
 }
 
 /**
+ * Drops from each Select row the values it no longer offers, once the rest of the choice changed what it lists.
+ * @param draft Values chosen in the panel.
+ * @param rows The rows for those values.
+ * @returns The values each row still offers.
+ */
+function offered(draft: FilterValues, rows: Row[]): FilterValues {
+  const kept = { ...draft }
+  for (const row of rows) {
+    if (!('groups' in row) && kept[row.key]) {
+      kept[row.key] = kept[row.key].filter((value) => row.options.some((option) => option.value === value))
+    }
+  }
+  return kept
+}
+
+/**
  * Lists the filter keys a row sets: its own key, or one per chip group.
  * @param row A Select or chips row.
  * @returns The row's filter keys.
  */
-function rowKeys(row: SelectRow | ChipsRow): string[] {
+function rowKeys(row: Row): string[] {
   return 'groups' in row ? row.groups.map((group) => group.key) : [row.key]
 }
 
-export function FilterMenu({ label, title, rows, values, onApply }: FilterMenuProps) {
+export function FilterMenu({ label, title, rows: rowsFor, values, onApply }: FilterMenuProps) {
   const baseId = useId()
   const panelId = `${baseId}-panel`
   const [open, setOpen] = useState(false)
@@ -62,6 +82,7 @@ export function FilterMenu({ label, title, rows, values, onApply }: FilterMenuPr
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const count = activeFilterCount(values)
+  const rows = typeof rowsFor === 'function' ? rowsFor(draft) : rowsFor
 
   /** Opens the panel on the applied values, or closes it and drops what was not applied. */
   const show = (next: boolean) => {
@@ -76,8 +97,12 @@ export function FilterMenu({ label, title, rows, values, onApply }: FilterMenuPr
     trigger.current?.focus()
   }
 
-  /** Changes one filter in the panel, without applying it. */
-  const change = (key: string, chosen: string[]) => setDraft((prev) => ({ ...prev, [key]: chosen }))
+  /** Changes one filter in the panel, without applying it, dropping what the other rows stop offering. */
+  const change = (key: string, chosen: string[]) =>
+    setDraft((prev) => {
+      const next = { ...prev, [key]: chosen }
+      return typeof rowsFor === 'function' ? offered(next, rowsFor(next)) : next
+    })
 
   /** Closes the panel without applying on Escape (a Select closes only its own list first). */
   const onKeyDown = (event: KeyboardEvent) => {

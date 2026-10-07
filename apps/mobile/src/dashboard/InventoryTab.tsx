@@ -1,12 +1,25 @@
 import { useState, type ComponentProps } from 'react';
 import { View, type ViewStyle } from 'react-native';
 import { pencilIcon, trashIcon } from '@apc/shared/icons';
-import { itemDetails, matchesSearch, resultSummary, STOCK_STATUS_LABELS, stockStatus, type Item } from '@apc/shared/items';
+import {
+  ITEM_STATUSES,
+  itemDetails,
+  matchesSearch,
+  resultSummary,
+  STOCK_STATUS_LABELS,
+  stockStatus,
+  type Item,
+  type ItemStatus,
+} from '@apc/shared/items';
+import { activeFilterCount, type FilterValues } from '@apc/shared/filters';
+import { EMPTY_ITEM_FILTERS, itemFilterRows, itemListQuery } from '@apc/shared/item-filters';
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { scales } from '@apc/shared/theme';
 import { API_URL } from '../api';
 import { Button } from '../Button';
 import { DataTable, RowAction, TableThumbnail } from '../DataTable';
+import { FilterChipGroup } from '../FilterChip';
+import { ClearFilters, FilterMenu } from '../FilterMenu';
 import type { UploadPhoto } from '../ImageUpload';
 import { ImageViewer } from '../ImageViewer';
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog';
@@ -22,7 +35,8 @@ import { useOpenItemOnRow } from './openItemOnRowContext';
 // of the items shown, the total and the stock alerts. Low and out-of-stock cards are tinted by the table.
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
 // the list loads again once an item is saved or deleted. While "Abrir item ao clicar na linha" is on in the user
-// menu, a tap on a card opens the item's details. Each card's thumbnail shows the item's cover and opens its photos
+// menu, a tap on a card opens the item's details. The Filtros menu, the stock status chips (one at a time) and
+// "Limpar filtros" narrow the list the same as the web, sent to the API as the list query. Each card's thumbnail shows the item's cover and opens its photos
 // in the ImageViewer, where each photo removed, changed or added is saved at once and the list follows.
 
 const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', gap: scales.space.s1 };
@@ -43,6 +57,9 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   },
   { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (item) => <NumericReadout>{item.quantity}</NumericReadout> },
 ];
+const FILTERS_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: scales.space.s2 };
+// The stock status chips, outside the menu: one at a time, none for every item.
+const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }));
 const TAB_STYLE: ViewStyle = { gap: scales.space.s3 };
 
 /**
@@ -99,7 +116,13 @@ function rowStatus(item: Item): { tone: 'warn' | 'danger'; label: string } | und
 }
 
 export function InventoryTab() {
+  const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS);
+  const [status, setStatus] = useState<ItemStatus | null>(null);
+  const query = itemListQuery(filters, status);
+  // Every item, for the counter, the filter options and the form; and the items the filters let through.
   const state = useItems();
+  const filtered = useItems(query, query !== '');
+  const listed = query ? filtered : state;
   const [search, setSearch] = useState('');
   const { opensOnRow } = useOpenItemOnRow();
   // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
@@ -112,7 +135,13 @@ export function InventoryTab() {
   // The item whose photos the viewer shows, while it is open, with the photos on screen.
   const [viewer, setViewer] = useState<{ item: Item; photos: UploadPhoto[] }>();
   const items = state.status === 'ready' ? state.items : [];
-  const shown = items.filter((item) => matchesSearch(item, search));
+  const shown = listed.status === 'ready' ? listed.items.filter((item) => matchesSearch(item, search)) : [];
+
+  /** Loads every item and the filtered items again, after one was saved or deleted. */
+  const reload = () => {
+    state.reload();
+    filtered.reload();
+  };
 
   /**
    * Saves the photos the viewer changed, showing them at once and going back to the saved ones if they can't be saved.
@@ -130,7 +159,7 @@ export function InventoryTab() {
       return false;
     }
     setViewer((current) => current && { item: saved, photos: heldPhotos(saved.photos, API_URL) });
-    state.reload();
+    reload();
     return true;
   };
 
@@ -143,7 +172,29 @@ export function InventoryTab() {
       <View style={TAB_STYLE}>
         <SearchField label="Procure pelo nome ou código da peça" value={search} onValueChange={setSearch} />
         <Button onPress={() => openForm()}>Novo item</Button>
-        {state.status === 'ready' && (
+        <View style={FILTERS_STYLE}>
+          <FilterMenu
+            label="Filtros do estoque"
+            title="Filtrar estoque"
+            rows={(draft) => itemFilterRows(items, draft)}
+            values={filters}
+            onApply={setFilters}
+          />
+          <FilterChipGroup
+            label="Situação do estoque"
+            options={STATUS_OPTIONS}
+            value={status}
+            onValueChange={(value) => setStatus(value as ItemStatus | null)}
+          />
+          <ClearFilters
+            active={activeFilterCount(filters) > 0 || status !== null}
+            onClear={() => {
+              setFilters(EMPTY_ITEM_FILTERS);
+              setStatus(null);
+            }}
+          />
+        </View>
+        {state.status === 'ready' && listed.status === 'ready' && (
           <>
             <NumericReadout tone="muted">{resultSummary(shown.length, items)}</NumericReadout>
             <DataTable
@@ -174,7 +225,7 @@ export function InventoryTab() {
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
           setForm((current) => ({ ...current, open: false }));
-          state.reload();
+          reload();
         }}
       />
       <ImageViewer
@@ -193,7 +244,7 @@ export function InventoryTab() {
         onClose={() => setRemoving(undefined)}
         onDeleted={() => {
           setRemoving(undefined);
-          state.reload();
+          reload();
         }}
       />
     </Panel>

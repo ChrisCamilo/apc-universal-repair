@@ -95,7 +95,7 @@ export function codeTakenMessage(name: string): string {
  * @param values Values, possibly repeated.
  * @returns The distinct values in alphabetical order.
  */
-function distinct(values: readonly string[]): string[] {
+export function distinct(values: readonly string[]): string[] {
   const seen = new Map<string, string>();
   for (const value of values) {
     if (!seen.has(searchKey(value))) {

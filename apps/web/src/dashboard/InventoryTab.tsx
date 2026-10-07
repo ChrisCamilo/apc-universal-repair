@@ -8,13 +8,19 @@ import {
   POSITION_NAMES,
   resultSummary,
   SIDE_NAMES,
+  ITEM_STATUSES,
   STOCK_STATUS_LABELS,
   stockStatus,
   type Item,
+  type ItemStatus,
 } from '@apc/shared/items'
+import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
+import { EMPTY_ITEM_FILTERS, itemFilterRows, itemListQuery } from '@apc/shared/item-filters'
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
 import { Button } from '../components/Button.tsx'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
+import { FilterChipGroup } from '../components/FilterChip.tsx'
+import { ClearFilters, FilterMenu } from '../components/FilterMenu.tsx'
 import type { UploadPhoto } from '../components/ImageUpload.tsx'
 import { ImageViewer } from '../components/ImageViewer.tsx'
 import { Panel } from '../components/Panel.tsx'
@@ -26,8 +32,11 @@ import { API_BASE, savePhotos } from '../inventory/savePhotos.ts'
 import { useItems } from '../inventory/useItems.ts'
 import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 
-// The Inventory tab (/inventory), the default tab: every item in the DataTable, a search by name or part code, and
-// a counter of the items shown, the total and the stock alerts. "Novo item" and each row's pencil open the item
+// The Inventory tab (/inventory), the default tab: the items in the DataTable, a search by name or part code, the
+// filters and a counter of the items shown, the total and the stock alerts. The Filtros menu narrows the list by
+// category, brands, vehicle model, position and side, color and location, applied together; the Estoque baixo and
+// Esgotado chips, one at a time, by stock status; and "Limpar filtros" turns them all off. The filters go to the
+// API as the list query, and the search narrows what comes back. "Novo item" and each row's pencil open the item
 // form, each row's trash asks to confirm deleting the item, and the list loads again once an item is saved or
 // deleted. While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or Enter on it) opens the
 // item's details. Each row's thumbnail shows the item's cover and opens its photos in the ImageViewer, where each
@@ -60,6 +69,8 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   { key: 'price', header: 'Valor unit.', numeric: true, cell: (item) => <span className="whitespace-nowrap">{formatPrice(item.unitPriceCents)}</span> },
   { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (item) => item.quantity },
 ]
+// The stock status chips, outside the menu: one at a time, none for every item.
+const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }))
 
 /**
  * Tells a row's status for the table's tint, from the item's quantity and minimum.
@@ -72,7 +83,13 @@ function rowStatus(item: Item): { tone: 'warn' | 'danger'; label: string } | und
 }
 
 export function InventoryTab() {
+  const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS)
+  const [status, setStatus] = useState<ItemStatus | null>(null)
+  const query = itemListQuery(filters, status)
+  // Every item, for the counter, the filter options and the form; and the items the filters let through.
   const state = useItems()
+  const filtered = useItems(query, query !== '')
+  const listed = query ? filtered : state
   const [search, setSearch] = useState('')
   const { opensOnRow } = useOpenItemOnRow()
   // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
@@ -85,7 +102,13 @@ export function InventoryTab() {
   // The item whose photos the viewer shows, while it is open, with the photos on screen.
   const [viewer, setViewer] = useState<{ item: Item; photos: UploadPhoto[] }>()
   const items = state.status === 'ready' ? state.items : []
-  const shown = items.filter((item) => matchesSearch(item, search))
+  const shown = listed.status === 'ready' ? listed.items.filter((item) => matchesSearch(item, search)) : []
+
+  /** Loads every item and the filtered items again, after one was saved or deleted. */
+  const reload = () => {
+    state.reload()
+    filtered.reload()
+  }
 
   /**
    * Saves the photos the viewer changed, showing them at once and going back to the saved ones if they can't be saved.
@@ -103,7 +126,7 @@ export function InventoryTab() {
       return false
     }
     setViewer((current) => current && { item: saved, photos: heldPhotos(saved.photos, API_BASE) })
-    state.reload()
+    reload()
     return true
   }
 
@@ -119,11 +142,35 @@ export function InventoryTab() {
         </div>
         <Button onClick={() => openForm()}>Novo item</Button>
       </div>
-      {state.status === 'ready' && (
-        <>
-          <p data-testid="inventory-count" className="m-0 font-mono text-xs tabular-nums text-text-muted">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <FilterMenu
+          label="Filtros do estoque"
+          title="Filtrar estoque"
+          rows={(draft) => itemFilterRows(items, draft)}
+          values={filters}
+          onApply={setFilters}
+        />
+        <FilterChipGroup
+          label="Situação do estoque"
+          options={STATUS_OPTIONS}
+          value={status}
+          onValueChange={(value) => setStatus(value as ItemStatus | null)}
+        />
+        <ClearFilters
+          active={activeFilterCount(filters) > 0 || status !== null}
+          onClear={() => {
+            setFilters(EMPTY_ITEM_FILTERS)
+            setStatus(null)
+          }}
+        />
+        {state.status === 'ready' && listed.status === 'ready' && (
+          <p data-testid="inventory-count" className="m-0 ml-auto font-mono text-xs tabular-nums text-text-muted">
             {resultSummary(shown.length, items)}
           </p>
+        )}
+      </div>
+      {listed.status === 'ready' && (
+        <>
           <DataTable
             label="Itens do estoque"
             columns={[
@@ -184,7 +231,7 @@ export function InventoryTab() {
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
           setForm((current) => ({ ...current, open: false }))
-          state.reload()
+          reload()
         }}
       />
       <ImageViewer
@@ -202,7 +249,7 @@ export function InventoryTab() {
         onClose={() => setRemoving(undefined)}
         onDeleted={() => {
           setRemoving(undefined)
-          state.reload()
+          reload()
         }}
       />
     </Panel>

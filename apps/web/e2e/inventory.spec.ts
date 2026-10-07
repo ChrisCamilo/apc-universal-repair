@@ -303,3 +303,69 @@ test("Web: item photos are added and removed from the list and the form", async 
   const padsThumbnail = page.getByRole("button", { name: "Ver fotos de Pastilha de freio" }).locator("img");
   await expect(padsThumbnail).toHaveAttribute("src", "/api/photos/new-0-thumb.webp");
 });
+
+// Filters the list against an API that filters what it is asked for: two categories in the Filtros menu go out as the
+// list query only on Aplicar and leave their rows, with the button counting one filter; the stock status chips go
+// one at a time; a vehicle brand narrows the vehicle models, each named with its brand; the position chips carry
+// their full names; and "Limpar filtros" brings every item back with an empty query.
+test("Web: the filters narrow the list through the API query", async ({ page }) => {
+  const queries: string[] = [];
+  await page.route(
+    (url) => url.pathname === "/api/items",
+    (route) => {
+      const query = new URL(route.request().url()).searchParams;
+      queries.push(query.toString());
+      const categories = query.getAll("category");
+      const status = query.get("status");
+      const items = ITEMS.filter(
+        (it) =>
+          (categories.length === 0 || categories.includes(it.category)) &&
+          (status !== "out" || it.quantity === 0) &&
+          (status !== "low" || (it.quantity > 0 && it.quantity <= it.minQuantity)),
+      );
+      return route.fulfill({ json: { items } });
+    },
+  );
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(4);
+
+  await page.getByRole("button", { name: "Filtros" }).click();
+  const menu = page.getByRole("dialog", { name: "Filtros do estoque" });
+  await menu.getByRole("combobox", { name: "Categoria" }).click();
+  await page.getByRole("option", { name: "Motor" }).click();
+  await page.getByRole("option", { name: "Suspensão" }).click();
+  await page.keyboard.press("Escape");
+  await expect(menu.getByRole("button", { name: "N/A" }).first()).toHaveAttribute("title", "Posição não se aplica");
+  expect(queries.at(-1)).toBe("");
+  await menu.getByRole("button", { name: "Aplicar" }).click();
+  await expect(rows).toHaveCount(2);
+  expect(queries.at(-1)).toBe("category=Motor&category=Suspens%C3%A3o");
+  await expect(page.getByRole("button", { name: "Filtros, 1 ativo" })).toBeVisible();
+  await expect(page.getByTestId("inventory-count")).toHaveText("2 de 4 itens · 1 baixo · 1 esgotado");
+
+  const low = page.getByRole("button", { name: "Estoque baixo" });
+  const out = page.getByRole("button", { name: "Esgotado" });
+  await low.click();
+  await expect(page.getByText("Nenhum item encontrado.")).toBeVisible();
+  expect(queries.at(-1)).toContain("status=low");
+  await out.click();
+  await expect(out).toHaveAttribute("aria-pressed", "true");
+  await expect(low).toHaveAttribute("aria-pressed", "false");
+  await out.click();
+  await expect(rows).toHaveCount(2);
+
+  await page.getByRole("button", { name: "Filtros, 1 ativo" }).click();
+  await menu.getByRole("combobox", { name: "Marca do veículo" }).click();
+  await page.getByRole("option", { name: "Ford" }).click();
+  await page.keyboard.press("Escape");
+  await menu.getByRole("combobox", { name: "Modelo do veículo" }).click();
+  await expect(page.getByRole("option")).toHaveText(["Todos", "Escort · Ford"]);
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Limpar filtros" }).click();
+  await expect(rows).toHaveCount(4);
+  await expect(page.getByRole("button", { name: "Filtros", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Limpar filtros" })).toHaveCount(0);
+});

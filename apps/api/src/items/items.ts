@@ -9,6 +9,7 @@ import {
   type ItemListQuery,
   type ItemUpdate,
 } from "@apc/shared/items";
+import { splitVehicleModel } from "@apc/shared/item-filters";
 import type { Item as ItemRow, ItemPhoto as ItemPhotoRow, Prisma } from "../generated/prisma/client.js";
 import { photoOf } from "../photos/photos.js";
 
@@ -48,8 +49,8 @@ export function createData(input: ItemCreate): Prisma.ItemCreateInput {
 
 /**
  * Builds the list filter: the search matches the name or the part code, every other filter matches any of
- * its values (with "Ambos" fitting a specific position or side), and the status compares the quantity with
- * the item's own minimum.
+ * its values (with "Ambos" fitting a specific position or side, and a vehicle model matching with its brand), and
+ * the status compares the quantity with the item's own minimum.
  * @param query Validated list query.
  * @param minQuantity Reference to the minQuantity column, for comparing two columns of the same row.
  * @returns The where clause for prisma.item.findMany.
@@ -66,7 +67,6 @@ export function itemWhere(query: ItemListQuery, minQuantity: Prisma.FieldRef<"It
     ["category", query.category],
     ["partBrand", query.partBrand],
     ["vehicleBrand", query.vehicleBrand],
-    ["vehicleModel", query.vehicleModel],
     ["position", includeBoth(query.position, ["D", "T"])],
     ["side", includeBoth(query.side, ["LD", "LE"])],
     ["color", query.color],
@@ -76,6 +76,10 @@ export function itemWhere(query: ItemListQuery, minQuantity: Prisma.FieldRef<"It
     if (values.length > 0) {
       and.push({ [field]: { in: values } });
     }
+  }
+  const models = query.vehicleModel.flatMap((value) => splitVehicleModel(value) ?? []);
+  if (models.length > 0) {
+    and.push({ OR: models });
   }
   if (query.status === "out") {
     and.push({ quantity: 0 });

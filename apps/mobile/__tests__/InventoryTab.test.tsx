@@ -237,3 +237,36 @@ test('Mobile: the thumbnail opens the item photos, saved as they change', async 
   expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items$/);
   expect(texts(tree)).toContain('Foto removida');
 });
+
+// Picks a category in the Filtros menu and applies it, then turns on Esgotado, and checks each goes to the API as the
+// list query and the cards follow; "Limpar filtros" brings every item back.
+test('Mobile: the filters narrow the list through the API query', async () => {
+  const tree = await mount();
+  const pressable = (name: string) =>
+    tree.root.find(
+      (n) =>
+        typeof n.type !== 'string' &&
+        typeof n.props.onPress === 'function' &&
+        n.props.accessibilityRole !== undefined &&
+        (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+    );
+  const cards = () => tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string');
+  await ReactTestRenderer.act(async () => pressable('Filtros').props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Categoria').props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Freios').props.onPress());
+  (fetch as jest.Mock).mockClear();
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [ITEMS[1]] }) });
+  await ReactTestRenderer.act(async () => pressable('Aplicar').props.onPress());
+  expect((fetch as jest.Mock).mock.calls[0][0]).toMatch(/\/items\?category=Freios$/);
+  expect(cards()).toHaveLength(1);
+  expect(texts(tree)).toContain('1 de 3 itens · 1 baixo · 1 esgotado');
+
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [] }) });
+  await ReactTestRenderer.act(async () => pressable('Esgotado').props.onPress());
+  expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items\?category=Freios&status=out$/);
+  expect(texts(tree)).toContain('Nenhum item encontrado.');
+
+  await ReactTestRenderer.act(async () => pressable('Limpar filtros').props.onPress());
+  expect(cards()).toHaveLength(3);
+  expect(tree.root.findAll((n) => n.props.children === 'Limpar filtros')).toHaveLength(0);
+});

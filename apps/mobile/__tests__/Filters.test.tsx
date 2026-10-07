@@ -15,6 +15,8 @@ import { themeStorage, ThemeProvider } from '../src/theme';
 const CATEGORIES = ['Arrefecimento', 'Elétrica', 'Freios', 'Ignição', 'Motor', 'Suspensão', 'Transmissão'].map(
   (label) => ({ value: label, label }),
 );
+// Vehicle models by brand, for rows that depend on the choice.
+const MODELS: Record<string, string[]> = { Chevrolet: ['Chevette', 'Opala'], Fiat: ['Uno'] };
 const NO_FILTERS: FilterValues = { cat: [], pos: [] };
 const ROWS = [
   { key: 'cat', label: 'Categoria', allLabel: 'Todas', options: CATEGORIES.slice(0, 3) },
@@ -191,6 +193,41 @@ test('Mobile: back and a tap outside close without applying; Clear applies', asy
   await press(pressable(tree, 'Limpar'));
   expect(onApply).toHaveBeenCalledWith(NO_FILTERS);
   expect(pressable(tree, 'Filtros')).toBeTruthy();
+});
+
+// Picks two brands and a model of each with rows that list only the chosen brands' models, then unchecks one brand,
+// and checks its model leaves the choice and the list, and Apply sends what is left.
+test('Mobile: rows that depend on the choice drop what they stop offering', async () => {
+  const onApply = jest.fn();
+  const brandRows = (draft: FilterValues) => {
+    const brands = draft.brand?.length ? draft.brand : Object.keys(MODELS);
+    const options = (values: string[]) => values.map((value) => ({ value, label: value }));
+    return [
+      { key: 'brand', label: 'Marca', allLabel: 'Todas', options: options(Object.keys(MODELS)) },
+      { key: 'model', label: 'Modelo', allLabel: 'Todos', options: options(brands.flatMap((brand) => MODELS[brand])) },
+    ];
+  };
+  const tree = await mount(
+    'fiat90',
+    'night',
+    <FilterMenu label="Filtros" title="Filtrar" rows={brandRows} values={{ brand: [], model: [] }} onApply={onApply} />,
+  );
+  // Each list opens and closes on its own button.
+  const pick = async (list: string, options: string[]) => {
+    await press(pressable(tree, list));
+    for (const option of options) {
+      await press(pressable(tree, option));
+    }
+    await press(pressable(tree, list));
+  };
+  await press(pressable(tree, 'Filtros'));
+  await pick('Marca', ['Chevrolet', 'Fiat']);
+  await pick('Modelo', ['Opala', 'Uno']);
+  await pick('Marca', ['Fiat']);
+  await press(pressable(tree, 'Modelo'));
+  expect(tree.root.findAll((node) => node.type === Text && node.props.children === 'Uno')).toHaveLength(0);
+  await press(pressable(tree, 'Aplicar'));
+  expect(onApply).toHaveBeenCalledWith({ brand: ['Chevrolet'], model: ['Opala'] });
 });
 
 // Checks "Limpar filtros" shows only while a filter is on.
