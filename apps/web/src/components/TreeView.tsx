@@ -10,7 +10,8 @@ import { Icon } from './Icon.tsx'
 // separator stands between the top-level models. The keyboard follows the ARIA tree pattern (see treeKey in
 // @apc/shared/tree), with a roving tabIndex so Tab enters the tree on the selected leaf and leaves it at once.
 // The tree scrolls inside its own height, set through className, and long labels are cut short instead of
-// widening it.
+// widening it. A row can also be pointed out, such as the model of a part found by its code: it takes the accent
+// like the selected leaf, and is marked aria-current for screen readers.
 
 const CHEVRON_SIZE = 12
 // A branch's children open by growing the one grid row they sit in from nothing to their full height. They show
@@ -34,6 +35,7 @@ type TreeItemProps = { node: TreeNode; level: number; first: boolean; tree: Tree
 type TreeState = {
   expanded: ReadonlySet<string>
   selected?: string
+  highlighted?: string
   /** The one item Tab lands on. */
   tabbable?: string
   register: (id: string, item: HTMLLIElement | null) => void
@@ -48,6 +50,8 @@ type TreeViewProps = {
   selected?: string
   /** Called with the leaf chosen with a click, Enter or Space; the owner keeps it, e.g. for the detail panel. */
   onSelect: (id: string) => void
+  /** Id of a row to point out in the accent, e.g. the model of a part found by its code. */
+  highlighted?: string
   /** Branches open at first; defaults to the ones above the selected leaf. */
   defaultExpanded?: string[]
   /** Height of the tree, which scrolls inside it, e.g. "max-h-96". */
@@ -68,7 +72,7 @@ function rowFont(node: TreeNode, level: number): string {
   return isLeaf(node) ? 'font-mono' : ''
 }
 
-export function TreeView({ label, nodes, selected, onSelect, defaultExpanded, className }: TreeViewProps) {
+export function TreeView({ label, nodes, selected, onSelect, highlighted, defaultExpanded, className }: TreeViewProps) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(defaultExpanded ?? (selected ? ancestors(nodes, selected) : [])),
   )
@@ -118,6 +122,7 @@ export function TreeView({ label, nodes, selected, onSelect, defaultExpanded, cl
   const tree: TreeState = {
     expanded,
     selected,
+    highlighted,
     tabbable,
     register: (id, item) => {
       if (item) {
@@ -148,12 +153,14 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
   const leaf = isLeaf(node)
   const open = branch && tree.expanded.has(node.id)
   const selected = leaf && node.id === tree.selected
+  const highlighted = node.id === tree.highlighted
   return (
     <li
       ref={(item) => tree.register(node.id, item)}
       role="treeitem"
       aria-expanded={branch ? open : undefined}
       aria-selected={leaf ? selected : undefined}
+      aria-current={highlighted || undefined}
       tabIndex={node.id === tree.tabbable ? 0 : -1}
       className={['outline-none [&:focus-visible>[data-row]]:shadow-ring', level === 1 && !first ? SEPARATOR : ''].join(' ')}
       onFocus={(event) => {
@@ -167,7 +174,7 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
         className={[
           ROW,
           rowFont(node, level),
-          selected ? SELECTED : 'text-text hover:bg-panel-raised',
+          selected || highlighted ? SELECTED : 'text-text hover:bg-panel-raised',
           branch || leaf ? 'cursor-pointer' : 'cursor-default',
         ].join(' ')}
         onClick={() => tree.activate(node)}

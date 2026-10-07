@@ -14,7 +14,8 @@ import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
 // the accent with a rule on its left, glowing where the style has a glow; pressing a row shows what hover shows
 // on the web. Each level hangs from a hairline guide, and a divider stands between the top-level models. With
 // reduced motion, branches open and the chevron turns at once. The tree scrolls inside its own height, set
-// through style, and long labels are cut short on one line.
+// through style, and long labels are cut short on one line. A row can also be pointed out, such as the model of a
+// part found by its code: it takes the accent like the selected leaf, and screen readers say it is "em destaque".
 
 const CHEVRON_SIZE = 12;
 const LABEL_STYLE: TextStyle = { flexShrink: 1 };
@@ -24,7 +25,7 @@ const SPACER_STYLE: ViewStyle = { width: CHEVRON_SIZE };
 
 type TreeItemProps = { node: TreeNode; level: number; tree: TreeState };
 // What every item needs from the tree around it.
-type TreeState = { expanded: ReadonlySet<string>; selected?: string; activate: (node: TreeNode) => void };
+type TreeState = { expanded: ReadonlySet<string>; selected?: string; highlighted?: string; activate: (node: TreeNode) => void };
 type TreeViewProps = {
   /** Accessible name of the tree, e.g. "Modelos Chevrolet". */
   label: string;
@@ -33,6 +34,8 @@ type TreeViewProps = {
   selected?: string;
   /** Called with the leaf chosen with a press; the owner keeps it, e.g. for the detail panel. */
   onSelect: (id: string) => void;
+  /** Id of a row to point out in the accent, e.g. the model of a part found by its code. */
+  highlighted?: string;
   /** Branches open at first; defaults to the ones above the selected leaf. */
   defaultExpanded?: string[];
   /** Height of the tree, which scrolls inside it, e.g. { maxHeight: 380 }. */
@@ -69,7 +72,7 @@ function groupStyle(theme: ActiveTheme): ViewStyle {
  * @param theme Active theme.
  * @param node The row's node.
  * @param level Its depth; 1 for the top level.
- * @param selected Whether it is the selected leaf.
+ * @param selected Whether it is the selected leaf, or a pointed-out row.
  * @returns Style for the label Text.
  */
 function labelStyle(theme: ActiveTheme, node: TreeNode, level: number, selected: boolean): TextStyle {
@@ -93,7 +96,7 @@ function labelStyle(theme: ActiveTheme, node: TreeNode, level: number, selected:
  * Styles a row: clear at rest, the raised fill while pressed; selected, the tinted fill with the accent rule
  * on its left and the glow.
  * @param theme Active theme.
- * @param selected Whether it is the selected leaf.
+ * @param selected Whether it is the selected leaf, or a pointed-out row.
  * @param pressed Whether the row is being pressed.
  * @returns Style for the row Pressable.
  */
@@ -122,7 +125,7 @@ function rowStyle(theme: ActiveTheme, selected: boolean, pressed: boolean): View
   };
 }
 
-export function TreeView({ label, nodes, selected, onSelect, defaultExpanded, style }: TreeViewProps) {
+export function TreeView({ label, nodes, selected, onSelect, highlighted, defaultExpanded, style }: TreeViewProps) {
   const reduced = useReducedMotion();
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(defaultExpanded ?? (selected ? ancestors(nodes, selected) : [])),
@@ -149,7 +152,7 @@ export function TreeView({ label, nodes, selected, onSelect, defaultExpanded, st
     });
   };
 
-  const tree: TreeState = { expanded, selected, activate };
+  const tree: TreeState = { expanded, selected, highlighted, activate };
   return (
     <ScrollView role="tree" accessibilityLabel={label} nestedScrollEnabled style={style}>
       {nodes.map((node, index) => (
@@ -168,18 +171,21 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
   const leaf = isLeaf(node);
   const open = branch && tree.expanded.has(node.id);
   const selected = leaf && node.id === tree.selected;
+  // A pointed-out row looks like the selected leaf.
+  const accent = selected || node.id === tree.highlighted;
   return (
     <View>
       <Pressable
         role="treeitem"
         accessibilityLabel={node.detail ? `${node.label} ${node.detail}` : node.label}
         accessibilityState={{ expanded: branch ? open : undefined, selected: leaf ? selected : undefined }}
+        accessibilityValue={node.id === tree.highlighted ? { text: 'em destaque' } : undefined}
         disabled={!branch && !leaf}
         onPress={() => tree.activate(node)}
-        style={({ pressed }) => rowStyle(theme, selected, pressed)}
+        style={({ pressed }) => rowStyle(theme, accent, pressed)}
       >
         {branch ? <Chevron open={open} /> : <View style={SPACER_STYLE} />}
-        <Text numberOfLines={1} style={labelStyle(theme, node, level, selected)}>
+        <Text numberOfLines={1} style={labelStyle(theme, node, level, accent)}>
           {node.label}
         </Text>
         {node.detail && (
