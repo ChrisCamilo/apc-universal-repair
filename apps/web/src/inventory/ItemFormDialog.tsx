@@ -15,14 +15,17 @@ import {
   type ItemForm,
   type ItemFormErrors,
 } from '@apc/shared/item-form'
+import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
 import { Button } from '../components/Button.tsx'
 import { Combobox } from '../components/Combobox.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { FieldValue } from '../components/FieldValue.tsx'
+import { ImageUpload, type UploadPhoto } from '../components/ImageUpload.tsx'
 import { Segmented } from '../components/Segmented.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { Label } from '../components/Typography.tsx'
+import { API_BASE, savePhotos } from './savePhotos.ts'
 
 // The form that creates a new item or edits one, in a dialog whose content scrolls while Cancel and Save stay at
 // the bottom. Category, part brand and the vehicle's brand and model are comboboxes of the values in stock, where a
@@ -30,11 +33,13 @@ import { Label } from '../components/Typography.tsx'
 // clears when the brand changes to one without it. The code turns uppercase while typing; the texts start with a
 // capital letter when leaving the field and again on save, and the price is shown back in reais. Saving checks the
 // required fields and a code another item uses, then sends the item to the API, shows a toast and hands the saved
-// item over. Opened on an item's details, the same dialog shows each field as text in the form's layout, with Fechar
+// item over, then sends its photos when they changed: up to 3, the first the cover, as the ImageUpload field holds
+// them. When the item is saved but its photos aren't, the toast says so. Opened on an item's details, the same dialog shows each field as text in the form's layout, with Fechar
 // and Editar: nothing can be changed or saved until Editar unlocks the fields in place, on the first one, and the
 // buttons turn into Cancelar and Salvar alterações, which save like the edit form.
 
 const FIELDS_GRID = 'grid items-start gap-x-4 gap-y-3 sm:grid-cols-2'
+const PHOTOS_LABEL = 'Fotos do item'
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }))
 const SIDE_OPTIONS = SIDES.map((value) => ({ value, label: value }))
 
@@ -56,6 +61,7 @@ export function ItemFormDialog({ open, item, details = false, items, onClose, on
   const [viewing, setViewing] = useState(details && item !== undefined)
   const code = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<ItemForm>(() => (item ? itemFormOf(item) : EMPTY_ITEM_FORM))
+  const [photos, setPhotos] = useState<UploadPhoto[]>(() => (item ? heldPhotos(item.photos, API_BASE) : []))
   const [errors, setErrors] = useState<ItemFormErrors>({})
   const [saving, setSaving] = useState(false)
   const options = itemFormOptions(items)
@@ -99,19 +105,27 @@ export function ItemFormDialog({ open, item, details = false, items, onClose, on
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(itemFormBody(form, options.colors)),
     }).catch(() => null)
-    setSaving(false)
     if (response?.status === 409) {
+      setSaving(false)
       const { details } = await response.json()
       setErrors({ code: codeTakenMessage(details[0].itemName) })
       return
     }
     if (!response?.ok) {
+      setSaving(false)
       toast('Não foi possível salvar o item. Tente de novo.')
       return
     }
     const saved = itemSchema.parse(await response.json())
+    const withPhotos = await savePhotos(saved, photos)
+    setSaving(false)
+    if (!withPhotos) {
+      toast(`Item “${saved.name}” salvo, mas as fotos não foram salvas. Tente de novo.`)
+      onSaved(saved)
+      return
+    }
     toast(item ? `Item “${saved.name}” salvo.` : `Item “${saved.name}” cadastrado.`)
-    onSaved(saved)
+    onSaved(withPhotos)
   }
 
   return (
@@ -143,12 +157,18 @@ export function ItemFormDialog({ open, item, details = false, items, onClose, on
     >
       {viewing && item ? (
         <div className={FIELDS_GRID}>
+          <div className="sm:col-span-2">
+            <ImageUpload label={PHOTOS_LABEL} photos={photos} onPhotosChange={setPhotos} limit={ITEM_PHOTO_LIMIT} readOnly />
+          </div>
           {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
             <FieldValue key={field} label={ITEM_FIELD_LABELS[field as keyof ItemForm]} value={text} />
           ))}
         </div>
       ) : (
         <div className={FIELDS_GRID}>
+          <div className="sm:col-span-2">
+            <ImageUpload label={PHOTOS_LABEL} photos={photos} onPhotosChange={setPhotos} limit={ITEM_PHOTO_LIMIT} />
+          </div>
           <TextField
             ref={code}
             label={ITEM_FIELD_LABELS.code}
