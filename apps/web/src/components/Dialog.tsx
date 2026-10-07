@@ -6,24 +6,27 @@ import { Heading } from './Typography.tsx'
 // on top of the page behind a dimmed, blurred backdrop, moves the focus inside and keeps it there, and gives
 // it back to where it was when it closes. Escape and the owner's Cancel close it (the owner holds `open`).
 // The content scrolls inside while the action bar stays pinned at the bottom, so the main action is visible
-// without scrolling at 1280×720 and 360×780.
+// without scrolling at 1280×720 and 360×780. A `dismissible` dialog, one with nothing to lose such as a notice,
+// also closes on a click outside it, on the backdrop.
 
 // The elements the focus can start on: the scrolling body is focusable too, but the focus belongs on a control.
 const CONTROLS = 'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
 
 type DialogProps = {
   open: boolean
-  /** Called on Escape; the owner closes the dialog by setting `open` to false. */
+  /** Called on Escape (and a click outside when dismissible); the owner closes the dialog by setting `open` to false. */
   onClose: () => void
   title: string
   /** "form" for forms such as the item form, "confirm" for short confirmations. */
   size?: DialogSize
   /** Buttons of the action bar, e.g. Cancel and Save. */
   actions: ReactNode
+  /** Also closes on a click outside, for dialogs with nothing to lose, such as a notice; off for forms. */
+  dismissible?: boolean
   children: ReactNode
 }
 
-export function Dialog({ open, onClose, title, size = 'form', actions, children }: DialogProps) {
+export function Dialog({ open, onClose, title, size = 'form', actions, dismissible = false, children }: DialogProps) {
   const titleId = useId()
   const dialog = useRef<HTMLDialogElement>(null)
 
@@ -54,6 +57,12 @@ export function Dialog({ open, onClose, title, size = 'form', actions, children 
         // dialog's own Escape closes it, and the owner does, so `open` stays the one source of truth.
         if (event.target === dialog.current) {
           event.preventDefault()
+          onClose()
+        }
+      }}
+      // A click on the dialog itself, not on its content, landed on the backdrop.
+      onClick={(event) => {
+        if (dismissible && event.target === dialog.current) {
           onClose()
         }
       }}
