@@ -65,7 +65,7 @@ test("Web: the inventory lists every item with its stock alerts", async ({ page 
 
   if (testInfo.project.name === "desktop") {
     const headers = await page.getByRole("columnheader").allTextContents();
-    expect(headers).toEqual(["Foto", "Item", "Categoria", "Marca", "Veículo", "Posição", "Lado", "Cor", "Local", "Valor unit.", "Qtd."]);
+    expect(headers).toEqual(["Foto", "Item", "Categoria", "Marca", "Veículo", "Posição", "Lado", "Cor", "Local", "Valor unit.", "Qtd.", "Ações"]);
     await expect(rows.nth(1)).toContainText(/R\$\s1\.234,56/);
     await expect(rows.nth(1)).toContainText("qualquer modelo");
     const position = rows.nth(1).getByTitle("Dianteiro");
@@ -104,4 +104,54 @@ test("Web: the search finds items by name or part code", async ({ page }) => {
 
   await page.getByRole("button", { name: "Limpar busca" }).click();
   await expect(rows).toHaveCount(4);
+});
+
+// Adds an item through "Novo item" against an API that keeps what it is sent: saving the blank form names the
+// required fields, the filled-in form is posted with the writing rule applied, a toast confirms it and the list
+// shows the new item without a reload; then the item's pencil opens it filled in and an edit is patched. Save is on
+// screen without scrolling at both screen sizes.
+test("Web: items are added and edited through the item form", async ({ page }) => {
+  const stock = [...ITEMS];
+  await page.route("**/api/items", async (route) => {
+    if (route.request().method() === "POST") {
+      const sent = route.request().postDataJSON();
+      const saved = item({ ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null });
+      stock.push(saved);
+      return route.fulfill({ status: 201, json: saved });
+    }
+    return route.fulfill({ json: { items: stock } });
+  });
+  await page.route("**/api/items/*", async (route) => {
+    const sent = route.request().postDataJSON();
+    const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
+    stock[index] = { ...stock[index], ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null };
+    return route.fulfill({ json: stock[index] });
+  });
+  await page.goto("/inventory");
+  await page.getByRole("button", { name: "Novo item" }).click();
+  const dialog = page.getByRole("dialog", { name: "Novo item" });
+  const save = dialog.getByRole("button", { name: "Salvar" });
+  await expect(save).toBeInViewport();
+  await save.click();
+  await expect(dialog.getByText("Informe o código da peça.")).toBeVisible();
+
+  await dialog.getByLabel("Código da peça").fill("ngk-b7");
+  await dialog.getByLabel("Nome").fill("vela de ignição");
+  await dialog.getByRole("combobox", { name: "Categoria" }).fill("Ignição");
+  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("NGK");
+  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Chevrolet");
+  await dialog.getByLabel("Valor unitário (R$)").fill("34,9");
+  await save.click();
+  await expect(page.getByText("Item “Vela de ignição” cadastrado.")).toBeVisible();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator("tbody tr")).toHaveCount(5);
+  await expect(page.locator("tbody tr").last()).toContainText("NGK-B7");
+
+  await page.getByRole("button", { name: "Editar Vela de ignição" }).click();
+  const edit = page.getByRole("dialog", { name: "Editar item" });
+  await expect(edit.getByLabel("Valor unitário (R$)")).toHaveValue("34,90");
+  await edit.getByLabel("Quantidade", { exact: true }).fill("9");
+  await edit.getByRole("button", { name: "Salvar" }).click();
+  await expect(page.getByText("Item “Vela de ignição” salvo.")).toBeVisible();
+  await expect(page.locator("tbody tr").last()).toContainText("9");
 });
