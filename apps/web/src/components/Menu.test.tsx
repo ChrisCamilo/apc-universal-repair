@@ -5,7 +5,7 @@ import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { themeCss } from '../theme.ts'
-import { Menu, MenuHeader, MenuItem, MenuLabel } from './Menu.tsx'
+import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from './Menu.tsx'
 import { Segmented } from './Segmented.tsx'
 import { Switch } from './Switch.tsx'
 
@@ -141,6 +141,26 @@ test('Web: on a phone the theme choice sits below its label and fits the menu', 
     expect(choice.top).toBeGreaterThanOrEqual(label.bottom)
     expect(choice.left).toBeGreaterThanOrEqual(menu.left)
     expect(choice.right).toBeLessThanOrEqual(menu.right)
+  } finally {
+    await page.viewport(1280, 720)
+  }
+})
+
+// Puts the user badge in a trigger and checks the initials sit on the accent in its contrast color, hidden from
+// screen readers since the trigger is already named, with the username beside them at desktop width and left
+// out on a 360px phone.
+test('Web: the user badge shows the initials, and the username only on wider screens', async () => {
+  const { colors } = themes.eighties.night
+  const screen = await render(<Menu label="Menu do usuário" trigger={<UserBadge initials="CC" name="christian.camilo" />}>{null}</Menu>)
+  const initials = screen.getByText('CC').element()
+  expect(getComputedStyle(initials).backgroundColor).toBe(rgb(colors.accent))
+  expect(getComputedStyle(initials).color).toBe(rgb(colors.onAccent))
+  expect(initials.getAttribute('aria-hidden')).toBe('true')
+  await expect.element(screen.getByText('christian.camilo')).toBeVisible()
+  await page.viewport(360, 780)
+  try {
+    await expect.element(screen.getByText('christian.camilo')).not.toBeVisible()
+    await expect.element(screen.getByText('CC')).toBeVisible()
   } finally {
     await page.viewport(1280, 720)
   }
