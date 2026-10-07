@@ -65,3 +65,21 @@ test("Web: Sair ends the session and keeps the preferences", async ({ page }) =>
   await page.getByLabel("Senha", { exact: true }).press("Enter");
   await expect(page).toHaveURL(/\/inventory$/);
 });
+
+// Turns "Arrastar para reordenar" on and checks the tabs become draggable at once and stay so after a reload, then
+// turns it off and checks they are fixed again. The MVP has a single tab, so the order itself can't change here; the
+// component tests move tabs with three of them.
+test("Web: the reorder choice makes the tabs draggable and comes back", async ({ page }) => {
+  await page.goto("/inventory");
+  const tab = page.getByRole("tab", { name: "Estoque" });
+  await expect(tab).not.toHaveAttribute("draggable");
+  await page.getByRole("button", { name: "Menu do usuário" }).click();
+  await page.getByRole("menuitemcheckbox", { name: /Arrastar para reordenar/ }).click();
+  await expect(tab).toHaveAttribute("draggable", "true");
+
+  await page.reload();
+  await expect(tab).toHaveAttribute("draggable", "true");
+  await page.getByRole("button", { name: "Menu do usuário" }).click();
+  await page.getByRole("menuitemcheckbox", { name: /Arrastar para reordenar/ }).click();
+  await expect(tab).not.toHaveAttribute("draggable");
+});

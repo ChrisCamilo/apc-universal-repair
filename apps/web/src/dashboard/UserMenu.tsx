@@ -1,6 +1,4 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme'
 import { auth } from '../auth/auth.ts'
 import { useSession } from '../auth/sessionContext.ts'
@@ -8,13 +6,13 @@ import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../components/
 import { Divider } from '../components/Panel.tsx'
 import { Segmented } from '../components/Segmented.tsx'
 import { Switch } from '../components/Switch.tsx'
-import { readStored, writeStored } from '../storage.ts'
 import { useTheme } from '../useTheme.ts'
+import { useTabReorder } from './tabReorderContext.ts'
 
 // The user menu at the right of the Dashboard header: the logged user's initials and username on the trigger
 // (initials only on phones), and the display preferences. Dark mode and the theme go through the ThemeProvider,
-// which applies and saves them at once; "Arrastar para reordenar" is saved on the device, off until turned on,
-// and the tabs follow it (#42). Every choice keeps the menu open, so several can be changed in a row. "Sair", at
+// which applies and saves them at once; "Arrastar para reordenar" goes through the Dashboard (TabReorderContext),
+// which saves it and makes the tabs reorderable while it is on. Every choice keeps the menu open, so several can be changed in a row. "Sair", at
 // the end and set apart from the preferences, ends the session and goes back to /login; the preferences stay on
 // the device for the next login.
 
@@ -24,7 +22,7 @@ export function UserMenu() {
   const { user, setUser } = useSession()
   const navigate = useNavigate()
   const { style, mode, setStyle, setMode } = useTheme()
-  const [reorder, setReorder] = useState(() => readStored(REORDER_TABS_STORAGE_KEY) === 'true')
+  const { reorderable, setReorderable } = useTabReorder()
   // Nobody to show for a moment after "Sair", until the app leaves the Dashboard.
   if (!user) {
     return null
@@ -39,11 +37,8 @@ export function UserMenu() {
       <Segmented label="Tema" options={STYLE_OPTIONS} value={style} onValueChange={(next) => isStyle(next) && setStyle(next)} />
       <MenuLabel>Abas</MenuLabel>
       <Switch
-        checked={reorder}
-        onCheckedChange={(on) => {
-          setReorder(on)
-          writeStored(REORDER_TABS_STORAGE_KEY, String(on))
-        }}
+        checked={reorderable}
+        onCheckedChange={setReorderable}
         description="Troque a ordem pelo puxador ou com Alt + setas"
       >
         Arrastar para reordenar

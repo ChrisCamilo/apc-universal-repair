@@ -8,6 +8,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import type { SessionUser } from '@apc/shared/auth';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
+import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorderContext';
 import { UserMenu } from '../src/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/theme';
 
@@ -39,7 +40,9 @@ async function openMenu(onLogout: () => void = () => {}) {
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <ThemeProvider>
-        <UserMenu user={USER} onLogout={onLogout} />
+        <Reorder>
+          <UserMenu user={USER} onLogout={onLogout} />
+        </Reorder>
         <ActiveTheme />
       </ThemeProvider>,
     );
@@ -122,4 +125,8 @@ test('Mobile: Sair comes last, apart from the preferences, and logs out', async 
 function ActiveTheme() {
   const { style, mode } = useTheme();
   return <Text testID="active-theme">{`${style}/${mode}`}</Text>;
+}
+
+function Reorder({ children }: { children: React.ReactNode }) {
+  return <TabReorderContext.Provider value={useReorderChoice()}>{children}</TabReorderContext.Provider>;
 }
