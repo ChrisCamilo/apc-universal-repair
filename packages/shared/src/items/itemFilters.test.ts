@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   EMPTY_ITEM_FILTERS,
   itemFilterOptions,
+  itemFilterRows,
   itemListQuery,
   POSITION_FILTERS,
   SIDE_FILTERS,
@@ -104,4 +105,20 @@ test("Shared: the list query sends each chosen value", () => {
   const filters = { ...EMPTY_ITEM_FILTERS, category: ["Freios", "Motor"], vehicleModel: ["Chevrolet|Opala 4.1"] };
   assert.equal(itemListQuery(filters, "low"), "category=Freios&category=Motor&vehicleModel=Chevrolet%7COpala+4.1&status=low");
   assert.equal(itemListQuery(EMPTY_ITEM_FILTERS, null), "");
+});
+
+// Lays out the menu with a Ford chosen and checks the seven rows in order, position and side sharing a row of chips,
+// and the vehicle models narrowed to Ford.
+test("Shared: the filter menu has seven rows, models following the brands", () => {
+  const rows = itemFilterRows(ITEMS, { ...EMPTY_ITEM_FILTERS, vehicleBrand: ["Ford"] });
+  assert.deepEqual(
+    rows.map((row) => row.label),
+    ["Categoria", "Marca da peça", "Marca do veículo", "Modelo do veículo", "Posição · Lado", "Cor", "Local"],
+  );
+  const models = rows[3];
+  assert.ok("options" in models);
+  assert.deepEqual(models.options, [{ value: "Ford|Gol", label: "Gol · Ford" }]);
+  const chips = rows[4];
+  assert.ok("groups" in chips);
+  assert.deepEqual(chips.groups.map((group) => group.key), ["position", "side"]);
 });
