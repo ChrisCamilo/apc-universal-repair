@@ -1,8 +1,11 @@
 import {
   capitalizeFirst,
   findOption,
+  formatPrice,
   NOT_APPLICABLE,
+  POSITION_NAMES,
   searchKey,
+  SIDE_NAMES,
   type Item,
   type ItemCreate,
   type POSITIONS,
@@ -11,7 +14,8 @@ import {
 
 // The item form shared by web and mobile, for creating and editing an inventory item: the fields as typed, the
 // unit price in the Brazilian format ("1.234,56"), the message of each field that can't be saved, the body sent to
-// the API with the writing rule applied, and the options the comboboxes offer, taken from the items in stock.
+// the API with the writing rule applied, and the options the comboboxes offer, taken from the items in stock. The
+// same form shows an item's details for reading, each field written out as text.
 
 /** The empty form of a new item: every field blank, position and side on N/A. */
 export const EMPTY_ITEM_FORM: ItemForm = {
@@ -83,6 +87,31 @@ function distinct(values: readonly string[]): string[] {
     }
   }
   return [...seen.values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+/**
+ * Writes out each field of an item for its details, read-only: what doesn't apply or wasn't filled in is said in
+ * words, the position and side by their full names, and the unit price in reais.
+ * @param item The item.
+ * @returns The text of each field of the item form.
+ */
+export function itemDetailTexts(item: Item): Record<keyof ItemForm, string> {
+  const notApplicable = "Não se aplica";
+  return {
+    code: item.code,
+    name: item.name,
+    category: item.category,
+    partBrand: item.partBrand,
+    vehicleBrand: item.vehicleBrand,
+    vehicleModel: item.vehicleModel ?? "Qualquer modelo",
+    quantity: String(item.quantity),
+    minQuantity: String(item.minQuantity),
+    position: item.position === NOT_APPLICABLE ? notApplicable : POSITION_NAMES[item.position],
+    side: item.side === NOT_APPLICABLE ? notApplicable : SIDE_NAMES[item.side],
+    color: item.color === NOT_APPLICABLE ? notApplicable : item.color,
+    location: item.location ?? "Não informado",
+    price: formatPrice(item.unitPriceCents),
+  };
 }
 
 /**
