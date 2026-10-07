@@ -3,6 +3,7 @@ import { LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type L
 import { lockIcon, userIcon } from '@apc/shared/icons'
 import { BrandMark } from '../components/BrandMark.tsx'
 import { Button } from '../components/Button.tsx'
+import { Dialog } from '../components/Dialog.tsx'
 import { Panel } from '../components/Panel.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { Text } from '../components/Typography.tsx'
@@ -13,7 +14,8 @@ import { Text } from '../components/Typography.tsx'
 // is typed into. While the login runs, "Entrar" shows it is busy and is disabled, so neither another press nor
 // Enter (the browser only sends a form through an enabled submit button) sends it twice. A refused login shows
 // one message above the form, without saying which field was wrong, and empties and focuses the password.
-// "Esqueceu a senha?" opens its dialog in a later task (#66).
+// "Esqueceu a senha?" opens a notice to ask the workshop's admin for a new password, as there is no reset until
+// the real backend (EP-10); it closes on "Entendi", Escape or a click outside, and the focus goes back to the link.
 
 const FIELD_ORDER = ['username', 'password'] as const
 
@@ -29,6 +31,7 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
   const [errors, setErrors] = useState<LoginErrors>({})
   const [sending, setSending] = useState(false)
   const [refused, setRefused] = useState(false)
+  const [forgot, setForgot] = useState(false)
   const usernameInput = useRef<HTMLInputElement>(null)
   const passwordInput = useRef<HTMLInputElement>(null)
 
@@ -98,12 +101,22 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
             <Button type="submit" loading={sending}>
               Entrar
             </Button>
-            <Button type="button" variant="link">
+            <Button type="button" variant="link" onClick={() => setForgot(true)}>
               Esqueceu a senha?
             </Button>
           </div>
         </form>
       </div>
+      <Dialog
+        open={forgot}
+        onClose={() => setForgot(false)}
+        title="Esqueceu a senha?"
+        size="confirm"
+        dismissible
+        actions={<Button onClick={() => setForgot(false)}>Entendi</Button>}
+      >
+        <Text>{LOGIN_MESSAGES.forgotPassword}</Text>
+      </Dialog>
     </main>
   )
 }
