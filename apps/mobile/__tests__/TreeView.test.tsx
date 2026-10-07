@@ -193,6 +193,19 @@ test('Mobile: long labels stay on one line and the tree scrolls in its own heigh
   expect(root.props.nestedScrollEnabled).toBe(true);
 });
 
+// Points out a model and checks its row takes the accent like the selected leaf and is read out as "em destaque",
+// while the rows around it stay clear.
+test('Mobile: a pointed-out row takes the accent and is read out', async () => {
+  const { colors } = themes.gt4.day;
+  const tree = await mount('gt4', 'day', <TreeView label="Modelos" nodes={MODELS} onSelect={() => {}} highlighted="opala" />);
+  const opala = look(tree, 'Opala');
+  expect(opala.frame).toMatchObject({ borderLeftColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft) });
+  expect(opala.color).toBe(colors.accent);
+  expect(row(tree, 'Opala').props.accessibilityValue).toEqual({ text: 'em destaque' });
+  expect(look(tree, 'Chevette').frame.backgroundColor).toBe('transparent');
+  expect(row(tree, 'Chevette').props.accessibilityValue).toBeUndefined();
+});
+
 function Sample({ onSelect }: { onSelect?: (id: string) => void }) {
   const [selected, setSelected] = useState(LEAF);
   return (
