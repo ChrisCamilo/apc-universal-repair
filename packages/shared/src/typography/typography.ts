@@ -17,7 +17,7 @@ export const READOUT_TYPE = { size: "sm", weight: 500 } as const;
 /** Body text sizes, smallest first. */
 export const TEXT_SIZES = ["sm", "base", "lg"] as const;
 /** Text tones and the theme color each one uses. */
-export const TONES = { default: "text", muted: "textMuted", accent: "accent" } as const;
+export const TONES = { default: "text", muted: "textMuted", accent: "accent", danger: "danger" } as const;
 
 export type HeadingLevel = keyof typeof HEADING_LEVELS;
 export type TextSize = (typeof TEXT_SIZES)[number];

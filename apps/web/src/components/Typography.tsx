@@ -27,6 +27,7 @@ const TONE_CLASSES: Record<Tone, string> = {
   default: 'text-text',
   muted: 'text-text-muted',
   accent: 'text-accent',
+  danger: 'text-danger',
 }
 const WEIGHT_CLASSES = { 400: 'font-normal', 500: 'font-medium', 600: 'font-semibold', 700: 'font-bold' } as const
 
