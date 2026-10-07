@@ -52,11 +52,12 @@ function item(n: number, fields: Partial<Item> & Pick<Item, 'code' | 'name'>): I
 }
 
 /**
- * Answers the items request with the test items and renders the Inventory tab once they load.
+ * Answers the items request and renders the Inventory tab once they load.
+ * @param items The items the API sends; the test items by default.
  * @returns The rendered tree.
  */
-async function mount() {
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
+async function mount(items: Item[] = ITEMS) {
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items }) });
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
@@ -123,7 +124,7 @@ test('Mobile: the search finds items by name or part code', async () => {
   expect(texts(tree)).toContain("Bomba d'água");
 
   await ReactTestRenderer.act(async () => search().props.onChangeText('parafuso'));
-  expect(texts(tree)).toContain('Nenhum item encontrado.');
+  expect(texts(tree)).toContain('Nenhum item encontrado');
 });
 
 // Presses "Novo item" and checks the empty form opens, then closes it and presses a card's pencil, and checks the form
@@ -264,9 +265,73 @@ test('Mobile: the filters narrow the list through the API query', async () => {
   (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [] }) });
   await ReactTestRenderer.act(async () => pressable('Esgotado').props.onPress());
   expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items\?category=Freios&status=out$/);
-  expect(texts(tree)).toContain('Nenhum item encontrado.');
+  expect(texts(tree)).toContain('Nenhum item encontrado');
 
-  await ReactTestRenderer.act(async () => pressable('Limpar filtros').props.onPress());
+  // The link in the filter bar, ahead of the empty state's own "Limpar filtros".
+  const clear = tree.root.findAll(
+    (n) =>
+      typeof n.type !== 'string' &&
+      typeof n.props.onPress === 'function' &&
+      n.props.accessibilityRole !== undefined &&
+      n.findAll((c) => c.type === Text && c.props.children === 'Limpar filtros').length > 0,
+  )[0];
+  await ReactTestRenderer.act(async () => clear.props.onPress());
   expect(cards()).toHaveLength(3);
   expect(tree.root.findAll((n) => n.props.children === 'Limpar filtros')).toHaveLength(0);
+});
+
+// Holds the items request and checks the skeleton cards show with a loading announcement, then fails it and checks
+// the error state, whose "Tentar de novo" loads the list once the API answers.
+test('Mobile: the inventory shows loading, then the error state with a retry', async () => {
+  let fail: () => void = () => {};
+  (fetch as jest.Mock).mockImplementationOnce(() => new Promise((_resolve, reject) => (fail = () => reject(new Error('offline')))));
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>
+          <Preferences>
+            <InventoryTab />
+          </Preferences>
+        </ThemeProvider>
+      </SafeAreaProvider>,
+    );
+  });
+  mounted.push(tree!);
+  expect(tree!.root.findAll((n) => n.props.testID === 'loading-row' && typeof n.type === 'string')).toHaveLength(5);
+  expect(tree!.root.findAll((n) => n.props.accessibilityLabel === 'Carregando o estoque' && typeof n.type === 'string')).not.toHaveLength(0);
+
+  await ReactTestRenderer.act(async () => fail());
+  expect(texts(tree!)).toContain('Não foi possível carregar o estoque');
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
+  const retry = tree!.root.find(
+    (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Tentar de novo').length > 0,
+  );
+  await ReactTestRenderer.act(async () => retry.props.onPress());
+  expect(tree!.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string')).toHaveLength(3);
+});
+
+// Searches for something that isn't there and checks the empty state offers "Limpar filtros", which clears the
+// search; with nothing in stock, the empty state offers "Novo item", which opens the form.
+test('Mobile: the empty states offer to clear the filters or add an item', async () => {
+  const tree = await mount();
+  const press = async (name: string) => {
+    const node = tree.root.findAll(
+      (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === name).length > 0,
+    );
+    await ReactTestRenderer.act(async () => node[node.length - 1].props.onPress());
+  };
+  await ReactTestRenderer.act(async () => tree.root.findByType(TextInput).props.onChangeText('parafuso'));
+  expect(texts(tree)).toContain('Nenhum item encontrado');
+  await press('Limpar filtros');
+  expect(tree.root.findByType(TextInput).props.value).toBe('');
+  expect(tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string')).toHaveLength(3);
+
+  const empty = await mount([]);
+  expect(texts(empty)).toContain('Nenhum item cadastrado');
+  const add = empty.root.findAll(
+    (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Novo item').length > 0,
+  );
+  await ReactTestRenderer.act(async () => add[add.length - 1].props.onPress());
+  expect(empty.root.findAllByType(Modal).some((modal) => modal.props.visible)).toBe(true);
 });
