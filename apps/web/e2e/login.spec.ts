@@ -51,3 +51,24 @@ test("Web: the login checks the fields and the user, and saves the session", asy
   await page.reload();
   expect(await session()).toMatchObject({ username: USER.username });
 });
+
+// Opens "Esqueceu a senha?", checks the notice says whom to ask and fits the screen, closes it with a click on the
+// backdrop in the screen's corner, checks the focus is back on the link, then opens and closes it with "Entendi".
+test("Web: the forgotten-password notice opens from the link and closes", async ({ page }) => {
+  await page.goto("/login");
+  const link = page.getByRole("button", { name: "Esqueceu a senha?" });
+  const dialog = page.getByRole("dialog", { name: "Esqueceu a senha?" });
+  await link.click();
+  await expect(dialog).toContainText(LOGIN_MESSAGES.forgotPassword);
+  const box = (await dialog.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  await page.mouse.click(4, 4);
+  await expect(dialog).toBeHidden();
+  await expect(link).toBeFocused();
+
+  await link.click();
+  await page.getByRole("button", { name: "Entendi" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(link).toBeFocused();
+});
