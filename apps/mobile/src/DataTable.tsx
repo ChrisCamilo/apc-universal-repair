@@ -12,7 +12,9 @@ import { Label } from './Typography';
 // The list of rows on a phone, the same as the web table below 720px: each row is a card (thumbnail |
 // main | end and actions) and a "Sort by" select takes the place of the header. The owner sorts the rows
 // (sortRows in @apc/shared/table). A row's status tints the card with a stripe at its start and is also
-// read out, since color alone doesn't reach screen readers; the text keeps the text color on every tint.
+// read out, since color alone doesn't reach screen readers; the text keeps the text color on every tint. With
+// onRowOpen, a tap on a card opens it, shown by the raised fill while pressed, except on its own buttons
+// (thumbnail, actions), which keep their tap.
 
 const MAIN_STYLE: ViewStyle = { flex: 1, minWidth: 0 };
 const ROW_STYLE: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: scales.space.s3 };
@@ -53,6 +55,8 @@ type DataTableProps<Row> = {
   unsortedLabel: string;
   /** Shown instead of the list when there are no rows. */
   empty: ReactNode;
+  /** Opens a row, e.g. the item details; without it cards aren't pressable. */
+  onRowOpen?: (row: Row) => void;
 };
 type RowActionProps = {
   icon: IconShape[];
@@ -73,12 +77,14 @@ type TableThumbnailProps = {
 };
 
 /**
- * Styles a card: hairline below, and for a status the soft tint and the stripe at its start.
+ * Styles a card: hairline below, and for a status the soft tint and the stripe at its start; a card being pressed
+ * to open takes the raised fill, as a row under the pointer does on the web.
  * @param theme Active theme.
  * @param tone Status of the row, if any.
+ * @param pressed Whether the card is being pressed.
  * @returns Style for the card View.
  */
-function cardStyle(theme: ActiveTheme, tone: RowTone | undefined): ViewStyle {
+function cardStyle(theme: ActiveTheme, tone: RowTone | undefined, pressed = false): ViewStyle {
   const { colors } = theme;
   return {
     ...ROW_STYLE,
@@ -89,7 +95,11 @@ function cardStyle(theme: ActiveTheme, tone: RowTone | undefined): ViewStyle {
     borderBottomColor: softHairline(theme),
     borderLeftWidth: tone ? STRIPE_WIDTH : 0,
     borderLeftColor: tone ? colors[tone] : 'transparent',
-    backgroundColor: tone ? withAlpha(colors[tone], scales.statusTint[tone]) : 'transparent',
+    backgroundColor: tone
+      ? withAlpha(colors[tone], pressed ? scales.statusTint[`${tone}Hover`] : scales.statusTint[tone])
+      : pressed
+        ? colors.panelRaised
+        : 'transparent',
   };
 }
 
@@ -133,6 +143,7 @@ export function DataTable<Row>({
   onSortChange,
   unsortedLabel,
   empty,
+  onRowOpen,
 }: DataTableProps<Row>) {
   const theme = useTheme();
   const sortable = columns.filter((column) => column.sortable);
@@ -165,8 +176,8 @@ export function DataTable<Row>({
         <View role="list" accessibilityLabel={label}>
           {rows.map((row) => {
             const status = rowStatus?.(row);
-            return (
-              <View key={rowKey(row)} role="listitem" testID="table-row" style={cardStyle(theme, status?.tone)}>
+            const content = (
+              <>
                 {status && <Text style={VISUALLY_HIDDEN}>{`${status.label}: `}</Text>}
                 {cells(row, 'thumb')}
                 <View style={MAIN_STYLE}>{cells(row, 'main')}</View>
@@ -174,6 +185,21 @@ export function DataTable<Row>({
                   {cells(row, 'end')}
                   {cells(row, 'actions')}
                 </View>
+              </>
+            );
+            return onRowOpen ? (
+              <Pressable
+                key={rowKey(row)}
+                role="listitem"
+                testID="table-row"
+                onPress={() => onRowOpen(row)}
+                style={({ pressed }) => cardStyle(theme, status?.tone, pressed)}
+              >
+                {content}
+              </Pressable>
+            ) : (
+              <View key={rowKey(row)} role="listitem" testID="table-row" style={cardStyle(theme, status?.tone)}>
+                {content}
               </View>
             );
           })}
