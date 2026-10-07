@@ -224,7 +224,58 @@ test('Web: the title cell shows the code, and the details only on a phone card',
   }
 })
 
-function Inventory({ items = ITEMS }: { items?: Item[] }) {
+// Opens rows by a click and by Enter and Space on a focused row, and checks a click or Enter on the row's own button
+// keeps to the button without opening the row, the rows show the pointer and an accent outline when focused by keyboard, and
+// rows aren't in the Tab order when they don't open.
+test('Web: rows open on a click or Enter and Space, except on their own buttons', async () => {
+  const { colors } = themes.eighties.night
+  root.dataset.style = 'eighties'
+  root.dataset.mode = 'night'
+  const onRowOpen = vi.fn()
+  const onEdit = vi.fn()
+  const screen = await render(<Inventory onRowOpen={onRowOpen} onEdit={onEdit} />)
+  const rows = [...screen.container.querySelectorAll('tbody tr')] as HTMLElement[]
+
+  await userEvent.click(screen.getByText('Junta do cabeçote'))
+  expect(onRowOpen).toHaveBeenLastCalledWith(ITEMS[1])
+  await screen.getByRole('button', { name: 'Editar Amortecedor' }).click()
+  expect(onEdit).toHaveBeenCalledWith(ITEMS[2])
+  expect(onRowOpen).toHaveBeenCalledTimes(1)
+
+  expect(getComputedStyle(rows[0]).cursor).toBe('pointer')
+  rows[0].focus()
+  await userEvent.keyboard('{Enter}')
+  expect(onRowOpen).toHaveBeenLastCalledWith(ITEMS[0])
+  // Tab goes through the row's own button, whose Enter is the button's, not the row's, then to the next row.
+  await userEvent.keyboard('{Tab}')
+  await expect.element(screen.getByRole('button', { name: 'Editar Pastilha de freio' })).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  expect(onEdit).toHaveBeenLastCalledWith(ITEMS[0])
+  expect(onRowOpen).toHaveBeenCalledTimes(2)
+  await userEvent.keyboard('{Tab}')
+  await expect.element(rows[1]).toHaveFocus()
+  expect(getComputedStyle(rows[1]).outlineColor).toBe(rgb(colors.accent))
+  expect(getComputedStyle(rows[1]).outlineStyle).toBe('solid')
+  await userEvent.keyboard(' ')
+  expect(onRowOpen).toHaveBeenLastCalledWith(ITEMS[1])
+  expect(onRowOpen).toHaveBeenCalledTimes(3)
+
+  screen.unmount()
+  const still = await render(<Inventory />)
+  const row = still.container.querySelector('tbody tr') as HTMLElement
+  expect(row.tabIndex).toBe(-1)
+  expect(getComputedStyle(row).cursor).not.toBe('pointer')
+})
+
+function Inventory({
+  items = ITEMS,
+  onRowOpen,
+  onEdit,
+}: {
+  items?: Item[]
+  onRowOpen?: (item: Item) => void
+  onEdit?: (item: Item) => void
+}) {
   const [sort, setSort] = useState<Sort | null>(null)
   const sorted = sort ? sortRows(items, (item) => item[sort.key as keyof Item] ?? '', sort.dir) : items
   const props: ComponentProps<typeof DataTable<Item>> = {
@@ -237,12 +288,19 @@ function Inventory({ items = ITEMS }: { items?: Item[] }) {
     onSortChange: setSort,
     unsortedLabel: 'Ordem de cadastro',
     empty: <p>Nenhum item encontrado</p>,
+    onRowOpen,
     columns: [
       { key: 'photo', header: 'Foto', headerHidden: true, card: 'thumb', cell: (item) => item.photo },
       { key: 'name', header: 'Item', sortable: true, card: 'main', cell: (item) => item.name },
       { key: 'loc', header: 'Local', sortable: true, cell: (item) => item.loc },
       { key: 'qty', header: 'Qtd.', sortLabel: 'Quantidade', numeric: true, sortable: true, card: 'end', cell: (item) => item.qty },
-      { key: 'actions', header: 'Ações', headerHidden: true, card: 'actions', cell: () => null },
+      {
+        key: 'actions',
+        header: 'Ações',
+        headerHidden: true,
+        card: 'actions',
+        cell: (item) => onEdit && <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => onEdit(item)} />,
+      },
     ],
   }
   return <DataTable {...props} />

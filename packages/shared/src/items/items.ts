@@ -6,6 +6,10 @@ import { z } from "zod";
 
 /** The status filter values: low stock (at or under the minimum, not zero) and out of stock (zero). */
 export const ITEM_STATUSES = ["low", "out"] as const;
+/**
+ * localStorage (web) and AsyncStorage (mobile) key of the "Abrir item ao clicar na linha" choice; on when not saved.
+ */
+export const OPEN_ITEM_ON_ROW_STORAGE_KEY = "apc-open-item-on-row";
 const optionalText = z.string().trim().optional();
 /** Full names of the positions, for tooltips and screen readers. */
 export const POSITION_NAMES: Record<(typeof POSITIONS)[number], string> = {

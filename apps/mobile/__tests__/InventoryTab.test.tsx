@@ -5,9 +5,10 @@
 import React from 'react';
 import { Modal, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import type { Item } from '@apc/shared/items';
+import { OPEN_ITEM_ON_ROW_STORAGE_KEY, type Item } from '@apc/shared/items';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
+import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 const ITEMS: Item[] = [
@@ -53,7 +54,9 @@ async function mount() {
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <ThemeProvider>
-        <InventoryTab />
+        <Preferences>
+          <InventoryTab />
+        </Preferences>
       </ThemeProvider>,
     );
   });
@@ -132,7 +135,7 @@ test('Mobile: "Novo item" and the pencil open the item form, and a save reloads 
   (fetch as jest.Mock)
     .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(ITEMS[0]) })
     .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
-  await ReactTestRenderer.act(async () => pressable('Salvar').props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Salvar alterações').props.onPress());
   expect(fetch).toHaveBeenCalledTimes(2);
   expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items$/);
   expect(dialog()).toBeUndefined();
@@ -164,3 +167,28 @@ test('Mobile: the trash asks to confirm, and a delete reloads the list', async (
   expect(dialog()).toBeUndefined();
   expect(texts(tree)).toContain('2 de 2 itens · 1 baixo · 0 esgotados');
 });
+
+// Taps a card and checks the item's details open read-only; then, with "Abrir item ao clicar na linha" saved off,
+// checks the cards don't open.
+test('Mobile: a card opens the item details while the option is on', async () => {
+  const tree = await mount();
+  const card = (code: string) =>
+    tree.root.findAll(
+      (n) =>
+        typeof n.type !== 'string' &&
+        n.props.testID === 'table-row' &&
+        typeof n.props.onPress === 'function' &&
+        n.findAll((c) => c.type === Text && c.props.children === code).length > 0,
+    )[0];
+  await ReactTestRenderer.act(async () => card('BP-1020').props.onPress());
+  expect(texts(tree)).toContain('Detalhes do item');
+  expect(tree.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')).toHaveLength(0);
+
+  await themeStorage.setItem(OPEN_ITEM_ON_ROW_STORAGE_KEY, 'false');
+  const off = await mount();
+  expect(off.root.findAll((n) => n.props.testID === 'table-row' && typeof n.props.onPress === 'function')).toHaveLength(0);
+});
+
+function Preferences({ children }: { children: React.ReactNode }) {
+  return <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>{children}</OpenItemOnRowContext.Provider>;
+}

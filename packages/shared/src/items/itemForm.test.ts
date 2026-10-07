@@ -3,7 +3,9 @@ import { test } from "node:test";
 import {
   codeTakenMessage,
   EMPTY_ITEM_FORM,
+  ITEM_FIELD_LABELS,
   ITEM_FORM_MESSAGES,
+  itemDetailTexts,
   itemFormBody,
   itemFormErrors,
   itemFormOf,
@@ -150,4 +152,33 @@ test("Shared: the form's options come from the items in stock", () => {
   });
   assert.deepEqual(modelsOfBrand(ITEMS, "VOLKSWAGEN"), ["Gol", "Santana"]);
   assert.deepEqual(modelsOfBrand(ITEMS, " "), []);
+});
+
+// Writes out the details of an item with every field filled in and of one with nothing optional, and checks the
+// position and side by their full names, the price in reais, what doesn't apply or is missing said in words, and a
+// text for every labeled field, in the form's order.
+test("Shared: an item's details are written out field by field", () => {
+  const full = itemDetailTexts({ ...PADS, position: "D", side: "LE", location: "B-10", unitPriceCents: 123456 });
+  assert.deepEqual(full, {
+    code: "FRA-1000",
+    name: "Pastilha",
+    category: "Motor",
+    partBrand: "Bosch",
+    vehicleBrand: "Chevrolet",
+    vehicleModel: "Opala",
+    quantity: "1",
+    minQuantity: "0",
+    position: "Dianteiro",
+    side: "Lado esquerdo",
+    color: "Preto",
+    location: "B-10",
+    price: "R$ 1.234,56",
+  });
+  assert.deepEqual(Object.keys(full), Object.keys(ITEM_FIELD_LABELS));
+  const bare = itemDetailTexts({ ...FILTER, vehicleModel: null });
+  assert.equal(bare.vehicleModel, "Qualquer modelo");
+  assert.equal(bare.position, "Não se aplica");
+  assert.equal(bare.side, "Não se aplica");
+  assert.equal(bare.color, "Não se aplica");
+  assert.equal(bare.location, "Não informado");
 });

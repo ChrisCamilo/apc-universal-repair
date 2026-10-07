@@ -20,11 +20,13 @@ import { Text } from '../components/Typography.tsx'
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
 import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
 import { useItems } from '../inventory/useItems.ts'
+import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 
 // The Inventory tab (/inventory), the default tab: every item in the DataTable, a search by name or part code, and
 // a counter of the items shown, the total and the stock alerts. "Novo item" and each row's pencil open the item
 // form, each row's trash asks to confirm deleting the item, and the list loads again once an item is saved or
-// deleted. Low and out-of-stock rows are tinted by the table. At phone width the row becomes a card and the
+// deleted. While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or Enter on it) opens the
+// item's details. Low and out-of-stock rows are tinted by the table. At phone width the row becomes a card and the
 // columns that leave it show as one line under the name.
 
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
@@ -74,15 +76,20 @@ function rowStatus(item: Item): { tone: 'warn' | 'danger'; label: string } | und
 export function InventoryTab() {
   const state = useItems()
   const [search, setSearch] = useState('')
-  // The item form: closed, open on a new item, or open on an item to edit. Each opening starts a new form.
-  const [form, setForm] = useState<{ open: boolean; item?: Item; session: number }>({ open: false, session: 0 })
+  const { opensOnRow } = useOpenItemOnRow()
+  // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
+  const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; session: number }>({
+    open: false,
+    session: 0,
+  })
   // The item the delete confirmation asks about, while it is open.
   const [removing, setRemoving] = useState<Item>()
   const items = state.status === 'ready' ? state.items : []
   const shown = items.filter((item) => matchesSearch(item, search))
 
-  /** Opens the item form on a new item, or on an item to edit. */
-  const openForm = (item?: Item) => setForm((current) => ({ open: true, item, session: current.session + 1 }))
+  /** Opens the item form on a new item, an item to edit, or an item's details. */
+  const openForm = (item?: Item, details = false) =>
+    setForm((current) => ({ open: true, item, details, session: current.session + 1 }))
 
   return (
     <Panel className="grid min-w-0 gap-3">
@@ -123,6 +130,7 @@ export function InventoryTab() {
             rows={shown}
             rowKey={(item) => item.id}
             rowStatus={rowStatus}
+            onRowOpen={opensOnRow ? (item) => openForm(item, true) : undefined}
             sort={null}
             onSortChange={() => {}}
             unsortedLabel="Ordem de cadastro"
@@ -138,6 +146,7 @@ export function InventoryTab() {
         key={form.session}
         open={form.open}
         item={form.item}
+        details={form.details}
         items={items}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {

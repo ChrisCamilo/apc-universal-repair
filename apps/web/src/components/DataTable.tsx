@@ -12,7 +12,9 @@ import { Label } from './Typography.tsx'
 // written out for screen readers, since color alone doesn't reach them; the cell text keeps the text color,
 // so it stays readable on every tint. Below TABLE_CARD_BREAKPOINT (720px) each row becomes a card
 // (thumbnail | main | end and actions), the header hides and a "Sort by" select takes its place. TableTitle is
-// the main cell: the name, the code under it and, on a card, a line with what the hidden columns said.
+// the main cell: the name, the code under it and, on a card, a line with what the hidden columns said. With
+// onRowOpen, a click on a row opens it, except on its own buttons (thumbnail, actions), which keep their click; the
+// rows join the Tab order with a focus outline and open with Enter or Space.
 // Tailwind only builds classes it finds written out, hence the literal class maps below.
 
 const CARD_AREA_CLASSES: Record<CardArea, string> = {
@@ -21,6 +23,10 @@ const CARD_AREA_CLASSES: Record<CardArea, string> = {
   end: 'max-[720px]:[grid-area:end] max-[720px]:justify-self-end',
   actions: 'max-[720px]:[grid-area:actions] max-[720px]:justify-self-end',
 }
+// A row that opens on a click: the pointer, and an accent outline inside its edges while focused by keyboard.
+const OPENABLE_ROW =
+  'cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 ' +
+  'focus-visible:outline-accent'
 const ROW =
   'transition-[background-color] max-[720px]:grid max-[720px]:grid-cols-[calc(var(--spacing)*11)_minmax(0,1fr)_auto] ' +
   "max-[720px]:items-center max-[720px]:gap-x-3 max-[720px]:gap-y-1 max-[720px]:[grid-template-areas:'thumb_main_end''thumb_main_actions'] " +
@@ -65,6 +71,8 @@ type DataTableProps<Row> = {
   unsortedLabel: string
   /** Shown instead of the table when there are no rows. */
   empty: ReactNode
+  /** Opens a row, e.g. the item details; without it rows aren't clickable. */
+  onRowOpen?: (row: Row) => void
 }
 type RowActionProps = {
   icon: IconShape[]
@@ -115,6 +123,7 @@ export function DataTable<Row>({
   onSortChange,
   unsortedLabel,
   empty,
+  onRowOpen,
 }: DataTableProps<Row>) {
   const sortId = useId()
   const sortable = columns.filter((column) => column.sortable)
@@ -185,7 +194,25 @@ export function DataTable<Row>({
                   <tr
                     key={rowKey(row)}
                     data-status={status?.tone}
-                    className={`${ROW} ${status ? STATUS_CLASSES[status.tone] : 'hover:bg-panel-raised'}`}
+                    tabIndex={onRowOpen ? 0 : undefined}
+                    className={`${ROW} ${status ? STATUS_CLASSES[status.tone] : 'hover:bg-panel-raised'} ${onRowOpen ? OPENABLE_ROW : ''}`}
+                    onClick={
+                      onRowOpen &&
+                      ((event) => {
+                        if (!(event.target as Element).closest('button, a, input')) {
+                          onRowOpen(row)
+                        }
+                      })
+                    }
+                    onKeyDown={
+                      onRowOpen &&
+                      ((event) => {
+                        if ((event.key === 'Enter' || event.key === ' ') && event.target === event.currentTarget) {
+                          event.preventDefault()
+                          onRowOpen(row)
+                        }
+                      })
+                    }
                   >
                     {columns.map((column, index) => (
                       <td

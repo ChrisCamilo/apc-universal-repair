@@ -7,9 +7,9 @@ import { Image, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import { sortRows, type Sort } from '@apc/shared/table';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { DataTable, RowAction, TableThumbnail } from '../src/DataTable';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
 
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   { key: 'name', header: 'Item', sortable: true, card: 'main', cell: (item) => <Text>{item.name}</Text> },
@@ -151,7 +151,27 @@ test('Mobile: thumbnails and row actions are named buttons', async () => {
   expect(onDelete).toHaveBeenCalledTimes(1);
 });
 
-function Inventory({ items = ITEMS }: { items?: Item[] }) {
+// Opens cards by a tap and checks the tapped row is handed over, a card being pressed takes the raised fill (or the
+// stronger tint of its status), and cards aren't pressable when they don't open.
+test('Mobile: cards open on a tap, lit while pressed', async () => {
+  const { colors } = themes.eighties.night;
+  const onRowOpen = jest.fn();
+  const tree = await mount('eighties', 'night', <Inventory onRowOpen={onRowOpen} />);
+  const pressables = tree.root.findAll(
+    (n) => typeof n.type !== 'string' && n.props.testID === 'table-row' && typeof n.props.onPress === 'function',
+  );
+  expect(pressables).toHaveLength(3);
+  await ReactTestRenderer.act(async () => pressables[1].props.onPress());
+  expect(onRowOpen).toHaveBeenCalledWith(ITEMS[1]);
+  expect(pressables[0].props.style({ pressed: true }).backgroundColor).toBe(colors.panelRaised);
+  expect(pressables[0].props.style({ pressed: false }).backgroundColor).toBe('transparent');
+  expect(pressables[1].props.style({ pressed: true }).backgroundColor).toBe(withAlpha(colors.warn, scales.statusTint.warnHover));
+
+  const still = await mount('eighties', 'night', <Inventory />);
+  expect(still.root.findAll((n) => n.props.testID === 'table-row' && typeof n.props.onPress === 'function')).toHaveLength(0);
+});
+
+function Inventory({ items = ITEMS, onRowOpen }: { items?: Item[]; onRowOpen?: (item: Item) => void }) {
   const [sort, setSort] = useState<Sort | null>(null);
   const sorted = sort ? sortRows(items, (item) => item[sort.key as keyof Item], sort.dir) : items;
   return (
@@ -167,6 +187,7 @@ function Inventory({ items = ITEMS }: { items?: Item[] }) {
       unsortedLabel="Ordem de cadastro"
       empty={<Text>Nenhum item encontrado</Text>}
       columns={COLUMNS}
+      onRowOpen={onRowOpen}
     />
   );
 }

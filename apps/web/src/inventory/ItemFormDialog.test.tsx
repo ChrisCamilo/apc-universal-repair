@@ -216,7 +216,7 @@ test('Web: an item opens filled in and is patched on save', async () => {
   await expect.element(screen.getByLabelText('Cor')).toHaveValue('Preto')
   await expect.element(screen.getByLabelText('Valor unitário (R$)')).toHaveValue('39,90')
   await screen.getByLabelText('Quantidade', { exact: true }).fill('7')
-  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect.element(screen.getByText('Item “Filtro de óleo” salvo.')).toBeVisible()
   expect(sent(fetch)).toMatchObject({ url: `/api/items/${FILTER.id}`, method: 'PATCH', body: { quantity: 7, code: 'W 712/95' } })
 })
@@ -238,11 +238,63 @@ test('Web: Save is on screen without scrolling at both minimum sizes', async () 
   }
 })
 
-function Sample({ item: editing, onSaved = () => {} }: { item?: Item; onSaved?: (item: Item) => void }) {
+// Opens an item's details and checks every field shows as text by its label, with what doesn't apply or wasn't
+// filled in said in words and the price in reais; nothing in it can be typed in or chosen, Enter sends nothing, and
+// Fechar, where the focus starts, closes it.
+test('Web: the details show the item as text and change nothing', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch')
+  const screen = await render(<Sample item={FILTER} details />)
+  const dialog = screen.getByRole('dialog', { name: 'Detalhes do item' })
+  await expect.element(dialog).toBeVisible()
+  const value = (label: string) => screen.getByRole('group', { name: label, exact: true }).getByRole('paragraph')
+  await expect.element(value('Código da peça')).toHaveTextContent('W 712/95')
+  await expect.element(value('Modelo do veículo')).toHaveTextContent('Gol')
+  await expect.element(value('Posição')).toHaveTextContent('Não se aplica')
+  await expect.element(value('Cor')).toHaveTextContent('Preto')
+  await expect.element(value('Local')).toHaveTextContent('Não informado')
+  expect(value('Valor unitário (R$)').element().textContent).toMatch(/^R\$\s39,90$/)
+  expect(dialog.element().querySelectorAll('input, [role="radio"]')).toHaveLength(0)
+  await expect.element(screen.getByRole('button', { name: 'Fechar' })).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+// Opens the details, presses Editar and checks the fields unlock in place, each where its value was, with the focus
+// on the first, Cancelar and Salvar alterações; then changes the quantity and checks it is patched like an edit.
+test('Web: Editar unlocks the details in place and saves like an edit', async () => {
+  const fetch = answerSave(200)
+  const onSaved = vi.fn()
+  const screen = await render(<Sample item={FILTER} details onSaved={onSaved} />)
+  const before = screen.getByText('W 712/95').element().getBoundingClientRect()
+  await screen.getByRole('button', { name: 'Editar' }).click()
+  await expect.element(screen.getByRole('heading', { name: 'Editar item' })).toBeVisible()
+  const code = screen.getByLabelText('Código da peça')
+  await expect.element(code).toHaveFocus()
+  await expect.element(code).toHaveValue('W 712/95')
+  const after = code.element().parentElement!.getBoundingClientRect()
+  expect([after.top, after.left, after.height]).toEqual([before.top, before.left, before.height])
+  await expect.element(screen.getByRole('button', { name: 'Cancelar' })).toBeVisible()
+  await screen.getByLabelText('Quantidade', { exact: true }).fill('7')
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(sent(fetch)).toMatchObject({ url: `/api/items/${FILTER.id}`, method: 'PATCH', body: { quantity: 7 } })
+  await expect.element(screen.getByText('Item “Filtro de óleo” salvo.')).toBeVisible()
+})
+
+function Sample({
+  item: editing,
+  details,
+  onSaved = () => {},
+}: {
+  item?: Item
+  details?: boolean
+  onSaved?: (item: Item) => void
+}) {
   const [open, setOpen] = useState(true)
   return (
     <ToastProvider>
-      <ItemFormDialog open={open} item={editing} items={ITEMS} onClose={() => setOpen(false)} onSaved={onSaved} />
+      <ItemFormDialog open={open} item={editing} details={details} items={ITEMS} onClose={() => setOpen(false)} onSaved={onSaved} />
     </ToastProvider>
   )
 }

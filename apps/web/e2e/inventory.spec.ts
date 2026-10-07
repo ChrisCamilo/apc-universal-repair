@@ -195,3 +195,49 @@ test("Web: an item is deleted after confirming", async ({ page }) => {
   await expect(page.getByTestId("inventory-count")).toHaveText("3 de 3 itens · 1 baixo · 0 esgotados");
   expect(deleted).toEqual([`DELETE ${id}`]);
 });
+
+// Opens an item's details from its row against an API that keeps what it is sent: the details show the item as
+// text, Editar unlocks the fields in place and Salvar alterações patches the item. The pencil still opens the edit
+// form and Enter on a focused row opens the details. With "Abrir item ao clicar na linha" turned off in the user
+// menu, a click on a row opens nothing.
+test("Web: a row opens the item details, editable after Editar", async ({ page }) => {
+  const stock = [...ITEMS];
+  await page.route("**/api/items", (route) => route.fulfill({ json: { items: stock } }));
+  await page.route("**/api/items/*", async (route) => {
+    const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
+    stock[index] = { ...stock[index], ...route.request().postDataJSON() };
+    return route.fulfill({ json: stock[index] });
+  });
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+
+  await rows.nth(3).getByText("Amortecedor").click();
+  const details = page.getByRole("dialog", { name: "Detalhes do item" });
+  await expect(details.getByRole("group", { name: "Lado", exact: true })).toContainText("Lado esquerdo");
+  await expect(details.getByRole("group", { name: "Local", exact: true })).toContainText("A-10");
+  await expect(details.getByRole("textbox")).toHaveCount(0);
+  await details.getByRole("button", { name: "Editar" }).click();
+  const edit = page.getByRole("dialog", { name: "Editar item" });
+  await expect(edit.getByLabel("Código da peça")).toBeFocused();
+  await edit.getByLabel("Local").fill("A-11");
+  await expect(edit.getByRole("button", { name: "Salvar alterações" })).toBeInViewport();
+  await edit.getByRole("button", { name: "Salvar alterações" }).click();
+  await expect(page.getByText("Item “Amortecedor” salvo.")).toBeVisible();
+  await expect(edit).toBeHidden();
+  expect(stock[3].location).toBe("A-11");
+
+  await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
+  await expect(page.getByRole("dialog", { name: "Editar item" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await rows.first().focus();
+  await page.keyboard.press("Enter");
+  await expect(details).toBeVisible();
+  await details.getByRole("button", { name: "Fechar" }).click();
+
+  await page.getByRole("button", { name: "Menu do usuário" }).click();
+  await page.getByRole("menuitemcheckbox", { name: /Abrir item ao clicar na linha/ }).click();
+  await page.keyboard.press("Escape");
+  await rows.first().getByText("Filtro de óleo").click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(rows.first()).not.toHaveAttribute("tabindex");
+});
