@@ -1,5 +1,5 @@
 import { useState, type ComponentProps } from 'react'
-import { pencilIcon } from '@apc/shared/icons'
+import { pencilIcon, trashIcon } from '@apc/shared/icons'
 import {
   formatPrice,
   itemDetails,
@@ -17,14 +17,15 @@ import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/
 import { Panel } from '../components/Panel.tsx'
 import { SearchField } from '../components/TextField.tsx'
 import { Text } from '../components/Typography.tsx'
+import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
 import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
 import { useItems } from '../inventory/useItems.ts'
 
 // The Inventory tab (/inventory), the default tab: every item in the DataTable, a search by name or part code, and
 // a counter of the items shown, the total and the stock alerts. "Novo item" and each row's pencil open the item
-// form, and the list loads again once an item is saved. Low and
-// out-of-stock rows are tinted by the table. At phone width the row becomes a card and the columns that
-// leave it show as one line under the name.
+// form, each row's trash asks to confirm deleting the item, and the list loads again once an item is saved or
+// deleted. Low and out-of-stock rows are tinted by the table. At phone width the row becomes a card and the
+// columns that leave it show as one line under the name.
 
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   {
@@ -75,6 +76,8 @@ export function InventoryTab() {
   const [search, setSearch] = useState('')
   // The item form: closed, open on a new item, or open on an item to edit. Each opening starts a new form.
   const [form, setForm] = useState<{ open: boolean; item?: Item; session: number }>({ open: false, session: 0 })
+  // The item the delete confirmation asks about, while it is open.
+  const [removing, setRemoving] = useState<Item>()
   const items = state.status === 'ready' ? state.items : []
   const shown = items.filter((item) => matchesSearch(item, search))
 
@@ -104,7 +107,17 @@ export function InventoryTab() {
                 headerHidden: true,
                 numeric: true,
                 card: 'actions',
-                cell: (item) => <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => openForm(item)} />,
+                cell: (item) => (
+                  <span className="inline-flex gap-0.5">
+                    <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => openForm(item)} />
+                    <RowAction
+                      icon={trashIcon}
+                      label={`Excluir ${item.name}`}
+                      tone="danger"
+                      onClick={() => setRemoving(item)}
+                    />
+                  </span>
+                ),
               },
             ]}
             rows={shown}
@@ -129,6 +142,15 @@ export function InventoryTab() {
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
           setForm((current) => ({ ...current, open: false }))
+          state.reload()
+        }}
+      />
+      <DeleteItemDialog
+        open={removing !== undefined}
+        item={removing}
+        onClose={() => setRemoving(undefined)}
+        onDeleted={() => {
+          setRemoving(undefined)
           state.reload()
         }}
       />
