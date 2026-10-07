@@ -182,8 +182,9 @@ test('Web: the keyboard moves, opens, closes and selects', async () => {
   await expect.element(item('Chevette')).toHaveFocus()
 })
 
-// Opens a branch and checks its chevron turns and its children slide open over the motion duration, then turns
-// reduced motion on and checks both happen at once. Once closed, the children are hidden, not only cut off.
+// Opens a branch and checks its children show at once, so the keyboard can move into them, and its chevron turns
+// and its children slide open over the motion duration; then turns reduced motion on and checks both happen at
+// once. Once closed, the children are hidden, not only cut off.
 test('Web: the chevron turns and the children slide open, at once with reduced motion', async () => {
   try {
     const screen = await render(<Sample selected={undefined} />)
@@ -195,8 +196,8 @@ test('Web: the chevron turns and the children slide open, at once with reduced m
     expect(getComputedStyle(group).transitionDuration).toMatch(/^0\.18s/)
     expect(getComputedStyle(chevron).transitionDuration).toMatch(/^0\.18s/)
     await userEvent.click(row('Chevette'))
+    expect(getComputedStyle(group).visibility).toBe('visible')
     await expect.poll(() => getComputedStyle(chevron).rotate).toBe('90deg')
-    await expect.poll(() => getComputedStyle(group).visibility).toBe('visible')
     await commands.reduceMotion(true)
     expect(getComputedStyle(group).transitionProperty).toBe('none')
     expect(getComputedStyle(chevron).transitionProperty).toBe('none')
