@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
+import { TEST_USERS } from "@apc/shared/test-users";
+
+const USER = TEST_USERS[0];
 
 // Opens /login and checks the badge heads the page with both fields and "Entrar" on screen, laid out without
 // sideways scroll, beside the form on desktop and above it on a phone.
@@ -18,20 +22,32 @@ test("Web: the login screen shows the badge and the form", async ({ page }, test
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()!.width);
 });
 
-// Sends the login empty, then fills it in and presses Enter, and checks the empty fields get their messages with
-// the cursor on the user, and the filled-in login goes on to the Dashboard.
-test("Web: the login checks empty fields and goes on to the Dashboard", async ({ page }) => {
+// Sends the login empty, then with a wrong password, then as a test user with Enter, and checks the empty fields
+// get their messages, the refused login says so above the form and empties the password, and the accepted one
+// saves the session, which is still there after a reload, and goes on to the Dashboard.
+test("Web: the login checks the fields and the user, and saves the session", async ({ page }) => {
   await page.route("**/api/items", (route) => route.fulfill({ json: { items: [] } }));
   await page.goto("/login");
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByText("Informe o usuário.")).toBeVisible();
-  await expect(page.getByText("Informe a senha.")).toBeVisible();
+  await expect(page.getByText(LOGIN_MESSAGES.username)).toBeVisible();
+  await expect(page.getByText(LOGIN_MESSAGES.password)).toBeVisible();
   await expect(page.getByLabel("Usuário")).toBeFocused();
 
-  await page.getByLabel("Usuário").fill("christian.camilo");
-  await expect(page.getByText("Informe o usuário.")).toBeHidden();
-  await page.getByLabel("Senha", { exact: true }).fill("opala4100");
+  await page.getByLabel("Usuário").fill(USER.username);
+  await expect(page.getByText(LOGIN_MESSAGES.username)).toBeHidden();
+  await page.getByLabel("Senha", { exact: true }).fill("errada");
+  await page.getByLabel("Senha", { exact: true }).press("Enter");
+  await expect(page.getByRole("alert")).toHaveText(LOGIN_MESSAGES.failed);
+  await expect(page.getByLabel("Senha", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Senha", { exact: true })).toBeFocused();
+  await expect(page).toHaveURL(/\/login$/);
+
+  await page.getByLabel("Senha", { exact: true }).fill(USER.password);
   await page.getByLabel("Senha", { exact: true }).press("Enter");
   await expect(page).toHaveURL(/\/inventory$/);
   await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
+  const session = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null"), SESSION_STORAGE_KEY);
+  expect(await session()).toMatchObject({ username: USER.username, displayName: USER.displayName, initials: "CC" });
+  await page.reload();
+  expect(await session()).toMatchObject({ username: USER.username });
 });
