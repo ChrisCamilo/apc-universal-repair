@@ -6,7 +6,8 @@ import { MENU_ITEM_CLASSES, MenuContext, useMenu } from './menuContext.ts'
 // A dropdown menu, such as the Dashboard's user menu: a trigger button and a popover anchored under it.
 // Up/Down (and Home/End) move between the items; checkbox and radio items (Switch, Segmented) keep the menu
 // open when chosen, and only plain action items (MenuItem) close it. A click outside, Escape or the trigger
-// closes the menu and puts the focus back on the trigger.
+// closes the menu and puts the focus back on the trigger. UserBadge is the user menu's trigger content: the
+// initials on the accent, then the username, which phones leave out to save room.
 
 const ITEMS_SELECTOR = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]'
 
@@ -169,5 +170,16 @@ export function MenuItem({ onSelect, description, icon, children }: MenuItemProp
 export function MenuLabel({ children }: { children: ReactNode }) {
   return (
     <p className="mx-2 mt-2 mb-0.5 font-display text-xs font-semibold uppercase tracking-display text-text-muted">{children}</p>
+  )
+}
+
+export function UserBadge({ initials, name }: { initials: string; name: string }) {
+  return (
+    <>
+      <span aria-hidden="true" className="grid size-7 place-items-center rounded-pill bg-accent font-display text-xs font-bold text-on-accent">
+        {initials}
+      </span>
+      <span className="font-mono text-xs max-sm:hidden">{name}</span>
+    </>
   )
 }
