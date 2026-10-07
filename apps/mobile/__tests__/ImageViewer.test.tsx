@@ -12,6 +12,8 @@ import type { PickedPhoto, UploadPhoto } from '../src/ImageUpload';
 import { ImageViewer } from '../src/ImageViewer';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
+// Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 const NAME = 'Pastilha de freio dianteira';
 const PHOTOS: UploadPhoto[] = ['a', 'b', 'c'].map((name) => ({ url: `file:///saved/${name}.jpg` }));
 const SAFE_AREA = { frame: { x: 0, y: 0, width: 360, height: 780 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
@@ -33,6 +35,7 @@ async function mount(style: Style, mode: Mode, element: React.ReactElement) {
       </SafeAreaProvider>,
     );
   });
+  mounted.push(tree!);
   return tree!;
 }
 
@@ -91,6 +94,10 @@ function viewer(tree: ReactTestRenderer.ReactTestRenderer): ReactTestRenderer.Re
 
 beforeEach(async () => {
   await themeStorage.clear();
+});
+
+afterEach(async () => {
+  await ReactTestRenderer.act(async () => mounted.splice(0).forEach((tree) => tree.unmount()));
 });
 
 for (const style of STYLES) {
