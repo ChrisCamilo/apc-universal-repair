@@ -4,9 +4,10 @@
  * @format
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import type { SessionUser } from '@apc/shared/auth';
 import { auth } from './src/auth/auth';
 import { LoginScreen } from './src/auth/LoginScreen';
 import { Dashboard } from './src/dashboard/Dashboard';
@@ -16,14 +17,27 @@ import { TourProvider } from './src/Tour';
 
 const SCREEN_STYLE = { flex: 1 };
 
-// Opens on the login and goes on to the Dashboard once the AuthService accepts it.
+// Starts on the Dashboard when a session is saved on the device and on the login otherwise, going on to the
+// Dashboard once the AuthService accepts the login. Nothing but the canvas shows while the saved session is read,
+// so neither screen flashes before the right one.
 function Screen() {
   const theme = useTheme();
-  const [signedIn, setSignedIn] = useState(false);
+  // The logged user: undefined while the saved session is read, null when nobody is logged in.
+  const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
+
+  // Read the saved session, unless a login already set the user meanwhile.
+  useEffect(() => {
+    let live = true;
+    auth.currentUser().then((saved) => live && setUser((current) => (current === undefined ? saved : current)));
+    return () => {
+      live = false;
+    };
+  }, []);
+
   return (
     <SafeAreaView style={[SCREEN_STYLE, { backgroundColor: theme.colors.canvas }]}>
       <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
-      {signedIn ? <Dashboard /> : <LoginScreen auth={auth} onLoggedIn={() => setSignedIn(true)} />}
+      {user === undefined ? null : user ? <Dashboard /> : <LoginScreen auth={auth} onLoggedIn={setUser} />}
     </SafeAreaView>
   );
 }

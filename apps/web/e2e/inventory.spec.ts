@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Item } from "@apc/shared/items";
+import { signIn } from "./session.ts";
 
 // The API answers GET /items with these items, so the list is the same on every run without a database.
 const ITEMS: Item[] = [
@@ -43,6 +44,11 @@ async function openInventory(page: Page) {
   await page.goto("/inventory");
   await expect(page.getByRole("table", { name: "Itens do estoque" })).toBeVisible();
 }
+
+// Every test here starts on the Dashboard, so a test user is logged in first.
+test.beforeEach(async ({ page }) => {
+  await signIn(page);
+});
 
 // Lists every item with the counter of the total and the stock alerts, the price in reais, "qualquer
 // modelo" for an item without a vehicle model, N/A muted with its full name as a tooltip, and the low and
