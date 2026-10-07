@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ITEM_PHOTO_LIMIT } from "../photos/photos.ts";
 
 // Inventory items as the API sends and receives them, and the rules web, mobile and the API apply alike:
 // how text is written (first letter capital, codes uppercase), how a search matches names and part codes,
@@ -65,6 +66,11 @@ export const itemListQuerySchema = z.object({
   location: manyValues,
   status: z.enum(ITEM_STATUSES).optional(),
 });
+/**
+ * A saved photo of an item: its id, and where the API serves the original and the thumbnail, as paths on the API
+ * (e.g. "/photos/<id>.jpg"), which the web reaches under /api and the phone under API_URL.
+ */
+export const itemPhotoSchema = z.object({ id: z.uuid(), url: z.string(), thumbUrl: z.string() });
 export const itemSchema = z.object({
   id: z.uuid(),
   code: z.string(),
@@ -80,6 +86,8 @@ export const itemSchema = z.object({
   quantity: z.int().min(0),
   minQuantity: z.int().min(0),
   unitPriceCents: z.int().positive(),
+  /** Photos in order, the first one the cover. */
+  photos: z.array(itemPhotoSchema).max(ITEM_PHOTO_LIMIT),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -91,6 +99,7 @@ export const NOT_APPLICABLE = "N/A";
 export type Item = z.infer<typeof itemSchema>;
 export type ItemCreate = z.infer<typeof itemCreateSchema>;
 export type ItemListQuery = z.infer<typeof itemListQuerySchema>;
+export type ItemPhoto = z.infer<typeof itemPhotoSchema>;
 export type ItemStatus = (typeof ITEM_STATUSES)[number];
 export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
 
@@ -153,7 +162,7 @@ export function includeBoth(values: readonly string[], specific: readonly string
  * @param item Inventory item.
  * @returns E.g. "Freios · Cobreq · Volkswagen Gol · D · A-2 · R$ 89,90".
  */
-export function itemDetails(item: Omit<Item, "id" | "code" | "name" | "quantity" | "minQuantity" | "createdAt" | "updatedAt">): string {
+export function itemDetails(item: Omit<Item, "id" | "code" | "name" | "quantity" | "minQuantity" | "photos" | "createdAt" | "updatedAt">): string {
   return [
     item.category,
     item.partBrand,

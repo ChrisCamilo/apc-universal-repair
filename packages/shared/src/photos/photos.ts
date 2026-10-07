@@ -1,10 +1,15 @@
-// Photo rules shared by the web and mobile ImageUpload: which files are accepted, how many photos an item
-// holds, and the messages that name each file left out and say why.
+// Photo rules shared by the web and mobile ImageUpload and the API: which files are accepted, how many photos an
+// item holds, the messages that name each file left out and say why, and how the photos are sent to be saved.
 
 /** Photos an inventory item holds; the first one is its cover in the list. */
 export const ITEM_PHOTO_LIMIT = 3;
 /** Largest photo accepted, in bytes. */
 export const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
+/**
+ * Parts of the request that sets an item's photos (PUT /items/:id/photos), in the order the photos go: a saved photo
+ * kept, by its id, or a new file.
+ */
+export const PHOTO_PARTS = { keep: "keep", file: "photo" } as const;
 /** File types accepted: JPG, PNG and WebP. */
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
