@@ -31,14 +31,15 @@ function byName(tree: ReactTestRenderer.ReactTestRenderer, name: string): ReactT
 
 /**
  * Renders the user menu inside a ThemeProvider, with a readout of the active theme, and opens it.
+ * @param onLogout Called when "Sair" is picked.
  * @returns The rendered tree.
  */
-async function openMenu() {
+async function openMenu(onLogout: () => void = () => {}) {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <ThemeProvider>
-        <UserMenu user={USER} />
+        <UserMenu user={USER} onLogout={onLogout} />
         <ActiveTheme />
       </ThemeProvider>,
     );
@@ -103,6 +104,19 @@ test('Mobile: the tab reorder choice is saved and comes back', async () => {
   expect(await themeStorage.getItem(REORDER_TABS_STORAGE_KEY)).toBe('true');
   const again = await openMenu();
   expect(byName(again, 'Arrastar para reordenar').props.accessibilityState).toMatchObject({ checked: true });
+});
+
+// Picks "Sair" and checks it is the last item, set apart from the preferences by a divider, and hands the logout
+// to the owner.
+test('Mobile: Sair comes last, apart from the preferences, and logs out', async () => {
+  const onLogout = jest.fn();
+  const tree = await openMenu(onLogout);
+  const menu = tree.root.find((n) => n.props.accessibilityRole === 'menu' && typeof n.type === 'string');
+  const items = menu.findAll((n) => typeof n.type === 'string' && /^menuitem/.test(n.props.accessibilityRole ?? ''));
+  expect(items[items.length - 1].props.accessibilityLabel).toBe('Sair');
+  expect(menu.findAll((n) => n.props.testID === 'divider' && typeof n.type === 'string')).toHaveLength(1);
+  await press(tree, 'Sair');
+  expect(onLogout).toHaveBeenCalledTimes(1);
 });
 
 function ActiveTheme() {
