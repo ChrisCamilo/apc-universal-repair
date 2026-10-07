@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { TextInput } from 'react-native';
+import { Modal, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { createMockAuth, LOGIN_MESSAGES, type AuthService, type SessionUser } from '@apc/shared/auth';
 import { TEST_USERS } from '@apc/shared/test-users';
@@ -178,12 +178,27 @@ test('Mobile: Entrar shows it is busy and the login is sent only once', async ()
   expect(button(tree, 'Entrar').props.accessibilityState).toMatchObject({ busy: false });
 });
 
-// Presses "Esqueceu a senha?" and checks it sends nothing and shows no message, as its dialog comes later.
-test('Mobile: the forgotten-password link sends nothing', async () => {
+// Opens "Esqueceu a senha?" three times and closes the notice with "Entendi", the back button and a tap outside,
+// and checks it asks for the workshop's admin and sends no login.
+test('Mobile: the forgotten-password notice says whom to ask and closes three ways', async () => {
   const login = jest.spyOn(AUTH, 'login');
   const tree = await mount('fiat90', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
+  const notice = () => tree.root.findByType(Modal);
+
   await press(tree, 'Esqueceu a senha?');
+  expect(notice().props.visible).toBe(true);
+  expect(shows(tree, LOGIN_MESSAGES.forgotPassword)).toBe(true);
+  await press(tree, 'Entendi');
+  expect(notice().props.visible).toBe(false);
+
+  await press(tree, 'Esqueceu a senha?');
+  await ReactTestRenderer.act(async () => notice().props.onRequestClose());
+  expect(notice().props.visible).toBe(false);
+
+  await press(tree, 'Esqueceu a senha?');
+  const outside = tree.root.find((n) => n.props.testID === 'dialog-outside' && typeof n.props.onPress === 'function');
+  await ReactTestRenderer.act(async () => outside.props.onPress());
+  expect(notice().props.visible).toBe(false);
   expect(login).not.toHaveBeenCalled();
   login.mockRestore();
-  expect(shows(tree, LOGIN_MESSAGES.username)).toBe(false);
 });

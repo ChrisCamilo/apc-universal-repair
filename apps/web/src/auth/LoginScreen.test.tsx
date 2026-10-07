@@ -130,15 +130,38 @@ test('Web: Entrar shows it is busy and the login is sent only once', async () =>
   await expect.element(entrar).not.toHaveAttribute('aria-busy', 'true')
 })
 
-// Checks the password's toggle says what it will do, "Mostrar senha" and then "Ocultar senha", and that
-// "Esqueceu a senha?" is a button that doesn't send the form.
-test('Web: the password toggle names its action and the forgotten-password link sends nothing', async () => {
-  const login = vi.spyOn(AUTH, 'login')
+// Checks the password's toggle says what it will do, "Mostrar senha" and then "Ocultar senha".
+test('Web: the password toggle names its action', async () => {
   const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
   await screen.getByRole('button', { name: 'Mostrar senha' }).click()
   await expect.element(screen.getByRole('button', { name: 'Ocultar senha' })).toBeVisible()
-  await screen.getByRole('button', { name: 'Esqueceu a senha?' }).click()
-  await expect.element(screen.getByText(LOGIN_MESSAGES.username)).not.toBeInTheDocument()
+})
+
+// Opens "Esqueceu a senha?" three times and closes the notice with "Entendi", Escape and a click outside, and checks
+// it asks for the workshop's admin, starts on "Entendi", gives the focus back to the link each time and sends no
+// login.
+test('Web: the forgotten-password notice says whom to ask and closes three ways', async () => {
+  const login = vi.spyOn(AUTH, 'login')
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
+  const link = screen.getByRole('button', { name: 'Esqueceu a senha?' })
+  const dialog = screen.getByRole('dialog', { name: 'Esqueceu a senha?' })
+
+  await link.click()
+  await expect.element(dialog).toMatchTextContent(LOGIN_MESSAGES.forgotPassword)
+  await expect.element(screen.getByRole('button', { name: 'Entendi' })).toHaveFocus()
+  await screen.getByRole('button', { name: 'Entendi' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(link).toHaveFocus()
+
+  await link.click()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(link).toHaveFocus()
+
+  await link.click()
+  ;(dialog.element() as HTMLDialogElement).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(link).toHaveFocus()
   expect(login).not.toHaveBeenCalled()
   login.mockRestore()
 })
