@@ -101,7 +101,7 @@ test('Mobile: typing filters the list and offers to create a new option', async 
 });
 
 // Leaves the field holding an option in another case and without its accent, and checks it takes the option's
-// spelling and the list closes.
+// spelling and the list closes; a new value starts with a capital letter and keeps the rest as typed.
 test('Mobile: leaving the field normalizes a known option and closes the list', async () => {
   const tree = await mount('gt4', 'day', <Category initial="" />);
   await fire(tree, 'onFocus');
@@ -109,6 +109,9 @@ test('Mobile: leaving the field normalizes a known option and closes the list', 
   await fire(tree, 'onBlur');
   expect(tree.root.findByType(TextInput).props.value).toBe('Elétrica');
   expect(tree.root.findAllByType(ScrollView)).toHaveLength(0);
+  await fire(tree, 'onChangeText', 'cabos NGK');
+  await fire(tree, 'onBlur');
+  expect(tree.root.findByType(TextInput).props.value).toBe('Cabos NGK');
 });
 
 // Opens the full list with the chevron while the field holds a filtering text, and checks every option is
