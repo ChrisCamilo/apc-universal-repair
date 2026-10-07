@@ -6,8 +6,10 @@ import React from 'react';
 import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { SessionUser } from '@apc/shared/auth';
+import { OPEN_ITEM_ON_ROW_STORAGE_KEY } from '@apc/shared/items';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
+import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
 import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorderContext';
 import { UserMenu } from '../src/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/theme';
@@ -40,9 +42,9 @@ async function openMenu(onLogout: () => void = () => {}) {
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <ThemeProvider>
-        <Reorder>
+        <Preferences>
           <UserMenu user={USER} onLogout={onLogout} />
-        </Reorder>
+        </Preferences>
         <ActiveTheme />
       </ThemeProvider>,
     );
@@ -76,13 +78,16 @@ beforeEach(async () => {
 });
 
 // Opens the menu and checks the header shows the logged user, dark mode is on at night, the theme sits on the
-// active style and the tab reorder choice is off until turned on.
+// active style, the tab reorder choice is off until turned on and "Abrir item ao clicar na linha" is on until
+// turned off.
 test('Mobile: the user menu shows the logged user and the display preferences', async () => {
   const tree = await openMenu();
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Christian Camilo')).not.toHaveLength(0);
   expect(byName(tree, 'Modo escuro').props.accessibilityState).toMatchObject({ checked: true });
   expect(byName(tree, 'Anos 80').props.accessibilityState).toMatchObject({ checked: true });
   expect(byName(tree, 'Arrastar para reordenar').props.accessibilityState).toMatchObject({ checked: false });
+  expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Estoque')).not.toHaveLength(0);
+  expect(byName(tree, 'Abrir item ao clicar na linha').props.accessibilityState).toMatchObject({ checked: true });
 });
 
 // Turns dark mode off and picks GT4, and checks each applies to the theme and is saved at once, with the menu still
@@ -109,6 +114,16 @@ test('Mobile: the tab reorder choice is saved and comes back', async () => {
   expect(byName(again, 'Arrastar para reordenar').props.accessibilityState).toMatchObject({ checked: true });
 });
 
+// Turns "Abrir item ao clicar na linha" off and checks it is saved on the device and comes back off when the menu
+// is drawn again.
+test('Mobile: the open-item-on-row choice is saved and comes back', async () => {
+  const tree = await openMenu();
+  await press(tree, 'Abrir item ao clicar na linha');
+  expect(await themeStorage.getItem(OPEN_ITEM_ON_ROW_STORAGE_KEY)).toBe('false');
+  const again = await openMenu();
+  expect(byName(again, 'Abrir item ao clicar na linha').props.accessibilityState).toMatchObject({ checked: false });
+});
+
 // Picks "Sair" and checks it is the last item, set apart from the preferences by a divider, and hands the logout
 // to the owner.
 test('Mobile: Sair comes last, apart from the preferences, and logs out', async () => {
@@ -127,6 +142,10 @@ function ActiveTheme() {
   return <Text testID="active-theme">{`${style}/${mode}`}</Text>;
 }
 
-function Reorder({ children }: { children: React.ReactNode }) {
-  return <TabReorderContext.Provider value={useReorderChoice()}>{children}</TabReorderContext.Provider>;
+function Preferences({ children }: { children: React.ReactNode }) {
+  return (
+    <TabReorderContext.Provider value={useReorderChoice()}>
+      <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>{children}</OpenItemOnRowContext.Provider>
+    </TabReorderContext.Provider>
+  );
 }
