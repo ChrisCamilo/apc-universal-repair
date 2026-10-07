@@ -38,6 +38,8 @@ test("Web: tabs have their own routes and the last one is remembered", async ({ 
 
   await page.goto("/nao-existe");
   await expect(page).toHaveURL(/\/catalog$/);
+  // the Dashboard saves the open tab once it is drawn, after the session is read; wait for it before replacing it
+  await expect(page.getByRole("tab", { name: "Catálogo" })).toHaveAttribute("aria-selected", "true");
 
   await page.evaluate(() => localStorage.setItem("apc-tab", "specs"));
   await page.goto("/");
