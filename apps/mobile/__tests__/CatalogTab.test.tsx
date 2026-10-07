@@ -3,14 +3,32 @@
  */
 
 import React from 'react';
-import { Dimensions, StyleSheet, Text } from 'react-native';
+import { Dimensions, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { ENGINE_SHEETS } from '@apc/shared/catalog';
+import type { Item } from '@apc/shared/items';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { CatalogTab } from '../src/dashboard/CatalogTab';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 const OPALA_25 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-2.5'];
+// Parts in the inventory, for the code search: an engine the catalog has and one it lacks.
+const PARTS: Item[] = [
+  part({
+    id: '00000000-0000-4000-8000-000000000001',
+    code: 'FRA-1000',
+    name: 'Pastilha de freio dianteira',
+    vehicleBrand: 'Chevrolet',
+    vehicleModel: 'Opala 4.1',
+  }),
+  part({
+    id: '00000000-0000-4000-8000-000000000002',
+    code: 'FRA-10002',
+    name: 'Pastilha de freio traseira',
+    vehicleBrand: 'Chevrolet',
+    vehicleModel: 'Opala 3.8',
+  }),
+];
 
 /**
  * Saves a style and mode, renders the Catalog inside a ThemeProvider and waits for it to load.
@@ -29,6 +47,28 @@ async function mount(style: Style, mode: Mode) {
     );
   });
   return tree!;
+}
+
+/**
+ * Fills in an inventory item with the fields the Catalog doesn't look at.
+ * @param fields The fields that matter here.
+ * @returns A complete item.
+ */
+function part(fields: Pick<Item, 'id' | 'code' | 'name' | 'vehicleBrand' | 'vehicleModel'>): Item {
+  return {
+    category: 'Freios',
+    partBrand: 'Cobreq',
+    position: 'N/A',
+    side: 'N/A',
+    color: 'N/A',
+    location: null,
+    quantity: 1,
+    minQuantity: 0,
+    unitPriceCents: 100,
+    createdAt: '2026-10-03T12:00:00.000Z',
+    updatedAt: '2026-10-03T12:00:00.000Z',
+    ...fields,
+  };
 }
 
 /**
@@ -52,6 +92,17 @@ function byRole(tree: ReactTestRenderer.ReactTestRenderer, role: string, name: s
   return tree.root.find(
     (n) => typeof n.type === 'string' && (n.props.accessibilityRole === role || n.props.role === role) && n.props.accessibilityLabel === name,
   );
+}
+
+/**
+ * Types into a search field.
+ * @param tree Rendered tree.
+ * @param label The field's accessible name.
+ * @param text Text to type.
+ */
+async function search(tree: ReactTestRenderer.ReactTestRenderer, label: string, text: string) {
+  const input = tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);
+  await ReactTestRenderer.act(async () => input.props.onChangeText(text));
 }
 
 /**
@@ -125,4 +176,45 @@ test('Mobile: brand tiles sit two to a row on a phone and four on a tablet', asy
   await screen(768, 1024);
   expect(rows(tree)).toEqual([4]);
   await screen(before.width, before.height);
+});
+
+// Narrows the brands by name, looks for a model only another brand has and one no brand has, and checks the tiles,
+// the brand and the tree follow, the tree saying when no brand has the model.
+test('Mobile: the brand and model searches narrow the tiles and the tree', async () => {
+  const tree = await mount('eighties', 'night');
+  await search(tree, 'Procure marca', 'VOLKS');
+  const tiles = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.accessibilityRole === 'radio').map((n) => n.props.accessibilityLabel);
+  expect(tiles()).toEqual(['Volkswagen']);
+  await search(tree, 'Procure marca', '');
+  expect(tiles()).toHaveLength(4);
+
+  await search(tree, 'Procure modelo ou código da peça', 'uno');
+  expect(byRole(tree, 'radio', 'Fiat').props.accessibilityState).toMatchObject({ checked: true });
+  expect(shows(tree, ENGINE_SHEETS['fiat-uno-mille-1991-1.0'].title)).toBe(true);
+  await search(tree, 'Procure modelo ou código da peça', 'kombi');
+  expect(shows(tree, 'Nenhum modelo com esse nome')).toBe(true);
+});
+
+// Types a part code without its separator and checks the matching parts are listed with the exact code first, the
+// first part's vehicle is revealed with its model pointed out and its engine's sheet, a part for an engine the catalog
+// lacks says so, and clearing the search drops the list.
+test('Mobile: a part code search lists the parts and reveals their vehicles', async () => {
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: PARTS }) });
+  const tree = await mount('fiat90', 'day');
+  await search(tree, 'Procure modelo ou código da peça', 'fra1000');
+  const parts = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.accessibilityRole === 'radio' && /^FRA/.test(n.props.accessibilityLabel));
+  expect(parts().map((n) => n.props.accessibilityLabel)).toEqual([
+    'FRA-1000 Pastilha de freio dianteira, Serve no Chevrolet Opala 4.1',
+    'FRA-10002 Pastilha de freio traseira, Chevrolet Opala 3.8 (motor ainda sem ficha no catálogo)',
+  ]);
+  expect(parts()[0].props.accessibilityState).toMatchObject({ checked: true });
+  expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityValue).toEqual({ text: 'em destaque' });
+  expect(byRole(tree, 'treeitem', '4.1 L 6 cilindros').props.accessibilityState).toMatchObject({ selected: true });
+  expect(shows(tree, ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1'].title)).toBe(true);
+
+  await press(tree, parts()[1].props.accessibilityLabel);
+  expect(shows(tree, 'Chevrolet Opala 3.8')).toBe(true);
+  await search(tree, 'Procure modelo ou código da peça', '');
+  expect(parts()).toHaveLength(0);
+  expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityValue?.text).toBeUndefined();
 });
