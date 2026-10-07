@@ -37,6 +37,7 @@ function item(n: number, fields: Partial<Item> & Pick<Item, 'code' | 'name'>): I
     quantity: 1,
     minQuantity: 0,
     unitPriceCents: 3990,
+    photos: [],
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
