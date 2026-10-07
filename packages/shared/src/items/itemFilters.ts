@@ -33,11 +33,8 @@ export const SIDE_FILTERS = (["LD", "LE", NOT_APPLICABLE] as const).map((value) 
 // Between the brand and the model in a vehicle model filter value; no brand or model name holds it.
 const VEHICLE_MODEL_SEPARATOR = "|";
 
-/** The values chosen in each filter of the Filtros menu. */
-export type ItemFilters = Record<
-  "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "position" | "side" | "color" | "location",
-  string[]
->;
+/** A chip of a chip group: its value, its label and the full name in its tooltip. */
+type ChipOption = { value: string; label: string; title: string };
 /** What each filter of the Filtros menu offers, from the items in stock. */
 export type ItemFilterOptions = {
   categories: string[];
@@ -48,6 +45,15 @@ export type ItemFilterOptions = {
   locations: string[];
 };
 
+/** A row of the Filtros menu: a multiple-choice list, or chip groups sharing the row. */
+export type ItemFilterRow =
+  | { key: keyof ItemFilters; label: string; allLabel: string; options: { value: string; label: string }[] }
+  | { label: string; groups: { key: keyof ItemFilters; label: string; options: ChipOption[] }[] };
+/** The values chosen in each filter of the Filtros menu. */
+export type ItemFilters = Record<
+  "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "position" | "side" | "color" | "location",
+  string[]
+>;
 /**
  * Lists what each filter offers: the categories, brands and locations in stock, the colors in use with N/A first,
  * and the vehicle models as "Opala 4.1 · Chevrolet", only of the chosen vehicle brands when there are any.
@@ -70,6 +76,33 @@ export function itemFilterOptions(items: readonly Item[], vehicleBrands: readonl
     colors: items.some((item) => item.color === NOT_APPLICABLE) ? [NOT_APPLICABLE, ...colors] : colors,
     locations: distinct(items.flatMap((item) => (item.location ? [item.location] : []))),
   };
+}
+
+/**
+ * Lays out the Filtros menu for what is chosen in it so far: seven rows, position and side sharing one row of
+ * chips, and the vehicle models narrowed to the chosen vehicle brands.
+ * @param items Every item in stock.
+ * @param draft Values chosen in the menu so far.
+ * @returns The rows, in menu order.
+ */
+export function itemFilterRows(items: readonly Item[], draft: FilterValues): ItemFilterRow[] {
+  const options = itemFilterOptions(items, draft.vehicleBrand ?? []);
+  const plain = (values: string[]) => values.map((value) => ({ value, label: value }));
+  return [
+    { key: "category", label: "Categoria", allLabel: "Todas", options: plain(options.categories) },
+    { key: "partBrand", label: "Marca da peça", allLabel: "Todas", options: plain(options.partBrands) },
+    { key: "vehicleBrand", label: "Marca do veículo", allLabel: "Todas", options: plain(options.vehicleBrands) },
+    { key: "vehicleModel", label: "Modelo do veículo", allLabel: "Todos", options: options.vehicleModels },
+    {
+      label: "Posição · Lado",
+      groups: [
+        { key: "position", label: "Posição", options: POSITION_FILTERS },
+        { key: "side", label: "Lado", options: SIDE_FILTERS },
+      ],
+    },
+    { key: "color", label: "Cor", allLabel: "Todas", options: plain(options.colors) },
+    { key: "location", label: "Local", allLabel: "Todos", options: plain(options.locations) },
+  ];
 }
 
 /**
