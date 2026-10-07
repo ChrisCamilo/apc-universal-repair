@@ -4,8 +4,8 @@ import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
 import { userEvent } from 'storybook/test'
 import { ImageUpload, type UploadPhoto } from './ImageUpload.tsx'
 
-// The item's photo field empty, with some photos, full (no drop area), and after choosing files where some
-// are left out: a GIF, a photo over 3 MB and one past the limit, each named with its reason. The hover and
+// The item's photo field empty, with some photos, full (no drop area), read-only as in the item details (with
+// photos and without), and after choosing files where some are left out: a GIF, a photo over 3 MB and one past the limit, each named with its reason. The hover and
 // focus-visible states are forced by storybook-addon-pseudo-states through the classes below; switch Style
 // and Mode in the toolbar to see each combination, and the phone viewports to see it at 360px.
 
@@ -37,6 +37,14 @@ export const LeftOut: Story = {
       await pngFile('painel.png'),
     ])
   },
+}
+export const ReadOnly: Story = {
+  render: () => (
+    <div className="grid gap-6 p-6">
+      <ImageUpload label="Fotos do item" photos={PHOTOS.slice(0, 2)} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT} readOnly />
+      <ImageUpload label="Fotos do item" photos={[]} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT} readOnly />
+    </div>
+  ),
 }
 export const SomePhotos: Story = {
   render: () => <SampleField initial={PHOTOS.slice(0, 2)} />,

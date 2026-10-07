@@ -110,6 +110,22 @@ test('Web: removing a photo frees its place', async () => {
   revoke.mockRestore()
 })
 
+// Shows the field read-only with two photos and with none, and checks the photos show with the cover marked but
+// nothing can be removed or added, and an empty field says there are no photos.
+test('Web: a read-only photo field only shows the photos', async () => {
+  const screen = await render(
+    <>
+      <ImageUpload label="Fotos do item" photos={SAVED.slice(0, 2)} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT} readOnly />
+      <ImageUpload label="Fotos vazias" photos={[]} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT} readOnly />
+    </>,
+  )
+  await expect.element(screen.getByRole('img', { name: 'Foto 1, capa' })).toBeVisible()
+  expect(screen.getByRole('img').elements()).toHaveLength(2)
+  expect(screen.getByRole('button').elements()).toHaveLength(0)
+  expect(screen.container.querySelector('input[type="file"]')).toBeNull()
+  await expect.element(screen.getByRole('group', { name: 'Fotos vazias' }).getByText('Sem fotos')).toBeVisible()
+})
+
 // Fits the field in the width a 360px phone leaves inside a dialog and checks nothing overflows.
 test('Web: the photo field fits a phone', async () => {
   await page.viewport(360, 780)
