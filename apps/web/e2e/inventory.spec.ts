@@ -155,3 +155,43 @@ test("Web: items are added and edited through the item form", async ({ page }) =
   await expect(page.getByText("Item “Vela de ignição” salvo.")).toBeVisible();
   await expect(page.locator("tbody tr").last()).toContainText("9");
 });
+
+// Deletes an item against an API that keeps what it is sent: the row's trash opens a confirmation naming the item
+// and its code, Cancel and Escape leave the list as it was, and Excluir deletes it by its id, a toast confirms it
+// and the list loses the row without a reload. Excluir is on screen without scrolling at both screen sizes.
+test("Web: an item is deleted after confirming", async ({ page }) => {
+  const stock = [...ITEMS];
+  const deleted: string[] = [];
+  await page.route("**/api/items", (route) => route.fulfill({ json: { items: stock } }));
+  await page.route("**/api/items/*", async (route) => {
+    const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
+    deleted.push(`${route.request().method()} ${stock[index].id}`);
+    stock.splice(index, 1);
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(4);
+
+  const trash = page.getByRole("button", { name: "Excluir Bomba d'água" });
+  const dialog = page.getByRole("dialog", { name: "Excluir item?" });
+  await trash.click();
+  await expect(dialog).toContainText("Bomba d'água (BA-77) sai do estoque. Essa ação não pode ser desfeita.");
+  await expect(dialog.getByRole("button", { name: "Excluir" })).toBeInViewport();
+  await dialog.getByRole("button", { name: "Cancelar" }).click();
+  await expect(dialog).toBeHidden();
+  await trash.click();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(rows).toHaveCount(4);
+  expect(deleted).toEqual([]);
+
+  const id = ITEMS[2].id;
+  await trash.click();
+  await dialog.getByRole("button", { name: "Excluir" }).click();
+  await expect(page.getByText("Item “Bomba d'água” excluído.")).toBeVisible();
+  await expect(dialog).toBeHidden();
+  await expect(rows).toHaveCount(3);
+  await expect(page.getByTestId("inventory-count")).toHaveText("3 de 3 itens · 1 baixo · 0 esgotados");
+  expect(deleted).toEqual([`DELETE ${id}`]);
+});
