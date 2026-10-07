@@ -1,0 +1,253 @@
+/**
+ * @format
+ */
+
+import React from 'react';
+import { Text, TextInput } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import ReactTestRenderer from 'react-test-renderer';
+import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form';
+import type { Item } from '@apc/shared/items';
+import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
+import { themeStorage, ThemeProvider } from '../src/theme';
+import { ToastProvider } from '../src/Toast';
+
+// Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
+const FILTER = item({
+  id: '00000000-0000-4000-8000-000000000001',
+  code: 'W 712/95',
+  name: 'Filtro de óleo',
+  vehicleBrand: 'Volkswagen',
+  vehicleModel: 'Gol',
+  color: 'Preto',
+});
+// A phone's screen with no notch, so the toast has its insets.
+const SAFE_AREA = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
+const ITEMS = [
+  FILTER,
+  item({ id: '00000000-0000-4000-8000-000000000002', code: 'FRA-1000', name: 'Pastilha de freio', vehicleBrand: 'Chevrolet', vehicleModel: 'Opala' }),
+  item({ id: '00000000-0000-4000-8000-000000000003', code: 'J-1', name: 'Junta', vehicleBrand: 'Volkswagen', vehicleModel: 'Santana' }),
+];
+
+/**
+ * Answers the next save with the item the API would send back, made of what was sent.
+ * @param status The response status.
+ * @param body The response body; by default the sent item with an id.
+ */
+function answerSave(status = 201, body?: unknown) {
+  (fetch as jest.Mock).mockImplementationOnce(async (_url: string, init: RequestInit) => {
+    const sent = JSON.parse(String(init.body));
+    const saved = body ?? { ...FILTER, ...sent, id: '00000000-0000-4000-8000-000000000009', vehicleModel: sent.vehicleModel || null, location: sent.location || null };
+    return { ok: status < 400, status, json: () => Promise.resolve(saved) };
+  });
+}
+
+/**
+ * Finds a field's input by its label.
+ * @param tree Rendered tree.
+ * @param label The field's label.
+ * @returns The TextInput.
+ */
+function field(tree: ReactTestRenderer.ReactTestRenderer, label: string): ReactTestRenderer.ReactTestInstance {
+  return tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);
+}
+
+/**
+ * Fills in an item with the fields a test doesn't look at.
+ * @param fields The fields that matter here.
+ * @returns A complete item.
+ */
+function item(fields: Partial<Item> & Pick<Item, 'id' | 'code' | 'name'>): Item {
+  return {
+    category: 'Motor',
+    partBrand: 'Bosch',
+    vehicleBrand: 'Volkswagen',
+    vehicleModel: null,
+    position: 'N/A',
+    side: 'N/A',
+    color: 'N/A',
+    location: null,
+    quantity: 1,
+    minQuantity: 0,
+    unitPriceCents: 3990,
+    createdAt: '2026-10-03T12:00:00.000Z',
+    updatedAt: '2026-10-03T12:00:00.000Z',
+    ...fields,
+  };
+}
+
+/**
+ * Leaves a field, as tapping elsewhere does.
+ * @param tree Rendered tree.
+ * @param label The field's label.
+ */
+async function leave(tree: ReactTestRenderer.ReactTestRenderer, label: string) {
+  await ReactTestRenderer.act(async () => field(tree, label).props.onBlur());
+}
+
+/**
+ * Renders the form inside the theme and toast providers.
+ * @param editing The item to edit; a new item when left out.
+ * @param onSaved Called with the saved item.
+ * @returns The rendered tree.
+ */
+async function mount(editing?: Item, onSaved: (saved: Item) => void = () => {}) {
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>
+          <ToastProvider>
+            <ItemFormDialog open item={editing} items={ITEMS} onClose={() => {}} onSaved={onSaved} />
+          </ToastProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>,
+    );
+  });
+  mounted.push(tree!);
+  return tree!;
+}
+
+/**
+ * Presses the pressable with an accessible name or visible text.
+ * @param tree Rendered tree.
+ * @param name The accessibility label, or the text inside.
+ */
+async function press(tree: ReactTestRenderer.ReactTestRenderer, name: string) {
+  const node = tree.root.findAll(
+    (n) =>
+      typeof n.props.onPress === 'function' &&
+      (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+  )[0];
+  await ReactTestRenderer.act(async () => node.props.onPress());
+}
+
+/**
+ * Tells whether a text is on screen.
+ * @param tree Rendered tree.
+ * @param text Exact text.
+ * @returns True when a Text shows it.
+ */
+function shows(tree: ReactTestRenderer.ReactTestRenderer, text: string): boolean {
+  return tree.root.findAll((n) => typeof n.type === 'string' && n.props.children === text).length > 0;
+}
+
+/**
+ * Types into a field.
+ * @param tree Rendered tree.
+ * @param label The field's label.
+ * @param text Text to type.
+ */
+async function type(tree: ReactTestRenderer.ReactTestRenderer, label: string, text: string) {
+  await ReactTestRenderer.act(async () => field(tree, label).props.onChangeText(text));
+}
+
+/**
+ * Reads the value of a field by its label.
+ * @param tree Rendered tree.
+ * @param label The field's label.
+ * @returns The field's text.
+ */
+function value(tree: ReactTestRenderer.ReactTestRenderer, label: string): string {
+  return field(tree, label).props.value;
+}
+
+beforeEach(async () => {
+  await themeStorage.clear();
+});
+
+afterEach(async () => {
+  await ReactTestRenderer.act(async () => mounted.splice(0).forEach((tree) => tree.unmount()));
+});
+
+// Saves the blank form and checks every required field says what is missing and nothing is sent; typing in a field
+// drops its message.
+test('Mobile: the required fields say what is missing and nothing is sent', async () => {
+  const tree = await mount();
+  (fetch as jest.Mock).mockClear();
+  await press(tree, 'Salvar');
+  for (const message of Object.values(ITEM_FORM_MESSAGES).filter((m) => m !== ITEM_FORM_MESSAGES.priceInvalid)) {
+    expect(shows(tree, message)).toBe(true);
+  }
+  expect(fetch).not.toHaveBeenCalled();
+  await type(tree, 'Nome', 'Vela');
+  expect(shows(tree, ITEM_FORM_MESSAGES.name)).toBe(false);
+});
+
+// Types a code another item uses, in lowercase, and checks it turns uppercase and is refused naming that item.
+test('Mobile: the code turns uppercase and a code in use names its item', async () => {
+  const tree = await mount();
+  await type(tree, 'Código da peça', 'fra-1000');
+  expect(value(tree, 'Código da peça')).toBe('FRA-1000');
+  await press(tree, 'Salvar');
+  expect(shows(tree, codeTakenMessage('Pastilha de freio'))).toBe(true);
+});
+
+// Checks the vehicle model is locked until a vehicle brand is chosen, and clears when the brand changes to one
+// without the chosen model.
+test('Mobile: the vehicle model follows the vehicle brand', async () => {
+  const tree = await mount();
+  expect(field(tree, 'Modelo do veículo').props.editable).toBe(false);
+  await type(tree, 'Marca do veículo', 'Volkswagen');
+  expect(field(tree, 'Modelo do veículo').props.editable).toBe(true);
+  await type(tree, 'Modelo do veículo', 'Gol');
+  await type(tree, 'Marca do veículo', 'Chevrolet');
+  expect(value(tree, 'Modelo do veículo')).toBe('');
+});
+
+// Leaves the name, the color and the price after typing them loosely, and checks each is written back: a capital,
+// an existing color in its own spelling, and the price in reais.
+test('Mobile: leaving a field writes it back by the rules', async () => {
+  const tree = await mount();
+  await type(tree, 'Nome', 'vela de ignição');
+  await leave(tree, 'Nome');
+  await type(tree, 'Cor', 'preto');
+  await leave(tree, 'Cor');
+  await type(tree, 'Valor unitário (R$)', '1234,5');
+  await leave(tree, 'Valor unitário (R$)');
+  expect(value(tree, 'Nome')).toBe('Vela de ignição');
+  expect(value(tree, 'Cor')).toBe('Preto');
+  expect(value(tree, 'Valor unitário (R$)')).toBe('1.234,50');
+});
+
+// Fills in a new item and saves it, and checks it is posted with the writing rule applied, a toast says it was added
+// and the saved item is handed over.
+test('Mobile: a new item is posted, announced and handed over', async () => {
+  const onSaved = jest.fn();
+  const tree = await mount(undefined, onSaved);
+  (fetch as jest.Mock).mockClear();
+  answerSave();
+  await type(tree, 'Código da peça', 'ngk-b7');
+  await type(tree, 'Nome', 'vela');
+  await type(tree, 'Categoria', 'ignição');
+  await type(tree, 'Marca da peça', 'NGK');
+  await type(tree, 'Marca do veículo', 'chevrolet');
+  await type(tree, 'Valor unitário (R$)', '34,9');
+  await press(tree, 'Salvar');
+  const [url, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(url).toMatch(/\/items$/);
+  expect(init.method).toBe('POST');
+  expect(JSON.parse(init.body)).toMatchObject({ code: 'NGK-B7', name: 'Vela', category: 'Ignição', vehicleBrand: 'Chevrolet', unitPriceCents: 3490 });
+  expect(onSaved).toHaveBeenCalledTimes(1);
+  expect(shows(tree, 'Item “Vela” cadastrado.')).toBe(true);
+});
+
+// Opens the form on an item and checks its fields are filled in, then changes the quantity and saves, and checks the
+// item is patched by its id and the toast says it was saved.
+test('Mobile: an item opens filled in and is patched on save', async () => {
+  const tree = await mount(FILTER);
+  expect(shows(tree, 'Editar item')).toBe(true);
+  expect(value(tree, 'Código da peça')).toBe('W 712/95');
+  expect(value(tree, 'Modelo do veículo')).toBe('Gol');
+  expect(value(tree, 'Valor unitário (R$)')).toBe('39,90');
+  (fetch as jest.Mock).mockClear();
+  answerSave(200, { ...FILTER, quantity: 7 });
+  await type(tree, 'Quantidade', '7a');
+  expect(value(tree, 'Quantidade')).toBe('7');
+  await press(tree, 'Salvar');
+  const [url, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(url).toMatch(new RegExp(`/items/${FILTER.id}$`));
+  expect(init.method).toBe('PATCH');
+  expect(shows(tree, 'Item “Filtro de óleo” salvo.')).toBe(true);
+});

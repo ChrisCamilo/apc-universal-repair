@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Text, TextInput } from 'react-native';
+import { Modal, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Item } from '@apc/shared/items';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
@@ -106,4 +106,34 @@ test('Mobile: the search finds items by name or part code', async () => {
 
   await ReactTestRenderer.act(async () => search().props.onChangeText('parafuso'));
   expect(texts(tree)).toContain('Nenhum item encontrado.');
+});
+
+// Presses "Novo item" and checks the empty form opens, then closes it and presses a card's pencil, and checks the form
+// opens on that item; saving it loads the list again.
+test('Mobile: "Novo item" and the pencil open the item form, and a save reloads the list', async () => {
+  const tree = await mount();
+  const dialog = () => tree.root.findAllByType(Modal).find((modal) => modal.props.visible);
+  const pressable = (name: string) =>
+    tree.root.findAll(
+      (n) =>
+        typeof n.props.onPress === 'function' &&
+        (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+    )[0];
+  expect(dialog()).toBeUndefined();
+  await ReactTestRenderer.act(async () => pressable('Novo item').props.onPress());
+  expect(texts(tree)).toContain('Novo item');
+  expect(dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')[0].props.value).toBe('');
+  await ReactTestRenderer.act(async () => dialog()!.props.onRequestClose());
+
+  await ReactTestRenderer.act(async () => pressable('Editar Filtro de óleo').props.onPress());
+  expect(texts(tree)).toContain('Editar item');
+  expect(dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')[0].props.value).toBe('W 712/95');
+  (fetch as jest.Mock).mockClear();
+  (fetch as jest.Mock)
+    .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(ITEMS[0]) })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
+  await ReactTestRenderer.act(async () => pressable('Salvar').props.onPress());
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items$/);
+  expect(dialog()).toBeUndefined();
 });
