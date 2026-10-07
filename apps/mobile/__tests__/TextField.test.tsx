@@ -2,7 +2,7 @@
  * @format
  */
 
-import React from 'react';
+import React, { createRef, type ComponentRef } from 'react';
 import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { FIELD_KINDS } from '@apc/shared/field';
@@ -106,6 +106,23 @@ test('Mobile: password fields hide the text until revealed', async () => {
   await ReactTestRenderer.act(async () => toggle().props.onPress());
   expect(input().props.secureTextEntry).toBe(false);
   expect(toggle().props.accessibilityLabel).toBe('Ocultar senha');
+});
+
+// Hands a field a ref, a return key and a submit handler, and checks the ref reaches the input, the keyboard's
+// return key takes that label, and pressing it calls the handler, so a form can move between fields and send.
+test('Mobile: a ref, the return key and its handler reach the field input', async () => {
+  const ref = createRef<ComponentRef<typeof TextInput>>();
+  const onSubmitEditing = jest.fn();
+  const tree = await mount(
+    'eighties',
+    'night',
+    <TextField ref={ref} label="Usuário" value="" onValueChange={() => {}} returnKeyType="next" onSubmitEditing={onSubmitEditing} />,
+  );
+  const input = tree.root.findByType(TextInput);
+  expect(ref.current).toBe(input.instance);
+  expect(input.props.returnKeyType).toBe('next');
+  await ReactTestRenderer.act(async () => input.props.onSubmitEditing());
+  expect(onSubmitEditing).toHaveBeenCalledTimes(1);
 });
 
 // Checks the search shows its clear button only with content and that it empties the search.

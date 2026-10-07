@@ -61,7 +61,7 @@ export function Dashboard({ userMenu }: DashboardProps) {
     <ScrollView style={[PAGE_STYLE, { backgroundColor: theme.colors.canvas }]}>
       <View style={headerStyle(theme)}>
         <View accessibilityRole="header" style={MARK_STYLE}>
-          <BrandMark size={32} />
+          <BrandMark variant="compact" size={32} />
         </View>
         <ScrollView
           horizontal

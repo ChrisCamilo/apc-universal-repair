@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
-import { cubeIcon, documentIcon, lockIcon, pencilIcon, trashIcon, userIcon } from '@apc/shared/icons'
+import { cubeIcon, documentIcon, pencilIcon, trashIcon } from '@apc/shared/icons'
 import { formatPrice, itemDetails, matchesSearch, resultSummary, searchKey, STOCK_STATUS_LABELS, stockStatus, type Item } from '@apc/shared/items'
 import { PAGE_SIZES } from '@apc/shared/pagination'
 import { sortRows, type Sort } from '@apc/shared/table'
 import type { TreeNode } from '@apc/shared/tree'
 import { AppFrame } from '../components/AppFrame.tsx'
-import { BrandMark } from '../components/BrandMark.tsx'
 import { Button } from '../components/Button.tsx'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
@@ -20,13 +19,14 @@ import { Segmented } from '../components/Segmented.tsx'
 import { SelectableTileGroup } from '../components/SelectableTile.tsx'
 import { Switch } from '../components/Switch.tsx'
 import { TabPanel, Tabs } from '../components/Tabs.tsx'
-import { SearchField, TextField } from '../components/TextField.tsx'
+import { SearchField } from '../components/TextField.tsx'
 import { TreeView } from '../components/TreeView.tsx'
 import { Heading, NumericReadout, Text } from '../components/Typography.tsx'
 
 // The wireframe screens rebuilt from the design system alone, to prove it is complete before the real screens:
-// the Login, and the Dashboard on its Catalog and Inventory tabs. They hold their own sample data and state, so
-// searches, filters, tabs, the tree and the user menu respond, but nothing is saved or sent. Only layout
+// the Dashboard on its Catalog and Inventory tabs (the Login story shows the real LoginScreen). They hold their
+// own sample data and state, so searches, filters, tabs, the tree and the user menu respond, but nothing is saved
+// or sent. Only layout
 // (grid, flex, gaps, widths) is set here; every color, face, border and radius comes from the components.
 
 // The Catalog tree of each brand: model → generation → version → year → engine. Most branches are still
@@ -185,30 +185,6 @@ function options(...labels: string[]) {
 function rowStatus(row: Item): { tone: 'warn' | 'danger'; label: string } | undefined {
   const status = stockStatus(row.quantity, row.minQuantity)
   return status ? { tone: status === 'out' ? 'danger' : 'warn', label: STOCK_STATUS_LABELS[status] } : undefined
-}
-
-export function LoginScreen() {
-  const [user, setUser] = useState('christian.camilo')
-  const [password, setPassword] = useState('')
-  return (
-    <div className="grid min-h-dvh place-items-center px-4 py-8 sm:px-6">
-      <div className="grid w-full max-w-4xl items-center gap-6 md:grid-cols-2 md:gap-12">
-        <Panel className="grid place-items-center py-6 md:py-12">
-          <BrandMark className="h-auto w-36 md:w-56" />
-        </Panel>
-        <form className="grid w-full max-w-sm gap-4 max-md:justify-self-center" onSubmit={(event) => event.preventDefault()}>
-          <TextField label="Usuário" kind="username" icon={userIcon} value={user} onValueChange={setUser} />
-          <TextField label="Senha" kind="password" icon={lockIcon} value={password} onValueChange={setPassword} />
-          <div className="grid justify-items-start gap-2">
-            <Button type="submit">Entrar</Button>
-            <Button type="button" variant="link">
-              Esqueceu a senha?
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
 }
 
 export function DashboardScreen({ initialTab }: { initialTab: DashboardTab }) {

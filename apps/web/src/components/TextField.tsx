@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type InputHTMLAttributes } from 'react'
+import { useId, useRef, useState, type InputHTMLAttributes, type Ref } from 'react'
 import { FIELD_KINDS, type FieldKind } from '@apc/shared/field'
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons'
 import { FIELD_BORDER_CLASSES, FIELD_BUTTON_CLASSES, FIELD_FRAME_CLASSES, FIELD_INPUT_CLASSES } from './fieldStyles.ts'
@@ -17,6 +17,8 @@ type SearchFieldProps = InputProps & {
   onValueChange: (value: string) => void
 }
 type TextFieldProps = InputProps & {
+  /** The input itself, e.g. to focus it. */
+  ref?: Ref<HTMLInputElement>
   label: string
   value: string
   onValueChange: (value: string) => void
@@ -31,6 +33,7 @@ type TextFieldProps = InputProps & {
 }
 
 export function TextField({
+  ref,
   label,
   value,
   onValueChange,
@@ -60,6 +63,7 @@ export function TextField({
           </span>
         )}
         <input
+          ref={ref}
           id={inputId}
           type={isPassword && revealed ? 'text' : spec.type}
           autoComplete={spec.autoComplete}
