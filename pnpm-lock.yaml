@@ -236,6 +236,9 @@ importers:
       react-native:
         specifier: 0.87.1
         version: 0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1)
+      react-native-image-picker:
+        specifier: ^8.2.1
+        version: 8.2.1(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       react-native-safe-area-context:
         specifier: ^5.5.2
         version: 5.9.1(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
@@ -5549,6 +5552,12 @@ packages:
 
   react-is@19.3.0:
     resolution: {integrity: sha512-UpMYezM4v5/18F28aC66AEsjXIgE02kyEMH6yLdgLXu/UTfa1Ntwck/nNLrbqJsEXW7gPb0coNO9FQse9WTovA==}
+
+  react-native-image-picker@8.2.1:
+    resolution: {integrity: sha512-FBeGYJGFDjMdGCcyubDJgBAPCQ4L1D3hwLXyUU91jY9ahOZMTbluceVvRmrEKqnDPFJ0gF1NVhJ0nr1nROFLdg==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
 
   react-native-safe-area-context@5.9.1:
     resolution: {integrity: sha512-Zpx9Iwg6VhgNarWFpcIM61xK2lUbSfSXemQUmcvOVRpux49lJsUompY1S3E5jKUJbLq233qEpj28DgmXVsgZMQ==}
@@ -12466,6 +12475,11 @@ snapshots:
   react-is@18.3.1: {}
 
   react-is@19.3.0: {}
+
+  react-native-image-picker@8.2.1(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-native: 0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1)
 
   react-native-safe-area-context@5.9.1(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3):
     dependencies:
