@@ -1,4 +1,4 @@
-import { useState, type ComponentProps } from 'react'
+import { createRef, useState, type ComponentProps } from 'react'
 import { FIELD_KINDS } from '@apc/shared/field'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
@@ -106,6 +106,15 @@ test('Web: password fields hide the text until revealed', async () => {
 
   await hide.click()
   await expect.element(input).toHaveAttribute('type', 'password')
+})
+
+// Hands a ref to a field and checks it reaches the input, so a form can move the cursor to it, e.g. to the
+// first empty field.
+test('Web: a ref reaches the field input', async () => {
+  const ref = createRef<HTMLInputElement>()
+  const screen = await render(<TextField ref={ref} label="Usuário" value="" onValueChange={() => {}} />)
+  ref.current!.focus()
+  await expect.element(screen.getByLabelText('Usuário')).toHaveFocus()
 })
 
 // Types into a search, then clears it with the X and with Escape, checking the X only shows with
