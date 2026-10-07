@@ -25,7 +25,7 @@ const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id);
 const TAB_SCREENS: Record<string, ReactNode> = { inventory: <InventoryTab /> };
 
 type DashboardProps = {
-  /** The user menu, at the right of the header (#41). */
+  /** The user menu, at the right of the header. */
   userMenu?: ReactNode;
 };
 
