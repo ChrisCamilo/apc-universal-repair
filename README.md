@@ -88,7 +88,7 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm test` | Runs the unit and component tests (shared, API, web in Chromium, mobile) |
 | `pnpm test:e2e` | Runs the web E2E tests at 1280×720 and 360×780 (starts the API and the web app) |
 | `pnpm --filter @apc/web test:e2e:ui` | Opens the Playwright UI to run and debug the tests |
-| `pnpm --filter @apc/web storybook` | Opens Storybook on :6006, with the design system foundations and components |
+| `pnpm --filter @apc/web storybook` | Opens Storybook on :6006, with the design system foundations, components and screen mockups |
 | `pnpm --filter @apc/mobile start` | Starts the React Native bundler |
 | `pnpm --filter @apc/mobile android` | Runs the mobile app on Android |
 
@@ -215,7 +215,7 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm test` | Roda os testes unitários e de componente (shared, API, web no Chromium, celular) |
 | `pnpm test:e2e` | Roda os testes E2E da web em 1280×720 e 360×780 (sobe a API e o app web) |
 | `pnpm --filter @apc/web test:e2e:ui` | Abre a interface do Playwright para rodar e depurar os testes |
-| `pnpm --filter @apc/web storybook` | Abre o Storybook na porta 6006, com as bases e os componentes do design system |
+| `pnpm --filter @apc/web storybook` | Abre o Storybook na porta 6006, com as bases, os componentes e os mockups de tela do design system |
 | `pnpm --filter @apc/mobile start` | Inicia o bundler do React Native |
 | `pnpm --filter @apc/mobile android` | Roda o app no Android |
 
