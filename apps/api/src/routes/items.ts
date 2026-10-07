@@ -9,7 +9,7 @@ import {
   itemUpdateSchema,
 } from "@apc/shared/items";
 import { prisma } from "../db/client.js";
-import { createData, itemWhere, toItem, updateData } from "../items/items.js";
+import { createData, itemWhere, toItem, updateData, WITH_PHOTOS } from "../items/items.js";
 
 // CRUD of inventory items. The list keeps the order the items were added in. A part code is unique: creating
 // or editing to a code another item uses is rejected with 409, naming that item, so the form can say which.
@@ -50,6 +50,7 @@ export function registerItemRoutes(app: FastifyInstance) {
       const rows = await prisma.item.findMany({
         where: itemWhere(request.query, prisma.item.fields.minQuantity),
         orderBy: { createdAt: "asc" },
+        include: WITH_PHOTOS,
       });
       return { items: rows.map(toItem) };
     },
@@ -64,7 +65,7 @@ export function registerItemRoutes(app: FastifyInstance) {
       if (owner) {
         return codeTaken(reply, data.code, owner);
       }
-      const row = await prisma.item.create({ data });
+      const row = await prisma.item.create({ data, include: WITH_PHOTOS });
       return reply.status(201).send(toItem(row));
     },
   );
@@ -84,7 +85,7 @@ export function registerItemRoutes(app: FastifyInstance) {
           return codeTaken(reply, data.code, owner);
         }
       }
-      return toItem(await prisma.item.update({ where: { id }, data }));
+      return toItem(await prisma.item.update({ where: { id }, data, include: WITH_PHOTOS }));
     },
   );
 
