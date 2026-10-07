@@ -6,11 +6,15 @@ import { z } from "zod";
 // (localStorage on the web, AsyncStorage on mobile). The screens only see AuthService, so EP-10 can swap the mock
 // for the backend without touching them.
 
-/** Messages of the login form: under each field left empty, and above the form when the login is refused. */
+/**
+ * Messages of the login form: under each field left empty, above the form when the login is refused, and in the
+ * dialog "Esqueceu a senha?" opens while there is no password reset (EP-10).
+ */
 export const LOGIN_MESSAGES = {
   username: "Informe o usuário.",
   password: "Informe a senha.",
   failed: "Usuário ou senha incorretos.",
+  forgotPassword: "Peça ao administrador da oficina para redefinir sua senha.",
 } as const;
 /** How long the mocked login takes to answer, so the screens show their loading state as with a real server. */
 export const MOCK_LOGIN_DELAY_MS = 400;

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Modal, ScrollView, View, useWindowDimensions, type ViewStyle } from 'react-native';
+import { Modal, Pressable, ScrollView, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog';
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
 import { softHairline } from './Panel';
@@ -10,19 +10,24 @@ import { Heading } from './Typography';
 // A modal window for forms and confirmations, the same as the web: it sits on top of the screen behind a
 // dimmed backdrop, and the back button and the owner's Cancel close it (the owner holds `open`). The content
 // scrolls inside while the action bar stays pinned at the bottom, so the main action is visible without
-// scrolling at 360×780.
+// scrolling at 360×780. A `dismissible` dialog, one with nothing to lose such as a notice, also closes on a tap
+// outside it, on the backdrop.
 
 const BODY_STYLE: ViewStyle = { gap: scales.space.s4, padding: scales.space.s5 };
+// The backdrop around the window, which a tap outside lands on.
+const OUTSIDE_STYLE: ViewStyle = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 };
 
 type DialogProps = {
   open: boolean;
-  /** Called on the back button; the owner closes the dialog by setting `open` to false. */
+  /** Called on the back button (and a tap outside when dismissible); the owner closes the dialog by setting `open` to false. */
   onClose: () => void;
   title: string;
   /** "form" for forms such as the item form, "confirm" for short confirmations. */
   size?: DialogSize;
   /** Buttons of the action bar, e.g. Cancel and Save. */
   actions: ReactNode;
+  /** Also closes on a tap outside, for dialogs with nothing to lose, such as a notice; off for forms. */
+  dismissible?: boolean;
   children: ReactNode;
 };
 
@@ -80,12 +85,13 @@ function windowStyle(theme: ActiveTheme, size: DialogSize, screen: { width: numb
   };
 }
 
-export function Dialog({ open, onClose, title, size = 'form', actions, children }: DialogProps) {
+export function Dialog({ open, onClose, title, size = 'form', actions, dismissible = false, children }: DialogProps) {
   const theme = useTheme();
   const screen = useWindowDimensions();
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
       <View style={backdropStyle(theme)} testID="dialog-backdrop">
+        {dismissible && <Pressable accessibilityLabel="Fechar" onPress={onClose} style={OUTSIDE_STYLE} testID="dialog-outside" />}
         <View accessibilityViewIsModal accessibilityLabel={title} style={windowStyle(theme, size, screen)} testID="dialog-window">
           <ScrollView contentContainerStyle={BODY_STYLE}>
             <Heading level={3}>{title}</Heading>

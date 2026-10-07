@@ -86,6 +86,24 @@ test('Web: dialogs keep the focus inside and give it back on Escape', async () =
   await expect.element(opener).toHaveFocus()
 })
 
+// Clicks the backdrop (the dialog element itself, around its content) and the content of a regular dialog and of a
+// dismissible one, and checks only the dismissible one closes, and only on the backdrop.
+test('Web: only a dismissible dialog closes on a click outside', async () => {
+  const kept = await render(<Opener initiallyOpen />)
+  const backdrop = (dialog: HTMLElement | SVGElement) => (dialog as HTMLDialogElement).click()
+  backdrop(kept.getByRole('dialog').element())
+  await expect.element(kept.getByRole('dialog')).toBeVisible()
+  await kept.getByRole('button', { name: 'Cancelar' }).click()
+
+  const onClose = vi.fn()
+  const screen = await render(<Opener initiallyOpen dismissible onClosed={onClose} />)
+  await screen.getByText('Não dá para desfazer.').click()
+  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  backdrop(screen.getByRole('dialog').element())
+  expect(onClose).toHaveBeenCalledOnce()
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+})
+
 // Closes a dialog with its Cancel button and checks it goes away.
 test('Web: Cancel closes the dialog', async () => {
   const screen = await render(<Opener initiallyOpen />)
@@ -140,7 +158,15 @@ function LongForm() {
   )
 }
 
-function Opener({ initiallyOpen = false, onClosed }: { initiallyOpen?: boolean; onClosed?: () => void }) {
+function Opener({
+  initiallyOpen = false,
+  dismissible,
+  onClosed,
+}: {
+  initiallyOpen?: boolean
+  dismissible?: boolean
+  onClosed?: () => void
+}) {
   const [open, setOpen] = useState(initiallyOpen)
   const close = () => {
     setOpen(false)
@@ -156,6 +182,7 @@ function Opener({ initiallyOpen = false, onClosed }: { initiallyOpen?: boolean; 
         onClose={close}
         title="Excluir item?"
         size="confirm"
+        dismissible={dismissible}
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={() => setOpen(false)}>

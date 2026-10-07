@@ -5,6 +5,7 @@ import { lockIcon, userIcon } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { BrandMark } from '../BrandMark';
 import { Button } from '../Button';
+import { Dialog } from '../Dialog';
 import { Panel } from '../Panel';
 import { TextField } from '../TextField';
 import { Text } from '../Typography';
@@ -14,8 +15,9 @@ import { Text } from '../Typography';
 // password. An empty field isn't sent but shows its message under it, and the cursor goes to the first empty
 // one. A field's message goes away once it is typed into. While the login runs, "Entrar" shows it is busy and
 // neither it nor the "go" key sends it again. A refused login shows one message above the form, without saying
-// which field was wrong, and empties and focuses the password. "Esqueceu a senha?" opens its dialog in a later
-// task (#66).
+// which field was wrong, and empties and focuses the password. "Esqueceu a senha?" opens a notice to ask the
+// workshop's admin for a new password, as there is no reset until the real backend (EP-10); it closes on
+// "Entendi", the back button or a tap outside.
 
 const ACTIONS_STYLE: ViewStyle = { alignItems: 'flex-start', gap: scales.space.s2 };
 // The badge at the size the web gives it on a phone (w-36).
@@ -47,6 +49,7 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
   const [errors, setErrors] = useState<LoginErrors>({});
   const [sending, setSending] = useState(false);
   const [refused, setRefused] = useState(false);
+  const [forgot, setForgot] = useState(false);
   const usernameInput = useRef<ComponentRef<typeof TextInput>>(null);
   const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
 
@@ -123,9 +126,21 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
           <Button onPress={submit} loading={sending}>
             Entrar
           </Button>
-          <Button variant="link">Esqueceu a senha?</Button>
+          <Button variant="link" onPress={() => setForgot(true)}>
+            Esqueceu a senha?
+          </Button>
         </View>
       </View>
+      <Dialog
+        open={forgot}
+        onClose={() => setForgot(false)}
+        title="Esqueceu a senha?"
+        size="confirm"
+        dismissible
+        actions={<Button onPress={() => setForgot(false)}>Entendi</Button>}
+      >
+        <Text>{LOGIN_MESSAGES.forgotPassword}</Text>
+      </Dialog>
     </ScrollView>
   );
 }

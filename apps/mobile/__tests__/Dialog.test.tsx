@@ -96,6 +96,29 @@ test('Mobile: long dialogs scroll inside, keep the actions and close on back', a
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
+// Opens a regular dialog and a dismissible one, and checks only the dismissible one has a tap target on the backdrop,
+// named for screen readers, which asks the owner to close it.
+test('Mobile: only a dismissible dialog closes on a tap outside', async () => {
+  const onClose = jest.fn();
+  const tree = await mount(
+    'gt4',
+    'day',
+    <>
+      <Dialog open onClose={() => {}} title="Novo item" actions={<Button>Salvar item</Button>}>
+        <Text>Campos</Text>
+      </Dialog>
+      <Dialog open onClose={onClose} title="Esqueceu a senha?" size="confirm" dismissible actions={<Button>Entendi</Button>}>
+        <Text>Aviso</Text>
+      </Dialog>
+    </>,
+  );
+  const outside = tree.root.findAll((n) => n.props.testID === 'dialog-outside' && typeof n.props.onPress === 'function');
+  expect(outside).toHaveLength(1);
+  expect(outside[0].props.accessibilityLabel).toBe('Fechar');
+  await ReactTestRenderer.act(async () => outside[0].props.onPress());
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
 // Shows a toast and checks it is read out and shown in the text color turned around, then hides on its own.
 test('Mobile: toasts are read out and hide on their own', async () => {
   jest.useFakeTimers();
