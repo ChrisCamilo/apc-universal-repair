@@ -139,6 +139,23 @@ test('Mobile: canceling the picker leaves the field as it was', async () => {
   expect(shown(tree)).toEqual(['Foto 1, capa']);
 });
 
+// Shows the field read-only with two photos and with none, and checks the photos show with the cover marked but
+// nothing can be removed or added, and an empty field says there are no photos.
+test('Mobile: a read-only photo field only shows the photos', async () => {
+  const pick = jest.fn(async () => []);
+  const tree = await mount(
+    'eighties',
+    'night',
+    <>
+      <ImageUpload label="Fotos do item" photos={SAVED.slice(0, 2)} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT} onPick={pick} readOnly />
+      <ImageUpload label="Fotos vazias" photos={[]} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT} onPick={pick} readOnly />
+    </>,
+  );
+  expect(shown(tree)).toEqual(['Foto 1, capa', 'Foto 2']);
+  expect(tree.root.findAll((n) => n.props.accessibilityRole === 'button')).toHaveLength(0);
+  expect(texts(tree)).toContain('Sem fotos');
+});
+
 function Sample({ initial, pick, onChange }: { initial: UploadPhoto[]; pick: PickedPhoto[]; onChange?: () => void }) {
   const [photos, setPhotos] = useState(initial);
   return (
