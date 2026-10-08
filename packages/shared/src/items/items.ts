@@ -1,11 +1,27 @@
 import { z } from "zod";
 import { PAGE_SIZES } from "../pagination/pagination.ts";
 import { ITEM_PHOTO_LIMIT } from "../photos/photos.ts";
+import { sortRows, type Sort } from "../table/table.ts";
 
 // Inventory items as the API sends and receives them, and the rules web, mobile and the API apply alike:
 // how text is written (first letter capital, codes uppercase), how a search matches names and part codes,
-// and how "Ambos" fits both front and rear (or both sides) in the filters.
+// how "Ambos" fits both front and rear (or both sides) in the filters, and how the list sorts by a column.
 
+/** The columns the inventory list sorts by, as the list query's `sort` names them. */
+export const ITEM_SORT_KEYS = ["name", "category", "partBrand", "vehicle", "position", "side", "color", "location", "price", "quantity"] as const;
+/** The value each column sorts by: the vehicle by its brand (then its model), the price in cents. */
+const ITEM_SORT_VALUES: Record<ItemSortKey, (item: SortableItem) => string | number> = {
+  name: (item) => item.name,
+  category: (item) => item.category,
+  partBrand: (item) => item.partBrand,
+  vehicle: (item) => item.vehicleBrand,
+  position: (item) => item.position,
+  side: (item) => item.side,
+  color: (item) => item.color,
+  location: (item) => item.location ?? "",
+  price: (item) => item.unitPriceCents,
+  quantity: (item) => item.quantity,
+};
 /** The status filter values: low stock (at or under the minimum, not zero) and out of stock (zero). */
 export const ITEM_STATUSES = ["low", "out"] as const;
 /**
@@ -73,6 +89,10 @@ export const itemListQuerySchema = z.object({
     .number()
     .refine((size) => (PAGE_SIZES as readonly number[]).includes(size), `Must be one of ${PAGE_SIZES.join(", ")}.`)
     .optional(),
+  /** Column to sort by; without it the newest items come first. */
+  sort: z.enum(ITEM_SORT_KEYS).optional(),
+  /** Direction of the sort, ascending by default. */
+  order: z.enum(["asc", "desc"]).optional(),
 });
 /**
  * A saved photo of an item: its id, and where the API serves the original and the thumbnail, as paths on the API
@@ -109,8 +129,15 @@ export type Item = z.infer<typeof itemSchema>;
 export type ItemCreate = z.infer<typeof itemCreateSchema>;
 export type ItemListQuery = z.infer<typeof itemListQuerySchema>;
 export type ItemPhoto = z.infer<typeof itemPhotoSchema>;
+/** A column the inventory list sorts by. */
+export type ItemSortKey = (typeof ITEM_SORT_KEYS)[number];
 export type ItemStatus = (typeof ITEM_STATUSES)[number];
 export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
+/** What sorting an item looks at; position and side as any text, as the database keeps them. */
+export type SortableItem = Pick<
+  Item,
+  "code" | "name" | "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "color" | "location" | "unitPriceCents" | "quantity"
+> & { position: string; side: string };
 
 /**
  * Applies the writing rule to a text value: trimmed, first letter capital, the rest as typed, so acronyms
@@ -244,6 +271,20 @@ export function resultSummary(shown: number, items: readonly Pick<Item, "quantit
  */
 export function searchKey(text: string): string {
   return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+/**
+ * Sorts items by a column of the inventory list: text in pt-BR order ignoring case and accents, with numbers in
+ * place ("A-2" before "A-10"), the price and quantity by value, and the vehicle by brand, then model. Ties keep the
+ * part code order, so the result is the same on every request.
+ * @param items Items in any order.
+ * @param sort The column and the direction.
+ * @returns A new array in the sorted order.
+ */
+export function sortItems<Sortable extends SortableItem>(items: readonly Sortable[], sort: Sort & { key: ItemSortKey }): Sortable[] {
+  const byCode = sortRows(items, (item) => item.code, "asc");
+  const byModel = sort.key === "vehicle" ? sortRows(byCode, (item) => item.vehicleModel ?? "", sort.dir) : byCode;
+  return sortRows(byModel, ITEM_SORT_VALUES[sort.key], sort.dir);
 }
 
 /**
