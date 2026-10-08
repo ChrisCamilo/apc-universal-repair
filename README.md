@@ -58,6 +58,8 @@ A **pnpm** + **Turborepo** monorepo:
 | `apps/api` | API — Fastify, Zod, Prisma on PostgreSQL |
 | `packages/shared` | Zod schemas and types shared by web, mobile and API |
 
+The [architecture overview](docs/architecture.md) shows how these parts fit together and the technologies each one uses, and the [database diagram](docs/database.md) shows the tables and how they relate.
+
 Web tests are written in TypeScript: component tests with **Vitest Browser Mode**, which runs them in Chromium, and end-to-end tests with **Playwright**, at 1280×720 and 360×780. Vitest comes with the first Design System components. See [AGENTS.md](AGENTS.md#testing) for details.
 
 CI (GitHub Actions) runs lint, build and the Playwright E2E tests on every pull request.
@@ -70,6 +72,7 @@ CI (GitHub Actions) runs lint, build and the Playwright E2E tests on every pull 
 pnpm install
 cp apps/api/.env.example apps/api/.env   # then set DATABASE_URL
 pnpm --filter @apc/api exec prisma migrate deploy   # creates the database tables
+pnpm --filter @apc/api db:seed            # adds the default lists and sample items
 pnpm dev                                  # API on :3333, web on :5173
 ```
 
@@ -187,6 +190,8 @@ Monorepo com **pnpm** + **Turborepo**:
 | `apps/api` | API — Fastify, Zod, Prisma com PostgreSQL |
 | `packages/shared` | Schemas Zod e tipos compartilhados entre web, celular e API |
 
+A [visão geral da arquitetura](docs/architecture.md#-português-brasil) mostra como essas partes se encaixam e as tecnologias de cada uma, e o [diagrama do banco](docs/database.md#-português-brasil) mostra as tabelas e como se relacionam.
+
 Os testes da web são escritos em TypeScript: testes de componente com o **Vitest Browser Mode**, que os roda no Chromium, e testes de ponta a ponta com o **Playwright**, em 1280×720 e 360×780. O Vitest entra junto com os primeiros componentes do Design System. Os detalhes estão no [AGENTS.md](AGENTS.md#testing).
 
 O CI (GitHub Actions) roda lint, build e os testes E2E do Playwright em todo pull request.
@@ -199,6 +204,7 @@ O CI (GitHub Actions) roda lint, build e os testes E2E do Playwright em todo pul
 pnpm install
 cp apps/api/.env.example apps/api/.env   # depois ajuste o DATABASE_URL
 pnpm --filter @apc/api exec prisma migrate deploy   # cria as tabelas do banco
+pnpm --filter @apc/api db:seed            # adiciona as listas padrão e itens de exemplo
 pnpm dev                                  # API na porta 3333, web na 5173
 ```
 
