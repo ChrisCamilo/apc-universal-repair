@@ -25,6 +25,7 @@ import { ClearFilters, FilterMenu } from '../FilterMenu';
 import type { UploadPhoto } from '../ImageUpload';
 import { ImageViewer } from '../ImageViewer';
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog';
+import { ImportItemsDialog } from '../inventory/ImportItemsDialog';
 import { ItemFormDialog } from '../inventory/ItemFormDialog';
 import { ManageListsDialog } from '../inventory/ManageListsDialog';
 import { pickPhotos, savePhotos } from '../inventory/photos';
@@ -44,7 +45,8 @@ import { usePageSize } from './pageSizeContext';
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
 // the list loads again once an item is saved or deleted. "Gerenciar listas" renames and deletes the categories,
 // brands and models the form picks from; the list loads again after each change, and a name in use leads to its
-// items. While "Abrir item ao clicar na linha" is on in the user menu, a tap on a card opens the item's details. The
+// items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list and the lists load again.
+// While "Abrir item ao clicar na linha" is on in the user menu, a tap on a card opens the item's details. The
 // Filtros menu, the stock status chips (one at a time) and "Limpar filtros" narrow the list the same as the web, sent
 // to the API as the list query with the search, and the list shows one page of what matches, newest first, the size
 // set in the user menu, moving pages as the web does. The "Ordenar" select sorts the list in the API by any of the
@@ -181,9 +183,11 @@ export function InventoryTab() {
   const state = useItems();
   const listed = useItems(itemListQuery(filters, status, { search, page, pageSize, sort }));
   // The lists the item form picks from and creates names in.
-  const { lists, create: createEntry, rename: renameEntry, remove: removeEntry } = useItemLists();
+  const { lists, create: createEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists();
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false);
+  // Whether "Importar CSV" is open; each opening starts with no file.
+  const [importer, setImporter] = useState({ open: false, session: 0 });
   const { opensOnRow } = useOpenItemOnRow();
   // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
   const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; session: number }>({
@@ -253,6 +257,9 @@ export function InventoryTab() {
         <Button onPress={() => openForm()}>Novo item</Button>
         <Button variant="secondary" onPress={() => setManaging(true)}>
           Gerenciar listas
+        </Button>
+        <Button variant="secondary" onPress={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
+          Importar CSV
         </Button>
         <View style={FILTERS_STYLE}>
           <FilterMenu
@@ -347,6 +354,18 @@ export function InventoryTab() {
           }
           setForm((current) => ({ ...current, open: false }));
           reload();
+        }}
+      />
+      <ImportItemsDialog
+        key={importer.session}
+        open={importer.open}
+        lists={lists}
+        onClose={() => setImporter((current) => ({ ...current, open: false }))}
+        onImported={() => {
+          setImporter((current) => ({ ...current, open: false }));
+          setPage(1);
+          reload();
+          reloadLists();
         }}
       />
       <ManageListsDialog
