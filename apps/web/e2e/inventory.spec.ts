@@ -159,7 +159,8 @@ test("Web: items are added and edited through the item form", async ({ page }) =
 });
 
 // Types a code another item uses in Novo item, key by key, and checks the field names that item at once, before
-// Save, and lets it go once the code is free; in Editar item, the item's own code passes. Nothing is sent.
+// Save, and lets it go once the code is free; written with other separators, it is named again. In Editar item, the
+// item's own code passes. Nothing is sent.
 test("Web: a part code in use is named while it is typed", async ({ page }) => {
   await serveItems(page, [...ITEMS]);
   const sent: string[] = [];
@@ -176,6 +177,8 @@ test("Web: a part code in use is named while it is typed", async ({ page }) => {
   await expect(form.getByText("Código já usado em “Pastilha de freio”.")).toBeInViewport();
   await code.pressSequentially("1");
   await expect(form.getByText("Código já usado em “Pastilha de freio”.")).toBeHidden();
+  await code.fill("bp1020");
+  await expect(form.getByText("Código já usado em “Pastilha de freio”.")).toBeVisible();
   await form.getByRole("button", { name: "Fechar" }).first().click();
 
   await page.getByRole("button", { name: "Editar Pastilha de freio" }).click();
