@@ -175,6 +175,30 @@ test('Web: the code turns uppercase and a code in use names its item', async () 
   await expect.element(screen.getByText(codeTakenMessage('Correia dentada'))).toBeVisible()
 })
 
+// Types a code another item uses, key by key, and checks the field names that item at once, before Save, and drops
+// the message once the code changes to a free one; an empty code says nothing until Save, and nothing is sent. Editing
+// an item, its own code passes while another item's is named.
+test('Web: a code in use is named while it is typed', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch')
+  const screen = await render(<Sample />)
+  const code = screen.getByLabelText('Código da peça')
+  const taken = screen.getByText(codeTakenMessage('Pastilha de freio'))
+  await userEvent.type(code, 'fra-1000')
+  await expect.element(taken).toBeVisible()
+  await userEvent.type(code, '1')
+  await expect.element(taken).not.toBeInTheDocument()
+  await code.fill('')
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.code)).not.toBeInTheDocument()
+  expect(fetch).not.toHaveBeenCalled()
+  await screen.unmount()
+
+  const editing = await render(<Sample item={PADS} />)
+  await editing.getByLabelText('Código da peça').fill('fra-1000')
+  await expect.element(editing.getByText(codeTakenMessage('Pastilha de freio'))).not.toBeInTheDocument()
+  await editing.getByLabelText('Código da peça').fill('w 712/95')
+  await expect.element(editing.getByText(codeTakenMessage('Filtro de óleo'))).toBeVisible()
+})
+
 // Checks the vehicle model is locked until a vehicle brand is chosen, then lists only that brand's models, and clears
 // when the brand changes to one without the chosen model.
 test('Web: the vehicle model follows the vehicle brand', async () => {
