@@ -40,7 +40,8 @@ import type { CreateListEntry } from './useItemLists.ts'
 // first the cover, as the ImageUpload field holds them. When the item is saved but its photos aren't, the toast says
 // so. Opened on an item's details, the same dialog shows each field as text in the form's layout, with Fechar and
 // Editar: nothing can be changed or saved until Editar unlocks the fields in place, on the first one, and the
-// buttons turn into Cancelar and Salvar alterações, which save like the edit form.
+// buttons turn into Cancelar and Salvar alterações, which save like the edit form. The owner may open it with values
+// filled in and follow what is typed, as the Inventory tutorial does.
 
 const FIELDS_GRID = 'grid items-start gap-x-4 gap-y-3 sm:grid-cols-2'
 const PHOTOS_LABEL = 'Fotos do item'
@@ -62,13 +63,28 @@ type ItemFormDialogProps = {
   onClose: () => void
   /** Called with the item as the API saved it. */
   onSaved: (item: Item) => void
+  /** Values the form opens with instead of the item's own, e.g. filled in by the tutorial. */
+  initialForm?: ItemForm
+  /** Called with the form as typed and whether it shows the details, on each change, e.g. for the tutorial. */
+  onFormChange?: (form: ItemForm, viewing: boolean) => void
 }
 
-export function ItemFormDialog({ open, item, details = false, items, lists, onCreateEntry, onClose, onSaved }: ItemFormDialogProps) {
+export function ItemFormDialog({
+  open,
+  item,
+  details = false,
+  items,
+  lists,
+  onCreateEntry,
+  onClose,
+  onSaved,
+  initialForm,
+  onFormChange,
+}: ItemFormDialogProps) {
   const toast = useToast()
   const [viewing, setViewing] = useState(details && item !== undefined)
   const code = useRef<HTMLInputElement>(null)
-  const [form, setForm] = useState<ItemForm>(() => (item ? itemFormOf(item) : EMPTY_ITEM_FORM))
+  const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM))
   const [photos, setPhotos] = useState<UploadPhoto[]>(() => (item ? heldPhotos(item.photos, API_BASE) : []))
   const [errors, setErrors] = useState<ItemFormErrors>({})
   const [saving, setSaving] = useState(false)
@@ -78,6 +94,11 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
   const models = modelsOfBrand(lists, form.vehicleBrand)
   const vehicleBrand = findEntry(lists.vehicleBrands, form.vehicleBrand)
   const unlocked = details && !viewing
+
+  // Tell the owner what the form holds as it changes.
+  useEffect(() => {
+    onFormChange?.(form, viewing)
+  }, [form, viewing, onFormChange])
 
   // Once Editar unlocks the fields, start on the first one.
   useEffect(() => {
@@ -166,7 +187,7 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
             <Button variant="secondary" size="sm" onClick={onClose}>
               Fechar
             </Button>
-            <Button size="sm" onClick={() => setViewing(false)}>
+            <Button size="sm" data-tour="form-edit" onClick={() => setViewing(false)}>
               Editar
             </Button>
           </>
@@ -175,7 +196,7 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
             <Button variant="secondary" size="sm" onClick={onClose}>
               Cancelar
             </Button>
-            <Button size="sm" loading={saving || creating > 0} onClick={save}>
+            <Button size="sm" data-tour="form-save" loading={saving || creating > 0} onClick={save}>
               {item ? 'Salvar alterações' : 'Salvar'}
             </Button>
           </>
@@ -198,12 +219,14 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
           </div>
           <TextField
             ref={code}
+            data-tour="form-code"
             label={ITEM_FIELD_LABELS.code}
             value={form.code}
             onValueChange={(value) => change('code', value.toUpperCase())}
             error={errors.code}
           />
           <TextField
+            data-tour="form-name"
             label={ITEM_FIELD_LABELS.name}
             value={form.name}
             onValueChange={(value) => change('name', value)}
@@ -258,6 +281,7 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
             disabled={!vehicleBrand}
           />
           <TextField
+            data-tour="form-quantity"
             label={ITEM_FIELD_LABELS.quantity}
             kind="number"
             value={form.quantity}
