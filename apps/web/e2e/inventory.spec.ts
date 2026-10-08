@@ -158,6 +158,35 @@ test("Web: items are added and edited through the item form", async ({ page }) =
   await expect(page.locator("tbody tr").first()).toContainText("9");
 });
 
+// Types a code another item uses in Novo item, key by key, and checks the field names that item at once, before
+// Save, and lets it go once the code is free; in Editar item, the item's own code passes. Nothing is sent.
+test("Web: a part code in use is named while it is typed", async ({ page }) => {
+  await serveItems(page, [...ITEMS]);
+  const sent: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "GET") {
+      sent.push(`${request.method()} ${request.url()}`);
+    }
+  });
+  await page.goto("/inventory");
+  await page.getByRole("button", { name: "Novo item" }).click();
+  const form = page.getByRole("dialog", { name: "Novo item" });
+  const code = form.getByLabel("Código da peça");
+  await code.pressSequentially("bp-1020");
+  await expect(form.getByText("Código já usado em “Pastilha de freio”.")).toBeInViewport();
+  await code.pressSequentially("1");
+  await expect(form.getByText("Código já usado em “Pastilha de freio”.")).toBeHidden();
+  await form.getByRole("button", { name: "Fechar" }).first().click();
+
+  await page.getByRole("button", { name: "Editar Pastilha de freio" }).click();
+  const edit = page.getByRole("dialog", { name: "Editar item" });
+  await edit.getByLabel("Código da peça").fill("w 712/95");
+  await expect(edit.getByText("Código já usado em “Filtro de óleo”.")).toBeVisible();
+  await edit.getByLabel("Código da peça").fill("bp-1020");
+  await expect(edit.getByText(/Código já usado/)).toBeHidden();
+  expect(sent).toEqual([]);
+});
+
 // Creates the names of a new item from the form against an API that keeps what it is sent: a category, part brand,
 // vehicle brand and model the lists don't hold each offer "+ Criar" with the name already written by the rule, and
 // picking it creates the name, fills it in and says so in a toast, the model under the brand just created. A name
