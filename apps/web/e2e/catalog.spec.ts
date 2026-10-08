@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ENGINE_SHEETS } from "@apc/shared/catalog";
 import type { Item } from "@apc/shared/items";
+import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 
 // The inventory the code search looks in: a part for an engine the catalog has, and one for a model it has no sheet
@@ -37,7 +38,7 @@ function item(fields: Pick<Item, "code" | "name" | "vehicleBrand" | "vehicleMode
 // Every test here starts on the Dashboard, so a test user is logged in first, with the test inventory.
 test.beforeEach(async ({ page }) => {
   await signIn(page);
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: ITEMS } }));
+  await serveItems(page, ITEMS);
 });
 
 // Opens the Catalog tab and checks it starts on Chevrolet with its first engine's sheet, then picks the other Opala

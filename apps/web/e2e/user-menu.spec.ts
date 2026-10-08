@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { THEME_STORAGE_KEYS } from "@apc/shared/theme";
 import { TEST_USERS } from "@apc/shared/test-users";
+import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 
 const USER = TEST_USERS[0];
@@ -12,7 +13,7 @@ test.use({ colorScheme: "dark" });
 // Every test here starts on the Dashboard, so a test user is logged in first.
 test.beforeEach(async ({ page }) => {
   await signIn(page);
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: [] } }));
+  await serveItems(page, []);
 });
 
 // Opens the user menu and checks the trigger shows the logged user (the username only on desktop), turns dark mode

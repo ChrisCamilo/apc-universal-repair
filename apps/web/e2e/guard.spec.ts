@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "@apc/shared/test-users";
+import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 
 const USER = TEST_USERS[0];
@@ -8,7 +9,7 @@ const USER = TEST_USERS[0];
 // checks the user lands on /login without the Dashboard ever being drawn, then logs in and lands back on
 // /inventory.
 test("Web: a logged-out user goes to the login and back to where they were going", async ({ page }) => {
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: [] } }));
+  await serveItems(page, []);
   await page.addInitScript(() => {
     new MutationObserver(() => {
       if (document.querySelector('[role="tablist"]')) {
@@ -30,7 +31,7 @@ test("Web: a logged-out user goes to the login and back to where they were going
 
 // Opens an unknown path with nobody logged in and checks it also goes to the login, and on to the Dashboard after.
 test("Web: an unknown path asks for the login too", async ({ page }) => {
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: [] } }));
+  await serveItems(page, []);
   await page.goto("/nao-existe");
   await expect(page).toHaveURL(/\/login$/);
   await page.getByLabel("Usuário").fill(USER.username);
@@ -41,7 +42,7 @@ test("Web: an unknown path asks for the login too", async ({ page }) => {
 
 // Opens /login with a saved session and checks it goes straight to the Dashboard, without showing the form.
 test("Web: a logged user skips the login", async ({ page }) => {
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: [] } }));
+  await serveItems(page, []);
   await signIn(page);
   await page.goto("/login");
   await expect(page).toHaveURL(/\/inventory$/);
