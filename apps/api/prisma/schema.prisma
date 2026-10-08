@@ -7,9 +7,20 @@ datasource db {
   provider = "postgresql"
 }
 
+/// A vehicle brand, the list the item form picks the vehicle brand from. nameKey holds the name in lowercase
+/// without accents or extra spaces, so names that differ only in those are the same brand (see @apc/shared/lists).
 model Brand {
-  id   String @id @default(uuid())
-  name String @unique
+  id      String         @id @default(uuid())
+  name    String         @unique
+  nameKey String         @unique
+  models  VehicleModel[]
+}
+
+/// An item category, the list the item form picks the category from; nameKey as in Brand.
+model Category {
+  id      String @id @default(uuid())
+  name    String
+  nameKey String @unique
 }
 
 /// An inventory item. nameKey and codeKey hold the name without accents in lowercase and the code with
@@ -51,4 +62,22 @@ model ItemPhoto {
   thumbFile String
 
   @@unique([itemId, position])
+}
+
+/// A part brand, the list the item form picks the part brand from; nameKey as in Brand.
+model PartBrand {
+  id      String @id @default(uuid())
+  name    String
+  nameKey String @unique
+}
+
+/// A vehicle model of a vehicle brand, unique within it; nameKey as in Brand.
+model VehicleModel {
+  id      String @id @default(uuid())
+  name    String
+  nameKey String
+  brandId String
+  brand   Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, nameKey])
 }
