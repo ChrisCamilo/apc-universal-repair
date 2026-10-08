@@ -171,6 +171,7 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
       open={open}
       onClose={onClose}
       title="Gerenciar listas"
+      closable
       actions={
         <Button variant="secondary" size="sm" onPress={onClose}>
           Fechar
