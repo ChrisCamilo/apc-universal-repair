@@ -32,6 +32,7 @@ import { SearchField } from '../components/TextField.tsx'
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
 import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
 import { API_BASE, savePhotos } from '../inventory/savePhotos.ts'
+import { useItemLists } from '../inventory/useItemLists.ts'
 import { useItems } from '../inventory/useItems.ts'
 import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 import { usePageSize } from './pageSizeContext.ts'
@@ -110,6 +111,8 @@ export function InventoryTab() {
   // filters let through.
   const state = useItems()
   const listed = useItems(itemListQuery(filters, status, { search, page, pageSize }))
+  // The lists the item form picks from and creates names in.
+  const { lists, create: createEntry } = useItemLists()
   const { opensOnRow } = useOpenItemOnRow()
   // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
   const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; session: number }>({
@@ -295,6 +298,8 @@ export function InventoryTab() {
         item={form.item}
         details={form.details}
         items={items}
+        lists={lists}
+        onCreateEntry={createEntry}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
           // A new item is the newest, first on the first page.
