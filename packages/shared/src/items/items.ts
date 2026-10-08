@@ -141,8 +141,8 @@ export function codeKey(code: string): string {
  * @returns The option's own spelling, or undefined when no option matches.
  */
 export function findOption(options: readonly string[], text: string): string | undefined {
-  const key = searchKey(text.trim().replace(/\s+/g, " "));
-  return key ? options.find((option) => searchKey(option) === key) : undefined;
+  const key = optionKey(text);
+  return key ? options.find((option) => optionKey(option) === key) : undefined;
 }
 
 /**
@@ -211,6 +211,16 @@ export function matchingOptions(options: readonly string[], text: string): strin
   }
   const key = searchKey(text.trim());
   return options.filter((option) => searchKey(option).includes(key));
+}
+
+/**
+ * Reduces an option's name to what tells options apart: lowercase without accents or extra spaces, so "Freios",
+ * " freios " and "FREIOS" are the same category.
+ * @param text A name as typed or saved.
+ * @returns The name's key, e.g. "bomba d'agua".
+ */
+export function optionKey(text: string): string {
+  return searchKey(text.trim().replace(/\s+/g, " "));
 }
 
 /**
