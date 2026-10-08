@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, View, useWindowDimensions, type ViewStyle
 import { DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog';
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
 import { softHairline } from './Panel';
+import { ToastLayer } from './Toast';
 import { TourLayer } from './Tour';
 import { useTheme, withAlpha, type ActiveTheme } from './theme';
 import { Heading } from './Typography';
@@ -100,7 +101,8 @@ export function Dialog({ open, onClose, title, size = 'form', actions, dismissib
           <View style={actionsStyle(theme)}>{actions}</View>
         </View>
       </View>
-      {/* A guided tour draws here while the dialog is open, the only place above the Modal. */}
+      {/* A toast and a guided tour draw here while the dialog is open, the only place above the Modal. */}
+      <ToastLayer />
       <TourLayer />
     </Modal>
   );
