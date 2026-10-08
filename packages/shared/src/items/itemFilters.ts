@@ -106,12 +106,18 @@ export function itemFilterRows(items: readonly Item[], draft: FilterValues): Ite
 }
 
 /**
- * Writes the list query of the chosen filters and stock status, each value of a filter as its own parameter.
+ * Writes the list query of the chosen filters and stock status, each value of a filter as its own parameter, with
+ * the search and the page when given.
  * @param filters Values chosen in the Filtros menu.
  * @param status Stock status chip on, or null.
- * @returns E.g. "category=Freios&category=Motor&status=low"; empty when nothing is chosen.
+ * @param list The search and the page to ask for, if any.
+ * @returns E.g. "category=Freios&category=Motor&status=low&q=vela&page=2&pageSize=25"; empty when nothing is chosen.
  */
-export function itemListQuery(filters: FilterValues, status: ItemStatus | null): string {
+export function itemListQuery(
+  filters: FilterValues,
+  status: ItemStatus | null,
+  list: { search?: string; page?: number; pageSize?: number } = {},
+): string {
   const query = new URLSearchParams();
   for (const [key, values] of Object.entries(filters)) {
     for (const value of values) {
@@ -120,6 +126,13 @@ export function itemListQuery(filters: FilterValues, status: ItemStatus | null):
   }
   if (status) {
     query.set("status", status);
+  }
+  if (list.search?.trim()) {
+    query.set("q", list.search.trim());
+  }
+  if (list.pageSize) {
+    query.set("page", String(list.page ?? 1));
+    query.set("pageSize", String(list.pageSize));
   }
   return query.toString();
 }

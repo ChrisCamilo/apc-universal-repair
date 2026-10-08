@@ -3,8 +3,10 @@
 
 /** Most slots the page list takes, buttons and ellipses together; longer lists skip ranges with an ellipsis. */
 export const MAX_PAGE_SLOTS = 7;
-/** Page sizes the inventory offers. */
+/** Page sizes the inventory offers; the first is the default. */
 export const PAGE_SIZES = [25, 50, 100] as const;
+/** localStorage (web) and AsyncStorage (mobile) key of the default page size, "Itens por página" in the user menu. */
+export const PAGE_SIZE_STORAGE_KEY = "apc-page-size";
 
 /**
  * Counts the pages a list fills; an empty list still has one page.
