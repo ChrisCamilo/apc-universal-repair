@@ -339,7 +339,7 @@ export function InventoryTab() {
         )}
       </View>
       <ItemFormDialog
-        key={form.session}
+        key={`form-${form.session}`}
         open={form.open}
         item={form.item}
         details={form.details}
@@ -357,7 +357,7 @@ export function InventoryTab() {
         }}
       />
       <ImportItemsDialog
-        key={importer.session}
+        key={`import-${importer.session}`}
         open={importer.open}
         lists={lists}
         onClose={() => setImporter((current) => ({ ...current, open: false }))}
