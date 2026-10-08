@@ -547,6 +547,35 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
   await expect(rows.first()).not.toHaveAttribute("tabindex");
 });
 
+// Closes Novo item, Editar item, Detalhes do item and Gerenciar listas with the round × at the top right of each,
+// on screen without scrolling at both screen sizes, and checks nothing was sent.
+test("Web: the item form and Manage lists close on the ×", async ({ page }) => {
+  await serveItems(page, [...ITEMS]);
+  const sent: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "GET") {
+      sent.push(`${request.method()} ${request.url()}`);
+    }
+  });
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  const openers = [
+    { open: () => page.getByRole("button", { name: "Novo item" }).click(), name: "Novo item" },
+    { open: () => page.getByRole("button", { name: "Editar Filtro de óleo" }).click(), name: "Editar item" },
+    { open: () => rows.first().getByText("Filtro de óleo").click(), name: "Detalhes do item" },
+    { open: () => page.getByRole("button", { name: "Gerenciar listas" }).click(), name: "Gerenciar listas" },
+  ];
+  for (const { open, name } of openers) {
+    await open();
+    const dialog = page.getByRole("dialog", { name });
+    const close = dialog.getByRole("button", { name: "Fechar" }).first();
+    await expect(close).toBeInViewport();
+    await close.click();
+    await expect(dialog).toBeHidden();
+  }
+  expect(sent).toEqual([]);
+});
+
 // Works with an item's photos against an API that keeps what it is sent: the row shows the cover's thumbnail, which
 // opens the photos large; "Adicionar foto" sends the kept photo and the new file, in order, and the viewer and the
 // list follow; removing the cover sends what is left. Then a photo added in the edit form is sent after the item.
