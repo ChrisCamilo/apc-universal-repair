@@ -1,5 +1,6 @@
 import {
   capitalizeFirst,
+  codeKey,
   findOption,
   formatPrice,
   NOT_APPLICABLE,
@@ -90,16 +91,16 @@ export type ItemFormErrors = Partial<
 export type ItemFormOptions = { categories: string[]; partBrands: string[]; vehicleBrands: string[]; colors: string[] };
 
 /**
- * Checks a part code against the other items as it is typed: the message when another item uses it (ignoring case
- * and the spaces around it), nothing when it is free or still empty.
+ * Checks a part code against the other items as it is typed: the message when another item uses it, compared as the
+ * search compares codes (see codeKey), so "cb4500" is "CB-4500"; nothing when it is free or still empty.
  * @param code The code as typed.
  * @param items Every item in stock.
  * @param editingId The id of the item being edited, which may keep its own code.
  * @returns E.g. "Código já usado em “Filtro de óleo”.", or undefined.
  */
 export function codeTakenError(code: string, items: readonly Item[], editingId?: string): string | undefined {
-  const typed = code.trim().toUpperCase();
-  const owner = typed ? items.find((item) => item.id !== editingId && item.code.toUpperCase() === typed) : undefined;
+  const typed = codeKey(code);
+  const owner = typed ? items.find((item) => item.id !== editingId && codeKey(item.code) === typed) : undefined;
   return owner && codeTakenMessage(owner.name);
 }
 
@@ -180,7 +181,7 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
 /**
  * Checks the form before saving: the code, name, category, part brand, vehicle brand and unit price are required,
  * the category, the brands and a vehicle model must be in their lists, the price must be a number above zero, and
- * the code can't be one another item uses (ignoring case).
+ * the code can't be one another item uses (see codeTakenError).
  * @param form The form as typed.
  * @param items Every item in stock.
  * @param lists The lists the API keeps.
