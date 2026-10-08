@@ -11,6 +11,7 @@ import {
   itemListQuerySchema,
   matchesSearch,
   matchingOptions,
+  optionKey,
   resultSummary,
   searchKey,
   stockStatus,
@@ -133,6 +134,13 @@ test("Shared: typed text maps to the existing option's spelling", () => {
   assert.equal(findOption(options, "ELETRICA"), "Elétrica");
   assert.equal(findOption(options, "Freio"), undefined);
   assert.equal(findOption(options, ""), undefined);
+});
+
+// Reduces names that differ only in case, accents and spaces to one key, and keeps different names apart.
+test("Shared: option names are told apart ignoring case, accents and extra spaces", () => {
+  assert.equal(optionKey("  Motor   DIESEL "), "motor diesel");
+  assert.equal(optionKey("Elétrica"), optionKey("eletrica"));
+  assert.notEqual(optionKey("Freio"), optionKey("Freios"));
 });
 
 // Lists every option for an empty text or one that names an option, and otherwise the ones containing it.

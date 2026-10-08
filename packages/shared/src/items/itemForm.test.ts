@@ -16,10 +16,22 @@ import {
   type ItemForm,
 } from "./itemForm.ts";
 import type { Item } from "./items.ts";
+import type { ItemLists } from "../lists/lists.ts";
 
 const FILTER = item({ id: "a", code: "W 712/95", name: "Filtro de óleo", vehicleBrand: "Volkswagen", vehicleModel: "Gol", color: "N/A" });
 const PADS = item({ id: "b", code: "FRA-1000", name: "Pastilha", vehicleBrand: "Chevrolet", vehicleModel: "Opala", color: "Preto" });
 const ITEMS = [FILTER, PADS, item({ id: "c", code: "X-1", name: "Junta", vehicleBrand: "volkswagen", vehicleModel: "Santana", color: "Azul" })];
+// The lists the API keeps: what the items use, plus the category and the brand of a new spark plug.
+const LISTS: ItemLists = {
+  categories: [{ id: "ignicao", name: "Ignição" }, { id: "motor", name: "Motor" }],
+  partBrands: [{ id: "bosch", name: "Bosch" }, { id: "ngk", name: "NGK" }],
+  vehicleBrands: [{ id: "chevrolet", name: "Chevrolet" }, { id: "volkswagen", name: "Volkswagen" }],
+  vehicleModels: [
+    { id: "opala", name: "Opala", vehicleBrandId: "chevrolet" },
+    { id: "santana", name: "Santana", vehicleBrandId: "volkswagen" },
+    { id: "gol", name: "Gol", vehicleBrandId: "volkswagen" },
+  ],
+};
 const VALID: ItemForm = {
   ...EMPTY_ITEM_FORM,
   code: "ngk-b7",
@@ -77,7 +89,7 @@ test("Shared: prices are written back in the Brazilian format", () => {
 
 // Checks a blank form names every required field, a price that isn't above zero says so, and a filled-in form passes.
 test("Shared: the item form names each required field left blank", () => {
-  assert.deepEqual(itemFormErrors(EMPTY_ITEM_FORM, ITEMS), {
+  assert.deepEqual(itemFormErrors(EMPTY_ITEM_FORM, ITEMS, LISTS), {
     code: ITEM_FORM_MESSAGES.code,
     name: ITEM_FORM_MESSAGES.name,
     category: ITEM_FORM_MESSAGES.category,
@@ -85,16 +97,33 @@ test("Shared: the item form names each required field left blank", () => {
     vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrand,
     price: ITEM_FORM_MESSAGES.price,
   });
-  assert.deepEqual(itemFormErrors({ ...VALID, price: "0,00" }, ITEMS), { price: ITEM_FORM_MESSAGES.priceInvalid });
-  assert.deepEqual(itemFormErrors({ ...VALID, price: "abc" }, ITEMS), { price: ITEM_FORM_MESSAGES.priceInvalid });
-  assert.deepEqual(itemFormErrors(VALID, ITEMS), {});
+  assert.deepEqual(itemFormErrors({ ...VALID, price: "0,00" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceInvalid });
+  assert.deepEqual(itemFormErrors({ ...VALID, price: "abc" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceInvalid });
+  assert.deepEqual(itemFormErrors(VALID, ITEMS, LISTS), {});
+});
+
+// Types a category, brands and a model the lists don't hold and checks each is refused pointing to the Create
+// option, while names the lists hold pass ignoring case, accents and extra spaces, and a model is only checked
+// within a listed brand.
+test("Shared: the item form refuses names its lists don't hold", () => {
+  const unlisted = { ...VALID, category: "Motor diesel", partBrand: "Cofap", vehicleBrand: "Fiat", vehicleModel: "Uno" };
+  assert.deepEqual(itemFormErrors(unlisted, ITEMS, LISTS), {
+    category: ITEM_FORM_MESSAGES.categoryNotListed,
+    partBrand: ITEM_FORM_MESSAGES.partBrandNotListed,
+    vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrandNotListed,
+  });
+  assert.deepEqual(itemFormErrors({ ...VALID, vehicleBrand: "Volkswagen", vehicleModel: "Opala" }, ITEMS, LISTS), {
+    vehicleModel: ITEM_FORM_MESSAGES.vehicleModelNotListed,
+  });
+  const spelled = { ...VALID, category: " IGNICAO ", partBrand: "ngk", vehicleBrand: "volkswagen", vehicleModel: "gol" };
+  assert.deepEqual(itemFormErrors(spelled, ITEMS, LISTS), {});
 });
 
 // Types a code another item uses, in another case, and checks it is refused naming that item, while the item being
 // edited keeps its own code.
 test("Shared: a code another item uses is refused, naming it", () => {
-  assert.deepEqual(itemFormErrors({ ...VALID, code: "fra-1000" }, ITEMS), { code: codeTakenMessage("Pastilha") });
-  assert.deepEqual(itemFormErrors({ ...VALID, code: "FRA-1000" }, ITEMS, PADS.id), {});
+  assert.deepEqual(itemFormErrors({ ...VALID, code: "fra-1000" }, ITEMS, LISTS), { code: codeTakenMessage("Pastilha") });
+  assert.deepEqual(itemFormErrors({ ...VALID, code: "FRA-1000" }, ITEMS, LISTS, PADS.id), {});
 });
 
 // Builds the body of a filled-in form and checks the writing rule: capitals on every text, an uppercase code, an
@@ -142,17 +171,19 @@ test("Shared: an item fills the form and saves back unchanged", () => {
   assert.equal(body.color, "N/A");
 });
 
-// Lists the options from the items in stock and checks each list is distinct ignoring case and sorted, the colors
-// leave N/A out, and the models are those of the chosen vehicle brand, ignoring case, with none before a brand.
-test("Shared: the form's options come from the items in stock", () => {
-  assert.deepEqual(itemFormOptions(ITEMS), {
-    categories: ["Motor"],
-    partBrands: ["Bosch"],
+// Lists the options and checks the comboboxes offer every name of the lists, sorted, the colors are the ones in
+// stock without N/A, and the models are those of the chosen vehicle brand, ignoring case, with none before a
+// brand of the list.
+test("Shared: the form's options come from the lists", () => {
+  assert.deepEqual(itemFormOptions(ITEMS, LISTS), {
+    categories: ["Ignição", "Motor"],
+    partBrands: ["Bosch", "NGK"],
     vehicleBrands: ["Chevrolet", "Volkswagen"],
     colors: ["Azul", "Preto"],
   });
-  assert.deepEqual(modelsOfBrand(ITEMS, "VOLKSWAGEN"), ["Gol", "Santana"]);
-  assert.deepEqual(modelsOfBrand(ITEMS, " "), []);
+  assert.deepEqual(modelsOfBrand(LISTS, "VOLKSWAGEN"), ["Gol", "Santana"]);
+  assert.deepEqual(modelsOfBrand(LISTS, "Fiat"), []);
+  assert.deepEqual(modelsOfBrand(LISTS, " "), []);
 });
 
 // Writes out the details of an item with every field filled in and of one with nothing optional, and checks the
