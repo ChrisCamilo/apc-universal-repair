@@ -6,6 +6,7 @@ import { Divider } from '../Panel';
 import { Segmented } from '../Segmented';
 import { Switch } from '../Switch';
 import { useTheme } from '../theme';
+import { useInventoryTutorial } from './inventoryTutorialContext';
 import { useOpenItemOnRow } from './openItemOnRowContext';
 import { usePageSize } from './pageSizeContext';
 import { useTabReorder } from './tabReorderContext';
@@ -16,7 +17,7 @@ import { useTabReorder } from './tabReorderContext';
 // (TabReorderContext), which saves it and makes the tabs reorderable while it is on, and "Abrir item ao clicar na
 // linha" likewise makes the Inventory cards open the item details; "Itens por página" sets how many items the
 // Inventory list shows, now and each time it opens. Every choice keeps the menu open, so several can
-// be changed in a row.
+// be changed in a row. "Tutorial do estoque" goes to the Inventory tab and runs its tutorial again.
 // "Sair", at the end and set apart from the preferences, hands the logout to the owner, which ends the session and
 // goes back to the login; the preferences stay on the device for the next login.
 
@@ -34,6 +35,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
   const { reorderable, setReorderable } = useTabReorder();
   const { opensOnRow, setOpensOnRow } = useOpenItemOnRow();
   const { pageSize, setPageSize } = usePageSize();
+  const tutorial = useInventoryTutorial();
 
   return (
     <Menu label="Menu do usuário" trigger={<UserBadge initials={user.initials} name={user.username} />}>
@@ -66,6 +68,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
       >
         Abrir item ao clicar na linha
       </Switch>
+      <MenuItem onSelect={tutorial.replay}>Tutorial do estoque</MenuItem>
       <Divider />
       <MenuItem onSelect={onLogout}>Sair</MenuItem>
     </Menu>
