@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form'
 import type { Item } from '@apc/shared/items'
+import { withEntry, type ItemLists } from '@apc/shared/lists'
+import { itemListsOf } from '@apc/shared/test-lists'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -10,12 +12,15 @@ import '../fonts.ts'
 import '../index.css'
 import { themeCss } from '../theme.ts'
 import { ItemFormDialog } from './ItemFormDialog.tsx'
+import type { CreateListEntry } from './useItemLists.ts'
 
 // A photo the API saved, as items carry it.
 const SAVED_PHOTO = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.png', thumbUrl: '/photos/aa-thumb.webp' }
 const FILTER = item({ code: 'W 712/95', name: 'Filtro de óleo', vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', color: 'Preto' })
 const PADS = item({ code: 'FRA-1000', name: 'Pastilha de freio', vehicleBrand: 'Chevrolet', vehicleModel: 'Opala 4.1' })
 const ITEMS = [FILTER, PADS, item({ code: 'J-1', name: 'Junta', vehicleBrand: 'Volkswagen', vehicleModel: 'Santana' })]
+// The lists the form picks from: what the items use, plus the category and brands of a new spark plug.
+const LISTS = itemListsOf([...ITEMS, item({ code: 'B7', name: 'Vela', category: 'Ignição', partBrand: 'NGK', vehicleBrand: 'Fiat' })])
 const root = document.documentElement
 
 /**
@@ -139,7 +144,15 @@ test('Web: the required fields say what is missing and nothing is sent', async (
   const fetch = vi.spyOn(globalThis, 'fetch')
   const screen = await render(<Sample />)
   await screen.getByRole('button', { name: 'Salvar' }).click()
-  for (const message of Object.values(ITEM_FORM_MESSAGES).filter((m) => m !== ITEM_FORM_MESSAGES.priceInvalid)) {
+  const required = [
+    ITEM_FORM_MESSAGES.code,
+    ITEM_FORM_MESSAGES.name,
+    ITEM_FORM_MESSAGES.category,
+    ITEM_FORM_MESSAGES.partBrand,
+    ITEM_FORM_MESSAGES.vehicleBrand,
+    ITEM_FORM_MESSAGES.price,
+  ]
+  for (const message of required) {
     await expect.element(screen.getByText(message)).toBeVisible()
   }
   expect(fetch).not.toHaveBeenCalled()
@@ -175,6 +188,63 @@ test('Web: the vehicle model follows the vehicle brand', async () => {
   await screen.getByRole('option', { name: 'Gol' }).click()
   await screen.getByRole('combobox', { name: 'Marca do veículo' }).fill('Chevrolet')
   await expect.element(model).toHaveValue('')
+})
+
+// Types a new category and picks "+ Criar", and checks the option already shows the name with a capital letter,
+// the name is created in the categories, picked in the field and announced; then a new vehicle model is created under
+// the chosen brand.
+test('Web: "+ Criar" creates the name in its list and picks it', async () => {
+  const create = vi.fn<CreateListEntry>()
+  const screen = await render(<Sample onCreateEntry={create} />)
+  const category = screen.getByRole('combobox', { name: 'Categoria' })
+  await category.fill('motor  diesel')
+  await screen.getByRole('option', { name: '+ Criar categoria “Motor diesel”' }).click()
+  await expect.element(screen.getByText('Categoria “Motor diesel” criada.')).toBeVisible()
+  await expect.element(category).toHaveValue('Motor diesel')
+  expect(create).toHaveBeenCalledWith('categories', 'Motor diesel', undefined)
+  await screen.getByRole('button', { name: 'Mostrar categorias' }).click()
+  await expect.element(screen.getByRole('option', { name: 'Motor diesel' })).toBeVisible()
+
+  await screen.getByRole('combobox', { name: 'Marca do veículo' }).fill('Volkswagen')
+  await screen.getByRole('combobox', { name: 'Modelo do veículo' }).fill('xR3')
+  await screen.getByRole('option', { name: '+ Criar modelo “XR3”' }).click()
+  await expect.element(screen.getByText('Modelo “XR3” criado.')).toBeVisible()
+  const volkswagen = LISTS.vehicleBrands.find((brand) => brand.name === 'Volkswagen')!
+  expect(create).toHaveBeenLastCalledWith('vehicleModels', 'XR3', volkswagen.id)
+})
+
+// Creates a part brand the API can't create, and checks a toast says so and the field keeps the typed name, which
+// saving then refuses, pointing to "+ Criar".
+test('Web: a name that couldn\'t be created is reported and not saved', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch')
+  const screen = await render(<Sample onCreateEntry={async () => null} />)
+  await fill(screen, { code: 'c-1', name: 'Amortecedor', category: 'Motor', partBrand: 'Bosch', vehicleBrand: 'Fiat', price: '10' })
+  await screen.getByRole('combobox', { name: 'Marca da peça' }).fill('cofap')
+  await screen.getByRole('option', { name: '+ Criar marca “Cofap”' }).click()
+  await expect.element(screen.getByText('Não foi possível criar a marca de peça. Tente de novo.')).toBeVisible()
+  await expect.element(screen.getByRole('combobox', { name: 'Marca da peça' })).toHaveValue('Cofap')
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.partBrandNotListed)).toBeVisible()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+// Types a category, brands and a model the lists don't hold, without picking "+ Criar", and checks saving shows each
+// field's error pointing to it and sends nothing; the model stays locked while its brand isn't one of the list.
+test('Web: names not in their lists are refused on save', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch')
+  const screen = await render(<Sample />)
+  await fill(screen, { code: 'c-1', name: 'Amortecedor', category: 'Suspensão', partBrand: 'Cofap', vehicleBrand: 'Renault', price: '10' })
+  await expect.element(screen.getByRole('combobox', { name: 'Modelo do veículo' })).toBeDisabled()
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.categoryNotListed)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.partBrandNotListed)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.vehicleBrandNotListed)).toBeVisible()
+
+  await screen.getByRole('combobox', { name: 'Marca do veículo' }).fill('Fiat')
+  await screen.getByRole('combobox', { name: 'Modelo do veículo' }).fill('Uno')
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.vehicleModelNotListed)).toBeVisible()
+  expect(fetch).not.toHaveBeenCalled()
 })
 
 // Leaves the name, the color, the location and the price after typing them loosely, and checks each is written
@@ -359,15 +429,39 @@ function Sample({
   item: editing,
   details,
   onSaved = () => {},
+  onCreateEntry,
 }: {
   item?: Item
   details?: boolean
   onSaved?: (item: Item) => void
+  /** Called with each name to create; the name is created as asked unless it returns null. */
+  onCreateEntry?: CreateListEntry
 }) {
   const [open, setOpen] = useState(true)
+  const [lists, setLists] = useState<ItemLists>(LISTS)
+
+  /** Creates a name in a list as the API would, adding it to the list unless onCreateEntry says it failed. */
+  const create: CreateListEntry = async (kind, name, vehicleBrandId) => {
+    if ((await onCreateEntry?.(kind, name, vehicleBrandId)) === null) {
+      return null
+    }
+    const entry = { id: crypto.randomUUID(), name, ...(vehicleBrandId && { vehicleBrandId }) }
+    setLists((held) => withEntry(held, kind, entry))
+    return entry
+  }
+
   return (
     <ToastProvider>
-      <ItemFormDialog open={open} item={editing} details={details} items={ITEMS} onClose={() => setOpen(false)} onSaved={onSaved} />
+      <ItemFormDialog
+        open={open}
+        item={editing}
+        details={details}
+        items={ITEMS}
+        lists={lists}
+        onCreateEntry={create}
+        onClose={() => setOpen(false)}
+        onSaved={onSaved}
+      />
     </ToastProvider>
   )
 }
