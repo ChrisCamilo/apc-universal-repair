@@ -176,8 +176,9 @@ test('Web: the code turns uppercase and a code in use names its item', async () 
 })
 
 // Types a code another item uses, key by key, and checks the field names that item at once, before Save, and drops
-// the message once the code changes to a free one; an empty code says nothing until Save, and nothing is sent. Editing
-// an item, its own code passes while another item's is named.
+// the message once the code changes to a free one; the same code with other separators is named too, as the search
+// finds it. An empty code says nothing until Save, and nothing is sent. Editing an item, its own code passes while
+// another item's is named.
 test('Web: a code in use is named while it is typed', async () => {
   const fetch = vi.spyOn(globalThis, 'fetch')
   const screen = await render(<Sample />)
@@ -187,6 +188,8 @@ test('Web: a code in use is named while it is typed', async () => {
   await expect.element(taken).toBeVisible()
   await userEvent.type(code, '1')
   await expect.element(taken).not.toBeInTheDocument()
+  await code.fill('fra 1000')
+  await expect.element(taken).toBeVisible()
   await code.fill('')
   await expect.element(screen.getByText(ITEM_FORM_MESSAGES.code)).not.toBeInTheDocument()
   expect(fetch).not.toHaveBeenCalled()
