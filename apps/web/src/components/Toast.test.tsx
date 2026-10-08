@@ -1,10 +1,11 @@
 import { TOAST_DURATION_MS } from '@apc/shared/dialog'
 import { themes } from '@apc/shared/theme'
-import { beforeAll, expect, test } from 'vitest'
+import { beforeAll, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { themeCss } from '../theme.ts'
 import { Button } from './Button.tsx'
+import { Dialog } from './Dialog.tsx'
 import { ToastProvider } from './Toast.tsx'
 import { useToast } from './toastContext.ts'
 
@@ -60,6 +61,28 @@ test('Web: a new toast replaces the one showing', async () => {
   await screen.getByRole('button', { name: 'Item adicionado' }).click()
   await screen.getByRole('button', { name: 'Item excluído' }).click()
   await expect.element(screen.getByRole('status')).toHaveTextContent('Item excluído')
+})
+
+// Shows a toast from inside an open modal dialog and checks the status region is raised into the top layer after the
+// dialog opened, so the toast shows above it, at the bottom of the screen.
+test('Web: a toast shows above an open dialog', async () => {
+  const showModal = vi.spyOn(HTMLDialogElement.prototype, 'showModal')
+  const showPopover = vi.spyOn(HTMLElement.prototype, 'showPopover')
+  const screen = await render(
+    <ToastProvider>
+      <Dialog open onClose={() => {}} title="Novo item" actions={null}>
+        <Trigger message="Categoria “Motor diesel” criada." />
+      </Dialog>
+    </ToastProvider>,
+  )
+  await screen.getByRole('button', { name: 'Categoria “Motor diesel” criada.' }).click()
+  const status = screen.getByRole('status')
+  await expect.element(status).toHaveTextContent('Categoria “Motor diesel” criada.')
+  expect(status.element().matches(':popover-open')).toBe(true)
+  expect(showPopover.mock.invocationCallOrder.at(-1)).toBeGreaterThan(showModal.mock.invocationCallOrder[0])
+  const pill = status.element().firstElementChild!.getBoundingClientRect()
+  expect(pill.bottom).toBeLessThanOrEqual(window.innerHeight)
+  expect(pill.top).toBeGreaterThan(window.innerHeight / 2)
 })
 
 function Trigger({ message }: { message: string }) {
