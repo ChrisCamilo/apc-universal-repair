@@ -239,8 +239,9 @@ test('Mobile: the code turns uppercase and a code in use names its item', async 
 });
 
 // Types a code another item uses and checks the field names that item at once, before Save, and drops the message
-// once the code changes to a free one; an empty code says nothing until Save, and nothing is sent. Editing an item,
-// its own code passes while another item's is named.
+// once the code changes to a free one; the same code with other separators is named too, as the search finds it.
+// An empty code says nothing until Save, and nothing is sent. Editing an item, its own code passes while another
+// item's is named.
 test('Mobile: a code in use is named while it is typed', async () => {
   const tree = await mount();
   (fetch as jest.Mock).mockClear();
@@ -248,6 +249,8 @@ test('Mobile: a code in use is named while it is typed', async () => {
   expect(shows(tree, codeTakenMessage('Pastilha de freio'))).toBe(true);
   await type(tree, 'Código da peça', 'fra-10001');
   expect(shows(tree, codeTakenMessage('Pastilha de freio'))).toBe(false);
+  await type(tree, 'Código da peça', 'fra1000');
+  expect(shows(tree, codeTakenMessage('Pastilha de freio'))).toBe(true);
   await type(tree, 'Código da peça', '');
   expect(shows(tree, ITEM_FORM_MESSAGES.code)).toBe(false);
   expect(fetch).not.toHaveBeenCalled();
