@@ -111,6 +111,32 @@ test('Web: Cancel closes the dialog', async () => {
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
 })
 
+// Opens a closable form and checks the × sits at the top right, beside the title, while the focus starts on the
+// first field, past it; the × asks the owner to close it. A dialog that isn't closable has no ×.
+test('Web: a closable dialog closes on the × at the top right', async () => {
+  const onClose = vi.fn()
+  const screen = await render(
+    <Dialog open onClose={onClose} title="Novo item" closable actions={<Button size="sm">Salvar</Button>}>
+      <TextField label="Nome" value="" onValueChange={() => {}} />
+    </Dialog>,
+  )
+  const close = screen.getByRole('button', { name: 'Fechar' })
+  await expect.element(screen.getByLabelText('Nome')).toHaveFocus()
+  const dialog = screen.getByRole('dialog', { name: 'Novo item' }).element().getBoundingClientRect()
+  const box = close.element().getBoundingClientRect()
+  const title = screen.getByRole('heading', { name: 'Novo item' }).element().getBoundingClientRect()
+  // In the corner, past only the dialog's 1px frame and 24px padding.
+  expect(dialog.right - box.right).toBeLessThanOrEqual(25)
+  expect(box.top - dialog.top).toBeLessThanOrEqual(25)
+  expect(box.left).toBeGreaterThanOrEqual(title.right)
+  await close.click()
+  expect(onClose).toHaveBeenCalledOnce()
+  await screen.unmount()
+
+  const plain = await render(<Opener initiallyOpen />)
+  await expect.element(plain.getByRole('button', { name: 'Fechar' })).not.toBeInTheDocument()
+})
+
 // Opens a long form at 1280×720 and at 360×780 and checks it fits the screen with its content scrolling
 // Cancels a file picker opened from a field inside the dialog, whose "cancel" event bubbles up to the dialog,
 // and checks the dialog stays open; Escape on the dialog still asks the owner to close it.
