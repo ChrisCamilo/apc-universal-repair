@@ -6,6 +6,7 @@ import React from 'react';
 import { Image, Modal, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
+import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial';
 import {
   matchesSearch,
   OPEN_ITEM_ON_ROW_STORAGE_KEY,
@@ -18,6 +19,7 @@ import { ITEM_LIST_PATHS, type ItemListKind } from '@apc/shared/lists';
 import { itemListsOf } from '@apc/shared/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
+import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
 import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -130,6 +132,8 @@ afterEach(async () => {
 
 beforeEach(async () => {
   await themeStorage.clear();
+  // The Inventory tutorial counts as seen, so it doesn't start by itself over what the test looks at.
+  await themeStorage.setItem(INVENTORY_TUTORIAL_STORAGE_KEY, 'true');
 });
 
 // Loads the items from the API and checks every card shows with its details, the counter of the total and
@@ -251,7 +255,9 @@ test('Mobile: a card opens the item details while the option is on', async () =>
 function Preferences({ children }: { children: React.ReactNode }) {
   return (
     <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>
-      <PageSizeContext.Provider value={usePageSizeChoice()}>{children}</PageSizeContext.Provider>
+      <PageSizeContext.Provider value={usePageSizeChoice()}>
+        <InventoryTutorialContext.Provider value={useInventoryTutorialChoice()}>{children}</InventoryTutorialContext.Provider>
+      </PageSizeContext.Provider>
     </OpenItemOnRowContext.Provider>
   );
 }

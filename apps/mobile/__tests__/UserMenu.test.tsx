@@ -10,6 +10,7 @@ import { OPEN_ITEM_ON_ROW_STORAGE_KEY } from '@apc/shared/items';
 import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
+import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
 import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
 import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorderContext';
@@ -159,7 +160,9 @@ function Preferences({ children }: { children: React.ReactNode }) {
   return (
     <TabReorderContext.Provider value={useReorderChoice()}>
       <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>
-        <PageSizeContext.Provider value={usePageSizeChoice()}>{children}</PageSizeContext.Provider>
+        <PageSizeContext.Provider value={usePageSizeChoice()}>
+          <InventoryTutorialContext.Provider value={useInventoryTutorialChoice()}>{children}</InventoryTutorialContext.Provider>
+        </PageSizeContext.Provider>
       </OpenItemOnRowContext.Provider>
     </TabReorderContext.Provider>
   );
