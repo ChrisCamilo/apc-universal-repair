@@ -20,7 +20,7 @@ erDiagram
     Item {
         string id PK "uuid"
         string code UK "part code, uppercase"
-        string codeKey "code: letters and digits only"
+        string codeKey UK "code: letters and digits only"
         string name "first letter capital"
         string nameKey "name: lowercase, no accents"
         string categoryId FK "Category.id"
@@ -94,7 +94,7 @@ erDiagram
 | Rule | Where |
 |---|---|
 | Names are unique ignoring case, accents and extra spaces: `nameKey` holds the name in that form and is unique (a vehicle model's within its brand). | `Category`, `PartBrand`, `Brand`, `VehicleModel` |
-| A part code is unique and stored in uppercase; `codeKey` and `nameKey` let the search ignore separators and accents. | `Item` |
+| A part code is stored in uppercase and is unique as the search compares it: `codeKey`, the code with letters and digits only, is unique too, so `CB4500` and `CB-4500` can't both be in stock. `codeKey` and `nameKey` let the search ignore separators and accents. | `Item` |
 | The unit price is an integer in cents, so prices add up without rounding errors. | `Item.unitPriceCents` |
 | `position`, `side` and `color` default to "not applicable". The API speaks `N/A`, `D`, `T`, `Ambos` (position) and `N/A`, `LD`, `LE`, `Ambos` (side); the database keeps them as the `Position` and `Side` enums. | `Item` |
 | Stock status isn't stored: an item is out of stock at 0 and low at or under its minimum. | `Item.quantity`, `Item.minQuantity` |
@@ -132,7 +132,7 @@ erDiagram
 | Regra | Onde |
 |---|---|
 | Os nomes são únicos ignorando maiúsculas, acentos e espaços a mais: `nameKey` guarda o nome nessa forma e é único (o de um modelo, dentro da marca). | `Category`, `PartBrand`, `Brand`, `VehicleModel` |
-| O código da peça é único e guardado em maiúsculas; `codeKey` e `nameKey` deixam a busca ignorar separadores e acentos. | `Item` |
+| O código da peça é guardado em maiúsculas e é único do jeito que a busca compara: `codeKey`, o código só com letras e números, também é único, então `CB4500` e `CB-4500` não podem estar os dois no estoque. `codeKey` e `nameKey` deixam a busca ignorar separadores e acentos. | `Item` |
 | O valor unitário é um inteiro em centavos, para os valores somarem sem erro de arredondamento. | `Item.unitPriceCents` |
 | `position`, `side` e `color` começam como "não se aplica". A API usa `N/A`, `D`, `T`, `Ambos` (posição) e `N/A`, `LD`, `LE`, `Ambos` (lado); o banco guarda nos enums `Position` e `Side`. | `Item` |
 | A situação do estoque não é guardada: o item está esgotado em 0 e baixo quando está no mínimo ou abaixo. | `Item.quantity`, `Item.minQuantity` |

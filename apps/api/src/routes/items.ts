@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import {
+  codeKey,
   itemCreateSchema,
   itemIdParamsSchema,
   itemListQuerySchema,
@@ -20,8 +21,8 @@ import { removePhotoFiles } from "../photos/photos.js";
 // when a page size is asked, with how many items match in all. A sort compares text the way people read it in
 // pt-BR (see sortItems), which the database can't, so it reads what the matching items sort by, sorts them here and
 // then loads only the page asked. Saving an item adds the names its lists don't hold yet (see listIds), in the same
-// transaction. A part code is unique: creating or editing to a code another item uses is rejected with 409, naming
-// that item, so the form can say which. Deleting an item also deletes its photos' files. POST /items/import saves the
+// transaction. A part code is unique as the search compares it (see codeKey), so "CB4500" is "CB-4500": creating or
+// editing to a code another item uses is rejected with 409, naming that item, so the form can say which. Deleting an item also deletes its photos' files. POST /items/import saves the
 // items of a CSV file at once (see importItems).
 
 /**
@@ -86,7 +87,7 @@ export function registerItemRoutes(app: FastifyInstance) {
     { schema: { body: itemCreateSchema, response: { 201: itemSchema } } },
     async (request, reply) => {
       const code = request.body.code.trim().toUpperCase();
-      const owner = await prisma.item.findUnique({ where: { code }, select: { id: true, name: true } });
+      const owner = await prisma.item.findUnique({ where: { codeKey: codeKey(code) }, select: { id: true, name: true } });
       if (owner) {
         return codeTaken(reply, code, owner);
       }
@@ -114,7 +115,7 @@ export function registerItemRoutes(app: FastifyInstance) {
       }
       const code = request.body.code?.trim().toUpperCase();
       if (code !== undefined) {
-        const owner = await prisma.item.findUnique({ where: { code }, select: { id: true, name: true } });
+        const owner = await prisma.item.findUnique({ where: { codeKey: codeKey(code) }, select: { id: true, name: true } });
         if (owner && owner.id !== id) {
           return codeTaken(reply, code, owner);
         }

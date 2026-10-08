@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { TextInput, View, type ViewStyle } from 'react-native';
 import { capitalizeFirst, findOption, itemSchema, POSITIONS, SIDES, type Item } from '@apc/shared/items';
 import {
+  codeTakenError,
   codeTakenMessage,
   EMPTY_ITEM_FORM,
   ITEM_FIELD_LABELS,
@@ -35,18 +36,18 @@ import type { CreateListEntry } from './useItemLists';
 
 // The form that creates a new item or edits one, the same as the web, in one column: the content scrolls inside the
 // dialog while Cancel and Save stay at the bottom. Category, part brand and the vehicle's brand and model are
-// comboboxes of the lists the API keeps, where "+ Criar" adds a new name to its list, picks it and says so in a
-// toast; the model only lists the chosen brand's models, is created under that brand, stays locked until a brand of
-// the list is chosen and clears when the brand changes to one without it. A name not in its list can't be saved:
-// the field points to "+ Criar". The code turns uppercase while typing; the texts start with a capital letter when
-// leaving the field and again on save, and the price is shown back in reais. Saving checks the required fields and a
-// code another item uses, then sends the item to the API, shows a toast and hands the saved item over, then sends its
-// photos when they changed: up to 3, the first the cover, picked from the phone's library. When the item is saved
-// but its photos aren't, the toast says so. Opened on an item's details, the same dialog shows each field as text in
-// the form's layout, with Fechar and Editar: nothing can be changed or saved until Editar unlocks the fields in
-// place, on the first one, and the buttons turn into Cancelar and Salvar alterações, which save like the edit form.
-// The owner may open it with values filled in and follow what is typed, as the Inventory tutorial does, whose tour
-// points at the marked fields and buttons.
+// comboboxes of the lists the API keeps, where "+ Criar" adds a new name to its list, picks it and says so in a toast;
+// the model only lists the chosen brand's models, is created under that brand, stays locked until a brand of the list
+// is chosen and clears when the brand changes to one without it. A name not in its list can't be saved: the field
+// points to "+ Criar". The code turns uppercase while typing and says at once when another item uses it; the texts
+// start with a capital letter when leaving the field and again on save, and the price is shown back in reais. Saving
+// checks the required fields and a code another item uses, then sends the item to the API, shows a toast and hands the
+// saved item over, then sends its photos when they changed: up to 3, the first the cover, picked from the phone's
+// library. When the item is saved but its photos aren't, the toast says so. Opened on an item's details, the same
+// dialog shows each field as text in the form's layout, with Fechar and Editar: nothing can be changed or saved until
+// Editar unlocks the fields in place, on the first one, and the buttons turn into Cancelar and Salvar alterações, which
+// save like the edit form. The owner may open it with values filled in and follow what is typed, as the Inventory
+// tutorial does, whose tour points at the marked fields and buttons.
 
 const CHOICE_STYLE: ViewStyle = { gap: scales.space.s2 };
 const FIELDS_STYLE: ViewStyle = { gap: scales.space.s3 };
@@ -117,6 +118,12 @@ export function ItemFormDialog({
   const change = (field: keyof ItemForm, value: string) => {
     setForm((typed) => ({ ...typed, [field]: value }));
     setErrors((shown) => ({ ...shown, [field]: undefined }));
+  };
+
+  /** Takes the code in uppercase and says at once when another item uses it. */
+  const changeCode = (value: string) => {
+    change('code', value.toUpperCase());
+    setErrors((shown) => ({ ...shown, code: codeTakenError(value, items, item?.id) }));
   };
 
   /** Takes a new vehicle brand, clearing a model the new brand doesn't have. */
@@ -236,7 +243,7 @@ export function ItemFormDialog({
               ref={code}
               label={ITEM_FIELD_LABELS.code}
               value={form.code}
-              onValueChange={(value) => change('code', value.toUpperCase())}
+              onValueChange={changeCode}
               error={errors.code}
             />
           </View>

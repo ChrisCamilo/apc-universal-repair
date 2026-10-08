@@ -1,5 +1,6 @@
 import {
   capitalizeFirst,
+  codeKey,
   findOption,
   formatPrice,
   NOT_APPLICABLE,
@@ -90,6 +91,20 @@ export type ItemFormErrors = Partial<
 export type ItemFormOptions = { categories: string[]; partBrands: string[]; vehicleBrands: string[]; colors: string[] };
 
 /**
+ * Checks a part code against the other items as it is typed: the message when another item uses it, compared as the
+ * search compares codes (see codeKey), so "cb4500" is "CB-4500"; nothing when it is free or still empty.
+ * @param code The code as typed.
+ * @param items Every item in stock.
+ * @param editingId The id of the item being edited, which may keep its own code.
+ * @returns E.g. "Código já usado em “Filtro de óleo”.", or undefined.
+ */
+export function codeTakenError(code: string, items: readonly Item[], editingId?: string): string | undefined {
+  const typed = codeKey(code);
+  const owner = typed ? items.find((item) => item.id !== editingId && codeKey(item.code) === typed) : undefined;
+  return owner && codeTakenMessage(owner.name);
+}
+
+/**
  * Says a part code is already used, naming the item that uses it.
  * @param name The other item's name.
  * @returns E.g. "Código já usado em “Filtro de óleo”."
@@ -166,7 +181,7 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
 /**
  * Checks the form before saving: the code, name, category, part brand, vehicle brand and unit price are required,
  * the category, the brands and a vehicle model must be in their lists, the price must be a number above zero, and
- * the code can't be one another item uses (ignoring case).
+ * the code can't be one another item uses (see codeTakenError).
  * @param form The form as typed.
  * @param items Every item in stock.
  * @param lists The lists the API keeps.
@@ -174,8 +189,7 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
  * @returns The message of each field that can't be saved, in form order; empty when the item can be saved.
  */
 export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: ItemLists, editingId?: string): ItemFormErrors {
-  const code = form.code.trim().toUpperCase();
-  const owner = items.find((item) => item.id !== editingId && item.code.toUpperCase() === code);
+  const codeTaken = codeTakenError(form.code, items, editingId);
   const price = parsePrice(form.price);
   const brand = findEntry(lists.vehicleBrands, form.vehicleBrand);
   /** The message of a list field: required when empty, or not listed when its list doesn't hold it. */
@@ -193,7 +207,7 @@ export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: It
   const brandModels = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
   const vehicleModel = brand && listed(form.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES.vehicleModelNotListed);
   return {
-    ...(!code ? { code: ITEM_FORM_MESSAGES.code } : owner ? { code: codeTakenMessage(owner.name) } : {}),
+    ...(!form.code.trim() ? { code: ITEM_FORM_MESSAGES.code } : codeTaken ? { code: codeTaken } : {}),
     ...(!form.name.trim() && { name: ITEM_FORM_MESSAGES.name }),
     ...(category && { category }),
     ...(partBrand && { partBrand }),

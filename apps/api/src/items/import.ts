@@ -6,7 +6,8 @@ import { listIds } from "./listIds.js";
 
 // The CSV import: the items of a file saved in one transaction, so a file goes in whole or not at all. Each item's
 // category, part brand, vehicle brand and vehicle model join their lists when they aren't there yet (see listIds),
-// and an item whose part code is in use updates that item instead of adding another.
+// and an item whose part code is in use, as the search compares codes (see codeKey), updates that item instead of
+// adding another.
 
 /** How long the import may take, in ms: a file has up to a thousand items. */
 const IMPORT_TIMEOUT = 60_000;
@@ -23,7 +24,7 @@ export async function importItems(items: readonly ItemCreate[]): Promise<ItemImp
       for (const input of items) {
         const ids = (await listIds(tx, input)) as ListIds;
         const data = createData(input, ids);
-        const held = await tx.item.findUnique({ where: { code: data.code }, select: { id: true } });
+        const held = await tx.item.findUnique({ where: { codeKey: data.codeKey }, select: { id: true } });
         if (held) {
           await tx.item.update({ where: { id: held.id }, data: updateData(input, ids) });
           result.updated++;

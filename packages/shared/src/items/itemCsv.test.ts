@@ -102,7 +102,8 @@ test("Shared: a semicolon file is read with the writing rule and the lists' spel
   });
 });
 
-// Reads rows with each kind of mistake and checks each one names its reasons, while a blank row is skipped.
+// Reads rows with each kind of mistake and checks each one names its reasons, while a blank row is skipped; a code
+// repeats in another case or with other separators too.
 test("Shared: invalid CSV rows say why", () => {
   const text = [
     HEADER,
@@ -110,8 +111,9 @@ test("Shared: invalid CSV rows say why", () => {
     ",Filtro,Motor,Mann,Volkswagen,,x,2.5,,0,,Cima,Meio",
     "A-1,Junta,Motor,Mann,Volkswagen,,1,1,,abc,,,",
     "a-1,Junta,Motor,Mann,Volkswagen,,1,1,,10,,,",
+    "A 1,Junta,Motor,Mann,Volkswagen,,1,1,,10,,,",
   ].join("\n");
-  const [missing, wrong, repeated] = rows(text);
+  const [missing, wrong, repeated, spaced] = rows(text);
   assert.equal(missing.line, 3);
   assert.deepEqual(missing.errors, [
     ITEM_FORM_MESSAGES.code,
@@ -123,6 +125,7 @@ test("Shared: invalid CSV rows say why", () => {
   ]);
   assert.deepEqual(wrong.errors, [ITEM_FORM_MESSAGES.priceInvalid]);
   assert.deepEqual(repeated.errors, ["Código repetido: já está na linha 4."]);
+  assert.deepEqual(spaced.errors, ["Código repetido: já está na linha 4."]);
 });
 
 // Checks a file that can't be read at all says why: empty, missing columns, or only the header.
