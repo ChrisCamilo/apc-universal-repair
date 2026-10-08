@@ -1,4 +1,4 @@
-import { useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react'
 import { pencilIcon, trashIcon } from '@apc/shared/icons'
 import {
   formatPrice,
@@ -15,6 +15,8 @@ import {
 } from '@apc/shared/items'
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
 import { EMPTY_ITEM_FILTERS, itemFilterRows, itemListQuery } from '@apc/shared/item-filters'
+import { EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form'
+import { TUTORIAL_ITEM, type TutorialScreen } from '@apc/shared/inventory-tutorial'
 import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination'
 import type { Sort } from '@apc/shared/table'
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
@@ -37,8 +39,11 @@ import { ManageListsDialog } from '../inventory/ManageListsDialog.tsx'
 import { API_BASE, savePhotos } from '../inventory/savePhotos.ts'
 import { useItemLists } from '../inventory/useItemLists.ts'
 import { useItems } from '../inventory/useItems.ts'
+import { useInventoryTutorial } from './inventoryTutorialContext.ts'
+import { InventoryTutorial } from './InventoryTutorial.tsx'
 import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 import { usePageSize } from './pageSizeContext.ts'
+import { tutorialTarget } from './tutorialTarget.ts'
 
 // The Inventory tab (/inventory), the default tab: the items in the DataTable, a search by name or part code, the
 // filters and a counter of the items shown, the total and the stock alerts. The Filtros menu narrows the list by
@@ -58,7 +63,8 @@ import { usePageSize } from './pageSizeContext.ts'
 // Enter on it) opens the item's details. Each row's thumbnail shows the item's cover and opens its photos in the
 // ImageViewer, where each photo removed, changed or added is saved at once and the list follows. Low and
 // out-of-stock rows are tinted by the table. At phone width the row becomes a card and the columns that leave it
-// show as one line under the name.
+// show as one line under the name. The Inventory tutorial runs over the tab by itself the first time, and again from
+// the user menu: it starts and ends with the test item deleted and the search, filters and sort off.
 
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   {
@@ -129,11 +135,22 @@ export function InventoryTab() {
   // Whether "Importar CSV" is open; each opening starts with no file.
   const [importer, setImporter] = useState({ open: false, session: 0 })
   const { opensOnRow } = useOpenItemOnRow()
-  // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
-  const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; session: number }>({
+  // The item form: closed, open on a new item, an item to edit or an item's details, maybe with values filled in.
+  // Each opening starts a new form.
+  const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; initial?: ItemForm; session: number }>({
     open: false,
     session: 0,
   })
+  // The form as typed, and whether it shows the details, which the tutorial's steps read.
+  const [typed, setTyped] = useState<{ values: ItemForm; viewing: boolean }>()
+  const followForm = useCallback((values: ItemForm, viewing: boolean) => setTyped({ values, viewing }), [])
+  // Whether the Filtros menu is open.
+  const [filtering, setFiltering] = useState(false)
+  const tutorial = useInventoryTutorial()
+  // Whether the tutorial runs, and the items on screen when it last sent a change: until the list loads again, the
+  // change is still on its way.
+  const [touring, setTouring] = useState(false)
+  const [sentWith, setSentWith] = useState<Item[]>()
   // The item the delete confirmation asks about, while it is open.
   const [removing, setRemoving] = useState<Item>()
   // The item whose photos the viewer shows, while it is open, with the photos on screen.
@@ -182,15 +199,100 @@ export function InventoryTab() {
     return true
   }
 
-  /** Opens the item form on a new item, an item to edit, or an item's details. */
-  const openForm = (item?: Item, details = false) =>
-    setForm((current) => ({ open: true, item, details, session: current.session + 1 }))
+  /** Opens the item form on a new item, an item to edit, or an item's details, maybe with values filled in. */
+  const openForm = (item?: Item, details = false, initial?: ItemForm) =>
+    setForm((current) => ({ open: true, item, details, initial, session: current.session + 1 }))
+
+  /** Sends an item request for the tutorial, then loads the list and the lists again. */
+  const send = async (url: string, method: string, body?: unknown) => {
+    setSentWith(items)
+    const json = body === undefined ? {} : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }
+    await fetch(url, { method, ...json }).catch(() => null)
+    reload()
+    reloadLists()
+  }
+
+  /** Deletes the tutorial's test item, if one is left from a run that didn't end, and loads the list again. */
+  const deleteTestItem = async () => {
+    const found = await fetch(`${API_BASE}/items?${new URLSearchParams({ q: TUTORIAL_ITEM.code })}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null)
+    for (const item of (found?.items ?? []) as Item[]) {
+      if (item.code === TUTORIAL_ITEM.code) {
+        await fetch(`${API_BASE}/items/${item.id}`, { method: 'DELETE' }).catch(() => null)
+      }
+    }
+    reload()
+  }
+
+  /** Closes what is open and turns off the search, filters and sort, as the tutorial starts and ends. */
+  const clearForTutorial = () => {
+    setForm((current) => ({ ...current, open: false }))
+    setRemoving(undefined)
+    setFiltering(false)
+    narrow(() => {
+      setSearch('')
+      setFilters(EMPTY_ITEM_FILTERS)
+      setStatus(null)
+      setSort(null)
+    })
+  }
+
+  // Run the tutorial by itself the first time, once the items are in, and again when the user menu asks.
+  if (!touring && ((!tutorial.seen && state.status === 'ready') || tutorial.replayAsked)) {
+    setTouring(true)
+    clearForTutorial()
+  }
+
+  // Once it runs, the tutorial counts as seen, and starts without a test item left from a run that didn't end.
+  const tutorialStarted = useEffectEvent(() => {
+    tutorial.setSeen()
+    tutorial.replayStarted()
+    void deleteTestItem()
+  })
+  useEffect(() => {
+    if (touring) {
+      tutorialStarted()
+    }
+  }, [touring])
+
+  // The tab as the tutorial sees it, and what "Fazer por mim" does on it.
+  const testItem = items.find((item) => item.code === TUTORIAL_ITEM.code)
+  const screen: TutorialScreen<Element> = {
+    form: form.open
+      ? { item: form.item, viewing: typed?.viewing ?? Boolean(form.details), values: typed?.values ?? form.initial ?? EMPTY_ITEM_FORM }
+      : null,
+    items,
+    search,
+    filters,
+    filtersOpen: filtering,
+    removing,
+    busy: sentWith === items,
+    target: (name) => tutorialTarget(name, TUTORIAL_ITEM.code, testItem?.name),
+    openForm,
+    setSearch: (value) => narrow(() => setSearch(value)),
+    applyFilters: (values) => {
+      setFiltering(false)
+      narrow(() => setFilters(values))
+    },
+    saveItem: (item, values) => {
+      setForm((current) => ({ ...current, open: false }))
+      const body = itemFormBody(values, itemFormOptions(items, lists).colors)
+      void send(item ? `${API_BASE}/items/${item.id}` : `${API_BASE}/items`, item ? 'PATCH' : 'POST', body)
+    },
+    askDelete: setRemoving,
+    deleteItem: (item) => {
+      setRemoving(undefined)
+      void send(`${API_BASE}/items/${item.id}`, 'DELETE')
+    },
+  }
 
   return (
     <Panel className="grid min-w-0 gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-0 flex-[1_1_calc(var(--spacing)*64)] sm:max-w-xl">
           <SearchField
+            data-tour="search"
             label="Procure pelo nome ou código da peça"
             value={search}
             onValueChange={(value) => narrow(() => setSearch(value))}
@@ -202,7 +304,9 @@ export function InventoryTab() {
         <Button variant="secondary" onClick={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
           Importar CSV
         </Button>
-        <Button onClick={() => openForm()}>Novo item</Button>
+        <Button data-tour="new-item" onClick={() => openForm()}>
+          Novo item
+        </Button>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <FilterMenu
@@ -211,6 +315,8 @@ export function InventoryTab() {
           rows={(draft) => itemFilterRows(items, draft)}
           values={filters}
           onApply={(values) => narrow(() => setFilters(values))}
+          open={filtering}
+          onOpenChange={setFiltering}
         />
         <FilterChipGroup
           label="Situação do estoque"
@@ -321,6 +427,8 @@ export function InventoryTab() {
         items={items}
         lists={lists}
         onCreateEntry={createEntry}
+        initialForm={form.initial}
+        onFormChange={followForm}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
           // A new item is the newest, first on the first page.
@@ -359,6 +467,16 @@ export function InventoryTab() {
           })
         }}
         onClose={() => setManaging(false)}
+      />
+      <InventoryTutorial
+        open={touring}
+        onClose={() => {
+          setTouring(false)
+          clearForTutorial()
+          void deleteTestItem()
+        }}
+        screen={screen}
+        opensOnRow={opensOnRow}
       />
       <ImageViewer
         open={viewer !== undefined}
