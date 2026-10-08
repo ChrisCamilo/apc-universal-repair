@@ -337,7 +337,7 @@ test('Web: the details show the item as text and change nothing', async () => {
   await expect.element(value('Local')).toHaveTextContent('Não informado')
   expect(value('Valor unitário (R$)').element().textContent).toMatch(/^R\$\s39,90$/)
   expect(dialog.element().querySelectorAll('input, [role="radio"]')).toHaveLength(0)
-  await expect.element(screen.getByRole('button', { name: 'Fechar' })).toHaveFocus()
+  await expect.element(screen.getByRole('button', { name: 'Fechar' }).filter({ hasText: 'Fechar' })).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(dialog).not.toBeInTheDocument()
   expect(fetch).not.toHaveBeenCalled()
