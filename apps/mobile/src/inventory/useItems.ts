@@ -36,5 +36,12 @@ export function useItems(query = '', enabled = true): ItemsState & { reload: () 
     return () => request.abort();
   }, [query, enabled, version]);
 
-  return { ...state, reload: () => setVersion((count) => count + 1) };
+  return {
+    ...state,
+    reload: () => {
+      // After a failure, loading again shows as loading; a loaded list keeps showing while the new one comes.
+      setState((current) => (current.status === 'error' ? { status: 'loading' } : current));
+      setVersion((count) => count + 1);
+    },
+  };
 }

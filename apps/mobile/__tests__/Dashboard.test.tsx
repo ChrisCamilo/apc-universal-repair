@@ -64,7 +64,7 @@ test('Mobile: the tab bar scrolls sideways and a stale saved tab falls back', as
   const tree = await mount('gt4', 'night', <Dashboard />);
   const bar = tree.root.find((n) => n.props.testID === 'dashboard-tab-bar' && typeof n.type !== 'string');
   expect(bar.props.horizontal).toBe(true);
-  expect(shows(tree, 'Nenhum item encontrado.')).toBe(true);
+  expect(shows(tree, 'Nenhum item cadastrado')).toBe(true);
 });
 
 // Checks the user menu slot shows what the Dashboard is given, at the right of the header.

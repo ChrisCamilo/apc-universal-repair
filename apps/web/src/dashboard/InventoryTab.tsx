@@ -19,13 +19,15 @@ import { EMPTY_ITEM_FILTERS, itemFilterRows, itemListQuery } from '@apc/shared/i
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
 import { Button } from '../components/Button.tsx'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
+import { EmptyState, ErrorState } from '../components/EmptyState.tsx'
 import { FilterChipGroup } from '../components/FilterChip.tsx'
 import { ClearFilters, FilterMenu } from '../components/FilterMenu.tsx'
 import type { UploadPhoto } from '../components/ImageUpload.tsx'
 import { ImageViewer } from '../components/ImageViewer.tsx'
 import { Panel } from '../components/Panel.tsx'
+import { Skeleton } from '../components/Skeleton.tsx'
+import { Spinner } from '../components/Spinner.tsx'
 import { SearchField } from '../components/TextField.tsx'
-import { Text } from '../components/Typography.tsx'
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
 import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
 import { API_BASE, savePhotos } from '../inventory/savePhotos.ts'
@@ -36,7 +38,9 @@ import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 // filters and a counter of the items shown, the total and the stock alerts. The Filtros menu narrows the list by
 // category, brands, vehicle model, position and side, color and location, applied together; the Estoque baixo and
 // Esgotado chips, one at a time, by stock status; and "Limpar filtros" turns them all off. The filters go to the
-// API as the list query, and the search narrows what comes back. "Novo item" and each row's pencil open the item
+// API as the list query, and the search narrows what comes back. While the items load, skeleton rows hold their
+// place; when nothing is in stock, the empty state offers "Novo item", and when the search or the filters leave
+// nothing, it offers to clear them; when the API fails, the error state offers to try again. "Novo item" and each row's pencil open the item
 // form, each row's trash asks to confirm deleting the item, and the list loads again once an item is saved or
 // deleted. While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or Enter on it) opens the
 // item's details. Each row's thumbnail shows the item's cover and opens its photos in the ImageViewer, where each
@@ -104,6 +108,16 @@ export function InventoryTab() {
   const items = state.status === 'ready' ? state.items : []
   const shown = listed.status === 'ready' ? listed.items.filter((item) => matchesSearch(item, search)) : []
 
+  const narrowed = search.trim() !== '' || query !== ''
+  const failed = state.status === 'error' || listed.status === 'error'
+
+  /** Turns off the search, the filters and the stock status, to show every item again. */
+  const clearAll = () => {
+    setSearch('')
+    setFilters(EMPTY_ITEM_FILTERS)
+    setStatus(null)
+  }
+
   /** Loads every item and the filtered items again, after one was saved or deleted. */
   const reload = () => {
     state.reload()
@@ -169,7 +183,15 @@ export function InventoryTab() {
           </p>
         )}
       </div>
-      {listed.status === 'ready' && (
+      {failed && (
+        <ErrorState
+          title="Não foi possível carregar o estoque"
+          message="Verifique a conexão com o servidor e tente de novo."
+          action={{ label: 'Tentar de novo', onClick: reload }}
+        />
+      )}
+      {!failed && listed.status === 'loading' && <LoadingRows />}
+      {!failed && listed.status === 'ready' && (
         <>
           <DataTable
             label="Itens do estoque"
@@ -215,9 +237,19 @@ export function InventoryTab() {
             onSortChange={() => {}}
             unsortedLabel="Ordem de cadastro"
             empty={
-              <Text tone="muted" className="py-6 text-center">
-                Nenhum item encontrado.
-              </Text>
+              narrowed ? (
+                <EmptyState
+                  title="Nenhum item encontrado"
+                  message="Ajuste a busca ou limpe os filtros para ver o estoque inteiro."
+                  action={{ label: 'Limpar filtros', onClick: clearAll }}
+                />
+              ) : (
+                <EmptyState
+                  title="Nenhum item cadastrado"
+                  message="Cadastre a primeira peça do estoque para ela aparecer aqui."
+                  action={{ label: 'Novo item', onClick: () => openForm() }}
+                />
+              )
             }
           />
         </>
@@ -253,6 +285,24 @@ export function InventoryTab() {
         }}
       />
     </Panel>
+  )
+}
+
+function LoadingRows() {
+  return (
+    <div aria-busy="true" className="grid gap-3 py-2">
+      <Spinner size="sm" label="Carregando o estoque" className="sr-only" />
+      {[0, 1, 2, 3, 4].map((row) => (
+        <div key={row} data-testid="loading-row" className="flex items-center gap-3">
+          <Skeleton shape="block" width="calc(var(--spacing) * 11)" height="calc(var(--spacing) * 11)" />
+          <div className="grid flex-1 gap-1.5">
+            <Skeleton width="40%" />
+            <Skeleton width="20%" />
+          </div>
+          <Skeleton width="calc(var(--spacing) * 14)" />
+        </div>
+      ))}
+    </div>
   )
 }
 

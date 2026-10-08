@@ -18,6 +18,7 @@ import { scales } from '@apc/shared/theme';
 import { API_URL } from '../api';
 import { Button } from '../Button';
 import { DataTable, RowAction, TableThumbnail } from '../DataTable';
+import { EmptyState, ErrorState } from '../EmptyState';
 import { FilterChipGroup } from '../FilterChip';
 import { ClearFilters, FilterMenu } from '../FilterMenu';
 import type { UploadPhoto } from '../ImageUpload';
@@ -27,6 +28,8 @@ import { ItemFormDialog } from '../inventory/ItemFormDialog';
 import { pickPhotos, savePhotos } from '../inventory/photos';
 import { useItems } from '../inventory/useItems';
 import { Panel } from '../Panel';
+import { Skeleton } from '../Skeleton';
+import { Spinner } from '../Spinner';
 import { SearchField } from '../TextField';
 import { NumericReadout, Text } from '../Typography';
 import { useOpenItemOnRow } from './openItemOnRowContext';
@@ -36,7 +39,9 @@ import { useOpenItemOnRow } from './openItemOnRowContext';
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
 // the list loads again once an item is saved or deleted. While "Abrir item ao clicar na linha" is on in the user
 // menu, a tap on a card opens the item's details. The Filtros menu, the stock status chips (one at a time) and
-// "Limpar filtros" narrow the list the same as the web, sent to the API as the list query. Each card's thumbnail shows the item's cover and opens its photos
+// "Limpar filtros" narrow the list the same as the web, sent to the API as the list query. While the items load,
+// skeleton cards hold their place; when nothing is in stock, the empty state offers "Novo item", and when the search
+// or the filters leave nothing, it offers to clear them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and opens its photos
 // in the ImageViewer, where each photo removed, changed or added is saved at once and the list follows.
 
 const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', gap: scales.space.s1 };
@@ -58,29 +63,16 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (item) => <NumericReadout>{item.quantity}</NumericReadout> },
 ];
 const FILTERS_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: scales.space.s2 };
+const LOADING_LINES_STYLE: ViewStyle = { flex: 1, gap: scales.space.s2 };
+// The skeleton's quantity, the width of a short number.
+const LOADING_QUANTITY = scales.space.s1 * 14;
+const LOADING_ROW_STYLE: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: scales.space.s3 };
+const LOADING_STYLE: ViewStyle = { gap: scales.space.s3, paddingVertical: scales.space.s2 };
+// The skeleton's thumbnail, the size of a card's thumbnail.
+const LOADING_THUMB = scales.space.s1 * 11;
 // The stock status chips, outside the menu: one at a time, none for every item.
 const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }));
 const TAB_STYLE: ViewStyle = { gap: scales.space.s3 };
-
-/**
- * Builds the column of each card's thumbnail: the item's cover, which opens its photos.
- * @param onOpen Opens an item's photos in the viewer.
- * @returns The photo column.
- */
-function photoColumn(onOpen: (item: Item) => void): ComponentProps<typeof DataTable<Item>>['columns'][number] {
-  return {
-    key: 'photo',
-    header: 'Foto',
-    card: 'thumb',
-    cell: (item) => (
-      <TableThumbnail
-        src={item.photos[0] && `${API_URL}${item.photos[0].thumbUrl}`}
-        label={`Ver fotos de ${item.name}`}
-        onOpen={() => onOpen(item)}
-      />
-    ),
-  };
-}
 
 /**
  * Builds the column of each card's actions: the pencil that opens the item to edit and the trash that deletes it.
@@ -101,6 +93,26 @@ function actionsColumn(
         <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onPress={() => onEdit(item)} />
         <RowAction icon={trashIcon} label={`Excluir ${item.name}`} tone="danger" onPress={() => onDelete(item)} />
       </View>
+    ),
+  };
+}
+
+/**
+ * Builds the column of each card's thumbnail: the item's cover, which opens its photos.
+ * @param onOpen Opens an item's photos in the viewer.
+ * @returns The photo column.
+ */
+function photoColumn(onOpen: (item: Item) => void): ComponentProps<typeof DataTable<Item>>['columns'][number] {
+  return {
+    key: 'photo',
+    header: 'Foto',
+    card: 'thumb',
+    cell: (item) => (
+      <TableThumbnail
+        src={item.photos[0] && `${API_URL}${item.photos[0].thumbUrl}`}
+        label={`Ver fotos de ${item.name}`}
+        onOpen={() => onOpen(item)}
+      />
     ),
   };
 }
@@ -136,6 +148,16 @@ export function InventoryTab() {
   const [viewer, setViewer] = useState<{ item: Item; photos: UploadPhoto[] }>();
   const items = state.status === 'ready' ? state.items : [];
   const shown = listed.status === 'ready' ? listed.items.filter((item) => matchesSearch(item, search)) : [];
+
+  const narrowed = search.trim() !== '' || query !== '';
+  const failed = state.status === 'error' || listed.status === 'error';
+
+  /** Turns off the search, the filters and the stock status, to show every item again. */
+  const clearAll = () => {
+    setSearch('');
+    setFilters(EMPTY_ITEM_FILTERS);
+    setStatus(null);
+  };
 
   /** Loads every item and the filtered items again, after one was saved or deleted. */
   const reload = () => {
@@ -194,7 +216,15 @@ export function InventoryTab() {
             }}
           />
         </View>
-        {state.status === 'ready' && listed.status === 'ready' && (
+        {failed && (
+          <ErrorState
+            title="Não foi possível carregar o estoque"
+            message="Verifique a conexão com o servidor e tente de novo."
+            action={{ label: 'Tentar de novo', onPress: reload }}
+          />
+        )}
+        {!failed && listed.status === 'loading' && <LoadingRows />}
+        {!failed && state.status === 'ready' && listed.status === 'ready' && (
           <>
             <NumericReadout tone="muted">{resultSummary(shown.length, items)}</NumericReadout>
             <DataTable
@@ -211,7 +241,21 @@ export function InventoryTab() {
               sort={null}
               onSortChange={() => {}}
               unsortedLabel="Ordem de cadastro"
-              empty={<Text tone="muted">Nenhum item encontrado.</Text>}
+              empty={
+                narrowed ? (
+                  <EmptyState
+                    title="Nenhum item encontrado"
+                    message="Ajuste a busca ou limpe os filtros para ver o estoque inteiro."
+                    action={{ label: 'Limpar filtros', onPress: clearAll }}
+                  />
+                ) : (
+                  <EmptyState
+                    title="Nenhum item cadastrado"
+                    message="Cadastre a primeira peça do estoque para ela aparecer aqui."
+                    action={{ label: 'Novo item', onPress: () => openForm() }}
+                  />
+                )
+              }
             />
           </>
         )}
@@ -248,5 +292,23 @@ export function InventoryTab() {
         }}
       />
     </Panel>
+  );
+}
+
+function LoadingRows() {
+  return (
+    <View accessibilityState={{ busy: true }} style={LOADING_STYLE}>
+      <Spinner size="sm" label="Carregando o estoque" />
+      {[0, 1, 2, 3, 4].map((row) => (
+        <View key={row} testID="loading-row" style={LOADING_ROW_STYLE}>
+          <Skeleton shape="block" width={LOADING_THUMB} height={LOADING_THUMB} />
+          <View style={LOADING_LINES_STYLE}>
+            <Skeleton width="40%" />
+            <Skeleton width="20%" />
+          </View>
+          <Skeleton width={LOADING_QUANTITY} />
+        </View>
+      ))}
+    </View>
   );
 }
