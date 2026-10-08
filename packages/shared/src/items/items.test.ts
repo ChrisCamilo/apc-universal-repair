@@ -14,7 +14,9 @@ import {
   optionKey,
   resultSummary,
   searchKey,
+  sortItems,
   stockStatus,
+  type SortableItem,
 } from "./items.ts";
 
 // Capitalizes the first letter of text values, a single letter too, keeping the rest as typed.
@@ -150,4 +152,79 @@ test("Shared: the combobox list filters by the typed text", () => {
   assert.deepEqual(matchingOptions(options, "freios"), options);
   assert.deepEqual(matchingOptions(options, "ic"), ["Elétrica", "Ignição"]);
   assert.deepEqual(matchingOptions(options, "suspensão"), []);
+});
+
+/**
+ * Fills in a sortable item with the fields a sort test doesn't look at.
+ * @param fields The fields that matter here.
+ * @returns An item to sort.
+ */
+function sortable(fields: Partial<SortableItem> & Pick<SortableItem, "code">): SortableItem {
+  return {
+    name: "Peça",
+    category: "Motor",
+    partBrand: "Bosch",
+    vehicleBrand: "Volkswagen",
+    vehicleModel: null,
+    position: "N/A",
+    side: "N/A",
+    color: "N/A",
+    location: null,
+    unitPriceCents: 100,
+    quantity: 1,
+    ...fields,
+  };
+}
+
+// Sorts locations with numbers in place and names ignoring case and accents, ascending and descending.
+test("Shared: text columns sort in pt-BR order with numbers in place", () => {
+  const items = [sortable({ code: "1", location: "A-10" }), sortable({ code: "2", location: "A-2" }), sortable({ code: "3", location: "a-1" })];
+  assert.deepEqual(
+    sortItems(items, { key: "location", dir: "asc" }).map((item) => item.location),
+    ["a-1", "A-2", "A-10"],
+  );
+  const names = [sortable({ code: "1", name: "Óleo" }), sortable({ code: "2", name: "junta" }), sortable({ code: "3", name: "Bomba" })];
+  assert.deepEqual(
+    sortItems(names, { key: "name", dir: "desc" }).map((item) => item.name),
+    ["Óleo", "junta", "Bomba"],
+  );
+});
+
+// Sorts by price by value, not as text, and checks ties keep the part code order in both directions.
+test("Shared: number columns sort by value and ties keep the code order", () => {
+  const items = [
+    sortable({ code: "C-3", unitPriceCents: 900 }),
+    sortable({ code: "B-2", unitPriceCents: 10000 }),
+    sortable({ code: "A-1", unitPriceCents: 900 }),
+  ];
+  assert.deepEqual(
+    sortItems(items, { key: "price", dir: "asc" }).map((item) => item.code),
+    ["A-1", "C-3", "B-2"],
+  );
+  assert.deepEqual(
+    sortItems(items, { key: "price", dir: "desc" }).map((item) => item.code),
+    ["B-2", "A-1", "C-3"],
+  );
+});
+
+// Sorts by vehicle and checks the brand comes first, then the model, an item for any model before the others.
+test("Shared: the vehicle sorts by brand, then model", () => {
+  const items = [
+    sortable({ code: "1", vehicleBrand: "Volkswagen", vehicleModel: "Santana" }),
+    sortable({ code: "2", vehicleBrand: "Chevrolet", vehicleModel: "Opala" }),
+    sortable({ code: "3", vehicleBrand: "Volkswagen", vehicleModel: "Gol" }),
+    sortable({ code: "4", vehicleBrand: "Volkswagen", vehicleModel: null }),
+  ];
+  assert.deepEqual(
+    sortItems(items, { key: "vehicle", dir: "asc" }).map((item) => item.code),
+    ["2", "4", "3", "1"],
+  );
+});
+
+// Checks the list query takes a known column and direction, and refuses an unknown column.
+test("Shared: the list query sorts by a known column", () => {
+  const sorted = itemListQuerySchema.parse({ sort: "price", order: "desc" });
+  assert.deepEqual([sorted.sort, sorted.order], ["price", "desc"]);
+  assert.equal(itemListQuerySchema.safeParse({ sort: "code" }).success, false);
+  assert.equal(itemListQuerySchema.safeParse({ sort: "name", order: "up" }).success, false);
 });
