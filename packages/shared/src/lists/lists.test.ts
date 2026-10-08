@@ -1,15 +1,22 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
 import type { Item } from "../items/items.ts";
+import { entryFilters } from "../items/itemFilters.ts";
 import {
   createListEntry,
+  deleteListEntry,
   EMPTY_ITEM_LISTS,
   findEntry,
+  isCatalogBrand,
+  ITEM_LIST_TEXTS,
+  itemsUsing,
   listEntryCreateSchema,
   listName,
   loadItemLists,
+  renameListEntry,
   vehicleModelCreateSchema,
   withEntry,
+  withoutEntry,
   type ItemLists,
 } from "./lists.ts";
 import { itemListsOf } from "./testLists.ts";
@@ -50,15 +57,91 @@ test("Shared: a typed name finds its list entry", () => {
   assert.equal(findEntry(LISTS.categories, " "), undefined);
 });
 
-// Adds a created entry in name order, and leaves the lists alone when they already hold it.
-test("Shared: a created entry joins its list in name order, once", () => {
+// Adds a created entry in name order, once, and puts a renamed one back in its new place.
+test("Shared: a created or renamed entry takes its place in name order", () => {
   const created = { id: "00000000-0000-4000-8000-0000000000a3", name: "Freios" };
   const grown = withEntry(LISTS, "categories", created);
   assert.deepEqual(
     grown.categories.map((entry) => entry.name),
     ["Elétrica", "Freios", "Motor"],
   );
-  assert.equal(withEntry(grown, "categories", created), grown);
+  assert.deepEqual(withEntry(grown, "categories", created), grown);
+  const renamed = withEntry(grown, "categories", { ...LISTS.categories[0], name: "Suspensão" });
+  assert.deepEqual(
+    renamed.categories.map((entry) => entry.name),
+    ["Freios", "Motor", "Suspensão"],
+  );
+});
+
+// Takes a category out of its list, and a vehicle brand together with its models only.
+test("Shared: a deleted entry leaves its list, a vehicle brand with its models", () => {
+  const lists = itemListsOf([
+    { category: "Motor", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: "Uno" },
+    { category: "Freios", partBrand: "Bosch", vehicleBrand: "Ford", vehicleModel: "Ka" },
+  ] as unknown as Item[]);
+  const fiat = findEntry(lists.vehicleBrands, "Fiat")!;
+  const withoutFiat = withoutEntry(lists, "vehicleBrands", fiat.id);
+  assert.deepEqual(withoutFiat.vehicleBrands.map((entry) => entry.name), ["Ford"]);
+  assert.deepEqual(withoutFiat.vehicleModels.map((entry) => entry.name), ["Ka"]);
+  assert.deepEqual(withoutEntry(lists, "categories", lists.categories[0].id).categories.map((entry) => entry.name), ["Motor"]);
+});
+
+// Counts the items using a category whatever its spelling, and a model only within its own brand.
+test("Shared: the items using an entry are counted", () => {
+  const items = [
+    { category: "Elétrica", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: "Uno" },
+    { category: "eletrica", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: null },
+    { category: "Motor", partBrand: "Bosch", vehicleBrand: "Ford", vehicleModel: "Uno" },
+  ] as unknown as Item[];
+  const lists = itemListsOf(items);
+  assert.equal(itemsUsing(items, "categories", findEntry(lists.categories, "Elétrica")!, lists), 2);
+  assert.equal(itemsUsing(items, "vehicleBrands", findEntry(lists.vehicleBrands, "Fiat")!, lists), 2);
+  const fiatUno = lists.vehicleModels.find((model) => model.vehicleBrandId === findEntry(lists.vehicleBrands, "Fiat")!.id)!;
+  assert.equal(itemsUsing(items, "vehicleModels", fiatUno, lists), 1);
+  assert.equal(itemsUsing(items, "categories", { id: BRAND_ID, name: "Freios" }, lists), 0);
+});
+
+// Sets the filters of an entry's items: a category by its name, and a vehicle model with its brand.
+test("Shared: an entry leads to the filters of its items", () => {
+  const lists = itemListsOf([{ category: "Motor", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: "Uno" }] as unknown as Item[]);
+  assert.deepEqual(entryFilters("categories", lists.categories[0], lists).category, ["Motor"]);
+  const filters = entryFilters("vehicleModels", lists.vehicleModels[0], lists);
+  assert.deepEqual(filters.vehicleModel, ["Fiat|Uno"]);
+  assert.deepEqual(filters.category, []);
+});
+
+// Tells the catalog's vehicle brands apart from the inventory's own, ignoring case and accents.
+test("Shared: the catalog's vehicle brands are known", () => {
+  assert.equal(isCatalogBrand("volkswagen"), true);
+  assert.equal(isCatalogBrand("Renault"), false);
+});
+
+// Words the message of an entry in use for one item and for several.
+test("Shared: an entry in use says how many items use it", () => {
+  assert.equal(ITEM_LIST_TEXTS.categories.inUse("Motor", 1), "1 item usa “Motor”. Troque a categoria desses itens antes de excluir.");
+  assert.match(ITEM_LIST_TEXTS.vehicleModels.inUse("Gol", 3), /^3 itens usam “Gol”/);
+});
+
+// Renames an entry and checks the request, then a name another entry has and a failure; deletes one and checks the
+// request and a failure.
+test("Shared: renaming and deleting reach the entry by its id", async () => {
+  const entry = { id: BRAND_ID, name: "Motor diesel" };
+  const fetch = answer(() => entry);
+  assert.deepEqual(await renameListEntry("/api", "categories", BRAND_ID, "motor diesel"), entry);
+  const [url, init] = fetch.mock.calls[0].arguments as unknown as [string, RequestInit];
+  assert.equal(url, `/api/categories/${BRAND_ID}`);
+  assert.equal(init.method, "PATCH");
+  assert.deepEqual(JSON.parse(String(init.body)), { name: "motor diesel" });
+  answer(() => ({ message: "taken" }), 409);
+  assert.equal(await renameListEntry("/api", "categories", BRAND_ID, "Motor"), "taken");
+  answer(() => ({ message: "down" }), 500);
+  assert.equal(await renameListEntry("/api", "categories", BRAND_ID, "Motor"), null);
+
+  const removal = mock.method(globalThis, "fetch", async () => new Response(null, { status: 204 }));
+  assert.equal(await deleteListEntry("/api", "vehicleBrands", BRAND_ID), true);
+  assert.deepEqual(removal.mock.calls[0].arguments, [`/api/vehicle-brands/${BRAND_ID}`, { method: "DELETE" }]);
+  answer(() => ({ message: "in use" }), 409);
+  assert.equal(await deleteListEntry("/api", "vehicleBrands", BRAND_ID), false);
 });
 
 // Checks a new name is required and a new vehicle model needs the id of its vehicle brand.

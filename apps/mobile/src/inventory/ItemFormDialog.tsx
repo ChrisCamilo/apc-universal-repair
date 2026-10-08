@@ -16,7 +16,7 @@ import {
   type ItemForm,
   type ItemFormErrors,
 } from '@apc/shared/item-form';
-import { findEntry, ITEM_LIST_TOASTS, type ItemListKind, type ItemLists } from '@apc/shared/lists';
+import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists';
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { scales } from '@apc/shared/theme';
 import { API_URL } from '../api';
@@ -116,11 +116,11 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
     const entry = await onCreateEntry(kind, name, kind === 'vehicleModels' ? vehicleBrand?.id : undefined);
     setCreating((count) => count - 1);
     if (!entry) {
-      toast(ITEM_LIST_TOASTS[kind].failed);
+      toast(ITEM_LIST_TEXTS[kind].createFailed);
       return;
     }
     change(field, entry.name);
-    toast(ITEM_LIST_TOASTS[kind].created(entry.name));
+    toast(ITEM_LIST_TEXTS[kind].created(entry.name));
   };
 
   /** Checks the form and sends the item, or shows what keeps it from being saved. */

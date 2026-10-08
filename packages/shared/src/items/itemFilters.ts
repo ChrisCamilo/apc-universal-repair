@@ -1,11 +1,12 @@
 import type { FilterValues } from "../filters/filters.ts";
+import { ITEM_LIST_FIELDS, type ItemListKind, type ItemLists, type ListEntry, type VehicleModel } from "../lists/lists.ts";
 import { distinct } from "./itemForm.ts";
 import { NOT_APPLICABLE, POSITION_NAMES, SIDE_NAMES, type Item, type ItemStatus } from "./items.ts";
 
 // The inventory filters shared by web and mobile: the filters of the Filtros menu and the options each one offers,
 // taken from the items in stock, and the list query that sends them, with the stock status, to the API. The
 // vehicle model keeps its brand in the value, since two brands may share a model name; with vehicle brands chosen,
-// it offers only their models.
+// it offers only their models. An entry of the item lists also leads to the filters that show the items using it.
 
 /** Every filter of the Filtros menu, none chosen. */
 export const EMPTY_ITEM_FILTERS: ItemFilters = {
@@ -54,6 +55,20 @@ export type ItemFilters = Record<
   "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "position" | "side" | "color" | "location",
   string[]
 >;
+/**
+ * Sets the filters that show the items using an entry of the item lists, e.g. the category "Motor"; a vehicle model
+ * goes with its brand.
+ * @param kind The entry's list.
+ * @param entry The entry.
+ * @param lists The four lists, for a vehicle model's brand.
+ * @returns Every filter off but the entry's.
+ */
+export function entryFilters(kind: ItemListKind, entry: ListEntry | VehicleModel, lists: ItemLists): ItemFilters {
+  const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
+  const value = brand ? vehicleModelValue(brand.name, entry.name) : entry.name;
+  return { ...EMPTY_ITEM_FILTERS, [ITEM_LIST_FIELDS[kind]]: [value] };
+}
+
 /**
  * Lists what each filter offers: the categories, brands and locations in stock, the colors in use with N/A first,
  * and the vehicle models as "Opala 4.1 · Chevrolet", only of the chosen vehicle brands when there are any.

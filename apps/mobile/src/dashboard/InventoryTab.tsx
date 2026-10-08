@@ -25,6 +25,7 @@ import type { UploadPhoto } from '../ImageUpload';
 import { ImageViewer } from '../ImageViewer';
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog';
 import { ItemFormDialog } from '../inventory/ItemFormDialog';
+import { ManageListsDialog } from '../inventory/ManageListsDialog';
 import { pickPhotos, savePhotos } from '../inventory/photos';
 import { useItemLists } from '../inventory/useItemLists';
 import { useItems } from '../inventory/useItems';
@@ -40,7 +41,8 @@ import { usePageSize } from './pageSizeContext';
 // The Inventory tab, the same as the web: every item as a card, a search by name or part code, and a counter
 // of the items shown, the total and the stock alerts. Low and out-of-stock cards are tinted by the table.
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
-// the list loads again once an item is saved or deleted. While "Abrir item ao clicar na linha" is on in the user
+// the list loads again once an item is saved or deleted. "Gerenciar listas" renames and deletes the categories, brands
+// and models the form picks from; the list loads again after each change, and a name in use leads to its items. While "Abrir item ao clicar na linha" is on in the user
 // menu, a tap on a card opens the item's details. The Filtros menu, the stock status chips (one at a time) and
 // "Limpar filtros" narrow the list the same as the web, sent to the API as the list query with the search, and the
 // list shows one page of what matches, newest first, the size set in the user menu, moving pages as the web does. While the items load,
@@ -151,7 +153,9 @@ export function InventoryTab() {
   const state = useItems();
   const listed = useItems(itemListQuery(filters, status, { search, page, pageSize }));
   // The lists the item form picks from and creates names in.
-  const { lists, create: createEntry } = useItemLists();
+  const { lists, create: createEntry, rename: renameEntry, remove: removeEntry } = useItemLists();
+  // Whether "Gerenciar listas" is open.
+  const [managing, setManaging] = useState(false);
   const { opensOnRow } = useOpenItemOnRow();
   // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
   const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; session: number }>({
@@ -219,6 +223,9 @@ export function InventoryTab() {
           onValueChange={(value) => narrow(() => setSearch(value))}
         />
         <Button onPress={() => openForm()}>Novo item</Button>
+        <Button variant="secondary" onPress={() => setManaging(true)}>
+          Gerenciar listas
+        </Button>
         <View style={FILTERS_STYLE}>
           <FilterMenu
             label="Filtros do estoque"
@@ -313,6 +320,23 @@ export function InventoryTab() {
           setForm((current) => ({ ...current, open: false }));
           reload();
         }}
+      />
+      <ManageListsDialog
+        open={managing}
+        lists={lists}
+        items={items}
+        onRename={renameEntry}
+        onRemove={removeEntry}
+        onChanged={reload}
+        onShowItems={(shown) => {
+          setManaging(false);
+          narrow(() => {
+            setSearch('');
+            setStatus(null);
+            setFilters(shown);
+          });
+        }}
+        onClose={() => setManaging(false)}
       />
       <ImageViewer
         open={viewer !== undefined}

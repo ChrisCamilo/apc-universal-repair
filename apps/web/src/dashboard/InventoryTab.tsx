@@ -31,6 +31,7 @@ import { Spinner } from '../components/Spinner.tsx'
 import { SearchField } from '../components/TextField.tsx'
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
 import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
+import { ManageListsDialog } from '../inventory/ManageListsDialog.tsx'
 import { API_BASE, savePhotos } from '../inventory/savePhotos.ts'
 import { useItemLists } from '../inventory/useItemLists.ts'
 import { useItems } from '../inventory/useItems.ts'
@@ -47,7 +48,8 @@ import { usePageSize } from './pageSizeContext.ts'
 // skeleton rows hold their place; when nothing is in stock, the empty state offers "Novo item", and when the search
 // or the filters leave nothing, it offers to clear them; when the API fails, the error state offers to try again.
 // "Novo item" and each row's pencil open the item form, each row's trash asks to confirm deleting the item, and the
-// list loads again once an item is saved or deleted. While "Abrir item ao clicar na linha" is on in the user menu, a
+// list loads again once an item is saved or deleted. "Gerenciar listas" renames and deletes the categories, brands
+// and models the form picks from; the list loads again after each change, and a name in use leads to its items. While "Abrir item ao clicar na linha" is on in the user menu, a
 // click on a row (or Enter on it) opens the item's details. Each row's thumbnail shows the item's cover and opens
 // its photos in the ImageViewer, where each photo removed, changed or added is saved at once and the list follows.
 // Low and out-of-stock rows are tinted by the table. At phone width the row becomes a card and the columns that
@@ -112,7 +114,9 @@ export function InventoryTab() {
   const state = useItems()
   const listed = useItems(itemListQuery(filters, status, { search, page, pageSize }))
   // The lists the item form picks from and creates names in.
-  const { lists, create: createEntry } = useItemLists()
+  const { lists, create: createEntry, rename: renameEntry, remove: removeEntry } = useItemLists()
+  // Whether "Gerenciar listas" is open.
+  const [managing, setManaging] = useState(false)
   const { opensOnRow } = useOpenItemOnRow()
   // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
   const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; session: number }>({
@@ -181,6 +185,9 @@ export function InventoryTab() {
             onValueChange={(value) => narrow(() => setSearch(value))}
           />
         </div>
+        <Button variant="secondary" onClick={() => setManaging(true)}>
+          Gerenciar listas
+        </Button>
         <Button onClick={() => openForm()}>Novo item</Button>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -309,6 +316,23 @@ export function InventoryTab() {
           setForm((current) => ({ ...current, open: false }))
           reload()
         }}
+      />
+      <ManageListsDialog
+        open={managing}
+        lists={lists}
+        items={items}
+        onRename={renameEntry}
+        onRemove={removeEntry}
+        onChanged={reload}
+        onShowItems={(shown) => {
+          setManaging(false)
+          narrow(() => {
+            setSearch('')
+            setStatus(null)
+            setFilters(shown)
+          })
+        }}
+        onClose={() => setManaging(false)}
       />
       <ImageViewer
         open={viewer !== undefined}

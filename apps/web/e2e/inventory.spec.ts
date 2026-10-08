@@ -211,6 +211,52 @@ test("Web: categories, brands and models are created from the item form", async 
   await expect(page.getByRole("option", { name: "Motor diesel" })).toBeVisible();
 });
 
+// Tidies the lists through "Gerenciar listas" against an API that keeps what it is sent: once its only item is
+// deleted, a category shows no items and is deleted after confirming; a category is renamed in place and the list
+// shows its items under the new name; and a category items use can't be deleted, but "Ver itens" shows them, filtered.
+test("Web: the lists are renamed and cleaned up in Manage lists", async ({ page }) => {
+  const stock = [...ITEMS];
+  await serveItems(page, stock);
+  await page.route("**/api/items/*", async (route) => {
+    stock.splice(stock.findIndex((it) => route.request().url().endsWith(it.id)), 1);
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  await page.getByRole("button", { name: "Excluir Bomba d'água" }).click();
+  await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
+  await expect(rows).toHaveCount(3);
+
+  await page.getByRole("button", { name: "Gerenciar listas" }).click();
+  const lists = page.getByRole("dialog", { name: "Gerenciar listas" });
+  await expect(lists.getByRole("button", { name: "Fechar" })).toBeInViewport();
+  const categories = lists.getByRole("region", { name: "Categorias" });
+  await expect(categories.getByRole("listitem").filter({ hasText: "Arrefecimento" })).toContainText("sem itens");
+  await categories.getByRole("button", { name: "Excluir Arrefecimento" }).click();
+  const confirm = page.getByRole("dialog", { name: "Excluir “Arrefecimento”?" });
+  await expect(confirm.getByRole("button", { name: "Excluir" })).toBeInViewport();
+  await confirm.getByRole("button", { name: "Excluir" }).click();
+  await expect(page.getByText("Categoria “Arrefecimento” excluída.")).toBeVisible();
+  await expect(categories.getByRole("button", { name: "Excluir Arrefecimento" })).toBeHidden();
+
+  await categories.getByRole("button", { name: "Renomear Suspensão" }).click();
+  await lists.getByLabel("Novo nome de “Suspensão”").fill("suspensão e direção");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Categoria renomeada para “Suspensão e direção”.")).toBeVisible();
+  await lists.getByRole("button", { name: "Fechar" }).click();
+  await expect(rows.filter({ hasText: "Amortecedor" })).toContainText("Suspensão e direção");
+
+  await page.getByRole("button", { name: "Gerenciar listas" }).click();
+  await categories.getByRole("button", { name: "Excluir Freios" }).click();
+  const blocked = page.getByRole("dialog", { name: "Não é possível excluir" });
+  await expect(blocked).toContainText("1 item usa “Freios”.");
+  await blocked.getByRole("button", { name: "Ver itens" }).click();
+  await expect(lists).toBeHidden();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("Pastilha de freio");
+  await expect(page.getByRole("button", { name: "Filtros, 1 ativo" })).toBeVisible();
+});
+
 // Deletes an item against an API that keeps what it is sent: the row's trash opens a confirmation naming the item
 // and its code, Cancel and Escape leave the list as it was, and Excluir deletes it by its id, a toast confirms it
 // and the list loses the row without a reload. Excluir is on screen without scrolling at both screen sizes.
