@@ -16,12 +16,12 @@ import { Heading, Label, NumericReadout, Text } from './Typography.tsx'
 
 // A step-by-step guide that points at parts of the screen. A spotlight rings the step's target and dims the
 // rest of the screen; it lets clicks through, so the user does the step on the target itself. A card next to
-// the target (below or above, whichever fits; across the bottom at phone width) shows the part and the step
-// count, the title, the text and the actions: Skip, "Fazer por mim" when the step can do itself, and Next on
-// info-only steps. A step moves on by itself once its check passes, and goes back to the step it names when
-// the user leaves it. With a modal dialog open, the tour renders inside the dialog, the only part of the page
-// that stays clickable, so it stays on top. It follows the target on scroll and resize, and its scrolling
-// and sliding respect prefers-reduced-motion.
+// the target (below or above, whichever fits; beside the dialog the target is in, when there is room; across the
+// bottom at phone width) shows the part and the step count, the title, the text and the actions: Skip, "Fazer por
+// mim" when the step can do itself, and Next on info-only steps. A step moves on by itself once its check passes,
+// and goes back to the step it names when the user leaves it. With a modal dialog open, the tour renders inside the
+// dialog, the only part of the page that stays clickable, so it stays on top. It follows the target on scroll and
+// resize, and its scrolling and sliding respect prefers-reduced-motion.
 
 type TourProps = {
   open: boolean
@@ -51,10 +51,12 @@ function measure(step: TourStep<Element>, cardHeight: number): Layout {
   const box = target && target.getClientRects().length ? target.getBoundingClientRect() : null
   const rect = box && { x: box.x, y: box.y, width: box.width, height: box.height }
   const { clientWidth, clientHeight } = document.documentElement
+  const dialog = document.querySelector('dialog[open]')
+  const dialogBox = dialog && target && dialog.contains(target) ? dialog.getBoundingClientRect() : null
   return {
-    host: document.querySelector('dialog[open]') ?? document.body,
+    host: dialog ?? document.body,
     spot: rect && spotlightRect(rect),
-    card: cardPlacement(rect, cardHeight, { width: clientWidth, height: clientHeight }),
+    card: cardPlacement(rect, cardHeight, { width: clientWidth, height: clientHeight }, dialogBox),
   }
 }
 

@@ -5,6 +5,7 @@
 import React from 'react';
 import { Pressable } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
+import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial';
 import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs';
 import { Dashboard } from '../src/dashboard/Dashboard';
 import { useTabReorder } from '../src/dashboard/tabReorderContext';
@@ -66,6 +67,8 @@ function tabOrder(tree: ReactTestRenderer.ReactTestRenderer): string[] {
 
 beforeEach(async () => {
   await themeStorage.clear();
+  // The Inventory tutorial counts as seen, so it doesn't start by itself over what the test looks at.
+  await themeStorage.setItem(INVENTORY_TUTORIAL_STORAGE_KEY, 'true');
 });
 
 // Checks the tabs offer no move actions while "Arrastar para reordenar" is off, then turns it on and moves the open

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Item } from "@apc/shared/items";
+import { INVENTORY_TUTORIAL_STORAGE_KEY } from "@apc/shared/inventory-tutorial";
 import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 
@@ -315,6 +316,103 @@ test("Web: items are imported from a CSV file", async ({ page }) => {
   await expect(rows).toHaveCount(5);
   await expect(rows.first()).toContainText("Vela de ignição");
   await expect(rows.filter({ hasText: "Filtro de óleo" })).toContainText("20");
+});
+
+// Runs the Inventory tutorial against an API that keeps what it is sent. It starts by itself the first time; each
+// step points at its target, moves on when the user does it, and "Fazer por mim" does it for them. Part 1 creates
+// the test item, part 2 finds it with the search and the filters, and part 3 opens its details, edits it to a low and
+// then an out-of-stock row, and deletes it. Closing the form mid-step goes back to the step that opens it. At the end
+// the search and the filters are off and the test item is gone; the user menu replays the tutorial, and Skip ends it.
+test("Web: the Inventory tutorial creates, finds, edits and deletes a test item", async ({ page }) => {
+  await page.addInitScript((key) => localStorage.removeItem(key), INVENTORY_TUTORIAL_STORAGE_KEY);
+  const stock = [...ITEMS];
+  await page.route("**/api/items", async (route) => {
+    const sent = route.request().postDataJSON();
+    const saved = item({ ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null });
+    stock.unshift(saved);
+    return route.fulfill({ status: 201, json: saved });
+  });
+  await serveItems(page, stock);
+  await page.route("**/api/items/*", async (route) => {
+    const index = stock.findIndex((held) => route.request().url().endsWith(held.id));
+    if (route.request().method() === "DELETE") {
+      stock.splice(index, 1);
+      return route.fulfill({ status: 204 });
+    }
+    const sent = route.request().postDataJSON();
+    stock[index] = { ...stock[index], ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null };
+    return route.fulfill({ json: stock[index] });
+  });
+  await page.goto("/inventory");
+  const card = page.getByRole("dialog").filter({ hasText: /\d+ \/ 19/ });
+  const step = (title: string) => expect(card.getByRole("heading", { name: title })).toBeVisible();
+  const doIt = () => card.getByRole("button", { name: "Fazer por mim" }).click();
+  const rows = page.locator("tbody tr");
+  const testRow = rows.filter({ hasText: "TUTORIAL-001" });
+
+  await step("Abra o cadastro");
+  await expect(card).toContainText("Parte 1 de 3 · Cadastrar um item");
+  await expect(page.getByTestId("tour-spotlight")).toBeVisible();
+  await page.getByRole("button", { name: "Novo item" }).first().click();
+  await step("Diga que peça é");
+  await page.getByRole("dialog", { name: "Novo item" }).getByRole("button", { name: "Cancelar" }).click();
+  await step("Abra o cadastro");
+  await doIt();
+  await step("Diga que peça é");
+  await doIt();
+  await step("Diga onde e quantas");
+  await expect(page.getByRole("dialog", { name: "Novo item" }).getByLabel("Código da peça")).toHaveValue("TUTORIAL-001");
+  await doIt();
+  await step("Salve o item");
+  await doIt();
+
+  await step("Procure pelo nome");
+  await expect(testRow).toHaveCount(1);
+  await page.getByLabel("Procure pelo nome ou código da peça").fill("tutorial");
+  await step("Abra os filtros");
+  await page.getByRole("button", { name: "Filtros" }).click();
+  await step("Filtre o estoque");
+  await doIt();
+  await step("Achou");
+  await expect(rows).toHaveCount(1);
+  await card.getByRole("button", { name: "Próximo" }).click();
+
+  await step("Abra o item");
+  await testRow.click();
+  await step("Libere a edição");
+  await page.getByRole("dialog", { name: "Detalhes do item" }).getByRole("button", { name: "Editar" }).click();
+  await step("Mude o nome e a quantidade");
+  await doIt();
+  await step("Salve as alterações");
+  await doIt();
+  await step("Estoque baixo");
+  await expect(testRow).toHaveAttribute("data-status", "warn");
+  await card.getByRole("button", { name: "Próximo" }).click();
+  await step("Edite pelo lápis");
+  await page.getByRole("button", { name: "Editar Item de teste do tutorial editado" }).click();
+  await step("Zere a quantidade");
+  await doIt();
+  await step("Esgotado");
+  await expect(testRow).toHaveAttribute("data-status", "danger");
+  await card.getByRole("button", { name: "Próximo" }).click();
+  await step("Exclua o item");
+  await page.getByRole("button", { name: "Excluir Item de teste do tutorial editado" }).click();
+  await step("Confirme");
+  await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
+  await step("Pronto!");
+  await card.getByRole("button", { name: "Concluir" }).click();
+
+  await expect(card).toBeHidden();
+  await expect(rows).toHaveCount(4);
+  await expect(page.getByLabel("Procure pelo nome ou código da peça")).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Filtros", exact: true })).toBeVisible();
+  expect(stock.some((held) => held.code === "TUTORIAL-001")).toBe(false);
+
+  await page.getByRole("button", { name: "Menu do usuário" }).click();
+  await page.getByRole("menuitem", { name: "Tutorial do estoque" }).click();
+  await step("Abra o cadastro");
+  await card.getByRole("button", { name: "Pular tutorial" }).click();
+  await expect(card).toBeHidden();
 });
 
 // Tidies the lists through "Gerenciar listas" against an API that keeps what it is sent: once its only item is

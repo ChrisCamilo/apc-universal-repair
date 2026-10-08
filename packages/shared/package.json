@@ -28,6 +28,7 @@
     "./pagination": "./src/pagination/pagination.ts",
     "./photos": "./src/photos/photos.ts",
     "./tour": "./src/tour/tour.ts",
+    "./inventory-tutorial": "./src/tour/inventoryTutorial.ts",
     "./tree": "./src/tree/tree.ts"
   },
   "scripts": {

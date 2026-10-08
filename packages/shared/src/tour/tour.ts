@@ -5,6 +5,8 @@
 export const TOUR_ADVANCE_DELAY_MS = 450;
 /** Room between the card and the target or the screen edges, in px. */
 export const TOUR_CARD_GAP = 12;
+/** Narrowest card beside a dialog, in px; with less room, the card goes below or above the target. */
+export const TOUR_CARD_MIN_WIDTH = 260;
 /** Widest card, in px. */
 export const TOUR_CARD_WIDTH = 340;
 /** How often the tour checks whether the current step is done or was left, in ms. */
@@ -36,24 +38,39 @@ export type TourStep<Target> = {
 
 /**
  * Places the step card: below the target when it fits, above it otherwise, or at the bottom of the screen
- * when neither fits; in the middle of the screen without a target; and across the bottom at phone width.
- * The card never leaves the screen edges.
+ * when neither fits; in the middle of the screen without a target; and across the bottom at phone width, or across
+ * the top when the target is in a dialog (whose action bar is at the bottom) or where the card would cover it. When the
+ * target is in a dialog, the card goes beside the dialog if there is room, level with the target, so it covers none
+ * of the dialog's fields. The card never leaves the screen edges.
  * @param target Box of the target, or null.
  * @param cardHeight Height of the card, in px.
  * @param screen Size of the screen, in px.
+ * @param dialog Box of the dialog the target is in, if any.
  * @returns Left and top corner of the card and its width, in px.
  */
 export function cardPlacement(
   target: TourRect | null,
   cardHeight: number,
   screen: { width: number; height: number },
+  dialog?: TourRect | null,
 ): { x: number; y: number; width: number } {
   const gap = TOUR_CARD_GAP;
   const bottom = screen.height - cardHeight - gap;
   if (screen.width <= TOUR_PHONE_WIDTH) {
-    return { x: gap, y: bottom, width: screen.width - 2 * gap };
+    const covered = target !== null && (Boolean(dialog) || target.y + target.height > bottom - gap);
+    return { x: gap, y: covered ? gap : bottom, width: screen.width - 2 * gap };
   }
   const width = Math.min(TOUR_CARD_WIDTH, screen.width - 2 * gap);
+  if (target && dialog) {
+    const right = screen.width - (dialog.x + dialog.width) - 2 * gap;
+    const left = dialog.x - 2 * gap;
+    const room = Math.max(right, left);
+    if (room >= TOUR_CARD_MIN_WIDTH) {
+      const beside = Math.min(TOUR_CARD_WIDTH, room);
+      const x = right >= left ? dialog.x + dialog.width + gap : dialog.x - gap - beside;
+      return { x, y: Math.min(Math.max(gap, target.y), bottom), width: beside };
+    }
+  }
   if (!target) {
     return { x: (screen.width - width) / 2, y: Math.max(gap, (screen.height - cardHeight) / 2), width };
   }

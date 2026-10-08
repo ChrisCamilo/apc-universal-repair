@@ -47,6 +47,7 @@ flowchart TB
         itemCsv["item-csv<br/>CSV template · reading · import"]
         lists["lists<br/>categories · brands · models"]
         photos["photos<br/>photo rules · upload parts"]
+        tutorial["inventory-tutorial<br/>tutorial steps · test item"]
     end
     subgraph ui["Design system"]
         theme["theme<br/>4 styles × 2 modes · tokens"]
@@ -64,6 +65,9 @@ flowchart TB
     itemCsv --> lists
     lists --> catalog
     catalog --> items
+    tutorial --> itemForm
+    tutorial --> itemFilters
+    tutorial --> rest
 ```
 
 ## Saving an item · Salvando um item

@@ -49,7 +49,7 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
           <Button variant="secondary" size="sm" onClick={onClose}>
             Cancelar
           </Button>
-          <Button variant="danger" size="sm" loading={deleting} onClick={remove}>
+          <Button variant="danger" size="sm" data-tour="confirm-delete" loading={deleting} onClick={remove}>
             Excluir
           </Button>
         </>

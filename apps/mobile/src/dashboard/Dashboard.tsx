@@ -9,6 +9,7 @@ import { Tabs, useStoredTab } from '../Tabs';
 import { save, themeStorage, useTheme, type ActiveTheme } from '../theme';
 import { CatalogTab } from './CatalogTab';
 import { InventoryTab } from './InventoryTab';
+import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext';
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from './openItemOnRowContext';
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
@@ -19,7 +20,8 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 // "Arrastar para reordenar" is on in the user menu, the tabs can be picked up with a long press (or moved with
 // the screen reader's actions) into a new order, which is saved and comes back, with tabs added later at its end;
 // the open tab stays open. The Dashboard also holds "Abrir item ao clicar na linha" and "Itens por página", which the
-// user menu sets and the Inventory tab follows.
+// user menu sets and the Inventory tab follows, and the Inventory tutorial's state, which the Inventory tab runs (by
+// itself the first time) and the user menu replays, on the Inventory tab.
 
 const CONTENT_STYLE: ViewStyle = { paddingHorizontal: scales.space.s4, paddingVertical: scales.space.s3 };
 const MARK_STYLE: ViewStyle = { paddingBottom: scales.space.s2 };
@@ -64,6 +66,7 @@ export function Dashboard({ userMenu }: DashboardProps) {
   const reorder = useReorderChoice();
   const openItemOnRow = useOpenItemOnRowChoice();
   const pageSize = usePageSizeChoice();
+  const tutorial = useInventoryTutorialChoice();
   const [order, setOrder] = useState<string[] | null>(null);
 
   // Read the saved tab order.
@@ -87,34 +90,45 @@ export function Dashboard({ userMenu }: DashboardProps) {
     <TabReorderContext.Provider value={reorder}>
       <OpenItemOnRowContext.Provider value={openItemOnRow}>
         <PageSizeContext.Provider value={pageSize}>
-          <ScrollView style={[PAGE_STYLE, { backgroundColor: theme.colors.canvas }]}>
-            <View style={headerStyle(theme)}>
-              <View accessibilityRole="header" style={MARK_STYLE}>
-                <BrandMark variant="compact" size={32} />
+          <InventoryTutorialContext.Provider
+            value={{
+              ...tutorial,
+              // A replay from the user menu happens on the Inventory tab.
+              replay: () => {
+                setTab('inventory');
+                tutorial.replay();
+              },
+            }}
+          >
+            <ScrollView style={[PAGE_STYLE, { backgroundColor: theme.colors.canvas }]}>
+              <View style={headerStyle(theme)}>
+                <View accessibilityRole="header" style={MARK_STYLE}>
+                  <BrandMark variant="compact" size={32} />
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={TAB_BAR_STYLE}
+                  contentContainerStyle={TAB_BAR_CONTENT_STYLE}
+                  testID="dashboard-tab-bar"
+                >
+                  <Tabs
+                    label="Seções do Dashboard"
+                    tabs={order.map((id) => TABS[id])}
+                    selected={tab}
+                    onSelect={setTab}
+                    reorderable={reorder.reorderable}
+                    onReorder={(ids) => {
+                      setOrder(ids);
+                      save(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids));
+                    }}
+                  />
+                </ScrollView>
+                {userMenu && <View style={MENU_SLOT_STYLE}>{userMenu}</View>}
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={TAB_BAR_STYLE}
-                contentContainerStyle={TAB_BAR_CONTENT_STYLE}
-                testID="dashboard-tab-bar"
-              >
-                <Tabs
-                  label="Seções do Dashboard"
-                  tabs={order.map((id) => TABS[id])}
-                  selected={tab}
-                  onSelect={setTab}
-                  reorderable={reorder.reorderable}
-                  onReorder={(ids) => {
-                    setOrder(ids);
-                    save(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids));
-                  }}
-                />
-              </ScrollView>
-              {userMenu && <View style={MENU_SLOT_STYLE}>{userMenu}</View>}
-            </View>
-            <View style={CONTENT_STYLE}>{TAB_SCREENS[tab]}</View>
-          </ScrollView>
+              <View style={CONTENT_STYLE}>{TAB_SCREENS[tab]}</View>
+            </ScrollView>
+          </InventoryTutorialContext.Provider>
         </PageSizeContext.Provider>
       </OpenItemOnRowContext.Provider>
     </TabReorderContext.Provider>

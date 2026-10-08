@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useEffectEvent, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { activeFilterCount, clearedFilters, type FilterValues } from '@apc/shared/filters'
 import { filterIcon } from '@apc/shared/icons'
 import { Button } from './Button.tsx'
@@ -13,7 +13,7 @@ import { Label } from './Typography.tsx'
 // with any value chosen lights up. Nothing changes until Apply; Clear resets every row and applies right
 // away; Escape or a click outside closes the panel without applying. The button counts the filters on. Rows may
 // depend on what is chosen in the panel, e.g. the vehicle models of the chosen brands: a value a row stops
-// offering leaves the choice.
+// offering leaves the choice. An owner may also open and close the panel itself, as the Inventory tutorial does.
 
 const TRIGGER =
   'inline-flex cursor-pointer items-center gap-2 rounded-pill border px-4 py-2 font-display text-xs font-semibold ' +
@@ -39,6 +39,10 @@ type FilterMenuProps = {
   /** Applied values per filter key. */
   values: FilterValues
   onApply: (values: FilterValues) => void
+  /** Whether the panel is open, for an owner that opens or closes it itself, e.g. a tutorial; it follows its button otherwise. */
+  open?: boolean
+  /** Called when the panel opens or closes. */
+  onOpenChange?: (open: boolean) => void
 }
 type Row = SelectRow | ChipsRow
 type SelectRow = {
@@ -74,15 +78,22 @@ function rowKeys(row: Row): string[] {
   return 'groups' in row ? row.groups.map((group) => group.key) : [row.key]
 }
 
-export function FilterMenu({ label, title, rows: rowsFor, values, onApply }: FilterMenuProps) {
+export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open: openProp, onOpenChange }: FilterMenuProps) {
   const baseId = useId()
   const panelId = `${baseId}-panel`
-  const [open, setOpen] = useState(false)
+  const [ownOpen, setOwnOpen] = useState(false)
+  const open = openProp ?? ownOpen
   const [draft, setDraft] = useState(values)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const count = activeFilterCount(values)
   const rows = typeof rowsFor === 'function' ? rowsFor(draft) : rowsFor
+
+  /** Opens or closes the panel, telling the owner. */
+  const setOpen = (next: boolean) => {
+    setOwnOpen(next)
+    onOpenChange?.(next)
+  }
 
   /** Opens the panel on the applied values, or closes it and drops what was not applied. */
   const show = (next: boolean) => {
@@ -120,17 +131,18 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply }: Fil
   }, [open])
 
   // A press anywhere outside the menu closes the panel without applying.
+  const closeOutside = useEffectEvent((event: MouseEvent) => {
+    if (!root.current?.contains(event.target as Node)) {
+      setOpen(false)
+    }
+  })
   useEffect(() => {
     if (!open) {
       return
     }
-    const closeOutside = (event: MouseEvent) => {
-      if (!root.current?.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', closeOutside)
-    return () => document.removeEventListener('mousedown', closeOutside)
+    const onPress = (event: MouseEvent) => closeOutside(event)
+    document.addEventListener('mousedown', onPress)
+    return () => document.removeEventListener('mousedown', onPress)
   }, [open])
 
   return (
