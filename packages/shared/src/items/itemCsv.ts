@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { findEntry, listName, type ItemLists, type ListEntry } from "../lists/lists.ts";
 import { ITEM_FORM_MESSAGES, parsePrice } from "./itemForm.ts";
-import { capitalizeFirst, itemCreateSchema, itemDetails, NOT_APPLICABLE, optionKey, POSITIONS, SIDES, type ItemCreate } from "./items.ts";
+import { capitalizeFirst, codeKey, itemCreateSchema, itemDetails, NOT_APPLICABLE, optionKey, POSITIONS, SIDES, type ItemCreate } from "./items.ts";
 
 // The CSV batch import of the inventory, shared by web and mobile: the template to download, and reading a file into
 // the items it holds, each row checked as the item form checks it, with the reasons a row can't be saved. A file is
@@ -288,11 +288,13 @@ export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
   const rows = records.map(({ line, cells }) => {
     const value = (column: CsvColumn) => (cells[columns.indexOf(column)] ?? "").trim();
     const { item, errors } = csvItem(value, lists);
-    const seen = firstLine.get(item.code);
-    if (item.code && seen !== undefined) {
+    // Codes repeat as the search compares them (see codeKey): "CB4500" is "CB-4500".
+    const key = codeKey(item.code);
+    const seen = firstLine.get(key);
+    if (key && seen !== undefined) {
       errors.push(`Código repetido: já está na linha ${seen}.`);
-    } else if (item.code) {
-      firstLine.set(item.code, line);
+    } else if (key) {
+      firstLine.set(key, line);
     }
     return { line, item, errors };
   });
