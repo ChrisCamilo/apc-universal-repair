@@ -2,14 +2,17 @@
  * @format
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, Text, TextInput, View } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form';
 import type { Item } from '@apc/shared/items';
+import { withEntry, type ItemLists } from '@apc/shared/lists';
+import { itemListsOf } from '@apc/shared/test-lists';
 import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
+import type { CreateListEntry } from '../src/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider } from '../src/Toast';
 
@@ -32,6 +35,11 @@ const ITEMS = [
   item({ id: '00000000-0000-4000-8000-000000000002', code: 'FRA-1000', name: 'Pastilha de freio', vehicleBrand: 'Chevrolet', vehicleModel: 'Opala' }),
   item({ id: '00000000-0000-4000-8000-000000000003', code: 'J-1', name: 'Junta', vehicleBrand: 'Volkswagen', vehicleModel: 'Santana' }),
 ];
+// The lists the form picks from: what the items use, plus the category and brands of a new spark plug.
+const LISTS = itemListsOf([
+  ...ITEMS,
+  item({ id: '00000000-0000-4000-8000-000000000004', code: 'B7', name: 'Vela', category: 'Ignição', partBrand: 'NGK', vehicleBrand: 'Fiat' }),
+]);
 
 /**
  * Answers the next save with the item the API would send back, made of what was sent.
@@ -93,20 +101,51 @@ async function leave(tree: ReactTestRenderer.ReactTestRenderer, label: string) {
 /**
  * Renders the form inside the theme and toast providers.
  * @param editing The item to edit; a new item when left out.
- * @param props What else the owner hands the form: onSaved, details and onClose.
+ * @param props What else the owner hands the form: onSaved, details, onClose and onCreateEntry, called with each
+ * name to create, which is created as asked unless it returns null.
  * @returns The rendered tree.
  */
 async function mount(
   editing?: Item,
-  { onSaved = () => {}, details = false, onClose = () => {} }: { onSaved?: (saved: Item) => void; details?: boolean; onClose?: () => void } = {},
+  {
+    onSaved = () => {},
+    details = false,
+    onClose = () => {},
+    onCreateEntry,
+  }: { onSaved?: (saved: Item) => void; details?: boolean; onClose?: () => void; onCreateEntry?: CreateListEntry } = {},
 ) {
+  /** Holds the lists as the inventory does, adding each name created unless onCreateEntry says it failed. */
+  function Owner() {
+    const [lists, setLists] = useState<ItemLists>(LISTS);
+    const create: CreateListEntry = async (kind, name, vehicleBrandId) => {
+      if ((await onCreateEntry?.(kind, name, vehicleBrandId)) === null) {
+        return null;
+      }
+      const entry = { id: `new-${name}`, name, ...(vehicleBrandId && { vehicleBrandId }) };
+      setLists((held) => withEntry(held, kind, entry));
+      return entry;
+    };
+    return (
+      <ItemFormDialog
+        open
+        item={editing}
+        details={details}
+        items={ITEMS}
+        lists={lists}
+        onCreateEntry={create}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
+    );
+  }
+
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
           <ToastProvider>
-            <ItemFormDialog open item={editing} details={details} items={ITEMS} onClose={onClose} onSaved={onSaved} />
+            <Owner />
           </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>,
@@ -174,7 +213,15 @@ test('Mobile: the required fields say what is missing and nothing is sent', asyn
   const tree = await mount();
   (fetch as jest.Mock).mockClear();
   await press(tree, 'Salvar');
-  for (const message of Object.values(ITEM_FORM_MESSAGES).filter((m) => m !== ITEM_FORM_MESSAGES.priceInvalid)) {
+  const required = [
+    ITEM_FORM_MESSAGES.code,
+    ITEM_FORM_MESSAGES.name,
+    ITEM_FORM_MESSAGES.category,
+    ITEM_FORM_MESSAGES.partBrand,
+    ITEM_FORM_MESSAGES.vehicleBrand,
+    ITEM_FORM_MESSAGES.price,
+  ];
+  for (const message of required) {
     expect(shows(tree, message)).toBe(true);
   }
   expect(fetch).not.toHaveBeenCalled();
@@ -201,6 +248,61 @@ test('Mobile: the vehicle model follows the vehicle brand', async () => {
   await type(tree, 'Modelo do veículo', 'Gol');
   await type(tree, 'Marca do veículo', 'Chevrolet');
   expect(value(tree, 'Modelo do veículo')).toBe('');
+});
+
+// Types a new category and presses "+ Criar", and checks the row already shows the name with a capital letter, the
+// name is created in the categories, picked in the field and announced; then a new vehicle model is created under
+// the chosen brand.
+test('Mobile: "+ Criar" creates the name in its list and picks it', async () => {
+  const create = jest.fn<ReturnType<CreateListEntry>, Parameters<CreateListEntry>>();
+  const tree = await mount(undefined, { onCreateEntry: create });
+  await type(tree, 'Categoria', 'motor  diesel');
+  await press(tree, '+ Criar categoria “Motor diesel”');
+  expect(create).toHaveBeenCalledWith('categories', 'Motor diesel', undefined);
+  expect(value(tree, 'Categoria')).toBe('Motor diesel');
+  expect(shows(tree, 'Categoria “Motor diesel” criada.')).toBe(true);
+
+  await type(tree, 'Marca do veículo', 'Volkswagen');
+  await type(tree, 'Modelo do veículo', 'xR3');
+  await press(tree, '+ Criar modelo “XR3”');
+  const volkswagen = LISTS.vehicleBrands.find((brand) => brand.name === 'Volkswagen')!;
+  expect(create).toHaveBeenLastCalledWith('vehicleModels', 'XR3', volkswagen.id);
+  expect(shows(tree, 'Modelo “XR3” criado.')).toBe(true);
+});
+
+// Creates a part brand that can't be created, and checks a toast says so and the field keeps the typed name, which
+// saving then refuses, pointing to "+ Criar".
+test("Mobile: a name that couldn't be created is reported and not saved", async () => {
+  const tree = await mount(undefined, { onCreateEntry: async () => null });
+  await type(tree, 'Marca da peça', 'cofap');
+  await press(tree, '+ Criar marca “Cofap”');
+  expect(shows(tree, 'Não foi possível criar a marca de peça. Tente de novo.')).toBe(true);
+  expect(value(tree, 'Marca da peça')).toBe('Cofap');
+  (fetch as jest.Mock).mockClear();
+  await press(tree, 'Salvar');
+  expect(shows(tree, ITEM_FORM_MESSAGES.partBrandNotListed)).toBe(true);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+// Types a category, brands and a model the lists don't hold, without pressing "+ Criar", and checks saving shows each
+// field's error pointing to it and sends nothing; the model stays locked while its brand isn't one of the list.
+test('Mobile: names not in their lists are refused on save', async () => {
+  const tree = await mount();
+  await type(tree, 'Categoria', 'Suspensão');
+  await type(tree, 'Marca da peça', 'Cofap');
+  await type(tree, 'Marca do veículo', 'Renault');
+  expect(field(tree, 'Modelo do veículo').props.editable).toBe(false);
+  (fetch as jest.Mock).mockClear();
+  await press(tree, 'Salvar');
+  expect(shows(tree, ITEM_FORM_MESSAGES.categoryNotListed)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES.partBrandNotListed)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES.vehicleBrandNotListed)).toBe(true);
+
+  await type(tree, 'Marca do veículo', 'Fiat');
+  await type(tree, 'Modelo do veículo', 'Uno');
+  await press(tree, 'Salvar');
+  expect(shows(tree, ITEM_FORM_MESSAGES.vehicleModelNotListed)).toBe(true);
+  expect(fetch).not.toHaveBeenCalled();
 });
 
 // Leaves the name, the color and the price after typing them loosely, and checks each is written back: a capital,
