@@ -181,6 +181,7 @@ export function ItemFormDialog({
       open={open}
       onClose={onClose}
       title={viewing ? 'Detalhes do item' : item ? 'Editar item' : 'Novo item'}
+      closable
       actions={
         viewing ? (
           <>
