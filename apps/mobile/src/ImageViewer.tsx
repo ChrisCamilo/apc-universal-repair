@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Image, Modal, Pressable, Text as NativeText, View, useWindowDimensions, type ImageStyle, type TextStyle, type ViewStyle } from 'react-native';
 import { DIALOG_SCREEN_INSET, DIALOG_WIDTHS } from '@apc/shared/dialog';
-import { chevronIcon, closeIcon, imageIcon } from '@apc/shared/icons';
+import { chevronIcon, imageIcon } from '@apc/shared/icons';
 import { photoCount, takePhotos } from '@apc/shared/photos';
 import { popShadow, scales } from '@apc/shared/theme';
 import { Button } from './Button';
+import { CloseButton, roundStyle } from './CloseButton';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import type { PickedPhoto, UploadPhoto } from './ImageUpload';
@@ -126,26 +127,6 @@ function problemStyle(theme: ActiveTheme): TextStyle {
 }
 
 /**
- * Styles a round button with a hairline frame: the × in the header and the arrows over the photo.
- * @param theme Active theme.
- * @param size Width and height, in px.
- * @param pressed Whether it is being pressed; the frame and the icon then turn to the accent.
- * @returns Style for the button Pressable.
- */
-function roundStyle(theme: ActiveTheme, size: number, pressed: boolean): ViewStyle {
-  return {
-    width: size,
-    height: size,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: scales.hairline,
-    borderColor: pressed ? theme.colors.accent : theme.colors.hairline,
-    borderRadius: scales.radiusPill,
-    backgroundColor: theme.colors.panel,
-  };
-}
-
-/**
  * Styles the window: the panel in its hairline frame, as wide as the viewer size allows on the screen.
  * @param theme Active theme.
  * @param screen Window width and height.
@@ -240,15 +221,7 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
             <Heading level={3}>{name}</Heading>
             <NumericReadout tone="muted">{code}</NumericReadout>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Fechar"
-            hitSlop={scales.space.s1}
-            onPress={onClose}
-            style={({ pressed }) => roundStyle(theme, scales.space.s6 + scales.space.s1, pressed)}
-          >
-            {({ pressed }) => <Icon icon={closeIcon} color={pressed ? colors.accent : colors.text} />}
-          </Pressable>
+          <CloseButton onPress={onClose} />
         </View>
         <View>
           <View style={frameStyle(theme, screen.height)}>
