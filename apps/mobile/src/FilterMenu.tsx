@@ -1,5 +1,16 @@
-import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle, type ViewStyle } from 'react-native';
+import { useState, type Ref } from 'react';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  type HostInstance,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { activeFilterCount, clearedFilters, type FilterValues } from '@apc/shared/filters';
 import { filterIcon } from '@apc/shared/icons';
 import { popShadow, scales } from '@apc/shared/theme';
@@ -9,6 +20,7 @@ import { Icon } from './Icon';
 import { Panel, softHairline } from './Panel';
 import { Select } from './Select';
 import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
+import { TourLayer } from './Tour';
 import { Label } from './Typography';
 
 // The detailed filters of a list, the same as the web: a button that opens a panel with one row per filter.
@@ -16,7 +28,8 @@ import { Label } from './Typography';
 // chosen lights up. Nothing changes until Apply; Clear resets every row and applies right away; the back
 // button or a tap outside closes the panel without applying. The button counts the filters on. Rows may depend on
 // what is chosen in the panel, e.g. the vehicle models of the chosen brands: a value a row stops offering leaves the
-// choice.
+// choice. An owner may also open and close the panel itself, as the Inventory tutorial does, whose tour draws above
+// the panel.
 
 const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', justifyContent: 'flex-end', gap: scales.space.s2 };
 const CHIPS_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', columnGap: scales.space.s4, rowGap: scales.space.s2 };
@@ -39,6 +52,12 @@ type FilterMenuProps = {
   /** Applied values per filter key. */
   values: FilterValues;
   onApply: (values: FilterValues) => void;
+  /** Whether the panel is open, for an owner that opens or closes it itself, e.g. a tutorial; it follows its button otherwise. */
+  open?: boolean;
+  /** Called when the panel opens or closes. */
+  onOpenChange?: (open: boolean) => void;
+  /** The panel's view, e.g. for a tour to point at. */
+  panelRef?: Ref<HostInstance>;
 };
 type Row = SelectRow | ChipsRow;
 type SelectRow = {
@@ -149,14 +168,21 @@ function triggerStyle(theme: ActiveTheme, active: boolean): ViewStyle {
   };
 }
 
-export function FilterMenu({ label, title, rows: rowsFor, values, onApply }: FilterMenuProps) {
+export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open: openProp, onOpenChange, panelRef }: FilterMenuProps) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = openProp ?? ownOpen;
   const [draft, setDraft] = useState(values);
   const rows = typeof rowsFor === 'function' ? rowsFor(draft) : rowsFor;
   const count = activeFilterCount(values);
   const tint = count ? theme.colors.accent : theme.colors.text;
+
+  /** Opens or closes the panel, telling the owner. */
+  const setOpen = (next: boolean) => {
+    setOwnOpen(next);
+    onOpenChange?.(next);
+  };
 
   /** Opens the panel on the applied values, or closes it and drops what was not applied. */
   const show = (next: boolean) => {
@@ -199,10 +225,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply }: Fil
           style={StyleSheet.absoluteFill}
           testID="filter-backdrop"
         />
-        <View
-          accessibilityLabel={label}
-          style={panelFrameStyle(theme, width)}
-        >
+        <View ref={panelRef} accessibilityLabel={label} style={panelFrameStyle(theme, width)}>
           <Panel>
             <ScrollView contentContainerStyle={{ gap: scales.space.s3 }}>
               <Label>{title}</Label>
@@ -254,6 +277,8 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply }: Fil
             </ScrollView>
           </Panel>
         </View>
+        {/* A guided tour draws here while the panel is open, the only place above the Modal. */}
+        <TourLayer />
       </Modal>
     </>
   );
