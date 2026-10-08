@@ -22,6 +22,7 @@
     "./item-form": "./src/items/itemForm.ts",
     "./item-filters": "./src/items/itemFilters.ts",
     "./lists": "./src/lists/lists.ts",
+    "./test-lists": "./src/lists/testLists.ts",
     "./dialog": "./src/dialog/dialog.ts",
     "./pagination": "./src/pagination/pagination.ts",
     "./photos": "./src/photos/photos.ts",
