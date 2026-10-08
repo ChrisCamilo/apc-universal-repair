@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog';
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
+import { CloseButton } from './CloseButton';
 import { softHairline } from './Panel';
 import { ToastLayer } from './Toast';
 import { TourLayer } from './Tour';
@@ -12,11 +13,15 @@ import { Heading } from './Typography';
 // dimmed backdrop, and the back button and the owner's Cancel close it (the owner holds `open`). The content
 // scrolls inside while the action bar stays pinned at the bottom, so the main action is visible without
 // scrolling at 360×780. A `dismissible` dialog, one with nothing to lose such as a notice, also closes on a tap
-// outside it, on the backdrop.
+// outside it, on the backdrop. A `closable` dialog has the round × at the right of its title, the same as the photo
+// viewer's, which closes it like the back button.
 
 const BODY_STYLE: ViewStyle = { gap: scales.space.s4, padding: scales.space.s5 };
+// The title and the ×: the title wraps beside it instead of running under it.
+const HEAD_STYLE: ViewStyle = { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: scales.space.s3 };
 // The backdrop around the window, which a tap outside lands on.
 const OUTSIDE_STYLE: ViewStyle = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 };
+const TITLE_STYLE: ViewStyle = { flexShrink: 1 };
 
 type DialogProps = {
   open: boolean;
@@ -27,6 +32,8 @@ type DialogProps = {
   size?: DialogSize;
   /** Buttons of the action bar, e.g. Cancel and Save. */
   actions: ReactNode;
+  /** Shows the × at the right of the title, which asks the owner to close the dialog like the back button does. */
+  closable?: boolean;
   /** Also closes on a tap outside, for dialogs with nothing to lose, such as a notice; off for forms. */
   dismissible?: boolean;
   children: ReactNode;
@@ -86,7 +93,7 @@ function windowStyle(theme: ActiveTheme, size: DialogSize, screen: { width: numb
   };
 }
 
-export function Dialog({ open, onClose, title, size = 'form', actions, dismissible = false, children }: DialogProps) {
+export function Dialog({ open, onClose, title, size = 'form', actions, closable = false, dismissible = false, children }: DialogProps) {
   const theme = useTheme();
   const screen = useWindowDimensions();
   return (
@@ -95,7 +102,16 @@ export function Dialog({ open, onClose, title, size = 'form', actions, dismissib
         {dismissible && <Pressable accessibilityLabel="Fechar" onPress={onClose} style={OUTSIDE_STYLE} testID="dialog-outside" />}
         <View accessibilityViewIsModal accessibilityLabel={title} style={windowStyle(theme, size, screen)} testID="dialog-window">
           <ScrollView contentContainerStyle={BODY_STYLE}>
-            <Heading level={3}>{title}</Heading>
+            {closable ? (
+              <View style={HEAD_STYLE}>
+                <View style={TITLE_STYLE}>
+                  <Heading level={3}>{title}</Heading>
+                </View>
+                <CloseButton onPress={onClose} />
+              </View>
+            ) : (
+              <Heading level={3}>{title}</Heading>
+            )}
             {children}
           </ScrollView>
           <View style={actionsStyle(theme)}>{actions}</View>

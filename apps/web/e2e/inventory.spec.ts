@@ -433,7 +433,7 @@ test("Web: the lists are renamed and cleaned up in Manage lists", async ({ page 
 
   await page.getByRole("button", { name: "Gerenciar listas" }).click();
   const lists = page.getByRole("dialog", { name: "Gerenciar listas" });
-  await expect(lists.getByRole("button", { name: "Fechar" })).toBeInViewport();
+  await expect(lists.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" })).toBeInViewport();
   const categories = lists.getByRole("region", { name: "Categorias" });
   await expect(categories.getByRole("listitem").filter({ hasText: "Arrefecimento" })).toContainText("sem itens");
   await categories.getByRole("button", { name: "Excluir Arrefecimento" }).click();
@@ -447,7 +447,7 @@ test("Web: the lists are renamed and cleaned up in Manage lists", async ({ page 
   await lists.getByLabel("Novo nome de “Suspensão”").fill("suspensão e direção");
   await page.keyboard.press("Enter");
   await expect(page.getByText("Categoria renomeada para “Suspensão e direção”.")).toBeVisible();
-  await lists.getByRole("button", { name: "Fechar" }).click();
+  await lists.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }).click();
   await expect(rows.filter({ hasText: "Amortecedor" })).toContainText("Suspensão e direção");
 
   await page.getByRole("button", { name: "Gerenciar listas" }).click();
@@ -537,7 +537,7 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
   await rows.first().focus();
   await page.keyboard.press("Enter");
   await expect(details).toBeVisible();
-  await details.getByRole("button", { name: "Fechar" }).click();
+  await details.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }).click();
 
   await page.getByRole("button", { name: "Menu do usuário" }).click();
   await page.getByRole("menuitemcheckbox", { name: /Abrir item ao clicar na linha/ }).click();
@@ -545,6 +545,35 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
   await rows.first().getByText("Filtro de óleo").click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(rows.first()).not.toHaveAttribute("tabindex");
+});
+
+// Closes Novo item, Editar item, Detalhes do item and Gerenciar listas with the round × at the top right of each,
+// on screen without scrolling at both screen sizes, and checks nothing was sent.
+test("Web: the item form and Manage lists close on the ×", async ({ page }) => {
+  await serveItems(page, [...ITEMS]);
+  const sent: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "GET") {
+      sent.push(`${request.method()} ${request.url()}`);
+    }
+  });
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  const openers = [
+    { open: () => page.getByRole("button", { name: "Novo item" }).click(), name: "Novo item" },
+    { open: () => page.getByRole("button", { name: "Editar Filtro de óleo" }).click(), name: "Editar item" },
+    { open: () => rows.first().getByText("Filtro de óleo").click(), name: "Detalhes do item" },
+    { open: () => page.getByRole("button", { name: "Gerenciar listas" }).click(), name: "Gerenciar listas" },
+  ];
+  for (const { open, name } of openers) {
+    await open();
+    const dialog = page.getByRole("dialog", { name });
+    const close = dialog.getByRole("button", { name: "Fechar" }).first();
+    await expect(close).toBeInViewport();
+    await close.click();
+    await expect(dialog).toBeHidden();
+  }
+  expect(sent).toEqual([]);
 });
 
 // Works with an item's photos against an API that keeps what it is sent: the row shows the cover's thumbnail, which

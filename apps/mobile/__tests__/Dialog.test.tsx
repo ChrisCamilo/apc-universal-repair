@@ -119,6 +119,33 @@ test('Mobile: only a dismissible dialog closes on a tap outside', async () => {
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
+// Opens a closable dialog and a regular one, and checks only the closable one has the × named "Fechar", in a row
+// after its title, which asks the owner to close it.
+test('Mobile: a closable dialog closes on the × beside its title', async () => {
+  const onClose = jest.fn();
+  const tree = await mount(
+    'gt4',
+    'day',
+    <>
+      <Dialog open onClose={onClose} title="Novo item" closable actions={<Button>Salvar item</Button>}>
+        <Text>Campos</Text>
+      </Dialog>
+      <Dialog open onClose={() => {}} title="Excluir item?" size="confirm" actions={<Button>Excluir</Button>}>
+        <Text>Aviso</Text>
+      </Dialog>
+    </>,
+  );
+  const close = tree.root.findAll(
+    (n) => n.props.accessibilityLabel === 'Fechar' && n.props.accessibilityRole === 'button' && typeof n.props.onPress === 'function',
+  );
+  expect(close).toHaveLength(1);
+  const head = close[0].parent!.parent!;
+  expect(Object.assign({}, ...[head.props.style].flat()).flexDirection).toBe('row');
+  expect(head.findAll((n) => n.type === Text && n.props.children === 'Novo item')).not.toHaveLength(0);
+  await ReactTestRenderer.act(async () => close[0].props.onPress());
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
 // Shows a toast and checks it is read out and shown in the text color turned around, then hides on its own.
 test('Mobile: toasts are read out and hide on their own', async () => {
   jest.useFakeTimers();
