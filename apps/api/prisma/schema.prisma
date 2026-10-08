@@ -32,7 +32,8 @@ model Item {
   id             String        @id @default(uuid())
   /// Part code, stored in uppercase and unique.
   code           String        @unique
-  codeKey        String
+  /// The code as the search compares it, also unique, so codes that differ only in separators clash.
+  codeKey        String        @unique
   name           String
   nameKey        String
   categoryId     String
