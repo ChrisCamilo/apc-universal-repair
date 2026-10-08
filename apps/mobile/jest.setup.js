@@ -5,7 +5,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 );
 
 // No API runs during tests: every request answers with an empty inventory unless a test sets its own reply.
-global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ items: [] }) }));
+global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ items: [], total: 0 }) }));
 
 // The photo library is a native screen; tests pick nothing unless they set their own result.
 jest.mock('react-native-image-picker', () => ({ launchImageLibrary: jest.fn(() => Promise.resolve({ didCancel: true })) }));

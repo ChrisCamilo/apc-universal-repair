@@ -200,7 +200,7 @@ test('Mobile: the brand and model searches narrow the tiles and the tree', async
 // first part's vehicle is revealed with its model pointed out and its engine's sheet, a part for an engine the catalog
 // lacks says so, and clearing the search drops the list.
 test('Mobile: a part code search lists the parts and reveals their vehicles', async () => {
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: PARTS }) });
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: PARTS, total: PARTS.length }) });
   const tree = await mount('fiat90', 'day');
   await search(tree, 'Procure modelo ou código da peça', 'fra1000');
   const parts = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.accessibilityRole === 'radio' && /^FRA/.test(n.props.accessibilityLabel));
