@@ -7,13 +7,16 @@ import {
   itemListResponseSchema,
   itemSchema,
   itemUpdateSchema,
+  sortItems,
 } from "@apc/shared/items";
 import { prisma } from "../db/client.js";
 import { createData, itemWhere, toItem, updateData, WITH_PHOTOS } from "../items/items.js";
 import { removePhotoFiles } from "../photos/photos.js";
 
-// CRUD of inventory items. The list shows the newest items first, one page of them when a page size is asked, with
-// how many items match in all. A part code is unique: creating or editing to a code another item uses is rejected
+// CRUD of inventory items. The list shows the newest items first, or sorted by a column when asked, one page of them
+// when a page size is asked, with how many items match in all. A sort compares text the way people read it in
+// pt-BR (see sortItems), which the database can't, so it reads what the matching items sort by, sorts them here and
+// then loads only the page asked. A part code is unique: creating or editing to a code another item uses is rejected
 // with 409, naming that item, so the form can say which.
 // Deleting an item also deletes its photos' files.
 
@@ -34,6 +37,23 @@ function codeTaken(reply: FastifyReply, code: string, owner: { id: string; name:
   });
 }
 
+/** The columns sortItems looks at, read for every matching item before a sorted page is loaded. */
+const SORT_SELECT = {
+  id: true,
+  code: true,
+  name: true,
+  category: true,
+  partBrand: true,
+  vehicleBrand: true,
+  vehicleModel: true,
+  position: true,
+  side: true,
+  color: true,
+  location: true,
+  unitPriceCents: true,
+  quantity: true,
+} as const;
+
 /**
  * Answers 404 for an item id that doesn't exist.
  * @param reply Reply to send.
@@ -50,8 +70,16 @@ export function registerItemRoutes(app: FastifyInstance) {
     "/items",
     { schema: { querystring: itemListQuerySchema, response: { 200: itemListResponseSchema } } },
     async (request) => {
-      const { page = 1, pageSize } = request.query;
+      const { page = 1, pageSize, sort, order = "asc" } = request.query;
       const where = itemWhere(request.query, prisma.item.fields.minQuantity);
+      if (sort) {
+        const sorted = sortItems(await prisma.item.findMany({ where, select: SORT_SELECT }), { key: sort, dir: order });
+        const ids = (pageSize ? sorted.slice((page - 1) * pageSize, page * pageSize) : sorted).map((row) => row.id);
+        const rows = new Map(
+          (await prisma.item.findMany({ where: { id: { in: ids } }, include: WITH_PHOTOS })).map((row) => [row.id, row]),
+        );
+        return { items: ids.flatMap((id) => (rows.has(id) ? [toItem(rows.get(id)!)] : [])), total: sorted.length };
+      }
       const [rows, total] = await prisma.$transaction([
         prisma.item.findMany({
           where,

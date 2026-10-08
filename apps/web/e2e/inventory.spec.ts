@@ -66,7 +66,8 @@ test("Web: the inventory lists every item with its stock alerts", async ({ page 
   await expect(rows.nth(2)).toContainText("Esgotado:");
 
   if (testInfo.project.name === "desktop") {
-    const headers = await page.getByRole("columnheader").allTextContents();
+    // The sort arrows are left out, as screen readers leave them out.
+    const headers = (await page.getByRole("columnheader").allTextContents()).map((header) => header.replace(/[↕↑↓]/g, ""));
     expect(headers).toEqual(["Foto", "Item", "Categoria", "Marca", "Veículo", "Posição", "Lado", "Cor", "Local", "Valor unit.", "Qtd.", "Ações"]);
     await expect(rows.nth(1)).toContainText(/R\$\s1\.234,56/);
     await expect(rows.nth(1)).toContainText("qualquer modelo");
@@ -209,6 +210,55 @@ test("Web: categories, brands and models are created from the item form", async 
   await page.getByRole("button", { name: "Filtros" }).click();
   await page.getByRole("dialog", { name: "Filtros do estoque" }).getByRole("combobox", { name: "Categoria" }).click();
   await expect(page.getByRole("option", { name: "Motor diesel" })).toBeVisible();
+});
+
+// Sorts a list of 30 items through the API: on the second page, sorting by location goes back to the first page with
+// the locations in natural order (A-2 before A-10); the same column again reverses it; and the unit price sorts by
+// value, ties in part code order. The desktop sorts with the column headers, the phone with the "Ordenar" select.
+test("Web: the inventory list sorts by a column", async ({ page }, testInfo) => {
+  const stock = Array.from({ length: 30 }, (_, index) =>
+    item({ code: `P-${index + 1}`, name: `Peça ${index + 1}`, location: `A-${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
+  );
+  const queries: string[] = [];
+  await serveItems(page, stock, (query) => query.has("pageSize") && queries.push(query.toString()));
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  const desktop = testInfo.project.name === "desktop";
+  /** Sorts by a column, with its header on the desktop and with the "Ordenar" select on the phone. */
+  const sortBy = async (header: string, option: string) => {
+    if (desktop) {
+      await page.getByRole("columnheader", { name: header }).getByRole("button").click();
+    } else {
+      await page.getByRole("combobox", { name: "Ordenar" }).click();
+      await page.getByRole("option", { name: option }).click();
+    }
+  };
+  await page.getByRole("navigation", { name: "Páginas do estoque" }).getByRole("button", { name: "Página 2" }).click();
+  await expect(rows).toHaveCount(5);
+
+  await sortBy("Local", "Local (A → Z)");
+  await expect(rows).toHaveCount(25);
+  await expect(rows.nth(0)).toContainText("A-1");
+  await expect(rows.nth(1)).toContainText("A-2");
+  expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=location&order=asc");
+  if (desktop) {
+    await expect(page.getByRole("columnheader", { name: "Local" })).toHaveAttribute("aria-sort", "ascending");
+  }
+
+  await sortBy("Local", "Local (Z → A)");
+  await expect(rows.nth(0)).toContainText("A-30");
+  expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=location&order=desc");
+
+  await sortBy("Valor unit.", "Valor unitário (menor → maior)");
+  if (desktop) {
+    await sortBy("Valor unit.", "");
+  } else {
+    await sortBy("", "Valor unitário (maior → menor)");
+  }
+  await expect(rows.nth(0)).toContainText("P-7");
+  await expect(rows.nth(0)).toContainText(/R\$\s7,00/);
+  await expect(rows.nth(1)).toContainText("P-14");
+  expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=price&order=desc");
 });
 
 // Tidies the lists through "Gerenciar listas" against an API that keeps what it is sent: once its only item is

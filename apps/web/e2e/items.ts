@@ -1,6 +1,5 @@
 import type { Page } from "@playwright/test";
-import { matchesSearch, stockStatus, type Item } from "@apc/shared/items";
-import { optionKey } from "@apc/shared/items";
+import { matchesSearch, optionKey, sortItems, stockStatus, type Item, type ItemSortKey } from "@apc/shared/items";
 import {
   findEntry,
   isCatalogBrand,
@@ -16,8 +15,8 @@ import {
 import { itemListsOf } from "@apc/shared/test-lists";
 
 // A stand-in for GET /items, so the list works the same on every run without a database: it answers from the items
-// it is given, newest first as they are listed, narrowed by the search, the categories and the stock status, one page
-// at a time when a page size is asked, with how many match in all. Other methods fall through to the test's own
+// it is given, newest first as they are listed or sorted by a column as the API sorts, narrowed by the search, the
+// categories and the stock status, one page at a time when a page size is asked, with how many match in all. Other methods fall through to the test's own
 // routes, registered before it. The item lists are answered too, starting with what the items use: a POST creates
 // a name, or gives back the one a list already holds; a PATCH renames an entry and the items using it, refusing a
 // name another entry has; a DELETE removes an entry no item uses, refusing one in use or a brand of the catalog.
@@ -46,9 +45,11 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
           (categories.length === 0 || categories.includes(item.category)) &&
           (!status || stockStatus(item.quantity, item.minQuantity) === status),
       );
+      const sort = query.get("sort") as ItemSortKey | null;
+      const sorted = sort ? sortItems(matching, { key: sort, dir: query.get("order") === "desc" ? "desc" : "asc" }) : matching;
       const size = Number(query.get("pageSize")) || matching.length;
       const first = (Number(query.get("page") || 1) - 1) * size;
-      return route.fulfill({ json: { items: matching.slice(first, first + size), total: matching.length } });
+      return route.fulfill({ json: { items: sorted.slice(first, first + size), total: matching.length } });
     },
   );
 

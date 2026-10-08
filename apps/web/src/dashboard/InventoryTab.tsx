@@ -16,6 +16,7 @@ import {
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
 import { EMPTY_ITEM_FILTERS, itemFilterRows, itemListQuery } from '@apc/shared/item-filters'
 import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination'
+import type { Sort } from '@apc/shared/table'
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
 import { Button } from '../components/Button.tsx'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
@@ -43,30 +44,34 @@ import { usePageSize } from './pageSizeContext.ts'
 // category, brands, vehicle model, position and side, color and location, applied together; the Estoque baixo and
 // Esgotado chips, one at a time, by stock status; and "Limpar filtros" turns them all off. The filters go to the API
 // as the list query with the search, and the list shows one page of what matches, newest first: 25, 50 or 100 items,
-// the default set in the user menu. Changing the search or a filter goes back to the first page, a new item shows
-// first on the first page, and deleting the last item of a page goes to the one before. While the items load,
-// skeleton rows hold their place; when nothing is in stock, the empty state offers "Novo item", and when the search
-// or the filters leave nothing, it offers to clear them; when the API fails, the error state offers to try again.
-// "Novo item" and each row's pencil open the item form, each row's trash asks to confirm deleting the item, and the
-// list loads again once an item is saved or deleted. "Gerenciar listas" renames and deletes the categories, brands
-// and models the form picks from; the list loads again after each change, and a name in use leads to its items. While "Abrir item ao clicar na linha" is on in the user menu, a
-// click on a row (or Enter on it) opens the item's details. Each row's thumbnail shows the item's cover and opens
-// its photos in the ImageViewer, where each photo removed, changed or added is saved at once and the list follows.
-// Low and out-of-stock rows are tinted by the table. At phone width the row becomes a card and the columns that
-// leave it show as one line under the name.
+// the default set in the user menu. A click on a column header (or the "Ordenar" select at phone width) sorts the
+// list by that column in the API, a second click the other way. Changing the search, a filter or the sort goes back
+// to the first page, a new item shows first on the first page, and deleting the last item of a page goes to the one
+// before. While the items load, skeleton rows hold their place; when nothing is in stock, the empty state offers
+// "Novo item", and when the search or the filters leave nothing, it offers to clear them; when the API fails, the
+// error state offers to try again. "Novo item" and each row's pencil open the item form, each row's trash asks to
+// confirm deleting the item, and the list loads again once an item is saved or deleted. "Gerenciar listas" renames
+// and deletes the categories, brands and models the form picks from; the list loads again after each change, and a
+// name in use leads to its items. While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or
+// Enter on it) opens the item's details. Each row's thumbnail shows the item's cover and opens its photos in the
+// ImageViewer, where each photo removed, changed or added is saved at once and the list follows. Low and
+// out-of-stock rows are tinted by the table. At phone width the row becomes a card and the columns that leave it
+// show as one line under the name.
 
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   {
     key: 'name',
     header: 'Item',
+    sortable: true,
     card: 'main',
     cell: (item) => <TableTitle title={item.name} code={item.code} details={itemDetails(item)} />,
   },
-  { key: 'category', header: 'Categoria', cell: (item) => item.category },
-  { key: 'partBrand', header: 'Marca', cell: (item) => item.partBrand },
+  { key: 'category', sortable: true, header: 'Categoria', cell: (item) => item.category },
+  { key: 'partBrand', sortable: true, header: 'Marca', cell: (item) => item.partBrand },
   {
     key: 'vehicle',
     header: 'Veículo',
+    sortable: true,
     cell: (item) => (
       <span className="grid">
         <span>{item.vehicleBrand}</span>
@@ -74,12 +79,12 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
       </span>
     ),
   },
-  { key: 'position', header: 'Posição', cell: (item) => <Coded value={item.position} name={POSITION_NAMES[item.position]} /> },
-  { key: 'side', header: 'Lado', cell: (item) => <Coded value={item.side} name={SIDE_NAMES[item.side]} /> },
-  { key: 'color', header: 'Cor', cell: (item) => <Coded value={item.color} name={item.color === NOT_APPLICABLE ? 'Cor não se aplica' : item.color} /> },
-  { key: 'location', header: 'Local', cell: (item) => <span className="font-mono text-xs">{item.location}</span> },
-  { key: 'price', header: 'Valor unit.', numeric: true, cell: (item) => <span className="whitespace-nowrap">{formatPrice(item.unitPriceCents)}</span> },
-  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (item) => item.quantity },
+  { key: 'position', sortable: true, header: 'Posição', cell: (item) => <Coded value={item.position} name={POSITION_NAMES[item.position]} /> },
+  { key: 'side', sortable: true, header: 'Lado', cell: (item) => <Coded value={item.side} name={SIDE_NAMES[item.side]} /> },
+  { key: 'color', sortable: true, header: 'Cor', cell: (item) => <Coded value={item.color} name={item.color === NOT_APPLICABLE ? 'Cor não se aplica' : item.color} /> },
+  { key: 'location', sortable: true, header: 'Local', cell: (item) => <span className="font-mono text-xs">{item.location}</span> },
+  { key: 'price', header: 'Valor unit.', sortLabel: 'Valor unitário', sortable: true, numeric: true, cell: (item) => <span className="whitespace-nowrap">{formatPrice(item.unitPriceCents)}</span> },
+  { key: 'quantity', header: 'Qtd.', sortLabel: 'Quantidade', sortable: true, numeric: true, card: 'end', cell: (item) => item.quantity },
 ]
 // The stock status chips, outside the menu: one at a time, none for every item.
 const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }))
@@ -98,6 +103,8 @@ export function InventoryTab() {
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS)
   const [status, setStatus] = useState<ItemStatus | null>(null)
   const [search, setSearch] = useState('')
+  // The column the list is sorted by, or null for the newest first.
+  const [sort, setSort] = useState<Sort | null>(null)
   const [page, setPage] = useState(1)
   const { pageSize: defaultSize } = usePageSize()
   const [pageSize, setPageSize] = useState(defaultSize)
@@ -112,7 +119,7 @@ export function InventoryTab() {
   // Every item, for the counter, the filter options and the form; and the page of the items the search and the
   // filters let through.
   const state = useItems()
-  const listed = useItems(itemListQuery(filters, status, { search, page, pageSize }))
+  const listed = useItems(itemListQuery(filters, status, { search, page, pageSize, sort }))
   // The lists the item form picks from and creates names in.
   const { lists, create: createEntry, rename: renameEntry, remove: removeEntry } = useItemLists()
   // Whether "Gerenciar listas" is open.
@@ -131,7 +138,7 @@ export function InventoryTab() {
   const shown = listed.status === 'ready' ? listed.items : []
   const failed = state.status === 'error' || listed.status === 'error'
 
-  /** Changes the search, the filters or the stock status, going back to the first page. */
+  /** Changes the search, the filters, the stock status or the sort, going back to the first page. */
   const narrow = (change: () => void) => {
     change()
     setPage(1)
@@ -269,8 +276,8 @@ export function InventoryTab() {
             rowKey={(item) => item.id}
             rowStatus={rowStatus}
             onRowOpen={opensOnRow ? (item) => openForm(item, true) : undefined}
-            sort={null}
-            onSortChange={() => {}}
+            sort={sort}
+            onSortChange={(next) => narrow(() => setSort(next))}
             unsortedLabel="Ordem de cadastro"
             empty={
               narrowed ? (

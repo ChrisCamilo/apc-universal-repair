@@ -36,6 +36,17 @@ test("API: the list takes only the offered page sizes", async () => {
   assert.equal(page.json().details[0].field, "page");
 });
 
+// Asks to sort by a column the list doesn't have and in an unknown direction, and checks both are rejected, naming
+// the field.
+test("API: the list sorts only by its columns", async () => {
+  const column = await app.inject({ method: "GET", url: "/items?sort=code" });
+  assert.equal(column.statusCode, 400);
+  assert.equal(column.json().details[0].field, "sort");
+  const order = await app.inject({ method: "GET", url: "/items?sort=price&order=up" });
+  assert.equal(order.statusCode, 400);
+  assert.equal(order.json().details[0].field, "order");
+});
+
 // Edits and deletes with an id that isn't a UUID and checks they are rejected before reaching the database.
 test("API: item routes reject ids that aren't UUIDs", async () => {
   const edit = await app.inject({ method: "PATCH", url: "/items/123", payload: { name: "Junta" } });

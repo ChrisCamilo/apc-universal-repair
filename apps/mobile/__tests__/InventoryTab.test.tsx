@@ -6,7 +6,14 @@ import React from 'react';
 import { Image, Modal, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { matchesSearch, OPEN_ITEM_ON_ROW_STORAGE_KEY, stockStatus, type Item } from '@apc/shared/items';
+import {
+  matchesSearch,
+  OPEN_ITEM_ON_ROW_STORAGE_KEY,
+  sortItems,
+  stockStatus,
+  type Item,
+  type ItemSortKey,
+} from '@apc/shared/items';
 import { ITEM_LIST_PATHS, type ItemListKind } from '@apc/shared/lists';
 import { itemListsOf } from '@apc/shared/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
@@ -56,7 +63,7 @@ function item(n: number, fields: Partial<Item> & Pick<Item, 'code' | 'name'>): I
 
 /**
  * Answers every items request from a list of items, as the API would: narrowed by the search, the categories and the
- * stock status, one page at a time when a page size is asked, with how many match in all; and the item lists, with
+ * stock status, sorted by a column when asked, one page at a time when a page size is asked, with how many match in all; and the item lists, with
  * what the items use at first. Requests a test answers itself, with mockResolvedValueOnce, come first.
  * @param stock The items in stock, newest first; read on every request.
  */
@@ -76,9 +83,11 @@ function answerItems(stock: Item[]) {
         (categories.length === 0 || categories.includes(it.category)) &&
         (!status || stockStatus(it.quantity, it.minQuantity) === status),
     );
+    const sort = query.get('sort') as ItemSortKey | null;
+    const sorted = sort ? sortItems(matching, { key: sort, dir: query.get('order') === 'desc' ? 'desc' : 'asc' }) : matching;
     const size = Number(query.get('pageSize')) || matching.length;
     const first = (Number(query.get('page') || 1) - 1) * size;
-    return { ok: true, json: () => Promise.resolve({ items: matching.slice(first, first + size), total: matching.length }) };
+    return { ok: true, json: () => Promise.resolve({ items: sorted.slice(first, first + size), total: matching.length }) };
   });
 }
 
@@ -391,4 +400,29 @@ test('Mobile: the inventory list shows one page at a time', async () => {
 
   await ReactTestRenderer.act(async () => tree.root.findByType(TextInput).props.onChangeText('Peça 3'));
   expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toMatch(/\/items\?q=Pe%C3%A7a\+3&page=1&pageSize=25$/);
+});
+
+// On the second page, sorts by unit price with the "Ordenar" select and checks the sort goes to the API, the list goes
+// back to the first page and the cards follow the price, highest first, ties in part code order.
+test('Mobile: the "Ordenar" select sorts the list through the API', async () => {
+  const stock = Array.from({ length: 30 }, (_, index) =>
+    item(index + 10, { code: `P-${index + 1}`, name: `Peça ${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
+  );
+  const tree = await mount(stock);
+  const press = async (name: string) => {
+    const node = tree.root.findAll(
+      (n) =>
+        typeof n.props.onPress === 'function' &&
+        (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+    )[0];
+    await ReactTestRenderer.act(async () => node.props.onPress());
+  };
+  await press('Página 2');
+  (fetch as jest.Mock).mockClear();
+  await press('Ordenar');
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Veículo (A → Z)', 'Local (Z → A)', 'Quantidade (maior → menor)']));
+  await press('Valor unitário (maior → menor)');
+  expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toMatch(/\/items\?page=1&pageSize=25&sort=price&order=desc$/);
+  const names = texts(tree).filter((text) => /^Peça \d+$/.test(text));
+  expect(names.slice(0, 3)).toEqual(['Peça 7', 'Peça 14', 'Peça 21']);
 });
