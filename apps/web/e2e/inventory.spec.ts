@@ -137,8 +137,8 @@ test("Web: items are added and edited through the item form", async ({ page }) =
 
   await dialog.getByLabel("Código da peça").fill("ngk-b7");
   await dialog.getByLabel("Nome").fill("vela de ignição");
-  await dialog.getByRole("combobox", { name: "Categoria" }).fill("Ignição");
-  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("NGK");
+  await dialog.getByRole("combobox", { name: "Categoria" }).fill("motor");
+  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("Mann");
   await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Chevrolet");
   await dialog.getByLabel("Valor unitário (R$)").fill("34,9");
   await save.click();
@@ -154,6 +154,61 @@ test("Web: items are added and edited through the item form", async ({ page }) =
   await edit.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("Item “Vela de ignição” salvo.")).toBeVisible();
   await expect(page.locator("tbody tr").first()).toContainText("9");
+});
+
+// Creates the names of a new item from the form against an API that keeps what it is sent: a category, part brand,
+// vehicle brand and model the lists don't hold each offer "+ Criar" with the name already written by the rule, and
+// picking it creates the name, fills it in and says so in a toast, the model under the brand just created. A name
+// typed without picking "+ Criar" is refused on save, pointing to it. Once the item is saved, its new category is in
+// the Filtros menu without a reload.
+test("Web: categories, brands and models are created from the item form", async ({ page }) => {
+  const stock = [...ITEMS];
+  await page.route("**/api/items", async (route) => {
+    const saved = item({ ...route.request().postDataJSON() });
+    stock.unshift(saved);
+    return route.fulfill({ status: 201, json: saved });
+  });
+  await serveItems(page, stock);
+  await page.goto("/inventory");
+  await page.getByRole("button", { name: "Novo item" }).click();
+  const dialog = page.getByRole("dialog", { name: "Novo item" });
+  await dialog.getByLabel("Código da peça").fill("t-1");
+  await dialog.getByLabel("Nome").fill("Turbina");
+
+  const category = dialog.getByRole("combobox", { name: "Categoria" });
+  await category.fill("motor diesel");
+  await page.getByRole("option", { name: "+ Criar categoria “Motor diesel”" }).click();
+  await expect(page.getByText("Categoria “Motor diesel” criada.")).toBeVisible();
+  await expect(category).toHaveValue("Motor diesel");
+  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("NGK");
+  await page.getByRole("option", { name: "+ Criar marca “NGK”" }).click();
+  await expect(page.getByText("Marca de peça “NGK” criada.")).toBeVisible();
+  const model = dialog.getByRole("combobox", { name: "Modelo do veículo" });
+  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("renault");
+  await expect(model).toBeDisabled();
+  const brandCreated = page.waitForResponse((response) => response.url().endsWith("/api/vehicle-brands") && response.status() === 201);
+  await page.getByRole("option", { name: "+ Criar marca “Renault”" }).click();
+  const renault = await (await brandCreated).json();
+  await expect(page.getByText("Marca de veículo “Renault” criada.")).toBeVisible();
+  await expect(model).toBeEnabled();
+  await model.fill("Clio");
+  const modelCreated = page.waitForRequest((request) => request.url().endsWith("/api/vehicle-models") && request.method() === "POST");
+  await page.getByRole("option", { name: "+ Criar modelo “Clio”" }).click();
+  expect((await modelCreated).postDataJSON()).toEqual({ name: "Clio", vehicleBrandId: renault.id });
+  await expect(page.getByText("Modelo “Clio” criado.")).toBeVisible();
+  await dialog.getByLabel("Valor unitário (R$)").fill("10");
+
+  await category.fill("Turbo");
+  await dialog.getByRole("button", { name: "Salvar" }).click();
+  await expect(dialog.getByText("Categoria não cadastrada. Escolha “+ Criar categoria” na lista.")).toBeVisible();
+  await category.fill("motor diesel");
+  await dialog.getByRole("button", { name: "Salvar" }).click();
+  await expect(page.getByText("Item “Turbina” cadastrado.")).toBeVisible();
+  expect(stock[0]).toMatchObject({ category: "Motor diesel", partBrand: "NGK", vehicleBrand: "Renault", vehicleModel: "Clio" });
+
+  await page.getByRole("button", { name: "Filtros" }).click();
+  await page.getByRole("dialog", { name: "Filtros do estoque" }).getByRole("combobox", { name: "Categoria" }).click();
+  await expect(page.getByRole("option", { name: "Motor diesel" })).toBeVisible();
 });
 
 // Deletes an item against an API that keeps what it is sent: the row's trash opens a confirmation naming the item
@@ -458,7 +513,7 @@ test("Web: the inventory list shows one page at a time", async ({ page }) => {
   await dialog.getByLabel("Nome").fill("peça nova");
   await dialog.getByRole("combobox", { name: "Categoria" }).fill("Motor");
   await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("Bosch");
-  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Fiat");
+  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Volkswagen");
   await dialog.getByLabel("Valor unitário (R$)").fill("10");
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("1–25 de 51")).toBeVisible();
