@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Text, View, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TOAST_DURATION_MS } from '@apc/shared/dialog';
@@ -7,12 +7,22 @@ import { fontFamily, useTheme, type ActiveTheme } from './theme';
 
 // Short success messages ("Item adicionado", "Item excluído") at the bottom of the screen, the same as the
 // web: a pill with the colors turned around, read out by screen readers, that hides on its own after
-// TOAST_DURATION_MS; a new message replaces the one showing.
+// TOAST_DURATION_MS; a new message replaces the one showing. A Modal sits above the rest of the app, so each open
+// Dialog holds a ToastLayer, as it does a TourLayer: the toast draws in the last layer registered, the topmost, and
+// at the root while no Dialog is open, so it stays above a dialog that shows one, such as the item form.
 
 const SPOT_STYLE: ViewStyle = { position: 'absolute', left: scales.space.s4, right: scales.space.s4, alignItems: 'center' };
 const ToastContext = createContext<(message: string) => void>(() => {});
+const ToastLayersContext = createContext<ToastLayers | null>(null);
 
 type Shown = { id: number; message: string };
+/** The toast showing, the layer on top, and how a ToastLayer joins or leaves the stack. */
+type ToastLayers = {
+  shown: Shown | null;
+  top: string | null;
+  addLayer: (id: string) => void;
+  removeLayer: (id: string) => void;
+};
 
 /**
  * Styles the pill: the text color as the fill and the canvas as the letters, in the display face.
@@ -49,9 +59,8 @@ export function useToast(): (message: string) => void {
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const [shown, setShown] = useState<Shown | null>(null);
+  const [layers, setLayers] = useState<string[]>([]);
   const show = useCallback((message: string) => {
     setShown((prev) => ({ id: (prev?.id ?? 0) + 1, message }));
     AccessibilityInfo.announceForAccessibility(message);
@@ -66,21 +75,51 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [shown]);
 
-  const { pill, label } = pillStyles(theme);
+  const addLayer = useCallback((id: string) => setLayers((prev) => [...prev, id]), []);
+  const removeLayer = useCallback((id: string) => setLayers((prev) => prev.filter((layer) => layer !== id)), []);
+  const state = useMemo(
+    () => ({ shown, top: layers[layers.length - 1] ?? null, addLayer, removeLayer }),
+    [shown, layers, addLayer, removeLayer],
+  );
+
   return (
     <ToastContext.Provider value={show}>
-      {children}
-      {shown && (
-        <View
-          pointerEvents="none"
-          accessibilityLiveRegion="polite"
-          style={[SPOT_STYLE, { bottom: insets.bottom + scales.space.s5 }]}
-        >
-          <View style={pill} testID="toast">
-            <Text style={label}>{shown.message}</Text>
-          </View>
-        </View>
-      )}
+      <ToastLayersContext.Provider value={state}>
+        {children}
+        {layers.length === 0 && <ToastPill shown={shown} />}
+      </ToastLayersContext.Provider>
     </ToastContext.Provider>
+  );
+}
+
+/** Draws the toast inside an open Dialog's Modal while it is the topmost layer. */
+export function ToastLayer() {
+  const layers = useContext(ToastLayersContext);
+  const id = useId();
+  const addLayer = layers?.addLayer;
+  const removeLayer = layers?.removeLayer;
+
+  // Join the stack while mounted; the layer mounted last is on top.
+  useEffect(() => {
+    addLayer?.(id);
+    return () => removeLayer?.(id);
+  }, [addLayer, removeLayer, id]);
+
+  return layers?.top === id ? <ToastPill shown={layers.shown} /> : null;
+}
+
+function ToastPill({ shown }: { shown: Shown | null }) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  if (!shown) {
+    return null;
+  }
+  const { pill, label } = pillStyles(theme);
+  return (
+    <View pointerEvents="none" accessibilityLiveRegion="polite" style={[SPOT_STYLE, { bottom: insets.bottom + scales.space.s5 }]}>
+      <View style={pill} testID="toast">
+        <Text style={label}>{shown.message}</Text>
+      </View>
+    </View>
   );
 }

@@ -7,6 +7,8 @@ import { Image, Modal, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { matchesSearch, OPEN_ITEM_ON_ROW_STORAGE_KEY, stockStatus, type Item } from '@apc/shared/items';
+import { ITEM_LIST_PATHS, type ItemListKind } from '@apc/shared/lists';
+import { itemListsOf } from '@apc/shared/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
@@ -54,13 +56,18 @@ function item(n: number, fields: Partial<Item> & Pick<Item, 'code' | 'name'>): I
 
 /**
  * Answers every items request from a list of items, as the API would: narrowed by the search, the categories and the
- * stock status, one page at a time when a page size is asked, with how many match in all. Requests a test answers
- * itself, with mockResolvedValueOnce, come first.
+ * stock status, one page at a time when a page size is asked, with how many match in all; and the item lists, with
+ * what the items use at first. Requests a test answers itself, with mockResolvedValueOnce, come first.
  * @param stock The items in stock, newest first; read on every request.
  */
 function answerItems(stock: Item[]) {
+  const lists = itemListsOf(stock);
   (fetch as jest.Mock).mockImplementation(async (url: string) => {
-    const query = new URL(url).searchParams;
+    const { pathname, searchParams: query } = new URL(url);
+    const list = (Object.keys(ITEM_LIST_PATHS) as ItemListKind[]).find((kind) => pathname === ITEM_LIST_PATHS[kind]);
+    if (list) {
+      return { ok: true, json: () => Promise.resolve(lists[list]) };
+    }
     const categories = query.getAll('category');
     const status = query.get('status');
     const matching = stock.filter(

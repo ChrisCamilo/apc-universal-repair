@@ -11,11 +11,13 @@ import {
   type POSITIONS,
   type SIDES,
 } from "./items.ts";
+import { findEntry, type ItemLists } from "../lists/lists.ts";
 
 // The item form shared by web and mobile, for creating and editing an inventory item: the fields as typed, the
 // unit price in the Brazilian format ("1.234,56"), the message of each field that can't be saved, the body sent to
-// the API with the writing rule applied, and the options the comboboxes offer, taken from the items in stock. The
-// same form shows an item's details for reading, each field written out as text.
+// the API with the writing rule applied, and the options the comboboxes offer, taken from the lists the API keeps.
+// Category, part brand, vehicle brand and vehicle model must be in their lists, where the form creates new names.
+// The same form shows an item's details for reading, each field written out as text.
 
 /** The empty form of a new item: every field blank, position and side on N/A. */
 export const EMPTY_ITEM_FORM: ItemForm = {
@@ -54,8 +56,12 @@ export const ITEM_FORM_MESSAGES = {
   code: "Informe o código da peça.",
   name: "Informe o nome do item.",
   category: "Informe a categoria.",
+  categoryNotListed: "Categoria não cadastrada. Escolha “+ Criar categoria” na lista.",
   partBrand: "Informe a marca da peça.",
+  partBrandNotListed: "Marca de peça não cadastrada. Escolha “+ Criar marca” na lista.",
   vehicleBrand: "Informe a marca do veículo.",
+  vehicleBrandNotListed: "Marca de veículo não cadastrada. Escolha “+ Criar marca” na lista.",
+  vehicleModelNotListed: "Modelo não cadastrado para essa marca. Escolha “+ Criar modelo” na lista.",
   price: "Informe o valor unitário.",
   priceInvalid: "Informe um valor maior que zero, como 89,90.",
 } as const;
@@ -77,8 +83,10 @@ export type ItemForm = {
   price: string;
 };
 /** The message of each field that can't be saved; a field without one is fine. */
-export type ItemFormErrors = Partial<Record<"code" | "name" | "category" | "partBrand" | "vehicleBrand" | "price", string>>;
-/** The options of the item form's comboboxes and its color, from the items in stock. */
+export type ItemFormErrors = Partial<
+  Record<"code" | "name" | "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "price", string>
+>;
+/** The options of the item form's comboboxes, from the lists, and its color, from the items in stock. */
 export type ItemFormOptions = { categories: string[]; partBrands: string[]; vehicleBrands: string[]; colors: string[] };
 
 /**
@@ -157,22 +165,40 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
 
 /**
  * Checks the form before saving: the code, name, category, part brand, vehicle brand and unit price are required,
- * the price must be a number above zero, and the code can't be one another item uses (ignoring case).
+ * the category, the brands and a vehicle model must be in their lists, the price must be a number above zero, and
+ * the code can't be one another item uses (ignoring case).
  * @param form The form as typed.
  * @param items Every item in stock.
+ * @param lists The lists the API keeps.
  * @param editingId The id of the item being edited, which may keep its own code.
  * @returns The message of each field that can't be saved, in form order; empty when the item can be saved.
  */
-export function itemFormErrors(form: ItemForm, items: readonly Item[], editingId?: string): ItemFormErrors {
+export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: ItemLists, editingId?: string): ItemFormErrors {
   const code = form.code.trim().toUpperCase();
   const owner = items.find((item) => item.id !== editingId && item.code.toUpperCase() === code);
   const price = parsePrice(form.price);
+  const brand = findEntry(lists.vehicleBrands, form.vehicleBrand);
+  /** The message of a list field: required when empty, or not listed when its list doesn't hold it. */
+  const listed = (text: string, entries: ItemLists["categories"], required: string | undefined, notListed: string) =>
+    !text.trim() ? required : findEntry(entries, text) ? undefined : notListed;
+  const category = listed(form.category, lists.categories, ITEM_FORM_MESSAGES.category, ITEM_FORM_MESSAGES.categoryNotListed);
+  const partBrand = listed(form.partBrand, lists.partBrands, ITEM_FORM_MESSAGES.partBrand, ITEM_FORM_MESSAGES.partBrandNotListed);
+  const vehicleBrand = listed(
+    form.vehicleBrand,
+    lists.vehicleBrands,
+    ITEM_FORM_MESSAGES.vehicleBrand,
+    ITEM_FORM_MESSAGES.vehicleBrandNotListed,
+  );
+  // A model is checked within a listed brand; without one, the brand's message says what to do first.
+  const brandModels = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
+  const vehicleModel = brand && listed(form.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES.vehicleModelNotListed);
   return {
     ...(!code ? { code: ITEM_FORM_MESSAGES.code } : owner ? { code: codeTakenMessage(owner.name) } : {}),
     ...(!form.name.trim() && { name: ITEM_FORM_MESSAGES.name }),
-    ...(!form.category.trim() && { category: ITEM_FORM_MESSAGES.category }),
-    ...(!form.partBrand.trim() && { partBrand: ITEM_FORM_MESSAGES.partBrand }),
-    ...(!form.vehicleBrand.trim() && { vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrand }),
+    ...(category && { category }),
+    ...(partBrand && { partBrand }),
+    ...(vehicleBrand && { vehicleBrand }),
+    ...(vehicleModel && { vehicleModel }),
     ...(!form.price.trim() ? { price: ITEM_FORM_MESSAGES.price } : price === null || price <= 0 ? { price: ITEM_FORM_MESSAGES.priceInvalid } : {}),
   };
 }
@@ -201,31 +227,30 @@ export function itemFormOf(item: Item): ItemForm {
 }
 
 /**
- * Lists the distinct values the items in stock have in some fields, for the item form's comboboxes and color.
+ * Lists the options of the item form's comboboxes, from the lists, and the colors the items in stock use.
  * @param items Every item in stock.
+ * @param lists The lists the API keeps.
  * @returns Categories, part brands, vehicle brands and colors (without N/A), each sorted.
  */
-export function itemFormOptions(items: readonly Item[]): ItemFormOptions {
+export function itemFormOptions(items: readonly Item[], lists: ItemLists): ItemFormOptions {
+  const names = (entries: ItemLists["categories"]) => distinct(entries.map((entry) => entry.name));
   return {
-    categories: distinct(items.map((item) => item.category)),
-    partBrands: distinct(items.map((item) => item.partBrand)),
-    vehicleBrands: distinct(items.map((item) => item.vehicleBrand)),
+    categories: names(lists.categories),
+    partBrands: names(lists.partBrands),
+    vehicleBrands: names(lists.vehicleBrands),
     colors: distinct(items.map((item) => item.color).filter((color) => color !== NOT_APPLICABLE)),
   };
 }
 
 /**
- * Lists the vehicle models the items in stock have for a vehicle brand, for the form's model combobox.
- * @param items Every item in stock.
- * @param vehicleBrand The chosen vehicle brand, matched ignoring case and accents.
- * @returns Its models, distinct and sorted; none while no brand is chosen.
+ * Lists the vehicle models of a vehicle brand, for the form's model combobox.
+ * @param lists The lists the API keeps.
+ * @param vehicleBrand The chosen vehicle brand, matched ignoring case, accents and extra spaces.
+ * @returns Its models, sorted; none while the brand isn't one of the list.
  */
-export function modelsOfBrand(items: readonly Item[], vehicleBrand: string): string[] {
-  const brand = searchKey(vehicleBrand.trim());
-  if (!brand) {
-    return [];
-  }
-  return distinct(items.filter((item) => searchKey(item.vehicleBrand) === brand && item.vehicleModel).map((item) => item.vehicleModel!));
+export function modelsOfBrand(lists: ItemLists, vehicleBrand: string): string[] {
+  const brand = findEntry(lists.vehicleBrands, vehicleBrand);
+  return brand ? distinct(lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id).map((model) => model.name)) : [];
 }
 
 /**

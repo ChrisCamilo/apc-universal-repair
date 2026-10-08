@@ -2,7 +2,7 @@
  * @format
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AccessibilityInfo, Modal, ScrollView, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
@@ -138,6 +138,30 @@ test('Mobile: toasts are read out and hide on their own', async () => {
     jest.useRealTimers();
   }
 });
+
+// Shows a toast from inside an open dialog and checks it draws inside the dialog's Modal, above it, and not at the
+// root; once the dialog closes, the toast still showing moves to the root.
+test('Mobile: a toast shows above an open dialog', async () => {
+  const tree = await mount('gt4', 'day', <DialogWithToast />);
+  const toasts = () => tree.root.findAll((n) => n.props.testID === 'toast' && typeof n.type === 'string');
+  await ReactTestRenderer.act(async () => tree.root.find((n) => typeof n.props.style === 'function').props.onPress());
+  const modal = tree.root.findByType(Modal);
+  expect(toasts()).toHaveLength(1);
+  expect(modal.findAll((n) => n.props.testID === 'toast' && typeof n.type === 'string')).toHaveLength(1);
+
+  await ReactTestRenderer.act(async () => modal.props.onRequestClose());
+  expect(tree.root.findByType(Modal).props.visible).toBe(false);
+  expect(toasts()).toHaveLength(1);
+});
+
+function DialogWithToast() {
+  const [open, setOpen] = useState(true);
+  return (
+    <Dialog open={open} onClose={() => setOpen(false)} title="Novo item" actions={null}>
+      <Trigger />
+    </Dialog>
+  );
+}
 
 function Trigger() {
   const toast = useToast();
