@@ -5,12 +5,15 @@ import {
   CSV_COLUMNS,
   CSV_TEMPLATE,
   csvPrice,
+  importedDetails,
+  importedSummary,
   importItems,
   itemImportSchema,
   ITEM_IMPORT_LIMIT,
   newListNames,
   parseCsv,
   readItemsCsv,
+  rowsSummary,
   type CsvItemRow,
 } from "./itemCsv.ts";
 import { ITEM_FORM_MESSAGES } from "./itemForm.ts";
@@ -174,4 +177,15 @@ test("Shared: an import takes from one item up to the limit", () => {
   assert.equal(itemImportSchema.safeParse({ items: [] }).success, false);
   assert.equal(itemImportSchema.safeParse({ items: [item] }).success, true);
   assert.equal(itemImportSchema.safeParse({ items: Array(ITEM_IMPORT_LIMIT + 1).fill(item) }).success, false);
+});
+
+// Words the preview's count of rows, an item's details line, and the toast of an import, in singular and plural.
+test("Shared: the import is worded for the preview and the toast", () => {
+  const read = rows(`${CSV_TEMPLATE},,,,,,,,,0,,,
+`);
+  assert.equal(rowsSummary(read), "2 itens prontos para importar · 1 com erro");
+  assert.equal(rowsSummary(read.slice(0, 1)), "1 item pronto para importar · 0 com erro");
+  assert.equal(importedDetails(read[0].item).replace(/\s/g, " "), "Motor · Mann · Volkswagen Gol · A-2 · R$ 39,90");
+  assert.equal(importedSummary({ created: 3, updated: 1 }), "Importação concluída: 3 itens criados, 1 atualizado.");
+  assert.equal(importedSummary({ created: 1, updated: 0 }), "Importação concluída: 1 item criado, 0 atualizados.");
 });
