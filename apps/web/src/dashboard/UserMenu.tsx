@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router'
+import { PAGE_SIZES } from '@apc/shared/pagination'
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme'
 import { auth } from '../auth/auth.ts'
 import { useSession } from '../auth/sessionContext.ts'
@@ -8,16 +9,19 @@ import { Segmented } from '../components/Segmented.tsx'
 import { Switch } from '../components/Switch.tsx'
 import { useTheme } from '../useTheme.ts'
 import { useOpenItemOnRow } from './openItemOnRowContext.ts'
+import { usePageSize } from './pageSizeContext.ts'
 import { useTabReorder } from './tabReorderContext.ts'
 
 // The user menu at the right of the Dashboard header: the logged user's initials and username on the trigger
 // (initials only on phones), and the display preferences. Dark mode and the theme go through the ThemeProvider,
 // which applies and saves them at once; "Arrastar para reordenar" goes through the Dashboard (TabReorderContext),
 // which saves it and makes the tabs reorderable while it is on, and "Abrir item ao clicar na linha" likewise makes
-// the Inventory rows open the item details. Every choice keeps the menu open, so several can be changed in a row.
+// the Inventory rows open the item details; "Itens por página" sets how many items the Inventory list shows, now and
+// each time it opens. Every choice keeps the menu open, so several can be changed in a row.
 // "Sair", at the end and set apart from the preferences, ends the session and goes back to /login; the preferences
 // stay on the device for the next login.
 
+const PAGE_SIZE_OPTIONS = PAGE_SIZES.map((size) => ({ value: String(size), label: String(size) }))
 const STYLE_OPTIONS = STYLES.map((style) => ({ value: style, label: STYLE_LABELS[style] }))
 
 export function UserMenu() {
@@ -26,6 +30,7 @@ export function UserMenu() {
   const { style, mode, setStyle, setMode } = useTheme()
   const { reorderable, setReorderable } = useTabReorder()
   const { opensOnRow, setOpensOnRow } = useOpenItemOnRow()
+  const { pageSize, setPageSize } = usePageSize()
   // Nobody to show for a moment after "Sair", until the app leaves the Dashboard.
   if (!user) {
     return null
@@ -47,6 +52,13 @@ export function UserMenu() {
         Arrastar para reordenar
       </Switch>
       <MenuLabel>Estoque</MenuLabel>
+      <Segmented
+        label="Itens por página"
+        description="Padrão ao abrir o estoque"
+        options={PAGE_SIZE_OPTIONS}
+        value={String(pageSize)}
+        onValueChange={(size) => setPageSize(Number(size))}
+      />
       <Switch
         checked={opensOnRow}
         onCheckedChange={setOpensOnRow}
