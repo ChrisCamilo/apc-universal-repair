@@ -29,6 +29,7 @@ import { Segmented } from '../Segmented';
 import { TextField } from '../TextField';
 import { useToast } from '../Toast';
 import { Label } from '../Typography';
+import { tourTarget } from '../tourTargets';
 import { pickPhotos, savePhotos } from './photos';
 import type { CreateListEntry } from './useItemLists';
 
@@ -44,6 +45,8 @@ import type { CreateListEntry } from './useItemLists';
 // but its photos aren't, the toast says so. Opened on an item's details, the same dialog shows each field as text in
 // the form's layout, with Fechar and Editar: nothing can be changed or saved until Editar unlocks the fields in
 // place, on the first one, and the buttons turn into Cancelar and Salvar alterações, which save like the edit form.
+// The owner may open it with values filled in and follow what is typed, as the Inventory tutorial does, whose tour
+// points at the marked fields and buttons.
 
 const CHOICE_STYLE: ViewStyle = { gap: scales.space.s2 };
 const FIELDS_STYLE: ViewStyle = { gap: scales.space.s3 };
@@ -66,13 +69,28 @@ type ItemFormDialogProps = {
   onClose: () => void;
   /** Called with the item as the API saved it. */
   onSaved: (item: Item) => void;
+  /** Values the form opens with instead of the item's own, e.g. filled in by the tutorial. */
+  initialForm?: ItemForm;
+  /** Called with the form as typed and whether it shows the details, on each change, e.g. for the tutorial. */
+  onFormChange?: (form: ItemForm, viewing: boolean) => void;
 };
 
-export function ItemFormDialog({ open, item, details = false, items, lists, onCreateEntry, onClose, onSaved }: ItemFormDialogProps) {
+export function ItemFormDialog({
+  open,
+  item,
+  details = false,
+  items,
+  lists,
+  onCreateEntry,
+  onClose,
+  onSaved,
+  initialForm,
+  onFormChange,
+}: ItemFormDialogProps) {
   const toast = useToast();
   const [viewing, setViewing] = useState(details && item !== undefined);
   const code = useRef<ComponentRef<typeof TextInput>>(null);
-  const [form, setForm] = useState<ItemForm>(() => (item ? itemFormOf(item) : EMPTY_ITEM_FORM));
+  const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM));
   const [photos, setPhotos] = useState<UploadPhoto[]>(() => (item ? heldPhotos(item.photos, API_URL) : []));
   const [errors, setErrors] = useState<ItemFormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -82,6 +100,11 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
   const models = modelsOfBrand(lists, form.vehicleBrand);
   const vehicleBrand = findEntry(lists.vehicleBrands, form.vehicleBrand);
   const unlocked = details && !viewing;
+
+  // Tell the owner what the form holds as it changes.
+  useEffect(() => {
+    onFormChange?.(form, viewing);
+  }, [form, viewing, onFormChange]);
 
   // Once Editar unlocks the fields, start on the first one.
   useEffect(() => {
@@ -170,18 +193,22 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
             <Button variant="secondary" size="sm" onPress={onClose}>
               Fechar
             </Button>
-            <Button size="sm" onPress={() => setViewing(false)}>
-              Editar
-            </Button>
+            <View ref={tourTarget('form-edit')} collapsable={false}>
+              <Button size="sm" onPress={() => setViewing(false)}>
+                Editar
+              </Button>
+            </View>
           </>
         ) : (
           <>
             <Button variant="secondary" size="sm" onPress={onClose}>
               Cancelar
             </Button>
-            <Button size="sm" loading={saving || creating > 0} onPress={save}>
-              {item ? 'Salvar alterações' : 'Salvar'}
-            </Button>
+            <View ref={tourTarget('form-save')} collapsable={false}>
+              <Button size="sm" loading={saving || creating > 0} onPress={save}>
+                {item ? 'Salvar alterações' : 'Salvar'}
+              </Button>
+            </View>
           </>
         )
       }
@@ -203,20 +230,24 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
       ) : (
         <View style={FIELDS_STYLE}>
           <ImageUpload label={PHOTOS_LABEL} photos={photos} onPhotosChange={setPhotos} limit={ITEM_PHOTO_LIMIT} onPick={pickPhotos} />
-          <TextField
-            ref={code}
-            label={ITEM_FIELD_LABELS.code}
-            value={form.code}
-            onValueChange={(value) => change('code', value.toUpperCase())}
-            error={errors.code}
-          />
-          <TextField
-            label={ITEM_FIELD_LABELS.name}
-            value={form.name}
-            onValueChange={(value) => change('name', value)}
-            onBlur={capitalize('name')}
-            error={errors.name}
-          />
+          <View ref={tourTarget('form-code')} collapsable={false}>
+            <TextField
+              ref={code}
+              label={ITEM_FIELD_LABELS.code}
+              value={form.code}
+              onValueChange={(value) => change('code', value.toUpperCase())}
+              error={errors.code}
+            />
+          </View>
+          <View ref={tourTarget('form-name')} collapsable={false}>
+            <TextField
+              label={ITEM_FIELD_LABELS.name}
+              value={form.name}
+              onValueChange={(value) => change('name', value)}
+              onBlur={capitalize('name')}
+              error={errors.name}
+            />
+          </View>
           <Combobox
             label={ITEM_FIELD_LABELS.category}
             value={form.category}
@@ -264,12 +295,14 @@ export function ItemFormDialog({ open, item, details = false, items, lists, onCr
             error={errors.vehicleModel}
             disabled={!vehicleBrand}
           />
-          <TextField
-            label={ITEM_FIELD_LABELS.quantity}
-            kind="number"
-            value={form.quantity}
-            onValueChange={(value) => change('quantity', value.replace(/\D/g, ''))}
-          />
+          <View ref={tourTarget('form-quantity')} collapsable={false}>
+            <TextField
+              label={ITEM_FIELD_LABELS.quantity}
+              kind="number"
+              value={form.quantity}
+              onValueChange={(value) => change('quantity', value.replace(/\D/g, ''))}
+            />
+          </View>
           <TextField
             label={ITEM_FIELD_LABELS.minQuantity}
             kind="number"

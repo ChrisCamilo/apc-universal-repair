@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { View } from 'react-native';
 import type { Item } from '@apc/shared/items';
 import { API_URL } from '../api';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
 import { useToast } from '../Toast';
+import { tourTarget } from '../tourTargets';
 import { Text } from '../Typography';
 
 // The confirmation that removes an item from the inventory, the same as the web: it names the item and its code.
@@ -50,9 +52,11 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
           <Button variant="secondary" size="sm" onPress={onClose}>
             Cancelar
           </Button>
-          <Button variant="danger" size="sm" loading={deleting} onPress={remove}>
-            Excluir
-          </Button>
+          <View ref={tourTarget('confirm-delete')} collapsable={false}>
+            <Button variant="danger" size="sm" loading={deleting} onPress={remove}>
+              Excluir
+            </Button>
+          </View>
         </>
       }
     >
