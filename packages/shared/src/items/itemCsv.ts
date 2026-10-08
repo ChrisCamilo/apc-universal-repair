@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { findEntry, listName, type ItemLists, type ListEntry } from "../lists/lists.ts";
 import { ITEM_FORM_MESSAGES, parsePrice } from "./itemForm.ts";
-import { capitalizeFirst, itemCreateSchema, NOT_APPLICABLE, optionKey, POSITIONS, SIDES, type ItemCreate } from "./items.ts";
+import { capitalizeFirst, itemCreateSchema, itemDetails, NOT_APPLICABLE, optionKey, POSITIONS, SIDES, type ItemCreate } from "./items.ts";
 
 // The CSV batch import of the inventory, shared by web and mobile: the template to download, and reading a file into
 // the items it holds, each row checked as the item form checks it, with the reasons a row can't be saved. A file is
@@ -132,6 +132,32 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
 export function csvPrice(text: string): number | null {
   const typed = text.trim();
   return /^\d+\.\d{1,2}$/.test(typed) ? Math.round(Number(typed) * 100) : parsePrice(typed);
+}
+
+/**
+ * Writes an imported item's details in one line, as the inventory card does under the name.
+ * @param item The item of a row.
+ * @returns E.g. "Motor · Mann · Volkswagen Gol · A-2 · R$ 39,90".
+ */
+export function importedDetails(item: ItemCreate): string {
+  return itemDetails({
+    ...item,
+    vehicleModel: item.vehicleModel || null,
+    location: item.location || null,
+    position: item.position ?? NOT_APPLICABLE,
+    side: item.side ?? NOT_APPLICABLE,
+    color: item.color ?? NOT_APPLICABLE,
+  });
+}
+
+/**
+ * Words an import's result for its toast.
+ * @param result How many items were created and updated.
+ * @returns E.g. "Importação concluída: 3 itens criados, 1 atualizado."
+ */
+export function importedSummary({ created, updated }: ItemImportResult): string {
+  const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+  return `Importação concluída: ${plural(created, "item criado", "itens criados")}, ${plural(updated, "atualizado", "atualizados")}.`;
 }
 
 /**
@@ -271,4 +297,15 @@ export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
     return { line, item, errors };
   });
   return { rows };
+}
+
+/**
+ * Counts the rows of a file for the preview: how many will be imported and how many have errors.
+ * @param rows The rows read from the file.
+ * @returns E.g. "12 itens prontos para importar · 2 com erro".
+ */
+export function rowsSummary(rows: readonly CsvItemRow[]): string {
+  const invalid = rows.filter((row) => row.errors.length > 0).length;
+  const valid = rows.length - invalid;
+  return `${valid} ${valid === 1 ? "item pronto" : "itens prontos"} para importar · ${invalid} com erro`;
 }
