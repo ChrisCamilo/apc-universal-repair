@@ -5,6 +5,7 @@ import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, initialTab, orderTabs, TAB_O
 import { AppFrame } from '../components/AppFrame.tsx'
 import { TabPanel, Tabs } from '../components/Tabs.tsx'
 import { readStored, writeStored } from '../storage.ts'
+import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext.ts'
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from './openItemOnRowContext.ts'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
 import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
@@ -14,7 +15,8 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 // Dashboard reopens on the last tab used. While "Arrastar para reordenar" is on in the user menu, the tabs can be
 // dragged (or moved with Alt + arrows) into a new order, which is saved and comes back on reload, with tabs added
 // later at its end; the open tab stays open. The Dashboard also holds "Abrir item ao clicar na linha" and "Itens por
-// página", which the user menu sets and the Inventory tab follows.
+// página", which the user menu sets and the Inventory tab follows, and the Inventory tutorial's state, which the
+// Inventory tab runs (by itself the first time) and the user menu replays.
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id)
 // Each tab as the tab bar draws it, by id.
@@ -42,6 +44,7 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   const reorder = useReorderChoice()
   const openItemOnRow = useOpenItemOnRowChoice()
   const pageSize = usePageSizeChoice()
+  const tutorial = useInventoryTutorialChoice()
   const [order, setOrder] = useState(() => orderTabs(TAB_IDS, readStored(TAB_ORDER_STORAGE_KEY)))
 
   // Remember the open tab, so "/" reopens it next time.
@@ -59,27 +62,29 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
     <TabReorderContext.Provider value={reorder}>
       <OpenItemOnRowContext.Provider value={openItemOnRow}>
         <PageSizeContext.Provider value={pageSize}>
-          <AppFrame
-            navLabel="Seções do Dashboard"
-            nav={
-              <Tabs
-                label="Seções do Dashboard"
-                tabs={order.map((id) => TABS[id])}
-                selected={tab}
-                onSelect={(id) => navigate(`/${id}`)}
-                reorderable={reorder.reorderable}
-                onReorder={(ids) => {
-                  setOrder(ids)
-                  writeStored(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids))
-                }}
-              />
-            }
-            end={userMenu}
-          >
-            <TabPanel id={tab} selected={tab}>
-              <Outlet />
-            </TabPanel>
-          </AppFrame>
+          <InventoryTutorialContext.Provider value={tutorial}>
+            <AppFrame
+              navLabel="Seções do Dashboard"
+              nav={
+                <Tabs
+                  label="Seções do Dashboard"
+                  tabs={order.map((id) => TABS[id])}
+                  selected={tab}
+                  onSelect={(id) => navigate(`/${id}`)}
+                  reorderable={reorder.reorderable}
+                  onReorder={(ids) => {
+                    setOrder(ids)
+                    writeStored(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids))
+                  }}
+                />
+              }
+              end={userMenu}
+            >
+              <TabPanel id={tab} selected={tab}>
+                <Outlet />
+              </TabPanel>
+            </AppFrame>
+          </InventoryTutorialContext.Provider>
         </PageSizeContext.Provider>
       </OpenItemOnRowContext.Provider>
     </TabReorderContext.Provider>
