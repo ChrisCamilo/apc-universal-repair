@@ -261,6 +261,62 @@ test("Web: the inventory list sorts by a column", async ({ page }, testInfo) => 
   expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=price&order=desc");
 });
 
+// Imports a spreadsheet through "Importar CSV" against an API that keeps what it is sent: the template downloads,
+// the file chosen is previewed with the names to create and the row with an error marked, and importing saves the
+// valid rows only: a new item, and an update of the item whose part code is in use. A toast says so and the list
+// shows them without a reload.
+test("Web: items are imported from a CSV file", async ({ page }) => {
+  const stock = [...ITEMS];
+  const imported: string[] = [];
+  await page.route("**/api/items/import", async (route) => {
+    const result = { created: 0, updated: 0 };
+    for (const sent of route.request().postDataJSON().items as Item[]) {
+      imported.push(sent.code);
+      const index = stock.findIndex((held) => held.code === sent.code);
+      if (index >= 0) {
+        stock[index] = { ...stock[index], ...sent };
+        result.updated++;
+      } else {
+        stock.unshift(item({ ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null }));
+        result.created++;
+      }
+    }
+    return route.fulfill({ json: result });
+  });
+  await serveItems(page, stock);
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(4);
+
+  await page.getByRole("button", { name: "Importar CSV" }).click();
+  const dialog = page.getByRole("dialog", { name: "Importar CSV" });
+  const download = page.waitForEvent("download");
+  await dialog.getByRole("button", { name: "Baixar modelo" }).click();
+  expect((await download).suggestedFilename()).toBe("modelo-estoque.csv");
+
+  const file = [
+    "code;name;category;part_brand;vehicle_brand;vehicle_model;quantity;minimum;location;unit_price;color;position;side",
+    "w 712/95;filtro de óleo;motor;Mann;volkswagen;gol;20;2;A-2;42,50;;;",
+    "ngk-b7;vela de ignição;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;;",
+    ";sem código;Freios;Cobreq;Ford;;1;;;0;;;",
+  ].join("\n");
+  await dialog.getByLabel("Arquivo CSV").setInputFiles({ name: "estoque.csv", mimeType: "text/csv", buffer: Buffer.from(file) });
+  await expect(dialog.getByText("estoque.csv · 2 itens prontos para importar · 1 com erro")).toBeVisible();
+  await expect(dialog.getByText("Categorias: Ignição")).toBeVisible();
+  await expect(dialog.getByText("Marcas de peça: NGK")).toBeVisible();
+  await expect(dialog.locator("li[data-invalid]")).toContainText("Informe o código da peça.");
+  const submit = dialog.getByRole("button", { name: "Importar 2 itens" });
+  await expect(submit).toBeInViewport();
+  await submit.click();
+
+  await expect(page.getByText("Importação concluída: 1 item criado, 1 atualizado.")).toBeVisible();
+  await expect(dialog).toBeHidden();
+  expect(imported).toEqual(["W 712/95", "NGK-B7"]);
+  await expect(rows).toHaveCount(5);
+  await expect(rows.first()).toContainText("Vela de ignição");
+  await expect(rows.filter({ hasText: "Filtro de óleo" })).toContainText("20");
+});
+
 // Tidies the lists through "Gerenciar listas" against an API that keeps what it is sent: once its only item is
 // deleted, a category shows no items and is deleted after confirming; a category is renamed in place and the list
 // shows its items under the new name; and a category items use can't be deleted, but "Ver itens" shows them, filtered.

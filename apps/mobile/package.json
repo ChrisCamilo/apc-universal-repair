@@ -13,6 +13,7 @@
   "dependencies": {
     "@apc/shared": "workspace:*",
     "@react-native-async-storage/async-storage": "^3.1.1",
+    "@react-native-documents/picker": "^12.0.2",
     "react": "19.2.3",
     "react-native": "0.87.1",
     "react-native-image-picker": "^8.2.1",

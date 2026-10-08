@@ -9,7 +9,9 @@ import {
   itemUpdateSchema,
   sortItems,
 } from "@apc/shared/items";
+import { itemImportResultSchema, itemImportSchema } from "@apc/shared/item-csv";
 import { prisma } from "../db/client.js";
+import { importItems } from "../items/import.js";
 import { createData, itemWhere, toItem, updateData, WITH_PHOTOS } from "../items/items.js";
 import { removePhotoFiles } from "../photos/photos.js";
 
@@ -18,7 +20,8 @@ import { removePhotoFiles } from "../photos/photos.js";
 // pt-BR (see sortItems), which the database can't, so it reads what the matching items sort by, sorts them here and
 // then loads only the page asked. A part code is unique: creating or editing to a code another item uses is rejected
 // with 409, naming that item, so the form can say which.
-// Deleting an item also deletes its photos' files.
+// Deleting an item also deletes its photos' files. POST /items/import saves the items of a CSV file at once (see
+// importItems).
 
 /**
  * Answers 409 for a part code another item already uses.
@@ -105,6 +108,12 @@ export function registerItemRoutes(app: FastifyInstance) {
       const row = await prisma.item.create({ data, include: WITH_PHOTOS });
       return reply.status(201).send(toItem(row));
     },
+  );
+
+  routes.post(
+    "/items/import",
+    { schema: { body: itemImportSchema, response: { 200: itemImportResultSchema } } },
+    async (request) => importItems(request.body.items),
   );
 
   routes.patch(

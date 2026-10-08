@@ -31,6 +31,7 @@ import { Skeleton } from '../components/Skeleton.tsx'
 import { Spinner } from '../components/Spinner.tsx'
 import { SearchField } from '../components/TextField.tsx'
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
+import { ImportItemsDialog } from '../inventory/ImportItemsDialog.tsx'
 import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
 import { ManageListsDialog } from '../inventory/ManageListsDialog.tsx'
 import { API_BASE, savePhotos } from '../inventory/savePhotos.ts'
@@ -52,7 +53,8 @@ import { usePageSize } from './pageSizeContext.ts'
 // error state offers to try again. "Novo item" and each row's pencil open the item form, each row's trash asks to
 // confirm deleting the item, and the list loads again once an item is saved or deleted. "Gerenciar listas" renames
 // and deletes the categories, brands and models the form picks from; the list loads again after each change, and a
-// name in use leads to its items. While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or
+// name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list
+// and the lists load again. While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or
 // Enter on it) opens the item's details. Each row's thumbnail shows the item's cover and opens its photos in the
 // ImageViewer, where each photo removed, changed or added is saved at once and the list follows. Low and
 // out-of-stock rows are tinted by the table. At phone width the row becomes a card and the columns that leave it
@@ -121,9 +123,11 @@ export function InventoryTab() {
   const state = useItems()
   const listed = useItems(itemListQuery(filters, status, { search, page, pageSize, sort }))
   // The lists the item form picks from and creates names in.
-  const { lists, create: createEntry, rename: renameEntry, remove: removeEntry } = useItemLists()
+  const { lists, create: createEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists()
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false)
+  // Whether "Importar CSV" is open; each opening starts with no file.
+  const [importer, setImporter] = useState({ open: false, session: 0 })
   const { opensOnRow } = useOpenItemOnRow()
   // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
   const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; session: number }>({
@@ -194,6 +198,9 @@ export function InventoryTab() {
         </div>
         <Button variant="secondary" onClick={() => setManaging(true)}>
           Gerenciar listas
+        </Button>
+        <Button variant="secondary" onClick={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
+          Importar CSV
         </Button>
         <Button onClick={() => openForm()}>Novo item</Button>
       </div>
@@ -322,6 +329,18 @@ export function InventoryTab() {
           }
           setForm((current) => ({ ...current, open: false }))
           reload()
+        }}
+      />
+      <ImportItemsDialog
+        key={importer.session}
+        open={importer.open}
+        lists={lists}
+        onClose={() => setImporter((current) => ({ ...current, open: false }))}
+        onImported={() => {
+          setImporter((current) => ({ ...current, open: false }))
+          setPage(1)
+          reload()
+          reloadLists()
         }}
       />
       <ManageListsDialog
