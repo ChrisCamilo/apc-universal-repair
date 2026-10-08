@@ -47,6 +47,18 @@ test("API: the list sorts only by its columns", async () => {
   assert.equal(order.json().details[0].field, "order");
 });
 
+// Imports no items and an item without a price, and checks both are rejected, naming the field, before reaching the
+// database.
+test("API: an import takes valid items only", async () => {
+  const empty = await app.inject({ method: "POST", url: "/items/import", payload: { items: [] } });
+  assert.equal(empty.statusCode, 400);
+  assert.equal(empty.json().details[0].field, "items");
+  const item = { code: "A-1", name: "Junta", category: "Motor", partBrand: "Mann", vehicleBrand: "VW" };
+  const priceless = await app.inject({ method: "POST", url: "/items/import", payload: { items: [item] } });
+  assert.equal(priceless.statusCode, 400);
+  assert.equal(priceless.json().details[0].field, "items/0/unitPriceCents");
+});
+
 // Edits and deletes with an id that isn't a UUID and checks they are rejected before reaching the database.
 test("API: item routes reject ids that aren't UUIDs", async () => {
   const edit = await app.inject({ method: "PATCH", url: "/items/123", payload: { name: "Junta" } });
