@@ -127,10 +127,13 @@ test("Shared: a code another item uses is refused, naming it", () => {
   assert.deepEqual(itemFormErrors({ ...VALID, code: "FRA-1000" }, ITEMS, LISTS, PADS.id), {});
 });
 
-// Checks codes as they are typed: one another item uses, in another case and with spaces around it, names that item;
-// a code on its way to it, a free one and an empty one say nothing; and the item being edited keeps its own code.
+// Checks codes as they are typed: one another item uses, in another case, with spaces around it or with other
+// separators, as the search compares codes, names that item; a code on its way to it, a free one and an empty one say
+// nothing; and the item being edited keeps its own code.
 test("Shared: a code is checked against the other items as it is typed", () => {
   assert.equal(codeTakenError(" w 712/95 ", ITEMS), codeTakenMessage("Filtro de óleo"));
+  assert.equal(codeTakenError("w71295", ITEMS), codeTakenMessage("Filtro de óleo"));
+  assert.equal(codeTakenError("FRA 1000", ITEMS), codeTakenMessage("Pastilha"));
   assert.equal(codeTakenError("W 712", ITEMS), undefined);
   assert.equal(codeTakenError("NOVO-1", ITEMS), undefined);
   assert.equal(codeTakenError("", ITEMS), undefined);
