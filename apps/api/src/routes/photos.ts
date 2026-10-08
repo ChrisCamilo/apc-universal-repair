@@ -7,7 +7,7 @@ import { z } from "zod";
 import { itemIdParamsSchema, itemSchema } from "@apc/shared/items";
 import { ITEM_PHOTO_LIMIT, PHOTO_PARTS } from "@apc/shared/photos";
 import { prisma } from "../db/client.js";
-import { toItem, WITH_PHOTOS } from "../items/items.js";
+import { ITEM_INCLUDE, toItem } from "../items/items.js";
 import { checkPhoto, photosDir, removePhotoFiles, storePhoto } from "../photos/photos.js";
 import { notFound } from "./items.js";
 
@@ -86,7 +86,7 @@ export function registerPhotoRoutes(app: FastifyInstance) {
       }
 
       const { id } = request.params;
-      const item = await prisma.item.findUnique({ where: { id }, include: WITH_PHOTOS });
+      const item = await prisma.item.findUnique({ where: { id }, include: ITEM_INCLUDE });
       if (!item) {
         return notFound(reply);
       }
@@ -120,7 +120,7 @@ export function registerPhotoRoutes(app: FastifyInstance) {
       await removePhotoFiles(
         item.photos.filter((photo) => !kept.includes(photo.id)).flatMap((photo) => [photo.file, photo.thumbFile]),
       );
-      return toItem((await prisma.item.findUnique({ where: { id }, include: WITH_PHOTOS }))!);
+      return toItem((await prisma.item.findUnique({ where: { id }, include: ITEM_INCLUDE }))!);
     },
   );
 

@@ -1,0 +1,158 @@
+# Architecture · Arquitetura
+
+[🇺🇸 English](#-english-us) · [🇧🇷 Português](#-português-brasil)
+
+APC Universal Repair is a **pnpm + Turborepo** monorepo: a web app and a mobile app built on one shared package, talking to one API over HTTP. The database is described in [database.md](database.md).
+
+O APC Universal Repair é um monorepo **pnpm + Turborepo**: um app web e um app para celular feitos sobre um pacote compartilhado, conversando com uma API por HTTP. O banco está descrito em [database.md](database.md).
+
+## Overview · Visão geral
+
+```mermaid
+flowchart LR
+    subgraph clients["Clients · Clientes"]
+        web["<b>apps/web</b><br/>React 19 · Vite 8<br/>Tailwind CSS 4 · React Router 8"]
+        mobile["<b>apps/mobile</b><br/>React Native 0.87<br/>AsyncStorage · SVG"]
+    end
+
+    shared["<b>packages/shared</b> · @apc/shared<br/>Zod 4 schemas · rules · design tokens<br/>TypeScript, no UI"]
+
+    subgraph server["Server · Servidor"]
+        api["<b>apps/api</b><br/>Fastify 5 · Zod type provider<br/>Prisma 7 · sharp"]
+        db[("PostgreSQL<br/>schema.prisma")]
+        files[("uploads/photos<br/>PHOTOS_DIR")]
+    end
+
+    web -- imports --> shared
+    mobile -- imports --> shared
+    api -- imports --> shared
+    web -- "HTTP JSON · /api proxy" --> api
+    mobile -- "HTTP JSON · API_URL" --> api
+    api -- "Prisma Client · adapter-pg" --> db
+    api -- "photos + WebP thumbnails" --> files
+```
+
+## Shared package · Pacote compartilhado
+
+Everything web, mobile and API must agree on lives in `@apc/shared`, imported by subpath (e.g. `@apc/shared/items`).
+
+Tudo em que web, celular e API precisam concordar fica no `@apc/shared`, importado por subcaminho (ex.: `@apc/shared/items`).
+
+```mermaid
+flowchart TB
+    subgraph inventory["Inventory · Estoque"]
+        items["items<br/>item schemas · writing rule · search · sort"]
+        itemForm["item-form<br/>form checks · price in reais"]
+        itemFilters["item-filters<br/>filters · list query"]
+        itemCsv["item-csv<br/>CSV template · reading · import"]
+        lists["lists<br/>categories · brands · models"]
+        photos["photos<br/>photo rules · upload parts"]
+    end
+    subgraph ui["Design system"]
+        theme["theme<br/>4 styles × 2 modes · tokens"]
+        rest["typography · button · field · dialog<br/>tabs · table · pagination · filters<br/>icons · tree · tour"]
+    end
+    subgraph other["App"]
+        auth["auth · test-users<br/>mocked login"]
+        catalog["catalog<br/>mocked vehicle catalog"]
+    end
+    itemForm --> items
+    itemFilters --> items
+    itemCsv --> items
+    itemForm --> lists
+    itemFilters --> lists
+    itemCsv --> lists
+    lists --> catalog
+    catalog --> items
+```
+
+## Saving an item · Salvando um item
+
+```mermaid
+sequenceDiagram
+    actor User as User · Usuário
+    participant App as apps/web or apps/mobile
+    participant Shared as @apc/shared
+    participant API as apps/api
+    participant DB as PostgreSQL
+
+    User->>App: fills the item form · preenche o formulário
+    App->>Shared: itemFormErrors() · itemFormBody()
+    App->>API: POST /items (JSON)
+    API->>Shared: itemCreateSchema (Zod)
+    API->>DB: listIds() — find or add list entries
+    API->>DB: create Item with references
+    DB-->>API: row + entry names
+    API-->>App: itemSchema JSON (names, "D", "LE"…)
+    App->>API: PUT /items/:id/photos (multipart)
+    API-->>App: item with photos
+    App-->>User: toast · list reloads
+```
+
+---
+
+## 🇺🇸 English (US)
+
+### Parts
+
+| Part | What it does | Main technologies |
+|---|---|---|
+| `packages/shared` | The contract and the rules: Zod schemas of every request and response, the writing rule, search and sort, form checks, CSV reading, design tokens of the 4 styles and 2 modes. No UI, so web and mobile behave the same. | TypeScript, Zod 4 |
+| `apps/web` | The web app: login, Dashboard with the Inventory and Catalog tabs, design system components. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
+| `apps/mobile` | The phone app, the same screens with React Native components. | React Native 0.87, AsyncStorage, react-native-svg, image and document pickers |
+| `apps/api` | The REST API: items, item lists, photos, CSV import. Validates every request with the shared schemas. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
+| PostgreSQL | Items, lists and photo records. Photo files stay on disk under `PHOTOS_DIR`. | PostgreSQL, Prisma migrations |
+
+### How they talk
+
+- Web and mobile call the API over HTTP with JSON; the web goes through the Vite dev server's `/api` proxy, the phone straight to `API_URL`.
+- Both sides use the same Zod schemas from `@apc/shared`, so a field can't mean one thing in the app and another in the API.
+- The API speaks names (`"Motor"`, `"D"`); the database keeps references and enums (see [database.md](database.md)).
+
+### Tooling
+
+| Concern | Tool |
+|---|---|
+| Monorepo, tasks and cache | pnpm 12 workspaces, Turborepo 2 |
+| Language | TypeScript 5–6 |
+| Lint | ESLint with typescript-eslint (shared, API, mobile), oxlint (web) |
+| Shared and API tests | Node test runner (`node --test`, `tsx --test`) |
+| Web component tests | Vitest 5 Browser Mode in Chromium |
+| Web end-to-end tests | Playwright, at 1280×720 and 360×780 |
+| Mobile tests | Jest with react-test-renderer |
+| Design system catalog | Storybook 10 |
+| CI | GitHub Actions: lint, typecheck, build, tests and E2E on every pull request |
+
+---
+
+## 🇧🇷 Português (Brasil)
+
+### Partes
+
+| Parte | O que faz | Principais tecnologias |
+|---|---|---|
+| `packages/shared` | O contrato e as regras: schemas Zod de cada requisição e resposta, a regra de escrita, busca e ordenação, as validações do formulário, a leitura do CSV e os tokens de design dos 4 estilos e 2 modos. Sem interface, para web e celular funcionarem igual. | TypeScript, Zod 4 |
+| `apps/web` | O app web: login, Dashboard com as abas Estoque e Catálogo, componentes do design system. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
+| `apps/mobile` | O app para celular, com as mesmas telas em componentes React Native. | React Native 0.87, AsyncStorage, react-native-svg, seletores de imagem e de documentos |
+| `apps/api` | A API REST: itens, listas, fotos e importação de CSV. Valida cada requisição com os schemas compartilhados. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
+| PostgreSQL | Itens, listas e os registros das fotos. Os arquivos das fotos ficam em disco, em `PHOTOS_DIR`. | PostgreSQL, migrações do Prisma |
+
+### Como conversam
+
+- Web e celular chamam a API por HTTP com JSON; a web passa pelo proxy `/api` do servidor do Vite, o celular vai direto ao `API_URL`.
+- Os dois lados usam os mesmos schemas Zod do `@apc/shared`, então um campo não pode significar uma coisa no app e outra na API.
+- A API fala em nomes (`"Motor"`, `"D"`); o banco guarda referências e enums (veja [database.md](database.md)).
+
+### Ferramentas
+
+| Assunto | Ferramenta |
+|---|---|
+| Monorepo, tarefas e cache | workspaces do pnpm 12, Turborepo 2 |
+| Linguagem | TypeScript 5–6 |
+| Lint | ESLint com typescript-eslint (shared, API, celular), oxlint (web) |
+| Testes do shared e da API | Test runner do Node (`node --test`, `tsx --test`) |
+| Testes de componente da web | Vitest 5 Browser Mode no Chromium |
+| Testes de ponta a ponta da web | Playwright, em 1280×720 e 360×780 |
+| Testes do celular | Jest com react-test-renderer |
+| Catálogo do design system | Storybook 10 |
+| CI | GitHub Actions: lint, typecheck, build, testes e E2E em todo pull request |

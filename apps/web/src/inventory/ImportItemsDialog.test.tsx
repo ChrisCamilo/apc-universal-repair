@@ -145,8 +145,11 @@ test('Web: the template is downloaded', async () => {
 test('Web: the CSV import fits a 360×780 phone', async () => {
   await page.viewport(360, 780)
   const screen = await pick(FILE)
+  const button = screen.getByRole('button', { name: 'Importar 2 itens' })
+  // The file is read after it is picked: measure once the preview is on screen.
+  await expect.element(button).toBeVisible()
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360)
-  const action = screen.getByRole('button', { name: 'Importar 2 itens' }).element().getBoundingClientRect()
+  const action = button.element().getBoundingClientRect()
   expect(action.bottom).toBeLessThanOrEqual(780)
   expect(action.right).toBeLessThanOrEqual(360)
 })

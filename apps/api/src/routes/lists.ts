@@ -3,7 +3,6 @@ import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { optionKey } from "@apc/shared/items";
 import {
   isCatalogBrand,
-  ITEM_LIST_FIELDS,
   ITEM_LIST_PATHS,
   listEntriesSchema,
   listEntryCreateSchema,
@@ -23,17 +22,22 @@ import { prisma } from "../db/client.js";
 // sorted by name; POST creates a name with the writing rule applied, unless the list already holds it ignoring
 // case, accents and extra spaces, and then sends back the one it holds (200) instead of a duplicate (201 for a new
 // one). A vehicle model is created under its vehicle brand, and is only the same as a model of that brand.
-// PATCH renames an entry, with the same rule, refusing a name another entry has (409), and renames the items that
-// use it in the same transaction, whatever their spelling. DELETE removes an entry no item uses, a vehicle brand with
-// its models; an entry items use is refused naming how many (409), and so is a vehicle brand of the catalog.
+// PATCH renames an entry, with the same rule, refusing a name another entry has (409); the items that use it refer to
+// it, so they show the new name. DELETE removes an entry no item uses, a vehicle brand with its models; an entry items
+// use is refused naming how many (409), and so is a vehicle brand of the catalog.
 
 /** The columns a list entry is sent with. */
 const ENTRY = { id: true, name: true } as const;
+/** The item column that refers to each list's entries, to count the items using one. */
+const ITEM_REFERENCES = {
+  categories: "categoryId",
+  partBrands: "partBrandId",
+  vehicleBrands: "vehicleBrandId",
+  vehicleModels: "vehicleModelId",
+} as const satisfies Record<ItemListKind, keyof Prisma.ItemWhereInput>;
 /** The columns a vehicle model is read with. */
 const MODEL = { id: true, name: true, brandId: true } as const;
 
-/** The item field a list holds the names of. */
-type ItemListField = (typeof ITEM_LIST_FIELDS)[ItemListKind];
 /** How the routes reach one of the lists of plain names. */
 type NameList = {
   all: () => Promise<ListEntry[]>;
@@ -117,46 +121,12 @@ function entryNotFound(reply: FastifyReply) {
 }
 
 /**
- * Finds how the items spell a name in a field, ignoring case, accents and extra spaces, e.g. "Elétrica" and
- * "Eletrica" for the category "Elétrica".
- * @param field The item field.
- * @param name The name.
- * @param where Which items to look at; every item by default.
- * @returns The spellings in use, none when no item uses the name.
- */
-async function spellingsOf(field: ItemListField, name: string, where: Prisma.ItemWhereInput = {}): Promise<string[]> {
-  const rows = (await prisma.item.findMany({ where, distinct: [field], select: { [field]: true } })) as Partial<
-    Record<ItemListField, string | null>
-  >[];
-  return rows.flatMap((row) => {
-    const value = row[field];
-    return value && optionKey(value) === optionKey(name) ? [value] : [];
-  });
-}
-
-/**
  * Turns a vehicle model row into the model the API sends.
  * @param row Vehicle model row.
  * @returns The model with its vehicle brand's id.
  */
 function toVehicleModel(row: { id: string; name: string; brandId: string }) {
   return { id: row.id, name: row.name, vehicleBrandId: row.brandId };
-}
-
-/**
- * Picks the items that use an entry, whatever their spelling: by name, and a vehicle model within its brand.
- * @param kind The entry's list.
- * @param entry The entry, a vehicle model with its brand's id.
- * @returns The where clause of those items.
- */
-async function usingWhere(kind: ItemListKind, entry: { name: string; brandId?: string }): Promise<Prisma.ItemWhereInput> {
-  const field = ITEM_LIST_FIELDS[kind];
-  if (!entry.brandId) {
-    return { [field]: { in: await spellingsOf(field, entry.name) } };
-  }
-  const brand = await prisma.brand.findUniqueOrThrow({ where: { id: entry.brandId }, select: { name: true } });
-  const ofBrand = { vehicleBrand: { in: await spellingsOf("vehicleBrand", brand.name) } };
-  return { ...ofBrand, vehicleModel: { in: await spellingsOf("vehicleModel", entry.name, ofBrand) } };
 }
 
 export function registerListRoutes(app: FastifyInstance) {
@@ -192,11 +162,7 @@ export function registerListRoutes(app: FastifyInstance) {
         if (other && other.id !== id) {
           return conflict(reply, `"${other.name}" is already in the list.`);
         }
-        const [renamed] = await prisma.$transaction([
-          list.rename(id, name, nameKey),
-          prisma.item.updateMany({ where: await usingWhere(kind, held), data: { [ITEM_LIST_FIELDS[kind]]: name } }),
-        ]);
-        return renamed;
+        return list.rename(id, name, nameKey);
       },
     );
 
@@ -209,7 +175,7 @@ export function registerListRoutes(app: FastifyInstance) {
       if (kind === "vehicleBrands" && isCatalogBrand(held.name)) {
         return conflict(reply, `"${held.name}" is a catalog brand.`);
       }
-      const itemCount = await prisma.item.count({ where: await usingWhere(kind, held) });
+      const itemCount = await prisma.item.count({ where: { [ITEM_REFERENCES[kind]]: id } });
       if (itemCount > 0) {
         return conflict(reply, `"${held.name}" is used by ${itemCount} items.`, itemCount);
       }
@@ -261,10 +227,7 @@ export function registerListRoutes(app: FastifyInstance) {
       if (other && other.id !== id) {
         return conflict(reply, `"${other.name}" is already a model of this brand.`);
       }
-      const [renamed] = await prisma.$transaction([
-        prisma.vehicleModel.update({ where: { id }, data: { name, nameKey }, select: MODEL }),
-        prisma.item.updateMany({ where: await usingWhere("vehicleModels", held), data: { vehicleModel: name } }),
-      ]);
+      const renamed = await prisma.vehicleModel.update({ where: { id }, data: { name, nameKey }, select: MODEL });
       return toVehicleModel(renamed);
     },
   );
@@ -275,7 +238,7 @@ export function registerListRoutes(app: FastifyInstance) {
     if (!held) {
       return entryNotFound(reply);
     }
-    const itemCount = await prisma.item.count({ where: await usingWhere("vehicleModels", held) });
+    const itemCount = await prisma.item.count({ where: { [ITEM_REFERENCES.vehicleModels]: id } });
     if (itemCount > 0) {
       return conflict(reply, `"${held.name}" is used by ${itemCount} items.`, itemCount);
     }

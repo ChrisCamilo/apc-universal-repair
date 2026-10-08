@@ -14,6 +14,7 @@ model Brand {
   name    String         @unique
   nameKey String         @unique
   models  VehicleModel[]
+  items   Item[]
 }
 
 /// An item category, the list the item form picks the category from; nameKey as in Brand.
@@ -21,32 +22,46 @@ model Category {
   id      String @id @default(uuid())
   name    String
   nameKey String @unique
+  items   Item[]
 }
 
 /// An inventory item. nameKey and codeKey hold the name without accents in lowercase and the code with
-/// letters and digits only, so searches ignore accents and separators (see @apc/shared/items).
+/// letters and digits only, so searches ignore accents and separators (see @apc/shared/items). Its category, part
+/// brand, vehicle brand and vehicle model are entries of their lists, which can't be deleted while an item uses them.
 model Item {
-  id             String      @id @default(uuid())
+  id             String        @id @default(uuid())
   /// Part code, stored in uppercase and unique.
-  code           String      @unique
+  code           String        @unique
   codeKey        String
   name           String
   nameKey        String
-  category       String
-  partBrand      String
-  vehicleBrand   String
-  vehicleModel   String?
-  position       String      @default("N/A")
-  side           String      @default("N/A")
-  color          String      @default("N/A")
+  categoryId     String
+  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  partBrandId    String
+  partBrand      PartBrand     @relation(fields: [partBrandId], references: [id], onDelete: Restrict)
+  vehicleBrandId String
+  vehicleBrand   Brand         @relation(fields: [vehicleBrandId], references: [id], onDelete: Restrict)
+  /// A model of the vehicle brand; none when the part fits any model of the brand.
+  vehicleModelId String?
+  vehicleModel   VehicleModel? @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
+  position       Position      @default(NA)
+  side           Side          @default(NA)
+  /// Free text, "N/A" when the color doesn't apply.
+  color          String        @default("N/A")
   location       String?
-  quantity       Int         @default(0)
-  minQuantity    Int         @default(0)
+  quantity       Int           @default(0)
+  minQuantity    Int           @default(0)
+  /// Unit price in BRL, in cents, so prices add up without rounding errors.
   unitPriceCents Int
   /// Photos in order, the first one the cover.
   photos         ItemPhoto[]
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([categoryId])
+  @@index([partBrandId])
+  @@index([vehicleBrandId])
+  @@index([vehicleModelId])
 }
 
 /// A photo of an item. The original file and its thumbnail are stored by the API under PHOTOS_DIR, named after the
@@ -69,6 +84,23 @@ model PartBrand {
   id      String @id @default(uuid())
   name    String
   nameKey String @unique
+  items   Item[]
+}
+
+/// Where a part fits, front to back: not applicable (the API's "N/A"), front ("D"), rear ("T") or both ("Ambos").
+enum Position {
+  NA
+  FRONT
+  REAR
+  BOTH
+}
+
+/// Where a part fits, side to side: not applicable (the API's "N/A"), right ("LD"), left ("LE") or both ("Ambos").
+enum Side {
+  NA
+  RIGHT
+  LEFT
+  BOTH
 }
 
 /// A vehicle model of a vehicle brand, unique within it; nameKey as in Brand.
@@ -78,6 +110,7 @@ model VehicleModel {
   nameKey String
   brandId String
   brand   Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  items   Item[]
 
   @@unique([brandId, nameKey])
 }

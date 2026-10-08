@@ -9,6 +9,7 @@
     "prebuild": "prisma generate",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
+    "db:seed": "prisma db seed",
     "lint": "eslint src",
     "test": "tsx --test \"src/**/*.test.ts\"",
     "pretypecheck": "prisma generate",

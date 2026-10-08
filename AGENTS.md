@@ -212,6 +212,19 @@ export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): 
 }
 ```
 
+## Architecture Docs
+
+Two visual documents describe the project, with Mermaid diagrams that GitHub renders, in English and Portuguese:
+
+- [`docs/database.md`](docs/database.md): every table, its columns and keys, the relationships between the entities and the rules the schema enforces.
+- [`docs/architecture.md`](docs/architecture.md): the apps and packages (`packages/shared`, `apps/web`, `apps/mobile`, `apps/api`), how they depend on and talk to each other, and the technologies each one uses.
+
+Always keep them up to date, **in the same pull request** as the change:
+
+- Changing `apps/api/prisma/schema.prisma` (a table, column, key, relation, enum or delete rule) updates `docs/database.md`.
+- Adding, removing or renaming an app, a package or a `@apc/shared` module, changing how the parts talk to each other, or adding, removing or upgrading a main technology (a new major version included) updates `docs/architecture.md`.
+- Update the diagrams and both languages together, and check the diagrams still render (Mermaid syntax errors show as an error box on GitHub). Use a `docs:` commit.
+
 ## General Contribution Notes
 
 - Keep commits atomic and `main` always deployable.
