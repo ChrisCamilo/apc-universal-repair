@@ -13,6 +13,7 @@ import {
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters';
 import { EMPTY_ITEM_FILTERS, itemFilterRows, itemListQuery } from '@apc/shared/item-filters';
 import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination';
+import type { Sort } from '@apc/shared/table';
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { scales } from '@apc/shared/theme';
 import { API_URL } from '../api';
@@ -41,20 +42,24 @@ import { usePageSize } from './pageSizeContext';
 // The Inventory tab, the same as the web: every item as a card, a search by name or part code, and a counter
 // of the items shown, the total and the stock alerts. Low and out-of-stock cards are tinted by the table.
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
-// the list loads again once an item is saved or deleted. "Gerenciar listas" renames and deletes the categories, brands
-// and models the form picks from; the list loads again after each change, and a name in use leads to its items. While "Abrir item ao clicar na linha" is on in the user
-// menu, a tap on a card opens the item's details. The Filtros menu, the stock status chips (one at a time) and
-// "Limpar filtros" narrow the list the same as the web, sent to the API as the list query with the search, and the
-// list shows one page of what matches, newest first, the size set in the user menu, moving pages as the web does. While the items load,
-// skeleton cards hold their place; when nothing is in stock, the empty state offers "Novo item", and when the search
-// or the filters leave nothing, it offers to clear them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and opens its photos
-// in the ImageViewer, where each photo removed, changed or added is saved at once and the list follows.
+// the list loads again once an item is saved or deleted. "Gerenciar listas" renames and deletes the categories,
+// brands and models the form picks from; the list loads again after each change, and a name in use leads to its
+// items. While "Abrir item ao clicar na linha" is on in the user menu, a tap on a card opens the item's details. The
+// Filtros menu, the stock status chips (one at a time) and "Limpar filtros" narrow the list the same as the web, sent
+// to the API as the list query with the search, and the list shows one page of what matches, newest first, the size
+// set in the user menu, moving pages as the web does. The "Ordenar" select sorts the list in the API by any of the
+// web's columns, going back to the first page. While the items load, skeleton cards hold their place; when nothing is
+// in stock, the empty state offers "Novo item", and when the search or the filters leave nothing, it offers to clear
+// them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and
+// opens its photos in the ImageViewer, where each photo removed, changed or added is saved at once and the list
+// follows.
 
 const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', gap: scales.space.s1 };
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   {
     key: 'name',
     header: 'Item',
+    sortable: true,
     card: 'main',
     cell: (item) => (
       <View>
@@ -66,7 +71,28 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
       </View>
     ),
   },
-  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (item) => <NumericReadout>{item.quantity}</NumericReadout> },
+  // The card shows these in the line under the name; they are here so "Ordenar" sorts by them, as the web's columns do.
+  ...(
+    [
+      ['category', 'Categoria'],
+      ['partBrand', 'Marca'],
+      ['vehicle', 'Veículo'],
+      ['position', 'Posição'],
+      ['side', 'Lado'],
+      ['color', 'Cor'],
+      ['location', 'Local'],
+    ] as const
+  ).map(([key, header]) => ({ key, header, sortable: true, cell: () => null })),
+  { key: 'price', header: 'Valor unit.', sortLabel: 'Valor unitário', sortable: true, numeric: true, cell: () => null },
+  {
+    key: 'quantity',
+    header: 'Qtd.',
+    sortLabel: 'Quantidade',
+    sortable: true,
+    numeric: true,
+    card: 'end',
+    cell: (item) => <NumericReadout>{item.quantity}</NumericReadout>,
+  },
 ];
 const FILTERS_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: scales.space.s2 };
 const LOADING_LINES_STYLE: ViewStyle = { flex: 1, gap: scales.space.s2 };
@@ -137,6 +163,8 @@ export function InventoryTab() {
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS);
   const [status, setStatus] = useState<ItemStatus | null>(null);
   const [search, setSearch] = useState('');
+  // The column the list is sorted by, or null for the newest first.
+  const [sort, setSort] = useState<Sort | null>(null);
   const [page, setPage] = useState(1);
   const { pageSize: defaultSize } = usePageSize();
   const [pageSize, setPageSize] = useState(defaultSize);
@@ -151,7 +179,7 @@ export function InventoryTab() {
   // Every item, for the counter, the filter options and the form; and the page of the items the search and the
   // filters let through.
   const state = useItems();
-  const listed = useItems(itemListQuery(filters, status, { search, page, pageSize }));
+  const listed = useItems(itemListQuery(filters, status, { search, page, pageSize, sort }));
   // The lists the item form picks from and creates names in.
   const { lists, create: createEntry, rename: renameEntry, remove: removeEntry } = useItemLists();
   // Whether "Gerenciar listas" is open.
@@ -170,7 +198,7 @@ export function InventoryTab() {
   const shown = listed.status === 'ready' ? listed.items : [];
   const failed = state.status === 'error' || listed.status === 'error';
 
-  /** Changes the search, the filters or the stock status, going back to the first page. */
+  /** Changes the search, the filters, the stock status or the sort, going back to the first page. */
   const narrow = (change: () => void) => {
     change();
     setPage(1);
@@ -272,8 +300,8 @@ export function InventoryTab() {
               rowKey={(item) => item.id}
               rowStatus={rowStatus}
               onRowOpen={opensOnRow ? (item) => openForm(item, true) : undefined}
-              sort={null}
-              onSortChange={() => {}}
+              sort={sort}
+              onSortChange={(next) => narrow(() => setSort(next))}
               unsortedLabel="Ordem de cadastro"
               empty={
                 narrowed ? (
