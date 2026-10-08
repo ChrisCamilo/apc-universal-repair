@@ -1,4 +1,5 @@
 import type { FilterValues } from "../filters/filters.ts";
+import type { Sort } from "../table/table.ts";
 import { ITEM_LIST_FIELDS, type ItemListKind, type ItemLists, type ListEntry, type VehicleModel } from "../lists/lists.ts";
 import { distinct } from "./itemForm.ts";
 import { NOT_APPLICABLE, POSITION_NAMES, SIDE_NAMES, type Item, type ItemStatus } from "./items.ts";
@@ -122,16 +123,17 @@ export function itemFilterRows(items: readonly Item[], draft: FilterValues): Ite
 
 /**
  * Writes the list query of the chosen filters and stock status, each value of a filter as its own parameter, with
- * the search and the page when given.
+ * the search, the page and the sort when given.
  * @param filters Values chosen in the Filtros menu.
  * @param status Stock status chip on, or null.
- * @param list The search and the page to ask for, if any.
- * @returns E.g. "category=Freios&category=Motor&status=low&q=vela&page=2&pageSize=25"; empty when nothing is chosen.
+ * @param list The search, the page and the sort to ask for, if any.
+ * @returns E.g. "category=Freios&category=Motor&status=low&q=vela&page=2&pageSize=25&sort=price&order=desc"; empty
+ * when nothing is chosen.
  */
 export function itemListQuery(
   filters: FilterValues,
   status: ItemStatus | null,
-  list: { search?: string; page?: number; pageSize?: number } = {},
+  list: { search?: string; page?: number; pageSize?: number; sort?: Sort | null } = {},
 ): string {
   const query = new URLSearchParams();
   for (const [key, values] of Object.entries(filters)) {
@@ -148,6 +150,10 @@ export function itemListQuery(
   if (list.pageSize) {
     query.set("page", String(list.page ?? 1));
     query.set("pageSize", String(list.pageSize));
+  }
+  if (list.sort) {
+    query.set("sort", list.sort.key);
+    query.set("order", list.sort.dir);
   }
   return query.toString();
 }
