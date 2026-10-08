@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { DIALOG_SCREEN_INSET, DIALOG_WIDTHS } from '@apc/shared/dialog'
-import { chevronIcon, closeIcon, imageIcon } from '@apc/shared/icons'
+import { chevronIcon, imageIcon } from '@apc/shared/icons'
 import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/shared/photos'
 import { Button } from './Button.tsx'
+import { CloseButton } from './CloseButton.tsx'
 import { Dialog } from './Dialog.tsx'
 import { Icon } from './Icon.tsx'
 import type { UploadPhoto } from './ImageUpload.tsx'
@@ -177,14 +178,7 @@ function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limi
           </Heading>
           <NumericReadout tone="muted">{code}</NumericReadout>
         </div>
-        <button
-          type="button"
-          aria-label="Fechar"
-          className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-pill border border-hairline-soft text-text outline-none transition-colors hover:border-accent hover:text-accent focus-visible:shadow-ring"
-          onClick={onClose}
-        >
-          <Icon icon={closeIcon} />
-        </button>
+        <CloseButton onClick={onClose} />
       </div>
       <div className="relative">
         <div className="relative grid aspect-4/3 max-h-[62dvh] w-full place-items-center overflow-hidden rounded-tile border border-hairline-soft bg-canvas text-text-muted">
