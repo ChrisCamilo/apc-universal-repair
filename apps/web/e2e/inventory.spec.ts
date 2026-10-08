@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Item } from "@apc/shared/items";
+import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 
-// The API answers GET /items with these items, so the list is the same on every run without a database.
+// The API answers GET /items with these items, newest first, so the list is the same on every run without a database.
 const ITEMS: Item[] = [
   item({ code: "W 712/95", name: "Filtro de óleo", category: "Motor", partBrand: "Mann", vehicleBrand: "Volkswagen", vehicleModel: "Gol", quantity: 8, minQuantity: 2, unitPriceCents: 3990, location: "A-2" }),
   item({ code: "BP-1020", name: "Pastilha de freio", category: "Freios", partBrand: "Cobreq", vehicleBrand: "Chevrolet", vehicleModel: null, position: "D", quantity: 2, minQuantity: 3, unitPriceCents: 123456, location: "B-10" }),
@@ -41,7 +42,7 @@ function item(fields: Partial<Item> & Pick<Item, "code" | "name">): Item {
  * @param page The test's page.
  */
 async function openInventory(page: Page) {
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: ITEMS } }));
+  await serveItems(page, ITEMS);
   await page.goto("/inventory");
   await expect(page.getByRole("table", { name: "Itens do estoque" })).toBeVisible();
 }
@@ -109,19 +110,17 @@ test("Web: the search finds items by name or part code", async ({ page }) => {
 
 // Adds an item through "Novo item" against an API that keeps what it is sent: saving the blank form names the
 // required fields, the filled-in form is posted with the writing rule applied, a toast confirms it and the list
-// shows the new item without a reload; then the item's pencil opens it filled in and an edit is patched. Save is on
+// shows the new item first without a reload; then the item's pencil opens it filled in and an edit is patched. Save is on
 // screen without scrolling at both screen sizes.
 test("Web: items are added and edited through the item form", async ({ page }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
-    if (route.request().method() === "POST") {
-      const sent = route.request().postDataJSON();
-      const saved = item({ ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null });
-      stock.push(saved);
-      return route.fulfill({ status: 201, json: saved });
-    }
-    return route.fulfill({ json: { items: stock } });
+    const sent = route.request().postDataJSON();
+    const saved = item({ ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null });
+    stock.unshift(saved);
+    return route.fulfill({ status: 201, json: saved });
   });
+  await serveItems(page, stock);
   await page.route("**/api/items/*", async (route) => {
     const sent = route.request().postDataJSON();
     const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
@@ -146,7 +145,7 @@ test("Web: items are added and edited through the item form", async ({ page }) =
   await expect(page.getByText("Item “Vela de ignição” cadastrado.")).toBeVisible();
   await expect(dialog).toBeHidden();
   await expect(page.locator("tbody tr")).toHaveCount(5);
-  await expect(page.locator("tbody tr").last()).toContainText("NGK-B7");
+  await expect(page.locator("tbody tr").first()).toContainText("NGK-B7");
 
   await page.getByRole("button", { name: "Editar Vela de ignição" }).click();
   const edit = page.getByRole("dialog", { name: "Editar item" });
@@ -154,7 +153,7 @@ test("Web: items are added and edited through the item form", async ({ page }) =
   await edit.getByLabel("Quantidade", { exact: true }).fill("9");
   await edit.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("Item “Vela de ignição” salvo.")).toBeVisible();
-  await expect(page.locator("tbody tr").last()).toContainText("9");
+  await expect(page.locator("tbody tr").first()).toContainText("9");
 });
 
 // Deletes an item against an API that keeps what it is sent: the row's trash opens a confirmation naming the item
@@ -163,7 +162,7 @@ test("Web: items are added and edited through the item form", async ({ page }) =
 test("Web: an item is deleted after confirming", async ({ page }) => {
   const stock = [...ITEMS];
   const deleted: string[] = [];
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: stock } }));
+  await serveItems(page, stock);
   await page.route("**/api/items/*", async (route) => {
     const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
     deleted.push(`${route.request().method()} ${stock[index].id}`);
@@ -203,7 +202,7 @@ test("Web: an item is deleted after confirming", async ({ page }) => {
 // menu, a click on a row opens nothing.
 test("Web: a row opens the item details, editable after Editar", async ({ page }) => {
   const stock = [...ITEMS];
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: stock } }));
+  await serveItems(page, stock);
   await page.route("**/api/items/*", async (route) => {
     const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
     stock[index] = { ...stock[index], ...route.request().postDataJSON() };
@@ -255,7 +254,7 @@ test("Web: item photos are added and removed from the list and the form", async 
   const stock = ITEMS.map((it, index) => (index === 0 ? { ...it, photos: [cover] } : it));
   const sent: string[][] = [];
   await page.route("**/api/photos/*", (route) => route.fulfill({ body: png, contentType: "image/png" }));
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: stock } }));
+  await serveItems(page, stock);
   await page.route("**/api/items/*", (route) => {
     const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
     stock[index] = { ...stock[index], ...route.request().postDataJSON() };
@@ -309,23 +308,9 @@ test("Web: item photos are added and removed from the list and the form", async 
 // one at a time; a vehicle brand narrows the vehicle models, each named with its brand; the position chips carry
 // their full names; and "Limpar filtros" brings every item back with an empty query.
 test("Web: the filters narrow the list through the API query", async ({ page }) => {
+  // The queries of the list's page; the request for every item, with no query, is left out.
   const queries: string[] = [];
-  await page.route(
-    (url) => url.pathname === "/api/items",
-    (route) => {
-      const query = new URL(route.request().url()).searchParams;
-      queries.push(query.toString());
-      const categories = query.getAll("category");
-      const status = query.get("status");
-      const items = ITEMS.filter(
-        (it) =>
-          (categories.length === 0 || categories.includes(it.category)) &&
-          (status !== "out" || it.quantity === 0) &&
-          (status !== "low" || (it.quantity > 0 && it.quantity <= it.minQuantity)),
-      );
-      return route.fulfill({ json: { items } });
-    },
-  );
+  await serveItems(page, ITEMS, (query) => query.has("pageSize") && queries.push(query.toString()));
   await page.goto("/inventory");
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(4);
@@ -337,10 +322,10 @@ test("Web: the filters narrow the list through the API query", async ({ page }) 
   await page.getByRole("option", { name: "Suspensão" }).click();
   await page.keyboard.press("Escape");
   await expect(menu.getByRole("button", { name: "N/A" }).first()).toHaveAttribute("title", "Posição não se aplica");
-  expect(queries.at(-1)).toBe("");
+  expect(queries.at(-1)).toBe("page=1&pageSize=25");
   await menu.getByRole("button", { name: "Aplicar" }).click();
   await expect(rows).toHaveCount(2);
-  expect(queries.at(-1)).toBe("category=Motor&category=Suspens%C3%A3o");
+  expect(queries.at(-1)).toBe("category=Motor&category=Suspens%C3%A3o&page=1&pageSize=25");
   await expect(page.getByRole("button", { name: "Filtros, 1 ativo" })).toBeVisible();
   await expect(page.getByTestId("inventory-count")).toHaveText("2 de 4 itens · 1 baixo · 1 esgotado");
 
@@ -374,18 +359,20 @@ test("Web: the filters narrow the list through the API query", async ({ page }) 
 // "Tentar de novo" loads the list once the API answers; a search that finds nothing offers "Limpar filtros", which
 // brings every item back; and an empty stock offers "Novo item", which opens the form.
 test("Web: the inventory shows loading, error and empty states", async ({ page }) => {
-  let answer: "slow" | "fail" | "items" | "empty" = "slow";
+  let answer: "slow" | "fail" | "items" = "slow";
   let release = () => {};
-  await page.route("**/api/items", async (route) => {
-    if (answer === "slow") {
-      await new Promise<void>((resolve) => (release = resolve));
-      return route.fulfill({ status: 500 });
-    }
-    if (answer === "fail") {
-      return route.fulfill({ status: 500 });
-    }
-    return route.fulfill({ json: { items: answer === "items" ? ITEMS : [] } });
-  });
+  const stock = [...ITEMS];
+  await serveItems(page, stock);
+  await page.route(
+    (url) => url.pathname === "/api/items",
+    async (route) => {
+      if (answer === "slow") {
+        await new Promise<void>((resolve) => (release = resolve));
+        return route.fulfill({ status: 500 });
+      }
+      return answer === "fail" ? route.fulfill({ status: 500 }) : route.fallback();
+    },
+  );
   await page.goto("/inventory");
   await expect(page.getByTestId("loading-row")).toHaveCount(5);
   await expect(page.getByRole("status", { name: "Carregando o estoque" })).toBeAttached();
@@ -405,9 +392,75 @@ test("Web: the inventory shows loading, error and empty states", async ({ page }
   await expect(page.locator("tbody tr")).toHaveCount(4);
   await expect(page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" })).toHaveValue("");
 
-  answer = "empty";
+  stock.splice(0);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Nenhum item cadastrado" })).toBeVisible();
   await page.getByRole("button", { name: "Novo item" }).last().click();
   await expect(page.getByRole("dialog", { name: "Novo item" })).toBeVisible();
+});
+
+// Pages through 60 items, newest first, against an API that pages what it is asked for: 25 per page by default, with
+// the range shown; page 2 asks for page 2; 50 per page keeps the first item that was showing on screen; a search goes
+// back to page 1; the user menu's "Itens por página" applies to the list at once; deleting the last item of the last
+// page goes to the page before; and a new item shows first on page 1.
+test("Web: the inventory list shows one page at a time", async ({ page }) => {
+  const stock = Array.from({ length: 51 }, (_, index) =>
+    item({ code: `P-${String(index + 1).padStart(3, "0")}`, name: `Peça ${index + 1}`, quantity: 5 }),
+  );
+  const queries: string[] = [];
+  await page.route("**/api/items", async (route) => {
+    const saved = item({ ...route.request().postDataJSON() });
+    stock.unshift(saved);
+    return route.fulfill({ status: 201, json: saved });
+  });
+  await page.route("**/api/items/*", async (route) => {
+    stock.splice(stock.findIndex((it) => route.request().url().endsWith(it.id)), 1);
+    return route.fulfill({ status: 204 });
+  });
+  await serveItems(page, stock, (query) => query.has("pageSize") && queries.push(query.toString()));
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  const pager = page.getByRole("navigation", { name: "Páginas do estoque" });
+  await expect(rows).toHaveCount(25);
+  await expect(page.getByText("1–25 de 51")).toBeVisible();
+  expect(queries.at(-1)).toBe("page=1&pageSize=25");
+
+  await pager.getByRole("button", { name: "Página 2" }).click();
+  await expect(rows.first()).toContainText("P-026");
+  expect(queries.at(-1)).toBe("page=2&pageSize=25");
+  await page.getByRole("radio", { name: "50" }).click();
+  await expect(rows).toHaveCount(50);
+  await expect(page.getByText("1–50 de 51")).toBeVisible();
+  await expect(rows.nth(25)).toContainText("P-026");
+
+  await pager.getByRole("button", { name: "Página 2" }).click();
+  await expect(rows).toHaveCount(1);
+  await page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" }).fill("Peça 1");
+  await expect(page.getByText(/^1–\d+ de \d+$/)).toBeVisible();
+  expect(queries.at(-1)).toBe("q=Pe%C3%A7a+1&page=1&pageSize=50");
+  await page.getByRole("button", { name: "Limpar busca" }).click();
+
+  await page.getByRole("button", { name: "Menu do usuário" }).click();
+  await page.getByRole("menuitemradio", { name: "100" }).click();
+  await page.keyboard.press("Escape");
+  await expect(rows).toHaveCount(51);
+  await expect(page.getByRole("radio", { name: "100" })).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("radio", { name: "25" }).click();
+  await pager.getByRole("button", { name: "Página 3" }).click();
+  await expect(rows).toHaveCount(1);
+  await page.getByRole("button", { name: "Excluir Peça 51" }).click();
+  await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
+  await expect(page.getByText("26–50 de 50")).toBeVisible();
+
+  await page.getByRole("button", { name: "Novo item" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Novo item" });
+  await dialog.getByLabel("Código da peça").fill("nova-1");
+  await dialog.getByLabel("Nome").fill("peça nova");
+  await dialog.getByRole("combobox", { name: "Categoria" }).fill("Motor");
+  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("Bosch");
+  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Fiat");
+  await dialog.getByLabel("Valor unitário (R$)").fill("10");
+  await dialog.getByRole("button", { name: "Salvar" }).click();
+  await expect(page.getByText("1–25 de 51")).toBeVisible();
+  await expect(rows.first()).toContainText("NOVA-1");
 });

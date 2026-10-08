@@ -12,8 +12,9 @@ import { prisma } from "../db/client.js";
 import { createData, itemWhere, toItem, updateData, WITH_PHOTOS } from "../items/items.js";
 import { removePhotoFiles } from "../photos/photos.js";
 
-// CRUD of inventory items. The list keeps the order the items were added in. A part code is unique: creating
-// or editing to a code another item uses is rejected with 409, naming that item, so the form can say which.
+// CRUD of inventory items. The list shows the newest items first, one page of them when a page size is asked, with
+// how many items match in all. A part code is unique: creating or editing to a code another item uses is rejected
+// with 409, naming that item, so the form can say which.
 // Deleting an item also deletes its photos' files.
 
 /**
@@ -49,12 +50,18 @@ export function registerItemRoutes(app: FastifyInstance) {
     "/items",
     { schema: { querystring: itemListQuerySchema, response: { 200: itemListResponseSchema } } },
     async (request) => {
-      const rows = await prisma.item.findMany({
-        where: itemWhere(request.query, prisma.item.fields.minQuantity),
-        orderBy: { createdAt: "asc" },
-        include: WITH_PHOTOS,
-      });
-      return { items: rows.map(toItem) };
+      const { page = 1, pageSize } = request.query;
+      const where = itemWhere(request.query, prisma.item.fields.minQuantity);
+      const [rows, total] = await prisma.$transaction([
+        prisma.item.findMany({
+          where,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          include: WITH_PHOTOS,
+          ...(pageSize && { skip: (page - 1) * pageSize, take: pageSize }),
+        }),
+        prisma.item.count({ where }),
+      ]);
+      return { items: rows.map(toItem), total };
     },
   );
 

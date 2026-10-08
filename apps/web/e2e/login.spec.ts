@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { TEST_USERS } from "@apc/shared/test-users";
+import { serveItems } from "./items.ts";
 
 const USER = TEST_USERS[0];
 
@@ -26,7 +27,7 @@ test("Web: the login screen shows the badge and the form", async ({ page }, test
 // get their messages, the refused login says so above the form and empties the password, and the accepted one
 // saves the session, which is still there after a reload, and goes on to the Dashboard.
 test("Web: the login checks the fields and the user, and saves the session", async ({ page }) => {
-  await page.route("**/api/items", (route) => route.fulfill({ json: { items: [] } }));
+  await serveItems(page, []);
   await page.goto("/login");
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByText(LOGIN_MESSAGES.username)).toBeVisible();

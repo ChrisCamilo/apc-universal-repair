@@ -7,9 +7,11 @@ import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { SessionUser } from '@apc/shared/auth';
 import { OPEN_ITEM_ON_ROW_STORAGE_KEY } from '@apc/shared/items';
+import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
+import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
 import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorderContext';
 import { UserMenu } from '../src/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/theme';
@@ -124,6 +126,17 @@ test('Mobile: the open-item-on-row choice is saved and comes back', async () => 
   expect(byName(again, 'Abrir item ao clicar na linha').props.accessibilityState).toMatchObject({ checked: false });
 });
 
+// Picks 50 items per page and checks it is saved on the device and comes back chosen when the menu is drawn again,
+// with 25 chosen until then.
+test('Mobile: the items per page default is saved and comes back', async () => {
+  const tree = await openMenu();
+  expect(byName(tree, '25').props.accessibilityState).toMatchObject({ checked: true });
+  await press(tree, '50');
+  expect(await themeStorage.getItem(PAGE_SIZE_STORAGE_KEY)).toBe('50');
+  const again = await openMenu();
+  expect(byName(again, '50').props.accessibilityState).toMatchObject({ checked: true });
+});
+
 // Picks "Sair" and checks it is the last item, set apart from the preferences by a divider, and hands the logout
 // to the owner.
 test('Mobile: Sair comes last, apart from the preferences, and logs out', async () => {
@@ -145,7 +158,9 @@ function ActiveTheme() {
 function Preferences({ children }: { children: React.ReactNode }) {
   return (
     <TabReorderContext.Provider value={useReorderChoice()}>
-      <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>{children}</OpenItemOnRowContext.Provider>
+      <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>
+        <PageSizeContext.Provider value={usePageSizeChoice()}>{children}</PageSizeContext.Provider>
+      </OpenItemOnRowContext.Provider>
     </TabReorderContext.Provider>
   );
 }

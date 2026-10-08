@@ -6,10 +6,11 @@ import React from 'react';
 import { Image, Modal, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { OPEN_ITEM_ON_ROW_STORAGE_KEY, type Item } from '@apc/shared/items';
+import { matchesSearch, OPEN_ITEM_ON_ROW_STORAGE_KEY, stockStatus, type Item } from '@apc/shared/items';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
+import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 // A photo the API saved, as items carry it.
@@ -52,12 +53,35 @@ function item(n: number, fields: Partial<Item> & Pick<Item, 'code' | 'name'>): I
 }
 
 /**
- * Answers the items request and renders the Inventory tab once they load.
- * @param items The items the API sends; the test items by default.
+ * Answers every items request from a list of items, as the API would: narrowed by the search, the categories and the
+ * stock status, one page at a time when a page size is asked, with how many match in all. Requests a test answers
+ * itself, with mockResolvedValueOnce, come first.
+ * @param stock The items in stock, newest first; read on every request.
+ */
+function answerItems(stock: Item[]) {
+  (fetch as jest.Mock).mockImplementation(async (url: string) => {
+    const query = new URL(url).searchParams;
+    const categories = query.getAll('category');
+    const status = query.get('status');
+    const matching = stock.filter(
+      (it) =>
+        matchesSearch(it, query.get('q') ?? '') &&
+        (categories.length === 0 || categories.includes(it.category)) &&
+        (!status || stockStatus(it.quantity, it.minQuantity) === status),
+    );
+    const size = Number(query.get('pageSize')) || matching.length;
+    const first = (Number(query.get('page') || 1) - 1) * size;
+    return { ok: true, json: () => Promise.resolve({ items: matching.slice(first, first + size), total: matching.length }) };
+  });
+}
+
+/**
+ * Answers the items requests from a list of items and renders the Inventory tab once they load.
+ * @param stock The items in stock; the test items by default.
  * @returns The rendered tree.
  */
-async function mount(items: Item[] = ITEMS) {
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items }) });
+async function mount(stock: Item[] = ITEMS) {
+  answerItems(stock);
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
@@ -148,19 +172,21 @@ test('Mobile: "Novo item" and the pencil open the item form, and a save reloads 
   expect(texts(tree)).toContain('Editar item');
   expect(dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')[0].props.value).toBe('W 712/95');
   (fetch as jest.Mock).mockClear();
-  (fetch as jest.Mock)
-    .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(ITEMS[0]) })
-    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(ITEMS[0]) });
   await ReactTestRenderer.act(async () => pressable('Salvar alterações').props.onPress());
-  expect(fetch).toHaveBeenCalledTimes(2);
-  expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items$/);
+  expect((fetch as jest.Mock).mock.calls.map(([url]) => url.replace(/^.*\/items/, '/items'))).toEqual([
+    `/items/${ITEMS[0].id}`,
+    '/items',
+    '/items?page=1&pageSize=25',
+  ]);
   expect(dialog()).toBeUndefined();
 });
 
 // Presses a card's trash and checks the confirmation names the item and its code, then confirms and checks the item
 // is deleted by its id, the list loads again without it and the confirmation closes.
 test('Mobile: the trash asks to confirm, and a delete reloads the list', async () => {
-  const tree = await mount();
+  const stock = [...ITEMS];
+  const tree = await mount(stock);
   const dialog = () => tree.root.findAllByType(Modal).find((modal) => modal.props.visible);
   const pressable = (name: string) =>
     tree.root.findAll(
@@ -172,9 +198,10 @@ test('Mobile: the trash asks to confirm, and a delete reloads the list', async (
   expect(texts(tree)).toContain('Excluir item?');
   expect(texts(tree)).toContain("Bomba d'água (BA-77) sai do estoque. Essa ação não pode ser desfeita.");
   (fetch as jest.Mock).mockClear();
-  (fetch as jest.Mock)
-    .mockResolvedValueOnce({ ok: true, status: 204 })
-    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS.slice(0, 2) }) });
+  (fetch as jest.Mock).mockImplementationOnce(async () => {
+    stock.splice(2, 1);
+    return { ok: true, status: 204 };
+  });
   const confirm = dialog()!.findAll(
     (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Excluir').length > 0,
   )[0];
@@ -206,7 +233,11 @@ test('Mobile: a card opens the item details while the option is on', async () =>
 });
 
 function Preferences({ children }: { children: React.ReactNode }) {
-  return <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>{children}</OpenItemOnRowContext.Provider>;
+  return (
+    <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>
+      <PageSizeContext.Provider value={usePageSizeChoice()}>{children}</PageSizeContext.Provider>
+    </OpenItemOnRowContext.Provider>
+  );
 }
 
 // Checks a card's thumbnail shows the item's cover from the API and opens its photos large; removing the photo there
@@ -226,9 +257,7 @@ test('Mobile: the thumbnail opens the item photos, saved as they change', async 
     );
   await ReactTestRenderer.act(async () => pressable('Remover esta foto')[0].props.onPress());
   (fetch as jest.Mock).mockClear();
-  (fetch as jest.Mock)
-    .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ ...ITEMS[0], photos: [] }) })
-    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ ...ITEMS[0], photos: [] }) });
   const remove = pressable('Remover').filter((n) => typeof n.type !== 'string');
   await ReactTestRenderer.act(async () => remove[remove.length - 1].props.onPress());
   const [photosUrl, photosInit] = (fetch as jest.Mock).mock.calls[0];
@@ -256,15 +285,13 @@ test('Mobile: the filters narrow the list through the API query', async () => {
   await ReactTestRenderer.act(async () => pressable('Categoria').props.onPress());
   await ReactTestRenderer.act(async () => pressable('Freios').props.onPress());
   (fetch as jest.Mock).mockClear();
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [ITEMS[1]] }) });
   await ReactTestRenderer.act(async () => pressable('Aplicar').props.onPress());
-  expect((fetch as jest.Mock).mock.calls[0][0]).toMatch(/\/items\?category=Freios$/);
+  expect((fetch as jest.Mock).mock.calls[0][0]).toMatch(/\/items\?category=Freios&page=1&pageSize=25$/);
   expect(cards()).toHaveLength(1);
   expect(texts(tree)).toContain('1 de 3 itens · 1 baixo · 1 esgotado');
 
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [] }) });
   await ReactTestRenderer.act(async () => pressable('Esgotado').props.onPress());
-  expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items\?category=Freios&status=out$/);
+  expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items\?category=Freios&status=out&page=1&pageSize=25$/);
   expect(texts(tree)).toContain('Nenhum item encontrado');
 
   // The link in the filter bar, ahead of the empty state's own "Limpar filtros".
@@ -283,8 +310,10 @@ test('Mobile: the filters narrow the list through the API query', async () => {
 // Holds the items request and checks the skeleton cards show with a loading announcement, then fails it and checks
 // the error state, whose "Tentar de novo" loads the list once the API answers.
 test('Mobile: the inventory shows loading, then the error state with a retry', async () => {
-  let fail: () => void = () => {};
-  (fetch as jest.Mock).mockImplementationOnce(() => new Promise((_resolve, reject) => (fail = () => reject(new Error('offline')))));
+  // Every items request waits until the test fails them all.
+  const pending: (() => void)[] = [];
+  const fail = () => pending.splice(0).forEach((reject) => reject());
+  (fetch as jest.Mock).mockImplementation(() => new Promise((_resolve, reject) => pending.push(() => reject(new Error('offline')))));
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
@@ -303,7 +332,7 @@ test('Mobile: the inventory shows loading, then the error state with a retry', a
 
   await ReactTestRenderer.act(async () => fail());
   expect(texts(tree!)).toContain('Não foi possível carregar o estoque');
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: ITEMS }) });
+  answerItems(ITEMS);
   const retry = tree!.root.find(
     (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Tentar de novo').length > 0,
   );
@@ -334,4 +363,25 @@ test('Mobile: the empty states offer to clear the filters or add an item', async
   );
   await ReactTestRenderer.act(async () => add[add.length - 1].props.onPress());
   expect(empty.root.findAllByType(Modal).some((modal) => modal.props.visible)).toBe(true);
+});
+
+// Lists 30 items and checks the first page shows 25 with the pagination asking the API for page 1, the second page
+// asks for page 2 and shows the other 5, and a search goes back to page 1.
+test('Mobile: the inventory list shows one page at a time', async () => {
+  const stock = Array.from({ length: 30 }, (_, index) =>
+    item(index + 10, { code: `P-${String(index + 1).padStart(3, '0')}`, name: `Peça ${index + 1}`, quantity: 5 }),
+  );
+  const tree = await mount(stock);
+  const cards = () => tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string');
+  expect(cards()).toHaveLength(25);
+  expect(texts(tree)).toContain('1–25 de 30');
+  const pageTwo = tree.root.find((n) => n.props.accessibilityLabel === 'Página 2' && typeof n.props.onPress === 'function');
+  (fetch as jest.Mock).mockClear();
+  await ReactTestRenderer.act(async () => pageTwo.props.onPress());
+  expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toMatch(/\/items\?page=2&pageSize=25$/);
+  expect(cards()).toHaveLength(5);
+  expect(texts(tree)).toContain('26–30 de 30');
+
+  await ReactTestRenderer.act(async () => tree.root.findByType(TextInput).props.onChangeText('Peça 3'));
+  expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toMatch(/\/items\?q=Pe%C3%A7a\+3&page=1&pageSize=25$/);
 });

@@ -58,6 +58,20 @@ test("Shared: list filters accept one or several values", () => {
   assert.equal(itemListQuerySchema.safeParse({ status: "ok" }).success, false);
 });
 
+// Reads the page and the page size as they come in a URL, and checks only 25, 50 and 100 are page sizes and pages
+// start at 1.
+test("Shared: the list query takes a page of 25, 50 or 100 items", () => {
+  assert.deepEqual(itemListQuerySchema.parse({ page: "2", pageSize: "50" }), {
+    ...itemListQuerySchema.parse({}),
+    page: 2,
+    pageSize: 50,
+  });
+  for (const pageSize of ["10", "30", "200", "abc"]) {
+    assert.equal(itemListQuerySchema.safeParse({ pageSize }).success, false, pageSize);
+  }
+  assert.equal(itemListQuerySchema.safeParse({ page: "0", pageSize: "25" }).success, false);
+});
+
 // Requires the name, code, category, brands and a price over zero, and leaves the rest optional.
 test("Shared: new items need the required fields and a positive price", () => {
   const valid = { code: "w 712/95", name: "Filtro de óleo", category: "Motor", partBrand: "Mann", vehicleBrand: "Volkswagen", unitPriceCents: 3990 };

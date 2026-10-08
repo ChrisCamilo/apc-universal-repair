@@ -62,7 +62,7 @@ function part(fields: Pick<Item, 'code' | 'name' | 'vehicleBrand' | 'vehicleMode
  * @returns The rendered screen.
  */
 async function renderWithParts() {
-  vi.mocked(globalThis.fetch).mockResolvedValue(new Response(JSON.stringify({ items: PARTS })))
+  vi.mocked(globalThis.fetch).mockResolvedValue(new Response(JSON.stringify({ items: PARTS, total: PARTS.length })))
   const screen = await render(<CatalogTab />)
   await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
   await new Promise((resolve) => setTimeout(resolve, 0))
@@ -78,7 +78,7 @@ beforeAll(async () => {
 
 // No API runs during these tests: the inventory request answers with no parts unless a test gives its own.
 beforeEach(() => {
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ items: [] })))
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ items: [], total: 0 })))
 })
 
 afterEach(async () => {

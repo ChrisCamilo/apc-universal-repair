@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PAGE_SIZES } from "../pagination/pagination.ts";
 import { ITEM_PHOTO_LIMIT } from "../photos/photos.ts";
 
 // Inventory items as the API sends and receives them, and the rules web, mobile and the API apply alike:
@@ -65,6 +66,13 @@ export const itemListQuerySchema = z.object({
   color: manyValues,
   location: manyValues,
   status: z.enum(ITEM_STATUSES).optional(),
+  /** Page to send, from 1; only with pageSize. */
+  page: z.coerce.number().int().min(1).optional(),
+  /** Items per page, one of PAGE_SIZES; without it every matching item is sent. */
+  pageSize: z.coerce
+    .number()
+    .refine((size) => (PAGE_SIZES as readonly number[]).includes(size), `Must be one of ${PAGE_SIZES.join(", ")}.`)
+    .optional(),
 });
 /**
  * A saved photo of an item: its id, and where the API serves the original and the thumbnail, as paths on the API
@@ -91,7 +99,8 @@ export const itemSchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
-export const itemListResponseSchema = z.object({ items: z.array(itemSchema) });
+/** A list of items, newest first: one page of them when a page size was asked, and how many match in all. */
+export const itemListResponseSchema = z.object({ items: z.array(itemSchema), total: z.int().min(0) });
 export const itemUpdateSchema = itemCreateSchema.partial();
 /** The "doesn't apply" value of position, side and color, the default when nothing is chosen. */
 export const NOT_APPLICABLE = "N/A";

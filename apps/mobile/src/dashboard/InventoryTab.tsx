@@ -4,7 +4,6 @@ import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import {
   ITEM_STATUSES,
   itemDetails,
-  matchesSearch,
   resultSummary,
   STOCK_STATUS_LABELS,
   stockStatus,
@@ -13,6 +12,7 @@ import {
 } from '@apc/shared/items';
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters';
 import { EMPTY_ITEM_FILTERS, itemFilterRows, itemListQuery } from '@apc/shared/item-filters';
+import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination';
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { scales } from '@apc/shared/theme';
 import { API_URL } from '../api';
@@ -27,19 +27,22 @@ import { DeleteItemDialog } from '../inventory/DeleteItemDialog';
 import { ItemFormDialog } from '../inventory/ItemFormDialog';
 import { pickPhotos, savePhotos } from '../inventory/photos';
 import { useItems } from '../inventory/useItems';
+import { Pagination } from '../Pagination';
 import { Panel } from '../Panel';
 import { Skeleton } from '../Skeleton';
 import { Spinner } from '../Spinner';
 import { SearchField } from '../TextField';
 import { NumericReadout, Text } from '../Typography';
 import { useOpenItemOnRow } from './openItemOnRowContext';
+import { usePageSize } from './pageSizeContext';
 
 // The Inventory tab, the same as the web: every item as a card, a search by name or part code, and a counter
 // of the items shown, the total and the stock alerts. Low and out-of-stock cards are tinted by the table.
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
 // the list loads again once an item is saved or deleted. While "Abrir item ao clicar na linha" is on in the user
 // menu, a tap on a card opens the item's details. The Filtros menu, the stock status chips (one at a time) and
-// "Limpar filtros" narrow the list the same as the web, sent to the API as the list query. While the items load,
+// "Limpar filtros" narrow the list the same as the web, sent to the API as the list query with the search, and the
+// list shows one page of what matches, newest first, the size set in the user menu, moving pages as the web does. While the items load,
 // skeleton cards hold their place; when nothing is in stock, the empty state offers "Novo item", and when the search
 // or the filters leave nothing, it offers to clear them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and opens its photos
 // in the ImageViewer, where each photo removed, changed or added is saved at once and the list follows.
@@ -130,12 +133,22 @@ function rowStatus(item: Item): { tone: 'warn' | 'danger'; label: string } | und
 export function InventoryTab() {
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS);
   const [status, setStatus] = useState<ItemStatus | null>(null);
-  const query = itemListQuery(filters, status);
-  // Every item, for the counter, the filter options and the form; and the items the filters let through.
-  const state = useItems();
-  const filtered = useItems(query, query !== '');
-  const listed = query ? filtered : state;
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const { pageSize: defaultSize } = usePageSize();
+  const [pageSize, setPageSize] = useState(defaultSize);
+  // A new default from the user menu also applies to the list on screen, keeping its first item in view.
+  const [appliedDefault, setAppliedDefault] = useState(defaultSize);
+  if (appliedDefault !== defaultSize) {
+    setAppliedDefault(defaultSize);
+    setPageSize(defaultSize);
+    setPage(pageForSize(page, pageSize, defaultSize));
+  }
+  const narrowed = search.trim() !== '' || itemListQuery(filters, status) !== '';
+  // Every item, for the counter, the filter options and the form; and the page of the items the search and the
+  // filters let through.
+  const state = useItems();
+  const listed = useItems(itemListQuery(filters, status, { search, page, pageSize }));
   const { opensOnRow } = useOpenItemOnRow();
   // The item form: closed, open on a new item, an item to edit or an item's details. Each opening starts a new form.
   const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; session: number }>({
@@ -147,22 +160,27 @@ export function InventoryTab() {
   // The item whose photos the viewer shows, while it is open, with the photos on screen.
   const [viewer, setViewer] = useState<{ item: Item; photos: UploadPhoto[] }>();
   const items = state.status === 'ready' ? state.items : [];
-  const shown = listed.status === 'ready' ? listed.items.filter((item) => matchesSearch(item, search)) : [];
-
-  const narrowed = search.trim() !== '' || query !== '';
+  const shown = listed.status === 'ready' ? listed.items : [];
   const failed = state.status === 'error' || listed.status === 'error';
 
-  /** Turns off the search, the filters and the stock status, to show every item again. */
-  const clearAll = () => {
-    setSearch('');
-    setFilters(EMPTY_ITEM_FILTERS);
-    setStatus(null);
+  /** Changes the search, the filters or the stock status, going back to the first page. */
+  const narrow = (change: () => void) => {
+    change();
+    setPage(1);
   };
 
-  /** Loads every item and the filtered items again, after one was saved or deleted. */
+  /** Turns off the search, the filters and the stock status, to show every item again. */
+  const clearAll = () =>
+    narrow(() => {
+      setSearch('');
+      setFilters(EMPTY_ITEM_FILTERS);
+      setStatus(null);
+    });
+
+  /** Loads every item and the page on screen again, after one was saved or deleted. */
   const reload = () => {
     state.reload();
-    filtered.reload();
+    listed.reload();
   };
 
   /**
@@ -192,7 +210,11 @@ export function InventoryTab() {
   return (
     <Panel>
       <View style={TAB_STYLE}>
-        <SearchField label="Procure pelo nome ou código da peça" value={search} onValueChange={setSearch} />
+        <SearchField
+          label="Procure pelo nome ou código da peça"
+          value={search}
+          onValueChange={(value) => narrow(() => setSearch(value))}
+        />
         <Button onPress={() => openForm()}>Novo item</Button>
         <View style={FILTERS_STYLE}>
           <FilterMenu
@@ -200,20 +222,22 @@ export function InventoryTab() {
             title="Filtrar estoque"
             rows={(draft) => itemFilterRows(items, draft)}
             values={filters}
-            onApply={setFilters}
+            onApply={(values) => narrow(() => setFilters(values))}
           />
           <FilterChipGroup
             label="Situação do estoque"
             options={STATUS_OPTIONS}
             value={status}
-            onValueChange={(value) => setStatus(value as ItemStatus | null)}
+            onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
           />
           <ClearFilters
             active={activeFilterCount(filters) > 0 || status !== null}
-            onClear={() => {
-              setFilters(EMPTY_ITEM_FILTERS);
-              setStatus(null);
-            }}
+            onClear={() =>
+              narrow(() => {
+                setFilters(EMPTY_ITEM_FILTERS);
+                setStatus(null);
+              })
+            }
           />
         </View>
         {failed && (
@@ -226,7 +250,7 @@ export function InventoryTab() {
         {!failed && listed.status === 'loading' && <LoadingRows />}
         {!failed && state.status === 'ready' && listed.status === 'ready' && (
           <>
-            <NumericReadout tone="muted">{resultSummary(shown.length, items)}</NumericReadout>
+            <NumericReadout tone="muted">{resultSummary(listed.status === 'ready' ? listed.total : 0, items)}</NumericReadout>
             <DataTable
               label="Itens do estoque"
               columns={[
@@ -257,6 +281,15 @@ export function InventoryTab() {
                 )
               }
             />
+            <Pagination
+              label="Páginas do estoque"
+              page={page}
+              pageSize={pageSize}
+              total={listed.total}
+              pageSizes={PAGE_SIZES}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </>
         )}
       </View>
@@ -268,6 +301,10 @@ export function InventoryTab() {
         items={items}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
+          // A new item is the newest, first on the first page.
+          if (!form.item) {
+            setPage(1);
+          }
           setForm((current) => ({ ...current, open: false }));
           reload();
         }}
@@ -287,6 +324,10 @@ export function InventoryTab() {
         item={removing}
         onClose={() => setRemoving(undefined)}
         onDeleted={() => {
+          // The last item of a page leaves it empty: the page before takes its place.
+          if (shown.length === 1 && page > 1) {
+            setPage(page - 1);
+          }
           setRemoving(undefined);
           reload();
         }}

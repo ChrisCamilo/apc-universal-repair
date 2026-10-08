@@ -100,11 +100,15 @@ test("Shared: position and side chips name their values in full", () => {
 });
 
 // Writes the query of two categories, a vehicle model and the low stock status, and checks each value is its own
-// parameter; with nothing chosen, the query is empty.
+// parameter; with nothing chosen, the query is empty; the search and the page follow the filters.
 test("Shared: the list query sends each chosen value", () => {
   const filters = { ...EMPTY_ITEM_FILTERS, category: ["Freios", "Motor"], vehicleModel: ["Chevrolet|Opala 4.1"] };
   assert.equal(itemListQuery(filters, "low"), "category=Freios&category=Motor&vehicleModel=Chevrolet%7COpala+4.1&status=low");
   assert.equal(itemListQuery(EMPTY_ITEM_FILTERS, null), "");
+  assert.equal(
+    itemListQuery(EMPTY_ITEM_FILTERS, null, { search: " vela ", page: 2, pageSize: 50 }),
+    "q=vela&page=2&pageSize=50",
+  );
 });
 
 // Lays out the menu with a Ford chosen and checks the seven rows in order, position and side sharing a row of chips,

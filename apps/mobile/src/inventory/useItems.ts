@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { itemListResponseSchema, type Item } from '@apc/shared/items';
 import { API_URL } from '../api';
 
-// Loads the inventory items from the API, every item or those a list query lets through, and again on reload, e.g.
+// Loads the inventory items from the API, every item or the page a list query asks for, and again on reload, e.g.
 // after an item is saved, the same as the web. The list screen loads every item too, so the counter can say how many
 // there are in all and how many are low or out of stock, and the filters and the form can offer what is in stock.
 
-/** Where the items request stands: still loading, loaded with its items, or failed. */
-export type ItemsState = { status: 'loading' } | { status: 'ready'; items: Item[] } | { status: 'error' };
+/** Where the items request stands: still loading, loaded with its items and how many match in all, or failed. */
+export type ItemsState = { status: 'loading' } | { status: 'ready'; items: Item[]; total: number } | { status: 'error' };
 
 /**
  * Fetches the items from GET /items and checks them against the shared schema.
@@ -27,7 +27,7 @@ export function useItems(query = '', enabled = true): ItemsState & { reload: () 
     const request = new AbortController();
     fetch(query ? `${API_URL}/items?${query}` : `${API_URL}/items`, { signal: request.signal })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
-      .then((body) => setState({ status: 'ready', items: itemListResponseSchema.parse(body).items }))
+      .then((body) => setState({ status: 'ready', ...itemListResponseSchema.parse(body) }))
       .catch(() => {
         if (!request.signal.aborted) {
           setState({ status: 'error' });

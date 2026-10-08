@@ -26,6 +26,16 @@ test("API: list filters reject unknown status values", async () => {
   assert.equal(status.json().details[0].field, "status");
 });
 
+// Asks for a page size the list doesn't offer and for page 0, and checks both are rejected, naming the field.
+test("API: the list takes only the offered page sizes", async () => {
+  const size = await app.inject({ method: "GET", url: "/items?page=1&pageSize=30" });
+  assert.equal(size.statusCode, 400);
+  assert.equal(size.json().details[0].field, "pageSize");
+  const page = await app.inject({ method: "GET", url: "/items?page=0&pageSize=25" });
+  assert.equal(page.statusCode, 400);
+  assert.equal(page.json().details[0].field, "page");
+});
+
 // Edits and deletes with an id that isn't a UUID and checks they are rejected before reaching the database.
 test("API: item routes reject ids that aren't UUIDs", async () => {
   const edit = await app.inject({ method: "PATCH", url: "/items/123", payload: { name: "Junta" } });
