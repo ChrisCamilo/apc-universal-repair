@@ -1,6 +1,11 @@
 // Filter behavior shared by the web and mobile Select, FilterChip and FilterMenu, so both platforms
 // summarize, toggle and count filters the same way.
 
+/**
+ * The FilterMenu panel's widest size and the room it leaves around it on a narrow screen, in spacing units (scales.space
+ * s1, 4px): 360px, or the screen less 80px.
+ */
+export const FILTER_PANEL_SPACING = { inset: 20, width: 90 };
 /** Options a Select or Combobox list shows at once; the rest are reached by scrolling. */
 export const SELECT_VISIBLE_OPTIONS = 5;
 
