@@ -58,7 +58,7 @@ test.beforeEach(async ({ page }) => {
 // out-of-stock rows tinted.
 test("Web: the inventory lists every item with its stock alerts", async ({ page }, testInfo) => {
   await openInventory(page);
-  await expect(page.getByTestId("inventory-count")).toHaveText("4 de 4 itens · 1 baixo · 1 esgotado");
+  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("4 de 4 itens · 1 baixo · 1 esgotado");
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(4);
   await expect(rows.nth(1)).toHaveAttribute("data-status", "warn");
@@ -96,7 +96,7 @@ test("Web: the search finds items by name or part code", async ({ page }) => {
   await search.fill("w712");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Filtro de óleo");
-  await expect(page.getByTestId("inventory-count")).toHaveText("1 de 4 itens · 1 baixo · 1 esgotado");
+  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("1 de 4 itens · 1 baixo · 1 esgotado");
 
   await search.fill("AGUA");
   await expect(rows).toHaveCount(1);
@@ -104,7 +104,7 @@ test("Web: the search finds items by name or part code", async ({ page }) => {
 
   await search.fill("parafuso");
   await expect(page.getByRole("heading", { name: "Nenhum item encontrado" })).toBeVisible();
-  await expect(page.getByTestId("inventory-count")).toHaveText("0 de 4 itens · 1 baixo · 1 esgotado");
+  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("0 de 4 itens · 1 baixo · 1 esgotado");
 
   await page.getByRole("button", { name: "Limpar busca" }).click();
   await expect(rows).toHaveCount(4);
@@ -529,7 +529,7 @@ test("Web: an item is deleted after confirming", async ({ page }) => {
   await expect(page.getByText("Item “Bomba d'água” excluído.")).toBeVisible();
   await expect(dialog).toBeHidden();
   await expect(rows).toHaveCount(3);
-  await expect(page.getByTestId("inventory-count")).toHaveText("3 de 3 itens · 1 baixo · 0 esgotados");
+  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("3 de 3 itens · 1 baixo · 0 esgotados");
   expect(deleted).toEqual([`DELETE ${id}`]);
 });
 
@@ -693,7 +693,7 @@ test("Web: the filters narrow the list through the API query", async ({ page }) 
   await expect(rows).toHaveCount(2);
   expect(queries.at(-1)).toBe("category=Motor&category=Suspens%C3%A3o&page=1&pageSize=25");
   await expect(page.getByRole("button", { name: "Filtros, 1 ativo" })).toBeVisible();
-  await expect(page.getByTestId("inventory-count")).toHaveText("2 de 4 itens · 1 baixo · 1 esgotado");
+  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("2 de 4 itens · 1 baixo · 1 esgotado");
 
   const low = page.getByRole("button", { name: "Estoque baixo" });
   const out = page.getByRole("button", { name: "Esgotado" });
@@ -740,7 +740,7 @@ test("Web: the inventory shows loading, error and empty states", async ({ page }
     },
   );
   await page.goto("/inventory");
-  await expect(page.getByTestId("loading-row")).toHaveCount(5);
+  await expect(page.getByTestId("inventory.inventory-tab.loading.row")).toHaveCount(5);
   await expect(page.getByRole("status", { name: "Carregando o estoque" })).toBeAttached();
 
   answer = "fail";
