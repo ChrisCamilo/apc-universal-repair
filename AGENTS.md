@@ -225,8 +225,11 @@ A component's look lives in a recipe in its own `<Component>.styles.ts`, beside 
 
 ### Files
 
-- **One style file per component:** `LoginScreen.tsx` has `LoginScreen.styles.ts` beside it, next to its test and story. A file with several components keeps them all in its one style file, the internal ones as slots of the main one.
-- **Shared recipes:** a pattern three or more components repeat goes in `styles/shared.ts` of each app.
+- **One style file per component:** `LoginScreen.tsx` has `LoginScreen.styles.ts` beside it, next to its test and story. A file with several components keeps them all in its one style file: an internal component is a slot of the main one, and each exported component has its own recipe and id (`FilterChip` and `FilterChipGroup`, `Menu` and `MenuItem`).
+- **Shared recipes:** a pattern three or more components repeat goes in `styles/shared.ts` of each app, under the same names on both:
+  - Web: `DISPLAY_LABEL` (the display face in uppercase), `FIELD` (a field's frame, border by state, input, end button, list and option) and `menuItem`.
+  - Mobile: `displayLabel()`, `fieldStyles()`, `glow()`, `menuItemStyles()` and `roundStyles()` (the × and the photo viewer's arrows).
+  - A shared recipe gives classes or styles only. The component puts them in its own recipe (web) or spreads them in its build (mobile), so the elements keep their component's ids.
 - **The tools:**
   - Web: `apps/web/src/styles/tv.ts` gives `tv()`, which knows the token classes, and `recipe()`.
   - Mobile: `apps/mobile/src/styles/createStyles.ts` gives `createStyles()`.
@@ -270,6 +273,8 @@ const { styles, ids } = useStyles()
 - **Elements and states:** each element is a key with a path in `slots`, and so an id. A state is a separate key named `<element><State>` (`partChosen`, `partPressed`), added in a style array, with the same state names as the web. A key with no element of its own, such as a ScrollView's `content`, has no path.
 - **One `styles` object:** styles that don't depend on the theme go in the same call, so a component has one `styles` object.
 - **A slot that styles another component** passes only its style, `<Panel style={styles.brand}>`. That component's view keeps its own id.
+- **Values known only at run time** go last in the array, e.g. the menu's place under its trigger: `[styles.popover, { top, right, width }]`.
+- **Tests read the styles flattened:** a style is an array now, so a test reads it with `StyleSheet.flatten(node.props.style)`.
 
 ### Values
 
@@ -282,7 +287,7 @@ const { styles, ids } = useStyles()
 
 Every styled element carries a style id, in `data-testid` on web and `testID` on mobile: the same string for the same element on both platforms. The recipe gives it along with the styles, so a component never writes one by hand.
 
-- **Format:** `<scope>.<component>[.<slot>…]`, in kebab-case, with a dot for each level. The component is its file's name in kebab-case (`ItemFormDialog` → `item-form-dialog`), and the slots follow how the elements nest inside it, from the outside in. A wrapper that only lays out its children (the web login's `layout`) has its own id but adds no level to theirs, so an element has the same id on web and mobile even where one platform needs an extra wrapper. Examples: `common.dialog.header.close`, `inventory.item-form-dialog.fields.code`, `catalog.part-results.list.part.line.code`.
+- **Format:** `<scope>.<component>[.<slot>…]`, in kebab-case, with a dot for each level. The component is its file's name in kebab-case (`ItemFormDialog` → `item-form-dialog`), and the slots follow how the elements nest inside it, from the outside in. A wrapper that only lays out or places its children (the web login's `layout`, the web combobox's `anchor`) or only draws around them (a mobile field's focus `ring`) has its own id but adds no level to theirs, so an element has the same id on web and mobile even where one platform needs an extra wrapper. Examples: `common.dialog.header.close`, `inventory.item-form-dialog.fields.code`, `catalog.part-results.list.part.line.code`.
 - **It names a kind of element, not one instance:** every row of a list shares its id, and tests tell rows apart by text or role. That is why it isn't an HTML `id`.
 - **A component inside another keeps its own id:** the × in a dialog is `common.close-button`, inside `common.dialog.header`.
 - **Scopes** (`STYLE_SCOPES` in `@apc/shared/style-ids`). The scope follows the area that owns the component, not its folder:
