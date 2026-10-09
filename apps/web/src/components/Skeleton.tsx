@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { skeleton } from './Skeleton.styles.ts'
+import { skeleton, skeletonBox } from './Skeleton.styles.ts'
 
 // A placeholder block in the shape of what is still loading, e.g. tree rows or the detail panel: a soft
 // hairline fill that pulses gently, standing still with reduced motion. Lines are pills, blocks take the tile
@@ -23,7 +23,7 @@ export function Skeleton({ shape = 'line', width = '100%', height, className }: 
       data-skeleton={shape}
       className={classes.base({ class: className })}
       data-testid={ids.base}
-      style={{ width, height: shape === 'circle' ? width : height }}
+      style={skeletonBox(shape, width, height)}
     />
   )
 }

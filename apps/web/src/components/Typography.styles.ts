@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the text primitives, on the type scale of @apc/shared/typography: the display face, colors and tracking
@@ -51,3 +52,14 @@ export const text = recipe(
   tv({ slots: { base: 'm-0 font-body leading-relaxed' }, variants: { size: SIZE, tone: TONE } }),
   { base: '' },
 )
+
+/**
+ * Builds the style that cuts text after a number of lines, under the caller's own style.
+ * @param lines Lines to keep; undefined keeps every line.
+ * @param style The caller's style, which wins.
+ * @returns The text's style.
+ */
+export function textClamp(lines: number | undefined, style?: CSSProperties): CSSProperties {
+  const clamp: CSSProperties = lines ? { display: '-webkit-box', WebkitLineClamp: lines, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : {}
+  return { ...clamp, ...style }
+}

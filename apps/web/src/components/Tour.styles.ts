@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the guided tour: an accent outline around the step's target with the rest of the screen dimmed around
@@ -33,3 +34,21 @@ export const tour = recipe(
     buttons: 'card.actions.buttons',
   },
 )
+
+/**
+ * Places the step's card on the screen.
+ * @param card Where the card goes and how wide it is, in px.
+ * @returns The card's place and width.
+ */
+export function cardBox(card: { x: number; y: number; width: number }): CSSProperties {
+  return { left: card.x, top: card.y, width: card.width }
+}
+
+/**
+ * Places the spotlight around the step's target.
+ * @param spot The target's box on the screen, in px.
+ * @returns The spotlight's place and size.
+ */
+export function spotBox(spot: { x: number; y: number; width: number; height: number }): CSSProperties {
+  return { left: spot.x, top: spot.y, width: spot.width, height: spot.height }
+}
