@@ -50,7 +50,7 @@ export const ErrorStates: Story = {
 }
 export const Skeletons: Story = {
   render: () => (
-    <div className="grid max-w-4xl grid-cols-[minmax(0,1fr)_minmax(0,330px)] gap-3 p-6 max-[720px]:grid-cols-1">
+    <div className="grid max-w-4xl grid-cols-[minmax(0,1fr)_minmax(0,330px)] gap-3 p-6 max-card:grid-cols-1">
       <Panel aria-busy="true" className="grid content-start gap-3">
         <Spinner size="sm" label="Carregando catálogo" className="text-text-muted" />
         {[70, 55, 62, 48, 66].map((width, i) => (

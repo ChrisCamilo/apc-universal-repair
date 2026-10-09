@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -131,7 +132,7 @@ test('Web: the menu fits the screen under its trigger', async () => {
 
 // Opens the menu on a 360×780 phone and checks the four themes sit below the "Tema" label, all inside the menu.
 test('Web: on a phone the theme choice sits below its label and fits the menu', async () => {
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
     const screen = await render(<UserMenu onTutorial={() => {}} />)
     await screen.getByRole('button', { name: 'Menu do usuário' }).click()
@@ -142,7 +143,7 @@ test('Web: on a phone the theme choice sits below its label and fits the menu', 
     expect(choice.left).toBeGreaterThanOrEqual(menu.left)
     expect(choice.right).toBeLessThanOrEqual(menu.right)
   } finally {
-    await page.viewport(1280, 720)
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   }
 })
 
@@ -157,12 +158,12 @@ test('Web: the user badge shows the initials, and the username only on wider scr
   expect(getComputedStyle(initials).color).toBe(rgb(colors.onAccent))
   expect(initials.getAttribute('aria-hidden')).toBe('true')
   await expect.element(screen.getByText('christian.camilo')).toBeVisible()
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
     await expect.element(screen.getByText('christian.camilo')).not.toBeVisible()
     await expect.element(screen.getByText('CC')).toBeVisible()
   } finally {
-    await page.viewport(1280, 720)
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   }
 })
 

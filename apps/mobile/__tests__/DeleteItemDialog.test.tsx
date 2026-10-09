@@ -7,6 +7,7 @@ import { Modal, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Item } from '@apc/shared/items';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { DeleteItemDialog } from '../src/inventory/DeleteItemDialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -34,7 +35,7 @@ const FILTER: Item = {
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 // A phone's screen with no notch, so the toast has its insets.
-const SAFE_AREA = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 
 /**
  * Finds the pressable that shows a text.

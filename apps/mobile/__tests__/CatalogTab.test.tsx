@@ -7,6 +7,7 @@ import { Dimensions, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { ENGINE_SHEETS } from '@apc/shared/catalog';
 import type { Item } from '@apc/shared/items';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { CatalogTab } from '../src/dashboard/CatalogTab';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -170,7 +171,7 @@ test('Mobile: brand tiles sit two to a row on a phone and four on a tablet', asy
       .findAll((n) => typeof n.type === 'string' && StyleSheet.flatten(n.props.style)?.flexDirection === 'row')
       .map((row) => row.findAll((n) => typeof n.type === 'string' && n.props.accessibilityRole === 'radio').length);
 
-  await screen(390, 844);
+  await screen(MOBILE_DESIGN_WIDTH, MOBILE_DESIGN_HEIGHT);
   const tree = await mount('gt4', 'day');
   expect(rows(tree)).toEqual([2, 2]);
   expect(byRole(tree, 'tree', 'Modelos Chevrolet').props.style).toMatchObject({ maxHeight: 384 });

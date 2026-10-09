@@ -1,6 +1,7 @@
 import { SESSION_STORAGE_KEY, type SessionUser } from '@apc/shared/auth'
 import { OPEN_ITEM_ON_ROW_STORAGE_KEY } from '@apc/shared/items'
 import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/shared/screens'
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme'
 import { useState, type ReactNode } from 'react'
@@ -24,7 +25,7 @@ beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 beforeEach(() => {

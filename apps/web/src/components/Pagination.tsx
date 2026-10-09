@@ -68,7 +68,7 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
           }}
         />
       </div>
-      <NumericReadout tone="muted" aria-live="polite" className="ms-auto max-[720px]:ms-0">
+      <NumericReadout tone="muted" aria-live="polite" className="ms-auto max-card:ms-0">
         {pageRange(page, pageSize, total)}
       </NumericReadout>
       <nav aria-label={label} className="flex flex-wrap gap-1">

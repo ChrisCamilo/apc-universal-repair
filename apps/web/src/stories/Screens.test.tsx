@@ -1,4 +1,5 @@
 import { createMockAuth } from '@apc/shared/auth'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { TEST_USERS } from '@apc/shared/test-users'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test } from 'vitest'
@@ -16,8 +17,8 @@ import storiesSource from './Screens.stories.tsx?raw'
 const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}, removeItem: async () => {} }, TEST_USERS)
 // The minimum supported sizes from AGENTS.md.
 const SIZES = [
-  { name: 'desktop', width: 1280, height: 720 },
-  { name: 'phone', width: 360, height: 780 },
+  { name: 'desktop', width: MIN_DESKTOP_WIDTH, height: MIN_DESKTOP_HEIGHT },
+  { name: 'phone', width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT },
 ]
 const root = document.documentElement
 
@@ -56,7 +57,7 @@ beforeAll(() => {
 })
 
 afterEach(async () => {
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 // Reads the screens, their stories and the login screen they show as written, and checks they set no inline
@@ -77,7 +78,7 @@ for (const style of STYLES) {
       const { colors } = themes[style][mode]
       root.dataset.style = style
       root.dataset.mode = mode
-      await page.viewport(1280, 720)
+      await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
       const screen = await render(
         <>
           <LoginScreen auth={AUTH} onLoggedIn={() => {}} />

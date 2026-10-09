@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Item } from '@apc/shared/items';
 import { withEntry, withoutEntry, type ItemLists } from '@apc/shared/lists';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { ManageListsDialog } from '../src/inventory/ManageListsDialog';
@@ -28,7 +29,7 @@ const LISTS = itemListsOf([
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 // A phone's screen with no notch, so the toast has its insets.
-const SAFE_AREA = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 
 /**
  * Fills in an item with the fields a test doesn't look at.

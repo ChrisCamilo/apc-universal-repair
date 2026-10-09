@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Item } from '@apc/shared/items'
 import { withEntry, withoutEntry, type ItemLists } from '@apc/shared/lists'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { itemListsOf } from '@apc/shared/test-lists'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
@@ -65,12 +66,12 @@ beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 afterEach(async () => {
   vi.restoreAllMocks()
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 for (const style of STYLES) {
@@ -187,12 +188,12 @@ test('Web: a name in use or of the catalog is not deleted', async () => {
   expect(onRemove).not.toHaveBeenCalled()
 })
 
-// Opens the dialog on a 360×780 phone and checks nothing scrolls sideways and each row's trash stays on screen.
-test('Web: Manage lists fits a 360×780 phone', async () => {
-  await page.viewport(360, 780)
+// Opens the dialog on the smallest phone and checks nothing scrolls sideways and each row's trash stays on screen.
+test('Web: Manage lists fits the smallest phone', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   const screen = await render(<Sample />)
-  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360)
-  expect(screen.getByRole('button', { name: 'Excluir Motor' }).element().getBoundingClientRect().right).toBeLessThanOrEqual(360)
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+  expect(screen.getByRole('button', { name: 'Excluir Motor' }).element().getBoundingClientRect().right).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
 })
 
 function Sample({

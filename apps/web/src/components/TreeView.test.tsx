@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import type { TreeNode } from '@apc/shared/tree'
 import { beforeAll, expect, test, vi } from 'vitest'
@@ -212,7 +213,7 @@ test('Web: the chevron turns and the children slide open, at once with reduced m
 // inside its own height without getting wider than its column, the long name is cut short on one line, and End
 // brings the last model into view.
 test('Web: the tree scrolls inside its own height on a phone', async () => {
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
     const many: TreeNode[] = Array.from({ length: 12 }, (_, i) => ({ id: `m${i}`, label: `Modelo ${i + 1}`, children: [] }))
     const long: TreeNode = { id: 'long', label: 'Bonanza cabine dupla de quatro portas e caçamba', detail: '1989–1994', children: [] }
@@ -232,7 +233,7 @@ test('Web: the tree scrolls inside its own height on a phone', async () => {
     const last = screen.getByRole('treeitem', { name: 'Modelo 12' }).element().getBoundingClientRect()
     expect(last.bottom).toBeLessThanOrEqual(tree.getBoundingClientRect().bottom)
   } finally {
-    await page.viewport(1280, 720)
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   }
 })
 

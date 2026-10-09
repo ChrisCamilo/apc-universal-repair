@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { page } from 'vitest/browser'
@@ -78,13 +79,13 @@ test('Web: a field value is labeled and the size of a text field', async () => {
 // Shows a value longer than its frame on a phone and checks it stays on one line, ending in an ellipsis, with the
 // whole value as a tooltip, and the page doesn't scroll sideways.
 test('Web: a long field value ends in an ellipsis with the whole value as a tooltip', async () => {
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   const long = 'Jogo de juntas do cabeçote com retentores de válvula e parafusos'
   const screen = await render(<FieldValue label="Nome" value={long} />)
   const frame = screen.getByText(long).element() as HTMLElement
   expect(getComputedStyle(frame).textOverflow).toBe('ellipsis')
   expect(frame.scrollWidth).toBeGreaterThan(frame.clientWidth)
   expect(frame.title).toBe(long)
-  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360)
-  await page.viewport(1280, 720)
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })

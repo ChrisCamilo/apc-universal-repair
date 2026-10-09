@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -106,7 +107,7 @@ test('Web: tiles show the logo, or the name when there is none or it fails', asy
 // Lays the tiles out in two columns in the width a 360px phone leaves, and checks a long name stays inside
 // its tile instead of widening the group.
 test('Web: tiles fit two columns on a phone', async () => {
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
     const screen = await render(
       <div style={{ width: 328 }}>
@@ -119,7 +120,7 @@ test('Web: tiles fit two columns on a phone', async () => {
     expect(tiles[0].getBoundingClientRect().top).toBe(tiles[1].getBoundingClientRect().top)
     expect(tiles[2].getBoundingClientRect().top).toBeGreaterThan(tiles[0].getBoundingClientRect().top)
   } finally {
-    await page.viewport(1280, 720)
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   }
 })
 
