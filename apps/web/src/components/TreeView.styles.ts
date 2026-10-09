@@ -5,7 +5,8 @@ import { recipe, tv } from '../styles/tv.ts'
 // leaves; the selected or highlighted row on the soft accent with an accent bar on its left; a guide hanging under each
 // open branch; and a soft hairline above every top-level row but the first, the same as Divider. A branch's children
 // open by growing the one grid row they sit in from nothing to their full height: they show at once when it opens, so
-// the keyboard can move into them straight away, and hide only once it has closed.
+// the keyboard can move into them straight away, and hide only once it has closed. The two boxes that open them only
+// animate the list, so they add no level to its id, which is the same as on mobile.
 
 /** The tree: the list, an item, its row with chevron, label and detail, and the group of its children. */
 export const treeView = recipe(
@@ -54,8 +55,8 @@ export const treeView = recipe(
     spacer: 'item.row.spacer',
     label: 'item.row.label',
     detail: 'item.row.detail',
-    group: 'item.group',
-    clip: 'item.group.clip',
-    list: 'item.group.clip.list',
+    group: 'item.open',
+    clip: 'item.clip',
+    list: 'item.group',
   },
 )
