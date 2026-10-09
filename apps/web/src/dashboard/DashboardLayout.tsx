@@ -4,6 +4,7 @@ import { ICONS } from '@apc/shared/icons'
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, initialTab, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs'
 import { AppFrame } from '../components/AppFrame.tsx'
 import { TabPanel, Tabs } from '../components/Tabs.tsx'
+import { WorkInProgress } from '../components/WorkInProgress.tsx'
 import { readStored, writeStored } from '../storage.ts'
 import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext.ts'
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from './openItemOnRowContext.ts'
@@ -16,11 +17,12 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 // dragged (or moved with Alt + arrows) into a new order, which is saved and comes back on reload, with tabs added
 // later at its end; the open tab stays open. The Dashboard also holds "Abrir item ao clicar na linha" and "Itens por
 // página", which the user menu sets and the Inventory tab follows, and the Inventory tutorial's state, which the
-// Inventory tab runs (by itself the first time) and the user menu replays.
+// Inventory tab runs (by itself the first time) and the user menu replays. A tab still being built (`wip` in
+// DASHBOARD_TABS) opens blurred behind a notice saying it isn't ready yet.
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id)
 // Each tab as the tab bar draws it, by id.
-const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon }) => [id, { id, label, icon: ICONS[icon] }]))
+const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon, wip }) => [id, { id, label, icon: ICONS[icon], wip }]))
 
 type DashboardLayoutProps = {
   /** The user menu, at the right of the header. */
@@ -81,7 +83,13 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
               end={userMenu}
             >
               <TabPanel id={tab} selected={tab}>
-                <Outlet />
+                {TABS[tab].wip ? (
+                  <WorkInProgress label={TABS[tab].label}>
+                    <Outlet />
+                  </WorkInProgress>
+                ) : (
+                  <Outlet />
+                )}
               </TabPanel>
             </AppFrame>
           </InventoryTutorialContext.Provider>
