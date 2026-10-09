@@ -11,12 +11,12 @@ import {
   type CsvItems,
 } from '@apc/shared/item-csv'
 import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/shared/lists'
+import { API_BASE } from '../api.ts'
 import { Button } from '../components/Button.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { Heading, Text } from '../components/Typography.tsx'
 import { importItemsDialog } from './ImportItemsDialog.styles.ts'
-import { API_BASE } from './savePhotos.ts'
 
 // The "Importar CSV" dialog of the Inventory tab: it explains the file, downloads the template and reads the file
 // chosen, UTF-8, comma or semicolon separated. The preview counts the rows ready and those with errors, lists the

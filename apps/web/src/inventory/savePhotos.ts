@@ -1,12 +1,10 @@
 import { itemSchema, type Item } from '@apc/shared/items'
 import { PHOTO_PARTS, photoParts, photosChanged } from '@apc/shared/photos'
+import { API_BASE } from '../api.ts'
 import type { UploadPhoto } from '../components/ImageUpload.tsx'
 
 // Saves an item's photos as a photo field or the viewer holds them: the saved ones kept by their id and the new
 // files sent, all in one request, in their order. Nothing is sent when the photos didn't change.
-
-/** Where the web reaches the API, through the dev server's proxy; photo paths from the API go under it. */
-export const API_BASE = '/api'
 
 /**
  * Saves an item's photos when they changed, and lets go of the previews of the files sent once they are saved.
