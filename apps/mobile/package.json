@@ -5,7 +5,8 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
-    "lint": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint .",
+    "lint": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint . && pnpm run lint:styles",
+    "lint:styles": "node --experimental-strip-types ../../packages/shared/src/styles/checkStyles.ts mobile src",
     "start": "react-native start",
     "test": "jest",
     "typecheck": "tsc --noEmit"
