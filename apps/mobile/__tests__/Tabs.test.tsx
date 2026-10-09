@@ -5,7 +5,7 @@
 import React from 'react';
 import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { cubeIcon, documentIcon, gripIcon, searchIcon } from '@apc/shared/icons';
+import { coneIcon, cubeIcon, documentIcon, gripIcon, searchIcon } from '@apc/shared/icons';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Icon } from '../src/Icon';
 import { Tabs, useStoredTab } from '../src/Tabs';
@@ -105,6 +105,31 @@ test('Mobile: pressing a tab selects it', async () => {
   await ReactTestRenderer.act(async () => tabNamed(tree, 'Catálogo').props.onPress());
   expect(tabNamed(tree, 'Catálogo').props.accessibilityState).toEqual({ selected: true });
   expect(tabNamed(tree, 'Estoque').props.accessibilityState).toEqual({ selected: false });
+});
+
+// Renders a tab still being built and checks it shows a muted cone, is read out as "em construção" and still opens.
+test('Mobile: a tab still being built shows a cone and still opens', async () => {
+  const onSelect = jest.fn();
+  const tree = await mount(
+    'bmw90',
+    'day',
+    <Tabs
+      label="Seções do Dashboard"
+      tabs={[
+        { id: 'stock', label: 'Estoque', icon: cubeIcon },
+        { id: 'catalog', label: 'Catálogo', icon: documentIcon, wip: true },
+      ]}
+      selected="stock"
+      onSelect={onSelect}
+    />,
+  );
+  const catalog = tabNamed(tree, 'Catálogo');
+  expect(catalog.props.accessibilityLabel).toBe('Catálogo, em construção');
+  const cone = catalog.find((node) => node.type === Icon && node.props.icon === coneIcon);
+  expect(cone.props.color).toBe(themes.bmw90.day.colors.textMuted);
+  expect(tabNamed(tree, 'Estoque').findAll((node) => node.type === Icon && node.props.icon === coneIcon)).toHaveLength(0);
+  await ReactTestRenderer.act(async () => catalog.props.onPress());
+  expect(onSelect).toHaveBeenCalledWith('catalog');
 });
 
 // Picks a tab, mounts again and checks it reopens on that tab; a saved tab that no longer exists falls

@@ -6,10 +6,13 @@ import React from 'react';
 import { ScrollView, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial';
-import { DASHBOARD_TAB_STORAGE_KEY } from '@apc/shared/tabs';
+import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS } from '@apc/shared/tabs';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Dashboard } from '../src/dashboard/Dashboard';
 import { themeStorage, ThemeProvider } from '../src/theme';
+
+// The first tab still being built, if any.
+const WIP_TAB = DASHBOARD_TABS.find((tab) => tab.wip);
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it, and the saved tab, to load.
@@ -74,4 +77,16 @@ test('Mobile: the tab bar scrolls sideways and a stale saved tab falls back', as
 test('Mobile: the user menu slot shows its content', async () => {
   const tree = await mount('eighties', 'day', <Dashboard userMenu={<Text>christian.camilo</Text>} />);
   expect(shows(tree, 'christian.camilo')).toBe(true);
+});
+
+// Opens the Dashboard on the tab still being built and checks it is read out as "em construção" and opens behind
+// the notice naming it, with its screen out of reach. Skipped once no tab is being built.
+(WIP_TAB ? test : test.skip)('Mobile: a tab still being built opens behind the work-in-progress notice', async () => {
+  await themeStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, WIP_TAB!.id);
+  const tree = await mount('fiat90', 'night', <Dashboard />);
+  const tab = tree.root.find((n) => n.props.accessibilityRole === 'tab' && n.props.accessibilityLabel === `${WIP_TAB!.label}, em construção`);
+  expect(tab.props.accessibilityState).toEqual({ selected: true });
+  expect(shows(tree, `A aba ${WIP_TAB!.label} ainda não está pronta`)).toBe(true);
+  const content = tree.root.find((n) => n.props.testID === 'common.work-in-progress.content' && typeof n.type === 'string');
+  expect(content.props.pointerEvents).toBe('none');
 });
