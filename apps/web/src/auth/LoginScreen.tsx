@@ -7,6 +7,7 @@ import { Dialog } from '../components/Dialog.tsx'
 import { Panel } from '../components/Panel.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { Text } from '../components/Typography.tsx'
+import { loginScreen } from './LoginScreen.styles.ts'
 
 // The first screen of the app (/login): the APC badge on a panel beside the form, or above it, smaller, on
 // phones and narrow screens. "Entrar", or Enter in either field, sends the login; an empty field isn't sent but
@@ -34,6 +35,7 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
   const [forgot, setForgot] = useState(false)
   const usernameInput = useRef<HTMLInputElement>(null)
   const passwordInput = useRef<HTMLInputElement>(null)
+  const ui = loginScreen()
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Credentials, value: string) => {
@@ -66,14 +68,14 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
   }
 
   return (
-    <main className="grid min-h-dvh place-items-center px-4 py-8 sm:px-6">
-      <div className="grid w-full max-w-4xl items-center gap-6 md:grid-cols-2 md:gap-12">
-        <Panel className="grid place-items-center py-6 md:py-12">
-          <h1 className="m-0 flex">
-            <BrandMark className="h-auto w-36 md:w-56" />
+    <main {...ui.base()}>
+      <div {...ui.layout()}>
+        <Panel className={ui.brand().className}>
+          <h1 {...ui.title()}>
+            <BrandMark className={ui.mark().className} />
           </h1>
         </Panel>
-        <form noValidate className="grid w-full max-w-sm gap-4 max-md:justify-self-center" onSubmit={submit}>
+        <form noValidate {...ui.form()} onSubmit={submit}>
           {refused && (
             <Text role="alert" size="sm" tone="danger">
               {LOGIN_MESSAGES.failed}
@@ -97,7 +99,7 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
             onValueChange={(value) => change('password', value)}
             error={errors.password}
           />
-          <div className="grid justify-items-start gap-2">
+          <div {...ui.actions()}>
             <Button type="submit" loading={sending}>
               Entrar
             </Button>
