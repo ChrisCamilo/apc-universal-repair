@@ -5,7 +5,8 @@ import { recipe, tv } from '../styles/tv.ts'
 // The look of the photo viewer: a modal on the panel over the dimmed, blurred backdrop; the item's name and code over
 // a 4:3 frame on the canvas that never grows past 62% of the screen's height; round arrows over the photo, lit in the
 // accent on hover; dots under it, the current one in the accent; the problems in the danger color; and the note and
-// buttons at the bottom.
+// buttons at the bottom. The footer only lines the note up with the buttons, so it adds no level to their ids, which are
+// the same as on mobile.
 
 /** The viewer: the window, its body, head and name, the frame with the photo or the empty note, arrows, dots and footer. */
 export const imageViewer = recipe(
@@ -52,8 +53,8 @@ export const imageViewer = recipe(
     dot: 'body.dots.dot',
     problems: 'body.problems',
     footer: 'body.footer',
-    buttons: 'body.footer.buttons',
-    input: 'body.footer.input',
+    buttons: 'body.buttons',
+    input: 'body.input',
   },
 )
 
