@@ -65,7 +65,7 @@ test('Web: frames take a custom ratio', async () => {
 test('Web: frames show a spinner while loading', async () => {
   const screen = await render(<ImageFrame data-testid="frame" loading alt="Opala" />)
   await expect.element(screen.getByTestId('frame')).toHaveAttribute('aria-busy', 'true')
-  await expect.element(screen.getByTestId('image-spinner')).toBeInTheDocument()
+  await expect.element(screen.getByTestId('common.spinner')).toBeInTheDocument()
   expect(screen.getByRole('img').query()).toBeNull()
 })
 

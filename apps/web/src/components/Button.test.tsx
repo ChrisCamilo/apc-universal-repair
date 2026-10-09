@@ -104,7 +104,7 @@ test('Web: disabled and loading buttons do not run their action', async () => {
   expect(onClick).not.toHaveBeenCalled()
   await expect.element(loading).toHaveAttribute('aria-busy', 'true')
   await expect.element(loading).toBeDisabled()
-  await expect.element(screen.getByTestId('button-spinner')).toBeVisible()
+  await expect.element(loading.getByTestId('common.spinner')).toBeVisible()
 })
 
 // Checks the link variant reads as inline text: body face, normal case, underlined, muted color.
