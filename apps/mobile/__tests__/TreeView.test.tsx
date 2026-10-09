@@ -34,6 +34,8 @@ const OPALA: TreeNode = {
   ],
 };
 const MODELS: TreeNode[] = [{ id: 'chevette', label: 'Chevette', children: [{ id: 'chevette-2', label: 'Segunda geração' }] }, OPALA, { id: 'monza', label: 'Monza', children: [] }];
+// The height the long-label test's owner gives the tree.
+const OWNER_STYLE: ViewStyle = { maxHeight: 380 };
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.
@@ -186,10 +188,10 @@ test('Mobile: the chevron turns and the children slide in, at once with reduced 
 // inside the height its owner gives it.
 test('Mobile: long labels stay on one line and the tree scrolls in its own height', async () => {
   const long: TreeNode = { id: 'bonanza', label: 'Bonanza cabine dupla de quatro portas e caçamba', children: [] };
-  const tree = await mount('fiat90', 'day', <TreeView label="Modelos" nodes={[long]} onSelect={() => {}} style={{ maxHeight: 380 }} />);
+  const tree = await mount('fiat90', 'day', <TreeView label="Modelos" nodes={[long]} onSelect={() => {}} style={OWNER_STYLE} />);
   expect(row(tree, long.label).findAllByType(Text)[0].props.numberOfLines).toBe(1);
   const root = tree.root.find((n) => n.props.role === 'tree' && typeof n.type === 'string');
-  expect(StyleSheet.flatten(root.props.style)).toMatchObject({ maxHeight: 380 });
+  expect(StyleSheet.flatten(root.props.style)).toMatchObject(OWNER_STYLE);
   expect(root.props.nestedScrollEnabled).toBe(true);
 });
 
