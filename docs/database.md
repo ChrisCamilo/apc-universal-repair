@@ -65,6 +65,14 @@ erDiagram
         string nameKey "unique with brandId"
         string brandId FK "Brand.id, cascade"
     }
+    User {
+        string id PK "uuid"
+        string username UK "lowercase"
+        string displayName "name, as typed"
+        string email "kept only, nothing sent yet"
+        string passwordHash "scrypt, salted, never sent"
+        datetime createdAt
+    }
 ```
 
 ---
@@ -81,6 +89,7 @@ erDiagram
 | `PartBrand` | The brands of the parts (Bosch, NGK…). |
 | `Brand` | The vehicle brands (Chevrolet, Volkswagen…), shared with the catalog. |
 | `VehicleModel` | The models of each vehicle brand (Opala, Gol…). |
+| `User` | Who logs in: their username, name, e-mail (kept only, nothing is sent to it yet) and the hash of their password. It has no relation to the inventory tables. |
 
 ### Relationships
 
@@ -100,10 +109,12 @@ erDiagram
 | Stock status isn't stored: an item is out of stock at 0 and low at or under its minimum. | `Item.quantity`, `Item.minQuantity` |
 | A list entry an item uses can't be deleted (`RESTRICT`); deleting a vehicle brand deletes its models (`CASCADE`); deleting an item deletes its photos (`CASCADE`). | Foreign keys |
 | Vehicle brands of the catalog can't be deleted from the inventory. | API |
+| A username is kept in lowercase and is unique, so names that differ only in case are the same user. It takes 3 to 32 lowercase letters, digits, dots or hyphens. | `User.username`, API |
+| A password is never kept as typed: `passwordHash` holds `scrypt$<salt>$<hash>` with a random salt per user, and the API never sends it. | `User.passwordHash` |
 
 ### Starting data
 
-`pnpm --filter @apc/api db:seed` fills a new database with the default categories, part brands, vehicle brands with their models and a few sample items. It can run again without duplicating anything.
+`pnpm --filter @apc/api db:seed` fills a new database with the test users (`christian.camilo` and `oficina`, from `@apc/shared/test-users`, with their passwords hashed), the default categories, part brands, vehicle brands with their models and a few sample items. It can run again without duplicating anything.
 
 ---
 
@@ -119,6 +130,7 @@ erDiagram
 | `PartBrand` | As marcas das peças (Bosch, NGK…). |
 | `Brand` | As marcas de veículo (Chevrolet, Volkswagen…), as mesmas do catálogo. |
 | `VehicleModel` | Os modelos de cada marca de veículo (Opala, Gol…). |
+| `User` | Quem entra no app: o usuário, o nome, o e-mail (só guardado, nada é enviado a ele ainda) e o hash da senha. Não se relaciona com as tabelas do estoque. |
 
 ### Relacionamentos
 
@@ -138,7 +150,9 @@ erDiagram
 | A situação do estoque não é guardada: o item está esgotado em 0 e baixo quando está no mínimo ou abaixo. | `Item.quantity`, `Item.minQuantity` |
 | Uma entrada de lista usada por um item não pode ser excluída (`RESTRICT`); excluir uma marca de veículo exclui os modelos dela (`CASCADE`); excluir um item exclui as fotos dele (`CASCADE`). | Chaves estrangeiras |
 | As marcas de veículo do catálogo não podem ser excluídas pelo estoque. | API |
+| O usuário é guardado em minúsculas e é único, então nomes que só mudam em maiúsculas são o mesmo usuário. Ele aceita de 3 a 32 letras minúsculas, números, pontos ou hífens. | `User.username`, API |
+| A senha nunca é guardada como foi digitada: `passwordHash` guarda `scrypt$<sal>$<hash>` com um sal aleatório por usuário, e a API nunca o envia. | `User.passwordHash` |
 
 ### Dados iniciais
 
-`pnpm --filter @apc/api db:seed` preenche um banco novo com as categorias, marcas de peça, marcas de veículo com seus modelos e alguns itens de exemplo. Pode rodar de novo sem duplicar nada.
+`pnpm --filter @apc/api db:seed` preenche um banco novo com os usuários de teste (`christian.camilo` e `oficina`, de `@apc/shared/test-users`, com as senhas em hash), as categorias, marcas de peça, marcas de veículo com seus modelos e alguns itens de exemplo. Pode rodar de novo sem duplicar nada.
