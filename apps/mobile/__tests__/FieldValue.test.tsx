@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { FieldValue } from '../src/FieldValue';
@@ -63,8 +63,8 @@ test('Mobile: a field value is read with its label and framed like a text field'
   expect(value.props.accessible).toBe(true);
   const text = tree.root.find((n) => n.type === Text && n.props.children === 'Filtro de óleo');
   expect(text.props).toMatchObject({ numberOfLines: 1, ellipsizeMode: 'tail' });
-  const field = tree.root.find((n) => n.type === View && n.props.testID === 'field-frame').props.style;
-  const frame = tree.root.find((n) => n.type === View && n.props.testID === 'common.field-value.value').props.style;
+  const field = StyleSheet.flatten(tree.root.find((n) => n.type === View && n.props.testID === 'common.text-field.frame').props.style);
+  const frame = StyleSheet.flatten(tree.root.find((n) => n.type === View && n.props.testID === 'common.field-value.value').props.style);
   for (const key of ['paddingHorizontal', 'paddingVertical', 'borderWidth', 'borderRadius'] as const) {
     expect(frame[key]).toBe(field[key]);
   }
