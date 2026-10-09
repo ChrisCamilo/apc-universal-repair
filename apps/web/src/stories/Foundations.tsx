@@ -1,15 +1,17 @@
 import type { ReactNode } from 'react'
 import { scales, themes, type ColorToken } from '@apc/shared/theme'
+import type { Styled } from '../styles/tv.ts'
+import { motionSheet, paletteSheet, radiiSheet, spaceBar, spacingSheet, swatchFill, typeSheet, typeStep } from './Foundations.styles.ts'
 
 // Sheets that document the design tokens in Storybook. Every value shown is read from the CSS
 // variables at render time, so each sheet reflects the style and mode picked in the toolbar.
 
 const COLOR_TOKENS = Object.keys(themes.eighties.night.colors) as ColorToken[]
 const RADII = [
-  { name: 'panel', className: 'rounded-panel', variable: 'panel-radius' },
-  { name: 'tile', className: 'rounded-tile', variable: 'tile-radius' },
-  { name: 'pill', className: 'rounded-pill', variable: 'pill-radius' },
-]
+  { name: 'panel', variable: 'panel-radius' },
+  { name: 'tile', variable: 'tile-radius' },
+  { name: 'pill', variable: 'pill-radius' },
+] as const
 const TINTS = [
   { name: 'accent-soft', use: 'Chips and buttons that are on' },
   { name: 'hairline-soft', use: 'Panel borders and dividers' },
@@ -39,30 +41,45 @@ function kebab(name: string): string {
 }
 
 export function PaletteSheet() {
+  const ui = paletteSheet()
+  const { classes, ids } = ui
   return (
-    <Sheet title="Palette">
-      <ul className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
+    <Sheet title="Palette" ui={ui}>
+      <ul className={classes.colors()} data-testid={ids.colors}>
         {COLOR_TOKENS.map((token) => (
-          <li key={token} data-testid={`color-${token}`} className="grid gap-2">
-            <span
-              className="block h-12 rounded-tile border border-hairline"
-              style={{ backgroundColor: `var(--${kebab(token)})` }}
-            />
-            <b className="text-sm font-semibold">{token}</b>
-            <code className="font-mono text-xs text-text-muted">--{kebab(token)}</code>
-            <code data-testid="value" className="font-mono text-xs">{cssVar(kebab(token))}</code>
+          <li key={token} className={classes.color()} data-testid={ids.color}>
+            <span className={classes.swatch()} data-testid={ids.swatch} style={swatchFill(kebab(token))} />
+            <b className={classes.name()} data-testid={ids.name}>
+              {token}
+            </b>
+            <code className={classes.variable()} data-testid={ids.variable}>
+              --{kebab(token)}
+            </code>
+            <code className={classes.value()} data-testid={ids.value}>
+              {cssVar(kebab(token))}
+            </code>
           </li>
         ))}
       </ul>
-      <h3 className="m-0 font-display text-lg font-semibold uppercase tracking-display">Tints</h3>
-      <p className="m-0 text-sm text-text-muted">Theme colors at a set opacity, shown over the canvas.</p>
-      <ul className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
+      <h3 className={classes.tintsTitle()} data-testid={ids.tintsTitle}>
+        Tints
+      </h3>
+      <p className={classes.tintsNote()} data-testid={ids.tintsNote}>
+        Theme colors at a set opacity, shown over the canvas.
+      </p>
+      <ul className={classes.tints()} data-testid={ids.tints}>
         {TINTS.map((tint) => (
-          <li key={tint.name} data-testid={`tint-${tint.name}`} className="grid gap-2">
-            <span className="block h-12 rounded-tile border border-hairline" style={{ backgroundColor: `var(--${tint.name})` }} />
-            <b className="text-sm font-semibold">{tint.name}</b>
-            <code className="font-mono text-xs text-text-muted">--{tint.name}</code>
-            <span className="text-xs text-text-muted">{tint.use}</span>
+          <li key={tint.name} className={classes.tint()} data-testid={ids.tint}>
+            <span className={classes.tintSwatch()} data-testid={ids.tintSwatch} style={swatchFill(tint.name)} />
+            <b className={classes.tintName()} data-testid={ids.tintName}>
+              {tint.name}
+            </b>
+            <code className={classes.tintVariable()} data-testid={ids.tintVariable}>
+              --{tint.name}
+            </code>
+            <span className={classes.tintUse()} data-testid={ids.tintUse}>
+              {tint.use}
+            </span>
           </li>
         ))}
       </ul>
@@ -71,21 +88,29 @@ export function PaletteSheet() {
 }
 
 export function TypeSheet() {
+  const ui = typeSheet()
+  const { classes, ids } = ui
   return (
-    <Sheet title="Type scale">
-      <p className="text-sm text-text-muted">
+    <Sheet title="Type scale" ui={ui}>
+      <p className={classes.note()} data-testid={ids.note}>
         Display: {cssVar('display-face')} · tracking {cssVar('display-tracking')}
       </p>
-      <ul className="grid gap-3">
+      <ul className={classes.steps()} data-testid={ids.steps}>
         {Object.entries(scales.fontSize).map(([step, size]) => (
-          <li key={step} data-testid={`type-${step}`} className="grid grid-cols-[72px_1fr] items-baseline gap-4">
-            <code className="font-mono text-xs text-text-muted">{step} · {size}px</code>
-            <span className="grid gap-1">
-              <span className="font-display uppercase tracking-display" style={{ fontSize: `var(--font-size-${step})` }}>
+          <li key={step} className={classes.step()} data-testid={ids.step}>
+            <code className={classes.label()} data-testid={ids.label}>
+              {step} · {size}px
+            </code>
+            <span className={classes.samples()} data-testid={ids.samples}>
+              <span className={classes.display()} data-testid={ids.display} style={typeStep(step)}>
                 Opala Diplomata
               </span>
-              <span style={{ fontSize: `var(--font-size-${step})` }}>Corpo em Barlow, 4.1 L 6 cilindros</span>
-              <span className="font-mono" style={{ fontSize: `var(--font-size-${step})` }}>4.1 L · 6 CIL · 1986</span>
+              <span className={classes.body()} data-testid={ids.body} style={typeStep(step)}>
+                Corpo em Barlow, 4.1 L 6 cilindros
+              </span>
+              <span className={classes.mono()} data-testid={ids.mono} style={typeStep(step)}>
+                4.1 L · 6 CIL · 1986
+              </span>
             </span>
           </li>
         ))}
@@ -95,13 +120,17 @@ export function TypeSheet() {
 }
 
 export function SpacingSheet() {
+  const ui = spacingSheet()
+  const { classes, ids } = ui
   return (
-    <Sheet title="Spacing scale">
-      <ul className="grid gap-2">
+    <Sheet title="Spacing scale" ui={ui}>
+      <ul className={classes.steps()} data-testid={ids.steps}>
         {Object.entries(scales.space).map(([step, size]) => (
-          <li key={step} data-testid={`space-${step}`} className="grid grid-cols-[96px_1fr] items-center gap-4">
-            <code className="font-mono text-xs text-text-muted">{step} · {size}px</code>
-            <span className="block h-3 rounded-pill bg-accent" style={{ width: size }} />
+          <li key={step} className={classes.step()} data-testid={ids.step}>
+            <code className={classes.label()} data-testid={ids.label}>
+              {step} · {size}px
+            </code>
+            <span className={classes.bar()} data-testid={ids.bar} style={spaceBar(size)} />
           </li>
         ))}
       </ul>
@@ -110,14 +139,20 @@ export function SpacingSheet() {
 }
 
 export function RadiiSheet() {
+  const ui = radiiSheet()
+  const { classes, ids } = ui
   return (
-    <Sheet title="Radii">
-      <ul className="flex flex-wrap gap-6">
+    <Sheet title="Radii" ui={ui}>
+      <ul className={classes.radii()} data-testid={ids.radii}>
         {RADII.map((radius) => (
-          <li key={radius.name} data-testid={`radius-${radius.name}`} className="grid justify-items-center gap-2">
-            <span className={`block h-20 w-28 border border-hairline bg-panel-raised ${radius.className}`} />
-            <b className="text-sm font-semibold">{radius.name}</b>
-            <code data-testid="value" className="font-mono text-xs text-text-muted">{cssVar(radius.variable)}</code>
+          <li key={radius.name} className={classes.radius()} data-testid={ids.radius}>
+            <span className={classes.sample({ radius: radius.name })} data-testid={ids.sample} />
+            <b className={classes.name()} data-testid={ids.name}>
+              {radius.name}
+            </b>
+            <code className={classes.value()} data-testid={ids.value}>
+              {cssVar(radius.variable)}
+            </code>
           </li>
         ))}
       </ul>
@@ -126,23 +161,39 @@ export function RadiiSheet() {
 }
 
 export function MotionSheet() {
+  const ui = motionSheet()
+  const { classes, ids } = ui
   return (
-    <Sheet title="Motion">
-      <p className="text-sm text-text-muted">
-        <span data-testid="motion-duration">{cssVar('motion-duration')}</span> · {cssVar('motion-easing')}
+    <Sheet title="Motion" ui={ui}>
+      <p className={classes.note()} data-testid={ids.note}>
+        <span className={classes.duration()} data-testid={ids.duration}>
+          {cssVar('motion-duration')}
+        </span>{' '}
+        · {cssVar('motion-easing')}
       </p>
-      <div className="group w-full max-w-md rounded-panel border border-hairline bg-panel p-4">
-        <p className="mb-3 text-sm">Hover to play the default transition.</p>
-        <span className="block h-6 w-6 rounded-pill bg-accent shadow-glow transition-transform group-hover:translate-x-64" />
+      <div className={classes.demo()} data-testid={ids.demo}>
+        <p className={classes.hint()} data-testid={ids.hint}>
+          Hover to play the default transition.
+        </p>
+        <span className={classes.dot()} data-testid={ids.dot} />
       </div>
     </Sheet>
   )
 }
 
-function Sheet({ title, children }: { title: string; children: ReactNode }) {
+/**
+ * Lays out a sheet: its section and title, styled by the sheet's own recipe, so they carry its ids.
+ * @param props.title The sheet's title.
+ * @param props.ui The sheet's recipe, called.
+ * @param props.children The sheet's content.
+ */
+function Sheet({ title, ui, children }: { title: string; ui: Styled<{ base: () => string; title: () => string }>; children: ReactNode }) {
+  const { classes, ids } = ui
   return (
-    <section className="grid gap-4 p-6">
-      <h2 className="font-display text-2xl font-semibold uppercase tracking-display">{title}</h2>
+    <section className={classes.base()} data-testid={ids.base}>
+      <h2 className={classes.title()} data-testid={ids.title}>
+        {title}
+      </h2>
       {children}
     </section>
   )

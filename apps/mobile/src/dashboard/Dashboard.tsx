@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ScrollView, View, type ViewStyle } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { ICONS } from '@apc/shared/icons';
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs';
-import { scales } from '@apc/shared/theme';
 import { BrandMark } from '../BrandMark';
 import { Tabs, useStoredTab } from '../Tabs';
-import { save, softHairline, themeStorage, useTheme, type ActiveTheme } from '../theme';
+import { save, themeStorage } from '../theme';
 import { CatalogTab } from './CatalogTab';
+import { MARK_SIZE, useStyles } from './Dashboard.styles';
 import { InventoryTab } from './InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext';
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from './openItemOnRowContext';
@@ -22,14 +22,6 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 // user menu sets and the Inventory tab follows, and the Inventory tutorial's state, which the Inventory tab runs (by
 // itself the first time) and the user menu replays, on the Inventory tab.
 
-const CONTENT_STYLE: ViewStyle = { paddingHorizontal: scales.space.s4, paddingVertical: scales.space.s3 };
-const MARK_STYLE: ViewStyle = { paddingBottom: scales.space.s2 };
-const MENU_SLOT_STYLE: ViewStyle = { marginLeft: 'auto', paddingBottom: scales.space.s2 };
-const PAGE_STYLE: ViewStyle = { flex: 1 };
-// The tab bar's scroll box clips, so it reaches 1dp down over the header's hairline, where the selected tab's
-// underline sits.
-const TAB_BAR_CONTENT_STYLE: ViewStyle = { paddingBottom: scales.hairline };
-const TAB_BAR_STYLE: ViewStyle = { flexGrow: 0, marginBottom: -scales.hairline };
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id);
 const TAB_SCREENS: Record<string, ReactNode> = { inventory: <InventoryTab />, catalog: <CatalogTab /> };
 // Each tab as the tab bar draws it, by id.
@@ -40,27 +32,8 @@ type DashboardProps = {
   userMenu?: ReactNode;
 };
 
-/**
- * Styles the header row: the mark, the tab bar and the user menu, wrapping over a soft hairline.
- * @param theme Active theme.
- * @returns Style for the header View.
- */
-function headerStyle(theme: ActiveTheme): ViewStyle {
-  return {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-end',
-    columnGap: scales.space.s5,
-    rowGap: scales.space.s3,
-    marginHorizontal: scales.space.s4,
-    paddingTop: scales.space.s3,
-    borderBottomWidth: scales.hairline,
-    borderBottomColor: softHairline(theme),
-  };
-}
-
 export function Dashboard({ userMenu }: DashboardProps) {
-  const theme = useTheme();
+  const { styles, ids } = useStyles();
   const [tab, setTab] = useStoredTab(DASHBOARD_TAB_STORAGE_KEY, TAB_IDS);
   const reorder = useReorderChoice();
   const openItemOnRow = useOpenItemOnRowChoice();
@@ -99,17 +72,17 @@ export function Dashboard({ userMenu }: DashboardProps) {
               },
             }}
           >
-            <ScrollView style={[PAGE_STYLE, { backgroundColor: theme.colors.canvas }]}>
-              <View style={headerStyle(theme)}>
-                <View accessibilityRole="header" style={MARK_STYLE}>
-                  <BrandMark variant="compact" size={32} />
+            <ScrollView style={styles.page} testID={ids.page}>
+              <View style={styles.header} testID={ids.header}>
+                <View accessibilityRole="header" style={styles.mark} testID={ids.mark}>
+                  <BrandMark variant="compact" size={MARK_SIZE} />
                 </View>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  style={TAB_BAR_STYLE}
-                  contentContainerStyle={TAB_BAR_CONTENT_STYLE}
-                  testID="dashboard-tab-bar"
+                  style={styles.tabBar}
+                  contentContainerStyle={styles.tabBarContent}
+                  testID={ids.tabBar}
                 >
                   <Tabs
                     label="Seções do Dashboard"
@@ -117,15 +90,21 @@ export function Dashboard({ userMenu }: DashboardProps) {
                     selected={tab}
                     onSelect={setTab}
                     reorderable={reorder.reorderable}
-                    onReorder={(ids) => {
-                      setOrder(ids);
-                      save(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids));
+                    onReorder={(next) => {
+                      setOrder(next);
+                      save(TAB_ORDER_STORAGE_KEY, JSON.stringify(next));
                     }}
                   />
                 </ScrollView>
-                {userMenu && <View style={MENU_SLOT_STYLE}>{userMenu}</View>}
+                {userMenu && (
+                  <View style={styles.menu} testID={ids.menu}>
+                    {userMenu}
+                  </View>
+                )}
               </View>
-              <View style={CONTENT_STYLE}>{TAB_SCREENS[tab]}</View>
+              <View style={styles.content} testID={ids.content}>
+                {TAB_SCREENS[tab]}
+              </View>
             </ScrollView>
           </InventoryTutorialContext.Provider>
         </PageSizeContext.Provider>
