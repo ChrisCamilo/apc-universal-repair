@@ -26,6 +26,7 @@ import { ClearFilters, FilterMenu } from '../FilterMenu';
 import type { UploadPhoto } from '../ImageUpload';
 import { ImageViewer } from '../ImageViewer';
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog';
+import { ExportItemsDialog } from '../inventory/ExportItemsDialog';
 import { ImportItemsDialog } from '../inventory/ImportItemsDialog';
 import { ItemFormDialog } from '../inventory/ItemFormDialog';
 import { ManageListsDialog } from '../inventory/ManageListsDialog';
@@ -50,7 +51,8 @@ import { usePageSize } from './pageSizeContext';
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
 // the list loads again once an item is saved or deleted. "Gerenciar listas" renames and deletes the categories,
 // brands and models the form picks from; the list loads again after each change, and a name in use leads to its
-// items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list and the lists load again.
+// items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list and the lists load again;
+// "Exportar CSV" hands every item of the list as it is, on every page, to the share sheet in the same format.
 // While "Abrir item ao clicar na linha" is on in the user menu, a tap on a card opens the item's details. The
 // Filtros menu, the stock status chips (one at a time) and "Limpar filtros" narrow the list the same as the web, sent
 // to the API as the list query with the search, and the list shows one page of what matches, newest first, the size
@@ -192,6 +194,8 @@ export function InventoryTab() {
   const [managing, setManaging] = useState(false);
   // Whether "Importar CSV" is open; each opening starts with no file.
   const [importer, setImporter] = useState({ open: false, session: 0 });
+  // Whether "Exportar CSV" is open; each opening starts without the photo paths.
+  const [exporter, setExporter] = useState({ open: false, session: 0 });
   const { opensOnRow } = useOpenItemOnRow();
   // The item form: closed, open on a new item, an item to edit or an item's details, maybe with values filled in.
   // Each opening starts a new form.
@@ -332,6 +336,9 @@ export function InventoryTab() {
         </Button>
         <Button variant="secondary" onPress={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
           Importar CSV
+        </Button>
+        <Button variant="secondary" onPress={() => setExporter((current) => ({ open: true, session: current.session + 1 }))}>
+          Exportar CSV
         </Button>
         <View style={styles.filters} testID={ids.filters}>
           <View ref={tourTarget('filters')} collapsable={false}>
@@ -513,6 +520,14 @@ export function InventoryTab() {
         onPhotosChange={changePhotos}
         limit={ITEM_PHOTO_LIMIT}
         onPick={pickPhotos}
+      />
+      <ExportItemsDialog
+        key={`export-${exporter.session}`}
+        open={exporter.open}
+        query={itemListQuery(filters, status, { search, sort })}
+        count={listed.status === 'ready' ? listed.total : 0}
+        narrowed={narrowed}
+        onClose={() => setExporter((current) => ({ ...current, open: false }))}
       />
       <DeleteItemDialog
         open={removing !== undefined}

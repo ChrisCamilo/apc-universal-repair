@@ -2,8 +2,9 @@ import { Share } from 'react-native';
 import { errorCodes, isErrorWithCode, keepLocalCopy, pick, types } from '@react-native-documents/picker';
 import { CSV_TEMPLATE, CSV_TEMPLATE_NAME } from '@apc/shared/item-csv';
 
-// The CSV import on the phone: the file picked from the phone's files, copied into the app's cache so its text can
-// be read whatever app keeps it, and the template handed to the phone's share sheet, to save or send it.
+// The CSV import and export on the phone: the file picked from the phone's files, copied into the app's cache so its
+// text can be read whatever app keeps it, and the template and the exported list handed to the phone's share sheet, to
+// save or send them.
 
 /**
  * Opens the phone's files to pick a CSV file and reads its text.
@@ -24,6 +25,17 @@ export async function pickCsv(): Promise<{ name: string; text: string } | null> 
     }
     throw error;
   }
+}
+
+/**
+ * Hands an exported list to the phone's share sheet, to save it or send it to a computer.
+ * @param name The file's name, e.g. "estoque-2026-10-09.csv".
+ * @param csv The file's text.
+ * @returns Whether it was shared; false when the share sheet was closed without sharing.
+ */
+export async function shareCsv(name: string, csv: string): Promise<boolean> {
+  const result = await Share.share({ title: name, message: csv });
+  return result.action !== Share.dismissedAction;
 }
 
 /** Hands the template to the phone's share sheet, to save it or send it to a computer. */

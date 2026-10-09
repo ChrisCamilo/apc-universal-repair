@@ -1,15 +1,29 @@
 import { z } from "zod";
 import { findEntry, listName, type ItemLists, type ListEntry } from "../lists/lists.ts";
-import { ITEM_FORM_MESSAGES, parsePrice } from "./itemForm.ts";
-import { capitalizeFirst, codeKey, itemCreateSchema, itemDetails, NOT_APPLICABLE, optionKey, POSITIONS, SIDES, type ItemCreate } from "./items.ts";
+import { ITEM_FORM_MESSAGES, parsePrice, priceInput } from "./itemForm.ts";
+import {
+  capitalizeFirst,
+  codeKey,
+  itemCreateSchema,
+  itemDetails,
+  itemListResponseSchema,
+  NOT_APPLICABLE,
+  optionKey,
+  POSITIONS,
+  SIDES,
+  type Item,
+  type ItemCreate,
+} from "./items.ts";
 
-// The CSV batch import of the inventory, shared by web and mobile: the template to download, and reading a file into
-// the items it holds, each row checked as the item form checks it, with the reasons a row can't be saved. A file is
-// UTF-8, comma or semicolon separated (told by its header line), with a header naming the columns in any order; a
-// value with the separator, quotes or a line break in it is quoted, as a decimal comma is in a comma-separated file.
+// The CSV batch import and export of the inventory, shared by web and mobile: the template to download, and reading a
+// file into the items it holds, each row checked as the item form checks it, with the reasons a row can't be saved. A
+// file is UTF-8, comma or semicolon separated (told by its header line), with a header naming the columns in any order;
+// a value with the separator, quotes or a line break in it is quoted, as a decimal comma is in a comma-separated file.
 // Text follows the writing rule, codes are uppercase, and a category, brand or model already in the lists takes its
 // spelling there; the names not in the lists yet are listed, to be created by the import. The valid rows go to the API
 // in one request, checked with the item schema, and come back as how many items were created and updated.
+// The export writes the items of the list as it is, every page of it, in the same format, so a file exported can be
+// imported again; on request it adds each item's photo paths in a column the import leaves aside for now.
 
 /** The columns of the import, in the template's order. */
 export const CSV_COLUMNS = [
@@ -36,6 +50,10 @@ export const CSV_TEMPLATE = [
 ].join("\r\n");
 /** Name the template is downloaded with. */
 export const CSV_TEMPLATE_NAME = "modelo-estoque.csv";
+/** The column the export puts the photo paths in, when asked; the import leaves it aside. */
+export const CSV_PHOTOS_COLUMN = "photos";
+/** What separates an item's photo paths in the photos column. */
+export const CSV_PHOTO_SEPARATOR = " | ";
 /** Most rows one import takes. */
 export const ITEM_IMPORT_LIMIT = 1000;
 /** What POST /items/import answers: how many items were created, and how many updated for a code in use. */
@@ -60,6 +78,25 @@ export type NewListNames = {
   vehicleBrands: string[];
   vehicleModels: { vehicleBrand: string; name: string }[];
 };
+
+/**
+ * Writes a cell of the export, quoted when it holds the separator, quotes or a line break, as the import reads it.
+ * @param value The cell's value.
+ * @returns The cell as written in the file.
+ */
+function csvCell(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+}
+
+/**
+ * Names an exported file after the day it is exported.
+ * @param day When it is exported.
+ * @returns E.g. "estoque-2026-10-09.csv", in local time.
+ */
+export function csvExportName(day: Date): string {
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `estoque-${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}.csv`;
+}
 
 /**
  * Builds the item of a row and checks it.
@@ -135,6 +172,48 @@ export function csvPrice(text: string): number | null {
 }
 
 /**
+ * Fetches every item of the list as it is, across all its pages, and writes them as a CSV file.
+ * @param base Where the API is reached, e.g. "/api" on the web.
+ * @param query The list query from itemListQuery, with the search, filters, status and sort but no page.
+ * @param options Whether to add each item's photo paths.
+ * @returns The file's text and how many items it holds, or null when the items couldn't be fetched.
+ */
+export async function exportItems(base: string, query: string, options: { photos: boolean }): Promise<{ csv: string; count: number } | null> {
+  const response = await fetch(query ? `${base}/items?${query}` : `${base}/items`).catch(() => null);
+  if (!response?.ok) {
+    return null;
+  }
+  const { items } = itemListResponseSchema.parse(await response.json());
+  return { csv: itemsCsv(items, options), count: items.length };
+}
+
+/**
+ * Says which items an export takes, for its dialog.
+ * @param count How many items the list holds, across all its pages.
+ * @param narrowed Whether the search, the filters or the stock status narrow the list.
+ * @returns E.g. "12 itens, com a busca e os filtros atuais." or "Todos os 40 itens do estoque."
+ */
+export function exportScope(count: number, narrowed: boolean): string {
+  if (count === 0) {
+    return "Nenhum item na lista para exportar.";
+  }
+  const items = count === 1 ? "1 item" : `${count} itens`;
+  if (narrowed) {
+    return `${items}, com a busca e os filtros atuais.`;
+  }
+  return count === 1 ? "O único item do estoque." : `Todos os ${items} do estoque.`;
+}
+
+/**
+ * Words an export's result for its toast.
+ * @param count How many items the file holds.
+ * @returns E.g. "12 itens exportados."
+ */
+export function exportedSummary(count: number): string {
+  return count === 1 ? "1 item exportado." : `${count} itens exportados.`;
+}
+
+/**
  * Writes an imported item's details in one line, as the inventory card does under the name.
  * @param item The item of a row.
  * @returns E.g. "Motor · Mann · Volkswagen Gol · A-2 · R$ 39,90".
@@ -174,6 +253,37 @@ export async function importItems(base: string, rows: readonly CsvItemRow[]): Pr
     body: JSON.stringify({ items: rows.filter((row) => row.errors.length === 0).map((row) => row.item) }),
   }).catch(() => null);
   return response?.ok ? itemImportResultSchema.parse(await response.json()) : null;
+}
+
+/**
+ * Writes items as a CSV file in the import's format: the template's columns in its order, comma separated, the price
+ * with a decimal comma and "N/A" for what doesn't apply, after a byte-order mark so spreadsheets read it as UTF-8.
+ * @param items The items, in the order to write them.
+ * @param options Whether to add a photos column, with each item's photo paths in their order, the cover first.
+ * @returns The file's text, each line ending in CRLF.
+ */
+export function itemsCsv(items: readonly Item[], { photos }: { photos: boolean }): string {
+  const header = photos ? [...CSV_COLUMNS, CSV_PHOTOS_COLUMN] : [...CSV_COLUMNS];
+  const rows = items.map((item) => {
+    const cells: Record<CsvColumn, string> = {
+      code: item.code,
+      name: item.name,
+      category: item.category,
+      part_brand: item.partBrand,
+      vehicle_brand: item.vehicleBrand,
+      vehicle_model: item.vehicleModel ?? "",
+      quantity: String(item.quantity),
+      minimum: String(item.minQuantity),
+      location: item.location ?? "",
+      unit_price: priceInput(item.unitPriceCents),
+      color: item.color,
+      position: item.position,
+      side: item.side,
+    };
+    const row = CSV_COLUMNS.map((column) => cells[column]);
+    return photos ? [...row, item.photos.map((photo) => photo.url).join(CSV_PHOTO_SEPARATOR)] : row;
+  });
+  return "\ufeff" + [header, ...rows].map((row) => row.map(csvCell).join(",") + "\r\n").join("");
 }
 
 /**

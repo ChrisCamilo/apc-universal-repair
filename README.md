@@ -20,7 +20,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🧭 Inventory search by name or part code, filters, sorting on every column and pagination (25, 50 or 100 per page)
 - 🚦 Low-stock and out-of-stock rows highlighted in color
 - 🖼️ Up to 3 photos per part, with a large viewer
-- 📄 Batch import of parts from CSV
+- 📄 Batch import of parts from CSV, and export of the list (every page, optionally with the photo paths) in the same format
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
 - 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes
 
@@ -153,7 +153,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🧭 Busca no estoque por nome ou código da peça, filtros, ordenação em todas as colunas e paginação (25, 50 ou 100 por página)
 - 🚦 Linhas com estoque baixo e esgotado destacadas por cor
 - 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande
-- 📄 Importação de peças em lote por CSV
+- 📄 Importação de peças em lote por CSV, e exportação da lista (todas as páginas, com o caminho das fotos se quiser) no mesmo formato
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
 - 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro
 
