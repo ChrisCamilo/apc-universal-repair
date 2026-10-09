@@ -73,11 +73,12 @@ export const lockIcon: IconShape[] = [
 ];
 // A mechanic leaning over the open hood of a car, wrench in hand: the illustration of a screen still being built.
 export const mechanicIcon: IconShape[] = [
-  { kind: "path", d: "M1.8 12.4H.8v-2.2l1.6-2.6h4.6l2.2 2.6h1.6c.5 0 .8.4.8.8v1.4h-1.1M4 12.4h4.3" },
-  { kind: "circle", cx: 2.9, cy: 12.4, r: 1.1 },
-  { kind: "circle", cx: 9.4, cy: 12.4, r: 1.1 },
-  { kind: "circle", cx: 13.4, cy: 4.6, r: 1.1 },
-  { kind: "path", d: "M13.1 5.8l.7 3.6-.6 3.6M13.8 9.4l1 3.6M13.3 6.8l-2 1.6-.9.9" },
+  { kind: "path", d: "M1.9 12.5H.9V10l1.5-2.6h3.4l1.6 2.2h3.2c.5 0 .9.4.9.9v2h-1.2M4.3 12.5h3.6" },
+  { kind: "path", d: "M7.4 9.6L9 6.2" },
+  { kind: "circle", cx: 3.1, cy: 12.5, r: 1.2 },
+  { kind: "circle", cx: 9.1, cy: 12.5, r: 1.2 },
+  { kind: "circle", cx: 12.4, cy: 3.6, r: 1.1 },
+  { kind: "path", d: "M13 4.8c.6 1 1.3 2.2 1.6 3.5M14.6 8.3l-.9 4.5M14.6 8.3l.9 4.5M13.4 6l-1.6 1.6-1 1.6M10.4 8.6l.8.5" },
 ];
 export const pencilIcon: IconShape[] = [{ kind: "path", d: "M10.6 2.8l2.6 2.6-7.7 7.7-3.2.6.6-3.2 7.7-7.7z" }];
 export const searchIcon: IconShape[] = [
