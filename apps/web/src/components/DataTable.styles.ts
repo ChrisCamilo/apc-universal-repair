@@ -5,7 +5,8 @@ import { recipe, tv } from '../styles/tv.ts'
 // a soft hairline that light up on hover, tinted with a bar on their first cell when they need attention (warn or
 // danger); numbers right-aligned in tabular mono figures. Below the card breakpoint each row becomes a card in a grid
 // (thumbnail | main | end and actions), the header hides and the "Ordenar" select takes its place. A row that opens on
-// a click gets the pointer and an accent outline inside its edges while focused by keyboard.
+// a click gets the pointer and an accent outline inside its edges while focused by keyboard. The table's body only
+// groups the rows, so it adds no level to their ids, which are the same as on mobile.
 
 // A tinted row: its fill, its hover, and the bar on its first cell, or on the card at phone width.
 const TINT = {
@@ -72,9 +73,9 @@ export const dataTable = recipe(
     sort: 'table.head.header.sort',
     arrow: 'table.head.header.sort.arrow',
     body: 'table.body',
-    row: 'table.body.row',
-    cell: 'table.body.row.cell',
-    status: 'table.body.row.cell.status',
+    row: 'table.row',
+    cell: 'table.row.cell',
+    status: 'table.row.status',
   },
 )
 
