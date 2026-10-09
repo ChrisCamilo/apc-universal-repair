@@ -10,6 +10,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form';
 import type { Item } from '@apc/shared/items';
 import { withEntry, type ItemLists } from '@apc/shared/lists';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
 import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
 import type { CreateListEntry } from '../src/inventory/useItemLists';
@@ -29,7 +30,7 @@ const FILTER = item({
 // A photo the API saved, as items carry it.
 const SAVED_PHOTO = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.jpg', thumbUrl: '/photos/aa-thumb.webp' };
 // A phone's screen with no notch, so the toast has its insets.
-const SAFE_AREA = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 const ITEMS = [
   FILTER,
   item({ id: '00000000-0000-4000-8000-000000000002', code: 'FRA-1000', name: 'Pastilha de freio', vehicleBrand: 'Chevrolet', vehicleModel: 'Opala' }),

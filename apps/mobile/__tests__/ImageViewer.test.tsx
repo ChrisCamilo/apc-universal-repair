@@ -7,6 +7,7 @@ import { Image, Modal, Text, type ViewStyle } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
+import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import type { PickedPhoto, UploadPhoto } from '../src/ImageUpload';
 import { ImageViewer } from '../src/ImageViewer';
@@ -16,7 +17,7 @@ import { themeStorage, ThemeProvider } from '../src/theme';
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 const NAME = 'Pastilha de freio dianteira';
 const PHOTOS: UploadPhoto[] = ['a', 'b', 'c'].map((name) => ({ url: `file:///saved/${name}.jpg` }));
-const SAFE_AREA = { frame: { x: 0, y: 0, width: 360, height: 780 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 
 /**
  * Saves a style and mode, renders the element inside the app's providers and waits for the theme to load.

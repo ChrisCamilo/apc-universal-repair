@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { Dimensions, Modal, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../src/Menu';
 import { Segmented } from '../src/Segmented';
@@ -171,7 +172,7 @@ test('Mobile: the user badge shows the initials, and the username only on wider 
   const shown = (tree: ReactTestRenderer.ReactTestRenderer, text: string) =>
     tree.root.findAll((n) => n.type === Text && n.props.children === text);
 
-  await screen(390, 844);
+  await screen(MOBILE_DESIGN_WIDTH, MOBILE_DESIGN_HEIGHT);
   const phone = await mount('eighties', 'night', badge);
   const [initials] = shown(phone, 'CC');
   expect(initials.props.style.color).toBe(colors.onAccent);

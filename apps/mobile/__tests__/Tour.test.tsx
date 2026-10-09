@@ -6,6 +6,7 @@ import React, { useRef, useState } from 'react';
 import { Dimensions, Modal, Text, TextInput, View, type HostInstance, type ViewStyle } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
+import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, spotlightDim, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { cardPlacement, spotlightRect, TOUR_ADVANCE_DELAY_MS, TOUR_CHECK_MS, type TourStep } from '@apc/shared/tour';
 import { Button } from '../src/Button';
@@ -18,7 +19,7 @@ const RECTS: Record<string, [number, number, number, number]> = {
   'sample-new': [24, 100, 120, 40],
   'sample-name': [40, 300, 280, 60],
 };
-const SAFE_AREA = { frame: { x: 0, y: 0, width: 360, height: 780 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 
 /**
  * Saves a style and mode, renders the element inside the app's providers and waits for the theme to load.

@@ -9,6 +9,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { INVENTORY_TUTORIAL_STORAGE_KEY, TUTORIAL_ITEM } from '@apc/shared/inventory-tutorial';
 import { matchesSearch, type Item } from '@apc/shared/items';
 import { ITEM_LIST_PATHS } from '@apc/shared/lists';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
@@ -18,7 +19,7 @@ import { ToastProvider } from '../src/Toast';
 import { TourProvider } from '../src/Tour';
 
 // A phone's screen with no notch, so the tour card and the toast have their insets.
-const SAFE_AREA = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 // Trees the test rendered, unmounted after it so the timers don't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 
