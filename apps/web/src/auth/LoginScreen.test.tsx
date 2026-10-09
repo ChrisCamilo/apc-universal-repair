@@ -1,5 +1,6 @@
 import { createMockAuth, LOGIN_MESSAGES, type AuthService, type SessionUser } from '@apc/shared/auth'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
+import { isStyleId } from '@apc/shared/style-ids'
 import { TEST_USERS } from '@apc/shared/test-users'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
@@ -103,13 +104,27 @@ test('Web: a refused login says so above the form and empties the password', asy
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), 'errada{Enter}')
   const alert = screen.getByRole('alert')
   await expect.element(alert).toHaveTextContent(LOGIN_MESSAGES.failed)
-  const form = screen.container.querySelector('form')!
+  const form = screen.getByTestId('auth.login-screen.form').element()
   expect(form.firstElementChild).toBe(alert.element())
   await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveValue('')
   await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveFocus()
   await expect.element(screen.getByLabelText('Usuário')).toHaveValue(USER.username)
   await expect.element(screen.getByLabelText('Usuário')).not.toHaveAttribute('aria-invalid')
   expect(onLoggedIn).not.toHaveBeenCalled()
+})
+
+// Checks the parts of the screen carry their style ids, the same as on mobile: the page, the badge's heading, the
+// form and its actions, each on its own element; and that every id on the screen is written as the convention asks.
+test('Web: the login screen carries its style ids', async () => {
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
+  const tag = (id: string) => screen.getByTestId(id, { exact: true }).element().tagName
+  expect(tag('auth.login-screen')).toBe('MAIN')
+  expect(tag('auth.login-screen.layout')).toBe('DIV')
+  expect(tag('auth.login-screen.brand.title')).toBe('H1')
+  expect(tag('auth.login-screen.form')).toBe('FORM')
+  await expect.element(screen.getByTestId('auth.login-screen.form.actions').getByRole('button', { name: 'Entrar' })).toBeVisible()
+  const ids = [...screen.container.querySelectorAll('[data-testid]')].map((element) => element.getAttribute('data-testid')!)
+  expect(ids.filter((id) => id.startsWith('auth.') && !isStyleId(id))).toEqual([])
 })
 
 // Holds the login's answer, presses "Entrar" and Enter again meanwhile, and checks "Entrar" says it is busy and
