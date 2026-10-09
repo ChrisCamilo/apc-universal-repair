@@ -40,6 +40,7 @@ import { API_BASE, savePhotos } from '../inventory/savePhotos.ts'
 import { useItemLists } from '../inventory/useItemLists.ts'
 import { useItems } from '../inventory/useItems.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
+import { inventoryTab, LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB } from './InventoryTab.styles.ts'
 import { InventoryTutorial } from './InventoryTutorial.tsx'
 import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 import { usePageSize } from './pageSizeContext.ts'
@@ -66,6 +67,8 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // show as one line under the name. The Inventory tutorial runs over the tab by itself the first time, and again from
 // the user menu: it starts and ends with the test item deleted and the search, filters and sort off.
 
+// The table's cells, styled once: the recipe has no variants they change.
+const CELLS = inventoryTab()
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   {
     key: 'name',
@@ -81,17 +84,39 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
     header: 'Veículo',
     sortable: true,
     cell: (item) => (
-      <span className="grid">
+      <span className={CELLS.classes.vehicle()} data-testid={CELLS.ids.vehicle}>
         <span>{item.vehicleBrand}</span>
-        <span className="text-text-muted">{item.vehicleModel ?? 'qualquer modelo'}</span>
+        <span className={CELLS.classes.model()} data-testid={CELLS.ids.model}>
+          {item.vehicleModel ?? 'qualquer modelo'}
+        </span>
       </span>
     ),
   },
   { key: 'position', sortable: true, header: 'Posição', cell: (item) => <Coded value={item.position} name={POSITION_NAMES[item.position]} /> },
   { key: 'side', sortable: true, header: 'Lado', cell: (item) => <Coded value={item.side} name={SIDE_NAMES[item.side]} /> },
   { key: 'color', sortable: true, header: 'Cor', cell: (item) => <Coded value={item.color} name={item.color === NOT_APPLICABLE ? 'Cor não se aplica' : item.color} /> },
-  { key: 'location', sortable: true, header: 'Local', cell: (item) => <span className="font-mono text-xs">{item.location}</span> },
-  { key: 'price', header: 'Valor unit.', sortLabel: 'Valor unitário', sortable: true, numeric: true, cell: (item) => <span className="whitespace-nowrap">{formatPrice(item.unitPriceCents)}</span> },
+  {
+    key: 'location',
+    sortable: true,
+    header: 'Local',
+    cell: (item) => (
+      <span className={CELLS.classes.location()} data-testid={CELLS.ids.location}>
+        {item.location}
+      </span>
+    ),
+  },
+  {
+    key: 'price',
+    header: 'Valor unit.',
+    sortLabel: 'Valor unitário',
+    sortable: true,
+    numeric: true,
+    cell: (item) => (
+      <span className={CELLS.classes.price()} data-testid={CELLS.ids.price}>
+        {formatPrice(item.unitPriceCents)}
+      </span>
+    ),
+  },
   { key: 'quantity', header: 'Qtd.', sortLabel: 'Quantidade', sortable: true, numeric: true, card: 'end', cell: (item) => item.quantity },
 ]
 // The stock status chips, outside the menu: one at a time, none for every item.
@@ -108,6 +133,7 @@ function rowStatus(item: Item): { tone: 'warn' | 'danger'; label: string } | und
 }
 
 export function InventoryTab() {
+  const { classes, ids } = inventoryTab()
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS)
   const [status, setStatus] = useState<ItemStatus | null>(null)
   const [search, setSearch] = useState('')
@@ -288,9 +314,9 @@ export function InventoryTab() {
   }
 
   return (
-    <Panel className="grid min-w-0 gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-0 flex-[1_1_calc(var(--spacing)*64)] sm:max-w-xl">
+    <Panel className={classes.base()}>
+      <div className={classes.toolbar()} data-testid={ids.toolbar}>
+        <div className={classes.search()} data-testid={ids.search}>
           <SearchField
             data-tour="search"
             label="Procure pelo nome ou código da peça"
@@ -308,7 +334,7 @@ export function InventoryTab() {
           Novo item
         </Button>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className={classes.filters()} data-testid={ids.filters}>
         <FilterMenu
           label="Filtros do estoque"
           title="Filtrar estoque"
@@ -334,7 +360,7 @@ export function InventoryTab() {
           }
         />
         {state.status === 'ready' && listed.status === 'ready' && (
-          <p data-testid="inventory-count" className="m-0 ml-auto font-mono text-xs tabular-nums text-text-muted">
+          <p className={classes.count()} data-testid={ids.count}>
             {resultSummary(listed.status === 'ready' ? listed.total : 0, items)}
           </p>
         )}
@@ -373,7 +399,7 @@ export function InventoryTab() {
                 numeric: true,
                 card: 'actions',
                 cell: (item) => (
-                  <span className="inline-flex gap-0.5">
+                  <span className={classes.actions()} data-testid={ids.actions}>
                     <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => openForm(item)} />
                     <RowAction
                       icon={trashIcon}
@@ -505,17 +531,19 @@ export function InventoryTab() {
 }
 
 function LoadingRows() {
+  const { classes, ids } = inventoryTab()
   return (
-    <div aria-busy="true" className="grid gap-3 py-2">
-      <Spinner size="sm" label="Carregando o estoque" className="sr-only" />
+    <div aria-busy="true" className={classes.loading()} data-testid={ids.loading}>
+      <Spinner size="sm" label="Carregando o estoque" className={classes.spinner()} />
       {[0, 1, 2, 3, 4].map((row) => (
-        <div key={row} data-testid="loading-row" className="flex items-center gap-3">
-          <Skeleton shape="block" width="calc(var(--spacing) * 11)" height="calc(var(--spacing) * 11)" />
-          <div className="grid flex-1 gap-1.5">
-            <Skeleton width="40%" />
-            <Skeleton width="20%" />
+        <div key={row} className={classes.loadingRow()} data-testid={ids.loadingRow}>
+          <Skeleton shape="block" width={LOADING_THUMB} height={LOADING_THUMB} />
+          <div className={classes.loadingLines()} data-testid={ids.loadingLines}>
+            {LOADING_LINES.map((width) => (
+              <Skeleton key={width} width={width} />
+            ))}
           </div>
-          <Skeleton width="calc(var(--spacing) * 14)" />
+          <Skeleton width={LOADING_QUANTITY} />
         </div>
       ))}
     </div>
@@ -523,8 +551,9 @@ function LoadingRows() {
 }
 
 function Coded({ value, name }: { value: string; name: string }) {
+  const { classes, ids } = inventoryTab({ muted: value === NOT_APPLICABLE })
   return (
-    <span title={name} className={value === NOT_APPLICABLE ? 'text-text-muted' : undefined}>
+    <span title={name} className={classes.coded()} data-testid={ids.coded}>
       {value}
     </span>
   )
