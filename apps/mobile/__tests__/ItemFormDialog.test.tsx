@@ -438,7 +438,7 @@ test('Mobile: a new item is saved with its photos', async () => {
   (launchImageLibrary as jest.Mock).mockResolvedValueOnce({
     assets: ['frente', 'lado'].map((name) => ({ uri: `file:///fotos/${name}.jpg`, fileName: `${name}.jpg`, type: 'image/jpeg', fileSize: 1024 })),
   });
-  const drop = tree.root.find((n) => n.props.testID === 'upload-drop' && typeof n.props.onPress === 'function');
+  const drop = tree.root.find((n) => n.props.testID === 'common.image-upload.drop' && typeof n.props.onPress === 'function');
   await ReactTestRenderer.act(async () => drop.props.onPress());
   expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual(['file:///fotos/frente.jpg', 'file:///fotos/lado.jpg']);
   (fetch as jest.Mock).mockClear();
@@ -489,5 +489,5 @@ test('Mobile: the details show the photos read-only', async () => {
   const tree = await mount({ ...FILTER, photos: [SAVED_PHOTO] }, { details: true });
   expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual([expect.stringMatching(/\/photos\/aa\.jpg$/)]);
   expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Remover foto 1')).toHaveLength(0);
-  expect(tree.root.findAll((n) => n.props.testID === 'upload-drop')).toHaveLength(0);
+  expect(tree.root.findAll((n) => n.props.testID === 'common.image-upload.drop')).toHaveLength(0);
 });

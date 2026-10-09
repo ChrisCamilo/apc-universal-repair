@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Image, Text, type ViewStyle } from 'react-native';
+import { Image, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
@@ -81,12 +81,12 @@ for (const style of STYLES) {
     test(`Mobile: the photo field follows the ${style}/${mode} theme`, async () => {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode, <Sample initial={[]} pick={[picked('motor.gif', 'image/gif')]} />);
-      const drop = tree.root.find((n) => n.props.testID === 'upload-drop' && typeof n.props.style === 'function');
-      const frame: ViewStyle = drop.props.style({ pressed: false });
+      const drop = tree.root.find((n) => n.props.testID === 'common.image-upload.drop' && typeof n.props.style === 'function');
+      const frame: ViewStyle = StyleSheet.flatten(drop.props.style({ pressed: false }));
       expect(frame).toMatchObject({ borderStyle: 'dashed', borderColor: colors.hairline, backgroundColor: colors.panelRaised });
-      await press(tree, 'upload-drop');
+      await press(tree, 'common.image-upload.drop');
       const message = tree.root.findAll((n) => n.type === Text && n.props.children === 'motor.gif: não é JPG, PNG ou WebP');
-      expect(message[0].props.style.color).toBe(colors.danger);
+      expect(StyleSheet.flatten(message[0].props.style).color).toBe(colors.danger);
     });
   }
 }
@@ -102,7 +102,7 @@ test('Mobile: picking keeps the good photos and names each one left out', async 
   ];
   const tree = await mount('eighties', 'night', <Sample initial={[]} pick={pick} />);
   expect(texts(tree)).toContain('Toque para escolher até 3 fotos');
-  await press(tree, 'upload-drop');
+  await press(tree, 'common.image-upload.drop');
   expect(shown(tree)).toEqual(['Foto 1, capa', 'Foto 2']);
   expect(texts(tree)).toEqual(
     expect.arrayContaining([
@@ -119,22 +119,22 @@ test('Mobile: picking keeps the good photos and names each one left out', async 
 test('Mobile: the field fills up to the limit and frees a place on remove', async () => {
   const pick = [picked('frente.jpg', 'image/jpeg'), picked('painel.jpg', 'image/jpeg')];
   const tree = await mount('fiat90', 'day', <Sample initial={SAVED.slice(0, 2)} pick={pick} />);
-  await press(tree, 'upload-drop');
+  await press(tree, 'common.image-upload.drop');
   expect(shown(tree)).toHaveLength(ITEM_PHOTO_LIMIT);
   expect(texts(tree)).toContain('painel.jpg: passou do limite de 3 fotos');
-  expect(tree.root.findAll((n) => n.props.testID === 'upload-drop')).toHaveLength(0);
+  expect(tree.root.findAll((n) => n.props.testID === 'common.image-upload.drop')).toHaveLength(0);
 
   await press(tree, 'Remover foto 1');
   expect(shown(tree)).toEqual(['Foto 1, capa', 'Foto 2']);
   expect(texts(tree)).not.toContain('painel.jpg: passou do limite de 3 fotos');
-  expect(tree.root.findAll((n) => n.props.testID === 'upload-drop').length).toBeGreaterThan(0);
+  expect(tree.root.findAll((n) => n.props.testID === 'common.image-upload.drop').length).toBeGreaterThan(0);
 });
 
 // Cancels the picker and checks nothing changes.
 test('Mobile: canceling the picker leaves the field as it was', async () => {
   const onChange = jest.fn();
   const tree = await mount('gt4', 'night', <Sample initial={SAVED.slice(0, 1)} pick={[]} onChange={onChange} />);
-  await press(tree, 'upload-drop');
+  await press(tree, 'common.image-upload.drop');
   expect(onChange).not.toHaveBeenCalled();
   expect(shown(tree)).toEqual(['Foto 1, capa']);
 });
