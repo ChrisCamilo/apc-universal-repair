@@ -73,11 +73,11 @@ CI (GitHub Actions) runs lint, build and the Playwright E2E tests on every pull 
 pnpm install
 cp apps/api/.env.example apps/api/.env   # then set DATABASE_URL
 pnpm --filter @apc/api exec prisma migrate deploy   # creates the database tables
-pnpm --filter @apc/api db:seed            # adds the default lists and sample items
+pnpm --filter @apc/api db:seed            # adds the test users, the default lists and sample items
 pnpm dev                                  # API on :3333, web on :5173
 ```
 
-Login is mocked until the real backend (EP-10): sign in with a test user from `packages/shared/src/auth/testUsers.ts`, such as `christian.camilo` / `opala4100`. These are test values only.
+Users live in the database: the seed adds the test users from `packages/shared/src/auth/testUsers.ts`, such as `christian.camilo` / `opala4100` (test values only), and anyone can create an account with "Criar conta" on the login, giving a name, a username, an e-mail (only kept for now) and a password. Passwords are stored hashed. Real sessions, with tokens, come with the real backend (EP-10).
 
 Before the first test run, download the browser that the component and E2E tests use:
 
@@ -206,11 +206,11 @@ O CI (GitHub Actions) roda lint, build e os testes E2E do Playwright em todo pul
 pnpm install
 cp apps/api/.env.example apps/api/.env   # depois ajuste o DATABASE_URL
 pnpm --filter @apc/api exec prisma migrate deploy   # cria as tabelas do banco
-pnpm --filter @apc/api db:seed            # adiciona as listas padrão e itens de exemplo
+pnpm --filter @apc/api db:seed            # adiciona os usuários de teste, as listas padrão e itens de exemplo
 pnpm dev                                  # API na porta 3333, web na 5173
 ```
 
-O login é simulado até o backend real (EP-10): entre com um usuário de teste de `packages/shared/src/auth/testUsers.ts`, como `christian.camilo` / `opala4100`. São valores só de teste.
+Os usuários ficam no banco: o seed cadastra os usuários de teste de `packages/shared/src/auth/testUsers.ts`, como `christian.camilo` / `opala4100` (valores só de teste), e qualquer pessoa pode criar uma conta em "Criar conta" no login, informando nome, usuário, e-mail (só guardado por enquanto) e senha. As senhas são guardadas em hash. Sessões de verdade, com tokens, vêm com o backend real (EP-10).
 
 Antes de rodar os testes pela primeira vez, baixe o navegador que os testes de componente e E2E usam:
 
