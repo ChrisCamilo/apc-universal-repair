@@ -10,6 +10,7 @@ import loginSource from '../auth/LoginScreen.tsx?raw'
 import '../index.css'
 import { themeCss } from '../theme.ts'
 import { DashboardScreen } from './Screens.tsx'
+import stylesSource from './Screens.styles.ts?raw'
 import screensSource from './Screens.tsx?raw'
 import storiesSource from './Screens.stories.tsx?raw'
 
@@ -60,10 +61,10 @@ afterEach(async () => {
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
-// Reads the screens, their stories and the login screen they show as written, and checks they set no inline
-// style and no raw color, so every color, face, border and radius comes from the design-system components.
+// Reads the screens, their layout, their stories and the login screen they show as written, and checks they set no
+// inline style and no raw color, so every color, face, border and radius comes from the design-system components.
 test('Web: the screens use no local styles or raw colors', () => {
-  for (const source of [screensSource, storiesSource, loginSource]) {
+  for (const source of [screensSource, stylesSource, storiesSource, loginSource]) {
     expect(source).not.toMatch(/style=\{/)
     expect(source).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i)
     expect(source).not.toMatch(/\b(?:bg|text|border|shadow|rounded|font)-(?:\[|canvas|panel|accent|hairline|danger|warn|on-|display|mono|body)/)
