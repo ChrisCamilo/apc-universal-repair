@@ -3,13 +3,19 @@ import { afterEach, mock, test } from "node:test";
 import type { ItemLists } from "../lists/lists.ts";
 import {
   CSV_COLUMNS,
+  CSV_PHOTOS_COLUMN,
   CSV_TEMPLATE,
+  csvExportName,
   csvPrice,
+  exportedSummary,
+  exportItems,
+  exportScope,
   importedDetails,
   importedSummary,
   importItems,
   itemImportSchema,
   ITEM_IMPORT_LIMIT,
+  itemsCsv,
   newListNames,
   parseCsv,
   readItemsCsv,
@@ -17,6 +23,7 @@ import {
   type CsvItemRow,
 } from "./itemCsv.ts";
 import { ITEM_FORM_MESSAGES } from "./itemForm.ts";
+import type { Item } from "./items.ts";
 
 const HEADER = CSV_COLUMNS.join(",");
 // The lists the API keeps: one of each, Volkswagen with the Gol.
@@ -26,6 +33,51 @@ const LISTS: ItemLists = {
   vehicleBrands: [{ id: "vw", name: "Volkswagen" }],
   vehicleModels: [{ id: "gol", name: "Gol", vehicleBrandId: "vw" }],
 };
+
+// Two items as the API sends them: one with every field, a comma, quotes and two photos; one with nothing optional.
+const STOCK: Item[] = [
+  {
+    id: "00000000-0000-4000-8000-000000000001",
+    code: "BP-1020",
+    name: 'Pastilha de freio "cerâmica", dianteira',
+    category: "Freios",
+    partBrand: "Cobreq",
+    vehicleBrand: "Volkswagen",
+    vehicleModel: "Gol",
+    position: "D",
+    side: "Ambos",
+    color: "Preto",
+    location: "B-10",
+    quantity: 4,
+    minQuantity: 1,
+    unitPriceCents: 123456,
+    photos: [
+      { id: "00000000-0000-4000-8000-0000000000a1", url: "/photos/a1.jpg", thumbUrl: "/photos/a1-thumb.webp" },
+      { id: "00000000-0000-4000-8000-0000000000a2", url: "/photos/a2.png", thumbUrl: "/photos/a2-thumb.webp" },
+    ],
+    createdAt: "2026-10-03T12:00:00.000Z",
+    updatedAt: "2026-10-03T12:00:00.000Z",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000002",
+    code: "BKR6E",
+    name: "Vela de ignição",
+    category: "Motor",
+    partBrand: "NGK",
+    vehicleBrand: "Volkswagen",
+    vehicleModel: null,
+    position: "N/A",
+    side: "N/A",
+    color: "N/A",
+    location: null,
+    quantity: 0,
+    minQuantity: 0,
+    unitPriceCents: 2490,
+    photos: [],
+    createdAt: "2026-10-03T12:00:00.000Z",
+    updatedAt: "2026-10-03T12:00:00.000Z",
+  },
+];
 
 afterEach(() => mock.restoreAll());
 
@@ -191,4 +243,76 @@ test("Shared: the import is worded for the preview and the toast", () => {
   assert.equal(importedDetails(read[0].item).replace(/\s/g, " "), "Motor · Mann · Volkswagen Gol · A-2 · R$ 39,90");
   assert.equal(importedSummary({ created: 3, updated: 1 }), "Importação concluída: 3 itens criados, 1 atualizado.");
   assert.equal(importedSummary({ created: 1, updated: 0 }), "Importação concluída: 1 item criado, 0 atualizados.");
+});
+
+// Writes the items without and with photos, and checks the header follows the template's columns, the photos column
+// comes last only when asked, a value with a comma or quotes is quoted, the price has a decimal comma, what doesn't
+// apply says N/A, and the file starts with a byte-order mark and ends each line in CRLF.
+test("Shared: the export writes the import's columns, with photos only when asked", () => {
+  const plain = itemsCsv(STOCK, { photos: false });
+  assert.ok(plain.startsWith("\ufeff"));
+  const lines = plain.slice(1).split("\r\n");
+  assert.equal(lines[0], CSV_COLUMNS.join(","));
+  assert.equal(lines[1], 'BP-1020,"Pastilha de freio ""cerâmica"", dianteira",Freios,Cobreq,Volkswagen,Gol,4,1,B-10,"1.234,56",Preto,D,Ambos');
+  assert.equal(lines[2], "BKR6E,Vela de ignição,Motor,NGK,Volkswagen,,0,0,,\"24,90\",N/A,N/A,N/A");
+  assert.equal(lines[3], "");
+  const withPhotos = itemsCsv(STOCK, { photos: true }).slice(1).split("\r\n");
+  assert.equal(withPhotos[0], `${CSV_COLUMNS.join(",")},${CSV_PHOTOS_COLUMN}`);
+  assert.ok(withPhotos[1].endsWith(",/photos/a1.jpg | /photos/a2.png"));
+  assert.ok(withPhotos[2].endsWith(",N/A,"));
+});
+
+// Exports the items, with and without photos, and reads the file back with the import, and checks every row is valid
+// and gives back the same items.
+test("Shared: an exported file reads back as the same items", () => {
+  for (const photos of [false, true]) {
+    const read = rows(itemsCsv(STOCK, { photos }));
+    assert.deepEqual(
+      read.map((row) => row.errors),
+      [[], []],
+    );
+    assert.deepEqual(
+      read.map((row) => row.item),
+      STOCK.map(({ code, name, category, partBrand, vehicleBrand, vehicleModel, quantity, minQuantity, location, unitPriceCents, color, position, side }) => ({
+        code,
+        name,
+        category,
+        partBrand,
+        vehicleBrand,
+        vehicleModel: vehicleModel ?? "",
+        quantity,
+        minQuantity,
+        location: location ?? "",
+        unitPriceCents,
+        color,
+        position,
+        side,
+      })),
+    );
+  }
+});
+
+// Exports through a stand-in for the API and checks it asks for the list query as given, with no page, writes every
+// item it answers with and counts them; a failed request gives null.
+test("Shared: an export fetches every item of the list and writes them", async () => {
+  const fetch = mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ items: STOCK, total: 2 }), { status: 200 }));
+  const exported = await exportItems("/api", "category=Freios&sort=price&order=desc", { photos: true });
+  assert.equal(fetch.mock.calls[0].arguments[0], "/api/items?category=Freios&sort=price&order=desc");
+  assert.deepEqual(exported, { csv: itemsCsv(STOCK, { photos: true }), count: 2 });
+  await exportItems("/api", "", { photos: false });
+  assert.equal(fetch.mock.calls[1].arguments[0], "/api/items");
+  mock.method(globalThis, "fetch", async () => new Response(null, { status: 500 }));
+  assert.equal(await exportItems("/api", "", { photos: false }), null);
+});
+
+// Words the export's file name, scope and toast for none, one and many items, narrowed or not.
+test("Shared: the export is worded for its file, dialog and toast", () => {
+  assert.equal(csvExportName(new Date(2026, 9, 9, 23, 30)), "estoque-2026-10-09.csv");
+  assert.equal(exportScope(0, true), "Nenhum item na lista para exportar.");
+  assert.equal(exportScope(1, false), "O único item do estoque.");
+  assert.equal(exportScope(40, false), "Todos os 40 itens do estoque.");
+  assert.equal(exportScope(12, true), "12 itens, com a busca e os filtros atuais.");
+  assert.equal(exportScope(1, true), "1 item, com a busca e os filtros atuais.");
+  assert.equal(exportedSummary(1), "1 item exportado.");
+  assert.equal(exportedSummary(12), "12 itens exportados.");
 });
