@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Image, Modal, Text, type ViewStyle } from 'react-native';
+import { Image, Modal, StyleSheet, Text, type ViewStyle } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
@@ -108,9 +108,9 @@ for (const style of STYLES) {
     test(`Mobile: the photo viewer follows the ${style}/${mode} theme`, async () => {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode, <Sample initial={PHOTOS} />);
-      const window = tree.root.find((n) => n.props.testID === 'viewer-window' && typeof n.type === 'string');
-      expect(window.props.style).toMatchObject({ backgroundColor: colors.panel, borderColor: colors.hairline });
-      const dot = (name: string): ViewStyle => pressable(tree.root, name).props.style;
+      const window = tree.root.find((n) => n.props.testID === 'common.image-viewer' && typeof n.type === 'string');
+      expect(StyleSheet.flatten(window.props.style)).toMatchObject({ backgroundColor: colors.panel, borderColor: colors.hairline });
+      const dot = (name: string): ViewStyle => StyleSheet.flatten(pressable(tree.root, name).props.style);
       expect(dot('Foto 1').backgroundColor).toBe(colors.accent);
       expect(dot('Foto 2').backgroundColor).toBe(colors.hairline);
     });
@@ -149,7 +149,7 @@ test('Mobile: the ×, a tap outside and the back button close the viewer', async
   const onClose = jest.fn();
   const tree = await mount('bmw90', 'night', <Sample initial={PHOTOS} onClose={onClose} />);
   await press(tree.root, 'Fechar');
-  const outside = tree.root.find((n) => n.props.testID === 'viewer-outside' && typeof n.props.onPress === 'function');
+  const outside = tree.root.find((n) => n.props.testID === 'common.image-viewer.outside' && typeof n.props.onPress === 'function');
   await ReactTestRenderer.act(async () => outside.props.onPress());
   await ReactTestRenderer.act(async () => viewer(tree).props.onRequestClose());
   expect(onClose).toHaveBeenCalledTimes(3);
