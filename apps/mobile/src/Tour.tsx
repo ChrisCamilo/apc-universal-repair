@@ -1,7 +1,6 @@
 import { useContext, useEffect, useEffectEvent, useId, useMemo, useState, type ReactNode } from 'react';
-import { StyleSheet, View, useWindowDimensions, type HostInstance, type ViewStyle } from 'react-native';
+import { View, useWindowDimensions, type HostInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { popShadow, scales, spotlightDim } from '@apc/shared/theme';
 import {
   cardPlacement,
   spotlightRect,
@@ -14,7 +13,7 @@ import {
 } from '@apc/shared/tour';
 import { Button } from './Button';
 import { Panel } from './Panel';
-import { useTheme, type ActiveTheme } from './theme';
+import { dimBoxes, useStyles } from './Tour.styles';
 import { TourActionsContext, TourLayersContext, type TourLayerActions } from './tourContext';
 import { Heading, Label, NumericReadout, Text } from './Typography';
 
@@ -26,20 +25,6 @@ import { Heading, Label, NumericReadout, Text } from './Typography';
 // the user leaves it. The tour draws in the topmost TourLayer, so it stays above an open Dialog and usable.
 // It follows the target as it moves, and has no motion to reduce.
 
-const ACTIONS_STYLE: ViewStyle = {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: scales.space.s2,
-  paddingTop: scales.space.s1,
-};
-const ACTIONS_END_STYLE: ViewStyle = { flexDirection: 'row', gap: scales.space.s2, marginLeft: 'auto' };
-const HEADER_STYLE: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', gap: scales.space.s2 };
-const LAYER_STYLE: ViewStyle = StyleSheet.absoluteFill;
-// The ring is two hairlines wide, as on the web.
-const RING_WIDTH = scales.hairline * 2;
-
 type TourProps = {
   open: boolean;
   /** Called on Skip and on Finish; the owner closes the tour by setting `open` to false. */
@@ -49,69 +34,6 @@ type TourProps = {
   /** Names of the tour's parts, for the card header, e.g. ["Criar um item", "Procurar e filtrar"]. */
   parts?: readonly string[];
 };
-
-/**
- * Places the card's frame on screen.
- * @param card Left and top corner and width, from cardPlacement.
- * @returns Absolute style of the frame.
- */
-function cardFrameStyle(card: { x: number; y: number; width: number }): ViewStyle {
-  return { position: 'absolute', left: card.x, top: card.y, width: card.width };
-}
-
-/**
- * Styles the card around the step: the panel framed in the accent, lifted by the pop shadow.
- * @param theme Active theme.
- * @returns Style for the card's Panel.
- */
-function cardStyle(theme: ActiveTheme): ViewStyle {
-  return { gap: scales.space.s2, padding: scales.space.s4, borderColor: theme.colors.accent, boxShadow: popShadow() };
-}
-
-/**
- * Lays the dim around the spotlight as four boxes, above, below, left and right of it.
- * @param spot Box of the spotlight.
- * @param screen Size of the screen.
- * @returns Absolute styles of the four boxes.
- */
-function dimBoxes(spot: TourRect, screen: { width: number; height: number }): ViewStyle[] {
-  const below = spot.y + spot.height;
-  const fill: ViewStyle = { position: 'absolute', backgroundColor: spotlightDim() };
-  return [
-    { ...fill, left: 0, top: 0, width: screen.width, height: Math.max(0, spot.y) },
-    { ...fill, left: 0, top: below, width: screen.width, height: Math.max(0, screen.height - below) },
-    { ...fill, left: 0, top: spot.y, width: Math.max(0, spot.x), height: spot.height },
-    { ...fill, left: spot.x + spot.width, top: spot.y, width: Math.max(0, screen.width - spot.x - spot.width), height: spot.height },
-  ];
-}
-
-/**
- * Styles the ring around the target: the accent in the tile radius, glowing where the style has a glow.
- * @param theme Active theme.
- * @param spot Box of the spotlight.
- * @returns Absolute style of the ring.
- */
-function ringStyle(theme: ActiveTheme, spot: TourRect): ViewStyle {
-  const glow: ViewStyle = theme.glow
-    ? {
-        shadowColor: theme.colors.accent,
-        shadowOpacity: theme.glow.opacity,
-        shadowRadius: theme.glow.blur / 2,
-        shadowOffset: { width: 0, height: 0 },
-      }
-    : {};
-  return {
-    position: 'absolute',
-    left: spot.x,
-    top: spot.y,
-    width: spot.width,
-    height: spot.height,
-    borderWidth: RING_WIDTH,
-    borderColor: theme.colors.accent,
-    borderRadius: theme.radiusTile,
-    ...glow,
-  };
-}
 
 export function TourProvider({ children }: { children: ReactNode }) {
   const [overlay, setOverlay] = useState<ReactNode>(null);
@@ -139,6 +61,7 @@ export function TourLayer() {
   const actions = useContext(TourActionsContext);
   const { overlay, top } = useContext(TourLayersContext);
   const id = useId();
+  const { styles, ids } = useStyles();
 
   // Join the stack while mounted; the layer mounted last is on top.
   useEffect(() => {
@@ -147,7 +70,7 @@ export function TourLayer() {
   }, [actions, id]);
 
   return top === id && overlay ? (
-    <View pointerEvents="box-none" style={LAYER_STYLE} testID="tour-layer">
+    <View pointerEvents="box-none" style={styles.layer} testID={ids.layer}>
       {overlay}
     </View>
   ) : null;
@@ -159,7 +82,7 @@ export function Tour({ open, ...rest }: TourProps) {
 }
 
 function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
-  const theme = useTheme();
+  const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const tour = useContext(TourActionsContext);
@@ -228,32 +151,38 @@ function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
 
   const overlay = (
     <>
-      {spot && dimBoxes(spot, screen).map((box, i) => <View key={i} pointerEvents="none" style={box} testID="tour-dim" />)}
-      {spot && <View pointerEvents="none" style={ringStyle(theme, spot)} testID="tour-spotlight" />}
+      {spot && dimBoxes(spot, screen).map((box, i) => <View key={i} pointerEvents="none" style={[styles.dim, box]} testID={ids.dim} />)}
+      {spot && (
+        <View
+          pointerEvents="none"
+          style={[styles.spotlight, { left: spot.x, top: spot.y, width: spot.width, height: spot.height }]}
+          testID={ids.spotlight}
+        />
+      )}
       <View
         accessibilityLabel={step.title}
         onLayout={(event) => setCardHeight(event.nativeEvent.layout.height)}
-        style={cardFrameStyle(card)}
-        testID="tour-card"
+        style={[styles.card, { left: card.x, top: card.y, width: card.width }]}
+        testID={ids.card}
       >
-        <Panel style={cardStyle(theme)}>
-          <View style={HEADER_STYLE}>
+        <Panel style={styles.panel}>
+          <View style={styles.header} testID={ids.header}>
             <Label tone="accent">{header.part}</Label>
             <NumericReadout tone="muted">{header.count}</NumericReadout>
           </View>
           <Heading level={4}>{step.title}</Heading>
-          <View accessibilityLiveRegion="polite">
+          <View accessibilityLiveRegion="polite" style={styles.text} testID={ids.text}>
             <Text size="sm" tone="muted">
               {step.text}
             </Text>
           </View>
-          <View style={ACTIONS_STYLE}>
+          <View style={styles.actions} testID={ids.actions}>
             {!last && (
               <Button variant="link" size="sm" onPress={onClose}>
                 Pular tutorial
               </Button>
             )}
-            <View style={ACTIONS_END_STYLE}>
+            <View style={styles.buttons} testID={ids.buttons}>
               {step.auto && (
                 <Button variant="secondary" size="sm" onPress={step.auto}>
                   Fazer por mim
