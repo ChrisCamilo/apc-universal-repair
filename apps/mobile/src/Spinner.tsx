@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, type ViewStyle } from 'react-native';
-import { scales } from '@apc/shared/theme';
+import { Animated, Easing } from 'react-native';
 import { useReducedMotion } from './motion';
-import { useTheme } from './theme';
+import { useStyles } from './Spinner.styles';
 
 // A ring with a gap, turning while something loads, the same as the web. "sm" matches body text, e.g. inside
 // a button; "md" stands on its own, e.g. over a photo or a panel. With reduced motion it doesn't turn but
@@ -11,37 +10,18 @@ import { useTheme } from './theme';
 
 // The ring turns once a second and, with reduced motion, fades in and out every two, as on the web.
 const PULSE_MS = 2000;
-const SIZES = { sm: scales.fontSize.base, md: scales.space.s5 };
 const SPIN_MS = 1000;
 
 type SpinnerProps = {
-  size?: keyof typeof SIZES;
+  size?: 'sm' | 'md';
   /** Announced to screen readers, e.g. "Carregando estoque"; leave it out when the surroundings already say so. */
   label?: string;
   /** Ring color; defaults to the muted text color. */
   color?: string;
-  testID?: string;
 };
 
-/**
- * Styles the ring: a two-hairline circle in the color, open on its right side.
- * @param size Width and height, in px.
- * @param color Ring color.
- * @returns Style for the ring View.
- */
-function ringStyle(size: number, color: string): ViewStyle {
-  return {
-    width: size,
-    height: size,
-    borderWidth: scales.hairline * 2,
-    borderColor: color,
-    borderRightColor: 'transparent',
-    borderRadius: scales.radiusPill,
-  };
-}
-
-export function Spinner({ size = 'md', label, color, testID }: SpinnerProps) {
-  const theme = useTheme();
+export function Spinner({ size = 'md', label, color }: SpinnerProps) {
+  const { styles, ids } = useStyles();
   const reduced = useReducedMotion();
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -65,13 +45,13 @@ export function Spinner({ size = 'md', label, color, testID }: SpinnerProps) {
     : { transform: [{ rotate: progress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] };
   return (
     <Animated.View
-      testID={testID}
+      testID={ids.ring}
       accessible={!!label}
       accessibilityRole={label ? 'progressbar' : undefined}
       accessibilityLabel={label}
       importantForAccessibility={label ? 'yes' : 'no-hide-descendants'}
       accessibilityElementsHidden={!label}
-      style={[ringStyle(SIZES[size], color ?? theme.colors.textMuted), motion]}
+      style={[styles.ring, size === 'sm' ? styles.ringSm : styles.ringMd, color !== undefined && { borderColor: color }, styles.ringGap, motion]}
     />
   );
 }
