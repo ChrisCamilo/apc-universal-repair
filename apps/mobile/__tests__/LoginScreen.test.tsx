@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Modal, TextInput } from 'react-native';
+import { Modal, StyleSheet, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { createMockAuth, LOGIN_MESSAGES, type AuthService, type SessionUser } from '@apc/shared/auth';
 import { isStyleId } from '@apc/shared/style-ids';
@@ -109,7 +109,7 @@ for (const style of STYLES) {
       expect(tree.root.find((n) => n.props.testID === 'badge-needle').props.stroke).toBe(colors.accent);
       const panels = tree.root.findAll((n) => typeof n.type === 'string' && [n.props.style].flat().some((s) => s?.backgroundColor === colors.panel));
       expect(panels.some((panel) => panel.findAll((n) => n === header).length > 0)).toBe(true);
-      expect(button(tree, 'Entrar').props.style({ pressed: false }).backgroundColor).toBe(colors.accent);
+      expect(StyleSheet.flatten(button(tree, 'Entrar').props.style({ pressed: false })).backgroundColor).toBe(colors.accent);
     });
   }
 }

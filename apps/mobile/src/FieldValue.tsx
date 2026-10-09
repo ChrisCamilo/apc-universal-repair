@@ -1,7 +1,5 @@
-import { Text, View, type ViewStyle } from 'react-native';
-import { fieldStyle, frameStyles, inputStyle } from './fieldStyles';
-import { softHairline } from './Panel';
-import { useTheme, type ActiveTheme } from './theme';
+import { Text, View } from 'react-native';
+import { useStyles } from './FieldValue.styles';
 import { Label } from './Typography';
 
 // A field's value shown for reading, the same as the web: the label on top and the value in a frame the size and
@@ -14,24 +12,14 @@ type FieldValueProps = {
   value: string;
 };
 
-/**
- * Styles the value's frame: a field's pill frame with the soft hairline and no fill.
- * @param theme Active theme.
- * @returns Style for the frame View.
- */
-function valueFrameStyle(theme: ActiveTheme): ViewStyle {
-  return { ...frameStyles(theme, false, false).frame, borderColor: softHairline(theme), backgroundColor: 'transparent' };
-}
-
 export function FieldValue({ label, value }: FieldValueProps) {
-  const theme = useTheme();
-  const { ring } = frameStyles(theme, false, false);
+  const { styles, ids } = useStyles();
   return (
-    <View style={fieldStyle(false)} accessible accessibilityLabel={`${label}: ${value}`}>
+    <View style={styles.field} accessible accessibilityLabel={`${label}: ${value}`} testID={ids.field}>
       <Label>{label}</Label>
-      <View style={ring}>
-        <View style={valueFrameStyle(theme)} testID="field-value-frame">
-          <Text numberOfLines={1} ellipsizeMode="tail" style={inputStyle(theme)}>
+      <View style={styles.fieldRing} testID={ids.fieldRing}>
+        <View style={styles.frame} testID={ids.frame}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.fieldInput} testID={ids.fieldInput}>
             {value}
           </Text>
         </View>

@@ -7,6 +7,7 @@ import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { FIELD_KINDS } from '@apc/shared/field';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { FIELD_DISABLED_OPACITY } from '../src/styles/shared';
 import { SearchField, TextField } from '../src/TextField';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
@@ -56,13 +57,13 @@ for (const style of STYLES) {
           <TextField label="Senha" kind="password" value="" onValueChange={() => {}} error="Senha incorreta" />
         </>,
       );
-      expect(styleOf(tree, 'field-frame', 0).borderColor).toBe(colors.hairline);
-      expect(styleOf(tree, 'field-frame', 1).borderColor).toBe(colors.danger);
+      expect(styleOf(tree, 'common.text-field.frame', 0).borderColor).toBe(colors.hairline);
+      expect(styleOf(tree, 'common.text-field.frame', 1).borderColor).toBe(colors.danger);
 
       const [user] = tree.root.findAllByType(TextInput);
       await ReactTestRenderer.act(async () => user.props.onFocus());
-      expect(styleOf(tree, 'field-frame', 0).borderColor).toBe(colors.accent);
-      expect(styleOf(tree, 'field-ring', 0).borderColor).toBe(colors.accent + '61');
+      expect(styleOf(tree, 'common.text-field.frame', 0).borderColor).toBe(colors.accent);
+      expect(styleOf(tree, 'common.text-field.ring', 0).borderColor).toBe(colors.accent + '61');
     });
   }
 }
@@ -152,5 +153,5 @@ test('Mobile: search shows a clear button once there is content', async () => {
 test('Mobile: disabled fields are read-only and dimmed', async () => {
   const tree = await mount('eighties', 'day', <TextField label="Usuário" value="christian" onValueChange={() => {}} disabled />);
   expect(tree.root.findByType(TextInput).props.editable).toBe(false);
-  expect(tree.root.findAll((n) => n.props.style?.opacity === 0.5).length).toBeGreaterThan(0);
+  expect(styleOf(tree, 'common.text-field').opacity).toBe(FIELD_DISABLED_OPACITY);
 });

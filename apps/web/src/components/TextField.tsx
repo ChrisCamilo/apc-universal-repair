@@ -1,13 +1,12 @@
 import { useId, useRef, useState, type InputHTMLAttributes, type Ref } from 'react'
 import { FIELD_KINDS, type FieldKind } from '@apc/shared/field'
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons'
-import { FIELD_BORDER_CLASSES, FIELD_BUTTON_CLASSES, FIELD_FRAME_CLASSES, FIELD_INPUT_CLASSES } from './fieldStyles.ts'
 import { Icon } from './Icon.tsx'
+import { searchField, textField } from './TextField.styles.ts'
 import { Label, Text } from './Typography.tsx'
 
-// The pill-shaped inputs of the login and the dashboard searches. The frame lights up in the accent with
-// the theme's ring while focused, and in the danger color when there is an error. Each field kind sets
-// the input type, autofill hint and keyboard (see @apc/shared/field).
+// The pill-shaped inputs of the login and the dashboard searches (see TextField.styles.ts). Each field kind sets the
+// input type, autofill hint and keyboard (see @apc/shared/field).
 
 type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'size' | 'children'>
 type SearchFieldProps = InputProps & {
@@ -52,13 +51,14 @@ export function TextField({
   const spec = FIELD_KINDS[kind]
   const isPassword = kind === 'password'
   const note = error ?? helper
+  const { classes, ids } = textField({ disabled: Boolean(disabled), error: Boolean(error) })
 
   return (
-    <div className={`grid gap-1.5 ${disabled ? 'opacity-50' : ''}`}>
+    <div className={classes.base()} data-testid={ids.base}>
       <Label htmlFor={inputId}>{label}</Label>
-      <div className={`${FIELD_FRAME_CLASSES} ${error ? FIELD_BORDER_CLASSES.error : FIELD_BORDER_CLASSES.idle}`}>
+      <div className={classes.frame()} data-testid={ids.frame}>
         {icon && (
-          <span className="flex text-text-muted">
+          <span className={classes.icon()} data-testid={ids.icon}>
             <Icon icon={icon} />
           </span>
         )}
@@ -73,13 +73,15 @@ export function TextField({
           disabled={disabled}
           aria-invalid={error ? true : undefined}
           aria-describedby={note ? noteId : undefined}
-          className={FIELD_INPUT_CLASSES}
+          className={classes.input()}
+          data-testid={ids.input}
           {...rest}
         />
         {isPassword && (
           <button
             type="button"
-            className={FIELD_BUTTON_CLASSES}
+            className={classes.toggle()}
+            data-testid={ids.toggle}
             aria-label={revealed ? 'Ocultar senha' : 'Mostrar senha'}
             aria-pressed={revealed}
             disabled={disabled}
@@ -90,7 +92,7 @@ export function TextField({
         )}
       </div>
       {error ? (
-        <p id={noteId} role="alert" className="m-0 font-body text-sm text-danger">
+        <p id={noteId} role="alert" className={classes.error()} data-testid={ids.error}>
           {error}
         </p>
       ) : (
@@ -107,6 +109,8 @@ export function TextField({
 export function SearchField({ label, value, onValueChange, disabled, onKeyDown, ...rest }: SearchFieldProps) {
   const input = useRef<HTMLInputElement>(null)
   const spec = FIELD_KINDS.search
+  const { classes, ids } = searchField({ disabled: Boolean(disabled) })
+
   /** Empties the search and puts the cursor back in it. */
   const clear = () => {
     onValueChange('')
@@ -114,8 +118,8 @@ export function SearchField({ label, value, onValueChange, disabled, onKeyDown, 
   }
 
   return (
-    <div className={`${FIELD_FRAME_CLASSES} ${FIELD_BORDER_CLASSES.idle} ${disabled ? 'opacity-50' : ''}`}>
-      <span className="flex text-text-muted">
+    <div className={classes.base()} data-testid={ids.base}>
+      <span className={classes.icon()} data-testid={ids.icon}>
         <Icon icon={searchIcon} />
       </span>
       <input
@@ -135,11 +139,12 @@ export function SearchField({ label, value, onValueChange, disabled, onKeyDown, 
           onKeyDown?.(event)
         }}
         disabled={disabled}
-        className={FIELD_INPUT_CLASSES}
+        className={classes.input()}
+        data-testid={ids.input}
         {...rest}
       />
       {value && !disabled && (
-        <button type="button" className={FIELD_BUTTON_CLASSES} aria-label="Limpar busca" onClick={clear}>
+        <button type="button" className={classes.clear()} data-testid={ids.clear} aria-label="Limpar busca" onClick={clear}>
           <Icon icon={closeIcon} />
         </button>
       )}

@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { AccessibilityInfo, Modal, ScrollView, Text } from 'react-native';
+import { AccessibilityInfo, Modal, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { TOAST_DURATION_MS } from '@apc/shared/dialog';
@@ -69,8 +69,8 @@ for (const style of STYLES) {
       expect(styleOf(tree, 'dialog-window')).toMatchObject({ backgroundColor: colors.panel, borderColor: colors.hairline });
       expect(styleOf(tree, 'dialog-backdrop').backgroundColor).toBe(colors.canvas + 'B8');
       const danger = tree.root.find((n) => typeof n.props.style === 'function');
-      expect(danger.props.style({ pressed: false })).toMatchObject({ backgroundColor: colors.danger });
-      expect(tree.root.findAllByType(Text).find((t) => t.props.children === 'Excluir')!.props.style.color).toBe(colors.onDanger);
+      expect(StyleSheet.flatten(danger.props.style({ pressed: false }))).toMatchObject({ backgroundColor: colors.danger });
+      expect(StyleSheet.flatten(tree.root.findAllByType(Text).find((t) => t.props.children === 'Excluir')!.props.style).color).toBe(colors.onDanger);
     });
   }
 }

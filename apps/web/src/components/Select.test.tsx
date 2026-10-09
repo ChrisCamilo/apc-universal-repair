@@ -49,7 +49,7 @@ for (const style of STYLES) {
       await select.click()
       const chosen = screen.getByRole('option', { name: 'Freios' }).element()
       expect(getComputedStyle(chosen).color).toBe(rgb(colors.accent))
-      expect(getComputedStyle(chosen.querySelector('[data-testid="option-box"]')!).backgroundColor).toBe(rgb(colors.accent))
+      expect(getComputedStyle(chosen.querySelector('[data-testid="common.select.list.option.box"]')!).backgroundColor).toBe(rgb(colors.accent))
       expect(getComputedStyle(screen.getByRole('option', { name: 'Motor' }).element()).color).toBe(rgb(colors.text))
     })
   }

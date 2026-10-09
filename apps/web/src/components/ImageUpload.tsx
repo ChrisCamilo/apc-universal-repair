@@ -1,7 +1,8 @@
 import { useId, useState, type DragEvent } from 'react'
-import { closeIcon, imageIcon } from '@apc/shared/icons'
+import { closeIcon, ICON_SIZES, imageIcon } from '@apc/shared/icons'
 import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/shared/photos'
 import { Icon } from './Icon.tsx'
+import { imageUpload } from './ImageUpload.styles.ts'
 import { Label, Text } from './Typography.tsx'
 
 // The photo field of the item form. Photos show as thumbnails, the first one marked as the cover, each with
@@ -10,7 +11,6 @@ import { Label, Text } from './Typography.tsx'
 // that break the rule or go past the limit are left out, and a message names each one and says why. Read-only,
 // as in the item details, it only shows the photos, or says there are none: no ×, no drop area.
 
-const CHIP = 'absolute rounded-pill bg-backdrop text-text'
 
 /** A photo the field holds: one already saved has only its URL; one just chosen also has its file. */
 export type UploadPhoto = { url: string; file?: File }
@@ -29,6 +29,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
   const inputId = useId()
   const [problems, setProblems] = useState<string[]>([])
   const [dragging, setDragging] = useState(false)
+  const { classes, ids } = imageUpload()
   const left = limit - photos.length
 
   /** Takes the files that pass the rules and fit, and says which were left out and why. */
@@ -58,18 +59,20 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
   }
 
   return (
-    <div role="group" aria-labelledby={labelId} className="grid gap-1.5">
+    <div role="group" aria-labelledby={labelId} className={classes.base()} data-testid={ids.base}>
       <Label id={labelId}>{label}</Label>
       {photos.length > 0 && (
-        <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+        <ul className={classes.photos()} data-testid={ids.photos}>
           {photos.map((photo, index) => (
-            <li
-              key={photo.url}
-              className="relative size-18 max-w-full overflow-hidden rounded-tile border border-hairline-soft bg-panel-raised"
-            >
-              <img src={photo.url} alt={`Foto ${index + 1}${index === 0 ? ', capa' : ''}`} className="size-full object-cover" />
+            <li key={photo.url} className={classes.photo()} data-testid={ids.photo}>
+              <img
+                src={photo.url}
+                alt={`Foto ${index + 1}${index === 0 ? ', capa' : ''}`}
+                className={classes.image()}
+                data-testid={ids.image}
+              />
               {index === 0 && (
-                <span aria-hidden="true" className={`${CHIP} bottom-1 left-1 px-1.5 font-mono text-xs leading-normal`}>
+                <span aria-hidden="true" className={classes.cover()} data-testid={ids.cover}>
                   capa
                 </span>
               )}
@@ -77,10 +80,11 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
                 <button
                   type="button"
                   aria-label={`Remover foto ${index + 1}`}
-                  className={`${CHIP} top-1 right-1 grid size-5.5 cursor-pointer place-items-center outline-none transition-colors hover:bg-danger hover:text-on-danger focus-visible:shadow-ring`}
+                  className={classes.remove()}
+                  data-testid={ids.remove}
                   onClick={() => remove(index)}
                 >
-                  <Icon icon={closeIcon} size={10} />
+                  <Icon icon={closeIcon} size={ICON_SIZES.mark} />
                 </button>
               )}
             </li>
@@ -92,7 +96,8 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
         <label
           htmlFor={inputId}
           data-dragging={dragging || undefined}
-          className="grid cursor-pointer grid-cols-[calc(var(--spacing)*18)_minmax(0,1fr)] items-center gap-3 rounded-tile border border-dashed border-hairline bg-panel-raised p-3 font-body text-sm text-text transition-colors hover:border-accent hover:bg-accent-soft has-[input:focus-visible]:shadow-ring data-dragging:border-accent data-dragging:bg-accent-soft"
+          className={classes.drop()}
+          data-testid={ids.drop}
           onDragOver={(event) => {
             event.preventDefault()
             setDragging(true)
@@ -100,23 +105,26 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
         >
-          <span className="grid size-18 place-items-center rounded-tile border border-hairline-soft bg-panel text-text-muted">
-            <Icon icon={imageIcon} size={22} />
+          <span className={classes.picture()} data-testid={ids.picture}>
+            <Icon icon={imageIcon} size={ICON_SIZES.dropZone} />
           </span>
-          <span className="grid gap-0.5">
+          <span className={classes.text()} data-testid={ids.text}>
             <span>
               {photos.length > 0
                 ? `Arraste mais ${photoCount(left)} ou clique para escolher`
                 : `Arraste até ${photoCount(limit)} ou clique para escolher`}
             </span>
-            <small className="text-xs text-text-muted">JPG, PNG ou WebP, até 3 MB cada. A primeira vira a capa na lista.</small>
+            <small className={classes.hint()} data-testid={ids.hint}>
+              JPG, PNG ou WebP, até 3 MB cada. A primeira vira a capa na lista.
+            </small>
           </span>
           <input
             id={inputId}
             type="file"
             accept={PHOTO_TYPES.join(',')}
             multiple
-            className="sr-only"
+            className={classes.input()}
+            data-testid={ids.input}
             onChange={(event) => {
               add([...(event.target.files ?? [])])
               // Let the same file be chosen again after it is removed.
@@ -126,7 +134,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
         </label>
       )}
       {problems.length > 0 && (
-        <ul role="alert" className="m-0 grid list-none gap-0.5 p-0 font-body text-sm text-danger">
+        <ul role="alert" className={classes.problems()} data-testid={ids.problems}>
           {problems.map((problem) => (
             <li key={problem}>{problem}</li>
           ))}

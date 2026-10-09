@@ -39,8 +39,8 @@ export const ICON_SIZES = {
   caret: 12,
   /** The icon of a compact button, such as Filtros. */
   compact: 13,
-  /** A drag grip, such as a tab's. */
-  grip: 14,
+  /** A small icon in a line of text: a link button's icon, a tab's drag grip. */
+  inline: 14,
   /** An icon beside a label: a tab's icon, a table row's action. */
   label: 15,
   /** An icon beside body text, the size when none is given. */

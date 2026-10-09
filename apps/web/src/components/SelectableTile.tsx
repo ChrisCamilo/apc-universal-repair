@@ -1,18 +1,12 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { arrowTarget } from './radioKeys.ts'
+import { selectableTileGroup } from './SelectableTile.styles.ts'
 
 // The brand tiles stacked in the Catalog tab's left rail. Each tile shows the brand's logo, or its name when
 // there is no logo yet or the logo doesn't load. The chosen tile takes the accent on its frame and text over a
 // tinted fill, glowing where the style has a glow. The group is a radio group: exactly one tile is chosen,
 // it is the only Tab stop, and every arrow key moves the choice to the next or previous tile, wrapping around.
 // The owner lays the tiles out through className, e.g. one column in the rail and more on narrow screens.
-
-const TILE =
-  'grid min-w-0 cursor-pointer place-items-center rounded-tile border border-hairline-soft bg-panel-raised px-2.5 py-3 ' +
-  'font-display text-sm font-semibold uppercase tracking-display text-text-muted outline-none ' +
-  'transition-[color,border-color,background-color,box-shadow] not-aria-checked:hover:border-hairline ' +
-  'not-aria-checked:hover:text-text focus-visible:shadow-ring aria-checked:border-accent aria-checked:bg-accent-soft ' +
-  'aria-checked:text-accent aria-checked:shadow-glow'
 
 type TileOption = {
   value: string
@@ -40,6 +34,7 @@ type SelectableTileGroupProps = {
 
 export function SelectableTileGroup({ label, options, value, onValueChange, className }: SelectableTileGroupProps) {
   const tiles = useRef<(HTMLButtonElement | null)[]>([])
+  const { classes, ids } = selectableTileGroup()
 
   /** Moves the choice with the arrows and follows it with the focus. */
   const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -53,7 +48,7 @@ export function SelectableTileGroup({ label, options, value, onValueChange, clas
   }
 
   return (
-    <div role="radiogroup" aria-label={label} className={['grid gap-2', className].filter(Boolean).join(' ')}>
+    <div role="radiogroup" aria-label={label} className={classes.base({ class: className })} data-testid={ids.base}>
       {options.map((option, index) => (
         <SelectableTile
           key={option.value}
@@ -74,6 +69,7 @@ function SelectableTile({ ref, option, checked, onSelect, onKeyDown }: Selectabl
   // The logo that failed to load, so the tile falls back to the name; a new logo URL tries again.
   const [failed, setFailed] = useState<string | null>(null)
   const showLogo = option.logo !== undefined && failed !== option.logo
+  const { classes, ids } = selectableTileGroup()
   return (
     <button
       ref={ref}
@@ -81,14 +77,23 @@ function SelectableTile({ ref, option, checked, onSelect, onKeyDown }: Selectabl
       role="radio"
       aria-checked={checked}
       tabIndex={checked ? 0 : -1}
-      className={TILE}
+      className={classes.tile()}
+      data-testid={ids.tile}
       onClick={onSelect}
       onKeyDown={onKeyDown}
     >
       {showLogo ? (
-        <img src={option.logo} alt={option.label} className="h-5 max-w-full object-contain" onError={() => setFailed(option.logo!)} />
+        <img
+          src={option.logo}
+          alt={option.label}
+          className={classes.logo()}
+          data-testid={ids.logo}
+          onError={() => setFailed(option.logo!)}
+        />
       ) : (
-        <span className="max-w-full truncate">{option.label}</span>
+        <span className={classes.name()} data-testid={ids.name}>
+          {option.label}
+        </span>
       )}
     </button>
   )

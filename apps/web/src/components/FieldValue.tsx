@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { fieldValue } from './FieldValue.styles.ts'
 import { Label } from './Typography.tsx'
 
 // A field's value shown for reading, such as the item details: the label on top and the value in a frame the size
@@ -13,13 +14,11 @@ type FieldValueProps = {
 
 export function FieldValue({ label, value }: FieldValueProps) {
   const labelId = useId()
+  const { classes, ids } = fieldValue()
   return (
-    <div role="group" aria-labelledby={labelId} className="grid content-start gap-1.5">
+    <div role="group" aria-labelledby={labelId} className={classes.base()} data-testid={ids.base}>
       <Label id={labelId}>{label}</Label>
-      <p
-        title={value}
-        className="m-0 min-w-0 truncate rounded-pill border border-hairline-soft px-4 py-2.5 font-body text-base text-text"
-      >
+      <p title={value} className={classes.value()} data-testid={ids.value}>
         {value}
       </p>
     </div>

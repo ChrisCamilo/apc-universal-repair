@@ -5,11 +5,12 @@ import { chevronIcon, imageIcon } from '@apc/shared/icons';
 import { photoCount, takePhotos } from '@apc/shared/photos';
 import { popShadow, scales } from '@apc/shared/theme';
 import { Button } from './Button';
-import { CloseButton, roundStyle } from './CloseButton';
+import { CloseButton } from './CloseButton';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import type { PickedPhoto, UploadPhoto } from './ImageUpload';
 import { softHairline } from './Panel';
+import { roundStyles } from './styles/shared';
 import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
 import { ToastProvider, useToast } from './Toast';
 import { Heading, NumericReadout, Text } from './Typography';
@@ -160,6 +161,7 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
 
 function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick }: Omit<ImageViewerProps, 'open'>) {
   const theme = useTheme();
+  const nav = roundStyles(theme, NAV_SIZE);
   const screen = useWindowDimensions();
   const toast = useToast();
   const [index, setIndex] = useState(0);
@@ -249,7 +251,7 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
                 accessibilityRole="button"
                 accessibilityLabel={side === 'prev' ? 'Foto anterior' : 'Próxima foto'}
                 onPress={() => step(side === 'prev' ? -1 : 1)}
-                style={({ pressed }) => [roundStyle(theme, NAV_SIZE, pressed), navSpot(side)]}
+                style={({ pressed }) => [nav.round, pressed && nav.roundPressed, navSpot(side)]}
               >
                 {({ pressed }) => (
                   <View style={side === 'prev' ? FLIP_STYLE : undefined}>

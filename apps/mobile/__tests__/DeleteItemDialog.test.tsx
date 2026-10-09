@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Modal, Text } from 'react-native';
+import { Modal, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Item } from '@apc/shared/items';
@@ -112,7 +112,7 @@ for (const style of STYLES) {
     test(`Mobile: the delete confirmation follows the ${style}/${mode} theme`, async () => {
       const tree = await mount({}, style, mode);
       const confirm = button(tree, 'Excluir').findAll((n) => typeof n.props.style === 'function')[0];
-      expect(confirm.props.style({ pressed: false }).backgroundColor).toBe(themes[style][mode].colors.danger);
+      expect(StyleSheet.flatten(confirm.props.style({ pressed: false })).backgroundColor).toBe(themes[style][mode].colors.danger);
     });
   }
 }

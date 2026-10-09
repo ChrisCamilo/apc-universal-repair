@@ -47,8 +47,8 @@ for (const style of STYLES) {
           <Segmented label="Tema" options={STYLE_OPTIONS} value="gt4" onValueChange={() => {}} />
         </>,
       )
-      const [offTrack, onTrack] = screen.container.querySelectorAll('[data-testid="switch-track"]')
-      const [offKnob, onKnob] = screen.container.querySelectorAll('[data-testid="switch-knob"]')
+      const [offTrack, onTrack] = screen.container.querySelectorAll('[data-testid="common.switch.track"]')
+      const [offKnob, onKnob] = screen.container.querySelectorAll('[data-testid="common.switch.track.knob"]')
       expect(getComputedStyle(onTrack).borderColor).toBe(rgb(theme.colors.accent))
       expect(getComputedStyle(onKnob).backgroundColor).toBe(rgb(theme.colors.accent))
       expect(getComputedStyle(onKnob).boxShadow === 'none').toBe(theme.glow === null)
@@ -77,7 +77,7 @@ test('Web: switches toggle and say whether they are on', async () => {
   await expect.element(toggle).toHaveAttribute('aria-checked', 'false')
   await toggle.click()
   await expect.element(toggle).toHaveAttribute('aria-checked', 'true')
-  await expect.poll(() => getComputedStyle(toggle.element().querySelector('[data-testid="switch-knob"]')!).translate).toBe('14px')
+  await expect.poll(() => getComputedStyle(toggle.element().querySelector('[data-testid="common.switch.track.knob"]')!).translate).toBe('14px')
 
   await userEvent.keyboard(' ')
   await expect.element(toggle).toHaveAttribute('aria-checked', 'false')

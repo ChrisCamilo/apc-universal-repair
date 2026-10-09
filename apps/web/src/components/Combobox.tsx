@@ -1,14 +1,7 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
 import { capitalizeFirst, findOption, matchingOptions } from '@apc/shared/items'
-import { chevronIcon } from '@apc/shared/icons'
-import {
-  FIELD_BORDER_CLASSES,
-  FIELD_BUTTON_CLASSES,
-  FIELD_FRAME_CLASSES,
-  FIELD_INPUT_CLASSES,
-  SELECT_LIST_CLASSES,
-  SELECT_OPTION_CLASSES,
-} from './fieldStyles.ts'
+import { chevronIcon, ICON_SIZES } from '@apc/shared/icons'
+import { combobox } from './Combobox.styles.ts'
 import { Icon } from './Icon.tsx'
 import { Label, Text } from './Typography.tsx'
 
@@ -71,6 +64,7 @@ export function Combobox({
     ...(typed && !current ? [{ kind: 'create' as const, value: capitalizeFirst(typed) }] : []),
   ]
   const note = error ?? helper
+  const { classes, ids } = combobox({ disabled: Boolean(disabled), error: Boolean(error), open })
 
   /** Opens the list on its first entry, the full list when the chevron asks for it, or closes it. */
   const show = (next: boolean, all = false) => {
@@ -117,10 +111,10 @@ export function Combobox({
   }
 
   return (
-    <div className={`grid gap-1.5 ${disabled ? 'opacity-50' : ''}`}>
+    <div className={classes.base()} data-testid={ids.base}>
       <Label htmlFor={inputId}>{label}</Label>
-      <div className="relative">
-        <div className={`${FIELD_FRAME_CLASSES} ${error ? FIELD_BORDER_CLASSES.error : FIELD_BORDER_CLASSES.idle}`}>
+      <div className={classes.anchor()} data-testid={ids.anchor}>
+        <div className={classes.frame()} data-testid={ids.frame}>
           <input
             ref={input}
             id={inputId}
@@ -136,7 +130,8 @@ export function Combobox({
             placeholder={placeholder}
             value={value}
             disabled={disabled}
-            className={FIELD_INPUT_CLASSES}
+            className={classes.input()}
+            data-testid={ids.input}
             onFocus={() => show(true)}
             onChange={(event) => {
               onValueChange(event.target.value)
@@ -156,7 +151,8 @@ export function Combobox({
             tabIndex={-1}
             aria-label={toggleLabel}
             disabled={disabled}
-            className={FIELD_BUTTON_CLASSES}
+            className={classes.toggle()}
+            data-testid={ids.toggle}
             // Keep the focus in the field, so the list stays tied to it.
             onMouseDown={(event) => {
               event.preventDefault()
@@ -168,13 +164,13 @@ export function Combobox({
               }
             }}
           >
-            <Icon icon={chevronIcon} size={12} className={`transition-transform ${open ? '-rotate-90' : 'rotate-90'}`} />
+            <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
           </button>
         </div>
         {open && (
-          <ul ref={list} id={listId} role="listbox" aria-label={label} className={SELECT_LIST_CLASSES}>
+          <ul ref={list} id={listId} role="listbox" aria-label={label} className={classes.list()} data-testid={ids.list}>
             {entries.length === 0 && (
-              <li role="presentation" className="flex h-9 items-center px-2.5 font-body text-sm text-text-muted">
+              <li role="presentation" className={classes.empty()} data-testid={ids.empty}>
                 {emptyLabel}
               </li>
             )}
@@ -185,12 +181,8 @@ export function Combobox({
                 role="option"
                 aria-selected={entry.kind === 'option' && entry.value === current}
                 data-active={index === active || undefined}
-                className={[
-                  SELECT_OPTION_CLASSES,
-                  entry.kind === 'create' ? 'font-semibold text-accent!' : '',
-                  // A hairline sets the create row apart from the options above it.
-                  entry.kind === 'create' && index > 0 ? 'border-t border-hairline-soft' : '',
-                ].join(' ')}
+                className={classes.option({ create: entry.kind === 'create', below: entry.kind === 'create' && index > 0 })}
+                data-testid={ids.option}
                 // Keep the focus in the field while picking with the mouse.
                 onMouseDown={(event) => {
                   event.preventDefault()
@@ -204,7 +196,7 @@ export function Combobox({
         )}
       </div>
       {error ? (
-        <p id={noteId} role="alert" className="m-0 font-body text-sm text-danger">
+        <p id={noteId} role="alert" className={classes.error()} data-testid={ids.error}>
           {error}
         </p>
       ) : (

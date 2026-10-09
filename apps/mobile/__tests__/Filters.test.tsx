@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Modal, ScrollView, Text } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { SELECT_VISIBLE_OPTIONS, type FilterValues } from '@apc/shared/filters';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
@@ -75,7 +75,7 @@ function pressable(tree: ReactTestRenderer.ReactTestRenderer, name: string): Rea
  */
 function styleOf(node: ReactTestRenderer.ReactTestInstance, pressed = false) {
   const { style } = node.props;
-  return typeof style === 'function' ? style({ pressed }) : style;
+  return StyleSheet.flatten(typeof style === 'function' ? style({ pressed }) : style);
 }
 
 beforeEach(async () => {

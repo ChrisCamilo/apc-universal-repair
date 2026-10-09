@@ -46,7 +46,7 @@ function tile(tree: ReactTestRenderer.ReactTestRenderer, name: string): ReactTes
 function look(tree: ReactTestRenderer.ReactTestRenderer, name: string): { frame: ViewStyle; color?: string } {
   const node = tile(tree, name);
   const text = node.findAll((n) => n.type === Text && n.props.children === name)[0];
-  return { frame: node.props.style({ pressed: false }), color: text?.props.style.color };
+  return { frame: StyleSheet.flatten(node.props.style({ pressed: false })), color: text && StyleSheet.flatten(text.props.style).color };
 }
 
 beforeEach(async () => {

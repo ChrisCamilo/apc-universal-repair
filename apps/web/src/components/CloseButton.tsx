@@ -1,9 +1,10 @@
 import type { Ref } from 'react'
 import { closeIcon } from '@apc/shared/icons'
+import { closeButton } from './CloseButton.styles.ts'
 import { Icon } from './Icon.tsx'
 
-// The round × that closes a window, such as the photo viewer or a dialog: a hairline ring around the icon that
-// turns to the accent on hover, named "Fechar".
+// The round × that closes a window, such as the photo viewer or a dialog (see CloseButton.styles.ts), named
+// "Fechar".
 
 type CloseButtonProps = {
   onClick: () => void
@@ -11,12 +12,14 @@ type CloseButtonProps = {
 }
 
 export function CloseButton({ onClick, ref }: CloseButtonProps) {
+  const { classes, ids } = closeButton()
   return (
     <button
       ref={ref}
       type="button"
       aria-label="Fechar"
-      className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-pill border border-hairline-soft text-text outline-none transition-colors hover:border-accent hover:text-accent focus-visible:shadow-ring"
+      className={classes.base()}
+      data-testid={ids.base}
       onClick={onClick}
     >
       <Icon icon={closeIcon} />

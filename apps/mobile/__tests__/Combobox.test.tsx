@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { ScrollView, Text, TextInput } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { SELECT_VISIBLE_OPTIONS } from '@apc/shared/filters';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
@@ -72,14 +72,14 @@ for (const style of STYLES) {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode, <Category initial="Freios" />);
       await fire(tree, 'onFocus');
-      const frame = tree.root.findAll((n) => n.props.testID === 'combobox-frame' && typeof n.type === 'string')[0];
-      expect(frame.props.style.borderColor).toBe(colors.accent);
+      const frame = tree.root.findAll((n) => n.props.testID === 'common.combobox.frame' && typeof n.type === 'string')[0];
+      expect(StyleSheet.flatten(frame.props.style).borderColor).toBe(colors.accent);
       const chosen = tree.root.findAllByType(ScrollView)[0].findAllByType(Text).find((t) => t.props.children === 'Freios')!;
-      expect([chosen.props.style].flat().find((s) => s?.color)?.color).toBe(colors.accent);
+      expect(StyleSheet.flatten(chosen.props.style).color).toBe(colors.accent);
 
       const failing = await mount(style, mode, <Category initial="" error="Escolha uma categoria da lista ou crie uma nova." />);
-      const failingFrame = failing.root.findAll((n) => n.props.testID === 'combobox-frame' && typeof n.type === 'string')[0];
-      expect(failingFrame.props.style.borderColor).toBe(colors.danger);
+      const failingFrame = failing.root.findAll((n) => n.props.testID === 'common.combobox.frame' && typeof n.type === 'string')[0];
+      expect(StyleSheet.flatten(failingFrame.props.style).borderColor).toBe(colors.danger);
     });
   }
 }

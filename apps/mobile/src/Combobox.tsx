@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { Pressable, Text as NativeText, ScrollView, TextInput, View, type ViewStyle } from 'react-native';
-import { chevronIcon } from '@apc/shared/icons';
+import { Pressable, Text as NativeText, ScrollView, TextInput, View } from 'react-native';
+import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
 import { capitalizeFirst, findOption, matchingOptions } from '@apc/shared/items';
-import { scales } from '@apc/shared/theme';
-import { fieldStyle, frameStyles, inputStyle, listStyle, OPTION_HEIGHT, optionTextStyle } from './fieldStyles';
+import { CHEVRON_HIT_SLOP, useStyles } from './Combobox.styles';
 import { Icon } from './Icon';
-import { softHairline } from './Panel';
-import { fontFamily, useTheme, type ActiveTheme } from './theme';
+import { useTheme } from './theme';
 import { Label, Text } from './Typography';
 
 // A text field with a list of options that filters as the user types, the same as the web: case and accents
@@ -15,9 +13,6 @@ import { Label, Text } from './Typography';
 // field and pushes what follows down; tapping an option keeps the keyboard and the focus in the field. On
 // blur the list closes, a text that names an option takes that option's spelling, and any other text starts with
 // a capital letter.
-
-const CHEVRON_HIT_SLOP = scales.space.s2;
-const LIST_CONTENT_STYLE: ViewStyle = { padding: scales.space.s1 };
 
 type ComboboxProps = {
   label: string;
@@ -42,26 +37,6 @@ type ComboboxProps = {
 };
 type Entry = { kind: 'option' | 'create'; value: string };
 
-/**
- * Styles a row of the list: a touch-sized line, raised while pressed, the create row set apart by a hairline
- * when options come before it.
- * @param theme Active theme.
- * @param pressed Whether the row is being pressed.
- * @param separated Whether a hairline sets the row apart from the options above it.
- * @returns Style for the row Pressable.
- */
-function rowStyle(theme: ActiveTheme, pressed: boolean, separated: boolean): ViewStyle {
-  return {
-    height: OPTION_HEIGHT,
-    justifyContent: 'center',
-    paddingHorizontal: scales.space.s3,
-    borderRadius: theme.radiusTile,
-    borderTopWidth: separated ? scales.hairline : 0,
-    borderTopColor: softHairline(theme),
-    backgroundColor: pressed ? theme.colors.panelRaised : 'transparent',
-  };
-}
-
 export function Combobox({
   label,
   value,
@@ -76,7 +51,8 @@ export function Combobox({
   error,
   disabled = false,
 }: ComboboxProps) {
-  const theme = useTheme();
+  const { colors } = useTheme();
+  const { styles, ids } = useStyles();
   const [focused, setFocused] = useState(false);
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -86,7 +62,6 @@ export function Combobox({
     ...(showAll ? options : matchingOptions(options, value)).map((option) => ({ kind: 'option' as const, value: option })),
     ...(typed && !current ? [{ kind: 'create' as const, value: capitalizeFirst(typed) }] : []),
   ];
-  const { ring, frame } = frameStyles(theme, focused, !!error);
 
   /** Opens the list, the full list when the chevron asks for it, or closes it. */
   const show = (next: boolean, all = false) => {
@@ -104,10 +79,10 @@ export function Combobox({
   };
 
   return (
-    <View style={fieldStyle(disabled)}>
+    <View style={[styles.field, disabled && styles.fieldDisabled]} testID={ids.field}>
       <Label>{label}</Label>
-      <View style={ring}>
-        <View style={frame} testID="combobox-frame">
+      <View style={[styles.fieldRing, focused && (error ? styles.fieldRingError : styles.fieldRingFocused)]} testID={ids.fieldRing}>
+        <View style={[styles.fieldFrame, focused && styles.fieldFrameFocused, !!error && styles.fieldFrameError]} testID={ids.fieldFrame}>
           <TextInput
             value={value}
             onChangeText={(text) => {
@@ -115,7 +90,7 @@ export function Combobox({
               show(true);
             }}
             placeholder={placeholder}
-            placeholderTextColor={theme.colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             editable={!disabled}
             autoCorrect={false}
             accessibilityRole="combobox"
@@ -134,7 +109,8 @@ export function Combobox({
                 onValueChange(written);
               }
             }}
-            style={inputStyle(theme)}
+            style={styles.fieldInput}
+            testID={ids.fieldInput}
           />
           <Pressable
             accessibilityRole="button"
@@ -142,15 +118,23 @@ export function Combobox({
             disabled={disabled}
             hitSlop={CHEVRON_HIT_SLOP}
             onPress={() => show(!open, true)}
+            style={styles.toggle}
+            testID={ids.toggle}
           >
-            <View style={{ transform: [{ rotate: open ? '-90deg' : '90deg' }] }}>
-              <Icon icon={chevronIcon} size={12} color={theme.colors.textMuted} />
+            <View style={[styles.chevron, open && styles.chevronOpen]} testID={ids.chevron}>
+              <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={colors.textMuted} />
             </View>
           </Pressable>
         </View>
       </View>
       {open && (
-        <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" style={listStyle(theme)} contentContainerStyle={LIST_CONTENT_STYLE}>
+        <ScrollView
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          style={styles.fieldList}
+          contentContainerStyle={styles.fieldListContent}
+          testID={ids.fieldList}
+        >
           {entries.length === 0 && <Text tone="muted">{emptyLabel}</Text>}
           {entries.map((entry, index) => (
             <Pressable
@@ -158,14 +142,13 @@ export function Combobox({
               accessibilityRole="button"
               accessibilityState={{ selected: entry.kind === 'option' && entry.value === current }}
               onPress={() => pick(entry)}
-              style={({ pressed }) => rowStyle(theme, pressed, entry.kind === 'create' && index > 0)}
+              style={({ pressed }) => [styles.option, entry.kind === 'create' && index > 0 && styles.optionBelow, pressed && styles.optionPressed]}
+              testID={ids.option}
             >
               <NativeText
                 numberOfLines={1}
-                style={[
-                  optionTextStyle(theme, entry.value === current || entry.kind === 'create'),
-                  entry.kind === 'create' && { fontFamily: fontFamily(scales.bodyFont, 600) },
-                ]}
+                style={[styles.optionText, entry.value === current && styles.optionTextChosen, entry.kind === 'create' && styles.optionTextCreate]}
+                testID={ids.optionText}
               >
                 {entry.kind === 'create' ? `+ Criar ${noun} “${entry.value}”` : entry.value}
               </NativeText>
@@ -174,10 +157,7 @@ export function Combobox({
         </ScrollView>
       )}
       {error ? (
-        <NativeText
-          accessibilityLiveRegion="polite"
-          style={{ fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: theme.colors.danger }}
-        >
+        <NativeText accessibilityLiveRegion="polite" style={styles.fieldError} testID={ids.fieldError}>
           {error}
         </NativeText>
       ) : (

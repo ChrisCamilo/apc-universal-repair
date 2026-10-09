@@ -81,7 +81,7 @@ export function ImageFrame({
           style={[StyleSheet.absoluteFill, state !== 'loaded' && HIDDEN]}
         />
       )}
-      {state === 'loading' && <Spinner testID="image-spinner" />}
+      {state === 'loading' && <Spinner />}
       {missing && (
         <View style={EMPTY_STYLE}>
           <Icon icon={imageIcon} size={EMPTY_ICON_SIZE} color={theme.colors.textMuted} />
