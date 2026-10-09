@@ -96,6 +96,12 @@ Epics group work by product area and are referenced by their slug in branch name
 | EP-10 | `backend` | Real authentication + real data persistence, replacing MVP mocks |
 | EP-11 | `i18n` | EN/PT-BR parity across the app UI (beyond the README) |
 
+### Ongoing epics (picked up between feature epics)
+
+| Epic ID | Slug | Scope |
+|---|---|---|
+| EP-13 | `optimizations` | Refactors that change no behavior: organized, consistent and generic code, such as style recipes beside each component, style ids and shared constants instead of hardcoded values |
+
 The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard → Inventory. Login is mocked/static for the MVP, while inventory items, photos included, are persisted through the API. Phase 2 adds the Catalog tab (EP-04) and Car Specs (EP-05), both on mocked/static vehicle data. 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to later epics.
 
 Tasks that belong to phase 2 end their title with `(phase 2)` and state it in the body: `**Phase:** 2 — together with ...`.
