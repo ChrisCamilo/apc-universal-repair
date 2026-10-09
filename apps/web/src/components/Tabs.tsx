@@ -173,6 +173,7 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
               role="tab"
               id={tabElementId(tab.id)}
               aria-selected={isSelected}
+              aria-label={tab.wip ? `${tab.label}, em construção` : undefined}
               aria-controls={panelElementId(tab.id)}
               tabIndex={isSelected ? 0 : -1}
               aria-keyshortcuts={reorderable ? 'Alt+ArrowLeft Alt+ArrowRight' : undefined}
@@ -201,11 +202,8 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
               {tab.icon && <Icon icon={tab.icon} size={ICON_SIZES.label} />}
               {tab.label}
               {tab.wip && (
-                <span className={classes.wip()} data-testid={ids.wip}>
+                <span aria-hidden="true" className={classes.wip()} data-testid={ids.wip}>
                   <Icon icon={coneIcon} size={ICON_SIZES.compact} />
-                  <span className={classes.wipLabel()} data-testid={ids.wipLabel}>
-                    , em construção
-                  </span>
                 </span>
               )}
               {tab.count !== undefined && (

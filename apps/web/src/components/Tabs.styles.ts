@@ -20,7 +20,6 @@ export const tabs = recipe(
       ],
       grip: '-mr-1 flex text-text-muted',
       wip: 'flex text-text-muted',
-      wipLabel: 'sr-only',
       count: [
         'rounded-pill border border-hairline px-2 font-mono text-xs font-medium tracking-normal tabular-nums text-text-muted transition-colors',
         'group-aria-selected:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] group-aria-selected:text-accent',
@@ -38,7 +37,7 @@ export const tabs = recipe(
     },
     defaultVariants: { reorderable: false, dragging: false, drop: 'none' },
   }),
-  { base: '', tab: 'tab', grip: 'tab.grip', wip: 'tab.wip', wipLabel: 'tab.wip.label', count: 'tab.count', status: 'status' },
+  { base: '', tab: 'tab', grip: 'tab.grip', wip: 'tab.wip', count: 'tab.count', status: 'status' },
 )
 
 /** A tab's panel, with the focus ring. */
