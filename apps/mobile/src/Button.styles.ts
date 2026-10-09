@@ -1,6 +1,7 @@
 import { BUTTON_SIZES } from '@apc/shared/button';
 import { scales } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
+import { displayLabel, glow } from './styles/shared';
 import { fontFamily, withAlpha } from './theme';
 
 // The look of the buttons, the same variants and sizes as the web (see @apc/shared/button): pill shape and the display
@@ -16,8 +17,6 @@ export const PRESSED_FILLED_OPACITY = 0.86;
 /** A button: the focus ring around it, its frame and its label, by variant, size and state. */
 export const useStyles = createStyles('common.button', { frame: '', ring: 'ring', label: 'label' }, (theme) => {
   const { colors } = theme;
-  const md = scales.fontSize[BUTTON_SIZES.md.fontSize];
-  const sm = scales.fontSize[BUTTON_SIZES.sm.fontSize];
   return {
     frame: {
       flexDirection: 'row',
@@ -36,26 +35,17 @@ export const useStyles = createStyles('common.button', { frame: '', ring: 'ring'
     frameMd: { paddingHorizontal: scales.space[BUTTON_SIZES.md.padX], paddingVertical: scales.space[BUTTON_SIZES.md.padY] },
     framePressed: { transform: [{ translateY: 1 }] },
     framePressedFilled: { opacity: PRESSED_FILLED_OPACITY },
-    framePrimary: {
-      backgroundColor: colors.accent,
-      ...(theme.glow && {
-        shadowColor: colors.accent,
-        shadowOpacity: theme.glow.opacity,
-        shadowRadius: theme.glow.blur / 2,
-        shadowOffset: { width: 0, height: 0 },
-      }),
-    },
+    framePrimary: { backgroundColor: colors.accent, ...glow(theme) },
     frameSecondary: { borderColor: colors.hairline },
     frameSecondaryPressed: { borderColor: colors.accent },
     frameSm: { paddingHorizontal: scales.space[BUTTON_SIZES.sm.padX], paddingVertical: scales.space[BUTTON_SIZES.sm.padY] },
-    label: { fontFamily: fontFamily(theme.displayFont, 600), textTransform: 'uppercase', color: colors.text },
+    label: displayLabel(theme, BUTTON_SIZES.md.fontSize),
     labelDanger: { color: colors.onDanger },
     labelLink: { fontFamily: fontFamily(scales.bodyFont), textTransform: 'none', letterSpacing: 0, textDecorationLine: 'underline', color: colors.textMuted },
     labelLinkPressed: { color: colors.accent },
-    labelMd: { fontSize: md, letterSpacing: theme.displayTracking * md },
     labelPrimary: { color: colors.onAccent },
     labelSecondaryPressed: { color: colors.accent },
-    labelSm: { fontSize: sm, letterSpacing: theme.displayTracking * sm },
+    labelSm: displayLabel(theme, BUTTON_SIZES.sm.fontSize),
     ring: {
       alignSelf: 'flex-start',
       borderRadius: scales.radiusPill,

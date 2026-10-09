@@ -53,7 +53,7 @@ export function Button({
   /** The label's styles: its size and the color of its variant, pressed or not. */
   const label = (pressed: boolean) => [
     styles.label,
-    size === 'sm' ? styles.labelSm : styles.labelMd,
+    size === 'sm' && styles.labelSm,
     variant === 'primary' && styles.labelPrimary,
     variant === 'secondary' && pressed && styles.labelSecondaryPressed,
     isLink && styles.labelLink,
