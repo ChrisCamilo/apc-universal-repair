@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { gripIcon, type IconShape } from '@apc/shared/icons'
+import { gripIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
 import { dropTab, moveTab, type DropSide } from '@apc/shared/tabs'
 import { Icon } from './Icon.tsx'
+import { tabPanel, tabs as tabsRecipe } from './Tabs.styles.ts'
 
 // Top-level navigation of the Dashboard. The selected tab takes the accent with an underline, which glows
 // where the style has a glow. Left/Right (and Home/End) move between tabs and select them, with a roving
@@ -11,22 +12,6 @@ import { Icon } from './Icon.tsx'
 // With `reorderable` on (off by default), each tab shows a grip and can be dragged: a line in the accent
 // marks the side of the tab under the pointer where it will land. Alt + Left/Right moves the focused tab one
 // place, and the new position is announced. The new order goes to onReorder; the owner keeps it.
-
-const COUNT =
-  'rounded-pill border border-hairline px-2 font-mono text-xs font-medium tracking-normal tabular-nums ' +
-  'text-text-muted transition-colors group-aria-selected:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] ' +
-  'group-aria-selected:text-accent'
-// The accent line on the side of the tab a dragged tab will land on.
-const DROP_CLASSES: Record<DropSide, string> = {
-  before: 'shadow-[inset_2px_0_0_var(--color-accent)]',
-  after: 'shadow-[inset_-2px_0_0_var(--color-accent)]',
-}
-const TAB =
-  'group relative inline-flex cursor-pointer items-center gap-2 rounded-tile border-0 bg-transparent px-2.5 pt-2.5 pb-3 ' +
-  'font-display text-sm font-semibold uppercase tracking-display text-text-muted outline-none transition-colors ' +
-  'not-aria-selected:hover:text-text aria-selected:text-accent focus-visible:shadow-ring sm:px-3.5 ' +
-  "after:absolute after:inset-x-2.5 after:-bottom-px after:h-0.5 after:rounded-pill after:content-[''] " +
-  'after:transition-[background-color,box-shadow] aria-selected:after:bg-accent aria-selected:after:shadow-glow'
 
 type TabItem<T extends string> = {
   id: T
@@ -94,6 +79,7 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
   // The tab moved with the keyboard, to focus again once it is drawn in its new place.
   const moved = useRef<T | null>(null)
   const [dragging, setDragging] = useState<T | null>(null)
+  const list = tabsRecipe()
   const [drop, setDrop] = useState<{ id: T; side: DropSide } | null>(null)
   const [announcement, setAnnouncement] = useState('')
   const ids = tabs.map((tab) => tab.id)
@@ -162,9 +148,14 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
 
   return (
     <>
-      <div role="tablist" aria-label={label} className="flex gap-1">
+      <div role="tablist" aria-label={label} className={list.classes.base()} data-testid={list.ids.base}>
         {tabs.map((tab, index) => {
           const isSelected = tab.id === selected
+          const { classes, ids } = tabsRecipe({
+            reorderable,
+            dragging: dragging === tab.id,
+            drop: drop?.id === tab.id ? drop.side : 'none',
+          })
           return (
             <button
               key={tab.id}
@@ -183,12 +174,8 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
               tabIndex={isSelected ? 0 : -1}
               aria-keyshortcuts={reorderable ? 'Alt+ArrowLeft Alt+ArrowRight' : undefined}
               draggable={reorderable || undefined}
-              className={[
-                TAB,
-                reorderable ? 'cursor-grab' : '',
-                dragging === tab.id ? 'cursor-grabbing opacity-45' : '',
-                drop?.id === tab.id ? DROP_CLASSES[drop.side] : '',
-              ].join(' ')}
+              className={classes.tab()}
+              data-testid={ids.tab}
               onClick={() => onSelect(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
               onDragStart={(event) => {
@@ -204,18 +191,22 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
               }}
             >
               {reorderable && (
-                <span aria-hidden="true" className="-mr-1 flex text-text-muted">
-                  <Icon icon={gripIcon} size={14} />
+                <span aria-hidden="true" className={classes.grip()} data-testid={ids.grip}>
+                  <Icon icon={gripIcon} size={ICON_SIZES.inline} />
                 </span>
               )}
-              {tab.icon && <Icon icon={tab.icon} size={15} />}
+              {tab.icon && <Icon icon={tab.icon} size={ICON_SIZES.label} />}
               {tab.label}
-              {tab.count !== undefined && <span className={COUNT}>{tab.count}</span>}
+              {tab.count !== undefined && (
+                <span className={classes.count()} data-testid={ids.count}>
+                  {tab.count}
+                </span>
+              )}
             </button>
           )
         })}
       </div>
-      <span role="status" className="sr-only">
+      <span role="status" className={list.classes.status()} data-testid={list.ids.status}>
         {announcement}
       </span>
     </>
@@ -224,6 +215,7 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
 
 export function TabPanel<T extends string>({ id, selected, children }: TabPanelProps<T>) {
   const isSelected = id === selected
+  const { classes, ids } = tabPanel()
   return (
     <div
       role="tabpanel"
@@ -231,7 +223,8 @@ export function TabPanel<T extends string>({ id, selected, children }: TabPanelP
       aria-labelledby={tabElementId(id)}
       tabIndex={0}
       hidden={!isSelected}
-      className="outline-none focus-visible:shadow-ring"
+      className={classes.base()}
+      data-testid={ids.base}
     >
       {isSelected && children}
     </div>
