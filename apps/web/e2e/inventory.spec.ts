@@ -384,7 +384,7 @@ test("Web: the Inventory tutorial creates, finds, edits and deletes a test item"
 
   await step("Abra o cadastro");
   await expect(card).toContainText("Parte 1 de 3 · Cadastrar um item");
-  await expect(page.getByTestId("tour-spotlight")).toBeVisible();
+  await expect(page.getByTestId("common.tour.spotlight")).toBeVisible();
   await page.getByRole("button", { name: "Novo item" }).first().click();
   await step("Diga que peça é");
   await page.getByRole("dialog", { name: "Novo item" }).getByRole("button", { name: "Cancelar" }).click();
