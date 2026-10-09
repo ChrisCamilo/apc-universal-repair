@@ -1,20 +1,16 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { selectionSummary, toggleValue } from '@apc/shared/filters';
-import { checkIcon, chevronIcon } from '@apc/shared/icons';
-import { scales } from '@apc/shared/theme';
-import { listStyle, OPTION_HEIGHT, optionTextStyle } from './fieldStyles';
+import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/shared/icons';
 import { Icon } from './Icon';
-import { useTheme, type ActiveTheme } from './theme';
+import { useStyles } from './Select.styles';
+import { useTheme } from './theme';
 
 // A pick-only dropdown, the same as the web: at most SELECT_VISIBLE_OPTIONS options show at once and the
 // rest scroll. On a phone the list opens right under the button and pushes what follows down, so it works
 // inside panels and sheets without measuring the screen. A multiple choice shows checkboxes and stays open
 // while the user picks; the button shows the first choice plus a count ("Freios +2") and screen readers
 // hear the full list; "All" clears the choice.
-
-const CHECKBOX_SIZE = 14;
-const DISABLED_OPACITY = 0.5;
 
 type Option = { value: string; label: string };
 type SelectProps = {
@@ -33,52 +29,10 @@ type SelectProps = {
   | { multiple?: false; value: string; onValueChange: (value: string) => void }
 );
 
-/**
- * Draws a multiple-choice checkbox: accent fill when checked, hairline frame otherwise.
- * @param theme Active theme.
- * @param checked Whether the option is chosen.
- * @returns Style for the checkbox View.
- */
-function checkboxStyle(theme: ActiveTheme, checked: boolean): ViewStyle {
-  const { colors } = theme;
-  return {
-    width: CHECKBOX_SIZE,
-    height: CHECKBOX_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: scales.hairline,
-    borderColor: checked ? colors.accent : colors.hairline,
-    borderRadius: theme.radiusTile / 4,
-    backgroundColor: checked ? colors.accent : colors.panel,
-  };
-}
-
-/**
- * Styles the button: a pill in the text field's frame, lit in the accent while a multiple choice has values.
- * @param theme Active theme.
- * @param lit Whether a value is chosen in a multiple choice.
- * @param disabled Whether the select is disabled.
- * @returns Style for the button Pressable.
- */
-function triggerStyle(theme: ActiveTheme, lit: boolean, disabled: boolean): ViewStyle {
-  const { colors } = theme;
-  return {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scales.space.s2,
-    borderWidth: scales.hairline,
-    borderColor: lit ? colors.accent : colors.hairline,
-    borderRadius: scales.radiusPill,
-    backgroundColor: colors.panel,
-    paddingHorizontal: scales.space.s3,
-    paddingVertical: scales.space.s2,
-    opacity: disabled ? DISABLED_OPACITY : 1,
-  };
-}
-
 export function Select(props: SelectProps) {
   const { label, options, disabled = false } = props;
-  const theme = useTheme();
+  const { colors } = useTheme();
+  const { styles, ids } = useStyles();
   const [open, setOpen] = useState(false);
   // A multiple choice lists "All" first, with the empty value.
   const items: Option[] = props.multiple ? [{ value: '', label: props.allLabel }, ...options] : options;
@@ -110,18 +64,18 @@ export function Select(props: SelectProps) {
         accessibilityState={{ expanded: open, disabled }}
         disabled={disabled}
         onPress={() => setOpen((shut) => !shut)}
-        style={triggerStyle(theme, props.multiple === true && chosen.length > 0, disabled)}
-        testID="select-button"
+        style={[styles.button, props.multiple === true && chosen.length > 0 && styles.buttonPicked, disabled && styles.buttonDisabled]}
+        testID={ids.button}
       >
-        <Text numberOfLines={1} style={optionTextStyle(theme, false)}>
+        <Text numberOfLines={1} style={styles.shown} testID={ids.shown}>
           {shown}
         </Text>
-        <View style={{ transform: [{ rotate: open ? '-90deg' : '90deg' }] }}>
-          <Icon icon={chevronIcon} size={12} color={theme.colors.textMuted} />
+        <View style={[styles.chevron, open && styles.chevronOpen]} testID={ids.chevron}>
+          <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={colors.textMuted} />
         </View>
       </Pressable>
       {open && (
-        <ScrollView nestedScrollEnabled style={listStyle(theme)} contentContainerStyle={{ padding: scales.space.s1 }}>
+        <ScrollView nestedScrollEnabled style={styles.fieldList} contentContainerStyle={styles.fieldListContent} testID={ids.fieldList}>
           {items.map((item) => {
             const selected = isSelected(item);
             return (
@@ -130,25 +84,18 @@ export function Select(props: SelectProps) {
                 accessibilityRole={props.multiple ? 'checkbox' : 'radio'}
                 accessibilityState={{ checked: selected }}
                 onPress={() => pick(item)}
-                style={({ pressed }) => ({
-                  height: OPTION_HEIGHT,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: scales.space.s2,
-                  paddingHorizontal: scales.space.s3,
-                  borderRadius: theme.radiusTile,
-                  backgroundColor: pressed ? theme.colors.panelRaised : 'transparent',
-                })}
+                style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}
+                testID={ids.option}
               >
                 {props.multiple && (
-                  <View style={checkboxStyle(theme, selected)}>
-                    {selected && <Icon icon={checkIcon} size={10} color={theme.colors.onAccent} />}
+                  <View style={[styles.box, selected && styles.boxChecked]} testID={ids.box}>
+                    {selected && <Icon icon={checkIcon} size={ICON_SIZES.mark} color={colors.onAccent} />}
                   </View>
                 )}
-                <Text numberOfLines={1} style={optionTextStyle(theme, selected)}>
+                <Text numberOfLines={1} style={[styles.optionText, selected && styles.optionTextChosen]} testID={ids.optionText}>
                   {item.label}
                 </Text>
-                {!props.multiple && selected && <Icon icon={checkIcon} size={12} color={theme.colors.accent} />}
+                {!props.multiple && selected && <Icon icon={checkIcon} size={ICON_SIZES.caret} color={colors.accent} />}
               </Pressable>
             );
           })}
