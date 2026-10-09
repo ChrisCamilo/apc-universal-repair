@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { DASHBOARD_TABS } from "@apc/shared/tabs";
 import { signIn } from "./session.ts";
+
+// The first tab still being built, if any.
+const WIP_TAB = DASHBOARD_TABS.find((tab) => tab.wip);
 
 // Every test here starts on the Dashboard, so a test user is logged in first.
 test.beforeEach(async ({ page }) => {
@@ -74,4 +78,17 @@ test("Web: the content frame clips only horizontally", async ({ page }) => {
   const main = page.locator("main");
   await expect(main).toHaveCSS("overflow-x", "clip");
   await expect(main).toHaveCSS("overflow-y", "visible");
+});
+
+// Opens the tab still being built and checks it shows the cone and is read out as "em construção", and that its
+// screen sits blurred and out of reach behind the notice naming it, with nothing scrolling sideways.
+test("Web: a tab still being built opens behind the work-in-progress notice", async ({ page }) => {
+  test.skip(!WIP_TAB, "No tab is being built");
+  await page.goto("/inventory");
+  const tab = page.getByRole("tab", { name: `${WIP_TAB!.label}, em construção` });
+  await expect(tab.getByTestId("common.tabs.tab.wip")).toBeVisible();
+  await tab.click();
+  await expect(page.getByRole("heading", { name: `A aba ${WIP_TAB!.label} ainda não está pronta` })).toBeVisible();
+  await expect(page.getByTestId("common.work-in-progress.content")).toHaveJSProperty("inert", true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
 });

@@ -6,7 +6,7 @@ import {
   View,
   type GestureResponderEvent,
 } from 'react-native';
-import { gripIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
+import { coneIcon, gripIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
 import { dropTab, initialTab, moveTab, type DropSide } from '@apc/shared/tabs';
 import { Icon } from './Icon';
 import { useStyles } from './Tabs.styles';
@@ -31,6 +31,8 @@ type TabItem<T extends string> = {
   icon?: IconShape[];
   /** Badge after the label, e.g. the number of items in stock. */
   count?: number;
+  /** Still being built: a cone after the label, read out as "em construção". */
+  wip?: boolean;
 };
 type TabsProps<T extends string> = {
   /** Accessible name of the tab list, e.g. "Seções do Dashboard". */
@@ -136,6 +138,7 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
           <Pressable
             key={tab.id}
             accessibilityRole="tab"
+            accessibilityLabel={tab.wip ? `${tab.label}, em construção` : undefined}
             accessibilityState={{ selected: isSelected }}
             accessibilityActions={reorderable ? ACTIONS : undefined}
             onAccessibilityAction={(event) =>
@@ -160,6 +163,11 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
                 <Text style={[styles.label, pressed && styles.labelPressed, isSelected && styles.labelSelected]} testID={ids.label}>
                   {tab.label}
                 </Text>
+                {tab.wip && (
+                  <View style={styles.wip} testID={ids.wip}>
+                    <Icon icon={coneIcon} size={ICON_SIZES.compact} color={colors.textMuted} />
+                  </View>
+                )}
                 {tab.count !== undefined && (
                   <Text style={[styles.count, isSelected && styles.countSelected]} testID={ids.count}>
                     {tab.count}

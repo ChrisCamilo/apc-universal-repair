@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ENGINE_SHEETS } from "@apc/shared/catalog";
 import type { Item } from "@apc/shared/items";
+import { DASHBOARD_TABS } from "@apc/shared/tabs";
 import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 
@@ -34,6 +35,10 @@ function item(fields: Pick<Item, "code" | "name" | "vehicleBrand" | "vehicleMode
     ...fields,
   };
 }
+
+// While the Catalog tab is a work in progress its screen sits out of reach behind the notice, so these tests wait for
+// it to come back; the notice itself is tested in dashboard.spec.ts.
+test.skip(DASHBOARD_TABS.some((tab) => tab.id === "catalog" && tab.wip), "The Catalog tab is a work in progress (#151)");
 
 // Every test here starts on the Dashboard, so a test user is logged in first, with the test inventory.
 test.beforeEach(async ({ page }) => {

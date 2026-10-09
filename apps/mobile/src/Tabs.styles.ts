@@ -15,10 +15,10 @@ export const DRAGGING_OPACITY = 0.45;
 /** The underline's height, and the drop line's width, in px. */
 export const UNDERLINE_HEIGHT = 2 * scales.hairline;
 
-/** The tab list, a tab with its label, count and underline, and the drop line, by state. */
+/** The tab list, a tab with its label, work-in-progress cone, count and underline, and the drop line, by state. */
 export const useStyles = createStyles(
   'common.tabs',
-  { list: '', tab: 'tab', label: 'tab.label', count: 'tab.count', underline: 'tab.underline', drop: 'tab.drop' },
+  { list: '', tab: 'tab', label: 'tab.label', wip: 'tab.wip', count: 'tab.count', underline: 'tab.underline', drop: 'tab.drop' },
   (theme) => {
     const { colors } = theme;
     return {
@@ -59,6 +59,7 @@ export const useStyles = createStyles(
         backgroundColor: 'transparent',
       },
       underlineSelected: { backgroundColor: colors.accent, ...glow(theme) },
+      wip: {},
     };
   },
 );

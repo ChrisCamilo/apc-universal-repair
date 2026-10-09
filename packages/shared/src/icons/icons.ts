@@ -9,6 +9,11 @@ export const alertIcon: IconShape[] = [
 export const checkIcon: IconShape[] = [{ kind: "path", d: "M3.5 8.4l3 3 6-6.4" }];
 export const chevronIcon: IconShape[] = [{ kind: "path", d: "M6 3.5l4.5 4.5L6 12.5" }];
 export const closeIcon: IconShape[] = [{ kind: "path", d: "M3.5 3.5l9 9M12.5 3.5l-9 9" }];
+// A traffic cone: the mark of a part of the app still being built.
+export const coneIcon: IconShape[] = [
+  { kind: "path", d: "M6.6 2.5h2.8l2.6 9.5H4z" },
+  { kind: "path", d: "M5.6 6.2h4.8M4.8 9h6.4M2.5 12h11" },
+];
 export const cubeIcon: IconShape[] = [
   { kind: "path", d: "M2.5 5L8 2.4 13.5 5v6L8 13.6 2.5 11V5z" },
   { kind: "path", d: "M2.5 5L8 7.6 13.5 5M8 7.6v6" },
@@ -66,6 +71,15 @@ export const lockIcon: IconShape[] = [
   { kind: "rect", x: 3, y: 7, width: 10, height: 7, rx: 1.6 },
   { kind: "path", d: "M5.4 7V5.2a2.6 2.6 0 015.2 0V7" },
 ];
+// A mechanic leaning over the open hood of a car, wrench in hand: the illustration of a screen still being built.
+export const mechanicIcon: IconShape[] = [
+  { kind: "path", d: "M1.9 12.5H.9V10l1.5-2.6h3.4l1.6 2.2h3.2c.5 0 .9.4.9.9v2h-1.2M4.3 12.5h3.6" },
+  { kind: "path", d: "M7.4 9.6L9 6.2" },
+  { kind: "circle", cx: 3.1, cy: 12.5, r: 1.2 },
+  { kind: "circle", cx: 9.1, cy: 12.5, r: 1.2 },
+  { kind: "circle", cx: 12.4, cy: 3.6, r: 1.1 },
+  { kind: "path", d: "M13 4.8c.6 1 1.3 2.2 1.6 3.5M14.6 8.3l-.9 4.5M14.6 8.3l.9 4.5M13.4 6l-1.6 1.6-1 1.6M10.4 8.6l.8.5" },
+];
 export const pencilIcon: IconShape[] = [{ kind: "path", d: "M10.6 2.8l2.6 2.6-7.7 7.7-3.2.6.6-3.2 7.7-7.7z" }];
 export const searchIcon: IconShape[] = [
   { kind: "circle", cx: 7, cy: 7, r: 4.6 },
@@ -82,6 +96,7 @@ export const ICONS = {
   check: checkIcon,
   chevron: chevronIcon,
   close: closeIcon,
+  cone: coneIcon,
   cube: cubeIcon,
   document: documentIcon,
   eye: eyeIcon,
@@ -89,6 +104,7 @@ export const ICONS = {
   grip: gripIcon,
   image: imageIcon,
   lock: lockIcon,
+  mechanic: mechanicIcon,
   pencil: pencilIcon,
   search: searchIcon,
   trash: trashIcon,

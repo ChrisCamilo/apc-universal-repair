@@ -5,6 +5,7 @@ import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, orderTabs, TAB_ORDER_STORAGE
 import { BrandMark } from '../BrandMark';
 import { Tabs, useStoredTab } from '../Tabs';
 import { save, themeStorage } from '../theme';
+import { WorkInProgress } from '../WorkInProgress';
 import { CatalogTab } from './CatalogTab';
 import { MARK_SIZE, useStyles } from './Dashboard.styles';
 import { InventoryTab } from './InventoryTab';
@@ -20,12 +21,13 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 // the screen reader's actions) into a new order, which is saved and comes back, with tabs added later at its end;
 // the open tab stays open. The Dashboard also holds "Abrir item ao clicar na linha" and "Itens por página", which the
 // user menu sets and the Inventory tab follows, and the Inventory tutorial's state, which the Inventory tab runs (by
-// itself the first time) and the user menu replays, on the Inventory tab.
+// itself the first time) and the user menu replays, on the Inventory tab. A tab still being built (`wip` in
+// DASHBOARD_TABS) opens behind a notice saying it isn't ready yet.
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id);
 const TAB_SCREENS: Record<string, ReactNode> = { inventory: <InventoryTab />, catalog: <CatalogTab /> };
 // Each tab as the tab bar draws it, by id.
-const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon }) => [id, { id, label, icon: ICONS[icon] }]));
+const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon, wip }) => [id, { id, label, icon: ICONS[icon], wip }]));
 
 type DashboardProps = {
   /** The user menu, at the right of the header. */
@@ -103,7 +105,7 @@ export function Dashboard({ userMenu }: DashboardProps) {
                 )}
               </View>
               <View style={styles.content} testID={ids.content}>
-                {TAB_SCREENS[tab]}
+                {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{TAB_SCREENS[tab]}</WorkInProgress> : TAB_SCREENS[tab]}
               </View>
             </ScrollView>
           </InventoryTutorialContext.Provider>
