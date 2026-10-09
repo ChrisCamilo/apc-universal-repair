@@ -55,7 +55,7 @@ export function ImageFrame({ src, loading = false, alt, ratio = DEFAULT_RATIO, e
         />
       )}
       {state === 'loading' && (
-        <Spinner className="absolute" data-testid="image-spinner" />
+        <Spinner className="absolute" />
       )}
       {missing && (
         <span className="grid justify-items-center gap-2 p-4 text-center font-body text-sm">
