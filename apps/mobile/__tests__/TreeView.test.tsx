@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { AccessibilityInfo, Animated, LayoutAnimation, Text, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, Animated, LayoutAnimation, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import type { TreeNode } from '@apc/shared/tree';
@@ -87,7 +87,7 @@ function rows(tree: ReactTestRenderer.ReactTestRenderer): string[] {
  */
 function look(tree: ReactTestRenderer.ReactTestRenderer, name: string): { frame: ViewStyle; color: string } {
   const node = row(tree, name);
-  return { frame: node.props.style({ pressed: false }), color: node.findAllByType(Text)[0].props.style.color };
+  return { frame: StyleSheet.flatten(node.props.style({ pressed: false })), color: StyleSheet.flatten(node.findAllByType(Text)[0].props.style).color };
 }
 
 beforeEach(async () => {
@@ -114,9 +114,9 @@ for (const style of STYLES) {
       const other = look(tree, '2.5 L 4 cilindros');
       expect(other.frame).toMatchObject({ borderLeftColor: 'transparent', backgroundColor: 'transparent' });
       expect(other.color).toBe(colors.text);
-      expect(row(tree, '2.5 L 4 cilindros').props.style({ pressed: true }).backgroundColor).toBe(colors.panelRaised);
+      expect(StyleSheet.flatten(row(tree, '2.5 L 4 cilindros').props.style({ pressed: true })).backgroundColor).toBe(colors.panelRaised);
       const years = row(tree, 'Terceira geração 1980–1992').findAllByType(Text)[1];
-      expect(years.props.style.color).toBe(colors.textMuted);
+      expect(StyleSheet.flatten(years.props.style).color).toBe(colors.textMuted);
     });
   }
 }
@@ -137,8 +137,8 @@ test('Mobile: the tree has tree, treeitem and group semantics', async () => {
   const monza = row(tree, 'Monza');
   expect(monza.props.accessibilityState).toEqual({ expanded: undefined, selected: undefined });
   expect(monza.props.disabled).toBe(true);
-  expect(monza.findAll((n) => n.props.testID === 'tree-chevron')).toHaveLength(0);
-  expect(row(tree, 'Chevette').findAll((n) => n.props.testID === 'tree-chevron' && typeof n.type === 'string')).toHaveLength(1);
+  expect(monza.findAll((n) => n.props.testID === 'common.tree-view.item.row.chevron')).toHaveLength(0);
+  expect(row(tree, 'Chevette').findAll((n) => n.props.testID === 'common.tree-view.item.row.chevron' && typeof n.type === 'string')).toHaveLength(1);
   expect(tree.root.findAll((n) => n.props.testID === 'common.divider' && typeof n.type === 'string')).toHaveLength(2);
 });
 
@@ -189,7 +189,7 @@ test('Mobile: long labels stay on one line and the tree scrolls in its own heigh
   const tree = await mount('fiat90', 'day', <TreeView label="Modelos" nodes={[long]} onSelect={() => {}} style={{ maxHeight: 380 }} />);
   expect(row(tree, long.label).findAllByType(Text)[0].props.numberOfLines).toBe(1);
   const root = tree.root.find((n) => n.props.role === 'tree' && typeof n.type === 'string');
-  expect(root.props.style).toMatchObject({ maxHeight: 380 });
+  expect(StyleSheet.flatten(root.props.style)).toMatchObject({ maxHeight: 380 });
   expect(root.props.nestedScrollEnabled).toBe(true);
 });
 

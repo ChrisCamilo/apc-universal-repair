@@ -174,7 +174,7 @@ test('Mobile: brand tiles sit two to a row on a phone and four on a tablet', asy
   await screen(MOBILE_DESIGN_WIDTH, MOBILE_DESIGN_HEIGHT);
   const tree = await mount('gt4', 'day');
   expect(rows(tree)).toEqual([2, 2]);
-  expect(byRole(tree, 'tree', 'Modelos Chevrolet').props.style).toMatchObject({ maxHeight: 384 });
+  expect(StyleSheet.flatten(byRole(tree, 'tree', 'Modelos Chevrolet').props.style)).toMatchObject({ maxHeight: 384 });
   await screen(768, 1024);
   expect(rows(tree)).toEqual([4]);
   await screen(before.width, before.height);
