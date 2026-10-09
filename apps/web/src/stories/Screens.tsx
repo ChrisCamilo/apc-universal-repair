@@ -22,12 +22,12 @@ import { TabPanel, Tabs } from '../components/Tabs.tsx'
 import { SearchField } from '../components/TextField.tsx'
 import { TreeView } from '../components/TreeView.tsx'
 import { Heading, NumericReadout, Text } from '../components/Typography.tsx'
+import { screens } from './Screens.styles.ts'
 
 // The wireframe screens rebuilt from the design system alone, to prove it is complete before the real screens:
 // the Dashboard on its Catalog and Inventory tabs (the Login story shows the real LoginScreen). They hold their
 // own sample data and state, so searches, filters, tabs, the tree and the user menu respond, but nothing is saved
-// or sent. Only layout
-// (grid, flex, gaps, widths) is set here; every color, face, border and radius comes from the components.
+// or sent. Their layout lives in Screens.styles.ts; every color, face, border and radius comes from the components.
 
 // The Catalog tree of each brand: model → generation → version → year → engine. Most branches are still
 // empty, as the catalog data comes later.
@@ -249,6 +249,7 @@ function CatalogTab() {
   const shownBrands = BRANDS.filter((b) => searchKey(b.label).includes(searchKey(brandSearch.trim())))
   const shownModels = models.filter((model) => searchKey(model.label).includes(searchKey(modelSearch.trim())))
   const detail = engine ? ENGINES[engine] : undefined
+  const { classes, ids } = screens()
 
   /** Opens a brand on its first engine. */
   const chooseBrand = (value: string) => {
@@ -257,20 +258,20 @@ function CatalogTab() {
   }
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[calc(var(--spacing)*46)_minmax(0,1fr)]">
-      <Panel className="grid content-start gap-3">
+    <div className={classes.catalog()} data-testid={ids.catalog}>
+      <Panel className={classes.rail()}>
         <SearchField label="Procure marca" value={brandSearch} onValueChange={setBrandSearch} />
         <SelectableTileGroup
           label="Marcas"
           options={shownBrands}
           value={brand}
           onValueChange={chooseBrand}
-          className="grid-cols-2 sm:grid-cols-4 lg:grid-cols-1"
+          className={classes.brands()}
         />
       </Panel>
-      <Panel className="grid min-w-0 content-start gap-3">
+      <Panel className={classes.main()}>
         <SearchField label="Procure modelo ou código da peça" value={modelSearch} onValueChange={setModelSearch} />
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,calc(var(--spacing)*82))]">
+        <div className={classes.body()} data-testid={ids.body}>
           <Panel>
             {shownModels.length > 0 ? (
               <TreeView
@@ -279,18 +280,18 @@ function CatalogTab() {
                 nodes={shownModels}
                 selected={engine}
                 onSelect={setEngine}
-                className="max-h-96 lg:max-h-[calc(var(--spacing)*120)]"
+                className={classes.tree()}
               />
             ) : (
               <EmptyState title="Nenhum modelo encontrado" message="Procure por outro nome ou escolha outra marca." />
             )}
           </Panel>
-          <div className="grid min-w-0 content-start gap-3">
+          <div className={classes.detail()} data-testid={ids.detail}>
             <ImageFrame alt={detail ? `Foto do ${detail.title}` : 'Foto do modelo'} emptyLabel="Sem foto do modelo" />
             {detail ? (
-              <Panel className="grid gap-3">
+              <Panel className={classes.sheet()}>
                 <Heading level={3}>{detail.title}</Heading>
-                <div className="flex flex-wrap gap-x-3 gap-y-1">
+                <div className={classes.specs()} data-testid={ids.specs}>
                   {detail.specs.map((spec) => (
                     <NumericReadout key={spec} tone="accent">
                       {spec}
@@ -300,7 +301,7 @@ function CatalogTab() {
                 <Text size="sm" tone="muted" lines={5}>
                   {detail.summary}
                 </Text>
-                <div className="flex flex-wrap gap-2">
+                <div className={classes.sheetActions()} data-testid={ids.sheetActions}>
                   <Button size="sm">Ver ficha técnica</Button>
                   <Button size="sm" variant="secondary">
                     Ver em 3D
@@ -333,18 +334,19 @@ function InventoryTab() {
       (filters.part.length === 0 || filters.part.includes(row.partBrand)) &&
       (status === null || stockStatus(row.quantity, row.minQuantity) === status),
   )
+  const { classes, ids } = screens()
   const sorted = sort ? sortRows(shown, (row) => row[sort.key as keyof Omit<Item, 'photos'>] ?? '', sort.dir) : shown
 
   return (
-    <Panel className="grid min-w-0 gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-0 flex-[1_1_calc(var(--spacing)*64)]">
+    <Panel className={classes.inventory()}>
+      <div className={classes.toolbar()} data-testid={ids.toolbar}>
+        <div className={classes.search()} data-testid={ids.search}>
           <SearchField label="Procure pelo nome ou código da peça" value={search} onValueChange={setSearch} />
         </div>
         <Button>Novo item</Button>
         <Button variant="secondary">Importar CSV</Button>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className={classes.filters()} data-testid={ids.filters}>
         <FilterMenu label="Filtros do estoque" title="Filtrar estoque" rows={FILTER_ROWS} values={filters} onApply={setFilters} />
         <FilterChipGroup label="Situação do estoque" options={STATUS_OPTIONS} value={status} onValueChange={setStatus} />
         <ClearFilters
@@ -354,7 +356,7 @@ function InventoryTab() {
             setStatus(null)
           }}
         />
-        <NumericReadout tone="muted" className="ml-auto">
+        <NumericReadout tone="muted" className={classes.summary()}>
           {resultSummary(shown.length, ITEMS)}
         </NumericReadout>
       </div>
@@ -395,7 +397,7 @@ function InventoryTab() {
             numeric: true,
             card: 'actions',
             cell: (row) => (
-              <span className="inline-flex gap-0.5">
+              <span className={classes.rowActions()} data-testid={ids.rowActions}>
                 <RowAction icon={pencilIcon} label={`Editar ${row.name}`} onClick={() => {}} />
                 <RowAction icon={trashIcon} label={`Excluir ${row.name}`} tone="danger" onClick={() => {}} />
               </span>
