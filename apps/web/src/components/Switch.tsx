@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { MENU_ITEM_CLASSES, useMenu } from './menuContext.ts'
+import { useMenu } from './menuContext.ts'
+import { switchControl } from './Switch.styles.ts'
 
 // An on/off control: a pill track whose knob slides over to the accent when on, glowing where the style has
 // a glow. On its own it is a switch (role="switch"); inside a Menu it becomes a full-width menuitemcheckbox
@@ -17,6 +18,13 @@ type SwitchProps = {
 
 export function Switch({ checked, onCheckedChange, children, description, disabled }: SwitchProps) {
   const menu = useMenu()
+  const { classes, ids } = switchControl({ on: checked })
+  const track = (
+    <span aria-hidden="true" className={classes.track()} data-testid={ids.track}>
+      <span className={classes.knob()} data-testid={ids.knob} />
+    </span>
+  )
+
   if (menu) {
     return (
       <button
@@ -25,14 +33,19 @@ export function Switch({ checked, onCheckedChange, children, description, disabl
         aria-checked={checked}
         tabIndex={-1}
         disabled={disabled}
-        className={MENU_ITEM_CLASSES}
+        className={classes.item()}
+        data-testid={ids.item}
         onClick={() => onCheckedChange(!checked)}
       >
-        <span className="grid">
+        <span className={classes.text()} data-testid={ids.text}>
           {children}
-          {description && <small className="text-xs leading-snug text-text-muted">{description}</small>}
+          {description && (
+            <small className={classes.description()} data-testid={ids.description}>
+              {description}
+            </small>
+          )}
         </span>
-        <Track on={checked} />
+        {track}
       </button>
     )
   }
@@ -42,30 +55,12 @@ export function Switch({ checked, onCheckedChange, children, description, disabl
       role="switch"
       aria-checked={checked}
       disabled={disabled}
-      className="inline-flex cursor-pointer items-center gap-2 rounded-pill font-body text-sm text-text outline-none focus-visible:shadow-ring disabled:cursor-not-allowed disabled:opacity-50"
+      className={classes.base()}
+      data-testid={ids.base}
       onClick={() => onCheckedChange(!checked)}
     >
       {children}
-      <Track on={checked} />
+      {track}
     </button>
-  )
-}
-
-function Track({ on }: { on: boolean }) {
-  return (
-    <span
-      aria-hidden="true"
-      data-testid="switch-track"
-      className={`relative h-5 w-8.5 shrink-0 rounded-pill border transition-[background-color,border-color] ${
-        on ? 'border-accent bg-accent-soft' : 'border-hairline bg-panel-raised'
-      }`}
-    >
-      <span
-        data-testid="switch-knob"
-        className={`absolute top-0.5 left-0.5 size-3.5 rounded-pill transition-[translate,background-color] ${
-          on ? 'translate-x-3.5 bg-accent shadow-glow' : 'bg-text-muted'
-        }`}
-      />
-    </span>
   )
 }
