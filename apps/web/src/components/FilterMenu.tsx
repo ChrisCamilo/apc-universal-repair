@@ -1,8 +1,9 @@
 import { useEffect, useEffectEvent, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { activeFilterCount, clearedFilters, type FilterValues } from '@apc/shared/filters'
-import { filterIcon } from '@apc/shared/icons'
+import { filterIcon, ICON_SIZES } from '@apc/shared/icons'
 import { Button } from './Button.tsx'
 import { FilterChipGroup } from './FilterChip.tsx'
+import { filterMenu } from './FilterMenu.styles.ts'
 import { Icon } from './Icon.tsx'
 import { Panel } from './Panel.tsx'
 import { Select } from './Select.tsx'
@@ -14,15 +15,6 @@ import { Label } from './Typography.tsx'
 // away; Escape or a click outside closes the panel without applying. The button counts the filters on. Rows may
 // depend on what is chosen in the panel, e.g. the vehicle models of the chosen brands: a value a row stops
 // offering leaves the choice. An owner may also open and close the panel itself, as the Inventory tutorial does.
-
-const TRIGGER =
-  'inline-flex cursor-pointer items-center gap-2 rounded-pill border px-4 py-2 font-display text-xs font-semibold ' +
-  'uppercase tracking-display outline-none transition-[background-color,color,border-color,box-shadow] ' +
-  'focus-visible:shadow-ring'
-const TRIGGER_STATE = {
-  idle: 'border-hairline text-text hover:border-accent hover:text-accent',
-  active: 'border-accent bg-accent-soft text-accent',
-}
 
 type ChipsRow = {
   label: string
@@ -87,6 +79,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const count = activeFilterCount(values)
+  const { classes, ids } = filterMenu({ active: count > 0 })
   const rows = typeof rowsFor === 'function' ? rowsFor(draft) : rowsFor
 
   /** Opens or closes the panel, telling the owner. */
@@ -146,7 +139,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
   }, [open])
 
   return (
-    <div ref={root} className="relative" onKeyDown={onKeyDown}>
+    <div ref={root} className={classes.base()} data-testid={ids.base} onKeyDown={onKeyDown}>
       <button
         ref={trigger}
         type="button"
@@ -154,13 +147,14 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={count ? `Filtros, ${count} ${count === 1 ? 'ativo' : 'ativos'}` : 'Filtros'}
-        className={`${TRIGGER} ${count ? TRIGGER_STATE.active : TRIGGER_STATE.idle}`}
+        className={classes.trigger()}
+        data-testid={ids.trigger}
         onClick={() => show(!open)}
       >
-        <Icon icon={filterIcon} size={13} />
+        <Icon icon={filterIcon} size={ICON_SIZES.compact} />
         Filtros
         {count > 0 && (
-          <span className="min-w-4.5 rounded-pill bg-accent px-1.5 text-center font-mono text-xs font-medium tracking-normal text-on-accent">
+          <span className={classes.count()} data-testid={ids.count}>
             {count}
           </span>
         )}
@@ -170,7 +164,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
           id={panelId}
           role="dialog"
           aria-label={label}
-          className="absolute left-0 top-full z-20 mt-1.5 grid w-[min(calc(var(--spacing)*90),calc(100vw-var(--spacing)*20))] gap-2 shadow-pop"
+          className={classes.panel()}
         >
           <Label>{title}</Label>
           {rows.map((row) => {
@@ -180,12 +174,13 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
               <div
                 key={rowId}
                 data-on={on || undefined}
-                className="grid grid-cols-[calc(var(--spacing)*28)_minmax(0,1fr)] items-center gap-3"
+                className={classes.row()}
+                data-testid={ids.row}
               >
                 {'groups' in row ? (
                   <>
                     <Label tone={on ? 'accent' : 'muted'}>{row.label}</Label>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                    <div className={classes.chips()} data-testid={ids.chips}>
                       {row.groups.map((group) => (
                         <FilterChipGroup
                           key={group.key}
@@ -217,7 +212,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
               </div>
             )
           })}
-          <div className="mt-0.5 flex justify-end gap-2 border-t border-hairline-soft pt-2">
+          <div className={classes.actions()} data-testid={ids.actions}>
             <Button size="sm" variant="secondary" onClick={() => apply(clearedFilters(draft))}>
               Limpar
             </Button>
