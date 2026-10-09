@@ -15,6 +15,7 @@ import { Button } from '../components/Button.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { Heading, Text } from '../components/Typography.tsx'
+import { importItemsDialog } from './ImportItemsDialog.styles.ts'
 import { API_BASE } from './savePhotos.ts'
 
 // The "Importar CSV" dialog of the Inventory tab: it explains the file, downloads the template and reads the file
@@ -41,6 +42,7 @@ type ImportItemsDialogProps = {
 
 export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportItemsDialogProps) {
   const toast = useToast()
+  const { classes, ids } = importItemsDialog()
   const picker = useRef<HTMLInputElement>(null)
   // The file read, with its name.
   const [read, setRead] = useState<{ name: string; result: CsvItems }>()
@@ -105,7 +107,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
         Use o modelo: uma linha por item, separada por vírgula ou ponto e vírgula, em UTF-8. Com vírgula, um valor como
         “189,90” vai entre aspas. Um código que já está no estoque atualiza o item.
       </Text>
-      <div className="flex flex-wrap gap-2">
+      <div className={classes.buttons()} data-testid={ids.buttons}>
         <Button variant="secondary" size="sm" onClick={downloadTemplate}>
           Baixar modelo
         </Button>
@@ -117,7 +119,8 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
           type="file"
           accept=".csv,text/csv"
           aria-label="Arquivo CSV"
-          className="hidden"
+          className={classes.picker()}
+          data-testid={ids.picker}
           onChange={(event) => {
             void choose(event.target.files?.[0])
             event.target.value = ''
@@ -125,17 +128,17 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
         />
       </div>
       {read && 'error' in read.result && (
-        <p role="alert" className="m-0 font-body text-sm text-danger">
+        <p role="alert" className={classes.problem()} data-testid={ids.problem}>
           {read.name}: {read.result.error}
         </p>
       )}
       {read && 'rows' in read.result && (
-        <section aria-label="Prévia da importação" className="grid gap-3">
+        <section aria-label="Prévia da importação" className={classes.preview()} data-testid={ids.preview}>
           <Text size="sm">
             {read.name} · {rowsSummary(rows)}
           </Text>
           {creates.length > 0 && (
-            <div className="grid gap-1">
+            <div className={classes.creates()} data-testid={ids.creates}>
               <Heading level={4}>Serão criados</Heading>
               {creates.map((line) => (
                 <Text key={line} size="sm" tone="muted">
@@ -144,23 +147,30 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
               ))}
             </div>
           )}
-          <ul aria-label="Linhas do arquivo" className="m-0 grid list-none p-0">
+          <ul aria-label="Linhas do arquivo" className={classes.rows()} data-testid={ids.rows}>
             {rows.map(({ line, item, errors }) => (
               <li
                 key={line}
                 data-invalid={errors.length > 0 || undefined}
-                className={`grid gap-0.5 border-b border-hairline-soft py-2 ${errors.length > 0 ? 'border-l-2 border-l-danger pl-3' : ''}`}
+                className={classes.row()}
+                data-testid={ids.row}
               >
-                <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                  <span className="font-mono text-xs text-text-muted">Linha {line}</span>
-                  <span className="font-mono text-xs text-text">{item.code || '—'}</span>
-                  <span className="min-w-0 truncate font-body text-sm font-semibold text-text">{item.name || '—'}</span>
+                <span className={classes.head()} data-testid={ids.head}>
+                  <span className={classes.line()} data-testid={ids.line}>
+                    Linha {line}
+                  </span>
+                  <span className={classes.code()} data-testid={ids.code}>
+                    {item.code || '—'}
+                  </span>
+                  <span className={classes.name()} data-testid={ids.name}>
+                    {item.name || '—'}
+                  </span>
                 </span>
                 <Text size="sm" tone="muted">
                   {importedDetails(item)}
                 </Text>
                 {errors.map((error) => (
-                  <p key={error} className="m-0 font-body text-sm text-danger">
+                  <p key={error} className={classes.error()} data-testid={ids.error}>
                     {error}
                   </p>
                 ))}
