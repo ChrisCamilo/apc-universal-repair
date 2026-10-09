@@ -1,21 +1,12 @@
 import { useId, useRef, type KeyboardEvent } from 'react'
 import { useMenu } from './menuContext.ts'
 import { arrowTarget } from './radioKeys.ts'
+import { segmented } from './Segmented.styles.ts'
 
 // A compact single choice, e.g. the theme. The chosen option fills with the accent, glowing where the style
 // has a glow. On its own it is a radio group: one Tab stop on the chosen option, and the arrows move the
 // choice. Inside a Menu it becomes a labeled row of menuitemradio items that the menu's arrows reach, and
 // choosing one keeps the menu open.
-
-const OPTION =
-  'cursor-pointer rounded-pill py-1 font-display text-xs font-semibold uppercase tracking-display outline-none ' +
-  'transition-[background-color,color,box-shadow] focus-visible:shadow-ring'
-// Inside a menu the options pack tighter, so four of them fit the menu's width on one line.
-const OPTION_PADDING = { menu: 'px-2', alone: 'px-3' }
-const OPTION_STATE = {
-  on: 'bg-accent text-on-accent shadow-glow',
-  off: 'text-text-muted hover:text-text',
-}
 
 type SegmentedProps = {
   /** Accessible name of the group; inside a menu it is also the row's visible label. */
@@ -31,6 +22,7 @@ export function Segmented({ label, options, value, onValueChange, description }:
   const menu = useMenu()
   const id = useId()
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
+  const { classes, ids } = segmented({ inMenu: menu !== null })
 
   /** Moves the choice with the arrows and follows it with the focus, outside a menu. */
   const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -49,7 +41,8 @@ export function Segmented({ label, options, value, onValueChange, description }:
       aria-label={menu ? undefined : label}
       aria-labelledby={menu ? `${id}-label` : undefined}
       aria-describedby={menu && description ? `${id}-note` : undefined}
-      className="inline-flex gap-0.5 rounded-pill border border-hairline bg-panel p-0.5"
+      className={classes.base()}
+      data-testid={ids.base}
     >
       {options.map((option, index) => {
         const on = option.value === value
@@ -63,7 +56,8 @@ export function Segmented({ label, options, value, onValueChange, description }:
             role={menu ? 'menuitemradio' : 'radio'}
             aria-checked={on}
             tabIndex={menu ? -1 : on ? 0 : -1}
-            className={`${OPTION} ${menu ? OPTION_PADDING.menu : OPTION_PADDING.alone} ${on ? OPTION_STATE.on : OPTION_STATE.off}`}
+            className={classes.option({ on })}
+            data-testid={ids.option}
             onClick={() => onValueChange(option.value)}
             onKeyDown={(event) => onKeyDown(event, index)}
           >
@@ -78,11 +72,11 @@ export function Segmented({ label, options, value, onValueChange, description }:
     return group
   }
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-2 py-2 font-body text-sm text-text">
-      <span className="grid">
+    <div className={classes.row()} data-testid={ids.row}>
+      <span className={classes.text()} data-testid={ids.text}>
         <span id={`${id}-label`}>{label}</span>
         {description && (
-          <small id={`${id}-note`} className="text-xs leading-snug text-text-muted">
+          <small id={`${id}-note`} className={classes.description()} data-testid={ids.description}>
             {description}
           </small>
         )}
