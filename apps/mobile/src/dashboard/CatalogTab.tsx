@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, useWindowDimensions, type ViewStyle } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
 import {
   brandsNamed,
   brandWithModel,
@@ -11,7 +11,6 @@ import {
   modelsNamed,
 } from '@apc/shared/catalog';
 import type { Item } from '@apc/shared/items';
-import { scales } from '@apc/shared/theme';
 import { EmptyState } from '../EmptyState';
 import { ImageFrame } from '../ImageFrame';
 import { Panel } from '../Panel';
@@ -20,6 +19,7 @@ import { SearchField } from '../TextField';
 import { TreeView } from '../TreeView';
 import { Heading, NumericReadout, Text } from '../Typography';
 import { useItems } from '../inventory/useItems';
+import { TILE_COLUMNS, useStyles, WIDE_SCREEN } from './CatalogTab.styles';
 import { PartResults } from './PartResults';
 
 // The Catalog tab, the same as the web on a narrow screen: the brand tiles in rows (two on a phone, four from the
@@ -31,17 +31,10 @@ import { PartResults } from './PartResults';
 // model name, moving to the first brand that has the model.
 
 const NO_SHEET = 'Este veículo ainda não tem ficha técnica no catálogo. A peça continua cadastrada no estoque.';
-const RAIL_STYLE: ViewStyle = { gap: scales.space.s3 };
-const SHEET_STYLE: ViewStyle = { gap: scales.space.s3 };
-const SPECS_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', columnGap: scales.space.s3, rowGap: scales.space.s1 };
-const TAB_STYLE: ViewStyle = { gap: scales.space.s3 };
-// The tree's height before it scrolls, as on the web (max-h-96).
-const TREE_STYLE: ViewStyle = { maxHeight: scales.space.s1 * 96 };
-/** Screen width from which the brand tiles sit four to a row: the web's sm breakpoint. */
-const WIDE_SCREEN = 640;
 
 export function CatalogTab() {
   const { width } = useWindowDimensions();
+  const { styles, ids } = useStyles();
   const state = useItems();
   const items = state.status === 'ready' ? state.items : [];
   const [brandQuery, setBrandQuery] = useState('');
@@ -93,15 +86,15 @@ export function CatalogTab() {
   };
 
   return (
-    <View style={TAB_STYLE}>
-      <Panel style={RAIL_STYLE}>
+    <View style={styles.tab} testID={ids.tab}>
+      <Panel style={styles.rail}>
         <SearchField label="Procure marca" value={brandQuery} onValueChange={setBrandQuery} />
         <SelectableTileGroup
           label="Marcas"
           options={brandsNamed(brandQuery).map((b) => ({ value: b.id, label: b.name }))}
           value={brandId}
           onValueChange={openBrand}
-          columns={width >= WIDE_SCREEN ? 4 : 2}
+          columns={width >= WIDE_SCREEN ? TILE_COLUMNS.wide : TILE_COLUMNS.narrow}
         />
       </Panel>
       <SearchField label="Procure modelo ou código da peça" value={query} onValueChange={search} />
@@ -116,7 +109,7 @@ export function CatalogTab() {
             onSelect={setEngine}
             highlighted={location?.modelId}
             defaultExpanded={location?.modelId && !location.engineId ? [location.modelId] : undefined}
-            style={TREE_STYLE}
+            style={styles.tree}
           />
         ) : (
           <EmptyState title="Nenhum modelo com esse nome" message="Procure por outro nome ou pelo código de uma peça do estoque." />
@@ -127,9 +120,9 @@ export function CatalogTab() {
         {missingVehicle ? (
           <EmptyState title={missingVehicle} message={NO_SHEET} />
         ) : sheet ? (
-          <View style={SHEET_STYLE}>
+          <View style={styles.sheet} testID={ids.sheet}>
             <Heading level={3}>{sheet.title}</Heading>
-            <View style={SPECS_STYLE}>
+            <View style={styles.specs} testID={ids.specs}>
               {sheet.specs.map((spec) => (
                 <NumericReadout key={spec} tone="accent">
                   {spec}
