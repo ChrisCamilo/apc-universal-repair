@@ -94,10 +94,10 @@ export type UserCreate = z.input<typeof userCreateSchema>;
  * creates a user; either way the user the API answers with is saved in the store as the session.
  * @param store Where the session is saved on the device.
  * @param apiBase Where the API answers, e.g. "/api" on the web.
- * @param send How requests are sent; fetch, or a stand-in in tests.
+ * @param send How requests are sent: the global fetch as it is when each one is sent, or a stand-in in tests.
  * @returns The AuthService on the API.
  */
-export function createApiAuth(store: SessionStore, apiBase: string, send: typeof fetch = fetch): AuthService {
+export function createApiAuth(store: SessionStore, apiBase: string, send: typeof fetch = (input, init) => fetch(input, init)): AuthService {
   const post = (path: string, body: unknown) =>
     send(`${apiBase}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   return {
