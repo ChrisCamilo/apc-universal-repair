@@ -117,7 +117,7 @@ test('Web: a refused login says so above the form and empties the password', asy
 // form and its actions, each on its own element; and that every id on the screen is written as the convention asks.
 test('Web: the login screen carries its style ids', async () => {
   const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
-  const tag = (id: string) => screen.getByTestId(id, { exact: true }).element().tagName
+  const tag = (id: string) => screen.getByTestId(id).element().tagName
   expect(tag('auth.login-screen')).toBe('MAIN')
   expect(tag('auth.login-screen.layout')).toBe('DIV')
   expect(tag('auth.login-screen.brand.title')).toBe('H1')
