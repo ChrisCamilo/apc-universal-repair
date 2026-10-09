@@ -28,6 +28,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 
 - 📚 Vehicle catalog organized by brand, model, generation, version, year and engine
 - 🔎 Catalog search by brand, model or the code of a part in stock
+- 🚧 For now the Catalog tab shows as a work in progress: it opens blurred behind a notice that it isn't ready yet
 - 📋 Vehicle spec sheet: fuel consumption, equipment and features
 
 **Later**
@@ -160,6 +161,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 
 - 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor
 - 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque
+- 🚧 Por enquanto a aba Catálogo aparece em construção: ela abre desfocada atrás de um aviso de que ainda não está pronta
 - 📋 Ficha técnica do veículo: consumo, equipamentos e itens de série
 
 **Depois**
