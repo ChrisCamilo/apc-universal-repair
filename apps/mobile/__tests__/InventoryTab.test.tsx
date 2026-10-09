@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Image, Modal, Text, TextInput } from 'react-native';
+import { Image, Modal, StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial';
@@ -147,11 +147,11 @@ test('Mobile: the inventory lists every item with its stock alerts', async () =>
   expect(shown).toContain('Pastilha de freio');
   expect(shown.some((t) => t.replace(/\s/g, ' ').startsWith('Freios · Cobreq · Volkswagen · D · R$ 1.234,56'))).toBe(true);
 
-  const cards = tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string');
+  const cards = tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
   const { colors } = themes.eighties.night;
   expect(cards).toHaveLength(3);
-  expect(cards[1].props.style.borderLeftColor).toBe(colors.warn);
-  expect(cards[2].props.style.borderLeftColor).toBe(colors.danger);
+  expect(StyleSheet.flatten(cards[1].props.style).borderLeftColor).toBe(colors.warn);
+  expect(StyleSheet.flatten(cards[2].props.style).borderLeftColor).toBe(colors.danger);
 });
 
 // Searches by part code without separators and by name without accents, and for something that isn't there,
@@ -159,7 +159,7 @@ test('Mobile: the inventory lists every item with its stock alerts', async () =>
 test('Mobile: the search finds items by name or part code', async () => {
   const tree = await mount();
   const search = () => tree.root.findByType(TextInput);
-  const cards = () => tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string');
+  const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
 
   await ReactTestRenderer.act(async () => search().props.onChangeText('w712'));
   expect(cards()).toHaveLength(1);
@@ -240,7 +240,7 @@ test('Mobile: a card opens the item details while the option is on', async () =>
     tree.root.findAll(
       (n) =>
         typeof n.type !== 'string' &&
-        n.props.testID === 'table-row' &&
+        n.props.testID === 'common.data-table.table.row' &&
         typeof n.props.onPress === 'function' &&
         n.findAll((c) => c.type === Text && c.props.children === code).length > 0,
     )[0];
@@ -250,7 +250,7 @@ test('Mobile: a card opens the item details while the option is on', async () =>
 
   await themeStorage.setItem(OPEN_ITEM_ON_ROW_STORAGE_KEY, 'false');
   const off = await mount();
-  expect(off.root.findAll((n) => n.props.testID === 'table-row' && typeof n.props.onPress === 'function')).toHaveLength(0);
+  expect(off.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.props.onPress === 'function')).toHaveLength(0);
 });
 
 function Preferences({ children }: { children: React.ReactNode }) {
@@ -303,7 +303,7 @@ test('Mobile: the filters narrow the list through the API query', async () => {
         n.props.accessibilityRole !== undefined &&
         (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
     );
-  const cards = () => tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string');
+  const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
   await ReactTestRenderer.act(async () => pressable('Filtros').props.onPress());
   await ReactTestRenderer.act(async () => pressable('Categoria').props.onPress());
   await ReactTestRenderer.act(async () => pressable('Freios').props.onPress());
@@ -360,7 +360,7 @@ test('Mobile: the inventory shows loading, then the error state with a retry', a
     (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Tentar de novo').length > 0,
   );
   await ReactTestRenderer.act(async () => retry.props.onPress());
-  expect(tree!.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string')).toHaveLength(3);
+  expect(tree!.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string')).toHaveLength(3);
 });
 
 // Searches for something that isn't there and checks the empty state offers "Limpar filtros", which clears the
@@ -377,7 +377,7 @@ test('Mobile: the empty states offer to clear the filters or add an item', async
   expect(texts(tree)).toContain('Nenhum item encontrado');
   await press('Limpar filtros');
   expect(tree.root.findByType(TextInput).props.value).toBe('');
-  expect(tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string')).toHaveLength(3);
+  expect(tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string')).toHaveLength(3);
 
   const empty = await mount([]);
   expect(texts(empty)).toContain('Nenhum item cadastrado');
@@ -395,7 +395,7 @@ test('Mobile: the inventory list shows one page at a time', async () => {
     item(index + 10, { code: `P-${String(index + 1).padStart(3, '0')}`, name: `Peça ${index + 1}`, quantity: 5 }),
   );
   const tree = await mount(stock);
-  const cards = () => tree.root.findAll((n) => n.props.testID === 'table-row' && typeof n.type === 'string');
+  const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
   expect(cards()).toHaveLength(25);
   expect(texts(tree)).toContain('1–25 de 30');
   const pageTwo = tree.root.find((n) => n.props.accessibilityLabel === 'Página 2' && typeof n.props.onPress === 'function');
