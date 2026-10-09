@@ -1,14 +1,14 @@
 import { useRef, useState, type ComponentRef } from 'react';
-import { ScrollView, TextInput, View, type ViewStyle } from 'react-native';
+import { ScrollView, TextInput, View } from 'react-native';
 import { LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/shared/auth';
 import { lockIcon, userIcon } from '@apc/shared/icons';
-import { scales } from '@apc/shared/theme';
 import { BrandMark } from '../BrandMark';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
 import { Panel } from '../Panel';
 import { TextField } from '../TextField';
 import { Text } from '../Typography';
+import { BADGE_WIDTH, useStyles } from './LoginScreen.styles';
 
 // The first screen of the app, the same as the web's /login on a phone: the APC badge on a panel above the form.
 // "Entrar", or the keyboard's "go" key in the password, sends the login, and "next" in the user moves on to the
@@ -19,23 +19,7 @@ import { Text } from '../Typography';
 // workshop's admin for a new password, as there is no reset until the real backend (EP-10); it closes on
 // "Entendi", the back button or a tap outside.
 
-const ACTIONS_STYLE: ViewStyle = { alignItems: 'flex-start', gap: scales.space.s2 };
-// The badge at the size the web gives it on a phone (w-36).
-const BADGE_WIDTH = scales.space.s1 * 36;
-// The form keeps a phone's width on wider screens, centered, as wide as the web's form (max-w-sm).
-const CONTENT_STYLE: ViewStyle = {
-  flexGrow: 1,
-  justifyContent: 'center',
-  alignSelf: 'center',
-  width: '100%',
-  maxWidth: scales.space.s1 * 96,
-  gap: scales.space.s5,
-  padding: scales.space.s4,
-};
 const FIELD_ORDER = ['username', 'password'] as const;
-const FORM_STYLE: ViewStyle = { gap: scales.space.s4 };
-const MARK_PANEL_STYLE: ViewStyle = { alignItems: 'center', paddingVertical: scales.space.s5 };
-const PAGE_STYLE: ViewStyle = { flex: 1 };
 
 type LoginScreenProps = {
   /** Checks the user and password. */
@@ -52,6 +36,7 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
   const [forgot, setForgot] = useState(false);
   const usernameInput = useRef<ComponentRef<typeof TextInput>>(null);
   const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
+  const { styles, ids } = useStyles();
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Credentials, value: string) => {
@@ -86,15 +71,15 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
   };
 
   return (
-    <ScrollView style={PAGE_STYLE} contentContainerStyle={CONTENT_STYLE} keyboardShouldPersistTaps="handled">
-      <Panel style={MARK_PANEL_STYLE}>
-        <View accessibilityRole="header">
+    <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
+      <Panel style={styles.brand}>
+        <View accessibilityRole="header" style={styles.title} testID={ids.title}>
           <BrandMark size={BADGE_WIDTH} />
         </View>
       </Panel>
-      <View style={FORM_STYLE}>
+      <View style={styles.form} testID={ids.form}>
         {refused && (
-          <View accessibilityRole="alert" accessibilityLiveRegion="polite">
+          <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.alert} testID={ids.alert}>
             <Text size="sm" tone="danger">
               {LOGIN_MESSAGES.failed}
             </Text>
@@ -122,7 +107,7 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
           returnKeyType="go"
           onSubmitEditing={submit}
         />
-        <View style={ACTIONS_STYLE}>
+        <View style={styles.actions} testID={ids.actions}>
           <Button onPress={submit} loading={sending}>
             Entrar
           </Button>

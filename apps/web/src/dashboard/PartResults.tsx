@@ -3,16 +3,12 @@ import { partFit, type PartResults as Results } from '@apc/shared/catalog'
 import type { Item } from '@apc/shared/items'
 import { arrowTarget } from '../components/radioKeys.ts'
 import { Text } from '../components/Typography.tsx'
+import { partResults } from './PartResults.styles.ts'
 
 // The inventory parts a Catalog search by code found, in a tinted box above the tree: each with its code, its name
 // and which vehicle it fits. Choosing one reveals its vehicle in the tree; the chosen part has the accent frame.
 // The parts are a radio group: one is always chosen, it is the only Tab stop and the arrows move the choice. When
 // more parts matched than fit, a line says how many more.
-
-const PART =
-  'grid w-full cursor-pointer gap-0.5 rounded-tile border border-transparent px-2 py-1.5 text-left text-sm text-text ' +
-  'outline-none transition-[background-color,border-color,box-shadow] hover:bg-panel focus-visible:shadow-ring ' +
-  'aria-checked:border-accent aria-checked:bg-panel'
 
 type PartResultsProps = {
   results: Results
@@ -24,6 +20,7 @@ type PartResultsProps = {
 export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
   const { parts, more } = results
+  const { classes, ids } = partResults()
 
   /** Moves the choice with the arrows and follows it with the focus. */
   const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -37,11 +34,11 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
   }
 
   return (
-    <div className="grid gap-1 rounded-tile border border-accent/45 bg-accent-soft p-3">
+    <div className={classes.base()} data-testid={ids.base}>
       <Text size="sm" tone="muted">
         {parts.length === 1 ? 'Peça do estoque com esse código:' : 'Peças do estoque com esse código:'}
       </Text>
-      <div role="radiogroup" aria-label="Peças do estoque com esse código" className="grid gap-1">
+      <div role="radiogroup" aria-label="Peças do estoque com esse código" className={classes.list()} data-testid={ids.list}>
         {parts.map((part, index) => (
           <button
             key={part.id}
@@ -52,15 +49,15 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
             role="radio"
             aria-checked={part.id === chosen}
             tabIndex={part.id === chosen ? 0 : -1}
-            className={PART}
+            className={classes.part()} data-testid={ids.part}
             onClick={() => onChoose(part)}
             onKeyDown={(event) => onKeyDown(event, index)}
           >
-            <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
-              <code className="font-mono text-xs text-accent">{part.code}</code>
-              <span className="min-w-0">{part.name}</span>
+            <span className={classes.line()} data-testid={ids.line}>
+              <code className={classes.code()} data-testid={ids.code}>{part.code}</code>
+              <span className={classes.name()} data-testid={ids.name}>{part.name}</span>
             </span>
-            <span className="text-xs text-text-muted">{partFit(part)}</span>
+            <span className={classes.fit()} data-testid={ids.fit}>{partFit(part)}</span>
           </button>
         ))}
       </div>

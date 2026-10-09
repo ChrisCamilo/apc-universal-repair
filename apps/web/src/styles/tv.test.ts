@@ -30,13 +30,19 @@ test('Web: the token classes merge, the last one winning', () => {
   expect(merged('text-sm', 'text-accent')).toBe('text-sm text-accent')
 })
 
-// Builds the dialog's slots and checks each gives its classes for the variant asked and its style id, the
-// component's own element the component's id and each slot its path below it; a caller's class merges in.
-test("Web: a recipe's slots give their classes and their style ids", () => {
-  const closable = dialog({ closable: true })
-  expect(closable.base()).toEqual({ className: 'rounded-panel bg-panel', 'data-testid': 'common.dialog' })
-  expect(closable.header()).toEqual({ className: 'flex gap-3 justify-between', 'data-testid': 'common.dialog.header' })
-  expect(closable.title({ class: 'font-body' })).toEqual({ className: 'font-body', 'data-testid': 'common.dialog.header.title' })
-  expect(closable.close()).toEqual({ className: 'rounded-pill', 'data-testid': 'common.dialog.header.close' })
-  expect(dialog().close().className).toBe('rounded-pill hidden')
+// Builds the dialog's slots and checks each gives its classes for the variant asked, a caller's class merging in, and
+// its style id: the component's own element the component's id and each slot its path below it.
+test("Web: a recipe gives its slots' classes and style ids", () => {
+  const { classes, ids } = dialog({ closable: true })
+  expect(classes.base()).toBe('rounded-panel bg-panel')
+  expect(classes.header()).toBe('flex gap-3 justify-between')
+  expect(classes.title({ class: 'font-body' })).toBe('font-body')
+  expect(classes.close()).toBe('rounded-pill')
+  expect(dialog().classes.close()).toBe('rounded-pill hidden')
+  expect(ids).toEqual({
+    base: 'common.dialog',
+    header: 'common.dialog.header',
+    title: 'common.dialog.header.title',
+    close: 'common.dialog.header.close',
+  })
 })

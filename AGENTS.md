@@ -221,13 +221,68 @@ export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): 
 
 ## Styles
 
-The styles move into recipes beside each component (EP-13, #133). The web builds them with `tv()` and `recipe()` from `apps/web/src/styles/tv.ts` (tailwind-variants), mobile with `createStyles()` from `apps/mobile/src/styles/createStyles.ts`.
+A component's look lives in a recipe in its own `<Component>.styles.ts`, beside it, never in its JSX (EP-13, #133). `LoginScreen` and `PartResults` on both platforms show the pattern; the other components follow it as EP-13 moves them.
+
+### Files
+
+- **One style file per component:** `LoginScreen.tsx` has `LoginScreen.styles.ts` beside it, next to its test and story. A file with several components keeps them all in its one style file, the internal ones as slots of the main one.
+- **Shared recipes:** a pattern three or more components repeat goes in `styles/shared.ts` of each app.
+- **The tools:**
+  - Web: `apps/web/src/styles/tv.ts` gives `tv()`, which knows the token classes, and `recipe()`.
+  - Mobile: `apps/mobile/src/styles/createStyles.ts` gives `createStyles()`.
+
+### Web: `tv()` and `recipe()`
+
+```ts
+// PartResults.styles.ts
+export const partResults = recipe(
+  'catalog.part-results',
+  tv({ slots: { base: 'grid gap-1 rounded-tile …', list: 'grid gap-1', part: […], code: 'font-mono text-xs text-accent' } }),
+  { base: '', list: 'list', part: 'list.part', code: 'list.part.line.code' },
+)
+// PartResults.tsx
+const { classes, ids } = partResults()
+<div className={classes.base()} data-testid={ids.base}>   // data-testid="catalog.part-results"
+```
+
+- **Slots and paths:** a recipe always has slots, `base` being the component's own element. `recipe()` takes each slot's path inside the component. Called with the variants, it gives `classes`, a function per slot returning its classes, and `ids`, each slot's style id. An element writes both out, `className={classes.line()} data-testid={ids.line}`, as mobile writes `style={styles.line} testID={ids.line}`.
+- **Variants:** a component's props that change its look (`variant`, `size`, `tone`) are the recipe's variants, under the same names. A caller's `className` goes in through `{ class: className }`, so conflicting classes merge, the last one winning.
+- **States:** a state the DOM already shows stays a Tailwind variant in the class (`aria-checked:border-accent`, `hover:`, `focus-visible:`, `disabled:`). A recipe variant is only for state the DOM doesn't carry.
+- **A slot that styles another component** passes only its classes, `<Panel className={classes.brand()}>`, so that component's own element keeps its own id.
+- **Static classes:** Tailwind only builds the classes it finds written in full, so a class is never put together from a number. A width shared with mobile is written as the token class (`w-36`) here and as the constant there.
+
+### Mobile: `createStyles()`
+
+```ts
+// PartResults.styles.ts
+export const useStyles = createStyles('catalog.part-results', { box: '', list: 'list', part: 'list.part' }, (theme) => ({
+  box: { borderColor: withAlpha(theme.colors.accent, FRAME_OPACITY), … },
+  part: { borderColor: 'transparent', … },
+  partChosen: { borderColor: theme.colors.accent, backgroundColor: theme.colors.panel },
+  partPressed: { backgroundColor: theme.colors.panel },
+}))
+// PartResults.tsx
+const { styles, ids } = useStyles()
+<Pressable style={({ pressed }) => [styles.part, pressed && styles.partPressed, chosen && styles.partChosen]} testID={ids.part}>
+```
+
+- **Built once per theme:** the styles are built from the theme once per style and mode, kept in a `StyleSheet` and reused, in place of style functions that run on every render.
+- **Elements and states:** each element is a key with a path in `slots`, and so an id. A state is a separate key named `<element><State>` (`partChosen`, `partPressed`), added in a style array, with the same state names as the web. A key with no element of its own, such as a ScrollView's `content`, has no path.
+- **One `styles` object:** styles that don't depend on the theme go in the same call, so a component has one `styles` object.
+- **A slot that styles another component** passes only its style, `<Panel style={styles.brand}>`. That component's view keeps its own id.
+
+### Values
+
+- **Tokens first:** every color, size, space, radius, font and duration comes from the tokens (`@apc/shared/theme`, the Tailwind token classes on web).
+- **Named constants:** a value that has a meaning or repeats is a named constant. A constant only one component uses is exported from its style file (`FRAME_OPACITY`, `BADGE_WIDTH`), so its tests import it. One both apps or several components use goes in `@apc/shared`: screen sizes in `screens`, icon sizes in `icons` (`ICON_SIZES`), the table's breakpoint in `table`.
+- **Breakpoints:** they have names (`card:`, `max-card:`), built from the shared constants in `tailwind.config.ts`, never `max-[720px]:`.
+- **Runtime values only:** the JSX keeps only values known at run time (measured positions, insets, the window's size, `Animated` values), added last: `[styles.card, { top }]`.
 
 ### Style ids
 
 Every styled element carries a style id, in `data-testid` on web and `testID` on mobile: the same string for the same element on both platforms. The recipe gives it along with the styles, so a component never writes one by hand.
 
-- **Format:** `<scope>.<component>[.<slot>…]`, in kebab-case, with a dot for each level. The component is its file's name in kebab-case (`ItemFormDialog` → `item-form-dialog`), and the slots follow how the elements nest inside it, from the outside in. Examples: `common.dialog.header.close`, `inventory.item-form-dialog.fields.code`, `catalog.part-results.part.code`.
+- **Format:** `<scope>.<component>[.<slot>…]`, in kebab-case, with a dot for each level. The component is its file's name in kebab-case (`ItemFormDialog` → `item-form-dialog`), and the slots follow how the elements nest inside it, from the outside in. A wrapper that only lays out its children (the web login's `layout`) has its own id but adds no level to theirs, so an element has the same id on web and mobile even where one platform needs an extra wrapper. Examples: `common.dialog.header.close`, `inventory.item-form-dialog.fields.code`, `catalog.part-results.list.part.line.code`.
 - **It names a kind of element, not one instance:** every row of a list shares its id, and tests tell rows apart by text or role. That is why it isn't an HTML `id`.
 - **A component inside another keeps its own id:** the × in a dialog is `common.close-button`, inside `common.dialog.header`.
 - **Scopes** (`STYLE_SCOPES` in `@apc/shared/style-ids`). The scope follows the area that owns the component, not its folder:
