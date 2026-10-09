@@ -10,7 +10,7 @@ import { softHairline, withAlpha } from './theme';
 /** The group of brand tiles, its rows, and each tile with its logo or its name. */
 export const useStyles = createStyles(
   'common.selectable-tile-group',
-  { group: '', row: 'row', tile: 'row.tile', logo: 'row.tile.logo', name: 'row.tile.name' },
+  { group: '', row: 'row', tile: 'row.tile', logo: 'row.tile.logo', name: 'row.tile.name', filler: 'row.filler' },
   (theme) => {
     const { colors } = theme;
     return {

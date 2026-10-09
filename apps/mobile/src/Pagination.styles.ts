@@ -13,7 +13,17 @@ export const DISABLED_OPACITY = 0.5;
 /** The pagination: the bar, the page size, the range, the page buttons, the gaps between them and the numbers. */
 export const useStyles = createStyles(
   'common.pagination',
-  { bar: '', size: 'size', range: 'range', pages: 'pages', previous: 'pages.previous', gap: 'pages.gap', page: 'pages.page', number: 'pages.page.number' },
+  {
+    bar: '',
+    size: 'size',
+    range: 'range',
+    pages: 'pages',
+    previous: 'pages.previous',
+    gap: 'pages.gap',
+    ellipsis: 'pages.gap.ellipsis',
+    page: 'pages.page',
+    number: 'pages.page.number',
+  },
   (theme) => ({
     bar: {
       flexDirection: 'row',
@@ -25,6 +35,8 @@ export const useStyles = createStyles(
       borderTopWidth: scales.hairline,
       borderTopColor: softHairline(theme),
     },
+    // The ellipsis in a gap, in the number's face, muted.
+    ellipsis: { color: theme.colors.textMuted },
     gap: { justifyContent: 'center', paddingHorizontal: scales.space.s1 / 2 },
     number: { fontFamily: fontFamily(scales.monoFont), fontSize: scales.fontSize.xs, fontVariant: ['tabular-nums'] },
     page: {
