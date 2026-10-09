@@ -54,8 +54,8 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
     }
     setRefused(undefined)
     setSending(true)
-    const { confirm: _confirm, ...user } = registration
-    const result = await auth.register(user)
+    const { displayName, username, email, password } = registration
+    const result = await auth.register({ displayName, username, email, password })
     setSending(false)
     if ('refused' in result) {
       setRefused(result.refused)
