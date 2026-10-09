@@ -143,6 +143,27 @@ for (const style of STYLES) {
 }
 
 // Renders tabs without the option and checks they have no grip, can't be dragged, and Alt + Right only moves
+// Renders a tab still being built and checks it shows the cone, is read out as "em construção" and still opens.
+test('Web: a tab still being built shows a cone and still opens', async () => {
+  const onSelect = vi.fn()
+  const screen = await render(
+    <Tabs
+      label="Seções do Dashboard"
+      tabs={[
+        { id: 'stock', label: 'Estoque', icon: cubeIcon },
+        { id: 'catalog', label: 'Catálogo', icon: documentIcon, wip: true },
+      ]}
+      selected="stock"
+      onSelect={onSelect}
+    />,
+  )
+  const catalog = screen.getByRole('tab', { name: 'Catálogo, em construção' })
+  await expect.element(catalog.getByTestId('common.tabs.tab.wip')).toBeVisible()
+  await expect.element(screen.getByRole('tab', { name: 'Estoque' }).getByTestId('common.tabs.tab.wip')).not.toBeInTheDocument()
+  await catalog.click()
+  expect(onSelect).toHaveBeenCalledWith('catalog')
+})
+
 // the selection, as before.
 test('Web: tabs are not reorderable unless asked', async () => {
   const onReorder = vi.fn()

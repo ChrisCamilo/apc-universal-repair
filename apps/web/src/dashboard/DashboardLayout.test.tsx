@@ -9,13 +9,13 @@ import { themeCss } from '../theme.ts'
 import { DashboardLayout } from './DashboardLayout.tsx'
 import { useTabReorder } from './tabReorderContext.ts'
 
-// The MVP has one tab; three let the order change. The Catalog and Specs tabs stand in for the ones to come.
+// Three tabs let the order change; Specs stands in for a tab still being built.
 vi.mock('@apc/shared/tabs', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@apc/shared/tabs')>()),
   DASHBOARD_TABS: [
     { id: 'inventory', label: 'Estoque', icon: 'cube' },
     { id: 'catalog', label: 'Catálogo', icon: 'document' },
-    { id: 'specs', label: 'Ficha técnica', icon: 'document' },
+    { id: 'specs', label: 'Ficha técnica', icon: 'document', wip: true },
   ],
 }))
 
@@ -67,6 +67,18 @@ test('Web: a saved order comes back with new tabs at the end', async () => {
   const screen = await render(<Dashboard />)
   expect(tabOrder()).toEqual(['Ficha técnica', 'Estoque', 'Catálogo'])
   await expect.element(screen.getByRole('tab', { name: 'Catálogo' })).toHaveAttribute('draggable', 'true')
+})
+
+// Opens a tab still being built and checks its route shows, blurred and out of reach, behind the notice naming the
+// tab, while a finished tab opens as it is.
+test('Web: a tab still being built opens behind the work-in-progress notice', async () => {
+  const screen = await render(<Dashboard />)
+  await expect.element(screen.getByText('Rota: /inventory')).toBeVisible()
+  await expect.element(screen.getByTestId('common.work-in-progress')).not.toBeInTheDocument()
+  await screen.getByRole('tab', { name: 'Ficha técnica, em construção' }).click()
+  await expect.element(screen.getByRole('heading', { name: 'A aba Ficha técnica ainda não está pronta' })).toBeVisible()
+  expect(screen.getByTestId('common.work-in-progress.content').element().textContent).toBe('Rota: /specs')
+  expect((screen.getByTestId('common.work-in-progress.content').element() as HTMLElement).inert).toBe(true)
 })
 
 function Dashboard() {
