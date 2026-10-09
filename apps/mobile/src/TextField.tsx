@@ -2,17 +2,13 @@ import { useRef, useState, type ComponentRef, type Ref } from 'react';
 import { Pressable, Text as NativeText, TextInput, View, type ReturnKeyTypeOptions } from 'react-native';
 import { FIELD_KINDS, type FieldKind } from '@apc/shared/field';
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons';
-import { scales } from '@apc/shared/theme';
-import { fieldStyle, frameStyles, inputStyle } from './fieldStyles';
 import { Icon } from './Icon';
-import { fontFamily, useTheme } from './theme';
+import { TRAILING_HIT_SLOP, useSearchStyles, useStyles } from './TextField.styles';
+import { useTheme } from './theme';
 import { Label, Text } from './Typography';
 
-// The pill-shaped inputs, the same as the web: the frame lights up in the accent with a focus ring while
-// focused and in the danger color on error. Each field kind sets the keyboard, autofill hint and
-// capitalization (see @apc/shared/field).
-
-const TRAILING_HIT_SLOP = 8;
+// The pill-shaped inputs, the same as the web (see TextField.styles.ts). Each field kind sets the keyboard, autofill
+// hint and capitalization (see @apc/shared/field).
 
 type SearchFieldProps = {
   /** Accessible name; the search shows no visible label, so it is also the placeholder. */
@@ -60,19 +56,19 @@ export function TextField({
   onSubmitEditing,
   onBlur,
 }: TextFieldProps) {
-  const theme = useTheme();
+  const { colors } = useTheme();
+  const { styles, ids } = useStyles();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const spec = FIELD_KINDS[kind];
   const isPassword = kind === 'password';
-  const { ring, frame } = frameStyles(theme, focused, !!error);
 
   return (
-    <View style={fieldStyle(disabled)}>
+    <View style={[styles.field, disabled && styles.fieldDisabled]} testID={ids.field}>
       <Label>{label}</Label>
-      <View style={ring} testID="field-ring">
-        <View style={frame} testID="field-frame">
-          {icon && <Icon icon={icon} color={theme.colors.textMuted} />}
+      <View style={[styles.fieldRing, focused && (error ? styles.fieldRingError : styles.fieldRingFocused)]} testID={ids.fieldRing}>
+        <View style={[styles.fieldFrame, focused && styles.fieldFrameFocused, !!error && styles.fieldFrameError]} testID={ids.fieldFrame}>
+          {icon && <Icon icon={icon} color={colors.textMuted} />}
           <TextInput
             ref={ref}
             value={value}
@@ -80,7 +76,7 @@ export function TextField({
             returnKeyType={returnKeyType}
             onSubmitEditing={onSubmitEditing}
             placeholder={placeholder}
-            placeholderTextColor={theme.colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             editable={!disabled}
             secureTextEntry={isPassword && !revealed}
             keyboardType={spec.keyboardType}
@@ -95,7 +91,8 @@ export function TextField({
               setFocused(false);
               onBlur?.();
             }}
-            style={inputStyle(theme)}
+            style={styles.fieldInput}
+            testID={ids.fieldInput}
           />
           {isPassword && (
             <Pressable
@@ -105,17 +102,16 @@ export function TextField({
               disabled={disabled}
               hitSlop={TRAILING_HIT_SLOP}
               onPress={() => setRevealed((shown) => !shown)}
+              style={styles.toggle}
+              testID={ids.toggle}
             >
-              <Icon icon={eyeIcon} color={theme.colors.textMuted} />
+              <Icon icon={eyeIcon} color={colors.textMuted} />
             </Pressable>
           )}
         </View>
       </View>
       {error ? (
-        <NativeText
-          accessibilityLiveRegion="polite"
-          style={{ fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: theme.colors.danger }}
-        >
+        <NativeText accessibilityLiveRegion="polite" style={styles.error} testID={ids.error}>
           {error}
         </NativeText>
       ) : (
@@ -130,22 +126,22 @@ export function TextField({
 }
 
 export function SearchField({ label, value, onValueChange, disabled = false }: SearchFieldProps) {
-  const theme = useTheme();
+  const { colors } = useTheme();
+  const { styles, ids } = useSearchStyles();
   const input = useRef<ComponentRef<typeof TextInput>>(null);
   const [focused, setFocused] = useState(false);
   const spec = FIELD_KINDS.search;
-  const { ring, frame } = frameStyles(theme, focused, false);
 
   return (
-    <View style={[ring, fieldStyle(disabled)]} testID="field-ring">
-      <View style={frame} testID="field-frame">
-        <Icon icon={searchIcon} color={theme.colors.textMuted} />
+    <View style={[styles.fieldRing, focused && styles.fieldRingFocused, disabled && styles.fieldDisabled]} testID={ids.fieldRing}>
+      <View style={[styles.fieldFrame, focused && styles.fieldFrameFocused]} testID={ids.fieldFrame}>
+        <Icon icon={searchIcon} color={colors.textMuted} />
         <TextInput
           ref={input}
           value={value}
           onChangeText={onValueChange}
           placeholder={label}
-          placeholderTextColor={theme.colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           editable={!disabled}
           keyboardType={spec.keyboardType}
           autoComplete={spec.nativeAutoComplete}
@@ -156,7 +152,8 @@ export function SearchField({ label, value, onValueChange, disabled = false }: S
           accessibilityLabel={label}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={inputStyle(theme)}
+          style={styles.fieldInput}
+          testID={ids.fieldInput}
         />
         {value !== '' && !disabled && (
           <Pressable
@@ -167,8 +164,10 @@ export function SearchField({ label, value, onValueChange, disabled = false }: S
               onValueChange('');
               input.current?.focus();
             }}
+            style={styles.clear}
+            testID={ids.clear}
           >
-            <Icon icon={closeIcon} color={theme.colors.textMuted} />
+            <Icon icon={closeIcon} color={colors.textMuted} />
           </Pressable>
         )}
       </View>
