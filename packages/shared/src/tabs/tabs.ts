@@ -12,15 +12,19 @@ export const DASHBOARD_TAB_STORAGE_KEY = "apc-tab";
  */
 export const DASHBOARD_TABS: readonly DashboardTab[] = [
   { id: "inventory", label: "Estoque", icon: "cube" },
-  { id: "catalog", label: "Catálogo", icon: "document" },
+  // Still being built: it shows as a work in progress until this mark comes off (#151).
+  { id: "catalog", label: "Catálogo", icon: "document", wip: true },
 ];
 /** localStorage (web) and AsyncStorage (mobile) key of the "Arrastar para reordenar" choice; off when not saved. */
 export const REORDER_TABS_STORAGE_KEY = "apc-reorder-tabs";
 /** localStorage (web) and AsyncStorage (mobile) key of the Dashboard tab order the user set, as a JSON list of ids. */
 export const TAB_ORDER_STORAGE_KEY = "apc-tab-order";
 
-/** A Dashboard tab: its id (and web route), label and the name of its icon in ICONS (@apc/shared/icons). */
-export type DashboardTab = { id: string; label: string; icon: IconName };
+/**
+ * A Dashboard tab: its id (and web route), label and the name of its icon in ICONS (@apc/shared/icons). A tab marked
+ * `wip` is still being built: it shows a work-in-progress mark, and its screen sits blurred behind a notice.
+ */
+export type DashboardTab = { id: string; label: string; icon: IconName; wip?: boolean };
 /** Which side of the tab under the pointer a dragged tab lands on. */
 export type DropSide = "before" | "after";
 
