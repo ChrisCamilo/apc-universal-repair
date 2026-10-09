@@ -52,6 +52,7 @@ flowchart TB
     subgraph ui["Design system"]
         theme["theme<br/>4 styles × 2 modes · tokens"]
         rest["typography · button · field · dialog<br/>tabs · table · pagination · filters<br/>icons · tree · tour"]
+        styling["style-ids · screens<br/>style ids · screen sizes"]
     end
     subgraph other["App"]
         auth["auth · test-users<br/>mocked login"]
@@ -125,6 +126,7 @@ sequenceDiagram
 | Web end-to-end tests | Playwright, at 1280×720 and 360×780 |
 | Mobile tests | Jest with react-test-renderer |
 | Design system catalog | Storybook 10 |
+| Style recipes | tailwind-variants with tailwind-merge (web), `createStyles` over `StyleSheet` (mobile), both giving style ids |
 | CI | GitHub Actions: lint, typecheck, build, tests and E2E on every pull request |
 
 ---
@@ -159,4 +161,5 @@ sequenceDiagram
 | Testes de ponta a ponta da web | Playwright, em 1280×720 e 360×780 |
 | Testes do celular | Jest com react-test-renderer |
 | Catálogo do design system | Storybook 10 |
+| Receitas de estilo | tailwind-variants com tailwind-merge (web), `createStyles` sobre o `StyleSheet` (celular), as duas dando os ids de estilo |
 | CI | GitHub Actions: lint, typecheck, build, testes e E2E em todo pull request |

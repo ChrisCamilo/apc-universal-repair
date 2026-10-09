@@ -24,7 +24,9 @@
     "@fontsource/titillium-web": "^5.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router": "^8.4.0"
+    "react-router": "^8.4.0",
+    "tailwind-merge": "3.7.0",
+    "tailwind-variants": "3.3.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

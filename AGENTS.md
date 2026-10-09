@@ -96,6 +96,12 @@ Epics group work by product area and are referenced by their slug in branch name
 | EP-10 | `backend` | Real authentication + real data persistence, replacing MVP mocks |
 | EP-11 | `i18n` | EN/PT-BR parity across the app UI (beyond the README) |
 
+### Ongoing epics (picked up between feature epics)
+
+| Epic ID | Slug | Scope |
+|---|---|---|
+| EP-13 | `optimizations` | Refactors that change no behavior: organized, consistent and generic code, such as style recipes beside each component, style ids and shared constants instead of hardcoded values |
+
 The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard → Inventory. Login is mocked/static for the MVP, while inventory items, photos included, are persisted through the API. Phase 2 adds the Catalog tab (EP-04) and Car Specs (EP-05), both on mocked/static vehicle data. 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to later epics.
 
 Tasks that belong to phase 2 end their title with `(phase 2)` and state it in the body: `**Phase:** 2 — together with ...`.
@@ -171,6 +177,7 @@ Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical reso
 - **Desktop, 1280×720:** covers 1366×768 notebooks and 1920×1080 screens at 125% and 150% Windows scaling. At 720 of screen height, the browser and OS bars leave about 600px of usable height, so forms, dialogs and the tutorial must fit in 600px, scrolling inside when needed.
 - **Mobile, 360×780:** covers mid-range and premium phones from 2020 on. The 360 width comes from Samsung Galaxy S20–S23 at their default setting; the 780 height from the S22 and S23. Screens are designed at 390×844 (iPhone 12–14) and adapt up and down from there.
 - Below the minimum, the app keeps working with its responsive layout, but the layout is not guaranteed.
+- The sizes are constants in `@apc/shared/screens` (`MIN_DESKTOP_WIDTH`, `MIN_DESKTOP_HEIGHT`, `MIN_MOBILE_WIDTH`, `MIN_MOBILE_HEIGHT`, `MOBILE_DESIGN_WIDTH`, `MOBILE_DESIGN_HEIGHT`): code, configs, stories and tests import them instead of writing the numbers.
 - Every UI task is checked at the minimum sizes before it is done: on web with the Playwright `desktop` (1280×720) and `mobile` (360×780) projects, on mobile with a 360×780 emulator.
 
 ## Code Conventions
@@ -211,6 +218,34 @@ export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): 
   return `${family.replace(/\s+/g, '')}-${WEIGHTS[weight]}`;
 }
 ```
+
+## Styles
+
+The styles move into recipes beside each component (EP-13, #133). The web builds them with `tv()` and `recipe()` from `apps/web/src/styles/tv.ts` (tailwind-variants), mobile with `createStyles()` from `apps/mobile/src/styles/createStyles.ts`.
+
+### Style ids
+
+Every styled element carries a style id, in `data-testid` on web and `testID` on mobile: the same string for the same element on both platforms. The recipe gives it along with the styles, so a component never writes one by hand.
+
+- **Format:** `<scope>.<component>[.<slot>…]`, in kebab-case, with a dot for each level. The component is its file's name in kebab-case (`ItemFormDialog` → `item-form-dialog`), and the slots follow how the elements nest inside it, from the outside in. Examples: `common.dialog.header.close`, `inventory.item-form-dialog.fields.code`, `catalog.part-results.part.code`.
+- **It names a kind of element, not one instance:** every row of a list shares its id, and tests tell rows apart by text or role. That is why it isn't an HTML `id`.
+- **A component inside another keeps its own id:** the × in a dialog is `common.close-button`, inside `common.dialog.header`.
+- **Scopes** (`STYLE_SCOPES` in `@apc/shared/style-ids`). The scope follows the area that owns the component, not its folder:
+
+| Scope | Covers | Epic |
+|---|---|---|
+| `common` | The design system: reusable components that know nothing about items, users or routes (buttons, fields, menus, dialogs, tables, the tour, toasts, typography, the app frame, the brand mark) | EP-02 |
+| `auth` | Everything before the session starts: the login screen and its notices | EP-03 |
+| `dashboard` | The shell around the tabs: header, tab bar, user menu and the layout that holds the active tab, not what is inside a tab | EP-04 |
+| `catalog` | The Catalog tab: brands, model tree, vehicle detail and its search, including the inventory parts a code search finds | EP-04 (phase 2) |
+| `inventory` | The Inventory tab: the item list, search, filters, sorting and pagination, the Inventory tutorial and the item dialogs | EP-12 |
+| `docs` | Pages that exist only in Storybook | — |
+
+- **Choosing a scope:**
+  - **It would work unchanged in another app:** it is `common`. `DataTable` is `common`; `InventoryTab`, which decides an item's columns, is `inventory`.
+  - **Several areas use it:** it belongs to the area that owns its data.
+  - **An internal, non-exported component:** it is a slot of its file's component (`common.image-viewer.body`).
+- **A new area:** a later epic adds its slug to `STYLE_SCOPES` and to this table when its first screen is built (`car-specs`, `3d-viewer`, `maintenance-specs`, `diagnostics`, `pricing`). `common` is the only scope that isn't an epic slug.
 
 ## Architecture Docs
 

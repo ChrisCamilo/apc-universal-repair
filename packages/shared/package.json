@@ -27,6 +27,8 @@
     "./dialog": "./src/dialog/dialog.ts",
     "./pagination": "./src/pagination/pagination.ts",
     "./photos": "./src/photos/photos.ts",
+    "./screens": "./src/screens/screens.ts",
+    "./style-ids": "./src/styles/styleIds.ts",
     "./tour": "./src/tour/tour.ts",
     "./inventory-tutorial": "./src/tour/inventoryTutorial.ts",
     "./tree": "./src/tree/tree.ts"

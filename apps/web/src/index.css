@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* The breakpoints, from the shared constants (see tailwind.config.ts). */
+@config "../tailwind.config.ts";
+
 /* Only the semantic tokens exist as colors: no Tailwind palette (red-500, slate-900…) to reach for. */
 @theme {
   --color-*: initial;

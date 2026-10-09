@@ -31,6 +31,33 @@ export const imageIcon: IconShape[] = [
   { kind: "circle", cx: 5.8, cy: 6.4, r: 1.2 },
   { kind: "path", d: "M2.5 11.6l3.6-3.4 2.6 2.4 2-1.8 2.8 2.6" },
 ];
+/** The sizes icons are drawn at, in px, by what the icon does; `body` is the size when none is given. */
+export const ICON_SIZES = {
+  /** A mark inside a small control: a thumbnail's remove ×, a checkbox's check. */
+  mark: 10,
+  /** A caret, chevron or check beside a control's text: Select, Combobox, Menu, Pagination. */
+  caret: 12,
+  /** The icon of a compact button, such as Filtros. */
+  compact: 13,
+  /** A drag grip, such as a tab's. */
+  grip: 14,
+  /** An icon beside a label: a tab's icon, a table row's action. */
+  label: 15,
+  /** An icon beside body text, the size when none is given. */
+  body: 16,
+  /** An icon that leads its line: a menu item's, the photo viewer's arrows. */
+  prominent: 18,
+  /** The picture of a list row's empty thumbnail. */
+  thumbnail: 20,
+  /** The picture of an upload area. */
+  dropZone: 22,
+  /** The picture of an empty image frame. */
+  frame: 28,
+  /** The picture of an empty state. */
+  emptyState: 40,
+  /** The picture of the photo viewer when an item has no photos. */
+  viewer: 56,
+} as const;
 /** Stroke width on the 16×16 grid. */
 export const ICON_STROKE = 1.3;
 /** Size of the grid every icon is drawn on. */
