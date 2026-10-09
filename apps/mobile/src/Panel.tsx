@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { View, type ViewStyle } from 'react-native';
 import { scales, sheenGradient } from '@apc/shared/theme';
-import { useTheme, withAlpha, type ActiveTheme } from './theme';
+import { softHairline, useTheme, type ActiveTheme } from './theme';
 
 // The surfaces the Dashboard nests several levels deep, the same as the web. Every panel pads its content,
 // so a nested panel always sits inside its parent's padding and the two borders never touch or double up.
@@ -32,15 +32,6 @@ function dividerStyle(theme: ActiveTheme): ViewStyle {
     marginVertical: scales.space.s2,
     marginHorizontal: scales.space.s1,
   };
-}
-
-/**
- * Picks the soft hairline of soft separators: panel borders and dividers.
- * @param theme Active theme.
- * @returns The hairline color at the soft opacity.
- */
-export function softHairline(theme: ActiveTheme): string {
-  return withAlpha(theme.colors.hairline, scales.hairlineSoft);
 }
 
 /**

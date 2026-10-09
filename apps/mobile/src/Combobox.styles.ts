@@ -1,8 +1,7 @@
 import { scales } from '@apc/shared/theme';
-import { softHairline } from './Panel';
 import { createStyles } from './styles/createStyles';
 import { fieldStyles } from './styles/shared';
-import { fontFamily } from './theme';
+import { fontFamily, softHairline } from './theme';
 
 // The look of the combobox, the same as the web: a text field's frame with a chevron at its end that turns while the
 // list is open, the shared list and options, and the "+ Criar" row in the accent, set apart by a hairline from the

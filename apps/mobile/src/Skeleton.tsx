@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, type DimensionValue, type ViewStyle } from 'react-native';
 import { scales } from '@apc/shared/theme';
 import { useReducedMotion } from './motion';
-import { softHairline } from './Panel';
-import { useTheme, type ActiveTheme } from './theme';
+import { softHairline, useTheme, type ActiveTheme } from './theme';
 
 // A placeholder block in the shape of what is still loading, the same as the web: a soft hairline fill that
 // pulses gently, standing still with reduced motion. Lines are pills, blocks take the tile radius and circles

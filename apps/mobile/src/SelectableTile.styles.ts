@@ -1,8 +1,7 @@
 import { scales } from '@apc/shared/theme';
-import { softHairline } from './Panel';
 import { createStyles } from './styles/createStyles';
 import { displayLabel, glow } from './styles/shared';
-import { withAlpha } from './theme';
+import { softHairline, withAlpha } from './theme';
 
 // The look of the brand tiles, the same as the web: the raised fill in a soft hairline frame, the brand's name in the
 // muted display face; the chosen one takes the accent on its frame and text over a tinted fill, glowing where the

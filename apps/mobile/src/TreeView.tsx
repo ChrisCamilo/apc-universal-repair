@@ -5,8 +5,8 @@ import { scales } from '@apc/shared/theme';
 import { ancestors, canOpen, isLeaf, type TreeNode } from '@apc/shared/tree';
 import { Icon } from './Icon';
 import { useReducedMotion } from './motion';
-import { Divider, softHairline } from './Panel';
-import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
+import { Divider } from './Panel';
+import { fontFamily, softHairline, useTheme, withAlpha, type ActiveTheme } from './theme';
 
 // The model tree of the Catalog tab, the same as the web: model → generation → version → year → engine. A
 // press opens or closes a branch, its chevron turning and its children sliding in; an empty branch (data still

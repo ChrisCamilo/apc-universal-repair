@@ -4,9 +4,8 @@ import { chevronIcon } from '@apc/shared/icons';
 import { pageCount, pageForSize, pageRange, pageSlots } from '@apc/shared/pagination';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
-import { softHairline } from './Panel';
 import { Segmented } from './Segmented';
-import { fontFamily, useTheme, type ActiveTheme } from './theme';
+import { fontFamily, softHairline, useTheme, type ActiveTheme } from './theme';
 import { Label, NumericReadout } from './Typography';
 
 // Page navigation for long lists, the same as the web: the page size selector, the range shown ("1–25 de

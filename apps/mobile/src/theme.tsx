@@ -4,6 +4,7 @@ import { createAsyncStorage } from '@react-native-async-storage/async-storage';
 import {
   isMode,
   isStyle,
+  scales,
   STYLES,
   THEME_STORAGE_KEYS,
   themes,
@@ -75,6 +76,15 @@ export function save(key: string, value: string): void {
  */
 export function useTheme(): ActiveTheme {
   return useContext(ThemeContext);
+}
+
+/**
+ * Picks the soft hairline of soft separators: panel borders and dividers.
+ * @param theme Active theme.
+ * @returns The hairline color at the soft opacity.
+ */
+export function softHairline(theme: ActiveTheme): string {
+  return withAlpha(theme.colors.hairline, scales.hairlineSoft);
 }
 
 /**

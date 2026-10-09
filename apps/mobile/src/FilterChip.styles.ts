@@ -1,8 +1,7 @@
 import { scales } from '@apc/shared/theme';
-import { softHairline } from './Panel';
 import { createStyles } from './styles/createStyles';
 import { displayLabel } from './styles/shared';
-import { withAlpha } from './theme';
+import { softHairline, withAlpha } from './theme';
 
 // The look of the quick-filter chips, the same as the web: a soft hairline pill in the muted display face that lights
 // up in the accent when on; pressing shows what hover shows on the web. The group wraps them.

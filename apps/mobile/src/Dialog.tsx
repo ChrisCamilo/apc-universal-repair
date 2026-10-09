@@ -3,10 +3,9 @@ import { Modal, Pressable, ScrollView, View, useWindowDimensions, type ViewStyle
 import { DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog';
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
 import { CloseButton } from './CloseButton';
-import { softHairline } from './Panel';
 import { ToastLayer } from './Toast';
 import { TourLayer } from './Tour';
-import { useTheme, withAlpha, type ActiveTheme } from './theme';
+import { softHairline, useTheme, withAlpha, type ActiveTheme } from './theme';
 import { Heading } from './Typography';
 
 // A modal window for forms and confirmations, the same as the web: it sits on top of the screen behind a

@@ -3,9 +3,9 @@ import { Image, StyleSheet, View, type ImageStyle, type ViewStyle } from 'react-
 import { imageIcon } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
-import { softHairline, useInPanel } from './Panel';
+import { useInPanel } from './Panel';
 import { Spinner } from './Spinner';
-import { useTheme, type ActiveTheme } from './theme';
+import { softHairline, useTheme, type ActiveTheme } from './theme';
 import { Text } from './Typography';
 
 // The car photo frame, the same as the web. It keeps its aspect ratio whatever the photo's size and never

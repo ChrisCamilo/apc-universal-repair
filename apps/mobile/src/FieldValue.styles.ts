@@ -1,6 +1,6 @@
 import { createStyles } from './styles/createStyles';
 import { fieldStyles } from './styles/shared';
-import { softHairline } from './Panel';
+import { softHairline } from './theme';
 
 // The look of a field's value shown for reading, the same as the web: a TextField's frame, the size and shape of it,
 // with the soft hairline and no fill, so it reads as text and not as a disabled input.

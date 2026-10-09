@@ -9,9 +9,8 @@ import { CloseButton } from './CloseButton';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import type { PickedPhoto, UploadPhoto } from './ImageUpload';
-import { softHairline } from './Panel';
 import { roundStyles } from './styles/shared';
-import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
+import { fontFamily, softHairline, useTheme, withAlpha, type ActiveTheme } from './theme';
 import { ToastProvider, useToast } from './Toast';
 import { Heading, NumericReadout, Text } from './Typography';
 

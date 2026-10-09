@@ -4,9 +4,8 @@ import { cubeIcon, type IconShape } from '@apc/shared/icons';
 import { sortFromValue, sortOptions, sortValue, type Sort } from '@apc/shared/table';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
-import { softHairline } from './Panel';
 import { Select } from './Select';
-import { useTheme, withAlpha, type ActiveTheme } from './theme';
+import { softHairline, useTheme, withAlpha, type ActiveTheme } from './theme';
 import { Label } from './Typography';
 
 // The list of rows on a phone, the same as the web table below 720px: each row is a card (thumbnail |

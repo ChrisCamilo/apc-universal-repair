@@ -1,8 +1,7 @@
 import type { TextStyle, ViewStyle } from 'react-native';
 import { SELECT_VISIBLE_OPTIONS } from '@apc/shared/filters';
 import { scales } from '@apc/shared/theme';
-import { softHairline } from '../Panel';
-import { fontFamily, withAlpha, type ActiveTheme } from '../theme';
+import { fontFamily, softHairline, withAlpha, type ActiveTheme } from '../theme';
 
 // The style recipes three or more components share, the same patterns as the web's styles/shared.ts. Each gives
 // styles a component's createStyles() spreads into its own, so the shared keys sit beside the component's keys
