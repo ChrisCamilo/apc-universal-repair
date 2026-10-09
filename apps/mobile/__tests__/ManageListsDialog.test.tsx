@@ -167,7 +167,7 @@ test('Mobile: Manage lists shows each list with the items using each name', asyn
   const tree = await mount();
   const shown = texts(tree.root);
   expect(shown).toEqual(expect.arrayContaining(['Categorias', 'Marcas de peça', 'Marcas de veículo', 'Modelos de veículo']));
-  const rows = tree.root.findAll((n) => n.props.testID === 'list-entry' && typeof n.type === 'string');
+  const rows = tree.root.findAll((n) => n.props.testID === 'inventory.manage-lists-dialog.section.entry' && typeof n.type === 'string');
   const row = (name: string) => texts(rows.find((r) => texts(r).includes(name))!);
   expect(row('Motor')).toEqual(['Motor', '2 itens']);
   expect(row('Turbo')).toEqual(['Turbo', 'sem itens']);
