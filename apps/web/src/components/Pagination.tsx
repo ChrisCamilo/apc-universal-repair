@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { chevronIcon } from '@apc/shared/icons'
+import { chevronIcon, ICON_SIZES } from '@apc/shared/icons'
 import { pageCount, pageForSize, pageRange, pageSlots } from '@apc/shared/pagination'
 import { Icon } from './Icon.tsx'
+import { pagination } from './Pagination.styles.ts'
 import { Segmented } from './Segmented.tsx'
 import { Label, NumericReadout } from './Typography.tsx'
 
@@ -11,16 +12,6 @@ import { Label, NumericReadout } from './Typography.tsx'
 // fills with the accent and has aria-current="page". Previous and next are disabled at the ends with
 // aria-disabled, so the focus stays on them. Changing the page size keeps the first item in view. At phone
 // width the parts wrap onto more lines. An empty list shows no pagination.
-
-const PAGE_BUTTON =
-  'inline-grid h-8 min-w-8 place-items-center rounded-tile border px-2 font-mono text-xs tabular-nums outline-none ' +
-  'transition-[border-color,color,background-color,box-shadow] focus-visible:shadow-ring'
-const PAGE_STATE = {
-  current: 'cursor-pointer border-transparent bg-accent text-on-accent shadow-glow',
-  other:
-    'border-hairline-soft bg-transparent text-text not-aria-disabled:cursor-pointer not-aria-disabled:hover:border-accent ' +
-    'not-aria-disabled:hover:text-accent aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
-}
 
 type PaginationProps = {
   /** Accessible name of the page buttons, e.g. "Páginas do estoque". */
@@ -53,10 +44,11 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
     return null
   }
   const pages = pageCount(total, pageSize)
+  const { classes, ids } = pagination()
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-hairline-soft pt-3">
-      <div className="flex items-center gap-2">
+    <div className={classes.base()} data-testid={ids.base}>
+      <div className={classes.size()} data-testid={ids.size}>
         <Label aria-hidden="true">Itens por página</Label>
         <Segmented
           label="Itens por página"
@@ -68,19 +60,20 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
           }}
         />
       </div>
-      <NumericReadout tone="muted" aria-live="polite" className="ms-auto max-card:ms-0">
+      <NumericReadout tone="muted" aria-live="polite" className={classes.range()}>
         {pageRange(page, pageSize, total)}
       </NumericReadout>
-      <nav aria-label={label} className="flex flex-wrap gap-1">
+      <nav aria-label={label} className={classes.pages()} data-testid={ids.pages}>
         <PageButton target={page - 1} disabled={page === 1} label="Página anterior" onPageChange={onPageChange}>
-          <Icon icon={chevronIcon} size={12} className="rotate-180" />
+          <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.previous()} />
         </PageButton>
         {pageSlots(page, pages).map((slot, index) =>
           slot === null ? (
             <span
               key={index < 2 ? 'gap-start' : 'gap-end'}
               aria-hidden="true"
-              className="self-center px-0.5 font-mono text-xs text-text-muted"
+              className={classes.gap()}
+              data-testid={ids.gap}
             >
               …
             </span>
@@ -91,7 +84,7 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
           ),
         )}
         <PageButton target={page + 1} disabled={page === pages} label="Próxima página" onPageChange={onPageChange}>
-          <Icon icon={chevronIcon} size={12} />
+          <Icon icon={chevronIcon} size={ICON_SIZES.caret} />
         </PageButton>
       </nav>
     </div>
@@ -99,13 +92,15 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
 }
 
 function PageButton({ target, label, current = false, disabled = false, onPageChange, children }: PageButtonProps) {
+  const { classes, ids } = pagination({ current })
   return (
     <button
       type="button"
       aria-label={label}
       aria-current={current ? 'page' : undefined}
       aria-disabled={disabled || undefined}
-      className={`${PAGE_BUTTON} ${current ? PAGE_STATE.current : PAGE_STATE.other}`}
+      className={classes.page()}
+      data-testid={ids.page}
       onClick={() => {
         if (!disabled && !current) {
           onPageChange(target)
