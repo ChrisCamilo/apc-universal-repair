@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
-import { DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog'
+import type { DialogSize } from '@apc/shared/dialog'
 import { CloseButton } from './CloseButton.tsx'
+import { dialog as dialogRecipe, dialogBox } from './Dialog.styles.ts'
 import { Heading } from './Typography.tsx'
 
 // A modal window for forms and confirmations, built on the native <dialog> opened with showModal(): it sits
@@ -34,6 +35,7 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
   const titleId = useId()
   const dialog = useRef<HTMLDialogElement>(null)
   const close = useRef<HTMLButtonElement>(null)
+  const { classes, ids } = dialogRecipe()
 
   // Open and close the native dialog as `open` changes.
   useEffect(() => {
@@ -52,12 +54,9 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
     <dialog
       ref={dialog}
       aria-labelledby={titleId}
-      className="m-auto max-w-none overflow-hidden rounded-panel border border-hairline bg-panel bg-(image:--sheen) p-0 text-text shadow-pop backdrop:bg-backdrop backdrop:backdrop-blur-backdrop"
-      // The browser caps a modal dialog at 100% - 6px - 2em; max-w-none lets this width rule apply instead.
-      style={{
-        width: `min(${DIALOG_WIDTHS[size]}px, calc(100vw - ${DIALOG_SCREEN_INSET}px))`,
-        maxHeight: `calc(100dvh - ${DIALOG_HEIGHT_INSET}px)`,
-      }}
+      className={classes.base()}
+      data-testid={ids.base}
+      style={dialogBox(size)}
       onCancel={(event) => {
         // A file picker closed without a choice also fires "cancel", which bubbles up to here: only the
         // dialog's own Escape closes it, and the owner does, so `open` stays the one source of truth.
@@ -74,10 +73,10 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
       }}
     >
       {open && (
-        <div className="flex max-h-[inherit] flex-col">
-          <div className="grid min-h-0 gap-4 overflow-y-auto p-6">
+        <div className={classes.layout()} data-testid={ids.layout}>
+          <div className={classes.body()} data-testid={ids.body}>
             {closable ? (
-              <div className="flex items-start justify-between gap-3">
+              <div className={classes.header()} data-testid={ids.header}>
                 <Heading id={titleId} level={3}>
                   {title}
                 </Heading>
@@ -90,7 +89,9 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
             )}
             {children}
           </div>
-          <div className="flex flex-wrap justify-end gap-2 border-t border-hairline-soft px-6 pt-3 pb-6">{actions}</div>
+          <div className={classes.actions()} data-testid={ids.actions}>
+            {actions}
+          </div>
         </div>
       )}
     </dialog>
