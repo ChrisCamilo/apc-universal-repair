@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Dimensions, Modal, Text } from 'react-native';
+import { Dimensions, Modal, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
@@ -64,10 +64,10 @@ async function press(tree: ReactTestRenderer.ReactTestRenderer, name: string) {
  * @param tree Rendered tree.
  * @param testID The testID to look for.
  * @param index Which match to read, in render order.
- * @returns The View's style.
+ * @returns The View's style, as one object.
  */
-function styleOf(tree: ReactTestRenderer.ReactTestRenderer, testID: string, index = 0) {
-  return tree.root.findAll((n) => n.props.testID === testID && typeof n.type === 'string')[index].props.style;
+function styleOf(tree: ReactTestRenderer.ReactTestRenderer, testID: string, index = 0): ViewStyle {
+  return StyleSheet.flatten(tree.root.findAll((n) => n.props.testID === testID && typeof n.type === 'string')[index].props.style);
 }
 
 beforeEach(async () => {
@@ -90,10 +90,10 @@ for (const style of STYLES) {
           <Segmented label="Tema" options={STYLE_OPTIONS} value="gt4" onValueChange={() => {}} />
         </>,
       );
-      expect(styleOf(tree, 'switch-track', 1).borderColor).toBe(theme.colors.accent);
-      expect(styleOf(tree, 'switch-knob', 1).backgroundColor).toBe(theme.colors.accent);
-      expect(styleOf(tree, 'switch-knob', 1).shadowColor).toBe(theme.glow ? theme.colors.accent : undefined);
-      expect(styleOf(tree, 'switch-knob', 0).backgroundColor).toBe(theme.colors.textMuted);
+      expect(styleOf(tree, 'common.switch.track', 1).borderColor).toBe(theme.colors.accent);
+      expect(styleOf(tree, 'common.switch.track.knob', 1).backgroundColor).toBe(theme.colors.accent);
+      expect(styleOf(tree, 'common.switch.track.knob', 1).shadowColor).toBe(theme.glow ? theme.colors.accent : undefined);
+      expect(styleOf(tree, 'common.switch.track.knob', 0).backgroundColor).toBe(theme.colors.textMuted);
       expect(byName(tree, 'GT4').props.style.backgroundColor).toBe(theme.colors.accent);
       expect(byName(tree, 'Anos 80').props.style.backgroundColor).toBe('transparent');
     });
@@ -107,7 +107,7 @@ test('Mobile: switches and segmented choices toggle on their own', async () => {
   expect(byName(tree, 'Modo escuro').props.accessibilityRole).toBe('switch');
   await press(tree, 'Modo escuro');
   expect(byName(tree, 'Modo escuro').props.accessibilityState).toMatchObject({ checked: true });
-  expect(styleOf(tree, 'switch-knob').transform[0].translateX).toBeGreaterThan(0);
+  expect((styleOf(tree, 'common.switch.track.knob').transform as { translateX: number }[])[0].translateX).toBeGreaterThan(0);
 
   expect(byName(tree, 'GT4').props.accessibilityRole).toBe('radio');
   await press(tree, 'GT4');

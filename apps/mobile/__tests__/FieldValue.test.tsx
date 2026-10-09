@@ -37,7 +37,7 @@ for (const style of STYLES) {
     test(`Mobile: field values follow the ${style}/${mode} theme`, async () => {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode, <FieldValue label="Nome" value="Filtro de óleo" />);
-      const frame = tree.root.find((n) => n.type === View && n.props.testID === 'field-value-frame').props.style;
+      const frame = tree.root.find((n) => n.type === View && n.props.testID === 'common.field-value.value').props.style;
       expect(frame).toMatchObject({
         backgroundColor: 'transparent',
         borderColor: withAlpha(colors.hairline, scales.hairlineSoft),
@@ -64,7 +64,7 @@ test('Mobile: a field value is read with its label and framed like a text field'
   const text = tree.root.find((n) => n.type === Text && n.props.children === 'Filtro de óleo');
   expect(text.props).toMatchObject({ numberOfLines: 1, ellipsizeMode: 'tail' });
   const field = tree.root.find((n) => n.type === View && n.props.testID === 'field-frame').props.style;
-  const frame = tree.root.find((n) => n.type === View && n.props.testID === 'field-value-frame').props.style;
+  const frame = tree.root.find((n) => n.type === View && n.props.testID === 'common.field-value.value').props.style;
   for (const key of ['paddingHorizontal', 'paddingVertical', 'borderWidth', 'borderRadius'] as const) {
     expect(frame[key]).toBe(field[key]);
   }
