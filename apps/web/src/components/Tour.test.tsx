@@ -28,7 +28,7 @@ function rgb(hex: string): string {
  * @returns The spotlight element.
  */
 function spotlight(): HTMLElement {
-  return document.querySelector<HTMLElement>('[data-testid="tour-spotlight"]')!
+  return document.querySelector<HTMLElement>('[data-testid="common.tour.spotlight"]')!
 }
 
 beforeAll(() => {

@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
-import { Image, Pressable, Text, View, type ViewStyle } from 'react-native';
-import { cubeIcon, type IconShape } from '@apc/shared/icons';
+import { Image, Pressable, Text, View } from 'react-native';
+import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
 import { sortFromValue, sortOptions, sortValue, type Sort } from '@apc/shared/table';
 import { scales } from '@apc/shared/theme';
+import { useRowActionStyles, useStyles, useThumbnailStyles } from './DataTable.styles';
 import { Icon } from './Icon';
-import { softHairline } from './Panel';
 import { Select } from './Select';
-import { useTheme, withAlpha, type ActiveTheme } from './theme';
+import { useTheme } from './theme';
 import { Label } from './Typography';
 
 // The list of rows on a phone, the same as the web table below 720px: each row is a card (thumbnail |
@@ -15,17 +15,6 @@ import { Label } from './Typography';
 // read out, since color alone doesn't reach screen readers; the text keeps the text color on every tint. With
 // onRowOpen, a tap on a card opens it, shown by the raised fill while pressed, except on its own buttons
 // (thumbnail, actions), which keep their tap.
-
-const MAIN_STYLE: ViewStyle = { flex: 1, minWidth: 0 };
-const ROW_STYLE: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: scales.space.s3 };
-const SIDE_STYLE: ViewStyle = { alignItems: 'flex-end', gap: scales.space.s1 };
-const SORT_STYLE: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: scales.space.s2 };
-/** Width of the status stripe at the start of a card, as on the web (0.75 spacing units). */
-const STRIPE_WIDTH = scales.space.s1 * 0.75;
-/** Side of the thumbnail button, as on the web (11 spacing units). */
-const THUMB_SIZE = scales.space.s1 * 11;
-/** Kept on screen for screen readers only, like the web's sr-only. */
-const VISUALLY_HIDDEN: ViewStyle = { position: 'absolute', width: 1, height: 1, overflow: 'hidden' };
 
 type CardArea = 'thumb' | 'main' | 'end' | 'actions';
 type Column<Row> = {
@@ -77,33 +66,6 @@ type TableThumbnailProps = {
 };
 
 /**
- * Styles a card: hairline below, and for a status the soft tint and the stripe at its start; a card being pressed
- * to open takes the raised fill, as a row under the pointer does on the web.
- * @param theme Active theme.
- * @param tone Status of the row, if any.
- * @param pressed Whether the card is being pressed.
- * @returns Style for the card View.
- */
-function cardStyle(theme: ActiveTheme, tone: RowTone | undefined, pressed = false): ViewStyle {
-  const { colors } = theme;
-  return {
-    ...ROW_STYLE,
-    paddingVertical: scales.space.s2,
-    paddingLeft: scales.space.s2,
-    paddingRight: scales.space.s1,
-    borderBottomWidth: scales.hairline,
-    borderBottomColor: softHairline(theme),
-    borderLeftWidth: tone ? STRIPE_WIDTH : 0,
-    borderLeftColor: tone ? colors[tone] : 'transparent',
-    backgroundColor: tone
-      ? withAlpha(colors[tone], pressed ? scales.statusTint[`${tone}Hover`] : scales.statusTint[tone])
-      : pressed
-        ? colors.panelRaised
-        : 'transparent',
-  };
-}
-
-/**
  * Lists the cells of a card area, in column order.
  * @param columns Table columns.
  * @param area Card area.
@@ -111,26 +73,6 @@ function cardStyle(theme: ActiveTheme, tone: RowTone | undefined, pressed = fals
  */
 function inArea<Row>(columns: Column<Row>[], area: CardArea): Column<Row>[] {
   return columns.filter((column) => column.card === area);
-}
-
-/**
- * Styles the thumbnail: raised fill in a soft frame, the frame lit in the accent while pressed.
- * @param theme Active theme.
- * @param pressed Whether the thumbnail is being pressed.
- * @returns Style for the thumbnail.
- */
-function thumbnailStyle(theme: ActiveTheme, pressed: boolean): ViewStyle {
-  return {
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: scales.hairline,
-    borderColor: pressed ? theme.colors.accent : softHairline(theme),
-    borderRadius: theme.radiusTile,
-    backgroundColor: theme.colors.panelRaised,
-  };
 }
 
 export function DataTable<Row>({
@@ -145,19 +87,31 @@ export function DataTable<Row>({
   empty,
   onRowOpen,
 }: DataTableProps<Row>) {
-  const theme = useTheme();
+  const { styles, ids } = useStyles();
   const sortable = columns.filter((column) => column.sortable);
 
   /** Renders the cells of one card area for a row. */
   const cells = (row: Row, area: CardArea) =>
-    inArea(columns, area).map((column) => <View key={column.key}>{column.cell(row)}</View>);
+    inArea(columns, area).map((column) => (
+      <View key={column.key} style={styles.cell} testID={ids.cell}>
+        {column.cell(row)}
+      </View>
+    ));
+
+  /** The styles of a row: its tint by status, stronger while pressed. */
+  const rowStyles = (tone: RowTone | undefined, pressed: boolean) => [
+    styles.row,
+    !tone && pressed && styles.rowPressed,
+    tone === 'warn' && (pressed ? styles.rowWarnPressed : styles.rowWarn),
+    tone === 'danger' && (pressed ? styles.rowDangerPressed : styles.rowDanger),
+  ];
 
   return (
-    <View style={{ gap: scales.space.s3 }}>
+    <View style={styles.base} testID={ids.base}>
       {sortable.length > 0 && (
-        <View style={SORT_STYLE}>
+        <View style={styles.sortBar} testID={ids.sortBar}>
           <Label>Ordenar</Label>
-          <View style={MAIN_STYLE}>
+          <View style={styles.sortSelect} testID={ids.sortSelect}>
             <Select
               label="Ordenar"
               options={sortOptions(
@@ -173,15 +127,21 @@ export function DataTable<Row>({
       {rows.length === 0 ? (
         empty
       ) : (
-        <View role="list" accessibilityLabel={label}>
+        <View role="list" accessibilityLabel={label} style={styles.table} testID={ids.table}>
           {rows.map((row) => {
             const status = rowStatus?.(row);
             const content = (
               <>
-                {status && <Text style={VISUALLY_HIDDEN}>{`${status.label}: `}</Text>}
+                {status && (
+                  <Text style={styles.status} testID={ids.status}>
+                    {`${status.label}: `}
+                  </Text>
+                )}
                 {cells(row, 'thumb')}
-                <View style={MAIN_STYLE}>{cells(row, 'main')}</View>
-                <View style={SIDE_STYLE}>
+                <View style={styles.main} testID={ids.main}>
+                  {cells(row, 'main')}
+                </View>
+                <View style={styles.side} testID={ids.side}>
                   {cells(row, 'end')}
                   {cells(row, 'actions')}
                 </View>
@@ -191,14 +151,14 @@ export function DataTable<Row>({
               <Pressable
                 key={rowKey(row)}
                 role="listitem"
-                testID="table-row"
                 onPress={() => onRowOpen(row)}
-                style={({ pressed }) => cardStyle(theme, status?.tone, pressed)}
+                style={({ pressed }) => rowStyles(status?.tone, pressed)}
+                testID={ids.row}
               >
                 {content}
               </Pressable>
             ) : (
-              <View key={rowKey(row)} role="listitem" testID="table-row" style={cardStyle(theme, status?.tone)}>
+              <View key={rowKey(row)} role="listitem" style={rowStyles(status?.tone, false)} testID={ids.row}>
                 {content}
               </View>
             );
@@ -210,40 +170,35 @@ export function DataTable<Row>({
 }
 
 export function RowAction({ icon, label, onPress, tone = 'default' }: RowActionProps) {
-  const theme = useTheme();
-  const { colors } = theme;
+  const { colors } = useTheme();
+  const { styles, ids } = useRowActionStyles();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={scales.space.s2}
       onPress={onPress}
-      style={({ pressed }) => ({
-        width: scales.space.s6,
-        height: scales.space.s6,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: theme.radiusTile,
-        backgroundColor: pressed ? colors.panel : 'transparent',
-      })}
+      style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+      testID={ids.action}
     >
       {({ pressed }) => (
-        <Icon icon={icon} size={15} color={pressed ? (tone === 'danger' ? colors.danger : colors.accent) : colors.textMuted} />
+        <Icon icon={icon} size={ICON_SIZES.label} color={pressed ? (tone === 'danger' ? colors.danger : colors.accent) : colors.textMuted} />
       )}
     </Pressable>
   );
 }
 
 export function TableThumbnail({ src, label, onOpen }: TableThumbnailProps) {
-  const theme = useTheme();
+  const { colors } = useTheme();
+  const { styles, ids } = useThumbnailStyles();
   const content = src ? (
-    <Image source={{ uri: src }} resizeMode="cover" style={{ width: THUMB_SIZE, height: THUMB_SIZE }} />
+    <Image source={{ uri: src }} resizeMode="cover" style={styles.image} testID={ids.image} />
   ) : (
-    <Icon icon={cubeIcon} size={20} color={theme.colors.textMuted} />
+    <Icon icon={cubeIcon} size={ICON_SIZES.thumbnail} color={colors.textMuted} />
   );
   if (!onOpen) {
     return (
-      <View testID="table-thumbnail" style={thumbnailStyle(theme, false)}>
+      <View style={styles.thumbnail} testID={ids.thumbnail}>
         {content}
       </View>
     );
@@ -253,7 +208,8 @@ export function TableThumbnail({ src, label, onOpen }: TableThumbnailProps) {
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onOpen}
-      style={({ pressed }) => thumbnailStyle(theme, pressed)}
+      style={({ pressed }) => [styles.thumbnail, pressed && styles.thumbnailPressed]}
+      testID={ids.thumbnail}
     >
       {content}
     </Pressable>

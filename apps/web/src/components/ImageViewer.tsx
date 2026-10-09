@@ -1,12 +1,12 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { DIALOG_SCREEN_INSET, DIALOG_WIDTHS } from '@apc/shared/dialog'
-import { chevronIcon, imageIcon } from '@apc/shared/icons'
+import { chevronIcon, ICON_SIZES, imageIcon } from '@apc/shared/icons'
 import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/shared/photos'
 import { Button } from './Button.tsx'
 import { CloseButton } from './CloseButton.tsx'
 import { Dialog } from './Dialog.tsx'
 import { Icon } from './Icon.tsx'
 import type { UploadPhoto } from './ImageUpload.tsx'
+import { imageViewer, viewerBox } from './ImageViewer.styles.ts'
 import { ToastProvider } from './Toast.tsx'
 import { useToast } from './toastContext.ts'
 import { Heading, NumericReadout, Text } from './Typography.tsx'
@@ -20,9 +20,6 @@ import { Heading, NumericReadout, Text } from './Typography.tsx'
 // room, both with the ImageUpload rules and messages. The owner may save each change as it happens: when it says
 // the change couldn't be saved, the toast says so instead of confirming it. Toasts show inside the viewer, the only
 // part of the page that stays visible and announced while it is open.
-
-const NAV_BUTTON =
-  'absolute top-1/2 grid size-10 -translate-y-1/2 cursor-pointer place-items-center rounded-pill border border-hairline bg-panel text-text outline-none transition-[border-color,color,box-shadow] hover:border-accent hover:text-accent hover:shadow-glow focus-visible:shadow-ring'
 
 type ImageViewerProps = {
   open: boolean
@@ -53,6 +50,7 @@ function release(photo: UploadPhoto) {
 export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
   const titleId = useId()
   const dialog = useRef<HTMLDialogElement>(null)
+  const { classes, ids } = imageViewer()
 
   // Open and close the native dialog as `open` changes.
   useEffect(() => {
@@ -68,12 +66,9 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
     <dialog
       ref={dialog}
       aria-labelledby={titleId}
-      className="m-auto max-w-none overflow-y-auto rounded-panel border border-hairline bg-panel p-0 text-text shadow-pop backdrop:bg-backdrop backdrop:backdrop-blur-backdrop"
-      // The browser caps a modal dialog at 100% - 6px - 2em; max-w-none lets this width rule apply instead.
-      style={{
-        width: `min(${DIALOG_WIDTHS.viewer}px, calc(100vw - ${DIALOG_SCREEN_INSET}px))`,
-        maxHeight: `calc(100dvh - ${DIALOG_SCREEN_INSET}px)`,
-      }}
+      className={classes.base()}
+      data-testid={ids.base}
+      style={viewerBox()}
       onCancel={(event) => {
         // A file picker closed without a choice also fires "cancel", which bubbles up to here: only the
         // dialog's own Escape closes it, and the owner does, so `open` stays the one source of truth.
@@ -101,6 +96,7 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
 function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limit }: ViewerBodyProps) {
   const toast = useToast()
   const input = useRef<HTMLInputElement>(null)
+  const { classes, ids } = imageViewer()
   const [index, setIndex] = useState(0)
   const [replacing, setReplacing] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -170,9 +166,9 @@ function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limi
   }
 
   return (
-    <div className="grid gap-3 p-4" onKeyDown={onKeyDown}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="grid min-w-0 gap-0.5">
+    <div className={classes.body()} data-testid={ids.body} onKeyDown={onKeyDown}>
+      <div className={classes.head()} data-testid={ids.head}>
+        <div className={classes.name()} data-testid={ids.name}>
           <Heading id={titleId} level={3}>
             {name}
           </Heading>
@@ -180,13 +176,18 @@ function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limi
         </div>
         <CloseButton onClick={onClose} />
       </div>
-      <div className="relative">
-        <div className="relative grid aspect-4/3 max-h-[62dvh] w-full place-items-center overflow-hidden rounded-tile border border-hairline-soft bg-canvas text-text-muted">
+      <div className={classes.stage()} data-testid={ids.stage}>
+        <div className={classes.frame()} data-testid={ids.frame}>
           {count > 0 ? (
-            <img src={photos[current].url} alt={`Foto ${current + 1} de ${count} · ${name}`} className="absolute inset-0 size-full object-contain" />
+            <img
+              src={photos[current].url}
+              alt={`Foto ${current + 1} de ${count} · ${name}`}
+              className={classes.image()}
+              data-testid={ids.image}
+            />
           ) : (
-            <div className="grid justify-items-center gap-2 p-6 text-center">
-              <Icon icon={imageIcon} size={56} />
+            <div className={classes.empty()} data-testid={ids.empty}>
+              <Icon icon={imageIcon} size={ICON_SIZES.viewer} />
               <Heading level={4}>Este item ainda não tem fotos</Heading>
               <Text size="sm" tone="muted">
                 Adicione até {photoCount(limit)}. A primeira vira a capa na lista.
@@ -196,43 +197,56 @@ function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limi
         </div>
         {count > 1 && (
           <>
-            <button type="button" aria-label="Foto anterior" className={`${NAV_BUTTON} left-2.5`} onClick={() => step(-1)}>
-              <Icon icon={chevronIcon} size={18} className="rotate-180" />
+            <button
+              type="button"
+              aria-label="Foto anterior"
+              className={classes.nav({ side: 'prev' })}
+              data-testid={ids.nav}
+              onClick={() => step(-1)}
+            >
+              <Icon icon={chevronIcon} size={ICON_SIZES.prominent} className={classes.previous()} />
             </button>
-            <button type="button" aria-label="Próxima foto" className={`${NAV_BUTTON} right-2.5`} onClick={() => step(1)}>
-              <Icon icon={chevronIcon} size={18} />
+            <button
+              type="button"
+              aria-label="Próxima foto"
+              className={classes.nav({ side: 'next' })}
+              data-testid={ids.nav}
+              onClick={() => step(1)}
+            >
+              <Icon icon={chevronIcon} size={ICON_SIZES.prominent} />
             </button>
           </>
         )}
       </div>
       {count > 1 && (
-        <div className="flex items-center justify-center gap-2">
+        <div className={classes.dots()} data-testid={ids.dots}>
           {photos.map((photo, i) => (
             <button
               key={photo.url}
               type="button"
               aria-label={`Foto ${i + 1}`}
               aria-current={i === current}
-              className="size-2.5 cursor-pointer rounded-pill bg-hairline outline-none focus-visible:shadow-ring aria-current:bg-accent aria-current:shadow-glow"
+              className={classes.dot()}
+              data-testid={ids.dot}
               onClick={() => setIndex(i)}
             />
           ))}
         </div>
       )}
       {problems.length > 0 && (
-        <ul role="alert" className="m-0 grid list-none gap-0.5 p-0 font-body text-sm text-danger">
+        <ul role="alert" className={classes.problems()} data-testid={ids.problems}>
           {problems.map((problem) => (
             <li key={problem}>{problem}</li>
           ))}
         </ul>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className={classes.footer()} data-testid={ids.footer}>
         <Text size="sm" tone="muted">
           {full
             ? `Limite de ${photoCount(limit)} atingido. Troque ou remova uma para adicionar outra.`
             : `JPG, PNG ou WebP, até 3 MB · ${count} de ${photoCount(limit)}`}
         </Text>
-        <span className="flex flex-wrap gap-2">
+        <span className={classes.buttons()} data-testid={ids.buttons}>
           {count > 0 && (
             <>
               <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
@@ -255,7 +269,8 @@ function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limi
           accept={PHOTO_TYPES.join(',')}
           tabIndex={-1}
           aria-hidden="true"
-          className="sr-only"
+          className={classes.input()}
+          data-testid={ids.input}
           onChange={(event) => {
             const file = event.target.files?.[0]
             // Let the same file be chosen again later.

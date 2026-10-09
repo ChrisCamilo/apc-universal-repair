@@ -1,7 +1,8 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { chevronIcon } from '@apc/shared/icons'
+import { chevronIcon, ICON_SIZES } from '@apc/shared/icons'
 import { ancestors, canOpen, isLeaf, treeKey, visibleRows, type TreeNode } from '@apc/shared/tree'
 import { Icon } from './Icon.tsx'
+import { treeView } from './TreeView.styles.ts'
 
 // The model tree of the Catalog tab: model → generation → version → year → engine. A branch opens and closes
 // with a click, its chevron turning and its children sliding open; an empty branch (data still to come) shows
@@ -12,23 +13,6 @@ import { Icon } from './Icon.tsx'
 // The tree scrolls inside its own height, set through className, and long labels are cut short instead of
 // widening it. A row can also be pointed out, such as the model of a part found by its code: it takes the accent
 // like the selected leaf, and is marked aria-current for screen readers.
-
-const CHEVRON_SIZE = 12
-// A branch's children open by growing the one grid row they sit in from nothing to their full height. They show
-// at once when it opens, so the keyboard can move into them straight away, and hide only once it has closed.
-const GROUP_CLOSED = 'invisible grid grid-rows-[0fr] transition-[grid-template-rows,visibility] motion-reduce:transition-none'
-// The box that cuts the children off while they open reaches a little past them, so the focus ring of a row
-// inside isn't cut off too.
-const GROUP_CLIP = '-m-1 min-h-0 overflow-hidden p-1'
-// Guide hanging under the chevron's center: the row's padding plus half the chevron.
-const GROUP_LIST = 'ml-3.5 border-l border-hairline-soft pl-2'
-const GROUP_OPEN = 'visible grid grid-rows-[1fr] transition-[grid-template-rows] motion-reduce:transition-none'
-const ROW = 'relative flex min-w-0 items-center gap-2 overflow-hidden rounded-tile px-2 py-1 text-sm transition-[color,background-color,box-shadow]'
-const SELECTED =
-  'bg-accent-soft font-medium text-accent shadow-glow ' +
-  "before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent before:content-['']"
-// The separator above every top-level model but the first, the same as Divider.
-const SEPARATOR = "before:mx-1 before:my-2 before:block before:h-px before:bg-hairline-soft before:content-['']"
 
 type TreeItemProps = { node: TreeNode; level: number; first: boolean; tree: TreeState }
 // What every item needs from the tree around it.
@@ -56,20 +40,6 @@ type TreeViewProps = {
   defaultExpanded?: string[]
   /** Height of the tree, which scrolls inside it, e.g. "max-h-96". */
   className?: string
-}
-
-/**
- * Picks a row's typeface by its level: the display face for the top-level models, the mono face for the
- * leaves (the engines, read like a spec) and the body face in between.
- * @param node The row's node.
- * @param level Its depth; 1 for the top level.
- * @returns Font classes.
- */
-function rowFont(node: TreeNode, level: number): string {
-  if (level === 1) {
-    return 'font-display font-semibold uppercase tracking-display'
-  }
-  return isLeaf(node) ? 'font-mono' : ''
 }
 
 export function TreeView({ label, nodes, selected, onSelect, highlighted, defaultExpanded, className }: TreeViewProps) {
@@ -134,11 +104,13 @@ export function TreeView({ label, nodes, selected, onSelect, highlighted, defaul
     activate,
     onFocus: setFocused,
   }
+  const { classes, ids } = treeView()
   return (
     <ul
       role="tree"
       aria-label={label}
-      className={['min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain p-1', className].filter(Boolean).join(' ')}
+      className={classes.base({ class: className })}
+      data-testid={ids.base}
       onKeyDown={onKeyDown}
     >
       {nodes.map((node, index) => (
@@ -154,6 +126,13 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
   const open = branch && tree.expanded.has(node.id)
   const selected = leaf && node.id === tree.selected
   const highlighted = node.id === tree.highlighted
+  const { classes, ids } = treeView({
+    separated: level === 1 && !first,
+    face: level === 1 ? 'display' : leaf ? 'mono' : 'body',
+    active: selected || highlighted,
+    clickable: branch || leaf,
+    open,
+  })
   return (
     <li
       ref={(item) => tree.register(node.id, item)}
@@ -162,7 +141,8 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
       aria-selected={leaf ? selected : undefined}
       aria-current={highlighted || undefined}
       tabIndex={node.id === tree.tabbable ? 0 : -1}
-      className={['outline-none [&:focus-visible>[data-row]]:shadow-ring', level === 1 && !first ? SEPARATOR : ''].join(' ')}
+      className={classes.item()}
+      data-testid={ids.item}
       onFocus={(event) => {
         if (event.target === event.currentTarget) {
           tree.onFocus(node.id)
@@ -171,30 +151,28 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
     >
       <div
         data-row
-        className={[
-          ROW,
-          rowFont(node, level),
-          selected || highlighted ? SELECTED : 'text-text hover:bg-panel-raised',
-          branch || leaf ? 'cursor-pointer' : 'cursor-default',
-        ].join(' ')}
+        className={classes.row()}
+        data-testid={ids.row}
         onClick={() => tree.activate(node)}
       >
         {branch ? (
-          <Icon
-            icon={chevronIcon}
-            size={CHEVRON_SIZE}
-            className={`shrink-0 text-text-muted transition-transform motion-reduce:transition-none ${open ? 'rotate-90' : ''}`}
-          />
+          <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
         ) : (
-          <span aria-hidden="true" className="w-3 shrink-0" />
+          <span aria-hidden="true" className={classes.spacer()} data-testid={ids.spacer} />
         )}
-        <span className="min-w-0 truncate">{node.label}</span>
-        {node.detail && <span className="shrink-0 font-mono text-xs font-normal text-text-muted">{node.detail}</span>}
+        <span className={classes.label()} data-testid={ids.label}>
+          {node.label}
+        </span>
+        {node.detail && (
+          <span className={classes.detail()} data-testid={ids.detail}>
+            {node.detail}
+          </span>
+        )}
       </div>
       {branch && (
-        <div role="none" className={open ? GROUP_OPEN : GROUP_CLOSED}>
-          <div role="none" className={GROUP_CLIP}>
-            <ul role="group" className={GROUP_LIST}>
+        <div role="none" className={classes.group()} data-testid={ids.group}>
+          <div role="none" className={classes.clip()} data-testid={ids.clip}>
+            <ul role="group" className={classes.list()} data-testid={ids.list}>
               {node.children!.map((child) => (
                 <TreeItem key={child.id} node={child} level={level + 1} first={false} tree={tree} />
               ))}

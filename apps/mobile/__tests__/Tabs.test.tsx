@@ -53,7 +53,7 @@ function tabNamed(tree: ReactTestRenderer.ReactTestRenderer, label: string): Rea
  * @returns The Text's style.
  */
 function textStyle(node: ReactTestRenderer.ReactTestInstance, index = 0) {
-  return node.findAllByType(Text)[index].props.style;
+  return StyleSheet.flatten(node.findAllByType(Text)[index].props.style);
 }
 
 /**
@@ -62,7 +62,7 @@ function textStyle(node: ReactTestRenderer.ReactTestInstance, index = 0) {
  * @returns The underline's style.
  */
 function underlineOf(tab: ReactTestRenderer.ReactTestInstance) {
-  return tab.find((node) => node.props.testID === 'tab-underline' && typeof node.type !== 'string').props.style;
+  return StyleSheet.flatten(tab.find((node) => node.props.testID === 'common.tabs.tab.underline' && typeof node.type !== 'string').props.style);
 }
 
 beforeEach(async () => {
@@ -100,7 +100,7 @@ test('Mobile: pressing a tab selects it', async () => {
 
   const pressed: React.ReactElement<{ children?: unknown; style: { color: string } }>[] = tabNamed(tree, 'Catálogo').props.children({ pressed: true }).props.children;
   const pressedLabel = pressed.find((child) => child?.props?.children === 'Catálogo')!;
-  expect(pressedLabel.props.style.color).toBe(themes.eighties.night.colors.text);
+  expect(StyleSheet.flatten(pressedLabel.props.style)?.color).toBe(themes.eighties.night.colors.text);
 
   await ReactTestRenderer.act(async () => tabNamed(tree, 'Catálogo').props.onPress());
   expect(tabNamed(tree, 'Catálogo').props.accessibilityState).toEqual({ selected: true });
@@ -158,7 +158,7 @@ for (const style of STYLES) {
       await pickUp(tree, 'Fichas');
       expect(StyleSheet.flatten(tabNamed(tree, 'Fichas').props.style).opacity).toBeLessThan(1);
       await ReactTestRenderer.act(async () => tabList(tree).props.onResponderMove({ nativeEvent: { pageX: 40 + 15 } }));
-      const line = tree.root.find((node) => node.props.testID === 'tab-drop' && typeof node.type === 'string');
+      const line = tree.root.find((node) => node.props.testID === 'common.tabs.tab.drop' && typeof node.type === 'string');
       expect(StyleSheet.flatten(line.props.style)).toMatchObject({ backgroundColor: colors.accent, left: 0 });
     });
   }
@@ -186,7 +186,7 @@ test('Mobile: a tab picked up and slid lands on the marked side', async () => {
   await ReactTestRenderer.act(async () => tabList(tree).props.onResponderRelease());
   expect(onReorder).toHaveBeenCalledWith(['specs', 'stock', 'catalog']);
   expect(announce).toHaveBeenCalledWith('Aba Fichas na posição 1 de 3');
-  expect(tree.root.findAll((node) => node.props.testID === 'tab-drop')).toHaveLength(0);
+  expect(tree.root.findAll((node) => node.props.testID === 'common.tabs.tab.drop')).toHaveLength(0);
 
   await pickUp(tree, 'Estoque');
   await ReactTestRenderer.act(async () => tabNamed(tree, 'Estoque').props.onPressOut());

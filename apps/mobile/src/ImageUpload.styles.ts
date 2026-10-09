@@ -1,7 +1,6 @@
 import { scales } from '@apc/shared/theme';
-import { softHairline } from './Panel';
 import { createStyles } from './styles/createStyles';
-import { fontFamily, withAlpha } from './theme';
+import { fontFamily, softHairline, withAlpha } from './theme';
 
 // The look of the photo field, the same as the web: the photos as square tiles, the first one marked as the cover,
 // each with a remove × on a dark chip that turns to the danger color while pressed; the dashed area to tap, lit in the

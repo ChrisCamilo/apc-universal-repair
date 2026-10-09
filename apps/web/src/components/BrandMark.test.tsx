@@ -36,7 +36,7 @@ for (const style of STYLES) {
       await expect.element(badge).toBeVisible()
 
       const svg = badge.element()
-      const needle = svg.querySelector('[data-part="needle"]')!
+      const needle = svg.querySelector('[data-testid="common.brand-mark.needle"]')!
       const word = svg.querySelector('text')!
       expect(getComputedStyle(needle).stroke).toBe(rgb(themes[style][mode].colors.accent))
       expect(getComputedStyle(word).fill).toBe(rgb(themes[style][mode].colors.text))

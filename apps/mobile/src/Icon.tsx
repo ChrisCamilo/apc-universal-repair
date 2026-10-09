@@ -1,5 +1,6 @@
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { ICON_STROKE, ICON_VIEWBOX, type IconShape } from '@apc/shared/icons';
+import { ICON_SIZES, ICON_STROKE, ICON_VIEWBOX, type IconShape } from '@apc/shared/icons';
+import { ids } from './Icon.styles';
 import { useTheme } from './theme';
 
 // Draws a shared icon with react-native-svg. Without a color it takes the active theme's text color;
@@ -8,7 +9,7 @@ import { useTheme } from './theme';
 type IconProps = {
   /** Icon geometry from @apc/shared/icons, e.g. searchIcon. */
   icon: IconShape[];
-  /** Width and height in dp; defaults to 16. */
+  /** Width and height in dp, from ICON_SIZES; defaults to ICON_SIZES.body. */
   size?: number;
   /** Stroke color, from the theme tokens; defaults to the text color. */
   color?: string;
@@ -16,7 +17,7 @@ type IconProps = {
   label?: string;
 };
 
-export function Icon({ icon, size = 16, color, label }: IconProps) {
+export function Icon({ icon, size = ICON_SIZES.body, color, label }: IconProps) {
   const theme = useTheme();
   return (
     <Svg
@@ -32,6 +33,7 @@ export function Icon({ icon, size = 16, color, label }: IconProps) {
       accessibilityRole={label ? 'image' : undefined}
       accessibilityLabel={label}
       importantForAccessibility={label ? 'yes' : 'no-hide-descendants'}
+      testID={ids.svg}
     >
       {icon.map((shape, i) => (
         <Shape key={i} shape={shape} />

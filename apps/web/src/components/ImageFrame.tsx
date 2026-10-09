@@ -1,6 +1,7 @@
 import { useState, type HTMLAttributes } from 'react'
-import { imageIcon } from '@apc/shared/icons'
+import { ICON_SIZES, imageIcon } from '@apc/shared/icons'
 import { Icon } from './Icon.tsx'
+import { imageFrame } from './ImageFrame.styles.ts'
 import { useInPanel } from './panelContext.ts'
 import { Spinner } from './Spinner.tsx'
 
@@ -30,17 +31,13 @@ export function ImageFrame({ src, loading = false, alt, ratio = DEFAULT_RATIO, e
   const [load, setLoad] = useState<LoadState | null>(null)
   const state = loading ? 'loading' : !src ? 'missing' : load?.src === src ? load.state : 'loading'
   const missing = state === 'missing' || state === 'failed'
+  const { classes, ids } = imageFrame({ nested, loaded: state === 'loaded' })
 
   return (
     <div
       aria-busy={state === 'loading' || undefined}
-      className={[
-        'relative grid place-items-center overflow-hidden border border-hairline-soft bg-panel-raised text-text-muted',
-        nested ? 'rounded-tile' : 'rounded-panel',
-        className,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={classes.base({ class: className })}
+      data-testid={ids.base}
       style={{ aspectRatio: ratio, ...style }}
       {...rest}
     >
@@ -49,17 +46,18 @@ export function ImageFrame({ src, loading = false, alt, ratio = DEFAULT_RATIO, e
           key={src}
           src={src}
           alt={alt}
-          className={`absolute inset-0 size-full object-contain transition-opacity ${state === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+          className={classes.image()}
+          data-testid={ids.image}
           onLoad={() => setLoad({ src, state: 'loaded' })}
           onError={() => setLoad({ src, state: 'failed' })}
         />
       )}
       {state === 'loading' && (
-        <Spinner className="absolute" />
+        <Spinner className={classes.spinner()} />
       )}
       {missing && (
-        <span className="grid justify-items-center gap-2 p-4 text-center font-body text-sm">
-          <Icon icon={imageIcon} size={28} />
+        <span className={classes.missing()} data-testid={ids.missing}>
+          <Icon icon={imageIcon} size={ICON_SIZES.frame} />
           {emptyLabel}
         </span>
       )}

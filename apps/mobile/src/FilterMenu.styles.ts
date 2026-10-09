@@ -1,9 +1,8 @@
 import { FILTER_PANEL_SPACING } from '@apc/shared/filters';
 import { popShadow, scales } from '@apc/shared/theme';
-import { softHairline } from './Panel';
 import { createStyles } from './styles/createStyles';
 import { displayLabel } from './styles/shared';
-import { fontFamily, withAlpha } from './theme';
+import { fontFamily, softHairline, withAlpha } from './theme';
 
 // The look of the filter menu, the same as the web: a pill trigger in the display face that lights up in the accent
 // while filters are on, with their count in an accent badge, and a panel of labeled rows, each a set of chips or a

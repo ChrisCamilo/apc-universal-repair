@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Image, Modal, Text, type ViewStyle } from 'react-native';
+import { Image, Modal, StyleSheet, Text, type ViewStyle } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
@@ -108,9 +108,9 @@ for (const style of STYLES) {
     test(`Mobile: the photo viewer follows the ${style}/${mode} theme`, async () => {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode, <Sample initial={PHOTOS} />);
-      const window = tree.root.find((n) => n.props.testID === 'viewer-window' && typeof n.type === 'string');
-      expect(window.props.style).toMatchObject({ backgroundColor: colors.panel, borderColor: colors.hairline });
-      const dot = (name: string): ViewStyle => pressable(tree.root, name).props.style;
+      const window = tree.root.find((n) => n.props.testID === 'common.image-viewer' && typeof n.type === 'string');
+      expect(StyleSheet.flatten(window.props.style)).toMatchObject({ backgroundColor: colors.panel, borderColor: colors.hairline });
+      const dot = (name: string): ViewStyle => StyleSheet.flatten(pressable(tree.root, name).props.style);
       expect(dot('Foto 1').backgroundColor).toBe(colors.accent);
       expect(dot('Foto 2').backgroundColor).toBe(colors.hairline);
     });
@@ -149,7 +149,7 @@ test('Mobile: the ×, a tap outside and the back button close the viewer', async
   const onClose = jest.fn();
   const tree = await mount('bmw90', 'night', <Sample initial={PHOTOS} onClose={onClose} />);
   await press(tree.root, 'Fechar');
-  const outside = tree.root.find((n) => n.props.testID === 'viewer-outside' && typeof n.props.onPress === 'function');
+  const outside = tree.root.find((n) => n.props.testID === 'common.image-viewer.outside' && typeof n.props.onPress === 'function');
   await ReactTestRenderer.act(async () => outside.props.onPress());
   await ReactTestRenderer.act(async () => viewer(tree).props.onRequestClose());
   expect(onClose).toHaveBeenCalledTimes(3);
@@ -173,7 +173,7 @@ test('Mobile: removing a photo asks first and the next one takes its place', asy
   await press(tree.root.findAllByType(Modal)[1], 'Remover');
   expect(onScreen(tree)).toBe(`Foto 1 de 2 · ${NAME}`);
   expect(tree.root.findAllByType(Image)[0].props.source.uri).toBe(PHOTOS[1].url);
-  const toast = viewer(tree).find((n) => n.props.testID === 'toast' && typeof n.type === 'string');
+  const toast = viewer(tree).find((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string');
   expect(texts(toast)).toEqual(['Foto removida']);
 });
 
@@ -183,7 +183,7 @@ test('Mobile: a change the owner could not save is reported', async () => {
   const tree = await mount('gt4', 'day', <Sample initial={PHOTOS} failSave />);
   await press(tree.root, 'Remover esta foto');
   await press(tree.root.findAllByType(Modal)[1], 'Remover');
-  const toast = viewer(tree).find((n) => n.props.testID === 'toast' && typeof n.type === 'string');
+  const toast = viewer(tree).find((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string');
   expect(texts(toast)).toEqual(['Não foi possível salvar as fotos. Tente de novo.']);
   expect(onScreen(tree)).toBe(`Foto 1 de 3 · ${NAME}`);
 });

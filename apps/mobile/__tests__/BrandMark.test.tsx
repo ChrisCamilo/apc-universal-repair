@@ -36,7 +36,7 @@ for (const style of STYLES) {
     test(`Mobile: the brand badge follows the ${style}/${mode} theme`, async () => {
       const theme = themes[style][mode];
       const tree = await mount(style, mode, <BrandMark />);
-      const needle = tree.root.find((n) => n.props.testID === 'badge-needle');
+      const needle = tree.root.find((n) => n.props.testID === 'common.brand-mark.needle');
       expect(needle.props.stroke).toBe(theme.colors.accent);
       const [name, tagline] = tree.root.findAllByType(Text);
       expect(name.props).toMatchObject({ fill: theme.colors.text, fontFamily: fontFamily(theme.displayFont, 700) });

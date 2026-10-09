@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { TOAST_DURATION_MS } from '@apc/shared/dialog'
+import { toast } from './Toast.styles.ts'
 import { ToastContext } from './toastContext.ts'
 
 // Short success messages ("Item adicionado", "Item excluído") at the bottom of the screen, in a pill with the
@@ -13,6 +14,7 @@ type Shown = { id: number; message: string }
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState<Shown | null>(null)
   const region = useRef<HTMLDivElement>(null)
+  const { classes, ids } = toast()
   const show = useCallback((message: string) => {
     // Raise the region above whatever opened in the top layer since, then show the message in it.
     region.current?.hidePopover()
@@ -43,13 +45,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         ref={region}
         role="status"
         popover="manual"
-        className="pointer-events-none fixed inset-x-4 top-auto bottom-[calc(var(--spacing)*6+env(safe-area-inset-bottom))] m-0 flex h-auto w-auto justify-center overflow-visible border-0 bg-transparent p-0"
+        className={classes.base()}
+        data-testid={ids.base}
       >
         {shown && (
-          <span
-            key={shown.id}
-            className="rounded-pill bg-text px-4 py-2 text-center font-display text-xs font-semibold uppercase tracking-display text-canvas shadow-pop"
-          >
+          <span key={shown.id} className={classes.message()} data-testid={ids.message}>
             {shown.message}
           </span>
         )}

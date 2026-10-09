@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { appFrame, HEADER_MARK_SIZE } from './AppFrame.styles.ts'
 import { BrandMark } from './BrandMark.tsx'
 
 // The frame of the app's screens, such as the Dashboard: a header with the APC mark, the navigation (the
@@ -20,22 +21,27 @@ type AppFrameProps = {
 }
 
 export function AppFrame({ navLabel, nav, end, children }: AppFrameProps) {
+  const { classes, ids } = appFrame()
   return (
-    <div className="min-h-dvh bg-canvas">
-      <header className="z-40 bg-canvas px-4 pt-3 sm:px-6 card:sticky card:top-0">
-        <div className="flex flex-wrap items-end gap-x-5 gap-y-3 border-b border-hairline-soft">
-          <h1 className="m-0 flex pb-2.5">
-            <BrandMark variant="compact" size={32} />
+    <div className={classes.base()} data-testid={ids.base}>
+      <header className={classes.header()} data-testid={ids.header}>
+        <div className={classes.bar()} data-testid={ids.bar}>
+          <h1 className={classes.brand()} data-testid={ids.brand}>
+            <BrandMark variant="compact" size={HEADER_MARK_SIZE} />
           </h1>
-          {/* The scroll box clips both ways, so it reaches 1px down over the header's border, where the selected
-              tab's underline sits. */}
-          <nav aria-label={navLabel} className="-mb-px max-w-full min-w-0 overflow-x-auto overflow-y-hidden pb-px">
+          <nav aria-label={navLabel} className={classes.nav()} data-testid={ids.nav}>
             {nav}
           </nav>
-          {end && <div className="ml-auto pb-2">{end}</div>}
+          {end && (
+            <div className={classes.end()} data-testid={ids.end}>
+              {end}
+            </div>
+          )}
         </div>
       </header>
-      <main className="overflow-x-clip px-4 py-3 sm:px-6">{children}</main>
+      <main className={classes.main()} data-testid={ids.main}>
+        {children}
+      </main>
     </div>
   )
 }

@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { Image, Modal, Pressable, Text as NativeText, View, useWindowDimensions, type ImageStyle, type TextStyle, type ViewStyle } from 'react-native';
-import { DIALOG_SCREEN_INSET, DIALOG_WIDTHS } from '@apc/shared/dialog';
-import { chevronIcon, imageIcon } from '@apc/shared/icons';
+import { Image, Modal, Pressable, Text as NativeText, View, useWindowDimensions } from 'react-native';
+import { chevronIcon, ICON_SIZES, imageIcon } from '@apc/shared/icons';
 import { photoCount, takePhotos } from '@apc/shared/photos';
-import { popShadow, scales } from '@apc/shared/theme';
+import { scales } from '@apc/shared/theme';
 import { Button } from './Button';
 import { CloseButton } from './CloseButton';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import type { PickedPhoto, UploadPhoto } from './ImageUpload';
-import { softHairline } from './Panel';
-import { roundStyles } from './styles/shared';
-import { fontFamily, useTheme, withAlpha, type ActiveTheme } from './theme';
+import { FRAME_MAX_SHARE, useStyles, viewerBox } from './ImageViewer.styles';
+import { useTheme } from './theme';
 import { ToastProvider, useToast } from './Toast';
 import { Heading, NumericReadout, Text } from './Typography';
 
@@ -23,24 +21,6 @@ import { Heading, NumericReadout, Text } from './Typography';
 // screen and "Adicionar foto" shows while there is room, both through the owner's picker and with the
 // ImageUpload rules and messages. The owner may save each change as it happens: when it says the change couldn't be
 // saved, the toast says so instead of confirming it. Toasts show inside the viewer, above the rest of the app.
-
-const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: scales.space.s2 };
-const BODY_STYLE: ViewStyle = { gap: scales.space.s3, padding: scales.space.s4 };
-// The dots under the photo are small round marks.
-const DOT_SIZE = scales.space.s2 + scales.space.s1 / 2;
-const DOTS_STYLE: ViewStyle = { flexDirection: 'row', justifyContent: 'center', gap: scales.space.s2 };
-const EMPTY_STYLE: ViewStyle = { alignItems: 'center', gap: scales.space.s2, padding: scales.space.s5 };
-// The chevron points right; turned around, it points to the previous photo.
-const FLIP_STYLE: ViewStyle = { transform: [{ rotate: '180deg' }] };
-// The frame is 4:3 and never taller than this share of the screen.
-const FRAME_MAX_SHARE = 0.62;
-const HEAD_STYLE: ViewStyle = { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: scales.space.s3 };
-const NAME_STYLE: ViewStyle = { flexShrink: 1, gap: scales.space.s1 / 2 };
-// The arrows are 40px and sit a little in from the frame's sides.
-const NAV_INSET = scales.space.s2 + scales.space.s1 / 2;
-const NAV_SIZE = scales.space.s6 + scales.space.s2;
-const OUTSIDE_STYLE: ViewStyle = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 };
-const PHOTO_STYLE: ImageStyle = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 };
 
 type ImageViewerProps = {
   open: boolean;
@@ -59,99 +39,13 @@ type ImageViewerProps = {
   onPick: () => Promise<PickedPhoto[]>;
 };
 
-/**
- * Styles the backdrop: the canvas at the backdrop opacity, centering the window.
- * @param theme Active theme.
- * @returns Style for the backdrop View.
- */
-function backdropStyle(theme: ActiveTheme): ViewStyle {
-  return {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: withAlpha(theme.colors.canvas, scales.backdrop.opacity),
-  };
-}
-
-/**
- * Styles a dot under the photo: the accent with the glow for the photo on screen, the hairline for the others.
- * @param theme Active theme.
- * @param on Whether its photo is on screen.
- * @returns Style for the dot Pressable.
- */
-function dotStyle(theme: ActiveTheme, on: boolean): ViewStyle {
-  return {
-    width: DOT_SIZE,
-    height: DOT_SIZE,
-    borderRadius: scales.radiusPill,
-    backgroundColor: on ? theme.colors.accent : theme.colors.hairline,
-  };
-}
-
-/**
- * Styles the photo frame: 4:3 on the canvas in a soft hairline, never taller than its share of the screen.
- * @param theme Active theme.
- * @param screenHeight Window height.
- * @returns Style for the frame View.
- */
-function frameStyle(theme: ActiveTheme, screenHeight: number): ViewStyle {
-  return {
-    width: '100%',
-    aspectRatio: 4 / 3,
-    maxHeight: screenHeight * FRAME_MAX_SHARE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: scales.hairline,
-    borderColor: softHairline(theme),
-    borderRadius: theme.radiusTile,
-    backgroundColor: theme.colors.canvas,
-  };
-}
-
-/**
- * Places an arrow over the middle of the photo, on its side.
- * @param side "prev" on the left, "next" on the right.
- * @returns Absolute style of the arrow.
- */
-function navSpot(side: 'prev' | 'next'): ViewStyle {
-  return { position: 'absolute', top: '50%', marginTop: -NAV_SIZE / 2, [side === 'prev' ? 'left' : 'right']: NAV_INSET };
-}
-
-/**
- * Styles a message about a photo left out: small text in the danger color.
- * @param theme Active theme.
- * @returns Style for the message Text.
- */
-function problemStyle(theme: ActiveTheme): TextStyle {
-  return { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: theme.colors.danger };
-}
-
-/**
- * Styles the window: the panel in its hairline frame, as wide as the viewer size allows on the screen.
- * @param theme Active theme.
- * @param screen Window width and height.
- * @returns Style for the window View.
- */
-function windowStyle(theme: ActiveTheme, screen: { width: number; height: number }): ViewStyle {
-  return {
-    width: Math.min(DIALOG_WIDTHS.viewer, screen.width - DIALOG_SCREEN_INSET),
-    maxHeight: screen.height - DIALOG_SCREEN_INSET,
-    borderWidth: scales.hairline,
-    borderColor: theme.colors.hairline,
-    borderRadius: theme.radiusPanel,
-    backgroundColor: theme.colors.panel,
-    boxShadow: popShadow(),
-  };
-}
-
 export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
-  const theme = useTheme();
+  const { styles, ids } = useStyles();
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
       <ToastProvider>
-        <View style={backdropStyle(theme)}>
-          <Pressable accessibilityLabel="Fechar" onPress={onClose} style={OUTSIDE_STYLE} testID="viewer-outside" />
+        <View style={styles.backdrop} testID={ids.backdrop}>
+          <Pressable accessibilityLabel="Fechar" onPress={onClose} style={styles.outside} testID={ids.outside} />
           <ViewerBody onClose={onClose} {...rest} />
         </View>
       </ToastProvider>
@@ -160,8 +54,8 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
 }
 
 function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick }: Omit<ImageViewerProps, 'open'>) {
-  const theme = useTheme();
-  const nav = roundStyles(theme, NAV_SIZE);
+  const { colors } = useTheme();
+  const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
   const toast = useToast();
   const [index, setIndex] = useState(0);
@@ -171,7 +65,6 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
   // After a removal the index may point past the end; the last photo shows instead.
   const current = Math.min(index, Math.max(0, count - 1));
   const full = count >= limit;
-  const { colors } = theme;
 
   /** Moves to the previous or the next photo, wrapping around the ends. */
   const step = (delta: number) => setIndex((current + delta + count) % count);
@@ -216,27 +109,28 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
   };
 
   return (
-    <View accessibilityViewIsModal accessibilityLabel={name} style={windowStyle(theme, screen)} testID="viewer-window">
-      <View style={BODY_STYLE}>
-        <View style={HEAD_STYLE}>
-          <View style={NAME_STYLE}>
+    <View accessibilityViewIsModal accessibilityLabel={name} style={[styles.window, viewerBox(screen)]} testID={ids.window}>
+      <View style={styles.body} testID={ids.body}>
+        <View style={styles.head} testID={ids.head}>
+          <View style={styles.name} testID={ids.name}>
             <Heading level={3}>{name}</Heading>
             <NumericReadout tone="muted">{code}</NumericReadout>
           </View>
           <CloseButton onPress={onClose} />
         </View>
-        <View>
-          <View style={frameStyle(theme, screen.height)}>
+        <View style={styles.stage} testID={ids.stage}>
+          <View style={[styles.frame, { maxHeight: screen.height * FRAME_MAX_SHARE }]} testID={ids.frame}>
             {count > 0 ? (
               <Image
                 source={{ uri: photos[current].url }}
                 resizeMode="contain"
                 accessibilityLabel={`Foto ${current + 1} de ${count} · ${name}`}
-                style={PHOTO_STYLE}
+                style={styles.image}
+                testID={ids.image}
               />
             ) : (
-              <View style={EMPTY_STYLE}>
-                <Icon icon={imageIcon} size={56} color={colors.textMuted} />
+              <View style={styles.empty} testID={ids.empty}>
+                <Icon icon={imageIcon} size={ICON_SIZES.viewer} color={colors.textMuted} />
                 <Heading level={4}>Este item ainda não tem fotos</Heading>
                 <Text size="sm" tone="muted">
                   {`Adicione até ${photoCount(limit)}. A primeira vira a capa na lista.`}
@@ -251,18 +145,19 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
                 accessibilityRole="button"
                 accessibilityLabel={side === 'prev' ? 'Foto anterior' : 'Próxima foto'}
                 onPress={() => step(side === 'prev' ? -1 : 1)}
-                style={({ pressed }) => [nav.round, pressed && nav.roundPressed, navSpot(side)]}
+                style={({ pressed }) => [styles.round, side === 'prev' ? styles.roundPrev : styles.roundNext, pressed && styles.roundPressed]}
+                testID={ids.round}
               >
                 {({ pressed }) => (
-                  <View style={side === 'prev' ? FLIP_STYLE : undefined}>
-                    <Icon icon={chevronIcon} size={18} color={pressed ? colors.accent : colors.text} />
+                  <View style={side === 'prev' && styles.previous} testID={side === 'prev' ? ids.previous : undefined}>
+                    <Icon icon={chevronIcon} size={ICON_SIZES.prominent} color={pressed ? colors.accent : colors.text} />
                   </View>
                 )}
               </Pressable>
             ))}
         </View>
         {count > 1 && (
-          <View style={DOTS_STYLE}>
+          <View style={styles.dots} testID={ids.dots}>
             {photos.map((photo, i) => (
               <Pressable
                 key={photo.url}
@@ -271,15 +166,16 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
                 accessibilityState={{ selected: i === current }}
                 hitSlop={scales.space.s2}
                 onPress={() => setIndex(i)}
-                style={dotStyle(theme, i === current)}
+                style={[styles.dot, i === current && styles.dotOn]}
+                testID={ids.dot}
               />
             ))}
           </View>
         )}
         {problems.length > 0 && (
-          <View accessibilityLiveRegion="polite">
+          <View accessibilityLiveRegion="polite" style={styles.problems} testID={ids.problems}>
             {problems.map((problem) => (
-              <NativeText key={problem} style={problemStyle(theme)}>
+              <NativeText key={problem} style={styles.problem} testID={ids.problem}>
                 {problem}
               </NativeText>
             ))}
@@ -290,7 +186,7 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
             ? `Limite de ${photoCount(limit)} atingido. Troque ou remova uma para adicionar outra.`
             : `JPG, PNG ou WebP, até 3 MB · ${count} de ${photoCount(limit)}`}
         </Text>
-        <View style={ACTIONS_STYLE}>
+        <View style={styles.buttons} testID={ids.buttons}>
           {count > 0 && (
             <>
               <Button variant="secondary" size="sm" onPress={() => setConfirming(true)}>

@@ -66,8 +66,8 @@ for (const style of STYLES) {
           <Text>Não dá para desfazer.</Text>
         </Dialog>,
       );
-      expect(styleOf(tree, 'dialog-window')).toMatchObject({ backgroundColor: colors.panel, borderColor: colors.hairline });
-      expect(styleOf(tree, 'dialog-backdrop').backgroundColor).toBe(colors.canvas + 'B8');
+      expect(styleOf(tree, 'common.dialog')).toMatchObject({ backgroundColor: colors.panel, borderColor: colors.hairline });
+      expect(styleOf(tree, 'common.dialog.backdrop').backgroundColor).toBe(colors.canvas + 'B8');
       const danger = tree.root.find((n) => typeof n.props.style === 'function');
       expect(StyleSheet.flatten(danger.props.style({ pressed: false }))).toMatchObject({ backgroundColor: colors.danger });
       expect(StyleSheet.flatten(tree.root.findAllByType(Text).find((t) => t.props.children === 'Excluir')!.props.style).color).toBe(colors.onDanger);
@@ -86,7 +86,7 @@ test('Mobile: long dialogs scroll inside, keep the actions and close on back', a
       <Text>Campos</Text>
     </Dialog>,
   );
-  const window = styleOf(tree, 'dialog-window');
+  const window = styleOf(tree, 'common.dialog');
   expect(window.width).toBeLessThanOrEqual(560);
   expect(window.maxHeight).toBeGreaterThan(0);
   const scroll = tree.root.findByType(ScrollView);
@@ -113,7 +113,7 @@ test('Mobile: only a dismissible dialog closes on a tap outside', async () => {
       </Dialog>
     </>,
   );
-  const outside = tree.root.findAll((n) => n.props.testID === 'dialog-outside' && typeof n.props.onPress === 'function');
+  const outside = tree.root.findAll((n) => n.props.testID === 'common.dialog.outside' && typeof n.props.onPress === 'function');
   expect(outside).toHaveLength(1);
   expect(outside[0].props.accessibilityLabel).toBe('Fechar');
   await ReactTestRenderer.act(async () => outside[0].props.onPress());
@@ -155,12 +155,12 @@ test('Mobile: toasts are read out and hide on their own', async () => {
     const tree = await mount('gt4', 'day', <Trigger />);
     await ReactTestRenderer.act(async () => tree.root.find((n) => typeof n.props.style === 'function').props.onPress());
     expect(announce).toHaveBeenCalledWith('Item adicionado');
-    expect(styleOf(tree, 'toast').backgroundColor).toBe(themes.gt4.day.colors.text);
+    expect(styleOf(tree, 'common.toast.message').backgroundColor).toBe(themes.gt4.day.colors.text);
 
     await ReactTestRenderer.act(async () => {
       jest.advanceTimersByTime(TOAST_DURATION_MS);
     });
-    expect(tree.root.findAll((n) => n.props.testID === 'toast')).toHaveLength(0);
+    expect(tree.root.findAll((n) => n.props.testID === 'common.toast.message')).toHaveLength(0);
   } finally {
     announce.mockRestore();
     jest.useRealTimers();
@@ -171,11 +171,11 @@ test('Mobile: toasts are read out and hide on their own', async () => {
 // root; once the dialog closes, the toast still showing moves to the root.
 test('Mobile: a toast shows above an open dialog', async () => {
   const tree = await mount('gt4', 'day', <DialogWithToast />);
-  const toasts = () => tree.root.findAll((n) => n.props.testID === 'toast' && typeof n.type === 'string');
+  const toasts = () => tree.root.findAll((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string');
   await ReactTestRenderer.act(async () => tree.root.find((n) => typeof n.props.style === 'function').props.onPress());
   const modal = tree.root.findByType(Modal);
   expect(toasts()).toHaveLength(1);
-  expect(modal.findAll((n) => n.props.testID === 'toast' && typeof n.type === 'string')).toHaveLength(1);
+  expect(modal.findAll((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string')).toHaveLength(1);
 
   await ReactTestRenderer.act(async () => modal.props.onRequestClose());
   expect(tree.root.findByType(Modal).props.visible).toBe(false);

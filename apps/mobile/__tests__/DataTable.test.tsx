@@ -3,7 +3,7 @@
  */
 
 import React, { useState, type ComponentProps } from 'react';
-import { Image, Text } from 'react-native';
+import { Image, StyleSheet, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import { sortRows, type Sort } from '@apc/shared/table';
@@ -30,7 +30,7 @@ type Item = { code: string; name: string; loc: string; qty: number };
  * @returns The card test instances.
  */
 function cards(tree: ReactTestRenderer.ReactTestRenderer): ReactTestRenderer.ReactTestInstance[] {
-  return tree.root.findAll((node) => node.props.testID === 'table-row' && typeof node.type === 'string');
+  return tree.root.findAll((node) => node.props.testID === 'common.data-table.table.row' && typeof node.type === 'string');
 }
 
 /**
@@ -90,7 +90,7 @@ for (const style of STYLES) {
     test(`Mobile: table rows follow the ${style}/${mode} status colors`, async () => {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode, <Inventory />);
-      const [ok, low, out] = cards(tree).map((card) => card.props.style);
+      const [ok, low, out] = cards(tree).map((card) => StyleSheet.flatten(card.props.style));
       expect(ok).toMatchObject({ backgroundColor: 'transparent', borderLeftWidth: 0 });
       expect(low).toMatchObject({ backgroundColor: colors.warn + '26', borderLeftColor: colors.warn, borderLeftWidth: 3 });
       expect(out).toMatchObject({ backgroundColor: colors.danger + '21', borderLeftColor: colors.danger, borderLeftWidth: 3 });
@@ -158,17 +158,17 @@ test('Mobile: cards open on a tap, lit while pressed', async () => {
   const onRowOpen = jest.fn();
   const tree = await mount('eighties', 'night', <Inventory onRowOpen={onRowOpen} />);
   const pressables = tree.root.findAll(
-    (n) => typeof n.type !== 'string' && n.props.testID === 'table-row' && typeof n.props.onPress === 'function',
+    (n) => typeof n.type !== 'string' && n.props.testID === 'common.data-table.table.row' && typeof n.props.onPress === 'function',
   );
   expect(pressables).toHaveLength(3);
   await ReactTestRenderer.act(async () => pressables[1].props.onPress());
   expect(onRowOpen).toHaveBeenCalledWith(ITEMS[1]);
-  expect(pressables[0].props.style({ pressed: true }).backgroundColor).toBe(colors.panelRaised);
-  expect(pressables[0].props.style({ pressed: false }).backgroundColor).toBe('transparent');
-  expect(pressables[1].props.style({ pressed: true }).backgroundColor).toBe(withAlpha(colors.warn, scales.statusTint.warnHover));
+  expect(StyleSheet.flatten(pressables[0].props.style({ pressed: true })).backgroundColor).toBe(colors.panelRaised);
+  expect(StyleSheet.flatten(pressables[0].props.style({ pressed: false })).backgroundColor).toBe('transparent');
+  expect(StyleSheet.flatten(pressables[1].props.style({ pressed: true })).backgroundColor).toBe(withAlpha(colors.warn, scales.statusTint.warnHover));
 
   const still = await mount('eighties', 'night', <Inventory />);
-  expect(still.root.findAll((n) => n.props.testID === 'table-row' && typeof n.props.onPress === 'function')).toHaveLength(0);
+  expect(still.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.props.onPress === 'function')).toHaveLength(0);
 });
 
 function Inventory({ items = ITEMS, onRowOpen }: { items?: Item[]; onRowOpen?: (item: Item) => void }) {

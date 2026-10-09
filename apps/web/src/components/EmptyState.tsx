@@ -1,5 +1,6 @@
-import { alertIcon, cubeIcon, type IconShape } from '@apc/shared/icons'
+import { alertIcon, cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
 import { Button } from './Button.tsx'
+import { stateMessage } from './EmptyState.styles.ts'
 import { Icon } from './Icon.tsx'
 import { Heading, Text } from './Typography.tsx'
 
@@ -20,32 +21,33 @@ type StateMessageProps = {
 }
 
 export function EmptyState({ icon = cubeIcon, ...rest }: StateMessageProps) {
-  return <StateMessage icon={icon} iconClass="text-text-muted" {...rest} />
+  return <StateMessage icon={icon} tone="muted" {...rest} />
 }
 
 export function ErrorState({ icon = alertIcon, ...rest }: StateMessageProps) {
-  return <StateMessage icon={icon} iconClass="text-danger" role="alert" {...rest} />
+  return <StateMessage icon={icon} tone="danger" role="alert" {...rest} />
 }
 
 function StateMessage({
   icon,
-  iconClass,
+  tone,
   role,
   title,
   message,
   action,
-}: StateMessageProps & { icon: IconShape[]; iconClass: string; role?: 'alert' }) {
+}: StateMessageProps & { icon: IconShape[]; tone: 'muted' | 'danger'; role?: 'alert' }) {
+  const { classes, ids } = stateMessage({ tone })
   return (
-    <div role={role} className="grid justify-items-center gap-2 px-4 py-8 text-center">
-      <span className={iconClass}>
-        <Icon icon={icon} size={40} />
+    <div role={role} className={classes.base()} data-testid={ids.base}>
+      <span className={classes.icon()} data-testid={ids.icon}>
+        <Icon icon={icon} size={ICON_SIZES.emptyState} />
       </span>
       <Heading level={4}>{title}</Heading>
-      <Text size="sm" tone="muted" className="max-w-prose">
+      <Text size="sm" tone="muted" className={classes.message()}>
         {message}
       </Text>
       {action && (
-        <Button variant="secondary" size="sm" className="mt-2" onClick={action.onClick}>
+        <Button variant="secondary" size="sm" className={classes.action()} onClick={action.onClick}>
           {action.label}
         </Button>
       )}

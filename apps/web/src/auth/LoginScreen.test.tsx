@@ -47,7 +47,7 @@ for (const style of STYLES) {
       const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
       const mark = screen.getByRole('heading', { level: 1 }).getByRole('img', { name: 'APC Universal Repair' })
       await expect.element(mark).toBeVisible()
-      expect(getComputedStyle(mark.element().querySelector('[data-part="needle"]')!).stroke).toBe(rgb(colors.accent))
+      expect(getComputedStyle(mark.element().querySelector('[data-testid="common.brand-mark.needle"]')!).stroke).toBe(rgb(colors.accent))
       await expect.element(screen.getByLabelText('Usuário')).toBeVisible()
       await expect.element(screen.getByLabelText('Senha', { exact: true })).toBeVisible()
       expect(getComputedStyle(screen.getByRole('button', { name: 'Entrar' }).element()).backgroundColor).toBe(rgb(colors.accent))

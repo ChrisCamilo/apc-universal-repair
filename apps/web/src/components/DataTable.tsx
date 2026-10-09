@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react'
-import { cubeIcon, type IconShape } from '@apc/shared/icons'
+import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
 import { nextSort, sortFromValue, sortOptions, sortValue, type Sort } from '@apc/shared/table'
+import { dataTable, rowAction, tableThumbnail, tableTitle } from './DataTable.styles.ts'
 import { Icon } from './Icon.tsx'
 import { Select } from './Select.tsx'
 import { Label } from './Typography.tsx'
@@ -15,30 +16,7 @@ import { Label } from './Typography.tsx'
 // the main cell: the name, the code under it and, on a card, a line with what the hidden columns said. With
 // onRowOpen, a click on a row opens it, except on its own buttons (thumbnail, actions), which keep their click; the
 // rows join the Tab order with a focus outline and open with Enter or Space.
-// Tailwind only builds classes it finds written out, hence the literal class maps below.
 
-const CARD_AREA_CLASSES: Record<CardArea, string> = {
-  thumb: 'max-card:[grid-area:thumb]',
-  main: 'max-card:[grid-area:main]',
-  end: 'max-card:[grid-area:end] max-card:justify-self-end',
-  actions: 'max-card:[grid-area:actions] max-card:justify-self-end',
-}
-// A row that opens on a click: the pointer, and an accent outline inside its edges while focused by keyboard.
-const OPENABLE_ROW =
-  'cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 ' +
-  'focus-visible:outline-accent'
-const ROW =
-  'transition-[background-color] max-card:grid max-card:grid-cols-[calc(var(--spacing)*11)_minmax(0,1fr)_auto] ' +
-  "max-card:items-center max-card:gap-x-3 max-card:gap-y-1 max-card:[grid-template-areas:'thumb_main_end''thumb_main_actions'] " +
-  'max-card:border-b max-card:border-hairline-soft max-card:py-2.5 max-card:pr-1 max-card:pl-2'
-const STATUS_CLASSES: Record<RowTone, string> = {
-  warn:
-    'bg-warn-soft hover:bg-warn-soft-hover [&>td:first-child]:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--warn)] ' +
-    'max-card:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--warn)] max-card:[&>td:first-child]:shadow-none',
-  danger:
-    'bg-danger-soft hover:bg-danger-soft-hover [&>td:first-child]:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--danger)] ' +
-    'max-card:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--danger)] max-card:[&>td:first-child]:shadow-none',
-}
 const SORT_ARROWS = { ascending: '↑', descending: '↓', none: '↕' }
 
 type CardArea = 'thumb' | 'main' | 'end' | 'actions'
@@ -127,13 +105,14 @@ export function DataTable<Row>({
 }: DataTableProps<Row>) {
   const sortId = useId()
   const sortable = columns.filter((column) => column.sortable)
+  const { classes, ids } = dataTable()
 
   return (
-    <div className="grid min-w-0 gap-3">
+    <div className={classes.base()} data-testid={ids.base}>
       {sortable.length > 0 && (
-        <div className="hidden items-center gap-2 max-card:flex">
+        <div className={classes.sortBar()} data-testid={ids.sortBar}>
           <Label htmlFor={sortId}>Ordenar</Label>
-          <div className="min-w-0 flex-1">
+          <div className={classes.sortSelect()} data-testid={ids.sortSelect}>
             <Select
               id={sortId}
               options={sortOptions(
@@ -149,33 +128,34 @@ export function DataTable<Row>({
       {rows.length === 0 ? (
         empty
       ) : (
-        <div className="overflow-x-auto max-card:overflow-visible">
-          <table aria-label={label} className="w-full border-collapse font-body text-sm text-text max-card:block">
-            <thead className="max-card:hidden">
+        <div className={classes.scroll()} data-testid={ids.scroll}>
+          <table aria-label={label} className={classes.table()} data-testid={ids.table}>
+            <thead className={classes.head()} data-testid={ids.head}>
               <tr>
                 {columns.map((column) => {
                   const order = ariaSort(sort, column.key)
+                  const header = dataTable({ numeric: column.numeric, sorted: order !== 'none' }).classes
                   return (
                     <th
                       key={column.key}
                       scope="col"
                       aria-sort={column.sortable ? order : undefined}
-                      className={`whitespace-nowrap border-b border-hairline px-2.5 py-2 font-display text-xs font-semibold uppercase tracking-display ${
-                        column.numeric ? 'text-right' : 'text-left'
-                      } ${order === 'none' ? 'text-text-muted' : 'text-accent'}`}
+                      className={header.header()}
+                      data-testid={ids.header}
                     >
                       {column.headerHidden ? (
-                        <span className="sr-only">{column.header}</span>
+                        <span className={header.hidden()} data-testid={ids.hidden}>
+                          {column.header}
+                        </span>
                       ) : column.sortable ? (
                         <button
                           type="button"
-                          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-tile uppercase tracking-[inherit] outline-none transition-colors focus-visible:shadow-ring ${
-                            order === 'none' ? 'hover:text-text' : ''
-                          }`}
+                          className={header.sort()}
+                          data-testid={ids.sort}
                           onClick={() => onSortChange(nextSort(sort, column.key))}
                         >
                           {column.header}
-                          <span aria-hidden="true" className={`font-mono tracking-normal ${order === 'none' ? 'opacity-45' : ''}`}>
+                          <span aria-hidden="true" className={header.arrow()} data-testid={ids.arrow}>
                             {SORT_ARROWS[order]}
                           </span>
                         </button>
@@ -187,7 +167,7 @@ export function DataTable<Row>({
                 })}
               </tr>
             </thead>
-            <tbody className="max-card:block">
+            <tbody className={classes.body()} data-testid={ids.body}>
               {rows.map((row) => {
                 const status = rowStatus?.(row)
                 return (
@@ -195,7 +175,8 @@ export function DataTable<Row>({
                     key={rowKey(row)}
                     data-status={status?.tone}
                     tabIndex={onRowOpen ? 0 : undefined}
-                    className={`${ROW} ${status ? STATUS_CLASSES[status.tone] : 'hover:bg-panel-raised'} ${onRowOpen ? OPENABLE_ROW : ''}`}
+                    className={dataTable({ tint: status?.tone ?? 'none', openable: Boolean(onRowOpen) }).classes.row()}
+                    data-testid={ids.row}
                     onClick={
                       onRowOpen &&
                       ((event) => {
@@ -217,13 +198,14 @@ export function DataTable<Row>({
                     {columns.map((column, index) => (
                       <td
                         key={column.key}
-                        className={[
-                          'border-b border-hairline-soft px-2.5 py-2 align-middle max-card:border-0 max-card:p-0',
-                          column.numeric ? 'text-right font-mono tabular-nums' : '',
-                          column.card ? CARD_AREA_CLASSES[column.card] : 'max-card:hidden',
-                        ].join(' ')}
+                        className={dataTable({ numeric: column.numeric, area: column.card ?? 'none' }).classes.cell()}
+                        data-testid={ids.cell}
                       >
-                        {index === 0 && status && <span className="sr-only">{status.label}: </span>}
+                        {index === 0 && status && (
+                          <span className={classes.status()} data-testid={ids.status}>
+                            {status.label}:{' '}
+                          </span>
+                        )}
                         {column.cell(row)}
                       </td>
                     ))}
@@ -239,48 +221,50 @@ export function DataTable<Row>({
 }
 
 export function RowAction({ icon, label, onClick, tone = 'default' }: RowActionProps) {
+  const { classes, ids } = rowAction({ tone })
   return (
-    <button
-      type="button"
-      aria-label={label}
-      className={`grid size-8 cursor-pointer place-items-center rounded-tile text-text-muted outline-none transition-colors hover:bg-panel focus-visible:shadow-ring ${
-        tone === 'danger' ? 'hover:text-danger' : 'hover:text-accent'
-      }`}
-      onClick={onClick}
-    >
-      <Icon icon={icon} size={15} />
+    <button type="button" aria-label={label} className={classes.base()} data-testid={ids.base} onClick={onClick}>
+      <Icon icon={icon} size={ICON_SIZES.label} />
     </button>
   )
 }
 
 export function TableThumbnail({ src, label, onOpen }: TableThumbnailProps) {
-  const frame = 'grid size-11 place-items-center overflow-hidden rounded-tile border border-hairline-soft bg-panel-raised text-text-muted'
-  const content = src ? <img src={src} alt="" className="size-full object-cover" /> : <Icon icon={cubeIcon} size={20} />
+  const { classes, ids } = tableThumbnail({ opens: Boolean(onOpen) })
+  const content = src ? (
+    <img src={src} alt="" className={classes.image()} data-testid={ids.image} />
+  ) : (
+    <Icon icon={cubeIcon} size={ICON_SIZES.thumbnail} />
+  )
   if (!onOpen) {
     return (
-      <span data-testid="table-thumbnail" className={frame}>
+      <span className={classes.base()} data-testid={ids.base}>
         {content}
       </span>
     )
   }
   return (
-    <button
-      type="button"
-      aria-label={label}
-      className={`${frame} cursor-zoom-in outline-none transition-[border-color,box-shadow] hover:border-accent hover:shadow-glow focus-visible:shadow-ring`}
-      onClick={onOpen}
-    >
+    <button type="button" aria-label={label} className={classes.base()} data-testid={ids.base} onClick={onOpen}>
       {content}
     </button>
   )
 }
 
 export function TableTitle({ title, code, details }: TableTitleProps) {
+  const { classes, ids } = tableTitle()
   return (
-    <span className="grid min-w-0">
-      <b className="font-semibold">{title}</b>
-      <code className="font-mono text-xs text-text-muted">{code}</code>
-      {details && <span className="hidden text-xs text-text-muted max-card:block">{details}</span>}
+    <span className={classes.base()} data-testid={ids.base}>
+      <b className={classes.title()} data-testid={ids.title}>
+        {title}
+      </b>
+      <code className={classes.code()} data-testid={ids.code}>
+        {code}
+      </code>
+      {details && (
+        <span className={classes.details()} data-testid={ids.details}>
+          {details}
+        </span>
+      )}
     </span>
   )
 }

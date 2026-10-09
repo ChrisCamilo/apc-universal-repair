@@ -12,6 +12,7 @@ import {
 } from '@apc/shared/tour'
 import { Button } from './Button.tsx'
 import { Panel } from './Panel.tsx'
+import { tour } from './Tour.styles.ts'
 import { Heading, Label, NumericReadout, Text } from './Typography.tsx'
 
 // A step-by-step guide that points at parts of the screen. A spotlight rings the step's target and dims the
@@ -153,17 +154,17 @@ function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
     }
   }, [index])
 
+  const { classes, ids } = tour()
   return createPortal(
     <>
       {layout.spot && (
         <div
           aria-hidden="true"
-          data-testid="tour-spotlight"
-          className="pointer-events-none fixed z-50 rounded-tile shadow-[0_0_0_9999px_var(--color-spotlight-dim)] outline-2 outline-accent motion-safe:transition-[left,top,width,height]"
+          className={classes.spotlight()}
+          data-testid={ids.spotlight}
           style={{ left: layout.spot.x, top: layout.spot.y, width: layout.spot.width, height: layout.spot.height }}
         >
-          {/* The glow sits on its own layer: in styles without one it is "none", which can't join a shadow list. */}
-          <div className="absolute inset-0 rounded-[inherit] shadow-glow" />
+          <div className={classes.glow()} data-testid={ids.glow} />
         </div>
       )}
       <div
@@ -172,11 +173,12 @@ function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
         aria-labelledby={titleId}
         aria-describedby={textId}
         tabIndex={-1}
-        className="fixed z-50 rounded-panel shadow-pop outline-none"
+        className={classes.card()}
+        data-testid={ids.card}
         style={{ left: layout.card.x, top: layout.card.y, width: layout.card.width }}
       >
-        <Panel className="grid gap-2 border-accent! p-4!">
-          <div className="flex justify-between gap-2">
+        <Panel className={classes.panel()}>
+          <div className={classes.header()} data-testid={ids.header}>
             <Label tone="accent">{header.part}</Label>
             <NumericReadout tone="muted">{header.count}</NumericReadout>
           </div>
@@ -186,13 +188,13 @@ function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
           <Text id={textId} size="sm" tone="muted" aria-live="polite">
             {step.text}
           </Text>
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className={classes.actions()} data-testid={ids.actions}>
             {!last && (
               <Button variant="link" size="sm" onClick={onClose}>
                 Pular tutorial
               </Button>
             )}
-            <span className="ms-auto flex gap-2">
+            <span className={classes.buttons()} data-testid={ids.buttons}>
               {step.auto && (
                 <Button variant="secondary" size="sm" onClick={step.auto}>
                   Fazer por mim
