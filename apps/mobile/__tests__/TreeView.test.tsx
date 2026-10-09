@@ -139,7 +139,7 @@ test('Mobile: the tree has tree, treeitem and group semantics', async () => {
   expect(monza.props.disabled).toBe(true);
   expect(monza.findAll((n) => n.props.testID === 'tree-chevron')).toHaveLength(0);
   expect(row(tree, 'Chevette').findAll((n) => n.props.testID === 'tree-chevron' && typeof n.type === 'string')).toHaveLength(1);
-  expect(tree.root.findAll((n) => n.props.testID === 'divider' && typeof n.type === 'string')).toHaveLength(2);
+  expect(tree.root.findAll((n) => n.props.testID === 'common.divider' && typeof n.type === 'string')).toHaveLength(2);
 });
 
 // Presses a closed branch, an open one and an engine, and checks the branches open and close with their

@@ -146,7 +146,7 @@ test('Mobile: Sair comes last, apart from the preferences, and logs out', async 
   const menu = tree.root.find((n) => n.props.accessibilityRole === 'menu' && typeof n.type === 'string');
   const items = menu.findAll((n) => typeof n.type === 'string' && /^menuitem/.test(n.props.accessibilityRole ?? ''));
   expect(items[items.length - 1].props.accessibilityLabel).toBe('Sair');
-  expect(menu.findAll((n) => n.props.testID === 'divider' && typeof n.type === 'string')).toHaveLength(1);
+  expect(menu.findAll((n) => n.props.testID === 'common.divider' && typeof n.type === 'string')).toHaveLength(1);
   await press(tree, 'Sair');
   expect(onLogout).toHaveBeenCalledTimes(1);
 });

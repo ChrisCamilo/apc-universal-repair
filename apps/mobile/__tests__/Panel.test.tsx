@@ -11,7 +11,12 @@ import { Divider, Panel } from '../src/Panel';
 import { Spinner } from '../src/Spinner';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
+// The panels the tests nest, by their place in render order: the outer one, then the ones inside it.
+const NESTED = 1;
+const OUTER = 0;
+const PANEL = 'common.panel';
 const PHOTO = 'https://fotos.example/opala.jpg';
+const RAISED = 2;
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.
@@ -30,24 +35,25 @@ async function mount(style: Style, mode: Mode, element: React.ReactElement) {
 }
 
 /**
- * Reads the flattened style of the View drawn for a testID.
+ * Reads the flattened style of a View drawn with a style id.
  * @param tree Rendered tree.
- * @param testID The testID to look for.
+ * @param testID The style id to look for.
+ * @param index Which of the views with it, in render order.
  * @returns The View's style as one object.
  */
-function styleOf(tree: ReactTestRenderer.ReactTestRenderer, testID: string) {
-  return Object.assign({}, ...[viewOf(tree, testID).props.style].flat(Infinity).filter(Boolean));
+function styleOf(tree: ReactTestRenderer.ReactTestRenderer, testID: string, index = 0) {
+  return Object.assign({}, ...[viewOf(tree, testID, index).props.style].flat(Infinity).filter(Boolean));
 }
 
 /**
- * Finds the View drawn for a testID: the first node with it that has a style, past the component that
- * received the testID.
+ * Finds a View drawn with a style id.
  * @param tree Rendered tree.
- * @param testID The testID to look for.
+ * @param testID The style id to look for.
+ * @param index Which of the views with it, in render order.
  * @returns The View's test instance.
  */
-function viewOf(tree: ReactTestRenderer.ReactTestRenderer, testID: string): ReactTestRenderer.ReactTestInstance {
-  return tree.root.findAll((n) => n.props.testID === testID && n.props.style !== undefined)[0];
+function viewOf(tree: ReactTestRenderer.ReactTestRenderer, testID: string, index = 0): ReactTestRenderer.ReactTestInstance {
+  return tree.root.findAll((n) => n.props.testID === testID && typeof n.type === 'string')[index];
 }
 
 beforeEach(async () => {
@@ -63,23 +69,21 @@ for (const style of STYLES) {
       const tree = await mount(
         style,
         mode,
-        <Panel testID="outer">
-          <Panel testID="nested">{null}</Panel>
-          <Panel testID="raised" raised>
-            {null}
-          </Panel>
+        <Panel>
+          <Panel>{null}</Panel>
+          <Panel raised>{null}</Panel>
         </Panel>,
       );
-      expect(styleOf(tree, 'outer')).toMatchObject({
+      expect(styleOf(tree, PANEL, OUTER)).toMatchObject({
         backgroundColor: theme.colors.panel,
         backgroundImage: sheenGradient(theme.sheen, mode),
         borderWidth: scales.hairline,
         borderColor: theme.colors.hairline + '7A',
         borderRadius: theme.radiusPanel,
       });
-      expect(styleOf(tree, 'nested').borderRadius).toBe(theme.radiusTile);
-      expect(styleOf(tree, 'nested').backgroundImage).toBeUndefined();
-      expect(styleOf(tree, 'raised').backgroundColor).toBe(theme.colors.panelRaised);
+      expect(styleOf(tree, PANEL, NESTED).borderRadius).toBe(theme.radiusTile);
+      expect(styleOf(tree, PANEL, NESTED).backgroundImage).toBeUndefined();
+      expect(styleOf(tree, PANEL, RAISED).backgroundColor).toBe(theme.colors.panelRaised);
     });
   }
 }
@@ -90,20 +94,18 @@ test('Mobile: nested panels never double the border', async () => {
   const tree = await mount(
     'gt4',
     'night',
-    <Panel testID="outer">
-      <Panel testID="nested" sheen>
-        {null}
-      </Panel>
+    <Panel>
+      <Panel sheen>{null}</Panel>
     </Panel>,
   );
-  expect(styleOf(tree, 'outer').padding).toBe(scales.space.s3);
-  expect(styleOf(tree, 'nested').backgroundImage).toBe(sheenGradient(themes.gt4.night.sheen, 'night'));
+  expect(styleOf(tree, PANEL, OUTER).padding).toBe(scales.space.s3);
+  expect(styleOf(tree, PANEL, NESTED).backgroundImage).toBe(sheenGradient(themes.gt4.night.sheen, 'night'));
 });
 
 // Checks a divider draws one soft hairline.
 test('Mobile: dividers draw a soft hairline', async () => {
   const tree = await mount('eighties', 'day', <Divider />);
-  expect(styleOf(tree, 'divider')).toMatchObject({
+  expect(styleOf(tree, 'common.divider')).toMatchObject({
     height: scales.hairline,
     backgroundColor: themes.eighties.day.colors.hairline + '7A',
   });

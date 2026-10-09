@@ -106,12 +106,12 @@ test('Mobile: skeletons take their shape', async () => {
       <Skeleton shape="circle" width={24} />
     </>,
   );
-  const [line, block, circle] = stylesOf(tree, 'skeleton');
+  const [line, block, circle] = stylesOf(tree, 'common.skeleton');
   const fill = withAlpha(themes.gt4.day.colors.hairline, scales.hairlineSoft);
   expect(line).toMatchObject({ width: '100%', height: 12, backgroundColor: fill });
   expect(block).toMatchObject({ width: 120, height: 80, borderRadius: themes.gt4.day.radiusTile });
   expect(circle).toMatchObject({ width: 24, height: 24 });
-  const hidden = tree.root.findAll((n) => n.props.testID === 'skeleton' && typeof n.type === 'string' && n.props.accessibilityElementsHidden);
+  const hidden = tree.root.findAll((n) => n.props.testID === 'common.skeleton' && typeof n.type === 'string' && n.props.accessibilityElementsHidden);
   expect(hidden).toHaveLength(3);
 });
 
