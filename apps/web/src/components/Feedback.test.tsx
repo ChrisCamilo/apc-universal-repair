@@ -63,11 +63,11 @@ test('Web: spinners are announced only with a label and fade with reduced motion
   const screen = await render(
     <>
       <Spinner label="Carregando estoque" />
-      <Spinner size="sm" data-testid="quiet" />
+      <Spinner size="sm" />
     </>,
   )
   const loud = screen.getByRole('status', { name: 'Carregando estoque' }).element()
-  const quiet = screen.getByTestId('quiet').element()
+  const quiet = screen.getByTestId('common.spinner').elements()[1]
   expect(quiet.getAttribute('aria-hidden')).toBe('true')
   expect(getComputedStyle(loud).animationName).toBe('spin')
 
