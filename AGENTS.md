@@ -241,14 +241,14 @@ export const partResults = recipe(
   { base: '', list: 'list', part: 'list.part', code: 'list.part.line.code' },
 )
 // PartResults.tsx
-const ui = partResults()
-<div {...ui.base()}>                 // className="…" data-testid="catalog.part-results"
+const { classes, ids } = partResults()
+<div className={classes.base()} data-testid={ids.base}>   // data-testid="catalog.part-results"
 ```
 
-- **Slots and paths:** a recipe always has slots, `base` being the component's own element. `recipe()` takes each slot's path inside the component and gives back, for each slot, a function returning `{ className, 'data-testid' }` to spread on the element.
+- **Slots and paths:** a recipe always has slots, `base` being the component's own element. `recipe()` takes each slot's path inside the component. Called with the variants, it gives `classes`, a function per slot returning its classes, and `ids`, each slot's style id. An element writes both out, `className={classes.line()} data-testid={ids.line}`, as mobile writes `style={styles.line} testID={ids.line}`.
 - **Variants:** a component's props that change its look (`variant`, `size`, `tone`) are the recipe's variants, under the same names. A caller's `className` goes in through `{ class: className }`, so conflicting classes merge, the last one winning.
 - **States:** a state the DOM already shows stays a Tailwind variant in the class (`aria-checked:border-accent`, `hover:`, `focus-visible:`, `disabled:`). A recipe variant is only for state the DOM doesn't carry.
-- **A slot that styles another component** passes only its classes, `<Panel className={ui.brand().className}>`, so that component's own element keeps its own id.
+- **A slot that styles another component** passes only its classes, `<Panel className={classes.brand()}>`, so that component's own element keeps its own id.
 - **Static classes:** Tailwind only builds the classes it finds written in full, so a class is never put together from a number. A width shared with mobile is written as the token class (`w-36`) here and as the constant there.
 
 ### Mobile: `createStyles()`
