@@ -34,6 +34,7 @@ import { Skeleton } from '../components/Skeleton.tsx'
 import { Spinner } from '../components/Spinner.tsx'
 import { SearchField } from '../components/TextField.tsx'
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
+import { ExportItemsDialog } from '../inventory/ExportItemsDialog.tsx'
 import { ImportItemsDialog } from '../inventory/ImportItemsDialog.tsx'
 import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
 import { ManageListsDialog } from '../inventory/ManageListsDialog.tsx'
@@ -61,7 +62,8 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // confirm deleting the item, and the list loads again once an item is saved or deleted. "Gerenciar listas" renames
 // and deletes the categories, brands and models the form picks from; the list loads again after each change, and a
 // name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list
-// and the lists load again. While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or
+// and the lists load again; "Exportar CSV" saves every item of the list as it is, on every page, in the same format.
+// While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or
 // Enter on it) opens the item's details. Each row's thumbnail shows the item's cover and opens its photos in the
 // ImageViewer, where each photo removed, changed or added is saved at once and the list follows. Low and
 // out-of-stock rows are tinted by the table. At phone width the row becomes a card and the columns that leave it
@@ -161,6 +163,8 @@ export function InventoryTab() {
   const [managing, setManaging] = useState(false)
   // Whether "Importar CSV" is open; each opening starts with no file.
   const [importer, setImporter] = useState({ open: false, session: 0 })
+  // Whether "Exportar CSV" is open; each opening starts without the photo paths.
+  const [exporter, setExporter] = useState({ open: false, session: 0 })
   const { opensOnRow } = useOpenItemOnRow()
   // The item form: closed, open on a new item, an item to edit or an item's details, maybe with values filled in.
   // Each opening starts a new form.
@@ -331,6 +335,9 @@ export function InventoryTab() {
         <Button variant="secondary" onClick={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
           Importar CSV
         </Button>
+        <Button variant="secondary" onClick={() => setExporter((current) => ({ open: true, session: current.session + 1 }))}>
+          Exportar CSV
+        </Button>
         <Button data-tour="new-item" onClick={() => openForm()}>
           Novo item
         </Button>
@@ -477,6 +484,14 @@ export function InventoryTab() {
           reload()
           reloadLists()
         }}
+      />
+      <ExportItemsDialog
+        key={`export-${exporter.session}`}
+        open={exporter.open}
+        query={itemListQuery(filters, status, { search, sort })}
+        count={listed.status === 'ready' ? listed.total : 0}
+        narrowed={narrowed}
+        onClose={() => setExporter((current) => ({ ...current, open: false }))}
       />
       <ManageListsDialog
         open={managing}
