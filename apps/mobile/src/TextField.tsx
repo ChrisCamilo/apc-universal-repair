@@ -111,7 +111,7 @@ export function TextField({
         </View>
       </View>
       {error ? (
-        <NativeText accessibilityLiveRegion="polite" style={styles.error} testID={ids.error}>
+        <NativeText accessibilityLiveRegion="polite" style={styles.fieldError} testID={ids.fieldError}>
           {error}
         </NativeText>
       ) : (

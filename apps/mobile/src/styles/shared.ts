@@ -33,7 +33,7 @@ export function displayLabel(theme: ActiveTheme, step: keyof typeof scales.fontS
 
 /**
  * Styles the parts of a text field and of a dropdown list: the field's spacing, the focus ring around the pill frame,
- * the frame by state, the typed text, the list and an option's text.
+ * the frame by state, the typed text, the error under it, the list and an option with its text.
  * @param theme Active theme.
  * @returns The field's styles, each key starting with "field" or "option".
  */
@@ -42,6 +42,7 @@ export function fieldStyles(theme: ActiveTheme) {
   return {
     field: { gap: scales.space.s1 } satisfies ViewStyle,
     fieldDisabled: { opacity: FIELD_DISABLED_OPACITY } satisfies ViewStyle,
+    fieldError: { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: colors.danger } satisfies TextStyle,
     fieldFrame: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -71,9 +72,20 @@ export function fieldStyles(theme: ActiveTheme) {
       borderRadius: theme.radiusTile,
       backgroundColor: colors.panel,
     } satisfies ViewStyle,
+    fieldListContent: { padding: scales.space.s1 } satisfies ViewStyle,
     fieldRing: { borderRadius: scales.radiusPill, borderWidth: scales.focusRing.width, borderColor: 'transparent' } satisfies ViewStyle,
     fieldRingError: { borderColor: withAlpha(colors.danger, scales.focusRing.opacity) } satisfies ViewStyle,
     fieldRingFocused: { borderColor: withAlpha(colors.accent, scales.focusRing.opacity) } satisfies ViewStyle,
+    option: {
+      height: OPTION_HEIGHT,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: scales.space.s2,
+      paddingHorizontal: scales.space.s3,
+      borderRadius: theme.radiusTile,
+      backgroundColor: 'transparent',
+    } satisfies ViewStyle,
+    optionPressed: { backgroundColor: colors.panelRaised } satisfies ViewStyle,
     optionText: { flex: 1, fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: colors.text } satisfies TextStyle,
     optionTextChosen: { color: colors.accent } satisfies TextStyle,
   };
