@@ -18,26 +18,26 @@ import { Label } from './Typography.tsx'
 // Tailwind only builds classes it finds written out, hence the literal class maps below.
 
 const CARD_AREA_CLASSES: Record<CardArea, string> = {
-  thumb: 'max-[720px]:[grid-area:thumb]',
-  main: 'max-[720px]:[grid-area:main]',
-  end: 'max-[720px]:[grid-area:end] max-[720px]:justify-self-end',
-  actions: 'max-[720px]:[grid-area:actions] max-[720px]:justify-self-end',
+  thumb: 'max-card:[grid-area:thumb]',
+  main: 'max-card:[grid-area:main]',
+  end: 'max-card:[grid-area:end] max-card:justify-self-end',
+  actions: 'max-card:[grid-area:actions] max-card:justify-self-end',
 }
 // A row that opens on a click: the pointer, and an accent outline inside its edges while focused by keyboard.
 const OPENABLE_ROW =
   'cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 ' +
   'focus-visible:outline-accent'
 const ROW =
-  'transition-[background-color] max-[720px]:grid max-[720px]:grid-cols-[calc(var(--spacing)*11)_minmax(0,1fr)_auto] ' +
-  "max-[720px]:items-center max-[720px]:gap-x-3 max-[720px]:gap-y-1 max-[720px]:[grid-template-areas:'thumb_main_end''thumb_main_actions'] " +
-  'max-[720px]:border-b max-[720px]:border-hairline-soft max-[720px]:py-2.5 max-[720px]:pr-1 max-[720px]:pl-2'
+  'transition-[background-color] max-card:grid max-card:grid-cols-[calc(var(--spacing)*11)_minmax(0,1fr)_auto] ' +
+  "max-card:items-center max-card:gap-x-3 max-card:gap-y-1 max-card:[grid-template-areas:'thumb_main_end''thumb_main_actions'] " +
+  'max-card:border-b max-card:border-hairline-soft max-card:py-2.5 max-card:pr-1 max-card:pl-2'
 const STATUS_CLASSES: Record<RowTone, string> = {
   warn:
     'bg-warn-soft hover:bg-warn-soft-hover [&>td:first-child]:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--warn)] ' +
-    'max-[720px]:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--warn)] max-[720px]:[&>td:first-child]:shadow-none',
+    'max-card:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--warn)] max-card:[&>td:first-child]:shadow-none',
   danger:
     'bg-danger-soft hover:bg-danger-soft-hover [&>td:first-child]:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--danger)] ' +
-    'max-[720px]:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--danger)] max-[720px]:[&>td:first-child]:shadow-none',
+    'max-card:shadow-[inset_calc(var(--spacing)*0.75)_0_0_var(--danger)] max-card:[&>td:first-child]:shadow-none',
 }
 const SORT_ARROWS = { ascending: '↑', descending: '↓', none: '↕' }
 
@@ -131,7 +131,7 @@ export function DataTable<Row>({
   return (
     <div className="grid min-w-0 gap-3">
       {sortable.length > 0 && (
-        <div className="hidden items-center gap-2 max-[720px]:flex">
+        <div className="hidden items-center gap-2 max-card:flex">
           <Label htmlFor={sortId}>Ordenar</Label>
           <div className="min-w-0 flex-1">
             <Select
@@ -149,9 +149,9 @@ export function DataTable<Row>({
       {rows.length === 0 ? (
         empty
       ) : (
-        <div className="overflow-x-auto max-[720px]:overflow-visible">
-          <table aria-label={label} className="w-full border-collapse font-body text-sm text-text max-[720px]:block">
-            <thead className="max-[720px]:hidden">
+        <div className="overflow-x-auto max-card:overflow-visible">
+          <table aria-label={label} className="w-full border-collapse font-body text-sm text-text max-card:block">
+            <thead className="max-card:hidden">
               <tr>
                 {columns.map((column) => {
                   const order = ariaSort(sort, column.key)
@@ -187,7 +187,7 @@ export function DataTable<Row>({
                 })}
               </tr>
             </thead>
-            <tbody className="max-[720px]:block">
+            <tbody className="max-card:block">
               {rows.map((row) => {
                 const status = rowStatus?.(row)
                 return (
@@ -218,9 +218,9 @@ export function DataTable<Row>({
                       <td
                         key={column.key}
                         className={[
-                          'border-b border-hairline-soft px-2.5 py-2 align-middle max-[720px]:border-0 max-[720px]:p-0',
+                          'border-b border-hairline-soft px-2.5 py-2 align-middle max-card:border-0 max-card:p-0',
                           column.numeric ? 'text-right font-mono tabular-nums' : '',
-                          column.card ? CARD_AREA_CLASSES[column.card] : 'max-[720px]:hidden',
+                          column.card ? CARD_AREA_CLASSES[column.card] : 'max-card:hidden',
                         ].join(' ')}
                       >
                         {index === 0 && status && <span className="sr-only">{status.label}: </span>}
@@ -280,7 +280,7 @@ export function TableTitle({ title, code, details }: TableTitleProps) {
     <span className="grid min-w-0">
       <b className="font-semibold">{title}</b>
       <code className="font-mono text-xs text-text-muted">{code}</code>
-      {details && <span className="hidden text-xs text-text-muted max-[720px]:block">{details}</span>}
+      {details && <span className="hidden text-xs text-text-muted max-card:block">{details}</span>}
     </span>
   )
 }
