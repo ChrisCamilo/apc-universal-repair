@@ -204,7 +204,7 @@ test('Mobile: a part code search lists the parts and reveals their vehicles', as
   (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: PARTS, total: PARTS.length }) });
   const tree = await mount('fiat90', 'day');
   await search(tree, 'Procure modelo ou código da peça', 'fra1000');
-  const parts = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.accessibilityRole === 'radio' && /^FRA/.test(n.props.accessibilityLabel));
+  const parts = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'catalog.part-results.list.part');
   expect(parts().map((n) => n.props.accessibilityLabel)).toEqual([
     'FRA-1000 Pastilha de freio dianteira, Serve no Chevrolet Opala 4.1',
     'FRA-10002 Pastilha de freio traseira, Chevrolet Opala 3.8 (motor ainda sem ficha no catálogo)',

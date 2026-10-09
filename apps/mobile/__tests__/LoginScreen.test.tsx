@@ -6,6 +6,7 @@ import React from 'react';
 import { Modal, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { createMockAuth, LOGIN_MESSAGES, type AuthService, type SessionUser } from '@apc/shared/auth';
+import { isStyleId } from '@apc/shared/style-ids';
 import { TEST_USERS } from '@apc/shared/test-users';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { LoginScreen } from '../src/auth/LoginScreen';
@@ -14,6 +15,16 @@ import { themeStorage, ThemeProvider } from '../src/theme';
 // A login that keeps no session and answers at once.
 const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}, removeItem: async () => {} }, TEST_USERS, 0);
 const USER = TEST_USERS[0];
+
+/**
+ * Finds the view with a style id.
+ * @param tree Rendered tree.
+ * @param id The style id, e.g. "auth.login-screen.form".
+ * @returns The native view that carries it.
+ */
+function byId(tree: ReactTestRenderer.ReactTestRenderer, id: string): ReactTestRenderer.ReactTestInstance {
+  return tree.root.find((n) => typeof n.type === 'string' && n.props.testID === id);
+}
 
 /**
  * Finds a button by the label it shows.
@@ -150,13 +161,28 @@ test('Mobile: a refused login says so above the form and empties the password', 
   await type(tree, 'Usuário', USER.username);
   await type(tree, 'Senha', 'errada');
   await press(tree, 'Entrar');
-  const alert = tree.root.find((n) => n.props.accessibilityRole === 'alert' && typeof n.type === 'string');
+  const alert = byId(tree, 'auth.login-screen.form.alert');
+  expect(alert.props.accessibilityRole).toBe('alert');
   expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES.failed)).not.toHaveLength(0);
   expect(field(tree, 'Senha').props.value).toBe('');
   expect(field(tree, 'Usuário').props.value).toBe(USER.username);
   expect(focus.mock.contexts.at(-1)).toBe(field(tree, 'Senha').instance);
   expect(onLoggedIn).not.toHaveBeenCalled();
   focus.mockRestore();
+});
+
+// Checks the parts of the screen carry their style ids, the same as on the web: the page, the badge's heading, the
+// form and its actions, each on its own view; and that every id on the screen is written as the convention asks.
+test('Mobile: the login screen carries its style ids', async () => {
+  const tree = await mount('gt4', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
+  for (const id of ['auth.login-screen', 'auth.login-screen.brand.title', 'auth.login-screen.form', 'auth.login-screen.form.actions']) {
+    expect(byId(tree, id)).toBeDefined();
+  }
+  expect(byId(tree, 'auth.login-screen.brand.title').props.accessibilityRole).toBe('header');
+  const actions = byId(tree, 'auth.login-screen.form.actions');
+  expect(actions.findAll((n) => typeof n.type === 'string' && n.props.children === 'Entrar')).not.toHaveLength(0);
+  const ids = tree.root.findAll((n) => typeof n.type === 'string' && typeof n.props.testID === 'string').map((n) => n.props.testID);
+  expect(ids.filter((id) => id.startsWith('auth.') && !isStyleId(id))).toEqual([]);
 });
 
 // Holds the login's answer, presses "Entrar" and the "go" key again meanwhile, and checks "Entrar" says it is busy
