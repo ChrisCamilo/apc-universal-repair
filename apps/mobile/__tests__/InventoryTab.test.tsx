@@ -350,7 +350,7 @@ test('Mobile: the inventory shows loading, then the error state with a retry', a
     );
   });
   mounted.push(tree!);
-  expect(tree!.root.findAll((n) => n.props.testID === 'loading-row' && typeof n.type === 'string')).toHaveLength(5);
+  expect(tree!.root.findAll((n) => n.props.testID === 'inventory.inventory-tab.loading.row' && typeof n.type === 'string')).toHaveLength(5);
   expect(tree!.root.findAll((n) => n.props.accessibilityLabel === 'Carregando o estoque' && typeof n.type === 'string')).not.toHaveLength(0);
 
   await ReactTestRenderer.act(async () => fail());

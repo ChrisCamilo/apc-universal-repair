@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { TextInput, View, type ViewStyle } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import { entryFilters, type ItemFilters } from '@apc/shared/item-filters';
 import type { Item } from '@apc/shared/items';
@@ -14,14 +14,13 @@ import {
   type ListEntry,
   type VehicleModel,
 } from '@apc/shared/lists';
-import { scales } from '@apc/shared/theme';
 import { Button } from '../Button';
 import { RowAction } from '../DataTable';
 import { Dialog } from '../Dialog';
 import { TextField } from '../TextField';
-import { softHairline, useTheme, type ActiveTheme } from '../theme';
 import { useToast } from '../Toast';
 import { Heading, Text } from '../Typography';
+import { useStyles } from './ManageListsDialog.styles';
 import type { RemoveListEntry, RenameListEntry } from './useItemLists';
 
 // The "Gerenciar listas" dialog of the Inventory tab, the same as the web: a section for categories, part brands,
@@ -31,12 +30,7 @@ import type { RemoveListEntry, RenameListEntry } from './useItemLists';
 // its models); a name items use can't be deleted, and the dialog says how many items use it, with "Ver itens" to
 // show them in the list; nor can a vehicle brand of the catalog. A toast confirms each rename and delete.
 
-const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', gap: scales.space.s1 };
-const BUTTONS_STYLE: ViewStyle = { flexDirection: 'row', justifyContent: 'flex-end', gap: scales.space.s2 };
 const KINDS: ItemListKind[] = ['categories', 'partBrands', 'vehicleBrands', 'vehicleModels'];
-const NAME_STYLE: ViewStyle = { flex: 1, minWidth: 0 };
-const RENAME_STYLE: ViewStyle = { gap: scales.space.s2, paddingVertical: scales.space.s2 };
-const SECTION_STYLE: ViewStyle = { gap: scales.space.s1 };
 
 /** An entry of one of the lists. */
 type Entry = { kind: ItemListKind; entry: ListEntry | VehicleModel };
@@ -54,24 +48,8 @@ type ManageListsDialogProps = {
   onClose: () => void;
 };
 
-/**
- * Styles a row of a list: the name, its count and its actions in a line over a soft hairline.
- * @param theme Active theme.
- * @returns Style for the row View.
- */
-function rowStyle(theme: ActiveTheme): ViewStyle {
-  return {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scales.space.s2,
-    minHeight: scales.space.s7,
-    borderBottomWidth: 1,
-    borderBottomColor: softHairline(theme),
-  };
-}
-
 export function ManageListsDialog({ open, lists, items, onRename, onRemove, onChanged, onShowItems, onClose }: ManageListsDialogProps) {
-  const theme = useTheme();
+  const { styles, ids } = useStyles();
   const toast = useToast();
   // The entry being renamed, with the name typed and its message.
   const [editing, setEditing] = useState<Entry & { name: string; error?: string }>();
@@ -146,14 +124,14 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
           onCancel={() => setEditing(undefined)}
         />
       ) : (
-        <View key={entry.id} style={rowStyle(theme)} testID="list-entry">
-          <View style={NAME_STYLE}>
+        <View key={entry.id} style={styles.entry} testID={ids.entry}>
+          <View style={styles.name} testID={ids.name}>
             <Text lines={1}>{entry.name}</Text>
           </View>
           <Text size="sm" tone="muted">
             {usesLabel(itemsUsing(items, kind, entry, lists))}
           </Text>
-          <View style={ACTIONS_STYLE}>
+          <View style={styles.actions} testID={ids.actions}>
             <RowAction icon={pencilIcon} label={`Renomear ${entry.name}`} onPress={() => setEditing({ kind, entry, name: entry.name })} />
             <RowAction icon={trashIcon} label={`Excluir ${entry.name}`} tone="danger" onPress={() => setRemoving({ kind, entry })} />
           </View>
@@ -178,7 +156,7 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
       }
     >
       {KINDS.map((kind) => (
-        <View key={kind} style={SECTION_STYLE}>
+        <View key={kind} style={styles.section} testID={ids.section}>
           <Heading level={4}>{ITEM_LIST_TEXTS[kind].title}</Heading>
           {lists[kind].length === 0 ? (
             <Text size="sm" tone="muted">
@@ -189,7 +167,7 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
               .map((brand) => ({ brand, models: lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) }))
               .filter(({ models }) => models.length > 0)
               .map(({ brand, models }) => (
-                <View key={brand.id} accessibilityLabel={`Modelos de ${brand.name}`}>
+                <View key={brand.id} accessibilityLabel={`Modelos de ${brand.name}`} style={styles.group} testID={ids.group}>
                   <Text size="sm" tone="muted">
                     {brand.name}
                   </Text>
@@ -278,6 +256,7 @@ function RenameRow({
   onCancel: () => void;
 }) {
   const field = useRef<ComponentRef<typeof TextInput>>(null);
+  const { styles, ids } = useStyles();
 
   // Start on the field, ready to type.
   useEffect(() => {
@@ -285,9 +264,9 @@ function RenameRow({
   }, []);
 
   return (
-    <View style={RENAME_STYLE}>
+    <View style={styles.rename} testID={ids.rename}>
       <TextField ref={field} label={label} value={name} onValueChange={onNameChange} error={error} onSubmitEditing={onSave} />
-      <View style={BUTTONS_STYLE}>
+      <View style={styles.buttons} testID={ids.buttons}>
         <Button variant="secondary" size="sm" onPress={onCancel}>
           Cancelar
         </Button>

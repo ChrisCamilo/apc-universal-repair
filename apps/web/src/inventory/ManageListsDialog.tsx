@@ -19,6 +19,7 @@ import { Dialog } from '../components/Dialog.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { Heading, Text } from '../components/Typography.tsx'
+import { manageListsDialog } from './ManageListsDialog.styles.ts'
 import type { RemoveListEntry, RenameListEntry } from './useItemLists.ts'
 
 // The "Gerenciar listas" dialog of the Inventory tab, for fixing typos and cleaning up the lists the item form picks
@@ -49,6 +50,7 @@ type ManageListsDialogProps = {
 
 export function ManageListsDialog({ open, lists, items, onRename, onRemove, onChanged, onShowItems, onClose }: ManageListsDialogProps) {
   const toast = useToast()
+  const { classes, ids } = manageListsDialog()
   // The entry being renamed, with the name typed and its message.
   const [editing, setEditing] = useState<Entry & { name: string; error?: string }>()
   const [saving, setSaving] = useState(false)
@@ -109,7 +111,7 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
 
   /** Lists the rows of some entries of one list, or says there are none. */
   const rows = (kind: ItemListKind, entries: readonly (ListEntry | VehicleModel)[]) => (
-    <ul className="m-0 grid list-none p-0">
+    <ul className={classes.rows()} data-testid={ids.rows}>
       {entries.map((entry) =>
         editing?.entry.id === entry.id ? (
           <RenameRow
@@ -152,7 +154,7 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
       }
     >
       {KINDS.map((kind) => (
-        <section key={kind} aria-label={ITEM_LIST_TEXTS[kind].title} className="grid gap-1">
+        <section key={kind} aria-label={ITEM_LIST_TEXTS[kind].title} className={classes.section()} data-testid={ids.section}>
           <Heading level={4}>{ITEM_LIST_TEXTS[kind].title}</Heading>
           {lists[kind].length === 0 ? (
             <Text size="sm" tone="muted">
@@ -163,7 +165,13 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
               .map((brand) => ({ brand, models: lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) }))
               .filter(({ models }) => models.length > 0)
               .map(({ brand, models }) => (
-                <div key={brand.id} role="group" aria-label={`Modelos de ${brand.name}`} className="grid pt-2">
+                <div
+                  key={brand.id}
+                  role="group"
+                  aria-label={`Modelos de ${brand.name}`}
+                  className={classes.group()}
+                  data-testid={ids.group}
+                >
                   <Text size="sm" tone="muted">
                     {brand.name}
                   </Text>
@@ -226,15 +234,16 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
 
 /** A name of a list, how many items use it, and its pencil and trash. */
 function EntryRow({ name, uses, onRename, onRemove }: { name: string; uses: number; onRename: () => void; onRemove: () => void }) {
+  const { classes, ids } = manageListsDialog()
   return (
-    <li className="flex min-h-11 items-center gap-2 border-b border-hairline-soft py-1">
-      <span className="min-w-0 flex-1 truncate font-body text-base text-text" title={name}>
+    <li className={classes.entry()} data-testid={ids.entry}>
+      <span className={classes.name()} data-testid={ids.name} title={name}>
         {name}
       </span>
-      <span className="shrink-0 font-mono text-xs tabular-nums text-text-muted">
+      <span className={classes.uses()} data-testid={ids.uses}>
         {uses === 0 ? 'sem itens' : uses === 1 ? '1 item' : `${uses} itens`}
       </span>
-      <span className="inline-flex shrink-0 gap-0.5">
+      <span className={classes.actions()} data-testid={ids.actions}>
         <RowAction icon={pencilIcon} label={`Renomear ${name}`} onClick={onRename} />
         <RowAction icon={trashIcon} label={`Excluir ${name}`} tone="danger" onClick={onRemove} />
       </span>
@@ -261,6 +270,7 @@ function RenameRow({
   onCancel: () => void
 }) {
   const field = useRef<HTMLInputElement>(null)
+  const { classes, ids } = manageListsDialog()
 
   // Start on the field, with the name selected, ready to be typed over.
   useEffect(() => {
@@ -281,9 +291,9 @@ function RenameRow({
   }
 
   return (
-    <li className="grid gap-2 border-b border-hairline-soft py-2">
+    <li className={classes.rename()} data-testid={ids.rename}>
       <TextField ref={field} label={label} value={name} onValueChange={onNameChange} error={error} onKeyDown={onKeyDown} />
-      <span className="flex justify-end gap-2">
+      <span className={classes.buttons()} data-testid={ids.buttons}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
           Cancelar
         </Button>

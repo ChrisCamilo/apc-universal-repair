@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { TextInput, View, type ViewStyle } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { capitalizeFirst, findOption, itemSchema, POSITIONS, SIDES, type Item } from '@apc/shared/items';
 import {
   codeTakenError,
@@ -19,7 +19,6 @@ import {
 } from '@apc/shared/item-form';
 import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists';
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
-import { scales } from '@apc/shared/theme';
 import { API_URL } from '../api';
 import { Button } from '../Button';
 import { Combobox } from '../Combobox';
@@ -31,6 +30,7 @@ import { TextField } from '../TextField';
 import { useToast } from '../Toast';
 import { Label } from '../Typography';
 import { tourTarget } from '../tourTargets';
+import { useStyles } from './ItemFormDialog.styles';
 import { pickPhotos, savePhotos } from './photos';
 import type { CreateListEntry } from './useItemLists';
 
@@ -49,8 +49,6 @@ import type { CreateListEntry } from './useItemLists';
 // save like the edit form. The owner may open it with values filled in and follow what is typed, as the Inventory
 // tutorial does, whose tour points at the marked fields and buttons.
 
-const CHOICE_STYLE: ViewStyle = { gap: scales.space.s2 };
-const FIELDS_STYLE: ViewStyle = { gap: scales.space.s3 };
 const PHOTOS_LABEL = 'Fotos do item';
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }));
 const SIDE_OPTIONS = SIDES.map((value) => ({ value, label: value }));
@@ -89,6 +87,7 @@ export function ItemFormDialog({
   onFormChange,
 }: ItemFormDialogProps) {
   const toast = useToast();
+  const { styles, ids } = useStyles();
   const [viewing, setViewing] = useState(details && item !== undefined);
   const code = useRef<ComponentRef<typeof TextInput>>(null);
   const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM));
@@ -222,7 +221,7 @@ export function ItemFormDialog({
       }
     >
       {viewing && item ? (
-        <View style={FIELDS_STYLE}>
+        <View style={styles.fields} testID={ids.fields}>
           <ImageUpload
             label={PHOTOS_LABEL}
             photos={photos}
@@ -236,7 +235,7 @@ export function ItemFormDialog({
           ))}
         </View>
       ) : (
-        <View style={FIELDS_STYLE}>
+        <View style={styles.fields} testID={ids.fields}>
           <ImageUpload label={PHOTOS_LABEL} photos={photos} onPhotosChange={setPhotos} limit={ITEM_PHOTO_LIMIT} onPick={pickPhotos} />
           <View ref={tourTarget('form-code')} collapsable={false}>
             <TextField
@@ -318,7 +317,7 @@ export function ItemFormDialog({
             onValueChange={(value) => change('minQuantity', value.replace(/\D/g, ''))}
             helper="Abaixo disso o item aparece como estoque baixo."
           />
-          <View style={CHOICE_STYLE}>
+          <View style={styles.choice} testID={ids.choice}>
             <Label>{ITEM_FIELD_LABELS.position}</Label>
             <Segmented
               label={ITEM_FIELD_LABELS.position}
@@ -327,7 +326,7 @@ export function ItemFormDialog({
               onValueChange={(value) => change('position', value)}
             />
           </View>
-          <View style={CHOICE_STYLE}>
+          <View style={styles.choice} testID={ids.choice}>
             <Label>{ITEM_FIELD_LABELS.side}</Label>
             <Segmented
               label={ITEM_FIELD_LABELS.side}
