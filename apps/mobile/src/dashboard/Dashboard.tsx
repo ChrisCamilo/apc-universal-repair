@@ -90,9 +90,9 @@ export function Dashboard({ userMenu }: DashboardProps) {
                     selected={tab}
                     onSelect={setTab}
                     reorderable={reorder.reorderable}
-                    onReorder={(ids) => {
-                      setOrder(ids);
-                      save(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids));
+                    onReorder={(next) => {
+                      setOrder(next);
+                      save(TAB_ORDER_STORAGE_KEY, JSON.stringify(next));
                     }}
                   />
                 </ScrollView>
