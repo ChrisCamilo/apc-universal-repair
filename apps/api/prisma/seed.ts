@@ -1,12 +1,15 @@
 import "dotenv/config";
 import { optionKey, type ItemCreate } from "@apc/shared/items";
 import { listName } from "@apc/shared/lists";
+import { TEST_USERS } from "@apc/shared/test-users";
 import { prisma } from "../src/db/client.js";
 import { createData, type ListIds } from "../src/items/items.js";
 import { listIds } from "../src/items/listIds.js";
+import { hashPassword } from "../src/users/passwords.js";
 
-// The starting data of a new database (`pnpm --filter @apc/api db:seed`): the default categories, part brands,
-// vehicle brands with the models of the catalog, and sample items, each with a unit price. It can run again: a name a
+// The starting data of a new database (`pnpm --filter @apc/api db:seed`): the test users of @apc/shared/test-users
+// (christian.camilo and oficina) with their passwords hashed, the default categories, part brands, vehicle brands with
+// the models of the catalog, and sample items, each with a unit price. It can run again: a username in use, a name a
 // list holds and an item whose part code is in use are left as they are.
 
 /** The default categories. */
@@ -47,8 +50,13 @@ function entry(name: string) {
   return { where: { nameKey: optionKey(written) }, create: { name: written, nameKey: optionKey(written) }, update: {} };
 }
 
-/** Fills the lists and adds the sample items, leaving what is already there as it is. */
+/** Adds the test users, fills the lists and adds the sample items, leaving what is already there as it is. */
 async function seed() {
+  for (const { username, displayName, password } of TEST_USERS) {
+    if (!(await prisma.user.findUnique({ where: { username }, select: { id: true } }))) {
+      await prisma.user.create({ data: { username, displayName, email: `${username}@apc.test`, passwordHash: await hashPassword(password) } });
+    }
+  }
   for (const name of CATEGORIES) {
     await prisma.category.upsert(entry(name));
   }

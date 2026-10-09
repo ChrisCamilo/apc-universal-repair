@@ -15,8 +15,10 @@ import { loginScreen } from './LoginScreen.styles.ts'
 // is typed into. While the login runs, "Entrar" shows it is busy and is disabled, so neither another press nor
 // Enter (the browser only sends a form through an enabled submit button) sends it twice. A refused login shows
 // one message above the form, without saying which field was wrong, and empties and focuses the password.
+// When the login can't be made (the API out of reach), it says so instead, keeping the password.
 // "Esqueceu a senha?" opens a notice to ask the workshop's admin for a new password, as there is no reset until
 // the real backend (EP-10); it closes on "Entendi", Escape or a click outside, and the focus goes back to the link.
+// "Criar conta" opens the sign-up.
 
 const FIELD_ORDER = ['username', 'password'] as const
 
@@ -25,13 +27,16 @@ type LoginScreenProps = {
   auth: AuthService
   /** Called with the user once the login is accepted, e.g. to open the Dashboard. */
   onLoggedIn: (user: SessionUser) => void
+  /** Opens the sign-up. */
+  onRegister: () => void
 }
 
-export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
+export function LoginScreen({ auth, onLoggedIn, onRegister }: LoginScreenProps) {
   const [credentials, setCredentials] = useState<Credentials>({ username: '', password: '' })
   const [errors, setErrors] = useState<LoginErrors>({})
   const [sending, setSending] = useState(false)
-  const [refused, setRefused] = useState(false)
+  // Why the last login didn't go through: the user or password refused, or the API out of reach.
+  const [refused, setRefused] = useState<string>()
   const [forgot, setForgot] = useState(false)
   const usernameInput = useRef<HTMLInputElement>(null)
   const passwordInput = useRef<HTMLInputElement>(null)
@@ -54,12 +59,16 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
       input.current?.focus()
       return
     }
-    setRefused(false)
+    setRefused(undefined)
     setSending(true)
-    const user = await auth.login(credentials)
+    const user = await auth.login(credentials).catch(() => undefined)
     setSending(false)
+    if (user === undefined) {
+      setRefused(LOGIN_MESSAGES.unreachable)
+      return
+    }
     if (!user) {
-      setRefused(true)
+      setRefused(LOGIN_MESSAGES.failed)
       setCredentials((typed) => ({ ...typed, password: '' }))
       passwordInput.current?.focus()
       return
@@ -78,7 +87,7 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
         <form noValidate className={classes.form()} data-testid={ids.form} onSubmit={submit}>
           {refused && (
             <Text role="alert" size="sm" tone="danger">
-              {LOGIN_MESSAGES.failed}
+              {refused}
             </Text>
           )}
           <TextField
@@ -105,6 +114,9 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
             </Button>
             <Button type="button" variant="link" onClick={() => setForgot(true)}>
               Esqueceu a senha?
+            </Button>
+            <Button type="button" variant="link" onClick={onRegister}>
+              Criar conta
             </Button>
           </div>
         </form>

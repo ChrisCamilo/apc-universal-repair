@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { serveItems } from "./items.ts";
+import { serveUsers } from "./users.ts";
 import { signIn } from "./session.ts";
 
 const USER = TEST_USERS[0];
@@ -10,6 +11,7 @@ const USER = TEST_USERS[0];
 // /inventory.
 test("Web: a logged-out user goes to the login and back to where they were going", async ({ page }) => {
   await serveItems(page, []);
+  await serveUsers(page);
   await page.addInitScript(() => {
     new MutationObserver(() => {
       if (document.querySelector('[role="tablist"]')) {
@@ -32,6 +34,7 @@ test("Web: a logged-out user goes to the login and back to where they were going
 // Opens an unknown path with nobody logged in and checks it also goes to the login, and on to the Dashboard after.
 test("Web: an unknown path asks for the login too", async ({ page }) => {
   await serveItems(page, []);
+  await serveUsers(page);
   await page.goto("/nao-existe");
   await expect(page).toHaveURL(/\/login$/);
   await page.getByLabel("Usuário").fill(USER.username);

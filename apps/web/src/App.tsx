@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { auth } from './auth/auth.ts'
 import { LoginScreen } from './auth/LoginScreen.tsx'
+import { RegisterScreen } from './auth/RegisterScreen.tsx'
 import { RequireSession } from './auth/RequireSession.tsx'
 import { SessionProvider } from './auth/SessionProvider.tsx'
 import { useSession } from './auth/sessionContext.ts'
@@ -9,9 +10,10 @@ import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
 import { InventoryTab } from './dashboard/InventoryTab.tsx'
 import { UserMenu } from './dashboard/UserMenu.tsx'
 
-// The app's routes. /login is the login screen; the Dashboard, behind it, frames every tab at its own path. "/"
-// opens the last tab used (the Inventory tab the first time) and any unknown path goes back there. Only a logged
-// user reaches the Dashboard: anyone else goes to /login and, once logged in, back to where they were going.
+// The app's routes. /login is the login screen and /register the sign-up; the Dashboard, behind them, frames every
+// tab at its own path. "/" opens the last tab used (the Inventory tab the first time) and any unknown path goes back
+// there. Only a logged user reaches the Dashboard: anyone else goes to /login and, once logged in or signed up, back
+// to where they were going.
 
 export default function App() {
   return (
@@ -19,6 +21,7 @@ export default function App() {
       <SessionProvider auth={auth}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route
             path="/"
             element={
@@ -56,6 +59,31 @@ function LoginPage() {
         setUser(loggedIn)
         navigate(from, { replace: true })
       }}
+      onRegister={() => navigate('/register', { state: { from } })}
+    />
+  )
+}
+
+// The sign-up, or straight on to the Dashboard when someone is already logged in. A new user goes on to the route
+// that sent them to the login, or to the Dashboard; "Já tem conta? Entrar" goes back to the login.
+function RegisterPage() {
+  const { user, setUser } = useSession()
+  const navigate = useNavigate()
+  const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
+  if (user === undefined) {
+    return null
+  }
+  if (user) {
+    return <Navigate to={from} replace />
+  }
+  return (
+    <RegisterScreen
+      auth={auth}
+      onRegistered={(created) => {
+        setUser(created)
+        navigate(from, { replace: true })
+      }}
+      onLogin={() => navigate('/login', { state: { from } })}
     />
   )
 }

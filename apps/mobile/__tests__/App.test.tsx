@@ -18,6 +18,24 @@ jest.mock('react-native-safe-area-context', () => require('react-native-safe-are
 const STORAGE = createAsyncStorage('apc-universal-repair');
 const USER = TEST_USERS[0];
 
+// The setup's fetch, put back after each test that stands in for the API's login and sign-up.
+const SETUP_FETCH = globalThis.fetch;
+
+/**
+ * Answers the API's login and sign-up with a user, and anything else as the setup's fetch does.
+ * @param user The user the API answers with.
+ * @returns The stand-in, to check what was sent.
+ */
+function serveUser(user: SessionUser) {
+  const stand = jest.fn((url: RequestInfo, init?: RequestInit) =>
+    /\/(sessions|users)$/.test(String(url))
+      ? Promise.resolve({ ok: true, status: String(url).endsWith('/users') ? 201 : 200, json: () => Promise.resolve(user) } as Response)
+      : SETUP_FETCH(url, init),
+  );
+  globalThis.fetch = stand as typeof fetch;
+  return stand;
+}
+
 /**
  * Renders the whole app and waits for its providers and the saved session to load.
  * @returns The rendered tree.
@@ -54,6 +72,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   jest.restoreAllMocks();
+  globalThis.fetch = SETUP_FETCH;
 });
 
 // Renders the whole app once to catch crashes on start, such as a missing provider or a broken import.
@@ -64,6 +83,7 @@ test('Mobile: app renders without crashing', async () => {
 // Opens the app with no saved session and checks it starts on the login, then logs in as a test user with the
 // keyboard's "go" key and checks the Dashboard takes its place once the AuthService accepts it.
 test('Mobile: with no session the app opens on the login and goes on to the Dashboard', async () => {
+  serveUser({ id: USER.id, username: USER.username, displayName: USER.displayName, initials: initials(USER.displayName) });
   const tree = await mountApp();
   const input = (label: string) => tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);
   expect(showsLogin(tree)).toBe(true);
@@ -73,6 +93,32 @@ test('Mobile: with no session the app opens on the login and goes on to the Dash
   await ReactTestRenderer.act(async () => input('Senha').props.onSubmitEditing());
   expect(showsDashboard(tree)).toBe(true);
   expect(showsLogin(tree)).toBe(false);
+});
+
+// Opens the sign-up from the login, goes back and forth, signs up a new user with the keyboard's "go" key in the last
+// field and checks the Dashboard takes its place once the API creates them.
+test('Mobile: the login leads to the sign-up, which goes on to the Dashboard', async () => {
+  const fetch = serveUser({ id: 'u1', username: 'ana.souza', displayName: 'Ana Souza', initials: 'AS' });
+  const tree = await mountApp();
+  const input = (label: string) => tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);
+  const pressable = (label: string) =>
+    tree.root.findAll((n) => typeof n.props.style === 'function' && n.findAll((t) => typeof t.type === 'string' && t.props.children === label).length > 0)[0];
+  const showsSignUp = () => tree.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Confirmar senha').length > 0;
+  await ReactTestRenderer.act(async () => pressable('Criar conta').props.onPress());
+  expect(showsSignUp()).toBe(true);
+  await ReactTestRenderer.act(async () => pressable('Já tem conta? Entrar').props.onPress());
+  expect(showsSignUp()).toBe(false);
+  expect(showsLogin(tree)).toBe(true);
+
+  await ReactTestRenderer.act(async () => pressable('Criar conta').props.onPress());
+  const typed = { Nome: 'Ana Souza', Usuário: 'ana.souza', 'E-mail': 'ana@oficina.com', Senha: 'freio1234', 'Confirmar senha': 'freio1234' };
+  for (const [label, text] of Object.entries(typed)) {
+    await ReactTestRenderer.act(async () => input(label).props.onChangeText(text));
+  }
+  await ReactTestRenderer.act(async () => input('Confirmar senha').props.onSubmitEditing());
+  expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/users$/), expect.objectContaining({ method: 'POST' }));
+  expect(showsDashboard(tree)).toBe(true);
+  expect(showsSignUp()).toBe(false);
 });
 
 // Saves a test user's session, as a previous login would, and checks the app starts straight on the Dashboard,

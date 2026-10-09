@@ -104,6 +104,19 @@ enum Side {
   BOTH
 }
 
+/// Someone who logs in. The username is kept in lowercase (see @apc/shared/auth), so names that differ only in case
+/// are the same user. The password is kept only as its salted scrypt hash, which the API never sends.
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  displayName  String
+  /// Collected on sign-up and kept; nothing is sent to it yet.
+  email        String
+  /// "scrypt$<salt>$<hash>", in hex.
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
 /// A vehicle model of a vehicle brand, unique within it; nameKey as in Brand.
 model VehicleModel {
   id      String @id @default(uuid())

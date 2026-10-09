@@ -103,7 +103,7 @@ for (const style of STYLES) {
     // panel in the panel color, and "Entrar" is filled with the accent.
     test(`Mobile: the login follows the ${style}/${mode} theme`, async () => {
       const { colors } = themes[style][mode];
-      const tree = await mount(style, mode, <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
+      const tree = await mount(style, mode, <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />);
       const header = tree.root.find((n) => n.props.accessibilityRole === 'header' && typeof n.type === 'string');
       expect(header.find((n) => n.props.accessibilityLabel === 'APC Universal Repair' && n.props.viewBox === '0 0 220 180')).toBeDefined();
       expect(tree.root.find((n) => n.props.testID === 'common.brand-mark.needle').props.stroke).toBe(colors.accent);
@@ -119,7 +119,7 @@ for (const style of STYLES) {
 test('Mobile: empty fields are not sent and the cursor goes to the first one', async () => {
   const login = jest.spyOn(AUTH, 'login');
   const focus = jest.spyOn(TextInput.prototype, 'focus');
-  const tree = await mount('eighties', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
+  const tree = await mount('eighties', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />);
   await press(tree, 'Entrar');
   expect(shows(tree, LOGIN_MESSAGES.username)).toBe(true);
   expect(shows(tree, LOGIN_MESSAGES.password)).toBe(true);
@@ -140,7 +140,7 @@ test('Mobile: empty fields are not sent and the cursor goes to the first one', a
 test('Mobile: the keyboard keys move to the password and send the login', async () => {
   const onLoggedIn = jest.fn();
   const focus = jest.spyOn(TextInput.prototype, 'focus');
-  const tree = await mount('gt4', 'day', <LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} />);
+  const tree = await mount('gt4', 'day', <LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} onRegister={() => {}} />);
   expect(field(tree, 'Usuário').props.returnKeyType).toBe('next');
   expect(field(tree, 'Senha').props.returnKeyType).toBe('go');
   await type(tree, 'Usuário', USER.username);
@@ -157,7 +157,7 @@ test('Mobile: the keyboard keys move to the password and send the login', async 
 test('Mobile: a refused login says so above the form and empties the password', async () => {
   const onLoggedIn = jest.fn();
   const focus = jest.spyOn(TextInput.prototype, 'focus');
-  const tree = await mount('bmw90', 'day', <LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} />);
+  const tree = await mount('bmw90', 'day', <LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} onRegister={() => {}} />);
   await type(tree, 'Usuário', USER.username);
   await type(tree, 'Senha', 'errada');
   await press(tree, 'Entrar');
@@ -174,7 +174,7 @@ test('Mobile: a refused login says so above the form and empties the password', 
 // Checks the parts of the screen carry their style ids, the same as on the web: the page, the badge's heading, the
 // form and its actions, each on its own view; and that every id on the screen is written as the convention asks.
 test('Mobile: the login screen carries its style ids', async () => {
-  const tree = await mount('gt4', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
+  const tree = await mount('gt4', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />);
   for (const id of ['auth.login-screen', 'auth.login-screen.brand.title', 'auth.login-screen.form', 'auth.login-screen.form.actions']) {
     expect(byId(tree, id)).toBeDefined();
   }
@@ -190,7 +190,7 @@ test('Mobile: the login screen carries its style ids', async () => {
 test('Mobile: Entrar shows it is busy and the login is sent only once', async () => {
   let answer: (user: SessionUser | null) => void = () => {};
   const slow: AuthService = { ...AUTH, login: jest.fn(() => new Promise<SessionUser | null>((resolve) => (answer = resolve))) };
-  const tree = await mount('eighties', 'day', <LoginScreen auth={slow} onLoggedIn={() => {}} />);
+  const tree = await mount('eighties', 'day', <LoginScreen auth={slow} onLoggedIn={() => {}} onRegister={() => {}} />);
   await type(tree, 'Usuário', USER.username);
   await type(tree, 'Senha', USER.password);
   // the press starts the login without waiting for its answer, which the test holds
@@ -204,11 +204,35 @@ test('Mobile: Entrar shows it is busy and the login is sent only once', async ()
   expect(button(tree, 'Entrar').props.accessibilityState).toMatchObject({ busy: false });
 });
 
+// Makes the login fail to be checked, as when the API is out of reach, and checks the screen says so instead of
+// blaming the user or password, keeping the password typed.
+test('Mobile: a login that can\'t be checked says the API is out of reach', async () => {
+  const offline: AuthService = { ...AUTH, login: jest.fn(() => Promise.reject(new TypeError('Network request failed'))) };
+  const tree = await mount('gt4', 'night', <LoginScreen auth={offline} onLoggedIn={() => {}} onRegister={() => {}} />);
+  await type(tree, 'Usuário', USER.username);
+  await type(tree, 'Senha', USER.password);
+  await press(tree, 'Entrar');
+  const alert = byId(tree, 'auth.login-screen.form.alert');
+  expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES.unreachable)).not.toHaveLength(0);
+  expect(field(tree, 'Senha').props.value).toBe(USER.password);
+});
+
+// Presses "Criar conta" and checks it asks to open the sign-up, sending no login.
+test('Mobile: Criar conta opens the sign-up', async () => {
+  const onRegister = jest.fn();
+  const login = jest.spyOn(AUTH, 'login');
+  const tree = await mount('eighties', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={onRegister} />);
+  await press(tree, 'Criar conta');
+  expect(onRegister).toHaveBeenCalledTimes(1);
+  expect(login).not.toHaveBeenCalled();
+  login.mockRestore();
+});
+
 // Opens "Esqueceu a senha?" three times and closes the notice with "Entendi", the back button and a tap outside,
 // and checks it asks for the workshop's admin and sends no login.
 test('Mobile: the forgotten-password notice says whom to ask and closes three ways', async () => {
   const login = jest.spyOn(AUTH, 'login');
-  const tree = await mount('fiat90', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
+  const tree = await mount('fiat90', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />);
   const notice = () => tree.root.findByType(Modal);
 
   await press(tree, 'Esqueceu a senha?');

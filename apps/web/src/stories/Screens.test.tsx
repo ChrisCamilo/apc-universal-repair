@@ -82,7 +82,7 @@ for (const style of STYLES) {
       await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
       const screen = await render(
         <>
-          <LoginScreen auth={AUTH} onLoggedIn={() => {}} />
+          <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />
           <DashboardScreen initialTab="inventory" />
         </>,
       )
@@ -110,7 +110,7 @@ for (const size of SIZES) {
   // on desktop and above it on the phone.
   test(`Web: the Login fits the ${size.name} size`, async () => {
     await page.viewport(size.width, size.height)
-    const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
+    const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
     const mark = screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
     const field = screen.getByLabelText('Usuário').element().getBoundingClientRect()
     if (size.name === 'desktop') {

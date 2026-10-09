@@ -13,7 +13,7 @@ const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}
 const meta = { title: 'Screens', parameters: { layout: 'fullscreen' } } satisfies Meta
 export const Catalog: Story = { render: () => <DashboardScreen initialTab="catalog" /> }
 export const Dashboard: Story = { render: () => <DashboardScreen initialTab="inventory" /> }
-export const Login: Story = { render: () => <LoginScreen auth={AUTH} onLoggedIn={() => {}} /> }
+export const Login: Story = { render: () => <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} /> }
 
 type Story = StoryObj<typeof meta>
 

@@ -55,7 +55,7 @@ flowchart TB
         styling["style-ids · screens<br/>style ids · style guard · screen sizes"]
     end
     subgraph other["App"]
-        auth["auth · test-users<br/>mocked login"]
+        auth["auth · test-users<br/>sign-up rules · login on the API · mock"]
         catalog["catalog<br/>mocked vehicle catalog"]
     end
     itemForm --> items
@@ -147,16 +147,17 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 | Part | What it does | Main technologies |
 |---|---|---|
 | `packages/shared` | The contract and the rules: Zod schemas of every request and response, the writing rule, search and sort, form checks, CSV reading, design tokens of the 4 styles and 2 modes. No UI, so web and mobile behave the same. | TypeScript, Zod 4 |
-| `apps/web` | The web app: login, Dashboard with the Inventory and Catalog tabs, design system components. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
+| `apps/web` | The web app: login and sign-up, Dashboard with the Inventory and Catalog tabs, design system components. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
 | `apps/mobile` | The phone app, the same screens with React Native components. | React Native 0.87, AsyncStorage, react-native-svg, image and document pickers |
-| `apps/api` | The REST API: items, item lists, photos, CSV import. Validates every request with the shared schemas. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
-| PostgreSQL | Items, lists and photo records. Photo files stay on disk under `PHOTOS_DIR`. | PostgreSQL, Prisma migrations |
+| `apps/api` | The REST API: users (sign-up and login), items, item lists, photos, CSV import. Validates every request with the shared schemas. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
+| PostgreSQL | Users, items, lists and photo records. Photo files stay on disk under `PHOTOS_DIR`. | PostgreSQL, Prisma migrations |
 
 ### How they talk
 
 - Web and mobile call the API over HTTP with JSON; the web goes through the Vite dev server's `/api` proxy, the phone straight to `API_URL`.
 - Both sides use the same Zod schemas from `@apc/shared`, so a field can't mean one thing in the app and another in the API.
 - The API speaks names (`"Motor"`, `"D"`); the database keeps references and enums (see [database.md](database.md)).
+- Sign-up (`POST /users`) and login (`POST /sessions`) go to the API, which keeps the users and checks the password against its hash; the app saves the user it answers with as the session on the device. Real sessions, with tokens the API checks, come with EP-10.
 
 ### Tooling
 
@@ -182,16 +183,17 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 | Parte | O que faz | Principais tecnologias |
 |---|---|---|
 | `packages/shared` | O contrato e as regras: schemas Zod de cada requisição e resposta, a regra de escrita, busca e ordenação, as validações do formulário, a leitura do CSV e os tokens de design dos 4 estilos e 2 modos. Sem interface, para web e celular funcionarem igual. | TypeScript, Zod 4 |
-| `apps/web` | O app web: login, Dashboard com as abas Estoque e Catálogo, componentes do design system. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
+| `apps/web` | O app web: login e cadastro, Dashboard com as abas Estoque e Catálogo, componentes do design system. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
 | `apps/mobile` | O app para celular, com as mesmas telas em componentes React Native. | React Native 0.87, AsyncStorage, react-native-svg, seletores de imagem e de documentos |
-| `apps/api` | A API REST: itens, listas, fotos e importação de CSV. Valida cada requisição com os schemas compartilhados. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
-| PostgreSQL | Itens, listas e os registros das fotos. Os arquivos das fotos ficam em disco, em `PHOTOS_DIR`. | PostgreSQL, migrações do Prisma |
+| `apps/api` | A API REST: usuários (cadastro e login), itens, listas, fotos e importação de CSV. Valida cada requisição com os schemas compartilhados. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
+| PostgreSQL | Usuários, itens, listas e os registros das fotos. Os arquivos das fotos ficam em disco, em `PHOTOS_DIR`. | PostgreSQL, migrações do Prisma |
 
 ### Como conversam
 
 - Web e celular chamam a API por HTTP com JSON; a web passa pelo proxy `/api` do servidor do Vite, o celular vai direto ao `API_URL`.
 - Os dois lados usam os mesmos schemas Zod do `@apc/shared`, então um campo não pode significar uma coisa no app e outra na API.
 - A API fala em nomes (`"Motor"`, `"D"`); o banco guarda referências e enums (veja [database.md](database.md)).
+- O cadastro (`POST /users`) e o login (`POST /sessions`) vão para a API, que guarda os usuários e confere a senha com o hash dela; o app salva o usuário que ela responde como a sessão no aparelho. Sessões de verdade, com tokens conferidos pela API, vêm com o EP-10.
 
 ### Ferramentas
 

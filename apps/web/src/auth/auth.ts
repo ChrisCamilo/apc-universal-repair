@@ -1,15 +1,15 @@
-import { createMockAuth } from '@apc/shared/auth'
-import { TEST_USERS } from '@apc/shared/test-users'
+import { createApiAuth } from '@apc/shared/auth'
+import { API_BASE } from '../api.ts'
 import { readStored, removeStored, writeStored } from '../storage.ts'
 
-// The web app's login: the mocked AuthService (see @apc/shared/auth) with the session in localStorage, until the
-// real backend (EP-10) takes its place behind the same interface.
+// The web app's login and sign-up: the AuthService on the API (see @apc/shared/auth), with the session in
+// localStorage.
 
-export const auth = createMockAuth(
+export const auth = createApiAuth(
   {
     getItem: async (key) => readStored(key),
     setItem: async (key, value) => writeStored(key, value),
     removeItem: async (key) => removeStored(key),
   },
-  TEST_USERS,
+  API_BASE,
 )

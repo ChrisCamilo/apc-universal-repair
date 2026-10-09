@@ -24,6 +24,25 @@ export const FIELD_KINDS = {
     textContentType: "username",
     autoCapitalize: "none",
   },
+  name: {
+    type: "text",
+    autoComplete: "name",
+    inputMode: "text",
+    keyboardType: "default",
+    nativeAutoComplete: "name",
+    textContentType: "name",
+    autoCapitalize: "words",
+  },
+  // A password chosen now, as on sign-up: the browser and the phone offer to make one up and save it.
+  newPassword: {
+    type: "password",
+    autoComplete: "new-password",
+    inputMode: "text",
+    keyboardType: "default",
+    nativeAutoComplete: "password-new",
+    textContentType: "newPassword",
+    autoCapitalize: "none",
+  },
   password: {
     type: "password",
     autoComplete: "current-password",

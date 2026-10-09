@@ -4,6 +4,7 @@ import { THEME_STORAGE_KEYS } from "@apc/shared/theme";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
+import { serveUsers } from "./users.ts";
 
 const USER = TEST_USERS[0];
 
@@ -14,6 +15,7 @@ test.use({ colorScheme: "dark" });
 test.beforeEach(async ({ page }) => {
   await signIn(page);
   await serveItems(page, []);
+  await serveUsers(page);
 });
 
 // Opens the user menu and checks the trigger shows the logged user (the username only on desktop), turns dark mode

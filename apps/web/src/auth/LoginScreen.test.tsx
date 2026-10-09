@@ -44,7 +44,7 @@ for (const style of STYLES) {
       const { colors } = themes[style][mode]
       root.dataset.style = style
       root.dataset.mode = mode
-      const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
+      const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
       const mark = screen.getByRole('heading', { level: 1 }).getByRole('img', { name: 'APC Universal Repair' })
       await expect.element(mark).toBeVisible()
       expect(getComputedStyle(mark.element().querySelector('[data-testid="common.brand-mark.needle"]')!).stroke).toBe(rgb(colors.accent))
@@ -59,7 +59,7 @@ for (const style of STYLES) {
 // shows its message and is marked invalid, and the cursor goes to the first empty one.
 test('Web: empty fields are not sent and the cursor goes to the first one', async () => {
   const login = vi.spyOn(AUTH, 'login')
-  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
   await screen.getByRole('button', { name: 'Entrar' }).click()
   await expect.element(screen.getByText(LOGIN_MESSAGES.username)).toBeVisible()
   await expect.element(screen.getByText(LOGIN_MESSAGES.password)).toBeVisible()
@@ -80,7 +80,7 @@ test('Web: empty fields are not sent and the cursor goes to the first one', asyn
 test('Web: Enter sends the filled-in login and hands over the user', async () => {
   const onLoggedIn = vi.fn()
   const login = vi.spyOn(AUTH, 'login')
-  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} />)
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} onRegister={() => {}} />)
   await userEvent.type(screen.getByLabelText('Usuário'), '   ')
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
   await expect.element(screen.getByText(LOGIN_MESSAGES.username)).toBeVisible()
@@ -99,7 +99,7 @@ test('Web: Enter sends the filled-in login and hands over the user', async () =>
 // emptied and focused, the user stays, and nothing is handed over.
 test('Web: a refused login says so above the form and empties the password', async () => {
   const onLoggedIn = vi.fn()
-  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} />)
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} onRegister={() => {}} />)
   await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), 'errada{Enter}')
   const alert = screen.getByRole('alert')
@@ -116,7 +116,7 @@ test('Web: a refused login says so above the form and empties the password', asy
 // Checks the parts of the screen carry their style ids, the same as on mobile: the page, the badge's heading, the
 // form and its actions, each on its own element; and that every id on the screen is written as the convention asks.
 test('Web: the login screen carries its style ids', async () => {
-  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
   const tag = (id: string) => screen.getByTestId(id).element().tagName
   expect(tag('auth.login-screen')).toBe('MAIN')
   expect(tag('auth.login-screen.layout')).toBe('DIV')
@@ -132,7 +132,7 @@ test('Web: the login screen carries its style ids', async () => {
 test('Web: Entrar shows it is busy and the login is sent only once', async () => {
   let answer: (user: SessionUser | null) => void = () => {}
   const slow: AuthService = { ...AUTH, login: vi.fn(() => new Promise<SessionUser | null>((resolve) => (answer = resolve))) }
-  const screen = await render(<LoginScreen auth={slow} onLoggedIn={() => {}} />)
+  const screen = await render(<LoginScreen auth={slow} onLoggedIn={() => {}} onRegister={() => {}} />)
   await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), USER.password)
   const entrar = screen.getByRole('button', { name: /Entrar/ })
@@ -146,9 +146,31 @@ test('Web: Entrar shows it is busy and the login is sent only once', async () =>
   await expect.element(entrar).not.toHaveAttribute('aria-busy', 'true')
 })
 
+// Makes the login fail to be checked, as when the API is out of reach, and checks the screen says so instead of
+// blaming the user or password, keeping the password typed.
+test('Web: a login that can\'t be checked says the API is out of reach', async () => {
+  const offline: AuthService = { ...AUTH, login: vi.fn(() => Promise.reject(new TypeError('fetch failed'))) }
+  const screen = await render(<LoginScreen auth={offline} onLoggedIn={() => {}} onRegister={() => {}} />)
+  await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
+  await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
+  await expect.element(screen.getByRole('alert')).toHaveTextContent(LOGIN_MESSAGES.unreachable)
+  await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveValue(USER.password)
+})
+
+// Presses "Criar conta" and checks it asks to open the sign-up, sending no login.
+test('Web: Criar conta opens the sign-up', async () => {
+  const onRegister = vi.fn()
+  const login = vi.spyOn(AUTH, 'login')
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={onRegister} />)
+  await screen.getByRole('button', { name: 'Criar conta' }).click()
+  expect(onRegister).toHaveBeenCalledTimes(1)
+  expect(login).not.toHaveBeenCalled()
+  login.mockRestore()
+})
+
 // Checks the password's toggle says what it will do, "Mostrar senha" and then "Ocultar senha".
 test('Web: the password toggle names its action', async () => {
-  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
   await screen.getByRole('button', { name: 'Mostrar senha' }).click()
   await expect.element(screen.getByRole('button', { name: 'Ocultar senha' })).toBeVisible()
 })
@@ -158,7 +180,7 @@ test('Web: the password toggle names its action', async () => {
 // login.
 test('Web: the forgotten-password notice says whom to ask and closes three ways', async () => {
   const login = vi.spyOn(AUTH, 'login')
-  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
   const link = screen.getByRole('button', { name: 'Esqueceu a senha?' })
   const dialog = screen.getByRole('dialog', { name: 'Esqueceu a senha?' })
 
@@ -185,7 +207,7 @@ test('Web: the forgotten-password notice says whom to ask and closes three ways'
 // Lays the login out at 1280×720 and on a 360×780 phone, and checks the badge sits beside the form on desktop
 // and above it, smaller, on the phone, with "Entrar" on screen and nothing scrolling sideways.
 test('Web: the badge sits beside the form on desktop and above it on a phone', async () => {
-  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} />)
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
   const mark = () => screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
   const field = () => screen.getByLabelText('Usuário').element().getBoundingClientRect()
   expect(field().left).toBeGreaterThan(mark().right)

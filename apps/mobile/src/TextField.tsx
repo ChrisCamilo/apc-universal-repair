@@ -23,7 +23,7 @@ type TextFieldProps = {
   label: string;
   value: string;
   onValueChange: (value: string) => void;
-  /** Kind of data, which sets the keyboard and autofill; "password" adds the reveal toggle. */
+  /** Kind of data, which sets the keyboard and autofill; a password kind adds the reveal toggle. */
   kind?: FieldKind;
   /** Leading icon from @apc/shared/icons. */
   icon?: IconShape[];
@@ -61,7 +61,7 @@ export function TextField({
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const spec = FIELD_KINDS[kind];
-  const isPassword = kind === 'password';
+  const isPassword = spec.type === 'password';
 
   return (
     <View style={[styles.field, disabled && styles.fieldDisabled]} testID={ids.field}>
