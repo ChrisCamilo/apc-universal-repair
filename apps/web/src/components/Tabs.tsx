@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { gripIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
+import { coneIcon, gripIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
 import { dropTab, moveTab, type DropSide } from '@apc/shared/tabs'
 import { Icon } from './Icon.tsx'
 import { tabPanel, tabs as tabsRecipe } from './Tabs.styles.ts'
@@ -12,6 +12,7 @@ import { tabPanel, tabs as tabsRecipe } from './Tabs.styles.ts'
 // With `reorderable` on (off by default), each tab shows a grip and can be dragged: a line in the accent
 // marks the side of the tab under the pointer where it will land. Alt + Left/Right moves the focused tab one
 // place, and the new position is announced. The new order goes to onReorder; the owner keeps it.
+// A tab still being built (`wip`) shows a cone after its label and is read out as "em construção"; it opens as any other.
 
 type TabItem<T extends string> = {
   id: T
@@ -20,6 +21,8 @@ type TabItem<T extends string> = {
   icon?: IconShape[]
   /** Badge after the label, e.g. the number of items in stock. */
   count?: number
+  /** Still being built: a cone after the label, read out as "em construção". */
+  wip?: boolean
 }
 type TabPanelProps<T extends string> = { id: T; selected: T; children: ReactNode }
 type TabsProps<T extends string> = {
@@ -197,6 +200,14 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
               )}
               {tab.icon && <Icon icon={tab.icon} size={ICON_SIZES.label} />}
               {tab.label}
+              {tab.wip && (
+                <span className={classes.wip()} data-testid={ids.wip}>
+                  <Icon icon={coneIcon} size={ICON_SIZES.compact} />
+                  <span className={classes.wipLabel()} data-testid={ids.wipLabel}>
+                    , em construção
+                  </span>
+                </span>
+              )}
               {tab.count !== undefined && (
                 <span className={classes.count()} data-testid={ids.count}>
                   {tab.count}
