@@ -65,7 +65,7 @@ for (const style of STYLES) {
 test('Mobile: the tab bar scrolls sideways and a stale saved tab falls back', async () => {
   await themeStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, 'specs');
   const tree = await mount('gt4', 'night', <Dashboard />);
-  const bar = tree.root.find((n) => n.props.testID === 'dashboard-tab-bar' && typeof n.type !== 'string');
+  const bar = tree.root.find((n) => n.props.testID === 'dashboard.dashboard.header.nav' && typeof n.type !== 'string');
   expect(bar.props.horizontal).toBe(true);
   expect(shows(tree, 'Nenhum item cadastrado')).toBe(true);
 });
