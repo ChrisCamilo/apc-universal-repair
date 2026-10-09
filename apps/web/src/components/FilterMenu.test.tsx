@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { FilterValues } from '@apc/shared/filters'
-import { themes } from '@apc/shared/theme'
+import { FILTER_PANEL_SPACING, type FilterValues } from '@apc/shared/filters'
+import { scales, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -126,12 +126,14 @@ test('Web: rows with a choice light up and Clear applies right away', async () =
   await expect.element(screen.getByRole('button', { name: 'Filtros' })).toBeInTheDocument()
 })
 
-// Checks the panel never gets wider than 360px or the screen minus 80px, so it fits on a phone.
+// Checks the panel never gets wider than FILTER_PANEL_SPACING allows, 360px or the screen minus 80px, so it fits on a
+// phone.
 test('Web: the filter panel fits the screen', async () => {
   const screen = await render(<Menu initial={NO_FILTERS} onApplied={() => {}} />)
   await screen.getByRole('button', { name: 'Filtros' }).click()
   const width = screen.getByRole('dialog').element().getBoundingClientRect().width
-  expect(width).toBeCloseTo(Math.min(360, window.innerWidth - 80), 0)
+  const unit = scales.space.s1
+  expect(width).toBeCloseTo(Math.min(FILTER_PANEL_SPACING.width * unit, window.innerWidth - FILTER_PANEL_SPACING.inset * unit), 0)
 })
 
 // Checks "Limpar filtros" shows only while a filter is on.
