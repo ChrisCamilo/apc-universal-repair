@@ -20,7 +20,7 @@ type PartResultsProps = {
 export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
   const { parts, more } = results
-  const ui = partResults()
+  const { classes, ids } = partResults()
 
   /** Moves the choice with the arrows and follows it with the focus. */
   const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -34,11 +34,11 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
   }
 
   return (
-    <div {...ui.base()}>
+    <div className={classes.base()} data-testid={ids.base}>
       <Text size="sm" tone="muted">
         {parts.length === 1 ? 'Peça do estoque com esse código:' : 'Peças do estoque com esse código:'}
       </Text>
-      <div role="radiogroup" aria-label="Peças do estoque com esse código" {...ui.list()}>
+      <div role="radiogroup" aria-label="Peças do estoque com esse código" className={classes.list()} data-testid={ids.list}>
         {parts.map((part, index) => (
           <button
             key={part.id}
@@ -49,15 +49,15 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
             role="radio"
             aria-checked={part.id === chosen}
             tabIndex={part.id === chosen ? 0 : -1}
-            {...ui.part()}
+            className={classes.part()} data-testid={ids.part}
             onClick={() => onChoose(part)}
             onKeyDown={(event) => onKeyDown(event, index)}
           >
-            <span {...ui.line()}>
-              <code {...ui.code()}>{part.code}</code>
-              <span {...ui.name()}>{part.name}</span>
+            <span className={classes.line()} data-testid={ids.line}>
+              <code className={classes.code()} data-testid={ids.code}>{part.code}</code>
+              <span className={classes.name()} data-testid={ids.name}>{part.name}</span>
             </span>
-            <span {...ui.fit()}>{partFit(part)}</span>
+            <span className={classes.fit()} data-testid={ids.fit}>{partFit(part)}</span>
           </button>
         ))}
       </div>

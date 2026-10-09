@@ -35,7 +35,7 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
   const [forgot, setForgot] = useState(false)
   const usernameInput = useRef<HTMLInputElement>(null)
   const passwordInput = useRef<HTMLInputElement>(null)
-  const ui = loginScreen()
+  const { classes, ids } = loginScreen()
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Credentials, value: string) => {
@@ -68,14 +68,14 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
   }
 
   return (
-    <main {...ui.base()}>
-      <div {...ui.layout()}>
-        <Panel className={ui.brand().className}>
-          <h1 {...ui.title()}>
-            <BrandMark className={ui.mark().className} />
+    <main className={classes.base()} data-testid={ids.base}>
+      <div className={classes.layout()} data-testid={ids.layout}>
+        <Panel className={classes.brand()}>
+          <h1 className={classes.title()} data-testid={ids.title}>
+            <BrandMark className={classes.mark()} />
           </h1>
         </Panel>
-        <form noValidate {...ui.form()} onSubmit={submit}>
+        <form noValidate className={classes.form()} data-testid={ids.form} onSubmit={submit}>
           {refused && (
             <Text role="alert" size="sm" tone="danger">
               {LOGIN_MESSAGES.failed}
@@ -99,7 +99,7 @@ export function LoginScreen({ auth, onLoggedIn }: LoginScreenProps) {
             onValueChange={(value) => change('password', value)}
             error={errors.password}
           />
-          <div {...ui.actions()}>
+          <div className={classes.actions()} data-testid={ids.actions}>
             <Button type="submit" loading={sending}>
               Entrar
             </Button>
