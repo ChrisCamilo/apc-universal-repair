@@ -155,12 +155,12 @@ test('Mobile: toasts are read out and hide on their own', async () => {
     const tree = await mount('gt4', 'day', <Trigger />);
     await ReactTestRenderer.act(async () => tree.root.find((n) => typeof n.props.style === 'function').props.onPress());
     expect(announce).toHaveBeenCalledWith('Item adicionado');
-    expect(styleOf(tree, 'toast').backgroundColor).toBe(themes.gt4.day.colors.text);
+    expect(styleOf(tree, 'common.toast.message').backgroundColor).toBe(themes.gt4.day.colors.text);
 
     await ReactTestRenderer.act(async () => {
       jest.advanceTimersByTime(TOAST_DURATION_MS);
     });
-    expect(tree.root.findAll((n) => n.props.testID === 'toast')).toHaveLength(0);
+    expect(tree.root.findAll((n) => n.props.testID === 'common.toast.message')).toHaveLength(0);
   } finally {
     announce.mockRestore();
     jest.useRealTimers();
@@ -171,11 +171,11 @@ test('Mobile: toasts are read out and hide on their own', async () => {
 // root; once the dialog closes, the toast still showing moves to the root.
 test('Mobile: a toast shows above an open dialog', async () => {
   const tree = await mount('gt4', 'day', <DialogWithToast />);
-  const toasts = () => tree.root.findAll((n) => n.props.testID === 'toast' && typeof n.type === 'string');
+  const toasts = () => tree.root.findAll((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string');
   await ReactTestRenderer.act(async () => tree.root.find((n) => typeof n.props.style === 'function').props.onPress());
   const modal = tree.root.findByType(Modal);
   expect(toasts()).toHaveLength(1);
-  expect(modal.findAll((n) => n.props.testID === 'toast' && typeof n.type === 'string')).toHaveLength(1);
+  expect(modal.findAll((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string')).toHaveLength(1);
 
   await ReactTestRenderer.act(async () => modal.props.onRequestClose());
   expect(tree.root.findByType(Modal).props.visible).toBe(false);

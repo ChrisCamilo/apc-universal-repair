@@ -173,7 +173,7 @@ test('Mobile: removing a photo asks first and the next one takes its place', asy
   await press(tree.root.findAllByType(Modal)[1], 'Remover');
   expect(onScreen(tree)).toBe(`Foto 1 de 2 · ${NAME}`);
   expect(tree.root.findAllByType(Image)[0].props.source.uri).toBe(PHOTOS[1].url);
-  const toast = viewer(tree).find((n) => n.props.testID === 'toast' && typeof n.type === 'string');
+  const toast = viewer(tree).find((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string');
   expect(texts(toast)).toEqual(['Foto removida']);
 });
 
@@ -183,7 +183,7 @@ test('Mobile: a change the owner could not save is reported', async () => {
   const tree = await mount('gt4', 'day', <Sample initial={PHOTOS} failSave />);
   await press(tree.root, 'Remover esta foto');
   await press(tree.root.findAllByType(Modal)[1], 'Remover');
-  const toast = viewer(tree).find((n) => n.props.testID === 'toast' && typeof n.type === 'string');
+  const toast = viewer(tree).find((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string');
   expect(texts(toast)).toEqual(['Não foi possível salvar as fotos. Tente de novo.']);
   expect(onScreen(tree)).toBe(`Foto 1 de 3 · ${NAME}`);
 });

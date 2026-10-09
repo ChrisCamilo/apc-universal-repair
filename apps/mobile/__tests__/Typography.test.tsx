@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Text as NativeText } from 'react-native';
+import { Text as NativeText, StyleSheet } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { HEADING_LEVELS, HEADING_TRACKING } from '@apc/shared/typography';
@@ -15,7 +15,7 @@ import { Heading, Label, NumericReadout, Text } from '../src/Typography';
  * @param style Style to start on.
  * @param mode Mode to start on.
  * @param element Element to render.
- * @returns Style of every native Text rendered, in order.
+ * @returns The props of every native Text rendered, in order, with its style flattened.
  */
 async function textStyles(style: Style, mode: Mode, element: React.ReactElement) {
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
@@ -23,7 +23,7 @@ async function textStyles(style: Style, mode: Mode, element: React.ReactElement)
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(<ThemeProvider>{element}</ThemeProvider>);
   });
-  return tree!.root.findAllByType(NativeText).map((node) => node.props);
+  return tree!.root.findAllByType(NativeText).map((node) => ({ ...node.props, style: StyleSheet.flatten(node.props.style) }) as typeof node.props);
 }
 
 beforeEach(async () => {

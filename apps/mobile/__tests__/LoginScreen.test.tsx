@@ -106,7 +106,7 @@ for (const style of STYLES) {
       const tree = await mount(style, mode, <LoginScreen auth={AUTH} onLoggedIn={() => {}} />);
       const header = tree.root.find((n) => n.props.accessibilityRole === 'header' && typeof n.type === 'string');
       expect(header.find((n) => n.props.accessibilityLabel === 'APC Universal Repair' && n.props.viewBox === '0 0 220 180')).toBeDefined();
-      expect(tree.root.find((n) => n.props.testID === 'badge-needle').props.stroke).toBe(colors.accent);
+      expect(tree.root.find((n) => n.props.testID === 'common.brand-mark.needle').props.stroke).toBe(colors.accent);
       const panels = tree.root.findAll((n) => typeof n.type === 'string' && [n.props.style].flat().some((s) => s?.backgroundColor === colors.panel));
       expect(panels.some((panel) => panel.findAll((n) => n === header).length > 0)).toBe(true);
       expect(StyleSheet.flatten(button(tree, 'Entrar').props.style({ pressed: false })).backgroundColor).toBe(colors.accent);
