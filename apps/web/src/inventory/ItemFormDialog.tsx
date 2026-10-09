@@ -27,6 +27,7 @@ import { Segmented } from '../components/Segmented.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { Label } from '../components/Typography.tsx'
+import { itemFormDialog } from './ItemFormDialog.styles.ts'
 import { API_BASE, savePhotos } from './savePhotos.ts'
 import type { CreateListEntry } from './useItemLists.ts'
 
@@ -44,7 +45,6 @@ import type { CreateListEntry } from './useItemLists.ts'
 // the buttons turn into Cancelar and Salvar alterações, which save like the edit form. The owner may open it with
 // values filled in and follow what is typed, as the Inventory tutorial does.
 
-const FIELDS_GRID = 'grid items-start gap-x-4 gap-y-3 sm:grid-cols-2'
 const PHOTOS_LABEL = 'Fotos do item'
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }))
 const SIDE_OPTIONS = SIDES.map((value) => ({ value, label: value }))
@@ -83,6 +83,7 @@ export function ItemFormDialog({
   onFormChange,
 }: ItemFormDialogProps) {
   const toast = useToast()
+  const { classes, ids } = itemFormDialog()
   const [viewing, setViewing] = useState(details && item !== undefined)
   const code = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM))
@@ -212,8 +213,8 @@ export function ItemFormDialog({
       }
     >
       {viewing && item ? (
-        <div className={FIELDS_GRID}>
-          <div className="sm:col-span-2">
+        <div className={classes.fields()} data-testid={ids.fields}>
+          <div className={classes.photos()} data-testid={ids.photos}>
             <ImageUpload label={PHOTOS_LABEL} photos={photos} onPhotosChange={setPhotos} limit={ITEM_PHOTO_LIMIT} readOnly />
           </div>
           {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
@@ -221,8 +222,8 @@ export function ItemFormDialog({
           ))}
         </div>
       ) : (
-        <div className={FIELDS_GRID}>
-          <div className="sm:col-span-2">
+        <div className={classes.fields()} data-testid={ids.fields}>
+          <div className={classes.photos()} data-testid={ids.photos}>
             <ImageUpload label={PHOTOS_LABEL} photos={photos} onPhotosChange={setPhotos} limit={ITEM_PHOTO_LIMIT} />
           </div>
           <TextField
@@ -302,7 +303,7 @@ export function ItemFormDialog({
             onValueChange={(value) => change('minQuantity', value.replace(/\D/g, ''))}
             helper="Abaixo disso o item aparece como estoque baixo."
           />
-          <div className="grid content-start gap-1.5">
+          <div className={classes.choice()} data-testid={ids.choice}>
             <Label>{ITEM_FIELD_LABELS.position}</Label>
             <Segmented
               label={ITEM_FIELD_LABELS.position}
@@ -311,7 +312,7 @@ export function ItemFormDialog({
               onValueChange={(value) => change('position', value)}
             />
           </div>
-          <div className="grid content-start gap-1.5">
+          <div className={classes.choice()} data-testid={ids.choice}>
             <Label>{ITEM_FIELD_LABELS.side}</Label>
             <Segmented
               label={ITEM_FIELD_LABELS.side}
