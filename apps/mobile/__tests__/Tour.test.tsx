@@ -69,7 +69,7 @@ function views(tree: ReactTestRenderer.ReactTestInstance, testID: string): React
  * @returns The card's accessible name, or null with no card.
  */
 function cardTitle(tree: ReactTestRenderer.ReactTestRenderer): string | null {
-  return views(tree.root, 'tour-card')[0]?.props.accessibilityLabel ?? null;
+  return views(tree.root, 'common.tour.card')[0]?.props.accessibilityLabel ?? null;
 }
 
 /**
@@ -116,9 +116,9 @@ for (const style of STYLES) {
     test(`Mobile: the tour follows the ${style}/${mode} theme`, async () => {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode, <Sample />);
-      expect(styleOf(views(tree.root, 'tour-spotlight')[0]).borderColor).toBe(colors.accent);
-      expect(views(tree.root, 'tour-dim').map((dim) => styleOf(dim).backgroundColor)).toEqual(Array(4).fill(spotlightDim()));
-      const card = views(tree.root, 'tour-card')[0].children[0] as ReactTestRenderer.ReactTestInstance;
+      expect(styleOf(views(tree.root, 'common.tour.spotlight')[0]).borderColor).toBe(colors.accent);
+      expect(views(tree.root, 'common.tour.dim').map((dim) => styleOf(dim).backgroundColor)).toEqual(Array(4).fill(spotlightDim()));
+      const card = views(tree.root, 'common.tour.card')[0].children[0] as ReactTestRenderer.ReactTestInstance;
       expect(styleOf(card).borderColor).toBe(colors.accent);
     });
   }
@@ -129,11 +129,11 @@ for (const style of STYLES) {
 test('Mobile: the ring wraps the target and the card sits next to it', async () => {
   const tree = await mount('eighties', 'night', <Sample />);
   const [x, y, width, height] = RECTS['sample-new'];
-  const ring = styleOf(views(tree.root, 'tour-spotlight')[0]);
+  const ring = styleOf(views(tree.root, 'common.tour.spotlight')[0]);
   expect({ x: ring.left, y: ring.top, width: ring.width, height: ring.height }).toEqual(spotlightRect({ x, y, width, height }));
   const place = cardPlacement({ x, y, width, height }, 0, Dimensions.get('window'));
-  expect(styleOf(views(tree.root, 'tour-card')[0])).toMatchObject({ left: place.x, top: place.y, width: place.width });
-  const texts = views(tree.root, 'tour-card')[0].findAllByType(Text).map((t) => t.props.children);
+  expect(styleOf(views(tree.root, 'common.tour.card')[0])).toMatchObject({ left: place.x, top: place.y, width: place.width });
+  const texts = views(tree.root, 'common.tour.card')[0].findAllByType(Text).map((t) => t.props.children);
   expect(texts).toEqual(expect.arrayContaining(['Parte 1 de 2 · Criar um item', '1 / 4', 'Abra o cadastro']));
 });
 
@@ -146,8 +146,8 @@ test('Mobile: steps move on by themselves and the tour draws inside an open dial
   expect(cardTitle(tree)).toBe('Abra o cadastro');
   await wait(TOUR_ADVANCE_DELAY_MS);
   expect(cardTitle(tree)).toBe('Dê um nome');
-  expect(views(tree.root.findByType(Modal), 'tour-card')).toHaveLength(1);
-  expect(views(tree.root, 'tour-layer')).toHaveLength(1);
+  expect(views(tree.root.findByType(Modal), 'common.tour.card')).toHaveLength(1);
+  expect(views(tree.root, 'common.tour.layer')).toHaveLength(1);
 
   await press(tree, 'Fazer por mim');
   expect(tree.root.findByType(TextInput).props.value).toBe('Item de teste');
@@ -172,8 +172,8 @@ test('Mobile: info steps use Next and the last step finishes the tour', async ()
   await press(tree, 'Próximo');
   expect(cardTitle(tree)).toBe('Pronto!');
   await wait(TOUR_CHECK_MS);
-  expect(views(tree.root, 'tour-spotlight')).toHaveLength(0);
-  const texts = views(tree.root, 'tour-card')[0].findAllByType(Text).map((t) => t.props.children);
+  expect(views(tree.root, 'common.tour.spotlight')).toHaveLength(0);
+  const texts = views(tree.root, 'common.tour.card')[0].findAllByType(Text).map((t) => t.props.children);
   expect(texts).toEqual(expect.arrayContaining(['Tutorial concluído', 'Concluir']));
   expect(texts).not.toContain('Pular tutorial');
   await press(tree, 'Concluir');
