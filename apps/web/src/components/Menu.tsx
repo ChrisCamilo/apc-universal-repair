@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { chevronIcon, type IconShape } from '@apc/shared/icons'
+import { chevronIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
 import { Icon } from './Icon.tsx'
-import { MENU_ITEM_CLASSES, MenuContext, useMenu } from './menuContext.ts'
+import { menu as menuRecipe, menuHeader, menuItem, menuLabel, userBadge } from './Menu.styles.ts'
+import { MenuContext, useMenu } from './menuContext.ts'
 
 // A dropdown menu, such as the Dashboard's user menu: a trigger button and a popover anchored under it.
 // Up/Down (and Home/End) move between the items; checkbox and radio items (Switch, Segmented) keep the menu
@@ -58,6 +59,7 @@ export function Menu({ label, trigger, align = 'end', children }: MenuProps) {
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const popover = useRef<HTMLDivElement>(null)
+  const { classes, ids } = menuRecipe({ align, open })
 
   /** Closes the menu and puts the focus back on the trigger. */
   const close = () => {
@@ -102,7 +104,7 @@ export function Menu({ label, trigger, align = 'end', children }: MenuProps) {
   }, [open])
 
   return (
-    <div ref={root} className="relative inline-block h-fit">
+    <div ref={root} className={classes.base()} data-testid={ids.base}>
       <button
         ref={button}
         type="button"
@@ -110,13 +112,12 @@ export function Menu({ label, trigger, align = 'end', children }: MenuProps) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        className={`inline-flex cursor-pointer items-center gap-2 rounded-pill border py-1 pr-2.5 pl-1 text-text outline-none transition-[background-color,border-color,box-shadow] hover:border-accent hover:bg-accent-soft focus-visible:shadow-ring ${
-          open ? 'border-accent bg-accent-soft' : 'border-hairline-soft'
-        }`}
+        className={classes.trigger()}
+        data-testid={ids.trigger}
         onClick={() => setOpen((shown) => !shown)}
       >
         {trigger}
-        <Icon icon={chevronIcon} size={12} className={`text-text-muted transition-transform ${open ? '-rotate-90' : 'rotate-90'}`} />
+        <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
       </button>
       {open && (
         <div
@@ -124,9 +125,8 @@ export function Menu({ label, trigger, align = 'end', children }: MenuProps) {
           id={menuId}
           role="menu"
           aria-label={label}
-          className={`absolute top-full z-30 mt-1 grid w-[min(calc(var(--spacing)*72.5),calc(100vw-var(--spacing)*16))] gap-0.5 rounded-panel border border-hairline-soft bg-panel bg-(image:--sheen) p-2 shadow-pop ${
-            align === 'end' ? 'right-0' : 'left-0'
-          }`}
+          className={classes.popover()}
+          data-testid={ids.popover}
           onKeyDown={onKeyDown}
         >
           <MenuContext.Provider value={{ close }}>{children}</MenuContext.Provider>
@@ -137,49 +137,68 @@ export function Menu({ label, trigger, align = 'end', children }: MenuProps) {
 }
 
 export function MenuHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  const { classes, ids } = menuHeader()
   return (
-    <div className="mb-1 grid border-b border-hairline-soft px-2 pt-2 pb-3">
-      <b className="font-mono text-sm font-medium">{title}</b>
-      {subtitle && <small className="text-xs text-text-muted">{subtitle}</small>}
+    <div className={classes.base()} data-testid={ids.base}>
+      <b className={classes.title()} data-testid={ids.title}>
+        {title}
+      </b>
+      {subtitle && (
+        <small className={classes.subtitle()} data-testid={ids.subtitle}>
+          {subtitle}
+        </small>
+      )}
     </div>
   )
 }
 
 export function MenuItem({ onSelect, description, icon, children }: MenuItemProps) {
   const menu = useMenu()
+  const { classes, ids } = menuItem()
   return (
     <button
       type="button"
       role="menuitem"
       tabIndex={-1}
-      className={MENU_ITEM_CLASSES}
+      className={classes.base()}
+      data-testid={ids.base}
       onClick={() => {
         onSelect()
         menu?.close()
       }}
     >
-      <span className="grid">
+      <span className={classes.text()} data-testid={ids.text}>
         {children}
-        {description && <small className="text-xs leading-snug text-text-muted">{description}</small>}
+        {description && (
+          <small className={classes.description()} data-testid={ids.description}>
+            {description}
+          </small>
+        )}
       </span>
-      {icon && <Icon icon={icon} size={18} className="shrink-0 text-accent" />}
+      {icon && <Icon icon={icon} size={ICON_SIZES.prominent} className={classes.icon()} />}
     </button>
   )
 }
 
 export function MenuLabel({ children }: { children: ReactNode }) {
+  const { classes, ids } = menuLabel()
   return (
-    <p className="mx-2 mt-2 mb-0.5 font-display text-xs font-semibold uppercase tracking-display text-text-muted">{children}</p>
+    <p className={classes.base()} data-testid={ids.base}>
+      {children}
+    </p>
   )
 }
 
 export function UserBadge({ initials, name }: { initials: string; name: string }) {
+  const { classes, ids } = userBadge()
   return (
     <>
-      <span aria-hidden="true" className="grid size-7 place-items-center rounded-pill bg-accent font-display text-xs font-bold text-on-accent">
+      <span aria-hidden="true" className={classes.initials()} data-testid={ids.initials}>
         {initials}
       </span>
-      <span className="font-mono text-xs max-sm:hidden">{name}</span>
+      <span className={classes.name()} data-testid={ids.name}>
+        {name}
+      </span>
     </>
   )
 }
