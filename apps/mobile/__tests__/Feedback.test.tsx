@@ -60,13 +60,13 @@ for (const style of STYLES) {
         <>
           <EmptyState title="Nenhum item cadastrado" message="Cadastre a primeira peça." />
           <ErrorState title="Não foi possível carregar o estoque" message="Verifique a conexão e tente de novo." />
-          <Spinner testID="spinner" />
+          <Spinner />
         </>,
       );
       expect(tree.root.findAllByType(Icon).map((icon) => icon.props.color)).toEqual([colors.textMuted, colors.danger]);
       const title = tree.root.findAll((n) => n.type === Text && n.props.children === 'Nenhum item cadastrado')[0];
       expect(StyleSheet.flatten(title.props.style).color).toBe(colors.text);
-      expect(stylesOf(tree, 'spinner')[0].borderColor).toBe(colors.textMuted);
+      expect(stylesOf(tree, 'common.spinner')[0].borderColor).toBe(colors.textMuted);
     });
   }
 }
@@ -78,18 +78,18 @@ test('Mobile: spinners are announced only with a label and fade with reduced mot
     'eighties',
     'night',
     <>
-      <Spinner label="Carregando estoque" testID="loud" />
-      <Spinner size="sm" testID="quiet" />
+      <Spinner label="Carregando estoque" />
+      <Spinner size="sm" />
     </>,
   );
-  const node = (id: string) => tree.root.find((n) => n.props.testID === id && typeof n.type === 'string');
-  expect(node('loud').props).toMatchObject({ accessibilityRole: 'progressbar', accessibilityLabel: 'Carregando estoque' });
-  expect(node('quiet').props.accessibilityElementsHidden).toBe(true);
-  expect(stylesOf(tree, 'loud')[0].transform).toBeDefined();
+  const [loud, quiet] = tree.root.findAll((n) => n.props.testID === 'common.spinner' && typeof n.type === 'string');
+  expect(loud.props).toMatchObject({ accessibilityRole: 'progressbar', accessibilityLabel: 'Carregando estoque' });
+  expect(quiet.props.accessibilityElementsHidden).toBe(true);
+  expect(stylesOf(tree, 'common.spinner')[0].transform).toBeDefined();
 
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
-  const reduced = await mount('eighties', 'night', <Spinner testID="calm" />);
-  const [calm] = stylesOf(reduced, 'calm');
+  const reduced = await mount('eighties', 'night', <Spinner />);
+  const [calm] = stylesOf(reduced, 'common.spinner');
   expect(calm.transform).toBeUndefined();
   expect(calm.opacity).toBeDefined();
 });

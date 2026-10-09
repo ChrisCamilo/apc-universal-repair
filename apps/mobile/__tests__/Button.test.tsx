@@ -3,10 +3,11 @@
  */
 
 import React from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Button } from '../src/Button';
+import { DISABLED_OPACITY } from '../src/Button.styles';
 import { Spinner } from '../src/Spinner';
 import { fontFamily, themeStorage, ThemeProvider } from '../src/theme';
 
@@ -41,8 +42,8 @@ function pressables(tree: ReactTestRenderer.ReactTestRenderer): ReactTestRendere
  * @param pressed Whether it is being pressed.
  * @returns The resolved style object.
  */
-function frame(pressable: ReactTestRenderer.ReactTestInstance, pressed: boolean) {
-  return pressable.props.style({ pressed });
+function frame(pressable: ReactTestRenderer.ReactTestInstance, pressed: boolean): ViewStyle {
+  return StyleSheet.flatten(pressable.props.style({ pressed }));
 }
 
 beforeEach(async () => {
@@ -57,7 +58,7 @@ for (const style of STYLES) {
       const theme = themes[style][mode];
       const tree = await mount(style, mode, <Button>Entrar</Button>);
       const [pressable] = pressables(tree);
-      const label = tree.root.findByType(Text).props.style;
+      const label = StyleSheet.flatten(tree.root.findByType(Text).props.style);
 
       expect(frame(pressable, false)).toMatchObject({
         backgroundColor: theme.colors.accent,
@@ -90,7 +91,7 @@ test('Mobile: secondary buttons turn accent when pressed and links read as text'
   expect(frame(secondary, true).borderColor).toBe(colors.accent);
   expect(frame(secondary, true).transform).toEqual([{ translateY: 1 }]);
 
-  const linkLabel = tree.root.findAllByType(Text)[1].props.style;
+  const linkLabel = StyleSheet.flatten(tree.root.findAllByType(Text)[1].props.style);
   expect(linkLabel).toMatchObject({
     fontFamily: fontFamily(scales.bodyFont),
     textDecorationLine: 'underline',
@@ -105,7 +106,7 @@ test('Mobile: buttons show a focus ring and run their action', async () => {
   const onPress = jest.fn();
   const tree = await mount('gt4', 'day', <Button onPress={onPress}>Entrar</Button>);
   const [pressable] = pressables(tree);
-  const ring = () => tree.root.findByProps({ testID: 'button-ring' }).props.style.borderColor;
+  const ring = () => StyleSheet.flatten(tree.root.findByProps({ testID: 'common.button.ring' }).props.style).borderColor;
 
   expect(ring()).toBe('transparent');
   await ReactTestRenderer.act(async () => pressable.props.onFocus());
@@ -131,7 +132,7 @@ test('Mobile: disabled and loading buttons are blocked and announced', async () 
   const [disabled, loading] = pressables(tree);
   expect(disabled.props.disabled).toBe(true);
   expect(disabled.props.accessibilityState).toEqual({ disabled: true, busy: false });
-  expect(frame(disabled, false).opacity).toBe(0.5);
+  expect(frame(disabled, false).opacity).toBe(DISABLED_OPACITY);
   expect(loading.props.disabled).toBe(true);
   expect(loading.props.accessibilityState).toEqual({ disabled: true, busy: true });
   expect(tree.root.findAllByType(Spinner)).toHaveLength(1);
