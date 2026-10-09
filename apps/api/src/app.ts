@@ -7,6 +7,7 @@ import { registerHealthRoute } from "./routes/health.js";
 import { registerItemRoutes } from "./routes/items.js";
 import { registerListRoutes } from "./routes/lists.js";
 import { registerPhotoRoutes } from "./routes/photos.js";
+import { registerUserRoutes } from "./routes/users.js";
 
 export function buildApp() {
   const app = Fastify({ logger: true });
@@ -25,6 +26,7 @@ export function buildApp() {
   registerItemRoutes(app);
   registerListRoutes(app);
   registerPhotoRoutes(app);
+  registerUserRoutes(app);
 
   return app;
 }
