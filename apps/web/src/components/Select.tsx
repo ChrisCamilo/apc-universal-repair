@@ -1,19 +1,14 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
 import { selectionSummary, toggleValue } from '@apc/shared/filters'
-import { checkIcon, chevronIcon } from '@apc/shared/icons'
-import { SELECT_LIST_CLASSES, SELECT_OPTION_CLASSES } from './fieldStyles.ts'
+import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/shared/icons'
 import { Icon } from './Icon.tsx'
+import { select } from './Select.styles.ts'
 
 // A pick-only dropdown with its own list instead of the native one, so the list looks the same in every
 // browser and shows at most SELECT_VISIBLE_OPTIONS options (the rest by scrolling), like the Combobox.
 // The button is a select-only combobox (WAI-ARIA): arrows, Home/End, Enter/Space and typing nothing.
 // In a multiple choice the list shows checkboxes and stays open while the user picks; the button shows
 // the first choice plus a count ("Freios +2"), with the full list in its tooltip, and "All" clears it.
-
-const TRIGGER =
-  'flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-pill border bg-panel px-3 py-1.5 text-left font-body ' +
-  'text-sm text-text outline-none transition-[border-color,box-shadow] focus-visible:shadow-ring ' +
-  'disabled:cursor-not-allowed disabled:opacity-50'
 
 type Option = { value: string; label: string }
 type SelectProps = {
@@ -45,6 +40,7 @@ export function Select(props: SelectProps) {
   // A multiple choice lists "All" first, with the empty value.
   const items: Option[] = props.multiple ? [{ value: '', label: props.allLabel }, ...options] : options
   const chosen = props.multiple ? options.filter((o) => props.value.includes(o.value)).map((o) => o.label) : []
+  const { classes, ids } = select({ picked: Boolean(props.multiple && chosen.length), open })
   const shown = props.multiple
     ? selectionSummary(chosen, props.allLabel)
     : (options.find((o) => o.value === props.value)?.label ?? '')
@@ -104,7 +100,7 @@ export function Select(props: SelectProps) {
   }
 
   return (
-    <div className="relative min-w-0">
+    <div className={classes.base()} data-testid={ids.base}>
       <button
         id={buttonId}
         type="button"
@@ -116,20 +112,19 @@ export function Select(props: SelectProps) {
         aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
         title={chosen.length > 1 ? chosen.join(', ') : undefined}
         disabled={disabled}
-        className={`${TRIGGER} ${props.multiple && chosen.length ? 'border-accent' : 'border-hairline'}`}
+        className={classes.button()}
+        data-testid={ids.button}
         onClick={() => toggle(!open)}
         onBlur={() => toggle(false)}
         onKeyDown={onKeyDown}
       >
-        <span className="min-w-0 flex-1 truncate">{shown}</span>
-        <Icon
-          icon={chevronIcon}
-          size={12}
-          className={`shrink-0 text-text-muted transition-transform ${open ? '-rotate-90' : 'rotate-90'}`}
-        />
+        <span className={classes.shown()} data-testid={ids.shown}>
+          {shown}
+        </span>
+        <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
       </button>
       {open && (
-        <ul ref={list} id={listId} role="listbox" aria-multiselectable={props.multiple || undefined} className={SELECT_LIST_CLASSES}>
+        <ul ref={list} id={listId} role="listbox" aria-multiselectable={props.multiple || undefined} className={classes.list()} data-testid={ids.list}>
           {items.map((item, index) => {
             const selected = isSelected(item)
             return (
@@ -139,7 +134,8 @@ export function Select(props: SelectProps) {
                 role="option"
                 aria-selected={selected}
                 data-active={index === active || undefined}
-                className={SELECT_OPTION_CLASSES}
+                className={classes.option()}
+                data-testid={ids.option}
                 // Keep the focus on the button, so the list stays open and the keyboard keeps working.
                 onMouseDown={(event) => {
                   event.preventDefault()
@@ -149,16 +145,16 @@ export function Select(props: SelectProps) {
                 {props.multiple && (
                   <span
                     aria-hidden="true"
-                    data-testid="option-box"
-                    className={`grid size-3.5 shrink-0 place-items-center rounded-[calc(var(--tile-radius)/4)] border ${
-                      selected ? 'border-accent bg-accent text-on-accent' : 'border-hairline bg-panel'
-                    }`}
+                    className={classes.box({ selected })}
+                    data-testid={ids.box}
                   >
-                    {selected && <Icon icon={checkIcon} size={10} />}
+                    {selected && <Icon icon={checkIcon} size={ICON_SIZES.mark} />}
                   </span>
                 )}
-                <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                {!props.multiple && selected && <Icon icon={checkIcon} size={12} className="shrink-0" />}
+                <span className={classes.text()} data-testid={ids.text}>
+                  {item.label}
+                </span>
+                {!props.multiple && selected && <Icon icon={checkIcon} size={ICON_SIZES.caret} className={classes.check()} />}
               </li>
             )
           })}
