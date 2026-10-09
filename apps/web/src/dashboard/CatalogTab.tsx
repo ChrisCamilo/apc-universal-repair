@@ -18,6 +18,7 @@ import { SearchField } from '../components/TextField.tsx'
 import { TreeView } from '../components/TreeView.tsx'
 import { Heading, NumericReadout, Text } from '../components/Typography.tsx'
 import { useItems } from '../inventory/useItems.ts'
+import { catalogTab } from './CatalogTab.styles.ts'
 import { PartResults } from './PartResults.tsx'
 
 // The Catalog tab (/catalog): the brand tiles in a rail, the chosen brand's model tree, and the detail column with
@@ -35,6 +36,7 @@ const NO_SHEET = 'Este veículo ainda não tem ficha técnica no catálogo. A pe
 
 export function CatalogTab() {
   const state = useItems()
+  const { classes, ids } = catalogTab()
   const items = state.status === 'ready' ? state.items : []
   const [brandQuery, setBrandQuery] = useState('')
   const [query, setQuery] = useState('')
@@ -85,21 +87,21 @@ export function CatalogTab() {
   }
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[calc(var(--spacing)*46)_minmax(0,1fr)]">
-      <Panel className="grid content-start gap-3">
+    <div className={classes.base()} data-testid={ids.base}>
+      <Panel className={classes.rail()}>
         <SearchField label="Procure marca" value={brandQuery} onValueChange={setBrandQuery} />
         <SelectableTileGroup
           label="Marcas"
           options={brandsNamed(brandQuery).map((b) => ({ value: b.id, label: b.name }))}
           value={brandId}
           onValueChange={openBrand}
-          className="grid-cols-2 sm:grid-cols-4 lg:grid-cols-1"
+          className={classes.brands()}
         />
       </Panel>
-      <div className="grid min-w-0 content-start gap-3">
+      <div className={classes.main()} data-testid={ids.main}>
         <SearchField label="Procure modelo ou código da peça" value={query} onValueChange={search} />
         {searchingParts && <PartResults results={results} chosen={part?.id} onChoose={choosePart} />}
-        <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,calc(var(--spacing)*82))]">
+        <div className={classes.body()} data-testid={ids.body}>
           <Panel>
             {models.length > 0 ? (
               <TreeView
@@ -110,21 +112,21 @@ export function CatalogTab() {
                 onSelect={setEngine}
                 highlighted={location?.modelId}
                 defaultExpanded={location?.modelId && !location.engineId ? [location.modelId] : undefined}
-                className="max-h-96 lg:max-h-[calc(var(--spacing)*120)]"
+                className={classes.tree()}
               />
             ) : (
               <EmptyState title="Nenhum modelo com esse nome" message="Procure por outro nome ou pelo código de uma peça do estoque." />
             )}
           </Panel>
-          <div className="grid min-w-0 content-start gap-3">
+          <div className={classes.detail()} data-testid={ids.detail}>
             <ImageFrame alt={sheet ? `Foto do ${sheet.title}` : 'Foto do modelo'} emptyLabel="Sem foto do modelo" />
-            <Panel className="grid gap-3">
+            <Panel className={classes.sheet()}>
               {missingVehicle ? (
                 <EmptyState title={missingVehicle} message={NO_SHEET} />
               ) : sheet ? (
                 <>
                   <Heading level={3}>{sheet.title}</Heading>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                  <div className={classes.specs()} data-testid={ids.specs}>
                     {sheet.specs.map((spec) => (
                       <NumericReadout key={spec} tone="accent">
                         {spec}
