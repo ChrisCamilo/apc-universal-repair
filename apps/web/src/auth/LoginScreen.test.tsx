@@ -1,4 +1,5 @@
 import { createMockAuth, LOGIN_MESSAGES, type AuthService, type SessionUser } from '@apc/shared/auth'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { TEST_USERS } from '@apc/shared/test-users'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
@@ -27,11 +28,11 @@ beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 afterEach(async () => {
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 for (const style of STYLES) {
@@ -175,9 +176,9 @@ test('Web: the badge sits beside the form on desktop and above it on a phone', a
   expect(field().left).toBeGreaterThan(mark().right)
   const desktopWidth = mark().width
 
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   expect(field().top).toBeGreaterThan(mark().bottom)
   expect(mark().width).toBeLessThan(desktopWidth)
-  expect(screen.getByRole('button', { name: 'Entrar' }).element().getBoundingClientRect().bottom).toBeLessThanOrEqual(780)
-  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360)
+  expect(screen.getByRole('button', { name: 'Entrar' }).element().getBoundingClientRect().bottom).toBeLessThanOrEqual(MIN_MOBILE_HEIGHT)
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
 })

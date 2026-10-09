@@ -1,4 +1,5 @@
 import { ENGINE_SHEETS } from '@apc/shared/catalog'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import type { Item } from '@apc/shared/items'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
@@ -73,7 +74,7 @@ beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 // No API runs during these tests: the inventory request answers with no parts unless a test gives its own.
@@ -83,7 +84,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   vi.restoreAllMocks()
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 for (const style of STYLES) {
@@ -142,13 +143,13 @@ test('Web: the Catalog lays out in columns on desktop and stacks on a phone', as
   expect(tree().left).toBeGreaterThan(rail().right)
   expect(sheet().left).toBeGreaterThan(tree().right)
 
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   expect(tree().top).toBeGreaterThan(rail().bottom)
   expect(sheet().top).toBeGreaterThan(tree().bottom)
   const tiles = screen.getByRole('radio').elements().map(box)
   expect(tiles[0].top).toBe(tiles[1].top)
   expect(tiles[2].top).toBeGreaterThan(tiles[0].top)
-  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360)
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
   const engine = screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' }).element().querySelector('.truncate')!
   expect(engine.scrollWidth).toBeLessThanOrEqual(engine.clientWidth)
 })

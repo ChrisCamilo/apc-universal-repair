@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -40,7 +41,7 @@ beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 for (const style of STYLES) {
@@ -157,8 +158,8 @@ test('Web: a canceled file picker leaves the dialog open', async () => {
 // while Save stays visible without scrolling, and that each size keeps its width.
 test('Web: long dialogs scroll inside with the actions pinned', async () => {
   for (const [width, height] of [
-    [1280, 720],
-    [360, 780],
+    [MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT],
+    [MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT],
   ]) {
     await page.viewport(width, height)
     const screen = await render(<LongForm />)
@@ -171,7 +172,7 @@ test('Web: long dialogs scroll inside with the actions pinned', async () => {
     expect(body.scrollHeight).toBeGreaterThan(body.clientHeight)
     await screen.unmount()
   }
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 function LongForm() {

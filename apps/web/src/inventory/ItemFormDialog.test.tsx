@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form'
 import type { Item } from '@apc/shared/items'
 import { withEntry, type ItemLists } from '@apc/shared/lists'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { itemListsOf } from '@apc/shared/test-lists'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
@@ -114,12 +115,12 @@ beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 afterEach(async () => {
   vi.restoreAllMocks()
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 for (const style of STYLES) {
@@ -335,8 +336,8 @@ test('Web: an item opens filled in and is patched on save', async () => {
 // scrolls inside the dialog.
 test('Web: Save is on screen without scrolling at both minimum sizes', async () => {
   for (const [width, height] of [
-    [1280, 720],
-    [360, 780],
+    [MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT],
+    [MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT],
   ]) {
     await page.viewport(width, height)
     const screen = await render(<Sample />)

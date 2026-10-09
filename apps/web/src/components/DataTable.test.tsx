@@ -1,5 +1,6 @@
 import { useState, type ComponentProps } from 'react'
 import { pencilIcon, trashIcon } from '@apc/shared/icons'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { sortRows, type Sort } from '@apc/shared/table'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
@@ -55,7 +56,7 @@ beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 for (const style of STYLES) {
@@ -173,7 +174,7 @@ test('Web: the empty state replaces the table with no rows', async () => {
 // At phone width, checks the header hides, rows become cards with only the card cells, and the "Ordenar"
 // select sorts the same way the headers do.
 test('Web: at phone width rows become cards sorted by a select', async () => {
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
     const screen = await render(<Inventory />)
     expect(getComputedStyle(screen.container.querySelector('thead')!).display).toBe('none')
@@ -187,7 +188,7 @@ test('Web: at phone width rows become cards sorted by a select', async () => {
     await screen.getByRole('option', { name: 'Quantidade (maior → menor)' }).click()
     expect(quantities()).toEqual(['12', '2', '0'])
   } finally {
-    await page.viewport(1280, 720)
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   }
 })
 
@@ -216,11 +217,11 @@ test('Web: the title cell shows the code, and the details only on a phone card',
   expect(code.color).toBe(rgb(themes.gt4.day.colors.textMuted))
   await expect.element(screen.getByText('Pastilha de freio')).toBeVisible()
   await expect.element(screen.getByText('Freios · A-10')).not.toBeVisible()
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
     await expect.element(screen.getByText('Freios · A-10')).toBeVisible()
   } finally {
-    await page.viewport(1280, 720)
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   }
 })
 

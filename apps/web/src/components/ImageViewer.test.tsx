@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -183,14 +184,14 @@ test('Web: adding and changing photos follow the upload rules', async () => {
 
 // Opens the viewer on a 360×780 phone and checks the window fits the screen width inside the gaps.
 test('Web: the viewer fits a phone', async () => {
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
     const screen = await render(<Sample initial={PHOTOS} />)
     const box = screen.getByRole('dialog', { name: NAME }).element().getBoundingClientRect()
     expect(box.left).toBeGreaterThanOrEqual(0)
-    expect(box.right).toBeLessThanOrEqual(360)
+    expect(box.right).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
   } finally {
-    await page.viewport(1280, 720)
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   }
 })
 

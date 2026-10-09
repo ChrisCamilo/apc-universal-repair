@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -128,7 +129,7 @@ test('Web: a read-only photo field only shows the photos', async () => {
 
 // Fits the field in the width a 360px phone leaves inside a dialog and checks nothing overflows.
 test('Web: the photo field fits a phone', async () => {
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
     const screen = await render(
       <div style={{ width: 280 }}>
@@ -138,7 +139,7 @@ test('Web: the photo field fits a phone', async () => {
     const box = screen.container.firstElementChild as HTMLElement
     expect(box.scrollWidth).toBeLessThanOrEqual(280)
   } finally {
-    await page.viewport(1280, 720)
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   }
 })
 

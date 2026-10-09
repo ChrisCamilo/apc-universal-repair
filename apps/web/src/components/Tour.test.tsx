@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { TOUR_CARD_GAP, TOUR_SPOT_PADDING, type TourStep } from '@apc/shared/tour'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
@@ -38,7 +39,7 @@ beforeAll(() => {
 
 afterEach(async () => {
   vi.restoreAllMocks()
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 for (const style of STYLES) {
@@ -128,13 +129,13 @@ test('Web: the spotlight follows the target as it moves', async () => {
 
 // Starts the tour on a 360×780 phone and checks the card spans the screen inside the gaps, pinned to the bottom.
 test('Web: at phone width the card is pinned to the bottom', async () => {
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   const screen = await render(<Sample />)
   const card = screen.getByRole('dialog', { name: 'Abra o cadastro' }).element()
   // offsetHeight rounds the card's height, so the bottom may be off by a fraction of a pixel.
-  await expect.poll(() => card.getBoundingClientRect().bottom).toBeCloseTo(780 - TOUR_CARD_GAP, 0)
+  await expect.poll(() => card.getBoundingClientRect().bottom).toBeCloseTo(MIN_MOBILE_HEIGHT - TOUR_CARD_GAP, 0)
   expect(card.getBoundingClientRect().left).toBe(TOUR_CARD_GAP)
-  expect(card.getBoundingClientRect().width).toBe(360 - 2 * TOUR_CARD_GAP)
+  expect(card.getBoundingClientRect().width).toBe(MIN_MOBILE_WIDTH - 2 * TOUR_CARD_GAP)
 })
 
 // Asks for reduced motion and checks the tour brings the target into view without the smooth scroll.

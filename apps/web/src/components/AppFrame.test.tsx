@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { themes } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { page } from 'vitest/browser'
@@ -27,7 +28,7 @@ beforeAll(async () => {
   document.head.append(tag)
   root.dataset.style = 'bmw90'
   root.dataset.mode = 'night'
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 // Renders the frame with tabs, a slot at the end and content, and checks the APC mark heads the page, the
@@ -53,14 +54,14 @@ test('Web: the frame heads the page with the mark, the navigation and the end sl
 test('Web: the header is pinned on desktop and its tabs scroll sideways on a phone', async () => {
   const screen = await render(<Sample />)
   expect(getComputedStyle(screen.getByRole('banner').element()).position).toBe('sticky')
-  await page.viewport(360, 780)
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
     expect(getComputedStyle(screen.getByRole('banner').element()).position).toBe('static')
     const nav = screen.getByRole('navigation').element()
     expect(nav.scrollWidth).toBeGreaterThan(nav.clientWidth)
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360)
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
   } finally {
-    await page.viewport(1280, 720)
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   }
 })
 

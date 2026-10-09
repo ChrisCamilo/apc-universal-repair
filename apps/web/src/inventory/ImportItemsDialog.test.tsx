@@ -1,5 +1,6 @@
 import { CSV_COLUMNS } from '@apc/shared/item-csv'
 import type { ItemLists } from '@apc/shared/lists'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -56,12 +57,12 @@ beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 afterEach(async () => {
   vi.restoreAllMocks()
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 for (const style of STYLES) {
@@ -141,15 +142,15 @@ test('Web: the template is downloaded', async () => {
   expect(link.href).toMatch(/^blob:/)
 })
 
-// Opens the preview on a 360×780 phone and checks nothing scrolls sideways and Importar is on screen.
-test('Web: the CSV import fits a 360×780 phone', async () => {
-  await page.viewport(360, 780)
+// Opens the preview on the smallest phone and checks nothing scrolls sideways and Importar is on screen.
+test('Web: the CSV import fits the smallest phone', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   const screen = await pick(FILE)
   const button = screen.getByRole('button', { name: 'Importar 2 itens' })
   // The file is read after it is picked: measure once the preview is on screen.
   await expect.element(button).toBeVisible()
-  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360)
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
   const action = button.element().getBoundingClientRect()
-  expect(action.bottom).toBeLessThanOrEqual(780)
-  expect(action.right).toBeLessThanOrEqual(360)
+  expect(action.bottom).toBeLessThanOrEqual(MIN_MOBILE_HEIGHT)
+  expect(action.right).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
 })

@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/shared/screens'
 import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest'
@@ -30,7 +31,7 @@ beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
-  await page.viewport(1280, 720)
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 beforeEach(() => {
