@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
-import { View, type ViewStyle } from 'react-native';
+import { View } from 'react-native';
 import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import {
   ITEM_STATUSES,
@@ -17,7 +17,6 @@ import { TUTORIAL_ITEM } from '@apc/shared/inventory-tutorial';
 import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination';
 import type { Sort } from '@apc/shared/table';
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
-import { scales } from '@apc/shared/theme';
 import { API_URL } from '../api';
 import { Button } from '../Button';
 import { DataTable, RowAction, TableThumbnail } from '../DataTable';
@@ -41,6 +40,7 @@ import { SearchField } from '../TextField';
 import { tourTarget } from '../tourTargets';
 import { NumericReadout, Text } from '../Typography';
 import { useInventoryTutorial } from './inventoryTutorialContext';
+import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './InventoryTutorial';
 import { useOpenItemOnRow } from './openItemOnRowContext';
 import { usePageSize } from './pageSizeContext';
@@ -62,7 +62,6 @@ import { usePageSize } from './pageSizeContext';
 // follows. The Inventory tutorial runs over the tab by itself the first time, and again from the user menu: it starts
 // and ends with the test item deleted and the search, filters and sort off.
 
-const ACTIONS_STYLE: ViewStyle = { flexDirection: 'row', gap: scales.space.s1 };
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   {
     key: 'name',
@@ -102,34 +101,27 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
     cell: (item) => <NumericReadout>{item.quantity}</NumericReadout>,
   },
 ];
-const FILTERS_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: scales.space.s2 };
-const LOADING_LINES_STYLE: ViewStyle = { flex: 1, gap: scales.space.s2 };
-// The skeleton's quantity, the width of a short number.
-const LOADING_QUANTITY = scales.space.s1 * 14;
-const LOADING_ROW_STYLE: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: scales.space.s3 };
-const LOADING_STYLE: ViewStyle = { gap: scales.space.s3, paddingVertical: scales.space.s2 };
-// The skeleton's thumbnail, the size of a card's thumbnail.
-const LOADING_THUMB = scales.space.s1 * 11;
 // The stock status chips, outside the menu: one at a time, none for every item.
 const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }));
-const TAB_STYLE: ViewStyle = { gap: scales.space.s3 };
 
 /**
  * Builds the column of each card's actions: the pencil that opens the item to edit and the trash that deletes it.
  * @param onEdit Opens an item in the item form.
  * @param onDelete Asks to confirm deleting an item.
+ * @param ui The tab's styles and ids.
  * @returns The actions column.
  */
 function actionsColumn(
   onEdit: (item: Item) => void,
   onDelete: (item: Item) => void,
+  { styles, ids }: ReturnType<typeof useStyles>,
 ): ComponentProps<typeof DataTable<Item>>['columns'][number] {
   return {
     key: 'actions',
     header: 'Ações',
     card: 'actions',
     cell: (item) => (
-      <View style={ACTIONS_STYLE}>
+      <View style={styles.actions} testID={ids.actions}>
         <View ref={item.code === TUTORIAL_ITEM.code ? tourTarget('tutorial-pencil') : undefined} collapsable={false}>
           <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onPress={() => onEdit(item)} />
         </View>
@@ -172,6 +164,8 @@ function rowStatus(item: Item): { tone: 'warn' | 'danger'; label: string } | und
 }
 
 export function InventoryTab() {
+  const ui = useStyles();
+  const { styles, ids } = ui;
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS);
   const [status, setStatus] = useState<ItemStatus | null>(null);
   const [search, setSearch] = useState('');
@@ -322,7 +316,7 @@ export function InventoryTab() {
 
   return (
     <Panel>
-      <View style={TAB_STYLE}>
+      <View style={styles.tab} testID={ids.tab}>
         <View ref={tourTarget('search')} collapsable={false}>
           <SearchField
             label="Procure pelo nome ou código da peça"
@@ -339,7 +333,7 @@ export function InventoryTab() {
         <Button variant="secondary" onPress={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
           Importar CSV
         </Button>
-        <View style={FILTERS_STYLE}>
+        <View style={styles.filters} testID={ids.filters}>
           <View ref={tourTarget('filters')} collapsable={false}>
             <FilterMenu
               label="Filtros do estoque"
@@ -384,7 +378,7 @@ export function InventoryTab() {
               columns={[
                 photoColumn((item) => setViewer({ item, photos: heldPhotos(item.photos, API_URL) })),
                 ...COLUMNS,
-                actionsColumn((item) => openForm(item), setRemoving),
+                actionsColumn((item) => openForm(item), setRemoving, ui),
               ]}
               rows={shown}
               rowKey={(item) => item.id}
@@ -538,15 +532,17 @@ export function InventoryTab() {
 }
 
 function LoadingRows() {
+  const { styles, ids } = useStyles();
   return (
-    <View accessibilityState={{ busy: true }} style={LOADING_STYLE}>
+    <View accessibilityState={{ busy: true }} style={styles.loading} testID={ids.loading}>
       <Spinner size="sm" label="Carregando o estoque" />
       {[0, 1, 2, 3, 4].map((row) => (
-        <View key={row} testID="loading-row" style={LOADING_ROW_STYLE}>
+        <View key={row} style={styles.loadingRow} testID={ids.loadingRow}>
           <Skeleton shape="block" width={LOADING_THUMB} height={LOADING_THUMB} />
-          <View style={LOADING_LINES_STYLE}>
-            <Skeleton width="40%" />
-            <Skeleton width="20%" />
+          <View style={styles.loadingLines} testID={ids.loadingLines}>
+            {LOADING_LINES.map((width) => (
+              <Skeleton key={width} width={width} />
+            ))}
           </View>
           <Skeleton width={LOADING_QUANTITY} />
         </View>
