@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { Pressable, Text as NativeText, View, type TextStyle, type ViewStyle } from 'react-native';
-import { chevronIcon } from '@apc/shared/icons';
+import { Pressable, Text as NativeText, View } from 'react-native';
+import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
 import { pageCount, pageForSize, pageRange, pageSlots } from '@apc/shared/pagination';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
+import { useStyles } from './Pagination.styles';
 import { Segmented } from './Segmented';
-import { fontFamily, softHairline, useTheme, type ActiveTheme } from './theme';
+import { useTheme } from './theme';
 import { Label, NumericReadout } from './Typography';
 
 // Page navigation for long lists, the same as the web: the page size selector, the range shown ("1–25 de
@@ -13,13 +14,6 @@ import { Label, NumericReadout } from './Typography';
 // of the current one, and an ellipsis for skipped ranges, in at most seven slots. The current page fills with
 // the accent. Previous and next are disabled at the ends. Changing the page size keeps the first item in
 // view. The parts wrap onto more lines on a phone. An empty list shows no pagination.
-
-const DISABLED_OPACITY = 0.5;
-const ELLIPSIS_STYLE: ViewStyle = { justifyContent: 'center', paddingHorizontal: scales.space.s1 / 2 };
-// The chevron points right; turned around, it points to the previous page.
-const FLIP_STYLE: ViewStyle = { transform: [{ rotate: '180deg' }] };
-const NAV_STYLE: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: scales.space.s1 };
-const ROW_STYLE: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: scales.space.s2 };
 
 type PaginationProps = {
   /** Accessible name of the page buttons, e.g. "Páginas do estoque". */
@@ -46,83 +40,17 @@ type PageButtonProps = {
   children: (color: string) => ReactNode;
 };
 
-/**
- * Styles the row the parts sit in: a soft hairline above, the parts wrapping onto more lines.
- * @param theme Active theme.
- * @returns Style for the outer View.
- */
-function barStyle(theme: ActiveTheme): ViewStyle {
-  return {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: scales.space.s4,
-    rowGap: scales.space.s2,
-    paddingTop: scales.space.s3,
-    borderTopWidth: scales.hairline,
-    borderTopColor: softHairline(theme),
-  };
-}
-
-/**
- * Styles a page button: a tile framed in the soft hairline, filled with the accent and glowing on the current
- * page, framed in the accent while pressed, dimmed when disabled.
- * @param theme Active theme.
- * @param current Whether it is the current page.
- * @param pressed Whether it is being pressed.
- * @param disabled Whether it is disabled.
- * @returns Style for the button Pressable.
- */
-function buttonStyle(theme: ActiveTheme, current: boolean, pressed: boolean, disabled: boolean): ViewStyle {
-  const { colors } = theme;
-  const glow: ViewStyle =
-    current && theme.glow
-      ? {
-          shadowColor: colors.accent,
-          shadowOpacity: theme.glow.opacity,
-          shadowRadius: theme.glow.blur / 2,
-          shadowOffset: { width: 0, height: 0 },
-        }
-      : {};
-  return {
-    minWidth: scales.space.s6,
-    height: scales.space.s6,
-    paddingHorizontal: scales.space.s2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: scales.hairline,
-    borderColor: current ? 'transparent' : pressed ? colors.accent : softHairline(theme),
-    borderRadius: theme.radiusTile,
-    backgroundColor: current ? colors.accent : 'transparent',
-    opacity: disabled ? DISABLED_OPACITY : 1,
-    ...glow,
-  };
-}
-
-/**
- * Styles the number on a page button, or the ellipsis: mono face with tabular figures.
- * @param color Text color.
- * @returns Style for the Text.
- */
-function numberStyle(color: string): TextStyle {
-  return {
-    fontFamily: fontFamily(scales.monoFont),
-    fontSize: scales.fontSize.xs,
-    fontVariant: ['tabular-nums'],
-    color,
-  };
-}
-
 export function Pagination({ label, page, pageSize, total, pageSizes, onPageChange, onPageSizeChange }: PaginationProps) {
-  const theme = useTheme();
+  const { colors } = useTheme();
+  const { styles, ids } = useStyles();
   if (total === 0) {
     return null;
   }
   const pages = pageCount(total, pageSize);
 
   return (
-    <View style={barStyle(theme)}>
-      <View style={ROW_STYLE}>
+    <View style={styles.bar} testID={ids.bar}>
+      <View style={styles.size} testID={ids.size}>
         <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
           <Label>Itens por página</Label>
         </View>
@@ -139,14 +67,14 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
           />
         </View>
       </View>
-      <View accessibilityLiveRegion="polite">
+      <View accessibilityLiveRegion="polite" style={styles.range} testID={ids.range}>
         <NumericReadout tone="muted">{pageRange(page, pageSize, total)}</NumericReadout>
       </View>
-      <View accessibilityLabel={label} style={NAV_STYLE}>
+      <View accessibilityLabel={label} style={styles.pages} testID={ids.pages}>
         <PageButton target={page - 1} disabled={page === 1} label="Página anterior" onPageChange={onPageChange}>
           {(color) => (
-            <View style={FLIP_STYLE}>
-              <Icon icon={chevronIcon} size={12} color={color} />
+            <View style={styles.previous} testID={ids.previous}>
+              <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={color} />
             </View>
           )}
         </PageButton>
@@ -156,18 +84,23 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
               key={index < 2 ? 'gap-start' : 'gap-end'}
               importantForAccessibility="no-hide-descendants"
               accessibilityElementsHidden
-              style={ELLIPSIS_STYLE}
+              style={styles.gap}
+              testID={ids.gap}
             >
-              <NativeText style={numberStyle(theme.colors.textMuted)}>…</NativeText>
+              <NativeText style={[styles.number, { color: colors.textMuted }]}>…</NativeText>
             </View>
           ) : (
             <PageButton key={slot} target={slot} current={slot === page} label={`Página ${slot}`} onPageChange={onPageChange}>
-              {(color) => <NativeText style={numberStyle(color)}>{slot}</NativeText>}
+              {(color) => (
+                <NativeText style={[styles.number, { color }]} testID={ids.number}>
+                  {slot}
+                </NativeText>
+              )}
             </PageButton>
           ),
         )}
         <PageButton target={page + 1} disabled={page === pages} label="Próxima página" onPageChange={onPageChange}>
-          {(color) => <Icon icon={chevronIcon} size={12} color={color} />}
+          {(color) => <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={color} />}
         </PageButton>
       </View>
     </View>
@@ -175,8 +108,8 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
 }
 
 function PageButton({ target, label, current = false, disabled = false, onPageChange, children }: PageButtonProps) {
-  const theme = useTheme();
-  const { colors } = theme;
+  const { colors } = useTheme();
+  const { styles, ids } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -185,7 +118,8 @@ function PageButton({ target, label, current = false, disabled = false, onPageCh
       disabled={disabled || current}
       hitSlop={scales.space.s1}
       onPress={() => onPageChange(target)}
-      style={({ pressed }) => buttonStyle(theme, current, pressed, disabled)}
+      style={({ pressed }) => [styles.page, pressed && styles.pagePressed, current && styles.pageCurrent, disabled && styles.pageDisabled]}
+      testID={ids.page}
     >
       {({ pressed }) => children(current ? colors.onAccent : pressed ? colors.accent : colors.text)}
     </Pressable>
