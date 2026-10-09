@@ -41,7 +41,6 @@ type PageButtonProps = {
 };
 
 export function Pagination({ label, page, pageSize, total, pageSizes, onPageChange, onPageSizeChange }: PaginationProps) {
-  const { colors } = useTheme();
   const { styles, ids } = useStyles();
   if (total === 0) {
     return null;
@@ -87,7 +86,9 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
               style={styles.gap}
               testID={ids.gap}
             >
-              <NativeText style={[styles.number, { color: colors.textMuted }]}>…</NativeText>
+              <NativeText style={[styles.number, styles.ellipsis]} testID={ids.ellipsis}>
+                …
+              </NativeText>
             </View>
           ) : (
             <PageButton key={slot} target={slot} current={slot === page} label={`Página ${slot}`} onPageChange={onPageChange}>

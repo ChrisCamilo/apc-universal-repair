@@ -1,7 +1,7 @@
 import { useState, type HTMLAttributes } from 'react'
 import { ICON_SIZES, imageIcon } from '@apc/shared/icons'
 import { Icon } from './Icon.tsx'
-import { imageFrame } from './ImageFrame.styles.ts'
+import { frameBox, imageFrame } from './ImageFrame.styles.ts'
 import { useInPanel } from './panelContext.ts'
 import { Spinner } from './Spinner.tsx'
 
@@ -38,7 +38,7 @@ export function ImageFrame({ src, loading = false, alt, ratio = DEFAULT_RATIO, e
       aria-busy={state === 'loading' || undefined}
       className={classes.base({ class: className })}
       data-testid={ids.base}
-      style={{ aspectRatio: ratio, ...style }}
+      style={frameBox(ratio, style)}
       {...rest}
     >
       {src && !loading && state !== 'failed' && (

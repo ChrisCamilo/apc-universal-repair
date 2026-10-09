@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of a loading placeholder: a soft hairline fill that pulses gently, standing still with reduced motion.
@@ -13,3 +14,14 @@ export const skeleton = recipe(
   }),
   { base: '' },
 )
+
+/**
+ * Sizes a placeholder as its holder asks; a circle is as tall as it is wide.
+ * @param shape The placeholder's shape.
+ * @param width CSS width.
+ * @param height CSS height.
+ * @returns The placeholder's width and height.
+ */
+export function skeletonBox(shape: 'block' | 'circle' | 'line', width: CSSProperties['width'], height: CSSProperties['height']): CSSProperties {
+  return { width, height: shape === 'circle' ? width : height }
+}

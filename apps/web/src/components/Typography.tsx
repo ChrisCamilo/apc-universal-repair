@@ -1,4 +1,4 @@
-import type { CSSProperties, HTMLAttributes, LabelHTMLAttributes, ReactNode } from 'react'
+import type { HTMLAttributes, LabelHTMLAttributes, ReactNode } from 'react'
 import {
   HEADING_LEVELS,
   LABEL_TYPE,
@@ -7,7 +7,7 @@ import {
   type TextSize,
   type Tone,
 } from '@apc/shared/typography'
-import { heading, label, numericReadout, text } from './Typography.styles.ts'
+import { heading, label, numericReadout, text, textClamp } from './Typography.styles.ts'
 
 // Text primitives on top of the type scale (see @apc/shared/typography and Typography.styles.ts).
 
@@ -30,18 +30,6 @@ type TextProps = HTMLAttributes<HTMLParagraphElement> & {
   children: ReactNode
 }
 
-/**
- * Builds the inline style that cuts text after a number of lines.
- * @param lines Lines to keep; undefined keeps every line.
- * @returns Line-clamp style, or undefined when nothing is cut.
- */
-function clampStyle(lines: number | undefined): CSSProperties | undefined {
-  if (!lines) {
-    return undefined
-  }
-  return { display: '-webkit-box', WebkitLineClamp: lines, WebkitBoxOrient: 'vertical', overflow: 'hidden' }
-}
-
 export function Heading({ level = 2, tone = 'default', className, children, ...rest }: HeadingProps) {
   const Tag = HEADING_TAGS[level]
   const { classes, ids } = heading({ ...HEADING_LEVELS[level], tone })
@@ -59,7 +47,7 @@ export function Text({ size = 'base', tone = 'default', lines, inline, className
     <Tag
       className={classes.base({ class: className })}
       data-testid={ids.base}
-      style={{ ...clampStyle(lines), ...style }}
+      style={textClamp(lines, style)}
       {...rest}
     >
       {children}

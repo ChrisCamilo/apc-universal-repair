@@ -221,11 +221,13 @@ export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): 
 
 ## Styles
 
-A component's look lives in a recipe in its own `<Component>.styles.ts`, beside it, never in its JSX (EP-13, #133). `LoginScreen` and `PartResults` on both platforms show the pattern; the other components follow it as EP-13 moves them.
+A component's look lives in a recipe in its own `<Component>.styles.ts`, beside it, never in its JSX (EP-13, #133). Every component on both platforms follows it, and lint fails when one doesn't (see Guards below). `LoginScreen` and `PartResults` are short examples.
 
 ### Files
 
 - **One style file per component:** `LoginScreen.tsx` has `LoginScreen.styles.ts` beside it, next to its test and story. A file with several components keeps them all in its one style file: an internal component is a slot of the main one, and each exported component has its own recipe and id (`FilterChip` and `FilterChipGroup`, `Menu` and `MenuItem`).
+- **No style of its own, no style file:** a component that only puts design-system components together (`UserMenu`, `DeleteItemDialog`, the web `DashboardLayout`) has no style file.
+- **A component drawn by another:** when a component's outer element belongs to another component (a dialog's content inside `Dialog`, the wireframe Dashboard inside `AppFrame`), its recipe's `base` has no classes, and its slots are the elements it draws itself.
 - **Shared recipes:** a pattern three or more components repeat goes in `styles/shared.ts` of each app, under the same names on both:
   - Web: `DISPLAY_LABEL` (the display face in uppercase), `FIELD` (a field's frame, border by state, input, end button, list and option) and `menuItem`.
   - Mobile: `displayLabel()`, `fieldStyles()`, `glow()`, `menuItemStyles()` and `roundStyles()` (the × and the photo viewer's arrows).
@@ -282,8 +284,8 @@ const { styles, ids } = useStyles()
 - **Tokens first:** every color, size, space, radius, font and duration comes from the tokens (`@apc/shared/theme`, the Tailwind token classes on web).
 - **Named constants:** a value that has a meaning or repeats is a named constant. A constant only one component uses is exported from its style file (`FRAME_OPACITY`, `BADGE_WIDTH`), so its tests import it. One both apps or several components use goes in `@apc/shared`: screen sizes in `screens`, icon sizes in `icons` (`ICON_SIZES`), the table's breakpoint in `table`.
 - **Breakpoints:** they have names (`card:`, `max-card:`), built from the shared constants in `tailwind.config.ts`, never `max-[720px]:`.
-- **Runtime values only:** the JSX keeps only values known at run time (measured positions, insets, the window's size, `Animated` values), added last: `[styles.card, { top }]`.
-- **Sizes worked out from them:** a size or place computed from a prop or the screen is a function in the style file, called in the JSX with the runtime value: on web `dialogBox(size)` and `viewerBox()`, on mobile `windowBox(size, screen)`, `viewerBox(screen)` and the tour's `dimBoxes(spot, screen)`.
+- **Runtime values only:** the JSX keeps only values known at run time (measured positions, insets, the window's size, `Animated` values). On mobile they go last in the style array, `[styles.card, { top }]`; on web, `style` only takes a style function's result, never an object written in the JSX.
+- **Sizes worked out from them:** a size or place computed from a prop or the screen is a function in the style file, called in the JSX with the runtime value: on web `dialogBox(size)`, `viewerBox()`, `frameBox(ratio, style)`, `skeletonBox(shape, width, height)`, `textClamp(lines, style)` and the tour's `spotBox(spot)` and `cardBox(card)`, on mobile `windowBox(size, screen)`, `viewerBox(screen)` and the tour's `dimBoxes(spot, screen)`.
 
 ### Style ids
 
@@ -308,6 +310,18 @@ Every styled element carries a style id, in `data-testid` on web and `testID` on
   - **Several areas use it:** it belongs to the area that owns its data.
   - **An internal, non-exported component:** it is a slot of its file's component (`common.image-viewer.body`).
 - **A new area:** a later epic adds its slug to `STYLE_SCOPES` and to this table when its first screen is built (`car-specs`, `3d-viewer`, `maintenance-specs`, `diagnostics`, `pricing`). `common` is the only scope that isn't an epic slug.
+- **Probes in tests:** a test may mark an element it renders itself (a probe that shows the theme, two panels to compare) with its own `data-testid` or `testID`. Components never do.
+
+### Guards
+
+`lint` on each app fails when a component breaks these conventions, in CI as well:
+
+- **`lint:styles`** (`@apc/web` and `@apc/mobile`): the guard in `packages/shared/src/styles/styleGuard.ts` reads every component file (the `.tsx` files under `src`, not tests or stories) and lists each place that has:
+  - a style id written by hand (`data-testid="…"`, `testID="…"`) instead of the recipe's `ids`;
+  - on web, classes written in the JSX (`className="…"`, or a string inside the className's expression; a recipe's variant argument, `classes.nav({ side: 'prev' })`, is fine), a `style={{…}}` object, or an HTML element with classes but no `data-testid`;
+  - on mobile, a `style={{…}}` object, or a React Native element (anything imported from a `react-native…` package) with a style but no `testID`.
+- **`react-native/no-inline-styles`** is an error in the mobile ESLint, tests included.
+- A design-system component styled by a slot (`<Panel className={classes.rail()}>`) needs no id: it keeps its own.
 
 ## Architecture Docs
 

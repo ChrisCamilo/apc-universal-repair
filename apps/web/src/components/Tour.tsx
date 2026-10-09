@@ -12,7 +12,7 @@ import {
 } from '@apc/shared/tour'
 import { Button } from './Button.tsx'
 import { Panel } from './Panel.tsx'
-import { tour } from './Tour.styles.ts'
+import { cardBox, spotBox, tour } from './Tour.styles.ts'
 import { Heading, Label, NumericReadout, Text } from './Typography.tsx'
 
 // A step-by-step guide that points at parts of the screen. A spotlight rings the step's target and dims the
@@ -162,7 +162,7 @@ function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
           aria-hidden="true"
           className={classes.spotlight()}
           data-testid={ids.spotlight}
-          style={{ left: layout.spot.x, top: layout.spot.y, width: layout.spot.width, height: layout.spot.height }}
+          style={spotBox(layout.spot)}
         >
           <div className={classes.glow()} data-testid={ids.glow} />
         </div>
@@ -175,7 +175,7 @@ function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
         tabIndex={-1}
         className={classes.card()}
         data-testid={ids.card}
-        style={{ left: layout.card.x, top: layout.card.y, width: layout.card.width }}
+        style={cardBox(layout.card)}
       >
         <Panel className={classes.panel()}>
           <div className={classes.header()} data-testid={ids.header}>

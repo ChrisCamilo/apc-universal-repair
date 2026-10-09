@@ -52,7 +52,7 @@ flowchart TB
     subgraph ui["Design system"]
         theme["theme<br/>4 styles × 2 modes · tokens"]
         rest["typography · button · field · dialog<br/>tabs · table · pagination · filters<br/>icons · tree · tour"]
-        styling["style-ids · screens<br/>style ids · screen sizes"]
+        styling["style-ids · screens<br/>style ids · style guard · screen sizes"]
     end
     subgraph other["App"]
         auth["auth · test-users<br/>mocked login"]
@@ -94,6 +94,50 @@ sequenceDiagram
     App-->>User: toast · list reloads
 ```
 
+## Styles · Estilos
+
+Each component keeps its look in a recipe in its own `<Component>.styles.ts`, built from the theme tokens, which gives the classes or styles and the style id of each element. Lint fails when a component writes a style or an id by hand.
+
+Cada componente guarda a aparência numa receita no seu próprio `<Componente>.styles.ts`, feita dos tokens do tema, que dá as classes ou estilos e o id de estilo de cada elemento. O lint falha quando um componente escreve um estilo ou um id à mão.
+
+```mermaid
+flowchart LR
+    tokens["@apc/shared/theme<br/>tokens"]
+    ids["@apc/shared/style-ids<br/>scopes · styleIds()"]
+    guard["styleGuard · checkStyles<br/>lint:styles"]
+    subgraph web["apps/web"]
+        tv["styles/tv.ts<br/>tv() · recipe()"]
+        webStyles["Component.styles.ts"]
+        webComponent["Component.tsx<br/>className · data-testid"]
+    end
+    subgraph mobile["apps/mobile"]
+        create["styles/createStyles.ts<br/>createStyles()"]
+        mobileStyles["Component.styles.ts"]
+        mobileComponent["Component.tsx<br/>style · testID"]
+    end
+    tokens --> tv
+    tokens --> create
+    ids --> tv
+    ids --> create
+    tv --> webStyles --> webComponent
+    create --> mobileStyles --> mobileComponent
+    guard -. checks · verifica .-> webComponent
+    guard -. checks · verifica .-> mobileComponent
+```
+
+| Scope · Escopo | Covers · Cobre |
+|---|---|
+| `common` | The design system · O design system |
+| `auth` | The login · O login |
+| `dashboard` | The shell around the tabs · A moldura em volta das abas |
+| `catalog` | The Catalog tab · A aba Catálogo |
+| `inventory` | The Inventory tab and its dialogs · A aba Estoque e seus diálogos |
+| `docs` | Storybook-only pages · Páginas só do Storybook |
+
+An id reads `<scope>.<component>[.<slot>…]`, e.g. `common.dialog.header.close`, the same on web and mobile. See "Styles" in [AGENTS.md](../AGENTS.md).
+
+Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`, igual na web e no celular. Veja "Styles" no [AGENTS.md](../AGENTS.md).
+
 ---
 
 ## 🇺🇸 English (US)
@@ -120,7 +164,7 @@ sequenceDiagram
 |---|---|
 | Monorepo, tasks and cache | pnpm 12 workspaces, Turborepo 2 |
 | Language | TypeScript 5–6 |
-| Lint | ESLint with typescript-eslint (shared, API, mobile), oxlint (web) |
+| Lint | ESLint with typescript-eslint (shared, API, mobile), oxlint (web), and the style guard (`lint:styles`) on web and mobile |
 | Shared and API tests | Node test runner (`node --test`, `tsx --test`) |
 | Web component tests | Vitest 5 Browser Mode in Chromium |
 | Web end-to-end tests | Playwright, at 1280×720 and 360×780 |
@@ -155,7 +199,7 @@ sequenceDiagram
 |---|---|
 | Monorepo, tarefas e cache | workspaces do pnpm 12, Turborepo 2 |
 | Linguagem | TypeScript 5–6 |
-| Lint | ESLint com typescript-eslint (shared, API, celular), oxlint (web) |
+| Lint | ESLint com typescript-eslint (shared, API, celular), oxlint (web), e a verificação de estilos (`lint:styles`) na web e no celular |
 | Testes do shared e da API | Test runner do Node (`node --test`, `tsx --test`) |
 | Testes de componente da web | Vitest 5 Browser Mode no Chromium |
 | Testes de ponta a ponta da web | Playwright, em 1280×720 e 360×780 |

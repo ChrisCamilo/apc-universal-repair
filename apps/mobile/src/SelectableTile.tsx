@@ -45,7 +45,7 @@ export function SelectableTileGroup({ label, options, value, onValueChange, colu
             <SelectableTile key={option.value} option={option} checked={option.value === value} onSelect={() => onValueChange(option.value)} />
           ))}
           {Array.from({ length: columns - row.length }, (_, i) => (
-            <View key={`gap-${i}`} style={styles.filler} />
+            <View key={`gap-${i}`} style={styles.filler} testID={ids.filler} />
           ))}
         </View>
       ))}

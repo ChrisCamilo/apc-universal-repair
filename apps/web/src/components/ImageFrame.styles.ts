@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the photo frame: the whole photo, letterboxed on the raised fill in a soft hairline, fading in once it
@@ -22,3 +23,13 @@ export const imageFrame = recipe(
   }),
   { base: '', image: 'image', spinner: 'spinner', missing: 'missing' },
 )
+
+/**
+ * Keeps the frame at its aspect ratio, under the caller's own style.
+ * @param ratio Width over height, e.g. 4 / 3.
+ * @param style The caller's style, which wins.
+ * @returns The frame's style.
+ */
+export function frameBox(ratio: number, style?: CSSProperties): CSSProperties {
+  return { aspectRatio: ratio, ...style }
+}
