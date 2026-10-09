@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Share, Text } from 'react-native';
+import { Share, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { keepLocalCopy, pick } from '@react-native-documents/picker';
@@ -107,9 +107,9 @@ for (const style of STYLES) {
       const tree = await mount();
       answerPick(FILE);
       await press(tree, 'Escolher arquivo');
-      const invalid = tree.root.find((n) => n.props.testID === 'import-row-invalid' && typeof n.type === 'string');
-      const flat = Object.assign({}, ...[invalid.props.style].flat(Infinity).filter(Boolean));
-      expect(flat.borderLeftColor).toBe(themes[style][mode].colors.danger);
+      // The file's third row is the one with errors.
+      const invalid = tree.root.findAll((n) => n.props.testID === 'inventory.import-items-dialog.preview.row' && typeof n.type === 'string')[2];
+      expect(StyleSheet.flatten(invalid.props.style).borderLeftColor).toBe(themes[style][mode].colors.danger);
     });
   }
 }
@@ -132,7 +132,7 @@ test('Mobile: a CSV file is previewed before importing', async () => {
       'Importar 2 itens',
     ]),
   );
-  const first = tree.root.findAll((n) => n.props.testID === 'import-row' && typeof n.type === 'string')[0];
+  const first = tree.root.findAll((n) => n.props.testID === 'inventory.import-items-dialog.preview.row' && typeof n.type === 'string')[0];
   expect(texts(first).map((text) => text.replace(/\s/g, ' '))).toEqual([
     'Linha 2',
     'W 712/95',
