@@ -66,8 +66,8 @@ for (const style of STYLES) {
           <Text>Não dá para desfazer.</Text>
         </Dialog>,
       );
-      expect(styleOf(tree, 'dialog-window')).toMatchObject({ backgroundColor: colors.panel, borderColor: colors.hairline });
-      expect(styleOf(tree, 'dialog-backdrop').backgroundColor).toBe(colors.canvas + 'B8');
+      expect(styleOf(tree, 'common.dialog')).toMatchObject({ backgroundColor: colors.panel, borderColor: colors.hairline });
+      expect(styleOf(tree, 'common.dialog.backdrop').backgroundColor).toBe(colors.canvas + 'B8');
       const danger = tree.root.find((n) => typeof n.props.style === 'function');
       expect(StyleSheet.flatten(danger.props.style({ pressed: false }))).toMatchObject({ backgroundColor: colors.danger });
       expect(StyleSheet.flatten(tree.root.findAllByType(Text).find((t) => t.props.children === 'Excluir')!.props.style).color).toBe(colors.onDanger);
@@ -86,7 +86,7 @@ test('Mobile: long dialogs scroll inside, keep the actions and close on back', a
       <Text>Campos</Text>
     </Dialog>,
   );
-  const window = styleOf(tree, 'dialog-window');
+  const window = styleOf(tree, 'common.dialog');
   expect(window.width).toBeLessThanOrEqual(560);
   expect(window.maxHeight).toBeGreaterThan(0);
   const scroll = tree.root.findByType(ScrollView);
@@ -113,7 +113,7 @@ test('Mobile: only a dismissible dialog closes on a tap outside', async () => {
       </Dialog>
     </>,
   );
-  const outside = tree.root.findAll((n) => n.props.testID === 'dialog-outside' && typeof n.props.onPress === 'function');
+  const outside = tree.root.findAll((n) => n.props.testID === 'common.dialog.outside' && typeof n.props.onPress === 'function');
   expect(outside).toHaveLength(1);
   expect(outside[0].props.accessibilityLabel).toBe('Fechar');
   await ReactTestRenderer.act(async () => outside[0].props.onPress());

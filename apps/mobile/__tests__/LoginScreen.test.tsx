@@ -222,7 +222,7 @@ test('Mobile: the forgotten-password notice says whom to ask and closes three wa
   expect(notice().props.visible).toBe(false);
 
   await press(tree, 'Esqueceu a senha?');
-  const outside = tree.root.find((n) => n.props.testID === 'dialog-outside' && typeof n.props.onPress === 'function');
+  const outside = tree.root.find((n) => n.props.testID === 'common.dialog.outside' && typeof n.props.onPress === 'function');
   await ReactTestRenderer.act(async () => outside.props.onPress());
   expect(notice().props.visible).toBe(false);
   expect(login).not.toHaveBeenCalled();

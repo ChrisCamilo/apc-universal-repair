@@ -12,6 +12,8 @@ import { Spinner } from '../src/Spinner';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 // The panels the tests nest, by their place in render order: the outer one, then the ones inside it.
+// The style id of a photo frame.
+const FRAME = 'common.image-frame';
 const NESTED = 1;
 const OUTER = 0;
 const PANEL = 'common.panel';
@@ -112,25 +114,27 @@ test('Mobile: dividers draw a soft hairline', async () => {
 });
 
 // Loads a photo and checks the frame keeps its ratio and fits the photo whole, hidden behind a spinner and
-// marked busy until it loads.
+// marked busy until it loads, and shown once it has.
 test('Mobile: frames keep their ratio and never stretch the photo', async () => {
-  const tree = await mount('eighties', 'night', <ImageFrame testID="frame" src={PHOTO} alt="Opala de frente" />);
+  const tree = await mount('eighties', 'night', <ImageFrame src={PHOTO} alt="Opala de frente" />);
   const image = () => tree.root.findByType(Image);
-  expect(styleOf(tree, 'frame').aspectRatio).toBeCloseTo(16 / 9);
+  const opacity = () => Object.assign({}, ...[image().props.style].flat().filter(Boolean)).opacity;
+  expect(styleOf(tree, FRAME).aspectRatio).toBeCloseTo(16 / 9);
   expect(image().props).toMatchObject({ resizeMode: 'contain', accessibilityLabel: 'Opala de frente' });
-  expect(viewOf(tree, 'frame').props.accessibilityState).toEqual({ busy: true });
+  expect(viewOf(tree, FRAME).props.accessibilityState).toEqual({ busy: true });
+  expect(opacity()).toBe(0);
   expect(tree.root.findAllByType(Spinner)).toHaveLength(1);
 
   await ReactTestRenderer.act(async () => image().props.onLoad());
-  expect(viewOf(tree, 'frame').props.accessibilityState).toEqual({ busy: false });
+  expect(viewOf(tree, FRAME).props.accessibilityState).toEqual({ busy: false });
   expect(tree.root.findAllByType(Spinner)).toHaveLength(0);
-  expect(Object.assign({}, ...[image().props.style].flat().filter(Boolean)).opacity).toBeUndefined();
+  expect(opacity()).toBe(1);
 });
 
 // Shows the loading state while the photo URL is on its way, and the missing state with no photo or when
 // the photo fails to load.
 test('Mobile: frames show loading and missing photos', async () => {
-  const loading = await mount('gt4', 'day', <ImageFrame testID="frame" loading alt="Opala" />);
+  const loading = await mount('gt4', 'day', <ImageFrame loading alt="Opala" />);
   expect(loading.root.findAllByType(Spinner)).toHaveLength(1);
   expect(loading.root.findAllByType(Image)).toHaveLength(0);
 
@@ -149,12 +153,12 @@ test('Mobile: frames inside panels take the tile radius', async () => {
     'eighties',
     'night',
     <>
-      <ImageFrame testID="alone" src={null} alt="Opala" />
+      <ImageFrame src={null} alt="Opala" />
       <Panel>
-        <ImageFrame testID="nested" src={null} alt="Opala" />
+        <ImageFrame src={null} alt="Opala" />
       </Panel>
     </>,
   );
-  expect(styleOf(tree, 'alone').borderRadius).toBe(themes.eighties.night.radiusPanel);
-  expect(styleOf(tree, 'nested').borderRadius).toBe(themes.eighties.night.radiusTile);
+  expect(styleOf(tree, FRAME, 0).borderRadius).toBe(themes.eighties.night.radiusPanel);
+  expect(styleOf(tree, FRAME, 1).borderRadius).toBe(themes.eighties.night.radiusTile);
 });

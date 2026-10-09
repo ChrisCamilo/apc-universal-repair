@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Text, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { PAGE_SIZES } from '@apc/shared/pagination';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
@@ -61,7 +61,7 @@ function range(tree: ReactTestRenderer.ReactTestRenderer): string {
  * @returns The style object at rest.
  */
 function styleOf(node: ReactTestRenderer.ReactTestInstance): ViewStyle {
-  return node.props.style({ pressed: false });
+  return StyleSheet.flatten(node.props.style({ pressed: false }));
 }
 
 beforeEach(async () => {
@@ -77,10 +77,10 @@ for (const style of STYLES) {
       const tree = await mount(style, mode, <Sample total={240} />);
       const current = pressable(tree, 'Página 1');
       expect(styleOf(current).backgroundColor).toBe(colors.accent);
-      expect(current.findByType(Text).props.style.color).toBe(colors.onAccent);
+      expect(StyleSheet.flatten(current.findByType(Text).props.style).color).toBe(colors.onAccent);
       const other = pressable(tree, 'Página 2');
       expect(styleOf(other).backgroundColor).toBe('transparent');
-      expect(other.findByType(Text).props.style.color).toBe(colors.text);
+      expect(StyleSheet.flatten(other.findByType(Text).props.style).color).toBe(colors.text);
     });
   }
 }
