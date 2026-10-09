@@ -129,7 +129,7 @@ for (const style of STYLES) {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode);
       const chevrolet = tree.root.findAll((n) => typeof n.props.style === 'function' && n.props.accessibilityLabel === 'Chevrolet')[0];
-      expect(chevrolet.props.style({ pressed: false }).borderColor).toBe(colors.accent);
+      expect(StyleSheet.flatten(chevrolet.props.style({ pressed: false })).borderColor).toBe(colors.accent);
       const readout = tree.root.findAll((n) => n.type === Text && n.props.children === OPALA_25.specs[1])[0];
       expect(StyleSheet.flatten(readout.props.style).color).toBe(colors.accent);
     });

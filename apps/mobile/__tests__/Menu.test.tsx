@@ -94,8 +94,8 @@ for (const style of STYLES) {
       expect(styleOf(tree, 'common.switch.track.knob', 1).backgroundColor).toBe(theme.colors.accent);
       expect(styleOf(tree, 'common.switch.track.knob', 1).shadowColor).toBe(theme.glow ? theme.colors.accent : undefined);
       expect(styleOf(tree, 'common.switch.track.knob', 0).backgroundColor).toBe(theme.colors.textMuted);
-      expect(byName(tree, 'GT4').props.style.backgroundColor).toBe(theme.colors.accent);
-      expect(byName(tree, 'Anos 80').props.style.backgroundColor).toBe('transparent');
+      expect(StyleSheet.flatten(byName(tree, 'GT4').props.style).backgroundColor).toBe(theme.colors.accent);
+      expect(StyleSheet.flatten(byName(tree, 'Anos 80').props.style).backgroundColor).toBe('transparent');
     });
   }
 }
