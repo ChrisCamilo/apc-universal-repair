@@ -114,26 +114,26 @@ pnpm --filter @apc/web exec playwright install chromium
 
 Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisCamilo/apc-universal-repair/issues?q=label%3Aepic).
 
-- **MVP:** Setup ✅ → Design System → Auth (login) → Dashboard → Inventory (with photos and CSV import)
-- **Phase 2:** Catalog tab and Car Specs
+- **MVP ✅:** Setup → Design System → Auth (login and sign-up) → Dashboard → Inventory (with photos, CSV import and export)
+- **Optimizations ✅:** style recipes and style ids in every component, guarded by lint
+- **Phase 2 (in progress):** Catalog tab ✅ (on sample data, shown as a work in progress) and Car Specs
+- **Next:** photo compression, the API on a home computer for the mobile app, Windows desktop app and Android release build
 - **Later:** 3D viewer, maintenance specs, diagnostics, reference prices, real backend and full EN/PT-BR app UI
 
-### MVP Estimate
+### Delivery
 
-Estimate as of October 2026: about **340 hours** of work to finish the MVP (between 230 and 455 hours).
+The MVP was estimated at 228 story points. It closed on October 8, 2026, four weeks after the epics were opened, together with the phase 2 Catalog tab and the style refactor:
 
-| | Story points | Hours |
+| Epic | Tasks done | Story points |
 |---|---|---|
-| Design System, Auth, Dashboard and Inventory (48 tasks) | 228 | ~340 |
-| **MVP total** | **228** | **~340** |
-| Phase 2: Catalog tab and Car Specs (after the MVP) | ~55 | ~80 |
+| Design System | 27 | 130 |
+| Auth | 6 | 21 |
+| Dashboard (with the Catalog tab) | 6 | 31 |
+| Inventory | 18 | 96 |
+| Optimizations | 9 | 43 |
+| **Total** | **66** | **321** |
 
-| Pace | Calendar time |
-|---|---|
-| Full time, ~30 productive hours a week | ~2.5 months (2 to 3.5) |
-| Part time, ~10 hours a week | ~8 months (5 to 10.5) |
-
-1 story point ≈ 1.5 hours (1 to 2), since every UI task ships on web and mobile in four styles and two modes, with tests. There is no delivery history yet to measure the real pace, so the estimate will be revised as the first tasks close.
+Still open: 5 tasks (25 points) — photo compression, the API at home, the Windows desktop app, the Android release build and the style values left for a decision — plus the Car Specs epic.
 
 ### Contributing
 
@@ -259,26 +259,26 @@ pnpm --filter @apc/web exec playwright install chromium
 
 O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https://github.com/ChrisCamilo/apc-universal-repair/issues?q=label%3Aepic).
 
-- **MVP:** Setup ✅ → Design System → Auth (login) → Dashboard → Estoque (com fotos e importação por CSV)
-- **Fase 2:** aba Catálogo e Ficha técnica
+- **MVP ✅:** Setup → Design System → Auth (login e cadastro) → Dashboard → Estoque (com fotos, importação e exportação por CSV)
+- **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint
+- **Fase 2 (em andamento):** aba Catálogo ✅ (com dados de exemplo, aparecendo em construção) e Ficha técnica
+- **Próximos passos:** compressão das fotos, a API num computador de casa para o app do celular, app desktop para Windows e build de release para Android
 - **Depois:** visualizador 3D, ficha de manutenção, diagnósticos, valores de referência, backend real e interface completa em inglês e português
 
-### Estimativa do MVP
+### Entregas
 
-Estimativa de outubro de 2026: cerca de **340 horas** de trabalho para terminar o MVP (entre 230 e 455 horas).
+O MVP foi estimado em 228 story points. Ele foi concluído em 8 de outubro de 2026, quatro semanas depois de os épicos serem abertos, junto com a aba Catálogo da fase 2 e a reorganização dos estilos:
 
-| | Story points | Horas |
+| Épico | Tasks concluídas | Story points |
 |---|---|---|
-| Design System, Auth, Dashboard e Estoque (48 tasks) | 228 | ~340 |
-| **Total do MVP** | **228** | **~340** |
-| Fase 2: aba Catálogo e Ficha técnica (depois do MVP) | ~55 | ~80 |
+| Design System | 27 | 130 |
+| Auth | 6 | 21 |
+| Dashboard (com a aba Catálogo) | 6 | 31 |
+| Estoque | 18 | 96 |
+| Otimizações | 9 | 43 |
+| **Total** | **66** | **321** |
 
-| Ritmo | Prazo |
-|---|---|
-| Tempo integral, ~30 horas produtivas por semana | ~2,5 meses (2 a 3,5) |
-| Meio período, ~10 horas por semana | ~8 meses (5 a 10,5) |
-
-1 story point ≈ 1,5 hora (de 1 a 2), já que toda task de interface sai na web e no celular, em quatro estilos e dois modos, com testes. Ainda não há histórico de entregas para medir o ritmo real, então a estimativa será revisada conforme as primeiras tasks forem fechadas.
+Ainda em aberto: 5 tasks (25 pontos) — compressão das fotos, a API em casa, o app desktop para Windows, o build de release para Android e os valores de estilo que faltam decidir — além do épico de Ficha técnica.
 
 ### Como Contribuir
 
