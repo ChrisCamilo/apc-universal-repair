@@ -39,7 +39,8 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 
 - 🗜️ Photos compressed when they are saved
 - 🏠 The API running on a home computer, for the mobile app on the same Wi-Fi, turned on by a desktop shortcut or in the background ✅
-- 🖥️ Windows desktop app and Android release build
+- 🖥️ Windows desktop app, which turns the server on by itself when it isn't running ✅
+- 📱 Android release build
 
 **Later**
 
@@ -66,6 +67,7 @@ A **pnpm** + **Turborepo** monorepo:
 |---|---|
 | `apps/web` | Web app — React 19, Vite 8, Tailwind CSS 4, React Router 8 and Storybook 10 |
 | `apps/mobile` | Mobile app — React Native 0.87 |
+| `apps/desktop` | Windows desktop app — Electron 44 with the web build, packaged by electron-builder |
 | `apps/api` | API — Fastify 5, Zod, Prisma 7 on PostgreSQL, with sharp for the photo thumbnails |
 | `packages/shared` | Zod schemas, rules, types and design tokens shared by web, mobile and API |
 
@@ -111,10 +113,21 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm --filter @apc/mobile start` | Starts the React Native bundler |
 | `pnpm --filter @apc/mobile android` | Runs the mobile app on Android |
 | `pnpm --filter @apc/api start:home` | Applies the migrations and starts the API, as the home server does |
+| `pnpm --filter @apc/desktop dev` | Opens the desktop app on the web dev server (run `pnpm dev` too) |
+| `pnpm --filter @apc/desktop dist` | Builds the Windows installer and the portable exe in `apps/desktop/release/` |
+| `pnpm --filter @apc/desktop test:e2e` | Runs the desktop app's smoke test (build the web app and the desktop app first) |
 
 ### Running at Home
 
 The API and the database can run on a Windows computer at home, for the phone app on the same Wi-Fi and the desktop app on that computer. The server can be turned on by hand from the **Ligar servidor APC** desktop shortcut, or by a Task Scheduler task that starts it in the background. The [home server guide](docs/home-server.md) has every step: installing, turning it on, the firewall, checking from the phone, backups and updates. It is for the home network only.
+
+### Desktop App
+
+`apps/desktop` packages the web app as a Windows program with Electron. The shop installs it and opens it like any other app, without a browser.
+
+- **Build:** `pnpm --filter @apc/desktop dist` builds the web app and writes `APC Universal Repair Setup <version>.exe` (installer, with desktop and Start menu shortcuts) and a portable exe to `apps/desktop/release/`. The builds are unsigned, so Windows SmartScreen warns on the first run: choose *More info → Run anyway*.
+- **The server:** when the app opens and the API on this computer doesn't answer, it starts it in the background (the same way as the [home server guide](docs/home-server.md)) and shows "Ligando o servidor" until it answers. An API that is already running is left alone, and it keeps running after the app closes, so the phone keeps working.
+- **API address:** `http://localhost:3333` by default. To use a server on another computer, create `config.json` in `%APPDATA%\APC Universal Repair` with `{ "apiUrl": "http://192.168.0.10:3333" }`; `APC_API_URL` also sets it. The app starts the server from the `apps/api` folder of the clone it was built from, or from `apiDir` in `config.json`.
 
 ### Roadmap
 
@@ -123,7 +136,7 @@ Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisC
 - **MVP ✅:** Setup → Design System → Auth (login and sign-up) → Dashboard → Inventory (with photos, CSV import and export)
 - **Optimizations ✅:** style recipes and style ids in every component, guarded by lint
 - **Phase 2 (in progress):** Catalog tab ✅ (on sample data, shown as a work in progress) and Car Specs
-- **Next:** the API on a home computer for the mobile app ✅, photo compression, Windows desktop app and Android release build
+- **Next:** the API on a home computer for the mobile app ✅, Windows desktop app ✅, photo compression and Android release build
 - **Later:** 3D viewer, maintenance specs, diagnostics, reference prices, real backend and full EN/PT-BR app UI
 
 ### Delivery
@@ -139,7 +152,7 @@ The MVP was estimated at 228 story points. It closed on October 8, 2026, four we
 | Optimizations | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Since then the API at home is done too. Still open: 4 tasks (20 points) — photo compression, the Windows desktop app, the Android release build and the style values left for a decision — plus the Car Specs epic.
+Since then the API at home and the Windows desktop app are done too. Still open: photo compression, the Android release build, the home server checks that need an administrator and the style values left for a decision, plus the Car Specs epic.
 
 ### Contributing
 
@@ -190,7 +203,8 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 
 - 🗜️ Fotos comprimidas ao serem salvas
 - 🏠 A API rodando num computador de casa, para o app do celular na mesma rede Wi-Fi, ligada por um atalho na área de trabalho ou em segundo plano ✅
-- 🖥️ App desktop para Windows e build de release para Android
+- 🖥️ App desktop para Windows, que liga o servidor sozinho quando ele não está rodando ✅
+- 📱 Build de release para Android
 
 **Depois**
 
@@ -217,6 +231,7 @@ Monorepo com **pnpm** + **Turborepo**:
 |---|---|
 | `apps/web` | App web — React 19, Vite 8, Tailwind CSS 4, React Router 8 e Storybook 10 |
 | `apps/mobile` | App para celular — React Native 0.87 |
+| `apps/desktop` | App desktop para Windows — Electron 44 com o build da web, empacotado pelo electron-builder |
 | `apps/api` | API — Fastify 5, Zod, Prisma 7 com PostgreSQL, e sharp para as miniaturas das fotos |
 | `packages/shared` | Schemas Zod, regras, tipos e tokens do design system compartilhados entre web, celular e API |
 
@@ -262,10 +277,21 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm --filter @apc/mobile start` | Inicia o bundler do React Native |
 | `pnpm --filter @apc/mobile android` | Roda o app no Android |
 | `pnpm --filter @apc/api start:home` | Aplica as migrações e liga a API, como o servidor de casa faz |
+| `pnpm --filter @apc/desktop dev` | Abre o app desktop sobre o servidor de desenvolvimento da web (rode também o `pnpm dev`) |
+| `pnpm --filter @apc/desktop dist` | Gera o instalador para Windows e o exe portátil em `apps/desktop/release/` |
+| `pnpm --filter @apc/desktop test:e2e` | Roda o smoke test do app desktop (gere antes o build da web e do app desktop) |
 
 ### Rodando em Casa
 
 A API e o banco podem rodar num computador Windows em casa, para o app do celular na mesma rede Wi-Fi e o app desktop nesse computador. O servidor pode ser ligado na mão pelo atalho **Ligar servidor APC** na área de trabalho, ou por uma tarefa do Agendador de Tarefas que o liga em segundo plano. O [guia do servidor em casa](docs/home-server.md#-português-brasil) tem todos os passos: instalação, como ligar, firewall, como conferir pelo celular, backup e atualização. Ele é só para a rede de casa.
+
+### App Desktop
+
+O `apps/desktop` empacota o app web como um programa para Windows com o Electron. A oficina instala e abre como qualquer outro programa, sem navegador.
+
+- **Build:** o `pnpm --filter @apc/desktop dist` gera o build da web e grava em `apps/desktop/release/` o `APC Universal Repair Setup <versão>.exe` (instalador, com atalhos na área de trabalho e no menu Iniciar) e um exe portátil. Os builds não são assinados, então o SmartScreen do Windows avisa na primeira vez: escolha *Mais informações → Executar assim mesmo*.
+- **O servidor:** quando o app abre e a API deste computador não responde, ele a liga em segundo plano (do mesmo jeito que o [guia do servidor em casa](docs/home-server.md#-português-brasil)) e mostra "Ligando o servidor" até ela responder. Uma API que já está rodando fica como está, e ela continua ligada depois que o app fecha, para o celular continuar funcionando.
+- **Endereço da API:** `http://localhost:3333` por padrão. Para usar um servidor em outro computador, crie o `config.json` em `%APPDATA%\APC Universal Repair` com `{ "apiUrl": "http://192.168.0.10:3333" }`; o `APC_API_URL` também define o endereço. O app liga o servidor a partir da pasta `apps/api` do clone em que foi gerado, ou do `apiDir` do `config.json`.
 
 ### Roadmap
 
@@ -274,7 +300,7 @@ O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https:
 - **MVP ✅:** Setup → Design System → Auth (login e cadastro) → Dashboard → Estoque (com fotos, importação e exportação por CSV)
 - **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint
 - **Fase 2 (em andamento):** aba Catálogo ✅ (com dados de exemplo, aparecendo em construção) e Ficha técnica
-- **Próximos passos:** a API num computador de casa para o app do celular ✅, compressão das fotos, app desktop para Windows e build de release para Android
+- **Próximos passos:** a API num computador de casa para o app do celular ✅, app desktop para Windows ✅, compressão das fotos e build de release para Android
 - **Depois:** visualizador 3D, ficha de manutenção, diagnósticos, valores de referência, backend real e interface completa em inglês e português
 
 ### Entregas
@@ -290,7 +316,7 @@ O MVP foi estimado em 228 story points. Ele foi concluído em 8 de outubro de 20
 | Otimizações | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Depois disso, a API em casa também ficou pronta. Ainda em aberto: 4 tasks (20 pontos) — compressão das fotos, o app desktop para Windows, o build de release para Android e os valores de estilo que faltam decidir — além do épico de Ficha técnica.
+Depois disso, a API em casa e o app desktop para Windows também ficaram prontos. Ainda em aberto: compressão das fotos, o build de release para Android, as checagens do servidor em casa que precisam de administrador e os valores de estilo que faltam decidir, além do épico de Ficha técnica.
 
 ### Como Contribuir
 
