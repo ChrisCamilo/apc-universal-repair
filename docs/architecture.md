@@ -94,6 +94,12 @@ sequenceDiagram
     App-->>User: toast · list reloads
 ```
 
+## At home · Em casa
+
+On a Windows computer at home, `pnpm run start:home` applies the migrations and starts the API with `tsx`, on `0.0.0.0` so the phone reaches it over the Wi-Fi at `http://<ip>:3333`, while the desktop app on that computer uses `localhost:3333`. `apps/api/scripts/start-server.ps1` runs it in a window for the "Ligar servidor APC" shortcut, or with no window for a Task Scheduler task, logging to `apps/api/logs/` and starting it again when it stops. PostgreSQL runs as its own Windows service. The steps are in [home-server.md](home-server.md).
+
+Num computador Windows em casa, o `pnpm run start:home` aplica as migrações e liga a API com o `tsx`, em `0.0.0.0`, para o celular chegar a ela pelo Wi-Fi em `http://<ip>:3333`, enquanto o app desktop nesse computador usa `localhost:3333`. O `apps/api/scripts/start-server.ps1` a roda numa janela, para o atalho "Ligar servidor APC", ou sem janela, para uma tarefa do Agendador de Tarefas, com o log em `apps/api/logs/` e religando a API quando ela para. O PostgreSQL roda como um serviço do Windows próprio. Os passos estão em [home-server.md](home-server.md#-português-brasil).
+
 ## Styles · Estilos
 
 Each component keeps its look in a recipe in its own `<Component>.styles.ts`, built from the theme tokens, which gives the classes or styles and the style id of each element. Lint fails when a component writes a style or an id by hand.
@@ -155,6 +161,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 ### How they talk
 
 - Web and mobile call the API over HTTP with JSON; the web goes through the Vite dev server's `/api` proxy, the phone straight to `API_URL`.
+- At home, the API runs on a Windows computer and the phone reaches it over the Wi-Fi (see [home-server.md](home-server.md)).
 - Both sides use the same Zod schemas from `@apc/shared`, so a field can't mean one thing in the app and another in the API.
 - The API speaks names (`"Motor"`, `"D"`); the database keeps references and enums (see [database.md](database.md)).
 - Sign-up (`POST /users`) and login (`POST /sessions`) go to the API, which keeps the users and checks the password against its hash; the app saves the user it answers with as the session on the device. Real sessions, with tokens the API checks, come with EP-10.
@@ -191,6 +198,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 ### Como conversam
 
 - Web e celular chamam a API por HTTP com JSON; a web passa pelo proxy `/api` do servidor do Vite, o celular vai direto ao `API_URL`.
+- Em casa, a API roda num computador Windows e o celular chega a ela pelo Wi-Fi (veja [home-server.md](home-server.md#-português-brasil)).
 - Os dois lados usam os mesmos schemas Zod do `@apc/shared`, então um campo não pode significar uma coisa no app e outra na API.
 - A API fala em nomes (`"Motor"`, `"D"`); o banco guarda referências e enums (veja [database.md](database.md)).
 - O cadastro (`POST /users`) e o login (`POST /sessions`) vão para a API, que guarda os usuários e confere a senha com o hash dela; o app salva o usuário que ela responde como a sessão no aparelho. Sessões de verdade, com tokens conferidos pela API, vêm com o EP-10.
