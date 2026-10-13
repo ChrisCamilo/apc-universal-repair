@@ -145,7 +145,7 @@ Help mechanics, enthusiasts, and vehicle owners preserve correct maintenance pra
 
 ### Status
 
-🚧 In development: the monorepo is set up (web, mobile and API) and the MVP epics are underway.
+🚧 In development: the MVP is done on web and mobile — login and sign-up, the Dashboard and the Inventory — and phase 2 is underway, with the Catalog tab built on sample data and the Car Specs next.
 
 ---
 
@@ -290,4 +290,4 @@ Ajudar mecânicos, entusiastas e proprietários de veículos a preservar as boas
 
 ### Status
 
-🚧 Em desenvolvimento: o monorepo está montado (web, celular e API) e os épicos do MVP estão em andamento.
+🚧 Em desenvolvimento: o MVP está pronto na web e no celular — login e cadastro, o Dashboard e o Estoque — e a fase 2 está em andamento, com a aba Catálogo feita sobre dados de exemplo e a Ficha técnica em seguida.
