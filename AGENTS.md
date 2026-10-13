@@ -136,6 +136,7 @@ All web tests are written in TypeScript. Each kind of test has one tool:
 | Component (web) | Vitest Browser Mode, in Chromium through the Playwright provider | Next to the component, `*.test.tsx` |
 | End-to-end (web) | Playwright Test, `desktop` (1280×720) and `mobile` (360×780) projects | `apps/web/e2e/*.spec.ts` |
 | Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` |
+| Desktop | Node test runner for the main process, Playwright's Electron support for the smoke test | `apps/desktop/src/*.test.ts`, `apps/desktop/e2e/*.spec.ts` |
 
 - **Component tests** check one component alone: every style (`eighties`, `gt4`, `bmw90`, `fiat90`) and mode (light, dark), keyboard and focus, and the minimum screen sizes. They run in a real browser, so CSS and tokens apply as they do in the app. Vitest is added by the first Design System task that needs a component test.
 - **E2E tests** check a user flow across the app, with the API and the web app running.
@@ -152,6 +153,7 @@ These rules apply to every test, whatever the tool (Playwright, Vitest, Jest, `n
   |---|---|
   | `Web:` | `apps/web` |
   | `Mobile:` | `apps/mobile` |
+  | `Desktop:` | `apps/desktop` |
   | `API:` | `apps/api` |
   | `Shared:` | `packages/shared` |
 
