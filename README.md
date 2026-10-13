@@ -14,9 +14,13 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 
 ### Features
 
-**MVP (in progress)**
+**MVP ✅ (done, on web and mobile)**
 
+- 🔐 Login and account sign-up (name, username, e-mail and password), with the users kept in the database and the passwords stored hashed, and a forgotten-password notice saying whom to ask
+- 🗂️ Dashboard with tabs that can be dragged into a new order, and a user menu with the visual style, dark mode, the list preferences, the tutorial and logout
 - 📦 Parts inventory: add, view, edit and delete parts, each with its part code, category, part brand, vehicle brand and model, position, side, color, location, quantity, minimum stock and unit price (R$)
+- 🏷️ Categories, part brands and vehicle models created right from the item form, and renamed or deleted in their own lists
+- 🔢 A part code already in use is flagged while it is typed, ignoring case, spaces and separators ("CB4500" is "CB-4500")
 - 🧭 Inventory search by name or part code, filters, sorting on every column and pagination (25, 50 or 100 per page)
 - 🚦 Low-stock and out-of-stock rows highlighted in color
 - 🖼️ Up to 3 photos per part, with a large viewer
@@ -24,12 +28,18 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
 - 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes
 
-**Phase 2**
+**Phase 2 (in progress)**
 
-- 📚 Vehicle catalog organized by brand, model, generation, version, year and engine
-- 🔎 Catalog search by brand, model or the code of a part in stock
-- 🚧 For now the Catalog tab shows as a work in progress: it opens blurred behind a notice that it isn't ready yet
+- 📚 Vehicle catalog organized by brand, model, generation, version, year and engine, on sample data ✅
+- 🔎 Catalog search by brand, model or the code of a part in stock ✅
+- 🚧 Until phase 2 is done the Catalog tab shows as a work in progress: it opens blurred behind a notice that it isn't ready yet
 - 📋 Vehicle spec sheet: fuel consumption, equipment and features
+
+**Next**
+
+- 🗜️ Photos compressed when they are saved
+- 🏠 The API running on a home computer, for the mobile app on the same Wi-Fi
+- 🖥️ Windows desktop app and Android release build
 
 **Later**
 
@@ -147,9 +157,13 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 
 ### Funcionalidades
 
-**MVP (em andamento)**
+**MVP ✅ (pronto, na web e no celular)**
 
+- 🔐 Login e cadastro de conta (nome, usuário, e-mail e senha), com os usuários guardados no banco e as senhas em hash, e um aviso de senha esquecida dizendo a quem pedir
+- 🗂️ Dashboard com abas que podem ser arrastadas para outra ordem, e um menu do usuário com o estilo visual, o modo escuro, as preferências da lista, o tutorial e a saída
 - 📦 Estoque de peças: adicionar, ver, editar e excluir peças, cada uma com código da peça, categoria, marca da peça, marca e modelo do veículo, posição, lado, cor, local, quantidade, estoque mínimo e valor unitário (R$)
+- 🏷️ Categorias, marcas de peça e modelos de veículo criados direto no formulário do item, e renomeados ou excluídos nas próprias listas
+- 🔢 Um código de peça já usado é apontado enquanto é digitado, sem levar em conta maiúsculas, espaços e separadores ("CB4500" é "CB-4500")
 - 🧭 Busca no estoque por nome ou código da peça, filtros, ordenação em todas as colunas e paginação (25, 50 ou 100 por página)
 - 🚦 Linhas com estoque baixo e esgotado destacadas por cor
 - 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande
@@ -157,12 +171,18 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
 - 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro
 
-**Fase 2**
+**Fase 2 (em andamento)**
 
-- 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor
-- 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque
-- 🚧 Por enquanto a aba Catálogo aparece em construção: ela abre desfocada atrás de um aviso de que ainda não está pronta
+- 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor, com dados de exemplo ✅
+- 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque ✅
+- 🚧 Até a fase 2 terminar, a aba Catálogo aparece em construção: ela abre desfocada atrás de um aviso de que ainda não está pronta
 - 📋 Ficha técnica do veículo: consumo, equipamentos e itens de série
+
+**Próximos passos**
+
+- 🗜️ Fotos comprimidas ao serem salvas
+- 🏠 A API rodando num computador de casa, para o app do celular na mesma rede Wi-Fi
+- 🖥️ App desktop para Windows e build de release para Android
 
 **Depois**
 
