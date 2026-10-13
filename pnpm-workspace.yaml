@@ -3,6 +3,9 @@ packages:
   - "packages/*"
 allowBuilds:
   '@prisma/engines': true
+  electron: true
+  # The Squirrel installer of electron-builder; the desktop app ships as NSIS and portable only.
+  electron-winstaller: false
   esbuild: true
   prisma: true
 minimumReleaseAgeExclude:
