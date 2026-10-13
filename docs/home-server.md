@@ -95,8 +95,9 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 - To start it **with Windows, before anyone signs in**, run the same command with `-AtStartup` in a PowerShell opened as administrator. Windows only lets an administrator create that kind of task.
 - The script starts the task right away. The server's log is in `apps\api\logs\api.log`. Once it passes 10 MB, it is moved to `api.old.log`.
 - If the API stops (for example, because PostgreSQL wasn't up yet at startup), it starts again after 10 seconds.
-- To turn it off and on without removing it: `Stop-ScheduledTask "APC Universal Repair API"` and `Start-ScheduledTask "APC Universal Repair API"`, or the Task Scheduler window.
-- To remove it: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`. A task made with `-AtStartup` must be removed as administrator.
+- To turn it off without removing the task, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1` (normal user). It turns off the server started by the task or by the shortcut. Stopping the task in the Task Scheduler isn't enough: Windows ends only the task's first process, and the API keeps running.
+- To turn it on again: `Start-ScheduledTask "APC Universal Repair API"`, or the next time this user signs in.
+- To remove it: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which also turns the server off. A task made with `-AtStartup` must be removed as administrator.
 
 ### 4. Which steps need an administrator
 
@@ -105,7 +106,7 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 | Installing Node.js, Git and PostgreSQL, and `corepack enable` | Yes, once |
 | Firewall rule for port 3333 | Yes, once |
 | `pnpm install`, `.env`, migrations and seed | No |
-| Desktop shortcut and turning the server on by hand | No |
+| Desktop shortcut, turning the server on by hand and `stop-server.ps1` | No |
 | Automatic task that starts when the user signs in | No |
 | Automatic task that starts with Windows (`-AtStartup`) | Yes, once to create it and to remove it |
 
@@ -154,7 +155,7 @@ To restore, with the server off, use `pg_restore` with the copy and put the phot
 
 ### 9. Updating to a new version
 
-1. Turn the server off: close the window, or `Stop-ScheduledTask "APC Universal Repair API"`.
+1. Turn the server off: close the window, or run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`.
 2. In the project folder: `git pull` and then `pnpm install`.
 3. Turn the server on again: the shortcut, or `Start-ScheduledTask "APC Universal Repair API"`. It applies the new migrations by itself as it starts.
 
@@ -226,8 +227,9 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 - Para ligar **junto com o Windows, antes de alguém entrar**, rode o mesmo comando com `-AtStartup` num PowerShell aberto como administrador. O Windows só deixa um administrador criar esse tipo de tarefa.
 - O script já inicia a tarefa na hora. O log do servidor fica em `apps\api\logs\api.log`. Quando passa de 10 MB, ele vai para `api.old.log`.
 - Se a API parar (por exemplo, porque o PostgreSQL ainda não tinha ligado na inicialização), ela liga de novo depois de 10 segundos.
-- Para desligar e ligar sem remover: `Stop-ScheduledTask "APC Universal Repair API"` e `Start-ScheduledTask "APC Universal Repair API"`, ou pela janela do Agendador de Tarefas.
-- Para remover: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`. Uma tarefa criada com `-AtStartup` precisa ser removida como administrador.
+- Para desligar sem remover a tarefa, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1` (usuário normal). Ele desliga o servidor ligado pela tarefa ou pelo atalho. Parar a tarefa no Agendador de Tarefas não basta: o Windows encerra só o primeiro processo da tarefa, e a API continua rodando.
+- Para ligar de novo: `Start-ScheduledTask "APC Universal Repair API"`, ou na próxima vez que esse usuário entrar no Windows.
+- Para remover: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que também desliga o servidor. Uma tarefa criada com `-AtStartup` precisa ser removida como administrador.
 
 ### 4. O que precisa de administrador
 
@@ -236,7 +238,7 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 | Instalar Node.js, Git e PostgreSQL, e o `corepack enable` | Sim, uma vez |
 | Regra do firewall para a porta 3333 | Sim, uma vez |
 | `pnpm install`, `.env`, migrações e seed | Não |
-| Atalho na área de trabalho e ligar o servidor na mão | Não |
+| Atalho na área de trabalho, ligar o servidor na mão e o `stop-server.ps1` | Não |
 | Tarefa automática que liga quando o usuário entra no Windows | Não |
 | Tarefa automática que liga junto com o Windows (`-AtStartup`) | Sim, uma vez para criar e para remover |
 
@@ -285,6 +287,6 @@ Para restaurar, com o servidor desligado, use o `pg_restore` com a cópia e devo
 
 ### 9. Atualizar para uma versão nova
 
-1. Desligue o servidor: feche a janela, ou `Stop-ScheduledTask "APC Universal Repair API"`.
+1. Desligue o servidor: feche a janela, ou rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`.
 2. Na pasta do projeto: `git pull` e depois `pnpm install`.
 3. Ligue o servidor de novo: pelo atalho, ou `Start-ScheduledTask "APC Universal Repair API"`. Ele aplica as migrações novas sozinho ao ligar.
