@@ -64,16 +64,18 @@ A **pnpm** + **Turborepo** monorepo:
 
 | Package | What it is |
 |---|---|
-| `apps/web` | Web app — React 19, Vite, Vitest and Playwright (tests in TypeScript) |
+| `apps/web` | Web app — React 19, Vite 8, Tailwind CSS 4, React Router 8 and Storybook 10 |
 | `apps/mobile` | Mobile app — React Native 0.87 |
-| `apps/api` | API — Fastify, Zod, Prisma on PostgreSQL |
-| `packages/shared` | Zod schemas and types shared by web, mobile and API |
+| `apps/api` | API — Fastify 5, Zod, Prisma 7 on PostgreSQL, with sharp for the photo thumbnails |
+| `packages/shared` | Zod schemas, rules, types and design tokens shared by web, mobile and API |
 
 The [architecture overview](docs/architecture.md) shows how these parts fit together and the technologies each one uses, and the [database diagram](docs/database.md) shows the tables and how they relate.
 
-Web tests are written in TypeScript: component tests with **Vitest Browser Mode**, which runs them in Chromium, and end-to-end tests with **Playwright**, at 1280×720 and 360×780. Vitest comes with the first Design System components. See [AGENTS.md](AGENTS.md#testing) for details.
+Each component keeps its look in a style recipe beside it (`<Component>.styles.ts`), built from the theme tokens, which also gives every element its style id. Lint fails when a component writes a style or an id by hand.
 
-CI (GitHub Actions) runs lint, build and the Playwright E2E tests on every pull request.
+Web tests are written in TypeScript: component tests with **Vitest Browser Mode**, which runs them in Chromium, and end-to-end tests with **Playwright**, at 1280×720 and 360×780. The mobile app is tested with **Jest** and `react-test-renderer`. See [AGENTS.md](AGENTS.md#testing) for details.
+
+CI (GitHub Actions) runs lint, typecheck, build, the unit and component tests and the Playwright E2E tests on every pull request.
 
 ### Getting Started
 
@@ -207,16 +209,18 @@ Monorepo com **pnpm** + **Turborepo**:
 
 | Pacote | O que é |
 |---|---|
-| `apps/web` | App web — React 19, Vite, Vitest e Playwright (testes em TypeScript) |
+| `apps/web` | App web — React 19, Vite 8, Tailwind CSS 4, React Router 8 e Storybook 10 |
 | `apps/mobile` | App para celular — React Native 0.87 |
-| `apps/api` | API — Fastify, Zod, Prisma com PostgreSQL |
-| `packages/shared` | Schemas Zod e tipos compartilhados entre web, celular e API |
+| `apps/api` | API — Fastify 5, Zod, Prisma 7 com PostgreSQL, e sharp para as miniaturas das fotos |
+| `packages/shared` | Schemas Zod, regras, tipos e tokens do design system compartilhados entre web, celular e API |
 
 A [visão geral da arquitetura](docs/architecture.md#-português-brasil) mostra como essas partes se encaixam e as tecnologias de cada uma, e o [diagrama do banco](docs/database.md#-português-brasil) mostra as tabelas e como se relacionam.
 
-Os testes da web são escritos em TypeScript: testes de componente com o **Vitest Browser Mode**, que os roda no Chromium, e testes de ponta a ponta com o **Playwright**, em 1280×720 e 360×780. O Vitest entra junto com os primeiros componentes do Design System. Os detalhes estão no [AGENTS.md](AGENTS.md#testing).
+Cada componente guarda a aparência numa receita de estilo ao lado dele (`<Componente>.styles.ts`), feita com os tokens do tema, que também dá o id de estilo de cada elemento. O lint falha quando um componente escreve um estilo ou um id à mão.
 
-O CI (GitHub Actions) roda lint, build e os testes E2E do Playwright em todo pull request.
+Os testes da web são escritos em TypeScript: testes de componente com o **Vitest Browser Mode**, que os roda no Chromium, e testes de ponta a ponta com o **Playwright**, em 1280×720 e 360×780. O app do celular é testado com **Jest** e `react-test-renderer`. Os detalhes estão no [AGENTS.md](AGENTS.md#testing).
+
+O CI (GitHub Actions) roda lint, checagem de tipos, build, os testes unitários e de componente e os testes E2E do Playwright em todo pull request.
 
 ### Como Rodar
 
