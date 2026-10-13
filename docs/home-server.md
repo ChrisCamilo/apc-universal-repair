@@ -21,6 +21,7 @@ flowchart LR
 
     phone -- "Wi-Fi · firewall: private only" --> api
     desktop --> api
+    desktop -. "starts it when it doesn't answer · liga se não responde" .-> start
     start --> api
     api --> db
     api --> files
@@ -98,6 +99,8 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 - To turn it off without removing the task, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1` (normal user). It turns off the server started by the task or by the shortcut. Stopping the task in the Task Scheduler isn't enough: Windows ends only the task's first process, and the API keeps running.
 - To turn it on again: `Start-ScheduledTask "APC Universal Repair API"`, or the next time this user signs in.
 - To remove it: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which also turns the server off. A task made with `-AtStartup` must be removed as administrator.
+
+**The desktop app also turns it on.** When the APC Universal Repair desktop app opens and the server doesn't answer, it starts the server in the background the same way as the task (no window, same log), and shows "Ligando o servidor" until it answers. The server keeps running after the app closes, so the phone keeps working; `stop-server.ps1` turns it off. If the server is already on, the app leaves it alone.
 
 ### 4. Which steps need an administrator
 
@@ -230,6 +233,8 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 - Para desligar sem remover a tarefa, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1` (usuário normal). Ele desliga o servidor ligado pela tarefa ou pelo atalho. Parar a tarefa no Agendador de Tarefas não basta: o Windows encerra só o primeiro processo da tarefa, e a API continua rodando.
 - Para ligar de novo: `Start-ScheduledTask "APC Universal Repair API"`, ou na próxima vez que esse usuário entrar no Windows.
 - Para remover: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que também desliga o servidor. Uma tarefa criada com `-AtStartup` precisa ser removida como administrador.
+
+**O app desktop também liga o servidor.** Quando o app desktop do APC Universal Repair abre e o servidor não responde, ele liga o servidor em segundo plano do mesmo jeito que a tarefa (sem janela, mesmo log) e mostra "Ligando o servidor" até ele responder. O servidor continua ligado depois que o app fecha, para o celular continuar funcionando; o `stop-server.ps1` desliga. Se o servidor já estiver ligado, o app não mexe nele.
 
 ### 4. O que precisa de administrador
 
