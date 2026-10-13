@@ -1,0 +1,34 @@
+# Packages the desktop app for Windows: `pnpm --filter @apc/desktop dist`, after the web build. The output goes to
+# release/ (gitignored): an NSIS installer and a portable exe, both unsigned, so SmartScreen warns on the first run.
+appId: com.apc.universalrepair
+productName: APC Universal Repair
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - static/**/*
+  - build/icon.png
+  - package.json
+# The web build, served by the app:// protocol from resources/web.
+extraResources:
+  - from: ../web/dist
+    to: web
+win:
+  target:
+    - nsis
+    - portable
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+portable:
+  artifactName: ${productName} ${version} portable.${ext}
+# Electron fuses: no running as plain Node, no NODE_OPTIONS or --inspect, and the app only loads from its checked ASAR.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
