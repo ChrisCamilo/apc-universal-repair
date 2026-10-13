@@ -38,7 +38,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 **Next**
 
 - 🗜️ Photos compressed when they are saved
-- 🏠 The API running on a home computer, for the mobile app on the same Wi-Fi
+- 🏠 The API running on a home computer, for the mobile app on the same Wi-Fi, turned on by a desktop shortcut or in the background ✅
 - 🖥️ Windows desktop app and Android release build
 
 **Later**
@@ -109,6 +109,11 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm --filter @apc/web storybook` | Opens Storybook on :6006, with the design system foundations, components and screen mockups |
 | `pnpm --filter @apc/mobile start` | Starts the React Native bundler |
 | `pnpm --filter @apc/mobile android` | Runs the mobile app on Android |
+| `pnpm --filter @apc/api start:home` | Applies the migrations and starts the API, as the home server does |
+
+### Running at Home
+
+The API and the database can run on a Windows computer at home, for the phone app on the same Wi-Fi and the desktop app on that computer. The server can be turned on by hand from the **Ligar servidor APC** desktop shortcut, or by a Task Scheduler task that starts it in the background. The [home server guide](docs/home-server.md) has every step: installing, turning it on, the firewall, checking from the phone, backups and updates. It is for the home network only.
 
 ### Roadmap
 
@@ -117,7 +122,7 @@ Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisC
 - **MVP ✅:** Setup → Design System → Auth (login and sign-up) → Dashboard → Inventory (with photos, CSV import and export)
 - **Optimizations ✅:** style recipes and style ids in every component, guarded by lint
 - **Phase 2 (in progress):** Catalog tab ✅ (on sample data, shown as a work in progress) and Car Specs
-- **Next:** photo compression, the API on a home computer for the mobile app, Windows desktop app and Android release build
+- **Next:** the API on a home computer for the mobile app ✅, photo compression, Windows desktop app and Android release build
 - **Later:** 3D viewer, maintenance specs, diagnostics, reference prices, real backend and full EN/PT-BR app UI
 
 ### Delivery
@@ -133,7 +138,7 @@ The MVP was estimated at 228 story points. It closed on October 8, 2026, four we
 | Optimizations | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Still open: 5 tasks (25 points) — photo compression, the API at home, the Windows desktop app, the Android release build and the style values left for a decision — plus the Car Specs epic.
+Since then the API at home is done too. Still open: 4 tasks (20 points) — photo compression, the Windows desktop app, the Android release build and the style values left for a decision — plus the Car Specs epic.
 
 ### Contributing
 
@@ -183,7 +188,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 **Próximos passos**
 
 - 🗜️ Fotos comprimidas ao serem salvas
-- 🏠 A API rodando num computador de casa, para o app do celular na mesma rede Wi-Fi
+- 🏠 A API rodando num computador de casa, para o app do celular na mesma rede Wi-Fi, ligada por um atalho na área de trabalho ou em segundo plano ✅
 - 🖥️ App desktop para Windows e build de release para Android
 
 **Depois**
@@ -254,6 +259,11 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm --filter @apc/web storybook` | Abre o Storybook na porta 6006, com as bases, os componentes e os mockups de tela do design system |
 | `pnpm --filter @apc/mobile start` | Inicia o bundler do React Native |
 | `pnpm --filter @apc/mobile android` | Roda o app no Android |
+| `pnpm --filter @apc/api start:home` | Aplica as migrações e liga a API, como o servidor de casa faz |
+
+### Rodando em Casa
+
+A API e o banco podem rodar num computador Windows em casa, para o app do celular na mesma rede Wi-Fi e o app desktop nesse computador. O servidor pode ser ligado na mão pelo atalho **Ligar servidor APC** na área de trabalho, ou por uma tarefa do Agendador de Tarefas que o liga em segundo plano. O [guia do servidor em casa](docs/home-server.md#-português-brasil) tem todos os passos: instalação, como ligar, firewall, como conferir pelo celular, backup e atualização. Ele é só para a rede de casa.
 
 ### Roadmap
 
@@ -262,7 +272,7 @@ O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https:
 - **MVP ✅:** Setup → Design System → Auth (login e cadastro) → Dashboard → Estoque (com fotos, importação e exportação por CSV)
 - **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint
 - **Fase 2 (em andamento):** aba Catálogo ✅ (com dados de exemplo, aparecendo em construção) e Ficha técnica
-- **Próximos passos:** compressão das fotos, a API num computador de casa para o app do celular, app desktop para Windows e build de release para Android
+- **Próximos passos:** a API num computador de casa para o app do celular ✅, compressão das fotos, app desktop para Windows e build de release para Android
 - **Depois:** visualizador 3D, ficha de manutenção, diagnósticos, valores de referência, backend real e interface completa em inglês e português
 
 ### Entregas
@@ -278,7 +288,7 @@ O MVP foi estimado em 228 story points. Ele foi concluído em 8 de outubro de 20
 | Otimizações | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Ainda em aberto: 5 tasks (25 pontos) — compressão das fotos, a API em casa, o app desktop para Windows, o build de release para Android e os valores de estilo que faltam decidir — além do épico de Ficha técnica.
+Depois disso, a API em casa também ficou pronta. Ainda em aberto: 4 tasks (20 pontos) — compressão das fotos, o app desktop para Windows, o build de release para Android e os valores de estilo que faltam decidir — além do épico de Ficha técnica.
 
 ### Como Contribuir
 
