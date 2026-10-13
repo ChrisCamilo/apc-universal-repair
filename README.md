@@ -126,7 +126,8 @@ The API and the database can run on a Windows computer at home, for the phone ap
 `apps/desktop` packages the web app as a Windows program with Electron. The shop installs it and opens it like any other app, without a browser.
 
 - **Build:** `pnpm --filter @apc/desktop dist` builds the web app and writes `APC Universal Repair Setup <version>.exe` (installer, with desktop and Start menu shortcuts) and a portable exe to `apps/desktop/release/`. The builds are unsigned.
-- **SmartScreen:** Windows only checks files marked as downloaded from the internet, so an installer built on the same computer, or copied over by USB drive, opens without a warning. One downloaded from CI (the `Desktop` workflow's artifact) shows *Windows protected your PC*. Either choose *More info → Run anyway*, or unblock the file first, in *Properties → Unblock* or with:
+- **From CI:** the installer and the portable exe are only built on demand: in *Actions → Desktop → Run workflow* on GitHub, then download the `apc-universal-repair-windows` artifact of that run. Pull requests only run the desktop smoke test.
+- **SmartScreen:** Windows only checks files marked as downloaded from the internet, so an installer built on the same computer, or copied over by USB drive, opens without a warning. One downloaded from CI shows *Windows protected your PC*. Either choose *More info → Run anyway*, or unblock the file first, in *Properties → Unblock* or with:
   ```powershell
   Unblock-File ".\APC Universal Repair Setup 0.1.0.exe"
   ```
@@ -294,7 +295,8 @@ A API e o banco podem rodar num computador Windows em casa, para o app do celula
 O `apps/desktop` empacota o app web como um programa para Windows com o Electron. A oficina instala e abre como qualquer outro programa, sem navegador.
 
 - **Build:** o `pnpm --filter @apc/desktop dist` gera o build da web e grava em `apps/desktop/release/` o `APC Universal Repair Setup <versão>.exe` (instalador, com atalhos na área de trabalho e no menu Iniciar) e um exe portátil. Os builds não são assinados.
-- **SmartScreen:** o Windows só confere arquivos marcados como baixados da internet, então um instalador gerado no próprio computador, ou copiado por pendrive, abre sem aviso. Um baixado do CI (o artefato do workflow `Desktop`) mostra *O Windows protegeu o computador*. Escolha *Mais informações → Executar assim mesmo*, ou desbloqueie o arquivo antes, em *Propriedades → Desbloquear* ou com:
+- **Pelo CI:** o instalador e o exe portátil só são gerados sob demanda: em *Actions → Desktop → Run workflow* no GitHub, e depois é só baixar o artefato `apc-universal-repair-windows` dessa execução. Os pull requests rodam só o smoke test do app desktop.
+- **SmartScreen:** o Windows só confere arquivos marcados como baixados da internet, então um instalador gerado no próprio computador, ou copiado por pendrive, abre sem aviso. Um baixado do CI mostra *O Windows protegeu o computador*. Escolha *Mais informações → Executar assim mesmo*, ou desbloqueie o arquivo antes, em *Propriedades → Desbloquear* ou com:
   ```powershell
   Unblock-File ".\APC Universal Repair Setup 0.1.0.exe"
   ```
