@@ -1,0 +1,64 @@
+name: Desktop
+
+# Builds the Windows desktop app (apps/desktop), smoke-tests it with Playwright's Electron support and uploads the
+# installer and the portable exe. Runs when the desktop app, the web app it packages or the shared package change.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/desktop/**"
+      - "apps/web/**"
+      - "packages/shared/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/desktop.yml"
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - "apps/web/**"
+      - "packages/shared/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/desktop.yml"
+
+jobs:
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the web app and the desktop app
+        run: pnpm turbo run build --filter=@apc/web --filter=@apc/desktop
+
+      - name: Smoke test
+        run: pnpm --filter @apc/desktop run test:e2e
+
+      - name: Package
+        run: pnpm --filter @apc/desktop exec electron-builder --win --publish never
+        env:
+          # Unsigned: no certificate to look for.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload the installer and the portable exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: apc-universal-repair-windows
+          path: apps/desktop/release/*.exe
+          retention-days: 14
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-playwright-report
+          path: apps/desktop/playwright-report/
+          retention-days: 7

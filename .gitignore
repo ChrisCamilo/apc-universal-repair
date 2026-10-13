@@ -5,6 +5,8 @@ node_modules/
 # Build output
 dist/
 build/
+# electron-builder's resources (the desktop app icon), not build output
+!apps/desktop/build/
 .turbo/
 
 # Env
@@ -56,6 +58,9 @@ apps/mobile/.metro-health-check*
 
 # Item photos the API stores while running locally
 uploads/
+
+# Desktop app installers (apps/desktop: pnpm dist)
+apps/desktop/release/
 
 # Logs of the API running in the background at home (apps/api/scripts/start-server.ps1 -Background)
 apps/api/logs/

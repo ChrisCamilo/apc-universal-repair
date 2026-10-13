@@ -11,6 +11,8 @@ jobs:
     env:
       # Placeholder: only needed for `prisma generate` to resolve its config, no live DB required for build/lint.
       DATABASE_URL: "postgresql://user:password@localhost:5432/apc_universal_repair"
+      # The desktop app's Electron binary is only needed by the Desktop workflow, on Windows.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v4
 

@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // The smoke test's page.evaluate callbacks run in the window.
+    "lib": ["ES2022", "DOM"],
+    "rootDir": "."
+  },
+  "include": ["src", "e2e", "playwright.config.ts"],
+  "exclude": []
+}

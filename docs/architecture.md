@@ -13,6 +13,7 @@ flowchart LR
     subgraph clients["Clients · Clientes"]
         web["<b>apps/web</b><br/>React 19 · Vite 8<br/>Tailwind CSS 4 · React Router 8"]
         mobile["<b>apps/mobile</b><br/>React Native 0.87<br/>AsyncStorage · SVG"]
+        desktop["<b>apps/desktop</b><br/>Electron 44<br/>web build · app://apc"]
     end
 
     shared["<b>packages/shared</b> · @apc/shared<br/>Zod 4 schemas · rules · design tokens<br/>TypeScript, no UI"]
@@ -24,10 +25,12 @@ flowchart LR
     end
 
     web -- imports --> shared
+    desktop -- "packages the web build" --> web
     mobile -- imports --> shared
     api -- imports --> shared
     web -- "HTTP JSON · /api proxy" --> api
     mobile -- "HTTP JSON · API_URL" --> api
+    desktop -- "app://apc/api forwarded · APC_API_URL" --> api
     api -- "Prisma Client · adapter-pg" --> db
     api -- "photos + WebP thumbnails" --> files
 ```
@@ -96,9 +99,38 @@ sequenceDiagram
 
 ## At home · Em casa
 
-On a Windows computer at home, `pnpm run start:home` applies the migrations and starts the API with `tsx`, on `0.0.0.0` so the phone reaches it over the Wi-Fi at `http://<ip>:3333`, while the desktop app on that computer uses `localhost:3333`. `apps/api/scripts/start-server.ps1` runs it in a window for the "Ligar servidor APC" shortcut, or with no window for a Task Scheduler task, logging to `apps/api/logs/` and starting it again when it stops. PostgreSQL runs as its own Windows service. The steps are in [home-server.md](home-server.md).
+On a Windows computer at home, `pnpm run start:home` applies the migrations and starts the API with `tsx`, on `0.0.0.0` so the phone reaches it over the Wi-Fi at `http://<ip>:3333`, while the desktop app on that computer uses `localhost:3333` and starts the API itself when it doesn't answer. `apps/api/scripts/start-server.ps1` runs it in a window for the "Ligar servidor APC" shortcut, or with no window for a Task Scheduler task, logging to `apps/api/logs/` and starting it again when it stops. PostgreSQL runs as its own Windows service. The steps are in [home-server.md](home-server.md).
 
-Num computador Windows em casa, o `pnpm run start:home` aplica as migrações e liga a API com o `tsx`, em `0.0.0.0`, para o celular chegar a ela pelo Wi-Fi em `http://<ip>:3333`, enquanto o app desktop nesse computador usa `localhost:3333`. O `apps/api/scripts/start-server.ps1` a roda numa janela, para o atalho "Ligar servidor APC", ou sem janela, para uma tarefa do Agendador de Tarefas, com o log em `apps/api/logs/` e religando a API quando ela para. O PostgreSQL roda como um serviço do Windows próprio. Os passos estão em [home-server.md](home-server.md#-português-brasil).
+Num computador Windows em casa, o `pnpm run start:home` aplica as migrações e liga a API com o `tsx`, em `0.0.0.0`, para o celular chegar a ela pelo Wi-Fi em `http://<ip>:3333`, enquanto o app desktop nesse computador usa `localhost:3333` e liga a API sozinho quando ela não responde. O `apps/api/scripts/start-server.ps1` a roda numa janela, para o atalho "Ligar servidor APC", ou sem janela, para uma tarefa do Agendador de Tarefas, com o log em `apps/api/logs/` e religando a API quando ela para. O PostgreSQL roda como um serviço do Windows próprio. Os passos estão em [home-server.md](home-server.md#-português-brasil).
+
+## Desktop app · App desktop
+
+```mermaid
+sequenceDiagram
+    participant Page as Window · Janela<br/>(web build)
+    participant Main as apps/desktop<br/>main process
+    participant API as apps/api
+    participant Start as start-server.ps1
+
+    Main->>API: GET /health (local API only · só API local)
+    alt no answer · sem resposta
+        Main->>Start: Start-Process … -Background
+        Note over Main: shows starting.html · mostra "Ligando o servidor"
+        Start->>API: pnpm run start:home
+        Main->>API: GET /health until it answers · até responder
+    end
+    Main->>Page: loadURL app://apc/
+    Page->>Main: app://apc/assets/… · /inventory
+    Main-->>Page: apps/web/dist file, or index.html · arquivo do build, ou index.html (CSP)
+    Page->>Main: app://apc/api/items
+    Main->>API: GET /items (net.fetch, same method, headers, body)
+    API-->>Main: JSON
+    Main-->>Page: JSON, or 502 when unreachable · ou 502 sem conexão
+```
+
+The desktop app loads the web build from its own `app://apc` protocol, so routes, assets and `localStorage` work as in the browser and keep one origin across restarts. `/api/*` is forwarded to the API address (`APC_API_URL`, `config.json` in userData, or `http://localhost:3333`), so the web code is unchanged and the API needs no CORS. When that address is this computer and the API doesn't answer, the app starts it in the background through `start-server.ps1`, and leaves it running after it closes. The window has no Node access, no permissions and can't navigate away; external links open in the system browser.
+
+O app desktop carrega o build da web pelo próprio protocolo `app://apc`, então rotas, arquivos e o `localStorage` funcionam como no navegador e mantêm uma só origem entre reinícios. O `/api/*` é encaminhado para o endereço da API (`APC_API_URL`, `config.json` no userData, ou `http://localhost:3333`), então o código da web não muda e a API não precisa de CORS. Quando esse endereço é este computador e a API não responde, o app a liga em segundo plano pelo `start-server.ps1` e a deixa rodando depois de fechar. A janela não tem acesso ao Node nem permissões e não navega para fora; links externos abrem no navegador do sistema.
 
 ## Styles · Estilos
 
@@ -155,6 +187,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 | `packages/shared` | The contract and the rules: Zod schemas of every request and response, the writing rule, search and sort, form checks, CSV reading and writing, design tokens of the 4 styles and 2 modes. No UI, so web and mobile behave the same. | TypeScript, Zod 4 |
 | `apps/web` | The web app: login and sign-up, Dashboard with the Inventory and Catalog tabs, design system components. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
 | `apps/mobile` | The phone app, the same screens with React Native components. | React Native 0.87, AsyncStorage, react-native-svg, image and document pickers |
+| `apps/desktop` | The Windows desktop app: the web build in an Electron window, the API forwarded through `app://apc`, and the local API started when it doesn't answer. | Electron 44, electron-builder (NSIS and portable) |
 | `apps/api` | The REST API: users (sign-up and login), items, item lists, photos, CSV import. Validates every request with the shared schemas. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
 | PostgreSQL | Users, items, lists and photo records. Photo files stay on disk under `PHOTOS_DIR`. | PostgreSQL, Prisma migrations |
 
@@ -178,6 +211,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 | Web end-to-end tests | Playwright, at 1280×720 and 360×780 |
 | Mobile tests | Jest with react-test-renderer |
 | Design system catalog | Storybook 10 |
+| Desktop app tests | Node test runner, and Playwright's Electron support for the smoke test |
 | Style recipes | tailwind-variants with tailwind-merge (web), `createStyles` over `StyleSheet` (mobile), both giving style ids |
 | CI | GitHub Actions: lint, typecheck, build, tests and E2E on every pull request |
 
@@ -192,6 +226,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 | `packages/shared` | O contrato e as regras: schemas Zod de cada requisição e resposta, a regra de escrita, busca e ordenação, as validações do formulário, a leitura e a escrita do CSV e os tokens de design dos 4 estilos e 2 modos. Sem interface, para web e celular funcionarem igual. | TypeScript, Zod 4 |
 | `apps/web` | O app web: login e cadastro, Dashboard com as abas Estoque e Catálogo, componentes do design system. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
 | `apps/mobile` | O app para celular, com as mesmas telas em componentes React Native. | React Native 0.87, AsyncStorage, react-native-svg, seletores de imagem e de documentos |
+| `apps/desktop` | O app desktop para Windows: o build da web numa janela do Electron, a API encaminhada pelo `app://apc` e a API local ligada quando não responde. | Electron 44, electron-builder (NSIS e portátil) |
 | `apps/api` | A API REST: usuários (cadastro e login), itens, listas, fotos e importação de CSV. Valida cada requisição com os schemas compartilhados. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
 | PostgreSQL | Usuários, itens, listas e os registros das fotos. Os arquivos das fotos ficam em disco, em `PHOTOS_DIR`. | PostgreSQL, migrações do Prisma |
 
@@ -215,5 +250,6 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 | Testes de ponta a ponta da web | Playwright, em 1280×720 e 360×780 |
 | Testes do celular | Jest com react-test-renderer |
 | Catálogo do design system | Storybook 10 |
+| Testes do app desktop | Test runner do Node, e o suporte a Electron do Playwright no smoke test |
 | Receitas de estilo | tailwind-variants com tailwind-merge (web), `createStyles` sobre o `StyleSheet` (celular), as duas dando os ids de estilo |
 | CI | GitHub Actions: lint, typecheck, build, testes e E2E em todo pull request |
