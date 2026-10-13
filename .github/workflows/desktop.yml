@@ -1,16 +1,10 @@
 name: Desktop
 
-# Builds the Windows desktop app (apps/desktop), smoke-tests it with Playwright's Electron support and uploads the
-# installer and the portable exe. Runs when the desktop app, the web app it packages or the shared package change.
+# Builds the Windows desktop app (apps/desktop) and smoke-tests it with Playwright's Electron support on pull requests
+# that change it, the web app it packages or the shared package. The installer and the portable exe are only packaged
+# and uploaded on demand: Actions → Desktop → Run workflow.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/desktop/**"
-      - "apps/web/**"
-      - "packages/shared/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/desktop.yml"
+  workflow_dispatch:
   pull_request:
     paths:
       - "apps/desktop/**"
@@ -43,12 +37,14 @@ jobs:
         run: pnpm --filter @apc/desktop run test:e2e
 
       - name: Package
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm --filter @apc/desktop exec electron-builder --win --publish never
         env:
           # Unsigned: no certificate to look for.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Upload the installer and the portable exe
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: apc-universal-repair-windows
