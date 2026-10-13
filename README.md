@@ -125,7 +125,11 @@ The API and the database can run on a Windows computer at home, for the phone ap
 
 `apps/desktop` packages the web app as a Windows program with Electron. The shop installs it and opens it like any other app, without a browser.
 
-- **Build:** `pnpm --filter @apc/desktop dist` builds the web app and writes `APC Universal Repair Setup <version>.exe` (installer, with desktop and Start menu shortcuts) and a portable exe to `apps/desktop/release/`. The builds are unsigned, so Windows SmartScreen warns on the first run: choose *More info → Run anyway*.
+- **Build:** `pnpm --filter @apc/desktop dist` builds the web app and writes `APC Universal Repair Setup <version>.exe` (installer, with desktop and Start menu shortcuts) and a portable exe to `apps/desktop/release/`. The builds are unsigned.
+- **SmartScreen:** Windows only checks files marked as downloaded from the internet, so an installer built on the same computer, or copied over by USB drive, opens without a warning. One downloaded from CI (the `Desktop` workflow's artifact) shows *Windows protected your PC*. Either choose *More info → Run anyway*, or unblock the file first, in *Properties → Unblock* or with:
+  ```powershell
+  Unblock-File ".\APC Universal Repair Setup 0.1.0.exe"
+  ```
 - **The server:** when the app opens and the API on this computer doesn't answer, it starts it in the background (the same way as the [home server guide](docs/home-server.md)) and shows "Ligando o servidor" until it answers. An API that is already running is left alone, and it keeps running after the app closes, so the phone keeps working.
 - **API address:** `http://localhost:3333` by default. To use a server on another computer, create `config.json` in `%APPDATA%\APC Universal Repair` with `{ "apiUrl": "http://192.168.0.10:3333" }`; `APC_API_URL` also sets it. The app starts the server from the `apps/api` folder of the clone it was built from, or from `apiDir` in `config.json`.
 
@@ -289,7 +293,11 @@ A API e o banco podem rodar num computador Windows em casa, para o app do celula
 
 O `apps/desktop` empacota o app web como um programa para Windows com o Electron. A oficina instala e abre como qualquer outro programa, sem navegador.
 
-- **Build:** o `pnpm --filter @apc/desktop dist` gera o build da web e grava em `apps/desktop/release/` o `APC Universal Repair Setup <versão>.exe` (instalador, com atalhos na área de trabalho e no menu Iniciar) e um exe portátil. Os builds não são assinados, então o SmartScreen do Windows avisa na primeira vez: escolha *Mais informações → Executar assim mesmo*.
+- **Build:** o `pnpm --filter @apc/desktop dist` gera o build da web e grava em `apps/desktop/release/` o `APC Universal Repair Setup <versão>.exe` (instalador, com atalhos na área de trabalho e no menu Iniciar) e um exe portátil. Os builds não são assinados.
+- **SmartScreen:** o Windows só confere arquivos marcados como baixados da internet, então um instalador gerado no próprio computador, ou copiado por pendrive, abre sem aviso. Um baixado do CI (o artefato do workflow `Desktop`) mostra *O Windows protegeu o computador*. Escolha *Mais informações → Executar assim mesmo*, ou desbloqueie o arquivo antes, em *Propriedades → Desbloquear* ou com:
+  ```powershell
+  Unblock-File ".\APC Universal Repair Setup 0.1.0.exe"
+  ```
 - **O servidor:** quando o app abre e a API deste computador não responde, ele a liga em segundo plano (do mesmo jeito que o [guia do servidor em casa](docs/home-server.md#-português-brasil)) e mostra "Ligando o servidor" até ela responder. Uma API que já está rodando fica como está, e ela continua ligada depois que o app fecha, para o celular continuar funcionando.
 - **Endereço da API:** `http://localhost:3333` por padrão. Para usar um servidor em outro computador, crie o `config.json` em `%APPDATA%\APC Universal Repair` com `{ "apiUrl": "http://192.168.0.10:3333" }`; o `APC_API_URL` também define o endereço. O app liga o servidor a partir da pasta `apps/api` do clone em que foi gerado, ou do `apiDir` do `config.json`.
 
