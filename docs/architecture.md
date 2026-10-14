@@ -138,7 +138,11 @@ O app desktop carrega o build da web pelo próprio protocolo `app://apc`, então
 
 Each component keeps its look in a recipe in its own `<Component>.styles.ts`, built from the theme tokens, which gives the classes or styles and the style id of each element. Lint fails when a component writes a style or an id by hand.
 
+The status colors are `danger` (red), `warn` (yellow), `success` (green) and `info` (blue), each with the color drawn on it (`onDanger`, `onWarn`, `onSuccess`, `onInfo`), in every style and mode; toasts and notifications tell their kinds apart by them. Where a style's accent is green (Fiat 90) or blue (GT4), success is a teal green and info an indigo, set apart from it. On web they are the `bg-success`, `text-on-success`… classes.
+
 Cada componente guarda a aparência numa receita no seu próprio `<Componente>.styles.ts`, feita dos tokens do tema, que dá as classes ou estilos e o id de estilo de cada elemento. O lint falha quando um componente escreve um estilo ou um id à mão.
+
+As cores de status são `danger` (vermelho), `warn` (amarelo), `success` (verde) e `info` (azul), cada uma com a cor do que vai sobre ela (`onDanger`, `onWarn`, `onSuccess`, `onInfo`), em todos os estilos e modos; toasts e notificações distinguem seus tipos por elas. Onde o destaque do estilo é verde (Fiat 90) ou azul (GT4), o sucesso é um verde-azulado e a informação um anil, afastados dele. Na web elas são as classes `bg-success`, `text-on-success`…
 
 ```mermaid
 flowchart LR
