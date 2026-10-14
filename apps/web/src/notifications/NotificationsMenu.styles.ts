@@ -1,0 +1,55 @@
+import { recipe, tv } from '../styles/tv.ts'
+
+// The look of the notifications: the bell on its trigger, with the count of the unread on the accent at its corner, and
+// in its menu the latest notifications, each with its kind's icon in the kind's color, the message and how long ago,
+// the ones that were unread when the menu opened on the soft accent; or a muted notice when there are none.
+
+/** The bell on the menu's trigger and its unread badge. */
+export const bellBadge = recipe(
+  'notifications.bell',
+  tv({
+    slots: {
+      base: 'relative grid size-7 place-items-center text-text',
+      badge: [
+        'absolute -top-1 -right-1.5 grid h-4 min-w-4 place-items-center rounded-pill bg-accent px-1',
+        'font-display text-xs leading-none font-bold text-on-accent',
+      ],
+    },
+  }),
+  { base: '', badge: 'badge' },
+)
+
+/** The menu's list of notifications, each one by kind and whether it was unread, and the notice when there are none. */
+export const notificationsMenu = recipe(
+  'notifications.menu',
+  tv({
+    slots: {
+      list: 'm-0 grid max-h-80 list-none gap-0.5 overflow-y-auto p-0',
+      item: 'grid grid-cols-[auto_1fr] items-start gap-2.5 rounded-tile px-2 py-2',
+      icon: 'mt-0.5',
+      text: 'grid min-w-0',
+      message: 'text-sm leading-snug break-words',
+      time: 'text-xs text-text-muted',
+      empty: 'grid justify-items-center gap-2 px-2 py-6 text-sm text-text-muted',
+    },
+    variants: {
+      kind: {
+        success: { icon: 'text-success' },
+        error: { icon: 'text-danger' },
+        info: { icon: 'text-info' },
+        warning: { icon: 'text-warn' },
+      },
+      fresh: { true: { item: 'bg-accent-soft' } },
+    },
+  }),
+  {
+    base: '',
+    list: 'list',
+    item: 'list.item',
+    icon: 'list.item.icon',
+    text: 'list.item.text',
+    message: 'list.item.message',
+    time: 'list.item.time',
+    empty: 'empty',
+  },
+)
