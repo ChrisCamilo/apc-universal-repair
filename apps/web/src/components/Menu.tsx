@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { chevronIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
 import { Icon } from './Icon.tsx'
 import { menu as menuRecipe, menuHeader, menuItem, menuLabel, userBadge } from './Menu.styles.ts'
@@ -28,6 +28,13 @@ type MenuProps = {
   trigger: ReactNode
   /** Side the popover lines up with: the trigger's start or its end (default, for menus on the right). */
   align?: 'start' | 'end'
+  /**
+   * What the popover lines up with: the trigger (default) or the nearest positioned container, e.g. a header slot that
+   * holds several menus, so a menu that isn't at the edge of a phone's screen still opens inside it.
+   */
+  anchor?: 'trigger' | 'container'
+  /** Called when the menu opens or closes, e.g. to mark what it lists as seen. */
+  onOpenChange?: (open: boolean) => void
   children: ReactNode
 }
 
@@ -53,17 +60,26 @@ function keyTarget(key: string, index: number, count: number): number | null {
   }
 }
 
-export function Menu({ label, trigger, align = 'end', children }: MenuProps) {
+export function Menu({ label, trigger, align = 'end', anchor = 'trigger', onOpenChange, children }: MenuProps) {
   const menuId = useId()
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const popover = useRef<HTMLDivElement>(null)
-  const { classes, ids } = menuRecipe({ align, open })
+  const { classes, ids } = menuRecipe({ align, anchor, open })
+
+  /** Opens or closes the menu, and says so. */
+  const toggle = (next: boolean) => {
+    setOpen(next)
+    onOpenChange?.(next)
+  }
+
+  // Closes the menu on a press outside it, with the latest props.
+  const closeOutside = useEffectEvent(() => toggle(false))
 
   /** Closes the menu and puts the focus back on the trigger. */
   const close = () => {
-    setOpen(false)
+    toggle(false)
     button.current?.focus()
   }
 
@@ -94,13 +110,13 @@ export function Menu({ label, trigger, align = 'end', children }: MenuProps) {
     if (!open) {
       return
     }
-    const closeOutside = (event: MouseEvent) => {
+    const pressed = (event: MouseEvent) => {
       if (!root.current?.contains(event.target as Node)) {
-        setOpen(false)
+        closeOutside()
       }
     }
-    document.addEventListener('mousedown', closeOutside)
-    return () => document.removeEventListener('mousedown', closeOutside)
+    document.addEventListener('mousedown', pressed)
+    return () => document.removeEventListener('mousedown', pressed)
   }, [open])
 
   return (
@@ -114,7 +130,7 @@ export function Menu({ label, trigger, align = 'end', children }: MenuProps) {
         aria-controls={menuId}
         className={classes.trigger()}
         data-testid={ids.trigger}
-        onClick={() => setOpen((shown) => !shown)}
+        onClick={() => toggle(!open)}
       >
         {trigger}
         <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
