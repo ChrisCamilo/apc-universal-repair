@@ -107,6 +107,62 @@ test("Web: the toolbar buttons sit at the panel's right edge", async ({ page }, 
   }
 });
 
+/**
+ * Measures the Inventory's layout: how far the panel's bottom is from the window's, and whether the page scrolls.
+ * @param page The test's page.
+ * @returns The gap under the panel, in px, and the page's extra height (0 when it doesn't scroll).
+ */
+async function layout(page: Page) {
+  const panel = (await page.getByTestId("inventory.inventory-tab.body").locator("xpath=..").boundingBox())!;
+  const { height, pageExtra } = await page.evaluate(() => ({
+    height: window.innerHeight,
+    pageExtra: document.scrollingElement!.scrollHeight - window.innerHeight,
+  }));
+  return { gapBelow: height - (panel.y + panel.height), pageExtra };
+}
+
+// Opens the Inventory with a few items, with none and with the API failing, and checks each time the panel reaches the
+// bottom of the window (only the frame's margin under it), the pagination shows, and the page doesn't scroll.
+test("Web: the Inventory panel fills the window and keeps its pagination", async ({ page }) => {
+  for (const [state, open] of [
+    ["a few items", () => serveItems(page, ITEMS.slice(0, 2))],
+    ["no items", () => serveItems(page, [])],
+    ["an API error", () => page.route((url) => url.pathname.startsWith("/api/"), (route) => route.fulfill({ status: 500, body: "" }))],
+  ] as const) {
+    await page.unrouteAll();
+    await open();
+    await page.goto("/inventory");
+    await expect(page.getByRole("navigation", { name: "Páginas do estoque" }), state).toBeVisible();
+    const { gapBelow, pageExtra } = await layout(page);
+    expect(gapBelow, state).toBeLessThanOrEqual(16);
+    expect(pageExtra, state).toBe(0);
+  }
+  await expect(page.getByText("0 de 0")).toBeVisible();
+});
+
+// Opens the Inventory with 100 items on a page and scrolls the list, and checks only the list scrolls: the page stays
+// put and the pagination stays in view. On desktop the toolbar stays too and the table's header row stays pinned on
+// top; on a phone the toolbar and the filters scroll away with the cards, inside the panel.
+test("Web: only the Inventory list scrolls", async ({ page }, testInfo) => {
+  await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
+  await page.goto("/inventory");
+  await page.getByRole("radio", { name: "100" }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(100);
+  await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height - 160);
+  await page.mouse.wheel(0, 2000);
+  const scroller = testInfo.project.name === "desktop" ? "common.data-table.scroll" : "inventory.inventory-tab.body";
+  await expect.poll(() => page.getByTestId(scroller).evaluate((box) => box.scrollTop)).toBeGreaterThan(1000);
+
+  expect((await layout(page)).pageExtra).toBe(0);
+  await expect(page.getByRole("navigation", { name: "Páginas do estoque" })).toBeInViewport();
+  if (testInfo.project.name === "desktop") {
+    await expect(page.getByRole("button", { name: "Novo item" })).toBeInViewport();
+    const header = (await page.getByRole("columnheader", { name: /Item/ }).boundingBox())!;
+    const scroll = (await page.getByTestId("common.data-table.scroll").boundingBox())!;
+    expect(Math.abs(header.y - scroll.y)).toBeLessThanOrEqual(1);
+  }
+});
+
 // Searches by part code without separators, by name without accents, and for something that isn't there,
 // checking the rows and the counter follow, and that clearing the search brings every item back.
 test("Web: the search finds items by name or part code", async ({ page }) => {

@@ -3,8 +3,12 @@ import { recipe, tv } from '../styles/tv.ts'
 // The look of the Inventory tab, on its Panel: the search on the left, which grows to fill the row up to max-w-xl
 // from sm, and the buttons as one group pushed to the panel's right edge, also when they wrap under the search on a
 // narrow screen; the filters, with the result count in mono at the end; the table's cells; and, while the list loads,
-// skeleton rows in the table's shape. The Panel, the Spinner and the skeletons keep their own ids; the toolbar only
-// lines the search up with the buttons, so it adds no level to their ids.
+// skeleton rows in the table's shape. The panel fills the screen down to the bottom: on desktop the toolbar and the
+// filters stay at its top, the pagination at its bottom, and only the list between them scrolls; on a phone (below
+// the card breakpoint) the toolbar, the filters and the cards scroll together above the pagination. The loading rows,
+// the empty state and the error state take the list's room, the last two centered in it. The Panel, the Spinner and
+// the skeletons keep their own ids; the toolbar only lines the search up with the buttons, so it adds no level to
+// their ids.
 
 /** The skeleton's line widths: the name, then the details. */
 export const LOADING_LINES = ['40%', '20%']
@@ -18,7 +22,9 @@ export const inventoryTab = recipe(
   'inventory.inventory-tab',
   tv({
     slots: {
-      base: 'grid min-w-0 gap-3',
+      base: 'flex min-h-0 min-w-0 flex-1 flex-col gap-3',
+      body: 'flex min-h-0 flex-1 flex-col gap-3 max-card:overflow-y-auto',
+      list: 'flex min-h-0 flex-1 flex-col max-card:flex-none',
       toolbar: 'flex flex-wrap items-center gap-2',
       search: 'min-w-0 flex-[1_1_calc(var(--spacing)*64)] sm:max-w-xl',
       buttons: 'ml-auto flex flex-wrap justify-end gap-2',
@@ -30,7 +36,7 @@ export const inventoryTab = recipe(
       location: 'font-mono text-xs',
       price: 'whitespace-nowrap',
       actions: 'inline-flex gap-0.5',
-      loading: 'grid gap-3 py-2',
+      loading: 'grid content-start gap-3 py-2',
       spinner: 'sr-only',
       loadingRow: 'flex items-center gap-3',
       loadingLines: 'grid flex-1 gap-1.5',
@@ -38,10 +44,14 @@ export const inventoryTab = recipe(
     variants: {
       // A value that doesn't apply to the item ("N/A") is muted.
       muted: { true: { coded: 'text-text-muted' } },
+      // The error state, centered in the list's room.
+      centered: { true: { list: 'justify-center' } },
     },
   }),
   {
     base: '',
+    body: 'body',
+    list: 'list',
     toolbar: 'toolbar',
     search: 'search',
     buttons: 'toolbar.buttons',

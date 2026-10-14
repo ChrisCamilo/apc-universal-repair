@@ -189,6 +189,11 @@ export function InventoryTab() {
   const items = state.status === 'ready' ? state.items : []
   const shown = listed.status === 'ready' ? listed.items : []
   const failed = state.status === 'error' || listed.status === 'error'
+  // The list's total as last loaded, so the pagination keeps its pages while the next page loads; none on an error.
+  const [loadedTotal, setLoadedTotal] = useState(0)
+  if (listed.status === 'ready' && listed.total !== loadedTotal) {
+    setLoadedTotal(listed.total)
+  }
 
   /** Changes the search, the filters, the stock status or the sort, going back to the first page. */
   const narrow = (change: () => void) => {
@@ -320,141 +325,144 @@ export function InventoryTab() {
 
   return (
     <Panel className={classes.base()}>
-      <div className={classes.toolbar()} data-testid={ids.toolbar}>
-        <div className={classes.search()} data-testid={ids.search}>
-          <SearchField
-            data-tour="search"
-            label="Procure pelo nome ou código da peça"
-            value={search}
-            onValueChange={(value) => narrow(() => setSearch(value))}
+      <div className={classes.body()} data-testid={ids.body}>
+        <div className={classes.toolbar()} data-testid={ids.toolbar}>
+          <div className={classes.search()} data-testid={ids.search}>
+            <SearchField
+              data-tour="search"
+              label="Procure pelo nome ou código da peça"
+              value={search}
+              onValueChange={(value) => narrow(() => setSearch(value))}
+            />
+          </div>
+          <div className={classes.buttons()} data-testid={ids.buttons}>
+            <Button variant="secondary" onClick={() => setManaging(true)}>
+              Gerenciar listas
+            </Button>
+            <Button variant="secondary" onClick={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
+              Importar CSV
+            </Button>
+            <Button variant="secondary" onClick={() => setExporter((current) => ({ open: true, session: current.session + 1 }))}>
+              Exportar CSV
+            </Button>
+            <Button data-tour="new-item" onClick={() => openForm()}>
+              Novo item
+            </Button>
+          </div>
+        </div>
+        <div className={classes.filters()} data-testid={ids.filters}>
+          <FilterMenu
+            label="Filtros do estoque"
+            title="Filtrar estoque"
+            rows={(draft) => itemFilterRows(items, draft)}
+            values={filters}
+            onApply={(values) => narrow(() => setFilters(values))}
+            open={filtering}
+            onOpenChange={setFiltering}
           />
-        </div>
-        <div className={classes.buttons()} data-testid={ids.buttons}>
-          <Button variant="secondary" onClick={() => setManaging(true)}>
-            Gerenciar listas
-          </Button>
-          <Button variant="secondary" onClick={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
-            Importar CSV
-          </Button>
-          <Button variant="secondary" onClick={() => setExporter((current) => ({ open: true, session: current.session + 1 }))}>
-            Exportar CSV
-          </Button>
-          <Button data-tour="new-item" onClick={() => openForm()}>
-            Novo item
-          </Button>
-        </div>
-      </div>
-      <div className={classes.filters()} data-testid={ids.filters}>
-        <FilterMenu
-          label="Filtros do estoque"
-          title="Filtrar estoque"
-          rows={(draft) => itemFilterRows(items, draft)}
-          values={filters}
-          onApply={(values) => narrow(() => setFilters(values))}
-          open={filtering}
-          onOpenChange={setFiltering}
-        />
-        <FilterChipGroup
-          label="Situação do estoque"
-          options={STATUS_OPTIONS}
-          value={status}
-          onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
-        />
-        <ClearFilters
-          active={activeFilterCount(filters) > 0 || status !== null}
-          onClear={() =>
-            narrow(() => {
-              setFilters(EMPTY_ITEM_FILTERS)
-              setStatus(null)
-            })
-          }
-        />
-        {state.status === 'ready' && listed.status === 'ready' && (
-          <p className={classes.count()} data-testid={ids.count}>
-            {resultSummary(listed.status === 'ready' ? listed.total : 0, items)}
-          </p>
-        )}
-      </div>
-      {failed && (
-        <ErrorState
-          title="Não foi possível carregar o estoque"
-          message="Verifique a conexão com o servidor e tente de novo."
-          action={{ label: 'Tentar de novo', onClick: reload }}
-        />
-      )}
-      {!failed && listed.status === 'loading' && <LoadingRows />}
-      {!failed && listed.status === 'ready' && (
-        <>
-          <DataTable
-            label="Itens do estoque"
-            columns={[
-              {
-                key: 'photo',
-                header: 'Foto',
-                headerHidden: true,
-                card: 'thumb',
-                cell: (item) => (
-                  <TableThumbnail
-                    src={item.photos[0] && `${API_BASE}${item.photos[0].thumbUrl}`}
-                    label={`Ver fotos de ${item.name}`}
-                    onOpen={() => setViewer({ item, photos: heldPhotos(item.photos, API_BASE) })}
-                  />
-                ),
-              },
-              ...COLUMNS,
-              {
-                key: 'actions',
-                header: 'Ações',
-                headerHidden: true,
-                numeric: true,
-                card: 'actions',
-                cell: (item) => (
-                  <span className={classes.actions()} data-testid={ids.actions}>
-                    <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => openForm(item)} />
-                    <RowAction
-                      icon={trashIcon}
-                      label={`Excluir ${item.name}`}
-                      tone="danger"
-                      onClick={() => setRemoving(item)}
-                    />
-                  </span>
-                ),
-              },
-            ]}
-            rows={shown}
-            rowKey={(item) => item.id}
-            rowStatus={rowStatus}
-            onRowOpen={opensOnRow ? (item) => openForm(item, true) : undefined}
-            sort={sort}
-            onSortChange={(next) => narrow(() => setSort(next))}
-            unsortedLabel="Ordem de cadastro"
-            empty={
-              narrowed ? (
-                <EmptyState
-                  title="Nenhum item encontrado"
-                  message="Ajuste a busca ou limpe os filtros para ver o estoque inteiro."
-                  action={{ label: 'Limpar filtros', onClick: clearAll }}
-                />
-              ) : (
-                <EmptyState
-                  title="Nenhum item cadastrado"
-                  message="Cadastre a primeira peça do estoque para ela aparecer aqui."
-                  action={{ label: 'Novo item', onClick: () => openForm() }}
-                />
-              )
+          <FilterChipGroup
+            label="Situação do estoque"
+            options={STATUS_OPTIONS}
+            value={status}
+            onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
+          />
+          <ClearFilters
+            active={activeFilterCount(filters) > 0 || status !== null}
+            onClear={() =>
+              narrow(() => {
+                setFilters(EMPTY_ITEM_FILTERS)
+                setStatus(null)
+              })
             }
           />
-          <Pagination
-            label="Páginas do estoque"
-            page={page}
-            pageSize={pageSize}
-            total={listed.total}
-            pageSizes={PAGE_SIZES}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
-        </>
-      )}
+          {state.status === 'ready' && listed.status === 'ready' && (
+            <p className={classes.count()} data-testid={ids.count}>
+              {resultSummary(listed.status === 'ready' ? listed.total : 0, items)}
+            </p>
+          )}
+        </div>
+        <div className={inventoryTab({ centered: failed }).classes.list()} data-testid={ids.list}>
+          {failed && (
+            <ErrorState
+              title="Não foi possível carregar o estoque"
+              message="Verifique a conexão com o servidor e tente de novo."
+              action={{ label: 'Tentar de novo', onClick: reload }}
+            />
+          )}
+          {!failed && listed.status === 'loading' && <LoadingRows />}
+          {!failed && listed.status === 'ready' && (
+            <DataTable
+              fill
+              label="Itens do estoque"
+              columns={[
+                {
+                  key: 'photo',
+                  header: 'Foto',
+                  headerHidden: true,
+                  card: 'thumb',
+                  cell: (item) => (
+                    <TableThumbnail
+                      src={item.photos[0] && `${API_BASE}${item.photos[0].thumbUrl}`}
+                      label={`Ver fotos de ${item.name}`}
+                      onOpen={() => setViewer({ item, photos: heldPhotos(item.photos, API_BASE) })}
+                    />
+                  ),
+                },
+                ...COLUMNS,
+                {
+                  key: 'actions',
+                  header: 'Ações',
+                  headerHidden: true,
+                  numeric: true,
+                  card: 'actions',
+                  cell: (item) => (
+                    <span className={classes.actions()} data-testid={ids.actions}>
+                      <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => openForm(item)} />
+                      <RowAction
+                        icon={trashIcon}
+                        label={`Excluir ${item.name}`}
+                        tone="danger"
+                        onClick={() => setRemoving(item)}
+                      />
+                    </span>
+                  ),
+                },
+              ]}
+              rows={shown}
+              rowKey={(item) => item.id}
+              rowStatus={rowStatus}
+              onRowOpen={opensOnRow ? (item) => openForm(item, true) : undefined}
+              sort={sort}
+              onSortChange={(next) => narrow(() => setSort(next))}
+              unsortedLabel="Ordem de cadastro"
+              empty={
+                narrowed ? (
+                  <EmptyState
+                    title="Nenhum item encontrado"
+                    message="Ajuste a busca ou limpe os filtros para ver o estoque inteiro."
+                    action={{ label: 'Limpar filtros', onClick: clearAll }}
+                  />
+                ) : (
+                  <EmptyState
+                    title="Nenhum item cadastrado"
+                    message="Cadastre a primeira peça do estoque para ela aparecer aqui."
+                    action={{ label: 'Novo item', onClick: () => openForm() }}
+                  />
+                )
+              }
+            />
+          )}
+        </div>
+      </div>
+      <Pagination
+        label="Páginas do estoque"
+        page={page}
+        pageSize={pageSize}
+        total={failed ? 0 : loadedTotal}
+        pageSizes={PAGE_SIZES}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
       <ItemFormDialog
         key={`form-${form.session}`}
         open={form.open}
