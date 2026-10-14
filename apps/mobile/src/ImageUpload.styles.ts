@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
-import { fontFamily, softHairline, withAlpha } from './theme';
+import { fontFamily, softAccent, softHairline, withAlpha } from './theme';
 
 // The look of the photo field, the same as the web: the photos as square tiles, the first one marked as the cover,
 // each with a remove × on a dark chip that turns to the danger color while pressed; the dashed area to tap, lit in the
@@ -56,7 +56,7 @@ export const useStyles = createStyles(
         borderRadius: theme.radiusTile,
         backgroundColor: colors.panelRaised,
       },
-      dropPressed: { borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft) },
+      dropPressed: { borderColor: colors.accent, backgroundColor: softAccent(theme) },
       field: { gap: scales.space.s1 / 2 },
       image: { width: '100%', height: '100%' },
       photo: { ...tile, backgroundColor: colors.panelRaised },

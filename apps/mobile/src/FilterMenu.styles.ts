@@ -2,7 +2,7 @@ import { FILTER_PANEL_SPACING } from '@apc/shared/filters';
 import { popShadow, scales } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
 import { displayLabel } from './styles/shared';
-import { fontFamily, softHairline, withAlpha } from './theme';
+import { fontFamily, softAccent, softHairline } from './theme';
 
 // The look of the filter menu, the same as the web: a pill trigger in the display face that lights up in the accent
 // while filters are on, with their count in an accent badge, and a panel of labeled rows, each a set of chips or a
@@ -65,7 +65,7 @@ export const useStyles = createStyles(
         paddingHorizontal: scales.space.s4,
         paddingVertical: scales.space.s2,
       },
-      triggerActive: { borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft) },
+      triggerActive: { borderColor: colors.accent, backgroundColor: softAccent(theme) },
       triggerLabel: displayLabel(theme, 'xs'),
       triggerLabelActive: { color: colors.accent },
     };

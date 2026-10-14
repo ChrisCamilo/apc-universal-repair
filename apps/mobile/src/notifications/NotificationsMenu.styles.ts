@@ -2,7 +2,7 @@ import { scales } from '@apc/shared/theme';
 import { DISABLED_OPACITY } from '../Button.styles';
 import { AVATAR_SIZE } from '../Menu.styles';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily, softHairline, withAlpha } from '../theme';
+import { fontFamily, softAccent, softHairline } from '../theme';
 
 // The look of the notifications, the same as the web: the bell on its trigger, as big as the user menu's avatar, with
 // the count of the unread on the accent at its corner, and in its menu the latest notifications, each with its kind's
@@ -47,7 +47,7 @@ export const useStyles = createStyles(
       paddingHorizontal: scales.space.s2,
       paddingVertical: scales.space.s2,
     },
-    itemFresh: { backgroundColor: withAlpha(theme.colors.accent, scales.accentSoft) },
+    itemFresh: { backgroundColor: softAccent(theme) },
     list: { maxHeight: LIST_MAX_HEIGHT },
     message: { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: theme.colors.text },
     text: { flex: 1 },
@@ -71,7 +71,7 @@ export const useSettingsStyles = createStyles(
       justifyContent: 'center',
     },
     buttonDisabled: { opacity: DISABLED_OPACITY },
-    buttonOn: { backgroundColor: withAlpha(theme.colors.accent, scales.accentSoft) },
+    buttonOn: { backgroundColor: softAccent(theme) },
     hint: { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.xs, color: theme.colors.textMuted },
     label: { flex: 1, fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: theme.colors.text },
     setting: {

@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
 import { displayLabel, glow } from './styles/shared';
-import { softHairline, withAlpha } from './theme';
+import { softAccent, softHairline } from './theme';
 
 // The look of the brand tiles, the same as the web: the raised fill in a soft hairline frame, the brand's name in the
 // muted display face; the chosen one takes the accent on its frame and text over a tinted fill, glowing where the
@@ -34,7 +34,7 @@ export const useStyles = createStyles(
         borderRadius: theme.radiusTile,
         backgroundColor: colors.panelRaised,
       },
-      tileChecked: { borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft), ...glow(theme) },
+      tileChecked: { borderColor: colors.accent, backgroundColor: softAccent(theme), ...glow(theme) },
       tilePressed: { borderColor: colors.hairline },
     };
   },

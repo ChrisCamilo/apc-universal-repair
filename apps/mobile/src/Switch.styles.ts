@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
 import { glow, menuItemStyles } from './styles/shared';
-import { withAlpha } from './theme';
+import { softAccent } from './theme';
 
 // The look of the on/off control, the same as the web: a pill track whose knob slides over to the accent when on,
 // glowing where the style has a glow. On its own it sits beside its label; inside a Menu it is a full-width menu item
@@ -49,7 +49,7 @@ export const useStyles = createStyles(
         borderColor: colors.hairline,
         backgroundColor: colors.panelRaised,
       },
-      trackOn: { borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft) },
+      trackOn: { borderColor: colors.accent, backgroundColor: softAccent(theme) },
     };
   },
 );

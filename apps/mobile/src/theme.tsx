@@ -79,6 +79,15 @@ export function useTheme(): ActiveTheme {
 }
 
 /**
+ * Picks the soft accent behind chips, tabs, rows and buttons that are on, stronger by day.
+ * @param theme Active theme.
+ * @returns The accent at the soft opacity of the theme's mode.
+ */
+export function softAccent(theme: ActiveTheme): string {
+  return withAlpha(theme.colors.accent, scales.accentSoft[theme.mode]);
+}
+
+/**
  * Picks the soft hairline of soft separators: panel borders and dividers.
  * @param theme Active theme.
  * @returns The hairline color at the soft opacity.
