@@ -7,7 +7,7 @@ import { Image, Text, TextInput, View } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form';
+import { codeTakenMessage, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE } from '@apc/shared/item-form';
 import type { Item } from '@apc/shared/items';
 import { withEntry, type ItemLists } from '@apc/shared/lists';
 import { PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/shared/photos';
@@ -469,6 +469,18 @@ test('Mobile: a new item is saved with its photos', async () => {
     ['photo', 'lado.jpg'],
   ]);
   expect(onSaved.mock.calls[0][0].photos).toEqual([SAVED_PHOTO]);
+});
+
+// Saves an item to edit without changing anything, and checks nothing is sent, an info toast says there is nothing to
+// save and nothing is handed over.
+test('Mobile: an unchanged edit is not sent, and an info toast says so', async () => {
+  const onSaved = jest.fn();
+  const tree = await mount(FILTER, { onSaved });
+  (fetch as jest.Mock).mockClear();
+  await press(tree, 'Salvar alterações');
+  expect(fetch).not.toHaveBeenCalled();
+  expect(shows(tree, ITEM_UNCHANGED_MESSAGE)).toBe(true);
+  expect(onSaved).not.toHaveBeenCalled();
 });
 
 // Edits an item, removes its photo while the API can't save photos, and checks the toast says the item was saved
