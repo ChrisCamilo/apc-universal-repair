@@ -32,7 +32,7 @@ flowchart LR
     mobile -- "HTTP JSON · API_URL" --> api
     desktop -- "app://apc/api forwarded · APC_API_URL" --> api
     api -- "Prisma Client · adapter-pg" --> db
-    api -- "photos + WebP thumbnails" --> files
+    api -- "photos reduced to WebP + thumbnails" --> files
 ```
 
 ## Shared package · Pacote compartilhado
@@ -92,7 +92,9 @@ sequenceDiagram
     API->>DB: create Item with references
     DB-->>API: row + entry names
     API-->>App: itemSchema JSON (names, "D", "LE"…)
+    Note over App: photos reduced to 1600px · fotos reduzidas a 1600px
     App->>API: PUT /items/:id/photos (multipart)
+    API->>API: sharp: upright, ≤1600px, WebP 80, no EXIF · sem EXIF
     API-->>App: item with photos
     App-->>User: toast · list reloads
 ```

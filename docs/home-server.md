@@ -159,7 +159,7 @@ To restore, with the server off, use `pg_restore` with the copy and put the phot
 ### 9. Updating to a new version
 
 1. Turn the server off: close the window, or run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`.
-2. In the project folder: `git pull` and then `pnpm install`.
+2. In the project folder: `git pull` and then `pnpm install`. The first time after photos started being reduced on saving, also run `pnpm --filter @apc/api photos:compress` once, to reduce the photos saved before.
 3. Turn the server on again: the shortcut, or `Start-ScheduledTask "APC Universal Repair API"`. It applies the new migrations by itself as it starts.
 
 ---
@@ -293,5 +293,5 @@ Para restaurar, com o servidor desligado, use o `pg_restore` com a cópia e devo
 ### 9. Atualizar para uma versão nova
 
 1. Desligue o servidor: feche a janela, ou rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`.
-2. Na pasta do projeto: `git pull` e depois `pnpm install`.
+2. Na pasta do projeto: `git pull` e depois `pnpm install`. Na primeira vez depois que as fotos passaram a ser reduzidas ao salvar, rode também `pnpm --filter @apc/api photos:compress` uma vez, para reduzir as fotos salvas antes.
 3. Ligue o servidor de novo: pelo atalho, ou `Start-ScheduledTask "APC Universal Repair API"`. Ele aplica as migrações novas sozinho ao ligar.
