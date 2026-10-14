@@ -33,6 +33,7 @@ import { ManageListsDialog } from '../inventory/ManageListsDialog';
 import { pickPhotos, savePhotos } from '../inventory/photos';
 import { useItemLists } from '../inventory/useItemLists';
 import { useItems } from '../inventory/useItems';
+import { useLowStockAlerts } from '../notifications/useLowStockAlerts';
 import { Pagination } from '../Pagination';
 import { Panel } from '../Panel';
 import { Skeleton } from '../Skeleton';
@@ -47,7 +48,9 @@ import { useOpenItemOnRow } from './openItemOnRowContext';
 import { usePageSize } from './pageSizeContext';
 
 // The Inventory tab, the same as the web: every item as a card, a search by name or part code, and a counter
-// of the items shown, the total and the stock alerts. Low and out-of-stock cards are tinted by the table.
+// of the items shown, the total and the stock alerts. Low and out-of-stock cards are tinted by the table, and an item
+// that reaches its minimum raises a warning in the bell, once while it stays there (a toast too when a save or an
+// import brought it there).
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
 // the list loads again once an item is saved or deleted. "Gerenciar listas" renames and deletes the categories,
 // brands and models the form picks from; the list loads again after each change, and a name in use leads to its
@@ -165,7 +168,12 @@ function rowStatus(item: Item): { tone: 'warn' | 'danger'; label: string } | und
   return status ? { tone: status === 'out' ? 'danger' : 'warn', label: STOCK_STATUS_LABELS[status] } : undefined;
 }
 
-export function InventoryTab() {
+type InventoryTabProps = {
+  /** The logged user's id, whose low-stock warnings the tab keeps; none in tests that don't need them. */
+  userId?: string;
+};
+
+export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const ui = useStyles();
   const { styles, ids } = ui;
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS);
@@ -188,6 +196,8 @@ export function InventoryTab() {
   // filters let through.
   const state = useItems();
   const listed = useItems(itemListQuery(filters, status, { search, page, pageSize, sort }));
+  // Each time the stock loads, warn about the items newly at or below their minimum.
+  useLowStockAlerts(state.status === 'ready' ? state.items : null, userId);
   // The lists the item form picks from and creates names in.
   const { lists, create: createEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists();
   // Whether "Gerenciar listas" is open.

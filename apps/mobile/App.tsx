@@ -67,6 +67,7 @@ function Screen() {
             </>
           }
           tutorialSeen={user.inventoryTutorialSeen}
+          userId={user.id}
           onTutorialSeen={markTutorialSeen}
         />
       ) : registering ? (

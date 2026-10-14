@@ -26,7 +26,6 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 // DASHBOARD_TABS) opens behind a notice saying it isn't ready yet.
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id);
-const TAB_SCREENS: Record<string, ReactNode> = { inventory: <InventoryTab />, catalog: <CatalogTab /> };
 // Each tab as the tab bar draws it, by id.
 const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon, wip }) => [id, { id, label, icon: ICONS[icon], wip }]));
 
@@ -35,11 +34,14 @@ type DashboardProps = {
   userMenu?: ReactNode;
   /** Whether the logged user has seen the Inventory tutorial; until then it runs by itself. Seen when left out. */
   tutorialSeen?: boolean;
+  /** The logged user's id, whose low-stock warnings the Inventory keeps. */
+  userId?: string;
   /** Marks the Inventory tutorial seen on the logged user, once it starts by itself. */
   onTutorialSeen?: () => void;
 };
 
-export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () => {} }: DashboardProps) {
+export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () => {}, userId }: DashboardProps) {
+  const screens: Record<string, ReactNode> = { inventory: <InventoryTab userId={userId} />, catalog: <CatalogTab /> };
   const { styles, ids } = useStyles();
   const [tab, setTab] = useStoredTab(DASHBOARD_TAB_STORAGE_KEY, TAB_IDS);
   const reorder = useReorderChoice();
@@ -110,7 +112,7 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
                 )}
               </View>
               <View style={styles.content} testID={ids.content}>
-                {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{TAB_SCREENS[tab]}</WorkInProgress> : TAB_SCREENS[tab]}
+                {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{screens[tab]}</WorkInProgress> : screens[tab]}
               </View>
             </View>
           </InventoryTutorialContext.Provider>

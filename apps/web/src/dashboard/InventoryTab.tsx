@@ -21,6 +21,7 @@ import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination'
 import type { Sort } from '@apc/shared/table'
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
 import { API_BASE } from '../api.ts'
+import { useSession } from '../auth/sessionContext.ts'
 import { Button } from '../components/Button.tsx'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
 import { EmptyState, ErrorState } from '../components/EmptyState.tsx'
@@ -41,6 +42,7 @@ import { ManageListsDialog } from '../inventory/ManageListsDialog.tsx'
 import { savePhotos } from '../inventory/savePhotos.ts'
 import { useItemLists } from '../inventory/useItemLists.ts'
 import { useItems } from '../inventory/useItems.ts'
+import { useLowStockAlerts } from '../notifications/useLowStockAlerts.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
 import { inventoryTab, LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB } from './InventoryTab.styles.ts'
 import { InventoryTutorial } from './InventoryTutorial.tsx'
@@ -66,7 +68,8 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or
 // Enter on it) opens the item's details. Each row's thumbnail shows the item's cover and opens its photos in the
 // ImageViewer, where each photo removed, changed or added is saved at once and the list follows. Low and
-// out-of-stock rows are tinted by the table. At phone width the row becomes a card and the columns that leave it
+// out-of-stock rows are tinted by the table, and an item that reaches its minimum raises a warning in the bell, once
+// while it stays there (a toast too when a save or an import brought it there). At phone width the row becomes a card and the columns that leave it
 // show as one line under the name. The Inventory tutorial runs over the tab by itself the first time, and again from
 // the user menu: it starts and ends with the test item deleted and the search, filters and sort off.
 
@@ -157,6 +160,9 @@ export function InventoryTab() {
   // filters let through.
   const state = useItems()
   const listed = useItems(itemListQuery(filters, status, { search, page, pageSize, sort }))
+  const { user } = useSession()
+  // Each time the stock loads, warn about the items newly at or below their minimum.
+  useLowStockAlerts(state.status === 'ready' ? state.items : null, user?.id ?? '')
   // The lists the item form picks from and creates names in.
   const { lists, create: createEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists()
   // Whether "Gerenciar listas" is open.
