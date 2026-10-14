@@ -27,8 +27,13 @@
   --color-danger-soft: var(--danger-soft);
   --color-danger-soft-hover: var(--danger-soft-hover);
   --color-warn: var(--warn);
+  --color-on-warn: var(--on-warn);
   --color-warn-soft: var(--warn-soft);
   --color-warn-soft-hover: var(--warn-soft-hover);
+  --color-success: var(--success);
+  --color-on-success: var(--on-success);
+  --color-info: var(--info);
+  --color-on-info: var(--on-info);
   --color-spotlight-dim: var(--spotlight-dim);
 
   --font-body: var(--body-face);
