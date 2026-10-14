@@ -1,4 +1,4 @@
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { MODES, scales, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
@@ -68,6 +68,39 @@ for (const style of STYLES) {
       expect(raised.backgroundColor).toBe(rgb(theme.colors.panelRaised))
     })
   }
+}
+
+for (const style of STYLES) {
+  // Shows a panel and a raised panel on the page by day in one style, and checks the page, the panel and the raised
+  // panel are each drawn in the style's tint, none of them white, and that the soft accent behind what is on takes
+  // the day's stronger mix.
+  test(`Web: by day the ${style} page and panels are tinted, never white`, async () => {
+    const theme = themes[style].day
+    root.dataset.style = style
+    root.dataset.mode = 'day'
+    const screen = await render(
+      <Panel data-testid="outer">
+        <Panel data-testid="raised" raised>
+          Detalhe
+        </Panel>
+      </Panel>,
+    )
+    const surfaces = [
+      getComputedStyle(document.body).backgroundColor,
+      getComputedStyle(screen.getByTestId('outer').element()).backgroundColor,
+      getComputedStyle(screen.getByTestId('raised').element()).backgroundColor,
+    ]
+    expect(surfaces).toEqual([rgb(theme.colors.canvas), rgb(theme.colors.panel), rgb(theme.colors.panelRaised)])
+    expect(surfaces).not.toContain('rgb(255, 255, 255)')
+
+    const probe = document.createElement('span')
+    document.body.append(probe)
+    probe.style.color = 'var(--accent-soft)'
+    const soft = getComputedStyle(probe).color
+    probe.style.color = `color-mix(in srgb, ${theme.colors.accent} ${scales.accentSoft.day * 100}%, transparent)`
+    expect(soft).toBe(getComputedStyle(probe).color)
+    probe.remove()
+  })
 }
 
 // Places a panel in another and checks the inner border sits inside the outer padding, so the two borders
