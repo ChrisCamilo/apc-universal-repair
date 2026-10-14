@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { alertIcon, checkRingIcon, closeRingIcon, infoIcon } from "../icons/icons.ts";
-import { TOAST_KIND_LOOKS, TOAST_KINDS } from "./toast.ts";
+import { scales } from "../theme/tokens.ts";
+import { TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS } from "./toast.ts";
 
 // Checks each kind has its own status color and icon, so no two kinds look alike: green with a check for success, red
 // with an X for errors, blue with an "i" for info and yellow with a "!" for warnings.
@@ -24,4 +25,11 @@ test("Shared: only errors and warnings interrupt screen readers", () => {
     TOAST_KINDS.filter((kind) => TOAST_KIND_LOOKS[kind].urgent),
     ["error", "warning"],
   );
+});
+
+// Checks a toast fades in the app's motion duration, the one web transitions take by default, so it fades the same
+// on web and mobile, quickly enough not to hold the message back.
+test("Shared: toasts fade in the app's motion duration", () => {
+  assert.equal(TOAST_FADE_MS, scales.motion.durationMs);
+  assert.ok(TOAST_FADE_MS > 0 && TOAST_FADE_MS <= 250);
 });
