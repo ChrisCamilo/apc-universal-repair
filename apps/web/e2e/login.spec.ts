@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
+import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { serveItems } from "./items.ts";
 import { serveUsers } from "./users.ts";
@@ -74,4 +75,18 @@ test("Web: the forgotten-password notice opens from the link and closes", async 
   await page.getByRole("button", { name: "Entendi" }).click();
   await expect(dialog).toBeHidden();
   await expect(link).toBeFocused();
+});
+
+// On a 1360×768 notebook, in full screen and in a window (1360×689), checks the login fits with no page scroll, down or
+// sideways, and "Entrar" in view.
+test("Web: on a 1360×768 notebook the login fits without scrolling", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "A desktop screen");
+  await page.goto("/login");
+  for (const height of [NOTEBOOK_HEIGHT, NOTEBOOK_WINDOW_HEIGHT]) {
+    await page.setViewportSize({ width: NOTEBOOK_WIDTH, height });
+    await expect.poll(() => page.evaluate(() => innerHeight)).toBe(height);
+    const scroll = await page.evaluate(() => [document.scrollingElement!.scrollHeight - innerHeight, document.documentElement.scrollWidth]);
+    expect(scroll, `1360×${height}`).toEqual([0, NOTEBOOK_WIDTH]);
+    await expect(page.getByRole("button", { name: "Entrar" })).toBeInViewport();
+  }
 });
