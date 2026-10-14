@@ -11,12 +11,15 @@ files:
   - dist/**/*
   - static/**/*
   - build/icon.png
+  - build/icon.ico
   - package.json
 # The web build, served by the app:// protocol from resources/web.
 extraResources:
   - from: ../web/dist
     to: web
 win:
+  # Every size Windows asks for, drawn by scripts/make-icon.ps1 from build/icon.png.
+  icon: build/icon.ico
   target:
     - nsis
     - portable

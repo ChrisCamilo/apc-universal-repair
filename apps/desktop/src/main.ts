@@ -3,6 +3,7 @@ import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, screen, session, shell } from "electron";
 import electronUpdater from "electron-updater";
 import { isLocalApi, parseConfig, resolveApiUrl, type DesktopConfig } from "./config.js";
+import { windowsIdentity } from "./identity.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
 import { apiAnswers, readHealth, startApi, updateApi, waitForApi } from "./server.js";
@@ -29,8 +30,6 @@ import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 // answers it, or warns about a server on another computer. Only one copy runs at a time, since two would share the
 // same localStorage.
 
-/** The app's id on Windows, the same as the installer's, which Windows notifications are shown under. */
-const APP_USER_MODEL_ID = "com.apc.universalrepair";
 /** The notifications on screen, kept so they still answer a click once their request is gone. */
 const shown = new Set<Notification>();
 
@@ -73,7 +72,7 @@ function createWindow(appUrl: string): BrowserWindow {
     useContentSize: true,
     show: false,
     title: "APC Universal Repair",
-    icon: path.join(app.getAppPath(), "build", "icon.png"),
+    icon: path.join(app.getAppPath(), "build", process.platform === "win32" ? "icon.ico" : "icon.png"),
     backgroundColor: "#0B0C0E",
     webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: path.join(import.meta.dirname, "preload.cjs") },
   });
@@ -84,6 +83,11 @@ function createWindow(appUrl: string): BrowserWindow {
   const { width, height } = openingContentSize(screen.getDisplayMatching(window.getBounds()).workAreaSize, frame);
   window.setContentSize(width, height);
   window.center();
+  if (process.platform === "win32") {
+    // The taskbar's icon and id for this window, so it shows the APC gauge however the app was started (see identity.ts).
+    const { appId, iconPath, iconIndex } = windowsIdentity({ isPackaged: app.isPackaged, execPath: process.execPath, appPath: app.getAppPath() });
+    window.setAppDetails({ appId, appIconPath: iconPath, appIconIndex: iconIndex, relaunchDisplayName: "APC Universal Repair" });
+  }
   window.once("ready-to-show", () => window.show());
   window.webContents.on("will-navigate", (event, url) => {
     if (!url.startsWith(appUrl)) {
@@ -259,7 +263,7 @@ void app.whenReady().then(async () => {
   console.log(`API: ${apiUrl}`);
 
   Menu.setApplicationMenu(null);
-  app.setAppUserModelId(APP_USER_MODEL_ID);
+  app.setAppUserModelId(windowsIdentity({ isPackaged: app.isPackaged, execPath: process.execPath, appPath: app.getAppPath() }).appId);
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
 
