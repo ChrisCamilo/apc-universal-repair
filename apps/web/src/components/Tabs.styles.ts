@@ -41,4 +41,9 @@ export const tabs = recipe(
 )
 
 /** A tab's panel, with the focus ring. */
-export const tabPanel = recipe('common.tab-panel', tv({ slots: { base: 'outline-none focus-visible:shadow-ring' } }), { base: '' })
+export const tabPanel = recipe(
+  'common.tab-panel',
+  // A column that fills the room it is given, so its screen can stretch to the bottom.
+  tv({ slots: { base: 'flex min-h-0 flex-1 flex-col outline-none focus-visible:shadow-ring' } }),
+  { base: '' },
+)

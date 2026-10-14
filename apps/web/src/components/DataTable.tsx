@@ -15,7 +15,8 @@ import { Label } from './Typography.tsx'
 // (thumbnail | main | end and actions), the header hides and a "Sort by" select takes its place. TableTitle is
 // the main cell: the name, the code under it and, on a card, a line with what the hidden columns said. With
 // onRowOpen, a click on a row opens it, except on its own buttons (thumbnail, actions), which keep their click; the
-// rows join the Tab order with a focus outline and open with Enter or Space.
+// rows join the Tab order with a focus outline and open with Enter or Space. With fill, the table takes the room left
+// in its column and scrolls inside it, with the header pinned and the empty state centered.
 
 const SORT_ARROWS = { ascending: '↑', descending: '↓', none: '↕' }
 
@@ -49,6 +50,8 @@ type DataTableProps<Row> = {
   unsortedLabel: string
   /** Shown instead of the table when there are no rows. */
   empty: ReactNode
+  /** Takes the room left in a flex column and scrolls inside it, with the header pinned, e.g. the Inventory's list. */
+  fill?: boolean
   /** Opens a row, e.g. the item details; without it rows aren't clickable. */
   onRowOpen?: (row: Row) => void
 }
@@ -101,11 +104,12 @@ export function DataTable<Row>({
   onSortChange,
   unsortedLabel,
   empty,
+  fill = false,
   onRowOpen,
 }: DataTableProps<Row>) {
   const sortId = useId()
   const sortable = columns.filter((column) => column.sortable)
-  const { classes, ids } = dataTable()
+  const { classes, ids } = dataTable({ fill })
 
   return (
     <div className={classes.base()} data-testid={ids.base}>
@@ -126,7 +130,9 @@ export function DataTable<Row>({
         </div>
       )}
       {rows.length === 0 ? (
-        empty
+        <div className={classes.empty()} data-testid={ids.empty}>
+          {empty}
+        </div>
       ) : (
         <div className={classes.scroll()} data-testid={ids.scroll}>
           <table aria-label={label} className={classes.table()} data-testid={ids.table}>
@@ -134,7 +140,7 @@ export function DataTable<Row>({
               <tr>
                 {columns.map((column) => {
                   const order = ariaSort(sort, column.key)
-                  const header = dataTable({ numeric: column.numeric, sorted: order !== 'none' }).classes
+                  const header = dataTable({ numeric: column.numeric, sorted: order !== 'none', fill }).classes
                   return (
                     <th
                       key={column.key}

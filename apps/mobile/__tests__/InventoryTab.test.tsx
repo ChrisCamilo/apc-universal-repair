@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Image, Modal, StyleSheet, Text, TextInput } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial';
@@ -331,7 +331,7 @@ test('Mobile: the filters narrow the list through the API query', async () => {
 });
 
 // Holds the items request and checks the skeleton cards show with a loading announcement, then fails it and checks
-// the error state, whose "Tentar de novo" loads the list once the API answers.
+// the error state, whose "Tentar de novo" loads the list once the API answers; the pagination shows all along.
 test('Mobile: the inventory shows loading, then the error state with a retry', async () => {
   // Every items request waits until the test fails them all.
   const pending: (() => void)[] = [];
@@ -352,9 +352,11 @@ test('Mobile: the inventory shows loading, then the error state with a retry', a
   mounted.push(tree!);
   expect(tree!.root.findAll((n) => n.props.testID === 'inventory.inventory-tab.loading.row' && typeof n.type === 'string')).toHaveLength(5);
   expect(tree!.root.findAll((n) => n.props.accessibilityLabel === 'Carregando o estoque' && typeof n.type === 'string')).not.toHaveLength(0);
+  expect(paginationPinned(tree!)).toBe(true);
 
   await ReactTestRenderer.act(async () => fail());
   expect(texts(tree!)).toContain('Não foi possível carregar o estoque');
+  expect(paginationPinned(tree!)).toBe(true);
   answerItems(ITEMS);
   const retry = tree!.root.find(
     (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Tentar de novo').length > 0,
@@ -386,6 +388,31 @@ test('Mobile: the empty states offer to clear the filters or add an item', async
   );
   await ReactTestRenderer.act(async () => add[add.length - 1].props.onPress());
   expect(empty.root.findAllByType(Modal).some((modal) => modal.props.visible)).toBe(true);
+});
+
+/**
+ * Tells whether the list's pagination shows, below the panel's scroll view and not inside it.
+ * @param tree Rendered tree.
+ * @returns True when the pages' row is there, outside the scrolling column.
+ */
+function paginationPinned(tree: ReactTestRenderer.ReactTestRenderer): boolean {
+  const pages = tree.root.findAll((n) => n.props.accessibilityLabel === 'Páginas do estoque' && typeof n.type === 'string');
+  const scroll = tree.root.find((n) => n.props.testID === 'inventory.inventory-tab' && n.type === ScrollView);
+  return pages.length > 0 && scroll.findAll((n) => n.props.accessibilityLabel === 'Páginas do estoque').length === 0;
+}
+
+// Opens the Inventory with items and with none, and checks each time the panel fills the screen, the list scrolls
+// inside it, and the pagination shows below that scrolling column, "0 de 0" with no items. (The loading and error
+// states are checked in their own test.)
+test('Mobile: the panel fills the screen and keeps its pagination', async () => {
+  const listed = await mount();
+  const panel = listed.root.find((n) => n.props.testID === 'common.panel' && typeof n.type === 'string');
+  expect(StyleSheet.flatten(panel.props.style).flex).toBe(1);
+  expect(paginationPinned(listed)).toBe(true);
+
+  const empty = await mount([]);
+  expect(paginationPinned(empty)).toBe(true);
+  expect(texts(empty)).toContain('0 de 0');
 });
 
 // Lists 30 items and checks the first page shows 25 with the pagination asking the API for page 1, the second page

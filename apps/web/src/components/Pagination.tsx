@@ -11,7 +11,8 @@ import { Label, NumericReadout } from './Typography.tsx'
 // neighbors of the current one, with an ellipsis for skipped ranges, in at most seven slots. The current page
 // fills with the accent and has aria-current="page". Previous and next are disabled at the ends with
 // aria-disabled, so the focus stays on them. Changing the page size keeps the first item in view. At phone
-// width the parts wrap onto more lines. An empty list shows no pagination.
+// width the parts wrap onto more lines. An empty list still shows it, as "0 de 0" with one page and the arrows off,
+// so the footer stays in place.
 
 type PaginationProps = {
   /** Accessible name of the page buttons, e.g. "Páginas do estoque". */
@@ -40,9 +41,6 @@ type PageButtonProps = {
 }
 
 export function Pagination({ label, page, pageSize, total, pageSizes, onPageChange, onPageSizeChange }: PaginationProps) {
-  if (total === 0) {
-    return null
-  }
   const pages = pageCount(total, pageSize)
   const { classes, ids } = pagination()
 

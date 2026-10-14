@@ -5,8 +5,11 @@ import { recipe, tv } from '../styles/tv.ts'
 // a soft hairline that light up on hover, tinted with a bar on their first cell when they need attention (warn or
 // danger); numbers right-aligned in tabular mono figures. Below the card breakpoint each row becomes a card in a grid
 // (thumbnail | main | end and actions), the header hides and the "Ordenar" select takes its place. A row that opens on
-// a click gets the pointer and an accent outline inside its edges while focused by keyboard. The table's body only
-// groups the rows, so it adds no level to their ids, which are the same as on mobile.
+// a click gets the pointer and an accent outline inside its edges while focused by keyboard. A table that fills its
+// column (fill) takes the room left and scrolls inside it, both ways, with the header row pinned on the panel's fill;
+// with no rows, the empty state is centered in that room. Below the card breakpoint it doesn't scroll on its own: the
+// screen scrolls the cards with what is above them. The table's body only groups the rows, so it adds no level to
+// their ids, which are the same as on mobile.
 
 // A tinted row: its fill, its hover, and the bar on its first cell, or on the card at phone width.
 const TINT = {
@@ -43,10 +46,20 @@ export const dataTable = recipe(
       ],
       cell: 'border-b border-hairline-soft px-2.5 py-2 align-middle max-card:border-0 max-card:p-0',
       status: 'sr-only',
+      empty: '',
     },
     variants: {
       numeric: { true: { header: 'text-right', cell: 'text-right font-mono tabular-nums' } },
       sorted: { true: { header: 'text-accent' }, false: { sort: 'hover:text-text', arrow: 'opacity-45' } },
+      fill: {
+        true: {
+          base: 'flex min-h-0 flex-1 flex-col max-card:flex-none',
+          scroll: 'min-h-0 flex-1 overflow-auto max-card:flex-none',
+          // Pinned, on the panel's fill; the hairline is a shadow, since a collapsed border scrolls away with the rows.
+          header: 'sticky top-0 z-10 border-b-0 bg-panel shadow-[inset_0_-1px_0_var(--hairline)]',
+          empty: 'flex min-h-0 flex-1 flex-col justify-center max-card:flex-none',
+        },
+      },
       tint: { none: { row: 'hover:bg-panel-raised' }, warn: { row: TINT.warn }, danger: { row: TINT.danger } },
       openable: {
         true: { row: 'cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-accent' },
@@ -59,7 +72,7 @@ export const dataTable = recipe(
         actions: { cell: 'max-card:[grid-area:actions] max-card:justify-self-end' },
       },
     },
-    defaultVariants: { numeric: false, sorted: false, tint: 'none', openable: false, area: 'none' },
+    defaultVariants: { numeric: false, sorted: false, tint: 'none', openable: false, area: 'none', fill: false },
   }),
   {
     base: '',
@@ -76,6 +89,7 @@ export const dataTable = recipe(
     row: 'table.row',
     cell: 'table.row.cell',
     status: 'table.row.status',
+    empty: 'empty',
   },
 )
 

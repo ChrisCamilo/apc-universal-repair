@@ -100,10 +100,16 @@ test('Web: changing the page size keeps the first item in view', async () => {
   await expect.element(screen.getByRole('button', { name: 'Página 2' })).toHaveAttribute('aria-current', 'page')
 })
 
-// Renders an empty list and checks no pagination shows.
-test('Web: an empty list shows no pagination', async () => {
+// Renders an empty list and checks the pagination still shows, with "0 de 0", a single current page and both arrows
+// off, so the list's footer stays in place when there is nothing to page through.
+test('Web: an empty list shows a single page with the arrows off', async () => {
   const screen = await render(<Sample total={0} />)
-  expect(screen.container.childElementCount).toBe(0)
+  await expect.element(screen.getByText('0 de 0')).toBeVisible()
+  const pages = screen.getByRole('navigation', { name: 'Páginas do estoque' })
+  expect(pages.getByRole('button', { name: /^Página \d/ }).elements().map((button) => button.textContent)).toEqual(['1'])
+  await expect.element(pages.getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page')
+  await expect.element(pages.getByRole('button', { name: 'Página anterior' })).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(pages.getByRole('button', { name: 'Próxima página' })).toHaveAttribute('aria-disabled', 'true')
 })
 
 // Fits a long list in the width a 360px phone leaves inside its gutters and checks nothing overflows: the

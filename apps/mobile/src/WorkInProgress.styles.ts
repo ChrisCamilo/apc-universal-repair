@@ -17,8 +17,8 @@ export const useStyles = createStyles(
   'common.work-in-progress',
   { base: '', content: 'content', overlay: 'overlay', illustration: 'notice.illustration' },
   (theme) => ({
-    base: { minHeight: MIN_HEIGHT },
-    content: {},
+    base: { flex: 1, minHeight: MIN_HEIGHT },
+    content: { flex: 1 },
     illustration: { alignItems: 'center' },
     notice: { width: '100%', maxWidth: NOTICE_MAX_WIDTH, alignItems: 'center', gap: scales.space.s2 },
     overlay: {

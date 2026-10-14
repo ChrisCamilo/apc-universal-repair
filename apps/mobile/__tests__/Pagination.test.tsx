@@ -125,7 +125,7 @@ test('Mobile: previous, next and the page buttons move through the list', async 
 });
 
 // Picks a bigger page size on the third page and checks the page moves to the one still holding the first
-// item that was showing; an empty list shows no pagination.
+// item that was showing; an empty list still shows it, as "0 de 0" with one page and both arrows off.
 test('Mobile: changing the page size keeps the first item in view', async () => {
   const onPageSizeChange = jest.fn();
   const tree = await mount('eighties', 'day', <Sample total={240} initialPage={3} onPageSizeChange={onPageSizeChange} />);
@@ -137,7 +137,10 @@ test('Mobile: changing the page size keeps the first item in view', async () => 
   expect(pressable(tree, 'Página 2').props.accessibilityState.selected).toBe(true);
 
   const empty = await mount('eighties', 'day', <Sample total={0} />);
-  expect(empty.toJSON()).toBeNull();
+  expect(range(empty)).toBe('0 de 0');
+  expect(pressable(empty, 'Página 1').props.accessibilityState.selected).toBe(true);
+  expect(pressable(empty, 'Página anterior').props.disabled).toBe(true);
+  expect(pressable(empty, 'Próxima página').props.disabled).toBe(true);
 });
 
 function Sample({

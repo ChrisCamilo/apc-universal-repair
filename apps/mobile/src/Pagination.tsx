@@ -13,7 +13,8 @@ import { Label, NumericReadout } from './Typography';
 // 64", announced as it changes) and the page buttons, with the first page, the last page and the neighbors
 // of the current one, and an ellipsis for skipped ranges, in at most seven slots. The current page fills with
 // the accent. Previous and next are disabled at the ends. Changing the page size keeps the first item in
-// view. The parts wrap onto more lines on a phone. An empty list shows no pagination.
+// view. The parts wrap onto more lines on a phone. An empty list still shows it, as "0 de 0" with one page and the
+// arrows off, so the footer stays in place.
 
 type PaginationProps = {
   /** Accessible name of the page buttons, e.g. "Páginas do estoque". */
@@ -42,9 +43,6 @@ type PageButtonProps = {
 
 export function Pagination({ label, page, pageSize, total, pageSizes, onPageChange, onPageSizeChange }: PaginationProps) {
   const { styles, ids } = useStyles();
-  if (total === 0) {
-    return null;
-  }
   const pages = pageCount(total, pageSize);
 
   return (

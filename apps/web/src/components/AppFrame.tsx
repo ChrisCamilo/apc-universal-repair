@@ -4,10 +4,10 @@ import { BrandMark } from './BrandMark.tsx'
 
 // The frame of the app's screens, such as the Dashboard: a header with the APC mark, the navigation (the
 // Dashboard's Tabs) and a slot at the end for the user menu, over one soft hairline that the selected tab's
-// underline sits on, and below it the content. The header stays pinned to the top on desktop and scrolls with the
-// page below the card breakpoint (TABLE_CARD_BREAKPOINT), where its controls wrap into several lines. The
-// navigation scrolls sideways when the tabs don't fit, and the content clips only horizontally, so menus and
-// dropdowns can still drop below it.
+// underline sits on, and below it the content. The frame takes the window's height and the page never scrolls: the
+// header stays in view and the content fills the rest, so a screen can stretch to the bottom and scroll only its own
+// list; content taller than the room left scrolls inside the content. The navigation scrolls sideways when the tabs
+// don't fit.
 
 type AppFrameProps = {
   /** Accessible name of the navigation, e.g. "Seções do Dashboard". */
