@@ -82,6 +82,10 @@
       "apc-dist": "./dist/dialog/dialog.js",
       "default": "./src/dialog/dialog.ts"
     },
+    "./notifications": {
+      "apc-dist": "./dist/notifications/notifications.js",
+      "default": "./src/notifications/notifications.ts"
+    },
     "./pagination": {
       "apc-dist": "./dist/pagination/pagination.js",
       "default": "./src/pagination/pagination.ts"
