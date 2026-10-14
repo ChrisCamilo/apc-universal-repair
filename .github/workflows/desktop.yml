@@ -3,10 +3,11 @@ name: Desktop
 # The Windows desktop app (apps/desktop).
 # - Pull requests that change it, the web app it packages or the shared package: build and smoke-test it with
 #   Playwright's Electron support.
-# - Run by hand (Actions → Desktop → Run workflow): publish a version. The version comes from apps/desktop/package.json;
-#   one already released is refused. It builds, smoke-tests and packages the app, then creates the GitHub Release
-#   v<version> on the commit it built, with the installer, latest.yml and the blockmap (which the updater reads) and
-#   the portable exe. Nothing is uploaded as an artifact.
+# - Run by hand (Actions → Desktop → Run workflow): publish a version. The version comes from apps/desktop/package.json
+#   and must equal apps/api/package.json's, since the app brings the server at home to its own version; one already
+#   released is refused. It builds, smoke-tests and packages the app, then creates the GitHub Release v<version> on the
+#   commit it built, with the installer, latest.yml and the blockmap (which the updater reads) and the portable exe.
+#   The notes come from docs/releases/v<version>.md when there is one. Nothing is uploaded as an artifact.
 on:
   workflow_dispatch:
   pull_request:
@@ -62,19 +63,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Read the version and refuse one already released
-        shell: bash
-        run: |
-          version=$(node -p "require('./apps/desktop/package.json').version")
-          if gh release view "v$version" >/dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
-            echo "::error::v$version is already released. Raise the version in apps/desktop/package.json first."
-            exit 1
-          fi
-          echo "VERSION=$version" >> "$GITHUB_ENV"
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Read the version and refuse one already released, or different from the API's
+        shell: bash
+        run: |
+          version=$(node --experimental-strip-types --no-warnings apps/desktop/scripts/release-version.ts) || { echo "$version"; exit 1; }
+          if gh release view "v$version" >/dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            echo "::error::v$version is already released. Raise the version in apps/desktop/package.json and apps/api/package.json first."
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - uses: pnpm/action-setup@v4
         with:
@@ -98,11 +99,16 @@ jobs:
       - name: Publish the release
         shell: bash
         working-directory: apps/desktop/release
-        run: >-
-          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "APC Universal Repair $VERSION"
-          --notes "Windows: download APC-Universal-Repair-Setup-$VERSION.exe to install, or the portable exe to run without installing. Installed apps update themselves."
-          "APC-Universal-Repair-Setup-$VERSION.exe" "APC-Universal-Repair-Setup-$VERSION.exe.blockmap" latest.yml
-          "APC-Universal-Repair-$VERSION-portable.exe"
+        run: |
+          # From apps/desktop/release, the notes are at the repository's docs/releases.
+          notes="../../../docs/releases/v$VERSION.md"
+          if [ ! -f "$notes" ]; then
+            notes="$RUNNER_TEMP/notes.md"
+            echo "Windows: download APC-Universal-Repair-Setup-$VERSION.exe to install, or the portable exe to run without installing. Installed apps update themselves." > "$notes"
+          fi
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "APC Universal Repair $VERSION" --notes-file "$notes" \
+            "APC-Universal-Repair-Setup-$VERSION.exe" "APC-Universal-Repair-Setup-$VERSION.exe.blockmap" latest.yml \
+            "APC-Universal-Repair-$VERSION-portable.exe"
 
       - name: Upload Playwright report
         if: failure()
