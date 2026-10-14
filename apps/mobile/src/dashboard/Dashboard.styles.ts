@@ -27,7 +27,7 @@ export const useStyles = createStyles(
       borderBottomColor: softHairline(theme),
     },
     mark: { paddingBottom: scales.space.s2 },
-    menu: { marginLeft: 'auto', paddingBottom: scales.space.s2 },
+    menu: { flexDirection: 'row', alignItems: 'center', gap: scales.space.s2, marginLeft: 'auto', paddingBottom: scales.space.s2 },
     page: { flex: 1, backgroundColor: theme.colors.canvas },
     // The tab bar's scroll box clips, so it reaches 1dp down over the header's hairline, where the selected tab's
     // underline sits.

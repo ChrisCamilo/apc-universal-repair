@@ -1,0 +1,174 @@
+/**
+ * @format
+ */
+
+import React from 'react';
+import { Modal, StyleSheet, Text } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import ReactTestRenderer from 'react-test-renderer';
+import { addNotification, notificationsKey, type Notification } from '@apc/shared/notifications';
+import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
+import { scales, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
+import { TOAST_KIND_LOOKS } from '@apc/shared/toast';
+import { Button } from '../src/Button';
+import { Icon } from '../src/Icon';
+import { NotificationsMenu } from '../src/notifications/NotificationsMenu';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
+import { ToastProvider, useToast } from '../src/Toast';
+
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
+const USER_ID = 'user-christian';
+// The trees rendered by the test running, unmounted after it so no toast timer outlives it.
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
+
+/**
+ * Finds the bell's trigger, by the start of its accessible name.
+ * @param tree Rendered tree.
+ * @returns The trigger.
+ */
+function bell(tree: ReactTestRenderer.ReactTestRenderer): ReactTestRenderer.ReactTestInstance {
+  return tree.root.find((n) => typeof n.type !== 'string' && typeof n.props.onPress === 'function' && /^Notificações/.test(n.props.accessibilityLabel ?? ''));
+}
+
+/**
+ * Renders the bell for a user, with buttons that show toasts, in the app's providers, and waits for its saved list.
+ * @param userId The logged user's id.
+ * @returns The rendered tree.
+ */
+async function mount(userId = USER_ID): Promise<ReactTestRenderer.ReactTestRenderer> {
+  await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>
+          <ToastProvider>
+            <NotificationsMenu userId={userId} />
+            <Triggers />
+          </ToastProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>,
+    );
+  });
+  mounted.push(tree!);
+  return tree!;
+}
+
+/**
+ * Presses the pressable with a visible text or accessible name.
+ * @param tree Rendered tree.
+ * @param name The text or name.
+ */
+async function press(tree: ReactTestRenderer.ReactTestRenderer, name: string) {
+  const node = tree.root.find(
+    (n) =>
+      typeof n.type !== 'string' &&
+      typeof n.props.onPress === 'function' &&
+      (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+  );
+  await ReactTestRenderer.act(async () => node.props.onPress());
+}
+
+/**
+ * Reads the texts shown, in order.
+ * @param node Where to read them.
+ * @returns Each Text's content.
+ */
+function texts(node: ReactTestRenderer.ReactTestInstance): string[] {
+  return node.findAll((n) => n.type === Text).map((n) => [n.props.children].flat().join(''));
+}
+
+/**
+ * Saves notifications for a user, as earlier visits would have.
+ * @param userId The user's id.
+ * @param count How many, all unread.
+ */
+async function saveUnread(userId: string, count: number) {
+  let list: Notification[] = [];
+  for (let index = 1; index <= count; index++) {
+    list = addNotification(list, 'info', `Aviso ${index}`, new Date());
+  }
+  await themeStorage.setItem(notificationsKey(userId), JSON.stringify(list));
+}
+
+beforeEach(async () => {
+  await themeStorage.clear();
+});
+
+afterEach(async () => {
+  await ReactTestRenderer.act(async () => mounted.splice(0).forEach((tree) => tree.unmount()));
+});
+
+// Shows a success and an error toast and checks the bell counts 2 unread on its badge; its menu lists the error first,
+// then the success, each with its kind's icon in its color, the ones that were unread lit, and "agora". Opening it
+// clears the badge, and the list is saved under the user's key, read.
+test('Mobile: the bell counts the unread toasts and lists them, newest first', async () => {
+  const tree = await mount();
+  expect(bell(tree).props.accessibilityLabel).toBe('Notificações');
+  await press(tree, 'Sucesso');
+  await press(tree, 'Erro');
+  expect(bell(tree).props.accessibilityLabel).toBe('Notificações, 2 não lidas');
+  expect(texts(tree.root.find((n) => n.props.testID === 'notifications.bell.badge' && typeof n.type === 'string'))).toEqual(['2']);
+
+  await ReactTestRenderer.act(async () => bell(tree).props.onPress());
+  const menu = tree.root.findByType(Modal);
+  const entries = menu.findAll((n) => n.props.testID === 'notifications.menu.list.item' && typeof n.type === 'string');
+  expect(entries.map(texts)).toEqual([
+    ['Não foi possível salvar o item. Tente de novo.', 'agora'],
+    ['Item “Filtro de óleo” cadastrado.', 'agora'],
+  ]);
+  const { colors } = themes.eighties.night;
+  expect(entries.map((entry) => entry.findByType(Icon).props.color)).toEqual([colors[TOAST_KIND_LOOKS.error.color], colors[TOAST_KIND_LOOKS.success.color]]);
+  expect(entries.map((entry) => StyleSheet.flatten(entry.props.style).backgroundColor)).toEqual([
+    withAlpha(colors.accent, scales.accentSoft),
+    withAlpha(colors.accent, scales.accentSoft),
+  ]);
+  expect(bell(tree).props.accessibilityLabel).toBe('Notificações');
+  const saved = JSON.parse((await themeStorage.getItem(notificationsKey(USER_ID)))!) as Notification[];
+  expect(saved.map((notification) => [notification.kind, notification.read])).toEqual([
+    ['error', true],
+    ['success', true],
+  ]);
+});
+
+// Starts with 12 unread notifications saved, and checks the badge says "9+".
+test('Mobile: the badge shows 9+ above nine unread', async () => {
+  await saveUnread(USER_ID, 12);
+  const tree = await mount();
+  expect(bell(tree).props.accessibilityLabel).toBe('Notificações, 9+ não lidas');
+  expect(texts(tree.root.find((n) => n.props.testID === 'notifications.bell.badge' && typeof n.type === 'string'))).toEqual(['9+']);
+});
+
+// Opens the bell with nothing kept, and checks the menu says there are no notifications and offers nothing to clear;
+// then shows a toast, and checks "Limpar notificações" empties the list again.
+test('Mobile: the bell says when it has nothing, and clears what it has', async () => {
+  const tree = await mount();
+  await ReactTestRenderer.act(async () => bell(tree).props.onPress());
+  expect(texts(tree.root.findByType(Modal))).toContain('Nenhuma notificação');
+  expect(texts(tree.root.findByType(Modal))).not.toContain('Limpar notificações');
+  await ReactTestRenderer.act(async () => bell(tree).props.onPress());
+
+  await press(tree, 'Sucesso');
+  await ReactTestRenderer.act(async () => bell(tree).props.onPress());
+  await press(tree, 'Limpar notificações');
+  await ReactTestRenderer.act(async () => bell(tree).props.onPress());
+  expect(texts(tree.root.findByType(Modal))).toContain('Nenhuma notificação');
+  expect(JSON.parse((await themeStorage.getItem(notificationsKey(USER_ID)))!)).toEqual([]);
+});
+
+// Saves notifications for another user, and checks this user's bell shows none of them, and that user's shows theirs.
+test('Mobile: each user sees only their own notifications', async () => {
+  await saveUnread('user-oficina', 3);
+  expect(bell(await mount()).props.accessibilityLabel).toBe('Notificações');
+  expect(bell(await mount('user-oficina')).props.accessibilityLabel).toBe('Notificações, 3 não lidas');
+});
+
+function Triggers() {
+  const toast = useToast();
+  return (
+    <>
+      <Button onPress={() => toast.success('Item “Filtro de óleo” cadastrado.')}>Sucesso</Button>
+      <Button onPress={() => toast.error('Não foi possível salvar o item. Tente de novo.')}>Erro</Button>
+    </>
+  );
+}

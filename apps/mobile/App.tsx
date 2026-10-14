@@ -13,6 +13,7 @@ import { LoginScreen } from './src/auth/LoginScreen';
 import { RegisterScreen } from './src/auth/RegisterScreen';
 import { Dashboard } from './src/dashboard/Dashboard';
 import { UserMenu } from './src/dashboard/UserMenu';
+import { NotificationsMenu } from './src/notifications/NotificationsMenu';
 import { ThemeProvider, useTheme } from './src/theme';
 import { ToastProvider } from './src/Toast';
 import { TourProvider } from './src/Tour';
@@ -59,7 +60,12 @@ function Screen() {
       <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
       {user === undefined ? null : user ? (
         <Dashboard
-          userMenu={<UserMenu user={user} onLogout={logout} />}
+          userMenu={
+            <>
+              <NotificationsMenu key={user.id} userId={user.id} />
+              <UserMenu user={user} onLogout={logout} />
+            </>
+          }
           tutorialSeen={user.inventoryTutorialSeen}
           onTutorialSeen={markTutorialSeen}
         />

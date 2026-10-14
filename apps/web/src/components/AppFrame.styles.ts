@@ -20,7 +20,7 @@ export const appFrame = recipe(
       // The scroll box clips both ways, so it reaches 1px down over the bar's border, where the selected tab's
       // underline sits.
       nav: '-mb-px max-w-full min-w-0 overflow-x-auto overflow-y-hidden pb-px',
-      end: 'ml-auto pb-2',
+      end: 'relative ml-auto flex items-center gap-2 pb-2',
       main: 'flex min-h-0 flex-1 flex-col overflow-x-clip overflow-y-auto px-4 py-3 sm:px-6',
     },
   }),

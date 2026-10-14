@@ -130,6 +130,28 @@ test('Web: the menu fits the screen under its trigger', async () => {
   expect(menu.top - button.bottom).toBeLessThan(8)
 })
 
+// Puts a menu left of something else in a positioned container, lined up with the container, and checks its popover
+// lines up with the container's end rather than its trigger's, and that opening and closing it are reported.
+test('Web: a menu can line up with its container and reports opening and closing', async () => {
+  const changes: boolean[] = []
+  const screen = await render(
+    <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+      <Menu label="Notificações" trigger="Sino" anchor="container" onOpenChange={(open) => changes.push(open)}>
+        <MenuItem onSelect={() => {}}>Limpar notificações</MenuItem>
+      </Menu>
+      <span style={{ width: 120 }}>Usuário</span>
+    </div>,
+  )
+  const trigger = screen.getByRole('button', { name: 'Notificações' })
+  await trigger.click()
+  const container = screen.getByText('Usuário').element().parentElement!.getBoundingClientRect()
+  const menu = screen.getByRole('menu').element().getBoundingClientRect()
+  expect(menu.right).toBeCloseTo(container.right, 0)
+  expect(menu.right).toBeGreaterThan(trigger.element().getBoundingClientRect().right + 100)
+  await userEvent.keyboard('{Escape}')
+  expect(changes).toEqual([true, false])
+})
+
 // Opens the menu on a 360×780 phone and checks the four themes sit below the "Tema" label, all inside the menu.
 test('Web: on a phone the theme choice sits below its label and fits the menu', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)

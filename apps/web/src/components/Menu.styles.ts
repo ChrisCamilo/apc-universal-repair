@@ -2,7 +2,8 @@ import { DISPLAY_LABEL, menuItem as menuItemClasses } from '../styles/shared.ts'
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the dropdown menu: a pill trigger that lights up in the accent on hover and while open, its chevron
-// turning, and a panel with the sheen under it, lined up with the trigger's start or end. Inside it: a header, small
+// turning, and a panel with the sheen under it, lined up with the trigger's start or end, or with the container's when
+// the menu leaves the positioning to it. Inside it: a header, small
 // section labels, action items, and the user badge the user menu's trigger shows.
 
 /** A menu: the wrapper, the trigger with its chevron, and the popover, by side. */
@@ -23,9 +24,10 @@ export const menu = recipe(
     },
     variants: {
       align: { start: { popover: 'left-0' }, end: { popover: 'right-0' } },
+      anchor: { trigger: {}, container: { base: 'static' } },
       open: { true: { trigger: 'border-accent bg-accent-soft', chevron: '-rotate-90' } },
     },
-    defaultVariants: { align: 'end', open: false },
+    defaultVariants: { align: 'end', anchor: 'trigger', open: false },
   }),
   { base: '', trigger: 'trigger', chevron: 'trigger.chevron', popover: 'popover' },
 )

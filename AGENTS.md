@@ -316,6 +316,7 @@ Every styled element carries a style id, in `data-testid` on web and `testID` on
 | `dashboard` | The shell around the tabs: header, tab bar, user menu and the layout that holds the active tab, not what is inside a tab | EP-04 |
 | `catalog` | The Catalog tab: brands, model tree, vehicle detail and its search, including the inventory parts a code search finds | EP-04 (phase 2) |
 | `inventory` | The Inventory tab: the item list, search, filters, sorting and pagination, the Inventory tutorial and the item dialogs | EP-12 |
+| `notifications` | The notifications: the bell beside the user menu, its menu with the latest notifications and their settings (the toast itself is `common`) | EP-14 (phase 3) |
 | `docs` | Pages that exist only in Storybook | — |
 
 - **Choosing a scope:**

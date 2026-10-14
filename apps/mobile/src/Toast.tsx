@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TOAST_DURATION_MS } from '@apc/shared/dialog';
@@ -13,11 +13,13 @@ import { useTheme } from './theme';
 // ("Não foi possível …"), info or warning, in a pill of the kind's color with its icon. Screen readers read an error
 // or a warning out at once and a success or an info after what they are reading. The toast fades in rising a little,
 // stays for TOAST_DURATION_MS and fades out; a new message takes the place of the one showing, which fades out under it,
-// hidden from screen readers. With reduced motion they show and hide at once. A Modal sits above the rest of the app,
+// hidden from screen readers. With reduced motion they show and hide at once. Whoever listens through useToastFeed,
+// such as the notifications history, hears each toast. A Modal sits above the rest of the app,
 // so each open Dialog holds a ToastLayer, as it does a TourLayer: the toast draws in the last layer registered, the
 // topmost, and at the root while no Dialog is open, so it stays above a dialog that shows one, such as the item form.
 
 const ToastContext = createContext<Toasts>(toastsOf(() => {}));
+const ToastFeedContext = createContext<(listener: ToastListener) => () => void>(() => () => {});
 const ToastLayersContext = createContext<ToastLayers | null>(null);
 
 /** A toast on screen; a leaving one is fading out. */
@@ -30,6 +32,8 @@ type ToastLayers = {
   removeLayer: (id: string) => void;
 };
 
+/** Hears a toast as it is shown. */
+export type ToastListener = (kind: ToastKind, message: string) => void;
 /** Shows a toast of each kind, each taking the message. */
 export type Toasts = Record<ToastKind, (message: string) => void>;
 
@@ -52,6 +56,16 @@ function toastsOf(show: (kind: ToastKind, message: string) => void): Toasts {
 }
 
 /**
+ * Hears every toast shown while the caller is mounted, e.g. to keep them in the notifications history.
+ * @param listener Called with each toast's kind and message.
+ */
+export function useToastFeed(listener: ToastListener): void {
+  const subscribe = useContext(ToastFeedContext);
+  const hear = useEffectEvent(listener);
+  useEffect(() => subscribe((kind, message) => hear(kind, message)), [subscribe]);
+}
+
+/**
  * Gets the functions that show a toast of each kind, e.g. `success("Item adicionado")` after a save or
  * `error("Não foi possível …")` when it fails.
  * @returns A function per kind, each taking the message to show.
@@ -63,6 +77,13 @@ export function useToast(): Toasts {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState<Shown[]>([]);
   const [layers, setLayers] = useState<string[]>([]);
+  const listeners = useRef(new Set<ToastListener>());
+  const subscribe = useCallback((listener: ToastListener) => {
+    listeners.current.add(listener);
+    return () => {
+      listeners.current.delete(listener);
+    };
+  }, []);
   const show = useCallback((kind: ToastKind, message: string) => {
     // Show the message over the one it replaces, which leaves.
     setShown((list) => [...list.map(leave), { id: (list.at(-1)?.id ?? 0) + 1, kind, message, leaving: false }]);
@@ -72,6 +93,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     } else {
       AccessibilityInfo.announceForAccessibilityWithOptions(message, { queue: true });
     }
+    listeners.current.forEach((listener) => listener(kind, message));
   }, []);
   const toasts = useMemo(() => toastsOf(show), [show]);
   // The id of the toast showing, if one is, and those fading out, so a new one leaving starts their wait again.
@@ -109,7 +131,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={toasts}>
       <ToastLayersContext.Provider value={state}>
-        {children}
+        <ToastFeedContext.Provider value={subscribe}>{children}</ToastFeedContext.Provider>
         {layers.length === 0 && <ToastSpot shown={shown} />}
       </ToastLayersContext.Provider>
     </ToastContext.Provider>

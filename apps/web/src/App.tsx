@@ -9,6 +9,7 @@ import { CatalogTab } from './dashboard/CatalogTab.tsx'
 import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
 import { InventoryTab } from './dashboard/InventoryTab.tsx'
 import { UserMenu } from './dashboard/UserMenu.tsx'
+import { NotificationsMenu } from './notifications/NotificationsMenu.tsx'
 
 // The app's routes. /login is the login screen and /register the sign-up; the Dashboard, behind them, frames every
 // tab at its own path. "/" opens the last tab used (the Inventory tab the first time) and any unknown path goes back
@@ -26,7 +27,14 @@ export default function App() {
             path="/"
             element={
               <RequireSession>
-                <DashboardLayout userMenu={<UserMenu />} />
+                <DashboardLayout
+                  userMenu={
+                    <>
+                      <NotificationsMenu />
+                      <UserMenu />
+                    </>
+                  }
+                />
               </RequireSession>
             }
           >
