@@ -9,8 +9,8 @@ export const workInProgress = recipe(
   'common.work-in-progress',
   tv({
     slots: {
-      base: 'relative min-h-96',
-      content: 'pointer-events-none blur-sm select-none',
+      base: 'relative flex min-h-96 flex-1 flex-col',
+      content: 'pointer-events-none flex min-h-0 flex-1 flex-col blur-sm select-none',
       overlay: 'absolute inset-0 grid content-start justify-items-center bg-backdrop px-4 pt-16',
       notice: 'grid max-w-sm justify-items-center gap-2 text-center',
       illustration: 'flex text-accent',

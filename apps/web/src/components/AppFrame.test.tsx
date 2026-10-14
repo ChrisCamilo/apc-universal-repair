@@ -49,14 +49,18 @@ test('Web: the frame heads the page with the mark, the navigation and the end sl
   expect(screen.getByRole('navigation').element().getBoundingClientRect().bottom).toBeCloseTo(line.bottom, 0)
 })
 
-// Checks the header is pinned to the top on desktop and scrolls with the page on a 360px phone, where six tabs
-// scroll sideways inside the navigation without widening the page.
-test('Web: the header is pinned on desktop and its tabs scroll sideways on a phone', async () => {
+// Checks the frame takes the window's height and keeps the content inside it, so the page never scrolls and the header
+// stays in view, at desktop and on a 360px phone, where six tabs scroll sideways inside the navigation without
+// widening the page.
+test('Web: the frame fits the window, and its tabs scroll sideways on a phone', async () => {
   const screen = await render(<Sample />)
-  expect(getComputedStyle(screen.getByRole('banner').element()).position).toBe('sticky')
+  const frame = screen.getByTestId('common.app-frame').element()
+  expect(frame.getBoundingClientRect().height).toBe(window.innerHeight)
+  expect(getComputedStyle(frame).overflowY).toBe('hidden')
+  expect(getComputedStyle(screen.getByRole('main').element()).overflowY).toBe('auto')
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   try {
-    expect(getComputedStyle(screen.getByRole('banner').element()).position).toBe('static')
+    expect(frame.getBoundingClientRect().height).toBe(MIN_MOBILE_HEIGHT)
     const nav = screen.getByRole('navigation').element()
     expect(nav.scrollWidth).toBeGreaterThan(nav.clientWidth)
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)

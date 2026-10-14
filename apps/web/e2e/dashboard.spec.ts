@@ -50,34 +50,25 @@ test("Web: tabs have their own routes and the last one is remembered", async ({ 
   await expect(page).toHaveURL(/\/inventory$/);
 });
 
-// Makes the page long, scrolls it and checks the header stays pinned to the top on desktop but scrolls away
-// with the page at phone width, where it would otherwise take too much of the screen.
-test("Web: the header is pinned on desktop and scrolls on phones", async ({ page }, testInfo) => {
+// Makes the content far taller than the window and scrolls over it, and checks the page itself never scrolls: the
+// header stays at the top, in view, and the content scrolls inside its frame instead, never sideways.
+test("Web: the page never scrolls and the header stays in view", async ({ page }) => {
   await page.goto("/inventory");
   // the Dashboard is drawn once the saved session is read
   await expect(page.getByRole("main")).toBeVisible();
   await page.evaluate(() => {
     const filler = document.createElement("div");
     filler.style.height = "3000px";
+    filler.style.flexShrink = "0";
     document.querySelector("main")!.append(filler);
   });
+  await page.mouse.move(100, 400);
   await page.mouse.wheel(0, 600);
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+  await expect.poll(() => page.locator("main").evaluate((main) => main.scrollTop)).toBeGreaterThan(500);
 
-  const header = (await page.locator("header").boundingBox())!;
-  if (testInfo.project.name === "desktop") {
-    expect(header.y).toBe(0);
-  } else {
-    expect(header.y + header.height).toBeLessThan(0);
-  }
-});
-
-// Checks the content frame clips only sideways, so menus and dropdowns can drop below it.
-test("Web: the content frame clips only horizontally", async ({ page }) => {
-  await page.goto("/inventory");
-  const main = page.locator("main");
-  await expect(main).toHaveCSS("overflow-x", "clip");
-  await expect(main).toHaveCSS("overflow-y", "visible");
+  expect(await page.evaluate(() => [window.scrollY, document.scrollingElement!.scrollHeight - window.innerHeight])).toEqual([0, 0]);
+  expect((await page.locator("header").boundingBox())!.y).toBe(0);
+  await expect(page.locator("main")).toHaveCSS("overflow-x", "hidden");
 });
 
 // Opens the tab still being built and checks it shows the cone and is read out as "em construção", and that its
