@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { ItemPhoto } from "../items/items.ts";
 import {
+  fitPhoto,
   heldPhotos,
   ITEM_PHOTO_LIMIT,
   PHOTO_MAX_BYTES,
+  PHOTO_MAX_DIMENSION,
   photoCount,
   photoParts,
   photoProblem,
@@ -15,15 +17,15 @@ import {
 const MB = 1024 * 1024;
 const SAVED: ItemPhoto[] = ["a", "b"].map((id) => ({ id, url: `/photos/${id}.jpg`, thumbUrl: `/photos/${id}-thumb.webp` }));
 
-// Checks JPG, PNG and WebP up to 3 MB pass, and other types and larger photos are refused with the reason,
-// the size written in pt-BR.
-test("Shared: photos must be JPG, PNG or WebP up to 3 MB", () => {
+// Checks JPG, PNG and WebP up to 3 MB pass, and other types and photos still larger once reduced are refused with
+// the reason, the size written in pt-BR.
+test("Shared: photos must be JPG, PNG or WebP up to 3 MB once reduced", () => {
   for (const type of ["image/jpeg", "image/png", "image/webp"]) {
     assert.equal(photoProblem({ name: "a", type, size: PHOTO_MAX_BYTES }), null);
   }
   assert.equal(photoProblem({ name: "a.gif", type: "image/gif", size: MB }), "não é JPG, PNG ou WebP");
   assert.equal(photoProblem({ name: "a.pdf", type: "application/pdf", size: MB }), "não é JPG, PNG ou WebP");
-  assert.equal(photoProblem({ name: "a.jpg", type: "image/jpeg", size: 4.2 * MB }), "tem 4,2 MB, e o limite é 3 MB");
+  assert.equal(photoProblem({ name: "a.jpg", type: "image/jpeg", size: 4.2 * MB }), "tem 4,2 MB mesmo reduzida, e o limite é 3 MB");
 });
 
 // Picks five files with one photo already held and checks the good ones are taken in order until the limit,
@@ -40,9 +42,17 @@ test("Shared: taking photos stops at the limit and names each file left out", ()
   assert.deepEqual(accepted.map((f) => f.name), ["frente.jpg", "traseira.webp"]);
   assert.deepEqual(problems, [
     "motor.gif: não é JPG, PNG ou WebP",
-    "lado.png: tem 5,0 MB, e o limite é 3 MB",
+    "lado.png: tem 5,0 MB mesmo reduzida, e o limite é 3 MB",
     "painel.jpg: passou do limite de 3 fotos",
   ]);
+});
+
+// Fits a landscape and a portrait phone photo and a small one, and checks the longest side goes down to
+// PHOTO_MAX_DIMENSION in proportion, and a photo that already fits keeps its size instead of growing.
+test("Shared: a photo is reduced to the largest size, never enlarged", () => {
+  assert.deepEqual(fitPhoto(4000, 3000), { width: PHOTO_MAX_DIMENSION, height: 1200 });
+  assert.deepEqual(fitPhoto(3024, 4032), { width: 1200, height: PHOTO_MAX_DIMENSION });
+  assert.deepEqual(fitPhoto(800, 600), { width: 800, height: 600 });
 });
 
 // Counts photos in the singular and the plural.
