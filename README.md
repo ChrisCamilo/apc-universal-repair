@@ -48,6 +48,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🗜️ Photos reduced when they are saved: the web and the phone shrink them before sending, and the API stores them as WebP of up to 1600px with no location data, so a photo over 3 MB can still be added ✅
 - 🏠 The API running on a home computer, for the mobile app on the same Wi-Fi, turned on by a desktop shortcut or in the background ✅
 - 🖥️ Windows desktop app, which turns the server on by itself when it isn't running ✅
+- 🔄 The desktop app updating itself from GitHub Releases ✅
 - 📱 Android release build
 
 **Later**
@@ -141,6 +142,9 @@ The API and the database can run on a Windows computer at home, for the phone ap
 - **Build:** `pnpm --filter @apc/desktop dist` builds the web app and writes `APC-Universal-Repair-Setup-<version>.exe` (installer, with desktop and Start menu shortcuts) and a portable exe to `apps/desktop/release/`. The builds are unsigned.
 - **Publishing a version:** versions are published on demand as [GitHub Releases](https://github.com/ChrisCamilo/apc-universal-repair/releases), never on their own. Raise `version` in `apps/desktop/package.json` (e.g. `0.1.0` → `0.2.0`) in a pull request, merge it, then run *Actions → Desktop → Run workflow* on `main`. The workflow builds and smoke-tests the app and creates the release `v<version>` on that commit, with the installer, `latest.yml` and the blockmap (what the updater reads) and the portable exe. A version already released is refused. Pull requests only run the desktop smoke test.
 - **Installing from a release:** download `APC-Universal-Repair-Setup-<version>.exe` from the release. An app installed from a release doesn't know where the project's clone is, so to let it turn the server on, set `apiDir` once in `config.json` (see *API address* below), e.g. `{ "apiDir": "C:\\APC\\apc-universal-repair\\apps\\api" }`.
+- **Updates:** the installed app updates itself from the GitHub Releases. When it opens, and every 6 hours while it stays open, it looks for a newer version and downloads it in the background, only what changed. Then a notice says *Nova versão X pronta. Ela será instalada quando você fechar o app.*: the new version goes in when the app closes, or right away with *Reiniciar agora*, and the session and preferences are kept. Without internet the app keeps working on its version. The portable exe and development runs don't update: download the new portable exe instead.
+- **Installing over the installed app:** a newer `Setup` can be run without uninstalling first. It upgrades the app in place, in the same folder and with the same shortcuts, keeping the data in `%APPDATA%\APC Universal Repair`. If the app is open, the installer asks to close it.
+- **Update safety:** the builds are unsigned, so the updater accepts a version with no publisher signature, after checking the file against the sha512 in the release's `latest.yml`. What keeps the updates safe is the GitHub account that publishes them, so it must have two-factor authentication on.
 - **SmartScreen:** Windows only checks files marked as downloaded from the internet, so an installer built on the same computer, or copied over by USB drive, opens without a warning. One downloaded from CI shows *Windows protected your PC*. Either choose *More info → Run anyway*, or unblock the file first, in *Properties → Unblock* or with:
   ```powershell
   Unblock-File ".\APC-Universal-Repair-Setup-0.1.0.exe"
@@ -233,6 +237,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🗜️ Fotos reduzidas ao serem salvas: a web e o celular diminuem antes de enviar, e a API guarda como WebP de até 1600px sem dados de localização, então uma foto acima de 3 MB também pode ser adicionada ✅
 - 🏠 A API rodando num computador de casa, para o app do celular na mesma rede Wi-Fi, ligada por um atalho na área de trabalho ou em segundo plano ✅
 - 🖥️ App desktop para Windows, que liga o servidor sozinho quando ele não está rodando ✅
+- 🔄 O app desktop se atualizando sozinho pelas GitHub Releases ✅
 - 📱 Build de release para Android
 
 **Depois**
@@ -326,6 +331,9 @@ O `apps/desktop` empacota o app web como um programa para Windows com o Electron
 - **Build:** o `pnpm --filter @apc/desktop dist` gera o build da web e grava em `apps/desktop/release/` o `APC-Universal-Repair-Setup-<versão>.exe` (instalador, com atalhos na área de trabalho e no menu Iniciar) e um exe portátil. Os builds não são assinados.
 - **Publicar uma versão:** as versões são publicadas sob demanda como [GitHub Releases](https://github.com/ChrisCamilo/apc-universal-repair/releases), nunca sozinhas. Suba o `version` em `apps/desktop/package.json` (ex.: `0.1.0` → `0.2.0`) num pull request, faça o merge e rode *Actions → Desktop → Run workflow* na `main`. O workflow gera e testa o app e cria a release `v<versão>` nesse commit, com o instalador, o `latest.yml` e o blockmap (o que o atualizador lê) e o exe portátil. Uma versão já publicada é recusada. Os pull requests rodam só o smoke test do app desktop.
 - **Instalar de uma release:** baixe o `APC-Universal-Repair-Setup-<versão>.exe` da release. Um app instalado de uma release não sabe onde está o clone do projeto, então, para ele poder ligar o servidor, defina o `apiDir` uma vez no `config.json` (veja *Endereço da API* abaixo), ex.: `{ "apiDir": "C:\\APC\\apc-universal-repair\\apps\\api" }`.
+- **Atualizações:** o app instalado se atualiza sozinho pelas GitHub Releases. Quando abre, e a cada 6 horas enquanto fica aberto, ele procura uma versão mais nova e a baixa em segundo plano, só o que mudou. Então um aviso diz *Nova versão X pronta. Ela será instalada quando você fechar o app.*: a versão nova entra quando o app fecha, ou na hora com *Reiniciar agora*, e a sessão e as preferências são mantidas. Sem internet o app continua funcionando na versão dele. O exe portátil e o app em desenvolvimento não se atualizam: baixe o exe portátil novo.
+- **Instalar por cima do app instalado:** um `Setup` mais novo pode ser rodado sem desinstalar antes. Ele atualiza o app no lugar, na mesma pasta e com os mesmos atalhos, mantendo os dados em `%APPDATA%\APC Universal Repair`. Se o app estiver aberto, o instalador pede para fechá-lo.
+- **Segurança das atualizações:** os builds não são assinados, então o atualizador aceita uma versão sem assinatura de editor, depois de conferir o arquivo com o sha512 do `latest.yml` da release. O que mantém as atualizações seguras é a conta do GitHub que as publica, então ela precisa estar com a autenticação em dois fatores ligada.
 - **SmartScreen:** o Windows só confere arquivos marcados como baixados da internet, então um instalador gerado no próprio computador, ou copiado por pendrive, abre sem aviso. Um baixado do CI mostra *O Windows protegeu o computador*. Escolha *Mais informações → Executar assim mesmo*, ou desbloqueie o arquivo antes, em *Propriedades → Desbloquear* ou com:
   ```powershell
   Unblock-File ".\APC-Universal-Repair-Setup-0.1.0.exe"
