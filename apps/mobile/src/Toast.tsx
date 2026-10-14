@@ -2,18 +2,23 @@ import { createContext, useCallback, useContext, useEffect, useId, useMemo, useS
 import { AccessibilityInfo, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TOAST_DURATION_MS } from '@apc/shared/dialog';
-import { TOAST_OFFSET, useStyles } from './Toast.styles';
+import { ICON_SIZES } from '@apc/shared/icons';
+import { TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
+import { Icon } from './Icon';
+import { KIND_STYLES, TOAST_OFFSET, useStyles } from './Toast.styles';
+import { useTheme } from './theme';
 
-// Short success messages ("Item adicionado", "Item excluído") at the bottom of the screen, the same as the
-// web: a pill with the colors turned around, read out by screen readers, that hides on its own after
-// TOAST_DURATION_MS; a new message replaces the one showing. A Modal sits above the rest of the app, so each open
+// Short messages at the bottom of the screen, each of a kind, the same as the web: success ("Item adicionado"), error
+// ("Não foi possível …"), info or warning, in a pill of the kind's color with its icon. Screen readers read an error
+// or a warning out at once and a success or an info after what they are reading; the toast hides on its own after
+// TOAST_DURATION_MS, and a new message replaces the one showing. A Modal sits above the rest of the app, so each open
 // Dialog holds a ToastLayer, as it does a TourLayer: the toast draws in the last layer registered, the topmost, and
 // at the root while no Dialog is open, so it stays above a dialog that shows one, such as the item form.
 
-const ToastContext = createContext<(message: string) => void>(() => {});
+const ToastContext = createContext<Toasts>(toastsOf(() => {}));
 const ToastLayersContext = createContext<ToastLayers | null>(null);
 
-type Shown = { id: number; message: string };
+type Shown = { id: number; kind: ToastKind; message: string };
 /** The toast showing, the layer on top, and how a ToastLayer joins or leaves the stack. */
 type ToastLayers = {
   shown: Shown | null;
@@ -22,21 +27,40 @@ type ToastLayers = {
   removeLayer: (id: string) => void;
 };
 
+/** Shows a toast of each kind, each taking the message. */
+export type Toasts = Record<ToastKind, (message: string) => void>;
+
 /**
- * Gets the function that shows a toast, e.g. "Item adicionado" after a save.
- * @returns A function taking the message to show.
+ * Builds the function of each kind from one that shows a toast of any kind.
+ * @param show Shows a message as a toast of a kind.
+ * @returns A function per kind, e.g. `success("Item adicionado")`.
  */
-export function useToast(): (message: string) => void {
+function toastsOf(show: (kind: ToastKind, message: string) => void): Toasts {
+  return Object.fromEntries(TOAST_KINDS.map((kind) => [kind, (message: string) => show(kind, message)])) as Toasts;
+}
+
+/**
+ * Gets the functions that show a toast of each kind, e.g. `success("Item adicionado")` after a save or
+ * `error("Não foi possível …")` when it fails.
+ * @returns A function per kind, each taking the message to show.
+ */
+export function useToast(): Toasts {
   return useContext(ToastContext);
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState<Shown | null>(null);
   const [layers, setLayers] = useState<string[]>([]);
-  const show = useCallback((message: string) => {
-    setShown((prev) => ({ id: (prev?.id ?? 0) + 1, message }));
-    AccessibilityInfo.announceForAccessibility(message);
+  const show = useCallback((kind: ToastKind, message: string) => {
+    setShown((prev) => ({ id: (prev?.id ?? 0) + 1, kind, message }));
+    // An error or a warning interrupts what is being read; a success or an info waits for it (on iOS).
+    if (TOAST_KIND_LOOKS[kind].urgent) {
+      AccessibilityInfo.announceForAccessibility(message);
+    } else {
+      AccessibilityInfo.announceForAccessibilityWithOptions(message, { queue: true });
+    }
   }, []);
+  const toasts = useMemo(() => toastsOf(show), [show]);
 
   // Hide the toast after a while; a new message starts the wait again.
   useEffect(() => {
@@ -55,7 +79,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ToastContext.Provider value={show}>
+    <ToastContext.Provider value={toasts}>
       <ToastLayersContext.Provider value={state}>
         {children}
         {layers.length === 0 && <ToastPill shown={shown} />}
@@ -82,14 +106,23 @@ export function ToastLayer() {
 
 function ToastPill({ shown }: { shown: Shown | null }) {
   const { styles, ids } = useStyles();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   if (!shown) {
     return null;
   }
+  const look = TOAST_KIND_LOOKS[shown.kind];
+  const keys = KIND_STYLES[shown.kind];
   return (
-    <View pointerEvents="none" accessibilityLiveRegion="polite" style={[styles.spot, { bottom: insets.bottom + TOAST_OFFSET }]} testID={ids.spot}>
-      <View style={styles.pill} testID={ids.pill}>
-        <Text style={styles.label} testID={ids.label}>
+    <View
+      pointerEvents="none"
+      accessibilityLiveRegion={look.urgent ? 'assertive' : 'polite'}
+      style={[styles.spot, { bottom: insets.bottom + TOAST_OFFSET }]}
+      testID={ids.spot}
+    >
+      <View style={[styles.pill, styles[keys.pill]]} testID={ids.pill}>
+        <Icon icon={look.icon} size={ICON_SIZES.inline} color={colors[look.onColor]} />
+        <Text style={[styles.label, styles[keys.label]]} testID={ids.label}>
           {shown.message}
         </Text>
       </View>
