@@ -130,9 +130,34 @@ sequenceDiagram
     Main-->>Page: JSON, or 502 when unreachable · ou 502 sem conexão
 ```
 
-The desktop app loads the web build from its own `app://apc` protocol, so routes, assets and `localStorage` work as in the browser and keep one origin across restarts. `/api/*` is forwarded to the API address (`APC_API_URL`, `config.json` in userData, or `http://localhost:3333`), so the web code is unchanged and the API needs no CORS. When that address is this computer and the API doesn't answer, the app starts it in the background through `start-server.ps1`, and leaves it running after it closes. The window has no Node access, no permissions and can't navigate away; external links open in the system browser. Its only bridge is the preload (`preload.cts`, CommonJS so it runs in the sandbox): the page asks for a Windows notification of each error and warning, low-stock ones included, and the main process shows it only while the window isn't focused, after checking it carries just a title and a message (`notify.ts`); clicking it brings the window up with the bell's menu open.
+The desktop app loads the web build from its own `app://apc` protocol, so routes, assets and `localStorage` work as in the browser and keep one origin across restarts. `/api/*` is forwarded to the API address (`APC_API_URL`, `config.json` in userData, or `http://localhost:3333`), so the web code is unchanged and the API needs no CORS. When that address is this computer and the API doesn't answer, the app starts it in the background through `start-server.ps1`, and leaves it running after it closes. The window has no Node access, no permissions and can't navigate away; external links open in the system browser. Its only bridge is the preload (`preload.cts`, CommonJS so it runs in the sandbox): the page asks for a Windows notification of each error and warning, low-stock ones included, and the main process shows it only while the window isn't focused, after checking it carries just a title and a message (`notify.ts`); clicking it brings the window up with the bell's menu open. The installed app also updates itself, as below.
 
-O app desktop carrega o build da web pelo próprio protocolo `app://apc`, então rotas, arquivos e o `localStorage` funcionam como no navegador e mantêm uma só origem entre reinícios. O `/api/*` é encaminhado para o endereço da API (`APC_API_URL`, `config.json` no userData, ou `http://localhost:3333`), então o código da web não muda e a API não precisa de CORS. Quando esse endereço é este computador e a API não responde, o app a liga em segundo plano pelo `start-server.ps1` e a deixa rodando depois de fechar. A janela não tem acesso ao Node nem permissões e não navega para fora; links externos abrem no navegador do sistema. A única ponte é o preload (`preload.cts`, CommonJS para rodar no sandbox): a página pede uma notificação do Windows para cada erro e aviso, os de estoque baixo inclusive, e o processo principal só a mostra enquanto a janela não está em foco, depois de conferir que ela traz só um título e uma mensagem (`notify.ts`); clicar nela traz a janela para a frente com o menu do sino aberto.
+O app desktop carrega o build da web pelo próprio protocolo `app://apc`, então rotas, arquivos e o `localStorage` funcionam como no navegador e mantêm uma só origem entre reinícios. O `/api/*` é encaminhado para o endereço da API (`APC_API_URL`, `config.json` no userData, ou `http://localhost:3333`), então o código da web não muda e a API não precisa de CORS. Quando esse endereço é este computador e a API não responde, o app a liga em segundo plano pelo `start-server.ps1` e a deixa rodando depois de fechar. A janela não tem acesso ao Node nem permissões e não navega para fora; links externos abrem no navegador do sistema. A única ponte é o preload (`preload.cts`, CommonJS para rodar no sandbox): a página pede uma notificação do Windows para cada erro e aviso, os de estoque baixo inclusive, e o processo principal só a mostra enquanto a janela não está em foco, depois de conferir que ela traz só um título e uma mensagem (`notify.ts`); clicar nela traz a janela para a frente com o menu do sino aberto. O app instalado também se atualiza sozinho, como abaixo.
+
+### Updates · Atualizações
+
+```mermaid
+sequenceDiagram
+    participant Page as Window · Janela<br/>(UpdateNotice)
+    participant Main as apps/desktop<br/>main process
+    participant GH as GitHub Releases
+
+    Note over Main: installed app only · só o app instalado (update.ts)
+    Main->>GH: latest.yml, when the window shows and every 6 h · ao mostrar a janela e a cada 6 h
+    alt newer version · versão mais nova
+        Main->>GH: installer, only what changed (blockmap) · instalador, só o que mudou
+        Note over Main: checks the sha512 · confere o sha512
+        Main->>Page: apc:update-ready (version · versão)
+        Page->>Main: apc:restart-to-update ("Reiniciar agora")
+        Note over Main: installs now, or on quit · instala agora, ou ao fechar
+    else no internet · sem internet
+        Note over Main: logged, keeps its version · registrado, mantém a versão
+    end
+```
+
+The installed app checks the repository's GitHub Releases with `electron-updater`: once its window shows, so it never delays opening, then every 6 hours. It doesn't check in development (`APC_DEV_URL`), unpackaged or as the portable exe (`checksForUpdates` in `update.ts`). A newer version is downloaded in the background, only the blocks that changed, and checked against the sha512 in `latest.yml`; the builds are unsigned, so no publisher signature is asked for. The main process then tells the page through the preload, which keeps the version for a page that subscribes later, and the web app's `UpdateNotice`, drawn only when the bridge exists, shows *Nova versão X pronta*. The version goes in silently when the app quits, or at once through `restartToUpdate`, which the main process only takes from the app's own page. A failed check is logged and the app keeps its version. A newer installer run by hand upgrades the app in place: the NSIS installer finds it by the `appId` and keeps the data in `%APPDATA%`.
+
+O app instalado consulta as GitHub Releases do repositório com o `electron-updater`: quando a janela aparece, para nunca atrasar a abertura, e depois a cada 6 horas. Ele não consulta em desenvolvimento (`APC_DEV_URL`), sem empacotar nem como exe portátil (`checksForUpdates` em `update.ts`). Uma versão mais nova é baixada em segundo plano, só os blocos que mudaram, e conferida com o sha512 do `latest.yml`; os builds não são assinados, então nenhuma assinatura de editor é pedida. O processo principal então avisa a página pelo preload, que guarda a versão para uma página que se inscreva depois, e o `UpdateNotice` do app web, desenhado só quando a ponte existe, mostra *Nova versão X pronta*. A versão entra em silêncio quando o app fecha, ou na hora pelo `restartToUpdate`, que o processo principal só aceita da própria página do app. Uma consulta que falha é registrada e o app mantém a versão. Um instalador mais novo rodado na mão atualiza o app no lugar: o instalador NSIS o encontra pelo `appId` e mantém os dados em `%APPDATA%`.
 
 ## Styles · Estilos
 
