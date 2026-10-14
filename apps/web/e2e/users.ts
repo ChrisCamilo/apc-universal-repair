@@ -5,16 +5,26 @@ import { TEST_USERS } from "@apc/shared/test-users";
 // A stand-in for the API's sign-up and login, so they work the same on every run without a database: it knows the
 // test users, as the seed puts them in the database, and the users the test signs up. POST /api/users creates a user
 // under the form's rules, refusing a username in use (409); POST /api/sessions checks a username and password,
-// answering 401 when they don't match. Both answer with the user as the session keeps them.
+// answering 401 when they don't match. Both answer with the user as the session keeps them, saying whether they have
+// seen the Inventory tutorial, which PUT /api/users/:id/inventory-tutorial marks.
 
 /**
- * Answers POST /api/users and POST /api/sessions from the test users and the users signed up meanwhile.
+ * Answers POST /api/users, POST /api/sessions and PUT /api/users/:id/inventory-tutorial from the test users and the
+ * users signed up meanwhile.
  * @param page The test's page.
  * @returns The users the stand-in knows, the test users first; read it to check a sign-up.
  */
 export async function serveUsers(page: Page): Promise<TestUser[]> {
   const users: TestUser[] = [...TEST_USERS];
-  const session = ({ id, username, displayName }: TestUser) => ({ id, username, displayName, initials: initials(displayName) });
+  // The users who have seen the Inventory tutorial, by id.
+  const seen = new Set<string>();
+  const session = ({ id, username, displayName }: TestUser) => ({
+    id,
+    username,
+    displayName,
+    initials: initials(displayName),
+    inventoryTutorialSeen: seen.has(id),
+  });
   await page.route("**/api/users", (route) => {
     const parsed = userCreateSchema.safeParse(route.request().postDataJSON());
     if (!parsed.success) {
@@ -34,6 +44,10 @@ export async function serveUsers(page: Page): Promise<TestUser[]> {
     return user
       ? route.fulfill({ status: 200, json: session(user) })
       : route.fulfill({ status: 401, json: { statusCode: 401, message: "Wrong username or password." } });
+  });
+  await page.route("**/api/users/*/inventory-tutorial", (route) => {
+    seen.add(decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-2)!));
+    return route.fulfill({ status: 204 });
   });
   return users;
 }

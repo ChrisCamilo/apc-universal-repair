@@ -1,6 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Item } from "@apc/shared/items";
-import { INVENTORY_TUTORIAL_STORAGE_KEY } from "@apc/shared/inventory-tutorial";
 import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 
@@ -433,7 +432,7 @@ test("Web: items are imported from a CSV file", async ({ page }) => {
 // then an out-of-stock row, and deletes it. Closing the form mid-step goes back to the step that opens it. At the end
 // the search and the filters are off and the test item is gone; the user menu replays the tutorial, and Skip ends it.
 test("Web: the Inventory tutorial creates, finds, edits and deletes a test item", async ({ page }) => {
-  await page.addInitScript((key) => localStorage.removeItem(key), INVENTORY_TUTORIAL_STORAGE_KEY);
+  await signIn(page, false);
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
     const sent = route.request().postDataJSON();
