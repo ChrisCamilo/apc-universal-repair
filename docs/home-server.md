@@ -49,11 +49,12 @@ flowchart LR
 
 ### 2. Get the project ready (once)
 
-In a normal PowerShell, in the folder where the project should live:
+In a normal PowerShell, in the folder where the project should live. `git checkout` puts it on the latest [release](https://github.com/ChrisCamilo/apc-universal-repair/releases), the version of the desktop app, here `v0.2.0`:
 
 ```powershell
 git clone https://github.com/ChrisCamilo/apc-universal-repair.git
 cd apc-universal-repair
+git checkout v0.2.0
 pnpm install
 copy apps\api\.env.example apps\api\.env
 notepad apps\api\.env
@@ -158,9 +159,25 @@ To restore, with the server off, use `pg_restore` with the copy and put the phot
 
 ### 9. Updating to a new version
 
-1. Turn the server off: close the window, or run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`.
-2. In the project folder: `git pull` and then `pnpm install`. The first time after photos started being reduced on saving, also run `pnpm --filter @apc/api photos:compress` once, to reduce the photos saved before.
-3. Turn the server on again: the shortcut, or `Start-ScheduledTask "APC Universal Repair API"`. It applies the new migrations by itself as it starts.
+The computer at home stays on a release tag (`v0.2.0`, `v0.2.1`…), the version of the desktop app, not on `main`: a change on `main`, such as a new migration, could break an app still on the version before.
+
+- **With the desktop app, by itself:** when the installed desktop app opens and the API on this computer answers another version on `/health`, it brings the server to its own version and shows "Atualizando o servidor…" until the API answers it. It runs `apps\api\scripts\update-server.ps1`, which:
+  - turns the server off;
+  - checks the clone out at the tag `v<version>` and runs `pnpm install`;
+  - turns the server on again, through the scheduled task when it is installed, otherwise in the background, which applies the new migrations.
+
+  When a step fails, or the API doesn't answer the new version within 5 minutes, it goes back to the version it was on and turns the server on again. It refuses to run when the clone has local changes (`git status` not clean). What it did is in `apps\api\logs\update.log`.
+- **By hand:** the same script, with the version to go to:
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File apps\api\scripts\update-server.ps1 -Version 0.2.0
+  ```
+- **The first time, from v0.1.0 or `main`:** the update script only exists from v0.2.0 on, so move the clone once by hand:
+  1. Turn the server off with `stop-server.ps1`.
+  2. Run `git fetch --tags`, `git checkout v0.2.0` and `pnpm install`.
+  3. Turn the server on again.
+
+  The first time after photos started being reduced on saving, also run `pnpm --filter @apc/api photos:compress` once, to reduce the photos saved before.
+- **A desktop app on another computer** only warns that the versions differ. Update the server with the script on the computer where it runs.
 
 ---
 
@@ -183,11 +200,12 @@ To restore, with the server off, use `pg_restore` with the copy and put the phot
 
 ### 2. Preparar o projeto (uma vez)
 
-Num PowerShell normal, na pasta onde o projeto vai ficar:
+Num PowerShell normal, na pasta onde o projeto vai ficar. O `git checkout` o coloca na [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) mais nova, a versão do app desktop, aqui a `v0.2.0`:
 
 ```powershell
 git clone https://github.com/ChrisCamilo/apc-universal-repair.git
 cd apc-universal-repair
+git checkout v0.2.0
 pnpm install
 copy apps\api\.env.example apps\api\.env
 notepad apps\api\.env
@@ -292,6 +310,22 @@ Para restaurar, com o servidor desligado, use o `pg_restore` com a cópia e devo
 
 ### 9. Atualizar para uma versão nova
 
-1. Desligue o servidor: feche a janela, ou rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`.
-2. Na pasta do projeto: `git pull` e depois `pnpm install`. Na primeira vez depois que as fotos passaram a ser reduzidas ao salvar, rode também `pnpm --filter @apc/api photos:compress` uma vez, para reduzir as fotos salvas antes.
-3. Ligue o servidor de novo: pelo atalho, ou `Start-ScheduledTask "APC Universal Repair API"`. Ele aplica as migrações novas sozinho ao ligar.
+O computador de casa fica numa tag de release (`v0.2.0`, `v0.2.1`…), a versão do app desktop, e não na `main`: uma mudança na `main`, como uma migração nova, poderia quebrar um app ainda na versão anterior.
+
+- **Pelo app desktop, sozinho:** quando o app desktop instalado abre e a API deste computador responde outra versão no `/health`, ele leva o servidor para a versão dele e mostra "Atualizando o servidor…" até a API respondê-la. Ele roda o `apps\api\scripts\update-server.ps1`, que:
+  - desliga o servidor;
+  - coloca o clone na tag `v<versão>` e roda o `pnpm install`;
+  - liga o servidor de novo, pela tarefa agendada quando ela está instalada, ou em segundo plano, o que aplica as migrações novas.
+
+  Quando um passo falha, ou a API não responde a versão nova em 5 minutos, ele volta para a versão em que estava e liga o servidor de novo. Ele se recusa a rodar quando o clone tem alterações locais (`git status` não limpo). O que ele fez fica em `apps\api\logs\update.log`.
+- **Na mão:** o mesmo script, com a versão de destino:
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File apps\api\scripts\update-server.ps1 -Version 0.2.0
+  ```
+- **Na primeira vez, saindo da v0.1.0 ou da `main`:** o script de atualização só existe a partir da v0.2.0, então mude o clone uma vez na mão:
+  1. Desligue o servidor com o `stop-server.ps1`.
+  2. Rode `git fetch --tags`, `git checkout v0.2.0` e `pnpm install`.
+  3. Ligue o servidor de novo.
+
+  Na primeira vez depois que as fotos passaram a ser reduzidas ao salvar, rode também `pnpm --filter @apc/api photos:compress` uma vez, para reduzir as fotos salvas antes.
+- **Um app desktop em outro computador** só avisa que as versões são diferentes. Atualize o servidor com o script no computador onde ele roda.
