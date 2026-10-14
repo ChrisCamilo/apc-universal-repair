@@ -59,7 +59,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
   /** Picks a file and reads it into the preview; a file that can't be opened says so in a toast. */
   const choose = async () => {
     const file = await pickCsv().catch(() => {
-      toast('Não foi possível abrir o arquivo. Tente de novo.');
+      toast.error('Não foi possível abrir o arquivo. Tente de novo.');
       return null;
     });
     if (file) {
@@ -73,10 +73,10 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
     const result = await importItems(API_URL, rows);
     setImporting(false);
     if (!result) {
-      toast('Não foi possível importar os itens. Tente de novo.');
+      toast.error('Não foi possível importar os itens. Tente de novo.');
       return;
     }
-    toast(importedSummary(result));
+    toast.success(importedSummary(result));
     onImported();
   };
 

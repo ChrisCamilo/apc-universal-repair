@@ -142,11 +142,11 @@ export function ItemFormDialog({
     const entry = await onCreateEntry(kind, name, kind === 'vehicleModels' ? vehicleBrand?.id : undefined)
     setCreating((count) => count - 1)
     if (!entry) {
-      toast(ITEM_LIST_TEXTS[kind].createFailed)
+      toast.error(ITEM_LIST_TEXTS[kind].createFailed)
       return
     }
     change(field, entry.name)
-    toast(ITEM_LIST_TEXTS[kind].created(entry.name))
+    toast.success(ITEM_LIST_TEXTS[kind].created(entry.name))
   }
 
   /** Checks the form and sends the item, or shows what keeps it from being saved. */
@@ -170,18 +170,18 @@ export function ItemFormDialog({
     }
     if (!response?.ok) {
       setSaving(false)
-      toast('Não foi possível salvar o item. Tente de novo.')
+      toast.error('Não foi possível salvar o item. Tente de novo.')
       return
     }
     const saved = itemSchema.parse(await response.json())
     const withPhotos = await savePhotos(saved, photos)
     setSaving(false)
     if (!withPhotos) {
-      toast(`Item “${saved.name}” salvo, mas as fotos não foram salvas. Tente de novo.`)
+      toast.warning(`Item “${saved.name}” salvo, mas as fotos não foram salvas. Tente de novo.`)
       onSaved(saved)
       return
     }
-    toast(item ? `Item “${saved.name}” salvo.` : `Item “${saved.name}” cadastrado.`)
+    toast.success(item ? `Item “${saved.name}” salvo.` : `Item “${saved.name}” cadastrado.`)
     onSaved(withPhotos)
   }
 

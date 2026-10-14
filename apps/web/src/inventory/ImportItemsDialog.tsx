@@ -80,10 +80,10 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
     const result = await importItems(API_BASE, rows)
     setImporting(false)
     if (!result) {
-      toast('Não foi possível importar os itens. Tente de novo.')
+      toast.error('Não foi possível importar os itens. Tente de novo.')
       return
     }
-    toast(importedSummary(result))
+    toast.success(importedSummary(result))
     onImported()
   }
 

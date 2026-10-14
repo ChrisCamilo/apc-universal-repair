@@ -83,11 +83,11 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
       return
     }
     if (!renamed) {
-      toast(texts.renameFailed)
+      toast.error(texts.renameFailed)
       return
     }
     setEditing(undefined)
-    toast(texts.renamed(renamed.name))
+    toast.success(texts.renamed(renamed.name))
     onChanged()
   }
 
@@ -101,11 +101,11 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
     const removed = await onRemove(removing.kind, removing.entry.id)
     setDeleting(false)
     if (!removed) {
-      toast(texts.deleteFailed)
+      toast.error(texts.deleteFailed)
       return
     }
     setRemoving(undefined)
-    toast(texts.deleted(removing.entry.name))
+    toast.success(texts.deleted(removing.entry.name))
     onChanged()
   }
 

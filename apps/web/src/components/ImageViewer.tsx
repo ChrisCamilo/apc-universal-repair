@@ -131,7 +131,11 @@ function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limi
   /** Hands the changed photos over, then confirms the change or says it couldn't be saved. */
   const change = async (next: UploadPhoto[], done: string) => {
     const saved = await onPhotosChange(next)
-    toast(saved === false ? 'Não foi possível salvar as fotos. Tente de novo.' : done)
+    if (saved === false) {
+      toast.error('Não foi possível salvar as fotos. Tente de novo.')
+    } else {
+      toast.success(done)
+    }
   }
 
   /** Checks the chosen file and adds it, or puts it in place of the photo on screen. */

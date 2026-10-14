@@ -35,7 +35,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
     const exported = await exportItems(API_BASE, query, { photos })
     setExporting(false)
     if (!exported) {
-      toast('Não foi possível exportar os itens. Tente de novo.')
+      toast.error('Não foi possível exportar os itens. Tente de novo.')
       return
     }
     const link = document.createElement('a')
@@ -44,7 +44,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
     link.click()
     // Let go of the file once the download has it.
     setTimeout(() => URL.revokeObjectURL(link.href))
-    toast(exportedSummary(exported.count))
+    toast.success(exportedSummary(exported.count))
     onClose()
   }
 
