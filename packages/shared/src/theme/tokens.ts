@@ -1,5 +1,7 @@
 // Semantic design tokens: the single source of truth for every visual style and mode.
 // Components never use raw values; web turns these into CSS variables and mobile reads them from the theme context.
+// The status colors are danger (red), warn (yellow), success (green) and info (blue), each with the color of what is
+// drawn on it (onDanger, onWarn, onSuccess, onInfo): the canvas at night, where they are bright, and white by day.
 
 const bmw90 = {
   displayFont: "Saira Semi Condensed",
@@ -74,6 +76,11 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         danger: "#FF6B5E",
         onDanger: "#0B0C0E",
         warn: "#F2C94C",
+        onWarn: "#0B0C0E",
+        success: "#4ADE80",
+        onSuccess: "#0B0C0E",
+        info: "#60A5FA",
+        onInfo: "#0B0C0E",
       },
       glow: { blur: 22, opacity: 0.2 },
       sheen: 0.045,
@@ -92,11 +99,17 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         danger: "#B3261E",
         onDanger: "#FFFFFF",
         warn: "#8A6100",
+        onWarn: "#FFFFFF",
+        success: "#157034",
+        onSuccess: "#FFFFFF",
+        info: "#1F5FBF",
+        onInfo: "#FFFFFF",
       },
       glow: { blur: 18, opacity: 0.14 },
       sheen: 0.022,
     },
   },
+  // A blue accent, so info is an indigo set well apart from it.
   gt4: {
     night: {
       ...gt4,
@@ -112,6 +125,11 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         danger: "#F07A73",
         onDanger: "#0E1114",
         warn: "#E8B04A",
+        onWarn: "#0E1114",
+        success: "#4ADE80",
+        onSuccess: "#0E1114",
+        info: "#8C9BFF",
+        onInfo: "#0E1114",
       },
       sheen: 0.03,
     },
@@ -129,6 +147,11 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         danger: "#B42318",
         onDanger: "#FFFFFF",
         warn: "#8A6100",
+        onWarn: "#FFFFFF",
+        success: "#157034",
+        onSuccess: "#FFFFFF",
+        info: "#3F4FC9",
+        onInfo: "#FFFFFF",
       },
       sheen: 0.018,
     },
@@ -150,6 +173,11 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         danger: "#F0364F",
         onDanger: "#0A0A0B",
         warn: "#F2B33D",
+        onWarn: "#0A0A0B",
+        success: "#4ADE80",
+        onSuccess: "#0A0A0B",
+        info: "#60A5FA",
+        onInfo: "#0A0A0B",
       },
       glow: { blur: 20, opacity: 0.3 },
       sheen: 0.035,
@@ -168,13 +196,18 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         danger: "#A3123A",
         onDanger: "#FFFFFF",
         warn: "#8A6100",
+        onWarn: "#FFFFFF",
+        success: "#157034",
+        onSuccess: "#FFFFFF",
+        info: "#1F5FBF",
+        onInfo: "#FFFFFF",
       },
       glow: { blur: 16, opacity: 0.14 },
       sheen: 0.02,
     },
   },
   // The green lighting of a lit instrument panel on green-black. The accent is green, so danger stays red
-  // and warn amber, both far from it.
+  // and warn amber, both far from it, and success is a teal green set apart from it.
   fiat90: {
     night: {
       ...fiat90,
@@ -190,6 +223,11 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         danger: "#FF6B5E",
         onDanger: "#070A08",
         warn: "#F2C94C",
+        onWarn: "#070A08",
+        success: "#33E6B8",
+        onSuccess: "#070A08",
+        info: "#60A5FA",
+        onInfo: "#070A08",
       },
       glow: { blur: 22, opacity: 0.32 },
       sheen: 0.035,
@@ -208,6 +246,11 @@ export const themes: Record<Style, Record<Mode, Theme>> = {
         danger: "#B3261E",
         onDanger: "#FFFFFF",
         warn: "#8A6100",
+        onWarn: "#FFFFFF",
+        success: "#08705E",
+        onSuccess: "#FFFFFF",
+        info: "#1F5FBF",
+        onInfo: "#FFFFFF",
       },
       glow: { blur: 16, opacity: 0.14 },
       sheen: 0.02,
@@ -228,7 +271,12 @@ export type ColorToken =
   | "onAccent"
   | "danger"
   | "onDanger"
-  | "warn";
+  | "warn"
+  | "onWarn"
+  | "success"
+  | "onSuccess"
+  | "info"
+  | "onInfo";
 export interface Theme {
   colors: Record<ColorToken, string>;
   /** Display face family, e.g. "Barlow Condensed". */
