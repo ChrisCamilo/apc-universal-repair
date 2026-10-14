@@ -103,18 +103,22 @@ export function Menu({ label, trigger, onOpenChange, children }: MenuProps) {
   );
 }
 
-export function MenuHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+/** A menu's header: its title, a subtitle under it, and an action at its end, such as a settings button. */
+export function MenuHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   const { styles, ids } = useHeaderStyles();
   return (
     <View style={styles.header} testID={ids.header}>
-      <Text style={styles.title} testID={ids.title}>
-        {title}
-      </Text>
-      {subtitle && (
-        <Text style={styles.menuItemDescription} testID={ids.menuItemDescription}>
-          {subtitle}
+      <View style={styles.text} testID={ids.text}>
+        <Text style={styles.title} testID={ids.title}>
+          {title}
         </Text>
-      )}
+        {subtitle && (
+          <Text style={styles.menuItemDescription} testID={ids.menuItemDescription}>
+            {subtitle}
+          </Text>
+        )}
+      </View>
+      {action}
     </View>
   );
 }

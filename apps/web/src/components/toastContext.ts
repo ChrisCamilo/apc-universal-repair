@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useEffectEvent } from 'react'
-import type { ToastKind } from '@apc/shared/toast'
+import { TOAST_DURATION, type ToastKind } from '@apc/shared/toast'
 
+/** The time a toast stays on screen, in ms, and the way to change it, which also saves it on the device. */
+export type ToastDuration = { ms: number; setMs: (ms: number) => void }
 /** Hears a toast as it is shown. */
 export type ToastListener = (kind: ToastKind, message: string) => void
 
@@ -10,8 +12,18 @@ export type Toasts = Record<ToastKind, (message: string) => void>
 /** Shows toasts; set by ToastProvider. Outside one they do nothing. */
 export const ToastContext = createContext<Toasts>({ success: () => {}, error: () => {}, info: () => {}, warning: () => {} })
 
+/** The time a toast stays and the way to change it; set by ToastProvider. */
+export const ToastDurationContext = createContext<ToastDuration>({ ms: TOAST_DURATION.defaultMs, setMs: () => {} })
 /** Adds a listener to every toast shown and gives the way to remove it; set by ToastProvider. */
 export const ToastFeedContext = createContext<(listener: ToastListener) => () => void>(() => () => {})
+
+/**
+ * Gets the time a toast stays on screen and the way to change it, e.g. for the bell's settings.
+ * @returns The time in ms and its setter.
+ */
+export function useToastDuration(): ToastDuration {
+  return useContext(ToastDurationContext)
+}
 
 /**
  * Hears every toast shown while the caller is mounted, e.g. to keep them in the notifications history.

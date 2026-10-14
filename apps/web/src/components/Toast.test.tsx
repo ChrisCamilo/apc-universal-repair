@@ -1,6 +1,5 @@
-import { TOAST_DURATION_MS } from '@apc/shared/dialog'
 import { themes, type Mode, type Style } from '@apc/shared/theme'
-import { TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast'
+import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { commands } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -53,7 +52,7 @@ test('Web: toasts are announced and hide on their own', async () => {
   expect(getComputedStyle(pill).backgroundColor).toBe(rgb(themes.eighties.night.colors.success))
   expect(getComputedStyle(pill).color).toBe(rgb(themes.eighties.night.colors.onSuccess))
 
-  await expect.poll(() => status.element().textContent, { timeout: TOAST_DURATION_MS + 2000 }).toBe('')
+  await expect.poll(() => status.element().textContent, { timeout: TOAST_DURATION.defaultMs + 2000 }).toBe('')
 })
 
 for (const [style, mode] of [
@@ -120,7 +119,7 @@ test('Web: a toast fades in, and fades out before it leaves the page', async () 
   const look = getComputedStyle(pill.element())
   expect([look.transitionProperty, look.transitionDuration]).toEqual(['opacity, translate', `${TOAST_FADE_MS / 1000}s`])
 
-  await expect.element(pill, { timeout: TOAST_DURATION_MS + 1000 }).toHaveAttribute('aria-hidden', 'true')
+  await expect.element(pill, { timeout: TOAST_DURATION.defaultMs + 1000 }).toHaveAttribute('aria-hidden', 'true')
   await expect.poll(() => pill.query(), { timeout: TOAST_FADE_MS + 1000 }).toBeNull()
 })
 

@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { TOAST_DURATION_MS } from '@apc/shared/dialog'
 import { ICON_SIZES } from '@apc/shared/icons'
-import { TOAST_FADE_MS, TOAST_KIND_LOOKS, type ToastKind } from '@apc/shared/toast'
+import { readToastDuration, TOAST_DURATION_STORAGE_KEY, TOAST_FADE_MS, TOAST_KIND_LOOKS, type ToastKind } from '@apc/shared/toast'
+import { readStored, writeStored } from '../storage.ts'
 import { Icon } from './Icon.tsx'
 import { toast } from './Toast.styles.ts'
-import { ToastContext, ToastFeedContext, type ToastListener, type Toasts } from './toastContext.ts'
+import { ToastContext, ToastDurationContext, ToastFeedContext, type ToastDuration, type ToastListener, type Toasts } from './toastContext.ts'
 
 // Short messages at the bottom of the screen, each of a kind: success ("Item adicionado"), error ("Não foi possível
 // …"), info or warning, in a pill of the kind's color with its icon. The polite live region is always in the page, so
 // screen readers announce each success and info after what they are reading; an error or a warning comes in a new
-// alert, read out at once. The toast fades in rising a little, stays for TOAST_DURATION_MS and fades out; a new one
+// alert, read out at once. The toast fades in rising a little, stays for the time the user picked (5 s unless they
+// changed it in the bell's menu; saved on the device) and fades out; a new one
 // takes the place of the one showing, which fades out under it, hidden from screen readers. With reduced motion they
 // show and hide at once. Whoever listens through useToastFeed, such as the notifications history, hears each toast.
 // The region is a popover in the browser's top layer, raised again with each message, so a toast stays above an open
@@ -22,6 +23,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState<Shown[]>([])
   const region = useRef<HTMLDivElement>(null)
   const listeners = useRef(new Set<ToastListener>())
+  const [durationMs, setDurationMs] = useState(() => readToastDuration(readStored(TOAST_DURATION_STORAGE_KEY)))
+  const duration = useMemo<ToastDuration>(
+    () => ({
+      ms: durationMs,
+      setMs: (ms) => {
+        setDurationMs(ms)
+        writeStored(TOAST_DURATION_STORAGE_KEY, String(ms))
+      },
+    }),
+    [durationMs],
+  )
   const { classes, ids } = toast()
   const subscribe = useCallback((listener: ToastListener) => {
     listeners.current.add(listener)
@@ -65,14 +77,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Let the toast leave after a while; a new message starts the wait again.
+  // Let the toast leave after the time picked; a new message, or a new time, starts the wait again.
   useEffect(() => {
     if (current === undefined) {
       return
     }
-    const timer = setTimeout(() => setShown((list) => list.map((toast) => (toast.id === current ? leave(toast) : toast))), TOAST_DURATION_MS)
+    const timer = setTimeout(() => setShown((list) => list.map((toast) => (toast.id === current ? leave(toast) : toast))), durationMs)
     return () => clearTimeout(timer)
-  }, [current])
+  }, [current, durationMs])
 
   // Take the toasts that left out once they faded.
   useEffect(() => {
@@ -85,7 +97,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   return (
     <ToastContext.Provider value={toasts}>
-      <ToastFeedContext.Provider value={subscribe}>{children}</ToastFeedContext.Provider>
+      <ToastDurationContext.Provider value={duration}>
+        <ToastFeedContext.Provider value={subscribe}>{children}</ToastFeedContext.Provider>
+      </ToastDurationContext.Provider>
       <div ref={region} popover="manual" className={classes.base()} data-testid={ids.base}>
         <div role="status" className={classes.polite()} data-testid={ids.polite}>
           {pills(false)}

@@ -1,18 +1,25 @@
 import { createContext, useCallback, useContext, useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TOAST_DURATION_MS } from '@apc/shared/dialog';
 import { ICON_SIZES } from '@apc/shared/icons';
-import { TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
+import {
+  readToastDuration,
+  TOAST_DURATION,
+  TOAST_DURATION_STORAGE_KEY,
+  TOAST_FADE_MS,
+  TOAST_KIND_LOOKS,
+  TOAST_KINDS,
+  type ToastKind,
+} from '@apc/shared/toast';
 import { Icon } from './Icon';
 import { useReducedMotion } from './motion';
 import { KIND_STYLES, TOAST_OFFSET, TOAST_RISE, useStyles } from './Toast.styles';
-import { useTheme } from './theme';
+import { save, themeStorage, useTheme } from './theme';
 
 // Short messages at the bottom of the screen, each of a kind, the same as the web: success ("Item adicionado"), error
 // ("Não foi possível …"), info or warning, in a pill of the kind's color with its icon. Screen readers read an error
 // or a warning out at once and a success or an info after what they are reading. The toast fades in rising a little,
-// stays for TOAST_DURATION_MS and fades out; a new message takes the place of the one showing, which fades out under it,
+// stays for the time the user picked (5 s unless they changed it in the bell's menu; saved on the device) and fades out; a new message takes the place of the one showing, which fades out under it,
 // hidden from screen readers. With reduced motion they show and hide at once. Whoever listens through useToastFeed,
 // such as the notifications history, hears each toast. A Modal sits above the rest of the app,
 // so each open Dialog holds a ToastLayer, as it does a TourLayer: the toast draws in the last layer registered, the
@@ -20,6 +27,7 @@ import { useTheme } from './theme';
 
 const ToastContext = createContext<Toasts>(toastsOf(() => {}));
 const ToastFeedContext = createContext<(listener: ToastListener) => () => void>(() => () => {});
+const ToastDurationContext = createContext<ToastDuration>({ ms: TOAST_DURATION.defaultMs, setMs: () => {} });
 const ToastLayersContext = createContext<ToastLayers | null>(null);
 
 /** A toast on screen; a leaving one is fading out. */
@@ -32,6 +40,8 @@ type ToastLayers = {
   removeLayer: (id: string) => void;
 };
 
+/** The time a toast stays on screen, in ms, and the way to change it, which also saves it on the device. */
+export type ToastDuration = { ms: number; setMs: (ms: number) => void };
 /** Hears a toast as it is shown. */
 export type ToastListener = (kind: ToastKind, message: string) => void;
 /** Shows a toast of each kind, each taking the message. */
@@ -53,6 +63,14 @@ function leave(shown: Shown): Shown {
  */
 function toastsOf(show: (kind: ToastKind, message: string) => void): Toasts {
   return Object.fromEntries(TOAST_KINDS.map((kind) => [kind, (message: string) => show(kind, message)])) as Toasts;
+}
+
+/**
+ * Gets the time a toast stays on screen and the way to change it, e.g. for the bell's settings.
+ * @returns The time in ms and its setter.
+ */
+export function useToastDuration(): ToastDuration {
+  return useContext(ToastDurationContext);
 }
 
 /**
@@ -78,6 +96,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState<Shown[]>([]);
   const [layers, setLayers] = useState<string[]>([]);
   const listeners = useRef(new Set<ToastListener>());
+  const [durationMs, setDurationMs] = useState<number>(TOAST_DURATION.defaultMs);
+  const duration = useMemo<ToastDuration>(
+    () => ({
+      ms: durationMs,
+      setMs: (ms) => {
+        setDurationMs(ms);
+        save(TOAST_DURATION_STORAGE_KEY, String(ms));
+      },
+    }),
+    [durationMs],
+  );
   const subscribe = useCallback((listener: ToastListener) => {
     listeners.current.add(listener);
     return () => {
@@ -103,14 +132,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     .map((toast) => toast.id)
     .join();
 
-  // Let the toast leave after a while; a new message starts the wait again.
+  // Read the time picked once.
+  useEffect(() => {
+    let live = true;
+    themeStorage
+      .getItem(TOAST_DURATION_STORAGE_KEY)
+      .catch(() => null)
+      .then((saved) => live && setDurationMs(readToastDuration(saved)));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // Let the toast leave after the time picked; a new message, or a new time, starts the wait again.
   useEffect(() => {
     if (current === undefined) {
       return;
     }
-    const timer = setTimeout(() => setShown((list) => list.map((toast) => (toast.id === current ? leave(toast) : toast))), TOAST_DURATION_MS);
+    const timer = setTimeout(() => setShown((list) => list.map((toast) => (toast.id === current ? leave(toast) : toast))), durationMs);
     return () => clearTimeout(timer);
-  }, [current]);
+  }, [current, durationMs]);
 
   // Take the toasts that left out once they faded.
   useEffect(() => {
@@ -131,7 +172,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={toasts}>
       <ToastLayersContext.Provider value={state}>
-        <ToastFeedContext.Provider value={subscribe}>{children}</ToastFeedContext.Provider>
+        <ToastDurationContext.Provider value={duration}>
+          <ToastFeedContext.Provider value={subscribe}>{children}</ToastFeedContext.Provider>
+        </ToastDurationContext.Provider>
         {layers.length === 0 && <ToastSpot shown={shown} />}
       </ToastLayersContext.Provider>
     </ToastContext.Provider>

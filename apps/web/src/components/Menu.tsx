@@ -152,18 +152,22 @@ export function Menu({ label, trigger, align = 'end', anchor = 'trigger', onOpen
   )
 }
 
-export function MenuHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+/** A menu's header: its title, a subtitle under it, and an action at its end, such as a settings button. */
+export function MenuHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   const { classes, ids } = menuHeader()
   return (
     <div className={classes.base()} data-testid={ids.base}>
-      <b className={classes.title()} data-testid={ids.title}>
-        {title}
-      </b>
-      {subtitle && (
-        <small className={classes.subtitle()} data-testid={ids.subtitle}>
-          {subtitle}
-        </small>
-      )}
+      <div className={classes.text()} data-testid={ids.text}>
+        <b className={classes.title()} data-testid={ids.title}>
+          {title}
+        </b>
+        {subtitle && (
+          <small className={classes.subtitle()} data-testid={ids.subtitle}>
+            {subtitle}
+          </small>
+        )}
+      </div>
+      {action}
     </div>
   )
 }

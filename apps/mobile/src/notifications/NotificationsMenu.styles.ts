@@ -1,12 +1,14 @@
 import { scales } from '@apc/shared/theme';
+import { DISABLED_OPACITY } from '../Button.styles';
 import { AVATAR_SIZE } from '../Menu.styles';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily, withAlpha } from '../theme';
+import { fontFamily, softHairline, withAlpha } from '../theme';
 
 // The look of the notifications, the same as the web: the bell on its trigger, as big as the user menu's avatar, with
 // the count of the unread on the accent at its corner, and in its menu the latest notifications, each with its kind's
 // icon in the kind's color, the message and how long ago, the ones that were unread when the menu opened on the soft
-// accent; or a muted notice when there are none.
+// accent; or a muted notice when there are none. The gear in the menu's header opens its settings: the toast's time
+// between a − and a + button.
 
 /** How tall the list grows before it scrolls, in px (max-h-80 on the web). */
 export const LIST_MAX_HEIGHT = scales.space.s1 * 80;
@@ -50,5 +52,40 @@ export const useStyles = createStyles(
     message: { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: theme.colors.text },
     text: { flex: 1 },
     time: { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.xs, color: theme.colors.textMuted },
+  }),
+);
+
+/** The size of the settings' round buttons, in px (size-8 on the web). */
+export const SETTINGS_BUTTON_SIZE = scales.space.s6;
+
+/** The settings: the gear that opens them, and the toast's time with its − and + buttons. */
+export const useSettingsStyles = createStyles(
+  'notifications.settings',
+  { setting: '', label: 'label', hint: 'label.hint', stepper: 'stepper', value: 'stepper.value', button: 'button' },
+  (theme) => ({
+    button: {
+      width: SETTINGS_BUTTON_SIZE,
+      height: SETTINGS_BUTTON_SIZE,
+      borderRadius: scales.radiusPill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    buttonDisabled: { opacity: DISABLED_OPACITY },
+    buttonOn: { backgroundColor: withAlpha(theme.colors.accent, scales.accentSoft) },
+    hint: { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.xs, color: theme.colors.textMuted },
+    label: { flex: 1, fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: theme.colors.text },
+    setting: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: scales.space.s3,
+      marginBottom: scales.space.s1,
+      paddingHorizontal: scales.space.s2,
+      paddingTop: scales.space.s1,
+      paddingBottom: scales.space.s3,
+      borderBottomWidth: scales.hairline,
+      borderBottomColor: softHairline(theme),
+    },
+    stepper: { flexDirection: 'row', alignItems: 'center', gap: scales.space.s1 },
+    value: { minWidth: scales.space.s1 * 10, textAlign: 'center', fontFamily: fontFamily(scales.monoFont), fontSize: scales.fontSize.sm, color: theme.colors.text },
   }),
 );

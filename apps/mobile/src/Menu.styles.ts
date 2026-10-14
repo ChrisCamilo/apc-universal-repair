@@ -57,19 +57,27 @@ export const useStyles = createStyles(
   },
 );
 
-/** A menu's header: its title and subtitle over a soft hairline. */
-export const useHeaderStyles = createStyles('common.menu-header', { header: '', title: 'title', menuItemDescription: 'subtitle' }, (theme) => ({
-  header: {
-    marginBottom: scales.space.s1,
-    paddingHorizontal: scales.space.s2,
-    paddingTop: scales.space.s2,
-    paddingBottom: scales.space.s3,
-    borderBottomWidth: scales.hairline,
-    borderBottomColor: softHairline(theme),
-  },
-  menuItemDescription: menuItemStyles(theme).menuItemDescription,
-  title: { fontFamily: fontFamily(scales.monoFont, 500), fontSize: scales.fontSize.sm, color: theme.colors.text },
-}));
+/** A menu's header: its title and subtitle, and an action at its end, over a soft hairline. */
+export const useHeaderStyles = createStyles(
+  'common.menu-header',
+  { header: '', text: 'text', title: 'text.title', menuItemDescription: 'text.subtitle' },
+  (theme) => ({
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: scales.space.s2,
+      marginBottom: scales.space.s1,
+      paddingHorizontal: scales.space.s2,
+      paddingTop: scales.space.s2,
+      paddingBottom: scales.space.s3,
+      borderBottomWidth: scales.hairline,
+      borderBottomColor: softHairline(theme),
+    },
+    menuItemDescription: menuItemStyles(theme).menuItemDescription,
+    text: { flex: 1 },
+    title: { fontFamily: fontFamily(scales.monoFont, 500), fontSize: scales.fontSize.sm, color: theme.colors.text },
+  }),
+);
 
 /** An action item: the row, its label and description. */
 export const useItemStyles = createStyles(
