@@ -33,7 +33,6 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 📚 Vehicle catalog organized by brand, model, generation, version, year and engine, on sample data ✅
 - 🔎 Catalog search by brand, model or the code of a part in stock ✅
 - 🚧 Until phase 2 is done the Catalog tab shows as a work in progress: it opens blurred behind a notice that it isn't ready yet
-- 📋 Vehicle spec sheet: fuel consumption, equipment and features
 
 **Next**
 
@@ -49,6 +48,10 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - ⚙️ Technical specs: bolt/screw sizes and torque values
 - 🔍 Diagnostic guidance for common issues
 - 💰 Reference prices, when available
+
+**TBD**
+
+- 📋 Vehicle spec sheet: fuel consumption, equipment and features
 
 ### Supported Screen Sizes
 
@@ -142,9 +145,10 @@ Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisC
 
 - **MVP ✅:** Setup → Design System → Auth (login and sign-up) → Dashboard → Inventory (with photos, CSV import and export)
 - **Optimizations ✅:** style recipes and style ids in every component, guarded by lint
-- **Phase 2 (in progress):** Catalog tab ✅ (on sample data, shown as a work in progress) and Car Specs
+- **Phase 2 (in progress):** Catalog tab ✅ (on sample data, shown as a work in progress)
 - **Next:** the API on a home computer for the mobile app ✅, Windows desktop app ✅, photo compression ✅ and Android release build
 - **Later:** 3D viewer, maintenance specs, diagnostics, reference prices, real backend and full EN/PT-BR app UI
+- **TBD:** Car Specs, the vehicle spec sheet (fuel consumption, equipment and features), with no phase yet
 
 ### Delivery
 
@@ -159,7 +163,7 @@ The MVP was estimated at 228 story points. It closed on October 8, 2026, four we
 | Optimizations | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Since then the API at home, the Windows desktop app and the photo compression are done too. Still open: the Android release build, the home server checks that need an administrator and the style values left for a decision, plus the Car Specs epic.
+Since then the API at home, the Windows desktop app and the photo compression are done too. Still open: the Android release build, the home server checks that need an administrator and the style values left for a decision. The Car Specs epic is TBD, with no phase yet.
 
 ### Contributing
 
@@ -171,7 +175,7 @@ Help mechanics, enthusiasts, and vehicle owners preserve correct maintenance pra
 
 ### Status
 
-🚧 In development: the MVP is done on web and mobile — login and sign-up, the Dashboard and the Inventory — and phase 2 is underway, with the Catalog tab built on sample data and the Car Specs next.
+🚧 In development: the MVP is done on web and mobile — login and sign-up, the Dashboard and the Inventory — and phase 2 is underway, with the Catalog tab built on sample data.
 
 ---
 
@@ -204,7 +208,6 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor, com dados de exemplo ✅
 - 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque ✅
 - 🚧 Até a fase 2 terminar, a aba Catálogo aparece em construção: ela abre desfocada atrás de um aviso de que ainda não está pronta
-- 📋 Ficha técnica do veículo: consumo, equipamentos e itens de série
 
 **Próximos passos**
 
@@ -220,6 +223,10 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - ⚙️ Ficha técnica: medidas de parafusos e torque
 - 🔍 Orientação para diagnósticos comuns
 - 💰 Valores de referência, quando disponíveis
+
+**A definir**
+
+- 📋 Ficha técnica do veículo: consumo, equipamentos e itens de série
 
 ### Tamanhos de Tela Suportados
 
@@ -313,9 +320,10 @@ O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https:
 
 - **MVP ✅:** Setup → Design System → Auth (login e cadastro) → Dashboard → Estoque (com fotos, importação e exportação por CSV)
 - **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint
-- **Fase 2 (em andamento):** aba Catálogo ✅ (com dados de exemplo, aparecendo em construção) e Ficha técnica
+- **Fase 2 (em andamento):** aba Catálogo ✅ (com dados de exemplo, aparecendo em construção)
 - **Próximos passos:** a API num computador de casa para o app do celular ✅, app desktop para Windows ✅, compressão das fotos ✅ e build de release para Android
 - **Depois:** visualizador 3D, ficha de manutenção, diagnósticos, valores de referência, backend real e interface completa em inglês e português
+- **A definir:** Ficha técnica do veículo (consumo, equipamentos e itens de série), ainda sem fase
 
 ### Entregas
 
@@ -330,7 +338,7 @@ O MVP foi estimado em 228 story points. Ele foi concluído em 8 de outubro de 20
 | Otimizações | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Depois disso, a API em casa, o app desktop para Windows e a compressão das fotos também ficaram prontos. Ainda em aberto: o build de release para Android, as checagens do servidor em casa que precisam de administrador e os valores de estilo que faltam decidir, além do épico de Ficha técnica.
+Depois disso, a API em casa, o app desktop para Windows e a compressão das fotos também ficaram prontos. Ainda em aberto: o build de release para Android, as checagens do servidor em casa que precisam de administrador e os valores de estilo que faltam decidir. O épico de Ficha técnica está a definir, ainda sem fase.
 
 ### Como Contribuir
 
@@ -342,4 +350,4 @@ Ajudar mecânicos, entusiastas e proprietários de veículos a preservar as boas
 
 ### Status
 
-🚧 Em desenvolvimento: o MVP está pronto na web e no celular — login e cadastro, o Dashboard e o Estoque — e a fase 2 está em andamento, com a aba Catálogo feita sobre dados de exemplo e a Ficha técnica em seguida.
+🚧 Em desenvolvimento: o MVP está pronto na web e no celular — login e cadastro, o Dashboard e o Estoque — e a fase 2 está em andamento, com a aba Catálogo feita sobre dados de exemplo.
