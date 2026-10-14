@@ -32,17 +32,18 @@ export const menu = recipe(
   { base: '', trigger: 'trigger', chevron: 'trigger.chevron', popover: 'popover' },
 )
 
-/** A menu's header: its title and subtitle over a soft hairline. */
+/** A menu's header: its title and subtitle, and an action at its end, over a soft hairline. */
 export const menuHeader = recipe(
   'common.menu-header',
   tv({
     slots: {
-      base: 'mb-1 grid border-b border-hairline-soft px-2 pt-2 pb-3',
+      base: 'mb-1 flex items-center gap-2 border-b border-hairline-soft px-2 pt-2 pb-3',
+      text: 'grid min-w-0 flex-1',
       title: 'font-mono text-sm font-medium',
       subtitle: 'text-xs text-text-muted',
     },
   }),
-  { base: '', title: 'title', subtitle: 'subtitle' },
+  { base: '', text: 'text', title: 'text.title', subtitle: 'text.subtitle' },
 )
 
 /** An action item: the row, its label and description, and the icon at its end in the accent. */
