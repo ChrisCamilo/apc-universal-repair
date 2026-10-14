@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
 import {
   brandsNamed,
   brandWithModel,
@@ -28,7 +28,7 @@ import { PartResults } from './PartResults';
 // is the mocked catalog of @apc/shared/catalog. The searches work as on the web: the one above the tiles narrows the
 // brands by name; the one above the tree lists the inventory parts with that code (3+ letters or digits) and
 // reveals the chosen part's vehicle, or a note when the catalog has no sheet for it, and otherwise narrows the tree by
-// model name, moving to the first brand that has the model.
+// model name, moving to the first brand that has the model. The tab scrolls inside itself, since the screen doesn't.
 
 const NO_SHEET = 'Este veículo ainda não tem ficha técnica no catálogo. A peça continua cadastrada no estoque.';
 
@@ -86,7 +86,7 @@ export function CatalogTab() {
   };
 
   return (
-    <View style={styles.tab} testID={ids.tab}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.tab} testID={ids.tab}>
       <Panel style={styles.rail}>
         <SearchField label="Procure marca" value={brandQuery} onValueChange={setBrandQuery} />
         <SelectableTileGroup
@@ -140,6 +140,6 @@ export function CatalogTab() {
           />
         )}
       </Panel>
-    </View>
+    </ScrollView>
   );
 }

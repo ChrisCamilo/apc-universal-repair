@@ -17,6 +17,7 @@ export const useStyles = createStyles('catalog.catalog-tab', { tab: '', sheet: '
   rail: { gap: scales.space.s3 },
   sheet: { gap: scales.space.s3 },
   specs: { flexDirection: 'row', flexWrap: 'wrap', columnGap: scales.space.s3, rowGap: scales.space.s1 },
+  scroll: { flex: 1 },
   tab: { gap: scales.space.s3 },
   tree: { maxHeight: TREE_MAX_HEIGHT },
 }));

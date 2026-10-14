@@ -15,8 +15,9 @@ import { PageSizeContext, usePageSizeChoice } from './pageSizeContext';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 
 // The frame of the Dashboard, the same as the web: a header with the APC mark, the tab bar and the user menu
-// slot, and below it the content of the open tab. The app reopens on the last tab used. On a phone the
-// header wraps and scrolls away with the page, and the tab bar scrolls sideways when the tabs don't fit. While
+// slot, and below it the content of the open tab. The app reopens on the last tab used. The screen itself never
+// scrolls: the header stays in view and the open tab fills the rest, scrolling only its own content (the Inventory's
+// list). The header wraps on a phone, and the tab bar scrolls sideways when the tabs don't fit. While
 // "Arrastar para reordenar" is on in the user menu, the tabs can be picked up with a long press (or moved with
 // the screen reader's actions) into a new order, which is saved and comes back, with tabs added later at its end;
 // the open tab stays open. The Dashboard also holds "Abrir item ao clicar na linha" and "Itens por página", which the
@@ -74,7 +75,7 @@ export function Dashboard({ userMenu }: DashboardProps) {
               },
             }}
           >
-            <ScrollView style={styles.page} testID={ids.page}>
+            <View style={styles.page} testID={ids.page}>
               <View style={styles.header} testID={ids.header}>
                 <View accessibilityRole="header" style={styles.mark} testID={ids.mark}>
                   <BrandMark variant="compact" size={MARK_SIZE} />
@@ -107,7 +108,7 @@ export function Dashboard({ userMenu }: DashboardProps) {
               <View style={styles.content} testID={ids.content}>
                 {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{TAB_SCREENS[tab]}</WorkInProgress> : TAB_SCREENS[tab]}
               </View>
-            </ScrollView>
+            </View>
           </InventoryTutorialContext.Provider>
         </PageSizeContext.Provider>
       </OpenItemOnRowContext.Provider>

@@ -4,7 +4,7 @@ import { softHairline } from '../theme';
 
 // The look of the Dashboard, the same as the web's app frame: the page on the canvas; the header row with the APC
 // mark, the tab bar and the user menu slot, wrapping over a soft hairline that the selected tab's underline sits on;
-// and the open tab's content under it. The ids follow the web frame's names.
+// and the open tab's content under it, filling the rest of the screen. The ids follow the web frame's names.
 
 /** The compact APC mark's width in the header, in px (HEADER_MARK_SIZE on the web). */
 export const MARK_SIZE = 32;
@@ -14,7 +14,7 @@ export const useStyles = createStyles(
   'dashboard.dashboard',
   { page: '', header: 'header', mark: 'header.brand', tabBar: 'header.nav', menu: 'header.end', content: 'main' },
   (theme) => ({
-    content: { paddingHorizontal: scales.space.s4, paddingVertical: scales.space.s3 },
+    content: { flex: 1, paddingHorizontal: scales.space.s4, paddingVertical: scales.space.s3 },
     header: {
       flexDirection: 'row',
       flexWrap: 'wrap',
