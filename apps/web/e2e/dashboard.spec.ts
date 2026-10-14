@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { DASHBOARD_TABS } from "@apc/shared/tabs";
 import { signIn } from "./session.ts";
 
@@ -82,4 +83,19 @@ test("Web: a tab still being built opens behind the work-in-progress notice", as
   await expect(page.getByRole("heading", { name: `A aba ${WIP_TAB!.label} ainda não está pronta` })).toBeVisible();
   await expect(page.getByTestId("common.work-in-progress.content")).toHaveJSProperty("inert", true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+});
+
+// On a 1360×768 notebook, in full screen and in a window (1360×689), opens the Catalog tab and checks the page itself
+// doesn't scroll, down or sideways, with the header at the top.
+test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "A desktop screen");
+  await page.goto("/catalog");
+  await expect(page.getByRole("tab", { name: /Catálogo/ })).toHaveAttribute("aria-selected", "true");
+  for (const height of [NOTEBOOK_HEIGHT, NOTEBOOK_WINDOW_HEIGHT]) {
+    await page.setViewportSize({ width: NOTEBOOK_WIDTH, height });
+    await expect.poll(() => page.evaluate(() => innerHeight)).toBe(height);
+    const scroll = await page.evaluate(() => [document.scrollingElement!.scrollHeight - innerHeight, document.documentElement.scrollWidth]);
+    expect(scroll, `1360×${height}`).toEqual([0, NOTEBOOK_WIDTH]);
+    expect((await page.locator("header").boundingBox())!.y, `1360×${height}`).toBe(0);
+  }
 });
