@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form'
+import { codeTakenMessage, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE } from '@apc/shared/item-form'
 import type { Item } from '@apc/shared/items'
 import { withEntry, type ItemLists } from '@apc/shared/lists'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
@@ -424,17 +424,25 @@ test('Web: a new item is saved with its photos', async () => {
   await expect.element(screen.getByText('Item “Vela” cadastrado.')).toBeVisible()
 })
 
-// Edits an item whose photos can't be saved, and checks the toast says the item was saved without its photos and
-// the item is still handed over; unchanged photos aren't sent at all.
-test('Web: photos that fail to save are reported, and unchanged ones are not sent', async () => {
+// Edits an item whose photos can't be saved. Saved as it is, nothing is sent and an info toast says there is nothing
+// to save; with a quantity changed, only the item is sent, not its unchanged photos; with a photo removed, a warning
+// toast says the item was saved without its photos and the item is still handed over.
+test('Web: an unchanged edit is not sent, and photos that fail to save are reported', async () => {
   const withPhoto = { ...FILTER, photos: [SAVED_PHOTO] }
   const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
     String(url).endsWith('/photos') ? new Response(null, { status: 500 }) : new Response(JSON.stringify(withPhoto), { status: 200 }),
   )
   const onSaved = vi.fn()
+  const unchanged = await render(<Sample item={withPhoto} onSaved={onSaved} />)
+  await expect.element(unchanged.getByRole('img', { name: 'Foto 1, capa' })).toHaveAttribute('src', '/api/photos/aa.png')
+  await unchanged.getByRole('button', { name: 'Salvar alterações' }).click()
+  await expect.element(unchanged.getByRole('status')).toHaveTextContent(ITEM_UNCHANGED_MESSAGE)
+  expect(fetch).not.toHaveBeenCalled()
+  expect(onSaved).not.toHaveBeenCalled()
+
   const screen = await render(<Sample item={withPhoto} onSaved={onSaved} />)
-  await expect.element(screen.getByRole('img', { name: 'Foto 1, capa' })).toHaveAttribute('src', '/api/photos/aa.png')
-  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await screen.getByLabelText('Quantidade', { exact: true }).last().fill('7')
+  await screen.getByRole('button', { name: 'Salvar alterações' }).last().click()
   await vi.waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
   expect(fetch).toHaveBeenCalledTimes(1)
 
