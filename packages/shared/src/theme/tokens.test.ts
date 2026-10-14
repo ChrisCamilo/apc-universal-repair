@@ -16,6 +16,23 @@ const PAIRS: [ColorToken, ColorToken][] = [
   ["onDanger", "danger"],
   ["warn", "canvas"],
   ["warn", "panel"],
+  ["onWarn", "warn"],
+  ["success", "canvas"],
+  ["success", "panel"],
+  ["onSuccess", "success"],
+  ["info", "canvas"],
+  ["info", "panel"],
+  ["onInfo", "info"],
+];
+// The colors success and info must read apart from: each other, the accent and the other status colors.
+const DISTINCT: [ColorToken, ColorToken][] = [
+  ["success", "accent"],
+  ["success", "danger"],
+  ["success", "warn"],
+  ["success", "info"],
+  ["info", "accent"],
+  ["info", "danger"],
+  ["info", "warn"],
 ];
 
 /**
@@ -149,6 +166,22 @@ for (const style of STYLES) {
       const apart = Math.abs(hue(colors.danger) - hue(colors.accent));
       const distance = Math.min(apart, 360 - apart);
       assert.ok(distance >= 20, `danger ${colors.danger} is ${distance.toFixed(1)}° from the accent ${colors.accent}`);
+    });
+  }
+}
+
+for (const style of STYLES) {
+  for (const mode of MODES) {
+    // Measures how far apart on the color wheel success and info sit from each other, the accent, danger and warn,
+    // and checks it is at least 20°, so a success toast never reads as info, a warning or a selection, even where the
+    // accent is green (Fiat 90) or blue (GT4).
+    test(`Shared: ${style}/${mode} success and info read apart from the other colors`, () => {
+      const { colors } = themes[style][mode];
+      for (const [status, other] of DISTINCT) {
+        const apart = Math.abs(hue(colors[status]) - hue(colors[other]));
+        const distance = Math.min(apart, 360 - apart);
+        assert.ok(distance >= 20, `${status} ${colors[status]} is ${distance.toFixed(1)}° from ${other} ${colors[other]}`);
+      }
     });
   }
 }
