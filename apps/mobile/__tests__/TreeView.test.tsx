@@ -110,7 +110,7 @@ for (const style of STYLES) {
       const { colors } = theme;
       const tree = await mount(style, mode, <Sample />);
       const chosen = look(tree, '4.1 L 6 cilindros');
-      expect(chosen.frame).toMatchObject({ borderLeftColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft) });
+      expect(chosen.frame).toMatchObject({ borderLeftColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft[mode]) });
       expect(chosen.color).toBe(colors.accent);
       expect(chosen.frame.shadowColor).toBe(theme.glow ? colors.accent : undefined);
       const other = look(tree, '2.5 L 4 cilindros');
@@ -201,7 +201,7 @@ test('Mobile: a pointed-out row takes the accent and is read out', async () => {
   const { colors } = themes.gt4.day;
   const tree = await mount('gt4', 'day', <TreeView label="Modelos" nodes={MODELS} onSelect={() => {}} highlighted="opala" />);
   const opala = look(tree, 'Opala');
-  expect(opala.frame).toMatchObject({ borderLeftColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft) });
+  expect(opala.frame).toMatchObject({ borderLeftColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft.day) });
   expect(opala.color).toBe(colors.accent);
   expect(row(tree, 'Opala').props.accessibilityValue).toEqual({ text: 'em destaque' });
   expect(look(tree, 'Chevette').frame.backgroundColor).toBe('transparent');

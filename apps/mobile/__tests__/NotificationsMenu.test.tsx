@@ -120,8 +120,8 @@ test('Mobile: the bell counts the unread toasts and lists them, newest first', a
   const { colors } = themes.eighties.night;
   expect(entries.map((entry) => entry.findByType(Icon).props.color)).toEqual([colors[TOAST_KIND_LOOKS.error.color], colors[TOAST_KIND_LOOKS.success.color]]);
   expect(entries.map((entry) => StyleSheet.flatten(entry.props.style).backgroundColor)).toEqual([
-    withAlpha(colors.accent, scales.accentSoft),
-    withAlpha(colors.accent, scales.accentSoft),
+    withAlpha(colors.accent, scales.accentSoft.night),
+    withAlpha(colors.accent, scales.accentSoft.night),
   ]);
   expect(bell(tree).props.accessibilityLabel).toBe('Notificações');
   const saved = JSON.parse((await themeStorage.getItem(notificationsKey(USER_ID)))!) as Notification[];
