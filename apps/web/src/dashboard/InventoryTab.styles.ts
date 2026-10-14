@@ -1,7 +1,8 @@
 import { recipe, tv } from '../styles/tv.ts'
 
-// The look of the Inventory tab, on its Panel: the search, which grows to fill the row up to max-w-xl from sm, beside
-// the buttons; the filters, with the result count in mono at the end; the table's cells; and, while the list loads,
+// The look of the Inventory tab, on its Panel: the search on the left, which grows to fill the row up to max-w-xl
+// from sm, and the buttons as one group pushed to the panel's right edge, also when they wrap under the search on a
+// narrow screen; the filters, with the result count in mono at the end; the table's cells; and, while the list loads,
 // skeleton rows in the table's shape. The Panel, the Spinner and the skeletons keep their own ids; the toolbar only
 // lines the search up with the buttons, so it adds no level to their ids.
 
@@ -20,6 +21,7 @@ export const inventoryTab = recipe(
       base: 'grid min-w-0 gap-3',
       toolbar: 'flex flex-wrap items-center gap-2',
       search: 'min-w-0 flex-[1_1_calc(var(--spacing)*64)] sm:max-w-xl',
+      buttons: 'ml-auto flex flex-wrap justify-end gap-2',
       filters: 'flex flex-wrap items-center gap-x-3 gap-y-2',
       count: 'm-0 ml-auto font-mono text-xs tabular-nums text-text-muted',
       vehicle: 'grid',
@@ -42,6 +44,7 @@ export const inventoryTab = recipe(
     base: '',
     toolbar: 'toolbar',
     search: 'search',
+    buttons: 'toolbar.buttons',
     filters: 'filters',
     count: 'filters.count',
     vehicle: 'vehicle',
