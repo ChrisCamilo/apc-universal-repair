@@ -98,6 +98,10 @@
       "apc-dist": "./dist/styles/styleIds.js",
       "default": "./src/styles/styleIds.ts"
     },
+    "./toast": {
+      "apc-dist": "./dist/toast/toast.js",
+      "default": "./src/toast/toast.ts"
+    },
     "./tour": {
       "apc-dist": "./dist/tour/tour.js",
       "default": "./src/tour/tour.ts"
