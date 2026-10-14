@@ -343,8 +343,10 @@ function InventoryTab() {
         <div className={classes.search()} data-testid={ids.search}>
           <SearchField label="Procure pelo nome ou código da peça" value={search} onValueChange={setSearch} />
         </div>
-        <Button>Novo item</Button>
-        <Button variant="secondary">Importar CSV</Button>
+        <div className={classes.buttons()} data-testid={ids.buttons}>
+          <Button variant="secondary">Importar CSV</Button>
+          <Button>Novo item</Button>
+        </div>
       </div>
       <div className={classes.filters()} data-testid={ids.filters}>
         <FilterMenu label="Filtros do estoque" title="Filtrar estoque" rows={FILTER_ROWS} values={filters} onApply={setFilters} />
