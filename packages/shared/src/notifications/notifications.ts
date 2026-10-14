@@ -1,9 +1,12 @@
 import { z } from "zod";
+import { stockStatus, type Item } from "../items/items.ts";
 import { TOAST_KINDS, type ToastKind } from "../toast/toast.ts";
 
 // The notifications history behind the Dashboard's bell, the same on web and mobile: every toast shown is kept, newest
 // first, up to NOTIFICATIONS_LIMIT, on the device under a key for each user, so it survives a reload and another user
-// on the same device doesn't see it. Opening the bell's menu marks them all read, which clears its badge.
+// on the same device doesn't see it. Opening the bell's menu marks them all read, which clears its badge. Items at or
+// below their minimum stock (out of stock included, as the rows' tints show them) raise a warning once while they stay
+// there; the ids already warned about are kept beside the history, also for each user.
 
 /** Above this many unread, the badge shows "9+". */
 const BADGE_MAX = 9;
@@ -21,6 +24,8 @@ const notificationSchema = z.object({
 });
 
 export type Notification = z.infer<typeof notificationSchema>;
+/** What the low-stock warning needs of an item. */
+export type StockItem = Pick<Item, "id" | "name" | "quantity" | "minQuantity">;
 
 /**
  * Adds a notification at the top, unread, keeping the newest NOTIFICATIONS_LIMIT.
@@ -33,6 +38,37 @@ export type Notification = z.infer<typeof notificationSchema>;
 export function addNotification(list: readonly Notification[], kind: ToastKind, message: string, now: Date): Notification[] {
   const id = (list[0]?.id ?? 0) + 1;
   return [{ id, kind, message, at: now.toISOString(), read: false }, ...list].slice(0, NOTIFICATIONS_LIMIT);
+}
+
+/**
+ * Finds the items newly at or below their minimum stock, against the ones already warned about. An item is warned about
+ * once while it stays low; once its stock is fine again, it leaves the list and can be warned about again.
+ * @param items Every item in stock.
+ * @param warned The ids of the items already warned about.
+ * @returns The items to warn about now, and the ids to keep as warned about: every item low now.
+ */
+export function lowStockAlerts<Stock extends StockItem>(items: readonly Stock[], warned: readonly string[]): { alerts: Stock[]; warned: string[] } {
+  const low = items.filter((item) => stockStatus(item.quantity, item.minQuantity) !== null);
+  return { alerts: low.filter((item) => !warned.includes(item.id)), warned: low.map((item) => item.id) };
+}
+
+/**
+ * Names the storage key of the items a user was already warned about.
+ * @param userId The logged user's id.
+ * @returns E.g. "apc-low-stock:user-christian".
+ */
+export function lowStockKey(userId: string): string {
+  return `apc-low-stock:${userId}`;
+}
+
+/**
+ * Writes the low-stock warning, one item by name or several at once by count.
+ * @param alerts The items to warn about, at least one.
+ * @returns E.g. "Estoque baixo: “Filtro de óleo” (2 de 3)" or "Estoque baixo em 4 itens".
+ */
+export function lowStockMessage(alerts: readonly StockItem[]): string {
+  const [item] = alerts;
+  return alerts.length === 1 ? `Estoque baixo: “${item.name}” (${item.quantity} de ${item.minQuantity})` : `Estoque baixo em ${alerts.length} itens`;
 }
 
 /**
@@ -61,6 +97,19 @@ export function notificationsKey(userId: string): string {
 export function readNotifications(saved: string | null): Notification[] {
   try {
     return z.array(notificationSchema).parse(JSON.parse(saved ?? "[]")).slice(0, NOTIFICATIONS_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Reads back the ids of the items already warned about, treating anything unreadable as none.
+ * @param saved What storage holds, or null.
+ * @returns The ids.
+ */
+export function readLowStockWarned(saved: string | null): string[] {
+  try {
+    return z.array(z.string()).parse(JSON.parse(saved ?? "[]"));
   } catch {
     return [];
   }
