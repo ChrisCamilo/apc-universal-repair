@@ -90,7 +90,7 @@ Each component keeps its look in a style recipe beside it (`<Component>.styles.t
 
 Web tests are written in TypeScript: component tests with **Vitest Browser Mode**, which runs them in Chromium, and end-to-end tests with **Playwright**, at 1280×720 and 360×780. The mobile app is tested with **Jest** and `react-test-renderer`. See [AGENTS.md](AGENTS.md#testing) for details.
 
-CI (GitHub Actions) runs lint, typecheck, build, the unit and component tests and the Playwright E2E tests on every pull request.
+CI (GitHub Actions) runs lint, typecheck, build, the unit and component tests and the Playwright E2E tests on every pull request, and builds an empty database from the migrations.
 
 ### Getting Started
 
@@ -279,7 +279,7 @@ Cada componente guarda a aparência numa receita de estilo ao lado dele (`<Compo
 
 Os testes da web são escritos em TypeScript: testes de componente com o **Vitest Browser Mode**, que os roda no Chromium, e testes de ponta a ponta com o **Playwright**, em 1280×720 e 360×780. O app do celular é testado com **Jest** e `react-test-renderer`. Os detalhes estão no [AGENTS.md](AGENTS.md#testing).
 
-O CI (GitHub Actions) roda lint, checagem de tipos, build, os testes unitários e de componente e os testes E2E do Playwright em todo pull request.
+O CI (GitHub Actions) roda lint, checagem de tipos, build, os testes unitários e de componente e os testes E2E do Playwright em todo pull request, e monta um banco vazio a partir das migrações.
 
 ### Como Rodar
 

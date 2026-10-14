@@ -52,3 +52,44 @@ jobs:
           name: playwright-report
           path: apps/web/playwright-report/
           retention-days: 7
+
+  # Builds an empty database from the migrations, as a new computer at home does (docs/home-server.md), checks it
+  # matches schema.prisma and seeds it. All the migrations run in one session here, unlike on a database that took them
+  # one at a time.
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: apc_universal_repair
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/apc_universal_repair"
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply the migrations to an empty database
+        run: pnpm --filter @apc/api exec prisma migrate deploy
+
+      - name: Check the database matches schema.prisma
+        run: pnpm --filter @apc/api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
+      - name: Seed it
+        run: pnpm --filter @apc/api db:seed
