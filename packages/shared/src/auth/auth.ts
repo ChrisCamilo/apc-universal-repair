@@ -42,8 +42,18 @@ export const SESSION_STORAGE_KEY = "apc-session";
 export const USERNAME_PATTERN = /^[a-z0-9.-]{3,32}$/;
 /** What POST /sessions takes: the username, ignoring case and surrounding spaces, and the password. */
 export const credentialsSchema = z.object({ username: z.string().trim().toLowerCase().min(1), password: z.string().min(1) });
-/** The logged user, as the session keeps them and the API answers a login or sign-up with. */
-export const sessionUserSchema = z.object({ id: z.string(), username: z.string(), displayName: z.string(), initials: z.string() });
+/**
+ * The logged user, as the session keeps them and the API answers a login or sign-up with, and whether they have seen
+ * the Inventory tutorial, which runs by itself on their first login only. A session saved before it was kept here
+ * counts as not seen.
+ */
+export const sessionUserSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  displayName: z.string(),
+  initials: z.string(),
+  inventoryTutorialSeen: z.boolean().default(false),
+});
 /** What POST /users takes: the sign-up fields, under the same rules as the form. The e-mail is only kept for now. */
 export const userCreateSchema = z.object({
   displayName: z.string().trim().min(1, REGISTER_MESSAGES.displayName),
@@ -63,6 +73,12 @@ export type AuthService = {
   register: (user: UserCreate) => Promise<RegisterResult>;
   /** Ends the session. */
   logout: () => Promise<void>;
+  /**
+   * Marks that the user has seen the Inventory tutorial: in the saved session at once, so it doesn't start again on
+   * this device, and on the API, so it doesn't start on any other; a failed request is ignored.
+   * @returns The user with the tutorial seen.
+   */
+  markInventoryTutorialSeen: (user: SessionUser) => Promise<SessionUser>;
   /** The user of the saved session, or null when nobody is logged in. */
   currentUser: () => Promise<SessionUser | null>;
 };
@@ -85,13 +101,14 @@ export type SessionStore = {
 /** The logged user, as the session keeps them. */
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 /** A test user of the mocked login, and seeded in the database: who they are and their test password. */
-export type TestUser = Omit<SessionUser, "initials"> & { password: string };
+export type TestUser = Omit<SessionUser, "initials" | "inventoryTutorialSeen"> & { password: string };
 /** A user to create, as the sign-up form sends it. */
 export type UserCreate = z.input<typeof userCreateSchema>;
 
 /**
  * Builds the login and sign-up of the apps, through the API: POST /sessions checks the user and password, POST /users
- * creates a user; either way the user the API answers with is saved in the store as the session.
+ * creates a user; either way the user the API answers with is saved in the store as the session. PUT
+ * /users/:id/inventory-tutorial marks the Inventory tutorial as seen.
  * @param store Where the session is saved on the device.
  * @param apiBase Where the API answers, e.g. "/api" on the web.
  * @param send How requests are sent: the global fetch as it is when each one is sent, or a stand-in in tests.
@@ -122,6 +139,13 @@ export function createApiAuth(store: SessionStore, apiBase: string, send: typeof
       return { user: await keepSession(store, sessionUserSchema.parse(await response.json())) };
     },
     logout: () => store.removeItem(SESSION_STORAGE_KEY),
+    markInventoryTutorialSeen: async (user) => {
+      const [seen] = await Promise.all([
+        keepSession(store, { ...user, inventoryTutorialSeen: true }),
+        send(`${apiBase}/users/${encodeURIComponent(user.id)}/inventory-tutorial`, { method: "PUT" }).catch(() => null),
+      ]);
+      return seen;
+    },
     currentUser: async () => readSession(await store.getItem(SESSION_STORAGE_KEY)),
   };
 }
@@ -137,12 +161,14 @@ export function createApiAuth(store: SessionStore, apiBase: string, send: typeof
  */
 export function createMockAuth(store: SessionStore, users: readonly TestUser[], delayMs = MOCK_LOGIN_DELAY_MS): AuthService {
   const known = [...users];
+  // The users who have seen the Inventory tutorial, by id.
+  const seen = new Set<string>();
   const wait = () => new Promise<void>((resolve) => setTimeout(resolve, delayMs));
   return {
     login: async ({ username, password }) => {
       await wait();
       const user = known.find((test) => test.username === username.trim().toLowerCase() && test.password === password);
-      return user ? keepSession(store, sessionOf(user)) : null;
+      return user ? keepSession(store, sessionOf(user, seen.has(user.id))) : null;
     },
     register: async (create) => {
       await wait();
@@ -152,9 +178,13 @@ export function createMockAuth(store: SessionStore, users: readonly TestUser[], 
       }
       const user = { id: `user-${username}`, username, displayName, password };
       known.push(user);
-      return { user: await keepSession(store, sessionOf(user)) };
+      return { user: await keepSession(store, sessionOf(user, false)) };
     },
     logout: () => store.removeItem(SESSION_STORAGE_KEY),
+    markInventoryTutorialSeen: async (user) => {
+      seen.add(user.id);
+      return keepSession(store, { ...user, inventoryTutorialSeen: true });
+    },
     currentUser: async () => readSession(await store.getItem(SESSION_STORAGE_KEY)),
   };
 }
@@ -239,10 +269,11 @@ export function registerErrors({ displayName, username, email, password, confirm
 }
 
 /**
- * Turns a test user into the session the login keeps, with their initials.
+ * Turns a test user into the user the session keeps, with their initials.
  * @param user The test user.
+ * @param inventoryTutorialSeen Whether they have seen the Inventory tutorial.
  * @returns The session user.
  */
-function sessionOf({ id, username, displayName }: TestUser): SessionUser {
-  return { id, username, displayName, initials: initials(displayName) };
+function sessionOf({ id, username, displayName }: TestUser, inventoryTutorialSeen: boolean): SessionUser {
+  return { id, username, displayName, initials: initials(displayName), inventoryTutorialSeen };
 }

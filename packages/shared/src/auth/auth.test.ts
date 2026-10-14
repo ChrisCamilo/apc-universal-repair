@@ -25,10 +25,10 @@ const NEW_USER = { displayName: "Ana Souza", username: "Ana.Souza", email: " ana
  * @param body The JSON body to answer with.
  * @returns The stand-in and the requests it got.
  */
-function answering(status: number, body: unknown = {}): { send: typeof fetch; sent: { url: string; body: unknown }[] } {
-  const sent: { url: string; body: unknown }[] = [];
+function answering(status: number, body: unknown = {}): { send: typeof fetch; sent: { url: string; method?: string; body: unknown }[] } {
+  const sent: { url: string; method?: string; body: unknown }[] = [];
   const send = (async (url: string, init?: RequestInit) => {
-    sent.push({ url, body: JSON.parse(String(init?.body)) });
+    sent.push({ url, ...(init?.method !== "POST" && { method: init?.method }), body: init?.body === undefined ? undefined : JSON.parse(String(init.body)) });
     return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
   }) as typeof fetch;
   return { send, sent };
@@ -74,7 +74,7 @@ test("Shared: a user of only spaces is empty, a password of spaces is not", () =
 test("Shared: a test user logs in and the session is saved", async () => {
   const { store, saved } = memoryStore();
   const auth = createMockAuth(store, TEST_USERS, 0);
-  const expected = { id: USER.id, username: USER.username, displayName: USER.displayName, initials: initials(USER.displayName) };
+  const expected = { id: USER.id, username: USER.username, displayName: USER.displayName, initials: initials(USER.displayName), inventoryTutorialSeen: false };
   assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }), expected);
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), expected);
   assert.deepEqual(await createMockAuth(store, TEST_USERS, 0).login({ username: ` ${USER.username.toUpperCase()} `, password: USER.password }), expected);
@@ -170,7 +170,7 @@ test("Shared: the mocked sign-up logs the new user in and refuses a taken userna
   const { store, saved } = memoryStore();
   const auth = createMockAuth(store, TEST_USERS, 0);
   const created = await auth.register(NEW_USER);
-  const user = { id: "user-ana.souza", username: "ana.souza", displayName: "Ana Souza", initials: "AS" };
+  const user = { id: "user-ana.souza", username: "ana.souza", displayName: "Ana Souza", initials: "AS", inventoryTutorialSeen: false };
   assert.deepEqual(created, { user });
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), user);
   await auth.logout();
@@ -182,7 +182,7 @@ test("Shared: the mocked sign-up logs the new user in and refuses a taken userna
 // Logs in through the API stand-in: an accepted login saves the user it answers with, a 401 is refused with nothing
 // saved, and any other answer rejects, so the screen can say the login couldn't be made.
 test("Shared: the API login saves the user, refuses a 401 and rejects otherwise", async () => {
-  const user = { id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC" };
+  const user = { id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC", inventoryTutorialSeen: true };
   const accepted = answering(200, user);
   const { store, saved } = memoryStore();
   assert.deepEqual(await createApiAuth(store, "/api", accepted.send).login({ username: USER.username, password: USER.password }), user);
@@ -198,7 +198,7 @@ test("Shared: the API login saves the user, refuses a 401 and rejects otherwise"
 // Signs up through the API stand-in: a 201 saves the user, a 409 says the username is taken, and a failed request
 // or any other answer says the account couldn't be created.
 test("Shared: the API sign-up saves the user or says why it was refused", async () => {
-  const user = { id: "u2", username: "ana.souza", displayName: "Ana Souza", initials: "AS" };
+  const user = { id: "u2", username: "ana.souza", displayName: "Ana Souza", initials: "AS", inventoryTutorialSeen: false };
   const created = answering(201, user);
   const { store, saved } = memoryStore();
   const sent = { displayName: NEW_USER.displayName, username: NEW_USER.username, email: NEW_USER.email, password: NEW_USER.password };
@@ -211,4 +211,39 @@ test("Shared: the API sign-up saves the user or says why it was refused", async 
     throw new TypeError("fetch failed");
   }) as typeof fetch;
   assert.deepEqual(await createApiAuth(store, "/api", offline).register(sent), { refused: REGISTER_MESSAGES.failed });
+});
+
+// Marks the tutorial seen through the API stand-in: the saved session says so and the API gets the PUT for the user;
+// with the API out of reach, the session still says so. A session saved before the field existed counts as not seen.
+test("Shared: the API marks the Inventory tutorial seen for the user, and on the device even offline", async () => {
+  const user = { id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC", inventoryTutorialSeen: false };
+  const api = answering(204);
+  const { store, saved } = memoryStore();
+  assert.deepEqual(await createApiAuth(store, "/api", api.send).markInventoryTutorialSeen(user), { ...user, inventoryTutorialSeen: true });
+  assert.deepEqual(api.sent, [{ url: "/api/users/u1/inventory-tutorial", method: "PUT", body: undefined }]);
+  assert.equal(JSON.parse(saved.get(SESSION_STORAGE_KEY)!).inventoryTutorialSeen, true);
+
+  const offline = memoryStore();
+  const unreachable = (async () => {
+    throw new TypeError("fetch failed");
+  }) as typeof fetch;
+  assert.equal((await createApiAuth(offline.store, "/api", unreachable).markInventoryTutorialSeen(user)).inventoryTutorialSeen, true);
+  assert.equal(JSON.parse(offline.saved.get(SESSION_STORAGE_KEY)!).inventoryTutorialSeen, true);
+
+  const older = memoryStore();
+  older.saved.set(SESSION_STORAGE_KEY, JSON.stringify({ id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC" }));
+  assert.equal((await createApiAuth(older.store, "/api", api.send).currentUser())!.inventoryTutorialSeen, false);
+});
+
+// Logs a test user in with the mock, marks the tutorial seen, logs out and back in, and checks the second login says
+// it was seen while another user's first login still says it wasn't.
+test("Shared: the mocked login remembers who has seen the Inventory tutorial", async () => {
+  const auth = createMockAuth(memoryStore().store, TEST_USERS, 0);
+  const first = (await auth.login({ username: USER.username, password: USER.password }))!;
+  assert.equal(first.inventoryTutorialSeen, false);
+  await auth.markInventoryTutorialSeen(first);
+  await auth.logout();
+  assert.equal((await auth.login({ username: USER.username, password: USER.password }))!.inventoryTutorialSeen, true);
+  const other = TEST_USERS[1];
+  assert.equal((await auth.login({ username: other.username, password: other.password }))!.inventoryTutorialSeen, false);
 });
