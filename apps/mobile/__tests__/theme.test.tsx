@@ -70,13 +70,18 @@ beforeEach(async () => {
 for (const style of STYLES) {
   for (const mode of MODES) {
     // Saves one style and mode, starts the app and checks components receive that combination's
-    // colors through useTheme().
+    // colors through useTheme(), the status colors of toasts and the colors drawn on them included.
     test(`Mobile: loads the saved ${style}/${mode} and hands its tokens to components`, async () => {
       await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
       const tree = await mount();
-      expect(probeColors(tree)).toEqual({
-        backgroundColor: themes[style][mode].colors.canvas,
-        borderColor: themes[style][mode].colors.accent,
+      const { colors } = themes[style][mode];
+      expect(probeColors(tree)).toEqual({ backgroundColor: colors.canvas, borderColor: colors.accent });
+      expect(latest.theme?.colors).toMatchObject({
+        onWarn: colors.onWarn,
+        success: colors.success,
+        onSuccess: colors.onSuccess,
+        info: colors.info,
+        onInfo: colors.onInfo,
       });
     });
   }

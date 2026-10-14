@@ -1,6 +1,7 @@
-import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme'
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme'
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
+import './index.css'
 import { themeBootScript, themeCss } from './theme.ts'
 import { ThemeProvider } from './ThemeProvider.tsx'
 import { useTheme } from './useTheme.ts'
@@ -48,6 +49,16 @@ function fakeColorScheme(light: boolean): (light: boolean) => void {
  */
 function cssVar(name: string): string {
   return getComputedStyle(root).getPropertyValue(`--${name}`).trim()
+}
+
+/**
+ * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
+ * @param hex Color as `#RRGGBB`.
+ * @returns The same color as `rgb(r, g, b)`.
+ */
+function rgb(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  return `rgb(${r}, ${g}, ${b})`
 }
 
 function Probe() {
@@ -143,3 +154,30 @@ test('Web: switching works when storage is unavailable', async () => {
   await expect.element(screen.getByTestId('current')).toHaveTextContent('gt4/night')
   expect(root.dataset.style).toBe('gt4')
 })
+
+for (const style of STYLES) {
+  for (const mode of MODES) {
+    // Draws a pill in each status color with its text color, as toasts will, and checks the Tailwind utilities
+    // (bg-success, text-on-success…) resolve to the tokens of one style and mode.
+    test(`Web: the status color utilities follow the ${style}/${mode} theme`, async () => {
+      const { colors } = themes[style][mode]
+      root.dataset.style = style
+      root.dataset.mode = mode
+      const screen = await render(
+        <>
+          <span className="bg-success text-on-success">Sucesso</span>
+          <span className="bg-info text-on-info">Informação</span>
+          <span className="bg-warn text-on-warn">Aviso</span>
+        </>,
+      )
+      for (const [name, background, color] of [
+        ['Sucesso', colors.success, colors.onSuccess],
+        ['Informação', colors.info, colors.onInfo],
+        ['Aviso', colors.warn, colors.onWarn],
+      ]) {
+        const pill = getComputedStyle(screen.getByText(name).element())
+        expect([pill.backgroundColor, pill.color]).toEqual([rgb(background), rgb(color)])
+      }
+    })
+  }
+}
