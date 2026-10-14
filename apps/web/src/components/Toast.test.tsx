@@ -1,7 +1,8 @@
 import { TOAST_DURATION_MS } from '@apc/shared/dialog'
 import { themes, type Mode, type Style } from '@apc/shared/theme'
-import { TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast'
-import { beforeAll, expect, test, vi } from 'vitest'
+import { TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast'
+import { afterEach, beforeAll, expect, test, vi } from 'vitest'
+import { commands } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { themeCss } from '../theme.ts'
@@ -21,6 +22,10 @@ function rgb(hex: string): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
   return `rgb(${r}, ${g}, ${b})`
 }
+
+afterEach(async () => {
+  await commands.reduceMotion(false)
+})
 
 beforeAll(() => {
   const tag = document.createElement('style')
@@ -74,12 +79,13 @@ for (const [style, mode] of [
       await screen.getByRole('button', { name: `Aviso de ${kind}` }).click()
       const region = screen.getByRole(look.urgent ? 'alert' : 'status')
       await expect.element(region).toHaveTextContent(`Aviso de ${kind}`)
-      const pill = region.element().firstElementChild!
+      // The toast showing; the one before it may still be fading out.
+      const pill = region.element().querySelector('[data-testid="common.toast.message"]:not([aria-hidden])')!
       expect(pill.getAttribute('data-kind')).toBe(kind)
       expect([getComputedStyle(pill).backgroundColor, getComputedStyle(pill).color]).toEqual([rgb(colors[look.color]), rgb(colors[look.onColor])])
       const drawn = [...pill.querySelectorAll('svg > *')].map((shape) => shape.getAttribute('d') ?? `r${shape.getAttribute('r')}`)
       expect(drawn).toEqual(look.icon.map((shape) => (shape.kind === 'path' ? shape.d : `r${shape.kind === 'circle' ? shape.r : ''}`)))
-      expect(screen.getByRole('alert').query() === null).toBe(!look.urgent)
+      expect(pill.closest('[role]')!.getAttribute('role')).toBe(look.urgent ? 'alert' : 'status')
     }
     root.dataset.style = 'eighties'
     root.dataset.mode = 'night'
@@ -97,6 +103,61 @@ test('Web: a new toast replaces the one showing', async () => {
   await screen.getByRole('button', { name: 'Item adicionado' }).click()
   await screen.getByRole('button', { name: 'Item excluído' }).click()
   await expect.element(screen.getByRole('status')).toHaveTextContent('Item excluído')
+})
+
+// Shows a toast and checks it fades in the app's motion duration, rising from below; once its time is up it stays in
+// the page while it fades out, hidden from screen readers, and leaves it after the fade. (The opacity frame by frame is
+// sampled end to end.)
+test('Web: a toast fades in, and fades out before it leaves the page', async () => {
+  const screen = await render(
+    <ToastProvider>
+      <Trigger kind="success" message="Item adicionado" />
+    </ToastProvider>,
+  )
+  await screen.getByRole('button', { name: 'Item adicionado' }).click()
+  const pill = screen.getByTestId('common.toast.message')
+  await expect.element(pill).toBeVisible()
+  const look = getComputedStyle(pill.element())
+  expect([look.transitionProperty, look.transitionDuration]).toEqual(['opacity, translate', `${TOAST_FADE_MS / 1000}s`])
+
+  await expect.element(pill, { timeout: TOAST_DURATION_MS + 1000 }).toHaveAttribute('aria-hidden', 'true')
+  await expect.poll(() => pill.query(), { timeout: TOAST_FADE_MS + 1000 }).toBeNull()
+})
+
+// Shows one toast and then another, and checks the first fades out under the second, hidden from screen readers, and
+// leaves the page once it faded, while the second stays.
+test('Web: a replaced toast fades out under the new one', async () => {
+  const screen = await render(
+    <ToastProvider>
+      <Trigger kind="success" message="Item adicionado" />
+      <Trigger kind="error" message="Não foi possível excluir o item. Tente de novo." />
+    </ToastProvider>,
+  )
+  await screen.getByRole('button', { name: 'Item adicionado' }).click()
+  await screen.getByRole('button', { name: 'Não foi possível excluir o item. Tente de novo.' }).click()
+  const old = screen.getByTestId('common.toast.message').filter({ hasText: 'Item adicionado' })
+  const next = screen.getByRole('alert').getByTestId('common.toast.message')
+  await expect.element(old).toHaveAttribute('aria-hidden', 'true')
+  await expect.element(next).not.toHaveAttribute('aria-hidden')
+  const [oldBox, nextBox] = [old.element().getBoundingClientRect(), next.element().getBoundingClientRect()]
+  expect(Math.abs(oldBox.bottom - nextBox.bottom)).toBeLessThanOrEqual(8)
+  await expect.poll(() => old.query(), { timeout: TOAST_FADE_MS + 1000 }).toBeNull()
+  await expect.element(next).toBeVisible()
+})
+
+// Turns on reduced motion and checks a toast neither fades nor moves.
+test('Web: with reduced motion a toast shows and hides at once', async () => {
+  await commands.reduceMotion(true)
+  const screen = await render(
+    <ToastProvider>
+      <Trigger kind="info" message="Nenhuma alteração para salvar." />
+    </ToastProvider>,
+  )
+  await screen.getByRole('button', { name: 'Nenhuma alteração para salvar.' }).click()
+  const pill = screen.getByTestId('common.toast.message')
+  await expect.element(pill).toBeVisible()
+  expect(getComputedStyle(pill.element()).transitionProperty).toBe('none')
+  expect(getComputedStyle(pill.element()).opacity).toBe('1')
 })
 
 // Shows a toast from inside an open modal dialog and checks the toasts' region is raised into the top layer after the

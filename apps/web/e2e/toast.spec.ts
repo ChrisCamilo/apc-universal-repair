@@ -164,3 +164,68 @@ for (const theme of THEMES) {
     expect(patched).toEqual([]);
   });
 }
+
+/**
+ * Samples a toast's opacity every frame, from now until it is fully shown or, when leaving, until it leaves the page.
+ * @param page The test's page.
+ * @param until "shown" to stop at full opacity, "gone" to stop once the toast left the page.
+ * @returns The opacities seen, in order.
+ */
+function sampleOpacity(page: Page, until: "shown" | "gone"): Promise<number[]> {
+  return page.evaluate(
+    (stop) =>
+      new Promise<number[]>((resolve) => {
+        const seen: number[] = [];
+        const tick = () => {
+          const pill = document.querySelector('[data-testid="common.toast.message"]');
+          if (pill) {
+            seen.push(Number(getComputedStyle(pill).opacity));
+          }
+          const done = stop === "shown" ? seen.at(-1) === 1 : seen.length > 0 && !pill;
+          if (done || seen.length > 1000) {
+            resolve(seen);
+          } else {
+            requestAnimationFrame(tick);
+          }
+        };
+        tick();
+      }),
+    until,
+  );
+}
+
+/**
+ * Opens an item's edit form, where saving unchanged shows the info toast.
+ * @param page The test's page.
+ * @returns The form's Save button.
+ */
+async function openEdit(page: Page) {
+  await serveItems(page, [FILTER]);
+  await page.goto("/inventory");
+  await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
+  return page.getByRole("dialog", { name: "Editar item" }).getByRole("button", { name: "Salvar" });
+}
+
+// Samples a toast's opacity every frame, from the save until it leaves the page: it starts transparent and rises to full
+// opacity, and once its time is up it fades back down before it leaves.
+test("Web: a toast fades in and fades out before it leaves", async ({ page }) => {
+  const save = await openEdit(page);
+  const sampled = sampleOpacity(page, "gone");
+  await save.click();
+  const opacities = await sampled;
+  const full = opacities.indexOf(1);
+  expect(opacities[0]).toBeLessThan(0.5);
+  expect(full).toBeGreaterThan(0);
+  const fadingOut = opacities.slice(full).filter((opacity) => opacity < 1);
+  expect(fadingOut.some((opacity) => opacity > 0)).toBe(true);
+  expect(fadingOut.at(-1)).toBeLessThan(0.5);
+});
+
+// With reduced motion, the toast is at full opacity from its first frame.
+test("Web: with reduced motion a toast shows at once", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const save = await openEdit(page);
+  const shown = sampleOpacity(page, "shown");
+  await save.click();
+  expect(await shown).toEqual([1]);
+});

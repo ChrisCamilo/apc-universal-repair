@@ -3,18 +3,19 @@
  */
 
 import React, { useState } from 'react';
-import { AccessibilityInfo, Modal, ScrollView, StyleSheet, Text } from 'react-native';
+import { AccessibilityInfo, Animated, Modal, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Circle, Path } from 'react-native-svg';
 import ReactTestRenderer from 'react-test-renderer';
 import { TOAST_DURATION_MS } from '@apc/shared/dialog';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
+import { TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
 import { Button } from '../src/Button';
 import { Dialog } from '../src/Dialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider, useToast } from '../src/Toast';
+import { TOAST_RISE } from '../src/Toast.styles';
 
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 
@@ -46,6 +47,31 @@ async function mount(style: Style, mode: Mode, element: React.ReactElement) {
  * @param testID The testID to look for.
  * @returns The View's style as one object.
  */
+/**
+ * Finds the toasts' pills on screen, the leaving ones first.
+ * @param tree Rendered tree.
+ * @returns The pills' views.
+ */
+function pills(tree: ReactTestRenderer.ReactTestRenderer): ReactTestRenderer.ReactTestInstance[] {
+  return tree.root.findAll((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string');
+}
+
+/**
+ * Reads where a toast's fade stands, from its animated style, which moves without rendering again.
+ * @param pill The pill's view, from pills().
+ * @returns Its opacity and how far below its place it sits, in px.
+ */
+function fadeOf(pill: ReactTestRenderer.ReactTestInstance): { opacity: number; rise: number } {
+  // The Animated.View above the pill's view holds the style with the animated values.
+  let node: ReactTestRenderer.ReactTestInstance | null = pill;
+  let animated;
+  while (node && !animated) {
+    animated = [node.props.style].flat(Infinity).find((style) => style && typeof style.opacity === 'object');
+    node = node.parent;
+  }
+  return { opacity: animated.opacity.__getValue(), rise: animated.transform[0].translateY.__getValue() };
+}
+
 function styleOf(tree: ReactTestRenderer.ReactTestRenderer, testID: string) {
   const node = tree.root.findAll((n) => n.props.testID === testID && typeof n.type === 'string')[0];
   return Object.assign({}, ...[node.props.style].flat(Infinity).filter(Boolean));
@@ -150,7 +176,7 @@ test('Mobile: a closable dialog closes on the × beside its title', async () => 
 });
 
 // Shows a success toast and checks it is read out after what is being read and shown in the success color, then hides
-// on its own.
+// on its own: once its time is up it fades out, hidden from screen readers, and leaves after the fade.
 test('Mobile: toasts are read out and hide on their own', async () => {
   jest.useFakeTimers();
   const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions');
@@ -163,7 +189,11 @@ test('Mobile: toasts are read out and hide on their own', async () => {
     await ReactTestRenderer.act(async () => {
       jest.advanceTimersByTime(TOAST_DURATION_MS);
     });
-    expect(tree.root.findAll((n) => n.props.testID === 'common.toast.message')).toHaveLength(0);
+    expect(pills(tree).map((pill) => pill.props.accessibilityElementsHidden)).toEqual([true]);
+    await ReactTestRenderer.act(async () => {
+      jest.advanceTimersByTime(TOAST_FADE_MS);
+    });
+    expect(pills(tree)).toHaveLength(0);
   } finally {
     announce.mockRestore();
     jest.useRealTimers();
@@ -224,9 +254,11 @@ for (const [style, mode] of [
         const look = TOAST_KIND_LOOKS[kind];
         const trigger = tree.root.find((n) => typeof n.props.style === 'function' && n.findAll((c) => c.props.children === `Aviso de ${kind}`).length > 0);
         await ReactTestRenderer.act(async () => trigger.props.onPress());
-        expect(styleOf(tree, 'common.toast.message').backgroundColor).toBe(colors[look.color]);
-        expect(styleOf(tree, 'common.toast.message.text').color).toBe(colors[look.onColor]);
-        const pill = tree.root.find((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string');
+        // The toast showing is the last; the one before it is leaving.
+        const pill = pills(tree).at(-1)!;
+        const label = pill.find((n) => n.props.testID === 'common.toast.message.text' && typeof n.type === 'string');
+        expect(StyleSheet.flatten(pill.props.style).backgroundColor).toBe(colors[look.color]);
+        expect(StyleSheet.flatten(label.props.style).color).toBe(colors[look.onColor]);
         const icon = pill.find((n) => n.props.testID === 'common.icon' && typeof n.type !== 'string');
         expect(icon.props.stroke).toBe(colors[look.onColor]);
         const drawn = icon.findAll((n) => n.type === Path || n.type === Circle);
@@ -240,3 +272,60 @@ for (const [style, mode] of [
     }
   });
 }
+
+// Shows a toast and then another, and checks the first starts transparent, below its place, and fades in to full
+// opacity in the toasts' fade time on the native driver; once replaced it fades out under the second, hidden from
+// screen readers, and leaves after the fade.
+test('Mobile: a toast fades in, and fades out under the one replacing it', async () => {
+  jest.useFakeTimers();
+  const timing = jest.spyOn(Animated, 'timing');
+  try {
+    const tree = await mount(
+      'eighties',
+      'night',
+      <>
+        <Trigger message="Item adicionado" />
+        <Trigger kind="error" message="Não foi possível excluir o item. Tente de novo." />
+      </>,
+    );
+    const press = (message: string) =>
+      ReactTestRenderer.act(async () =>
+        tree.root.find((n) => typeof n.props.style === 'function' && n.findAll((c) => c.props.children === message).length > 0).props.onPress(),
+      );
+    const fades = () => timing.mock.calls.map(([, config]) => config);
+    await press('Item adicionado');
+    expect(fadeOf(pills(tree)[0])).toEqual({ opacity: 0, rise: TOAST_RISE });
+    expect(fades()).toEqual([{ toValue: 1, duration: TOAST_FADE_MS, useNativeDriver: true }]);
+
+    await press('Não foi possível excluir o item. Tente de novo.');
+    const [old, next] = pills(tree);
+    expect(old.props.accessibilityElementsHidden).toBe(true);
+    expect(StyleSheet.flatten(old.props.style)).toMatchObject({ position: 'absolute', bottom: 0 });
+    expect(next.props.accessibilityElementsHidden).toBe(false);
+    expect(fades().slice(1)).toEqual(
+      expect.arrayContaining([
+        { toValue: 0, duration: TOAST_FADE_MS, useNativeDriver: true },
+        { toValue: 1, duration: TOAST_FADE_MS, useNativeDriver: true },
+      ]),
+    );
+    await ReactTestRenderer.act(async () => {
+      jest.advanceTimersByTime(TOAST_FADE_MS);
+    });
+    expect(pills(tree)).toHaveLength(1);
+  } finally {
+    timing.mockRestore();
+    jest.useRealTimers();
+  }
+});
+
+// Turns on reduced motion and checks a toast shows at full opacity, in its place, without fading in.
+test('Mobile: with reduced motion a toast shows at once', async () => {
+  const reduce = jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+  try {
+    const tree = await mount('eighties', 'night', <Trigger />);
+    await ReactTestRenderer.act(async () => tree.root.find((n) => typeof n.props.style === 'function').props.onPress());
+    expect(fadeOf(pills(tree)[0])).toEqual({ opacity: 1, rise: 0 });
+  } finally {
+    reduce.mockRestore();
+  }
+});

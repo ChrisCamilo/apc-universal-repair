@@ -59,7 +59,8 @@ async function exportList(page: Page, photos: boolean): Promise<{ name: string; 
   const download = page.waitForEvent("download");
   await dialog.getByRole("button", { name: "Exportar" }).click();
   const file = await download;
-  await expect(page.getByText("30 itens exportados.")).toBeVisible();
+  // The last one: the same message from the export before may still be fading out under it.
+  await expect(page.getByText("30 itens exportados.").last()).toBeVisible();
   await expect(dialog).toBeHidden();
   const text = (await readFile(await file.path(), "utf8")).replace(/^﻿/, "");
   return { name: file.suggestedFilename(), lines: text.split("\r\n") };
