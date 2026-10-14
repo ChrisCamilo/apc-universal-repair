@@ -84,6 +84,12 @@ Epics group work by product area and are referenced by their slug in branch name
 |---|---|---|
 | EP-04 | `dashboard` | Catalog tab: side menu to switch between brands and vehicles, model tree, vehicle detail, and catalog search by brand, model or part code |
 
+### Phase 3 epics (after phase 2)
+
+| Epic ID | Slug | Scope |
+|---|---|---|
+| EP-14 | `notifications` | Toasts and notifications: one toast with a kind (success, error, info, warning) and its color, faded in and out, a bell beside the user menu with the latest notifications and the toast's duration, low-stock warnings, and Windows and Android system notifications |
+
 ### Later epics (deferred, after phase 2)
 
 | Epic ID | Slug | Scope |
@@ -107,9 +113,9 @@ Epics group work by product area and are referenced by their slug in branch name
 |---|---|---|
 | EP-13 | `optimizations` | Refactors that change no behavior: organized, consistent and generic code, such as style recipes beside each component, style ids and shared constants instead of hardcoded values |
 
-The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard → Inventory. Login is mocked/static for the MVP, while inventory items, photos included, are persisted through the API. Phase 2 adds the Catalog tab (EP-04), on mocked/static vehicle data. Car Specs (EP-05) is TBD: an epic with no phase yet. 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to later epics.
+The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard → Inventory. Login is mocked/static for the MVP, while inventory items, photos included, are persisted through the API. Phase 2 adds the Catalog tab (EP-04), on mocked/static vehicle data, and phase 3 the notifications and toasts (EP-14). Car Specs (EP-05) is TBD: an epic with no phase yet. 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to later epics.
 
-Tasks that belong to phase 2 end their title with `(phase 2)` and state it in the body: `**Phase:** 2 — together with ...`.
+Tasks that belong to phase 2 end their title with `(phase 2)` and state it in the body: `**Phase:** 2 — together with ...`. Phase 3 tasks do the same with `(phase 3)` and `**Phase:** 3 — ...`.
 
 ## Task Conventions
 
