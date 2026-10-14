@@ -6,8 +6,10 @@ import { isMode, isStyle, MODES, popShadow, scales, sheenGradient, spotlightDim,
 const PAIRS: [ColorToken, ColorToken][] = [
   ["text", "canvas"],
   ["text", "panel"],
+  ["text", "panelRaised"],
   ["textMuted", "canvas"],
   ["textMuted", "panel"],
+  ["textMuted", "panelRaised"],
   ["accent", "canvas"],
   ["accent", "panel"],
   ["onAccent", "accent"],
@@ -24,6 +26,10 @@ const PAIRS: [ColorToken, ColorToken][] = [
   ["info", "panel"],
   ["onInfo", "info"],
 ];
+// The smallest CIE76 color difference between the day canvas, panel and raised panel, so each step shows.
+const DAY_STEP = 3;
+// The least chroma (CIELAB) of the day canvas, so it is tinted in the style's hue rather than near white.
+const DAY_TINT = 6;
 // The colors success and info must read apart from: each other, the accent and the other status colors.
 const DISTINCT: [ColorToken, ColorToken][] = [
   ["success", "accent"],
@@ -47,6 +53,28 @@ function contrast(a: string, b: string): number {
 }
 
 /**
+ * Measures how colorful a color is: its chroma in CIELAB.
+ * @param hex Color as `#RRGGBB`.
+ * @returns Chroma, 0 for a grey.
+ */
+function chroma(hex: string): number {
+  const [, a, b] = lab(hex);
+  return Math.hypot(a, b);
+}
+
+/**
+ * Measures how different two colors look: the CIE76 distance between them in CIELAB.
+ * @param x First color as `#RRGGBB`.
+ * @param y Second color as `#RRGGBB`.
+ * @returns The distance; about 2.3 is the smallest difference the eye notices.
+ */
+function deltaE(x: string, y: string): number {
+  const [l1, a1, b1] = lab(x);
+  const [l2, a2, b2] = lab(y);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+}
+
+/**
  * Finds the hue of a color on the color wheel.
  * @param hex Color as `#RRGGBB`.
  * @returns Hue in degrees, from 0 to 360.
@@ -60,6 +88,23 @@ function hue(hex: string): number {
   }
   const sector = max === r ? (g - b) / span : max === g ? 2 + (b - r) / span : 4 + (r - g) / span;
   return (sector * 60 + 360) % 360;
+}
+
+/**
+ * Converts a color to CIELAB, under the D65 white.
+ * @param hex Color as `#RRGGBB`.
+ * @returns Lightness from 0 to 100, then the a (green to red) and b (blue to yellow) axes.
+ */
+function lab(hex: string): [number, number, number] {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const x = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047);
+  const y = f(0.2126 * r + 0.7152 * g + 0.0722 * b);
+  const z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
 }
 
 /**
@@ -185,6 +230,48 @@ for (const style of STYLES) {
     });
   }
 }
+
+for (const style of STYLES) {
+  // Checks the day theme isn't white: the canvas, the panels and the raised panels are none of them #FFFFFF, each step
+  // from one to the next shows, and the canvas carries the style's tint.
+  test(`Shared: ${style} by day is tinted, with no white surfaces`, () => {
+    const { canvas, panel, panelRaised } = themes[style].day.colors;
+    for (const surface of [canvas, panel, panelRaised]) {
+      assert.notEqual(surface.toUpperCase(), "#FFFFFF");
+    }
+    assert.ok(deltaE(canvas, panel) >= DAY_STEP, `canvas ${canvas} and panel ${panel} are ${deltaE(canvas, panel).toFixed(1)} apart`);
+    assert.ok(deltaE(panel, panelRaised) >= DAY_STEP, `panel ${panel} and raised ${panelRaised} are ${deltaE(panel, panelRaised).toFixed(1)} apart`);
+    assert.ok(chroma(canvas) >= DAY_TINT, `canvas ${canvas} has a chroma of ${chroma(canvas).toFixed(1)}`);
+  });
+}
+
+// Checks the four styles' day canvases read apart from each other, so each style keeps its own look by day.
+test("Shared: the styles' day canvases differ", () => {
+  for (const [index, style] of STYLES.entries()) {
+    for (const other of STYLES.slice(index + 1)) {
+      const [a, b] = [themes[style].day.colors.canvas, themes[other].day.colors.canvas];
+      assert.ok(deltaE(a, b) >= DAY_STEP * 2, `${style} ${a} and ${other} ${b} are ${deltaE(a, b).toFixed(1)} apart`);
+    }
+  }
+});
+
+for (const style of STYLES) {
+  for (const mode of MODES) {
+    // Lays the soft accent over the panel and checks text stays readable (AA) on it, since selected tabs, rows and
+    // chips sit on it, stronger by day.
+    test(`Shared: ${style}/${mode} text stays readable on the soft accent`, () => {
+      const { colors } = themes[style][mode];
+      const fill = over(colors.accent, colors.panel, scales.accentSoft[mode]);
+      const ratio = contrast(colors.text, fill);
+      assert.ok(ratio >= 4.5, `text on ${fill} is ${ratio.toFixed(2)}:1`);
+    });
+  }
+}
+
+// Checks the soft accent is stronger by day, where it carries much of the style's color, than at night.
+test("Shared: the soft accent is stronger by day", () => {
+  assert.ok(scales.accentSoft.day > scales.accentSoft.night);
+});
 
 // Checks every style has a distinct name for the user menu, so the theme choice lists each one once.
 test("Shared: every style has its own name for the user menu", () => {
