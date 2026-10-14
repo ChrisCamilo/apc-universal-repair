@@ -40,9 +40,6 @@ type PageButtonProps = {
 }
 
 export function Pagination({ label, page, pageSize, total, pageSizes, onPageChange, onPageSizeChange }: PaginationProps) {
-  if (total === 0) {
-    return null
-  }
   const pages = pageCount(total, pageSize)
   const { classes, ids } = pagination()
 
