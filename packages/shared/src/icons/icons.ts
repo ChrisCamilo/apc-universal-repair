@@ -6,6 +6,11 @@ export const alertIcon: IconShape[] = [
   { kind: "path", d: "M8 2.2l6.2 10.9H1.8L8 2.2z" },
   { kind: "path", d: "M8 6.4v3.2M8 11.4v.1" },
 ];
+// A bell: the notifications.
+export const bellIcon: IconShape[] = [
+  { kind: "path", d: "M4.2 11.2V7.4a3.8 3.8 0 0 1 7.6 0v3.8l1.3 1.4H2.9z" },
+  { kind: "path", d: "M6.6 14a1.5 1.5 0 0 0 2.8 0" },
+];
 export const checkIcon: IconShape[] = [{ kind: "path", d: "M3.5 8.4l3 3 6-6.4" }];
 // A check inside a ring: something done, such as a success toast.
 export const checkRingIcon: IconShape[] = [
@@ -113,6 +118,7 @@ export const userIcon: IconShape[] = [
 /** Every icon by name, for catalogs such as Storybook and tests; app code imports single icons. */
 export const ICONS = {
   alert: alertIcon,
+  bell: bellIcon,
   check: checkIcon,
   checkRing: checkRingIcon,
   chevron: chevronIcon,
