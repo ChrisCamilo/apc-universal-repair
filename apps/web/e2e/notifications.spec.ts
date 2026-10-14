@@ -175,3 +175,54 @@ test("Web: the gear sets how long a toast stays", async ({ page }) => {
   await expect(value).toHaveText("15 s");
   await expect(longer).toBeDisabled();
 });
+
+// Opens the Inventory with an item already low: the bell gets its warning without a toast. Saving another item at its
+// minimum shows the warning as a toast and adds it to the bell; saving it again while still low adds no other; importing
+// two items below their minimum adds one warning for both.
+test("Web: items reaching their minimum stock are warned about once", async ({ page }) => {
+  await signIn(page);
+  const stock: Item[] = [{ ...ITEMS[0], quantity: 6, minQuantity: 2 }, { ...item("00000000-0000-4000-8000-000000000003", "Correia dentada"), quantity: 0 }];
+  await serveItems(page, stock);
+  await page.route("**/api/items/*", (route) => {
+    const index = stock.findIndex((held) => route.request().url().endsWith(held.id));
+    stock[index] = { ...stock[index], ...route.request().postDataJSON(), vehicleModel: null, location: null };
+    return route.fulfill({ json: stock[index] });
+  });
+  await page.route("**/api/items/import", (route) => {
+    for (const sent of route.request().postDataJSON().items as Item[]) {
+      stock.unshift({ ...item(crypto.randomUUID(), sent.name), ...sent, vehicleModel: null, location: null });
+    }
+    return route.fulfill({ json: { created: 2, updated: 0 } });
+  });
+  await page.goto("/inventory");
+  const bell = page.getByRole("button", { name: /^Notificações/ });
+  await expect(bell).toHaveAccessibleName("Notificações, 1 não lidas");
+  await expect(page.getByTestId("common.toast.message")).toHaveCount(0);
+
+  const saveQuantity = async (quantity: string) => {
+    await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
+    const dialog = page.getByRole("dialog", { name: "Editar item" });
+    await dialog.getByLabel("Quantidade", { exact: true }).fill(quantity);
+    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await expect(dialog).toBeHidden();
+  };
+  await saveQuantity("2");
+  await expect(page.getByRole("alert").getByText("Estoque baixo: “Filtro de óleo” (2 de 2)")).toBeVisible();
+  await saveQuantity("1");
+  await expect(page.getByText("Item “Filtro de óleo” salvo.").last()).toBeVisible();
+
+  await page.getByRole("button", { name: "Importar CSV" }).click();
+  const importer = page.getByRole("dialog", { name: "Importar CSV" });
+  const file = [
+    "code;name;category;part_brand;vehicle_brand;vehicle_model;quantity;minimum;location;unit_price;color;position;side",
+    "ngk-b7;Vela de ignição;Motor;Mann;Volkswagen;;1;4;;34,90;;;",
+    "fr-20;Fluido de freio;Motor;Mann;Volkswagen;;0;2;;29,90;;;",
+  ].join("\n");
+  await importer.getByLabel("Arquivo CSV").setInputFiles({ name: "estoque.csv", mimeType: "text/csv", buffer: Buffer.from(file) });
+  await importer.getByRole("button", { name: "Importar 2 itens" }).click();
+  await expect(page.getByRole("alert").getByText("Estoque baixo em 2 itens")).toBeVisible();
+
+  await bell.click();
+  const warnings = page.getByRole("list", { name: "Últimas notificações" }).getByRole("listitem").filter({ hasText: "Estoque baixo" });
+  await expect(warnings).toHaveText([/^Estoque baixo em 2 itens/, /^Estoque baixo: “Filtro de óleo” \(2 de 2\)/, /^Estoque baixo: “Correia dentada” \(0 de 0\)/]);
+});
