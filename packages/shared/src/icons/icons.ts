@@ -42,6 +42,14 @@ export const eyeIcon: IconShape[] = [
   { kind: "circle", cx: 8, cy: 8, r: 2.1 },
 ];
 export const filterIcon: IconShape[] = [{ kind: "path", d: "M2 3h12l-4.6 5.4v4.4l-2.8 1.4V8.4L2 3z" }];
+// A gear: the settings.
+export const gearIcon: IconShape[] = [
+  {
+    kind: "path",
+    d: "M12.8 6.8L14.4 7.2L14.4 8.8L12.8 9.2L12.2 10.5L13.1 12L12 13.1L10.5 12.2L9.2 12.8L8.8 14.4L7.2 14.4L6.8 12.8L5.5 12.2L4 13.1L2.9 12L3.8 10.5L3.2 9.2L1.6 8.8L1.6 7.2L3.2 6.8L3.8 5.5L2.9 4L4 2.9L5.5 3.8L6.8 3.2L7.2 1.6L8.8 1.6L9.2 3.2L10.5 3.8L12 2.9L13.1 4L12.2 5.5z",
+  },
+  { kind: "circle", cx: 8, cy: 8, r: 2.1 },
+];
 // Six dots in two columns: the handle a reorderable tab is dragged by.
 export const gripIcon: IconShape[] = [6, 10].flatMap((cx) =>
   [4, 8, 12].map((cy) => ({ kind: "circle" as const, cx, cy, r: 0.6 })),
@@ -100,12 +108,14 @@ export const mechanicIcon: IconShape[] = [
   { kind: "circle", cx: 12.4, cy: 3.6, r: 1.1 },
   { kind: "path", d: "M13 4.8c.6 1 1.3 2.2 1.6 3.5M14.6 8.3l-.9 4.5M14.6 8.3l.9 4.5M13.4 6l-1.6 1.6-1 1.6M10.4 8.6l.8.5" },
 ];
+export const minusIcon: IconShape[] = [{ kind: "path", d: "M3.5 8h9" }];
 export const pencilIcon: IconShape[] = [{ kind: "path", d: "M10.6 2.8l2.6 2.6-7.7 7.7-3.2.6.6-3.2 7.7-7.7z" }];
 // A triangle pointing right inside a ring: something that starts, such as a guided tour.
 export const playIcon: IconShape[] = [
   { kind: "circle", cx: 8, cy: 8, r: 6.2 },
   { kind: "path", d: "M6.7 5.5l3.9 2.5-3.9 2.5z" },
 ];
+export const plusIcon: IconShape[] = [{ kind: "path", d: "M8 3.5v9M3.5 8h9" }];
 export const searchIcon: IconShape[] = [
   { kind: "circle", cx: 7, cy: 7, r: 4.6 },
   { kind: "path", d: "M10.4 10.4L14 14" },
@@ -129,13 +139,16 @@ export const ICONS = {
   document: documentIcon,
   eye: eyeIcon,
   filter: filterIcon,
+  gear: gearIcon,
   grip: gripIcon,
   image: imageIcon,
   info: infoIcon,
   lock: lockIcon,
   mechanic: mechanicIcon,
+  minus: minusIcon,
   pencil: pencilIcon,
   play: playIcon,
+  plus: plusIcon,
   search: searchIcon,
   trash: trashIcon,
   user: userIcon,
