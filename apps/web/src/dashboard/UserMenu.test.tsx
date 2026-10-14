@@ -1,9 +1,10 @@
 import { SESSION_STORAGE_KEY, type SessionUser } from '@apc/shared/auth'
+import { playIcon } from '@apc/shared/icons'
 import { OPEN_ITEM_ON_ROW_STORAGE_KEY } from '@apc/shared/items'
 import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/shared/screens'
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
-import { THEME_STORAGE_KEYS } from '@apc/shared/theme'
+import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme'
 import { useState, type ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeAll, beforeEach, expect, test } from 'vitest'
@@ -19,6 +20,16 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 import { UserMenu } from './UserMenu.tsx'
 
 const root = document.documentElement
+
+/**
+ * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
+ * @param hex Color as `#RRGGBB`.
+ * @returns The same color as `rgb(r, g, b)`.
+ */
+function rgb(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  return `rgb(${r}, ${g}, ${b})`
+}
 const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true }
 
 beforeAll(async () => {
@@ -48,6 +59,16 @@ test('Web: the user menu shows the logged user and the display preferences', asy
   await expect.element(screen.getByRole('menuitemcheckbox', { name: /Arrastar para reordenar/ })).toHaveAttribute('aria-checked', 'false')
   await expect.element(screen.getByRole('menu').getByText('Estoque')).toBeVisible()
   await expect.element(screen.getByRole('menuitemcheckbox', { name: /Abrir item ao clicar na linha/ })).toHaveAttribute('aria-checked', 'true')
+})
+
+// Opens the menu and checks "Tutorial do estoque" shows the play icon, its ring and triangle, in the accent.
+test('Web: Tutorial do estoque shows the play icon', async () => {
+  const screen = await render(<Sample />)
+  await screen.getByRole('button', { name: 'Menu do usuário' }).click()
+  const icon = screen.getByRole('menuitem', { name: 'Tutorial do estoque' }).element().querySelector('svg')!
+  expect(icon.querySelector('circle')).not.toBeNull()
+  expect(icon.querySelector('path')!.getAttribute('d')).toBe((playIcon[1] as { d: string }).d)
+  expect(getComputedStyle(icon).color).toBe(rgb(themes.eighties.night.colors.accent))
 })
 
 // Turns dark mode off and picks GT4, and checks each applies to the page and is saved at once, with the menu still
