@@ -107,7 +107,7 @@ export type TutorialScreen<Target> = {
   filtersOpen: boolean;
   /** The item the delete confirmation asks about, while it is open. */
   removing?: Item;
-  /** Whether a change "Fazer por mim" made is still on its way to the list; no step goes back meanwhile. */
+  /** Whether a change "Fazer por mim" or the user made is still on its way to the list; no step goes back meanwhile. */
   busy: boolean;
   /** Finds a part of the screen; the item ones are the test item's. */
   target: (name: TutorialTarget) => Target | null;
