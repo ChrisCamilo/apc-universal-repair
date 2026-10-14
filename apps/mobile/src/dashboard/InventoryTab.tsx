@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import {
   ITEM_STATUSES,
@@ -220,6 +220,13 @@ export function InventoryTab() {
   const items = state.status === 'ready' ? state.items : [];
   const shown = listed.status === 'ready' ? listed.items : [];
   const failed = state.status === 'error' || listed.status === 'error';
+  // The list's total as last loaded, so the pagination keeps its pages while the next page loads; none on an error.
+  const [loadedTotal, setLoadedTotal] = useState(0);
+  if (listed.status === 'ready' && listed.total !== loadedTotal) {
+    setLoadedTotal(listed.total);
+  }
+  // The error and the empty states sit centered in the list's room.
+  const centered = failed || (listed.status === 'ready' && shown.length === 0);
 
   /** Changes the search, the filters, the stock status or the sort, going back to the first page. */
   const narrow = (change: () => void) => {
@@ -319,8 +326,8 @@ export function InventoryTab() {
   }, [touring]);
 
   return (
-    <Panel>
-      <View style={styles.tab} testID={ids.tab}>
+    <Panel style={styles.panel}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.tab} keyboardShouldPersistTaps="handled" testID={ids.tab}>
         <View ref={tourTarget('search')} collapsable={false}>
           <SearchField
             label="Procure pelo nome ou código da peça"
@@ -369,59 +376,61 @@ export function InventoryTab() {
             }
           />
         </View>
-        {failed && (
-          <ErrorState
-            title="Não foi possível carregar o estoque"
-            message="Verifique a conexão com o servidor e tente de novo."
-            action={{ label: 'Tentar de novo', onPress: reload }}
-          />
-        )}
-        {!failed && listed.status === 'loading' && <LoadingRows />}
-        {!failed && state.status === 'ready' && listed.status === 'ready' && (
-          <>
-            <NumericReadout tone="muted">{resultSummary(listed.status === 'ready' ? listed.total : 0, items)}</NumericReadout>
-            <DataTable
-              label="Itens do estoque"
-              columns={[
-                photoColumn((item) => setViewer({ item, photos: heldPhotos(item.photos, API_URL) })),
-                ...COLUMNS,
-                actionsColumn((item) => openForm(item), setRemoving, ui),
-              ]}
-              rows={shown}
-              rowKey={(item) => item.id}
-              rowStatus={rowStatus}
-              onRowOpen={opensOnRow ? (item) => openForm(item, true) : undefined}
-              sort={sort}
-              onSortChange={(next) => narrow(() => setSort(next))}
-              unsortedLabel="Ordem de cadastro"
-              empty={
-                narrowed ? (
-                  <EmptyState
-                    title="Nenhum item encontrado"
-                    message="Ajuste a busca ou limpe os filtros para ver o estoque inteiro."
-                    action={{ label: 'Limpar filtros', onPress: clearAll }}
-                  />
-                ) : (
-                  <EmptyState
-                    title="Nenhum item cadastrado"
-                    message="Cadastre a primeira peça do estoque para ela aparecer aqui."
-                    action={{ label: 'Novo item', onPress: () => openForm() }}
-                  />
-                )
-              }
+        <View style={[styles.list, centered && styles.listCentered]} testID={ids.list}>
+          {failed && (
+            <ErrorState
+              title="Não foi possível carregar o estoque"
+              message="Verifique a conexão com o servidor e tente de novo."
+              action={{ label: 'Tentar de novo', onPress: reload }}
             />
-            <Pagination
-              label="Páginas do estoque"
-              page={page}
-              pageSize={pageSize}
-              total={listed.total}
-              pageSizes={PAGE_SIZES}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          </>
-        )}
-      </View>
+          )}
+          {!failed && listed.status === 'loading' && <LoadingRows />}
+          {!failed && state.status === 'ready' && listed.status === 'ready' && (
+            <>
+              <NumericReadout tone="muted">{resultSummary(listed.status === 'ready' ? listed.total : 0, items)}</NumericReadout>
+              <DataTable
+                label="Itens do estoque"
+                columns={[
+                  photoColumn((item) => setViewer({ item, photos: heldPhotos(item.photos, API_URL) })),
+                  ...COLUMNS,
+                  actionsColumn((item) => openForm(item), setRemoving, ui),
+                ]}
+                rows={shown}
+                rowKey={(item) => item.id}
+                rowStatus={rowStatus}
+                onRowOpen={opensOnRow ? (item) => openForm(item, true) : undefined}
+                sort={sort}
+                onSortChange={(next) => narrow(() => setSort(next))}
+                unsortedLabel="Ordem de cadastro"
+                empty={
+                  narrowed ? (
+                    <EmptyState
+                      title="Nenhum item encontrado"
+                      message="Ajuste a busca ou limpe os filtros para ver o estoque inteiro."
+                      action={{ label: 'Limpar filtros', onPress: clearAll }}
+                    />
+                  ) : (
+                    <EmptyState
+                      title="Nenhum item cadastrado"
+                      message="Cadastre a primeira peça do estoque para ela aparecer aqui."
+                      action={{ label: 'Novo item', onPress: () => openForm() }}
+                    />
+                  )
+                }
+              />
+            </>
+          )}
+        </View>
+      </ScrollView>
+      <Pagination
+        label="Páginas do estoque"
+        page={page}
+        pageSize={pageSize}
+        total={failed ? 0 : loadedTotal}
+        pageSizes={PAGE_SIZES}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
       <ItemFormDialog
         key={`form-${form.session}`}
         open={form.open}
