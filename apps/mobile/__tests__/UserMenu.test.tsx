@@ -6,6 +6,7 @@ import React from 'react';
 import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { SessionUser } from '@apc/shared/auth';
+import { playIcon } from '@apc/shared/icons';
 import { OPEN_ITEM_ON_ROW_STORAGE_KEY } from '@apc/shared/items';
 import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
@@ -91,6 +92,14 @@ test('Mobile: the user menu shows the logged user and the display preferences', 
   expect(byName(tree, 'Arrastar para reordenar').props.accessibilityState).toMatchObject({ checked: false });
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Estoque')).not.toHaveLength(0);
   expect(byName(tree, 'Abrir item ao clicar na linha').props.accessibilityState).toMatchObject({ checked: true });
+});
+
+// Opens the menu and checks "Tutorial do estoque" shows the play icon, its ring and triangle.
+test('Mobile: Tutorial do estoque shows the play icon', async () => {
+  const tree = await openMenu();
+  const item = byName(tree, 'Tutorial do estoque');
+  expect(item.findAll((n) => n.props.r === (playIcon[0] as { r: number }).r && typeof n.type !== 'string')).not.toHaveLength(0);
+  expect(item.findAll((n) => n.props.d === (playIcon[1] as { d: string }).d && typeof n.type !== 'string')).not.toHaveLength(0);
 });
 
 // Turns dark mode off and picks GT4, and checks each applies to the theme and is saved at once, with the menu still

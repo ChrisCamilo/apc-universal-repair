@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router'
+import { playIcon } from '@apc/shared/icons'
 import { PAGE_SIZES } from '@apc/shared/pagination'
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme'
 import { auth } from '../auth/auth.ts'
@@ -18,8 +19,8 @@ import { useTabReorder } from './tabReorderContext.ts'
 // which applies and saves them at once; "Arrastar para reordenar" goes through the Dashboard (TabReorderContext),
 // which saves it and makes the tabs reorderable while it is on, and "Abrir item ao clicar na linha" likewise makes
 // the Inventory rows open the item details; "Itens por página" sets how many items the Inventory list shows, now and
-// each time it opens. Every choice keeps the menu open, so several can be changed in a row. "Tutorial do estoque" goes
-// to the Inventory tab and runs its tutorial again.
+// each time it opens. Every choice keeps the menu open, so several can be changed in a row. "Tutorial do estoque",
+// with a play icon, goes to the Inventory tab and runs its tutorial again.
 // "Sair", at the end and set apart from the preferences, ends the session and goes back to /login; the preferences
 // stay on the device for the next login.
 
@@ -70,6 +71,7 @@ export function UserMenu() {
         Abrir item ao clicar na linha
       </Switch>
       <MenuItem
+        icon={playIcon}
         onSelect={() => {
           navigate('/inventory')
           tutorial.replay()

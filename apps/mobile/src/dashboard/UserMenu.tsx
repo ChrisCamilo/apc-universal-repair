@@ -1,4 +1,5 @@
 import type { SessionUser } from '@apc/shared/auth';
+import { playIcon } from '@apc/shared/icons';
 import { PAGE_SIZES } from '@apc/shared/pagination';
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme';
 import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../Menu';
@@ -17,7 +18,7 @@ import { useTabReorder } from './tabReorderContext';
 // (TabReorderContext), which saves it and makes the tabs reorderable while it is on, and "Abrir item ao clicar na
 // linha" likewise makes the Inventory cards open the item details; "Itens por página" sets how many items the
 // Inventory list shows, now and each time it opens. Every choice keeps the menu open, so several can
-// be changed in a row. "Tutorial do estoque" goes to the Inventory tab and runs its tutorial again.
+// be changed in a row. "Tutorial do estoque", with a play icon, goes to the Inventory tab and runs its tutorial again.
 // "Sair", at the end and set apart from the preferences, hands the logout to the owner, which ends the session and
 // goes back to the login; the preferences stay on the device for the next login.
 
@@ -68,7 +69,9 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
       >
         Abrir item ao clicar na linha
       </Switch>
-      <MenuItem onSelect={tutorial.replay}>Tutorial do estoque</MenuItem>
+      <MenuItem icon={playIcon} onSelect={tutorial.replay}>
+        Tutorial do estoque
+      </MenuItem>
       <Divider />
       <MenuItem onSelect={onLogout}>Sair</MenuItem>
     </Menu>
