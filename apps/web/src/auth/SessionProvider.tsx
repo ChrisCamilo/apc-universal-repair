@@ -3,7 +3,8 @@ import type { AuthService, SessionUser } from '@apc/shared/auth'
 import { SessionContext } from './sessionContext.ts'
 
 // Holds the logged user for the routes: it reads the session saved on the device once, on start, and then takes
-// the user a login hands over (or null after a logout).
+// the user a login hands over (or null after a logout). Marking the Inventory tutorial as seen changes the user at
+// once, so the tutorial doesn't start twice, and saves it through the AuthService.
 
 type SessionProviderProps = { auth: AuthService; children: ReactNode }
 
@@ -19,5 +20,13 @@ export function SessionProvider({ auth, children }: SessionProviderProps) {
     }
   }, [auth])
 
-  return <SessionContext.Provider value={{ user, setUser }}>{children}</SessionContext.Provider>
+  /** Marks the tutorial seen on the logged user, then saves it on the device and the API. */
+  const markInventoryTutorialSeen = () => {
+    if (user) {
+      setUser({ ...user, inventoryTutorialSeen: true })
+      void auth.markInventoryTutorialSeen(user)
+    }
+  }
+
+  return <SessionContext.Provider value={{ user, setUser, markInventoryTutorialSeen }}>{children}</SessionContext.Provider>
 }

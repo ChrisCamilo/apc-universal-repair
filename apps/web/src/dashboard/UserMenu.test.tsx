@@ -19,7 +19,7 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 import { UserMenu } from './UserMenu.tsx'
 
 const root = document.documentElement
-const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC' }
+const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true }
 
 beforeAll(async () => {
   const tag = document.createElement('style')
@@ -133,7 +133,7 @@ function Sample() {
   return (
     <MemoryRouter initialEntries={['/inventory']}>
       <ThemeProvider>
-        <SessionContext.Provider value={{ user, setUser }}>
+        <SessionContext.Provider value={{ user, setUser, markInventoryTutorialSeen: () => {} }}>
           <Routes>
             <Route
               path="/inventory"

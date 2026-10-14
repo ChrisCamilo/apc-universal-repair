@@ -199,7 +199,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 - At home, the API runs on a Windows computer and the phone reaches it over the Wi-Fi (see [home-server.md](home-server.md)).
 - Both sides use the same Zod schemas from `@apc/shared`, so a field can't mean one thing in the app and another in the API.
 - The API speaks names (`"Motor"`, `"D"`); the database keeps references and enums (see [database.md](database.md)).
-- Sign-up (`POST /users`) and login (`POST /sessions`) go to the API, which keeps the users and checks the password against its hash; the app saves the user it answers with as the session on the device. Real sessions, with tokens the API checks, come with EP-10.
+- Sign-up (`POST /users`) and login (`POST /sessions`) go to the API, which keeps the users and checks the password against its hash; the app saves the user it answers with as the session on the device. The session says whether the user has seen the Inventory tutorial, which runs by itself on their first login only, and `PUT /users/:id/inventory-tutorial` marks it once it starts. Real sessions, with tokens the API checks, come with EP-10.
 
 ### Tooling
 
@@ -238,7 +238,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 - Em casa, a API roda num computador Windows e o celular chega a ela pelo Wi-Fi (veja [home-server.md](home-server.md#-português-brasil)).
 - Os dois lados usam os mesmos schemas Zod do `@apc/shared`, então um campo não pode significar uma coisa no app e outra na API.
 - A API fala em nomes (`"Motor"`, `"D"`); o banco guarda referências e enums (veja [database.md](database.md)).
-- O cadastro (`POST /users`) e o login (`POST /sessions`) vão para a API, que guarda os usuários e confere a senha com o hash dela; o app salva o usuário que ela responde como a sessão no aparelho. Sessões de verdade, com tokens conferidos pela API, vêm com o EP-10.
+- O cadastro (`POST /users`) e o login (`POST /sessions`) vão para a API, que guarda os usuários e confere a senha com o hash dela; o app salva o usuário que ela responde como a sessão no aparelho. A sessão diz se o usuário já viu o tutorial do Estoque, que só roda sozinho no primeiro login dele, e o `PUT /users/:id/inventory-tutorial` o marca assim que ele começa. Sessões de verdade, com tokens conferidos pela API, vêm com o EP-10.
 
 ### Ferramentas
 

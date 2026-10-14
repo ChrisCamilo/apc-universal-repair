@@ -166,7 +166,7 @@ test('Mobile: the keyboard keys move through the fields and send the sign-up', a
   expect(field(tree, 'Confirmar senha').props.returnKeyType).toBe('go');
   await ReactTestRenderer.act(async () => field(tree, 'Confirmar senha').props.onSubmitEditing());
   expect(register).toHaveBeenCalledWith({ displayName: 'Ana Souza', username: 'Ana.Souza', email: 'ana@oficina.com', password: 'freio1234' });
-  expect(onRegistered).toHaveBeenCalledWith({ id: 'user-ana.souza', username: 'ana.souza', displayName: 'Ana Souza', initials: 'AS' });
+  expect(onRegistered).toHaveBeenCalledWith({ id: 'user-ana.souza', username: 'ana.souza', displayName: 'Ana Souza', initials: 'AS', inventoryTutorialSeen: false });
   focus.mockRestore();
 });
 

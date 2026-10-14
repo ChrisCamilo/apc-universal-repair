@@ -72,6 +72,7 @@ erDiagram
         string email "kept only, nothing sent yet"
         string passwordHash "scrypt, salted, never sent"
         datetime createdAt
+        datetime inventoryTutorialSeenAt "first seen; null: tutorial runs on next login"
     }
 ```
 
@@ -89,7 +90,7 @@ erDiagram
 | `PartBrand` | The brands of the parts (Bosch, NGK…). |
 | `Brand` | The vehicle brands (Chevrolet, Volkswagen…), shared with the catalog. |
 | `VehicleModel` | The models of each vehicle brand (Opala, Gol…). |
-| `User` | Who logs in: their username, name, e-mail (kept only, nothing is sent to it yet) and the hash of their password. It has no relation to the inventory tables. |
+| `User` | Who logs in: their username, name, e-mail (kept only, nothing is sent to it yet), the hash of their password, and when they first saw the Inventory tutorial, which runs by itself only until then, on any device. It has no relation to the inventory tables. |
 
 ### Relationships
 
@@ -130,7 +131,7 @@ erDiagram
 | `PartBrand` | As marcas das peças (Bosch, NGK…). |
 | `Brand` | As marcas de veículo (Chevrolet, Volkswagen…), as mesmas do catálogo. |
 | `VehicleModel` | Os modelos de cada marca de veículo (Opala, Gol…). |
-| `User` | Quem entra no app: o usuário, o nome, o e-mail (só guardado, nada é enviado a ele ainda) e o hash da senha. Não se relaciona com as tabelas do estoque. |
+| `User` | Quem entra no app: o usuário, o nome, o e-mail (só guardado, nada é enviado a ele ainda), o hash da senha e quando viu o tutorial do Estoque pela primeira vez, que só roda sozinho até então, em qualquer aparelho. Não se relaciona com as tabelas do estoque. |
 
 ### Relacionamentos
 

@@ -3,7 +3,6 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication } from "@playwright/test";
-import { INVENTORY_TUTORIAL_STORAGE_KEY } from "@apc/shared/inventory-tutorial";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { startStubApi } from "./stubApi.ts";
 
@@ -53,9 +52,6 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
     }
   });
   await expect(page).toHaveURL(/^app:\/\/apc\/login/);
-  // The tutorial counts as seen, so it doesn't start over the empty Inventory.
-  await page.evaluate((key) => localStorage.setItem(key, "true"), INVENTORY_TUTORIAL_STORAGE_KEY);
-  await page.reload();
   await page.getByLabel("Usuário").fill(username);
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();

@@ -6,7 +6,7 @@ import { RequireSession } from './RequireSession.tsx'
 import { SessionProvider } from './SessionProvider.tsx'
 import { useSession } from './sessionContext.ts'
 
-const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC' }
+const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true }
 
 /**
  * Builds an AuthService whose saved session is read only when the test says so.
@@ -15,7 +15,14 @@ const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', 
 function heldSession(): { auth: AuthService; answer: (user: SessionUser | null) => void } {
   let answer: (user: SessionUser | null) => void = () => {}
   const read = new Promise<SessionUser | null>((resolve) => (answer = resolve))
-  return { auth: { login: async () => null, register: async () => ({ refused: '' }), logout: async () => {}, currentUser: () => read }, answer }
+  const auth: AuthService = {
+    login: async () => null,
+    register: async () => ({ refused: '' }),
+    logout: async () => {},
+    markInventoryTutorialSeen: async (user) => user,
+    currentUser: () => read,
+  }
+  return { auth, answer }
 }
 
 // Opens /inventory while the saved session is still being read, and checks nothing of the Dashboard is drawn and

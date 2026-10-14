@@ -112,7 +112,7 @@ test('Web: Enter sends the sign-up and hands over the new user', async () => {
   await userEvent.keyboard('{Enter}')
   expect(register).toHaveBeenCalledWith(NEW_USER)
   await expect.poll(() => onRegistered.mock.calls.length).toBe(1)
-  expect(onRegistered).toHaveBeenCalledWith({ id: 'user-ana.souza', username: 'ana.souza', displayName: 'Ana Souza', initials: 'AS' })
+  expect(onRegistered).toHaveBeenCalledWith({ id: 'user-ana.souza', username: 'ana.souza', displayName: 'Ana Souza', initials: 'AS', inventoryTutorialSeen: false })
 })
 
 // Signs up with a test user's username, and checks the refusal shows above the form, the fields stay as typed and

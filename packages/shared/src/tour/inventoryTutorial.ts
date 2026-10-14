@@ -18,7 +18,10 @@ const FILL_FIELDS: Record<"identity" | "stock", (keyof ItemForm)[]> = {
 };
 /** Names of the tutorial's parts, for the card header. */
 export const INVENTORY_TUTORIAL_PARTS = ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir"];
-/** localStorage (web) and AsyncStorage (mobile) key telling the tutorial was shown; it runs by itself until then. */
+/**
+ * Where localStorage (web) and AsyncStorage (mobile) used to tell the tutorial was shown on the device. It is now kept
+ * on the user (SessionUser.inventoryTutorialSeen), and the apps remove this old key.
+ */
 export const INVENTORY_TUTORIAL_STORAGE_KEY = "apc-inventory-tutorial-seen";
 /** The title, text and part of each step. */
 const STEP_TEXTS: Record<TutorialStepId, { part?: number; title: string; text: string }> = {

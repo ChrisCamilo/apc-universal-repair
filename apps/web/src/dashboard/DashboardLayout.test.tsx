@@ -1,13 +1,19 @@
+import { initials } from '@apc/shared/auth'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/shared/screens'
 import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs'
+import { TEST_USERS } from '@apc/shared/test-users'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
+import { SessionContext } from '../auth/sessionContext.ts'
 import '../index.css'
 import { themeCss } from '../theme.ts'
 import { DashboardLayout } from './DashboardLayout.tsx'
 import { useTabReorder } from './tabReorderContext.ts'
+
+// The first test user, as the session keeps them.
+const SESSION_USER = { ...TEST_USERS[0], initials: initials(TEST_USERS[0].displayName), inventoryTutorialSeen: false }
 
 // Three tabs let the order change; Specs stands in for a tab still being built.
 vi.mock('@apc/shared/tabs', async (importOriginal) => ({
@@ -82,16 +88,20 @@ test('Web: a tab still being built opens behind the work-in-progress notice', as
 })
 
 function Dashboard() {
+  // A logged user who has seen the Inventory tutorial.
+  const session = { user: { ...SESSION_USER, inventoryTutorialSeen: true }, setUser: () => {}, markInventoryTutorialSeen: () => {} }
   return (
-    <MemoryRouter initialEntries={['/inventory']}>
-      <Routes>
-        <Route path="/" element={<DashboardLayout userMenu={<ReorderSwitch />} />}>
-          {['inventory', 'catalog', 'specs'].map((id) => (
-            <Route key={id} path={id} element={<Where />} />
-          ))}
-        </Route>
-      </Routes>
-    </MemoryRouter>
+    <SessionContext.Provider value={session}>
+      <MemoryRouter initialEntries={['/inventory']}>
+        <Routes>
+          <Route path="/" element={<DashboardLayout userMenu={<ReorderSwitch />} />}>
+            {['inventory', 'catalog', 'specs'].map((id) => (
+              <Route key={id} path={id} element={<Where />} />
+            ))}
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </SessionContext.Provider>
   )
 }
 

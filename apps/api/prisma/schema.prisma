@@ -108,14 +108,16 @@ enum Side {
 /// Someone who logs in. The username is kept in lowercase (see @apc/shared/auth), so names that differ only in case
 /// are the same user. The password is kept only as its salted scrypt hash, which the API never sends.
 model User {
-  id           String   @id @default(uuid())
-  username     String   @unique
-  displayName  String
+  id                      String    @id @default(uuid())
+  username                String    @unique
+  displayName             String
   /// Collected on sign-up and kept; nothing is sent to it yet.
-  email        String
+  email                   String
   /// "scrypt$<salt>$<hash>", in hex.
-  passwordHash String
-  createdAt    DateTime @default(now())
+  passwordHash            String
+  createdAt               DateTime  @default(now())
+  /// When the user first saw the Inventory tutorial; null until then, so it runs by itself on their first login only.
+  inventoryTutorialSeenAt DateTime?
 }
 
 /// A vehicle model of a vehicle brand, unique within it; nameKey as in Brand.

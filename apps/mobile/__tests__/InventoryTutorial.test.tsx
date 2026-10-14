@@ -119,6 +119,9 @@ async function wait(ms: number) {
 beforeEach(async () => {
   jest.useFakeTimers();
   await themeStorage.clear();
+  // A key from before the tutorial moved to the user, which the app removes.
+  await themeStorage.setItem(INVENTORY_TUTORIAL_STORAGE_KEY, 'true');
+  markedSeen = 0;
 });
 
 afterEach(async () => {
@@ -126,15 +129,16 @@ afterEach(async () => {
   jest.useRealTimers();
 });
 
-// Opens the Inventory tab for the first time and checks the tutorial starts by itself on its first step, and is
-// saved as seen; then part 1 is done with "Fazer por mim", which opens and fills the form and saves the test item,
-// and the tutorial moves on to the search.
+// Opens the Inventory tab on the user's first login and checks the tutorial starts by itself on its first step, and is
+// marked seen on the user once, with the device's old key removed; then part 1 is done with "Fazer por mim", which
+// opens and fills the form and saves the test item, and the tutorial moves on to the search.
 test('Mobile: the Inventory tutorial starts by itself and creates the test item', async () => {
   const stock: Item[] = [];
   const changes = answerApi(stock);
   const tree = await mount();
   expect(texts(tree)).toEqual(expect.arrayContaining(['Parte 1 de 3 · Cadastrar um item', 'Abra o cadastro']));
-  expect(await themeStorage.getItem(INVENTORY_TUTORIAL_STORAGE_KEY)).toBe('true');
+  expect(markedSeen).toBe(1);
+  expect(await themeStorage.getItem(INVENTORY_TUTORIAL_STORAGE_KEY)).toBeNull();
 
   for (const title of ['Abra o cadastro', 'Diga que peça é', 'Diga onde e quantas', 'Salve o item']) {
     expect(texts(tree)).toContain(title);
@@ -169,9 +173,16 @@ test('Mobile: skipping the Inventory tutorial deletes the test item, and it can 
 
 // The replay of the tutorial, as the user menu asks for it.
 let replay: (() => void) | undefined;
+// How many times the tutorial was marked seen on the user.
+let markedSeen = 0;
 
 function Preferences({ children }: { children: React.ReactNode }) {
-  const tutorial = useInventoryTutorialChoice();
+  // A user on their first login, until the tutorial marks them.
+  const [seen, setSeen] = React.useState(false);
+  const tutorial = useInventoryTutorialChoice(seen, () => {
+    markedSeen += 1;
+    setSeen(true);
+  });
   replay = tutorial.replay;
   return (
     <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>

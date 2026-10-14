@@ -1,12 +1,13 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial'
-import { readStored, writeStored } from '../storage.ts'
+import { useSession } from '../auth/sessionContext.ts'
+import { removeStored } from '../storage.ts'
 
 /** The Inventory tutorial's state, shared by the Inventory tab that runs it and the user menu that replays it. */
 export const InventoryTutorialContext = createContext<InventoryTutorialChoice | null>(null)
 
 export type InventoryTutorialChoice = {
-  /** Whether the tutorial was shown on this device; until then it runs by itself. */
+  /** Whether the logged user has seen the tutorial, on any device; until then it runs by itself. */
   seen: boolean
   /** Saves that the tutorial was shown. */
   setSeen: () => void
@@ -19,19 +20,20 @@ export type InventoryTutorialChoice = {
 }
 
 /**
- * Holds whether the Inventory tutorial was shown, read from the device once and saved when it runs, and whether a
- * replay was asked for.
+ * Holds whether the logged user has seen the Inventory tutorial, from their session, which marks it once it runs, and
+ * whether a replay was asked for. The key the device used to keep it under is removed.
  * @returns The state and its setters, for InventoryTutorialContext.
  */
 export function useInventoryTutorialChoice(): InventoryTutorialChoice {
-  const [seen, setState] = useState(() => readStored(INVENTORY_TUTORIAL_STORAGE_KEY) === 'true')
+  const { user, markInventoryTutorialSeen } = useSession()
   const [replayAsked, setReplayAsked] = useState(false)
+
+  // The tutorial's state lives on the user now.
+  useEffect(() => removeStored(INVENTORY_TUTORIAL_STORAGE_KEY), [])
+
   return {
-    seen,
-    setSeen: () => {
-      setState(true)
-      writeStored(INVENTORY_TUTORIAL_STORAGE_KEY, 'true')
-    },
+    seen: user?.inventoryTutorialSeen ?? true,
+    setSeen: markInventoryTutorialSeen,
     replayAsked,
     replay: () => setReplayAsked(true),
     replayStarted: () => setReplayAsked(false),

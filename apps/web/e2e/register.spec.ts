@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { REGISTER_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
-import { INVENTORY_TUTORIAL_STORAGE_KEY } from "@apc/shared/inventory-tutorial";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { serveItems } from "./items.ts";
 import { serveUsers } from "./users.ts";
@@ -22,13 +21,24 @@ async function fillIn(page: import("@playwright/test").Page, user = NEW_USER) {
 }
 
 // Opens the sign-up from the login, tries a test user's username and checks it is refused, then signs up a new user
-// and checks they land on the Dashboard logged in; logs out and in again with the new user. Nothing scrolls sideways
-// at either screen size.
+// and checks they land on the Dashboard logged in, where the Inventory tutorial starts on this first login. Logs out
+// and in again with the new user, and checks it doesn't start again; then a test user logging in on the same browser
+// gets it on their own first login. Nothing scrolls sideways at either screen size.
 test("Web: a new user signs up, lands on the Dashboard and logs in again", async ({ page }) => {
   await serveItems(page, []);
-  // The Inventory tutorial counts as seen, so it doesn't start by itself over the Dashboard.
-  await page.addInitScript((key) => localStorage.setItem(key, "true"), INVENTORY_TUTORIAL_STORAGE_KEY);
   const users = await serveUsers(page);
+  const skip = page.getByRole("button", { name: "Pular tutorial" });
+  const logIn = async (username: string, password: string) => {
+    await page.getByLabel("Usuário").fill(username);
+    await page.getByLabel("Senha", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Entrar" }).click();
+    await expect(page).toHaveURL(/\/inventory$/);
+  };
+  const logOut = async () => {
+    await page.getByRole("button", { name: "Menu do usuário" }).click();
+    await page.getByRole("menuitem", { name: "Sair" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+  };
   await page.goto("/login");
   await page.getByRole("button", { name: "Criar conta" }).click();
   await expect(page).toHaveURL(/\/register$/);
@@ -43,15 +53,18 @@ test("Web: a new user signs up, lands on the Dashboard and logs in again", async
   await expect(page).toHaveURL(/\/inventory$/);
   expect(users.at(-1)).toMatchObject({ username: "ana.souza", displayName: "Ana Souza" });
   const session = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null"), SESSION_STORAGE_KEY);
-  expect(await session()).toMatchObject({ username: "ana.souza", initials: "AS" });
+  await expect(skip).toBeVisible();
+  expect(await session()).toMatchObject({ username: "ana.souza", initials: "AS", inventoryTutorialSeen: true });
+  await skip.click();
 
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitem", { name: "Sair" }).click();
-  await expect(page).toHaveURL(/\/login$/);
-  await page.getByLabel("Usuário").fill(NEW_USER.username);
-  await page.getByLabel("Senha", { exact: true }).fill(NEW_USER.password);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/inventory$/);
+  await logOut();
+  await logIn(NEW_USER.username, NEW_USER.password);
+  await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
+  await expect(skip).toBeHidden();
+
+  await logOut();
+  await logIn(TEST_USERS[0].username, TEST_USERS[0].password);
+  await expect(skip).toBeVisible();
 });
 
 // Sends the sign-up empty and checks each field shows its message, then goes back to the login with the link.

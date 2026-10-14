@@ -8,6 +8,8 @@ export type Session = {
   user: SessionUser | null | undefined
   /** Takes the user who just logged in, or null after a logout. */
   setUser: (user: SessionUser | null) => void
+  /** Marks that the logged user has seen the Inventory tutorial, on this device at once and on the API. */
+  markInventoryTutorialSeen: () => void
 }
 
 /**

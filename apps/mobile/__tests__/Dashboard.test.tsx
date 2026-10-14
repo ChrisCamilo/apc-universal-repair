@@ -5,7 +5,6 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial';
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS } from '@apc/shared/tabs';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Dashboard } from '../src/dashboard/Dashboard';
@@ -43,7 +42,6 @@ function shows(tree: ReactTestRenderer.ReactTestRenderer, text: string): boolean
 beforeEach(async () => {
   await themeStorage.clear();
   // The Inventory tutorial counts as seen, so it doesn't start by itself over what the test looks at.
-  await themeStorage.setItem(INVENTORY_TUTORIAL_STORAGE_KEY, 'true');
 });
 
 for (const style of STYLES) {
