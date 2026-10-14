@@ -171,6 +171,34 @@ test('Web: the empty state replaces the table with no rows', async () => {
   expect(screen.getByRole('table').query()).toBeNull()
 })
 
+// Puts a filling table with many rows and one with none, each in a 240px column, and checks the rows scroll inside
+// the table under a header row that stays pinned at the top, and the empty state is centered in the room.
+test('Web: a filling table scrolls inside its column with the header pinned', async () => {
+  const many = Array.from({ length: 30 }, (_, index) => ({ ...ITEMS[0], code: `P-${index}`, name: `Peça ${index}` }))
+  const column = { display: 'flex', flexDirection: 'column', height: 240 } as const
+  const screen = await render(
+    <>
+      <div style={column}>
+        <Inventory items={many} fill />
+      </div>
+      <div style={column}>
+        <Inventory items={[]} fill />
+      </div>
+    </>,
+  )
+  const scroll = screen.getByTestId('common.data-table.scroll').element()
+  expect(scroll.getBoundingClientRect().height).toBeLessThanOrEqual(240)
+  scroll.scrollTop = 300
+  await expect.poll(() => scroll.scrollTop).toBe(300)
+  const header = screen.getByRole('columnheader', { name: /Item/ }).element()
+  expect(Math.abs(header.getBoundingClientRect().top - scroll.getBoundingClientRect().top)).toBeLessThanOrEqual(1)
+
+  const box = screen.getByTestId('common.data-table.empty').element().getBoundingClientRect()
+  const text = screen.getByText('Nenhum item encontrado').element().getBoundingClientRect()
+  expect(box.height).toBeGreaterThan(200)
+  expect(Math.abs(text.top + text.height / 2 - (box.top + box.height / 2))).toBeLessThanOrEqual(2)
+})
+
 // At phone width, checks the header hides, rows become cards with only the card cells, and the "Ordenar"
 // select sorts the same way the headers do.
 test('Web: at phone width rows become cards sorted by a select', async () => {
@@ -270,10 +298,12 @@ test('Web: rows open on a click or Enter and Space, except on their own buttons'
 
 function Inventory({
   items = ITEMS,
+  fill,
   onRowOpen,
   onEdit,
 }: {
   items?: Item[]
+  fill?: boolean
   onRowOpen?: (item: Item) => void
   onEdit?: (item: Item) => void
 }) {
@@ -289,6 +319,7 @@ function Inventory({
     onSortChange: setSort,
     unsortedLabel: 'Ordem de cadastro',
     empty: <p>Nenhum item encontrado</p>,
+    fill,
     onRowOpen,
     columns: [
       { key: 'photo', header: 'Foto', headerHidden: true, card: 'thumb', cell: (item) => item.photo },
