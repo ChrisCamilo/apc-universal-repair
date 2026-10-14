@@ -8,7 +8,7 @@
  * The areas a style id starts with: `common` for the design system, what every area uses, and the others after the
  * epic that owns the component. A later epic adds its slug here when its first screen is built.
  */
-export const STYLE_SCOPES = ["auth", "catalog", "common", "dashboard", "docs", "inventory"] as const;
+export const STYLE_SCOPES = ["auth", "catalog", "common", "dashboard", "docs", "inventory", "notifications"] as const;
 
 /** A style id: a scope, then the component and the slots inside it, in kebab-case, a dot between levels. */
 export type StyleId = `${StyleScope}.${string}`;
