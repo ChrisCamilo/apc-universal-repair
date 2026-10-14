@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Item } from "@apc/shared/items";
+import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 
@@ -905,4 +906,25 @@ test("Web: the inventory list shows one page at a time", async ({ page }) => {
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("1–25 de 51")).toBeVisible();
   await expect(rows.first()).toContainText("NOVA-1");
+});
+
+// On a 1360×768 notebook, in full screen and in a window (1360×689 once the taskbar and the title bar are taken off),
+// opens the Inventory with 100 items and checks the page doesn't scroll: the header at the top, the toolbar and the
+// pagination in view, nothing sideways, and only the table scrolls.
+test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "A desktop screen");
+  await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
+  await page.goto("/inventory");
+  await page.getByRole("radio", { name: "100" }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(100);
+  for (const height of [NOTEBOOK_HEIGHT, NOTEBOOK_WINDOW_HEIGHT]) {
+    await page.setViewportSize({ width: NOTEBOOK_WIDTH, height });
+    await expect.poll(() => page.evaluate(() => innerHeight)).toBe(height);
+    expect((await layout(page)).pageExtra, `1360×${height}`).toBe(0);
+    expect((await page.locator("header").boundingBox())!.y, `1360×${height}`).toBe(0);
+    await expect(page.getByRole("button", { name: "Novo item" })).toBeInViewport();
+    await expect(page.getByRole("navigation", { name: "Páginas do estoque" })).toBeInViewport();
+    expect(await page.getByTestId("common.data-table.scroll").evaluate((box) => box.scrollHeight > box.clientHeight)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(NOTEBOOK_WIDTH);
+  }
 });

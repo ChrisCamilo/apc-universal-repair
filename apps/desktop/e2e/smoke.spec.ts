@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication } from "@playwright/test";
 import { TEST_USERS } from "@apc/shared/test-users";
+import { MIN_WINDOW_SIZE, openingContentSize } from "../src/window.ts";
 import { startStubApi } from "./stubApi.ts";
 
 // The desktop app's smoke test: the compiled main process (dist/main.js) with the web build, pointed at a stand-in
@@ -35,8 +36,8 @@ test.afterAll(async () => {
   await new Promise((resolve) => api.server.close(resolve));
 });
 
-// Opens the app, signs in through the API, and checks the Dashboard and the empty Inventory at 1280×720, a window
-// that can't be made smaller. Then switches to dark mode and the Catalog tab, restarts the app with the same userData,
+// Opens the app, signs in through the API, and checks the Dashboard and the empty Inventory in a window of 1280×720, or
+// of what the screen's work area holds, that can't be made smaller than 1280×640. Then switches to dark mode and the Catalog tab, restarts the app with the same userData,
 // and checks the session, the theme and the open tab are still there.
 test("Desktop: the app signs in, shows the Inventory and keeps the session, theme and tab after a restart", async () => {
   const userData = mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
@@ -58,19 +59,28 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
 
   await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
-  // The page opens at 1280×720 and doesn't get smaller. With display scaling, rounding may add a pixel.
-  const sizes = await app.evaluate(({ BrowserWindow }) => {
+  // The window opens at 1280×720, or at what the screen's work area holds, and doesn't get smaller than 1280×640; the
+  // page fills it. With display scaling, rounding may add up to 2 pixels.
+  const window = await app.evaluate(({ BrowserWindow, screen }) => {
     const [window] = BrowserWindow.getAllWindows();
     const opened = window.getContentSize();
+    const [outerWidth, outerHeight] = window.getSize();
+    const frame = { width: outerWidth - opened[0], height: outerHeight - opened[1] };
+    const workArea = screen.getDisplayMatching(window.getBounds()).workAreaSize;
     window.setContentSize(800, 600);
-    return [opened, window.getContentSize()];
+    return { opened, frame, workArea, smallest: window.getContentSize() };
   });
-  sizes.push(await page.evaluate(() => [innerWidth, innerHeight]));
-  for (const [width, height] of sizes) {
-    expect(width - 1280).toBeGreaterThanOrEqual(0);
-    expect(width - 1280).toBeLessThanOrEqual(1);
-    expect(height - 720).toBeGreaterThanOrEqual(0);
-    expect(height - 720).toBeLessThanOrEqual(1);
+  const expected = openingContentSize(window.workArea, window.frame);
+  const inner = await page.evaluate(() => [innerWidth, innerHeight]);
+  for (const [[width, height], size] of [
+    [window.opened, expected],
+    [window.smallest, MIN_WINDOW_SIZE],
+    [inner, MIN_WINDOW_SIZE],
+  ] as const) {
+    expect(width - size.width).toBeGreaterThanOrEqual(0);
+    expect(width - size.width).toBeLessThanOrEqual(2);
+    expect(height - size.height).toBeGreaterThanOrEqual(0);
+    expect(height - size.height).toBeLessThanOrEqual(2);
   }
 
   const modeOf = () => page.evaluate(() => document.documentElement.dataset.mode);

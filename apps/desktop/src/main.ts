@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, screen, session, shell } from "electron";
 import electronUpdater from "electron-updater";
 import { isLocalApi, parseConfig, resolveApiUrl, type DesktopConfig } from "./config.js";
 import { windowsIdentity } from "./identity.js";
@@ -15,6 +15,7 @@ import {
   serverVersionWarning,
   UPDATE_READY_CHANNEL,
 } from "./update.js";
+import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
 // Vite dev server when APC_DEV_URL is set. On opening, when the API on this computer doesn't answer, it starts it
@@ -31,8 +32,6 @@ import {
 
 /** The notifications on screen, kept so they still answer a click once their request is gone. */
 const shown = new Set<Notification>();
-/** The window's size at opening and its minimum, the minimum desktop screen from AGENTS.md (1280×720). */
-const WINDOW_SIZE = { width: 1280, height: 720 };
 
 /** The Vite dev server, when running in development; otherwise the window loads app://apc. */
 const devUrl = process.env.APC_DEV_URL;
@@ -60,15 +59,16 @@ function apiDirOf(config: DesktopConfig): string | undefined {
 }
 
 /**
- * Opens the app's window, hidden until its first page is drawn, and keeps it on the app.
+ * Opens the app's window, hidden until its first page is drawn, and keeps it on the app. It opens at WINDOW_SIZE, or
+ * smaller on a screen whose work area doesn't hold it (see window.ts).
  * @param appUrl The address the app is served from, app://apc/ or the dev server.
  * @returns The window.
  */
 function createWindow(appUrl: string): BrowserWindow {
   const window = new BrowserWindow({
     ...WINDOW_SIZE,
-    minWidth: WINDOW_SIZE.width,
-    minHeight: WINDOW_SIZE.height,
+    minWidth: MIN_WINDOW_SIZE.width,
+    minHeight: MIN_WINDOW_SIZE.height,
     useContentSize: true,
     show: false,
     title: "APC Universal Repair",
@@ -76,6 +76,13 @@ function createWindow(appUrl: string): BrowserWindow {
     backgroundColor: "#0B0C0E",
     webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: path.join(import.meta.dirname, "preload.cjs") },
   });
+  // What the window adds around its content, the title bar and the borders, is only known once it exists.
+  const [outerWidth, outerHeight] = window.getSize();
+  const [contentWidth, contentHeight] = window.getContentSize();
+  const frame = { width: outerWidth - contentWidth, height: outerHeight - contentHeight };
+  const { width, height } = openingContentSize(screen.getDisplayMatching(window.getBounds()).workAreaSize, frame);
+  window.setContentSize(width, height);
+  window.center();
   if (process.platform === "win32") {
     // The taskbar's icon and id for this window, so it shows the APC gauge however the app was started (see identity.ts).
     const { appId, iconPath, iconIndex } = windowsIdentity({ isPackaged: app.isPackaged, execPath: process.execPath, appPath: app.getAppPath() });
