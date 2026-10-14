@@ -86,6 +86,27 @@ test("Web: the inventory lists every item with its stock alerts", async ({ page 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()!.width);
 });
 
+// Checks the toolbar has the search at its left edge and "Novo item", the last of the buttons, at its right edge, the
+// panel's: at the minimum sizes (where the buttons wrap under the search on a phone) and, on desktop, on a wide screen
+// too, where the search stops growing and the gap goes between it and the buttons.
+test("Web: the toolbar buttons sit at the panel's right edge", async ({ page }, testInfo) => {
+  await openInventory(page);
+  const toolbar = page.getByTestId("inventory.inventory-tab.toolbar");
+  const edges = async () => {
+    const bar = (await toolbar.boundingBox())!;
+    const search = (await page.getByTestId("inventory.inventory-tab.search").boundingBox())!;
+    const newItem = (await page.getByRole("button", { name: "Novo item" }).boundingBox())!;
+    return { searchLeft: search.x - bar.x, newItemRight: bar.x + bar.width - (newItem.x + newItem.width) };
+  };
+  const sizes = testInfo.project.name === "desktop" ? [page.viewportSize()!, { width: 1920, height: 1080 }] : [page.viewportSize()!];
+  for (const size of sizes) {
+    await page.setViewportSize(size);
+    const { searchLeft, newItemRight } = await edges();
+    expect(Math.abs(searchLeft), `search at ${size.width}px`).toBeLessThanOrEqual(1);
+    expect(Math.abs(newItemRight), `"Novo item" at ${size.width}px`).toBeLessThanOrEqual(1);
+  }
+});
+
 // Searches by part code without separators, by name without accents, and for something that isn't there,
 // checking the rows and the counter follow, and that clearing the search brings every item back.
 test("Web: the search finds items by name or part code", async ({ page }) => {

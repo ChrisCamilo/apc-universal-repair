@@ -329,18 +329,20 @@ export function InventoryTab() {
             onValueChange={(value) => narrow(() => setSearch(value))}
           />
         </div>
-        <Button variant="secondary" onClick={() => setManaging(true)}>
-          Gerenciar listas
-        </Button>
-        <Button variant="secondary" onClick={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
-          Importar CSV
-        </Button>
-        <Button variant="secondary" onClick={() => setExporter((current) => ({ open: true, session: current.session + 1 }))}>
-          Exportar CSV
-        </Button>
-        <Button data-tour="new-item" onClick={() => openForm()}>
-          Novo item
-        </Button>
+        <div className={classes.buttons()} data-testid={ids.buttons}>
+          <Button variant="secondary" onClick={() => setManaging(true)}>
+            Gerenciar listas
+          </Button>
+          <Button variant="secondary" onClick={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
+            Importar CSV
+          </Button>
+          <Button variant="secondary" onClick={() => setExporter((current) => ({ open: true, session: current.session + 1 }))}>
+            Exportar CSV
+          </Button>
+          <Button data-tour="new-item" onClick={() => openForm()}>
+            Novo item
+          </Button>
+        </div>
       </div>
       <div className={classes.filters()} data-testid={ids.filters}>
         <FilterMenu
