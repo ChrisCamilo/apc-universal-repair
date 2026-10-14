@@ -8,6 +8,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../src/Menu';
+import { MENU_INSET, MENU_OFFSET } from '../src/Menu.styles';
 import { Segmented } from '../src/Segmented';
 import { Switch } from '../src/Switch';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -154,6 +155,35 @@ test('Mobile: back, a tap outside and the trigger close the menu', async () => {
   await press(tree, 'Menu do usuário');
   await press(tree, 'Menu do usuário');
   expect(modal().props.visible).toBe(false);
+});
+
+// Opens a menu whose trigger sits away from the screen's end on a 360dp phone (its position faked), and checks the menu
+// opens under it inside the screen, its margin from the start, rather than running past it; opening and closing it are
+// reported.
+test('Mobile: a menu away from the screen edge opens inside the screen, and reports opening and closing', async () => {
+  const width = 360;
+  jest.spyOn(Dimensions, 'get').mockReturnValue({ width, height: MOBILE_DESIGN_HEIGHT, scale: 2, fontScale: 1 });
+  try {
+    const changes: boolean[] = [];
+    const tree = await mount(
+      'eighties',
+      'night',
+      <Menu label="Notificações" trigger={<Text>Sino</Text>} onOpenChange={(open) => changes.push(open)}>
+        <MenuItem onSelect={() => {}}>Limpar notificações</MenuItem>
+      </Menu>,
+    );
+    // The trigger sits 70dp from the screen's end, 60dp down, 50 by 36dp.
+    const trigger = tree.root.find((n) => n.props.testID === 'common.menu.trigger' && typeof n.instance?.measureInWindow === 'function');
+    trigger.instance.measureInWindow = (done: (x: number, y: number, w: number, h: number) => void) => done(width - 120, 60, 50, 36);
+    await press(tree, 'Notificações');
+    const popover = styleOf(tree, 'common.menu.popover');
+    expect(width - Number(popover.right) - Number(popover.width)).toBe(MENU_INSET / 2);
+    expect(popover.top).toBe(60 + 36 + MENU_OFFSET);
+    await ReactTestRenderer.act(async () => tree.root.findByType(Modal).props.onRequestClose());
+    expect(changes).toEqual([true, false]);
+  } finally {
+    jest.restoreAllMocks();
+  }
 });
 
 // Puts the user badge in a trigger on a 390dp phone, then widens the screen to a 768dp tablet, and checks the
