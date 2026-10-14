@@ -41,7 +41,7 @@ erDiagram
         string id PK "uuid, names its files"
         string itemId FK "Item.id, cascade"
         int position "0 = cover"
-        string file "original, e.g. id.jpg"
+        string file "WebP up to 1600px, e.g. id.webp"
         string thumbFile "176px WebP, e.g. id-thumb.webp"
     }
     Category {
@@ -84,7 +84,7 @@ erDiagram
 | Table | What it holds |
 |---|---|
 | `Item` | An inventory item: a part in stock, with its part code, the list entries it belongs to, where it fits on the vehicle, how many there are and its unit price. |
-| `ItemPhoto` | Up to 3 photos of an item, in order; the first one is the cover in the list. The files themselves are stored by the API under `PHOTOS_DIR`. |
+| `ItemPhoto` | Up to 3 photos of an item, in order; the first one is the cover in the list. The files themselves are stored by the API under `PHOTOS_DIR`, each photo reduced to a WebP of up to 1600px next to its thumbnail. |
 | `Category` | The categories an item is filed under (Motor, Freios…). |
 | `PartBrand` | The brands of the parts (Bosch, NGK…). |
 | `Brand` | The vehicle brands (Chevrolet, Volkswagen…), shared with the catalog. |
@@ -125,7 +125,7 @@ erDiagram
 | Tabela | O que guarda |
 |---|---|
 | `Item` | Um item do estoque: uma peça, com o código da peça, as entradas das listas a que pertence, onde serve no veículo, quantas há e o valor unitário. |
-| `ItemPhoto` | Até 3 fotos de um item, em ordem; a primeira é a capa na lista. Os arquivos ficam guardados pela API em `PHOTOS_DIR`. |
+| `ItemPhoto` | Até 3 fotos de um item, em ordem; a primeira é a capa na lista. Os arquivos ficam guardados pela API em `PHOTOS_DIR`, cada foto reduzida a um WebP de até 1600px ao lado da miniatura. |
 | `Category` | As categorias dos itens (Motor, Freios…). |
 | `PartBrand` | As marcas das peças (Bosch, NGK…). |
 | `Brand` | As marcas de veículo (Chevrolet, Volkswagen…), as mesmas do catálogo. |

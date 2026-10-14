@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
+import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION } from '@apc/shared/photos'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
@@ -34,6 +34,28 @@ function file(name: string, type: string, size = 1024): File {
   return new File([new Uint8Array(size)], name, { type })
 }
 
+/**
+ * Draws a photo with grain, which compresses like a real one, as a PNG file.
+ * @param name File name.
+ * @param width Width in px.
+ * @param height Height in px.
+ * @returns The PNG file.
+ */
+async function grainyPng(name: string, width: number, height: number): Promise<File> {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d')!
+  const pixels = context.createImageData(width, height)
+  for (let i = 0; i < pixels.data.length; i += 4) {
+    const shade = 96 + Math.floor(Math.random() * 64)
+    pixels.data.set([shade, shade, shade + 20, 255], i)
+  }
+  context.putImageData(pixels, 0, 0)
+  const blob = await new Promise<Blob>((resolve) => canvas.toBlob((png) => resolve(png!), 'image/png'))
+  return new File([blob], name, { type: 'image/png' })
+}
+
 beforeAll(() => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
@@ -60,7 +82,8 @@ for (const style of STYLES) {
 }
 
 // Chooses several files at once on an empty field and checks the good ones become thumbnails in order, the
-// first marked as the cover, while a GIF and a photo over 3 MB are left out and named with their reasons.
+// first marked as the cover, while a GIF and a file over 3 MB that can't be reduced are left out and named with
+// their reasons.
 test('Web: choosing files keeps the good ones and names each one left out', async () => {
   const screen = await render(<Sample initial={[]} />)
   await expect.element(screen.getByText('Arraste até 3 fotos ou clique para escolher')).toBeVisible()
@@ -70,13 +93,31 @@ test('Web: choosing files keeps the good ones and names each one left out', asyn
     file('lado.png', 'image/png', 4.2 * MB),
     file('traseira.webp', 'image/webp'),
   ])
-  expect(screen.getByRole('img').elements().map((img) => img.getAttribute('alt'))).toEqual(['Foto 1, capa', 'Foto 2'])
+  await expect.poll(() => screen.getByRole('img').elements().map((img) => img.getAttribute('alt'))).toEqual(['Foto 1, capa', 'Foto 2'])
   await expect.element(screen.getByText('capa', { exact: true })).toBeVisible()
   expect(screen.getByRole('alert').getByRole('listitem').elements().map((li) => li.textContent)).toEqual([
     'motor.gif: não é JPG, PNG ou WebP',
-    'lado.png: tem 4,2 MB, e o limite é 3 MB',
+    'lado.png: tem 4,2 MB mesmo reduzida, e o limite é 3 MB',
   ])
   await expect.element(screen.getByText('Arraste mais 1 foto ou clique para escolher')).toBeVisible()
+})
+
+// Chooses a photo over 3 MB and larger than PHOTO_MAX_DIMENSION, and checks it is taken, reduced before it is sent:
+// a WebP named after it, fitted in PHOTO_MAX_DIMENSION in proportion, and under 3 MB.
+test('Web: a large photo is reduced before it is sent, and taken once under 3 MB', async () => {
+  const large = await grainyPng('motor.png', 2400, 1800)
+  expect(large.size).toBeGreaterThan(PHOTO_MAX_BYTES)
+  const onPhotosChange = vi.fn()
+  const screen = await render(<ImageUpload label="Fotos do item" photos={[]} onPhotosChange={onPhotosChange} limit={ITEM_PHOTO_LIMIT} />)
+  await userEvent.upload(screen.getByLabelText(/Arraste até 3 fotos/), [large])
+
+  await expect.poll(() => onPhotosChange.mock.calls.length).toBe(1)
+  const [[{ file }]] = onPhotosChange.mock.calls[0] as [[UploadPhoto]]
+  expect([file!.name, file!.type]).toEqual(['motor.webp', 'image/webp'])
+  expect(file!.size).toBeLessThan(PHOTO_MAX_BYTES)
+  const bitmap = await createImageBitmap(file!)
+  expect([bitmap.width, bitmap.height]).toEqual([PHOTO_MAX_DIMENSION, 1200])
+  expect(screen.getByRole('alert').query()).toBeNull()
 })
 
 // Drops files on the area with two photos held and checks the area lights up while dragging, takes one file

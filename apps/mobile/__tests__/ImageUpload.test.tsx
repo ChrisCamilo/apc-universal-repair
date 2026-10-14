@@ -108,7 +108,7 @@ test('Mobile: picking keeps the good photos and names each one left out', async 
     expect.arrayContaining([
       'capa',
       'motor.gif: não é JPG, PNG ou WebP',
-      'lado.png: tem 4,2 MB, e o limite é 3 MB',
+      'lado.png: tem 4,2 MB mesmo reduzida, e o limite é 3 MB',
       'Toque para escolher mais 1 foto',
     ]),
   );

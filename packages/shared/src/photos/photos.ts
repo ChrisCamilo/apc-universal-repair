@@ -1,17 +1,23 @@
 import type { ItemPhoto } from "../items/items.ts";
 
 // Photo rules shared by the web and mobile ImageUpload and the API: which files are accepted, how many photos an
-// item holds, the messages that name each file left out and say why, and how the photos are sent to be saved.
+// item holds, the messages that name each file left out and say why, how the photos are sent to be saved, and how
+// far a photo is reduced: the web and the phone shrink it before sending it, and the API stores it as WebP at that
+// size and quality, so a photo over 3 MB is only refused when it is still over 3 MB once reduced.
 
 /** Photos an inventory item holds; the first one is its cover in the list. */
 export const ITEM_PHOTO_LIMIT = 3;
-/** Largest photo accepted, in bytes. */
+/** Largest photo accepted, in bytes, after the web or the phone reduced it. */
 export const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
+/** Longest side a stored photo keeps, in px: a phone photo of 4000×3000 is stored at 1600×1200. */
+export const PHOTO_MAX_DIMENSION = 1600;
 /**
  * Parts of the request that sets an item's photos (PUT /items/:id/photos), in the order the photos go: a saved photo
  * kept, by its id, or a new file.
  */
 export const PHOTO_PARTS = { keep: "keep", file: "photo" } as const;
+/** WebP (and, on the phone, JPEG) quality of a reduced photo, from 0 to 100. */
+export const PHOTO_QUALITY = 80;
 /** File types accepted: JPG, PNG and WebP. */
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
@@ -21,6 +27,18 @@ export type HeldPhoto<Picked> = { url: string; file?: Picked };
 export type PhotoPart<Picked> = { keep: string } | { file: Picked };
 /** What the rules read from a chosen file: a browser File, or a photo picked on the phone. */
 export type PhotoFile = { name: string; type: string; size: number };
+
+/**
+ * Gives the size a photo is reduced to: its longest side down to PHOTO_MAX_DIMENSION, in proportion, and never
+ * enlarged.
+ * @param width The photo's width, in px.
+ * @param height The photo's height, in px.
+ * @returns The reduced width and height, rounded; the same size when it already fits.
+ */
+export function fitPhoto(width: number, height: number): { width: number; height: number } {
+  const scale = Math.min(1, PHOTO_MAX_DIMENSION / Math.max(width, height));
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
 
 /**
  * Turns an item's saved photos into what the photo fields hold: their URLs, reached through the API's address.
@@ -64,8 +82,9 @@ export function photoParts<Picked>(
 }
 
 /**
- * Says why a file can't be a photo: not JPG, PNG or WebP, or larger than 3 MB.
- * @param file Chosen file.
+ * Says why a file can't be a photo: not JPG, PNG or WebP, or still larger than 3 MB after the web or the phone
+ * reduced it.
+ * @param file Chosen file, as reduced.
  * @returns The reason, or null when the file is accepted.
  */
 export function photoProblem(file: PhotoFile): string | null {
@@ -74,7 +93,7 @@ export function photoProblem(file: PhotoFile): string | null {
   }
   if (file.size > PHOTO_MAX_BYTES) {
     const mb = (file.size / 1024 / 1024).toFixed(1).replace(".", ",");
-    return `tem ${mb} MB, e o limite é 3 MB`;
+    return `tem ${mb} MB mesmo reduzida, e o limite é 3 MB`;
   }
   return null;
 }

@@ -26,8 +26,8 @@ const photoFileParamsSchema = z.object({
 
 const uuidSchema = z.uuid();
 
-/** One photo of the new set: a saved one kept, or a new file with what checkPhoto found. */
-type PhotoEntry = { keep: string } | { buffer: Buffer; ext: "jpg" | "png" | "webp" };
+/** One photo of the new set: a saved one kept, or a new file checkPhoto accepted. */
+type PhotoEntry = { keep: string } | { buffer: Buffer };
 
 /**
  * Answers 400 naming what keeps the photos from being saved.
@@ -66,11 +66,11 @@ export function registerPhotoRoutes(app: FastifyInstance) {
         const number = entries.length + problems.length + 1;
         if (part.type === "file" && part.fieldname === PHOTO_PARTS.file) {
           const buffer = await part.toBuffer();
-          const checked = part.file.truncated ? { problem: "is larger than 3 MB" } : await checkPhoto(buffer);
-          if ("problem" in checked) {
-            problems.push(`Photo ${number} ${checked.problem}.`);
+          const problem = part.file.truncated ? "is larger than 3 MB" : await checkPhoto(buffer);
+          if (problem) {
+            problems.push(`Photo ${number} ${problem}.`);
           } else {
-            entries.push({ buffer, ext: checked.ext });
+            entries.push({ buffer });
           }
         } else if (part.type === "field" && part.fieldname === PHOTO_PARTS.keep && isUuid(part.value)) {
           entries.push({ keep: String(part.value) });
@@ -102,7 +102,7 @@ export function registerPhotoRoutes(app: FastifyInstance) {
             return saved.get(entry.keep)!;
           }
           const photoId = randomUUID();
-          return { id: photoId, ...(await storePhoto(photoId, entry.buffer, entry.ext)) };
+          return { id: photoId, ...(await storePhoto(photoId, entry.buffer)) };
         }),
       );
       const added = photos.filter((photo) => !saved.has(photo.id));

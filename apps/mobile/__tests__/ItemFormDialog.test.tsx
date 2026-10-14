@@ -10,6 +10,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { codeTakenMessage, ITEM_FORM_MESSAGES } from '@apc/shared/item-form';
 import type { Item } from '@apc/shared/items';
 import { withEntry, type ItemLists } from '@apc/shared/lists';
+import { PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/shared/photos';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
 import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
@@ -430,8 +431,9 @@ test('Mobile: Editar unlocks the details and saves like an edit', async () => {
   expect(onSaved).toHaveBeenCalledTimes(1);
 });
 
-// Picks two photos for a new item and saves it, and checks the item is posted first, then its photos are sent to it
-// in order as files from the phone, and the item handed over carries the photos the API saved.
+// Picks two photos for a new item and saves it, and checks the library is asked for photos reduced to the stored
+// size and quality, the item is posted first, then its photos are sent to it in order as files from the phone, and
+// the item handed over carries the photos the API saved.
 test('Mobile: a new item is saved with its photos', async () => {
   const onSaved = jest.fn();
   const tree = await mount(undefined, { onSaved });
@@ -440,6 +442,9 @@ test('Mobile: a new item is saved with its photos', async () => {
   });
   const drop = tree.root.find((n) => n.props.testID === 'common.image-upload.drop' && typeof n.props.onPress === 'function');
   await ReactTestRenderer.act(async () => drop.props.onPress());
+  expect(launchImageLibrary).toHaveBeenLastCalledWith(
+    expect.objectContaining({ maxWidth: PHOTO_MAX_DIMENSION, maxHeight: PHOTO_MAX_DIMENSION, quality: PHOTO_QUALITY / 100 }),
+  );
   expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual(['file:///fotos/frente.jpg', 'file:///fotos/lado.jpg']);
   (fetch as jest.Mock).mockClear();
   answerSave();

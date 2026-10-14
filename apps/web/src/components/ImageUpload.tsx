@@ -3,12 +3,14 @@ import { closeIcon, ICON_SIZES, imageIcon } from '@apc/shared/icons'
 import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/shared/photos'
 import { Icon } from './Icon.tsx'
 import { imageUpload } from './ImageUpload.styles.ts'
+import { shrinkPhoto } from './shrinkPhoto.ts'
 import { Label, Text } from './Typography.tsx'
 
 // The photo field of the item form. Photos show as thumbnails, the first one marked as the cover, each with
 // an × to remove it. Under them, a drop area that is also clickable takes several files at once and says how
-// many more fit; it disappears once the limit is reached. Only JPG, PNG and WebP up to 3 MB are taken: files
-// that break the rule or go past the limit are left out, and a message names each one and says why. Read-only,
+// many more fit; it disappears once the limit is reached. Each photo is reduced first (see shrinkPhoto), so a large
+// one is sent smaller. Only JPG, PNG and WebP up to 3 MB once reduced are taken: files that break the rule or go past
+// the limit are left out, and a message names each one and says why. Read-only,
 // as in the item details, it only shows the photos, or says there are none: no ×, no drop area.
 
 
@@ -32,9 +34,10 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
   const { classes, ids } = imageUpload()
   const left = limit - photos.length
 
-  /** Takes the files that pass the rules and fit, and says which were left out and why. */
-  const add = (files: File[]) => {
-    const { accepted, problems: leftOut } = takePhotos(files, photos.length, limit)
+  /** Reduces the files, takes the ones that pass the rules and fit, and says which were left out and why. */
+  const add = async (files: File[]) => {
+    const reduced = await Promise.all(files.map(shrinkPhoto))
+    const { accepted, problems: leftOut } = takePhotos(reduced, photos.length, limit)
     setProblems(leftOut)
     if (accepted.length > 0) {
       onPhotosChange([...photos, ...accepted.map((file) => ({ url: URL.createObjectURL(file), file }))])
@@ -55,7 +58,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
   const onDrop = (event: DragEvent) => {
     event.preventDefault()
     setDragging(false)
-    add([...event.dataTransfer.files])
+    void add([...event.dataTransfer.files])
   }
 
   return (
@@ -126,7 +129,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
             className={classes.input()}
             data-testid={ids.input}
             onChange={(event) => {
-              add([...(event.target.files ?? [])])
+              void add([...(event.target.files ?? [])])
               // Let the same file be chosen again after it is removed.
               event.target.value = ''
             }}
