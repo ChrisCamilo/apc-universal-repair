@@ -1,8 +1,12 @@
 name: Desktop
 
-# Builds the Windows desktop app (apps/desktop) and smoke-tests it with Playwright's Electron support on pull requests
-# that change it, the web app it packages or the shared package. The installer and the portable exe are only packaged
-# and uploaded on demand: Actions → Desktop → Run workflow.
+# The Windows desktop app (apps/desktop).
+# - Pull requests that change it, the web app it packages or the shared package: build and smoke-test it with
+#   Playwright's Electron support.
+# - Run by hand (Actions → Desktop → Run workflow): publish a version. The version comes from apps/desktop/package.json;
+#   one already released is refused. It builds, smoke-tests and packages the app, then creates the GitHub Release
+#   v<version> on the commit it built, with the installer, latest.yml and the blockmap (which the updater reads) and
+#   the portable exe. Nothing is uploaded as an artifact.
 on:
   workflow_dispatch:
   pull_request:
@@ -14,8 +18,11 @@ on:
       - ".github/workflows/desktop.yml"
 
 jobs:
-  desktop:
+  smoke:
+    if: github.event_name == 'pull_request'
     runs-on: windows-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -36,20 +43,66 @@ jobs:
       - name: Smoke test
         run: pnpm --filter @apc/desktop run test:e2e
 
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-playwright-report
+          path: apps/desktop/playwright-report/
+          retention-days: 7
+
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    # Creates the release and its tag.
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the version and refuse one already released
+        shell: bash
+        run: |
+          version=$(node -p "require('./apps/desktop/package.json').version")
+          if gh release view "v$version" >/dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            echo "::error::v$version is already released. Raise the version in apps/desktop/package.json first."
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the web app and the desktop app
+        run: pnpm turbo run build --filter=@apc/web --filter=@apc/desktop
+
+      - name: Smoke test
+        run: pnpm --filter @apc/desktop run test:e2e
+
       - name: Package
-        if: github.event_name == 'workflow_dispatch'
         run: pnpm --filter @apc/desktop exec electron-builder --win --publish never
         env:
           # Unsigned: no certificate to look for.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Upload the installer and the portable exe
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
-        with:
-          name: apc-universal-repair-windows
-          path: apps/desktop/release/*.exe
-          retention-days: 14
+      - name: Publish the release
+        shell: bash
+        working-directory: apps/desktop/release
+        run: >-
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "APC Universal Repair $VERSION"
+          --notes "Windows: download APC-Universal-Repair-Setup-$VERSION.exe to install, or the portable exe to run without installing. Installed apps update themselves."
+          "APC-Universal-Repair-Setup-$VERSION.exe" "APC-Universal-Repair-Setup-$VERSION.exe.blockmap" latest.yml
+          "APC-Universal-Repair-$VERSION-portable.exe"
 
       - name: Upload Playwright report
         if: failure()

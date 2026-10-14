@@ -126,11 +126,12 @@ The API and the database can run on a Windows computer at home, for the phone ap
 
 `apps/desktop` packages the web app as a Windows program with Electron. The shop installs it and opens it like any other app, without a browser.
 
-- **Build:** `pnpm --filter @apc/desktop dist` builds the web app and writes `APC Universal Repair Setup <version>.exe` (installer, with desktop and Start menu shortcuts) and a portable exe to `apps/desktop/release/`. The builds are unsigned.
-- **From CI:** the installer and the portable exe are only built on demand: in *Actions → Desktop → Run workflow* on GitHub, then download the `apc-universal-repair-windows` artifact of that run. Pull requests only run the desktop smoke test.
+- **Build:** `pnpm --filter @apc/desktop dist` builds the web app and writes `APC-Universal-Repair-Setup-<version>.exe` (installer, with desktop and Start menu shortcuts) and a portable exe to `apps/desktop/release/`. The builds are unsigned.
+- **Publishing a version:** versions are published on demand as [GitHub Releases](https://github.com/ChrisCamilo/apc-universal-repair/releases), never on their own. Raise `version` in `apps/desktop/package.json` (e.g. `0.1.0` → `0.2.0`) in a pull request, merge it, then run *Actions → Desktop → Run workflow* on `main`. The workflow builds and smoke-tests the app and creates the release `v<version>` on that commit, with the installer, `latest.yml` and the blockmap (what the updater reads) and the portable exe. A version already released is refused. Pull requests only run the desktop smoke test.
+- **Installing from a release:** download `APC-Universal-Repair-Setup-<version>.exe` from the release. An app installed from a release doesn't know where the project's clone is, so to let it turn the server on, set `apiDir` once in `config.json` (see *API address* below), e.g. `{ "apiDir": "C:\\APC\\apc-universal-repair\\apps\\api" }`.
 - **SmartScreen:** Windows only checks files marked as downloaded from the internet, so an installer built on the same computer, or copied over by USB drive, opens without a warning. One downloaded from CI shows *Windows protected your PC*. Either choose *More info → Run anyway*, or unblock the file first, in *Properties → Unblock* or with:
   ```powershell
-  Unblock-File ".\APC Universal Repair Setup 0.1.0.exe"
+  Unblock-File ".\APC-Universal-Repair-Setup-0.1.0.exe"
   ```
 - **The server:** when the app opens and the API on this computer doesn't answer, it starts it in the background (the same way as the [home server guide](docs/home-server.md)) and shows "Ligando o servidor" until it answers. An API that is already running is left alone, and it keeps running after the app closes, so the phone keeps working.
 - **API address:** `http://localhost:3333` by default. To use a server on another computer, create `config.json` in `%APPDATA%\APC Universal Repair` with `{ "apiUrl": "http://192.168.0.10:3333" }`; `APC_API_URL` also sets it. The app starts the server from the `apps/api` folder of the clone it was built from, or from `apiDir` in `config.json`.
@@ -296,11 +297,12 @@ A API e o banco podem rodar num computador Windows em casa, para o app do celula
 
 O `apps/desktop` empacota o app web como um programa para Windows com o Electron. A oficina instala e abre como qualquer outro programa, sem navegador.
 
-- **Build:** o `pnpm --filter @apc/desktop dist` gera o build da web e grava em `apps/desktop/release/` o `APC Universal Repair Setup <versão>.exe` (instalador, com atalhos na área de trabalho e no menu Iniciar) e um exe portátil. Os builds não são assinados.
-- **Pelo CI:** o instalador e o exe portátil só são gerados sob demanda: em *Actions → Desktop → Run workflow* no GitHub, e depois é só baixar o artefato `apc-universal-repair-windows` dessa execução. Os pull requests rodam só o smoke test do app desktop.
+- **Build:** o `pnpm --filter @apc/desktop dist` gera o build da web e grava em `apps/desktop/release/` o `APC-Universal-Repair-Setup-<versão>.exe` (instalador, com atalhos na área de trabalho e no menu Iniciar) e um exe portátil. Os builds não são assinados.
+- **Publicar uma versão:** as versões são publicadas sob demanda como [GitHub Releases](https://github.com/ChrisCamilo/apc-universal-repair/releases), nunca sozinhas. Suba o `version` em `apps/desktop/package.json` (ex.: `0.1.0` → `0.2.0`) num pull request, faça o merge e rode *Actions → Desktop → Run workflow* na `main`. O workflow gera e testa o app e cria a release `v<versão>` nesse commit, com o instalador, o `latest.yml` e o blockmap (o que o atualizador lê) e o exe portátil. Uma versão já publicada é recusada. Os pull requests rodam só o smoke test do app desktop.
+- **Instalar de uma release:** baixe o `APC-Universal-Repair-Setup-<versão>.exe` da release. Um app instalado de uma release não sabe onde está o clone do projeto, então, para ele poder ligar o servidor, defina o `apiDir` uma vez no `config.json` (veja *Endereço da API* abaixo), ex.: `{ "apiDir": "C:\\APC\\apc-universal-repair\\apps\\api" }`.
 - **SmartScreen:** o Windows só confere arquivos marcados como baixados da internet, então um instalador gerado no próprio computador, ou copiado por pendrive, abre sem aviso. Um baixado do CI mostra *O Windows protegeu o computador*. Escolha *Mais informações → Executar assim mesmo*, ou desbloqueie o arquivo antes, em *Propriedades → Desbloquear* ou com:
   ```powershell
-  Unblock-File ".\APC Universal Repair Setup 0.1.0.exe"
+  Unblock-File ".\APC-Universal-Repair-Setup-0.1.0.exe"
   ```
 - **O servidor:** quando o app abre e a API deste computador não responde, ele a liga em segundo plano (do mesmo jeito que o [guia do servidor em casa](docs/home-server.md#-português-brasil)) e mostra "Ligando o servidor" até ela responder. Uma API que já está rodando fica como está, e ela continua ligada depois que o app fecha, para o celular continuar funcionando.
 - **Endereço da API:** `http://localhost:3333` por padrão. Para usar um servidor em outro computador, crie o `config.json` em `%APPDATA%\APC Universal Repair` com `{ "apiUrl": "http://192.168.0.10:3333" }`; o `APC_API_URL` também define o endereço. O app liga o servidor a partir da pasta `apps/api` do clone em que foi gerado, ou do `apiDir` do `config.json`.

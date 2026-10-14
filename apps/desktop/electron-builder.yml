@@ -1,5 +1,7 @@
 # Packages the desktop app for Windows: `pnpm --filter @apc/desktop dist`, after the web build. The output goes to
-# release/ (gitignored): an NSIS installer and a portable exe, both unsigned, so SmartScreen warns on the first run.
+# release/ (gitignored): an NSIS installer and a portable exe, both unsigned, so SmartScreen warns on the first run,
+# plus latest.yml and the installer's blockmap, which the Desktop workflow publishes to a GitHub Release for the
+# updater. File names have no spaces, which GitHub would turn into dots and so break latest.yml.
 appId: com.apc.universalrepair
 productName: APC Universal Repair
 directories:
@@ -19,12 +21,19 @@ win:
     - nsis
     - portable
 nsis:
+  artifactName: APC-Universal-Repair-Setup-${version}.${ext}
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
 portable:
-  artifactName: ${productName} ${version} portable.${ext}
+  artifactName: APC-Universal-Repair-${version}-portable.${ext}
+# Where the updater looks for new versions: the repository's GitHub Releases, which the Desktop workflow publishes.
+publish:
+  provider: github
+  owner: ChrisCamilo
+  repo: apc-universal-repair
+  releaseType: release
 # Electron fuses: no running as plain Node, no NODE_OPTIONS or --inspect, and the app only loads from its checked ASAR.
 electronFuses:
   runAsNode: false
