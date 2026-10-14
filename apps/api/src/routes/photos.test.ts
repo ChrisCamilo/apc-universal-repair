@@ -84,13 +84,13 @@ test("API: photos that break the rules are refused before anything is stored", a
   assert.equal(badId.statusCode, 400);
 });
 
-// Stores a photo and checks the original and the thumbnail are served with their type and a long cache, a missing
-// photo is not found, and a name that isn't a photo file, such as a way out of the folder, is refused.
+// Stores a photo and checks the photo and the thumbnail are served as WebP with a long cache, a missing photo is
+// not found, and a name that isn't a photo file, such as a way out of the folder, is refused.
 test("API: stored photos are served by their file name only", async () => {
-  const stored = await storePhoto(PHOTO_ID, await photo("png"), "png");
+  const stored = await storePhoto(PHOTO_ID, await photo("png"));
   const original = await app.inject({ method: "GET", url: `/photos/${stored.file}` });
   assert.equal(original.statusCode, 200);
-  assert.equal(original.headers["content-type"], "image/png");
+  assert.equal(original.headers["content-type"], "image/webp");
   assert.equal(original.headers["cache-control"], "public, max-age=31536000, immutable");
   const thumb = await app.inject({ method: "GET", url: `/photos/${stored.thumbFile}` });
   assert.equal(thumb.headers["content-type"], "image/webp");
