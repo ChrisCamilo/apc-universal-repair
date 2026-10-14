@@ -81,6 +81,11 @@ export const mechanicIcon: IconShape[] = [
   { kind: "path", d: "M13 4.8c.6 1 1.3 2.2 1.6 3.5M14.6 8.3l-.9 4.5M14.6 8.3l.9 4.5M13.4 6l-1.6 1.6-1 1.6M10.4 8.6l.8.5" },
 ];
 export const pencilIcon: IconShape[] = [{ kind: "path", d: "M10.6 2.8l2.6 2.6-7.7 7.7-3.2.6.6-3.2 7.7-7.7z" }];
+// A triangle pointing right inside a ring: something that starts, such as a guided tour.
+export const playIcon: IconShape[] = [
+  { kind: "circle", cx: 8, cy: 8, r: 6.2 },
+  { kind: "path", d: "M6.7 5.5l3.9 2.5-3.9 2.5z" },
+];
 export const searchIcon: IconShape[] = [
   { kind: "circle", cx: 7, cy: 7, r: 4.6 },
   { kind: "path", d: "M10.4 10.4L14 14" },
@@ -106,6 +111,7 @@ export const ICONS = {
   lock: lockIcon,
   mechanic: mechanicIcon,
   pencil: pencilIcon,
+  play: playIcon,
   search: searchIcon,
   trash: trashIcon,
   user: userIcon,
