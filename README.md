@@ -40,7 +40,8 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🔔 A bell beside the user menu with the latest notifications, kept for each user ✅
 - ⏱️ The toast's duration, 5 s by default, set from 2 s to 15 s in the bell's menu ✅
 - 📉 Warnings for parts at or below their minimum stock, once while they stay low ✅
-- 🪟 Those warnings also as Windows and Android notifications
+- 🪟 Errors and warnings as Windows notifications in the desktop app, while its window is in the background ✅
+- 📱 The same as Android notifications on the phone
 
 **Next**
 
@@ -154,7 +155,7 @@ Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisC
 - **MVP ✅:** Setup → Design System → Auth (login and sign-up) → Dashboard → Inventory (with photos, CSV import and export)
 - **Optimizations ✅:** style recipes and style ids in every component, guarded by lint
 - **Phase 2 (in progress):** Catalog tab ✅ (on sample data, shown as a work in progress)
-- **Phase 3 (in progress):** notifications and toasts — toast kinds ✅, the bell ✅, the toast's duration ✅, low-stock warnings ✅ and system notifications
+- **Phase 3 (in progress):** notifications and toasts — toast kinds ✅, the bell ✅, the toast's duration ✅, low-stock warnings ✅, Windows notifications ✅ and Android notifications
 - **Next:** the API on a home computer for the mobile app ✅, Windows desktop app ✅, photo compression ✅ and Android release build
 - **Later:** 3D viewer, maintenance specs, diagnostics, reference prices, real backend and full EN/PT-BR app UI
 - **TBD:** Car Specs, the vehicle spec sheet (fuel consumption, equipment and features), with no phase yet
@@ -224,7 +225,8 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🔔 Um sino ao lado do menu do usuário com as últimas notificações, guardadas para cada usuário ✅
 - ⏱️ O tempo do aviso, 5 s por padrão, ajustado de 2 s a 15 s no menu do sino ✅
 - 📉 Avisos de peças no estoque mínimo ou abaixo dele, uma vez enquanto continuam baixas ✅
-- 🪟 Esses avisos também como notificações do Windows e do Android
+- 🪟 Erros e avisos como notificações do Windows no app desktop, enquanto a janela está em segundo plano ✅
+- 📱 O mesmo como notificações do Android no celular
 
 **Próximos passos**
 
@@ -338,7 +340,7 @@ O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https:
 - **MVP ✅:** Setup → Design System → Auth (login e cadastro) → Dashboard → Estoque (com fotos, importação e exportação por CSV)
 - **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint
 - **Fase 2 (em andamento):** aba Catálogo ✅ (com dados de exemplo, aparecendo em construção)
-- **Fase 3 (em andamento):** notificações e avisos — tipos de aviso ✅, o sino ✅, o tempo do aviso ✅, avisos de estoque baixo ✅ e notificações do sistema
+- **Fase 3 (em andamento):** notificações e avisos — tipos de aviso ✅, o sino ✅, o tempo do aviso ✅, avisos de estoque baixo ✅, notificações do Windows ✅ e notificações do Android
 - **Próximos passos:** a API num computador de casa para o app do celular ✅, app desktop para Windows ✅, compressão das fotos ✅ e build de release para Android
 - **Depois:** visualizador 3D, ficha de manutenção, diagnósticos, valores de referência, backend real e interface completa em inglês e português
 - **A definir:** Ficha técnica do veículo (consumo, equipamentos e itens de série), ainda sem fase

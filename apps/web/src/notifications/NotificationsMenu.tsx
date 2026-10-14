@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { bellIcon, gearIcon, ICON_SIZES, minusIcon, plusIcon } from '@apc/shared/icons'
 import { timeAgo, unreadBadge, type Notification } from '@apc/shared/notifications'
 import { stepToastDuration, TOAST_DURATION, TOAST_KIND_LOOKS, toastDurationLabel } from '@apc/shared/toast'
@@ -6,7 +6,8 @@ import { useSession } from '../auth/sessionContext.ts'
 import { Icon } from '../components/Icon.tsx'
 import { Menu, MenuHeader, MenuItem } from '../components/Menu.tsx'
 import { Divider } from '../components/Panel.tsx'
-import { useToastDuration } from '../components/toastContext.ts'
+import { useToastDuration, useToastFeed } from '../components/toastContext.ts'
+import { desktopBridge } from './desktopBridge.ts'
 import { bellBadge, notificationsMenu, notificationsSettings } from './NotificationsMenu.styles.ts'
 import { useNotifications } from './useNotifications.ts'
 
@@ -15,7 +16,9 @@ import { useNotifications } from './useNotifications.ts'
 // went by too fast can be read again. Opening it marks them all read, which clears the badge; the ones that were unread
 // stay lit until it closes. "Limpar notificações" empties it. Each user has their own, kept on the device. The gear in
 // its header shows "Tempo do aviso", how long a toast stays (2 s to 15 s, 5 s by default), with − and + buttons; each
-// press applies at once and keeps the menu open, like the user menu's choices.
+// press applies at once and keeps the menu open, like the user menu's choices. In the desktop app, each error and warning,
+// low-stock warnings included, also asks for a Windows notification, shown while the window isn't focused; clicking it
+// brings the window up with this menu open.
 
 /** What the menu shows since it opened: the notifications that were unread then, and the time to count from. */
 type Opened = { fresh: readonly number[]; now: Date }
@@ -30,23 +33,37 @@ function UserNotifications({ userId }: { userId: string }) {
   const { list, markRead, clear } = useNotifications(userId)
   const [opened, setOpened] = useState<Opened>({ fresh: [], now: new Date() })
   const [settings, setSettings] = useState(false)
+  const [open, setOpen] = useState(false)
   const badge = unreadBadge(list)
   const { classes, ids } = bellBadge()
   const menu = notificationsMenu()
 
   /** Marks the notifications read as the menu opens, keeping which ones were unread lit while it stays open. */
-  const openChange = (open: boolean) => {
-    if (open) {
+  const openChange = (next: boolean) => {
+    setOpen(next)
+    if (next) {
       setSettings(false)
       setOpened({ fresh: list.filter((notification) => !notification.read).map((notification) => notification.id), now: new Date() })
       markRead()
     }
   }
 
+  // In the desktop app, ask for a Windows notification of each error and warning.
+  useToastFeed((kind, message) => {
+    if (TOAST_KIND_LOOKS[kind].urgent) {
+      desktopBridge()?.notify(TOAST_KIND_LOOKS[kind].title, message)
+    }
+  })
+
+  // In the desktop app, open the menu when a Windows notification is clicked.
+  const openFromDesktop = useEffectEvent(() => openChange(true))
+  useEffect(() => desktopBridge()?.onOpenNotifications(() => openFromDesktop()), [])
+
   return (
     <Menu
       label={badge ? `Notificações, ${badge} não lidas` : 'Notificações'}
       anchor="container"
+      open={open}
       onOpenChange={openChange}
       trigger={
         <span className={classes.base()} data-testid={ids.base}>

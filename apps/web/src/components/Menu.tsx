@@ -33,6 +33,8 @@ type MenuProps = {
    * holds several menus, so a menu that isn't at the edge of a phone's screen still opens inside it.
    */
   anchor?: 'trigger' | 'container'
+  /** Whether the menu is open, when its owner decides, e.g. to open it from elsewhere; otherwise the menu keeps it. */
+  open?: boolean
   /** Called when the menu opens or closes, e.g. to mark what it lists as seen. */
   onOpenChange?: (open: boolean) => void
   children: ReactNode
@@ -60,9 +62,10 @@ function keyTarget(key: string, index: number, count: number): number | null {
   }
 }
 
-export function Menu({ label, trigger, align = 'end', anchor = 'trigger', onOpenChange, children }: MenuProps) {
+export function Menu({ label, trigger, align = 'end', anchor = 'trigger', open: owned, onOpenChange, children }: MenuProps) {
   const menuId = useId()
-  const [open, setOpen] = useState(false)
+  const [kept, setOpen] = useState(false)
+  const open = owned ?? kept
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const popover = useRef<HTMLDivElement>(null)

@@ -1,16 +1,23 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { app, BrowserWindow, Menu, session, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, Notification, session, shell } from "electron";
 import { isLocalApi, parseConfig, resolveApiUrl, type DesktopConfig } from "./config.js";
+import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
 import { apiAnswers, startApi, waitForApi } from "./server.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
 // Vite dev server when APC_DEV_URL is set. On opening, when the API on this computer doesn't answer, it starts it
 // (see server.ts) and shows "Ligando o servidor" until it does. The window can't leave the app: other addresses open
-// in the system browser, and the page gets no Node access and no permissions. Only one copy runs at a time, since two
-// would share the same localStorage.
+// in the system browser, and the page gets no Node access and no permissions: only the preload's bridge (preload.cts),
+// through which it asks for a Windows notification of an error or a warning, shown while the window isn't focused;
+// clicking it brings the window up with the bell's menu open. Only one copy runs at a time, since two would share the
+// same localStorage.
 
+/** The app's id on Windows, the same as the installer's, which Windows notifications are shown under. */
+const APP_USER_MODEL_ID = "com.apc.universalrepair";
+/** The notifications on screen, kept so they still answer a click once their request is gone. */
+const shown = new Set<Notification>();
 /** The window's size at opening and its minimum, the minimum desktop screen from AGENTS.md (1280×720). */
 const WINDOW_SIZE = { width: 1280, height: 720 };
 
@@ -52,7 +59,7 @@ function createWindow(appUrl: string): BrowserWindow {
     title: "APC Universal Repair",
     icon: path.join(app.getAppPath(), "build", "icon.png"),
     backgroundColor: "#0B0C0E",
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false },
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: path.join(import.meta.dirname, "preload.cjs") },
   });
   window.once("ready-to-show", () => window.show());
   window.webContents.on("will-navigate", (event, url) => {
@@ -92,6 +99,35 @@ async function ensureApi(window: BrowserWindow, apiUrl: string, config: DesktopC
 }
 
 /**
+ * Shows the Windows notification the page asked for, when it comes from the app and the window isn't focused; a click
+ * brings the window up and asks the page to open the bell's menu.
+ * @param appUrl The address the app is served from, which the request must come from.
+ * @param sender The page that asked.
+ * @param senderUrl The address of the frame that asked.
+ * @param payload What it sent.
+ */
+function notify(appUrl: string, sender: Electron.WebContents, senderUrl: string, payload: unknown): void {
+  const request = parseNotifyRequest(payload);
+  const window = BrowserWindow.fromWebContents(sender);
+  if (!request || !window || !senderUrl.startsWith(appUrl) || window.isFocused() || !Notification.isSupported()) {
+    return;
+  }
+  const notification = new Notification({ title: request.title, body: request.message, icon: path.join(app.getAppPath(), "build", "icon.png") });
+  notification.on("click", () => {
+    shown.delete(notification);
+    if (window.isMinimized()) {
+      window.restore();
+    }
+    window.show();
+    window.focus();
+    window.webContents.send(OPEN_NOTIFICATIONS_CHANNEL);
+  });
+  notification.on("close", () => shown.delete(notification));
+  shown.add(notification);
+  notification.show();
+}
+
+/**
  * Reads a text file, if it is there.
  * @param file The file's full path.
  * @returns Its text, or undefined when it doesn't exist.
@@ -122,10 +158,12 @@ void app.whenReady().then(async () => {
   console.log(`API: ${apiUrl}`);
 
   Menu.setApplicationMenu(null);
+  app.setAppUserModelId(APP_USER_MODEL_ID);
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
 
   const appUrl = devUrl ?? `${APP_ORIGIN}/`;
+  ipcMain.on(NOTIFY_CHANNEL, (event, payload) => notify(appUrl, event.sender, event.senderFrame?.url ?? "", payload));
   if (!devUrl) {
     const webRoot = app.isPackaged
       ? path.join(process.resourcesPath, "web")
