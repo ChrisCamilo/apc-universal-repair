@@ -7,10 +7,9 @@ import { AccessibilityInfo, Animated, Modal, ScrollView, StyleSheet, Text } from
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Circle, Path } from 'react-native-svg';
 import ReactTestRenderer from 'react-test-renderer';
-import { TOAST_DURATION_MS } from '@apc/shared/dialog';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
+import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
 import { Button } from '../src/Button';
 import { Dialog } from '../src/Dialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -187,7 +186,7 @@ test('Mobile: toasts are read out and hide on their own', async () => {
     expect(styleOf(tree, 'common.toast.message').backgroundColor).toBe(themes.gt4.day.colors.success);
 
     await ReactTestRenderer.act(async () => {
-      jest.advanceTimersByTime(TOAST_DURATION_MS);
+      jest.advanceTimersByTime(TOAST_DURATION.defaultMs);
     });
     expect(pills(tree).map((pill) => pill.props.accessibilityElementsHidden)).toEqual([true]);
     await ReactTestRenderer.act(async () => {

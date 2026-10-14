@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { SessionUser } from '@apc/shared/auth'
 import { addNotification, notificationsKey, type Notification } from '@apc/shared/notifications'
 import { themes } from '@apc/shared/theme'
+import { TOAST_DURATION, TOAST_DURATION_STORAGE_KEY } from '@apc/shared/toast'
 import { beforeAll, beforeEach, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
@@ -115,6 +116,47 @@ test("Web: each user sees only their own notifications", async () => {
   await expect.element(screen.getByRole('button', { name: /^Notificações/ })).toHaveAccessibleName('Notificações')
   await screen.getByRole('button', { name: 'Trocar usuário' }).click()
   await expect.element(screen.getByRole('button', { name: /^Notificações/ })).toHaveAccessibleName('Notificações, 3 não lidas')
+})
+
+// Opens the gear in the bell's menu and checks "Tempo do aviso" starts at 5 s; each press applies at once, is saved and
+// keeps the menu open; − stops at 2 s and + at 15 s.
+test('Web: the gear sets how long a toast stays, from 2 s to 15 s', async () => {
+  const screen = await render(<Sample />)
+  await screen.getByRole('button', { name: /^Notificações/ }).click()
+  const gear = screen.getByRole('button', { name: 'Configurações das notificações' })
+  await expect.element(gear).toHaveAttribute('aria-expanded', 'false')
+  await gear.click()
+  const setting = screen.getByRole('group', { name: 'Tempo do aviso' })
+  const value = setting.getByRole('status')
+  const shorter = setting.getByRole('button', { name: 'Diminuir o tempo do aviso' })
+  const longer = setting.getByRole('button', { name: 'Aumentar o tempo do aviso' })
+  await expect.element(value).toHaveTextContent('5 s')
+
+  await longer.click()
+  await expect.element(value).toHaveTextContent('6 s')
+  expect(localStorage.getItem(TOAST_DURATION_STORAGE_KEY)).toBe('6000')
+  await expect.element(screen.getByRole('menu')).toBeVisible()
+  for (let press = 0; press < 4; press++) await shorter.click()
+  await expect.element(value).toHaveTextContent('2 s')
+  await expect.element(shorter).toBeDisabled()
+  for (let press = 0; press < 13; press++) await longer.click()
+  await expect.element(value).toHaveTextContent('15 s')
+  await expect.element(longer).toBeDisabled()
+  expect(localStorage.getItem(TOAST_DURATION_STORAGE_KEY)).toBe(String(TOAST_DURATION.maxMs))
+})
+
+// Sets 2 s in the gear and checks the next toast starts to leave after 2 s, not the default 5 s.
+test('Web: the time picked applies to the next toast', async () => {
+  localStorage.setItem(TOAST_DURATION_STORAGE_KEY, '2000')
+  const screen = await render(<Sample />)
+  await screen.getByRole('button', { name: 'Sucesso' }).click()
+  const pill = screen.getByTestId('common.toast.message')
+  await expect.element(pill).toBeVisible()
+  const shown = performance.now()
+  await expect.element(pill, { timeout: 4000 }).toHaveAttribute('aria-hidden', 'true')
+  const stayed = performance.now() - shown
+  expect(stayed).toBeGreaterThanOrEqual(1900)
+  expect(stayed).toBeLessThan(TOAST_DURATION.defaultMs - 1000)
 })
 
 function Sample() {

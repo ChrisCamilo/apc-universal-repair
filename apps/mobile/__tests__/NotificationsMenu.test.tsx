@@ -9,7 +9,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { addNotification, notificationsKey, type Notification } from '@apc/shared/notifications';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { scales, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
-import { TOAST_KIND_LOOKS } from '@apc/shared/toast';
+import { TOAST_DURATION, TOAST_DURATION_STORAGE_KEY, TOAST_KIND_LOOKS } from '@apc/shared/toast';
 import { Button } from '../src/Button';
 import { Icon } from '../src/Icon';
 import { NotificationsMenu } from '../src/notifications/NotificationsMenu';
@@ -161,6 +161,53 @@ test('Mobile: each user sees only their own notifications', async () => {
   await saveUnread('user-oficina', 3);
   expect(bell(await mount()).props.accessibilityLabel).toBe('Notificações');
   expect(bell(await mount('user-oficina')).props.accessibilityLabel).toBe('Notificações, 3 não lidas');
+});
+
+// Opens the gear in the bell's menu and checks "Tempo do aviso" starts at 5 s; each press applies at once, is saved and
+// keeps the menu open; − stops at 2 s and + at 15 s.
+test('Mobile: the gear sets how long a toast stays, from 2 s to 15 s', async () => {
+  const tree = await mount();
+  await ReactTestRenderer.act(async () => bell(tree).props.onPress());
+  const gear = () => tree.root.find((n) => typeof n.type !== 'string' && n.props.accessibilityLabel === 'Configurações das notificações');
+  expect(gear().props.accessibilityState).toEqual({ expanded: false });
+  await press(tree, 'Configurações das notificações');
+  expect(gear().props.accessibilityState).toEqual({ expanded: true });
+  const value = () => [tree.root.find((n) => n.props.testID === 'notifications.settings.stepper.value' && typeof n.type === 'string').props.children];
+  const button = (name: string) => tree.root.find((n) => typeof n.type !== 'string' && n.props.accessibilityLabel === name && n.props.accessibilityState);
+  expect(value()).toEqual(['5 s']);
+
+  await press(tree, 'Aumentar o tempo do aviso');
+  expect(value()).toEqual(['6 s']);
+  expect(await themeStorage.getItem(TOAST_DURATION_STORAGE_KEY)).toBe('6000');
+  expect(tree.root.findByType(Modal).props.visible).toBe(true);
+  for (let step = 0; step < 4; step++) await press(tree, 'Diminuir o tempo do aviso');
+  expect(value()).toEqual(['2 s']);
+  expect(button('Diminuir o tempo do aviso').props.accessibilityState).toEqual({ disabled: true });
+  for (let step = 0; step < 13; step++) await press(tree, 'Aumentar o tempo do aviso');
+  expect(value()).toEqual(['15 s']);
+  expect(button('Aumentar o tempo do aviso').props.accessibilityState).toEqual({ disabled: true });
+  expect(await themeStorage.getItem(TOAST_DURATION_STORAGE_KEY)).toBe(String(TOAST_DURATION.maxMs));
+});
+
+// Starts with 3 s saved and checks a toast stays 3 s, then starts to leave.
+test('Mobile: the time picked applies to the next toast', async () => {
+  await themeStorage.setItem(TOAST_DURATION_STORAGE_KEY, '3000');
+  const tree = await mount();
+  jest.useFakeTimers();
+  try {
+    await press(tree, 'Sucesso');
+    const leaving = () => tree.root.find((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string').props.accessibilityElementsHidden;
+    await ReactTestRenderer.act(async () => {
+      jest.advanceTimersByTime(2999);
+    });
+    expect(leaving()).toBe(false);
+    await ReactTestRenderer.act(async () => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(leaving()).toBe(true);
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 function Triggers() {

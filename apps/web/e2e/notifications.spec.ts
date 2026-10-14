@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { Item } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
+import { TOAST_DURATION, TOAST_FADE_MS } from "@apc/shared/toast";
 import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 
@@ -43,6 +44,33 @@ function item(id: string, name: string): Item {
 async function deleteItem(page: Page, name: string) {
   await page.getByRole("button", { name: `Excluir ${name}` }).click();
   await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
+}
+
+/**
+ * Saves an item's edit unchanged, so the info toast shows, and measures how long it stays in the page.
+ * @param page The test's page.
+ * @returns The time from the toast showing to it leaving the page, fade-out included, in ms.
+ */
+async function toastLifetime(page: Page): Promise<number> {
+  await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
+  const lifetime = page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let shown = 0;
+        const observer = new MutationObserver(() => {
+          const pill = document.querySelector('[data-testid="common.toast.message"]');
+          if (pill && !shown) {
+            shown = performance.now();
+          } else if (!pill && shown) {
+            observer.disconnect();
+            resolve(performance.now() - shown);
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+      }),
+  );
+  await page.getByRole("dialog", { name: "Editar item" }).getByRole("button", { name: "Salvar" }).click();
+  return lifetime;
 }
 
 /**
@@ -107,4 +135,43 @@ test("Web: the bell keeps the latest toasts for each user", async ({ page }) => 
   await bell.click();
   await expect(page.getByText("Nenhuma notificação")).toBeVisible();
   await expect(entries).toHaveCount(0);
+});
+
+// Measures how long a toast stays: 5 s by default. Sets 3 s with the gear in the bell's menu, and checks the next toast
+// stays 3 s and the time is still 3 s after a reload; − stops at 2 s and + at 15 s.
+test("Web: the gear sets how long a toast stays", async ({ page }) => {
+  await signIn(page);
+  await serveItems(page, [...ITEMS]);
+  await page.goto("/inventory");
+  const fade = TOAST_FADE_MS + 300;
+  const byDefault = await toastLifetime(page);
+  expect(byDefault).toBeGreaterThanOrEqual(TOAST_DURATION.defaultMs);
+  expect(byDefault).toBeLessThan(TOAST_DURATION.defaultMs + fade + 500);
+
+  const bell = page.getByRole("button", { name: /^Notificações/ });
+  const setting = page.getByRole("group", { name: "Tempo do aviso" });
+  const value = setting.getByRole("status");
+  await bell.click();
+  await page.getByRole("button", { name: "Configurações das notificações" }).click();
+  await expect(value).toHaveText("5 s");
+  await setting.getByRole("button", { name: "Diminuir o tempo do aviso" }).click();
+  await setting.getByRole("button", { name: "Diminuir o tempo do aviso" }).click();
+  await expect(value).toHaveText("3 s");
+  await page.keyboard.press("Escape");
+  const picked = await toastLifetime(page);
+  expect(picked).toBeGreaterThanOrEqual(3000);
+  expect(picked).toBeLessThan(4000);
+
+  await page.reload();
+  await bell.click();
+  await page.getByRole("button", { name: "Configurações das notificações" }).click();
+  await expect(value).toHaveText("3 s");
+  const shorter = setting.getByRole("button", { name: "Diminuir o tempo do aviso" });
+  const longer = setting.getByRole("button", { name: "Aumentar o tempo do aviso" });
+  await shorter.click();
+  await expect(value).toHaveText("2 s");
+  await expect(shorter).toBeDisabled();
+  for (let press = 0; press < 13; press++) await longer.click();
+  await expect(value).toHaveText("15 s");
+  await expect(longer).toBeDisabled();
 });
