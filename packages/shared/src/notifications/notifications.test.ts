@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   addNotification,
+  lowStockAlerts,
+  lowStockKey,
+  lowStockMessage,
+  readLowStockWarned,
   markAllRead,
   NOTIFICATIONS_LIMIT,
   notificationsKey,
@@ -70,4 +74,30 @@ test("Shared: the history reads back from storage, and broken data as none", () 
 test("Shared: each user's notifications have their own key", () => {
   assert.equal(notificationsKey("user-christian"), "apc-notifications:user-christian");
   assert.notEqual(notificationsKey("user-christian"), notificationsKey("user-oficina"));
+});
+
+// Checks the low-stock warning: an item at its minimum, or out of stock, is warned about once; while it stays low it
+// isn't again; once its stock is fine it leaves the list, and falling again warns again. Several at once make one text.
+test("Shared: an item low on stock is warned about once while it stays low", () => {
+  const filter = { id: "a", name: "Filtro de óleo", quantity: 2, minQuantity: 2 };
+  const pads = { id: "b", name: "Pastilha", quantity: 9, minQuantity: 3 };
+  const pump = { id: "c", name: "Bomba d'água", quantity: 0, minQuantity: 0 };
+  const first = lowStockAlerts([filter, pads, pump], []);
+  assert.deepEqual(first, { alerts: [filter, pump], warned: ["a", "c"] });
+  assert.deepEqual(lowStockAlerts([{ ...filter, quantity: 1 }, pads, pump], first.warned).alerts, []);
+  const restocked = lowStockAlerts([{ ...filter, quantity: 5 }, pads, pump], first.warned);
+  assert.deepEqual(restocked, { alerts: [], warned: ["c"] });
+  assert.deepEqual(lowStockAlerts([filter, pads, pump], restocked.warned).alerts, [filter]);
+
+  assert.equal(lowStockMessage([filter]), "Estoque baixo: “Filtro de óleo” (2 de 2)");
+  assert.equal(lowStockMessage([filter, pump, pads, pads]), "Estoque baixo em 4 itens");
+});
+
+// Reads back the items already warned about, and anything unreadable as none; each user has their own key.
+test("Shared: the items warned about read back from storage, for each user", () => {
+  assert.deepEqual(readLowStockWarned(JSON.stringify(["a", "c"])), ["a", "c"]);
+  for (const odd of [null, "{", JSON.stringify([1])]) {
+    assert.deepEqual(readLowStockWarned(odd), []);
+  }
+  assert.equal(lowStockKey("user-christian"), "apc-low-stock:user-christian");
 });
