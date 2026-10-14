@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon.tsx'
 import { Menu, MenuHeader, MenuItem } from '../components/Menu.tsx'
 import { Divider } from '../components/Panel.tsx'
 import { useToastDuration, useToastFeed } from '../components/toastContext.ts'
-import { desktopBridge } from './desktopBridge.ts'
+import { desktopBridge } from '../desktop/desktopBridge.ts'
 import { bellBadge, notificationsMenu, notificationsSettings } from './NotificationsMenu.styles.ts'
 import { useNotifications } from './useNotifications.ts'
 

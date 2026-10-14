@@ -9,42 +9,46 @@ import { CatalogTab } from './dashboard/CatalogTab.tsx'
 import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
 import { InventoryTab } from './dashboard/InventoryTab.tsx'
 import { UserMenu } from './dashboard/UserMenu.tsx'
+import { UpdateNotice } from './desktop/UpdateNotice.tsx'
 import { NotificationsMenu } from './notifications/NotificationsMenu.tsx'
 
 // The app's routes. /login is the login screen and /register the sign-up; the Dashboard, behind them, frames every
 // tab at its own path. "/" opens the last tab used (the Inventory tab the first time) and any unknown path goes back
 // there. Only a logged user reaches the Dashboard: anyone else goes to /login and, once logged in or signed up, back
-// to where they were going.
+// to where they were going. In the desktop app, the notice that a new version is ready shows over any of them.
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <SessionProvider auth={auth}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route
-            path="/"
-            element={
-              <RequireSession>
-                <DashboardLayout
-                  userMenu={
-                    <>
-                      <NotificationsMenu />
-                      <UserMenu />
-                    </>
-                  }
-                />
-              </RequireSession>
-            }
-          >
-            <Route path="inventory" element={<InventoryTab />} />
-            <Route path="catalog" element={<CatalogTab />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </SessionProvider>
-    </BrowserRouter>
+    <>
+      <BrowserRouter>
+        <SessionProvider auth={auth}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/"
+              element={
+                <RequireSession>
+                  <DashboardLayout
+                    userMenu={
+                      <>
+                        <NotificationsMenu />
+                        <UserMenu />
+                      </>
+                    }
+                  />
+                </RequireSession>
+              }
+            >
+              <Route path="inventory" element={<InventoryTab />} />
+              <Route path="catalog" element={<CatalogTab />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SessionProvider>
+      </BrowserRouter>
+      <UpdateNotice />
+    </>
   )
 }
 

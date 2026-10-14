@@ -92,3 +92,23 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
   expect(await page.evaluate(() => document.documentElement.dataset.mode)).toBe(mode);
   await app.close();
 });
+
+// With the preload, the page still has no Node: no require and no process. The bridge gives it only its four calls,
+// for the notifications and the update. Run unpackaged, the app doesn't check for updates, so the update notice's live
+// region is there and empty.
+test("Desktop: the page gets only the bridge's calls, with no Node access", async () => {
+  const app = await launch(mkdtempSync(path.join(tmpdir(), "apc-desktop-")));
+  try {
+    const page = await app.firstWindow();
+    await expect(page).toHaveURL(/^app:\/\/apc\/login/);
+    const exposed = await page.evaluate(() => ({
+      require: typeof require,
+      process: typeof process,
+      bridge: Object.keys((window as unknown as { apcDesktop: object }).apcDesktop).sort(),
+    }));
+    expect(exposed).toEqual({ require: "undefined", process: "undefined", bridge: ["notify", "onOpenNotifications", "onUpdateReady", "restartToUpdate"] });
+    await expect(page.getByTestId("setup.update-notice")).toBeEmpty();
+  } finally {
+    await app.close();
+  }
+});

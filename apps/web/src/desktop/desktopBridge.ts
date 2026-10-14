@@ -1,5 +1,6 @@
-// What the desktop app's preload hands the page (see apps/desktop/src/preload.cts): asking for a Windows notification,
-// and hearing when one was clicked. In a browser there is none, and the web app shows nothing extra.
+// What the desktop app's preload hands the page (see apps/desktop/src/preload.cts): asking for a Windows notification
+// and hearing when one was clicked, and hearing when a new version is ready and asking to restart into it. In a
+// browser there is none, and the web app shows nothing extra.
 
 /** The desktop app's bridge. */
 export type DesktopBridge = {
@@ -7,6 +8,10 @@ export type DesktopBridge = {
   notify: (title: string, message: string) => void
   /** Calls a listener each time a notification is clicked, and gives the way to stop. */
   onOpenNotifications: (listener: () => void) => () => void
+  /** Calls a listener with the new version's number once it is downloaded, at once if it already is, and gives the way to stop. */
+  onUpdateReady: (listener: (version: string) => void) => () => void
+  /** Closes the app and installs the new version, which opens once it is in. */
+  restartToUpdate: () => void
 }
 
 declare global {

@@ -1,18 +1,22 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, ipcMain, Menu, Notification, session, shell } from "electron";
+import electronUpdater from "electron-updater";
 import { isLocalApi, parseConfig, resolveApiUrl, type DesktopConfig } from "./config.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
 import { apiAnswers, startApi, waitForApi } from "./server.js";
+import { CHECK_INTERVAL_MS, checksForUpdates, RESTART_TO_UPDATE_CHANNEL, UPDATE_READY_CHANNEL } from "./update.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
 // Vite dev server when APC_DEV_URL is set. On opening, when the API on this computer doesn't answer, it starts it
 // (see server.ts) and shows "Ligando o servidor" until it does. The window can't leave the app: other addresses open
 // in the system browser, and the page gets no Node access and no permissions: only the preload's bridge (preload.cts),
 // through which it asks for a Windows notification of an error or a warning, shown while the window isn't focused;
-// clicking it brings the window up with the bell's menu open. Only one copy runs at a time, since two would share the
-// same localStorage.
+// clicking it brings the window up with the bell's menu open. The installed app updates itself from GitHub Releases
+// (see update.ts): it checks once its window shows and every 6 hours, downloads a new version in the background, tells
+// the page so it shows a notice, and installs it on quit, or at once when the page asks. Without internet it keeps
+// working on its version. Only one copy runs at a time, since two would share the same localStorage.
 
 /** The app's id on Windows, the same as the installer's, which Windows notifications are shown under. */
 const APP_USER_MODEL_ID = "com.apc.universalrepair";
@@ -23,6 +27,8 @@ const WINDOW_SIZE = { width: 1280, height: 720 };
 
 /** The Vite dev server, when running in development; otherwise the window loads app://apc. */
 const devUrl = process.env.APC_DEV_URL;
+// electron-updater is CommonJS, so its named exports come from the default one.
+const { autoUpdater } = electronUpdater;
 
 registerAppScheme();
 // A separate userData folder, for the smoke test or a second setup on the same computer.
@@ -140,6 +146,42 @@ function readIfThere(file: string): string | undefined {
   }
 }
 
+/**
+ * Keeps the installed app up to date: checks GitHub Releases once the window shows and every 6 hours after, downloads
+ * a new version in the background (only what changed, from the blockmap, checked against latest.yml's sha512), and
+ * tells the page when it is ready. It installs silently on quit, or at once when the page asks to restart. A failed
+ * check, such as one with no internet, is only logged.
+ * @param window The app's window.
+ * @param appUrl The address the app is served from, which a restart request must come from.
+ */
+function watchForUpdates(window: BrowserWindow, appUrl: string): void {
+  let ready: string | undefined;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on("error", (error) => console.warn(`Couldn't update the app: ${error.message}`));
+  autoUpdater.on("update-downloaded", ({ version }) => {
+    ready = version;
+    window.webContents.send(UPDATE_READY_CHANNEL, version);
+  });
+  // A page that loads after the update is ready, such as the app after "Ligando o servidor", hears it too.
+  window.webContents.on("did-finish-load", () => {
+    if (ready) {
+      window.webContents.send(UPDATE_READY_CHANNEL, ready);
+    }
+  });
+  ipcMain.on(RESTART_TO_UPDATE_CHANNEL, (event) => {
+    if (ready && (event.senderFrame?.url ?? "").startsWith(appUrl)) {
+      autoUpdater.quitAndInstall(true, true);
+    }
+  });
+  // The error listener has logged what went wrong already.
+  const check = () => autoUpdater.checkForUpdates().catch(() => undefined);
+  window.once("show", () => {
+    void check();
+    setInterval(() => void check(), CHECK_INTERVAL_MS);
+  });
+}
+
 app.on("second-instance", () => {
   const [window] = BrowserWindow.getAllWindows();
   if (window) {
@@ -171,6 +213,9 @@ void app.whenReady().then(async () => {
     serveApp(webRoot, apiUrl);
   }
   const window = createWindow(appUrl);
+  if (checksForUpdates({ isPackaged: app.isPackaged, devUrl, portableDir: process.env.PORTABLE_EXECUTABLE_DIR })) {
+    watchForUpdates(window, appUrl);
+  }
   await ensureApi(window, apiUrl, config);
   await window.loadURL(appUrl);
 });
