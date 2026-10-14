@@ -16,10 +16,10 @@ export const TOAST_FADE_MS = scales.motion.durationMs;
 
 /** Each kind's look and how screen readers announce it. */
 export const TOAST_KIND_LOOKS: Record<ToastKind, ToastKindLook> = {
-  error: { color: "danger", onColor: "onDanger", icon: closeRingIcon, urgent: true },
-  info: { color: "info", onColor: "onInfo", icon: infoIcon, urgent: false },
-  success: { color: "success", onColor: "onSuccess", icon: checkRingIcon, urgent: false },
-  warning: { color: "warn", onColor: "onWarn", icon: alertIcon, urgent: true },
+  error: { title: "Erro", color: "danger", onColor: "onDanger", icon: closeRingIcon, urgent: true },
+  info: { title: "Informação", color: "info", onColor: "onInfo", icon: infoIcon, urgent: false },
+  success: { title: "Sucesso", color: "success", onColor: "onSuccess", icon: checkRingIcon, urgent: false },
+  warning: { title: "Aviso", color: "warn", onColor: "onWarn", icon: alertIcon, urgent: true },
 };
 export const TOAST_KINDS = ["success", "error", "info", "warning"] as const;
 
@@ -56,11 +56,13 @@ export function toastDurationLabel(ms: number): string {
 
 export type ToastKind = (typeof TOAST_KINDS)[number];
 export type ToastKindLook = {
+  /** The kind's name, the title of a Windows notification of it. */
+  title: string;
   /** The status color behind the message. */
   color: ColorToken;
   /** The color of the message and the icon on it. */
   onColor: ColorToken;
   icon: IconShape[];
-  /** Read out at once, interrupting what the screen reader is saying (role="alert" on web). */
+  /** Read out at once, interrupting what the screen reader is saying (role="alert" on web); also a Windows notification in the desktop app while its window isn't focused. */
   urgent: boolean;
 };

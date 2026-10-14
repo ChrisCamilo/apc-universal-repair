@@ -27,6 +27,14 @@ test("Shared: every toast kind has its own color and icon", () => {
   );
 });
 
+// Checks each kind has its own name, the title of a Windows notification of it.
+test("Shared: every toast kind has its own name", () => {
+  assert.deepEqual(
+    TOAST_KINDS.map((kind) => TOAST_KIND_LOOKS[kind].title),
+    ["Sucesso", "Erro", "Informação", "Aviso"],
+  );
+});
+
 // Checks errors and warnings are read out at once and successes and infos politely, after what is being read.
 test("Shared: only errors and warnings interrupt screen readers", () => {
   assert.deepEqual(
