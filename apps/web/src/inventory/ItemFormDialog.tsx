@@ -5,8 +5,10 @@ import {
   codeTakenMessage,
   EMPTY_ITEM_FORM,
   ITEM_FIELD_LABELS,
+  ITEM_UNCHANGED_MESSAGE,
   itemDetailTexts,
   itemFormBody,
+  itemFormChanged,
   itemFormErrors,
   itemFormOf,
   itemFormOptions,
@@ -17,7 +19,7 @@ import {
   type ItemFormErrors,
 } from '@apc/shared/item-form'
 import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists'
-import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
+import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/shared/photos'
 import { Button } from '../components/Button.tsx'
 import { Combobox } from '../components/Combobox.tsx'
 import { Dialog } from '../components/Dialog.tsx'
@@ -40,8 +42,8 @@ import type { CreateListEntry } from './useItemLists.ts'
 // typing and says at once when another item uses it; the texts start with a capital letter when leaving the field and
 // again on save, and the price is shown back in reais. Saving checks the required fields and a code another item uses,
 // then sends the item to the API, shows a toast and hands the saved item over, then sends its photos when they changed:
-// up to 3, the first the cover, as the ImageUpload field holds them. When the item is saved but its photos aren't, the
-// toast says so. Opened on an item's details, the same dialog shows each field as text in the form's layout, with
+// up to 3, the first the cover, as the ImageUpload field holds them. When the item is saved but its photos aren't, a
+// warning toast says so; an edit that changes nothing isn't sent, and an info toast says so. Opened on an item's details, the same dialog shows each field as text in the form's layout, with
 // Fechar and Editar: nothing can be changed or saved until Editar unlocks the fields in place, on the first one, and
 // the buttons turn into Cancelar and Salvar alterações, which save like the edit form. The owner may open it with
 // values filled in and follow what is typed, as the Inventory tutorial does.
@@ -149,11 +151,19 @@ export function ItemFormDialog({
     toast.success(ITEM_LIST_TEXTS[kind].created(entry.name))
   }
 
-  /** Checks the form and sends the item, or shows what keeps it from being saved. */
+  /**
+   * Checks the form and sends the item, or shows what keeps it from being saved; an edit that changes nothing isn't
+   * sent, and an info toast says so.
+   */
   const save = async () => {
     const found = itemFormErrors(form, items, lists, item?.id)
     setErrors(found)
     if (Object.values(found).some(Boolean)) {
+      return
+    }
+    if (item && !itemFormChanged(form, item, options.colors) && !photosChanged(photoParts(photos, item.photos, API_BASE), item.photos)) {
+      toast.info(ITEM_UNCHANGED_MESSAGE)
+      onClose()
       return
     }
     setSaving(true)
