@@ -1,7 +1,7 @@
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
 import { displayLabel, menuItemStyles } from './styles/shared';
-import { fontFamily, softHairline, withAlpha } from './theme';
+import { fontFamily, softAccent, softHairline } from './theme';
 
 // The look of the dropdown menu, the same as the web: a pill trigger that lights up in the accent while open, its
 // chevron turning, and a panel with the sheen under it. Inside it: a header, small section labels, action items, and
@@ -52,7 +52,7 @@ export const useStyles = createStyles(
         paddingLeft: scales.space.s1,
         paddingRight: scales.space.s3,
       },
-      triggerOpen: { borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft) },
+      triggerOpen: { borderColor: colors.accent, backgroundColor: softAccent(theme) },
     };
   },
 );

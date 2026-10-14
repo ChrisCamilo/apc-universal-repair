@@ -52,7 +52,6 @@ function scaleVars(): Record<string, string> {
     'space-unit': px(scales.space.s1),
     'hairline-width': px(scales.hairline),
     'hairline-soft': `color-mix(in srgb, var(--hairline) ${scales.hairlineSoft * 100}%, transparent)`,
-    'accent-soft': `color-mix(in srgb, var(--accent) ${scales.accentSoft * 100}%, transparent)`,
     'warn-soft': `color-mix(in srgb, var(--warn) ${scales.statusTint.warn * 100}%, transparent)`,
     'warn-soft-hover': `color-mix(in srgb, var(--warn) ${scales.statusTint.warnHover * 100}%, transparent)`,
     'danger-soft': `color-mix(in srgb, var(--danger) ${scales.statusTint.danger * 100}%, transparent)`,
@@ -113,7 +112,7 @@ export function themeCss(): string {
 }
 
 /**
- * Lists the CSS variables of one style in one mode: colors, display face, radii, glow and sheen.
+ * Lists the CSS variables of one style in one mode: colors, display face, radii, glow, sheen and the soft accent.
  * @param theme Tokens of the style and mode.
  * @param mode Mode the tokens belong to; decides whether the sheen is white (night) or black (day).
  * @returns Variable names (without `--`) mapped to CSS values.
@@ -133,5 +132,6 @@ function themeVars(theme: Theme, mode: Mode): Record<string, string> {
       ? `0 0 ${px(theme.glow.blur)} color-mix(in srgb, var(--accent) ${theme.glow.opacity * 100}%, transparent)`
       : 'none',
     sheen: sheenGradient(theme.sheen, mode),
+    'accent-soft': `color-mix(in srgb, var(--accent) ${scales.accentSoft[mode] * 100}%, transparent)`,
   }
 }

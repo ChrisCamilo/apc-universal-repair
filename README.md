@@ -26,7 +26,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🖼️ Up to 3 photos per part, with a large viewer
 - 📄 Batch import of parts from CSV, and export of the list (every page, optionally with the photo paths) in the same format
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
-- 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes
+- 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes; by day each one is tinted in its own hue (sand, steel blue, warm grey-red and sage), with no white panels
 
 **Phase 2 (in progress)**
 
@@ -218,7 +218,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande
 - 📄 Importação de peças em lote por CSV, e exportação da lista (todas as páginas, com o caminho das fotos se quiser) no mesmo formato
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
-- 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro
+- 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro; de dia cada um é tingido no seu próprio tom (areia, azul-aço, cinza-avermelhado e sálvia), sem painéis brancos
 
 **Fase 2 (em andamento)**
 

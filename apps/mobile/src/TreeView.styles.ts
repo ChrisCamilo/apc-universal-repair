@@ -2,7 +2,7 @@ import { ICON_SIZES } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
 import { glow } from './styles/shared';
-import { fontFamily, softHairline, withAlpha } from './theme';
+import { fontFamily, softAccent, softHairline } from './theme';
 
 // The look of the tree, the same as the web: rows in the display face at the top level, the body face in between and
 // the mono face for the leaves; the selected or highlighted row on the soft accent with an accent rule on its left;
@@ -56,7 +56,7 @@ export const useStyles = createStyles(
         borderRadius: theme.radiusTile,
         backgroundColor: 'transparent',
       },
-      rowActive: { borderLeftColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft), ...glow(theme) },
+      rowActive: { borderLeftColor: colors.accent, backgroundColor: softAccent(theme), ...glow(theme) },
       rowPressed: { backgroundColor: colors.panelRaised },
       spacer: { width: ICON_SIZES.caret },
       tree: {},

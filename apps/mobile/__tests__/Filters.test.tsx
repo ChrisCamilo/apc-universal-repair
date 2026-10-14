@@ -10,6 +10,7 @@ import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Styl
 import { FilterChip, FilterChipGroup } from '../src/FilterChip';
 import { ClearFilters, FilterMenu } from '../src/FilterMenu';
 import { Select } from '../src/Select';
+import { withAlpha } from '../src/theme';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 const CATEGORIES = ['Arrefecimento', 'Elétrica', 'Freios', 'Ignição', 'Motor', 'Suspensão', 'Transmissão'].map(
@@ -100,7 +101,7 @@ for (const style of STYLES) {
       expect(styleOf(pressable(tree, 'Categoria')).borderColor).toBe(colors.accent);
       expect(styleOf(pressable(tree, 'Estoque baixo'))).toMatchObject({
         borderColor: colors.accent,
-        backgroundColor: colors.accent + '21',
+        backgroundColor: withAlpha(colors.accent, scales.accentSoft[mode]),
       });
       expect(styleOf(pressable(tree, 'Esgotado')).backgroundColor).toBe('transparent');
     });

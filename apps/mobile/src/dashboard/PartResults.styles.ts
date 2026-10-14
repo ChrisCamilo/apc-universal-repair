@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily, withAlpha } from '../theme';
+import { fontFamily, softAccent, withAlpha } from '../theme';
 
 // The look of the parts a Catalog search by code found, the same as the web: a box in the soft accent, its parts
 // clear at rest, the panel fill while pressed, and the chosen one with the accent frame on the panel fill.
@@ -19,7 +19,7 @@ export const useStyles = createStyles(
       borderWidth: scales.hairline,
       borderColor: withAlpha(theme.colors.accent, FRAME_OPACITY),
       borderRadius: theme.radiusTile,
-      backgroundColor: withAlpha(theme.colors.accent, scales.accentSoft),
+      backgroundColor: softAccent(theme),
     },
     code: { fontFamily: fontFamily(scales.monoFont), fontSize: scales.fontSize.xs, color: theme.colors.accent },
     line: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: scales.space.s2 },

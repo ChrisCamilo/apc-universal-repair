@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { MODES, scales, STYLES, themes, type Mode } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
@@ -19,13 +19,14 @@ function rgb(hex: string): string {
 }
 
 /**
- * Lets the browser compute a theme color at 13%, the soft accent, in the form it reports it.
+ * Lets the browser compute the soft accent of a mode, the accent at its soft opacity, in the form it reports it.
  * @param hex Accent color as `#RRGGBB`.
+ * @param mode The mode, whose soft opacity it takes: stronger by day.
  * @returns The computed color.
  */
-function softAccent(hex: string): string {
+function softAccent(hex: string, mode: Mode): string {
   const probe = document.createElement('span')
-  probe.style.color = `color-mix(in srgb, ${hex} 13%, transparent)`
+  probe.style.color = `color-mix(in srgb, ${hex} ${scales.accentSoft[mode] * 100}%, transparent)`
   document.body.append(probe)
   const color = getComputedStyle(probe).color
   probe.remove()
@@ -59,7 +60,7 @@ for (const style of STYLES) {
       expect(off.fontFamily).toMatch(new RegExp(`^"?${theme.displayFont}`))
       expect(on.color).toBe(rgb(theme.colors.accent))
       expect(on.borderColor).toBe(rgb(theme.colors.accent))
-      expect(on.backgroundColor).toBe(softAccent(theme.colors.accent))
+      expect(on.backgroundColor).toBe(softAccent(theme.colors.accent, mode))
     })
   }
 }

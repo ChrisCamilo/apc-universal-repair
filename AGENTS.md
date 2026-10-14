@@ -296,6 +296,7 @@ const { styles, ids } = useStyles()
 ### Values
 
 - **Tokens first:** every color, size, space, radius, font and duration comes from the tokens (`@apc/shared/theme`, the Tailwind token classes on web).
+- **No white by day:** in day mode the canvas, the panels and the raised panels are tinted in the style's hue, each a visible step from the next, and never `#FFFFFF`; a new surface uses one of those tokens rather than white. The soft accent (`accentSoft`) is stronger by day. `tokens.test.ts` guards both, with WCAG AA for text and status colors on every surface.
 - **Named constants:** a value that has a meaning or repeats is a named constant. A constant only one component uses is exported from its style file (`FRAME_OPACITY`, `BADGE_WIDTH`), so its tests import it. One both apps or several components use goes in `@apc/shared`: screen sizes in `screens`, icon sizes in `icons` (`ICON_SIZES`), the table's breakpoint in `table`.
 - **Breakpoints:** they have names (`card:`, `max-card:`), built from the shared constants in `tailwind.config.ts`, never `max-[720px]:`.
 - **Runtime values only:** the JSX keeps only values known at run time (measured positions, insets, the window's size, `Animated` values). On mobile they go last in the style array, `[styles.card, { top }]`; on web, `style` only takes a style function's result, never an object written in the JSX.

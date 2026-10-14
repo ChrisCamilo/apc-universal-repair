@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
 import { displayLabel } from './styles/shared';
-import { softHairline, withAlpha } from './theme';
+import { softAccent, softHairline } from './theme';
 
 // The look of the quick-filter chips, the same as the web: a soft hairline pill in the muted display face that lights
 // up in the accent when on; pressing shows what hover shows on the web. The group wraps them.
@@ -12,7 +12,7 @@ export const useStyles = createStyles('common.filter-chip', { chip: '', label: '
   return {
     chip: { borderWidth: scales.hairline, borderColor: softHairline(theme), borderRadius: scales.radiusPill, backgroundColor: 'transparent' },
     chipMd: { paddingHorizontal: scales.space.s3, paddingVertical: scales.space.s1 },
-    chipOn: { borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft) },
+    chipOn: { borderColor: colors.accent, backgroundColor: softAccent(theme) },
     chipPressed: { borderColor: colors.hairline },
     chipSm: { paddingHorizontal: scales.space.s2, paddingVertical: scales.space.s1 / 2 },
     label: { ...displayLabel(theme, 'xs'), color: colors.textMuted },

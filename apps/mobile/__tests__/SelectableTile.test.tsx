@@ -62,7 +62,7 @@ for (const style of STYLES) {
       const { colors } = theme;
       const tree = await mount(style, mode, <Sample />);
       const chosen = look(tree, 'Chevrolet');
-      expect(chosen.frame).toMatchObject({ borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft) });
+      expect(chosen.frame).toMatchObject({ borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft[mode]) });
       expect(chosen.color).toBe(colors.accent);
       expect(chosen.frame.shadowColor).toBe(theme.glow ? colors.accent : undefined);
       const other = look(tree, 'Fiat');
