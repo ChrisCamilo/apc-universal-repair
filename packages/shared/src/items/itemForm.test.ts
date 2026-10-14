@@ -8,6 +8,7 @@ import {
   ITEM_FORM_MESSAGES,
   itemDetailTexts,
   itemFormBody,
+  itemFormChanged,
   itemFormErrors,
   itemFormOf,
   itemFormOptions,
@@ -183,6 +184,15 @@ test("Shared: an item fills the form and saves back unchanged", () => {
   const body = itemFormBody(form, []);
   assert.equal(body.unitPriceCents, FILTER.unitPriceCents);
   assert.equal(body.color, "N/A");
+});
+
+// Fills the form with an item and checks it is no change as it is, nor with fields only written differently (the name
+// in lowercase, the price without its last zero), and is one once a quantity changes.
+test("Shared: an edit only changes the item when what is sent differs", () => {
+  const form = itemFormOf(FILTER);
+  assert.equal(itemFormChanged(form, FILTER, []), false);
+  assert.equal(itemFormChanged({ ...form, name: "filtro de óleo", price: "39,9" }, FILTER, []), false);
+  assert.equal(itemFormChanged({ ...form, quantity: "7" }, FILTER, []), true);
 });
 
 // Lists the options and checks the comboboxes offer every name of the lists, sorted, the colors are the ones in

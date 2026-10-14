@@ -178,8 +178,8 @@ export function InventoryTab() {
   // Whether the Filtros menu is open.
   const [filtering, setFiltering] = useState(false)
   const tutorial = useInventoryTutorial()
-  // Whether the tutorial runs, and the items on screen when it last sent a change: until the list loads again, the
-  // change is still on its way.
+  // Whether the tutorial runs, and the items on screen when it, or a save or delete of the user, last sent a change:
+  // until the list loads again, the change is still on its way, and the tutorial doesn't take it as left undone.
   const [touring, setTouring] = useState(false)
   const [sentWith, setSentWith] = useState<Item[]>()
   // The item the delete confirmation asks about, while it is open.
@@ -480,6 +480,7 @@ export function InventoryTab() {
             setPage(1)
           }
           setForm((current) => ({ ...current, open: false }))
+          setSentWith(items)
           reload()
         }}
       />
@@ -549,6 +550,7 @@ export function InventoryTab() {
             setPage(page - 1)
           }
           setRemoving(undefined)
+          setSentWith(items)
           reload()
         }}
       />

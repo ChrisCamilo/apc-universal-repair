@@ -5,10 +5,12 @@
 import React, { useState } from 'react';
 import { AccessibilityInfo, Modal, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Circle, Path } from 'react-native-svg';
 import ReactTestRenderer from 'react-test-renderer';
 import { TOAST_DURATION_MS } from '@apc/shared/dialog';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
 import { Button } from '../src/Button';
 import { Dialog } from '../src/Dialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -147,15 +149,16 @@ test('Mobile: a closable dialog closes on the × beside its title', async () => 
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
-// Shows a toast and checks it is read out and shown in the text color turned around, then hides on its own.
+// Shows a success toast and checks it is read out after what is being read and shown in the success color, then hides
+// on its own.
 test('Mobile: toasts are read out and hide on their own', async () => {
   jest.useFakeTimers();
-  const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+  const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions');
   try {
     const tree = await mount('gt4', 'day', <Trigger />);
     await ReactTestRenderer.act(async () => tree.root.find((n) => typeof n.props.style === 'function').props.onPress());
-    expect(announce).toHaveBeenCalledWith('Item adicionado');
-    expect(styleOf(tree, 'common.toast.message').backgroundColor).toBe(themes.gt4.day.colors.text);
+    expect(announce).toHaveBeenCalledWith('Item adicionado', { queue: true });
+    expect(styleOf(tree, 'common.toast.message').backgroundColor).toBe(themes.gt4.day.colors.success);
 
     await ReactTestRenderer.act(async () => {
       jest.advanceTimersByTime(TOAST_DURATION_MS);
@@ -191,7 +194,49 @@ function DialogWithToast() {
   );
 }
 
-function Trigger() {
+function Trigger({ kind = 'success', message = 'Item adicionado' }: { kind?: ToastKind; message?: string }) {
   const toast = useToast();
-  return <Button onPress={() => toast('Item adicionado')}>Adicionar</Button>;
+  return <Button onPress={() => toast[kind](message)}>{message}</Button>;
+}
+
+for (const [style, mode] of [
+  ['eighties', 'night'],
+  ['gt4', 'day'],
+] as [Style, Mode][]) {
+  // Shows a toast of each kind in one night and one day theme, and checks its pill takes the kind's status color, its
+  // message and icon the color drawn on it, its icon is the kind's, and that errors and warnings are read out at once
+  // and successes and infos after what is being read.
+  test(`Mobile: each toast kind has its color, icon and announcement in ${style}/${mode}`, async () => {
+    const urgent = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+    const polite = jest.spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions').mockImplementation(() => {});
+    const { colors } = themes[style][mode];
+    try {
+      const tree = await mount(
+        style,
+        mode,
+        <>
+          {TOAST_KINDS.map((kind) => (
+            <Trigger key={kind} kind={kind} message={`Aviso de ${kind}`} />
+          ))}
+        </>,
+      );
+      for (const kind of TOAST_KINDS) {
+        const look = TOAST_KIND_LOOKS[kind];
+        const trigger = tree.root.find((n) => typeof n.props.style === 'function' && n.findAll((c) => c.props.children === `Aviso de ${kind}`).length > 0);
+        await ReactTestRenderer.act(async () => trigger.props.onPress());
+        expect(styleOf(tree, 'common.toast.message').backgroundColor).toBe(colors[look.color]);
+        expect(styleOf(tree, 'common.toast.message.text').color).toBe(colors[look.onColor]);
+        const pill = tree.root.find((n) => n.props.testID === 'common.toast.message' && typeof n.type === 'string');
+        const icon = pill.find((n) => n.props.testID === 'common.icon' && typeof n.type !== 'string');
+        expect(icon.props.stroke).toBe(colors[look.onColor]);
+        const drawn = icon.findAll((n) => n.type === Path || n.type === Circle);
+        expect(drawn.map((n) => n.props.d ?? n.props.r)).toEqual(look.icon.map((shape) => (shape.kind === 'path' ? shape.d : shape.kind === 'circle' ? shape.r : null)));
+        expect((look.urgent ? urgent : polite).mock.lastCall?.[0]).toBe(`Aviso de ${kind}`);
+      }
+      expect(urgent.mock.calls.map(([message]) => message)).toEqual(['Aviso de error', 'Aviso de warning']);
+    } finally {
+      urgent.mockRestore();
+      polite.mockRestore();
+    }
+  });
 }

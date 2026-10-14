@@ -153,7 +153,7 @@ test('Web: a change the owner could not save is reported', async () => {
   const screen = await render(<Sample initial={PHOTOS} failSave />)
   await screen.getByRole('button', { name: 'Remover esta foto' }).click()
   await screen.getByRole('dialog', { name: 'Remover esta foto?' }).getByRole('button', { name: 'Remover' }).click()
-  await expect.element(screen.getByRole('status').filter({ hasText: 'Não foi possível salvar as fotos. Tente de novo.' })).toBeVisible()
+  await expect.element(screen.getByRole('alert').filter({ hasText: 'Não foi possível salvar as fotos. Tente de novo.' })).toBeVisible()
   expect(screen.getByRole('status').filter({ hasText: 'Foto removida' }).elements()).toHaveLength(0)
   expect(screen.getByRole('button', { name: /^Foto \d$/ }).elements()).toHaveLength(3)
 })

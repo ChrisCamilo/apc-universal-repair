@@ -6,8 +6,10 @@ import {
   codeTakenMessage,
   EMPTY_ITEM_FORM,
   ITEM_FIELD_LABELS,
+  ITEM_UNCHANGED_MESSAGE,
   itemDetailTexts,
   itemFormBody,
+  itemFormChanged,
   itemFormErrors,
   itemFormOf,
   itemFormOptions,
@@ -18,7 +20,7 @@ import {
   type ItemFormErrors,
 } from '@apc/shared/item-form';
 import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists';
-import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
+import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/shared/photos';
 import { API_URL } from '../api';
 import { Button } from '../Button';
 import { Combobox } from '../Combobox';
@@ -43,7 +45,8 @@ import type { CreateListEntry } from './useItemLists';
 // start with a capital letter when leaving the field and again on save, and the price is shown back in reais. Saving
 // checks the required fields and a code another item uses, then sends the item to the API, shows a toast and hands the
 // saved item over, then sends its photos when they changed: up to 3, the first the cover, picked from the phone's
-// library. When the item is saved but its photos aren't, the toast says so. Opened on an item's details, the same
+// library. When the item is saved but its photos aren't, a warning toast says so; an edit that changes nothing isn't
+// sent, and an info toast says so. Opened on an item's details, the same
 // dialog shows each field as text in the form's layout, with Fechar and Editar: nothing can be changed or saved until
 // Editar unlocks the fields in place, on the first one, and the buttons turn into Cancelar and Salvar alterações, which
 // save like the edit form. The owner may open it with values filled in and follow what is typed, as the Inventory
@@ -145,18 +148,26 @@ export function ItemFormDialog({
     const entry = await onCreateEntry(kind, name, kind === 'vehicleModels' ? vehicleBrand?.id : undefined);
     setCreating((count) => count - 1);
     if (!entry) {
-      toast(ITEM_LIST_TEXTS[kind].createFailed);
+      toast.error(ITEM_LIST_TEXTS[kind].createFailed);
       return;
     }
     change(field, entry.name);
-    toast(ITEM_LIST_TEXTS[kind].created(entry.name));
+    toast.success(ITEM_LIST_TEXTS[kind].created(entry.name));
   };
 
-  /** Checks the form and sends the item, or shows what keeps it from being saved. */
+  /**
+   * Checks the form and sends the item, or shows what keeps it from being saved; an edit that changes nothing isn't
+   * sent, and an info toast says so.
+   */
   const save = async () => {
     const found = itemFormErrors(form, items, lists, item?.id);
     setErrors(found);
     if (Object.values(found).some(Boolean)) {
+      return;
+    }
+    if (item && !itemFormChanged(form, item, options.colors) && !photosChanged(photoParts(photos, item.photos, API_URL), item.photos)) {
+      toast.info(ITEM_UNCHANGED_MESSAGE);
+      onClose();
       return;
     }
     setSaving(true);
@@ -173,18 +184,18 @@ export function ItemFormDialog({
     }
     if (!response?.ok) {
       setSaving(false);
-      toast('Não foi possível salvar o item. Tente de novo.');
+      toast.error('Não foi possível salvar o item. Tente de novo.');
       return;
     }
     const saved = itemSchema.parse(await response.json());
     const withPhotos = await savePhotos(saved, photos);
     setSaving(false);
     if (!withPhotos) {
-      toast(`Item “${saved.name}” salvo, mas as fotos não foram salvas. Tente de novo.`);
+      toast.warning(`Item “${saved.name}” salvo, mas as fotos não foram salvas. Tente de novo.`);
       onSaved(saved);
       return;
     }
-    toast(item ? `Item “${saved.name}” salvo.` : `Item “${saved.name}” cadastrado.`);
+    toast.success(item ? `Item “${saved.name}” salvo.` : `Item “${saved.name}” cadastrado.`);
     onSaved(withPhotos);
   };
 

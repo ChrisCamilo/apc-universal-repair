@@ -65,7 +65,7 @@ function DeleteConfirm() {
               size="sm"
               onClick={() => {
                 setOpen(false)
-                toast('Item excluído')
+                toast.success('Item excluído')
               }}
             >
               Excluir
@@ -98,7 +98,7 @@ function ItemForm() {
               size="sm"
               onClick={() => {
                 setOpen(false)
-                toast('Item adicionado')
+                toast.success('Item adicionado')
               }}
             >
               Salvar item

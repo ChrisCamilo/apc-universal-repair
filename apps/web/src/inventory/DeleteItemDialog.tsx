@@ -31,10 +31,10 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
     const response = await fetch(`/api/items/${item.id}`, { method: 'DELETE' }).catch(() => null)
     setDeleting(false)
     if (!response?.ok) {
-      toast('Não foi possível excluir o item. Tente de novo.')
+      toast.error('Não foi possível excluir o item. Tente de novo.')
       return
     }
-    toast(`Item “${item.name}” excluído.`)
+    toast.success(`Item “${item.name}” excluído.`)
     onDeleted(item)
   }
 

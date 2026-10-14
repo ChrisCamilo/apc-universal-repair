@@ -7,8 +7,18 @@ export const alertIcon: IconShape[] = [
   { kind: "path", d: "M8 6.4v3.2M8 11.4v.1" },
 ];
 export const checkIcon: IconShape[] = [{ kind: "path", d: "M3.5 8.4l3 3 6-6.4" }];
+// A check inside a ring: something done, such as a success toast.
+export const checkRingIcon: IconShape[] = [
+  { kind: "circle", cx: 8, cy: 8, r: 6.2 },
+  { kind: "path", d: "M5.4 8.2l1.8 1.8 3.4-3.6" },
+];
 export const chevronIcon: IconShape[] = [{ kind: "path", d: "M6 3.5l4.5 4.5L6 12.5" }];
 export const closeIcon: IconShape[] = [{ kind: "path", d: "M3.5 3.5l9 9M12.5 3.5l-9 9" }];
+// An X inside a ring: something that failed, such as an error toast.
+export const closeRingIcon: IconShape[] = [
+  { kind: "circle", cx: 8, cy: 8, r: 6.2 },
+  { kind: "path", d: "M6 6l4 4M10 6l-4 4" },
+];
 // A traffic cone: the mark of a part of the app still being built.
 export const coneIcon: IconShape[] = [
   { kind: "path", d: "M6.6 2.5h2.8l2.6 9.5H4z" },
@@ -67,6 +77,11 @@ export const ICON_SIZES = {
 export const ICON_STROKE = 1.3;
 /** Size of the grid every icon is drawn on. */
 export const ICON_VIEWBOX = 16;
+// An "i" inside a ring: something to know, such as an info toast.
+export const infoIcon: IconShape[] = [
+  { kind: "circle", cx: 8, cy: 8, r: 6.2 },
+  { kind: "path", d: "M8 7.4v3.6M8 5.1v.1" },
+];
 export const lockIcon: IconShape[] = [
   { kind: "rect", x: 3, y: 7, width: 10, height: 7, rx: 1.6 },
   { kind: "path", d: "M5.4 7V5.2a2.6 2.6 0 015.2 0V7" },
@@ -99,8 +114,10 @@ export const userIcon: IconShape[] = [
 export const ICONS = {
   alert: alertIcon,
   check: checkIcon,
+  checkRing: checkRingIcon,
   chevron: chevronIcon,
   close: closeIcon,
+  closeRing: closeRingIcon,
   cone: coneIcon,
   cube: cubeIcon,
   document: documentIcon,
@@ -108,6 +125,7 @@ export const ICONS = {
   filter: filterIcon,
   grip: gripIcon,
   image: imageIcon,
+  info: infoIcon,
   lock: lockIcon,
   mechanic: mechanicIcon,
   pencil: pencilIcon,

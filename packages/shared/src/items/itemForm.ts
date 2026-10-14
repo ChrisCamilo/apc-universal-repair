@@ -66,6 +66,8 @@ export const ITEM_FORM_MESSAGES = {
   price: "Informe o valor unitário.",
   priceInvalid: "Informe um valor maior que zero, como 89,90.",
 } as const;
+/** The info toast of an edit saved with nothing changed, which isn't sent. */
+export const ITEM_UNCHANGED_MESSAGE = "Nenhuma alteração para salvar.";
 
 /** The item form as typed: every field as text, except position and side, which are chosen. */
 export type ItemForm = {
@@ -176,6 +178,18 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
     location: form.location.trim() ? capitalizeFirst(form.location) : "",
     unitPriceCents: parsePrice(form.price) ?? 0,
   };
+}
+
+/**
+ * Tells whether an edit changes the item, comparing what would be sent with what the item holds, so a field only
+ * written differently (a name in lowercase, the price as "39,9") is no change.
+ * @param form The form as typed.
+ * @param item The item being edited.
+ * @param colors The colors already in stock.
+ * @returns True when saving would change the item.
+ */
+export function itemFormChanged(form: ItemForm, item: Item, colors: readonly string[]): boolean {
+  return JSON.stringify(itemFormBody(form, colors)) !== JSON.stringify(itemFormBody(itemFormOf(item), colors));
 }
 
 /**

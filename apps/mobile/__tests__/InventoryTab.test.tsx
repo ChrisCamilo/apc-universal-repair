@@ -171,7 +171,7 @@ test('Mobile: the search finds items by name or part code', async () => {
 });
 
 // Presses "Novo item" and checks the empty form opens, then closes it and presses a card's pencil, and checks the form
-// opens on that item; saving it loads the list again.
+// opens on that item; saving it with a quantity changed loads the list again.
 test('Mobile: "Novo item" and the pencil open the item form, and a save reloads the list', async () => {
   const tree = await mount();
   const dialog = () => tree.root.findAllByType(Modal).find((modal) => modal.props.visible);
@@ -190,6 +190,8 @@ test('Mobile: "Novo item" and the pencil open the item form, and a save reloads 
   await ReactTestRenderer.act(async () => pressable('Editar Filtro de óleo').props.onPress());
   expect(texts(tree)).toContain('Editar item');
   expect(dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')[0].props.value).toBe('W 712/95');
+  const quantity = dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Quantidade')[0];
+  await ReactTestRenderer.act(async () => quantity.props.onChangeText('7'));
   (fetch as jest.Mock).mockClear();
   (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(ITEMS[0]) });
   await ReactTestRenderer.act(async () => pressable('Salvar alterações').props.onPress());

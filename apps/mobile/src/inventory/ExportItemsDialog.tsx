@@ -37,13 +37,13 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
     const exported = await exportItems(API_URL, query, { photos });
     if (!exported) {
       setExporting(false);
-      toast('Não foi possível exportar os itens. Tente de novo.');
+      toast.error('Não foi possível exportar os itens. Tente de novo.');
       return;
     }
     const shared = await shareCsv(csvExportName(new Date()), exported.csv);
     setExporting(false);
     if (shared) {
-      toast(exportedSummary(exported.count));
+      toast.success(exportedSummary(exported.count));
       onClose();
     }
   };
