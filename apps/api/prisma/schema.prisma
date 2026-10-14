@@ -65,14 +65,15 @@ model Item {
   @@index([vehicleModelId])
 }
 
-/// A photo of an item. The original file and its thumbnail are stored by the API under PHOTOS_DIR, named after the
+/// A photo of an item. The photo, reduced to WebP, and its thumbnail are stored by the API under PHOTOS_DIR, named after the
 /// photo's id; position orders the item's photos from 0, the cover.
 model ItemPhoto {
   id        String @id @default(uuid())
   itemId    String
   item      Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
   position  Int
-  /// Name of the original file, e.g. "<id>.jpg".
+  /// Name of the reduced photo, e.g. "<id>.webp" (photos stored before the reduction may still be "<id>.jpg" until
+  /// `pnpm --filter @apc/api photos:compress` runs).
   file      String
   /// Name of the thumbnail, e.g. "<id>-thumb.webp".
   thumbFile String
