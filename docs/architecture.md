@@ -159,6 +159,36 @@ The installed app checks the repository's GitHub Releases with `electron-updater
 
 O app instalado consulta as GitHub Releases do repositório com o `electron-updater`: quando a janela aparece, para nunca atrasar a abertura, e depois a cada 6 horas. Ele não consulta em desenvolvimento (`APC_DEV_URL`), sem empacotar nem como exe portátil (`checksForUpdates` em `update.ts`). Uma versão mais nova é baixada em segundo plano, só os blocos que mudaram, e conferida com o sha512 do `latest.yml`; os builds não são assinados, então nenhuma assinatura de editor é pedida. O processo principal então avisa a página pelo preload, que guarda a versão para uma página que se inscreva depois, e o `UpdateNotice` do app web, desenhado só quando a ponte existe, mostra *Nova versão X pronta*. A versão entra em silêncio quando o app fecha, ou na hora pelo `restartToUpdate`, que o processo principal só aceita da própria página do app. Uma consulta que falha é registrada e o app mantém a versão. Um instalador mais novo rodado na mão atualiza o app no lugar: o instalador NSIS o encontra pelo `appId` e mantém os dados em `%APPDATA%`.
 
+### Server version · Versão do servidor
+
+```mermaid
+sequenceDiagram
+    participant Main as apps/desktop<br/>main process
+    participant API as apps/api
+    participant Script as update-server.ps1
+
+    Main->>API: GET /health
+    API-->>Main: { version }
+    alt same version · mesma versão
+        Note over Main: opens the app · abre o app
+    else other version, local API · outra versão, API local
+        Note over Main: starting.html#updating · "Atualizando o servidor"
+        Main->>Script: -Version (app version · versão do app)
+        Script->>API: stop-server.ps1
+        Note over Script: git checkout vX.Y.Z · pnpm install
+        Script->>API: scheduled task or background · tarefa agendada ou segundo plano (migrations · migrações)
+        Script->>API: GET /health until it answers the version · até responder a versão
+        Note over Script: on failure, back to the commit it was on · se falhar, volta ao commit anterior
+        Main->>API: GET /health once the script ends · quando o script termina
+    else other version, remote API · outra versão, API remota
+        Note over Main: warning dialog only · só um aviso
+    end
+```
+
+The web build inside the desktop app expects the API of the same version, so the clone at home follows release tags, not `main`, and `/health` answers the API's version (`apps/api/package.json`, kept equal to the desktop app's: the Desktop workflow refuses a release where they differ, `scripts/release-version.ts`). When the installed app opens, after making sure the API answers, it compares the two (`serverActionFor` in `update.ts`). For an API on this computer at another version, or one before 0.2.0 that answers none, it runs `update-server.ps1 -Version <app version>` from the clone's `apps/api` and shows `starting.html#updating` until the script ends. The script refuses a clone with local changes or a missing tag. Otherwise it turns the API off, checks out `v<version>`, installs, turns the API back on the way it runs (the scheduled task, or in the background) and waits for `/health` to answer the version; on any failure it goes back to the commit it was on. The app then opens either way, logging when the API isn't at its version. An API on another computer is never touched: the app only shows a warning. Development, unpackaged and portable runs skip the check, since they aren't on a release.
+
+O build da web dentro do app desktop espera a API da mesma versão, então o clone de casa segue as tags de release, não a `main`, e o `/health` responde a versão da API (`apps/api/package.json`, mantida igual à do app desktop: o workflow Desktop recusa uma release em que elas diferem, `scripts/release-version.ts`). Quando o app instalado abre, depois de garantir que a API responde, ele compara as duas (`serverActionFor` em `update.ts`). Para uma API neste computador em outra versão, ou uma anterior à 0.2.0 que não responde nenhuma, ele roda o `update-server.ps1 -Version <versão do app>` a partir do `apps/api` do clone e mostra o `starting.html#updating` até o script terminar. O script recusa um clone com alterações locais ou uma tag que não existe. Senão, ele desliga a API, faz o checkout de `v<versão>`, instala, liga a API do jeito que ela roda (a tarefa agendada, ou em segundo plano) e espera o `/health` responder a versão; em qualquer falha, volta para o commit em que estava. O app abre de qualquer jeito, registrando quando a API não está na versão dele. Uma API em outro computador nunca é mexida: o app só mostra um aviso. Desenvolvimento, sem empacotar e o exe portátil pulam a checagem, já que não estão numa release.
+
 ## Styles · Estilos
 
 Each component keeps its look in a recipe in its own `<Component>.styles.ts`, built from the theme tokens, which gives the classes or styles and the style id of each element. Lint fails when a component writes a style or an id by hand.
