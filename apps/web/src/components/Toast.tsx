@@ -4,14 +4,15 @@ import { ICON_SIZES } from '@apc/shared/icons'
 import { TOAST_FADE_MS, TOAST_KIND_LOOKS, type ToastKind } from '@apc/shared/toast'
 import { Icon } from './Icon.tsx'
 import { toast } from './Toast.styles.ts'
-import { ToastContext, type Toasts } from './toastContext.ts'
+import { ToastContext, ToastFeedContext, type ToastListener, type Toasts } from './toastContext.ts'
 
 // Short messages at the bottom of the screen, each of a kind: success ("Item adicionado"), error ("Não foi possível
 // …"), info or warning, in a pill of the kind's color with its icon. The polite live region is always in the page, so
 // screen readers announce each success and info after what they are reading; an error or a warning comes in a new
 // alert, read out at once. The toast fades in rising a little, stays for TOAST_DURATION_MS and fades out; a new one
 // takes the place of the one showing, which fades out under it, hidden from screen readers. With reduced motion they
-// show and hide at once. The region is a popover in the browser's top layer, raised again with each message, so a toast stays above an open
+// show and hide at once. Whoever listens through useToastFeed, such as the notifications history, hears each toast.
+// The region is a popover in the browser's top layer, raised again with each message, so a toast stays above an open
 // modal dialog, such as one the item form shows while it is open.
 
 /** A toast on screen; a leaving one is fading out. */
@@ -20,13 +21,21 @@ type Shown = { id: number; kind: ToastKind; message: string; leaving: boolean }
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState<Shown[]>([])
   const region = useRef<HTMLDivElement>(null)
+  const listeners = useRef(new Set<ToastListener>())
   const { classes, ids } = toast()
+  const subscribe = useCallback((listener: ToastListener) => {
+    listeners.current.add(listener)
+    return () => {
+      listeners.current.delete(listener)
+    }
+  }, [])
   const show = useCallback((kind: ToastKind, message: string) => {
     // Raise the region above whatever opened in the top layer since, then show the message in it, over the one it
     // replaces, which leaves.
     region.current?.hidePopover()
     region.current?.showPopover()
     setShown((list) => [...list.map(leave), { id: (list.at(-1)?.id ?? 0) + 1, kind, message, leaving: false }])
+    listeners.current.forEach((listener) => listener(kind, message))
   }, [])
   const toasts = useMemo<Toasts>(
     () => ({
@@ -76,7 +85,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   return (
     <ToastContext.Provider value={toasts}>
-      {children}
+      <ToastFeedContext.Provider value={subscribe}>{children}</ToastFeedContext.Provider>
       <div ref={region} popover="manual" className={classes.base()} data-testid={ids.base}>
         <div role="status" className={classes.polite()} data-testid={ids.polite}>
           {pills(false)}
