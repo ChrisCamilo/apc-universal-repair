@@ -71,7 +71,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 | Desktop (web) | 1280×720 | — |
 | Mobile | 360×780 | 390×844 |
 
-Sizes are in logical pixels. Below the minimum the layout keeps working, without guarantees. See [AGENTS.md](AGENTS.md#supported-screen-sizes) for the reasoning.
+Sizes are in logical pixels. Below the minimum the layout keeps working, without guarantees. The desktop app's window opens at 1280×720 when the screen has room, and otherwise at what fits above the taskbar, down to 1280×640, so on a 1366×768 notebook it fits whole in a window. See [AGENTS.md](AGENTS.md#supported-screen-sizes) for the reasoning.
 
 ### Tech Stack
 
@@ -262,7 +262,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 | Desktop (web) | 1280×720 | — |
 | Celular | 360×780 | 390×844 |
 
-Os tamanhos são em pixels lógicos. Abaixo do mínimo o layout continua funcionando, mas sem garantia. O motivo de cada número está no [AGENTS.md](AGENTS.md#supported-screen-sizes).
+Os tamanhos são em pixels lógicos. Abaixo do mínimo o layout continua funcionando, mas sem garantia. A janela do app desktop abre em 1280×720 quando a tela tem espaço, ou no que cabe acima da barra de tarefas, até 1280×640, então num notebook de 1366×768 ela cabe inteira em modo janela. O motivo de cada número está no [AGENTS.md](AGENTS.md#supported-screen-sizes).
 
 ### Tecnologias
 
