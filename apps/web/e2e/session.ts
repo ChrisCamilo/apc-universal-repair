@@ -12,9 +12,10 @@ import { TEST_USERS } from "@apc/shared/test-users";
  * over a session saved before it in the same test), since the tutorial then starts and the app marks it seen.
  * @param page The test's page.
  * @param tutorialSeen Whether the user has seen the Inventory tutorial; when false, it starts by itself.
+ * @param user The test user to log in; the first one unless the test needs another.
  */
-export async function signIn(page: Page, tutorialSeen = true): Promise<void> {
-  const { id, username, displayName } = TEST_USERS[0];
+export async function signIn(page: Page, tutorialSeen = true, user = TEST_USERS[0]): Promise<void> {
+  const { id, username, displayName } = user;
   const session = JSON.stringify({ id, username, displayName, initials: initials(displayName), inventoryTutorialSeen: tutorialSeen });
   await page.addInitScript(
     ([key, value, firstLoadOnly]) => {
