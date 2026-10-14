@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { REGISTER_MESSAGES } from "@apc/shared/auth";
 import { buildApp } from "../app.js";
+import { sessionOf } from "./users.js";
 
 // These requests are rejected by validation before any database call, so they run without a database.
 
@@ -35,4 +36,12 @@ test("API: a login needs a username and a password", async () => {
     const response = await app.inject({ method: "POST", url: "/sessions", payload });
     assert.equal(response.statusCode, 400, JSON.stringify(payload));
   }
+});
+
+// Turns a user row into the session, before and after the tutorial was seen, and checks the initials and that only a
+// row with a date counts as seen.
+test("API: the session says whether the user has seen the Inventory tutorial", () => {
+  const row = { id: "u1", username: "ana.souza", displayName: "Ana Souza", inventoryTutorialSeenAt: null };
+  assert.deepEqual(sessionOf(row), { id: "u1", username: "ana.souza", displayName: "Ana Souza", initials: "AS", inventoryTutorialSeen: false });
+  assert.equal(sessionOf({ ...row, inventoryTutorialSeenAt: new Date() }).inventoryTutorialSeen, true);
 });
