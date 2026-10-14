@@ -1,21 +1,23 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { initials } from "@apc/shared/auth";
+import type { Item } from "@apc/shared/items";
 import { ITEM_LIST_PATHS } from "@apc/shared/lists";
 import { TEST_USERS } from "@apc/shared/test-users";
 
 // A stand-in for the API, on a free port of this computer, for the desktop smoke test: the health check, the login
 // of the test users (who have seen the Inventory tutorial, so it doesn't start over the screen), marking the tutorial
-// seen, an empty item list and empty item lists. Anything else gets a 404.
+// seen, the item list (empty unless the test gives items) and empty item lists. Anything else gets a 404.
 
 /** The paths of the item lists (categories, part brands…), answered with an empty list. */
 const LIST_PATHS = new Set(Object.values(ITEM_LIST_PATHS));
 
 /**
  * Starts the stand-in API.
+ * @param items The items GET /items answers with; none by default.
  * @returns The server and its address, e.g. "http://127.0.0.1:51234".
  */
-export async function startStubApi(): Promise<{ server: Server; url: string }> {
+export async function startStubApi(items: readonly Item[] = []): Promise<{ server: Server; url: string }> {
   const server = createServer((request, response) => {
     const { pathname } = new URL(request.url ?? "/", "http://stub");
     const reply = (status: number, body: unknown) => {
@@ -45,7 +47,7 @@ export async function startStubApi(): Promise<{ server: Server; url: string }> {
       return;
     }
     if (request.method === "GET" && pathname === "/items") {
-      return reply(200, { items: [], total: 0 });
+      return reply(200, { items, total: items.length });
     }
     if (request.method === "GET" && LIST_PATHS.has(pathname)) {
       return reply(200, []);

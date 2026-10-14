@@ -3,7 +3,7 @@ import type { SessionUser } from '@apc/shared/auth'
 import { addNotification, notificationsKey, type Notification } from '@apc/shared/notifications'
 import { themes } from '@apc/shared/theme'
 import { TOAST_DURATION, TOAST_DURATION_STORAGE_KEY } from '@apc/shared/toast'
-import { beforeAll, beforeEach, expect, test } from 'vitest'
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { SessionContext } from '../auth/sessionContext.ts'
@@ -50,6 +50,10 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.clear()
+})
+
+afterEach(() => {
+  delete window.apcDesktop
 })
 
 // Shows a success and an error toast and checks the bell counts 2 unread on its badge; its menu lists the error first,
@@ -157,6 +161,29 @@ test('Web: the time picked applies to the next toast', async () => {
   const stayed = performance.now() - shown
   expect(stayed).toBeGreaterThanOrEqual(1900)
   expect(stayed).toBeLessThan(TOAST_DURATION.defaultMs - 1000)
+})
+
+// Gives the page a desktop bridge, as the desktop app's preload does, and checks an error and a warning ask for a Windows
+// notification with the kind's name and the message, a success doesn't; when one is clicked, the bell's menu opens.
+test('Web: in the desktop app, errors and warnings ask for a Windows notification, whose click opens the bell', async () => {
+  const notify = vi.fn()
+  let clicked = () => {}
+  window.apcDesktop = {
+    notify,
+    onOpenNotifications: (listener) => {
+      clicked = listener
+      return () => {}
+    },
+  }
+  const screen = await render(<Sample />)
+  await screen.getByRole('button', { name: 'Sucesso' }).click()
+  await screen.getByRole('button', { name: 'Erro' }).click()
+  expect(notify.mock.calls).toEqual([['Erro', 'Não foi possível salvar o item. Tente de novo.']])
+
+  clicked()
+  await expect.element(screen.getByRole('menu', { name: /^Notificações/ })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: /^Notificações/ })).toHaveAttribute('aria-expanded', 'true')
+  await expect.element(screen.getByRole('button', { name: /^Notificações/ })).toHaveAccessibleName('Notificações')
 })
 
 function Sample() {
