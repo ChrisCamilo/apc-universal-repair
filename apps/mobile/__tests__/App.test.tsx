@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { TextInput } from 'react-native';
+import { Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { createAsyncStorage } from '@react-native-async-storage/async-storage';
 import { initials, SESSION_STORAGE_KEY, type SessionUser } from '@apc/shared/auth';
@@ -83,7 +83,7 @@ test('Mobile: app renders without crashing', async () => {
 // Opens the app with no saved session and checks it starts on the login, then logs in as a test user with the
 // keyboard's "go" key and checks the Dashboard takes its place once the AuthService accepts it.
 test('Mobile: with no session the app opens on the login and goes on to the Dashboard', async () => {
-  serveUser({ id: USER.id, username: USER.username, displayName: USER.displayName, initials: initials(USER.displayName) });
+  serveUser({ id: USER.id, username: USER.username, displayName: USER.displayName, initials: initials(USER.displayName), inventoryTutorialSeen: true });
   const tree = await mountApp();
   const input = (label: string) => tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);
   expect(showsLogin(tree)).toBe(true);
@@ -96,9 +96,10 @@ test('Mobile: with no session the app opens on the login and goes on to the Dash
 });
 
 // Opens the sign-up from the login, goes back and forth, signs up a new user with the keyboard's "go" key in the last
-// field and checks the Dashboard takes its place once the API creates them.
+// field and checks the Dashboard takes its place once the API creates them, with the Inventory tutorial starting on
+// this first login and marked seen on the API.
 test('Mobile: the login leads to the sign-up, which goes on to the Dashboard', async () => {
-  const fetch = serveUser({ id: 'u1', username: 'ana.souza', displayName: 'Ana Souza', initials: 'AS' });
+  const fetch = serveUser({ id: 'u1', username: 'ana.souza', displayName: 'Ana Souza', initials: 'AS', inventoryTutorialSeen: false });
   const tree = await mountApp();
   const input = (label: string) => tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);
   const pressable = (label: string) =>
@@ -119,6 +120,10 @@ test('Mobile: the login leads to the sign-up, which goes on to the Dashboard', a
   expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/users$/), expect.objectContaining({ method: 'POST' }));
   expect(showsDashboard(tree)).toBe(true);
   expect(showsSignUp()).toBe(false);
+  expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Abra o cadastro').length).toBeGreaterThan(0);
+  expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/users\/u1\/inventory-tutorial$/), expect.objectContaining({ method: 'PUT' }));
+  // The tutorial's timers stop with the app.
+  await ReactTestRenderer.act(async () => tree.unmount());
 });
 
 // Saves a test user's session, as a previous login would, and checks the app starts straight on the Dashboard,

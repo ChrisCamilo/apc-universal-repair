@@ -39,6 +39,14 @@ function Screen() {
     };
   }, []);
 
+  /** Marks the Inventory tutorial seen on the logged user, at once, then on the device and the API. */
+  const markTutorialSeen = () => {
+    if (user) {
+      setUser({ ...user, inventoryTutorialSeen: true });
+      auth.markInventoryTutorialSeen(user).catch(() => {});
+    }
+  };
+
   /** Ends the session and goes back to the login. */
   const logout = async () => {
     await auth.logout();
@@ -50,7 +58,11 @@ function Screen() {
     <SafeAreaView style={[SCREEN_STYLE, { backgroundColor: theme.colors.canvas }]}>
       <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
       {user === undefined ? null : user ? (
-        <Dashboard userMenu={<UserMenu user={user} onLogout={logout} />} />
+        <Dashboard
+          userMenu={<UserMenu user={user} onLogout={logout} />}
+          tutorialSeen={user.inventoryTutorialSeen}
+          onTutorialSeen={markTutorialSeen}
+        />
       ) : registering ? (
         <RegisterScreen auth={auth} onRegistered={setUser} onLogin={() => setRegistering(false)} />
       ) : (

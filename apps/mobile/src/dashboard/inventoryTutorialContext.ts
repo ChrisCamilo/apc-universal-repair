@@ -1,13 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial';
-import { save, themeStorage } from '../theme';
+import { themeStorage } from '../theme';
 
 /** The Inventory tutorial's state, shared by the Inventory tab that runs it and the user menu that replays it. */
 export const InventoryTutorialContext = createContext<InventoryTutorialChoice | null>(null);
 
 export type InventoryTutorialChoice = {
-  /** Whether the tutorial was shown on this device, null until read; until then it runs by itself. */
-  seen: boolean | null;
+  /** Whether the logged user has seen the tutorial, on any device; until then it runs by itself. */
+  seen: boolean;
   /** Saves that the tutorial was shown. */
   setSeen: () => void;
   /** Whether the user menu asked for the tutorial again; the Inventory tab starts it and calls replayStarted. */
@@ -19,32 +19,23 @@ export type InventoryTutorialChoice = {
 };
 
 /**
- * Holds whether the Inventory tutorial was shown, read from the device once and saved when it runs, and whether a
- * replay was asked for, the same as the web.
+ * Holds whether the logged user has seen the Inventory tutorial, from their session, which marks it once it runs, and
+ * whether a replay was asked for, the same as the web. The key the device used to keep it under is removed.
+ * @param seen Whether the logged user has seen the tutorial (SessionUser.inventoryTutorialSeen).
+ * @param onSeen Marks it seen on the user.
  * @returns The state and its setters, for InventoryTutorialContext.
  */
-export function useInventoryTutorialChoice(): InventoryTutorialChoice {
-  const [seen, setState] = useState<boolean | null>(null);
+export function useInventoryTutorialChoice(seen: boolean, onSeen: () => void): InventoryTutorialChoice {
   const [replayAsked, setReplayAsked] = useState(false);
 
-  // Read whether the tutorial was shown.
+  // The tutorial's state lives on the user now.
   useEffect(() => {
-    let live = true;
-    themeStorage
-      .getItem(INVENTORY_TUTORIAL_STORAGE_KEY)
-      .catch(() => null)
-      .then((saved) => live && setState((current) => current ?? saved === 'true'));
-    return () => {
-      live = false;
-    };
+    themeStorage.removeItem(INVENTORY_TUTORIAL_STORAGE_KEY).catch(() => {});
   }, []);
 
   return {
     seen,
-    setSeen: () => {
-      setState(true);
-      save(INVENTORY_TUTORIAL_STORAGE_KEY, 'true');
-    },
+    setSeen: onSeen,
     replayAsked,
     replay: () => setReplayAsked(true),
     replayStarted: () => setReplayAsked(false),

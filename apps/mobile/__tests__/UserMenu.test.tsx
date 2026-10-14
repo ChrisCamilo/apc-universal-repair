@@ -17,7 +17,7 @@ import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorder
 import { UserMenu } from '../src/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/theme';
 
-const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC' };
+const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true };
 
 /**
  * Finds the pressable with an accessible name or visible text.
@@ -161,7 +161,7 @@ function Preferences({ children }: { children: React.ReactNode }) {
     <TabReorderContext.Provider value={useReorderChoice()}>
       <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>
         <PageSizeContext.Provider value={usePageSizeChoice()}>
-          <InventoryTutorialContext.Provider value={useInventoryTutorialChoice()}>{children}</InventoryTutorialContext.Provider>
+          <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
         </PageSizeContext.Provider>
       </OpenItemOnRowContext.Provider>
     </TabReorderContext.Provider>

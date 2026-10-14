@@ -22,7 +22,7 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 // the screen reader's actions) into a new order, which is saved and comes back, with tabs added later at its end;
 // the open tab stays open. The Dashboard also holds "Abrir item ao clicar na linha" and "Itens por página", which the
 // user menu sets and the Inventory tab follows, and the Inventory tutorial's state, which the Inventory tab runs (by
-// itself the first time) and the user menu replays, on the Inventory tab. A tab still being built (`wip` in
+// itself on the user's first login, whatever the device) and the user menu replays, on the Inventory tab. A tab still being built (`wip` in
 // DASHBOARD_TABS) opens behind a notice saying it isn't ready yet.
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id);
@@ -33,15 +33,19 @@ const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon, wip }) =>
 type DashboardProps = {
   /** The user menu, at the right of the header. */
   userMenu?: ReactNode;
+  /** Whether the logged user has seen the Inventory tutorial; until then it runs by itself. Seen when left out. */
+  tutorialSeen?: boolean;
+  /** Marks the Inventory tutorial seen on the logged user, once it starts by itself. */
+  onTutorialSeen?: () => void;
 };
 
-export function Dashboard({ userMenu }: DashboardProps) {
+export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () => {} }: DashboardProps) {
   const { styles, ids } = useStyles();
   const [tab, setTab] = useStoredTab(DASHBOARD_TAB_STORAGE_KEY, TAB_IDS);
   const reorder = useReorderChoice();
   const openItemOnRow = useOpenItemOnRowChoice();
   const pageSize = usePageSizeChoice();
-  const tutorial = useInventoryTutorialChoice();
+  const tutorial = useInventoryTutorialChoice(tutorialSeen, onTutorialSeen);
   const [order, setOrder] = useState<string[] | null>(null);
 
   // Read the saved tab order.
