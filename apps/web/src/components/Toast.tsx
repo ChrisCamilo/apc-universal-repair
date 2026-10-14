@@ -4,7 +4,7 @@ import { readToastDuration, TOAST_DURATION_STORAGE_KEY, TOAST_FADE_MS, TOAST_KIN
 import { readStored, writeStored } from '../storage.ts'
 import { Icon } from './Icon.tsx'
 import { toast } from './Toast.styles.ts'
-import { ToastContext, ToastDurationContext, ToastFeedContext, type ToastDuration, type ToastListener, type Toasts } from './toastContext.ts'
+import { NotifyContext, ToastContext, ToastDurationContext, ToastFeedContext, type ToastDuration, type ToastListener, type Toasts } from './toastContext.ts'
 
 // Short messages at the bottom of the screen, each of a kind: success ("Item adicionado"), error ("Não foi possível
 // …"), info or warning, in a pill of the kind's color with its icon. The polite live region is always in the page, so
@@ -12,7 +12,8 @@ import { ToastContext, ToastDurationContext, ToastFeedContext, type ToastDuratio
 // alert, read out at once. The toast fades in rising a little, stays for the time the user picked (5 s unless they
 // changed it in the bell's menu; saved on the device) and fades out; a new one
 // takes the place of the one showing, which fades out under it, hidden from screen readers. With reduced motion they
-// show and hide at once. Whoever listens through useToastFeed, such as the notifications history, hears each toast.
+// show and hide at once. Whoever listens through useToastFeed, such as the notifications history, hears each toast, and
+// what useNotify sends, which goes to the history without a toast.
 // The region is a popover in the browser's top layer, raised again with each message, so a toast stays above an open
 // modal dialog, such as one the item form shows while it is open.
 
@@ -41,14 +42,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       listeners.current.delete(listener)
     }
   }, [])
+  const notify = useCallback((kind: ToastKind, message: string) => listeners.current.forEach((listener) => listener(kind, message)), [])
   const show = useCallback((kind: ToastKind, message: string) => {
     // Raise the region above whatever opened in the top layer since, then show the message in it, over the one it
     // replaces, which leaves.
     region.current?.hidePopover()
     region.current?.showPopover()
     setShown((list) => [...list.map(leave), { id: (list.at(-1)?.id ?? 0) + 1, kind, message, leaving: false }])
-    listeners.current.forEach((listener) => listener(kind, message))
-  }, [])
+    notify(kind, message)
+  }, [notify])
   const toasts = useMemo<Toasts>(
     () => ({
       success: (message) => show('success', message),
@@ -98,7 +100,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={toasts}>
       <ToastDurationContext.Provider value={duration}>
-        <ToastFeedContext.Provider value={subscribe}>{children}</ToastFeedContext.Provider>
+        <ToastFeedContext.Provider value={subscribe}>
+          <NotifyContext.Provider value={notify}>{children}</NotifyContext.Provider>
+        </ToastFeedContext.Provider>
       </ToastDurationContext.Provider>
       <div ref={region} popover="manual" className={classes.base()} data-testid={ids.base}>
         <div role="status" className={classes.polite()} data-testid={ids.polite}>

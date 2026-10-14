@@ -21,12 +21,14 @@ import { save, themeStorage, useTheme } from './theme';
 // or a warning out at once and a success or an info after what they are reading. The toast fades in rising a little,
 // stays for the time the user picked (5 s unless they changed it in the bell's menu; saved on the device) and fades out; a new message takes the place of the one showing, which fades out under it,
 // hidden from screen readers. With reduced motion they show and hide at once. Whoever listens through useToastFeed,
-// such as the notifications history, hears each toast. A Modal sits above the rest of the app,
+// such as the notifications history, hears each toast, and what useNotify sends, which goes to the history without a
+// toast. A Modal sits above the rest of the app,
 // so each open Dialog holds a ToastLayer, as it does a TourLayer: the toast draws in the last layer registered, the
 // topmost, and at the root while no Dialog is open, so it stays above a dialog that shows one, such as the item form.
 
 const ToastContext = createContext<Toasts>(toastsOf(() => {}));
 const ToastFeedContext = createContext<(listener: ToastListener) => () => void>(() => () => {});
+const NotifyContext = createContext<ToastListener>(() => {});
 const ToastDurationContext = createContext<ToastDuration>({ ms: TOAST_DURATION.defaultMs, setMs: () => {} });
 const ToastLayersContext = createContext<ToastLayers | null>(null);
 
@@ -63,6 +65,15 @@ function leave(shown: Shown): Shown {
  */
 function toastsOf(show: (kind: ToastKind, message: string) => void): Toasts {
   return Object.fromEntries(TOAST_KINDS.map((kind) => [kind, (message: string) => show(kind, message)])) as Toasts;
+}
+
+/**
+ * Gets the function that adds a notification to the bell's history without showing it as a toast, e.g. a warning found
+ * as the Inventory opens.
+ * @returns A function taking the kind and the message.
+ */
+export function useNotify(): ToastListener {
+  return useContext(NotifyContext);
 }
 
 /**
@@ -113,6 +124,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       listeners.current.delete(listener);
     };
   }, []);
+  const notify = useCallback((kind: ToastKind, message: string) => listeners.current.forEach((listener) => listener(kind, message)), []);
   const show = useCallback((kind: ToastKind, message: string) => {
     // Show the message over the one it replaces, which leaves.
     setShown((list) => [...list.map(leave), { id: (list.at(-1)?.id ?? 0) + 1, kind, message, leaving: false }]);
@@ -122,8 +134,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     } else {
       AccessibilityInfo.announceForAccessibilityWithOptions(message, { queue: true });
     }
-    listeners.current.forEach((listener) => listener(kind, message));
-  }, []);
+    notify(kind, message);
+  }, [notify]);
   const toasts = useMemo(() => toastsOf(show), [show]);
   // The id of the toast showing, if one is, and those fading out, so a new one leaving starts their wait again.
   const current = shown.find((toast) => !toast.leaving)?.id;
@@ -173,7 +185,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={toasts}>
       <ToastLayersContext.Provider value={state}>
         <ToastDurationContext.Provider value={duration}>
-          <ToastFeedContext.Provider value={subscribe}>{children}</ToastFeedContext.Provider>
+          <ToastFeedContext.Provider value={subscribe}>
+            <NotifyContext.Provider value={notify}>{children}</NotifyContext.Provider>
+          </ToastFeedContext.Provider>
         </ToastDurationContext.Provider>
         {layers.length === 0 && <ToastSpot shown={shown} />}
       </ToastLayersContext.Provider>

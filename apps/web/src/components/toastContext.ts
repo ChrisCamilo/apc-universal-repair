@@ -12,10 +12,21 @@ export type Toasts = Record<ToastKind, (message: string) => void>
 /** Shows toasts; set by ToastProvider. Outside one they do nothing. */
 export const ToastContext = createContext<Toasts>({ success: () => {}, error: () => {}, info: () => {}, warning: () => {} })
 
+/** Adds a notification to the bell without showing a toast; set by ToastProvider. */
+export const NotifyContext = createContext<ToastListener>(() => {})
 /** The time a toast stays and the way to change it; set by ToastProvider. */
 export const ToastDurationContext = createContext<ToastDuration>({ ms: TOAST_DURATION.defaultMs, setMs: () => {} })
 /** Adds a listener to every toast shown and gives the way to remove it; set by ToastProvider. */
 export const ToastFeedContext = createContext<(listener: ToastListener) => () => void>(() => () => {})
+
+/**
+ * Gets the function that adds a notification to the bell's history without showing it as a toast, e.g. a warning found
+ * as the Inventory opens.
+ * @returns A function taking the kind and the message.
+ */
+export function useNotify(): ToastListener {
+  return useContext(NotifyContext)
+}
 
 /**
  * Gets the time a toast stays on screen and the way to change it, e.g. for the bell's settings.
