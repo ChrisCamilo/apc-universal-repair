@@ -171,6 +171,23 @@ test('Mobile: a refused login says so above the form and empties the password', 
   focus.mockRestore();
 });
 
+// Opens the login after the session expired, and checks the notice heads the form until a login is sent, which a
+// refused one then replaces with its own message.
+test('Mobile: the login says the session expired until a login is sent', async () => {
+  const tree = await mount('fiat90', 'night', <LoginScreen auth={AUTH} notice={LOGIN_MESSAGES.expired} onLoggedIn={() => {}} onRegister={() => {}} />);
+  const form = byId(tree, 'auth.login-screen.form');
+  const notice = byId(tree, 'auth.login-screen.form.notice');
+  const parts = form.findAll((n) => typeof n.type === 'string' && typeof n.props.testID === 'string').map((n) => n.props.testID);
+  expect(parts.filter((id) => id.startsWith('auth.login-screen.form.'))[0]).toBe('auth.login-screen.form.notice');
+  expect(notice.props.accessibilityLiveRegion).toBe('polite');
+  expect(notice.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES.expired)).not.toHaveLength(0);
+  await type(tree, 'Usuário', USER.username);
+  await type(tree, 'Senha', 'errada');
+  await press(tree, 'Entrar');
+  expect(tree.root.findAll((n) => n.props.testID === 'auth.login-screen.form.notice')).toHaveLength(0);
+  expect(byId(tree, 'auth.login-screen.form.alert')).toBeDefined();
+});
+
 // Checks the parts of the screen carry their style ids, the same as on the web: the page, the badge's heading, the
 // form and its actions, each on its own view; and that every id on the screen is written as the convention asks.
 test('Mobile: the login screen carries its style ids', async () => {
