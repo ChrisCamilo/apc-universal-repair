@@ -14,7 +14,7 @@ flowchart LR
     subgraph pc["Computer at home · Computador de casa"]
         start["Ligar servidor APC<br/>or · ou<br/>Task Scheduler task"]
         api["API<br/>pnpm run start:home"]
-        db[("PostgreSQL<br/>Windows service")]
+        db[("SQLite file · arquivo SQLite<br/>or · ou PostgreSQL")]
         files[("uploads/photos")]
         logs[("logs/api.log")]
     end
@@ -41,11 +41,12 @@ flowchart LR
    corepack enable
    ```
 2. **Git**, to download and update the project.
-3. **PostgreSQL**. The installer asks for a password for the `postgres` user: write it down. It also installs PostgreSQL as a Windows service that starts with the computer. To check it, open `services.msc` and look for `postgresql-x64-<version>`: its status should be *Running* and its startup type *Automatic*.
-4. Create the database. In the Start menu, open *SQL Shell (psql)*, press Enter until it asks for the password, type it, and run:
-   ```sql
-   CREATE DATABASE apc_universal_repair;
-   ```
+3. **The database.** Pick one (what differs is in [database.md](database.md#sqlite)):
+   - **SQLite, recommended for one computer:** nothing to install. The data stays in a file on this computer, `apps\api\data\apc.db`. There is no password to create, a backup is a copy of the file, and only this computer reaches it.
+   - **PostgreSQL:** a separate database server, for whoever already uses PostgreSQL or wants more than one computer on the same database. Install it: the installer asks for a password for the `postgres` user, so write it down. It also installs PostgreSQL as a Windows service that starts with the computer. To check it, open `services.msc` and look for `postgresql-x64-<version>`: its status should be *Running* and its startup type *Automatic*. Then create the database: in the Start menu, open *SQL Shell (psql)*, press Enter until it asks for the password, type it, and run:
+     ```sql
+     CREATE DATABASE apc_universal_repair;
+     ```
 
 ### 2. Get the project ready (once)
 
@@ -60,7 +61,13 @@ copy apps\api\.env.example apps\api\.env
 notepad apps\api\.env
 ```
 
-In `apps\api\.env`, change `DATABASE_URL` to the `postgres` user and its password:
+In `apps\api\.env`, `DATABASE_URL` picks the database. For SQLite, leave it as it comes; the file is created in the next step:
+
+```
+DATABASE_URL="file:./data/apc.db"
+```
+
+For PostgreSQL, change it to the `postgres` user and its password:
 
 ```
 DATABASE_URL="postgresql://postgres:<password>@localhost:5432/apc_universal_repair"
@@ -70,10 +77,10 @@ DATABASE_URL="postgresql://postgres:<password>@localhost:5432/apc_universal_repa
 
 The server answers only requests addressed to this computer: `localhost`, its IP addresses (the phone uses the Wi-Fi one) and the names listed in `APC_ALLOWED_HOSTS`, comma separated. Leave it out unless the phone reaches the computer by a name, such as `APC_ALLOWED_HOSTS="oficina.local"`. Any other address answers *403 Forbidden*, which keeps a web page open on this computer from reaching the server under its own name (DNS rebinding).
 
-Then create the tables and add the starting data (the test users, the default lists and a few sample items, which can be deleted in the app):
+Then create the tables, in whichever database `DATABASE_URL` names, and add the starting data (the test users, the default lists and a few sample items, which can be deleted in the app):
 
 ```powershell
-pnpm --filter @apc/api exec prisma migrate deploy
+pnpm --filter @apc/api db:migrate
 pnpm --filter @apc/api db:seed
 ```
 
@@ -109,7 +116,7 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 
 | Step | Administrator? |
 |---|---|
-| Installing Node.js, Git and PostgreSQL, and `corepack enable` | Yes, once |
+| Installing Node.js and Git (and PostgreSQL, when chosen), and `corepack enable` | Yes, once |
 | Firewall rule for port 3333 | Yes, once |
 | `pnpm install`, `.env`, migrations and seed | No |
 | Desktop shortcut, turning the server on by hand and `stop-server.ps1` | No |
@@ -146,13 +153,15 @@ The phone app needs a release APK built with the computer's address, `http://<co
 
 ### 8. Backup
 
-Keep a copy of the database and the photos, for example once a week, on a USB drive or in the cloud. PostgreSQL's tools are in its installation folder (adjust the version):
+Keep a copy of the database and the photos, for example once a week, on a USB drive or in the cloud. Also copy the photos folder, `apps\api\uploads` (or the `PHOTOS_DIR` of the `.env`).
+
+**SQLite:** with the server off (`stop-server.ps1`), copy the `apps\api\data` folder. To restore, with the server off, put the folder back and the photos folder too.
+
+**PostgreSQL:** its tools are in its installation folder (adjust the version):
 
 ```powershell
 & "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe" -U postgres -F c -f apc-backup.dump apc_universal_repair
 ```
-
-Also copy the photos folder, `apps\api\uploads` (or the `PHOTOS_DIR` of the `.env`).
 
 To restore, with the server off, use `pg_restore` with the copy and put the photos folder back:
 
@@ -195,11 +204,12 @@ The computer at home stays on a release tag (`v0.2.0`, `v0.2.1`…), the version
    corepack enable
    ```
 2. **Git**, para baixar e atualizar o projeto.
-3. **PostgreSQL**. O instalador pede uma senha para o usuário `postgres`: anote. Ele também instala o PostgreSQL como um serviço do Windows que liga junto com o computador. Para conferir, abra o `services.msc` e procure `postgresql-x64-<versão>`: o status deve ser *Em execução* e o tipo de inicialização *Automático*.
-4. Crie o banco. No menu Iniciar, abra o *SQL Shell (psql)*, aperte Enter até ele pedir a senha, digite e rode:
-   ```sql
-   CREATE DATABASE apc_universal_repair;
-   ```
+3. **O banco de dados.** Escolha um (o que muda está em [database.md](database.md#sqlite-1)):
+   - **SQLite, recomendado para um computador só:** nada para instalar. Os dados ficam num arquivo neste computador, `apps\api\data\apc.db`. Não há senha para criar, o backup é uma cópia do arquivo e só este computador acessa os dados.
+   - **PostgreSQL:** um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador no mesmo banco. Instale-o: o instalador pede uma senha para o usuário `postgres`, então anote. Ele também instala o PostgreSQL como um serviço do Windows que liga junto com o computador. Para conferir, abra o `services.msc` e procure `postgresql-x64-<versão>`: o status deve ser *Em execução* e o tipo de inicialização *Automático*. Depois crie o banco: no menu Iniciar, abra o *SQL Shell (psql)*, aperte Enter até ele pedir a senha, digite e rode:
+     ```sql
+     CREATE DATABASE apc_universal_repair;
+     ```
 
 ### 2. Preparar o projeto (uma vez)
 
@@ -214,7 +224,13 @@ copy apps\api\.env.example apps\api\.env
 notepad apps\api\.env
 ```
 
-No `apps\api\.env`, troque o `DATABASE_URL` para o usuário `postgres` e a senha dele:
+No `apps\api\.env`, o `DATABASE_URL` escolhe o banco. Para o SQLite, deixe como vem; o arquivo é criado no próximo passo:
+
+```
+DATABASE_URL="file:./data/apc.db"
+```
+
+Para o PostgreSQL, troque para o usuário `postgres` e a senha dele:
 
 ```
 DATABASE_URL="postgresql://postgres:<senha>@localhost:5432/apc_universal_repair"
@@ -224,10 +240,10 @@ O `PORT` é a porta que o celular usa (3333 está bom). O `PHOTOS_DIR` é onde a
 
 O servidor só responde a requisições endereçadas a este computador: `localhost`, os endereços IP dele (o celular usa o do Wi-Fi) e os nomes listados em `APC_ALLOWED_HOSTS`, separados por vírgula. Deixe sem ele, a menos que o celular chegue ao computador por um nome, como `APC_ALLOWED_HOSTS="oficina.local"`. Qualquer outro endereço responde *403 Forbidden*, o que impede uma página aberta neste computador de chegar ao servidor com o próprio nome dela (DNS rebinding).
 
-Depois crie as tabelas e coloque os dados iniciais (os usuários de teste, as listas padrão e alguns itens de exemplo, que podem ser excluídos no app):
+Depois crie as tabelas, no banco que o `DATABASE_URL` indica, e coloque os dados iniciais (os usuários de teste, as listas padrão e alguns itens de exemplo, que podem ser excluídos no app):
 
 ```powershell
-pnpm --filter @apc/api exec prisma migrate deploy
+pnpm --filter @apc/api db:migrate
 pnpm --filter @apc/api db:seed
 ```
 
@@ -263,7 +279,7 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 
 | Passo | Administrador? |
 |---|---|
-| Instalar Node.js, Git e PostgreSQL, e o `corepack enable` | Sim, uma vez |
+| Instalar Node.js e Git (e o PostgreSQL, se escolhido), e o `corepack enable` | Sim, uma vez |
 | Regra do firewall para a porta 3333 | Sim, uma vez |
 | `pnpm install`, `.env`, migrações e seed | Não |
 | Atalho na área de trabalho, ligar o servidor na mão e o `stop-server.ps1` | Não |
@@ -300,13 +316,15 @@ O app do celular precisa de um APK de release feito com o endereço do computado
 
 ### 8. Backup
 
-Guarde uma cópia do banco e das fotos, por exemplo uma vez por semana, num pendrive ou na nuvem. As ferramentas do PostgreSQL ficam na pasta de instalação dele (ajuste a versão):
+Guarde uma cópia do banco e das fotos, por exemplo uma vez por semana, num pendrive ou na nuvem. Copie também a pasta das fotos, `apps\api\uploads` (ou o `PHOTOS_DIR` do `.env`).
+
+**SQLite:** com o servidor desligado (`stop-server.ps1`), copie a pasta `apps\api\data`. Para restaurar, com o servidor desligado, devolva a pasta e também a pasta das fotos.
+
+**PostgreSQL:** as ferramentas dele ficam na pasta de instalação (ajuste a versão):
 
 ```powershell
 & "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe" -U postgres -F c -f apc-backup.dump apc_universal_repair
 ```
-
-Copie também a pasta das fotos, `apps\api\uploads` (ou o `PHOTOS_DIR` do `.env`).
 
 Para restaurar, com o servidor desligado, use o `pg_restore` com a cópia e devolva a pasta das fotos:
 
