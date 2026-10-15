@@ -11,8 +11,10 @@ import {
   REGISTER_MESSAGES,
   registerErrors,
   SESSION_STORAGE_KEY,
+  tooManyAttempts,
   userCreateSchema,
   type SessionStore,
+  type SessionUser,
 } from "./auth.ts";
 import { TEST_USERS } from "./testUsers.ts";
 
@@ -328,11 +330,33 @@ test("Shared: API calls carry the token, and a 401 to one ends the session", asy
 // it was seen while another user's first login still says it wasn't.
 test("Shared: the mocked login remembers who has seen the Inventory tutorial", async () => {
   const auth = createMockAuth(memoryStore().store, TEST_USERS, 0);
-  const first = (await auth.login({ username: USER.username, password: USER.password }))!;
+  const first = (await auth.login({ username: USER.username, password: USER.password })) as SessionUser;
   assert.equal(first.inventoryTutorialSeen, false);
   await auth.markInventoryTutorialSeen(first);
   await auth.logout();
-  assert.equal((await auth.login({ username: USER.username, password: USER.password }))!.inventoryTutorialSeen, true);
+  assert.equal(((await auth.login({ username: USER.username, password: USER.password })) as SessionUser).inventoryTutorialSeen, true);
   const other = TEST_USERS[1];
-  assert.equal((await auth.login({ username: other.username, password: other.password }))!.inventoryTutorialSeen, false);
+  assert.equal(((await auth.login({ username: other.username, password: other.password })) as SessionUser).inventoryTutorialSeen, false);
+});
+
+// Turns a 429's Retry-After into the message: whole minutes rounded up, at least one, and a minute when it is missing.
+test("Shared: too many attempts say how many minutes to wait", () => {
+  assert.equal(tooManyAttempts("900"), "Muitas tentativas. Tente de novo em 15 min.");
+  assert.equal(tooManyAttempts("61"), "Muitas tentativas. Tente de novo em 2 min.");
+  assert.equal(tooManyAttempts("5"), "Muitas tentativas. Tente de novo em 1 min.");
+  assert.equal(tooManyAttempts(null), "Muitas tentativas. Tente de novo em 1 min.");
+});
+
+// Has the API answer a login and a sign-up with 429, and checks both are refused saying when to try again, with
+// nothing saved.
+test("Shared: the API login and sign-up say when to try again after too many attempts", async () => {
+  const limited = (async () =>
+    new Response(JSON.stringify({ statusCode: 429 }), { status: 429, headers: { "Retry-After": "840" } })) as typeof fetch;
+  const { store, saved } = memoryStore();
+  const auth = createApiAuth(store, "/api", limited);
+  const refused = { refused: "Muitas tentativas. Tente de novo em 14 min." };
+  assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }), refused);
+  const sent = { displayName: NEW_USER.displayName, username: NEW_USER.username, email: NEW_USER.email, password: NEW_USER.password };
+  assert.deepEqual(await auth.register(sent), refused);
+  assert.equal(saved.size, 0);
 });
