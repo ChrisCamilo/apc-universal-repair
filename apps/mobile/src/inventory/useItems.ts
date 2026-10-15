@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@apc/shared/auth';
 import { itemListResponseSchema, type Item } from '@apc/shared/items';
 import { API_URL } from '../api';
 
@@ -25,7 +26,7 @@ export function useItems(query = '', enabled = true): ItemsState & { reload: () 
       return;
     }
     const request = new AbortController();
-    fetch(query ? `${API_URL}/items?${query}` : `${API_URL}/items`, { signal: request.signal })
+    apiFetch(query ? `${API_URL}/items?${query}` : `${API_URL}/items`, { signal: request.signal })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
       .then((body) => setState({ status: 'ready', ...itemListResponseSchema.parse(body) }))
       .catch(() => {

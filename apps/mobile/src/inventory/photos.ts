@@ -1,4 +1,5 @@
 import { launchImageLibrary, type PhotoQuality } from 'react-native-image-picker';
+import { apiFetch } from '@apc/shared/auth';
 import { itemSchema, type Item } from '@apc/shared/items';
 import {
   ITEM_PHOTO_LIMIT,
@@ -54,6 +55,6 @@ export async function savePhotos(item: Item, photos: readonly UploadPhoto[]): Pr
       body.append(PHOTO_PARTS.file, { uri: part.file.url, name: part.file.name, type: part.file.type } as unknown as Blob);
     }
   }
-  const response = await fetch(`${API_URL}/items/${item.id}/photos`, { method: 'PUT', body }).catch(() => null);
+  const response = await apiFetch(`${API_URL}/items/${item.id}/photos`, { method: 'PUT', body }).catch(() => null);
   return response?.ok ? itemSchema.parse(await response.json()) : null;
 }
