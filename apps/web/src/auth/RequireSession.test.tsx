@@ -1,12 +1,22 @@
-import type { AuthService, SessionUser } from '@apc/shared/auth'
+import { useEffect } from 'react'
+import { apiFetch, createApiAuth, SESSION_STORAGE_KEY, type AuthService, type SessionUser } from '@apc/shared/auth'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
-import { expect, test } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { RequireSession } from './RequireSession.tsx'
 import { SessionProvider } from './SessionProvider.tsx'
 import { useSession } from './sessionContext.ts'
 
 const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true }
+
+// No API runs: every call answers ok unless a test answers otherwise.
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({})))
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 /**
  * Builds an AuthService whose saved session is read only when the test says so.
@@ -62,6 +72,24 @@ test('Web: a login made while the session is read is kept', async () => {
   await expect.element(screen.getByText('Logado: christian.camilo')).toBeVisible()
 })
 
+// Reads a saved session with its token, has the API refuse the token on the Dashboard's first call, and checks the
+// call carried the token and the user goes back to the login, told the session expired, with the session gone from
+// the device.
+test('Web: a refused token sends the user back to the login, told the session expired', async () => {
+  const saved = new Map([[SESSION_STORAGE_KEY, JSON.stringify({ ...USER, token: 't1' })]])
+  const store = {
+    getItem: async (key: string) => saved.get(key) ?? null,
+    setItem: async (key: string, value: string) => void saved.set(key, value),
+    removeItem: async (key: string) => void saved.delete(key),
+  }
+  const refuse = vi.fn<typeof fetch>(async () => new Response(null, { status: 401 }))
+  vi.stubGlobal('fetch', refuse)
+  const screen = await render(<App auth={createApiAuth(store, '/api', refuse)} />)
+  await expect.element(screen.getByText('Sessão expirada')).toBeVisible()
+  expect(new Headers(refuse.mock.calls[0][1]?.headers).get('Authorization')).toBe('Bearer t1')
+  expect(saved.size).toBe(0)
+})
+
 function App({ auth }: { auth: AuthService }) {
   return (
     <MemoryRouter initialEntries={['/inventory?q=freio']}>
@@ -82,13 +110,22 @@ function App({ auth }: { auth: AuthService }) {
   )
 }
 
+// The Dashboard asks the API for the items as it opens.
 function Dashboard() {
+  useEffect(() => {
+    void apiFetch('/api/items')
+  }, [])
   return <p>Painel de {useSession().user?.username}</p>
 }
 
 function LoginStub() {
   const from = (useLocation().state as { from?: string } | null)?.from
-  return <p>Login, depois {from}</p>
+  return (
+    <>
+      <p>Login, depois {from}</p>
+      {useSession().expired && <p>Sessão expirada</p>}
+    </>
+  )
 }
 
 function LogIn() {
