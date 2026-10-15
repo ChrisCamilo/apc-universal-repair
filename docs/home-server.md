@@ -68,6 +68,8 @@ DATABASE_URL="postgresql://postgres:<password>@localhost:5432/apc_universal_repa
 
 `PORT` is the port the phone uses (3333 is fine). `PHOTOS_DIR` is where the photos are saved, `apps\api\uploads\photos` by default. The `.env` file is never committed.
 
+The server answers only requests addressed to this computer: `localhost`, its IP addresses (the phone uses the Wi-Fi one) and the names listed in `APC_ALLOWED_HOSTS`, comma separated. Leave it out unless the phone reaches the computer by a name, such as `APC_ALLOWED_HOSTS="oficina.local"`. Any other address answers *403 Forbidden*, which keeps a web page open on this computer from reaching the server under its own name (DNS rebinding).
+
 Then create the tables and add the starting data (the test users, the default lists and a few sample items, which can be deleted in the app):
 
 ```powershell
@@ -136,6 +138,7 @@ If the phone gets no answer:
 3. Is the network profile **Private**?
 4. Does the firewall rule exist, and is there no block rule for Node.js? Look under *Windows Security → Firewall & network protection → Allow an app through firewall*.
 5. Did the computer's address change? Run `ipconfig` again and check the reservation on the router.
+6. Does `/health` answer *403 Forbidden* saying the server doesn't answer for that host? The phone is using a name, not the computer's address: add it to `APC_ALLOWED_HOSTS` in `apps\api\.env` and restart the server.
 
 ### 7. The phone
 
@@ -219,6 +222,8 @@ DATABASE_URL="postgresql://postgres:<senha>@localhost:5432/apc_universal_repair"
 
 O `PORT` é a porta que o celular usa (3333 está bom). O `PHOTOS_DIR` é onde as fotos ficam, `apps\api\uploads\photos` por padrão. O arquivo `.env` nunca vai para o git.
 
+O servidor só responde a requisições endereçadas a este computador: `localhost`, os endereços IP dele (o celular usa o do Wi-Fi) e os nomes listados em `APC_ALLOWED_HOSTS`, separados por vírgula. Deixe sem ele, a menos que o celular chegue ao computador por um nome, como `APC_ALLOWED_HOSTS="oficina.local"`. Qualquer outro endereço responde *403 Forbidden*, o que impede uma página aberta neste computador de chegar ao servidor com o próprio nome dela (DNS rebinding).
+
 Depois crie as tabelas e coloque os dados iniciais (os usuários de teste, as listas padrão e alguns itens de exemplo, que podem ser excluídos no app):
 
 ```powershell
@@ -287,6 +292,7 @@ Se o celular não recebe resposta:
 3. O perfil da rede está como **Privada**?
 4. A regra do firewall existe, e não há uma regra bloqueando o Node.js? Veja em *Segurança do Windows → Firewall e proteção de rede → Permitir um aplicativo pelo firewall*.
 5. O endereço do computador mudou? Rode o `ipconfig` de novo e confira a reserva no roteador.
+6. O `/health` responde *403 Forbidden* dizendo que o servidor não responde para aquele host? O celular está usando um nome, não o endereço do computador: adicione-o ao `APC_ALLOWED_HOSTS` no `apps\api\.env` e religue o servidor.
 
 ### 7. O celular
 
