@@ -54,6 +54,8 @@ export const sessionUserSchema = z.object({
   initials: z.string(),
   inventoryTutorialSeen: z.boolean().default(false),
 });
+/** What POST /sessions and POST /users answer: the user, and the token of the session they just started. */
+export const loggedInSchema = sessionUserSchema.extend({ token: z.string().min(1) });
 /** What POST /users takes: the sign-up fields, under the same rules as the form. The e-mail is only kept for now. */
 export const userCreateSchema = z.object({
   displayName: z.string().trim().min(1, REGISTER_MESSAGES.displayName),
