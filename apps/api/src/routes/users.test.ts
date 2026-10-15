@@ -45,3 +45,42 @@ test("API: the session says whether the user has seen the Inventory tutorial", (
   assert.deepEqual(sessionOf(row), { id: "u1", username: "ana.souza", displayName: "Ana Souza", initials: "AS", inventoryTutorialSeen: false });
   assert.equal(sessionOf({ ...row, inventoryTutorialSeenAt: new Date() }).inventoryTutorialSeen, true);
 });
+
+// Sends 30 logins from one address, none of them valid, and checks the 31st is refused with 429 and when to try
+// again, while another address still gets through to validation.
+test("API: an address gets 30 logins in 15 minutes", async () => {
+  const limited = buildApp();
+  try {
+    for (let attempt = 1; attempt <= 30; attempt++) {
+      const response = await limited.inject({ method: "POST", url: "/sessions", payload: {}, remoteAddress: "10.0.0.2" });
+      assert.equal(response.statusCode, 400, `attempt ${attempt}`);
+    }
+    const refused = await limited.inject({ method: "POST", url: "/sessions", payload: {}, remoteAddress: "10.0.0.2" });
+    assert.equal(refused.statusCode, 429);
+    assert.equal(refused.headers["retry-after"], "900");
+    assert.equal(refused.json().message, "Too many attempts. Try again in 15 min.");
+    const other = await limited.inject({ method: "POST", url: "/sessions", payload: {}, remoteAddress: "10.0.0.3" });
+    assert.equal(other.statusCode, 400);
+  } finally {
+    await limited.close();
+  }
+});
+
+// Sends 10 sign-ups from one address, none of them valid, and checks the 11th is refused with 429, and that the
+// logins of that address aren't counted with them.
+test("API: an address gets 10 sign-ups in 15 minutes", async () => {
+  const limited = buildApp();
+  try {
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      const response = await limited.inject({ method: "POST", url: "/users", payload: {}, remoteAddress: "10.0.0.2" });
+      assert.equal(response.statusCode, 400, `attempt ${attempt}`);
+    }
+    const refused = await limited.inject({ method: "POST", url: "/users", payload: {}, remoteAddress: "10.0.0.2" });
+    assert.equal(refused.statusCode, 429);
+    assert.ok(Number(refused.headers["retry-after"]) > 0);
+    const login = await limited.inject({ method: "POST", url: "/sessions", payload: {}, remoteAddress: "10.0.0.2" });
+    assert.equal(login.statusCode, 400);
+  } finally {
+    await limited.close();
+  }
+});

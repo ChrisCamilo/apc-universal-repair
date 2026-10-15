@@ -5,7 +5,7 @@
 import React from 'react';
 import { Modal, StyleSheet, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { createMockAuth, LOGIN_MESSAGES, type AuthService, type SessionUser } from '@apc/shared/auth';
+import { createMockAuth, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth';
 import { isStyleId } from '@apc/shared/style-ids';
 import { TEST_USERS } from '@apc/shared/test-users';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
@@ -232,6 +232,22 @@ test('Mobile: a login that can\'t be checked says the API is out of reach', asyn
   const alert = byId(tree, 'auth.login-screen.form.alert');
   expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES.unreachable)).not.toHaveLength(0);
   expect(field(tree, 'Senha').props.value).toBe(USER.password);
+});
+
+// Has the login refused after too many attempts, and checks the screen says how many minutes to wait, keeping the
+// password typed and "Entrar" free to press, and hands nothing over.
+test('Mobile: too many attempts say how many minutes to wait', async () => {
+  const onLoggedIn = jest.fn();
+  const limited: AuthService = { ...AUTH, login: jest.fn(async () => ({ refused: tooManyAttempts('840') })) };
+  const tree = await mount('gt4', 'day', <LoginScreen auth={limited} onLoggedIn={onLoggedIn} onRegister={() => {}} />);
+  await type(tree, 'Usuário', USER.username);
+  await type(tree, 'Senha', USER.password);
+  await press(tree, 'Entrar');
+  expect(shows(tree, 'Muitas tentativas. Tente de novo em 14 min.')).toBe(true);
+  expect(byId(tree, 'auth.login-screen.form.alert').props.accessibilityRole).toBe('alert');
+  expect(field(tree, 'Senha').props.value).toBe(USER.password);
+  expect(button(tree, 'Entrar').props.accessibilityState).toMatchObject({ busy: false });
+  expect(onLoggedIn).not.toHaveBeenCalled();
 });
 
 // Presses "Criar conta" and checks it asks to open the sign-up, sending no login.

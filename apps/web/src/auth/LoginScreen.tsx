@@ -15,7 +15,8 @@ import { loginScreen } from './LoginScreen.styles.ts'
 // is typed into. While the login runs, "Entrar" shows it is busy and is disabled, so neither another press nor
 // Enter (the browser only sends a form through an enabled submit button) sends it twice. A refused login shows
 // one message above the form, without saying which field was wrong, and empties and focuses the password.
-// When the login can't be made (the API out of reach), it says so instead, keeping the password.
+// When the login can't be made (the API out of reach), it says so instead, keeping the password, as it does after
+// too many attempts, saying how many minutes to wait.
 // "Esqueceu a senha?" opens a notice to ask the workshop's admin for a new password, as there is no reset until
 // the real backend (EP-10); it closes on "Entendi", Escape or a click outside, and the focus goes back to the link.
 // "Criar conta" opens the sign-up. A notice, such as the session having expired, shows above the form until a login
@@ -77,6 +78,10 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScree
       setRefused(LOGIN_MESSAGES.failed)
       setCredentials((typed) => ({ ...typed, password: '' }))
       passwordInput.current?.focus()
+      return
+    }
+    if ('refused' in user) {
+      setRefused(user.refused)
       return
     }
     onLoggedIn(user)

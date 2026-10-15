@@ -72,10 +72,11 @@ export const userCreateSchema = z.object({
 /** Logs in and out and tells who is logged in: on the API in the apps, the mock in tests and stories. */
 export type AuthService = {
   /**
-   * Checks the user and password; resolves with the logged user, or null when they don't match, and rejects when the
-   * check can't be made (e.g. the API is out of reach).
+   * Checks the user and password; resolves with the logged user, null when they don't match, or the message saying
+   * why else it was refused (too many attempts), and rejects when the check can't be made (e.g. the API is out of
+   * reach).
    */
-  login: (credentials: Credentials) => Promise<SessionUser | null>;
+  login: (credentials: Credentials) => Promise<SessionUser | null | { refused: string }>;
   /** Creates a user and logs them in; resolves with the user, or the message saying why it was refused. */
   register: (user: UserCreate) => Promise<RegisterResult>;
   /** Ends the session, on the device and on the API; a failed request is ignored. */
@@ -117,7 +118,7 @@ export type UserCreate = z.input<typeof userCreateSchema>;
 /**
  * Builds the login and sign-up of the apps, through the API: POST /sessions checks the user and password, POST /users
  * creates a user; either way the user the API answers with is saved in the store as the session, with its token,
- * which apiFetch then sends. DELETE /sessions/current ends the session on logout, and PUT
+ * which apiFetch then sends. Too many attempts (429) are refused saying when to try again. DELETE /sessions/current ends the session on logout, and PUT
  * /users/me/inventory-tutorial marks the Inventory tutorial as seen.
  * @param store Where the session is saved on the device.
  * @param apiBase Where the API answers, e.g. "/api" on the web.
@@ -141,6 +142,9 @@ export function createApiAuth(store: SessionStore, apiBase: string, send: typeof
       if (response.status === 401) {
         return null;
       }
+      if (response.status === 429) {
+        return { refused: tooManyAttempts(response.headers.get("Retry-After")) };
+      }
       if (!response.ok) {
         throw new Error(`The login answered ${response.status}.`);
       }
@@ -150,6 +154,9 @@ export function createApiAuth(store: SessionStore, apiBase: string, send: typeof
       const response = await post("/users", user).catch(() => null);
       if (response?.status === 409) {
         return { refused: REGISTER_MESSAGES.taken };
+      }
+      if (response?.status === 429) {
+        return { refused: tooManyAttempts(response.headers.get("Retry-After")) };
       }
       if (!response?.ok) {
         return { refused: REGISTER_MESSAGES.failed };
@@ -304,4 +311,14 @@ export function registerErrors({ displayName, username, email, password, confirm
  */
 function sessionOf({ id, username, displayName }: TestUser, inventoryTutorialSeen: boolean): SessionUser {
   return { id, username, displayName, initials: initials(displayName), inventoryTutorialSeen };
+}
+
+/**
+ * Says how long to wait after too many login or sign-up attempts.
+ * @param retryAfter The 429's Retry-After, in seconds; a minute when it is missing.
+ * @returns The message, e.g. "Muitas tentativas. Tente de novo em 15 min."
+ */
+export function tooManyAttempts(retryAfter: string | null): string {
+  const minutes = Math.max(1, Math.ceil((Number(retryAfter) || 60) / 60));
+  return `Muitas tentativas. Tente de novo em ${minutes} min.`;
 }
