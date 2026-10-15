@@ -10,11 +10,18 @@ export const BADGE_WIDTH = scales.space.s1 * 36;
 export const CONTENT_MAX_WIDTH = scales.space.s1 * 96;
 
 /** Each part's path in an auth screen. */
-export const AUTH_SCREEN_PATHS = { page: '', title: 'brand.title', form: 'form', alert: 'form.alert', actions: 'form.actions' };
+export const AUTH_SCREEN_PATHS = {
+  page: '',
+  title: 'brand.title',
+  form: 'form',
+  notice: 'form.notice',
+  alert: 'form.alert',
+  actions: 'form.actions',
+};
 
 /**
  * Builds the look of an auth screen: the page and its content, the badge's panel and heading, and the form with its
- * alert and actions.
+ * notice, alert and actions.
  * @returns The styles, by part.
  */
 export function authScreenStyles() {
@@ -32,10 +39,14 @@ export function authScreenStyles() {
       padding: scales.space.s4,
     },
     form: { gap: scales.space.s4 },
+    notice: {},
     page: { flex: 1 },
     title: {},
   } as const;
 }
 
-/** The login screen: the page and its content, the badge's panel and heading, and the form with its alert and actions. */
+/**
+ * The login screen: the page and its content, the badge's panel and heading, and the form with its notice, alert and
+ * actions.
+ */
 export const useStyles = createStyles('auth.login-screen', AUTH_SCREEN_PATHS, authScreenStyles);
