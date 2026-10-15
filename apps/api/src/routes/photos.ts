@@ -9,13 +9,16 @@ import { ITEM_PHOTO_LIMIT, PHOTO_PARTS } from "@apc/shared/photos";
 import { prisma } from "../db/client.js";
 import { ITEM_INCLUDE, toItem } from "../items/items.js";
 import { checkPhoto, photosDir, removePhotoFiles, storePhoto } from "../photos/photos.js";
+import { validPhotoSignature, type SessionLookup } from "../sessions/sessions.js";
 import { notFound } from "./items.js";
 
 // An item's photos. PUT /items/:id/photos sets them all at once, in the order of the request's parts: a "keep" part
 // keeps a saved photo by its id and a "photo" part adds a new file, so one request adds, removes, replaces and
 // reorders. Everything sent is checked before anything is stored: at most 3 photos, each new one a JPG, PNG or
 // WebP up to 3 MB by its content, and each kept one a photo of this item. Photos left out are deleted with their
-// files. GET /photos/:file serves the stored files, which never change, since each new photo gets a new id.
+// files. GET /photos/:file serves the stored files, which never change, since each new photo gets a new id. It is
+// open without a session, as <img> can't send one, but only at a path the API signed for a live session (see
+// sessions.ts), answering 401 otherwise; the browser keeps the file only for this device, until the path changes.
 
 /** Content type of each stored file, by extension. */
 const CONTENT_TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
@@ -23,6 +26,8 @@ const CONTENT_TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/p
 const photoFileParamsSchema = z.object({
   file: z.string().regex(/^[0-9a-f-]{36}(-thumb)?\.(jpg|png|webp)$/, "Not a photo file."),
 });
+/** The session a photo path is signed for, and its signature; a path without them is answered 401. */
+const photoSignatureQuerySchema = z.object({ session: z.string().optional(), signature: z.string().optional() });
 
 const uuidSchema = z.uuid();
 
@@ -53,7 +58,12 @@ function isUuid(value: unknown): boolean {
   return uuidSchema.safeParse(value).success;
 }
 
-export function registerPhotoRoutes(app: FastifyInstance) {
+/**
+ * Registers the item photo routes.
+ * @param app The Fastify app.
+ * @param sessions Where the sessions signed photo paths name are looked up.
+ */
+export function registerPhotoRoutes(app: FastifyInstance, sessions: SessionLookup) {
   const routes = app.withTypeProvider<ZodTypeProvider>();
 
   routes.put(
@@ -120,19 +130,28 @@ export function registerPhotoRoutes(app: FastifyInstance) {
       await removePhotoFiles(
         item.photos.filter((photo) => !kept.includes(photo.id)).flatMap((photo) => [photo.file, photo.thumbFile]),
       );
-      return toItem((await prisma.item.findUnique({ where: { id }, include: ITEM_INCLUDE }))!);
+      return toItem((await prisma.item.findUnique({ where: { id }, include: ITEM_INCLUDE }))!, request.session);
     },
   );
 
-  routes.get("/photos/:file", { schema: { params: photoFileParamsSchema } }, async (request, reply) => {
-    const { file } = request.params;
-    const content = await readFile(path.join(photosDir(), file)).catch(() => null);
-    if (!content) {
-      return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "Photo not found." });
-    }
-    return reply
-      .header("cache-control", "public, max-age=31536000, immutable")
-      .type(CONTENT_TYPES[path.extname(file).slice(1)])
-      .send(content);
-  });
+  routes.get(
+    "/photos/:file",
+    { config: { public: true }, schema: { params: photoFileParamsSchema, querystring: photoSignatureQuerySchema } },
+    async (request, reply) => {
+      const { file } = request.params;
+      const { session: sessionId, signature } = request.query;
+      const session = sessionId && signature ? await sessions.byId(sessionId) : null;
+      if (!session || !validPhotoSignature(session, file, signature!)) {
+        return reply.status(401).send({ statusCode: 401, error: "Unauthorized", message: "This photo path isn't signed for a session." });
+      }
+      const content = await readFile(path.join(photosDir(), file)).catch(() => null);
+      if (!content) {
+        return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "Photo not found." });
+      }
+      return reply
+        .header("cache-control", "private, max-age=31536000, immutable")
+        .type(CONTENT_TYPES[path.extname(file).slice(1)])
+        .send(content);
+    },
+  );
 }

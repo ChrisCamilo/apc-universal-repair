@@ -6,10 +6,12 @@ import { after, before, test } from "node:test";
 import sharp from "sharp";
 import { buildApp } from "../app.js";
 import { photosDir, storePhoto } from "../photos/photos.js";
+import { signedPhotoPath } from "../sessions/sessions.js";
+import { AUTHORIZED, TEST_SESSION, TEST_SESSIONS } from "../sessions/testSessions.js";
 
-// These requests are answered before any database call, so they run without a database.
+// These requests are answered before any database call, so they run without a database, from the stand-in session.
 
-const app = buildApp();
+const app = buildApp({ sessions: TEST_SESSIONS });
 const ID = "00000000-0000-4000-8000-000000000001";
 const PHOTO_ID = "00000000-0000-4000-8000-0000000000aa";
 
@@ -31,7 +33,7 @@ function multipart(parts: ({ name: string; value: string } | { name: string; fil
   ]);
   return {
     payload: Buffer.concat([...chunks, Buffer.from(`--${boundary}--\r\n`)]),
-    headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+    headers: { ...AUTHORIZED, "content-type": `multipart/form-data; boundary=${boundary}` },
   };
 }
 
@@ -84,19 +86,41 @@ test("API: photos that break the rules are refused before anything is stored", a
   assert.equal(badId.statusCode, 400);
 });
 
-// Stores a photo and checks the photo and the thumbnail are served as WebP with a long cache, a missing photo is
-// not found, and a name that isn't a photo file, such as a way out of the folder, is refused.
-test("API: stored photos are served by their file name only", async () => {
+// Stores a photo and checks the photo and the thumbnail are served, without a token, at the paths signed for the
+// session, as WebP with a long cache kept on this device only; a missing photo is not found, and a name that isn't a
+// photo file, such as a way out of the folder, is refused.
+test("API: stored photos are served by their file name only, at a signed path", async () => {
   const stored = await storePhoto(PHOTO_ID, await photo("png"));
-  const original = await app.inject({ method: "GET", url: `/photos/${stored.file}` });
+  const original = await app.inject({ method: "GET", url: signedPhotoPath(TEST_SESSION, stored.file) });
   assert.equal(original.statusCode, 200);
   assert.equal(original.headers["content-type"], "image/webp");
-  assert.equal(original.headers["cache-control"], "public, max-age=31536000, immutable");
-  const thumb = await app.inject({ method: "GET", url: `/photos/${stored.thumbFile}` });
+  assert.equal(original.headers["cache-control"], "private, max-age=31536000, immutable");
+  const thumb = await app.inject({ method: "GET", url: signedPhotoPath(TEST_SESSION, stored.thumbFile) });
   assert.equal(thumb.headers["content-type"], "image/webp");
 
-  const missing = await app.inject({ method: "GET", url: `/photos/${ID}.jpg` });
+  const missing = await app.inject({ method: "GET", url: signedPhotoPath(TEST_SESSION, `${ID}.jpg`) });
   assert.equal(missing.statusCode, 404);
   const outside = await app.inject({ method: "GET", url: "/photos/..%2F..%2Fpackage.json" });
   assert.equal(outside.statusCode, 400);
+});
+
+// Asks for a stored photo with no signature, with the token instead of one, with another file's signature, with a
+// signature cut short and for a session that doesn't exist, and checks each is refused with 401 without the file.
+test("API: a photo path not signed for a live session is refused", async () => {
+  const stored = await storePhoto(PHOTO_ID, await photo("png"));
+  const signed = new URL(signedPhotoPath(TEST_SESSION, stored.file), "http://api");
+  const thumbSignature = new URL(signedPhotoPath(TEST_SESSION, stored.thumbFile), "http://api").searchParams.get("signature")!;
+  const urls = [
+    `/photos/${stored.file}`,
+    `/photos/${stored.file}?session=${TEST_SESSION.id}&signature=${thumbSignature}`,
+    `/photos/${stored.file}?session=${TEST_SESSION.id}&signature=${signed.searchParams.get("signature")!.slice(1)}`,
+    `/photos/${stored.file}?session=another-session&signature=${signed.searchParams.get("signature")}`,
+  ];
+  for (const url of urls) {
+    const response = await app.inject({ method: "GET", url });
+    assert.equal(response.statusCode, 401, url);
+    assert.notEqual(response.headers["content-type"], "image/webp", url);
+  }
+  const withToken = await app.inject({ method: "GET", url: `/photos/${stored.file}`, headers: AUTHORIZED });
+  assert.equal(withToken.statusCode, 401);
 });

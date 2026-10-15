@@ -6,8 +6,10 @@ import { ITEM_LIST_PATHS } from "@apc/shared/lists";
 import { TEST_USERS } from "@apc/shared/test-users";
 
 // A stand-in for the API, on a free port of this computer, for the desktop smoke test: the health check, the login
-// of the test users (who have seen the Inventory tutorial, so it doesn't start over the screen), marking the tutorial
-// seen, the item list (empty unless the test gives items) and empty item lists. Anything else gets a 404.
+// of the test users (who have seen the Inventory tutorial, so it doesn't start over the screen), answering the token
+// "token-<id>", and, as the API does, only for a request carrying a test user's token: marking the tutorial seen,
+// logging out, the item list (empty unless the test gives items) and empty item lists. A request without one gets a
+// 401, so the tests also check the app forwards the token; anything else gets a 404.
 
 /** The paths of the item lists (categories, part brands…), answered with an empty list. */
 const LIST_PATHS = new Set(Object.values(ITEM_LIST_PATHS));
@@ -37,11 +39,14 @@ export async function startStubApi(items: readonly Item[] = []): Promise<{ serve
           return reply(401, { statusCode: 401, message: "Wrong username or password." });
         }
         const { id, displayName } = user;
-        reply(200, { id, username, displayName, initials: initials(displayName), inventoryTutorialSeen: true });
+        reply(200, { id, username, displayName, initials: initials(displayName), inventoryTutorialSeen: true, token: `token-${id}` });
       });
       return;
     }
-    if (request.method === "PUT" && /^\/users\/[^/]+\/inventory-tutorial$/.test(pathname)) {
+    if (!TEST_USERS.some(({ id }) => request.headers.authorization === `Bearer token-${id}`)) {
+      return reply(401, { statusCode: 401, message: "Log in to use the API." });
+    }
+    if ((request.method === "PUT" && pathname === "/users/me/inventory-tutorial") || (request.method === "DELETE" && pathname === "/sessions/current")) {
       response.writeHead(204);
       response.end();
       return;

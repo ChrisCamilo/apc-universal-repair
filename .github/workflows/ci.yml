@@ -55,7 +55,7 @@ jobs:
 
   # Builds an empty database from the migrations, as a new computer at home does (docs/home-server.md), checks it
   # matches schema.prisma and seeds it. All the migrations run in one session here, unlike on a database that took them
-  # one at a time.
+  # one at a time. The API's tests that need a database then run on it.
   migrations:
     runs-on: ubuntu-latest
     services:
@@ -93,3 +93,6 @@ jobs:
 
       - name: Seed it
         run: pnpm --filter @apc/api db:seed
+
+      - name: API tests against the database
+        run: pnpm --filter @apc/api test:db

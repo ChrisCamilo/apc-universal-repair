@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { after, test } from "node:test";
 import { buildApp } from "../app.js";
 
-// The health check answers without a database.
+// The health check answers without a database or a session.
 
 const app = buildApp();
 

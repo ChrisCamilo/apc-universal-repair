@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { buildApp } from "../app.js";
+import { AUTHORIZED, TEST_SESSIONS } from "../sessions/testSessions.js";
 
-// These requests are rejected by validation before any database call, so they run without a database.
+// These requests are rejected by validation before any database call, so they run without a database, from the
+// stand-in session.
 
-const app = buildApp();
+const app = buildApp({ sessions: TEST_SESSIONS });
 
 after(() => app.close());
 
@@ -12,7 +14,7 @@ after(() => app.close());
 // field.
 test("API: creating in a list needs a name", async () => {
   for (const url of ["/categories", "/part-brands", "/vehicle-brands"]) {
-    const blank = await app.inject({ method: "POST", url, payload: { name: "   " } });
+    const blank = await app.inject({ headers: AUTHORIZED, method: "POST", url, payload: { name: "   " } });
     assert.equal(blank.statusCode, 400, url);
     assert.equal(blank.json().details[0].field, "name", url);
   }
@@ -21,10 +23,10 @@ test("API: creating in a list needs a name", async () => {
 // Creates a vehicle model without its vehicle brand and with a brand id that isn't a UUID, and checks both are
 // rejected, naming the field.
 test("API: a new vehicle model needs its vehicle brand", async () => {
-  const missing = await app.inject({ method: "POST", url: "/vehicle-models", payload: { name: "Gol" } });
+  const missing = await app.inject({ headers: AUTHORIZED, method: "POST", url: "/vehicle-models", payload: { name: "Gol" } });
   assert.equal(missing.statusCode, 400);
   assert.equal(missing.json().details[0].field, "vehicleBrandId");
-  const wrong = await app.inject({ method: "POST", url: "/vehicle-models", payload: { name: "Gol", vehicleBrandId: "vw" } });
+  const wrong = await app.inject({ headers: AUTHORIZED, method: "POST", url: "/vehicle-models", payload: { name: "Gol", vehicleBrandId: "vw" } });
   assert.equal(wrong.statusCode, 400);
 });
 
@@ -32,9 +34,9 @@ test("API: a new vehicle model needs its vehicle brand", async () => {
 // reaching the database.
 test("API: renaming and deleting in a list check the id and the name", async () => {
   for (const url of ["/categories", "/part-brands", "/vehicle-brands", "/vehicle-models"]) {
-    const rename = await app.inject({ method: "PATCH", url: `${url}/123`, payload: { name: "Motor" } });
-    const remove = await app.inject({ method: "DELETE", url: `${url}/123` });
-    const blank = await app.inject({ method: "PATCH", url: `${url}/00000000-0000-4000-8000-000000000001`, payload: { name: " " } });
+    const rename = await app.inject({ headers: AUTHORIZED, method: "PATCH", url: `${url}/123`, payload: { name: "Motor" } });
+    const remove = await app.inject({ headers: AUTHORIZED, method: "DELETE", url: `${url}/123` });
+    const blank = await app.inject({ headers: AUTHORIZED, method: "PATCH", url: `${url}/00000000-0000-4000-8000-000000000001`, payload: { name: " " } });
     assert.deepEqual([rename.statusCode, remove.statusCode, blank.statusCode], [400, 400, 400], url);
     assert.equal(blank.json().details[0].field, "name", url);
   }

@@ -4,10 +4,11 @@ import sharp from "sharp";
 import { PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from "@apc/shared/photos";
 import type { ItemPhoto } from "@apc/shared/items";
 import type { ItemPhoto as ItemPhotoRow } from "../generated/prisma/client.js";
+import { signedPhotoPath, type ActiveSession } from "../sessions/sessions.js";
 
 // Item photos on disk: each one is checked by its content (JPG, PNG or WebP up to 3 MB, whatever its name says),
 // reduced and stored under PHOTOS_DIR as a WebP named after its id, next to a square WebP thumbnail for the list, and
-// served back from /photos. Reducing turns it upright as the camera meant, fits its longest side in
+// served back from /photos, at paths signed for the caller's session (see sessions.ts). Reducing turns it upright as the camera meant, fits its longest side in
 // PHOTO_MAX_DIMENSION without enlarging it, saves it at PHOTO_QUALITY and drops its metadata (EXIF, location). The
 // database row keeps the two file names and the photo's place among the item's photos.
 
@@ -47,12 +48,13 @@ export async function compressPhoto(buffer: Buffer): Promise<Buffer> {
 }
 
 /**
- * Turns a photo row into the photo the API sends, with the paths it is served at.
+ * Turns a photo row into the photo the API sends, with the paths it is served at for the caller.
  * @param row Photo row.
+ * @param session The caller's session, which the paths are signed for.
  * @returns The photo as described by itemPhotoSchema.
  */
-export function photoOf(row: Pick<ItemPhotoRow, "id" | "file" | "thumbFile">): ItemPhoto {
-  return { id: row.id, url: `/photos/${row.file}`, thumbUrl: `/photos/${row.thumbFile}` };
+export function photoOf(row: Pick<ItemPhotoRow, "id" | "file" | "thumbFile">, session: ActiveSession): ItemPhoto {
+  return { id: row.id, url: signedPhotoPath(session, row.file), thumbUrl: signedPhotoPath(session, row.thumbFile) };
 }
 
 /**

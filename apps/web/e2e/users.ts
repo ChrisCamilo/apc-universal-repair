@@ -6,11 +6,12 @@ import { TEST_USERS } from "@apc/shared/test-users";
 // test users, as the seed puts them in the database, and the users the test signs up. POST /api/users creates a user
 // under the form's rules, refusing a username in use (409); POST /api/sessions checks a username and password,
 // answering 401 when they don't match. Both answer with the user as the session keeps them, saying whether they have
-// seen the Inventory tutorial, which PUT /api/users/:id/inventory-tutorial marks.
+// seen the Inventory tutorial, and the token "token-<id>", by which PUT /api/users/me/inventory-tutorial marks it
+// for the caller and DELETE /api/sessions/current ends the session.
 
 /**
- * Answers POST /api/users, POST /api/sessions and PUT /api/users/:id/inventory-tutorial from the test users and the
- * users signed up meanwhile.
+ * Answers POST /api/users, POST /api/sessions, PUT /api/users/me/inventory-tutorial and DELETE /api/sessions/current
+ * from the test users and the users signed up meanwhile.
  * @param page The test's page.
  * @returns The users the stand-in knows, the test users first; read it to check a sign-up.
  */
@@ -24,6 +25,7 @@ export async function serveUsers(page: Page): Promise<TestUser[]> {
     displayName,
     initials: initials(displayName),
     inventoryTutorialSeen: seen.has(id),
+    token: `token-${id}`,
   });
   await page.route("**/api/users", (route) => {
     const parsed = userCreateSchema.safeParse(route.request().postDataJSON());
@@ -45,9 +47,10 @@ export async function serveUsers(page: Page): Promise<TestUser[]> {
       ? route.fulfill({ status: 200, json: session(user) })
       : route.fulfill({ status: 401, json: { statusCode: 401, message: "Wrong username or password." } });
   });
-  await page.route("**/api/users/*/inventory-tutorial", (route) => {
-    seen.add(decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-2)!));
+  await page.route("**/api/users/me/inventory-tutorial", async (route) => {
+    seen.add((await route.request().headerValue("authorization"))!.replace("Bearer token-", ""));
     return route.fulfill({ status: 204 });
   });
+  await page.route("**/api/sessions/current", (route) => route.fulfill({ status: 204 }));
   return users;
 }

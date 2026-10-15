@@ -17,6 +17,8 @@
     "photos:compress": "tsx src/photos/compressStored.ts",
     "lint": "eslint src",
     "test": "tsx --test \"src/**/*.test.ts\"",
+    "pretest:db": "prisma generate",
+    "test:db": "tsx --test \"src/**/*.db-test.ts\"",
     "pretypecheck": "prisma generate",
     "typecheck": "tsc -p tsconfig.test.json"
   },

@@ -113,6 +113,19 @@ test('Web: a refused login says so above the form and empties the password', asy
   expect(onLoggedIn).not.toHaveBeenCalled()
 })
 
+// Opens the login after the session expired, and checks the notice heads the form as a status until a login is
+// sent, which a refused one then replaces with its own message.
+test('Web: the login says the session expired until a login is sent', async () => {
+  const screen = await render(<LoginScreen auth={AUTH} notice={LOGIN_MESSAGES.expired} onLoggedIn={() => {}} onRegister={() => {}} />)
+  const status = screen.getByRole('status')
+  await expect.element(status).toHaveTextContent(LOGIN_MESSAGES.expired)
+  expect(screen.getByTestId('auth.login-screen.form').element().firstElementChild).toBe(status.element())
+  await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
+  await userEvent.type(screen.getByLabelText('Senha', { exact: true }), 'errada{Enter}')
+  await expect.element(screen.getByRole('alert')).toHaveTextContent(LOGIN_MESSAGES.failed)
+  expect(screen.container.textContent).not.toContain(LOGIN_MESSAGES.expired)
+})
+
 // Checks the parts of the screen carry their style ids, the same as on mobile: the page, the badge's heading, the
 // form and its actions, each on its own element; and that every id on the screen is written as the convention asks.
 test('Web: the login screen carries its style ids', async () => {

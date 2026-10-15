@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { TextInput, View } from 'react-native';
+import { apiFetch } from '@apc/shared/auth';
 import { capitalizeFirst, findOption, itemSchema, POSITIONS, SIDES, type Item } from '@apc/shared/items';
 import {
   codeTakenError,
@@ -171,7 +172,7 @@ export function ItemFormDialog({
       return;
     }
     setSaving(true);
-    const response = await fetch(item ? `${API_URL}/items/${item.id}` : `${API_URL}/items`, {
+    const response = await apiFetch(item ? `${API_URL}/items/${item.id}` : `${API_URL}/items`, {
       method: item ? 'PATCH' : 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(itemFormBody(form, options.colors)),

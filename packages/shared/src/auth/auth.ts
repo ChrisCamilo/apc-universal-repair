@@ -1,20 +1,25 @@
 import { z } from "zod";
+import { setSessionToken, withSession } from "./apiFetch.ts";
+
+export { apiFetch, onSessionExpired } from "./apiFetch.ts";
 
 // Login and sign-up shared by the web and mobile apps: which fields must be filled before the login is sent, the
 // sign-up rules the API checks too, and the two AuthServices. The apps use the API's (createApiAuth): the users live
 // in the database, the test users of @apc/shared/test-users seeded there, and the API checks the password. The mock
 // (createMockAuth) checks the test users kept in the repo, for tests and stories. Both save the session on the device
-// through the store each app hands over (localStorage on the web, AsyncStorage on mobile); real sessions, with
-// tokens the API checks, come with EP-10. The screens only see AuthService.
+// through the store each app hands over (localStorage on the web, the phone's keychain on mobile). The API's also
+// keeps the token of the session the API started, which apiFetch sends on every call; a session saved without one,
+// from before the API checked tokens, counts as nobody logged in. The screens only see AuthService.
 
 /**
- * Messages of the login form: under each field left empty, above the form when the login is refused, and in the
- * dialog "Esqueceu a senha?" opens while there is no password reset (EP-10).
+ * Messages of the login form: under each field left empty, above the form when the login is refused or the session
+ * expired, and in the dialog "Esqueceu a senha?" opens while there is no password reset (EP-10).
  */
 export const LOGIN_MESSAGES = {
   username: "Informe o usuário.",
   password: "Informe a senha.",
   failed: "Usuário ou senha incorretos.",
+  expired: "Sua sessão expirou. Entre de novo.",
   unreachable: "Não foi possível entrar. Verifique a conexão e tente de novo.",
   forgotPassword: "Peça ao administrador da oficina para redefinir sua senha.",
 } as const;
@@ -54,6 +59,8 @@ export const sessionUserSchema = z.object({
   initials: z.string(),
   inventoryTutorialSeen: z.boolean().default(false),
 });
+/** What POST /sessions and POST /users answer: the user, and the token of the session they just started. */
+export const loggedInSchema = sessionUserSchema.extend({ token: z.string().min(1) });
 /** What POST /users takes: the sign-up fields, under the same rules as the form. The e-mail is only kept for now. */
 export const userCreateSchema = z.object({
   displayName: z.string().trim().min(1, REGISTER_MESSAGES.displayName),
@@ -62,7 +69,7 @@ export const userCreateSchema = z.object({
   password: z.string().min(PASSWORD_MIN_LENGTH, REGISTER_MESSAGES.passwordShort),
 });
 
-/** Logs in and out and tells who is logged in; the mock now, the real backend with EP-10. */
+/** Logs in and out and tells who is logged in: on the API in the apps, the mock in tests and stories. */
 export type AuthService = {
   /**
    * Checks the user and password; resolves with the logged user, or null when they don't match, and rejects when the
@@ -71,7 +78,7 @@ export type AuthService = {
   login: (credentials: Credentials) => Promise<SessionUser | null>;
   /** Creates a user and logs them in; resolves with the user, or the message saying why it was refused. */
   register: (user: UserCreate) => Promise<RegisterResult>;
-  /** Ends the session. */
+  /** Ends the session, on the device and on the API; a failed request is ignored. */
   logout: () => Promise<void>;
   /**
    * Marks that the user has seen the Inventory tutorial: in the saved session at once, so it doesn't start again on
@@ -84,6 +91,8 @@ export type AuthService = {
 };
 /** What the login form sends. */
 export type Credentials = { username: string; password: string };
+/** What the API answers a login or sign-up with, and the API's AuthService saves: the user and the token. */
+export type LoggedIn = z.infer<typeof loggedInSchema>;
 /** The message of each field that can't be sent as it is; a field without one is fine. */
 export type LoginErrors = Partial<Record<"username" | "password", string>>;
 /** The sign-up form as typed: the user to create and the password typed again. */
@@ -107,8 +116,9 @@ export type UserCreate = z.input<typeof userCreateSchema>;
 
 /**
  * Builds the login and sign-up of the apps, through the API: POST /sessions checks the user and password, POST /users
- * creates a user; either way the user the API answers with is saved in the store as the session. PUT
- * /users/:id/inventory-tutorial marks the Inventory tutorial as seen.
+ * creates a user; either way the user the API answers with is saved in the store as the session, with its token,
+ * which apiFetch then sends. DELETE /sessions/current ends the session on logout, and PUT
+ * /users/me/inventory-tutorial marks the Inventory tutorial as seen.
  * @param store Where the session is saved on the device.
  * @param apiBase Where the API answers, e.g. "/api" on the web.
  * @param send How requests are sent: the global fetch as it is when each one is sent, or a stand-in in tests.
@@ -117,6 +127,14 @@ export type UserCreate = z.input<typeof userCreateSchema>;
 export function createApiAuth(store: SessionStore, apiBase: string, send: typeof fetch = (input, init) => fetch(input, init)): AuthService {
   const post = (path: string, body: unknown) =>
     send(`${apiBase}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const call = withSession(send);
+  /** Saves a session the API started and hands its token to apiFetch. */
+  const start = async (loggedIn: LoggedIn) => {
+    await store.setItem(SESSION_STORAGE_KEY, JSON.stringify(loggedIn));
+    setSessionToken(loggedIn.token);
+    // The schema leaves the token out.
+    return sessionUserSchema.parse(loggedIn);
+  };
   return {
     login: async (credentials) => {
       const response = await post("/sessions", credentials);
@@ -126,7 +144,7 @@ export function createApiAuth(store: SessionStore, apiBase: string, send: typeof
       if (!response.ok) {
         throw new Error(`The login answered ${response.status}.`);
       }
-      return keepSession(store, sessionUserSchema.parse(await response.json()));
+      return start(loggedInSchema.parse(await response.json()));
     },
     register: async (user) => {
       const response = await post("/users", user).catch(() => null);
@@ -136,17 +154,26 @@ export function createApiAuth(store: SessionStore, apiBase: string, send: typeof
       if (!response?.ok) {
         return { refused: REGISTER_MESSAGES.failed };
       }
-      return { user: await keepSession(store, sessionUserSchema.parse(await response.json())) };
+      return { user: await start(loggedInSchema.parse(await response.json())) };
     },
-    logout: () => store.removeItem(SESSION_STORAGE_KEY),
+    logout: async () => {
+      await call(`${apiBase}/sessions/current`, { method: "DELETE" }).catch(() => null);
+      setSessionToken(null);
+      await store.removeItem(SESSION_STORAGE_KEY);
+    },
     markInventoryTutorialSeen: async (user) => {
-      const [seen] = await Promise.all([
-        keepSession(store, { ...user, inventoryTutorialSeen: true }),
-        send(`${apiBase}/users/${encodeURIComponent(user.id)}/inventory-tutorial`, { method: "PUT" }).catch(() => null),
+      const saved = readSession(await store.getItem(SESSION_STORAGE_KEY), loggedInSchema);
+      await Promise.all([
+        saved && store.setItem(SESSION_STORAGE_KEY, JSON.stringify({ ...saved, inventoryTutorialSeen: true })),
+        call(`${apiBase}/users/me/inventory-tutorial`, { method: "PUT" }).catch(() => null),
       ]);
-      return seen;
+      return { ...user, inventoryTutorialSeen: true };
     },
-    currentUser: async () => readSession(await store.getItem(SESSION_STORAGE_KEY)),
+    currentUser: async () => {
+      const saved = readSession(await store.getItem(SESSION_STORAGE_KEY), loggedInSchema);
+      setSessionToken(saved?.token ?? null);
+      return saved && sessionUserSchema.parse(saved);
+    },
   };
 }
 
@@ -185,7 +212,7 @@ export function createMockAuth(store: SessionStore, users: readonly TestUser[], 
       seen.add(user.id);
       return keepSession(store, { ...user, inventoryTutorialSeen: true });
     },
-    currentUser: async () => readSession(await store.getItem(SESSION_STORAGE_KEY)),
+    currentUser: async () => readSession(await store.getItem(SESSION_STORAGE_KEY), sessionUserSchema),
   };
 }
 
@@ -226,16 +253,17 @@ export function loginErrors({ username, password }: Credentials): LoginErrors {
 
 /**
  * Reads a saved session back, ignoring one that isn't a session any more (e.g. edited by hand or from an older
- * version), which then counts as nobody logged in.
+ * version, such as one saved without a token), which then counts as nobody logged in.
  * @param saved What the store holds under the session key.
- * @returns The logged user, or null.
+ * @param schema The session's shape: the user alone for the mock, the user and the token for the API.
+ * @returns The session, or null.
  */
-function readSession(saved: string | null): SessionUser | null {
+function readSession<T>(saved: string | null, schema: z.ZodType<T>): T | null {
   if (saved === null) {
     return null;
   }
   try {
-    const parsed = sessionUserSchema.safeParse(JSON.parse(saved));
+    const parsed = schema.safeParse(JSON.parse(saved));
     return parsed.success ? parsed.data : null;
   } catch {
     return null;

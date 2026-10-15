@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { apiFetch } from "../auth/apiFetch.ts";
 import { CATALOG } from "../catalog/catalog.ts";
 import { capitalizeFirst, optionKey, type Item } from "../items/items.ts";
 
@@ -128,7 +129,7 @@ export async function createListEntry(
   name: string,
   vehicleBrandId?: string,
 ): Promise<ListEntry | VehicleModel | null> {
-  const response = await fetch(`${base}${ITEM_LIST_PATHS[kind]}`, {
+  const response = await apiFetch(`${base}${ITEM_LIST_PATHS[kind]}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(kind === "vehicleModels" ? { name, vehicleBrandId } : { name }),
@@ -148,7 +149,7 @@ export async function createListEntry(
  * @returns Whether it was deleted.
  */
 export async function deleteListEntry(base: string, kind: ItemListKind, id: string): Promise<boolean> {
-  const response = await fetch(`${base}${ITEM_LIST_PATHS[kind]}/${id}`, { method: "DELETE" }).catch(() => null);
+  const response = await apiFetch(`${base}${ITEM_LIST_PATHS[kind]}/${id}`, { method: "DELETE" }).catch(() => null);
   return response?.ok ?? false;
 }
 
@@ -218,7 +219,7 @@ export function listName(text: string): string {
  */
 export async function loadItemLists(base: string, signal?: AbortSignal): Promise<ItemLists> {
   const load = async (kind: ItemListKind) => {
-    const response = await fetch(`${base}${ITEM_LIST_PATHS[kind]}`, { signal });
+    const response = await apiFetch(`${base}${ITEM_LIST_PATHS[kind]}`, { signal });
     if (!response.ok) {
       throw new Error(String(response.status));
     }
@@ -252,7 +253,7 @@ export async function renameListEntry(
   id: string,
   name: string,
 ): Promise<ListEntry | VehicleModel | "taken" | null> {
-  const response = await fetch(`${base}${ITEM_LIST_PATHS[kind]}/${id}`, {
+  const response = await apiFetch(`${base}${ITEM_LIST_PATHS[kind]}/${id}`, {
     method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ name }),

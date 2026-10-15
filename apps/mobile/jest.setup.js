@@ -4,6 +4,20 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest'),
 );
 
+// The keychain is native; tests keep its values in memory, one per service, which clear() empties.
+jest.mock('react-native-keychain', () => {
+  const saved = new Map();
+  return {
+    clear: () => saved.clear(),
+    getGenericPassword: jest.fn(async ({ service }) => (saved.has(service) ? { service, username: 'session', password: saved.get(service) } : false)),
+    resetGenericPassword: jest.fn(async ({ service }) => saved.delete(service)),
+    setGenericPassword: jest.fn(async (username, password, { service }) => {
+      saved.set(service, password);
+      return { service, storage: 'memory' };
+    }),
+  };
+});
+
 // No API runs during tests: every request answers with an empty inventory unless a test sets its own reply.
 global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ items: [], total: 0 }) }));
 

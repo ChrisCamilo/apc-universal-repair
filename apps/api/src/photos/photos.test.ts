@@ -5,6 +5,8 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 import sharp from "sharp";
 import { PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION } from "@apc/shared/photos";
+import { signedPhotoPath } from "../sessions/sessions.js";
+import { TEST_SESSION } from "../sessions/testSessions.js";
 import { checkPhoto, photoOf, photosDir, reduceStoredPhoto, removePhotoFiles, storePhoto, THUMB_SIZE } from "./photos.js";
 
 const ID = "00000000-0000-4000-8000-000000000001";
@@ -65,7 +67,7 @@ test("API: photos are checked by their content and size", async () => {
 });
 
 // Stores a large wide PNG and checks it is kept as a WebP whose longest side is PHOTO_MAX_DIMENSION, in proportion
-// and much smaller than sent, next to a square WebP thumbnail of THUMB_SIZE; the paths it is served at; and that
+// and much smaller than sent, next to a square WebP thumbnail of THUMB_SIZE; the paths it is served at, signed for the caller; and that
 // removing it deletes both files.
 test("API: a stored photo is reduced to WebP next to a square thumbnail", async () => {
   const sent = await grainyPhoto("png", 3200, 800);
@@ -76,7 +78,11 @@ test("API: a stored photo is reduced to WebP next to a square thumbnail", async 
   assert.ok(reduced.bytes < sent.length / 2, `${reduced.bytes} bytes from ${sent.length}`);
   const thumb = await stored(files.thumbFile);
   assert.deepEqual([thumb.format, thumb.width, thumb.height], ["webp", THUMB_SIZE, THUMB_SIZE]);
-  assert.deepEqual(photoOf({ id: ID, ...files }), { id: ID, url: `/photos/${ID}.webp`, thumbUrl: `/photos/${ID}-thumb.webp` });
+  assert.deepEqual(photoOf({ id: ID, ...files }, TEST_SESSION), {
+    id: ID,
+    url: signedPhotoPath(TEST_SESSION, `${ID}.webp`),
+    thumbUrl: signedPhotoPath(TEST_SESSION, `${ID}-thumb.webp`),
+  });
 
   await removePhotoFiles([files.file, files.thumbFile, "gone.jpg"]);
   assert.deepEqual(await readdir(photosDir()), []);

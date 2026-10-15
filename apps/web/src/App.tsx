@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
+import { LOGIN_MESSAGES } from '@apc/shared/auth'
 import { auth } from './auth/auth.ts'
 import { LoginScreen } from './auth/LoginScreen.tsx'
 import { RegisterScreen } from './auth/RegisterScreen.tsx'
@@ -53,9 +54,9 @@ export default function App() {
 }
 
 // The login, or straight on to the Dashboard when someone is already logged in. A login goes on to the route
-// that sent the user here, or to the Dashboard.
+// that sent the user here, or to the Dashboard. After the API refused the session, it says the session expired.
 function LoginPage() {
-  const { user, setUser } = useSession()
+  const { user, expired, setUser } = useSession()
   const navigate = useNavigate()
   const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
   if (user === undefined) {
@@ -67,6 +68,7 @@ function LoginPage() {
   return (
     <LoginScreen
       auth={auth}
+      notice={expired ? LOGIN_MESSAGES.expired : undefined}
       onLoggedIn={(loggedIn) => {
         setUser(loggedIn)
         navigate(from, { replace: true })

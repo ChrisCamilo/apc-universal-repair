@@ -2,14 +2,21 @@ import multipart from "@fastify/multipart";
 import Fastify from "fastify";
 import { serializerCompiler, validatorCompiler } from "@fastify/type-provider-zod";
 import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES } from "@apc/shared/photos";
+import { registerAuthentication } from "./plugins/authenticate.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerItemRoutes } from "./routes/items.js";
 import { registerListRoutes } from "./routes/lists.js";
 import { registerPhotoRoutes } from "./routes/photos.js";
 import { registerUserRoutes } from "./routes/users.js";
+import { SESSIONS, type SessionLookup } from "./sessions/sessions.js";
 
-export function buildApp() {
+/**
+ * Builds the API, with every route but the public ones behind a session (see registerAuthentication).
+ * @param options Where sessions are looked up: the database, or a stand-in, so a test can check routes without one.
+ * @returns The Fastify app.
+ */
+export function buildApp({ sessions = SESSIONS }: { sessions?: SessionLookup } = {}) {
   const app = Fastify({ logger: true });
 
   app.setValidatorCompiler(validatorCompiler);
@@ -22,10 +29,11 @@ export function buildApp() {
     limits: { fileSize: PHOTO_MAX_BYTES, parts: ITEM_PHOTO_LIMIT * 2 },
   });
   registerErrorHandler(app);
+  registerAuthentication(app, sessions);
   registerHealthRoute(app);
   registerItemRoutes(app);
   registerListRoutes(app);
-  registerPhotoRoutes(app);
+  registerPhotoRoutes(app, sessions);
   registerUserRoutes(app);
 
   return app;

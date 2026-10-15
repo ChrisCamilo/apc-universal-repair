@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
 import { ScrollView, View } from 'react-native';
+import { apiFetch } from '@apc/shared/auth';
 import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import {
   ITEM_STATUSES,
@@ -286,19 +287,19 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const send = async (url: string, method: string, body?: unknown) => {
     setSentWith(items);
     const json = body === undefined ? {} : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
-    await fetch(url, { method, ...json }).catch(() => null);
+    await apiFetch(url, { method, ...json }).catch(() => null);
     reload();
     reloadLists();
   };
 
   /** Deletes the tutorial's test item, if one is left from a run that didn't end, and loads the list again. */
   const deleteTestItem = async () => {
-    const found = await fetch(`${API_URL}/items?${new URLSearchParams({ q: TUTORIAL_ITEM.code })}`)
+    const found = await apiFetch(`${API_URL}/items?${new URLSearchParams({ q: TUTORIAL_ITEM.code })}`)
       .then((response) => (response.ok ? response.json() : null))
       .catch(() => null);
     for (const item of (found?.items ?? []) as Item[]) {
       if (item.code === TUTORIAL_ITEM.code) {
-        await fetch(`${API_URL}/items/${item.id}`, { method: 'DELETE' }).catch(() => null);
+        await apiFetch(`${API_URL}/items/${item.id}`, { method: 'DELETE' }).catch(() => null);
       }
     }
     reload();

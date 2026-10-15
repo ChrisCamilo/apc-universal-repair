@@ -16,7 +16,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 
 **MVP ✅ (done, on web and mobile)**
 
-- 🔐 Login and account sign-up (name, username, e-mail and password), with the users kept in the database and the passwords stored hashed, and a forgotten-password notice saying whom to ask
+- 🔐 Login and account sign-up (name, username, e-mail and password), with the users kept in the database and the passwords stored hashed, sessions the API checks on every call, and a forgotten-password notice saying whom to ask
 - 🗂️ Dashboard with tabs that can be dragged into a new order, and a user menu with the visual style, dark mode, the list preferences, the tutorial and logout
 - 📦 Parts inventory: add, view, edit and delete parts, each with its part code, category, part brand, vehicle brand and model, position, side, color, location, quantity, minimum stock and unit price (R$)
 - 🏷️ Categories, part brands and vehicle models created right from the item form, and renamed or deleted in their own lists
@@ -105,7 +105,7 @@ pnpm --filter @apc/api db:seed            # adds the test users, the default lis
 pnpm dev                                  # API on :3333, web on :5173
 ```
 
-Users live in the database: the seed adds the test users from `packages/shared/src/auth/testUsers.ts`, such as `christian.camilo` / `opala4100` (test values only), and anyone can create an account with "Criar conta" on the login, giving a name, a username, an e-mail (only kept for now) and a password. Passwords are stored hashed. Real sessions, with tokens, come with the real backend (EP-10).
+Users live in the database: the seed adds the test users from `packages/shared/src/auth/testUsers.ts`, such as `christian.camilo` / `opala4100` (test values only), and anyone can create an account with "Criar conta" on the login, giving a name, a username, an e-mail (only kept for now) and a password. Passwords are stored hashed. A login or sign-up starts a session: the API answers a token, which the app keeps on the device (localStorage on the web and the desktop, the keychain on the phone) and sends on every call. Every route but the health check, the login and the sign-up refuses a call without a live session, and the database keeps only the token's hash. A session lasts 7 days from its last use and ends on "Sair"; when it expires, the app goes back to the login and says so. Photos load at paths the API signs for the session, since an image can't send the token.
 
 Before the first test run, download the browser that the component and E2E tests use:
 
@@ -208,7 +208,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 
 **MVP ✅ (pronto, na web e no celular)**
 
-- 🔐 Login e cadastro de conta (nome, usuário, e-mail e senha), com os usuários guardados no banco e as senhas em hash, e um aviso de senha esquecida dizendo a quem pedir
+- 🔐 Login e cadastro de conta (nome, usuário, e-mail e senha), com os usuários guardados no banco e as senhas em hash, sessões conferidas pela API em toda chamada, e um aviso de senha esquecida dizendo a quem pedir
 - 🗂️ Dashboard com abas que podem ser arrastadas para outra ordem, e um menu do usuário com o estilo visual, o modo escuro, as preferências da lista, o tutorial e a saída
 - 📦 Estoque de peças: adicionar, ver, editar e excluir peças, cada uma com código da peça, categoria, marca da peça, marca e modelo do veículo, posição, lado, cor, local, quantidade, estoque mínimo e valor unitário (R$)
 - 🏷️ Categorias, marcas de peça e modelos de veículo criados direto no formulário do item, e renomeados ou excluídos nas próprias listas
@@ -297,7 +297,7 @@ pnpm --filter @apc/api db:seed            # adiciona os usuários de teste, as l
 pnpm dev                                  # API na porta 3333, web na 5173
 ```
 
-Os usuários ficam no banco: o seed cadastra os usuários de teste de `packages/shared/src/auth/testUsers.ts`, como `christian.camilo` / `opala4100` (valores só de teste), e qualquer pessoa pode criar uma conta em "Criar conta" no login, informando nome, usuário, e-mail (só guardado por enquanto) e senha. As senhas são guardadas em hash. Sessões de verdade, com tokens, vêm com o backend real (EP-10).
+Os usuários ficam no banco: o seed cadastra os usuários de teste de `packages/shared/src/auth/testUsers.ts`, como `christian.camilo` / `opala4100` (valores só de teste), e qualquer pessoa pode criar uma conta em "Criar conta" no login, informando nome, usuário, e-mail (só guardado por enquanto) e senha. As senhas são guardadas em hash. Um login ou cadastro abre uma sessão: a API responde um token, que o app guarda no aparelho (localStorage na web e no desktop, o keychain no celular) e envia em toda chamada. Toda rota, menos o health check, o login e o cadastro, recusa uma chamada sem uma sessão válida, e o banco guarda só o hash do token. Uma sessão dura 7 dias desde o último uso e termina no "Sair"; quando ela expira, o app volta para o login e avisa. As fotos carregam por caminhos que a API assina para a sessão, já que uma imagem não consegue enviar o token.
 
 Antes de rodar os testes pela primeira vez, baixe o navegador que os testes de componente e E2E usam:
 

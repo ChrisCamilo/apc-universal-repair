@@ -2,8 +2,8 @@ import type { Page } from "@playwright/test";
 import { initials, SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { TEST_USERS } from "@apc/shared/test-users";
 
-// Logs a test user in before a page loads, as a session saved on a previous visit, for the tests that start on the
-// Dashboard, which only a logged user reaches. The user has seen the Inventory tutorial, so it doesn't start by itself
+// Logs a test user in before a page loads, as a session saved on a previous visit, with a token the API stand-ins
+// don't check, for the tests that start on the Dashboard, which only a logged user reaches. The user has seen the Inventory tutorial, so it doesn't start by itself
 // over the screen a test looks at, unless the test asks for it; marking it seen is answered without the API.
 
 /**
@@ -16,7 +16,7 @@ import { TEST_USERS } from "@apc/shared/test-users";
  */
 export async function signIn(page: Page, tutorialSeen = true, user = TEST_USERS[0]): Promise<void> {
   const { id, username, displayName } = user;
-  const session = JSON.stringify({ id, username, displayName, initials: initials(displayName), inventoryTutorialSeen: tutorialSeen });
+  const session = JSON.stringify({ id, username, displayName, initials: initials(displayName), inventoryTutorialSeen: tutorialSeen, token: `token-${id}` });
   await page.addInitScript(
     ([key, value, firstLoadOnly]) => {
       if (!firstLoadOnly) {
@@ -28,5 +28,5 @@ export async function signIn(page: Page, tutorialSeen = true, user = TEST_USERS[
     },
     [SESSION_STORAGE_KEY, session, !tutorialSeen] as const,
   );
-  await page.route("**/api/users/*/inventory-tutorial", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/api/users/me/inventory-tutorial", (route) => route.fulfill({ status: 204 }));
 }

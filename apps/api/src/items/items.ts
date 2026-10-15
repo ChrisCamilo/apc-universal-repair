@@ -13,6 +13,7 @@ import {
 import { splitVehicleModel } from "@apc/shared/item-filters";
 import type { Position, Prisma, Side } from "../generated/prisma/client.js";
 import { photoOf } from "../photos/photos.js";
+import type { ActiveSession } from "../sessions/sessions.js";
 
 // Translates between the items API and the database: the writing rule and search keys applied on create and
 // update, the filters of the list, and the row sent back with its photos. The API speaks names and the inventory's
@@ -153,11 +154,12 @@ function textOrNull(value: string | undefined): string | null {
 
 /**
  * Turns a database row into the item the API sends, without the search keys, with its list entries' names, its
- * position and side as the API speaks them, and its photos in order.
+ * position and side as the API speaks them, and its photos in order, at paths signed for the caller.
  * @param row Item row, read with ITEM_INCLUDE.
+ * @param session The caller's session.
  * @returns The item as described by itemSchema.
  */
-export function toItem(row: ItemRow): Item {
+export function toItem(row: ItemRow, session: ActiveSession): Item {
   return {
     id: row.id,
     code: row.code,
@@ -173,7 +175,7 @@ export function toItem(row: ItemRow): Item {
     quantity: row.quantity,
     minQuantity: row.minQuantity,
     unitPriceCents: row.unitPriceCents,
-    photos: row.photos.map(photoOf),
+    photos: row.photos.map((photo) => photoOf(photo, session)),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

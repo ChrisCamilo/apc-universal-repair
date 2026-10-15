@@ -85,7 +85,7 @@ test('Web: items reaching their minimum stock are warned about once while low', 
 function Sample({ initial }: { initial: Item[] }) {
   const [items, setItems] = useState(initial)
   return (
-    <SessionContext.Provider value={{ user: USER, setUser: () => {}, markInventoryTutorialSeen: () => {} }}>
+    <SessionContext.Provider value={{ user: USER, expired: false, setUser: () => {}, markInventoryTutorialSeen: () => {} }}>
       <ToastProvider>
         <NotificationsMenu />
         <Stock items={items} />

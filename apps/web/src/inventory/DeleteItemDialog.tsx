@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiFetch } from '@apc/shared/auth'
 import type { Item } from '@apc/shared/items'
 import { Button } from '../components/Button.tsx'
 import { Dialog } from '../components/Dialog.tsx'
@@ -28,7 +29,7 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
       return
     }
     setDeleting(true)
-    const response = await fetch(`/api/items/${item.id}`, { method: 'DELETE' }).catch(() => null)
+    const response = await apiFetch(`/api/items/${item.id}`, { method: 'DELETE' }).catch(() => null)
     setDeleting(false)
     if (!response?.ok) {
       toast.error('Não foi possível excluir o item. Tente de novo.')
