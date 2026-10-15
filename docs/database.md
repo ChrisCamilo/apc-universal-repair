@@ -130,6 +130,20 @@ erDiagram
 - **Helpers in `pg_temp` live for the session.** A migration that creates a function in `pg_temp`, such as the name-key helper `list_key`, drops it at its end, so the next one can create it again. `20261008120000_drop_list_key` drops the helper that `20261008000000_item_lists` left behind, without changing a migration already applied.
 - **An applied migration never changes.** A fix goes into a new migration. Even one dated between older ones is applied on a database that has the later ones, as long as it is harmless there.
 
+### SQLite
+
+The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/apc.db` opens a file, `postgresql://…` PostgreSQL. [#221](https://github.com/ChrisCamilo/apc-universal-repair/issues/221) proved it; [#222](https://github.com/ChrisCamilo/apc-universal-repair/issues/222) makes it a choice of the home server.
+
+- **The schema:** `prisma/sqlite/schema.prisma` is `prisma/schema.prisma` with only the provider and the client's folder changed. Its own migrations are in `prisma/sqlite/migrations`, and `prisma.sqlite.config.ts` points the Prisma CLI at them (`--config prisma.sqlite.config.ts`). `pnpm --filter @apc/api db:generate` builds both clients. The enums are kept as text and the dates as ISO text; the rules above hold the same.
+- **The adapter:** `@prisma/adapter-better-sqlite3`, whose native module installs prebuilt on Windows and Linux. It keeps one connection and waits up to 5 s for a write lock held by another process. libSQL was tried too and failed with "Operation has timed out" as soon as two processes used the file, on an older SQLite (3.45 against 3.53).
+- **What was checked:** every API test runs on both databases, including `test:db`, in CI's `migrations` and `sqlite` jobs. That covers interactive transactions (saving an item, the import), `createMany` (photos), the low-stock filter comparing two columns, the search on `nameKey` and `codeKey`, sorting, the unique keys, `CASCADE` and `RESTRICT`, and 20 edits and 10 logins at once.
+- **WAL:** `PRAGMA journal_mode = WAL` works through Prisma and stays in the file; #222 turns it on at start.
+- **One process writes:** the API is the only one, so its requests take turns on its connection. A second process writing at the same time, such as a script, can hit Prisma's 5 s transaction timeout, so scripts run with the server off and the tests on SQLite run one file at a time.
+- **Encryption at rest is possible, not done:**
+  - SQLite3 Multiple Ciphers and libSQL both made the file unreadable without its key;
+  - but `prisma migrate deploy` uses Prisma's own engine, which can't open an encrypted file;
+  - so it needs its own migration runner and a key kept with Windows DPAPI: [#225](https://github.com/ChrisCamilo/apc-universal-repair/issues/225).
+
 ### Starting data
 
 `pnpm --filter @apc/api db:seed` fills a new database with the test users (`christian.camilo` and `oficina`, from `@apc/shared/test-users`, with their passwords hashed), the default categories, part brands, vehicle brands with their models and a few sample items. It can run again without duplicating anything.
@@ -178,6 +192,20 @@ erDiagram
 - **Um banco vazio migra de uma vez.** O `prisma migrate deploy` aplica todas as migrações pendentes numa única sessão do banco. Um computador novo (veja [home-server.md](home-server.md#-português-brasil)) recebe todas de uma vez, enquanto o computador de casa as recebeu uma a uma. O job `migrations` do CI monta um PostgreSQL vazio a partir delas, confere com o `prisma migrate diff` que o resultado bate com o `schema.prisma` e roda o seed.
 - **Funções auxiliares em `pg_temp` duram a sessão.** Uma migração que cria uma função em `pg_temp`, como a `list_key` da chave dos nomes, a remove no fim, para a próxima poder criá-la de novo. A `20261008120000_drop_list_key` remove a função que a `20261008000000_item_lists` deixou, sem mudar uma migração já aplicada.
 - **Uma migração aplicada nunca muda.** Uma correção vai numa migração nova. Mesmo uma com data entre as antigas é aplicada num banco que já tem as seguintes, desde que não faça mal ali.
+
+### SQLite
+
+O mesmo banco também roda em SQLite, escolhido pelo `DATABASE_URL`: `file:./data/apc.db` abre um arquivo, `postgresql://…` o PostgreSQL. A [#221](https://github.com/ChrisCamilo/apc-universal-repair/issues/221) provou isso; a [#222](https://github.com/ChrisCamilo/apc-universal-repair/issues/222) o torna uma escolha do servidor de casa.
+
+- **O schema:** `prisma/sqlite/schema.prisma` é o `prisma/schema.prisma` com só o provider e a pasta do cliente trocados. As migrações dele ficam em `prisma/sqlite/migrations`, e o `prisma.sqlite.config.ts` aponta o Prisma CLI para elas (`--config prisma.sqlite.config.ts`). O `pnpm --filter @apc/api db:generate` gera os dois clientes. Os enums ficam como texto e as datas como texto ISO; as regras acima valem igual.
+- **O adaptador:** `@prisma/adapter-better-sqlite3`, cujo módulo nativo instala pré-compilado no Windows e no Linux. Ele mantém uma conexão e espera até 5 s por uma trava de escrita de outro processo. O libSQL também foi testado e falhou com "Operation has timed out" assim que dois processos usaram o arquivo, num SQLite mais antigo (3.45 contra 3.53).
+- **O que foi conferido:** todos os testes da API rodam nos dois bancos, inclusive o `test:db`, nos jobs `migrations` e `sqlite` do CI. Isso cobre transações interativas (salvar um item, a importação), `createMany` (fotos), o filtro de estoque baixo comparando duas colunas, a busca em `nameKey` e `codeKey`, a ordenação, as chaves únicas, `CASCADE` e `RESTRICT`, e 20 edições e 10 logins ao mesmo tempo.
+- **WAL:** o `PRAGMA journal_mode = WAL` funciona pelo Prisma e fica gravado no arquivo; a #222 o liga ao iniciar.
+- **Um processo escreve:** a API é o único, então as requisições dela se revezam na conexão. Um segundo processo escrevendo ao mesmo tempo, como um script, pode estourar o tempo de 5 s das transações do Prisma, por isso os scripts rodam com o servidor desligado e os testes em SQLite rodam um arquivo por vez.
+- **Criptografia em repouso é possível, ainda não feita:**
+  - o SQLite3 Multiple Ciphers e o libSQL deixaram o arquivo ilegível sem a chave;
+  - mas o `prisma migrate deploy` usa o motor próprio do Prisma, que não abre um arquivo criptografado;
+  - por isso ela precisa de um executor de migrações próprio e de uma chave guardada com o DPAPI do Windows: [#225](https://github.com/ChrisCamilo/apc-universal-repair/issues/225).
 
 ### Dados iniciais
 

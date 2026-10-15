@@ -3,6 +3,8 @@ packages:
   - "packages/*"
 allowBuilds:
   '@prisma/engines': true
+  # SQLite's native module, downloaded prebuilt for the platform.
+  better-sqlite3: true
   electron: true
   # The Squirrel installer of electron-builder; the desktop app ships as NSIS and portable only.
   electron-winstaller: false
