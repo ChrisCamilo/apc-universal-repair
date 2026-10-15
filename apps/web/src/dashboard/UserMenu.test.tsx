@@ -154,7 +154,7 @@ function Sample() {
   return (
     <MemoryRouter initialEntries={['/inventory']}>
       <ThemeProvider>
-        <SessionContext.Provider value={{ user, setUser, markInventoryTutorialSeen: () => {} }}>
+        <SessionContext.Provider value={{ user, expired: false, setUser, markInventoryTutorialSeen: () => {} }}>
           <Routes>
             <Route
               path="/inventory"

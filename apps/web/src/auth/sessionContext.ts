@@ -6,6 +6,8 @@ export const SessionContext = createContext<Session | null>(null)
 
 export type Session = {
   user: SessionUser | null | undefined
+  /** Whether the API refused the last session's token, so the login says it expired. */
+  expired: boolean
   /** Takes the user who just logged in, or null after a logout. */
   setUser: (user: SessionUser | null) => void
   /** Marks that the logged user has seen the Inventory tutorial, on this device at once and on the API. */

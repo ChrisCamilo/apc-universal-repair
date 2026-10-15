@@ -18,25 +18,30 @@ import { loginScreen } from './LoginScreen.styles.ts'
 // When the login can't be made (the API out of reach), it says so instead, keeping the password.
 // "Esqueceu a senha?" opens a notice to ask the workshop's admin for a new password, as there is no reset until
 // the real backend (EP-10); it closes on "Entendi", Escape or a click outside, and the focus goes back to the link.
-// "Criar conta" opens the sign-up.
+// "Criar conta" opens the sign-up. A notice, such as the session having expired, shows above the form until a login
+// is sent.
 
 const FIELD_ORDER = ['username', 'password'] as const
 
 type LoginScreenProps = {
   /** Checks the user and password. */
   auth: AuthService
+  /** Said above the form until a login is sent, e.g. that the session expired. */
+  notice?: string
   /** Called with the user once the login is accepted, e.g. to open the Dashboard. */
   onLoggedIn: (user: SessionUser) => void
   /** Opens the sign-up. */
   onRegister: () => void
 }
 
-export function LoginScreen({ auth, onLoggedIn, onRegister }: LoginScreenProps) {
+export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScreenProps) {
   const [credentials, setCredentials] = useState<Credentials>({ username: '', password: '' })
   const [errors, setErrors] = useState<LoginErrors>({})
   const [sending, setSending] = useState(false)
   // Why the last login didn't go through: the user or password refused, or the API out of reach.
   const [refused, setRefused] = useState<string>()
+  // Whether a login was sent, which puts the notice away.
+  const [sent, setSent] = useState(false)
   const [forgot, setForgot] = useState(false)
   const usernameInput = useRef<HTMLInputElement>(null)
   const passwordInput = useRef<HTMLInputElement>(null)
@@ -60,6 +65,7 @@ export function LoginScreen({ auth, onLoggedIn, onRegister }: LoginScreenProps) 
       return
     }
     setRefused(undefined)
+    setSent(true)
     setSending(true)
     const user = await auth.login(credentials).catch(() => undefined)
     setSending(false)
@@ -85,6 +91,11 @@ export function LoginScreen({ auth, onLoggedIn, onRegister }: LoginScreenProps) 
           </h1>
         </Panel>
         <form noValidate className={classes.form()} data-testid={ids.form} onSubmit={submit}>
+          {notice && !sent && (
+            <Text role="status" size="sm">
+              {notice}
+            </Text>
+          )}
           {refused && (
             <Text role="alert" size="sm" tone="danger">
               {refused}

@@ -89,7 +89,7 @@ test('Web: a tab still being built opens behind the work-in-progress notice', as
 
 function Dashboard() {
   // A logged user who has seen the Inventory tutorial.
-  const session = { user: { ...SESSION_USER, inventoryTutorialSeen: true }, setUser: () => {}, markInventoryTutorialSeen: () => {} }
+  const session = { user: { ...SESSION_USER, inventoryTutorialSeen: true }, expired: false, setUser: () => {}, markInventoryTutorialSeen: () => {} }
   return (
     <SessionContext.Provider value={session}>
       <MemoryRouter initialEntries={['/inventory']}>

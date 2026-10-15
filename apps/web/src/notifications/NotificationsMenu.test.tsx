@@ -191,7 +191,7 @@ test('Web: in the desktop app, errors and warnings ask for a Windows notificatio
 function Sample() {
   const [user, setUser] = useState<SessionUser | null>(USER)
   return (
-    <SessionContext.Provider value={{ user, setUser, markInventoryTutorialSeen: () => {} }}>
+    <SessionContext.Provider value={{ user, expired: false, setUser, markInventoryTutorialSeen: () => {} }}>
       <ToastProvider>
         <NotificationsMenu />
         <Triggers onSwitch={() => setUser(ANA)} />
