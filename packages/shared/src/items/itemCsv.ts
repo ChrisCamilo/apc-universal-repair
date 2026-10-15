@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { apiFetch } from "../auth/apiFetch.ts";
 import { findEntry, listName, type ItemLists, type ListEntry } from "../lists/lists.ts";
 import { ITEM_FORM_MESSAGES, parsePrice, priceInput } from "./itemForm.ts";
 import {
@@ -179,7 +180,7 @@ export function csvPrice(text: string): number | null {
  * @returns The file's text and how many items it holds, or null when the items couldn't be fetched.
  */
 export async function exportItems(base: string, query: string, options: { photos: boolean }): Promise<{ csv: string; count: number } | null> {
-  const response = await fetch(query ? `${base}/items?${query}` : `${base}/items`).catch(() => null);
+  const response = await apiFetch(query ? `${base}/items?${query}` : `${base}/items`).catch(() => null);
   if (!response?.ok) {
     return null;
   }
@@ -247,7 +248,7 @@ export function importedSummary({ created, updated }: ItemImportResult): string 
  * @returns How many items were created and updated, or null when the import failed.
  */
 export async function importItems(base: string, rows: readonly CsvItemRow[]): Promise<ItemImportResult | null> {
-  const response = await fetch(`${base}/items/import`, {
+  const response = await apiFetch(`${base}/items/import`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ items: rows.filter((row) => row.errors.length === 0).map((row) => row.item) }),
