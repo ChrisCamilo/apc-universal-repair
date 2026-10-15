@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  apiFetch,
   createApiAuth,
   createMockAuth,
   initials,
   LOGIN_MESSAGES,
   loginErrors,
+  onSessionExpired,
   REGISTER_MESSAGES,
   registerErrors,
   SESSION_STORAGE_KEY,
@@ -18,18 +20,34 @@ const USER = TEST_USERS[0];
 
 // A sign-up as typed, every field fine.
 const NEW_USER = { displayName: "Ana Souza", username: "Ana.Souza", email: " ana@oficina.com ", password: "freio1234", confirm: "freio1234" };
+// The setup's fetch, put back after each test that stands in for it.
+const GLOBAL_FETCH = globalThis.fetch;
+// A user as the screens see them.
+const SESSION_USER = { id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC", inventoryTutorialSeen: false };
+// The same user as the API answers a login with, and the session it saves: the user and the token of their session.
+const LOGGED_IN = { ...SESSION_USER, token: "t1" };
+
+/** A request a stand-in for fetch got. */
+type Sent = { url: string; method?: string; body: unknown; authorization?: string };
 
 /**
- * Builds a stand-in for fetch that answers every request with one status and body, and keeps what was sent.
+ * Builds a stand-in for fetch that answers every request with one status and body, and keeps what was sent: the
+ * address, the method unless it is a POST, the body, and the token when one was sent.
  * @param status The status to answer with.
  * @param body The JSON body to answer with.
  * @returns The stand-in and the requests it got.
  */
-function answering(status: number, body: unknown = {}): { send: typeof fetch; sent: { url: string; method?: string; body: unknown }[] } {
-  const sent: { url: string; method?: string; body: unknown }[] = [];
+function answering(status: number, body: unknown = {}): { send: typeof fetch; sent: Sent[] } {
+  const sent: Sent[] = [];
   const send = (async (url: string, init?: RequestInit) => {
-    sent.push({ url, ...(init?.method !== "POST" && { method: init?.method }), body: init?.body === undefined ? undefined : JSON.parse(String(init.body)) });
-    return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+    const authorization = new Headers(init?.headers).get("Authorization");
+    sent.push({
+      url,
+      ...(init?.method !== "POST" && { method: init?.method }),
+      body: init?.body === undefined ? undefined : JSON.parse(String(init.body)),
+      ...(authorization && { authorization }),
+    });
+    return new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
   }) as typeof fetch;
   return { send, sent };
 }
@@ -179,32 +197,33 @@ test("Shared: the mocked sign-up logs the new user in and refuses a taken userna
   assert.deepEqual(await auth.register({ ...NEW_USER, username: USER.username }), { refused: REGISTER_MESSAGES.taken });
 });
 
-// Logs in through the API stand-in: an accepted login saves the user it answers with, a 401 is refused with nothing
-// saved, and any other answer rejects, so the screen can say the login couldn't be made.
-test("Shared: the API login saves the user, refuses a 401 and rejects otherwise", async () => {
-  const user = { id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC", inventoryTutorialSeen: true };
-  const accepted = answering(200, user);
+// Logs in through the API stand-in: an accepted login saves the user it answers with and their token, and answers
+// the user without the token; a 401 is refused with nothing saved, and any other answer rejects, so the screen can
+// say the login couldn't be made.
+test("Shared: the API login saves the user and the token, refuses a 401 and rejects otherwise", async () => {
+  const accepted = answering(200, LOGGED_IN);
   const { store, saved } = memoryStore();
-  assert.deepEqual(await createApiAuth(store, "/api", accepted.send).login({ username: USER.username, password: USER.password }), user);
+  assert.deepEqual(await createApiAuth(store, "/api", accepted.send).login({ username: USER.username, password: USER.password }), SESSION_USER);
   assert.deepEqual(accepted.sent, [{ url: "/api/sessions", body: { username: USER.username, password: USER.password } }]);
-  assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), user);
+  assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), LOGGED_IN);
 
   const refused = memoryStore();
   assert.equal(await createApiAuth(refused.store, "/api", answering(401).send).login({ username: "x", password: "y" }), null);
   assert.equal(refused.saved.size, 0);
   await assert.rejects(createApiAuth(refused.store, "/api", answering(500).send).login({ username: "x", password: "y" }));
+  await assert.rejects(createApiAuth(refused.store, "/api", answering(200, SESSION_USER).send).login({ username: "x", password: "y" }));
 });
 
-// Signs up through the API stand-in: a 201 saves the user, a 409 says the username is taken, and a failed request
-// or any other answer says the account couldn't be created.
-test("Shared: the API sign-up saves the user or says why it was refused", async () => {
-  const user = { id: "u2", username: "ana.souza", displayName: "Ana Souza", initials: "AS", inventoryTutorialSeen: false };
-  const created = answering(201, user);
+// Signs up through the API stand-in: a 201 saves the user and the token, a 409 says the username is taken, and a
+// failed request or any other answer says the account couldn't be created.
+test("Shared: the API sign-up saves the user and the token, or says why it was refused", async () => {
+  const created = answering(201, { ...LOGGED_IN, username: "ana.souza", displayName: "Ana Souza", initials: "AS", token: "t2" });
   const { store, saved } = memoryStore();
   const sent = { displayName: NEW_USER.displayName, username: NEW_USER.username, email: NEW_USER.email, password: NEW_USER.password };
+  const user = { id: "u1", username: "ana.souza", displayName: "Ana Souza", initials: "AS", inventoryTutorialSeen: false };
   assert.deepEqual(await createApiAuth(store, "/api", created.send).register(sent), { user });
   assert.deepEqual(created.sent, [{ url: "/api/users", body: sent }]);
-  assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), user);
+  assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), { ...user, token: "t2" });
   assert.deepEqual(await createApiAuth(store, "/api", answering(409).send).register(sent), { refused: REGISTER_MESSAGES.taken });
   assert.deepEqual(await createApiAuth(store, "/api", answering(400).send).register(sent), { refused: REGISTER_MESSAGES.failed });
   const offline = (async () => {
@@ -213,26 +232,96 @@ test("Shared: the API sign-up saves the user or says why it was refused", async 
   assert.deepEqual(await createApiAuth(store, "/api", offline).register(sent), { refused: REGISTER_MESSAGES.failed });
 });
 
-// Marks the tutorial seen through the API stand-in: the saved session says so and the API gets the PUT for the user;
-// with the API out of reach, the session still says so. A session saved before the field existed counts as not seen.
-test("Shared: the API marks the Inventory tutorial seen for the user, and on the device even offline", async () => {
-  const user = { id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC", inventoryTutorialSeen: false };
+// Reads a saved session back and marks the tutorial seen through the API stand-in: the saved session says so, keeping
+// its token, and the API gets the PUT for the caller with the token; with the API out of reach, the session still
+// says so.
+test("Shared: the API marks the Inventory tutorial seen for the caller, and on the device even offline", async () => {
   const api = answering(204);
   const { store, saved } = memoryStore();
-  assert.deepEqual(await createApiAuth(store, "/api", api.send).markInventoryTutorialSeen(user), { ...user, inventoryTutorialSeen: true });
-  assert.deepEqual(api.sent, [{ url: "/api/users/u1/inventory-tutorial", method: "PUT", body: undefined }]);
-  assert.equal(JSON.parse(saved.get(SESSION_STORAGE_KEY)!).inventoryTutorialSeen, true);
+  saved.set(SESSION_STORAGE_KEY, JSON.stringify(LOGGED_IN));
+  const auth = createApiAuth(store, "/api", api.send);
+  const user = (await auth.currentUser())!;
+  assert.deepEqual(await auth.markInventoryTutorialSeen(user), { ...user, inventoryTutorialSeen: true });
+  assert.deepEqual(api.sent, [{ url: "/api/users/me/inventory-tutorial", method: "PUT", body: undefined, authorization: "Bearer t1" }]);
+  assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), { ...LOGGED_IN, inventoryTutorialSeen: true });
 
   const offline = memoryStore();
+  offline.saved.set(SESSION_STORAGE_KEY, JSON.stringify(LOGGED_IN));
   const unreachable = (async () => {
     throw new TypeError("fetch failed");
   }) as typeof fetch;
   assert.equal((await createApiAuth(offline.store, "/api", unreachable).markInventoryTutorialSeen(user)).inventoryTutorialSeen, true);
   assert.equal(JSON.parse(offline.saved.get(SESSION_STORAGE_KEY)!).inventoryTutorialSeen, true);
+});
 
-  const older = memoryStore();
-  older.saved.set(SESSION_STORAGE_KEY, JSON.stringify({ id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC" }));
-  assert.equal((await createApiAuth(older.store, "/api", api.send).currentUser())!.inventoryTutorialSeen, false);
+// Saves sessions from older versions, one without the tutorial and one without a token, and checks the first counts
+// as not having seen it and the one without a token as nobody logged in, so the user logs in again once.
+test("Shared: a session saved without a token counts as logged out", async () => {
+  const { store, saved } = memoryStore();
+  const older = { id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC" };
+  saved.set(SESSION_STORAGE_KEY, JSON.stringify({ ...older, token: "t1" }));
+  assert.equal((await createApiAuth(store, "/api").currentUser())!.inventoryTutorialSeen, false);
+  saved.set(SESSION_STORAGE_KEY, JSON.stringify({ ...older, inventoryTutorialSeen: true }));
+  assert.equal(await createApiAuth(store, "/api").currentUser(), null);
+});
+
+// Logs in, then logs out through the API stand-in, and checks the logout ends the session on the API with its token,
+// clears it on the device, and that calls after it carry no token; with the API out of reach, the device still
+// forgets the session.
+test("Shared: the API logout ends the session on the API and on the device", async () => {
+  const { store, saved } = memoryStore();
+  const api = answering(200, LOGGED_IN);
+  const auth = createApiAuth(store, "/api", api.send);
+  await auth.login({ username: USER.username, password: USER.password });
+  await auth.logout();
+  assert.deepEqual(api.sent.at(-1), { url: "/api/sessions/current", method: "DELETE", body: undefined, authorization: "Bearer t1" });
+  assert.equal(saved.size, 0);
+  const after = answering(200, { items: [] });
+  globalThis.fetch = after.send;
+  try {
+    await apiFetch("/api/items");
+    assert.deepEqual(after.sent, [{ url: "/api/items", method: undefined, body: undefined }]);
+  } finally {
+    globalThis.fetch = GLOBAL_FETCH;
+  }
+
+  const offline = memoryStore();
+  offline.saved.set(SESSION_STORAGE_KEY, JSON.stringify(LOGGED_IN));
+  const unreachable = (async () => {
+    throw new TypeError("fetch failed");
+  }) as typeof fetch;
+  const offlineAuth = createApiAuth(offline.store, "/api", unreachable);
+  await offlineAuth.currentUser();
+  await offlineAuth.logout();
+  assert.equal(offline.saved.size, 0);
+});
+
+// Reads a saved session back and calls the API with apiFetch, keeping the call's own headers, then has the API refuse
+// the token, and checks the listeners hear it once, the token is dropped from the next calls, and a 401 to a call
+// without a token tells nobody.
+test("Shared: API calls carry the token, and a 401 to one ends the session", async () => {
+  const { store, saved } = memoryStore();
+  saved.set(SESSION_STORAGE_KEY, JSON.stringify(LOGGED_IN));
+  await createApiAuth(store, "/api").currentUser();
+  let expired = 0;
+  const stop = onSessionExpired(() => expired++);
+  try {
+    const ok = answering(200, { items: [] });
+    globalThis.fetch = ok.send;
+    await apiFetch("/api/items", { method: "PATCH", headers: { "content-type": "application/json" }, body: "{}" });
+    assert.deepEqual(ok.sent, [{ url: "/api/items", method: "PATCH", body: {}, authorization: "Bearer t1" }]);
+
+    const refused = answering(401);
+    globalThis.fetch = refused.send;
+    assert.equal((await apiFetch("/api/items")).status, 401);
+    assert.equal(expired, 1);
+    await apiFetch("/api/items");
+    assert.deepEqual(refused.sent.at(-1), { url: "/api/items", method: undefined, body: undefined });
+    assert.equal(expired, 1);
+  } finally {
+    stop();
+    globalThis.fetch = GLOBAL_FETCH;
+  }
 });
 
 // Logs a test user in with the mock, marks the tutorial seen, logs out and back in, and checks the second login says
