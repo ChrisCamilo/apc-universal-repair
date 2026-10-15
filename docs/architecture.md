@@ -12,7 +12,7 @@ O APC Universal Repair é um monorepo **pnpm + Turborepo**: um app web e um app 
 flowchart LR
     subgraph clients["Clients · Clientes"]
         web["<b>apps/web</b><br/>React 19 · Vite 8<br/>Tailwind CSS 4 · React Router 8"]
-        mobile["<b>apps/mobile</b><br/>React Native 0.87<br/>AsyncStorage · SVG"]
+        mobile["<b>apps/mobile</b><br/>React Native 0.87<br/>AsyncStorage · Keychain · SVG"]
         desktop["<b>apps/desktop</b><br/>Electron 44<br/>web build · app://apc"]
     end
 
@@ -263,7 +263,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 |---|---|---|
 | `packages/shared` | The contract and the rules: Zod schemas of every request and response, the writing rule, search and sort, form checks, CSV reading and writing, design tokens of the 4 styles and 2 modes. No UI, so web and mobile behave the same. | TypeScript, Zod 4 |
 | `apps/web` | The web app: login and sign-up, Dashboard with the Inventory and Catalog tabs, design system components. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
-| `apps/mobile` | The phone app, the same screens with React Native components. | React Native 0.87, AsyncStorage, react-native-svg, image and document pickers |
+| `apps/mobile` | The phone app, the same screens with React Native components. | React Native 0.87, AsyncStorage, react-native-keychain, react-native-svg, image and document pickers |
 | `apps/desktop` | The Windows desktop app: the web build in an Electron window, the API forwarded through `app://apc`, and the local API started when it doesn't answer. | Electron 44, electron-builder (NSIS and portable) |
 | `apps/api` | The REST API: users (sign-up and login), items, item lists, photos, CSV import. Validates every request with the shared schemas. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
 | PostgreSQL | Users, items, lists and photo records. Photo files stay on disk under `PHOTOS_DIR`. | PostgreSQL, Prisma migrations |
@@ -274,7 +274,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 - At home, the API runs on a Windows computer and the phone reaches it over the Wi-Fi (see [home-server.md](home-server.md)).
 - Both sides use the same Zod schemas from `@apc/shared`, so a field can't mean one thing in the app and another in the API.
 - The API speaks names (`"Motor"`, `"D"`); the database keeps references and enums (see [database.md](database.md)).
-- Sign-up (`POST /users`) and login (`POST /sessions`) go to the API, which keeps the users and checks the password against its hash; the app saves the user it answers with as the session on the device. The session says whether the user has seen the Inventory tutorial, which runs by itself on their first login only, and `PUT /users/:id/inventory-tutorial` marks it once it starts. Real sessions, with tokens the API checks, come with EP-10.
+- Sign-up (`POST /users`) and login (`POST /sessions`) go to the API, which keeps the users and checks the password against its hash, and starts a session: it answers the user and a random token, keeping only the token's SHA-256 in `Session`. The app saves both as the session on the device (localStorage on the web and the desktop, the keychain on the phone), and `apiFetch` (`@apc/shared/auth`) sends the token on every call as `Authorization: Bearer <token>`. An `onRequest` hook (`plugins/authenticate.ts`) answers 401 to any route without a live session, before the body is read; only `GET /health`, the login and the sign-up are open. A session lasts 30 days from its last use, written at most once an hour, and `DELETE /sessions/current` ends it on "Sair". A 401 to a call that carried the token clears the session on the device, and the login says it expired. Photos are loaded by `<img>` and `<Image>`, which can't send a header, so the API answers each photo path signed for the caller's session (`?session=<id>&signature=<HMAC>`), which `GET /photos/:file` checks, and which stops working when the session ends. The session says whether the user has seen the Inventory tutorial, which runs by itself on their first login only, and `PUT /users/me/inventory-tutorial` marks it for the caller once it starts.
 
 ### Tooling
 
@@ -302,7 +302,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 |---|---|---|
 | `packages/shared` | O contrato e as regras: schemas Zod de cada requisição e resposta, a regra de escrita, busca e ordenação, as validações do formulário, a leitura e a escrita do CSV e os tokens de design dos 4 estilos e 2 modos. Sem interface, para web e celular funcionarem igual. | TypeScript, Zod 4 |
 | `apps/web` | O app web: login e cadastro, Dashboard com as abas Estoque e Catálogo, componentes do design system. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
-| `apps/mobile` | O app para celular, com as mesmas telas em componentes React Native. | React Native 0.87, AsyncStorage, react-native-svg, seletores de imagem e de documentos |
+| `apps/mobile` | O app para celular, com as mesmas telas em componentes React Native. | React Native 0.87, AsyncStorage, react-native-keychain, react-native-svg, seletores de imagem e de documentos |
 | `apps/desktop` | O app desktop para Windows: o build da web numa janela do Electron, a API encaminhada pelo `app://apc` e a API local ligada quando não responde. | Electron 44, electron-builder (NSIS e portátil) |
 | `apps/api` | A API REST: usuários (cadastro e login), itens, listas, fotos e importação de CSV. Valida cada requisição com os schemas compartilhados. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
 | PostgreSQL | Usuários, itens, listas e os registros das fotos. Os arquivos das fotos ficam em disco, em `PHOTOS_DIR`. | PostgreSQL, migrações do Prisma |
@@ -313,7 +313,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 - Em casa, a API roda num computador Windows e o celular chega a ela pelo Wi-Fi (veja [home-server.md](home-server.md#-português-brasil)).
 - Os dois lados usam os mesmos schemas Zod do `@apc/shared`, então um campo não pode significar uma coisa no app e outra na API.
 - A API fala em nomes (`"Motor"`, `"D"`); o banco guarda referências e enums (veja [database.md](database.md)).
-- O cadastro (`POST /users`) e o login (`POST /sessions`) vão para a API, que guarda os usuários e confere a senha com o hash dela; o app salva o usuário que ela responde como a sessão no aparelho. A sessão diz se o usuário já viu o tutorial do Estoque, que só roda sozinho no primeiro login dele, e o `PUT /users/:id/inventory-tutorial` o marca assim que ele começa. Sessões de verdade, com tokens conferidos pela API, vêm com o EP-10.
+- O cadastro (`POST /users`) e o login (`POST /sessions`) vão para a API, que guarda os usuários, confere a senha com o hash dela e abre uma sessão: ela responde o usuário e um token aleatório, guardando só o SHA-256 do token em `Session`. O app salva os dois como a sessão no aparelho (localStorage na web e no desktop, o keychain no celular), e o `apiFetch` (`@apc/shared/auth`) envia o token em toda chamada como `Authorization: Bearer <token>`. Um hook `onRequest` (`plugins/authenticate.ts`) responde 401 a qualquer rota sem uma sessão válida, antes de ler o corpo; só o `GET /health`, o login e o cadastro ficam abertos. Uma sessão dura 30 dias desde o último uso, gravado no máximo uma vez por hora, e o `DELETE /sessions/current` a encerra no "Sair". Um 401 a uma chamada que levou o token limpa a sessão no aparelho, e o login avisa que ela expirou. As fotos são carregadas por `<img>` e `<Image>`, que não enviam cabeçalho, então a API responde cada caminho de foto assinado para a sessão de quem chamou (`?session=<id>&signature=<HMAC>`), que o `GET /photos/:file` confere e que para de funcionar quando a sessão termina. A sessão diz se o usuário já viu o tutorial do Estoque, que só roda sozinho no primeiro login dele, e o `PUT /users/me/inventory-tutorial` o marca para quem chamou assim que ele começa.
 
 ### Ferramentas
 
