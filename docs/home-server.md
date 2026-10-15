@@ -32,7 +32,7 @@ flowchart LR
 
 ## 🇺🇸 English (US)
 
-> **Home network only.** The API has no HTTPS and no real login yet (EP-10). Never open port 3333 on the router or expose the computer to the internet.
+> **Home network only.** The API asks for a login on every call, but has no HTTPS yet ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), so passwords and tokens cross the Wi-Fi in clear text. Never open port 3333 on the router or expose the computer to the internet.
 
 ### 1. What to install (once, as administrator)
 
@@ -183,7 +183,7 @@ The computer at home stays on a release tag (`v0.2.0`, `v0.2.1`…), the version
 
 ## 🇧🇷 Português (Brasil)
 
-> **Só para a rede de casa.** A API ainda não tem HTTPS nem login de verdade (EP-10). Nunca abra a porta 3333 no roteador nem exponha o computador à internet.
+> **Só para a rede de casa.** A API pede login em toda chamada, mas ainda não tem HTTPS ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), então senhas e tokens passam pelo Wi-Fi em texto puro. Nunca abra a porta 3333 no roteador nem exponha o computador à internet.
 
 ### 1. O que instalar (uma vez, como administrador)
 

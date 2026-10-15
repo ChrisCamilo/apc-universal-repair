@@ -16,6 +16,7 @@ erDiagram
     Brand ||--o{ VehicleModel : "has · tem"
     VehicleModel |o--o{ Item : "fits · serve em"
     Item ||--o{ ItemPhoto : "shows · mostra (0-3)"
+    User ||--o{ Session : "logs in · entra"
 
     Item {
         string id PK "uuid"
@@ -74,6 +75,14 @@ erDiagram
         datetime createdAt
         datetime inventoryTutorialSeenAt "first seen; null: tutorial runs on next login"
     }
+    Session {
+        string id PK "uuid, names it in signed photo paths"
+        string userId FK "User.id, cascade"
+        string tokenHash UK "SHA-256 of the token, never the token"
+        datetime createdAt
+        datetime lastUsedAt "written once an hour at most"
+        datetime expiresAt "30 days after the last use"
+    }
 ```
 
 ---
@@ -91,6 +100,7 @@ erDiagram
 | `Brand` | The vehicle brands (Chevrolet, Volkswagen…), shared with the catalog. |
 | `VehicleModel` | The models of each vehicle brand (Opala, Gol…). |
 | `User` | Who logs in: their username, name, e-mail (kept only, nothing is sent to it yet), the hash of their password, and when they first saw the Inventory tutorial, which runs by itself only until then, on any device. It has no relation to the inventory tables. |
+| `Session` | A user logged in on one device, from a login or sign-up until "Sair" or 30 days without use: the hash of the token the device sends, and when it was last used and expires. |
 
 ### Relationships
 
@@ -112,6 +122,7 @@ erDiagram
 | Vehicle brands of the catalog can't be deleted from the inventory. | API |
 | A username is kept in lowercase and is unique, so names that differ only in case are the same user. It takes 3 to 32 lowercase letters, digits, dots or hyphens. | `User.username`, API |
 | A password is never kept as typed: `passwordHash` holds `scrypt$<salt>$<hash>` with a random salt per user, and the API never sends it. | `User.passwordHash` |
+| A token is never kept: `tokenHash` holds its SHA-256, so the table alone can't be used to log in. An expired session is deleted when it is next looked up; deleting a user deletes their sessions (`CASCADE`). | `Session` |
 
 ### Migrations
 
@@ -138,6 +149,7 @@ erDiagram
 | `Brand` | As marcas de veículo (Chevrolet, Volkswagen…), as mesmas do catálogo. |
 | `VehicleModel` | Os modelos de cada marca de veículo (Opala, Gol…). |
 | `User` | Quem entra no app: o usuário, o nome, o e-mail (só guardado, nada é enviado a ele ainda), o hash da senha e quando viu o tutorial do Estoque pela primeira vez, que só roda sozinho até então, em qualquer aparelho. Não se relaciona com as tabelas do estoque. |
+| `Session` | Um usuário logado num aparelho, de um login ou cadastro até o "Sair" ou 30 dias sem uso: o hash do token que o aparelho envia, e quando foi usada pela última vez e quando expira. |
 
 ### Relacionamentos
 
@@ -159,6 +171,7 @@ erDiagram
 | As marcas de veículo do catálogo não podem ser excluídas pelo estoque. | API |
 | O usuário é guardado em minúsculas e é único, então nomes que só mudam em maiúsculas são o mesmo usuário. Ele aceita de 3 a 32 letras minúsculas, números, pontos ou hífens. | `User.username`, API |
 | A senha nunca é guardada como foi digitada: `passwordHash` guarda `scrypt$<sal>$<hash>` com um sal aleatório por usuário, e a API nunca o envia. | `User.passwordHash` |
+| O token nunca é guardado: `tokenHash` guarda o SHA-256 dele, então a tabela sozinha não serve para entrar. Uma sessão expirada é apagada na próxima vez que é procurada; apagar um usuário apaga as sessões dele (`CASCADE`). | `Session` |
 
 ### Migrações
 
