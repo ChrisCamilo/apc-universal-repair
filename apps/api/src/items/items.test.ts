@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { itemListQuerySchema } from "@apc/shared/items";
 import type { Prisma } from "../generated/prisma/client.js";
+import { signedPhotoPath } from "../sessions/sessions.js";
+import { TEST_SESSION } from "../sessions/testSessions.js";
 import { createData, itemWhere, toItem, toSortable, updateData } from "./items.js";
 
 // The list entries of an item, as listIds finds them.
@@ -89,7 +91,7 @@ test("API: a vehicle model filter matches the model with its brand", () => {
 });
 
 // Turns a row into the item the API sends: dates as ISO text, no search keys or references, the names of its list
-// entries, the position and side as the API speaks them, and the photos at their paths.
+// entries, the position and side as the API speaks them, and the photos at their paths, signed for the caller.
 test("API: items carry their entries' names and their photos", () => {
   const date = new Date("2026-10-03T12:00:00.000Z");
   const item = toItem({
@@ -113,14 +115,16 @@ test("API: items carry their entries' names and their photos", () => {
     photos: [{ id: "p1", itemId: "i1", position: 0, file: "p1.jpg", thumbFile: "p1-thumb.webp" }],
     createdAt: date,
     updatedAt: date,
-  });
+  }, TEST_SESSION);
   assert.equal(item.createdAt, "2026-10-03T12:00:00.000Z");
   assert.equal("codeKey" in item || "nameKey" in item || "categoryId" in item, false);
   assert.deepEqual(
     [item.category, item.partBrand, item.vehicleBrand, item.vehicleModel, item.position, item.side],
     ["Motor", "Mann", "Volkswagen", null, "D", "Ambos"],
   );
-  assert.deepEqual(item.photos, [{ id: "p1", url: "/photos/p1.jpg", thumbUrl: "/photos/p1-thumb.webp" }]);
+  assert.deepEqual(item.photos, [
+    { id: "p1", url: signedPhotoPath(TEST_SESSION, "p1.jpg"), thumbUrl: signedPhotoPath(TEST_SESSION, "p1-thumb.webp") },
+  ]);
 });
 
 // Turns a row read for sorting into what sortItems looks at: names, and the position and side as the API speaks them.
