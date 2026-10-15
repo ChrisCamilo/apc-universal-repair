@@ -81,7 +81,7 @@ erDiagram
         string tokenHash UK "SHA-256 of the token, never the token"
         datetime createdAt
         datetime lastUsedAt "written once an hour at most"
-        datetime expiresAt "30 days after the last use"
+        datetime expiresAt "7 days after the last use"
     }
 ```
 
@@ -100,7 +100,7 @@ erDiagram
 | `Brand` | The vehicle brands (Chevrolet, Volkswagen…), shared with the catalog. |
 | `VehicleModel` | The models of each vehicle brand (Opala, Gol…). |
 | `User` | Who logs in: their username, name, e-mail (kept only, nothing is sent to it yet), the hash of their password, and when they first saw the Inventory tutorial, which runs by itself only until then, on any device. It has no relation to the inventory tables. |
-| `Session` | A user logged in on one device, from a login or sign-up until "Sair" or 30 days without use: the hash of the token the device sends, and when it was last used and expires. |
+| `Session` | A user logged in on one device, from a login or sign-up until "Sair" or 7 days without use: the hash of the token the device sends, and when it was last used and expires. |
 
 ### Relationships
 
@@ -149,7 +149,7 @@ erDiagram
 | `Brand` | As marcas de veículo (Chevrolet, Volkswagen…), as mesmas do catálogo. |
 | `VehicleModel` | Os modelos de cada marca de veículo (Opala, Gol…). |
 | `User` | Quem entra no app: o usuário, o nome, o e-mail (só guardado, nada é enviado a ele ainda), o hash da senha e quando viu o tutorial do Estoque pela primeira vez, que só roda sozinho até então, em qualquer aparelho. Não se relaciona com as tabelas do estoque. |
-| `Session` | Um usuário logado num aparelho, de um login ou cadastro até o "Sair" ou 30 dias sem uso: o hash do token que o aparelho envia, e quando foi usada pela última vez e quando expira. |
+| `Session` | Um usuário logado num aparelho, de um login ou cadastro até o "Sair" ou 7 dias sem uso: o hash do token que o aparelho envia, e quando foi usada pela última vez e quando expira. |
 
 ### Relacionamentos
 
