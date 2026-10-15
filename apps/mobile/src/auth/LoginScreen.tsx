@@ -18,8 +18,8 @@ import { BADGE_WIDTH, useStyles } from './LoginScreen.styles';
 // which field was wrong, and empties and focuses the password. "Esqueceu a senha?" opens a notice to ask the
 // workshop's admin for a new password, as there is no reset until the real backend (EP-10); it closes on
 // "Entendi", the back button or a tap outside. When the login can't be made (the API out of reach), it says so
-// instead, keeping the password. "Criar conta" opens the sign-up. A notice, such as the session having expired, shows
-// above the form until a login is sent.
+// instead, keeping the password, as it does after too many attempts, saying how many minutes to wait. "Criar conta"
+// opens the sign-up. A notice, such as the session having expired, shows above the form until a login is sent.
 
 const FIELD_ORDER = ['username', 'password'] as const;
 
@@ -79,6 +79,10 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScree
       setRefused(LOGIN_MESSAGES.failed);
       setCredentials((typed) => ({ ...typed, password: '' }));
       passwordInput.current?.focus();
+      return;
+    }
+    if ('refused' in user) {
+      setRefused(user.refused);
       return;
     }
     onLoggedIn(user);
