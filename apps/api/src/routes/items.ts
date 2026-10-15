@@ -67,7 +67,7 @@ export function registerItemRoutes(app: FastifyInstance) {
         const rows = new Map(
           (await prisma.item.findMany({ where: { id: { in: ids } }, include: ITEM_INCLUDE })).map((row) => [row.id, row]),
         );
-        return { items: ids.flatMap((id) => (rows.has(id) ? [toItem(rows.get(id)!)] : [])), total: sorted.length };
+        return { items: ids.flatMap((id) => (rows.has(id) ? [toItem(rows.get(id)!, request.session)] : [])), total: sorted.length };
       }
       const [rows, total] = await prisma.$transaction([
         prisma.item.findMany({
@@ -78,7 +78,7 @@ export function registerItemRoutes(app: FastifyInstance) {
         }),
         prisma.item.count({ where }),
       ]);
-      return { items: rows.map(toItem), total };
+      return { items: rows.map((row) => toItem(row, request.session)), total };
     },
   );
 
@@ -94,7 +94,7 @@ export function registerItemRoutes(app: FastifyInstance) {
       const row = await prisma.$transaction(async (tx) =>
         tx.item.create({ data: createData(request.body, (await listIds(tx, request.body)) as ListIds), include: ITEM_INCLUDE }),
       );
-      return reply.status(201).send(toItem(row));
+      return reply.status(201).send(toItem(row, request.session));
     },
   );
 
@@ -124,7 +124,7 @@ export function registerItemRoutes(app: FastifyInstance) {
       const row = await prisma.$transaction(async (tx) =>
         tx.item.update({ where: { id }, data: updateData(request.body, await listIds(tx, request.body, current)), include: ITEM_INCLUDE }),
       );
-      return toItem(row);
+      return toItem(row, request.session);
     },
   );
 
