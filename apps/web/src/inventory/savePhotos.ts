@@ -1,3 +1,4 @@
+import { apiFetch } from '@apc/shared/auth'
 import { itemSchema, type Item } from '@apc/shared/items'
 import { PHOTO_PARTS, photoParts, photosChanged } from '@apc/shared/photos'
 import { API_BASE } from '../api.ts'
@@ -26,7 +27,7 @@ export async function savePhotos(item: Item, photos: readonly UploadPhoto[]): Pr
       body.append(PHOTO_PARTS.file, part.file, part.file.name)
     }
   }
-  const response = await fetch(`${API_BASE}/items/${item.id}/photos`, { method: 'PUT', body }).catch(() => null)
+  const response = await apiFetch(`${API_BASE}/items/${item.id}/photos`, { method: 'PUT', body }).catch(() => null)
   if (!response?.ok) {
     return null
   }
