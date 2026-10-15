@@ -82,7 +82,7 @@ A **pnpm** + **Turborepo** monorepo:
 | `apps/web` | Web app — React 19, Vite 8, Tailwind CSS 4, React Router 8 and Storybook 10 |
 | `apps/mobile` | Mobile app — React Native 0.87 |
 | `apps/desktop` | Windows desktop app — Electron 44 with the web build, packaged by electron-builder |
-| `apps/api` | API — Fastify 5, Zod, Prisma 7 on PostgreSQL, with sharp to reduce the photos and make their thumbnails |
+| `apps/api` | API — Fastify 5, Zod, Prisma 7 on SQLite or PostgreSQL, with sharp to reduce the photos and make their thumbnails |
 | `packages/shared` | Zod schemas, rules, types and design tokens shared by web, mobile and API |
 
 The [architecture overview](docs/architecture.md) shows how these parts fit together and the technologies each one uses, and the [database diagram](docs/database.md) shows the tables and how they relate.
@@ -95,12 +95,12 @@ CI (GitHub Actions) runs lint, typecheck, build, the unit and component tests an
 
 ### Getting Started
 
-**Requirements:** Node.js 22.11 or newer, pnpm 12 (`corepack enable` picks the right version) and a PostgreSQL database.
+**Requirements:** Node.js 22.11 or newer and pnpm 12 (`corepack enable` picks the right version). The database is a SQLite file by default, with nothing to install; PostgreSQL works too, set in `DATABASE_URL` (see [docs/database.md](docs/database.md#sqlite)).
 
 ```bash
 pnpm install
-cp apps/api/.env.example apps/api/.env   # then set DATABASE_URL
-pnpm --filter @apc/api exec prisma migrate deploy   # creates the database tables
+cp apps/api/.env.example apps/api/.env   # SQLite by default; set DATABASE_URL for PostgreSQL
+pnpm --filter @apc/api db:migrate         # creates the database tables
 pnpm --filter @apc/api db:seed            # adds the test users, the default lists and sample items
 pnpm dev                                  # API on :3333, web on :5173
 ```
@@ -274,7 +274,7 @@ Monorepo com **pnpm** + **Turborepo**:
 | `apps/web` | App web — React 19, Vite 8, Tailwind CSS 4, React Router 8 e Storybook 10 |
 | `apps/mobile` | App para celular — React Native 0.87 |
 | `apps/desktop` | App desktop para Windows — Electron 44 com o build da web, empacotado pelo electron-builder |
-| `apps/api` | API — Fastify 5, Zod, Prisma 7 com PostgreSQL, e sharp para reduzir as fotos e fazer as miniaturas |
+| `apps/api` | API — Fastify 5, Zod, Prisma 7 com SQLite ou PostgreSQL, e sharp para reduzir as fotos e fazer as miniaturas |
 | `packages/shared` | Schemas Zod, regras, tipos e tokens do design system compartilhados entre web, celular e API |
 
 A [visão geral da arquitetura](docs/architecture.md#-português-brasil) mostra como essas partes se encaixam e as tecnologias de cada uma, e o [diagrama do banco](docs/database.md#-português-brasil) mostra as tabelas e como se relacionam.
@@ -287,12 +287,12 @@ O CI (GitHub Actions) roda lint, checagem de tipos, build, os testes unitários 
 
 ### Como Rodar
 
-**Requisitos:** Node.js 22.11 ou mais novo, pnpm 12 (`corepack enable` escolhe a versão certa) e um banco PostgreSQL.
+**Requisitos:** Node.js 22.11 ou mais novo e pnpm 12 (`corepack enable` escolhe a versão certa). O banco é um arquivo SQLite por padrão, sem nada para instalar; o PostgreSQL também funciona, indicado no `DATABASE_URL` (veja [docs/database.md](docs/database.md#sqlite-1)).
 
 ```bash
 pnpm install
-cp apps/api/.env.example apps/api/.env   # depois ajuste o DATABASE_URL
-pnpm --filter @apc/api exec prisma migrate deploy   # cria as tabelas do banco
+cp apps/api/.env.example apps/api/.env   # SQLite por padrão; ajuste o DATABASE_URL para o PostgreSQL
+pnpm --filter @apc/api db:migrate         # cria as tabelas do banco
 pnpm --filter @apc/api db:seed            # adiciona os usuários de teste, as listas padrão e itens de exemplo
 pnpm dev                                  # API na porta 3333, web na 5173
 ```

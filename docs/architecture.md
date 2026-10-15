@@ -20,7 +20,7 @@ flowchart LR
 
     subgraph server["Server · Servidor"]
         api["<b>apps/api</b><br/>Fastify 5 · Zod type provider<br/>Prisma 7 · sharp"]
-        db[("PostgreSQL<br/>schema.prisma")]
+        db[("PostgreSQL or · ou SQLite<br/>schema.prisma · sqlite/schema.prisma")]
         files[("uploads/photos<br/>PHOTOS_DIR")]
     end
 
@@ -31,7 +31,7 @@ flowchart LR
     web -- "HTTP JSON · /api proxy" --> api
     mobile -- "HTTP JSON · API_URL" --> api
     desktop -- "app://apc/api forwarded · APC_API_URL" --> api
-    api -- "Prisma Client · adapter-pg" --> db
+    api -- "Prisma Client · adapter-pg · adapter-better-sqlite3" --> db
     api -- "photos reduced to WebP + thumbnails" --> files
 ```
 
@@ -101,9 +101,9 @@ sequenceDiagram
 
 ## At home · Em casa
 
-On a Windows computer at home, `pnpm run start:home` applies the migrations and starts the API with `tsx`, on `0.0.0.0` so the phone reaches it over the Wi-Fi at `http://<ip>:3333`, while the desktop app on that computer uses `localhost:3333` and starts the API itself when it doesn't answer. `apps/api/scripts/start-server.ps1` runs it in a window for the "Ligar servidor APC" shortcut, or with no window for a Task Scheduler task, logging to `apps/api/logs/` and starting it again when it stops. PostgreSQL runs as its own Windows service. The steps are in [home-server.md](home-server.md).
+On a Windows computer at home, `pnpm run start:home` applies the migrations and starts the API with `tsx`, on `0.0.0.0` so the phone reaches it over the Wi-Fi at `http://<ip>:3333`, while the desktop app on that computer uses `localhost:3333` and starts the API itself when it doesn't answer. `apps/api/scripts/start-server.ps1` runs it in a window for the "Ligar servidor APC" shortcut, or with no window for a Task Scheduler task, logging to `apps/api/logs/` and starting it again when it stops. The database is a SQLite file in `apps/api/data`, or PostgreSQL as its own Windows service, as `DATABASE_URL` says (`src/db/provider.ts`), and `start:home` migrates the one in use. The steps are in [home-server.md](home-server.md).
 
-Num computador Windows em casa, o `pnpm run start:home` aplica as migrações e liga a API com o `tsx`, em `0.0.0.0`, para o celular chegar a ela pelo Wi-Fi em `http://<ip>:3333`, enquanto o app desktop nesse computador usa `localhost:3333` e liga a API sozinho quando ela não responde. O `apps/api/scripts/start-server.ps1` a roda numa janela, para o atalho "Ligar servidor APC", ou sem janela, para uma tarefa do Agendador de Tarefas, com o log em `apps/api/logs/` e religando a API quando ela para. O PostgreSQL roda como um serviço do Windows próprio. Os passos estão em [home-server.md](home-server.md#-português-brasil).
+Num computador Windows em casa, o `pnpm run start:home` aplica as migrações e liga a API com o `tsx`, em `0.0.0.0`, para o celular chegar a ela pelo Wi-Fi em `http://<ip>:3333`, enquanto o app desktop nesse computador usa `localhost:3333` e liga a API sozinho quando ela não responde. O `apps/api/scripts/start-server.ps1` a roda numa janela, para o atalho "Ligar servidor APC", ou sem janela, para uma tarefa do Agendador de Tarefas, com o log em `apps/api/logs/` e religando a API quando ela para. O banco é um arquivo SQLite em `apps/api/data`, ou o PostgreSQL como um serviço do Windows próprio, como o `DATABASE_URL` disser (`src/db/provider.ts`), e o `start:home` migra o que estiver em uso. Os passos estão em [home-server.md](home-server.md#-português-brasil).
 
 ## Desktop app · App desktop
 
@@ -265,8 +265,8 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 | `apps/web` | The web app: login and sign-up, Dashboard with the Inventory and Catalog tabs, design system components. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
 | `apps/mobile` | The phone app, the same screens with React Native components. | React Native 0.87, AsyncStorage, react-native-keychain, react-native-svg, image and document pickers |
 | `apps/desktop` | The Windows desktop app: the web build in an Electron window, the API forwarded through `app://apc`, and the local API started when it doesn't answer. | Electron 44, electron-builder (NSIS and portable) |
-| `apps/api` | The REST API: users (sign-up and login), items, item lists, photos, CSV import. Validates every request with the shared schemas. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
-| PostgreSQL | Users, items, lists and photo records. Photo files stay on disk under `PHOTOS_DIR`. | PostgreSQL, Prisma migrations |
+| `apps/api` | The REST API: users (sign-up and login), items, item lists, photos, CSV import. Validates every request with the shared schemas. | Fastify 5, Prisma 7 (PostgreSQL with adapter-pg, or SQLite with adapter-better-sqlite3), sharp, @fastify/multipart |
+| Database | Users, sessions, items, lists and photo records, on PostgreSQL or SQLite, the same models in both. Photo files stay on disk under `PHOTOS_DIR`. | PostgreSQL or SQLite, Prisma migrations for each |
 
 ### How they talk
 
@@ -306,8 +306,8 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 | `apps/web` | O app web: login e cadastro, Dashboard com as abas Estoque e Catálogo, componentes do design system. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
 | `apps/mobile` | O app para celular, com as mesmas telas em componentes React Native. | React Native 0.87, AsyncStorage, react-native-keychain, react-native-svg, seletores de imagem e de documentos |
 | `apps/desktop` | O app desktop para Windows: o build da web numa janela do Electron, a API encaminhada pelo `app://apc` e a API local ligada quando não responde. | Electron 44, electron-builder (NSIS e portátil) |
-| `apps/api` | A API REST: usuários (cadastro e login), itens, listas, fotos e importação de CSV. Valida cada requisição com os schemas compartilhados. | Fastify 5, Prisma 7 (PostgreSQL, adapter-pg), sharp, @fastify/multipart |
-| PostgreSQL | Usuários, itens, listas e os registros das fotos. Os arquivos das fotos ficam em disco, em `PHOTOS_DIR`. | PostgreSQL, migrações do Prisma |
+| `apps/api` | A API REST: usuários (cadastro e login), itens, listas, fotos e importação de CSV. Valida cada requisição com os schemas compartilhados. | Fastify 5, Prisma 7 (PostgreSQL com adapter-pg, ou SQLite com adapter-better-sqlite3), sharp, @fastify/multipart |
+| Banco | Usuários, sessões, itens, listas e os registros das fotos, em PostgreSQL ou SQLite, com os mesmos modelos nos dois. Os arquivos das fotos ficam em disco, em `PHOTOS_DIR`. | PostgreSQL ou SQLite, migrações do Prisma para cada um |
 
 ### Como conversam
 
