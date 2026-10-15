@@ -9,7 +9,8 @@ import { TEST_USERS } from "@apc/shared/test-users";
 // of the test users (who have seen the Inventory tutorial, so it doesn't start over the screen), answering the token
 // "token-<id>", and, as the API does, only for a request carrying a test user's token: marking the tutorial seen,
 // logging out, the item list (empty unless the test gives items) and empty item lists. A request without one gets a
-// 401, so the tests also check the app forwards the token; anything else gets a 404.
+// 401, so the tests also check the app forwards the token; anything else gets a 404. As the API does too, it answers
+// only requests addressed to it, so the tests check the app forwards them to the API's own address.
 
 /** The paths of the item lists (categories, part brands…), answered with an empty list. */
 const LIST_PATHS = new Set(Object.values(ITEM_LIST_PATHS));
@@ -26,6 +27,9 @@ export async function startStubApi(items: readonly Item[] = []): Promise<{ serve
       response.writeHead(status, { "Content-Type": "application/json" });
       response.end(JSON.stringify(body));
     };
+    if (!["127.0.0.1", "localhost"].includes(request.headers.host?.split(":")[0] ?? "")) {
+      return reply(403, { statusCode: 403, message: "This server doesn't answer for that host." });
+    }
     if (request.method === "GET" && pathname === "/health") {
       return reply(200, { status: "ok", timestamp: new Date().toISOString() });
     }
