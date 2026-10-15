@@ -96,3 +96,37 @@ jobs:
 
       - name: API tests against the database
         run: pnpm --filter @apc/api test:db
+
+  # The same as the migrations job on SQLite: builds an empty database file from prisma/sqlite's migrations, checks it
+  # matches prisma/sqlite/schema.prisma, seeds it and runs the API's tests that need a database, one file at a time,
+  # as the API is the only process writing to the file.
+  sqlite:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "file:./data/ci.db"
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply the migrations to an empty SQLite file
+        run: pnpm --filter @apc/api exec prisma migrate deploy --config prisma.sqlite.config.ts
+
+      - name: Check the file matches prisma/sqlite/schema.prisma
+        run: pnpm --filter @apc/api exec prisma migrate diff --config prisma.sqlite.config.ts --from-config-datasource --to-schema prisma/sqlite/schema.prisma --exit-code
+
+      - name: Seed it
+        run: pnpm --filter @apc/api db:seed
+
+      - name: API tests against the database
+        run: pnpm --filter @apc/api test:db -- --test-concurrency=1
