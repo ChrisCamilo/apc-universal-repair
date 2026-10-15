@@ -1,4 +1,4 @@
-import { createMockAuth, LOGIN_MESSAGES, type AuthService, type SessionUser } from '@apc/shared/auth'
+import { createMockAuth, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { isStyleId } from '@apc/shared/style-ids'
 import { TEST_USERS } from '@apc/shared/test-users'
@@ -168,6 +168,20 @@ test('Web: a login that can\'t be checked says the API is out of reach', async (
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
   await expect.element(screen.getByRole('alert')).toHaveTextContent(LOGIN_MESSAGES.unreachable)
   await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveValue(USER.password)
+})
+
+// Has the login refused after too many attempts, and checks the screen says how many minutes to wait, keeping the
+// password typed and "Entrar" enabled, and hands nothing over.
+test('Web: too many attempts say how many minutes to wait', async () => {
+  const onLoggedIn = vi.fn()
+  const limited: AuthService = { ...AUTH, login: vi.fn(async () => ({ refused: tooManyAttempts('840') })) }
+  const screen = await render(<LoginScreen auth={limited} onLoggedIn={onLoggedIn} onRegister={() => {}} />)
+  await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
+  await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('Muitas tentativas. Tente de novo em 14 min.')
+  await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveValue(USER.password)
+  await expect.element(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled()
+  expect(onLoggedIn).not.toHaveBeenCalled()
 })
 
 // Presses "Criar conta" and checks it asks to open the sign-up, sending no login.
