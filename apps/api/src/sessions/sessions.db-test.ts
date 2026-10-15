@@ -103,7 +103,7 @@ test("API: a request keeps a session alive, writing its last use once an hour", 
   await app.inject({ method: "GET", url: "/categories", headers: bearer(token) });
   const touched = (await prisma.session.findUnique({ where }))!;
   assert.ok(Date.now() - touched.lastUsedAt.getTime() < 60 * 1000);
-  assert.ok(touched.expiresAt.getTime() - Date.now() > 29 * 24 * 60 * 60 * 1000);
+  assert.ok(touched.expiresAt.getTime() - Date.now() > 6 * 24 * 60 * 60 * 1000);
 
   const recent = new Date(Date.now() - 60 * 1000);
   await prisma.session.update({ where, data: { lastUsedAt: recent } });

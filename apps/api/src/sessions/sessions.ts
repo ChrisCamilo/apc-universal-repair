@@ -3,14 +3,14 @@ import { prisma } from "../db/client.js";
 
 // Sessions: a login or sign-up starts one, with a random token the device sends on every request as
 // "Authorization: Bearer <token>". Only the token's SHA-256 hash is kept, so the Session table alone can't be used to
-// log in. A session lasts 30 days from its last use, which a request writes once an hour at most, so it isn't a write
+// log in. A session lasts 7 days from its last use, which a request writes once an hour at most, so it isn't a write
 // per request; an expired one is deleted when it is next looked up, and logging out deletes it at once.
 // Photos are loaded by <img> and <Image>, which can't send a header, so each photo path the API answers is signed for
 // the caller's session: "?session=<id>&signature=<HMAC-SHA256 of the file name, keyed by the token's hash>". Only the
 // API can sign it, and it stops working when the session ends.
 
-/** How long a session lasts from its last use: 30 days, in milliseconds. */
-const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
+/** How long a session lasts from its last use: 7 days, in milliseconds. */
+const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
 /** The sessions in the database. */
 export const SESSIONS: SessionLookup = {
   byId: async (id) => alive(await prisma.session.findUnique({ where: { id } })),

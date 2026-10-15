@@ -97,7 +97,7 @@ enum Position {
   BOTH
 }
 
-/// A user logged in on one device, from a login or sign-up until they log out or it goes 30 days unused. The token the
+/// A user logged in on one device, from a login or sign-up until they log out or it goes 7 days unused. The token the
 /// device sends is kept only as its SHA-256 hash, so the table alone can't be used to log in.
 model Session {
   id         String   @id @default(uuid())
