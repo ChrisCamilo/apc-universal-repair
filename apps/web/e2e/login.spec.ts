@@ -27,7 +27,7 @@ test("Web: the login screen shows the badge and the form", async ({ page }, test
 
 // Sends the login empty, then with a wrong password, then as a test user with Enter, and checks the empty fields
 // get their messages, the refused login says so above the form and empties the password, and the accepted one
-// saves the session, which is still there after a reload, and goes on to the Dashboard.
+// saves the session with its token, which is still there after a reload, and goes on to the Dashboard.
 test("Web: the login checks the fields and the user, and saves the session", async ({ page }) => {
   await serveItems(page, []);
   await serveUsers(page);
@@ -51,7 +51,7 @@ test("Web: the login checks the fields and the user, and saves the session", asy
   await expect(page).toHaveURL(/\/inventory$/);
   await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
   const session = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null"), SESSION_STORAGE_KEY);
-  expect(await session()).toMatchObject({ username: USER.username, displayName: USER.displayName, initials: "CC" });
+  expect(await session()).toMatchObject({ username: USER.username, displayName: USER.displayName, initials: "CC", token: `token-${USER.id}` });
   await page.reload();
   expect(await session()).toMatchObject({ username: USER.username });
 });

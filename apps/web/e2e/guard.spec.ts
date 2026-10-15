@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { serveItems } from "./items.ts";
 import { serveUsers } from "./users.ts";
@@ -51,4 +52,31 @@ test("Web: a logged user skips the login", async ({ page }) => {
   await expect(page).toHaveURL(/\/inventory$/);
   await expect(page.getByRole("tab", { name: "Estoque" })).toBeVisible();
   await expect(page.getByLabel("Usuário", { exact: true })).toHaveCount(0);
+});
+
+// Opens the Dashboard with a saved session whose token the API refuses, and checks the items call carried the token,
+// the user lands on the login told the session expired, with the session gone from the device, and that logging in
+// again, once the API takes the token, takes the notice away and goes back to the Dashboard.
+test("Web: an expired session goes back to the login, which says so", async ({ page }) => {
+  await signIn(page);
+  await serveUsers(page);
+  await serveItems(page, []);
+  const sent: (string | null)[] = [];
+  await page.route("**/api/items*", async (route) => {
+    sent.push(await route.request().headerValue("authorization"));
+    return route.fulfill({ status: 401, json: { statusCode: 401 } });
+  });
+  await page.goto("/inventory");
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("status").filter({ hasText: LOGIN_MESSAGES.expired })).toBeVisible();
+  expect(sent[0]).toBe(`Bearer token-${USER.id}`);
+  // The saved session is put back on every load; it is gone until then.
+  expect(await page.evaluate((key) => localStorage.getItem(key), SESSION_STORAGE_KEY)).toBeNull();
+
+  await page.unroute("**/api/items*");
+  await page.getByLabel("Usuário").fill(USER.username);
+  await page.getByLabel("Senha", { exact: true }).fill(USER.password);
+  await page.getByLabel("Senha", { exact: true }).press("Enter");
+  await expect(page).toHaveURL(/\/inventory$/);
+  await expect(page.getByText(LOGIN_MESSAGES.expired)).toBeHidden();
 });
