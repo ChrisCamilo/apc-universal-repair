@@ -13,10 +13,15 @@ files:
   - build/icon.png
   - build/icon.ico
   - package.json
-# The web build, served by the app:// protocol from resources/web.
+# The web build, served by the app:// protocol from resources/web, and the server the app runs, bundled into server/ by
+# scripts/bundle-server.mjs with its native modules (see src/bundledServer.ts).
 extraResources:
   - from: ../web/dist
     to: web
+  - from: server
+    to: server
+    filter:
+      - "**/*"
 win:
   # Every size Windows asks for, drawn by scripts/make-icon.ps1 from build/icon.png.
   icon: build/icon.ico

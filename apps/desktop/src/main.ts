@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, screen, session, shell } from "electron";
 import electronUpdater from "electron-updater";
+import { startBundledServer } from "./bundledProcess.js";
+import { SERVER_PORT, usesBundledServer } from "./bundledServer.js";
 import { isLocalApi, parseConfig, resolveApiUrl, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice, POSTGRESQL_GUIDE_URL, serverCanStart } from "./database.js";
 import { windowsIdentity } from "./identity.js";
@@ -19,17 +21,19 @@ import {
 import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
-// Vite dev server when APC_DEV_URL is set. On opening, when the API on this computer doesn't answer, it starts it
-// (see server.ts) and shows "Ligando o servidor" until it does, unless PostgreSQL was chosen at install and the API's
-// .env doesn't name it yet, when it opens the guide instead (see database.ts). The window can't leave the app: other addresses open
-// in the system browser, and the page gets no Node access and no permissions: only the preload's bridge (preload.cts),
+// Vite dev server when APC_DEV_URL is set. On opening, it starts the server it ships (see bundledServer.ts) and shows
+// "Ligando o servidor" until it answers, unless a server already answers on its port. With a server elsewhere
+// (APC_API_URL or config.json's apiUrl), or a clone's folder to start one from (APC_API_DIR or config.json's apiDir),
+// it uses that one instead: it starts a clone's server when it doesn't answer (see server.ts), unless PostgreSQL was
+// chosen at install and the clone's .env doesn't name it yet, when it opens the guide instead (see database.ts). The
+// window can't leave the app: other addresses open in the system browser, and the page gets no Node access and no permissions: only the preload's bridge (preload.cts),
 // through which it asks for a Windows notification of an error or a warning, shown while the window isn't focused;
 // clicking it brings the window up with the bell's menu open. The installed app updates itself from GitHub Releases
 // (see update.ts): it checks once its window shows and every 6 hours, downloads a new version in the background, tells
 // the page so it shows a notice, and installs it on quit, or at once when the page asks. Without internet it keeps
-// working on its version. It also keeps the server on its own version: when /health answers another one, it brings
-// the API on this computer to the app's release (update-server.ps1) and shows "Atualizando o servidor" until it
-// answers it, or warns about a server on another computer. Only one copy runs at a time, since two would share the
+// working on its version. The server it ships is always on its version; a clone's server is kept on it too: when /health
+// answers another one, it brings the clone to the app's release (update-server.ps1) and shows "Atualizando o servidor"
+// until it answers it, or warns about a server on another computer. Only one copy runs at a time, since two would share the
 // same localStorage.
 
 /** The notifications on screen, kept so they still answer a click once their request is gone. */
@@ -50,14 +54,12 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 /**
- * Finds the apps/api folder to start the API from: APC_API_DIR, then config.json's apiDir, then the one of the clone
- * the app was built from.
+ * Finds the apps/api folder of a clone to start the API from: APC_API_DIR, then config.json's apiDir.
  * @param config What config.json sets.
- * @returns The folder, or undefined when none is known.
+ * @returns The folder, or undefined when none is set.
  */
 function apiDirOf(config: DesktopConfig): string | undefined {
-  const built = parseConfig(readIfThere(path.join(import.meta.dirname, "build-info.json")));
-  return process.env.APC_API_DIR || config.apiDir || built.apiDir;
+  return process.env.APC_API_DIR || config.apiDir;
 }
 
 /**
@@ -175,6 +177,28 @@ async function ensureApiVersion(window: BrowserWindow, apiUrl: string, config: D
 }
 
 /**
+ * Starts the server the app ships, unless one already answers on its port, showing "Ligando o servidor" in the window
+ * until it answers; it stops when the app quits.
+ * @param window The app's window.
+ * @param apiUrl The bundled server's address on this computer.
+ * @param port Its port.
+ */
+async function ensureBundledServer(window: BrowserWindow, apiUrl: string, port: number): Promise<void> {
+  if (await apiAnswers(apiUrl)) {
+    console.log(`A server already answers at ${apiUrl}; using it.`);
+    return;
+  }
+  const serverDir = app.isPackaged ? path.join(process.resourcesPath, "server") : path.join(app.getAppPath(), "server");
+  console.log(`Starting the bundled server from ${serverDir}`);
+  const stop = startBundledServer({ serverDir, userData: app.getPath("userData"), port, version: app.getVersion() });
+  app.on("will-quit", stop);
+  await window.loadFile(path.join(app.getAppPath(), "static", "starting.html"));
+  if (!(await waitForApi(apiUrl))) {
+    console.warn(`The bundled server didn't answer in time; opening the app anyway. See logs/api.log in ${app.getPath("userData")}.`);
+  }
+}
+
+/**
  * Shows the Windows notification the page asked for, when it comes from the app and the window isn't focused; a click
  * brings the window up and asks the page to open the bell's menu.
  * @param appUrl The address the app is served from, which the request must come from.
@@ -267,7 +291,11 @@ app.on("window-all-closed", () => app.quit());
 void app.whenReady().then(async () => {
   const userData = app.getPath("userData");
   const config = adoptInstallerChoice(userData, parseConfig(readIfThere(path.join(userData, "config.json"))));
-  const apiUrl = resolveApiUrl(process.env.APC_API_URL, config);
+  const bundled = usesBundledServer({ envApiUrl: process.env.APC_API_URL, envApiDir: process.env.APC_API_DIR, devUrl }, config);
+  // APC_SERVER_PORT moves the bundled server off 3333, for the smoke test.
+  const port = Number(process.env.APC_SERVER_PORT) || SERVER_PORT;
+  // 127.0.0.1, not localhost, which Node may resolve to ::1 while the server listens on IPv4.
+  const apiUrl = bundled ? `http://127.0.0.1:${port}` : resolveApiUrl(process.env.APC_API_URL, config);
   console.log(`API: ${apiUrl}`);
 
   Menu.setApplicationMenu(null);
@@ -288,10 +316,14 @@ void app.whenReady().then(async () => {
   if (installed) {
     watchForUpdates(window, appUrl);
   }
-  await ensureApi(window, apiUrl, config);
-  // Only the installed app, which follows the releases; a run from the clone would check its own clone out.
-  if (installed) {
-    await ensureApiVersion(window, apiUrl, config);
+  if (bundled) {
+    await ensureBundledServer(window, apiUrl, port);
+  } else {
+    await ensureApi(window, apiUrl, config);
+    // Only the installed app, which follows the releases; a run from the clone would check its own clone out.
+    if (installed) {
+      await ensureApiVersion(window, apiUrl, config);
+    }
   }
   await window.loadURL(appUrl);
 });
