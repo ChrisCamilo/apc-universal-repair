@@ -92,7 +92,8 @@
     Pop $databasePostgresql
     ${NSD_CreateLabel} 12u 59u -12u 30u "Um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador acessando o mesmo banco. Precisa instalar e configurar o PostgreSQL antes (veja o guia do servidor)."
     Pop $R0
-    ${NSD_CreateLabel} 0 94u 100% 20u "Dá para trocar depois, mas os dados não vão sozinhos: veja ""Trocar de banco de dados"" no guia do servidor."
+    ; In single quotes, which take the double ones inside: NSIS ends a double-quoted string at "" instead.
+    ${NSD_CreateLabel} 0 94u 100% 20u 'Dá para trocar depois, mas os dados não vão sozinhos: veja "Trocar de banco de dados" no guia do servidor.'
     Pop $R0
     ${If} $databaseChoice == postgresql
       ${NSD_Check} $databasePostgresql
@@ -133,7 +134,7 @@
     Pop $startupNo
     ${NSD_CreateLabel} 12u 59u -12u 30u "O servidor só fica ligado enquanto o APC estiver aberto ou na bandeja; o celular não funciona antes disso."
     Pop $R0
-    ${NSD_CreateLabel} 0 94u 100% 20u "Dá para trocar depois em ""Iniciar com o Windows"", no menu do ícone do APC perto do relógio."
+    ${NSD_CreateLabel} 0 94u 100% 20u 'Dá para trocar depois em "Iniciar com o Windows", no menu do ícone do APC perto do relógio.'
     Pop $R0
     ${If} $startupChoice == no
       ${NSD_Check} $startupNo
