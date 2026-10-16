@@ -104,9 +104,9 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
   await app.close();
 });
 
-// With the preload, the page still has no Node: no require and no process. The bridge gives it only its four calls,
-// for the notifications and the update. Run unpackaged, the app doesn't check for updates, so the update notice's live
-// region is there and empty.
+// With the preload, the page still has no Node: no require and no process. The bridge gives it only its calls, for
+// the notifications, the update and the server's settings. Run unpackaged, the app doesn't check for updates, so the
+// update notice's live region is there and empty.
 test("Desktop: the page gets only the bridge's calls, with no Node access", async () => {
   const app = await launch(mkdtempSync(path.join(tmpdir(), "apc-desktop-")));
   try {
@@ -116,8 +116,14 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", asyn
       require: typeof require,
       process: typeof process,
       bridge: Object.keys((window as unknown as { apcDesktop: object }).apcDesktop).sort(),
+      server: Object.keys((window as unknown as { apcDesktop: { server: object } }).apcDesktop.server).sort(),
     }));
-    expect(exposed).toEqual({ require: "undefined", process: "undefined", bridge: ["notify", "onOpenNotifications", "onUpdateReady", "restartToUpdate"] });
+    expect(exposed).toEqual({
+      require: "undefined",
+      process: "undefined",
+      bridge: ["notify", "onOpenNotifications", "onUpdateReady", "restartToUpdate", "server"],
+      server: ["checkImport", "chooseFolder", "chooseSqliteFile", "importServer", "migrateImport", "onOpen", "settings", "usePostgresql", "useSqlite"],
+    });
     await expect(page.getByTestId("setup.update-notice")).toBeEmpty();
   } finally {
     await app.close();
