@@ -67,7 +67,9 @@ if (process.platform === "win32") {
     rmSync(path.join(OUT, "node_modules"), { recursive: true, force: true });
     writeFileSync(path.join(OUT, "package.json"), `${JSON.stringify({ name: "apc-server", private: true, type: "module", dependencies: versions }, null, 2)}\n`);
     execSync("npm install --omit=dev --ignore-scripts --no-audit --no-fund --no-package-lock", { cwd: OUT, stdio: "inherit" });
-    await rebuild({ buildPath: OUT, electronVersion: electron, onlyModules: ["better-sqlite3"], force: true });
+    // projectRootPath keeps it in OUT: without it, it walks up and rebuilds the workspace's copy too, which the API's
+    // tests and dev server load in Node.
+    await rebuild({ buildPath: OUT, projectRootPath: OUT, electronVersion: electron, onlyModules: ["better-sqlite3"], force: true });
     // Only the module and the compiled binary ship: not SQLite's sources nor the compiler's leftovers, ~70 MB.
     const sqlite = path.join(OUT, "node_modules", "better-sqlite3");
     const binary = path.join(sqlite, "build", "Release", "better_sqlite3.node");
