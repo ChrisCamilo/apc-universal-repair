@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import pg from "pg";
@@ -12,7 +12,12 @@ import { API_DIR, databaseProvider, sqliteFile, type DatabaseProvider } from "./
 // deploy` records it: a random id, the SHA-256 of the file's bytes, and when it started and finished. A database
 // migrated either way is the same to the other. A migration recorded as started but not finished, or one that fails,
 // stops the run, leaving the ones after it unapplied. APC_MIGRATIONS_DIR points at the migrations the app ships, with
-// one folder per database ("postgresql", "sqlite"); without it, they are read from prisma/ in the repo.
+// one folder per database ("postgresql", "sqlite"); without it, they are read from prisma/ in the repo. Before the
+// desktop app moves its server onto a database, or imports one, checkDatabase says what it holds: the migrations of
+// this version it lacks, the ones of a newer version, and whether its tables are another app's.
+
+/** How long a PostgreSQL server may take to accept the connection, so an address that doesn't answer fails soon. */
+const CONNECT_TIMEOUT_MS = 10_000;
 
 /** The table Prisma keeps applied migrations in, as `prisma migrate deploy` creates it on each database. */
 const MIGRATIONS_TABLE: Record<DatabaseProvider, string> = {
@@ -38,6 +43,15 @@ const MIGRATIONS_TABLE: Record<DatabaseProvider, string> = {
   )`,
 };
 
+/** What a database holds, as far as running this version's server on it goes. */
+export type DatabaseCheck = {
+  /** The migrations of this version it hasn't applied, oldest first: all of them for an empty database. */
+  missing: string[];
+  /** The migrations it has applied that this version doesn't know: it is of a newer version. */
+  newer: string[];
+  /** Whether it holds tables but no migrations: another app's database, which the server shouldn't write to. */
+  foreign: boolean;
+};
 /** A connection to the database being migrated, through its own driver. */
 type Connection = {
   /** Runs statements with no answer, several at once. */
@@ -46,8 +60,38 @@ type Connection = {
   recorded: () => Promise<{ migration_name: string; finished_at: unknown; rolled_back_at: unknown }[]>;
   /** Records a migration applied. */
   record: (row: { id: string; checksum: string; name: string; startedAt: Date; finishedAt: Date }) => Promise<void>;
+  /** Lists the database's tables. */
+  tables: () => Promise<string[]>;
   close: () => Promise<void>;
 };
+
+/**
+ * Checks what a database holds before the server runs on it or its data is copied: what it lacks of this version,
+ * what it has of a newer one, and whether its tables are another app's. A SQLite file must exist.
+ * @param url The database's DATABASE_URL.
+ * @returns What it holds.
+ */
+export async function checkDatabase(url: string): Promise<DatabaseCheck> {
+  const provider = databaseProvider(url);
+  if (provider === "sqlite" && !existsSync(sqliteFile(url))) {
+    throw new Error(`There is no file at ${sqliteFile(url)}.`);
+  }
+  const connection = await connect(url);
+  try {
+    const tables = await connection.tables();
+    const migrated = tables.includes("_prisma_migrations");
+    const recorded = migrated ? await connection.recorded() : [];
+    const applied = new Set(recorded.filter((row) => row.finished_at !== null && row.rolled_back_at === null).map((row) => row.migration_name));
+    const known = migrationNames(provider);
+    return {
+      missing: known.filter((name) => !applied.has(name)),
+      newer: [...applied].filter((name) => !known.includes(name)).sort(),
+      foreign: !migrated && tables.length > 0,
+    };
+  } finally {
+    await connection.close();
+  }
+}
 
 /**
  * Opens a database through its own driver, creating a SQLite file's folder when it is missing.
@@ -68,10 +112,14 @@ async function connect(url: string): Promise<Connection> {
             `INSERT INTO "_prisma_migrations" (id, checksum, migration_name, started_at, finished_at, applied_steps_count) VALUES (?, ?, ?, ?, ?, 1)`,
           )
           .run(id, checksum, name, startedAt.getTime(), finishedAt.getTime()),
+      tables: async () =>
+        (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`).all() as { name: string }[]).map(
+          (row) => row.name,
+        ),
       close: async () => void db.close(),
     };
   }
-  const client = new pg.Client({ connectionString: url });
+  const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: CONNECT_TIMEOUT_MS });
   await client.connect();
   return {
     exec: async (sql) => void (await client.query(sql)),
@@ -81,6 +129,10 @@ async function connect(url: string): Promise<Connection> {
         `INSERT INTO "_prisma_migrations" (id, checksum, migration_name, started_at, finished_at, applied_steps_count) VALUES ($1, $2, $3, $4, $5, 1)`,
         [id, checksum, name, startedAt, finishedAt],
       )),
+    tables: async () =>
+      (await client.query<{ table_name: string }>(`SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema()`)).rows.map(
+        (row) => row.table_name,
+      ),
     close: () => client.end(),
   };
 }

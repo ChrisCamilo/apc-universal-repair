@@ -3,10 +3,30 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
-import { adoptInstallerChoice, envDatabaseUrl, INSTALLER_CHOICE_FILE, serverCanStart } from "./database.ts";
+import { writeConfig } from "./config.ts";
+import {
+  adoptInstallerChoice,
+  databaseCheckMessage,
+  describePostgresql,
+  importProblemMessage,
+  INSTALLER_CHOICE_FILE,
+  isPostgresqlUrl,
+  needsDatabaseAddress,
+  oldPhotosFolder,
+  openDatabaseUrl,
+  sealDatabaseUrl,
+  type Sealer,
+} from "./database.ts";
 
+/** A PostgreSQL address with a password, as the settings take it. */
+const ADDRESS = "postgresql://postgres:freio-1234@localhost:5432/apc_universal_repair";
 /** A userData folder for each test, removed at the end. */
 const folders: string[] = [];
+/** A stand-in for safeStorage, which only Electron has: it flips every byte, so the text can't be read as it is. */
+const SEALER: Sealer = {
+  encryptString: (text) => Buffer.from(Buffer.from(text, "utf8").map((byte) => byte ^ 0xff)),
+  decryptString: (sealed) => Buffer.from(sealed.map((byte) => byte ^ 0xff)).toString("utf8"),
+};
 
 after(() => folders.forEach((folder) => rmSync(folder, { recursive: true, force: true })));
 
@@ -45,23 +65,56 @@ test("Desktop: a choice already made, or one that isn't a choice, is kept as it 
   assert.deepEqual(adoptInstallerChoice(userData(), { apiUrl: "http://localhost:3333" }), { apiUrl: "http://localhost:3333" });
 });
 
-// Reads DATABASE_URL from .env texts, quoted or not, among other settings, empty, commented out and missing.
-test("Desktop: the API's .env is read for its DATABASE_URL", () => {
-  const url = "postgresql://postgres:x@localhost:5432/apc_universal_repair";
-  assert.equal(envDatabaseUrl(`PORT=3333\r\nDATABASE_URL="${url}"\r\n`), url);
-  assert.equal(envDatabaseUrl("DATABASE_URL=file:./data/apc.db"), "file:./data/apc.db");
-  assert.equal(envDatabaseUrl('DATABASE_URL=""'), undefined);
-  assert.equal(envDatabaseUrl(`# DATABASE_URL="${url}"`), undefined);
-  assert.equal(envDatabaseUrl("PORT=3333"), undefined);
-  assert.equal(envDatabaseUrl(undefined), undefined);
+// Seals PostgreSQL's address into config.json, and checks the file holds neither the address nor its password, and the
+// address opens back from it.
+test("Desktop: PostgreSQL's address is kept sealed, never in plain text in config.json", () => {
+  const folder = userData();
+  writeConfig(folder, { database: "postgresql", databaseUrl: sealDatabaseUrl(ADDRESS, SEALER) });
+  const text = readFileSync(path.join(folder, "config.json"), "utf8");
+  assert.equal(text.includes(ADDRESS), false);
+  assert.equal(text.includes("freio-1234"), false);
+  assert.equal(JSON.parse(text).database, "postgresql", "the choice, which isn't secret");
+  assert.equal(openDatabaseUrl(JSON.parse(text), SEALER), ADDRESS);
 });
 
-// Checks the server starts for SQLite, or with no choice, whatever the .env says, and for PostgreSQL only once the
-// .env names a database.
-test("Desktop: the server starts for PostgreSQL only once the .env names it", () => {
-  assert.equal(serverCanStart({ database: "sqlite" }, undefined), true);
-  assert.equal(serverCanStart({}, "PORT=3333"), true);
-  assert.equal(serverCanStart({ database: "postgresql" }, "PORT=3333"), false);
-  assert.equal(serverCanStart({ database: "postgresql" }, undefined), false);
-  assert.equal(serverCanStart({ database: "postgresql" }, 'DATABASE_URL="postgresql://localhost/apc"'), true);
+// Checks the address is asked for when PostgreSQL was chosen with no address, or one this Windows user can't open, and
+// not once one opens, nor for SQLite.
+test("Desktop: the app asks for PostgreSQL's address until it has one it can open", () => {
+  const refusing: Sealer = { ...SEALER, decryptString: () => assert.fail("Not this Windows user's.") };
+  const sealed = sealDatabaseUrl(ADDRESS, SEALER);
+  assert.equal(needsDatabaseAddress({ database: "postgresql" }, SEALER), true);
+  assert.equal(needsDatabaseAddress({ database: "postgresql", databaseUrl: sealed }, refusing), true);
+  assert.equal(needsDatabaseAddress({ database: "postgresql", databaseUrl: sealed }, SEALER), false);
+  assert.equal(needsDatabaseAddress({ database: "sqlite" }, SEALER), false);
+  assert.equal(needsDatabaseAddress({}, SEALER), false);
+});
+
+// Checks which typed addresses count as PostgreSQL's, and that the settings show one without its user and password.
+test("Desktop: PostgreSQL's address is checked, and shown without its password", () => {
+  assert.equal(isPostgresqlUrl(ADDRESS), true);
+  assert.equal(isPostgresqlUrl("postgres://apc@192.168.0.10/apc"), true);
+  assert.equal(isPostgresqlUrl("localhost:5432"), false);
+  assert.equal(isPostgresqlUrl("http://localhost:5432/apc"), false);
+  assert.equal(isPostgresqlUrl("file:./data/apc.db"), false);
+  assert.equal(describePostgresql(ADDRESS), "localhost:5432/apc_universal_repair");
+});
+
+// Checks a database of a newer version and one of another app are refused, saying why, and an empty one or one of
+// this version or before is taken.
+test("Desktop: the server moves only onto an empty database or one of its own", () => {
+  assert.match(databaseCheckMessage({ missing: [], newer: ["20991231000000_next"], foreign: false }) ?? "", /versão mais nova/);
+  assert.match(databaseCheckMessage({ missing: ["20260101000000_init"], newer: [], foreign: true }) ?? "", /outro programa/);
+  assert.equal(databaseCheckMessage({ missing: ["20260101000000_init"], newer: [], foreign: false }), undefined);
+  assert.equal(databaseCheckMessage({ missing: [], newer: [], foreign: false }), undefined);
+});
+
+// Checks each reason an import can't start has its message, and the old photos folder is found from a clone's file.
+test("Desktop: an import says why it can't start, and finds the clone's photos", () => {
+  for (const problem of ["sourceBehind", "sourceNewer", "sourceNotApc", "targetHasData"] as const) {
+    assert.ok(importProblemMessage(problem).length > 0, problem);
+  }
+  assert.equal(
+    oldPhotosFolder(path.join("C:", "APC", "apps", "api", "data", "apc.db")),
+    path.join("C:", "APC", "apps", "api", "uploads", "photos"),
+  );
 });

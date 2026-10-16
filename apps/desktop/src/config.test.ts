@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
-import { DEFAULT_API_URL, isLocalApi, parseConfig, resolveApiUrl } from "./config.ts";
+import { DEFAULT_API_URL, isLocalApi, parseConfig, resolveApiUrl, writeConfig } from "./config.ts";
 
 // Resolves the API address with each source set, and checks APC_API_URL wins over config.json, which wins over the
 // default, and that a trailing slash is dropped so paths join on it.
@@ -23,6 +26,21 @@ test("Desktop: config.json is read only when it holds a JSON object", () => {
   assert.deepEqual(parseConfig(undefined), {});
   assert.deepEqual(parseConfig("{ apiUrl: "), {});
   assert.deepEqual(parseConfig("null"), {});
+});
+
+// Reads a config.json saved with a BOM, as Windows PowerShell 5.1's Set-Content -Encoding utf8 saves it, and checks its
+// settings are read; writes one, and checks it has no BOM and reads back the same.
+test("Desktop: config.json is read with or without a BOM, and written without one", () => {
+  assert.deepEqual(parseConfig('\uFEFF{ "database": "sqlite" }\r\n'), { database: "sqlite" });
+  const folder = mkdtempSync(path.join(tmpdir(), "apc-config-"));
+  try {
+    writeConfig(folder, { database: "sqlite", trayNoticeShown: true });
+    const bytes = readFileSync(path.join(folder, "config.json"));
+    assert.notDeepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+    assert.deepEqual(parseConfig(bytes.toString("utf8")), { database: "sqlite", trayNoticeShown: true });
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 });
 
 // Checks the app only counts this computer's addresses as local, the only ones it starts the API for.

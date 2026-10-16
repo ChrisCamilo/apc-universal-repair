@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, afterEach, test } from "node:test";
 import Database from "better-sqlite3";
-import { migrate, migrationNames, migrationsFolder } from "./migrate.js";
+import { checkDatabase, migrate, migrationNames, migrationsFolder } from "./migrate.js";
 
 // The migration runner on SQLite files in a temporary folder, so it runs without a database server; CI's migrations
 // job runs it on PostgreSQL too (db:migrate, then db:check).
@@ -100,4 +100,27 @@ test("API: a migration left unfinished stops the runner", async () => {
   db.prepare(`INSERT INTO "_prisma_migrations" (id, checksum, migration_name) VALUES ('x', 'y', '20991231000000_cut')`).run();
   db.close();
   await assert.rejects(migrate(`file:${file}`), /20991231000000_cut started before and didn't finish/);
+});
+
+// Checks a file that isn't there, an empty one, one of another app, a migrated one and one with a migration of a newer
+// version, and checks what each lacks, has of a newer version, and whether it is another app's.
+test("API: checking a database says what it lacks, what is newer and whether it is another app's", async () => {
+  await assert.rejects(checkDatabase(`file:${path.join(FOLDER, "absent.db")}`), /There is no file at/);
+  const empty = path.join(FOLDER, "empty.db");
+  new Database(empty).close();
+  assert.deepEqual(await checkDatabase(`file:${empty}`), { missing: migrationNames("sqlite"), newer: [], foreign: false });
+
+  const other = path.join(FOLDER, "other.db");
+  const otherDb = new Database(other);
+  otherDb.exec(`CREATE TABLE "Invoice" ("id" TEXT)`);
+  otherDb.close();
+  assert.deepEqual(await checkDatabase(`file:${other}`), { missing: migrationNames("sqlite"), newer: [], foreign: true });
+
+  const current = path.join(FOLDER, "current.db");
+  await migrate(`file:${current}`);
+  assert.deepEqual(await checkDatabase(`file:${current}`), { missing: [], newer: [], foreign: false });
+  const db = new Database(current);
+  db.prepare(`INSERT INTO "_prisma_migrations" (id, checksum, migration_name, finished_at) VALUES ('x', 'y', '20991231000000_next', 1)`).run();
+  db.close();
+  assert.deepEqual(await checkDatabase(`file:${current}`), { missing: [], newer: ["20991231000000_next"], foreign: false });
 });

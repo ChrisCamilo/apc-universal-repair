@@ -1,16 +1,22 @@
-import { readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, screen, session, shell, Tray } from "electron";
 import electronUpdater from "electron-updater";
-import { startBundledServer } from "./bundledProcess.js";
 import { SERVER_PORT, usesBundledServer } from "./bundledServer.js";
-import { isLocalApi, parseConfig, resolveApiUrl, writeConfig, type DesktopConfig } from "./config.js";
-import { adoptInstallerChoice, POSTGRESQL_GUIDE_URL, serverCanStart } from "./database.js";
+import { isLocalApi, readConfig, resolveApiUrl, writeConfig, type DesktopConfig } from "./config.js";
+import { adoptInstallerChoice } from "./database.js";
 import { windowsIdentity } from "./identity.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
 import { apiAnswers, readHealth, startApi, updateApi, waitForApi } from "./server.js";
+import {
+  handleServerElsewhere,
+  handleServerSettings,
+  OPEN_SERVER_SETTINGS_CHANNEL,
+  startOwnServer,
+  stopOwnServer,
+  type ServerHost,
+} from "./serverSettings.js";
 import { HIDDEN_ARG, takeInstallerStartup } from "./startup.js";
 import { phoneAddress, trayMenu, type TrayItem } from "./tray.js";
 import {
@@ -25,12 +31,13 @@ import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
 // Vite dev server when APC_DEV_URL is set. On opening, it starts the server it ships (see bundledServer.ts) and shows
-// "Ligando o servidor" until it answers, unless a server already answers on its port; closing the window then hides it
-// in the tray, so the server stays on for the phone, until "Sair" in the tray's menu (see tray.ts). The installed app
-// can start with Windows, hidden in the tray (see startup.ts). With a server elsewhere (APC_API_URL or config.json's
-// apiUrl), or a clone's folder to start one from (APC_API_DIR or config.json's apiDir), it uses that one instead: it
-// starts a clone's server when it doesn't answer (see server.ts), unless PostgreSQL was chosen at install and the
-// clone's .env doesn't name it yet, when it opens the guide instead (see database.ts). The window can't leave the app:
+// "Ligando o servidor" until it answers, unless a server already answers on its port, or waits for PostgreSQL's
+// address when it was chosen at install, which the page asks for (see serverSettings.ts); closing the window then
+// hides it in the tray, so the server stays on for the phone, until "Sair" in the tray's menu (see tray.ts), which
+// also opens the server's settings. The installed app can start with Windows, hidden in the tray (see startup.ts).
+// With a server elsewhere (APC_API_URL or config.json's apiUrl), or a clone's folder to start one from (APC_API_DIR or
+// config.json's apiDir), it uses that one instead: it starts a clone's server when it doesn't answer (see server.ts).
+// The window can't leave the app:
 // other addresses open in the system browser, and the page gets no Node access and no permissions: only the preload's
 // bridge (preload.cts), through which it asks for a Windows notification of an error or a warning, shown while the
 // window isn't focused; clicking it brings the window up with the bell's menu open. The installed app updates itself
@@ -131,11 +138,6 @@ async function ensureApi(window: BrowserWindow, apiUrl: string, config: DesktopC
     return;
   }
   const apiDir = apiDirOf(config);
-  if (apiDir && !serverCanStart(config, readIfThere(path.join(apiDir, ".env")))) {
-    console.warn(`PostgreSQL was chosen, and ${path.join(apiDir, ".env")} doesn't name it yet; opening the guide.`);
-    void shell.openExternal(POSTGRESQL_GUIDE_URL);
-    return;
-  }
   if (!apiDir || !startApi(apiDir)) {
     console.warn(`The API at ${apiUrl} doesn't answer, and there is no API folder to start it from.`);
     return;
@@ -190,31 +192,9 @@ async function ensureApiVersion(window: BrowserWindow, apiUrl: string, config: D
 }
 
 /**
- * Starts the server the app ships, unless one already answers on its port, showing "Ligando o servidor" in the window
- * until it answers; it stops when the app quits.
- * @param window The app's window.
- * @param apiUrl The bundled server's address on this computer.
- * @param port Its port.
- */
-async function ensureBundledServer(window: BrowserWindow, apiUrl: string, port: number): Promise<void> {
-  if (await apiAnswers(apiUrl)) {
-    console.log(`A server already answers at ${apiUrl}; using it.`);
-    return;
-  }
-  const serverDir = app.isPackaged ? path.join(process.resourcesPath, "server") : path.join(app.getAppPath(), "server");
-  console.log(`Starting the bundled server from ${serverDir}`);
-  const stop = startBundledServer({ serverDir, userData: app.getPath("userData"), port, version: app.getVersion() });
-  app.on("will-quit", stop);
-  await window.loadFile(path.join(app.getAppPath(), "static", "starting.html"));
-  if (!(await waitForApi(apiUrl))) {
-    console.warn(`The bundled server didn't answer in time; opening the app anyway. See logs/api.log in ${app.getPath("userData")}.`);
-  }
-}
-
-/**
  * Keeps the app in the tray while it runs its own server: closing the window hides it, the first time saying so in a
- * Windows notification, and the tray's menu opens it, copies the phone's address, turns starting with Windows on and
- * off (the installed app only) and quits.
+ * Windows notification, and the tray's menu opens it, copies the phone's address, opens the server's settings in it,
+ * turns starting with Windows on and off (the installed app only) and quits.
  * @param window The app's window.
  * @param port The server's port.
  * @param installed Whether this is the installed app, the only one that can start with Windows.
@@ -242,6 +222,10 @@ function keepInTray(window: BrowserWindow, port: number, installed: boolean, con
   const actions: Record<Exclude<TrayItem["id"], "separator">, (item: Electron.MenuItem) => void> = {
     open: () => showWindow(window),
     address: () => clipboard.writeText(`http://${address()}:${port}`),
+    settings: () => {
+      showWindow(window);
+      window.webContents.send(OPEN_SERVER_SETTINGS_CHANNEL);
+    },
     startup: (item) => app.setLoginItemSettings({ openAtLogin: item.checked, args: [HIDDEN_ARG] }),
     quit: () => app.quit(),
   };
@@ -292,19 +276,6 @@ function notify(appUrl: string, sender: Electron.WebContents, senderUrl: string,
   notification.on("close", () => shown.delete(notification));
   shown.add(notification);
   notification.show();
-}
-
-/**
- * Reads a text file, if it is there.
- * @param file The file's full path.
- * @returns Its text, or undefined when it doesn't exist.
- */
-function readIfThere(file: string): string | undefined {
-  try {
-    return readFileSync(file, "utf8");
-  } catch {
-    return undefined;
-  }
 }
 
 /**
@@ -376,7 +347,7 @@ app.on("window-all-closed", () => app.quit());
 
 void app.whenReady().then(async () => {
   const userData = app.getPath("userData");
-  const config = adoptInstallerChoice(userData, parseConfig(readIfThere(path.join(userData, "config.json"))));
+  const config = adoptInstallerChoice(userData, readConfig(userData));
   const bundled = usesBundledServer({ envApiUrl: process.env.APC_API_URL, envApiDir: process.env.APC_API_DIR, devUrl }, config);
   // APC_SERVER_PORT moves the bundled server off 3333, for the smoke test.
   const port = Number(process.env.APC_SERVER_PORT) || SERVER_PORT;
@@ -410,9 +381,23 @@ void app.whenReady().then(async () => {
     watchForUpdates(window, appUrl, hidden);
   }
   if (bundled) {
+    const serverDir = app.isPackaged ? path.join(process.resourcesPath, "server") : path.join(app.getAppPath(), "server");
+    const host: ServerHost = {
+      window,
+      appUrl,
+      apiUrl,
+      startingPage: path.join(app.getAppPath(), "static", "starting.html"),
+      setup: { serverDir, userData, port, version: app.getVersion() },
+    };
+    handleServerSettings(host);
     keepInTray(window, port, installed, config);
-    await ensureBundledServer(window, apiUrl, port);
+    app.on("will-quit", stopOwnServer);
+    // A start hidden at sign-in shows the window when the page has to ask for PostgreSQL's address.
+    if ((await startOwnServer(host)) === "waiting" && hidden) {
+      window.once("ready-to-show", () => window.show());
+    }
   } else {
+    handleServerElsewhere(appUrl, apiUrl);
     await ensureApi(window, apiUrl, config);
     // Only the installed app, which follows the releases; a run from the clone would check its own clone out.
     if (installed) {

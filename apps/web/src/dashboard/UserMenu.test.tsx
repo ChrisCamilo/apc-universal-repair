@@ -7,11 +7,13 @@ import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme'
 import { useState, type ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { beforeAll, beforeEach, expect, test } from 'vitest'
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { SessionContext } from '../auth/sessionContext.ts'
+import type { DesktopBridge } from '../desktop/desktopBridge.ts'
+import { ServerSettingsContext } from '../desktop/serverSettingsContext.ts'
 import { themeCss } from '../theme.ts'
 import { ThemeProvider } from '../ThemeProvider.tsx'
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from './openItemOnRowContext.ts'
@@ -37,6 +39,10 @@ beforeAll(async () => {
   tag.textContent = themeCss()
   document.head.append(tag)
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+})
+
+afterEach(() => {
+  delete window.apcDesktop
 })
 
 beforeEach(() => {
@@ -149,29 +155,48 @@ test('Web: Sair ends the session and goes to the login, keeping the preferences'
   expect(localStorage.getItem(REORDER_TABS_STORAGE_KEY)).toBe('true')
 })
 
-function Sample() {
+// In a browser the menu has no Servidor item; in the desktop app it has "Servidor e banco de dados", which opens the
+// Servidor dialog.
+test('Web: in the desktop app the user menu opens the Servidor dialog', async () => {
+  const plain = await render(<Sample />)
+  await plain.getByRole('button', { name: 'Menu do usuário' }).click()
+  await expect.element(plain.getByRole('menuitem', { name: 'Tutorial do estoque' })).toBeVisible()
+  await expect.element(plain.getByRole('menuitem', { name: 'Servidor e banco de dados' })).not.toBeInTheDocument()
+  plain.unmount()
+
+  window.apcDesktop = { server: {} } as DesktopBridge
+  const openServerSettings = vi.fn()
+  const screen = await render(<Sample openServerSettings={openServerSettings} />)
+  await screen.getByRole('button', { name: 'Menu do usuário' }).click()
+  await screen.getByRole('menuitem', { name: 'Servidor e banco de dados' }).click()
+  expect(openServerSettings).toHaveBeenCalledOnce()
+})
+
+function Sample({ openServerSettings = () => {} }: { openServerSettings?: () => void }) {
   const [user, setUser] = useState<SessionUser | null>(USER)
   return (
-    <MemoryRouter initialEntries={['/inventory']}>
-      <ThemeProvider>
-        <SessionContext.Provider value={{ user, expired: false, setUser, markInventoryTutorialSeen: () => {} }}>
-          <Routes>
-            <Route
-              path="/inventory"
-              element={
-                // At the right of the page, as in the Dashboard header, so the menu opens on screen.
-                <div className="flex justify-end">
-                  <Preferences>
-                    <UserMenu />
-                  </Preferences>
-                </div>
-              }
-            />
-            <Route path="/login" element={<p>Tela de login, {user ? 'alguém logado' : 'ninguém logado'}</p>} />
-          </Routes>
-        </SessionContext.Provider>
-      </ThemeProvider>
-    </MemoryRouter>
+    <ServerSettingsContext.Provider value={openServerSettings}>
+      <MemoryRouter initialEntries={['/inventory']}>
+        <ThemeProvider>
+          <SessionContext.Provider value={{ user, expired: false, setUser, markInventoryTutorialSeen: () => {} }}>
+            <Routes>
+              <Route
+                path="/inventory"
+                element={
+                  // At the right of the page, as in the Dashboard header, so the menu opens on screen.
+                  <div className="flex justify-end">
+                    <Preferences>
+                      <UserMenu />
+                    </Preferences>
+                  </div>
+                }
+              />
+              <Route path="/login" element={<p>Tela de login, {user ? 'alguém logado' : 'ninguém logado'}</p>} />
+            </Routes>
+          </SessionContext.Provider>
+        </ThemeProvider>
+      </MemoryRouter>
+    </ServerSettingsContext.Provider>
   )
 }
 

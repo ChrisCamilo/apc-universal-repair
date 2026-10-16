@@ -10,17 +10,19 @@ import { CatalogTab } from './dashboard/CatalogTab.tsx'
 import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
 import { InventoryTab } from './dashboard/InventoryTab.tsx'
 import { UserMenu } from './dashboard/UserMenu.tsx'
+import { ServerSettingsProvider } from './desktop/ServerSettings.tsx'
 import { UpdateNotice } from './desktop/UpdateNotice.tsx'
 import { NotificationsMenu } from './notifications/NotificationsMenu.tsx'
 
 // The app's routes. /login is the login screen and /register the sign-up; the Dashboard, behind them, frames every
 // tab at its own path. "/" opens the last tab used (the Inventory tab the first time) and any unknown path goes back
 // there. Only a logged user reaches the Dashboard: anyone else goes to /login and, once logged in or signed up, back
-// to where they were going. In the desktop app, the notice that a new version is ready shows over any of them.
+// to where they were going. In the desktop app, the notice that a new version is ready and the Servidor dialog show
+// over any of them.
 
 export default function App() {
   return (
-    <>
+    <ServerSettingsProvider>
       <BrowserRouter>
         <SessionProvider auth={auth}>
           <Routes>
@@ -49,7 +51,7 @@ export default function App() {
         </SessionProvider>
       </BrowserRouter>
       <UpdateNotice />
-    </>
+    </ServerSettingsProvider>
   )
 }
 

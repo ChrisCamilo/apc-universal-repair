@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router'
-import { playIcon } from '@apc/shared/icons'
+import { gearIcon, playIcon } from '@apc/shared/icons'
 import { PAGE_SIZES } from '@apc/shared/pagination'
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme'
 import { auth } from '../auth/auth.ts'
@@ -8,6 +8,8 @@ import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../components/
 import { Divider } from '../components/Panel.tsx'
 import { Segmented } from '../components/Segmented.tsx'
 import { Switch } from '../components/Switch.tsx'
+import { desktopBridge } from '../desktop/desktopBridge.ts'
+import { useOpenServerSettings } from '../desktop/serverSettingsContext.ts'
 import { useTheme } from '../useTheme.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
 import { useOpenItemOnRow } from './openItemOnRowContext.ts'
@@ -20,7 +22,8 @@ import { useTabReorder } from './tabReorderContext.ts'
 // which saves it and makes the tabs reorderable while it is on, and "Abrir item ao clicar na linha" likewise makes
 // the Inventory rows open the item details; "Itens por página" sets how many items the Inventory list shows, now and
 // each time it opens. Every choice keeps the menu open, so several can be changed in a row. "Tutorial do estoque",
-// with a play icon, goes to the Inventory tab and runs its tutorial again.
+// with a play icon, goes to the Inventory tab and runs its tutorial again. In the desktop app, "Servidor e banco de
+// dados", with a gear, opens the Servidor dialog (see ServerSettings.tsx).
 // "Sair", at the end and set apart from the preferences, ends the session and goes back to /login; the preferences
 // stay on the device for the next login.
 
@@ -35,6 +38,7 @@ export function UserMenu() {
   const { opensOnRow, setOpensOnRow } = useOpenItemOnRow()
   const { pageSize, setPageSize } = usePageSize()
   const tutorial = useInventoryTutorial()
+  const openServerSettings = useOpenServerSettings()
   // Nobody to show for a moment after "Sair", until the app leaves the Dashboard.
   if (!user) {
     return null
@@ -79,6 +83,14 @@ export function UserMenu() {
       >
         Tutorial do estoque
       </MenuItem>
+      {desktopBridge()?.server && (
+        <>
+          <MenuLabel>Servidor</MenuLabel>
+          <MenuItem icon={gearIcon} onSelect={openServerSettings}>
+            Servidor e banco de dados
+          </MenuItem>
+        </>
+      )}
       <Divider />
       <MenuItem
         onSelect={async () => {

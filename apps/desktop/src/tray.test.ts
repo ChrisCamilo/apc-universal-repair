@@ -37,17 +37,18 @@ test("Desktop: the phone's address is the Wi-Fi's IPv4, never a loopback or a vi
 
 // Lists the tray's menu with a network and starting with Windows on, then without either, and checks the items and
 // their order, the address's label and the check.
-test("Desktop: the tray's menu opens the app, shows the phone's address and quits", () => {
+test("Desktop: the tray's menu opens the app, shows the phone's address, opens the server's settings and quits", () => {
   assert.deepEqual(trayMenu({ address: "192.168.0.202", port: 3333, startsWithWindows: true, canStartWithWindows: true }), [
     { id: "open", label: "Abrir o APC" },
     { id: "address", label: "Servidor ligado em http://192.168.0.202:3333 (clique para copiar)", enabled: true },
+    { id: "settings", label: "Servidor e banco de dados…" },
     { id: "startup", label: "Iniciar com o Windows", checked: true },
     { id: "separator" },
     { id: "quit", label: "Sair" },
   ]);
   assert.deepEqual(
     trayMenu({ port: 3333, startsWithWindows: false, canStartWithWindows: false }).map((item) => item.id),
-    ["open", "address", "separator", "quit"],
+    ["open", "address", "settings", "separator", "quit"],
   );
   assert.deepEqual(trayMenu({ port: 3333, startsWithWindows: false, canStartWithWindows: false })[1], {
     id: "address",

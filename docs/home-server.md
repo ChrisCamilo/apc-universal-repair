@@ -110,7 +110,7 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 - To turn it on again: `Start-ScheduledTask "APC Universal Repair API"`, or the next time this user signs in.
 - To remove it: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which also turns the server off. A task made with `-AtStartup` must be removed as administrator.
 
-**With the server inside the app,** an install with no `apiDir` in `config.json` runs the server itself, with nothing else to set up: it stays on in the tray when the window closes, the tray's menu shows the phone's address, and the installer asks whether it starts with Windows. The steps below are for a server run from a clone.
+**With the server inside the app,** an install with no `apiDir` in `config.json` runs the server itself, with nothing else to set up: it stays on in the tray when the window closes, the tray's menu shows the phone's address, and the installer asks whether it starts with Windows. Its database is picked in the app (step 11). The steps below are for a server run from a clone.
 
 **The desktop app also turns it on.** When the APC Universal Repair desktop app opens and the server doesn't answer, it starts the server in the background the same way as the task (no window, same log), and shows "Ligando o servidor" until it answers. The server keeps running after the app closes, so the phone keeps working; `stop-server.ps1` turns it off. If the server is already on, the app leaves it alone.
 
@@ -212,6 +212,25 @@ To move the server from PostgreSQL to SQLite, or back, copy the data to the new 
 5. **Switch:** in `apps\api\.env`, change `DATABASE_URL` to the new database. It wins over the installer's choice, which only applies without one.
 6. **Turn the server on** again (step 3) and log in. Keep the old database until you're sure.
 
+With the server inside the app, the app switches and copies itself: see step 11.
+
+### 11. The server inside the app: the database and importing
+
+The server the desktop app runs keeps its settings in the app. *Servidor e banco de dados*, in the user menu and in the menu of the APC icon by the clock, shows the database in use (SQLite with its folder, or PostgreSQL with its server), the photos' folder, the port and the phone's address.
+
+- **PostgreSQL:** create the database first, as in step 1. Then pick *PostgreSQL*, type its address, `postgresql://postgres:<password>@localhost:5432/apc_universal_repair`, and choose *Usar PostgreSQL*. The app checks it connects, creates the tables in an empty database (or adds the new ones to an APC database of an earlier version), and restarts the server on it. It refuses a database of a newer APC, or one holding another program's tables, saying why. The address holds the password, so `config.json` keeps it only sealed by Windows (DPAPI), which this Windows user alone can open.
+- **PostgreSQL chosen at install:** the app asks for the address on its first start, before the server starts. *Usar SQLite* takes the file instead.
+- **Back to SQLite:** pick *SQLite* and choose *Voltar ao SQLite*. The app forgets the address.
+- **Switching doesn't move the data:** the server starts on the other database as it is. To bring the data along, import it.
+
+**Importing an old server.** *Importar dados de outro servidor*, in the same dialog, brings an old server's data and photos, such as a clone's, into the database in use. That database must be empty: import before anyone signs up on the new install.
+
+1. **Turn the old server off,** so it doesn't write during the copy: in the old clone, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, or `stop-server.ps1` without a task. While another server answers on port 3333, the app uses it instead of its own, and the dialog says so. Close the app and open it again once the old one is off.
+2. **Pick where the old data is:** *Arquivo SQLite*, the old clone's `apps\api\data\apc.db`, or *PostgreSQL*, its address (the `DATABASE_URL` in the old clone's `apps\api\.env`).
+3. **Pick the old photos folder,** the old clone's `apps\api\uploads\photos`. Picking the SQLite file fills it in.
+4. **Choose *Importar*.** When the old database is of an earlier version, the dialog says so and offers *Atualizar o banco antigo e importar*: it applies this version's migrations to it first, which only add tables. The server is off during the copy, and if anything fails nothing is kept. The dialog then lists each table's rows on both sides and the photo files copied.
+5. **Close the dialog and log in** with the old accounts. Sessions aren't copied, so the phone logs in again too. Keep the old data until you're sure.
+
 ---
 
 ## 🇧🇷 Português (Brasil)
@@ -294,7 +313,7 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 - Para ligar de novo: `Start-ScheduledTask "APC Universal Repair API"`, ou na próxima vez que esse usuário entrar no Windows.
 - Para remover: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que também desliga o servidor. Uma tarefa criada com `-AtStartup` precisa ser removida como administrador.
 
-**Com o servidor dentro do app,** uma instalação sem `apiDir` no `config.json` roda o servidor sozinha, sem mais nada para configurar: ele continua ligado na bandeja quando a janela fecha, o menu da bandeja mostra o endereço do celular, e o instalador pergunta se ele liga com o Windows. Os passos abaixo são para um servidor rodando de um clone.
+**Com o servidor dentro do app,** uma instalação sem `apiDir` no `config.json` roda o servidor sozinha, sem mais nada para configurar: ele continua ligado na bandeja quando a janela fecha, o menu da bandeja mostra o endereço do celular, e o instalador pergunta se ele liga com o Windows. O banco dele se escolhe no app (passo 11). Os passos abaixo são para um servidor rodando de um clone.
 
 **O app desktop também liga o servidor.** Quando o app desktop do APC Universal Repair abre e o servidor não responde, ele liga o servidor em segundo plano do mesmo jeito que a tarefa (sem janela, mesmo log) e mostra "Ligando o servidor" até ele responder. O servidor continua ligado depois que o app fecha, para o celular continuar funcionando; o `stop-server.ps1` desliga. Se o servidor já estiver ligado, o app não mexe nele.
 
@@ -395,3 +414,22 @@ Para passar o servidor do PostgreSQL para o SQLite, ou o contrário, copie os da
    Ele mostra cada tabela conforme copia e termina com as linhas de cada uma nos dois lados. Se algo falhar, nada fica no banco novo. Ele recusa um banco que não está vazio ou que não tem alguma migração, dizendo qual.
 5. **Troque:** no `apps\api\.env`, mude o `DATABASE_URL` para o banco novo. Ele vale mais que a escolha do instalador, que só vale sem ele.
 6. **Ligue o servidor** de novo (passo 3) e entre. Guarde o banco antigo até ter certeza.
+
+Com o servidor dentro do app, o próprio app troca e copia: veja o passo 11.
+
+### 11. O servidor dentro do app: o banco e a importação
+
+O servidor que o app desktop roda guarda as configurações no próprio app. O *Servidor e banco de dados*, no menu do usuário e no menu do ícone do APC perto do relógio, mostra o banco em uso (o SQLite com a pasta dele, ou o PostgreSQL com o servidor dele), a pasta das fotos, a porta e o endereço do celular.
+
+- **PostgreSQL:** crie antes o banco, como no passo 1. Depois escolha *PostgreSQL*, digite o endereço dele, `postgresql://postgres:<senha>@localhost:5432/apc_universal_repair`, e clique em *Usar PostgreSQL*. O app confere se ele conecta, cria as tabelas num banco vazio (ou acrescenta as novas num banco do APC de uma versão anterior) e religa o servidor nele. Ele recusa um banco de um APC mais novo, ou com tabelas de outro programa, dizendo por quê. O endereço tem a senha, então o `config.json` só o guarda lacrado pelo Windows (DPAPI), que só este usuário do Windows abre.
+- **PostgreSQL escolhido na instalação:** o app pede o endereço na primeira vez que abre, antes de ligar o servidor. O *Usar SQLite* fica com o arquivo no lugar.
+- **Voltar ao SQLite:** escolha *SQLite* e clique em *Voltar ao SQLite*. O app esquece o endereço.
+- **Trocar não leva os dados:** o servidor liga no outro banco como ele está. Para levar os dados junto, importe-os.
+
+**Importar um servidor antigo.** O *Importar dados de outro servidor*, no mesmo diálogo, traz os dados e as fotos de um servidor antigo, como o de um clone, para o banco em uso. Esse banco precisa estar vazio: importe antes de alguém criar uma conta na instalação nova.
+
+1. **Desligue o servidor antigo,** para ele não gravar durante a cópia: no clone antigo, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, ou o `stop-server.ps1` se não houver tarefa. Enquanto outro servidor responde na porta 3333, o app usa ele no lugar do próprio, e o diálogo avisa. Feche o app e abra de novo depois de desligar o antigo.
+2. **Escolha onde estão os dados antigos:** *Arquivo SQLite*, o `apps\api\data\apc.db` do clone antigo, ou *PostgreSQL*, o endereço dele (o `DATABASE_URL` do `apps\api\.env` do clone antigo).
+3. **Escolha a pasta das fotos antigas,** o `apps\api\uploads\photos` do clone antigo. Escolher o arquivo SQLite já a preenche.
+4. **Clique em *Importar*.** Quando o banco antigo é de uma versão anterior, o diálogo avisa e oferece *Atualizar o banco antigo e importar*: ele aplica antes as migrações desta versão, que só acrescentam tabelas. O servidor fica desligado durante a cópia, e se algo falhar nada fica. O diálogo então lista as linhas de cada tabela nos dois lados e os arquivos de fotos copiados.
+5. **Feche o diálogo e entre** com as contas antigas. As sessões não são copiadas, então o celular entra de novo também. Guarde os dados antigos até ter certeza.
