@@ -78,13 +78,20 @@ export async function copyProblems(
       problems.push(`The ${side} lacks ${missing.length} migration(s) of this version, e.g. ${missing[0]}: run db:migrate on it first.`);
     }
   }
-  if (problems.length === 0) {
-    const held = await Promise.all([...TABLES.map((name) => tableOf(target.client, name).count()), target.client.session.count()]);
-    if (held.some((rows) => rows > 0)) {
-      problems.push("The target isn't empty: copy only into a database just made with db:migrate, without the seed.");
-    }
+  if (problems.length === 0 && (await holdsData(target.client))) {
+    problems.push("The target isn't empty: copy only into a database just made with db:migrate, without the seed.");
   }
   return problems;
+}
+
+/**
+ * Tells whether a migrated database holds any row, a session included.
+ * @param client The database.
+ * @returns True when a table holds a row.
+ */
+export async function holdsData(client: PrismaClient): Promise<boolean> {
+  const held = await Promise.all([...TABLES.map((name) => tableOf(client, name).count()), client.session.count()]);
+  return held.some((rows) => rows > 0);
 }
 
 /**
