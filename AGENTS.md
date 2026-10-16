@@ -233,6 +233,15 @@ export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): 
 }
 ```
 
+### Windows installer (NSIS)
+
+The installer's own pages live in `apps/desktop/build/installer.nsh`. NSIS drops text without a warning, so the build passing says nothing about what the page shows:
+
+- **Quotes inside a text:** write the text in single quotes, `'Veja "Trocar de banco de dados" no guia.'`, or escape each quote as `$\"`. Never double them (`""`): NSIS ends the string there and silently drops the rest, which cut both pages' notes once.
+- **Encoding:** the file is UTF-8 with a BOM, or the accents come out wrong.
+- **Room on a page:** a custom page's controls end by 114u; the page's area ends a little below 120u and cuts what goes past it.
+- **Check by hand:** look at every page a change touches, on a fresh install (an install over the app skips them), and add a screenshot to the PR.
+
 ## Styles
 
 A component's look lives in a recipe in its own `<Component>.styles.ts`, beside it, never in its JSX (EP-13, #133). Every component on both platforms follows it, and lint fails when one doesn't (see Guards below). `LoginScreen` and `PartResults` are short examples.

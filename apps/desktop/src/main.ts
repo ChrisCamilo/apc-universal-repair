@@ -1,15 +1,18 @@
 import { readFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, screen, session, shell } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, screen, session, shell, Tray } from "electron";
 import electronUpdater from "electron-updater";
 import { startBundledServer } from "./bundledProcess.js";
 import { SERVER_PORT, usesBundledServer } from "./bundledServer.js";
-import { isLocalApi, parseConfig, resolveApiUrl, type DesktopConfig } from "./config.js";
+import { isLocalApi, parseConfig, resolveApiUrl, writeConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice, POSTGRESQL_GUIDE_URL, serverCanStart } from "./database.js";
 import { windowsIdentity } from "./identity.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
 import { apiAnswers, readHealth, startApi, updateApi, waitForApi } from "./server.js";
+import { HIDDEN_ARG, takeInstallerStartup } from "./startup.js";
+import { phoneAddress, trayMenu, type TrayItem } from "./tray.js";
 import {
   CHECK_INTERVAL_MS,
   checksForUpdates,
@@ -22,25 +25,32 @@ import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
 // Vite dev server when APC_DEV_URL is set. On opening, it starts the server it ships (see bundledServer.ts) and shows
-// "Ligando o servidor" until it answers, unless a server already answers on its port. With a server elsewhere
-// (APC_API_URL or config.json's apiUrl), or a clone's folder to start one from (APC_API_DIR or config.json's apiDir),
-// it uses that one instead: it starts a clone's server when it doesn't answer (see server.ts), unless PostgreSQL was
-// chosen at install and the clone's .env doesn't name it yet, when it opens the guide instead (see database.ts). The
-// window can't leave the app: other addresses open in the system browser, and the page gets no Node access and no permissions: only the preload's bridge (preload.cts),
-// through which it asks for a Windows notification of an error or a warning, shown while the window isn't focused;
-// clicking it brings the window up with the bell's menu open. The installed app updates itself from GitHub Releases
-// (see update.ts): it checks once its window shows and every 6 hours, downloads a new version in the background, tells
-// the page so it shows a notice, and installs it on quit, or at once when the page asks. Without internet it keeps
-// working on its version. The server it ships is always on its version; a clone's server is kept on it too: when /health
-// answers another one, it brings the clone to the app's release (update-server.ps1) and shows "Atualizando o servidor"
-// until it answers it, or warns about a server on another computer. Only one copy runs at a time, since two would share the
-// same localStorage.
+// "Ligando o servidor" until it answers, unless a server already answers on its port; closing the window then hides it
+// in the tray, so the server stays on for the phone, until "Sair" in the tray's menu (see tray.ts). The installed app
+// can start with Windows, hidden in the tray (see startup.ts). With a server elsewhere (APC_API_URL or config.json's
+// apiUrl), or a clone's folder to start one from (APC_API_DIR or config.json's apiDir), it uses that one instead: it
+// starts a clone's server when it doesn't answer (see server.ts), unless PostgreSQL was chosen at install and the
+// clone's .env doesn't name it yet, when it opens the guide instead (see database.ts). The window can't leave the app:
+// other addresses open in the system browser, and the page gets no Node access and no permissions: only the preload's
+// bridge (preload.cts), through which it asks for a Windows notification of an error or a warning, shown while the
+// window isn't focused; clicking it brings the window up with the bell's menu open. The installed app updates itself
+// from GitHub Releases (see update.ts): it checks once its window shows (or a minute after a hidden start) and every 6
+// hours, downloads a new version in the background, tells the page so it shows a notice, and installs it on quit, or
+// at once when the page asks. Without internet it keeps working on its version. The server it ships is always on its
+// version; a clone's server is kept on it too: when /health answers another one, it brings the clone to the app's
+// release (update-server.ps1) and shows "Atualizando o servidor" until it answers it, or warns about a server on
+// another computer. Only one copy runs at a time, since two would share the same localStorage, and opening it again
+// shows its window.
 
 /** The notifications on screen, kept so they still answer a click once their request is gone. */
 const shown = new Set<Notification>();
 
 /** The Vite dev server, when running in development; otherwise the window loads app://apc. */
 const devUrl = process.env.APC_DEV_URL;
+/** Whether the app is quitting, when closing the window ends it instead of hiding it in the tray. */
+let quitting = false;
+/** The tray's icon, kept so it isn't garbage collected. */
+let tray: Tray | undefined;
 // electron-updater is CommonJS, so its named exports come from the default one.
 const { autoUpdater } = electronUpdater;
 
@@ -66,9 +76,10 @@ function apiDirOf(config: DesktopConfig): string | undefined {
  * Opens the app's window, hidden until its first page is drawn, and keeps it on the app. It opens at WINDOW_SIZE, or
  * smaller on a screen whose work area doesn't hold it (see window.ts).
  * @param appUrl The address the app is served from, app://apc/ or the dev server.
+ * @param hidden Whether it stays hidden, as when Windows starts the app at sign-in.
  * @returns The window.
  */
-function createWindow(appUrl: string): BrowserWindow {
+function createWindow(appUrl: string, hidden: boolean): BrowserWindow {
   const window = new BrowserWindow({
     ...WINDOW_SIZE,
     minWidth: MIN_WINDOW_SIZE.width,
@@ -92,7 +103,9 @@ function createWindow(appUrl: string): BrowserWindow {
     const { appId, iconPath, iconIndex } = windowsIdentity({ isPackaged: app.isPackaged, execPath: process.execPath, appPath: app.getAppPath() });
     window.setAppDetails({ appId, appIconPath: iconPath, appIconIndex: iconIndex, relaunchDisplayName: "APC Universal Repair" });
   }
-  window.once("ready-to-show", () => window.show());
+  if (!hidden) {
+    window.once("ready-to-show", () => window.show());
+  }
   window.webContents.on("will-navigate", (event, url) => {
     if (!url.startsWith(appUrl)) {
       event.preventDefault();
@@ -199,6 +212,60 @@ async function ensureBundledServer(window: BrowserWindow, apiUrl: string, port: 
 }
 
 /**
+ * Keeps the app in the tray while it runs its own server: closing the window hides it, the first time saying so in a
+ * Windows notification, and the tray's menu opens it, copies the phone's address, turns starting with Windows on and
+ * off (the installed app only) and quits.
+ * @param window The app's window.
+ * @param port The server's port.
+ * @param installed Whether this is the installed app, the only one that can start with Windows.
+ * @param config What config.json sets, to show the notice once.
+ */
+function keepInTray(window: BrowserWindow, port: number, installed: boolean, config: DesktopConfig): void {
+  let noticeShown = config.trayNoticeShown === true;
+  window.on("close", (event) => {
+    if (quitting) {
+      return;
+    }
+    event.preventDefault();
+    window.hide();
+    if (!noticeShown && Notification.isSupported()) {
+      noticeShown = true;
+      writeConfig(app.getPath("userData"), { ...config, trayNoticeShown: true });
+      new Notification({
+        title: "O APC continua ligado",
+        body: "O servidor segue ligado para o celular. Para sair, use Sair no ícone do APC perto do relógio.",
+        icon: path.join(app.getAppPath(), "build", "icon.png"),
+      }).show();
+    }
+  });
+  const address = () => phoneAddress(os.networkInterfaces());
+  const actions: Record<Exclude<TrayItem["id"], "separator">, (item: Electron.MenuItem) => void> = {
+    open: () => showWindow(window),
+    address: () => clipboard.writeText(`http://${address()}:${port}`),
+    startup: (item) => app.setLoginItemSettings({ openAtLogin: item.checked, args: [HIDDEN_ARG] }),
+    quit: () => app.quit(),
+  };
+  const menu = () =>
+    Menu.buildFromTemplate(
+      trayMenu({
+        address: address(),
+        port,
+        startsWithWindows: installed && app.getLoginItemSettings({ args: [HIDDEN_ARG] }).openAtLogin,
+        canStartWithWindows: installed,
+      }).map((item): Electron.MenuItemConstructorOptions =>
+        item.id === "separator"
+          ? { type: "separator" }
+          : { ...item, type: item.id === "startup" ? "checkbox" : "normal", click: (menuItem) => actions[item.id](menuItem) },
+      ),
+    );
+  tray = new Tray(path.join(app.getAppPath(), "build", process.platform === "win32" ? "icon.ico" : "icon.png"));
+  tray.setToolTip("APC Universal Repair");
+  tray.on("click", () => showWindow(window));
+  // Built when it opens, so the phone's address is the current one.
+  tray.on("right-click", () => tray?.popUpContextMenu(menu()));
+}
+
+/**
  * Shows the Windows notification the page asked for, when it comes from the app and the window isn't focused; a click
  * brings the window up and asks the page to open the bell's menu.
  * @param appUrl The address the app is served from, which the request must come from.
@@ -241,14 +308,27 @@ function readIfThere(file: string): string | undefined {
 }
 
 /**
+ * Brings the window up: shown, restored and focused.
+ * @param window The app's window.
+ */
+function showWindow(window: BrowserWindow): void {
+  if (window.isMinimized()) {
+    window.restore();
+  }
+  window.show();
+  window.focus();
+}
+
+/**
  * Keeps the installed app up to date: checks GitHub Releases once the window shows and every 6 hours after, downloads
  * a new version in the background (only what changed, from the blockmap, checked against latest.yml's sha512), and
  * tells the page when it is ready. It installs silently on quit, or at once when the page asks to restart. A failed
  * check, such as one with no internet, is only logged.
  * @param window The app's window.
  * @param appUrl The address the app is served from, which a restart request must come from.
+ * @param hidden Whether the window starts hidden, as at sign-in, when the first check waits a minute instead.
  */
-function watchForUpdates(window: BrowserWindow, appUrl: string): void {
+function watchForUpdates(window: BrowserWindow, appUrl: string, hidden: boolean): void {
   let ready: string | undefined;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -270,20 +350,26 @@ function watchForUpdates(window: BrowserWindow, appUrl: string): void {
   });
   // The error listener has logged what went wrong already.
   const check = () => autoUpdater.checkForUpdates().catch(() => undefined);
-  window.once("show", () => {
+  const start = () => {
     void check();
     setInterval(() => void check(), CHECK_INTERVAL_MS);
-  });
+  };
+  if (hidden) {
+    setTimeout(start, 60_000);
+  } else {
+    window.once("show", start);
+  }
 }
 
 app.on("second-instance", () => {
   const [window] = BrowserWindow.getAllWindows();
   if (window) {
-    if (window.isMinimized()) {
-      window.restore();
-    }
-    window.focus();
+    showWindow(window);
   }
+});
+
+app.on("before-quit", () => {
+  quitting = true;
 });
 
 app.on("window-all-closed", () => app.quit());
@@ -311,12 +397,20 @@ void app.whenReady().then(async () => {
       : path.resolve(app.getAppPath(), "..", "web", "dist");
     serveApp(webRoot, apiUrl);
   }
-  const window = createWindow(appUrl);
   const installed = checksForUpdates({ isPackaged: app.isPackaged, devUrl, portableDir: process.env.PORTABLE_EXECUTABLE_DIR });
+  // Only the installed app starts with Windows: a run from the clone or the portable exe would register a path that moves.
+  const startup = takeInstallerStartup(userData);
+  if (installed && startup !== undefined) {
+    app.setLoginItemSettings({ openAtLogin: startup, args: [HIDDEN_ARG] });
+  }
+  // Hidden only with a tray to bring it back from.
+  const hidden = bundled && process.argv.includes(HIDDEN_ARG);
+  const window = createWindow(appUrl, hidden);
   if (installed) {
-    watchForUpdates(window, appUrl);
+    watchForUpdates(window, appUrl, hidden);
   }
   if (bundled) {
+    keepInTray(window, port, installed, config);
     await ensureBundledServer(window, apiUrl, port);
   } else {
     await ensureApi(window, apiUrl, config);
