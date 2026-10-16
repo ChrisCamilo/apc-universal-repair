@@ -41,7 +41,7 @@ flowchart LR
    corepack enable
    ```
 2. **Git**, to download and update the project.
-3. **The database.** Pick one (what differs is in [database.md](database.md#sqlite)):
+3. **The database.** Pick one; the desktop app's installer asks the same on its *Banco de dados* page (what differs is in [database.md](database.md#sqlite)):
    - **SQLite, recommended for one computer:** nothing to install. The data stays in a file on this computer, `apps\api\data\apc.db`. There is no password to create, a backup is a copy of the file, and only this computer reaches it.
    - **PostgreSQL:** a separate database server, for whoever already uses PostgreSQL or wants more than one computer on the same database. Install it: the installer asks for a password for the `postgres` user, so write it down. It also installs PostgreSQL as a Windows service that starts with the computer. To check it, open `services.msc` and look for `postgresql-x64-<version>`: its status should be *Running* and its startup type *Automatic*. Then create the database: in the Start menu, open *SQL Shell (psql)*, press Enter until it asks for the password, type it, and run:
      ```sql
@@ -61,7 +61,7 @@ copy apps\api\.env.example apps\api\.env
 notepad apps\api\.env
 ```
 
-In `apps\api\.env`, `DATABASE_URL` picks the database. For SQLite, leave it as it comes; the file is created in the next step:
+In `apps\api\.env`, `DATABASE_URL` picks the database. For SQLite, leave it as it comes, or leave it out: without one, the server uses the same file, which is created in the next step:
 
 ```
 DATABASE_URL="file:./data/apc.db"
@@ -207,7 +207,7 @@ To move the server from PostgreSQL to SQLite, or back, copy the data to the new 
    pnpm --filter @apc/api db:copy --from "postgresql://postgres:<password>@localhost:5432/apc_universal_repair" --to "file:./data/apc.db"
    ```
    It shows each table as it goes and ends with the rows of each on both sides. Nothing is kept on the new database if anything fails. It refuses a database that isn't empty or lacks a migration, saying which.
-5. **Switch:** in `apps\api\.env`, change `DATABASE_URL` to the new database.
+5. **Switch:** in `apps\api\.env`, change `DATABASE_URL` to the new database. It wins over the installer's choice, which only applies without one.
 6. **Turn the server on** again (step 3) and log in. Keep the old database until you're sure.
 
 ---
@@ -223,7 +223,7 @@ To move the server from PostgreSQL to SQLite, or back, copy the data to the new 
    corepack enable
    ```
 2. **Git**, para baixar e atualizar o projeto.
-3. **O banco de dados.** Escolha um (o que muda está em [database.md](database.md#sqlite-1)):
+3. **O banco de dados.** Escolha um; o instalador do app desktop pergunta o mesmo na página *Banco de dados* (o que muda está em [database.md](database.md#sqlite-1)):
    - **SQLite, recomendado para um computador só:** nada para instalar. Os dados ficam num arquivo neste computador, `apps\api\data\apc.db`. Não há senha para criar, o backup é uma cópia do arquivo e só este computador acessa os dados.
    - **PostgreSQL:** um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador no mesmo banco. Instale-o: o instalador pede uma senha para o usuário `postgres`, então anote. Ele também instala o PostgreSQL como um serviço do Windows que liga junto com o computador. Para conferir, abra o `services.msc` e procure `postgresql-x64-<versão>`: o status deve ser *Em execução* e o tipo de inicialização *Automático*. Depois crie o banco: no menu Iniciar, abra o *SQL Shell (psql)*, aperte Enter até ele pedir a senha, digite e rode:
      ```sql
@@ -243,7 +243,7 @@ copy apps\api\.env.example apps\api\.env
 notepad apps\api\.env
 ```
 
-No `apps\api\.env`, o `DATABASE_URL` escolhe o banco. Para o SQLite, deixe como vem; o arquivo é criado no próximo passo:
+No `apps\api\.env`, o `DATABASE_URL` escolhe o banco. Para o SQLite, deixe como vem, ou sem ele: sem ele, o servidor usa o mesmo arquivo, que é criado no próximo passo:
 
 ```
 DATABASE_URL="file:./data/apc.db"
@@ -389,5 +389,5 @@ Para passar o servidor do PostgreSQL para o SQLite, ou o contrário, copie os da
    pnpm --filter @apc/api db:copy --from "postgresql://postgres:<senha>@localhost:5432/apc_universal_repair" --to "file:./data/apc.db"
    ```
    Ele mostra cada tabela conforme copia e termina com as linhas de cada uma nos dois lados. Se algo falhar, nada fica no banco novo. Ele recusa um banco que não está vazio ou que não tem alguma migração, dizendo qual.
-5. **Troque:** no `apps\api\.env`, mude o `DATABASE_URL` para o banco novo.
+5. **Troque:** no `apps\api\.env`, mude o `DATABASE_URL` para o banco novo. Ele vale mais que a escolha do instalador, que só vale sem ele.
 6. **Ligue o servidor** de novo (passo 3) e entre. Guarde o banco antigo até ter certeza.
