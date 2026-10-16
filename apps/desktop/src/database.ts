@@ -1,6 +1,6 @@
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import path from "node:path";
-import type { DatabaseChoice, DesktopConfig } from "./config.js";
+import { writeConfig, type DatabaseChoice, type DesktopConfig } from "./config.ts";
 
 // The database the server on this computer uses, as the installer asked (build/installer.nsh): SQLite, a file in the
 // API's folder, or PostgreSQL. The installer can't edit config.json, so it leaves its choice in INSTALLER_CHOICE_FILE
@@ -37,7 +37,7 @@ export function adoptInstallerChoice(userData: string, config: DesktopConfig): D
     return config;
   }
   const next = { ...config, database: choice };
-  writeFileSync(path.join(userData, "config.json"), `${JSON.stringify(next, null, 2)}\n`);
+  writeConfig(userData, next);
   return next;
 }
 
