@@ -2,434 +2,217 @@
 
 [🇺🇸 English](#-english-us) · [🇧🇷 Português](#-português-brasil)
 
-How to run the API and the database on a Windows computer at home, so the phone app on the same Wi-Fi, and the desktop app on that computer, use it. Written for whoever looks after that computer, not only for developers.
+How to run the APC server on a Windows computer at home, so the phone app on the same Wi-Fi, and the desktop app on that computer, use it. The server comes inside the desktop app: there is no project to download, no Node.js and no command to run. Written for whoever looks after that computer, not only for developers.
 
-Como rodar a API e o banco num computador Windows em casa, para o app do celular na mesma rede Wi-Fi, e o app desktop nesse computador, usarem ele. Escrito para quem cuida desse computador, não só para quem programa.
+Como rodar o servidor do APC num computador Windows em casa, para o app do celular na mesma rede Wi-Fi, e o app desktop nesse computador, usarem ele. O servidor vem dentro do app desktop: não há projeto para baixar, nem Node.js, nem comando para rodar. Escrito para quem cuida desse computador, não só para quem programa.
 
 ```mermaid
 flowchart LR
     phone["Phone · Celular<br/>http://&lt;ip&gt;:3333"]
-    desktop["Desktop app · App desktop<br/>http://localhost:3333"]
 
     subgraph pc["Computer at home · Computador de casa"]
-        start["Ligar servidor APC<br/>or · ou<br/>Task Scheduler task"]
-        api["API<br/>pnpm run start:home"]
-        db[("SQLite file · arquivo SQLite<br/>or · ou PostgreSQL")]
-        files[("uploads/photos")]
-        logs[("logs/api.log")]
+        app["APC Universal Repair<br/>window · janela + tray · bandeja"]
+        api["Server · Servidor<br/>port · porta 3333"]
+        db[("SQLite: data\\apc.db<br/>or · ou PostgreSQL")]
+        files[("data\\photos")]
+        logs[("logs\\api.log")]
     end
 
     phone -- "Wi-Fi · firewall: private only" --> api
-    desktop --> api
-    desktop -. "starts it when it doesn't answer · liga se não responde" .-> start
-    start --> api
+    app -- "runs it · roda" --> api
     api --> db
     api --> files
-    api -. "background · segundo plano" .-> logs
+    api -.-> logs
 ```
 
 ---
 
 ## 🇺🇸 English (US)
 
-> **Home network only.** The API asks for a login on every call, but has no HTTPS yet ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), so passwords and tokens cross the Wi-Fi in clear text. Never open port 3333 on the router or expose the computer to the internet.
+> **Home network only.** The server asks for a login on every call, but has no HTTPS yet ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), so passwords and tokens cross the Wi-Fi in clear text. Never open port 3333 on the router or expose the computer to the internet.
 
-### 1. What to install (once, as administrator)
+### 1. Install the app
 
-1. **Node.js** 22.11 or newer (the LTS installer from nodejs.org). Then, in a PowerShell opened as administrator, turn on pnpm:
-   ```powershell
-   corepack enable
-   ```
-2. **Git**, to download and update the project.
-3. **The database.** Pick one; the desktop app's installer asks the same on its *Banco de dados* page (what differs is in [database.md](database.md#sqlite)):
-   - **SQLite, recommended for one computer:** nothing to install. The data stays in a file on this computer, `apps\api\data\apc.db`. There is no password to create, a backup is a copy of the file, and only this computer reaches it.
-   - **PostgreSQL:** a separate database server, for whoever already uses PostgreSQL or wants more than one computer on the same database. Install it: the installer asks for a password for the `postgres` user, so write it down. It also installs PostgreSQL as a Windows service that starts with the computer. To check it, open `services.msc` and look for `postgresql-x64-<version>`: its status should be *Running* and its startup type *Automatic*. Then create the database: in the Start menu, open *SQL Shell (psql)*, press Enter until it asks for the password, type it, and run:
-     ```sql
-     CREATE DATABASE apc_universal_repair;
-     ```
+Download `APC-Universal-Repair-Setup-<version>.exe` from the latest [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) and run it. Besides the folder, the installer asks two things:
 
-### 2. Get the project ready (once)
+- **Banco de dados:** SQLite or PostgreSQL, see step 2.
+- **Iniciar com o Windows:** whether the app starts hidden in the tray when you sign in to Windows, with the server on, so the phone works without opening the app (yes by default). It can be changed later in *Iniciar com o Windows*, in the menu of the APC icon by the clock.
 
-In a normal PowerShell, in the folder where the project should live. `git checkout` puts it on the latest [release](https://github.com/ChrisCamilo/apc-universal-repair/releases), the version of the desktop app, here `v0.2.0`:
+The server runs while the app runs. Closing the window keeps the app in the tray, by the clock, with the server on; *Sair* in the tray's menu quits the app and turns the server off. Its data is in `%APPDATA%\APC Universal Repair\data`, and its log in `%APPDATA%\APC Universal Repair\logs\api.log`. Uninstalling the app keeps the data.
 
-```powershell
-git clone https://github.com/ChrisCamilo/apc-universal-repair.git
-cd apc-universal-repair
-git checkout v0.2.0
-pnpm install
-copy apps\api\.env.example apps\api\.env
-notepad apps\api\.env
-```
+The app updates itself: it checks the releases when it opens and every 6 hours, downloads a new version in the background, and installs it when it closes, or at once from the notice. The server updates with it, along with its database.
 
-In `apps\api\.env`, `DATABASE_URL` picks the database. For SQLite, leave it as it comes, or leave it out: without one, the server uses the same file, which is created in the next step:
+### 2. Pick the database
 
-```
-DATABASE_URL="file:./data/apc.db"
-```
+- **SQLite, recommended for one computer:** nothing to install. The data stays in a file on this computer, `data\apc.db`. There is no password to create, a backup is a copy of the folder, and only this computer reaches it.
+- **PostgreSQL:** a separate database server, for whoever already uses PostgreSQL or wants more than one computer on the same database. Install it first: its installer asks for a password for the `postgres` user, so write it down, and it runs as a Windows service that starts with the computer (in `services.msc`, `postgresql-x64-<version>` should be *Running* and *Automatic*). Then create the database: in the Start menu, open *SQL Shell (psql)*, press Enter until it asks for the password, type it, and run:
+  ```sql
+  CREATE DATABASE apc_universal_repair;
+  ```
+  With PostgreSQL chosen at install, the app asks for its address the first time it opens, before the server starts: `postgresql://postgres:<password>@localhost:5432/apc_universal_repair`. *Usar SQLite* takes the file instead.
 
-For PostgreSQL, change it to the `postgres` user and its password:
+**Later, in the app.** *Servidor e banco de dados*, in the user menu and in the tray's menu, shows the database in use (SQLite with its folder, or PostgreSQL with its server), the photos' folder, the port and the phone's address.
 
-```
-DATABASE_URL="postgresql://postgres:<password>@localhost:5432/apc_universal_repair"
-```
+- **To PostgreSQL:** pick *PostgreSQL*, type its address and choose *Usar PostgreSQL*. The app checks it connects, creates the tables in an empty database (or adds the new ones to an APC database of an earlier version), and restarts the server on it. It refuses a database of a newer APC, or one holding another program's tables, saying why. The address holds the password, so `config.json` keeps it only sealed by Windows (DPAPI), which this Windows user alone can open.
+- **Back to SQLite:** pick *SQLite* and choose *Voltar ao SQLite*. The app forgets the address.
+- **Switching doesn't move the data:** the server starts on the other database as it is. To bring the data along, import it (step 7), which needs the new database empty.
 
-`PORT` is the port the phone uses (3333 is fine). `PHOTOS_DIR` is where the photos are saved, `apps\api\uploads\photos` by default. The `.env` file is never committed.
+### 3. Allow it through the firewall
 
-The server answers only requests addressed to this computer: `localhost`, its IP addresses (the phone uses the Wi-Fi one) and the names listed in `APC_ALLOWED_HOSTS`, comma separated. Leave it out unless the phone reaches the computer by a name, such as `APC_ALLOWED_HOSTS="oficina.local"`. Any other address answers *403 Forbidden*, which keeps a web page open on this computer from reaching the server under its own name (DNS rebinding).
+The first time the server starts, Windows asks whether *APC Universal Repair* may use the network. Tick **private networks only** and choose *Allow* (this needs an administrator's password). Don't press *Cancel*: that creates a rule that blocks the app, and the phone can't reach it.
 
-Then create the tables, in whichever database `DATABASE_URL` names, and add the starting data (the test users, the default lists and a few sample items, which can be deleted in the app):
+Then make sure the Wi-Fi is a private network: in *Settings → Network & internet → Wi-Fi → (your network)*, set the network profile to **Private**.
 
-```powershell
-pnpm --filter @apc/api db:migrate
-pnpm --filter @apc/api db:seed
-```
+If the prompt was missed or cancelled, look under *Windows Security → Firewall & network protection → Allow an app through firewall*: *APC Universal Repair* should be allowed on *Private*, and not blocked.
 
-### 3. Turn the server on
+### 4. Reserve the computer's address
 
-There are two ways, and both can be set up at the same time. Each starts `pnpm run start:home` in `apps/api`, which applies any new migrations and then starts the API. Commands below run from the project folder.
+Find the computer's address with `ipconfig` in a PowerShell (the *IPv4 Address* of the Wi-Fi adapter, e.g. `192.168.0.10`). On the router's page, reserve that address for this computer (often called *DHCP reservation* or *address reservation*), using the MAC address that `ipconfig /all` shows as *Physical Address*. This way the address doesn't change and the phone keeps finding the server.
 
-**By hand: "Ligar servidor APC"** (normal user)
+### 5. The phone
 
-```powershell
-powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-shortcut.ps1
-```
+The tray's menu shows the address the phone reaches the server at, such as *Servidor ligado em http://192.168.0.10:3333*; a click copies it. The same address is in *Servidor e banco de dados*. To check it, open `http://<that address>/health` in the phone's browser, on the same Wi-Fi: it should answer `{"status":"ok",...}`.
 
-This creates the **Ligar servidor APC** shortcut on the desktop. Double-click it to open a window with the server's log. **To turn the server off, close that window.** If the server is already on (for example, through the automatic task), the shortcut says so and doesn't start a second copy.
-
-**Automatic: a Task Scheduler task**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
-```
-
-- As a **normal user**, the task "APC Universal Repair API" starts the server, with no window, whenever this user signs in to Windows.
-- To start it **with Windows, before anyone signs in**, run the same command with `-AtStartup` in a PowerShell opened as administrator. Windows only lets an administrator create that kind of task.
-- The script starts the task right away. The server's log is in `apps\api\logs\api.log`. Once it passes 10 MB, it is moved to `api.old.log`.
-- If the API stops (for example, because PostgreSQL wasn't up yet at startup), it starts again after 10 seconds.
-- To turn it off without removing the task, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1` (normal user). It turns off the server started by the task or by the shortcut. Stopping the task in the Task Scheduler isn't enough: Windows ends only the task's first process, and the API keeps running.
-- To turn it on again: `Start-ScheduledTask "APC Universal Repair API"`, or the next time this user signs in.
-- To remove it: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which also turns the server off. A task made with `-AtStartup` must be removed as administrator.
-
-**With the server inside the app,** an install with no `apiDir` in `config.json` runs the server itself, with nothing else to set up: it stays on in the tray when the window closes, the tray's menu shows the phone's address, and the installer asks whether it starts with Windows. Its database is picked in the app (step 11). The steps below are for a server run from a clone.
-
-**The desktop app also turns it on.** When the APC Universal Repair desktop app opens and the server doesn't answer, it starts the server in the background the same way as the task (no window, same log), and shows "Ligando o servidor" until it answers. The server keeps running after the app closes, so the phone keeps working; `stop-server.ps1` turns it off. If the server is already on, the app leaves it alone.
-
-### 4. Which steps need an administrator
-
-| Step | Administrator? |
-|---|---|
-| Installing Node.js and Git (and PostgreSQL, when chosen), and `corepack enable` | Yes, once |
-| Firewall rule for port 3333 | Yes, once |
-| `pnpm install`, `.env`, migrations and seed | No |
-| Desktop shortcut, turning the server on by hand and `stop-server.ps1` | No |
-| Automatic task that starts when the user signs in | No |
-| Automatic task that starts with Windows (`-AtStartup`) | Yes, once to create it and to remove it |
-
-### 5. Open the server to the Wi-Fi
-
-1. **Private network:** in *Settings → Network & internet → Wi-Fi → (your network)*, set the network profile to **Private**. The firewall rule below only opens the port on private networks.
-2. **Firewall:** in a PowerShell opened as administrator:
-   ```powershell
-   New-NetFirewallRule -DisplayName "APC Universal Repair API" -Direction Inbound -Protocol TCP -LocalPort 3333 -Profile Private -Action Allow
-   ```
-   The first time the server starts, Windows may ask whether Node.js may use the network. Choose **private networks only** and *Allow* (this needs an administrator's password). Don't press *Cancel*: that creates a rule that blocks Node.js, and a block wins over the rule above.
-3. **A fixed address:** find the computer's address with `ipconfig` (the *IPv4 Address* of the Wi-Fi adapter, e.g. `192.168.0.10`). On the router's page, reserve that address for this computer (often called *DHCP reservation* or *address reservation*), using the MAC address that `ipconfig /all` shows as *Physical Address*. This way the address doesn't change and the phone keeps finding the server.
-
-### 6. Check that it works
-
-- On the computer, open `http://localhost:3333/health` in the browser. It should answer `{"status":"ok",...}`.
-- On the phone, on the same Wi-Fi, open `http://<computer's address>:3333/health` in the browser. It should give the same answer.
+The phone app needs a release APK built with that address. The steps to build and install it come with the Android release build ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
 
 If the phone gets no answer:
 
-1. Is the computer on, and is the server on (`/health` answers on the computer)? With the task, look at `apps\api\logs\api.log`.
+1. Is the app running, in the window or in the tray? On the computer, `http://localhost:3333/health` should answer.
 2. Are the phone and the computer on the same Wi-Fi? A guest network usually keeps devices from seeing each other.
-3. Is the network profile **Private**?
-4. Does the firewall rule exist, and is there no block rule for Node.js? Look under *Windows Security → Firewall & network protection → Allow an app through firewall*.
-5. Did the computer's address change? Run `ipconfig` again and check the reservation on the router.
-6. Does `/health` answer *403 Forbidden* saying the server doesn't answer for that host? The phone is using a name, not the computer's address: add it to `APC_ALLOWED_HOSTS` in `apps\api\.env` and restart the server.
+3. Is the network profile **Private**, and is the app allowed through the firewall on private networks (step 3)?
+4. Did the computer's address change? Check the tray's menu and the reservation on the router.
+5. Does `/health` answer *403 Forbidden* saying the server doesn't answer for that host? The phone is using a name, not the computer's address. Add the name to a Windows user environment variable `APC_ALLOWED_HOSTS` (comma separated, e.g. `oficina.local`), then quit the app with *Sair* and open it again.
+6. Still nothing: look at the end of `%APPDATA%\APC Universal Repair\logs\api.log`.
 
-### 7. The phone
+### 6. Backup
 
-The phone app needs a release APK built with the computer's address, `http://<computer's address>:3333`, so it can run without the development tools. The steps to build and install it come with the Android release build ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
+Keep a copy of the data, for example once a week, on a USB drive or in the cloud.
 
-### 8. Backup
+**SQLite:** quit the app with *Sair*, so the server is off, and copy the `%APPDATA%\APC Universal Repair\data` folder, which holds the database and the photos. To restore, with the app quit, put the folder back.
 
-Keep a copy of the database and the photos, for example once a week, on a USB drive or in the cloud. Also copy the photos folder, `apps\api\uploads` (or the `PHOTOS_DIR` of the `.env`).
-
-**SQLite:** with the server off (`stop-server.ps1`), copy the `apps\api\data` folder. To restore, with the server off, put the folder back and the photos folder too.
-
-**PostgreSQL:** its tools are in its installation folder (adjust the version):
+**PostgreSQL:** copy the `data\photos` folder as above, and the database with its tools, in its installation folder (adjust the version):
 
 ```powershell
 & "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe" -U postgres -F c -f apc-backup.dump apc_universal_repair
 ```
 
-To restore, with the server off, use `pg_restore` with the copy and put the photos folder back:
+To restore, with the app quit, use `pg_restore` with the copy and put the photos folder back:
 
 ```powershell
 & "C:\Program Files\PostgreSQL\18\bin\pg_restore.exe" -U postgres -d apc_universal_repair --clean apc-backup.dump
 ```
 
-### 9. Updating to a new version
+### 7. Importing an old server
 
-The computer at home stays on a release tag (`v0.2.0`, `v0.2.1`…), the version of the desktop app, not on `main`: a change on `main`, such as a new migration, could break an app still on the version before.
+*Importar dados de outro servidor*, in *Servidor e banco de dados*, brings an old server's data and photos, such as a clone's, into the database in use. That database must be empty: import before anyone signs up on the new install.
 
-- **With the desktop app, by itself:** when the installed desktop app opens and the API on this computer answers another version on `/health`, it brings the server to its own version and shows "Atualizando o servidor…" until the API answers it. It runs `apps\api\scripts\update-server.ps1`, which:
-  - turns the server off;
-  - checks the clone out at the tag `v<version>` and runs `pnpm install`;
-  - turns the server on again, through the scheduled task when it is installed, otherwise in the background, which applies the new migrations.
+1. **Pick where the old data is:** *Arquivo SQLite*, such as an old clone's `apps\api\data\apc.db`, or *PostgreSQL*, its address (the `DATABASE_URL` in the old clone's `apps\api\.env`).
+2. **Pick the old photos folder,** such as the old clone's `apps\api\uploads\photos`. Picking the SQLite file fills it in.
+3. **Choose *Importar*.** When the old database is of an earlier version, the dialog says so and offers *Atualizar o banco antigo e importar*: it applies this version's migrations to it first, which only add tables. The server is off during the copy, and if anything fails nothing is kept. The dialog then lists each table's rows on both sides and the photo files copied.
+4. **Close the dialog and log in** with the old accounts. Sessions aren't copied, so the phone logs in again too. Keep the old data until you're sure.
 
-  When a step fails, or the API doesn't answer the new version within 5 minutes, it goes back to the version it was on and turns the server on again. It refuses to run when the clone has local changes (`git status` not clean). What it did is in `apps\api\logs\update.log`.
-- **By hand:** the same script, with the version to go to:
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File apps\api\scripts\update-server.ps1 -Version 0.2.0
-  ```
-- **The first time, from v0.1.0 or `main`:** the update script only exists from v0.2.0 on, so move the clone once by hand:
-  1. Turn the server off with `stop-server.ps1`.
-  2. Run `git fetch --tags`, `git checkout v0.2.0` and `pnpm install`.
-  3. Turn the server on again.
+### 8. Moving off a clone
 
-  The first time after photos started being reduced on saving, also run `pnpm --filter @apc/api photos:compress` once, to reduce the photos saved before.
-- **A desktop app on another computer** only warns that the versions differ. Update the server with the script on the computer where it runs.
+Up to v0.3.0, the server at home ran from a clone of the project, started by a Task Scheduler task or the *Ligar servidor APC* shortcut. To move such a computer to the server inside the app:
 
-### 10. Switching databases
-
-To move the server from PostgreSQL to SQLite, or back, copy the data to the new database with `db:copy`. It copies every table as it is. It leaves out the sessions, so everyone logs in again, and the photos stay in their folder. Commands run from the project folder, in PowerShell.
-
-1. **Turn the server off:** `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`. The copy refuses while the server answers.
-2. **Back up** the database in use, as in step 8.
-3. **Make the new database, empty.** Create its tables with `db:migrate`, without the seed. For a SQLite file:
-   ```powershell
-   $env:DATABASE_URL = "file:./data/apc.db"; pnpm --filter @apc/api db:migrate; Remove-Item Env:DATABASE_URL
-   ```
-   For PostgreSQL, first create the database in *SQL Shell (psql)* as in step 1, then run the same command with its `postgresql://…` address.
-4. **Copy**, from the address in `apps\api\.env` to the new one:
-   ```powershell
-   pnpm --filter @apc/api db:copy --from "postgresql://postgres:<password>@localhost:5432/apc_universal_repair" --to "file:./data/apc.db"
-   ```
-   It shows each table as it goes and ends with the rows of each on both sides. Nothing is kept on the new database if anything fails. It refuses a database that isn't empty or lacks a migration, saying which.
-5. **Switch:** in `apps\api\.env`, change `DATABASE_URL` to the new database. It wins over the installer's choice, which only applies without one.
-6. **Turn the server on** again (step 3) and log in. Keep the old database until you're sure.
-
-With the server inside the app, the app switches and copies itself: see step 11.
-
-### 11. The server inside the app: the database and importing
-
-The server the desktop app runs keeps its settings in the app. *Servidor e banco de dados*, in the user menu and in the menu of the APC icon by the clock, shows the database in use (SQLite with its folder, or PostgreSQL with its server), the photos' folder, the port and the phone's address.
-
-- **PostgreSQL:** create the database first, as in step 1. Then pick *PostgreSQL*, type its address, `postgresql://postgres:<password>@localhost:5432/apc_universal_repair`, and choose *Usar PostgreSQL*. The app checks it connects, creates the tables in an empty database (or adds the new ones to an APC database of an earlier version), and restarts the server on it. It refuses a database of a newer APC, or one holding another program's tables, saying why. The address holds the password, so `config.json` keeps it only sealed by Windows (DPAPI), which this Windows user alone can open.
-- **PostgreSQL chosen at install:** the app asks for the address on its first start, before the server starts. *Usar SQLite* takes the file instead.
-- **Back to SQLite:** pick *SQLite* and choose *Voltar ao SQLite*. The app forgets the address.
-- **Switching doesn't move the data:** the server starts on the other database as it is. To bring the data along, import it.
-
-**Importing an old server.** *Importar dados de outro servidor*, in the same dialog, brings an old server's data and photos, such as a clone's, into the database in use. That database must be empty: import before anyone signs up on the new install.
-
-1. **Turn the old server off,** so it doesn't write during the copy: in the old clone, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, or `stop-server.ps1` without a task. While another server answers on port 3333, the app uses it instead of its own, and the dialog says so. Close the app and open it again once the old one is off.
-2. **Pick where the old data is:** *Arquivo SQLite*, the old clone's `apps\api\data\apc.db`, or *PostgreSQL*, its address (the `DATABASE_URL` in the old clone's `apps\api\.env`).
-3. **Pick the old photos folder,** the old clone's `apps\api\uploads\photos`. Picking the SQLite file fills it in.
-4. **Choose *Importar*.** When the old database is of an earlier version, the dialog says so and offers *Atualizar o banco antigo e importar*: it applies this version's migrations to it first, which only add tables. The server is off during the copy, and if anything fails nothing is kept. The dialog then lists each table's rows on both sides and the photo files copied.
-5. **Close the dialog and log in** with the old accounts. Sessions aren't copied, so the phone logs in again too. Keep the old data until you're sure.
+1. **Stop the clone's server for good.** In a PowerShell, in the clone's folder, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which turns it off and removes its task. A task made with `-AtStartup` must be removed from a PowerShell opened as administrator. If the clone has no such script, open the Task Scheduler, delete the *APC Universal Repair API* task and restart the computer. Delete the *Ligar servidor APC* shortcut too. While the old server answers on port 3333, the app uses it instead of its own, and *Servidor e banco de dados* says so.
+2. **Install the app** (step 1), or update it, and open it. If it was set to the clone with `apiDir` or `apiUrl` in `%APPDATA%\APC Universal Repair\config.json`, remove those settings, then quit with *Sair* and open it again. Don't sign up yet.
+3. **Import the data** (step 7): the clone's `apps\api\data\apc.db` for SQLite, or the address in its `apps\api\.env` for PostgreSQL, with its `apps\api\uploads\photos`. Log in with an old account and check the inventory and its photos.
+4. **Allow the app through the firewall** (step 3), and check the phone (step 5): the address stays the same. The old firewall rule for Node.js can be removed.
+5. **Delete the clone** once you're sure, and uninstall Node.js, pnpm and Git if nothing else needs them. A PostgreSQL in use stays.
 
 ---
 
 ## 🇧🇷 Português (Brasil)
 
-> **Só para a rede de casa.** A API pede login em toda chamada, mas ainda não tem HTTPS ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), então senhas e tokens passam pelo Wi-Fi em texto puro. Nunca abra a porta 3333 no roteador nem exponha o computador à internet.
+> **Só para a rede de casa.** O servidor pede login em toda chamada, mas ainda não tem HTTPS ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), então senhas e tokens passam pelo Wi-Fi em texto puro. Nunca abra a porta 3333 no roteador nem exponha o computador à internet.
 
-### 1. O que instalar (uma vez, como administrador)
+### 1. Instalar o app
 
-1. **Node.js** 22.11 ou mais novo (o instalador LTS do nodejs.org). Depois, num PowerShell aberto como administrador, ative o pnpm:
-   ```powershell
-   corepack enable
-   ```
-2. **Git**, para baixar e atualizar o projeto.
-3. **O banco de dados.** Escolha um; o instalador do app desktop pergunta o mesmo na página *Banco de dados* (o que muda está em [database.md](database.md#sqlite-1)):
-   - **SQLite, recomendado para um computador só:** nada para instalar. Os dados ficam num arquivo neste computador, `apps\api\data\apc.db`. Não há senha para criar, o backup é uma cópia do arquivo e só este computador acessa os dados.
-   - **PostgreSQL:** um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador no mesmo banco. Instale-o: o instalador pede uma senha para o usuário `postgres`, então anote. Ele também instala o PostgreSQL como um serviço do Windows que liga junto com o computador. Para conferir, abra o `services.msc` e procure `postgresql-x64-<versão>`: o status deve ser *Em execução* e o tipo de inicialização *Automático*. Depois crie o banco: no menu Iniciar, abra o *SQL Shell (psql)*, aperte Enter até ele pedir a senha, digite e rode:
-     ```sql
-     CREATE DATABASE apc_universal_repair;
-     ```
+Baixe o `APC-Universal-Repair-Setup-<versão>.exe` da [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) mais nova e rode. Além da pasta, o instalador pergunta duas coisas:
 
-### 2. Preparar o projeto (uma vez)
+- **Banco de dados:** SQLite ou PostgreSQL, veja o passo 2.
+- **Iniciar com o Windows:** se o app liga escondido na bandeja quando você entra no Windows, com o servidor ligado, para o celular funcionar sem abrir o app (sim por padrão). Dá para trocar depois em *Iniciar com o Windows*, no menu do ícone do APC perto do relógio.
 
-Num PowerShell normal, na pasta onde o projeto vai ficar. O `git checkout` o coloca na [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) mais nova, a versão do app desktop, aqui a `v0.2.0`:
+O servidor roda enquanto o app roda. Fechar a janela deixa o app na bandeja, perto do relógio, com o servidor ligado; o *Sair* do menu da bandeja fecha o app e desliga o servidor. Os dados ficam em `%APPDATA%\APC Universal Repair\data`, e o log em `%APPDATA%\APC Universal Repair\logs\api.log`. Desinstalar o app mantém os dados.
 
-```powershell
-git clone https://github.com/ChrisCamilo/apc-universal-repair.git
-cd apc-universal-repair
-git checkout v0.2.0
-pnpm install
-copy apps\api\.env.example apps\api\.env
-notepad apps\api\.env
-```
+O app se atualiza sozinho: ele consulta as releases ao abrir e a cada 6 horas, baixa a versão nova em segundo plano e a instala quando fecha, ou na hora pelo aviso. O servidor se atualiza junto, com o banco dele.
 
-No `apps\api\.env`, o `DATABASE_URL` escolhe o banco. Para o SQLite, deixe como vem, ou sem ele: sem ele, o servidor usa o mesmo arquivo, que é criado no próximo passo:
+### 2. Escolher o banco de dados
 
-```
-DATABASE_URL="file:./data/apc.db"
-```
+- **SQLite, recomendado para um computador só:** nada para instalar. Os dados ficam num arquivo neste computador, o `data\apc.db`. Não há senha para criar, o backup é copiar a pasta, e só este computador chega a ele.
+- **PostgreSQL:** um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador no mesmo banco. Instale-o antes: o instalador dele pede uma senha para o usuário `postgres`, então anote, e ele roda como um serviço do Windows que liga com o computador (no `services.msc`, o `postgresql-x64-<versão>` deve estar *Em execução* e *Automático*). Depois crie o banco: no menu Iniciar, abra o *SQL Shell (psql)*, aperte Enter até ele pedir a senha, digite-a e rode:
+  ```sql
+  CREATE DATABASE apc_universal_repair;
+  ```
+  Com o PostgreSQL escolhido na instalação, o app pede o endereço dele na primeira vez que abre, antes de ligar o servidor: `postgresql://postgres:<senha>@localhost:5432/apc_universal_repair`. O *Usar SQLite* fica com o arquivo no lugar.
 
-Para o PostgreSQL, troque para o usuário `postgres` e a senha dele:
+**Depois, no app.** O *Servidor e banco de dados*, no menu do usuário e no menu da bandeja, mostra o banco em uso (o SQLite com a pasta dele, ou o PostgreSQL com o servidor dele), a pasta das fotos, a porta e o endereço do celular.
 
-```
-DATABASE_URL="postgresql://postgres:<senha>@localhost:5432/apc_universal_repair"
-```
+- **Para o PostgreSQL:** escolha *PostgreSQL*, digite o endereço e clique em *Usar PostgreSQL*. O app confere se ele conecta, cria as tabelas num banco vazio (ou acrescenta as novas num banco do APC de uma versão anterior) e religa o servidor nele. Ele recusa um banco de um APC mais novo, ou com tabelas de outro programa, dizendo por quê. O endereço tem a senha, então o `config.json` só o guarda lacrado pelo Windows (DPAPI), que só este usuário do Windows abre.
+- **Voltar ao SQLite:** escolha *SQLite* e clique em *Voltar ao SQLite*. O app esquece o endereço.
+- **Trocar não leva os dados:** o servidor liga no outro banco como ele está. Para levar os dados junto, importe-os (passo 7), o que pede o banco novo vazio.
 
-O `PORT` é a porta que o celular usa (3333 está bom). O `PHOTOS_DIR` é onde as fotos ficam, `apps\api\uploads\photos` por padrão. O arquivo `.env` nunca vai para o git.
+### 3. Liberar no firewall
 
-O servidor só responde a requisições endereçadas a este computador: `localhost`, os endereços IP dele (o celular usa o do Wi-Fi) e os nomes listados em `APC_ALLOWED_HOSTS`, separados por vírgula. Deixe sem ele, a menos que o celular chegue ao computador por um nome, como `APC_ALLOWED_HOSTS="oficina.local"`. Qualquer outro endereço responde *403 Forbidden*, o que impede uma página aberta neste computador de chegar ao servidor com o próprio nome dela (DNS rebinding).
+Na primeira vez que o servidor liga, o Windows pergunta se o *APC Universal Repair* pode usar a rede. Marque **só redes privadas** e clique em *Permitir* (isso pede a senha de um administrador). Não clique em *Cancelar*: isso cria uma regra que bloqueia o app, e o celular não chega a ele.
 
-Depois crie as tabelas, no banco que o `DATABASE_URL` indica, e coloque os dados iniciais (os usuários de teste, as listas padrão e alguns itens de exemplo, que podem ser excluídos no app):
+Depois confira que o Wi-Fi é uma rede privada: em *Configurações → Rede e internet → Wi-Fi → (sua rede)*, deixe o perfil de rede como **Privada**.
 
-```powershell
-pnpm --filter @apc/api db:migrate
-pnpm --filter @apc/api db:seed
-```
+Se a pergunta passou ou foi cancelada, veja em *Segurança do Windows → Firewall e proteção de rede → Permitir um aplicativo pelo firewall*: o *APC Universal Repair* deve estar permitido em *Privada*, e não bloqueado.
 
-### 3. Ligar o servidor
+### 4. Reservar o endereço do computador
 
-São dois jeitos, e os dois podem ficar configurados ao mesmo tempo. Cada um roda o `pnpm run start:home` em `apps/api`, que aplica as migrações novas e depois liga a API. Os comandos abaixo rodam na pasta do projeto.
+Descubra o endereço do computador com o `ipconfig` num PowerShell (o *Endereço IPv4* do adaptador Wi-Fi, ex.: `192.168.0.10`). Na página do roteador, reserve esse endereço para este computador (costuma se chamar *reserva de DHCP* ou *reserva de endereço*), usando o endereço MAC que o `ipconfig /all` mostra como *Endereço Físico*. Assim o endereço não muda e o celular continua achando o servidor.
 
-**Na mão: "Ligar servidor APC"** (usuário normal)
+### 5. O celular
 
-```powershell
-powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-shortcut.ps1
-```
+O menu da bandeja mostra o endereço em que o celular chega ao servidor, como *Servidor ligado em http://192.168.0.10:3333*; um clique o copia. O mesmo endereço está no *Servidor e banco de dados*. Para conferir, abra `http://<esse endereço>/health` no navegador do celular, no mesmo Wi-Fi: ele deve responder `{"status":"ok",...}`.
 
-Isso cria o atalho **Ligar servidor APC** na área de trabalho. Dê dois cliques para abrir uma janela com o log do servidor. **Para desligar o servidor, feche essa janela.** Se o servidor já estiver ligado (pela tarefa automática, por exemplo), o atalho avisa e não liga uma segunda cópia.
+O app do celular precisa de um APK de release gerado com esse endereço. Os passos para gerar e instalar vêm com o build de release do Android ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
 
-**Automático: uma tarefa do Agendador de Tarefas**
+Se o celular não tiver resposta:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
-```
+1. O app está rodando, na janela ou na bandeja? No computador, o `http://localhost:3333/health` deve responder.
+2. O celular e o computador estão no mesmo Wi-Fi? Uma rede de convidados costuma impedir que os aparelhos se vejam.
+3. O perfil de rede está como **Privada**, e o app está liberado no firewall em redes privadas (passo 3)?
+4. O endereço do computador mudou? Confira o menu da bandeja e a reserva no roteador.
+5. O `/health` responde *403 Forbidden* dizendo que o servidor não responde para esse host? O celular está usando um nome, não o endereço do computador. Coloque o nome numa variável de ambiente do usuário do Windows, `APC_ALLOWED_HOSTS` (separados por vírgula, ex.: `oficina.local`), e depois feche o app pelo *Sair* e abra de novo.
+6. Nada ainda: veja o fim do `%APPDATA%\APC Universal Repair\logs\api.log`.
 
-- Como **usuário normal**, a tarefa "APC Universal Repair API" liga o servidor, sem janela, sempre que esse usuário entra no Windows.
-- Para ligar **junto com o Windows, antes de alguém entrar**, rode o mesmo comando com `-AtStartup` num PowerShell aberto como administrador. O Windows só deixa um administrador criar esse tipo de tarefa.
-- O script já inicia a tarefa na hora. O log do servidor fica em `apps\api\logs\api.log`. Quando passa de 10 MB, ele vai para `api.old.log`.
-- Se a API parar (por exemplo, porque o PostgreSQL ainda não tinha ligado na inicialização), ela liga de novo depois de 10 segundos.
-- Para desligar sem remover a tarefa, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1` (usuário normal). Ele desliga o servidor ligado pela tarefa ou pelo atalho. Parar a tarefa no Agendador de Tarefas não basta: o Windows encerra só o primeiro processo da tarefa, e a API continua rodando.
-- Para ligar de novo: `Start-ScheduledTask "APC Universal Repair API"`, ou na próxima vez que esse usuário entrar no Windows.
-- Para remover: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que também desliga o servidor. Uma tarefa criada com `-AtStartup` precisa ser removida como administrador.
+### 6. Backup
 
-**Com o servidor dentro do app,** uma instalação sem `apiDir` no `config.json` roda o servidor sozinha, sem mais nada para configurar: ele continua ligado na bandeja quando a janela fecha, o menu da bandeja mostra o endereço do celular, e o instalador pergunta se ele liga com o Windows. O banco dele se escolhe no app (passo 11). Os passos abaixo são para um servidor rodando de um clone.
+Guarde uma cópia dos dados, por exemplo uma vez por semana, num pendrive ou na nuvem.
 
-**O app desktop também liga o servidor.** Quando o app desktop do APC Universal Repair abre e o servidor não responde, ele liga o servidor em segundo plano do mesmo jeito que a tarefa (sem janela, mesmo log) e mostra "Ligando o servidor" até ele responder. O servidor continua ligado depois que o app fecha, para o celular continuar funcionando; o `stop-server.ps1` desliga. Se o servidor já estiver ligado, o app não mexe nele.
+**SQLite:** feche o app pelo *Sair*, para o servidor desligar, e copie a pasta `%APPDATA%\APC Universal Repair\data`, que tem o banco e as fotos. Para restaurar, com o app fechado, coloque a pasta de volta.
 
-### 4. O que precisa de administrador
-
-| Passo | Administrador? |
-|---|---|
-| Instalar Node.js e Git (e o PostgreSQL, se escolhido), e o `corepack enable` | Sim, uma vez |
-| Regra do firewall para a porta 3333 | Sim, uma vez |
-| `pnpm install`, `.env`, migrações e seed | Não |
-| Atalho na área de trabalho, ligar o servidor na mão e o `stop-server.ps1` | Não |
-| Tarefa automática que liga quando o usuário entra no Windows | Não |
-| Tarefa automática que liga junto com o Windows (`-AtStartup`) | Sim, uma vez para criar e para remover |
-
-### 5. Abrir o servidor para o Wi-Fi
-
-1. **Rede privada:** em *Configurações → Rede e Internet → Wi-Fi → (sua rede)*, deixe o tipo de perfil de rede como **Privada**. A regra do firewall abaixo só abre a porta em redes privadas.
-2. **Firewall:** num PowerShell aberto como administrador:
-   ```powershell
-   New-NetFirewallRule -DisplayName "APC Universal Repair API" -Direction Inbound -Protocol TCP -LocalPort 3333 -Profile Private -Action Allow
-   ```
-   Na primeira vez que o servidor liga, o Windows pode perguntar se o Node.js pode usar a rede. Escolha **só redes privadas** e *Permitir* (isso pede a senha de um administrador). Não aperte *Cancelar*: isso cria uma regra que bloqueia o Node.js, e o bloqueio vale mais que a regra acima.
-3. **Um endereço fixo:** descubra o endereço do computador com `ipconfig` (o *Endereço IPv4* do adaptador Wi-Fi, ex.: `192.168.0.10`). Na página do roteador, reserve esse endereço para este computador (costuma se chamar *reserva de DHCP* ou *reserva de endereço*), usando o endereço MAC que o `ipconfig /all` mostra como *Endereço Físico*. Assim o endereço não muda e o celular continua achando o servidor.
-
-### 6. Conferir se funciona
-
-- No computador, abra `http://localhost:3333/health` no navegador. Ele deve responder `{"status":"ok",...}`.
-- No celular, na mesma rede Wi-Fi, abra `http://<endereço do computador>:3333/health` no navegador. A resposta deve ser a mesma.
-
-Se o celular não recebe resposta:
-
-1. O computador está ligado, e o servidor também (o `/health` responde no computador)? Com a tarefa, veja o `apps\api\logs\api.log`.
-2. O celular e o computador estão na mesma rede Wi-Fi? Uma rede de convidados costuma impedir que os aparelhos se vejam.
-3. O perfil da rede está como **Privada**?
-4. A regra do firewall existe, e não há uma regra bloqueando o Node.js? Veja em *Segurança do Windows → Firewall e proteção de rede → Permitir um aplicativo pelo firewall*.
-5. O endereço do computador mudou? Rode o `ipconfig` de novo e confira a reserva no roteador.
-6. O `/health` responde *403 Forbidden* dizendo que o servidor não responde para aquele host? O celular está usando um nome, não o endereço do computador: adicione-o ao `APC_ALLOWED_HOSTS` no `apps\api\.env` e religue o servidor.
-
-### 7. O celular
-
-O app do celular precisa de um APK de release feito com o endereço do computador, `http://<endereço do computador>:3333`, para rodar sem as ferramentas de desenvolvimento. Os passos para gerar e instalar esse APK vêm com o build de release do Android ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
-
-### 8. Backup
-
-Guarde uma cópia do banco e das fotos, por exemplo uma vez por semana, num pendrive ou na nuvem. Copie também a pasta das fotos, `apps\api\uploads` (ou o `PHOTOS_DIR` do `.env`).
-
-**SQLite:** com o servidor desligado (`stop-server.ps1`), copie a pasta `apps\api\data`. Para restaurar, com o servidor desligado, devolva a pasta e também a pasta das fotos.
-
-**PostgreSQL:** as ferramentas dele ficam na pasta de instalação (ajuste a versão):
+**PostgreSQL:** copie a pasta `data\photos` como acima, e o banco com as ferramentas dele, na pasta de instalação (ajuste a versão):
 
 ```powershell
 & "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe" -U postgres -F c -f apc-backup.dump apc_universal_repair
 ```
 
-Para restaurar, com o servidor desligado, use o `pg_restore` com a cópia e devolva a pasta das fotos:
+Para restaurar, com o app fechado, use o `pg_restore` com a cópia e coloque a pasta das fotos de volta:
 
 ```powershell
 & "C:\Program Files\PostgreSQL\18\bin\pg_restore.exe" -U postgres -d apc_universal_repair --clean apc-backup.dump
 ```
 
-### 9. Atualizar para uma versão nova
+### 7. Importar um servidor antigo
 
-O computador de casa fica numa tag de release (`v0.2.0`, `v0.2.1`…), a versão do app desktop, e não na `main`: uma mudança na `main`, como uma migração nova, poderia quebrar um app ainda na versão anterior.
+O *Importar dados de outro servidor*, no *Servidor e banco de dados*, traz os dados e as fotos de um servidor antigo, como o de um clone, para o banco em uso. Esse banco precisa estar vazio: importe antes de alguém criar uma conta na instalação nova.
 
-- **Pelo app desktop, sozinho:** quando o app desktop instalado abre e a API deste computador responde outra versão no `/health`, ele leva o servidor para a versão dele e mostra "Atualizando o servidor…" até a API respondê-la. Ele roda o `apps\api\scripts\update-server.ps1`, que:
-  - desliga o servidor;
-  - coloca o clone na tag `v<versão>` e roda o `pnpm install`;
-  - liga o servidor de novo, pela tarefa agendada quando ela está instalada, ou em segundo plano, o que aplica as migrações novas.
+1. **Escolha onde estão os dados antigos:** *Arquivo SQLite*, como o `apps\api\data\apc.db` de um clone antigo, ou *PostgreSQL*, o endereço dele (o `DATABASE_URL` do `apps\api\.env` do clone antigo).
+2. **Escolha a pasta das fotos antigas,** como o `apps\api\uploads\photos` do clone antigo. Escolher o arquivo SQLite já a preenche.
+3. **Clique em *Importar*.** Quando o banco antigo é de uma versão anterior, o diálogo avisa e oferece *Atualizar o banco antigo e importar*: ele aplica antes as migrações desta versão, que só acrescentam tabelas. O servidor fica desligado durante a cópia, e se algo falhar nada fica. O diálogo então lista as linhas de cada tabela nos dois lados e os arquivos de fotos copiados.
+4. **Feche o diálogo e entre** com as contas antigas. As sessões não são copiadas, então o celular entra de novo também. Guarde os dados antigos até ter certeza.
 
-  Quando um passo falha, ou a API não responde a versão nova em 5 minutos, ele volta para a versão em que estava e liga o servidor de novo. Ele se recusa a rodar quando o clone tem alterações locais (`git status` não limpo). O que ele fez fica em `apps\api\logs\update.log`.
-- **Na mão:** o mesmo script, com a versão de destino:
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File apps\api\scripts\update-server.ps1 -Version 0.2.0
-  ```
-- **Na primeira vez, saindo da v0.1.0 ou da `main`:** o script de atualização só existe a partir da v0.2.0, então mude o clone uma vez na mão:
-  1. Desligue o servidor com o `stop-server.ps1`.
-  2. Rode `git fetch --tags`, `git checkout v0.2.0` e `pnpm install`.
-  3. Ligue o servidor de novo.
+### 8. Sair de um clone
 
-  Na primeira vez depois que as fotos passaram a ser reduzidas ao salvar, rode também `pnpm --filter @apc/api photos:compress` uma vez, para reduzir as fotos salvas antes.
-- **Um app desktop em outro computador** só avisa que as versões são diferentes. Atualize o servidor com o script no computador onde ele roda.
+Até a v0.3.0, o servidor de casa rodava de um clone do projeto, ligado por uma tarefa do Agendador de Tarefas ou pelo atalho *Ligar servidor APC*. Para passar um computador assim para o servidor dentro do app:
 
-### 10. Trocar de banco de dados
-
-Para passar o servidor do PostgreSQL para o SQLite, ou o contrário, copie os dados para o banco novo com o `db:copy`. Ele copia todas as tabelas como estão. As sessões ficam de fora, então todo mundo entra de novo, e as fotos continuam na pasta delas. Os comandos rodam na pasta do projeto, no PowerShell.
-
-1. **Desligue o servidor:** `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`. A cópia se recusa enquanto o servidor responde.
-2. **Faça o backup** do banco em uso, como no passo 8.
-3. **Crie o banco novo, vazio.** Crie as tabelas dele com o `db:migrate`, sem o seed. Para um arquivo SQLite:
-   ```powershell
-   $env:DATABASE_URL = "file:./data/apc.db"; pnpm --filter @apc/api db:migrate; Remove-Item Env:DATABASE_URL
-   ```
-   Para o PostgreSQL, crie antes o banco no *SQL Shell (psql)* como no passo 1, e rode o mesmo comando com o endereço `postgresql://…` dele.
-4. **Copie**, do endereço que está no `apps\api\.env` para o novo:
-   ```powershell
-   pnpm --filter @apc/api db:copy --from "postgresql://postgres:<senha>@localhost:5432/apc_universal_repair" --to "file:./data/apc.db"
-   ```
-   Ele mostra cada tabela conforme copia e termina com as linhas de cada uma nos dois lados. Se algo falhar, nada fica no banco novo. Ele recusa um banco que não está vazio ou que não tem alguma migração, dizendo qual.
-5. **Troque:** no `apps\api\.env`, mude o `DATABASE_URL` para o banco novo. Ele vale mais que a escolha do instalador, que só vale sem ele.
-6. **Ligue o servidor** de novo (passo 3) e entre. Guarde o banco antigo até ter certeza.
-
-Com o servidor dentro do app, o próprio app troca e copia: veja o passo 11.
-
-### 11. O servidor dentro do app: o banco e a importação
-
-O servidor que o app desktop roda guarda as configurações no próprio app. O *Servidor e banco de dados*, no menu do usuário e no menu do ícone do APC perto do relógio, mostra o banco em uso (o SQLite com a pasta dele, ou o PostgreSQL com o servidor dele), a pasta das fotos, a porta e o endereço do celular.
-
-- **PostgreSQL:** crie antes o banco, como no passo 1. Depois escolha *PostgreSQL*, digite o endereço dele, `postgresql://postgres:<senha>@localhost:5432/apc_universal_repair`, e clique em *Usar PostgreSQL*. O app confere se ele conecta, cria as tabelas num banco vazio (ou acrescenta as novas num banco do APC de uma versão anterior) e religa o servidor nele. Ele recusa um banco de um APC mais novo, ou com tabelas de outro programa, dizendo por quê. O endereço tem a senha, então o `config.json` só o guarda lacrado pelo Windows (DPAPI), que só este usuário do Windows abre.
-- **PostgreSQL escolhido na instalação:** o app pede o endereço na primeira vez que abre, antes de ligar o servidor. O *Usar SQLite* fica com o arquivo no lugar.
-- **Voltar ao SQLite:** escolha *SQLite* e clique em *Voltar ao SQLite*. O app esquece o endereço.
-- **Trocar não leva os dados:** o servidor liga no outro banco como ele está. Para levar os dados junto, importe-os.
-
-**Importar um servidor antigo.** O *Importar dados de outro servidor*, no mesmo diálogo, traz os dados e as fotos de um servidor antigo, como o de um clone, para o banco em uso. Esse banco precisa estar vazio: importe antes de alguém criar uma conta na instalação nova.
-
-1. **Desligue o servidor antigo,** para ele não gravar durante a cópia: no clone antigo, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, ou o `stop-server.ps1` se não houver tarefa. Enquanto outro servidor responde na porta 3333, o app usa ele no lugar do próprio, e o diálogo avisa. Feche o app e abra de novo depois de desligar o antigo.
-2. **Escolha onde estão os dados antigos:** *Arquivo SQLite*, o `apps\api\data\apc.db` do clone antigo, ou *PostgreSQL*, o endereço dele (o `DATABASE_URL` do `apps\api\.env` do clone antigo).
-3. **Escolha a pasta das fotos antigas,** o `apps\api\uploads\photos` do clone antigo. Escolher o arquivo SQLite já a preenche.
-4. **Clique em *Importar*.** Quando o banco antigo é de uma versão anterior, o diálogo avisa e oferece *Atualizar o banco antigo e importar*: ele aplica antes as migrações desta versão, que só acrescentam tabelas. O servidor fica desligado durante a cópia, e se algo falhar nada fica. O diálogo então lista as linhas de cada tabela nos dois lados e os arquivos de fotos copiados.
-5. **Feche o diálogo e entre** com as contas antigas. As sessões não são copiadas, então o celular entra de novo também. Guarde os dados antigos até ter certeza.
+1. **Desligue de vez o servidor do clone.** Num PowerShell, na pasta do clone, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que o desliga e remove a tarefa. Uma tarefa feita com `-AtStartup` precisa ser removida num PowerShell aberto como administrador. Se o clone não tiver esse script, abra o Agendador de Tarefas, apague a tarefa *APC Universal Repair API* e reinicie o computador. Apague também o atalho *Ligar servidor APC*. Enquanto o servidor antigo responde na porta 3333, o app usa ele no lugar do próprio, e o *Servidor e banco de dados* avisa.
+2. **Instale o app** (passo 1), ou atualize-o, e abra. Se ele estava apontado para o clone com `apiDir` ou `apiUrl` no `%APPDATA%\APC Universal Repair\config.json`, tire essas configurações, depois feche pelo *Sair* e abra de novo. Não crie conta ainda.
+3. **Importe os dados** (passo 7): o `apps\api\data\apc.db` do clone para o SQLite, ou o endereço do `apps\api\.env` dele para o PostgreSQL, com o `apps\api\uploads\photos` dele. Entre com uma conta antiga e confira o estoque e as fotos.
+4. **Libere o app no firewall** (passo 3) e confira o celular (passo 5): o endereço continua o mesmo. A regra antiga do firewall para o Node.js pode ser removida.
+5. **Apague o clone** quando tiver certeza, e desinstale o Node.js, o pnpm e o Git se nada mais precisar deles. Um PostgreSQL em uso fica.
