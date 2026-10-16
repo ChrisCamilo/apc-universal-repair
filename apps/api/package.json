@@ -13,6 +13,8 @@
     "start:home": "tsx scripts/db.ts migrate && tsx src/server.ts",
     "db:check": "tsx scripts/db.ts check",
     "db:check-schemas": "tsx scripts/check-schemas.ts",
+    "predb:copy": "pnpm run db:generate",
+    "db:copy": "tsx scripts/copy-database.ts",
     "db:generate": "prisma generate && prisma generate --config prisma.sqlite.config.ts",
     "db:migrate": "tsx scripts/db.ts migrate",
     "predb:seed": "pnpm run db:generate",
