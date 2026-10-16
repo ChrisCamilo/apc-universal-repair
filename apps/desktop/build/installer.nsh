@@ -90,10 +90,10 @@
     Pop $R0
     ${NSD_CreateRadioButton} 0 46u 100% 12u "PostgreSQL"
     Pop $databasePostgresql
-    ${NSD_CreateLabel} 12u 59u -12u 30u "Um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador acessando o mesmo banco. Precisa instalar e configurar o PostgreSQL antes (veja o guia do servidor)."
+    ${NSD_CreateLabel} 12u 59u -12u 30u "Um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador no mesmo banco. Instale-o antes; o APC pede o endereço dele ao abrir."
     Pop $R0
     ; In single quotes, which take the double ones inside: NSIS ends a double-quoted string at "" instead.
-    ${NSD_CreateLabel} 0 94u 100% 20u 'Dá para trocar depois, mas os dados não vão sozinhos: veja "Trocar de banco de dados" no guia do servidor.'
+    ${NSD_CreateLabel} 0 94u 100% 20u 'Dá para trocar depois em "Servidor e banco de dados", no ícone do APC perto do relógio; os dados vêm pelo Importar de lá.'
     Pop $R0
     ${If} $databaseChoice == postgresql
       ${NSD_Check} $databasePostgresql
