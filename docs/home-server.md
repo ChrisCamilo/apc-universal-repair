@@ -191,6 +191,25 @@ The computer at home stays on a release tag (`v0.2.0`, `v0.2.1`…), the version
   The first time after photos started being reduced on saving, also run `pnpm --filter @apc/api photos:compress` once, to reduce the photos saved before.
 - **A desktop app on another computer** only warns that the versions differ. Update the server with the script on the computer where it runs.
 
+### 10. Switching databases
+
+To move the server from PostgreSQL to SQLite, or back, copy the data to the new database with `db:copy`. It copies every table as it is. It leaves out the sessions, so everyone logs in again, and the photos stay in their folder. Commands run from the project folder, in PowerShell.
+
+1. **Turn the server off:** `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`. The copy refuses while the server answers.
+2. **Back up** the database in use, as in step 8.
+3. **Make the new database, empty.** Create its tables with `db:migrate`, without the seed. For a SQLite file:
+   ```powershell
+   $env:DATABASE_URL = "file:./data/apc.db"; pnpm --filter @apc/api db:migrate; Remove-Item Env:DATABASE_URL
+   ```
+   For PostgreSQL, first create the database in *SQL Shell (psql)* as in step 1, then run the same command with its `postgresql://…` address.
+4. **Copy**, from the address in `apps\api\.env` to the new one:
+   ```powershell
+   pnpm --filter @apc/api db:copy --from "postgresql://postgres:<password>@localhost:5432/apc_universal_repair" --to "file:./data/apc.db"
+   ```
+   It shows each table as it goes and ends with the rows of each on both sides. Nothing is kept on the new database if anything fails. It refuses a database that isn't empty or lacks a migration, saying which.
+5. **Switch:** in `apps\api\.env`, change `DATABASE_URL` to the new database.
+6. **Turn the server on** again (step 3) and log in. Keep the old database until you're sure.
+
 ---
 
 ## 🇧🇷 Português (Brasil)
@@ -353,3 +372,22 @@ O computador de casa fica numa tag de release (`v0.2.0`, `v0.2.1`…), a versão
 
   Na primeira vez depois que as fotos passaram a ser reduzidas ao salvar, rode também `pnpm --filter @apc/api photos:compress` uma vez, para reduzir as fotos salvas antes.
 - **Um app desktop em outro computador** só avisa que as versões são diferentes. Atualize o servidor com o script no computador onde ele roda.
+
+### 10. Trocar de banco de dados
+
+Para passar o servidor do PostgreSQL para o SQLite, ou o contrário, copie os dados para o banco novo com o `db:copy`. Ele copia todas as tabelas como estão. As sessões ficam de fora, então todo mundo entra de novo, e as fotos continuam na pasta delas. Os comandos rodam na pasta do projeto, no PowerShell.
+
+1. **Desligue o servidor:** `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1`. A cópia se recusa enquanto o servidor responde.
+2. **Faça o backup** do banco em uso, como no passo 8.
+3. **Crie o banco novo, vazio.** Crie as tabelas dele com o `db:migrate`, sem o seed. Para um arquivo SQLite:
+   ```powershell
+   $env:DATABASE_URL = "file:./data/apc.db"; pnpm --filter @apc/api db:migrate; Remove-Item Env:DATABASE_URL
+   ```
+   Para o PostgreSQL, crie antes o banco no *SQL Shell (psql)* como no passo 1, e rode o mesmo comando com o endereço `postgresql://…` dele.
+4. **Copie**, do endereço que está no `apps\api\.env` para o novo:
+   ```powershell
+   pnpm --filter @apc/api db:copy --from "postgresql://postgres:<senha>@localhost:5432/apc_universal_repair" --to "file:./data/apc.db"
+   ```
+   Ele mostra cada tabela conforme copia e termina com as linhas de cada uma nos dois lados. Se algo falhar, nada fica no banco novo. Ele recusa um banco que não está vazio ou que não tem alguma migração, dizendo qual.
+5. **Troque:** no `apps\api\.env`, mude o `DATABASE_URL` para o banco novo.
+6. **Ligue o servidor** de novo (passo 3) e entre. Guarde o banco antigo até ter certeza.
