@@ -349,7 +349,7 @@ Two visual documents describe the project, with Mermaid diagrams that GitHub ren
 
 Always keep them up to date, **in the same pull request** as the change:
 
-- Changing `apps/api/prisma/schema.prisma` (a table, column, key, relation, enum or delete rule) updates `docs/database.md`.
+- Changing `apps/api/prisma/schema.prisma` (a table, column, key, relation, enum or delete rule) changes `apps/api/prisma/sqlite/schema.prisma` the same way, with a migration for each database, and updates `docs/database.md`. Lint fails when the two schemas' models differ.
 - Adding, removing or renaming an app, a package or a `@apc/shared` module, changing how the parts talk to each other, or adding, removing or upgrading a main technology (a new major version included) updates `docs/architecture.md`.
 - Update the diagrams and both languages together, and check the diagrams still render (Mermaid syntax errors show as an error box on GitHub). Use a `docs:` commit.
 

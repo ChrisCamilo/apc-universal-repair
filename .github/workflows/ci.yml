@@ -53,11 +53,20 @@ jobs:
           path: apps/web/playwright-report/
           retention-days: 7
 
-  # Builds an empty database from the migrations, as a new computer at home does (docs/home-server.md), checks it
-  # matches schema.prisma and seeds it. All the migrations run in one session here, unlike on a database that took them
-  # one at a time. The API's tests that need a database then run on it.
+  # Builds an empty database from the migrations of each database the API runs on, as a new computer at home does
+  # (docs/home-server.md), checks it matches its schema, seeds it and runs the API's tests that need a database. All
+  # the migrations run in one session here, unlike on a database that took them one at a time.
   migrations:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database:
+          - name: postgresql
+            url: "postgresql://postgres:postgres@localhost:5432/apc_universal_repair"
+          - name: sqlite
+            url: "file:./data/ci.db"
+    name: migrations (${{ matrix.database.name }})
     services:
       postgres:
         image: postgres:18
@@ -69,7 +78,7 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/apc_universal_repair"
+      DATABASE_URL: ${{ matrix.database.url }}
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v4
@@ -86,47 +95,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Apply the migrations to an empty database
-        run: pnpm --filter @apc/api exec prisma migrate deploy
+        run: pnpm --filter @apc/api db:migrate
 
-      - name: Check the database matches schema.prisma
-        run: pnpm --filter @apc/api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      - name: Check the database matches its schema
+        run: pnpm --filter @apc/api db:check
 
       - name: Seed it
         run: pnpm --filter @apc/api db:seed
 
       - name: API tests against the database
         run: pnpm --filter @apc/api test:db
-
-  # The same as the migrations job on SQLite: builds an empty database file from prisma/sqlite's migrations, checks it
-  # matches prisma/sqlite/schema.prisma, seeds it and runs the API's tests that need a database, one file at a time,
-  # as the API is the only process writing to the file.
-  sqlite:
-    runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: "file:./data/ci.db"
-      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Apply the migrations to an empty SQLite file
-        run: pnpm --filter @apc/api exec prisma migrate deploy --config prisma.sqlite.config.ts
-
-      - name: Check the file matches prisma/sqlite/schema.prisma
-        run: pnpm --filter @apc/api exec prisma migrate diff --config prisma.sqlite.config.ts --from-config-datasource --to-schema prisma/sqlite/schema.prisma --exit-code
-
-      - name: Seed it
-        run: pnpm --filter @apc/api db:seed
-
-      - name: API tests against the database
-        run: pnpm --filter @apc/api test:db -- --test-concurrency=1
