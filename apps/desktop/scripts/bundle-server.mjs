@@ -68,6 +68,15 @@ if (process.platform === "win32") {
     writeFileSync(path.join(OUT, "package.json"), `${JSON.stringify({ name: "apc-server", private: true, type: "module", dependencies: versions }, null, 2)}\n`);
     execSync("npm install --omit=dev --ignore-scripts --no-audit --no-fund --no-package-lock", { cwd: OUT, stdio: "inherit" });
     await rebuild({ buildPath: OUT, electronVersion: electron, onlyModules: ["better-sqlite3"], force: true });
+    // Only the module and the compiled binary ship: not SQLite's sources nor the compiler's leftovers, ~70 MB.
+    const sqlite = path.join(OUT, "node_modules", "better-sqlite3");
+    const binary = path.join(sqlite, "build", "Release", "better_sqlite3.node");
+    const kept = readFileSync(binary);
+    for (const folder of ["build", "deps", "src", "bin"]) {
+      rmSync(path.join(sqlite, folder), { recursive: true, force: true });
+    }
+    mkdirSync(path.dirname(binary), { recursive: true });
+    writeFileSync(binary, kept);
     writeFileSync(stampFile, stamp);
   }
 }
