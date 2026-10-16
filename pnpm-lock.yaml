@@ -243,9 +243,15 @@ importers:
         specifier: ^6.8.9
         version: 6.8.9(supports-color@8.1.1)
     devDependencies:
+      '@apc/api':
+        specifier: workspace:*
+        version: link:../api
       '@apc/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@electron/rebuild':
+        specifier: ^4.2.1
+        version: 4.2.1(supports-color@8.1.1)
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
@@ -258,6 +264,9 @@ importers:
       electron-builder:
         specifier: ^26.15.3
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@8.1.1)
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       typescript:
         specifier: ~6.0.3
         version: 6.0.3

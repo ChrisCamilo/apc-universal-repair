@@ -65,3 +65,4 @@ apps/desktop/release/
 # Logs of the API running in the background at home (apps/api/scripts/start-server.ps1 -Background)
 apps/api/logs/
 apps/api/data/
+apps/desktop/server/

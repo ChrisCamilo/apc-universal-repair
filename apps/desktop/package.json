@@ -8,7 +8,7 @@
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/build-info.mjs",
+    "build": "tsc -p tsconfig.json && node scripts/build-info.mjs && node scripts/bundle-server.mjs",
     "dev": "pnpm run build && node scripts/dev.mjs",
     "dist": "pnpm --filter @apc/web build && pnpm run build && electron-builder --win --publish never",
     "lint": "eslint src e2e scripts",
@@ -17,11 +17,14 @@
     "typecheck": "tsc -p tsconfig.test.json"
   },
   "devDependencies": {
+    "@apc/api": "workspace:*",
     "@apc/shared": "workspace:*",
+    "@electron/rebuild": "^4.2.1",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.2",
     "electron": "^44.7.0",
     "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "typescript": "~6.0.3"
   },
   "dependencies": {
