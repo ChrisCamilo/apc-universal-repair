@@ -16,7 +16,7 @@ export const SERVER_PORT = 3333;
  */
 export type ServerSetup = { serverDir: string; userData: string; port: number; version: string; databaseUrl?: string };
 /** Where the app finds a server elsewhere, and whether it runs from the Vite dev server. */
-export type ServerSources = { envApiUrl?: string; envApiDir?: string; devUrl?: string };
+export type ServerSources = { envApiUrl?: string; devUrl?: string };
 
 /**
  * Finds where the bundled server keeps its data.
@@ -47,13 +47,12 @@ export function serverEnvironment(setup: ServerSetup): Record<string, string> {
 }
 
 /**
- * Tells whether the app runs its own server: unless APC_API_URL or config.json's apiUrl names one, a clone's folder is
- * set to start one from (APC_API_DIR or config.json's apiDir), or the app runs from the Vite dev server, whose proxy
- * reaches the API in development.
+ * Tells whether the app runs its own server: unless APC_API_URL or config.json's apiUrl names one, or the app runs
+ * from the Vite dev server, whose proxy reaches the API in development.
  * @param sources The environment's settings.
  * @param config What config.json sets.
  * @returns True when the app runs the server it ships.
  */
 export function usesBundledServer(sources: ServerSources, config: DesktopConfig): boolean {
-  return !(sources.envApiUrl || config.apiUrl || sources.envApiDir || config.apiDir || sources.devUrl);
+  return !(sources.envApiUrl || config.apiUrl || sources.devUrl);
 }

@@ -1,11 +1,11 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-// Where the desktop app finds a server elsewhere and, for a server run from a clone on this computer, the folder it
-// starts it from. Both come from, in order: an environment variable, then config.json in the app's userData folder.
-// Without either, the app runs the server it ships (see bundledServer.ts). The API address defaults to this computer.
+// The desktop app's settings, in config.json in its userData folder: the database of the server it ships (see
+// database.ts) and, for a server on another computer, its address, which APC_API_URL also sets. Without an address,
+// the app runs the server it ships (see bundledServer.ts).
 
-/** The API address when nothing sets another: the API of #154 on this computer. */
+/** The API address when nothing sets another, as in development: the API on this computer. */
 export const DEFAULT_API_URL = "http://localhost:3333";
 
 /** The database the server on this computer uses, as the installer asked (see database.ts). */
@@ -13,24 +13,11 @@ export type DatabaseChoice = "postgresql" | "sqlite";
 /** What config.json in the userData folder may set, e.g. `{ "apiUrl": "http://192.168.0.10:3333" }`. */
 export type DesktopConfig = {
   apiUrl?: string;
-  apiDir?: string;
   database?: DatabaseChoice;
   /** PostgreSQL's address, sealed by safeStorage, never in plain text (see database.ts). */
   databaseUrl?: string;
   trayNoticeShown?: boolean;
 };
-
-/** Host names that point at this computer. */
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-
-/**
- * Tells whether the API runs on this computer, the only case where the app starts it.
- * @param apiUrl The resolved API address.
- * @returns True for localhost, 127.0.0.1 and ::1.
- */
-export function isLocalApi(apiUrl: string): boolean {
-  return LOCAL_HOSTS.has(new URL(apiUrl).hostname);
-}
 
 /**
  * Reads config.json's text, with or without the BOM Windows PowerShell 5.1 writes, ignoring a file that isn't a JSON
