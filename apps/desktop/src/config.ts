@@ -26,7 +26,8 @@ export function isLocalApi(apiUrl: string): boolean {
 }
 
 /**
- * Reads config.json's text, ignoring a file that isn't a JSON object.
+ * Reads config.json's text, with or without the BOM Windows PowerShell 5.1 writes, ignoring a file that isn't a JSON
+ * object.
  * @param text The file's text, or undefined when there is no file.
  * @returns The settings it holds.
  */
@@ -35,7 +36,7 @@ export function parseConfig(text: string | undefined): DesktopConfig {
     return {};
   }
   try {
-    const parsed: unknown = JSON.parse(text);
+    const parsed: unknown = JSON.parse(text.replace(/^\uFEFF/, ""));
     return typeof parsed === "object" && parsed !== null ? (parsed as DesktopConfig) : {};
   } catch {
     return {};
