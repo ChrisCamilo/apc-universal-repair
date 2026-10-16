@@ -20,7 +20,8 @@ if (describe(values.from) === describe(values.to) && (databaseProvider(values.fr
   console.error("The source and the target are the same database.");
   process.exit(1);
 }
-const server = `http://localhost:${process.env.PORT ?? 3333}`;
+// 127.0.0.1, not localhost, which Node may resolve to ::1 while the API listens on IPv4.
+const server = `http://127.0.0.1:${process.env.PORT ?? 3333}`;
 if (!values.force && (await serverAnswers(server))) {
   console.error(`The server answers at ${server}: turn it off first (stop-server.ps1), or pass --force.`);
   process.exit(1);
