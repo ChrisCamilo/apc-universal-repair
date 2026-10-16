@@ -6,8 +6,13 @@ import { healthResponseSchema } from "@apc/shared";
 // GET /health, open without a session: whether the API is up, and its version, which the desktop app compares with its
 // own to bring the server at home to the same release (see apps/api/scripts/update-server.ps1).
 
-/** The API's version, from apps/api/package.json: two folders up from src/routes, or dist/routes once built. */
-const API_VERSION = (JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { version: string }).version;
+/**
+ * The API's version: APC_API_VERSION, as the desktop app sets it for the server it ships, or apps/api/package.json's,
+ * two folders up from src/routes, or dist/routes once built.
+ */
+const API_VERSION =
+  process.env.APC_API_VERSION ||
+  (JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { version: string }).version;
 
 /**
  * Registers GET /health.
