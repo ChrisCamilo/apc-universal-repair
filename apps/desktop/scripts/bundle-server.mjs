@@ -1,6 +1,7 @@
 // Bundles the API into server/ for the desktop app to run (see src/bundledServer.ts), and electron-builder ships the
 // folder as resources/server:
-// - server.mjs: the API with its JavaScript dependencies, built by esbuild from apps/api/src;
+// - server.mjs: the API with its JavaScript dependencies, built by esbuild from apps/api/src, and tasks.mjs, the
+//   database tasks the app runs beside it (apps/api/src/db/tasks.ts), sharing their code through chunks/;
 // - migrations/: its SQL files, one folder per database, which the API applies on start (APC_MIGRATIONS_DIR);
 // - node_modules/: the two native modules esbuild can't bundle: better-sqlite3, compiled for this Electron by
 //   @electron/rebuild, as its releases have no prebuilt binaries for it (which takes Visual Studio's C++ build tools),
@@ -40,13 +41,17 @@ function versionOf(from, name) {
 }
 
 mkdirSync(OUT, { recursive: true });
+rmSync(path.join(OUT, "chunks"), { recursive: true, force: true });
 await build({
-  entryPoints: [path.join(API, "src", "server.ts")],
+  entryPoints: { server: path.join(API, "src", "server.ts"), tasks: path.join(API, "src", "db", "tasks.ts") },
   bundle: true,
+  splitting: true,
   platform: "node",
   format: "esm",
   target: "node22",
-  outfile: path.join(OUT, "server.mjs"),
+  outdir: OUT,
+  outExtension: { ".js": ".mjs" },
+  chunkNames: "chunks/[name]-[hash]",
   external: EXTERNAL,
   // The CommonJS dependencies inside an ESM bundle reach the external modules through require.
   banner: { js: 'import { createRequire as __apcRequire } from "node:module";\nconst require = __apcRequire(import.meta.url);' },
