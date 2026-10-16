@@ -3,6 +3,7 @@ import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, screen, session, shell } from "electron";
 import electronUpdater from "electron-updater";
 import { isLocalApi, parseConfig, resolveApiUrl, type DesktopConfig } from "./config.js";
+import { adoptInstallerChoice, POSTGRESQL_GUIDE_URL, serverCanStart } from "./database.js";
 import { windowsIdentity } from "./identity.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
@@ -19,7 +20,8 @@ import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
 // Vite dev server when APC_DEV_URL is set. On opening, when the API on this computer doesn't answer, it starts it
-// (see server.ts) and shows "Ligando o servidor" until it does. The window can't leave the app: other addresses open
+// (see server.ts) and shows "Ligando o servidor" until it does, unless PostgreSQL was chosen at install and the API's
+// .env doesn't name it yet, when it opens the guide instead (see database.ts). The window can't leave the app: other addresses open
 // in the system browser, and the page gets no Node access and no permissions: only the preload's bridge (preload.cts),
 // through which it asks for a Windows notification of an error or a warning, shown while the window isn't focused;
 // clicking it brings the window up with the bell's menu open. The installed app updates itself from GitHub Releases
@@ -114,6 +116,11 @@ async function ensureApi(window: BrowserWindow, apiUrl: string, config: DesktopC
     return;
   }
   const apiDir = apiDirOf(config);
+  if (apiDir && !serverCanStart(config, readIfThere(path.join(apiDir, ".env")))) {
+    console.warn(`PostgreSQL was chosen, and ${path.join(apiDir, ".env")} doesn't name it yet; opening the guide.`);
+    void shell.openExternal(POSTGRESQL_GUIDE_URL);
+    return;
+  }
   if (!apiDir || !startApi(apiDir)) {
     console.warn(`The API at ${apiUrl} doesn't answer, and there is no API folder to start it from.`);
     return;
@@ -258,7 +265,8 @@ app.on("second-instance", () => {
 app.on("window-all-closed", () => app.quit());
 
 void app.whenReady().then(async () => {
-  const config = parseConfig(readIfThere(path.join(app.getPath("userData"), "config.json")));
+  const userData = app.getPath("userData");
+  const config = adoptInstallerChoice(userData, parseConfig(readIfThere(path.join(userData, "config.json"))));
   const apiUrl = resolveApiUrl(process.env.APC_API_URL, config);
   console.log(`API: ${apiUrl}`);
 

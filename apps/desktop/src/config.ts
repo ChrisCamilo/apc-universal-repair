@@ -6,8 +6,10 @@
 /** The API address when nothing sets another: the API of #154 on this computer. */
 export const DEFAULT_API_URL = "http://localhost:3333";
 
+/** The database the server on this computer uses, as the installer asked (see database.ts). */
+export type DatabaseChoice = "postgresql" | "sqlite";
 /** What config.json in the userData folder may set, e.g. `{ "apiUrl": "http://192.168.0.10:3333" }`. */
-export type DesktopConfig = { apiUrl?: string; apiDir?: string };
+export type DesktopConfig = { apiUrl?: string; apiDir?: string; database?: DatabaseChoice };
 
 /** Host names that point at this computer. */
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);

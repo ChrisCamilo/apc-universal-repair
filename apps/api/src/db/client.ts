@@ -2,7 +2,7 @@ import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.js";
 import { PrismaClient as SqliteClient } from "../generated/sqlite/client.js";
-import { databaseProvider, sqliteFile } from "./provider.js";
+import { databaseProvider, databaseUrl, sqliteFile } from "./provider.js";
 
 // The database follows DATABASE_URL (see provider.ts): a SQLite file opens through better-sqlite3 and the client
 // generated from prisma/sqlite/schema.prisma, anything else PostgreSQL. Both clients come from the same models, so
@@ -12,7 +12,7 @@ import { databaseProvider, sqliteFile } from "./provider.js";
 /** How long SQLite waits for another process's write lock, in milliseconds. */
 const SQLITE_TIMEOUT_MS = 5000;
 
-const url = process.env.DATABASE_URL ?? "";
+const url = databaseUrl();
 
 export const prisma = createPrisma(url);
 
