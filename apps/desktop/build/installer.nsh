@@ -66,15 +66,16 @@
     ${If} $R0 == error
       Abort
     ${EndIf}
+    ; Everything stays within 114u: the page's area ends a little below 120u, cutting what goes past it.
     ${NSD_CreateRadioButton} 0 0 100% 12u "SQLite (recomendado para um computador só)"
     Pop $databaseSqlite
-    ${NSD_CreateLabel} 12u 14u -12u 32u "Os dados ficam num arquivo neste computador. Não há nada para instalar nem senha para criar; o backup é copiar o arquivo; só este computador acessa os dados. Ideal para a oficina com um computador servindo o celular."
+    ${NSD_CreateLabel} 12u 13u -12u 30u "Os dados ficam num arquivo neste computador. Não há nada para instalar nem senha para criar; o backup é copiar o arquivo; só este computador acessa os dados. Ideal para a oficina com um computador servindo o celular."
     Pop $R0
-    ${NSD_CreateRadioButton} 0 52u 100% 12u "PostgreSQL"
+    ${NSD_CreateRadioButton} 0 46u 100% 12u "PostgreSQL"
     Pop $databasePostgresql
-    ${NSD_CreateLabel} 12u 66u -12u 32u "Um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador acessando o mesmo banco. Precisa instalar e configurar o PostgreSQL antes (veja o guia do servidor)."
+    ${NSD_CreateLabel} 12u 59u -12u 30u "Um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador acessando o mesmo banco. Precisa instalar e configurar o PostgreSQL antes (veja o guia do servidor)."
     Pop $R0
-    ${NSD_CreateLabel} 0 106u 100% 24u "Dá para trocar depois, mas os dados não vão sozinhos de um banco para o outro: veja ""Trocar de banco de dados"" no guia do servidor."
+    ${NSD_CreateLabel} 0 94u 100% 20u "Dá para trocar depois, mas os dados não vão sozinhos: veja ""Trocar de banco de dados"" no guia do servidor."
     Pop $R0
     ${If} $databaseChoice == postgresql
       ${NSD_Check} $databasePostgresql
