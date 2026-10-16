@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 // API, the scripts and the CLI open the same file wherever they run from.
 
 /** The API's folder, apps/api: two folders up from src/db, or from dist/db once built. */
-const API_DIR = fileURLToPath(new URL("../../", import.meta.url));
+export const API_DIR = fileURLToPath(new URL("../../", import.meta.url));
 
 /** A database the API runs on. */
 export type DatabaseProvider = "postgresql" | "sqlite";

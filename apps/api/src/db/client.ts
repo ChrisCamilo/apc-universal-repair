@@ -14,12 +14,20 @@ const SQLITE_TIMEOUT_MS = 5000;
 
 const url = process.env.DATABASE_URL ?? "";
 
-export const prisma =
-  databaseProvider(url) === "sqlite"
+export const prisma = createPrisma(url);
+
+/**
+ * Opens a database: the API's own, or another one, as copying between databases does.
+ * @param databaseUrl A DATABASE_URL, e.g. "file:./data/apc.db" or "postgresql://…".
+ * @returns Its client, typed as the PostgreSQL one, which has the same models.
+ */
+export function createPrisma(databaseUrl: string): PrismaClient {
+  return databaseProvider(databaseUrl) === "sqlite"
     ? (new SqliteClient({
-        adapter: new PrismaBetterSqlite3({ url: `file:${sqliteFile(url)}`, timeout: SQLITE_TIMEOUT_MS }),
+        adapter: new PrismaBetterSqlite3({ url: `file:${sqliteFile(databaseUrl)}`, timeout: SQLITE_TIMEOUT_MS }),
       }) as unknown as PrismaClient)
-    : new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+    : new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
+}
 
 /**
  * Readies the database before the API answers: on SQLite, turns on WAL, which lets the list be read while an item is
