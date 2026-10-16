@@ -12,6 +12,35 @@ import { _electron as electron, expect, test } from "@playwright/test";
 const APP_DIR = path.join(import.meta.dirname, "..");
 
 /**
+ * Opens the app with its own server, with a new userData folder and a free port.
+ * @param args What the app is started with besides its folder, e.g. "--hidden".
+ * @returns The running app, its userData folder and its server's address.
+ */
+async function launch(...args: string[]) {
+  const userData = mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
+  const port = await freePort();
+  const env: Record<string, string> = { ...(process.env as Record<string, string>), APC_USER_DATA: userData, APC_SERVER_PORT: String(port) };
+  // With it set, Electron runs as plain Node instead of opening the app.
+  delete env.ELECTRON_RUN_AS_NODE;
+  delete env.APC_API_URL;
+  delete env.APC_API_DIR;
+  const app = await electron.launch({ args: [APP_DIR, ...args], env });
+  return { app, userData, server: `http://127.0.0.1:${port}` };
+}
+
+/**
+ * Tells whether a server answers.
+ * @param server Its address.
+ * @returns "up" or "down".
+ */
+function healthOf(server: string): Promise<"up" | "down"> {
+  return fetch(`${server}/health`).then(
+    (response) => (response.ok ? "up" : "down"),
+    () => "down",
+  );
+}
+
+/**
  * Finds a port no one listens on.
  * @returns The port.
  */
@@ -26,14 +55,7 @@ async function freePort(): Promise<number> {
 // Opens the app with no server named, and checks it starts its own: the login shows, a sign-up goes on to the empty
 // Inventory, and the database, the photos' folder and the server's log are in userData. Closing the app stops it.
 test("Desktop: the app runs the server it ships, with its data in userData", async () => {
-  const userData = mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
-  const port = await freePort();
-  const env: Record<string, string> = { ...(process.env as Record<string, string>), APC_USER_DATA: userData, APC_SERVER_PORT: String(port) };
-  // With it set, Electron runs as plain Node instead of opening the app.
-  delete env.ELECTRON_RUN_AS_NODE;
-  delete env.APC_API_URL;
-  delete env.APC_API_DIR;
-  const app = await electron.launch({ args: [APP_DIR], env });
+  const { app, userData, server } = await launch();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
 
@@ -51,9 +73,36 @@ test("Desktop: the app runs the server it ships, with its data in userData", asy
 
   expect(existsSync(path.join(userData, "data", "apc.db"))).toBe(true);
   expect(existsSync(path.join(userData, "logs", "api.log"))).toBe(true);
-  const health = await (await fetch(`http://127.0.0.1:${port}/health`)).json();
+  const health = await (await fetch(`${server}/health`)).json();
   expect(health.version).toBe(await app.evaluate(({ app: electronApp }) => electronApp.getVersion()));
 
   await app.close();
-  await expect.poll(() => fetch(`http://127.0.0.1:${port}/health`).then(() => "up", () => "down")).toBe("down");
+  await expect.poll(() => healthOf(server)).toBe("down");
+});
+
+// Closes the window, and checks it is hidden, not closed, with the server still answering; opening the app again
+// shows the same window, and quitting, as "Sair" in the tray does, turns the server off.
+test("Desktop: closing the window keeps the server on in the tray, until the app quits", async () => {
+  const { app, server } = await launch();
+  const page = await app.firstWindow();
+  await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
+  const visible = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((window) => window.isVisible()));
+
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+  await expect.poll(visible).toEqual([false]);
+  expect(await healthOf(server)).toBe("up");
+
+  await app.evaluate(({ app: electronApp }) => electronApp.emit("second-instance"));
+  await expect.poll(visible).toEqual([true]);
+
+  await app.evaluate(({ app: electronApp }) => electronApp.quit());
+  await expect.poll(() => healthOf(server)).toBe("down");
+});
+
+// Starts the app as Windows does at sign-in, with --hidden, and checks the window stays hidden while the server answers.
+test("Desktop: started hidden, the app shows no window and its server answers", async () => {
+  const { app, server } = await launch("--hidden");
+  await expect.poll(() => healthOf(server), { timeout: 60_000 }).toBe("up");
+  expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((window) => window.isVisible()))).toEqual([false]);
+  await app.evaluate(({ app: electronApp }) => electronApp.quit());
 });
