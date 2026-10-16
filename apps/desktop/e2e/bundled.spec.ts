@@ -28,7 +28,6 @@ async function launch(options: { args?: string[]; files?: Record<string, string>
   // With it set, Electron runs as plain Node instead of opening the app.
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.APC_API_URL;
-  delete env.APC_API_DIR;
   const app = await electron.launch({ args: [APP_DIR, ...(options.args ?? [])], env });
   return { app, userData, server: `http://127.0.0.1:${port}` };
 }

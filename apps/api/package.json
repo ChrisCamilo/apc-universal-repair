@@ -9,8 +9,6 @@
     "prebuild": "pnpm run db:generate",
     "build": "tsc -p tsconfig.json",
     "start": "node --conditions=apc-dist dist/server.js",
-    "prestart:home": "pnpm run db:generate",
-    "start:home": "tsx scripts/db.ts migrate && tsx src/server.ts",
     "db:check": "tsx scripts/db.ts check",
     "db:check-schemas": "tsx scripts/check-schemas.ts",
     "predb:copy": "pnpm run db:generate",

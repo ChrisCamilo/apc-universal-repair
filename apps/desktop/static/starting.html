@@ -1,6 +1,5 @@
 <!doctype html>
-<!-- Shown while the desktop app starts the API on this computer (see src/server.ts), in the eighties/night colors; at
-     #updating, while it brings the API to the app's version instead (see ensureApiVersion in src/main.ts). -->
+<!-- Shown while the desktop app starts the server it ships (see src/serverSettings.ts), in the eighties/night colors. -->
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
@@ -12,8 +11,7 @@
         height: 100%;
         margin: 0;
       }
-      body,
-      section {
+      body {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -39,15 +37,6 @@
       p {
         margin: 0;
       }
-      #updating {
-        display: none;
-      }
-      #updating:target {
-        display: flex;
-      }
-      #updating:target ~ #starting {
-        display: none;
-      }
       .hint {
         color: rgba(232, 230, 225, 0.6);
         font-size: 14px;
@@ -55,15 +44,8 @@
     </style>
   </head>
   <body>
-    <section id="updating">
-      <div class="spinner" role="progressbar" aria-label="Atualizando o servidor"></div>
-      <p>Atualizando o servidor APC…</p>
-      <p class="hint">Ele está indo para a mesma versão deste app. Isso pode levar alguns minutos.</p>
-    </section>
-    <section id="starting">
-      <div class="spinner" role="progressbar" aria-label="Ligando o servidor"></div>
-      <p>Ligando o servidor APC…</p>
-      <p class="hint">Na primeira vez isso pode levar até um minuto.</p>
-    </section>
+    <div class="spinner" role="progressbar" aria-label="Ligando o servidor"></div>
+    <p>Ligando o servidor APC…</p>
+    <p class="hint">Na primeira vez isso pode levar até um minuto.</p>
   </body>
 </html>

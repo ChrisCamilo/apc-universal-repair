@@ -22,14 +22,12 @@ test("Desktop: the bundled server keeps its data in userData", () => {
   assert.equal(onPostgresql.PHOTOS_DIR, path.join(userData, "data", "photos"));
 });
 
-// Checks the app runs its own server only when nothing names another: an address or a clone's folder, from the
-// environment or config.json, or the Vite dev server.
+// Checks the app runs its own server only when nothing names another: an address, from the environment or
+// config.json, or the Vite dev server.
 test("Desktop: the app runs its own server unless another is named", () => {
   assert.equal(usesBundledServer({}, {}), true);
   assert.equal(usesBundledServer({}, { database: "sqlite" }), true);
   assert.equal(usesBundledServer({ envApiUrl: "http://192.168.0.10:3333" }, {}), false);
   assert.equal(usesBundledServer({}, { apiUrl: "http://192.168.0.10:3333" }), false);
-  assert.equal(usesBundledServer({ envApiDir: "C:/APC/apps/api" }, {}), false);
-  assert.equal(usesBundledServer({}, { apiDir: "C:/APC/apps/api" }), false);
   assert.equal(usesBundledServer({ devUrl: "http://localhost:5173" }, {}), false);
 });

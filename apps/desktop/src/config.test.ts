@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { DEFAULT_API_URL, isLocalApi, parseConfig, resolveApiUrl, writeConfig } from "./config.ts";
+import { DEFAULT_API_URL, parseConfig, resolveApiUrl, writeConfig } from "./config.ts";
 
 // Resolves the API address with each source set, and checks APC_API_URL wins over config.json, which wins over the
 // default, and that a trailing slash is dropped so paths join on it.
@@ -41,12 +41,4 @@ test("Desktop: config.json is read with or without a BOM, and written without on
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }
-});
-
-// Checks the app only counts this computer's addresses as local, the only ones it starts the API for.
-test("Desktop: only this computer's addresses count as a local API", () => {
-  assert.equal(isLocalApi("http://localhost:3333"), true);
-  assert.equal(isLocalApi("http://127.0.0.1:3333"), true);
-  assert.equal(isLocalApi("http://[::1]:3333"), true);
-  assert.equal(isLocalApi("http://192.168.0.10:3333"), false);
 });

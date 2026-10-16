@@ -3,12 +3,12 @@ import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, screen, session, shell, Tray } from "electron";
 import electronUpdater from "electron-updater";
 import { SERVER_PORT, usesBundledServer } from "./bundledServer.js";
-import { isLocalApi, readConfig, resolveApiUrl, writeConfig, type DesktopConfig } from "./config.js";
+import { readConfig, resolveApiUrl, writeConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./database.js";
 import { windowsIdentity } from "./identity.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
-import { apiAnswers, readHealth, startApi, updateApi, waitForApi } from "./server.js";
+import { readHealth } from "./server.js";
 import {
   handleServerElsewhere,
   handleServerSettings,
@@ -19,14 +19,7 @@ import {
 } from "./serverSettings.js";
 import { HIDDEN_ARG, takeInstallerStartup } from "./startup.js";
 import { phoneAddress, trayMenu, type TrayItem } from "./tray.js";
-import {
-  CHECK_INTERVAL_MS,
-  checksForUpdates,
-  RESTART_TO_UPDATE_CHANNEL,
-  serverActionFor,
-  serverVersionWarning,
-  UPDATE_READY_CHANNEL,
-} from "./update.js";
+import { CHECK_INTERVAL_MS, checksForUpdates, RESTART_TO_UPDATE_CHANNEL, serverVersionWarning, UPDATE_READY_CHANNEL } from "./update.js";
 import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
@@ -35,19 +28,16 @@ import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 // address when it was chosen at install, which the page asks for (see serverSettings.ts); closing the window then
 // hides it in the tray, so the server stays on for the phone, until "Sair" in the tray's menu (see tray.ts), which
 // also opens the server's settings. The installed app can start with Windows, hidden in the tray (see startup.ts).
-// With a server elsewhere (APC_API_URL or config.json's apiUrl), or a clone's folder to start one from (APC_API_DIR or
-// config.json's apiDir), it uses that one instead: it starts a clone's server when it doesn't answer (see server.ts).
-// The window can't leave the app:
-// other addresses open in the system browser, and the page gets no Node access and no permissions: only the preload's
-// bridge (preload.cts), through which it asks for a Windows notification of an error or a warning, shown while the
-// window isn't focused; clicking it brings the window up with the bell's menu open. The installed app updates itself
-// from GitHub Releases (see update.ts): it checks once its window shows (or a minute after a hidden start) and every 6
-// hours, downloads a new version in the background, tells the page so it shows a notice, and installs it on quit, or
-// at once when the page asks. Without internet it keeps working on its version. The server it ships is always on its
-// version; a clone's server is kept on it too: when /health answers another one, it brings the clone to the app's
-// release (update-server.ps1) and shows "Atualizando o servidor" until it answers it, or warns about a server on
-// another computer. Only one copy runs at a time, since two would share the same localStorage, and opening it again
-// shows its window.
+// With a server on another computer (APC_API_URL or config.json's apiUrl) it uses that one instead, and starts none.
+// The window can't leave the app: other addresses open in the system browser, and the page gets no Node access and
+// no permissions: only the preload's bridge (preload.cts), through which it asks for a Windows notification of an
+// error or a warning, shown while the window isn't focused; clicking it brings the window up with the bell's menu
+// open. The installed app updates itself from GitHub Releases (see update.ts): it checks once its window shows (or a
+// minute after a hidden start) and every 6 hours, downloads a new version in the background, tells the page so it
+// shows a notice, and installs it on quit, or at once when the page asks. Without internet it keeps working on its
+// version. The server it ships is always on its version; a server on another computer that answers another one on
+// /health gets a warning. Only one copy runs at a time, since two would share the same localStorage, and opening it
+// again shows its window.
 
 /** The notifications on screen, kept so they still answer a click once their request is gone. */
 const shown = new Set<Notification>();
@@ -68,15 +58,6 @@ if (process.env.APC_USER_DATA) {
 }
 if (!app.requestSingleInstanceLock()) {
   app.exit(0);
-}
-
-/**
- * Finds the apps/api folder of a clone to start the API from: APC_API_DIR, then config.json's apiDir.
- * @param config What config.json sets.
- * @returns The folder, or undefined when none is set.
- */
-function apiDirOf(config: DesktopConfig): string | undefined {
-  return process.env.APC_API_DIR || config.apiDir;
 }
 
 /**
@@ -125,70 +106,6 @@ function createWindow(appUrl: string, hidden: boolean): BrowserWindow {
     return { action: "deny" };
   });
   return window;
-}
-
-/**
- * Starts the API on this computer when it doesn't answer, showing "Ligando o servidor" in the window meanwhile.
- * @param window The app's window.
- * @param apiUrl The API address.
- * @param config What config.json sets.
- */
-async function ensureApi(window: BrowserWindow, apiUrl: string, config: DesktopConfig): Promise<void> {
-  if (!isLocalApi(apiUrl) || (await apiAnswers(apiUrl))) {
-    return;
-  }
-  const apiDir = apiDirOf(config);
-  if (!apiDir || !startApi(apiDir)) {
-    console.warn(`The API at ${apiUrl} doesn't answer, and there is no API folder to start it from.`);
-    return;
-  }
-  console.log(`Starting the API from ${apiDir}`);
-  await window.loadFile(path.join(app.getAppPath(), "static", "starting.html"));
-  if (!(await waitForApi(apiUrl))) {
-    console.warn(`The API at ${apiUrl} didn't answer in time; opening the app anyway.`);
-  }
-}
-
-/**
- * Keeps the server on the app's version: when /health answers another one, it brings the API on this computer to the
- * app's release through update-server.ps1, showing "Atualizando o servidor" until it answers it, or warns about a
- * server on another computer. An API that doesn't answer, or a clone with no update script, is left as it is.
- * @param window The app's window.
- * @param apiUrl The API address.
- * @param config What config.json sets.
- */
-async function ensureApiVersion(window: BrowserWindow, apiUrl: string, config: DesktopConfig): Promise<void> {
-  const health = await readHealth(apiUrl);
-  if (!health) {
-    return;
-  }
-  const version = app.getVersion();
-  const action = serverActionFor(version, health.version, isLocalApi(apiUrl));
-  if (action === "warn") {
-    console.warn(`The API at ${apiUrl} is at ${health.version ?? "a version before 0.2.0"}, the app at ${version}.`);
-    // Over the window once it shows, since the app opens anyway.
-    const warn = () => void dialog.showMessageBox(window, { type: "warning", title: "APC Universal Repair", message: serverVersionWarning(version, health.version) });
-    if (window.isVisible()) {
-      warn();
-    } else {
-      window.once("show", warn);
-    }
-    return;
-  }
-  if (action === "none") {
-    return;
-  }
-  const apiDir = apiDirOf(config);
-  const updating = apiDir ? updateApi(apiDir, apiUrl, version) : undefined;
-  if (!updating) {
-    console.warn(`The API at ${apiUrl} is at ${health.version ?? "a version before 0.2.0"}, and there is no update script to bring it to ${version}.`);
-    return;
-  }
-  console.log(`Updating the API from ${apiDir} to ${version}`);
-  await window.loadFile(path.join(app.getAppPath(), "static", "starting.html"), { hash: "updating" });
-  if (!(await updating)) {
-    console.warn(`The API at ${apiUrl} isn't at ${version} after updating; opening the app anyway. See apps/api/logs/update.log.`);
-  }
 }
 
 /**
@@ -279,6 +196,28 @@ function notify(appUrl: string, sender: Electron.WebContents, senderUrl: string,
 }
 
 /**
+ * Warns over the window, once it shows, when a server on another computer answers another version than the app's: the
+ * web build the app carries expects the API of its own version. A server that doesn't answer is left to the screens,
+ * which say the connection failed.
+ * @param window The app's window.
+ * @param apiUrl The server's address.
+ */
+async function warnAboutServerVersion(window: BrowserWindow, apiUrl: string): Promise<void> {
+  const health = await readHealth(apiUrl);
+  const version = app.getVersion();
+  if (!health || health.version === version) {
+    return;
+  }
+  console.warn(`The API at ${apiUrl} is at ${health.version ?? "a version before 0.2.0"}, the app at ${version}.`);
+  const warn = () => void dialog.showMessageBox(window, { type: "warning", title: "APC Universal Repair", message: serverVersionWarning(version, health.version) });
+  if (window.isVisible()) {
+    warn();
+  } else {
+    window.once("show", warn);
+  }
+}
+
+/**
  * Brings the window up: shown, restored and focused.
  * @param window The app's window.
  */
@@ -348,7 +287,7 @@ app.on("window-all-closed", () => app.quit());
 void app.whenReady().then(async () => {
   const userData = app.getPath("userData");
   const config = adoptInstallerChoice(userData, readConfig(userData));
-  const bundled = usesBundledServer({ envApiUrl: process.env.APC_API_URL, envApiDir: process.env.APC_API_DIR, devUrl }, config);
+  const bundled = usesBundledServer({ envApiUrl: process.env.APC_API_URL, devUrl }, config);
   // APC_SERVER_PORT moves the bundled server off 3333, for the smoke test.
   const port = Number(process.env.APC_SERVER_PORT) || SERVER_PORT;
   // 127.0.0.1, not localhost, which Node may resolve to ::1 while the server listens on IPv4.
@@ -398,10 +337,9 @@ void app.whenReady().then(async () => {
     }
   } else {
     handleServerElsewhere(appUrl, apiUrl);
-    await ensureApi(window, apiUrl, config);
-    // Only the installed app, which follows the releases; a run from the clone would check its own clone out.
+    // Only the installed app, which follows the releases; a run from the repo talks to the API of its own checkout.
     if (installed) {
-      await ensureApiVersion(window, apiUrl, config);
+      void warnAboutServerVersion(window, apiUrl);
     }
   }
   await window.loadURL(appUrl);

@@ -1,7 +1,7 @@
 // Reads apps/api/.env (DATABASE_URL, PORT, PHOTOS_DIR) before anything uses it; variables already set win. With
 // APC_MIGRATE_ON_START=1, as the desktop app runs the server it ships, the API first applies the pending migrations of
-// its database (see db/migrate.ts), so it migrates itself on every update; elsewhere `db:migrate` does, before it starts
-// (start:home). Then it turns WAL on for SQLite and listens.
+// its database (see db/migrate.ts), so it migrates itself on every update; in development `db:migrate` does. Then it
+// turns WAL on for SQLite and listens.
 import "dotenv/config";
 import { buildApp } from "./app.js";
 import { prepareDatabase } from "./db/client.js";

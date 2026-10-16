@@ -62,7 +62,6 @@ uploads/
 # Desktop app installers (apps/desktop: pnpm dist)
 apps/desktop/release/
 
-# Logs of the API running in the background at home (apps/api/scripts/start-server.ps1 -Background)
-apps/api/logs/
+# The API's SQLite file in development, and the server the desktop app bundles (scripts/bundle-server.mjs)
 apps/api/data/
 apps/desktop/server/
