@@ -1,6 +1,56 @@
 // What the desktop app's preload hands the page (see apps/desktop/src/preload.cts): asking for a Windows notification
-// and hearing when one was clicked, and hearing when a new version is ready and asking to restart into it. In a
-// browser there is none, and the web app shows nothing extra.
+// and hearing when one was clicked, hearing when a new version is ready and asking to restart into it, and the
+// settings of the server the app runs (see apps/desktop/src/serverSettings.ts). In a browser there is none, and the
+// web app shows nothing extra.
+
+/** An old server to import: a PostgreSQL address or a SQLite file. */
+export type ImportSource = { kind: 'postgresql'; url: string } | { kind: 'sqlite'; file: string }
+/** How checking an import ended: it can start, or why not, with the problem when the old database only lacks migrations. */
+export type ImportCheck = ServerOutcome | { ok: false; message: string; problem: 'sourceBehind' | 'sourceNewer' | 'sourceNotApc' | 'targetHasData' }
+/** How an import ended: each table's rows on both sides and the photo files copied and not found, or why it didn't. */
+export type ImportOutcome =
+  | { ok: true; tables: Record<string, { source: number; target: number }>; photos: { copied: number; missing: number } }
+  | { ok: false; message: string }
+/** The server the desktop app runs, and its settings. */
+export type ServerBridge = {
+  /** Asks for a folder, such as the old server's photos, opening at defaultPath; null when the dialog was closed. */
+  chooseFolder: (defaultPath?: string) => Promise<string | null>
+  /** Asks for an old server's SQLite file, and gives its clone's photos folder; null when the dialog was closed. */
+  chooseSqliteFile: () => Promise<{ file: string; photos: string } | null>
+  /** Checks an import can start. */
+  checkImport: (source: ImportSource) => Promise<ImportCheck>
+  /** Imports an old server's data and photos into the database in use, with the server off meanwhile. */
+  importServer: (source: ImportSource, photosFrom?: string) => Promise<ImportOutcome>
+  /** Applies this version's migrations to an old server's database, which only adds tables. */
+  migrateImport: (source: ImportSource) => Promise<ServerOutcome>
+  /** Calls a listener each time the tray asks to open the Servidor dialog, and gives the way to stop. */
+  onOpen: (listener: () => void) => () => void
+  /** Reads the server's settings. */
+  settings: () => Promise<ServerSettings>
+  /** Moves the server to a PostgreSQL database, checked and migrated first, and restarts it there. */
+  usePostgresql: (url: string) => Promise<ServerOutcome>
+  /** Moves the server back to its SQLite file, and restarts it there. */
+  useSqlite: () => Promise<ServerOutcome>
+}
+/** How a change of database ended: done, or the message saying why not. */
+export type ServerOutcome = { ok: true } | { ok: false; message: string }
+/**
+ * The server's settings: the app's own server, on SQLite with its folder or PostgreSQL with its server, its photos'
+ * folder, port and phone's address, and whether PostgreSQL's address is still missing; a server on another computer;
+ * or another server that took the port when the app opened.
+ */
+export type ServerSettings =
+  | {
+      kind: 'own'
+      database: 'postgresql' | 'sqlite'
+      location: string
+      photos: string
+      port: number
+      phoneAddress?: string
+      needsAddress: boolean
+    }
+  | { kind: 'elsewhere'; address: string }
+  | { kind: 'portTaken'; port: number }
 
 /** The desktop app's bridge. */
 export type DesktopBridge = {
@@ -12,6 +62,8 @@ export type DesktopBridge = {
   onUpdateReady: (listener: (version: string) => void) => () => void
   /** Closes the app and installs the new version, which opens once it is in. */
   restartToUpdate: () => void
+  /** The server the app runs and its settings; without it, the user menu offers no Servidor dialog. */
+  server?: ServerBridge
 }
 
 declare global {
