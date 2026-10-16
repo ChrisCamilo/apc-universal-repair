@@ -1,7 +1,6 @@
-import { readdirSync } from "node:fs";
-import path from "node:path";
 import type { PrismaClient } from "../generated/prisma/client.js";
-import { API_DIR, databaseProvider } from "./provider.js";
+import { migrationNames } from "./migrate.js";
+import { databaseProvider } from "./provider.js";
 
 // Copies the data from one database to another, PostgreSQL or SQLite in either direction (`pnpm --filter @apc/api
 // db:copy`), to move the server from one to the other. Every table is copied as it is, ids, dates and keys included, in
@@ -95,11 +94,7 @@ export async function copyProblems(
  * @returns The names of the missing migrations, oldest first; all of them when it has none applied.
  */
 async function missingMigrations(client: PrismaClient, url: string): Promise<string[]> {
-  const folder = path.join(API_DIR, "prisma", ...(databaseProvider(url) === "sqlite" ? ["sqlite"] : []), "migrations");
-  const expected = readdirSync(folder, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
+  const expected = migrationNames(databaseProvider(url));
   const applied = await client
     .$queryRawUnsafe<{ migration_name: string }[]>(
       `SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`,
