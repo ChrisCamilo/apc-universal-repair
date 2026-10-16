@@ -1,9 +1,10 @@
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication } from "@playwright/test";
 import { TEST_USERS } from "@apc/shared/test-users";
+import { INSTALLER_CHOICE_FILE } from "../src/database.ts";
 import { MIN_WINDOW_SIZE, openingContentSize } from "../src/window.ts";
 import { startStubApi } from "./stubApi.ts";
 
@@ -121,4 +122,17 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", asyn
   } finally {
     await app.close();
   }
+});
+
+// Leaves the installer's PostgreSQL choice next to a config.json that sets the API address, opens the app, and checks
+// it moved the choice into config.json, keeping the address, and removed the installer's file.
+test("Desktop: the app takes the database the installer asked for", async () => {
+  const userData = mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
+  writeFileSync(path.join(userData, "config.json"), JSON.stringify({ apiUrl: api.url }));
+  writeFileSync(path.join(userData, INSTALLER_CHOICE_FILE), "postgresql");
+  const app = await launch(userData);
+  await expect(await app.firstWindow()).toHaveURL(/^app:\/\/apc\/login/);
+  expect(JSON.parse(readFileSync(path.join(userData, "config.json"), "utf8"))).toEqual({ apiUrl: api.url, database: "postgresql" });
+  expect(existsSync(path.join(userData, INSTALLER_CHOICE_FILE))).toBe(false);
+  await app.close();
 });
