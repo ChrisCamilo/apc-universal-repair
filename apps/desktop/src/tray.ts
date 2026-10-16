@@ -2,7 +2,8 @@ import type { NetworkInterfaceInfo } from "node:os";
 
 // The tray icon of the app that runs its own server (see bundledServer.ts): closing the window hides it there, so the
 // server stays on for the phone. Its menu opens the app, shows the address the phone reaches the server at (a click
-// copies it), turns starting with Windows on and off for the installed app, and quits, which turns the server off.
+// copies it), opens the server's settings (see serverSettings.ts), turns starting with Windows on and off for the
+// installed app, and quits, which turns the server off.
 
 /** Adapters that aren't the computer's network: virtual machines', WSL's and VPN tunnels'. */
 const VIRTUAL = /vEthernet|VirtualBox|VMware|Hyper-V|WSL|Loopback|Bluetooth|Tailscale|ZeroTier|VPN/i;
@@ -11,7 +12,7 @@ const WIFI = /Wi-?Fi|WLAN|Wireless|Sem fio/i;
 
 /** One item of the tray's menu, by what it does; main.ts gives each its action. */
 export type TrayItem =
-  | { id: "open" | "quit"; label: string }
+  | { id: "open" | "quit" | "settings"; label: string }
   | { id: "address"; label: string; enabled: boolean }
   | { id: "startup"; label: string; checked: boolean }
   | { id: "separator" };
@@ -46,6 +47,7 @@ export function trayMenu(state: { address?: string; port: number; startsWithWind
   return [
     { id: "open", label: "Abrir o APC" },
     address,
+    { id: "settings", label: "Servidor e banco de dados…" },
     ...(state.canStartWithWindows ? [{ id: "startup", label: "Iniciar com o Windows", checked: state.startsWithWindows } as const] : []),
     { id: "separator" },
     { id: "quit", label: "Sair" },

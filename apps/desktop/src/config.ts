@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 // Where the desktop app finds a server elsewhere and, for a server run from a clone on this computer, the folder it
@@ -11,7 +11,14 @@ export const DEFAULT_API_URL = "http://localhost:3333";
 /** The database the server on this computer uses, as the installer asked (see database.ts). */
 export type DatabaseChoice = "postgresql" | "sqlite";
 /** What config.json in the userData folder may set, e.g. `{ "apiUrl": "http://192.168.0.10:3333" }`. */
-export type DesktopConfig = { apiUrl?: string; apiDir?: string; database?: DatabaseChoice; trayNoticeShown?: boolean };
+export type DesktopConfig = {
+  apiUrl?: string;
+  apiDir?: string;
+  database?: DatabaseChoice;
+  /** PostgreSQL's address, sealed by safeStorage, never in plain text (see database.ts). */
+  databaseUrl?: string;
+  trayNoticeShown?: boolean;
+};
 
 /** Host names that point at this computer. */
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -41,6 +48,21 @@ export function parseConfig(text: string | undefined): DesktopConfig {
   } catch {
     return {};
   }
+}
+
+/**
+ * Reads config.json from the app's userData folder.
+ * @param userData The app's userData folder.
+ * @returns The settings it holds, none when there is no file.
+ */
+export function readConfig(userData: string): DesktopConfig {
+  let text: string | undefined;
+  try {
+    text = readFileSync(path.join(userData, "config.json"), "utf8");
+  } catch {
+    // No file yet.
+  }
+  return parseConfig(text);
 }
 
 /**
