@@ -29,6 +29,8 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+  # The "Banco de dados" page, SQLite or PostgreSQL, after the folder page (see the file).
+  include: build/installer.nsh
   # A newer installer run over the installed app upgrades it in place: it finds the installed version by the appId,
   # removes it silently and installs into the same folder, asking to close the app first when it is open. The data in
   # %APPDATA% (the session, the preferences, config.json) stays, then and on uninstall.
