@@ -110,6 +110,8 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 - To turn it on again: `Start-ScheduledTask "APC Universal Repair API"`, or the next time this user signs in.
 - To remove it: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which also turns the server off. A task made with `-AtStartup` must be removed as administrator.
 
+**With the server inside the app,** an install with no `apiDir` in `config.json` runs the server itself, with nothing else to set up: it stays on in the tray when the window closes, the tray's menu shows the phone's address, and the installer asks whether it starts with Windows. The steps below are for a server run from a clone.
+
 **The desktop app also turns it on.** When the APC Universal Repair desktop app opens and the server doesn't answer, it starts the server in the background the same way as the task (no window, same log), and shows "Ligando o servidor" until it answers. The server keeps running after the app closes, so the phone keeps working; `stop-server.ps1` turns it off. If the server is already on, the app leaves it alone.
 
 ### 4. Which steps need an administrator
@@ -291,6 +293,8 @@ powershell -ExecutionPolicy Bypass -File apps\api\scripts\install-task.ps1
 - Para desligar sem remover a tarefa, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\stop-server.ps1` (usuário normal). Ele desliga o servidor ligado pela tarefa ou pelo atalho. Parar a tarefa no Agendador de Tarefas não basta: o Windows encerra só o primeiro processo da tarefa, e a API continua rodando.
 - Para ligar de novo: `Start-ScheduledTask "APC Universal Repair API"`, ou na próxima vez que esse usuário entrar no Windows.
 - Para remover: `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que também desliga o servidor. Uma tarefa criada com `-AtStartup` precisa ser removida como administrador.
+
+**Com o servidor dentro do app,** uma instalação sem `apiDir` no `config.json` roda o servidor sozinha, sem mais nada para configurar: ele continua ligado na bandeja quando a janela fecha, o menu da bandeja mostra o endereço do celular, e o instalador pergunta se ele liga com o Windows. Os passos abaixo são para um servidor rodando de um clone.
 
 **O app desktop também liga o servidor.** Quando o app desktop do APC Universal Repair abre e o servidor não responde, ele liga o servidor em segundo plano do mesmo jeito que a tarefa (sem janela, mesmo log) e mostra "Ligando o servidor" até ele responder. O servidor continua ligado depois que o app fecha, para o celular continuar funcionando; o `stop-server.ps1` desliga. Se o servidor já estiver ligado, o app não mexe nele.
 
