@@ -21,7 +21,7 @@ extraResources:
   - from: server
     to: server
 # The server's native modules, which electron-builder leaves out of extra resources (see the script).
-afterPack: scripts/after-pack.cjs
+afterPack: scripts/after-pack.mjs
 win:
   # Every size Windows asks for, drawn by scripts/make-icon.ps1 from build/icon.png.
   icon: build/icon.ico
