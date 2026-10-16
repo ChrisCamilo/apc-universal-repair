@@ -14,6 +14,7 @@ test("Desktop: the bundled server keeps its data in userData", () => {
     PORT: "3333",
     APC_MIGRATIONS_DIR: path.join(serverDir, "migrations"),
     APC_API_VERSION: "0.3.1",
+    APC_MIGRATE_ON_START: "1",
   });
 });
 

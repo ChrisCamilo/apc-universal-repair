@@ -15,7 +15,8 @@ export type ServerSources = { envApiUrl?: string; envApiDir?: string; devUrl?: s
 /**
  * Builds the environment the bundled server runs with.
  * @param setup Where the server's files are, the app's userData folder, the port and the app's version.
- * @returns The variables: the SQLite file and the photos in userData, the port, the migrations it ships and its version.
+ * @returns The variables: the SQLite file and the photos in userData, the port, the migrations it ships, which it
+ * applies on start, and its version.
  */
 export function serverEnvironment(setup: { serverDir: string; userData: string; port: number; version: string }): Record<string, string> {
   const data = path.join(setup.userData, "data");
@@ -25,6 +26,7 @@ export function serverEnvironment(setup: { serverDir: string; userData: string; 
     PORT: String(setup.port),
     APC_MIGRATIONS_DIR: path.join(setup.serverDir, "migrations"),
     APC_API_VERSION: setup.version,
+    APC_MIGRATE_ON_START: "1",
   };
 }
 
