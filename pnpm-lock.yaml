@@ -199,12 +199,18 @@ importers:
       '@prisma/client':
         specifier: ^7.10.0
         version: 7.10.0(prisma@7.10.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(better-sqlite3@12.11.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3))(typescript@5.9.3)
+      better-sqlite3:
+        specifier: ^12.11.1
+        version: 12.11.1
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
       fastify:
         specifier: ^5.12.4
         version: 5.12.4
+      pg:
+        specifier: ^8.23.0
+        version: 8.23.0
       sharp:
         specifier: ^0.35.5
         version: 0.35.5(@types/node@22.20.2)
@@ -212,9 +218,15 @@ importers:
         specifier: ^4.6.2
         version: 4.6.2
     devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^9.6.0
+        version: 9.6.0
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.2
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
       prisma:
         specifier: ^7.10.0
         version: 7.10.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(better-sqlite3@12.11.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
@@ -231,9 +243,15 @@ importers:
         specifier: ^6.8.9
         version: 6.8.9(supports-color@8.1.1)
     devDependencies:
+      '@apc/api':
+        specifier: workspace:*
+        version: link:../api
       '@apc/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@electron/rebuild':
+        specifier: ^4.2.1
+        version: 4.2.1(supports-color@8.1.1)
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
@@ -246,6 +264,9 @@ importers:
       electron-builder:
         specifier: ^26.15.3
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@8.1.1)
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       typescript:
         specifier: ~6.0.3
         version: 6.0.3
@@ -2838,6 +2859,9 @@ packages:
 
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
+
+  '@types/better-sqlite3@9.6.0':
+    resolution: {integrity: sha512-ZEEwBSgMu7GYJOynoagg5X9JbxfL6dTJDsgViJIqh67jV44kyOr9RXfmFjLK5rzC4MWssP06t9hu/JwGDnUbCg==}
 
   '@types/cacheable-request@6.0.3':
     resolution: {integrity: sha512-IQ3EbTzGxIigb1I3qPZc1rWJnH0BmSKv5QYTalEwweFvyBDLSAe24zP0le/hyi7ecGfZVlIVAg4BZqb8WBwKqw==}
@@ -9847,6 +9871,10 @@ snapshots:
   '@types/babel__traverse@7.28.0':
     dependencies:
       '@babel/types': 7.29.8
+
+  '@types/better-sqlite3@9.6.0':
+    dependencies:
+      '@types/node': 22.20.2
 
   '@types/cacheable-request@6.0.3':
     dependencies:

@@ -1,7 +1,6 @@
-// Where the desktop app finds the API and, when the API runs on this computer, the folder it starts it from. Both
-// come from, in order: an environment variable, config.json in the app's userData folder, then the default. The API
-// address defaults to this computer; the API folder defaults to the apps/api of the clone the app was built from,
-// which the build writes into dist/build-info.json, so an installer built on the computer at home finds it by itself.
+// Where the desktop app finds a server elsewhere and, for a server run from a clone on this computer, the folder it
+// starts it from. Both come from, in order: an environment variable, then config.json in the app's userData folder.
+// Without either, the app runs the server it ships (see bundledServer.ts). The API address defaults to this computer.
 
 /** The API address when nothing sets another: the API of #154 on this computer. */
 export const DEFAULT_API_URL = "http://localhost:3333";
