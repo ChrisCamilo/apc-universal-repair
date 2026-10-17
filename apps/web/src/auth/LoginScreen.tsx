@@ -19,8 +19,9 @@ import { loginScreen } from './LoginScreen.styles.ts'
 // too many attempts, saying how many minutes to wait.
 // "Esqueceu a senha?" opens a notice to ask the workshop's admin for a new password, as there is no reset until
 // the real backend (EP-10); it closes on "Entendi", Escape or a click outside, and the focus goes back to the link.
-// "Criar conta" opens the sign-up. A notice, such as the session having expired, shows above the form until a login
-// is sent.
+// "Criar conta" opens the sign-up. In the desktop app, "Servidor e banco de dados" opens the Servidor dialog with no
+// session, so an old server can be imported while the database is still empty. A notice, such as the session having
+// expired, shows above the form until a login is sent.
 
 const FIELD_ORDER = ['username', 'password'] as const
 
@@ -33,9 +34,11 @@ type LoginScreenProps = {
   onLoggedIn: (user: SessionUser) => void
   /** Opens the sign-up. */
   onRegister: () => void
+  /** Opens the desktop app's Servidor dialog; without it, as in a browser, there is no link. */
+  onServerSettings?: () => void
 }
 
-export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScreenProps) {
+export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSettings }: LoginScreenProps) {
   const [credentials, setCredentials] = useState<Credentials>({ username: '', password: '' })
   const [errors, setErrors] = useState<LoginErrors>({})
   const [sending, setSending] = useState(false)
@@ -134,6 +137,11 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScree
             <Button type="button" variant="link" onClick={onRegister}>
               Criar conta
             </Button>
+            {onServerSettings && (
+              <Button type="button" variant="link" onClick={onServerSettings}>
+                Servidor e banco de dados
+              </Button>
+            )}
           </div>
         </form>
       </div>

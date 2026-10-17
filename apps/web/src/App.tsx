@@ -10,7 +10,9 @@ import { CatalogTab } from './dashboard/CatalogTab.tsx'
 import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
 import { InventoryTab } from './dashboard/InventoryTab.tsx'
 import { UserMenu } from './dashboard/UserMenu.tsx'
+import { desktopBridge } from './desktop/desktopBridge.ts'
 import { ServerSettingsProvider } from './desktop/ServerSettings.tsx'
+import { useOpenServerSettings } from './desktop/serverSettingsContext.ts'
 import { UpdateNotice } from './desktop/UpdateNotice.tsx'
 import { NotificationsMenu } from './notifications/NotificationsMenu.tsx'
 
@@ -56,9 +58,11 @@ export default function App() {
 }
 
 // The login, or straight on to the Dashboard when someone is already logged in. A login goes on to the route
-// that sent the user here, or to the Dashboard. After the API refused the session, it says the session expired.
+// that sent the user here, or to the Dashboard. After the API refused the session, it says the session expired. In the
+// desktop app it also opens the Servidor dialog.
 function LoginPage() {
   const { user, expired, setUser } = useSession()
+  const openServerSettings = useOpenServerSettings()
   const navigate = useNavigate()
   const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
   if (user === undefined) {
@@ -76,6 +80,7 @@ function LoginPage() {
         navigate(from, { replace: true })
       }}
       onRegister={() => navigate('/register', { state: { from } })}
+      onServerSettings={desktopBridge()?.server ? openServerSettings : undefined}
     />
   )
 }
