@@ -195,6 +195,24 @@ test('Web: Criar conta opens the sign-up', async () => {
   login.mockRestore()
 })
 
+// Without the way to open the Servidor dialog, as in a browser, the login has no link to it.
+test('Web: in a browser the login has no Servidor link', async () => {
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
+  await expect.element(screen.getByRole('button', { name: 'Criar conta' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Servidor e banco de dados' })).not.toBeInTheDocument()
+})
+
+// With the way to open the Servidor dialog, as in the desktop app, the link opens it, sending no login.
+test('Web: in the desktop app the login opens the Servidor dialog', async () => {
+  const onServerSettings = vi.fn()
+  const login = vi.spyOn(AUTH, 'login')
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} onServerSettings={onServerSettings} />)
+  await screen.getByRole('button', { name: 'Servidor e banco de dados' }).click()
+  expect(onServerSettings).toHaveBeenCalledTimes(1)
+  expect(login).not.toHaveBeenCalled()
+  login.mockRestore()
+})
+
 // Checks the password's toggle says what it will do, "Mostrar senha" and then "Ocultar senha".
 test('Web: the password toggle names its action', async () => {
   const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)

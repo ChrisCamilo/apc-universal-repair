@@ -138,8 +138,9 @@ test("Desktop: a PostgreSQL address that doesn't connect says so and keeps SQLit
   await app.close();
 });
 
-// Signs up on one install, then imports its SQLite file into a fresh one through the Servidor dialog, with the file
-// dialog answered as the user would, and checks every table's rows show and the account logs in on the new install.
+// Signs up on one install, then imports its SQLite file into a fresh one through the Servidor dialog, opened from the
+// login screen, with the file dialog answered as the user would, and checks every table's rows show and the account
+// logs in on the new install.
 test("Desktop: an old server's SQLite file imports into a fresh install", async () => {
   const old = await launch();
   const oldPage = await old.app.firstWindow();
@@ -154,7 +155,7 @@ test("Desktop: an old server's SQLite file imports into a fresh install", async 
   await app.evaluate(({ dialog }, chosen) => {
     dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [chosen] })) as typeof dialog.showOpenDialog;
   }, file);
-  await openServerSettings(app);
+  await page.getByRole("button", { name: "Servidor e banco de dados" }).click();
   const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
   await dialog.getByRole("button", { name: "Escolher o arquivo" }).click();
   await expect(dialog.getByText(file)).toBeVisible();

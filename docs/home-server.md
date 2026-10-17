@@ -51,7 +51,7 @@ The app updates itself: it checks the releases when it opens and every 6 hours, 
   ```
   With PostgreSQL chosen at install, the app asks for its address the first time it opens, before the server starts: `postgresql://postgres:<password>@localhost:5432/apc_universal_repair`. *Usar SQLite* takes the file instead.
 
-**Later, in the app.** *Servidor e banco de dados*, in the user menu and in the tray's menu, shows the database in use (SQLite with its folder, or PostgreSQL with its server), the photos' folder, the port and the phone's address.
+**Later, in the app.** *Servidor e banco de dados*, on the login screen, in the user menu and in the tray's menu, shows the database in use (SQLite with its folder, or PostgreSQL with its server), the photos' folder, the port and the phone's address.
 
 - **To PostgreSQL:** pick *PostgreSQL*, type its address and choose *Usar PostgreSQL*. The app checks it connects, creates the tables in an empty database (or adds the new ones to an APC database of an earlier version), and restarts the server on it. It refuses a database of a newer APC, or one holding another program's tables, saying why. The address holds the password, so `config.json` keeps it only sealed by Windows (DPAPI), which this Windows user alone can open.
 - **Back to SQLite:** pick *SQLite* and choose *Voltar ao SQLite*. The app forgets the address.
@@ -104,7 +104,7 @@ To restore, with the app quit, use `pg_restore` with the copy and put the photos
 
 ### 7. Importing an old server
 
-*Importar dados de outro servidor*, in *Servidor e banco de dados*, brings an old server's data and photos, such as a clone's, into the database in use. That database must be empty: import before anyone signs up on the new install.
+*Importar dados de outro servidor*, in *Servidor e banco de dados*, brings an old server's data and photos, such as a clone's, into the database in use. That database must be empty: import before anyone signs up on the new install, opening *Servidor e banco de dados* from the login screen.
 
 1. **Pick where the old data is:** *Arquivo SQLite*, such as an old clone's `apps\api\data\apc.db`, or *PostgreSQL*, its address (the `DATABASE_URL` in the old clone's `apps\api\.env`).
 2. **Pick the old photos folder,** such as the old clone's `apps\api\uploads\photos`. Picking the SQLite file fills it in.
@@ -147,7 +147,7 @@ O app se atualiza sozinho: ele consulta as releases ao abrir e a cada 6 horas, b
   ```
   Com o PostgreSQL escolhido na instalação, o app pede o endereço dele na primeira vez que abre, antes de ligar o servidor: `postgresql://postgres:<senha>@localhost:5432/apc_universal_repair`. O *Usar SQLite* fica com o arquivo no lugar.
 
-**Depois, no app.** O *Servidor e banco de dados*, no menu do usuário e no menu da bandeja, mostra o banco em uso (o SQLite com a pasta dele, ou o PostgreSQL com o servidor dele), a pasta das fotos, a porta e o endereço do celular.
+**Depois, no app.** O *Servidor e banco de dados*, na tela de login, no menu do usuário e no menu da bandeja, mostra o banco em uso (o SQLite com a pasta dele, ou o PostgreSQL com o servidor dele), a pasta das fotos, a porta e o endereço do celular.
 
 - **Para o PostgreSQL:** escolha *PostgreSQL*, digite o endereço e clique em *Usar PostgreSQL*. O app confere se ele conecta, cria as tabelas num banco vazio (ou acrescenta as novas num banco do APC de uma versão anterior) e religa o servidor nele. Ele recusa um banco de um APC mais novo, ou com tabelas de outro programa, dizendo por quê. O endereço tem a senha, então o `config.json` só o guarda lacrado pelo Windows (DPAPI), que só este usuário do Windows abre.
 - **Voltar ao SQLite:** escolha *SQLite* e clique em *Voltar ao SQLite*. O app esquece o endereço.
@@ -200,7 +200,7 @@ Para restaurar, com o app fechado, use o `pg_restore` com a cópia e coloque a p
 
 ### 7. Importar um servidor antigo
 
-O *Importar dados de outro servidor*, no *Servidor e banco de dados*, traz os dados e as fotos de um servidor antigo, como o de um clone, para o banco em uso. Esse banco precisa estar vazio: importe antes de alguém criar uma conta na instalação nova.
+O *Importar dados de outro servidor*, no *Servidor e banco de dados*, traz os dados e as fotos de um servidor antigo, como o de um clone, para o banco em uso. Esse banco precisa estar vazio: importe antes de alguém criar uma conta na instalação nova, abrindo o *Servidor e banco de dados* pela tela de login.
 
 1. **Escolha onde estão os dados antigos:** *Arquivo SQLite*, como o `apps\api\data\apc.db` de um clone antigo, ou *PostgreSQL*, o endereço dele (o `DATABASE_URL` do `apps\api\.env` do clone antigo).
 2. **Escolha a pasta das fotos antigas,** como o `apps\api\uploads\photos` do clone antigo. Escolher o arquivo SQLite já a preenche.
