@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -16,12 +16,14 @@ const APP_DIR = path.join(import.meta.dirname, "..");
 /**
  * Opens the app with its own server, with a new userData folder and a free port.
  * @param options What the app is started with besides its folder, e.g. "--hidden", what to leave in its userData
- * folder first, such as the installer's answers, and a userData folder of an earlier run to open again.
+ * folder first, such as the installer's answers, by their path in it, and a userData folder of an earlier run to open
+ * again.
  * @returns The running app, its userData folder and its server's address.
  */
 async function launch(options: { args?: string[]; files?: Record<string, string>; userData?: string } = {}) {
   const userData = options.userData ?? mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
   for (const [name, text] of Object.entries(options.files ?? {})) {
+    mkdirSync(path.dirname(path.join(userData, name)), { recursive: true });
     writeFileSync(path.join(userData, name), text);
   }
   const port = await freePort();
@@ -232,6 +234,19 @@ test("Desktop: the SQLite file is encrypted with a key kept for the next start",
   await expect(page).toHaveURL(/^app:\/\/apc\//, { timeout: 60_000 });
   await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("dialog", { name: "Chave de recuperação do banco" })).toHaveCount(0);
+  await app.close();
+});
+
+// Starts the app on a database from before its migrations, as an update that brings new ones finds it, and checks the
+// server copies it to data/backups first, named after the app's version, then migrates it and answers.
+test("Desktop: the database is copied before the server applies new migrations", async () => {
+  const { app, userData } = await launch({ files: { [path.join("data", "apc.db")]: "" } });
+  const page = await app.firstWindow();
+  await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
+  const version = await app.evaluate(({ app: electronApp }) => electronApp.getVersion());
+  expect(readdirSync(path.join(userData, "data", "backups"))).toEqual([expect.stringMatching(new RegExp(`^apc-before-${version.replaceAll(".", "\\.")}-.+\\.db$`))]);
+  await keepRecoveryKey(page);
+  await signUp(page);
   await app.close();
 });
 

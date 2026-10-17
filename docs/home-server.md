@@ -40,7 +40,7 @@ Download `APC-Universal-Repair-Setup-<version>.exe` from the latest [release](ht
 
 The server runs while the app runs. Closing the window keeps the app in the tray, by the clock, with the server on; *Sair* in the tray's menu quits the app and turns the server off. Its data is in `%APPDATA%\APC Universal Repair\data`, and its log in `%APPDATA%\APC Universal Repair\logs\api.log`. Uninstalling the app keeps the data.
 
-The app updates itself: it checks the releases when it opens and every 6 hours, downloads a new version in the background, and installs it when it closes, or at once from the notice. The server updates with it, along with its database.
+The app updates itself: it checks the releases when it opens and every 6 hours, downloads a new version in the background, and installs it when it closes, or at once from the notice. The server updates with it, along with its database: on its first start after an update that brings new migrations, it copies the SQLite file to `data\backups` before applying them (see step 6).
 
 ### 2. Pick the database
 
@@ -90,6 +90,14 @@ If the phone gets no answer:
 
 Keep a copy of the data, for example once a week, on a USB drive or in the cloud.
 
+**Before each update, by itself:** when an update brings new migrations, the server copies the SQLite file to `%APPDATA%\APC Universal Repair\data\backups` before applying them, as `apc-before-<version>-<date>.db`, named after the version that migrated it. Only the last 3 copies stay. A copy is encrypted with the same key as the file, and it must open before the server migrates: when it can't be made, the server doesn't migrate, and `logs\api.log` says why. To go back to one, as after an update that went wrong:
+
+1. Quit the app with *Sair*.
+2. Rename the copy to `apc.db` and put it in place of `data\apc.db`.
+3. Install the version from before the one in the copy's name, from its [release](https://github.com/ChrisCamilo/apc-universal-repair/releases), and open it: the version in the name would migrate the copy again.
+
+The copies are in the same folder as the data, so they don't replace a backup elsewhere. The photos aren't copied, since migrations don't touch them. PostgreSQL isn't copied: before an update, keep a `pg_dump` as below.
+
 **SQLite:** quit the app with *Sair*, so the server is off, and copy the `%APPDATA%\APC Universal Repair\data` folder, which holds the database, encrypted, and the photos. Keep the recovery key apart from the copy. To restore on this computer and Windows user, with the app quit, put the folder back. On another computer, or after reinstalling Windows, install the app and import the copy's `apc.db` with its recovery key (step 7).
 
 **PostgreSQL:** copy the `data\photos` folder as above, and the database with its tools, in its installation folder (adjust the version):
@@ -138,7 +146,7 @@ Baixe o `APC-Universal-Repair-Setup-<versão>.exe` da [release](https://github.c
 
 O servidor roda enquanto o app roda. Fechar a janela deixa o app na bandeja, perto do relógio, com o servidor ligado; o *Sair* do menu da bandeja fecha o app e desliga o servidor. Os dados ficam em `%APPDATA%\APC Universal Repair\data`, e o log em `%APPDATA%\APC Universal Repair\logs\api.log`. Desinstalar o app mantém os dados.
 
-O app se atualiza sozinho: ele consulta as releases ao abrir e a cada 6 horas, baixa a versão nova em segundo plano e a instala quando fecha, ou na hora pelo aviso. O servidor se atualiza junto, com o banco dele.
+O app se atualiza sozinho: ele consulta as releases ao abrir e a cada 6 horas, baixa a versão nova em segundo plano e a instala quando fecha, ou na hora pelo aviso. O servidor se atualiza junto, com o banco dele: na primeira vez que liga depois de uma atualização que traz migrações novas, ele copia o arquivo SQLite para `data\backups` antes de aplicá-las (veja o passo 6).
 
 ### 2. Escolher o banco de dados
 
@@ -187,6 +195,14 @@ Se o celular não tiver resposta:
 ### 6. Backup
 
 Guarde uma cópia dos dados, por exemplo uma vez por semana, num pendrive ou na nuvem.
+
+**Antes de cada atualização, sozinho:** quando uma atualização traz migrações novas, o servidor copia o arquivo SQLite para `%APPDATA%\APC Universal Repair\data\backups` antes de aplicá-las, como `apc-before-<versão>-<data>.db`, com o nome da versão que o migrou. Só as 3 últimas cópias ficam. Uma cópia é criptografada com a mesma chave do arquivo, e precisa abrir antes de o servidor migrar: quando ela não pode ser feita, o servidor não migra, e o `logs\api.log` diz por quê. Para voltar a uma delas, como depois de uma atualização que deu errado:
+
+1. Feche o app pelo *Sair*.
+2. Renomeie a cópia para `apc.db` e coloque-a no lugar do `data\apc.db`.
+3. Instale a versão anterior à que está no nome da cópia, pela [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) dela, e abra: a versão do nome migraria a cópia de novo.
+
+As cópias ficam na mesma pasta dos dados, então não substituem um backup em outro lugar. As fotos não são copiadas, porque as migrações não mexem nelas. O PostgreSQL não é copiado: antes de uma atualização, guarde um `pg_dump` como abaixo.
 
 **SQLite:** feche o app pelo *Sair*, para o servidor desligar, e copie a pasta `%APPDATA%\APC Universal Repair\data`, que tem o banco, criptografado, e as fotos. Guarde a chave de recuperação longe da cópia. Para restaurar neste computador e usuário do Windows, com o app fechado, coloque a pasta de volta. Em outro computador, ou depois de reinstalar o Windows, instale o app e importe o `apc.db` da cópia com a chave de recuperação dele (passo 7).
 
