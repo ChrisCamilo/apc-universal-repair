@@ -230,8 +230,8 @@ test('Web: an old database of an earlier version is updated first, once the user
   expect(calls.importServer).toHaveBeenCalledWith(source, undefined)
 })
 
-// Starts with the key's recovery copy still to be kept: it shows by itself, with the key; "Depois" closes it without
-// saying it is kept, and on the next opening "Já guardei a chave" says so and closes it.
+// Starts with the key's recovery copy still to be kept, and checks it shows by itself, with the key, and "Depois"
+// closes it without saying it is kept, so it shows again next time.
 test('Web: the key\'s recovery copy shows on opening until it is kept', async () => {
   const { calls } = giveServer({ ...ON_SQLITE, recoveryKeyPending: true })
   calls.recoveryKey.mockResolvedValue(RECOVERY_KEY)
