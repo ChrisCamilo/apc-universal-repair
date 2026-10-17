@@ -184,7 +184,11 @@ Since then the API at home, the Windows desktop app and the photo compression ar
 
 ### Contributing
 
-Commit messages, branch names, epics and task conventions are defined in [AGENTS.md](AGENTS.md). Every task has an estimate, priority, size, assignee, its epic and the tasks that block it.
+Commit messages, branch names, epics and task conventions are defined in [AGENTS.md](AGENTS.md). Every task has an estimate, priority, size, assignee, its epic and the tasks that block it. Outside contributions are only taken with a signed assignment of their rights (CLA), so the code keeps one author.
+
+### License
+
+All rights reserved. The code is public to be read and evaluated only: copying, using, changing or distributing it, in whole or in part, needs the author's written permission (see [LICENSE](LICENSE)). The third-party software it ships keeps its own licenses, listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); the audit of every package's license is in [docs/licenses.md](docs/licenses.md).
 
 ### Goal
 
@@ -376,7 +380,11 @@ Depois disso, a API em casa, o app desktop para Windows e a compressão das foto
 
 ### Como Contribuir
 
-Mensagens de commit, nomes de branch, épicos e convenções das tasks estão no [AGENTS.md](AGENTS.md). Toda task tem estimativa, prioridade, tamanho, responsável, o épico e as tasks que a bloqueiam.
+Mensagens de commit, nomes de branch, épicos e convenções das tasks estão no [AGENTS.md](AGENTS.md). Toda task tem estimativa, prioridade, tamanho, responsável, o épico e as tasks que a bloqueiam. Contribuições de fora só são aceitas com uma cessão dos direitos delas assinada (CLA), para o código manter um só autor.
+
+### Licença
+
+Todos os direitos reservados. O código é público só para ser lido e avaliado: copiar, usar, alterar ou distribuir, no todo ou em parte, pede a autorização por escrito do autor (veja o [LICENSE](LICENSE)). Os softwares de terceiros que ele leva mantêm as próprias licenças, listadas no [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); a auditoria da licença de cada pacote está no [docs/licenses.md](docs/licenses.md).
 
 ### Objetivo
 
