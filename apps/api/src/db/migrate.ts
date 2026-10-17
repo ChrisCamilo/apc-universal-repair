@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import pg from "pg";
+import { keyScript, sqliteKey } from "./cipher.js";
 import { API_DIR, databaseProvider, sqliteFile, type DatabaseProvider } from "./provider.js";
 
 // Applies the migrations of the database DATABASE_URL names, without the Prisma CLI, so the desktop app can migrate
@@ -94,7 +95,8 @@ export async function checkDatabase(url: string): Promise<DatabaseCheck> {
 }
 
 /**
- * Opens a database through its own driver, creating a SQLite file's folder when it is missing.
+ * Opens a database through its own driver, creating a SQLite file's folder when it is missing, with its key when it is
+ * encrypted (see cipher.ts).
  * @param url The database's DATABASE_URL.
  * @returns The connection.
  */
@@ -103,6 +105,10 @@ async function connect(url: string): Promise<Connection> {
     const file = sqliteFile(url);
     mkdirSync(path.dirname(file), { recursive: true });
     const db = new Database(file);
+    const key = sqliteKey(url);
+    if (key) {
+      db.exec(keyScript(key));
+    }
     return {
       exec: async (sql) => void db.exec(sql),
       recorded: async () => db.prepare(`SELECT migration_name, finished_at, rolled_back_at FROM "_prisma_migrations"`).all() as never,
