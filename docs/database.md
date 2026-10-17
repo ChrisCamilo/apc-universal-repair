@@ -132,6 +132,7 @@ erDiagram
 - **An empty database migrates in one go.** `db:migrate` applies every pending migration in one database session. A new computer (see [home-server.md](home-server.md)) gets them all at once, while the computer at home took them one at a time. CI's `migrations` job builds an empty PostgreSQL and an empty SQLite file from them, checks each matches its schema, seeds it and runs the API's tests that need a database.
 - **Helpers in `pg_temp` live for the session.** A migration that creates a function in `pg_temp`, such as the name-key helper `list_key`, drops it at its end, so the next one can create it again. `20261008120000_drop_list_key` drops the helper that `20261008000000_item_lists` left behind, without changing a migration already applied.
 - **An applied migration never changes.** A fix goes into a new migration. Even one dated between older ones is applied on a database that has the later ones, as long as it is harmless there.
+- **A copy before migrating.** The server the desktop app ships copies its SQLite file before applying pending migrations (`src/db/backup.ts`): WAL checkpointed, the file copied to `backups/apc-before-<version>-<date>.db` beside it, with the same key, out of WAL mode and checked with `quick_check`, keeping the last 3. A migration that fails rolls back on its own; the copy is for one that succeeds and harms the data. A copy that can't be made stops the server before migrating. PostgreSQL isn't copied: the log asks for a `pg_dump`.
 
 ### SQLite
 
@@ -211,6 +212,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 - **Um banco vazio migra de uma vez.** O `db:migrate` aplica todas as migrações pendentes numa única sessão do banco. Um computador novo (veja [home-server.md](home-server.md#-português-brasil)) recebe todas de uma vez, enquanto o computador de casa as recebeu uma a uma. O job `migrations` do CI monta um PostgreSQL vazio e um arquivo SQLite vazio a partir delas, confere que cada um bate com o seu schema, roda o seed e os testes da API que precisam de um banco.
 - **Funções auxiliares em `pg_temp` duram a sessão.** Uma migração que cria uma função em `pg_temp`, como a `list_key` da chave dos nomes, a remove no fim, para a próxima poder criá-la de novo. A `20261008120000_drop_list_key` remove a função que a `20261008000000_item_lists` deixou, sem mudar uma migração já aplicada.
 - **Uma migração aplicada nunca muda.** Uma correção vai numa migração nova. Mesmo uma com data entre as antigas é aplicada num banco que já tem as seguintes, desde que não faça mal ali.
+- **Uma cópia antes de migrar.** O servidor que o app desktop traz copia o arquivo SQLite antes de aplicar as migrações pendentes (`src/db/backup.ts`): o WAL juntado ao arquivo, o arquivo copiado para `backups/apc-before-<versão>-<data>.db` ao lado dele, com a mesma chave, fora do modo WAL e conferido com o `quick_check`, mantendo as 3 últimas. Uma migração que falha se desfaz sozinha; a cópia é para uma que dá certo e estraga os dados. Uma cópia que não pode ser feita para o servidor antes de migrar. O PostgreSQL não é copiado: o log pede um `pg_dump`.
 
 ### SQLite
 
