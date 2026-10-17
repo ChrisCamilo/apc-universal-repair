@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { writeConfig, type DatabaseChoice, type DesktopConfig } from "./config.ts";
@@ -8,12 +9,17 @@ import { writeConfig, type DatabaseChoice, type DesktopConfig } from "./config.t
 // the app moves it into config.json as `database` on its next start, keeping a choice already there. For PostgreSQL
 // the app then asks for the address before its server starts. The address holds a password, so config.json keeps it
 // as `databaseUrl` only sealed by Electron's safeStorage, which Windows' DPAPI ties to the Windows user: the file
-// alone opens nothing on another account or computer, and an address that can't be opened is asked for again.
+// alone opens nothing on another account or computer, and an address that can't be opened is asked for again. The
+// SQLite file is encrypted with a key the app makes the first time it runs the server on it (apps/api/src/db/cipher.ts),
+// sealed the same way as `sqliteKey`. The Servidor dialog shows its recovery copy until the user says it is kept apart
+// from the computer: without it, a copy of the file opens nowhere else.
 
 /** The choices the installer offers. */
 const CHOICES: readonly DatabaseChoice[] = ["sqlite", "postgresql"];
 /** The file the installer leaves its choice in, in userData: "sqlite" or "postgresql". */
 export const INSTALLER_CHOICE_FILE = "installer-database.txt";
+/** A SQLite key: 32 bytes in hex, as the server takes it. */
+const KEY_FORMAT = /^[0-9a-f]{64}$/;
 
 /** What a database holds, as the server's checkDatabase task answers (apps/api/src/db/migrate.ts). */
 export type DatabaseCheck = { missing: string[]; newer: string[]; foreign: boolean };
@@ -69,6 +75,33 @@ export function databaseCheckMessage(check: DatabaseCheck): string | undefined {
 export function describePostgresql(url: string): string {
   const { host, pathname } = new URL(url);
   return `${host}${pathname}`;
+}
+
+/**
+ * Gets the SQLite file's key, making one the first time: 32 random bytes, sealed in config.json, with its recovery copy
+ * still to be shown.
+ * @param userData The app's userData folder, where config.json is.
+ * @param config What config.json sets now.
+ * @param sealer safeStorage.
+ * @returns The key, or undefined when config.json keeps one this Windows user can't open: a new one wouldn't open the
+ * file either.
+ */
+export function ensureSqliteKey(userData: string, config: DesktopConfig, sealer: Sealer): string | undefined {
+  if (config.sqliteKey) {
+    return unseal(config.sqliteKey, sealer);
+  }
+  const key = randomBytes(32).toString("hex");
+  writeConfig(userData, { ...config, sqliteKey: seal(key, sealer), sqliteKeySaved: false });
+  return key;
+}
+
+/**
+ * Writes a key as its recovery copy is shown: in uppercase, in groups of 8.
+ * @param key The key, in hex.
+ * @returns e.g. "1F2E3D4C-…", 8 groups.
+ */
+export function formatRecoveryKey(key: string): string {
+  return key.toUpperCase().match(/.{8}/g)!.join("-");
 }
 
 /**
@@ -131,22 +164,49 @@ export function oldPhotosFolder(sqliteFile: string): string {
  * @returns The address, or undefined when there is none or it can't be opened, as on another Windows user.
  */
 export function openDatabaseUrl(config: DesktopConfig, sealer: Sealer): string | undefined {
-  if (!config.databaseUrl) {
-    return undefined;
-  }
-  try {
-    return sealer.decryptString(Buffer.from(config.databaseUrl, "base64"));
-  } catch {
-    return undefined;
-  }
+  return config.databaseUrl ? unseal(config.databaseUrl, sealer) : undefined;
 }
 
 /**
- * Seals a PostgreSQL address for config.json.
- * @param url The address.
- * @param sealer safeStorage.
- * @returns The sealed address, in base64.
+ * Reads a SQLite key typed back from its recovery copy, with or without its dashes and spaces, in any case.
+ * @param text What was typed.
+ * @returns The key, or undefined when it isn't one.
  */
-export function sealDatabaseUrl(url: string, sealer: Sealer): string {
-  return sealer.encryptString(url).toString("base64");
+export function readRecoveryKey(text: string): string | undefined {
+  const key = text.replace(/[\s-]/g, "").toLowerCase();
+  return KEY_FORMAT.test(key) ? key : undefined;
+}
+
+/**
+ * Tells whether the Servidor dialog shows the SQLite key's recovery copy: a key was made, and the user hasn't said
+ * they kept it.
+ * @param config What config.json sets.
+ * @returns True until the user says so.
+ */
+export function recoveryKeyPending(config: DesktopConfig): boolean {
+  return config.sqliteKey !== undefined && config.sqliteKeySaved !== true;
+}
+
+/**
+ * Seals a secret for config.json, such as PostgreSQL's address or the SQLite key.
+ * @param text The secret.
+ * @param sealer safeStorage.
+ * @returns The sealed secret, in base64.
+ */
+export function seal(text: string, sealer: Sealer): string {
+  return sealer.encryptString(text).toString("base64");
+}
+
+/**
+ * Opens a secret config.json keeps sealed.
+ * @param sealed The sealed secret, in base64.
+ * @param sealer safeStorage.
+ * @returns The secret, or undefined when this Windows user can't open it.
+ */
+function unseal(sealed: string, sealer: Sealer): string | undefined {
+  try {
+    return sealer.decryptString(Buffer.from(sealed, "base64"));
+  } catch {
+    return undefined;
+  }
 }
