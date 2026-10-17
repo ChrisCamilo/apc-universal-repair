@@ -44,7 +44,7 @@ The app updates itself: it checks the releases when it opens and every 6 hours, 
 
 ### 2. Pick the database
 
-- **SQLite, recommended for one computer:** nothing to install. The data stays in a file on this computer, `data\apc.db`. There is no password to create, a backup is a copy of the folder, and only this computer reaches it.
+- **SQLite, recommended for one computer:** nothing to install. The data stays in a file on this computer, `data\apc.db`, encrypted with a key the app keeps (see *The recovery key* below). There is no password to create, a backup is a copy of the folder, and only this computer reaches it.
 - **PostgreSQL:** a separate database server, for whoever already uses PostgreSQL or wants more than one computer on the same database. Install it first: its installer asks for a password for the `postgres` user, so write it down, and it runs as a Windows service that starts with the computer (in `services.msc`, `postgresql-x64-<version>` should be *Running* and *Automatic*). Then create the database: in the Start menu, open *SQL Shell (psql)*, press Enter until it asks for the password, type it, and run:
   ```sql
   CREATE DATABASE apc_universal_repair;
@@ -56,6 +56,8 @@ The app updates itself: it checks the releases when it opens and every 6 hours, 
 - **To PostgreSQL:** pick *PostgreSQL*, type its address and choose *Usar PostgreSQL*. The app checks it connects, creates the tables in an empty database (or adds the new ones to an APC database of an earlier version), and restarts the server on it. It refuses a database of a newer APC, or one holding another program's tables, saying why. The address holds the password, so `config.json` keeps it only sealed by Windows (DPAPI), which this Windows user alone can open.
 - **Back to SQLite:** pick *SQLite* and choose *Voltar ao SQLite*. The app forgets the address.
 - **Switching doesn't move the data:** the server starts on the other database as it is. To bring the data along, import it (step 7), which needs the new database empty.
+
+**The recovery key.** On SQLite, the file is encrypted, so a copy of it, on a USB drive or a stolen disk, can't be read. Its key is made the first time the server runs, and kept in `config.json` sealed by Windows, for this Windows user alone. The first time, the app shows the key's *recovery copy*, 8 groups of letters and numbers: write it on paper or keep it in a password manager, away from this computer, and choose *Já guardei a chave*. It shows on each opening until then. Without it, a copy of the file opens on no other computer, and the data is lost if Windows is reinstalled. A file from a version before this one is encrypted on its first start, by itself.
 
 ### 3. Allow it through the firewall
 
@@ -88,7 +90,7 @@ If the phone gets no answer:
 
 Keep a copy of the data, for example once a week, on a USB drive or in the cloud.
 
-**SQLite:** quit the app with *Sair*, so the server is off, and copy the `%APPDATA%\APC Universal Repair\data` folder, which holds the database and the photos. To restore, with the app quit, put the folder back.
+**SQLite:** quit the app with *Sair*, so the server is off, and copy the `%APPDATA%\APC Universal Repair\data` folder, which holds the database, encrypted, and the photos. Keep the recovery key apart from the copy. To restore on this computer and Windows user, with the app quit, put the folder back. On another computer, or after reinstalling Windows, install the app and import the copy's `apc.db` with its recovery key (step 7).
 
 **PostgreSQL:** copy the `data\photos` folder as above, and the database with its tools, in its installation folder (adjust the version):
 
@@ -106,7 +108,7 @@ To restore, with the app quit, use `pg_restore` with the copy and put the photos
 
 *Importar dados de outro servidor*, in *Servidor e banco de dados*, brings an old server's data and photos, such as a clone's, into the database in use. That database must be empty: import before anyone signs up on the new install, opening *Servidor e banco de dados* from the login screen.
 
-1. **Pick where the old data is:** *Arquivo SQLite*, such as an old clone's `apps\api\data\apc.db`, or *PostgreSQL*, its address (the `DATABASE_URL` in the old clone's `apps\api\.env`).
+1. **Pick where the old data is:** *Arquivo SQLite*, such as an old clone's `apps\api\data\apc.db`, or *PostgreSQL*, its address (the `DATABASE_URL` in the old clone's `apps\api\.env`). A file from another install of the app, such as a backup, is encrypted: type its recovery key in *Chave de recuperação do arquivo*. A clone's file has none.
 2. **Pick the old photos folder,** such as the old clone's `apps\api\uploads\photos`. Picking the SQLite file fills it in.
 3. **Choose *Importar*.** When the old database is of an earlier version, the dialog says so and offers *Atualizar o banco antigo e importar*: it applies this version's migrations to it first, which only add tables. The server is off during the copy, and if anything fails nothing is kept. The dialog then lists each table's rows on both sides and the photo files copied.
 4. **Close the dialog and log in** with the old accounts. Sessions aren't copied, so the phone logs in again too. Keep the old data until you're sure.
@@ -140,7 +142,7 @@ O app se atualiza sozinho: ele consulta as releases ao abrir e a cada 6 horas, b
 
 ### 2. Escolher o banco de dados
 
-- **SQLite, recomendado para um computador só:** nada para instalar. Os dados ficam num arquivo neste computador, o `data\apc.db`. Não há senha para criar, o backup é copiar a pasta, e só este computador chega a ele.
+- **SQLite, recomendado para um computador só:** nada para instalar. Os dados ficam num arquivo neste computador, o `data\apc.db`, criptografado com uma chave que o app guarda (veja *A chave de recuperação* abaixo). Não há senha para criar, o backup é copiar a pasta, e só este computador chega a ele.
 - **PostgreSQL:** um servidor de banco de dados separado, para quem já usa PostgreSQL ou quer mais de um computador no mesmo banco. Instale-o antes: o instalador dele pede uma senha para o usuário `postgres`, então anote, e ele roda como um serviço do Windows que liga com o computador (no `services.msc`, o `postgresql-x64-<versão>` deve estar *Em execução* e *Automático*). Depois crie o banco: no menu Iniciar, abra o *SQL Shell (psql)*, aperte Enter até ele pedir a senha, digite-a e rode:
   ```sql
   CREATE DATABASE apc_universal_repair;
@@ -152,6 +154,8 @@ O app se atualiza sozinho: ele consulta as releases ao abrir e a cada 6 horas, b
 - **Para o PostgreSQL:** escolha *PostgreSQL*, digite o endereço e clique em *Usar PostgreSQL*. O app confere se ele conecta, cria as tabelas num banco vazio (ou acrescenta as novas num banco do APC de uma versão anterior) e religa o servidor nele. Ele recusa um banco de um APC mais novo, ou com tabelas de outro programa, dizendo por quê. O endereço tem a senha, então o `config.json` só o guarda lacrado pelo Windows (DPAPI), que só este usuário do Windows abre.
 - **Voltar ao SQLite:** escolha *SQLite* e clique em *Voltar ao SQLite*. O app esquece o endereço.
 - **Trocar não leva os dados:** o servidor liga no outro banco como ele está. Para levar os dados junto, importe-os (passo 7), o que pede o banco novo vazio.
+
+**A chave de recuperação.** No SQLite, o arquivo é criptografado, então uma cópia dele, num pendrive ou num disco roubado, não pode ser lida. A chave dele é criada na primeira vez que o servidor liga, e guardada no `config.json` lacrada pelo Windows, só para este usuário do Windows. Na primeira vez, o app mostra a *cópia de recuperação* da chave, 8 grupos de letras e números: anote num papel ou guarde num gerenciador de senhas, longe deste computador, e clique em *Já guardei a chave*. Até lá, ela aparece toda vez que o app abre. Sem ela, uma cópia do arquivo não abre em nenhum outro computador, e os dados se perdem se o Windows for reinstalado. Um arquivo de uma versão anterior a esta é criptografado sozinho na primeira vez que o servidor liga.
 
 ### 3. Liberar no firewall
 
@@ -184,7 +188,7 @@ Se o celular não tiver resposta:
 
 Guarde uma cópia dos dados, por exemplo uma vez por semana, num pendrive ou na nuvem.
 
-**SQLite:** feche o app pelo *Sair*, para o servidor desligar, e copie a pasta `%APPDATA%\APC Universal Repair\data`, que tem o banco e as fotos. Para restaurar, com o app fechado, coloque a pasta de volta.
+**SQLite:** feche o app pelo *Sair*, para o servidor desligar, e copie a pasta `%APPDATA%\APC Universal Repair\data`, que tem o banco, criptografado, e as fotos. Guarde a chave de recuperação longe da cópia. Para restaurar neste computador e usuário do Windows, com o app fechado, coloque a pasta de volta. Em outro computador, ou depois de reinstalar o Windows, instale o app e importe o `apc.db` da cópia com a chave de recuperação dele (passo 7).
 
 **PostgreSQL:** copie a pasta `data\photos` como acima, e o banco com as ferramentas dele, na pasta de instalação (ajuste a versão):
 
@@ -202,7 +206,7 @@ Para restaurar, com o app fechado, use o `pg_restore` com a cópia e coloque a p
 
 O *Importar dados de outro servidor*, no *Servidor e banco de dados*, traz os dados e as fotos de um servidor antigo, como o de um clone, para o banco em uso. Esse banco precisa estar vazio: importe antes de alguém criar uma conta na instalação nova, abrindo o *Servidor e banco de dados* pela tela de login.
 
-1. **Escolha onde estão os dados antigos:** *Arquivo SQLite*, como o `apps\api\data\apc.db` de um clone antigo, ou *PostgreSQL*, o endereço dele (o `DATABASE_URL` do `apps\api\.env` do clone antigo).
+1. **Escolha onde estão os dados antigos:** *Arquivo SQLite*, como o `apps\api\data\apc.db` de um clone antigo, ou *PostgreSQL*, o endereço dele (o `DATABASE_URL` do `apps\api\.env` do clone antigo). Um arquivo de outra instalação do app, como um backup, é criptografado: digite a chave de recuperação dele em *Chave de recuperação do arquivo*. O arquivo de um clone não tem.
 2. **Escolha a pasta das fotos antigas,** como o `apps\api\uploads\photos` do clone antigo. Escolher o arquivo SQLite já a preenche.
 3. **Clique em *Importar*.** Quando o banco antigo é de uma versão anterior, o diálogo avisa e oferece *Atualizar o banco antigo e importar*: ele aplica antes as migrações desta versão, que só acrescentam tabelas. O servidor fica desligado durante a cópia, e se algo falhar nada fica. O diálogo então lista as linhas de cada tabela nos dois lados e os arquivos de fotos copiados.
 4. **Feche o diálogo e entre** com as contas antigas. As sessões não são copiadas, então o celular entra de novo também. Guarde os dados antigos até ter certeza.
