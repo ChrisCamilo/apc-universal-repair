@@ -122,7 +122,19 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", asyn
       require: "undefined",
       process: "undefined",
       bridge: ["notify", "onOpenNotifications", "onUpdateReady", "restartToUpdate", "server"],
-      server: ["checkImport", "chooseFolder", "chooseSqliteFile", "importServer", "migrateImport", "onOpen", "settings", "usePostgresql", "useSqlite"],
+      server: [
+        "checkImport",
+        "chooseFolder",
+        "chooseSqliteFile",
+        "importServer",
+        "migrateImport",
+        "onOpen",
+        "recoveryKey",
+        "recoveryKeySaved",
+        "settings",
+        "usePostgresql",
+        "useSqlite",
+      ],
     });
     await expect(page.getByTestId("setup.update-notice")).toBeEmpty();
   } finally {

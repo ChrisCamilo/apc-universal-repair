@@ -3,14 +3,14 @@
 // - server.mjs: the API with its JavaScript dependencies, built by esbuild from apps/api/src, and tasks.mjs, the
 //   database tasks the app runs beside it (apps/api/src/db/tasks.ts), sharing their code through chunks/;
 // - migrations/: its SQL files, one folder per database, which the API applies on start (APC_MIGRATIONS_DIR);
-// - node_modules/: the two native modules esbuild can't bundle: better-sqlite3, compiled for this Electron by
+// - node_modules/: the two native modules esbuild can't bundle: better-sqlite3, which the workspace installs as
+//   better-sqlite3-multiple-ciphers to encrypt the SQLite file (pnpm-workspace.yaml), compiled for this Electron by
 //   @electron/rebuild, as its releases have no prebuilt binaries for it (which takes Visual Studio's C++ build tools),
 //   and sharp, whose binaries work on any Node.
 // The native modules only change with their versions or Electron's, so they are fetched again only then. On a
 // computer other than Windows only the JavaScript and the migrations are bundled, as the app ships for Windows only.
 import { execSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { rebuild } from "@electron/rebuild";
 import { build } from "esbuild";
@@ -27,17 +27,20 @@ const NATIVE = ["better-sqlite3", "sharp"];
 const OUT = path.join(DESKTOP, "server");
 
 /**
- * Reads the version of a package as a folder resolves it.
+ * Reads the package a folder resolves a name to, which an override may have swapped for another.
  * @param from A file in the folder that depends on it, e.g. the API's package.json.
- * @param name The package.
- * @returns Its version, e.g. "12.11.1".
+ * @param name The name it imports, e.g. "better-sqlite3".
+ * @returns How package.json asks for it: its version, e.g. "12.11.1", or the package it is with its version, e.g.
+ * "npm:better-sqlite3-multiple-ciphers@12.11.1".
  */
 function versionOf(from, name) {
-  let folder = path.dirname(createRequire(from).resolve(name));
-  while (!existsSync(path.join(folder, "package.json")) || JSON.parse(readFileSync(path.join(folder, "package.json"), "utf8")).name !== name) {
+  // Node's lookup, by hand: resolving follows pnpm's links to the package's real folder, named after what it is.
+  let folder = path.dirname(from);
+  while (!existsSync(path.join(folder, "node_modules", name, "package.json"))) {
     folder = path.dirname(folder);
   }
-  return JSON.parse(readFileSync(path.join(folder, "package.json"), "utf8")).version;
+  const found = JSON.parse(readFileSync(path.join(folder, "node_modules", name, "package.json"), "utf8"));
+  return found.name === name ? found.version : `npm:${found.name}@${found.version}`;
 }
 
 mkdirSync(OUT, { recursive: true });

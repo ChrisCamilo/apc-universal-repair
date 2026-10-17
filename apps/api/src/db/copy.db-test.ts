@@ -53,7 +53,8 @@ after(async () => {
 function migrated(url: string): PrismaClient {
   const run = spawnSync("pnpm", ["exec", "tsx", "scripts/db.ts", "migrate"], {
     cwd: API_DIR,
-    env: { ...process.env, DATABASE_URL: url },
+    // A target of its own, plain: APC_SQLITE_KEY is the source's key.
+    env: { ...process.env, DATABASE_URL: url, APC_SQLITE_KEY: "" },
     shell: true,
     encoding: "utf8",
   });

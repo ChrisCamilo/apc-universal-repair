@@ -93,6 +93,13 @@ contextBridge.exposeInMainWorld("apcDesktop", {
       };
     },
     /**
+     * Gives the SQLite key's recovery copy, while the user hasn't said it is kept.
+     * @returns The key in groups of 8, or null.
+     */
+    recoveryKey: () => ipcRenderer.invoke("apc:server-recovery-key"),
+    /** Says the user kept the recovery copy, which stops it showing. */
+    recoveryKeySaved: () => ipcRenderer.invoke("apc:server-recovery-key-saved"),
+    /**
      * Reads the server's settings.
      * @returns The database in use and where, the port and the phone's address, or where a server elsewhere is.
      */

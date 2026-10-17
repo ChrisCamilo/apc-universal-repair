@@ -16,6 +16,10 @@ export type DesktopConfig = {
   database?: DatabaseChoice;
   /** PostgreSQL's address, sealed by safeStorage, never in plain text (see database.ts). */
   databaseUrl?: string;
+  /** The SQLite file's key, sealed by safeStorage, never in plain text (see database.ts). */
+  sqliteKey?: string;
+  /** Whether the user said they kept the key's recovery copy, which the Servidor dialog then stops showing. */
+  sqliteKeySaved?: boolean;
   trayNoticeShown?: boolean;
 };
 

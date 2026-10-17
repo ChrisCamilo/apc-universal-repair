@@ -15,8 +15,10 @@ import { ServerSettingsContext } from './serverSettingsContext.ts'
 // from an old server's PostgreSQL or SQLite file, with its photos, into the database in use while it is empty. An old
 // database of an earlier version is updated first, once the user agrees. After a change, closing the dialog opens the
 // app again on the new data. When PostgreSQL was chosen at install with no address yet, the dialog opens by itself and
-// stays until the server has a database. With a server the app doesn't run, it only says where the server is. In a
-// browser there is no bridge, and nothing is drawn.
+// stays until the server has a database. The SQLite file is encrypted, and while its key's recovery copy isn't kept
+// the app shows it on opening, until the user says it is; an encrypted file of another install imports with its
+// recovery copy. With a server the app doesn't run, it only says where the server is. In a browser there is no
+// bridge, and nothing is drawn.
 
 /** The databases offered. */
 const DATABASES = [
@@ -75,6 +77,8 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
   const [changed, setChanged] = useState(false)
   // Each opening starts the dialog afresh, on the database in use and with no import picked.
   const [openings, setOpenings] = useState(0)
+  // The SQLite key's recovery copy, shown on opening while it isn't kept.
+  const [recoveryKey, setRecoveryKey] = useState<string | null>(null)
 
   /** Reads the settings again, as after a change. */
   const load = async () => {
@@ -83,7 +87,8 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
     return read
   }
 
-  // Read the settings on start, opening the dialog when PostgreSQL's address is missing, and hear the tray.
+  // Read the settings on start, opening the dialog when PostgreSQL's address is missing, or showing the key's recovery
+  // copy while it isn't kept, and hear the tray.
   useEffect(() => {
     if (!server) {
       return
@@ -92,6 +97,8 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
       setSettings(read)
       if (read.kind === 'own' && read.needsAddress) {
         setOpen(true)
+      } else if (read.kind === 'own' && read.recoveryKeyPending) {
+        void server.recoveryKey().then(setRecoveryKey)
       }
     })
     return server.onOpen(() => {
@@ -136,7 +143,57 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
           }}
         />
       )}
+      {server && recoveryKey && (
+        <RecoveryKeyDialog
+          recoveryKey={recoveryKey}
+          onLater={() => setRecoveryKey(null)}
+          onSaved={async () => {
+            await server.recoveryKeySaved()
+            setRecoveryKey(null)
+          }}
+        />
+      )}
     </ServerSettingsContext.Provider>
+  )
+}
+
+type RecoveryKeyDialogProps = {
+  recoveryKey: string
+  /** Closes it, to show it again on the next opening. */
+  onLater: () => void
+  /** Says it is kept, which stops it showing. */
+  onSaved: () => Promise<void>
+}
+
+function RecoveryKeyDialog({ recoveryKey, onLater, onSaved }: RecoveryKeyDialogProps) {
+  const { classes, ids } = serverSettingsRecipe()
+  return (
+    <Dialog
+      open
+      onClose={onLater}
+      title="Chave de recuperação do banco"
+      actions={
+        <>
+          <Button variant="secondary" size="sm" onClick={onLater}>
+            Depois
+          </Button>
+          <Button size="sm" onClick={() => void onSaved()}>
+            Já guardei a chave
+          </Button>
+        </>
+      }
+    >
+      <Text size="sm" tone="muted">
+        Os dados deste computador ficam num arquivo criptografado. Esta chave abre esse arquivo em outro computador, ou
+        depois de reinstalar o Windows: sem ela, uma cópia do arquivo não serve para nada.
+      </Text>
+      <p aria-label="Chave de recuperação" className={classes.recoveryKey()} data-testid={ids.recoveryKey}>
+        {recoveryKey}
+      </p>
+      <Text size="sm" tone="muted">
+        Anote-a num papel ou num gerenciador de senhas, longe deste computador. Ela aparece até você dizer que guardou.
+      </Text>
+    </Dialog>
   )
 }
 
@@ -164,13 +221,20 @@ function ServerSettingsDialog({ open, settings, onClose, onChanged }: ServerSett
   const [sourceKind, setSourceKind] = useState('sqlite')
   const [sourceFile, setSourceFile] = useState<string>()
   const [sourceUrl, setSourceUrl] = useState('')
+  const [sourceKey, setSourceKey] = useState('')
   const [photosFrom, setPhotosFrom] = useState<string>()
   const [importing, setImporting] = useState(false)
   const [importNote, setImportNote] = useState<Note>()
   const [behind, setBehind] = useState(false)
   const [result, setResult] = useState<Extract<ImportOutcome, { ok: true }>>()
   const source: ImportSource | undefined =
-    sourceKind === 'sqlite' ? (sourceFile ? { kind: 'sqlite', file: sourceFile } : undefined) : sourceUrl.trim() ? { kind: 'postgresql', url: sourceUrl.trim() } : undefined
+    sourceKind === 'sqlite'
+      ? sourceFile
+        ? { kind: 'sqlite', file: sourceFile, ...(sourceKey.trim() ? { key: sourceKey.trim() } : {}) }
+        : undefined
+      : sourceUrl.trim()
+        ? { kind: 'postgresql', url: sourceUrl.trim() }
+        : undefined
 
   /** Moves the server to the database picked, then says how it went. */
   const switchDatabase = async (to: 'postgresql' | 'sqlite') => {
@@ -303,7 +367,7 @@ function ServerSettingsDialog({ open, settings, onClose, onChanged }: ServerSett
               Banco em uso
             </dt>
             <dd className={classes.value()} data-testid={ids.value}>
-              {own.database === 'sqlite' ? `SQLite, em ${own.location}` : `PostgreSQL, em ${own.location}`}
+              {own.database === 'sqlite' ? `SQLite criptografado, em ${own.location}` : `PostgreSQL, em ${own.location}`}
             </dd>
             <dt className={classes.term()} data-testid={ids.term}>
               Fotos
@@ -373,7 +437,7 @@ function ServerSettingsDialog({ open, settings, onClose, onChanged }: ServerSett
                 setImportNote(undefined)
               }}
             />
-            {sourceKind === 'sqlite' ? (
+            {sourceKind === 'sqlite' && (
               <div className={classes.pick()} data-testid={ids.pick}>
                 <Button variant="secondary" size="sm" onClick={() => void chooseFile()}>
                   {sourceFile ? 'Escolher outro arquivo' : 'Escolher o arquivo'}
@@ -382,7 +446,20 @@ function ServerSettingsDialog({ open, settings, onClose, onChanged }: ServerSett
                   {sourceFile ?? 'O apc.db em apps\\api\\data do clone'}
                 </Text>
               </div>
-            ) : (
+            )}
+            {sourceKind === 'sqlite' && sourceFile && (
+              <TextField
+                label="Chave de recuperação do arquivo"
+                kind="password"
+                value={sourceKey}
+                onValueChange={(key) => {
+                  setSourceKey(key)
+                  setBehind(false)
+                }}
+                helper="Só para o arquivo criptografado de outra instalação do app; o de um clone não tem"
+              />
+            )}
+            {sourceKind === 'postgresql' && (
               <TextField
                 label="Endereço do PostgreSQL antigo"
                 kind="password"

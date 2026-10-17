@@ -3,8 +3,8 @@ packages:
   - "packages/*"
 allowBuilds:
   '@prisma/engines': true
-  # SQLite's native module, downloaded prebuilt for the platform.
-  better-sqlite3: true
+  # SQLite's native module, with SQLite3 Multiple Ciphers to encrypt the file, downloaded prebuilt for the platform.
+  better-sqlite3-multiple-ciphers: true
   electron: true
   # The Squirrel installer of electron-builder; the desktop app ships as NSIS and portable only.
   electron-winstaller: false
@@ -13,3 +13,7 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - fastify@5.12.4
   - zod@4.6.2
+overrides:
+  # better-sqlite3 with SQLite3 Multiple Ciphers built in, under the same name, so the API, its scripts and Prisma's
+  # adapter open the SQLite file encrypted (see apps/api/src/db/provider.ts).
+  better-sqlite3: npm:better-sqlite3-multiple-ciphers@12.11.1

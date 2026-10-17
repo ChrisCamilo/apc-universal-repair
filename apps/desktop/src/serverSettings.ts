@@ -2,22 +2,26 @@ import os from "node:os";
 import path from "node:path";
 import { dialog, ipcMain, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import { startBundledServer } from "./bundledProcess.js";
-import { serverData, type ServerSetup } from "./bundledServer.js";
+import { serverData, serverEnvironment, type ServerSetup } from "./bundledServer.js";
 import { readConfig, writeConfig } from "./config.js";
 import {
   databaseCheckMessage,
   describePostgresql,
+  ensureSqliteKey,
+  formatRecoveryKey,
   importProblemMessage,
   isPostgresqlUrl,
   needsDatabaseAddress,
   oldPhotosFolder,
   openDatabaseUrl,
-  sealDatabaseUrl,
+  readRecoveryKey,
+  recoveryKeyPending,
+  seal,
   type DatabaseCheck,
   type ImportProblem,
 } from "./database.js";
 import { apiAnswers, waitForApi } from "./server.js";
-import { runServerTask } from "./serverTasks.js";
+import { runServerTask, type ServerTask } from "./serverTasks.js";
 import { phoneAddress } from "./tray.js";
 
 // The server the app runs (see bundledServer.ts) and its settings, which the page shows in its Servidor dialog
@@ -26,8 +30,10 @@ import { phoneAddress } from "./tray.js";
 // and migrated first and kept sealed (see database.ts), or back to SQLite, which restarts the server; and imports an
 // old server (see apps/api/src/db/import.ts) into the database in use, with the server off meanwhile. The database
 // tasks run beside the server (see serverTasks.ts). With PostgreSQL chosen at install and no address yet, the server
-// waits for the page to ask for it. When another server already answers on the port, such as an old clone's, the app
-// uses it and changes nothing. Only the app's own page may ask, as with the notifications.
+// waits for the page to ask for it. On SQLite the file is encrypted with a key made the first time (see database.ts):
+// the dialog shows its recovery copy until the user says it is kept, and an encrypted file of another install imports
+// with its recovery copy. When another server already answers on the port, such as an old clone's, the app uses it and
+// changes nothing. Only the app's own page may ask, as with the notifications.
 
 /** The channels the page asks on (also written in preload.cts, which can't import this file). */
 const CHANNELS = {
@@ -36,6 +42,8 @@ const CHANNELS = {
   checkImport: "apc:server-check-import",
   importServer: "apc:server-import",
   migrateImport: "apc:server-migrate-import",
+  recoveryKey: "apc:server-recovery-key",
+  recoveryKeySaved: "apc:server-recovery-key-saved",
   settings: "apc:server-settings",
   usePostgresql: "apc:server-use-postgresql",
   useSqlite: "apc:server-use-sqlite",
@@ -58,8 +66,8 @@ export type ServerHost = {
   /** How it runs, but for the database. */
   setup: Omit<ServerSetup, "databaseUrl">;
 };
-/** An old server to import: a PostgreSQL address or a SQLite file. */
-type Source = { kind: "postgresql"; url: string } | { kind: "sqlite"; file: string };
+/** An old server to import: a PostgreSQL address, or a SQLite file with the recovery copy of its key when it is encrypted. */
+type Source = { kind: "postgresql"; url: string } | { kind: "sqlite"; file: string; key?: string };
 
 /** Whether another server answered on the port when the app opened, so the app runs none. */
 let portTaken = false;
@@ -79,11 +87,15 @@ async function checkImport(host: ServerHost, source: Source): Promise<Outcome | 
   if (from === to) {
     return { ok: false, message: "Esse é o banco em uso. Escolha o banco do servidor antigo." };
   }
+  const keys = sourceKeys(source);
+  if (keys === null) {
+    return { ok: false, message: "A chave de recuperação tem 64 letras e números, de 0 a 9 e de A a F; os traços não contam." };
+  }
   try {
-    const problem = await runServerTask<ImportProblem | null>(host.setup.serverDir, { task: "importProblem", from, to });
+    const problem = await runTask<ImportProblem | null>(host, { task: "importProblem", from, to, keys });
     return problem ? { ok: false, message: importProblemMessage(problem), problem } : { ok: true };
   } catch (error) {
-    return { ok: false, message: `Não foi possível abrir o banco antigo: ${(error as Error).message}` };
+    return { ok: false, message: `Não foi possível abrir o banco antigo: ${openError(error as Error)}` };
   }
 }
 
@@ -123,8 +135,7 @@ async function chooseSqliteFile(window: BrowserWindow): Promise<{ file: string; 
  * @returns PostgreSQL's address, or the SQLite file in userData.
  */
 function databaseUrlInUse(host: ServerHost): string {
-  const config = readConfig(host.setup.userData);
-  return (config.database === "postgresql" && openDatabaseUrl(config, safeStorage)) || `file:${serverData(host.setup.userData).sqliteFile}`;
+  return ownSetup(host).databaseUrl ?? `file:${serverData(host.setup.userData).sqliteFile}`;
 }
 
 /**
@@ -158,7 +169,8 @@ export function handleServerElsewhere(appUrl: string, apiUrl: string): void {
 }
 
 /**
- * Answers the page's requests about the server: its settings, changing its database and importing an old one.
+ * Answers the page's requests about the server: its settings, changing its database, importing an old one, and the
+ * SQLite key's recovery copy.
  * @param host The server.
  */
 export function handleServerSettings(host: ServerHost): void {
@@ -170,6 +182,8 @@ export function handleServerSettings(host: ServerHost): void {
   handle(host, CHANNELS.checkImport, (source: Source) => checkImport(host, source));
   handle(host, CHANNELS.migrateImport, (source: Source) => migrateImport(host, source));
   handle(host, CHANNELS.importServer, (source: Source, photosFrom?: string) => importServer(host, source, photosFrom));
+  handle(host, CHANNELS.recoveryKey, async () => recoveryKey(host));
+  handle(host, CHANNELS.recoveryKeySaved, async () => writeConfig(host.setup.userData, { ...readConfig(host.setup.userData), sqliteKeySaved: true }));
 }
 
 /**
@@ -187,9 +201,10 @@ async function importServer(host: ServerHost, source: Source, photosFrom?: strin
   const to = databaseUrlInUse(host);
   await stopServer?.();
   try {
-    const result = await runServerTask(host.setup.serverDir, {
+    const result = await runTask(host, {
       task: "import",
       setup: { from: sourceUrl(source), to, photosFrom, photosTo: serverData(host.setup.userData).photos },
+      keys: sourceKeys(source) ?? undefined,
     });
     return { ok: true, ...(result as object) };
   } catch (error) {
@@ -207,11 +222,45 @@ async function importServer(host: ServerHost, source: Source, photosFrom?: strin
  */
 async function migrateImport(host: ServerHost, source: Source): Promise<Outcome> {
   try {
-    await runServerTask(host.setup.serverDir, { task: "migrate", url: sourceUrl(source) });
+    await runTask(host, { task: "migrate", url: sourceUrl(source), keys: sourceKeys(source) ?? undefined });
     return { ok: true };
   } catch (error) {
-    return { ok: false, message: `Não foi possível atualizar o banco antigo: ${(error as Error).message}` };
+    return { ok: false, message: `Não foi possível atualizar o banco antigo: ${openError(error as Error)}` };
   }
+}
+
+/**
+ * Words why a database didn't open, saying what an encrypted SQLite file without its key looks like.
+ * @param error What the task failed with.
+ * @returns The reason.
+ */
+function openError(error: Error): string {
+  return /file is not a database/.test(error.message)
+    ? "o arquivo é criptografado, e a chave de recuperação dele não veio ou não é a dele; ou ele não é um banco."
+    : error.message;
+}
+
+/**
+ * Builds the server's setup on the database in use: PostgreSQL's address, or the SQLite file with its key, made the
+ * first time.
+ * @param host The server.
+ * @returns The setup.
+ */
+function ownSetup(host: ServerHost): ServerSetup {
+  const config = readConfig(host.setup.userData);
+  const databaseUrl = config.database === "postgresql" ? openDatabaseUrl(config, safeStorage) : undefined;
+  return { ...host.setup, databaseUrl, sqliteKey: databaseUrl ? undefined : ensureSqliteKey(host.setup.userData, config, safeStorage) };
+}
+
+/**
+ * Gives the SQLite key's recovery copy while the user hasn't said it is kept.
+ * @param host The server.
+ * @returns The key in groups of 8, or null once it is kept, or on PostgreSQL.
+ */
+function recoveryKey(host: ServerHost): string | null {
+  const config = readConfig(host.setup.userData);
+  const key = config.database !== "postgresql" && recoveryKeyPending(config) ? ownSetup(host).sqliteKey : undefined;
+  return key ? formatRecoveryKey(key) : null;
 }
 
 /**
@@ -222,8 +271,14 @@ async function migrateImport(host: ServerHost, source: Source): Promise<Outcome>
  */
 async function runServer(host: ServerHost, databaseUrl: string | undefined): Promise<boolean> {
   await stopServer?.();
+  const sqliteKey = databaseUrl ? undefined : ensureSqliteKey(host.setup.userData, readConfig(host.setup.userData), safeStorage);
+  if (!databaseUrl && !sqliteKey) {
+    console.warn("config.json keeps a SQLite key this Windows user can't open; the server stays off.");
+    stopServer = undefined;
+    return false;
+  }
   console.log(`Starting the bundled server from ${host.setup.serverDir}`);
-  stopServer = startBundledServer({ ...host.setup, databaseUrl });
+  stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey });
   const answers = await waitForApi(host.apiUrl);
   if (!answers) {
     console.warn(`The bundled server didn't answer in time. See logs/api.log in ${host.setup.userData}.`);
@@ -232,10 +287,22 @@ async function runServer(host: ServerHost, databaseUrl: string | undefined): Pro
 }
 
 /**
+ * Runs a database task beside the server, with the server's environment: its database in use and the SQLite file's
+ * key.
+ * @param host The server.
+ * @param task The task.
+ * @returns What it gave.
+ */
+function runTask<T>(host: ServerHost, task: ServerTask): Promise<T> {
+  return runServerTask<T>(host.setup.serverDir, serverEnvironment(ownSetup(host)), task);
+}
+
+/**
  * Builds the settings the page shows.
  * @param host The server.
- * @returns The database in use and where, the photos' folder, the port and the phone's address, and whether
- * PostgreSQL's address is still missing; or that another server took the port.
+ * @returns The database in use and where, the photos' folder, the port and the phone's address, whether PostgreSQL's
+ * address is still missing, and whether the SQLite key's recovery copy is still to be kept; or that another server
+ * took the port.
  */
 function settings(host: ServerHost): object {
   if (portTaken) {
@@ -253,7 +320,21 @@ function settings(host: ServerHost): object {
     port: host.setup.port,
     phoneAddress: phoneAddress(os.networkInterfaces()),
     needsAddress: needsDatabaseAddress(config, safeStorage),
+    recoveryKeyPending: !onPostgresql && recoveryKeyPending(config),
   };
+}
+
+/**
+ * Gives the keys an import's task needs for the old server: the recovery copy of an encrypted SQLite file's key.
+ * @param source The old server.
+ * @returns The keys by DATABASE_URL, undefined when it needs none, or null when the copy typed isn't a key.
+ */
+function sourceKeys(source: Source): Record<string, string> | undefined | null {
+  if (source.kind !== "sqlite" || !source.key?.trim()) {
+    return undefined;
+  }
+  const key = readRecoveryKey(source.key);
+  return key ? { [sourceUrl(source)]: key } : null;
 }
 
 /**
@@ -308,7 +389,7 @@ async function usePostgresql(host: ServerHost, url: string): Promise<Outcome> {
   }
   let check: DatabaseCheck;
   try {
-    check = await runServerTask<DatabaseCheck>(host.setup.serverDir, { task: "check", url });
+    check = await runTask<DatabaseCheck>(host, { task: "check", url });
   } catch (error) {
     return { ok: false, message: `Não foi possível conectar ao PostgreSQL: ${(error as Error).message}` };
   }
@@ -317,11 +398,11 @@ async function usePostgresql(host: ServerHost, url: string): Promise<Outcome> {
     return { ok: false, message: refused };
   }
   try {
-    await runServerTask(host.setup.serverDir, { task: "migrate", url });
+    await runTask(host, { task: "migrate", url });
   } catch (error) {
     return { ok: false, message: `Não foi possível preparar o banco: ${(error as Error).message}` };
   }
-  writeConfig(host.setup.userData, { ...readConfig(host.setup.userData), database: "postgresql", databaseUrl: sealDatabaseUrl(url, safeStorage) });
+  writeConfig(host.setup.userData, { ...readConfig(host.setup.userData), database: "postgresql", databaseUrl: seal(url, safeStorage) });
   return (await runServer(host, url))
     ? { ok: true }
     : { ok: false, message: `O servidor não ligou com esse banco. Veja logs\\api.log em ${host.setup.userData}.` };

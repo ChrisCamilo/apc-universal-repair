@@ -3,18 +3,22 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
-import { writeConfig } from "./config.ts";
+import { readConfig, writeConfig } from "./config.ts";
 import {
   adoptInstallerChoice,
   databaseCheckMessage,
   describePostgresql,
+  ensureSqliteKey,
+  formatRecoveryKey,
   importProblemMessage,
   INSTALLER_CHOICE_FILE,
   isPostgresqlUrl,
   needsDatabaseAddress,
   oldPhotosFolder,
   openDatabaseUrl,
-  sealDatabaseUrl,
+  readRecoveryKey,
+  recoveryKeyPending,
+  seal,
   type Sealer,
 } from "./database.ts";
 
@@ -69,7 +73,7 @@ test("Desktop: a choice already made, or one that isn't a choice, is kept as it 
 // address opens back from it.
 test("Desktop: PostgreSQL's address is kept sealed, never in plain text in config.json", () => {
   const folder = userData();
-  writeConfig(folder, { database: "postgresql", databaseUrl: sealDatabaseUrl(ADDRESS, SEALER) });
+  writeConfig(folder, { database: "postgresql", databaseUrl: seal(ADDRESS, SEALER) });
   const text = readFileSync(path.join(folder, "config.json"), "utf8");
   assert.equal(text.includes(ADDRESS), false);
   assert.equal(text.includes("freio-1234"), false);
@@ -81,7 +85,7 @@ test("Desktop: PostgreSQL's address is kept sealed, never in plain text in confi
 // not once one opens, nor for SQLite.
 test("Desktop: the app asks for PostgreSQL's address until it has one it can open", () => {
   const refusing: Sealer = { ...SEALER, decryptString: () => assert.fail("Not this Windows user's.") };
-  const sealed = sealDatabaseUrl(ADDRESS, SEALER);
+  const sealed = seal(ADDRESS, SEALER);
   assert.equal(needsDatabaseAddress({ database: "postgresql" }, SEALER), true);
   assert.equal(needsDatabaseAddress({ database: "postgresql", databaseUrl: sealed }, refusing), true);
   assert.equal(needsDatabaseAddress({ database: "postgresql", databaseUrl: sealed }, SEALER), false);
@@ -117,4 +121,40 @@ test("Desktop: an import says why it can't start, and finds the clone's photos",
     oldPhotosFolder(path.join("C:", "APC", "apps", "api", "data", "apc.db")),
     path.join("C:", "APC", "apps", "api", "uploads", "photos"),
   );
+});
+
+// Makes the SQLite key on a first start, and checks it is 64 hex digits, sealed in config.json and not in plain text,
+// with its recovery copy still to be kept; the next start gets the same key, and keeps the other settings.
+test("Desktop: the SQLite key is made once and kept sealed in config.json", () => {
+  const folder = userData();
+  const key = ensureSqliteKey(folder, { database: "sqlite" }, SEALER)!;
+  assert.match(key, /^[0-9a-f]{64}$/);
+  const config = readConfig(folder);
+  assert.equal(readFileSync(path.join(folder, "config.json"), "utf8").includes(key), false);
+  assert.deepEqual({ ...config, sqliteKey: "sealed" }, { database: "sqlite", sqliteKey: "sealed", sqliteKeySaved: false });
+  assert.equal(recoveryKeyPending(config), true);
+  assert.equal(ensureSqliteKey(folder, config, SEALER), key);
+  assert.equal(recoveryKeyPending({ ...config, sqliteKeySaved: true }), false);
+  assert.equal(recoveryKeyPending({}), false);
+});
+
+// Checks a key this Windows user can't open isn't replaced by a new one, which wouldn't open the file either.
+test("Desktop: a SQLite key that can't be opened is kept, not replaced", () => {
+  const folder = userData();
+  const sealed = seal("1f".repeat(32), SEALER);
+  const refusing: Sealer = { ...SEALER, decryptString: () => assert.fail("Not this Windows user's.") };
+  assert.equal(ensureSqliteKey(folder, { sqliteKey: sealed }, refusing), undefined);
+  assert.equal(existsSync(path.join(folder, "config.json")), false);
+});
+
+// Writes a key as its recovery copy, and checks it reads back as typed: grouped, in lowercase or with spaces; text that
+// isn't a key is refused.
+test("Desktop: the recovery copy of the key reads back however it is typed", () => {
+  const key = "0123456789abcdef".repeat(4);
+  const copy = formatRecoveryKey(key);
+  assert.equal(copy, "01234567-89ABCDEF-01234567-89ABCDEF-01234567-89ABCDEF-01234567-89ABCDEF");
+  assert.equal(readRecoveryKey(copy), key);
+  assert.equal(readRecoveryKey(copy.toLowerCase().replaceAll("-", " ")), key);
+  assert.equal(readRecoveryKey("01234567-89ABCDEF"), undefined);
+  assert.equal(readRecoveryKey(copy.replace("0", "G")), undefined);
 });

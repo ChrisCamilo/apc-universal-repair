@@ -4,9 +4,12 @@ import { recipe, tv } from '../styles/tv.ts'
 // term muted over its value in the mono face, paths and addresses breaking anywhere; each section, Banco de dados and
 // Importar, apart from the list with a soft hairline above it; a file or folder button with its path beside it,
 // wrapping; the note under a section in the danger color for what went wrong, in the text color for what was done;
-// and the import's copied rows, one per line. The Dialog draws the window, so the base has no classes.
+// the import's copied rows, one per line; and, in its own dialog, the SQLite key's recovery copy in the mono face,
+// larger, breaking anywhere, and picked whole at a click so it copies at once. The Dialog draws the window, so the
+// base has no classes.
 
-/** The dialog's content: the settings, the sections with their pickers, buttons and notes, and the import's rows. */
+/** The dialog's content: the settings, the sections with their pickers, buttons and notes, the import's rows, and the
+ * recovery copy of the key. */
 export const serverSettings = recipe(
   'setup.server-settings',
   tv({
@@ -21,6 +24,7 @@ export const serverSettings = recipe(
       note: 'm-0 font-body text-sm',
       results: 'm-0 grid list-none gap-0.5 p-0',
       result: 'font-body text-sm text-text',
+      recoveryKey: 'm-0 rounded-tile border border-hairline-soft bg-panel-raised p-3 font-mono text-base break-all text-text select-all',
     },
     variants: {
       tone: { danger: { note: 'text-danger' }, done: { note: 'text-text' } },
@@ -37,5 +41,6 @@ export const serverSettings = recipe(
     note: 'section.note',
     results: 'section.results',
     result: 'section.results.result',
+    recoveryKey: 'recovery-key',
   },
 )

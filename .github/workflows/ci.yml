@@ -55,7 +55,8 @@ jobs:
 
   # Builds an empty database from the migrations of each database the API runs on, as a new computer at home does
   # (docs/home-server.md), checks it matches its schema, seeds it and runs the API's tests that need a database. All
-  # the migrations run in one session here, unlike on a database that took them one at a time.
+  # the migrations run in one session here, unlike on a database that took them one at a time. The SQLite file is
+  # encrypted with a key, as the desktop app's is (apps/api/src/db/cipher.ts); the key is for this job only.
   migrations:
     runs-on: ubuntu-latest
     strategy:
@@ -64,8 +65,10 @@ jobs:
         database:
           - name: postgresql
             url: "postgresql://postgres:postgres@localhost:5432/apc_universal_repair"
+            key: ""
           - name: sqlite
             url: "file:./data/ci.db"
+            key: "c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1"
     name: migrations (${{ matrix.database.name }})
     services:
       postgres:
@@ -79,6 +82,7 @@ jobs:
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: ${{ matrix.database.url }}
+      APC_SQLITE_KEY: ${{ matrix.database.key }}
       # A PostgreSQL server the copy tests make databases in, for both databases.
       TEST_POSTGRES_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
