@@ -2,6 +2,7 @@
   "name": "@apc/desktop",
   "productName": "APC Universal Repair",
   "private": true,
+  "license": "UNLICENSED",
   "version": "0.4.2",
   "description": "APC Universal Repair for Windows",
   "author": "Christian Camilo",

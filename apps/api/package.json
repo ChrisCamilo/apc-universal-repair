@@ -1,6 +1,7 @@
 {
   "name": "@apc/api",
   "private": true,
+  "license": "UNLICENSED",
   "version": "0.4.2",
   "type": "module",
   "scripts": {
