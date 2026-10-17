@@ -317,7 +317,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const all = installed();
   if (command === "check") {
     const found = problems(all);
-    const notices = existsSync(NOTICES_FILE) ? readFileSync(NOTICES_FILE, "utf8") : "";
+    // Git may check the file out with CRLF line ends, on Windows.
+    const notices = existsSync(NOTICES_FILE) ? readFileSync(NOTICES_FILE, "utf8").replace(/\r\n/g, "\n") : "";
     // The notices are written on Windows, whose optional native packages differ from Linux's: only what every
     // platform installs is checked.
     const missing = shippedPackages(all)
