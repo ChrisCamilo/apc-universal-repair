@@ -9,8 +9,8 @@ import type { ServerBridge, ServerSettings } from './desktopBridge.ts'
 import { ServerSettingsProvider } from './ServerSettings.tsx'
 import { useOpenServerSettings } from './serverSettingsContext.ts'
 
-/** The app's own server on SQLite, as a fresh install has it. */
-const ON_SQLITE: ServerSettings = {
+/** The app's own server on SQLite, as a fresh install has it once its key's recovery copy is kept. */
+const ON_SQLITE: Extract<ServerSettings, { kind: 'own' }> = {
   kind: 'own',
   database: 'sqlite',
   location: 'C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data',
@@ -18,7 +18,10 @@ const ON_SQLITE: ServerSettings = {
   port: 3333,
   phoneAddress: '192.168.0.10',
   needsAddress: false,
+  recoveryKeyPending: false,
 }
+/** A recovery copy of a key, as the desktop app shows it. */
+const RECOVERY_KEY = '01234567-89ABCDEF-01234567-89ABCDEF-01234567-89ABCDEF-01234567-89ABCDEF'
 const root = document.documentElement
 
 /**
@@ -48,6 +51,8 @@ function giveServer(settings: ServerSettings) {
     settings: vi.fn<ServerBridge['settings']>(async () => settings),
     usePostgresql: vi.fn<ServerBridge['usePostgresql']>(async () => ({ ok: true })),
     useSqlite: vi.fn<ServerBridge['useSqlite']>(async () => ({ ok: true })),
+    recoveryKey: vi.fn<ServerBridge['recoveryKey']>(async () => null),
+    recoveryKeySaved: vi.fn<ServerBridge['recoveryKeySaved']>(async () => {}),
   }
   window.apcDesktop = {
     notify: () => {},
@@ -106,7 +111,7 @@ test('Web: the Servidor dialog shows the database in use, the port and the phone
   const screen = await renderSettings()
   await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
   const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
-  await expect.element(dialog.getByText('SQLite, em C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data')).toBeVisible()
+  await expect.element(dialog.getByText('SQLite criptografado, em C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data')).toBeVisible()
   await expect.element(dialog.getByText('3333')).toBeVisible()
   await expect.element(dialog.getByText('http://192.168.0.10:3333')).toBeVisible()
   await expect.element(dialog.getByRole('button', { name: 'Usar PostgreSQL' })).not.toBeInTheDocument()
@@ -128,7 +133,7 @@ test('Web: a PostgreSQL address that does not connect says so and keeps SQLite',
   await dialog.getByRole('button', { name: 'Usar PostgreSQL' }).click()
   await expect.element(dialog.getByRole('alert')).toHaveTextContent(message)
   expect(calls.usePostgresql).toHaveBeenCalledWith('postgresql://apc:segredo@127.0.0.1:1/apc')
-  await expect.element(dialog.getByText(/^SQLite, em /)).toBeVisible()
+  await expect.element(dialog.getByText(/^SQLite criptografado, em /)).toBeVisible()
   await dialog.getByRole('button', { name: 'Fechar' }).first().click()
   expect(reload).not.toHaveBeenCalled()
 })
@@ -223,6 +228,46 @@ test('Web: an old database of an earlier version is updated first, once the user
   await expect.poll(() => calls.importServer.mock.calls.length).toBe(1)
   expect(calls.migrateImport).toHaveBeenCalledWith(source)
   expect(calls.importServer).toHaveBeenCalledWith(source, undefined)
+})
+
+// Starts with the key's recovery copy still to be kept: it shows by itself, with the key; "Depois" closes it without
+// saying it is kept, and on the next opening "Já guardei a chave" says so and closes it.
+test('Web: the key\'s recovery copy shows on opening until it is kept', async () => {
+  const { calls } = giveServer({ ...ON_SQLITE, recoveryKeyPending: true })
+  calls.recoveryKey.mockResolvedValue(RECOVERY_KEY)
+  const first = await renderSettings()
+  const dialog = first.getByRole('dialog', { name: 'Chave de recuperação do banco' })
+  await expect.element(dialog.getByLabelText('Chave de recuperação')).toHaveTextContent(RECOVERY_KEY)
+  await dialog.getByRole('button', { name: 'Depois' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  expect(calls.recoveryKeySaved).not.toHaveBeenCalled()
+})
+
+// Opens again with the copy still to be kept, says it is kept, and checks the app is told and the dialog closes.
+test('Web: "Já guardei a chave" says the recovery copy is kept', async () => {
+  const { calls } = giveServer({ ...ON_SQLITE, recoveryKeyPending: true })
+  calls.recoveryKey.mockResolvedValue(RECOVERY_KEY)
+  const screen = await renderSettings()
+  const dialog = screen.getByRole('dialog', { name: 'Chave de recuperação do banco' })
+  await dialog.getByRole('button', { name: 'Já guardei a chave' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  expect(calls.recoveryKeySaved).toHaveBeenCalledOnce()
+})
+
+// Picks an encrypted file of another install and types its recovery copy, and checks the import gets the key with
+// the file.
+test('Web: an encrypted SQLite file imports with its recovery copy', async () => {
+  const file = 'E:\\backup\\data\\apc.db'
+  const { calls } = giveServer(ON_SQLITE)
+  calls.chooseSqliteFile.mockResolvedValue({ file, photos: 'E:\\backup\\uploads\\photos' })
+  const screen = await renderSettings()
+  await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
+  await dialog.getByRole('button', { name: 'Escolher o arquivo' }).click()
+  await dialog.getByLabelText('Chave de recuperação do arquivo').fill(RECOVERY_KEY)
+  await dialog.getByRole('button', { name: 'Importar', exact: true }).click()
+  await expect.poll(() => calls.checkImport.mock.calls.length).toBe(1)
+  expect(calls.checkImport).toHaveBeenCalledWith({ kind: 'sqlite', file, key: RECOVERY_KEY })
 })
 
 for (const style of STYLES) {

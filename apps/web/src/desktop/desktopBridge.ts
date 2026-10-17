@@ -3,8 +3,8 @@
 // settings of the server the app runs (see apps/desktop/src/serverSettings.ts). In a browser there is none, and the
 // web app shows nothing extra.
 
-/** An old server to import: a PostgreSQL address or a SQLite file. */
-export type ImportSource = { kind: 'postgresql'; url: string } | { kind: 'sqlite'; file: string }
+/** An old server to import: a PostgreSQL address, or a SQLite file with the recovery copy of its key when it is encrypted. */
+export type ImportSource = { kind: 'postgresql'; url: string } | { kind: 'sqlite'; file: string; key?: string }
 /** How checking an import ended: it can start, or why not, with the problem when the old database only lacks migrations. */
 export type ImportCheck = ServerOutcome | { ok: false; message: string; problem: 'sourceBehind' | 'sourceNewer' | 'sourceNotApc' | 'targetHasData' }
 /** How an import ended: each table's rows on both sides and the photo files copied and not found, or why it didn't. */
@@ -25,6 +25,10 @@ export type ServerBridge = {
   migrateImport: (source: ImportSource) => Promise<ServerOutcome>
   /** Calls a listener each time the tray asks to open the Servidor dialog, and gives the way to stop. */
   onOpen: (listener: () => void) => () => void
+  /** Gives the SQLite key's recovery copy, in groups of 8, while the user hasn't said it is kept; null after. */
+  recoveryKey: () => Promise<string | null>
+  /** Says the user kept the recovery copy, which stops it showing. */
+  recoveryKeySaved: () => Promise<void>
   /** Reads the server's settings. */
   settings: () => Promise<ServerSettings>
   /** Moves the server to a PostgreSQL database, checked and migrated first, and restarts it there. */
@@ -36,8 +40,9 @@ export type ServerBridge = {
 export type ServerOutcome = { ok: true } | { ok: false; message: string }
 /**
  * The server's settings: the app's own server, on SQLite with its folder or PostgreSQL with its server, its photos'
- * folder, port and phone's address, and whether PostgreSQL's address is still missing; a server on another computer;
- * or another server that took the port when the app opened.
+ * folder, port and phone's address, whether PostgreSQL's address is still missing and whether the SQLite key's
+ * recovery copy is still to be kept; a server on another computer; or another server that took the port when the app
+ * opened.
  */
 export type ServerSettings =
   | {
@@ -48,6 +53,7 @@ export type ServerSettings =
       port: number
       phoneAddress?: string
       needsAddress: boolean
+      recoveryKeyPending: boolean
     }
   | { kind: 'elsewhere'; address: string }
   | { kind: 'portTaken'; port: number }
