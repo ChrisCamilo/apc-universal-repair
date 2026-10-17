@@ -54,7 +54,7 @@ test("Desktop: in a window on a 1360×768 notebook only the Inventory's table sc
   const app = await electron.launch({ args: [APP_DIR], env });
   try {
     const page = await app.firstWindow();
-    await page.getByLabel("Usuário").fill(TEST_USERS[0].username);
+    await page.getByLabel("Usuário", { exact: true }).fill(TEST_USERS[0].username);
     await page.getByLabel("Senha", { exact: true }).fill(TEST_USERS[0].password);
     await page.getByRole("button", { name: "Entrar" }).click();
     await expect(page.locator("tbody tr").first()).toBeVisible();

@@ -54,7 +54,7 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
     }
   });
   await expect(page).toHaveURL(/^app:\/\/apc\/login/);
-  await page.getByLabel("Usuário").fill(username);
+  await page.getByLabel("Usuário", { exact: true }).fill(username);
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
 

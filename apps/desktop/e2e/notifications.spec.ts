@@ -43,7 +43,7 @@ let api: { server: Server; url: string };
  * @param user The test user.
  */
 async function logIn(page: Page, user: (typeof TEST_USERS)[number]) {
-  await page.getByLabel("Usuário").fill(user.username);
+  await page.getByLabel("Usuário", { exact: true }).fill(user.username);
   await page.getByLabel("Senha", { exact: true }).fill(user.password);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");

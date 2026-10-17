@@ -71,7 +71,7 @@ async function openServerSettings(app: ElectronApplication): Promise<void> {
 async function signUp(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Criar conta" }).click();
   await page.getByLabel("Nome").fill("Ana Souza");
-  await page.getByLabel("Usuário").fill("ana.souza");
+  await page.getByLabel("Usuário", { exact: true }).fill("ana.souza");
   await page.getByLabel("E-mail").fill("ana@oficina.com");
   await page.getByLabel("Senha", { exact: true }).fill("freio1234");
   await page.getByLabel("Confirmar senha").fill("freio1234");
@@ -165,7 +165,7 @@ test("Desktop: an old server's SQLite file imports into a fresh install", async 
 
   await dialog.getByRole("button", { name: "Fechar" }).first().click();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/);
-  await page.getByLabel("Usuário").fill("ana.souza");
+  await page.getByLabel("Usuário", { exact: true }).fill("ana.souza");
   await page.getByLabel("Senha", { exact: true }).fill("freio1234");
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
