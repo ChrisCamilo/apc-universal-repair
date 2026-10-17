@@ -167,6 +167,7 @@ These rules apply to every test, whatever the tool (Playwright, Vitest, Jest, `n
   | `Desktop:` | `apps/desktop` |
   | `API:` | `apps/api` |
   | `Shared:` | `packages/shared` |
+  | `Repo:` | `scripts/`, the repository's own tooling |
 
   The prefix goes on every `test`/`it` title, also inside a `describe`, so a failing test is identified by its title alone in any report.
 
@@ -361,6 +362,14 @@ Always keep them up to date, **in the same pull request** as the change:
 - Changing `apps/api/prisma/schema.prisma` (a table, column, key, relation, enum or delete rule) changes `apps/api/prisma/sqlite/schema.prisma` the same way, with a migration for each database, and updates `docs/database.md`. Lint fails when the two schemas' models differ.
 - Adding, removing or renaming an app, a package or a `@apc/shared` module, changing how the parts talk to each other, or adding, removing or upgrading a main technology (a new major version included) updates `docs/architecture.md`.
 - Update the diagrams and both languages together, and check the diagrams still render (Mermaid syntax errors show as an error box on GitHub). Use a `docs:` commit.
+
+## Licenses
+
+The project is all rights reserved ([LICENSE](LICENSE), `"license": "UNLICENSED"` in every `package.json`), and every package it installs is audited ([docs/licenses.md](docs/licenses.md)):
+
+- **Adding or upgrading a dependency:** run `pnpm licenses:write` on Windows and commit `THIRD_PARTY_NOTICES.md`, its copy in the phone app's assets and `docs/licenses.md`, in the same pull request. CI's `pnpm licenses:check` fails when a shipped package is missing from the notices.
+- **Allowed licenses:** permissive ones only (`ALLOWED` in `scripts/licenses.mjs`). CI fails on any other, development dependencies included, unless it is reviewed in `REVIEWED`, with why it is fine in English and Portuguese. Never add a GPL, AGPL or SSPL package to what ships: it would ask to open the project's code.
+- **Outside contributions** are only taken with a signed assignment of their rights (CLA).
 
 ## General Contribution Notes
 

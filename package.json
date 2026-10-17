@@ -1,6 +1,7 @@
 {
   "name": "apc-universal-repair",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "engines": {
     "node": ">=22.11.0"
@@ -12,7 +13,9 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:e2e": "turbo run test:e2e"
+    "test:e2e": "turbo run test:e2e",
+    "licenses:check": "node scripts/licenses.mjs check && node --test \"scripts/*.test.mjs\"",
+    "licenses:write": "node scripts/licenses.mjs write"
   },
   "devDependencies": {
     "eslint": "^10.10.0",

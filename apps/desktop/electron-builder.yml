@@ -20,6 +20,13 @@ extraResources:
     to: web
   - from: server
     to: server
+# The project's license and the notices of the third-party software it ships, beside Electron's and Chromium's
+# (LICENSE.electron.txt and LICENSES.chromium.html), as their licenses ask (see scripts/licenses.mjs at the root).
+extraFiles:
+  - from: ../../LICENSE
+    to: LICENSE.txt
+  - from: ../../THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
 # The server's native modules, which electron-builder leaves out of extra resources (see the script).
 afterPack: scripts/after-pack.mjs
 win:

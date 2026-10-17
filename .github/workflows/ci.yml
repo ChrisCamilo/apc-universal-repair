@@ -27,6 +27,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Every installed package's license must be allowed or reviewed, and every shipped one in THIRD_PARTY_NOTICES.md
+      # (scripts/licenses.mjs).
+      - name: Licenses
+        run: pnpm licenses:check
+
       - name: Lint
         run: pnpm turbo run lint
 
