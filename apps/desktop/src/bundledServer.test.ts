@@ -4,7 +4,8 @@ import { test } from "node:test";
 import { serverEnvironment, usesBundledServer } from "./bundledServer.ts";
 
 // Builds the bundled server's environment and checks its data goes in userData's data folder, it applies the
-// migrations it ships, and it answers on the port and the version given; on PostgreSQL, only its photos stay there.
+// migrations it ships, and it answers on the port and the version given; the SQLite file gets its key, and on PostgreSQL
+// only the photos stay there, with no key.
 test("Desktop: the bundled server keeps its data in userData", () => {
   const userData = path.join("C:", "Users", "ana", "AppData", "Roaming", "APC Universal Repair");
   const serverDir = path.join("C:", "Program Files", "APC", "resources", "server");
@@ -17,9 +18,12 @@ test("Desktop: the bundled server keeps its data in userData", () => {
     APC_MIGRATE_ON_START: "1",
   });
   const address = "postgresql://postgres:secret@localhost:5432/apc";
-  const onPostgresql = serverEnvironment({ serverDir, userData, port: 3333, version: "0.3.1", databaseUrl: address });
+  const key = "1f".repeat(32);
+  const onPostgresql = serverEnvironment({ serverDir, userData, port: 3333, version: "0.3.1", databaseUrl: address, sqliteKey: key });
   assert.equal(onPostgresql.DATABASE_URL, address);
   assert.equal(onPostgresql.PHOTOS_DIR, path.join(userData, "data", "photos"));
+  assert.equal(onPostgresql.APC_SQLITE_KEY, undefined);
+  assert.equal(serverEnvironment({ serverDir, userData, port: 3333, version: "0.3.1", sqliteKey: key }).APC_SQLITE_KEY, key);
 });
 
 // Checks the app runs its own server only when nothing names another: an address, from the environment or
