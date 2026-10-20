@@ -107,7 +107,7 @@ erDiagram
 - Every item has **one** category, part brand and vehicle brand, and **at most one** vehicle model. An item without a vehicle model fits **any model** of its vehicle brand.
 - A vehicle model belongs to **one** vehicle brand; a vehicle brand has **many** models.
 - An item has **0 to 3** photos (the limit is checked by the API).
-- The item stores **references** (`categoryId`, …), not names: renaming a list entry renames it on every item at once.
+- The item stores **references** (`categoryId`, …), not names: renaming a list entry renames it on every item at once, and merging an entry into another moves its items there in one transaction (a vehicle brand moving its models along) before deleting it.
 
 ### Rules
 
@@ -187,7 +187,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 - Todo item tem **uma** categoria, marca de peça e marca de veículo, e **no máximo um** modelo de veículo. Um item sem modelo serve em **qualquer modelo** da marca.
 - Um modelo pertence a **uma** marca de veículo; uma marca tem **vários** modelos.
 - Um item tem de **0 a 3** fotos (o limite é conferido pela API).
-- O item guarda **referências** (`categoryId`, …), não nomes: renomear uma entrada de lista renomeia em todos os itens de uma vez.
+- O item guarda **referências** (`categoryId`, …), não nomes: renomear uma entrada de lista renomeia em todos os itens de uma vez, e juntar uma entrada a outra passa os itens dela para a outra numa só transação (uma marca de veículo levando os modelos junto) antes de excluí-la.
 
 ### Regras
 

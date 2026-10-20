@@ -19,7 +19,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🔐 Login and account sign-up (name, username, e-mail and password), with the users kept in the database and the passwords stored hashed, sessions the API checks on every call, and a forgotten-password notice saying whom to ask
 - 🗂️ Dashboard with tabs that can be dragged into a new order, and a user menu with the visual style, dark mode, the list preferences, the tutorial and logout
 - 📦 Parts inventory: add, view, edit and delete parts, each with its part code, category, part brand, vehicle brand and model, position, side, color, location, quantity, minimum stock and unit price (R$)
-- 🏷️ Categories, part brands and vehicle models created right from the item form, and renamed or deleted in their own lists
+- 🏷️ Categories, part brands and vehicle models created right from the item form, and renamed, merged or deleted in their own lists
 - 🔢 A part code already in use is flagged while it is typed, ignoring case, spaces and separators ("CB4500" is "CB-4500")
 - 🧭 Inventory search by name or part code, filters, sorting on every column and pagination (25, 50 or 100 per page)
 - 🚦 Low-stock and out-of-stock rows highlighted in color
@@ -215,7 +215,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🔐 Login e cadastro de conta (nome, usuário, e-mail e senha), com os usuários guardados no banco e as senhas em hash, sessões conferidas pela API em toda chamada, e um aviso de senha esquecida dizendo a quem pedir
 - 🗂️ Dashboard com abas que podem ser arrastadas para outra ordem, e um menu do usuário com o estilo visual, o modo escuro, as preferências da lista, o tutorial e a saída
 - 📦 Estoque de peças: adicionar, ver, editar e excluir peças, cada uma com código da peça, categoria, marca da peça, marca e modelo do veículo, posição, lado, cor, local, quantidade, estoque mínimo e valor unitário (R$)
-- 🏷️ Categorias, marcas de peça e modelos de veículo criados direto no formulário do item, e renomeados ou excluídos nas próprias listas
+- 🏷️ Categorias, marcas de peça e modelos de veículo criados direto no formulário do item, e renomeados, juntados ou excluídos nas próprias listas
 - 🔢 Um código de peça já usado é apontado enquanto é digitado, sem levar em conta maiúsculas, espaços e separadores ("CB4500" é "CB-4500")
 - 🧭 Busca no estoque por nome ou código da peça, filtros, ordenação em todas as colunas e paginação (25, 50 ou 100 por página)
 - 🚦 Linhas com estoque baixo e esgotado destacadas por cor
