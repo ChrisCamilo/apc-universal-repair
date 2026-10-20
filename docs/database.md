@@ -115,7 +115,7 @@ erDiagram
 |---|---|
 | Names are unique ignoring case, accents and extra spaces: `nameKey` holds the name in that form and is unique (a vehicle model's within its brand). | `Category`, `PartBrand`, `Brand`, `VehicleModel` |
 | A part code is stored in uppercase and is unique as the search compares it: `codeKey`, the code with letters and digits only, is unique too, so `CB4500` and `CB-4500` can't both be in stock. `codeKey` and `nameKey` let the search ignore separators and accents. | `Item` |
-| The unit price is an integer in cents, so prices add up without rounding errors. | `Item.unitPriceCents` |
+| The unit price is an integer in cents, so prices add up without rounding errors, from R$ 0,01 to R$ 1.000.000,00, which the API checks. | `Item.unitPriceCents` |
 | `position`, `side` and `color` default to "not applicable". The API speaks `N/A`, `D`, `T`, `Ambos` (position) and `N/A`, `LD`, `LE`, `Ambos` (side); the database keeps them as the `Position` and `Side` enums. | `Item` |
 | The quantity and the minimum are whole numbers from 0 to 1,000,000, which the API checks. Stock status isn't stored: an item is out of stock at 0 and low at or under its minimum. | `Item.quantity`, `Item.minQuantity` |
 | A list entry an item uses can't be deleted (`RESTRICT`); deleting a vehicle brand deletes its models (`CASCADE`); deleting an item deletes its photos (`CASCADE`). | Foreign keys |
@@ -195,7 +195,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 |---|---|
 | Os nomes são únicos ignorando maiúsculas, acentos e espaços a mais: `nameKey` guarda o nome nessa forma e é único (o de um modelo, dentro da marca). | `Category`, `PartBrand`, `Brand`, `VehicleModel` |
 | O código da peça é guardado em maiúsculas e é único do jeito que a busca compara: `codeKey`, o código só com letras e números, também é único, então `CB4500` e `CB-4500` não podem estar os dois no estoque. `codeKey` e `nameKey` deixam a busca ignorar separadores e acentos. | `Item` |
-| O valor unitário é um inteiro em centavos, para os valores somarem sem erro de arredondamento. | `Item.unitPriceCents` |
+| O valor unitário é um inteiro em centavos, para os valores somarem sem erro de arredondamento, de R$ 0,01 a R$ 1.000.000,00, que a API confere. | `Item.unitPriceCents` |
 | `position`, `side` e `color` começam como "não se aplica". A API usa `N/A`, `D`, `T`, `Ambos` (posição) e `N/A`, `LD`, `LE`, `Ambos` (lado); o banco guarda nos enums `Position` e `Side`. | `Item` |
 | A quantidade e o mínimo são números inteiros de 0 a 1.000.000, que a API confere. A situação do estoque não é guardada: o item está esgotado em 0 e baixo quando está no mínimo ou abaixo. | `Item.quantity`, `Item.minQuantity` |
 | Uma entrada de lista usada por um item não pode ser excluída (`RESTRICT`); excluir uma marca de veículo exclui os modelos dela (`CASCADE`); excluir um item exclui as fotos dele (`CASCADE`). | Chaves estrangeiras |
