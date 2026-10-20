@@ -90,7 +90,7 @@ export const TUTORIAL_ITEM: ItemForm = {
   side: "LD",
   color: "Preto",
   location: "T-1",
-  price: "49,90",
+  price: "R$ 49,90",
 };
 /** The search part 2 types, which finds the test item by its name. */
 export const TUTORIAL_SEARCH = "tutorial";
