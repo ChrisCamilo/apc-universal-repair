@@ -6,6 +6,7 @@ import {
   createListEntry,
   deleteListEntry,
   EMPTY_ITEM_LISTS,
+  entryChange,
   findEntry,
   isCatalogBrand,
   ITEM_LIST_TEXTS,
@@ -13,6 +14,7 @@ import {
   listEntryCreateSchema,
   listName,
   loadItemLists,
+  mergeListEntries,
   renameListEntry,
   vehicleModelCreateSchema,
   withEntry,
@@ -142,6 +144,46 @@ test("Shared: renaming and deleting reach the entry by its id", async () => {
   assert.deepEqual(removal.mock.calls[0].arguments, [`/api/vehicle-brands/${BRAND_ID}`, { method: "DELETE" }]);
   answer(() => ({ message: "in use" }), 409);
   assert.equal(await deleteListEntry("/api", "vehicleBrands", BRAND_ID), false);
+});
+
+// Merges an entry into another and checks the request and the items moved, then a merge refused and a failure.
+test("Shared: merging reaches the entry by its id, naming the one it goes into", async () => {
+  const into = "00000000-0000-4000-8000-0000000000a2";
+  const fetch = answer(() => ({ moved: 12 }));
+  assert.equal(await mergeListEntries("/api", "categories", BRAND_ID, into), 12);
+  const [url, init] = fetch.mock.calls[0].arguments as unknown as [string, RequestInit];
+  assert.equal(url, `/api/categories/${BRAND_ID}/merge`);
+  assert.equal(init.method, "POST");
+  assert.deepEqual(JSON.parse(String(init.body)), { into });
+  answer(() => ({ message: "catalog" }), 409);
+  assert.equal(await mergeListEntries("/api", "vehicleBrands", BRAND_ID, into), null);
+  answer(() => ({ message: "down" }), 500);
+  assert.equal(await mergeListEntries("/api", "categories", BRAND_ID, into), null);
+});
+
+// Words merging a category with items, with one item and with none, and checks the change the filters follow names
+// a vehicle model's brand.
+test("Shared: a merge says where the items go, and the filters follow it", () => {
+  assert.equal(
+    ITEM_LIST_TEXTS.categories.confirmMerge("Parachoque", "Para-choque", 12),
+    "Os 12 itens de “Parachoque” passam para “Para-choque”, e “Parachoque” sai da lista de categorias.",
+  );
+  assert.match(ITEM_LIST_TEXTS.vehicleModels.confirmMerge("Opala", "Opala 4.1", 1), /^O item de “Opala” passa para “Opala 4.1”/);
+  assert.match(ITEM_LIST_TEXTS.partBrands.confirmMerge("Mann", "Mann-Filter", 0), /^Nenhum item usa “Mann”/);
+  assert.equal(ITEM_LIST_TEXTS.vehicleModels.merged("Opala", "Opala 4.1", 1), "Modelo “Opala” juntado a “Opala 4.1”: 1 item mudou.");
+  const lists = { ...LISTS, vehicleBrands: [{ id: BRAND_ID, name: "Chevrolet" }] };
+  const opala = { id: "00000000-0000-4000-8000-0000000000b1", name: "Opala", vehicleBrandId: BRAND_ID };
+  assert.deepEqual(entryChange("vehicleModels", opala, "Opala 4.1", lists), {
+    kind: "vehicleModels",
+    from: "Opala",
+    to: "Opala 4.1",
+    vehicleBrand: "Chevrolet",
+  });
+  assert.deepEqual(entryChange("categories", LISTS.categories[1], "Motor diesel", lists), {
+    kind: "categories",
+    from: "Motor",
+    to: "Motor diesel",
+  });
 });
 
 // Checks a new name is required and a new vehicle model needs the id of its vehicle brand.

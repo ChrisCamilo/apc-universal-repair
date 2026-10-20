@@ -190,6 +190,19 @@ export async function deleteListEntry(base: string, kind: ItemListKind, id: stri
 }
 
 /**
+ * Describes an entry renamed, or merged into another, for the filters to follow (see followEntryChange).
+ * @param kind The entry's list.
+ * @param entry The entry as it was.
+ * @param to Its new name, or the name of the entry it was merged into.
+ * @param lists The four lists, for a vehicle model's brand.
+ * @returns The change.
+ */
+export function entryChange(kind: ItemListKind, entry: ListEntry | VehicleModel, to: string, lists: ItemLists): ListEntryChange {
+  const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
+  return { kind, from: entry.name, to, ...(brand && { vehicleBrand: brand.name }) };
+}
+
+/**
  * Finds the entry a typed name stands for, ignoring case, accents and extra spaces.
  * @param entries A list.
  * @param text Name as typed.
