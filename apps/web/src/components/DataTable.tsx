@@ -16,7 +16,8 @@ import { Label } from './Typography.tsx'
 // the main cell: the name, the code under it and, on a card, a line with what the hidden columns said. With
 // onRowOpen, a click on a row opens it, except on its own buttons (thumbnail, actions), which keep their click; the
 // rows join the Tab order with a focus outline and open with Enter or Space. With fill, the table takes the room left
-// in its column and scrolls inside it, with the header pinned and the empty state centered.
+// in its column and scrolls inside it, with the header pinned and the empty state centered. A nested row (rowNested)
+// belongs to the row above it, such as a brand of an item: it is indented and never tinted.
 
 const SORT_ARROWS = { ascending: '↑', descending: '↓', none: '↕' }
 
@@ -54,6 +55,8 @@ type DataTableProps<Row> = {
   fill?: boolean
   /** Opens a row, e.g. the item details; without it rows aren't clickable. */
   onRowOpen?: (row: Row) => void
+  /** Whether a row belongs to the row above it, e.g. a brand of an item, indented under it. */
+  rowNested?: (row: Row) => boolean
 }
 type RowActionProps = {
   icon: IconShape[]
@@ -106,6 +109,7 @@ export function DataTable<Row>({
   empty,
   fill = false,
   onRowOpen,
+  rowNested,
 }: DataTableProps<Row>) {
   const sortId = useId()
   const sortable = columns.filter((column) => column.sortable)
@@ -175,13 +179,14 @@ export function DataTable<Row>({
             </thead>
             <tbody className={classes.body()} data-testid={ids.body}>
               {rows.map((row) => {
-                const status = rowStatus?.(row)
+                const nested = rowNested?.(row) ?? false
+                const status = nested ? undefined : rowStatus?.(row)
                 return (
                   <tr
                     key={rowKey(row)}
                     data-status={status?.tone}
                     tabIndex={onRowOpen ? 0 : undefined}
-                    className={dataTable({ tint: status?.tone ?? 'none', openable: Boolean(onRowOpen) }).classes.row()}
+                    className={dataTable({ tint: status?.tone ?? 'none', openable: Boolean(onRowOpen), nested }).classes.row()}
                     data-testid={ids.row}
                     onClick={
                       onRowOpen &&
