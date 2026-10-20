@@ -332,6 +332,28 @@ test('Web: an item opens filled in and is patched on save', async () => {
   expect(sent(fetch)).toMatchObject({ url: `/api/items/${FILTER.id}`, method: 'PATCH', body: { quantity: 7, code: 'W 712/95' } })
 })
 
+// Types a quantity with a comma and pastes a fraction, and checks the comma is left out, the fraction is refused with
+// its message and the field keeps its value; then a minimum past a million is refused on save and nothing is sent.
+test('Web: the quantities take whole numbers only, up to a million', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch')
+  const screen = await render(<Sample item={FILTER} />)
+  const quantity = screen.getByLabelText('Quantidade', { exact: true })
+  await quantity.fill('12')
+  await userEvent.keyboard(',')
+  await expect.element(quantity).toHaveValue('12')
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.quantityInvalid)).not.toBeInTheDocument()
+  await quantity.fill('1,5')
+  await expect.element(quantity).toHaveValue('12')
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.quantityInvalid)).toBeVisible()
+  await quantity.fill('1.000')
+  await expect.element(quantity).toHaveValue('1000')
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.quantityInvalid)).not.toBeInTheDocument()
+  await screen.getByLabelText('Quantidade mínima').fill('2000000')
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.quantityTooHigh)).toBeVisible()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
 // Opens the form at 1280×720 and on a 360×780 phone and checks Save is on screen without scrolling and the form
 // scrolls inside the dialog.
 test('Web: Save is on screen without scrolling at both minimum sizes', async () => {
