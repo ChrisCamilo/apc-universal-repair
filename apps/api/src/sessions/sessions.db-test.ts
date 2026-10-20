@@ -117,12 +117,12 @@ test("API: a request keeps a session alive, writing its last use once an hour", 
 test("API: the items' photo paths are signed for the caller's session", async () => {
   const token = await login();
   const { id } = (await prisma.session.findUnique({ where: { tokenHash: hashToken(token) } }))!;
-  const item = (await prisma.item.findFirst({ where: { photos: { none: {} } } }))!;
+  const brand = (await prisma.itemBrand.findFirst({ where: { photos: { none: {} } } }))!;
   const photoId = "00000000-0000-4000-8000-0000000000db";
-  await prisma.itemPhoto.create({ data: { id: photoId, itemId: item.id, position: 0, file: `${photoId}.webp`, thumbFile: `${photoId}-thumb.webp` } });
+  await prisma.itemPhoto.create({ data: { id: photoId, brandId: brand.id, position: 0, file: `${photoId}.webp`, thumbFile: `${photoId}-thumb.webp` } });
   try {
-    const listed = await app.inject({ method: "GET", url: `/items?q=${encodeURIComponent(item.code)}`, headers: bearer(token) });
-    const [photo] = listed.json().items[0].photos;
+    const listed = await app.inject({ method: "GET", url: `/items?q=${encodeURIComponent(brand.code)}`, headers: bearer(token) });
+    const [photo] = listed.json().items[0].brands.find((each: { id: string }) => each.id === brand.id).photos;
     for (const path of [photo.url, photo.thumbUrl]) {
       assert.equal(new URL(path, "http://api").searchParams.get("session"), id, path);
       assert.equal((await app.inject({ method: "GET", url: path })).statusCode, 404, path);

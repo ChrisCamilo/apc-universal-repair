@@ -3,15 +3,15 @@ import { listName } from "@apc/shared/lists";
 import type { Prisma } from "../generated/prisma/client.js";
 import type { ListIds } from "./items.js";
 
-// Finds the list entries an item's names stand for: its category, part brand, vehicle brand and vehicle model (within
-// the vehicle brand). A name a list doesn't hold yet is added to it with the writing rule; one it holds, ignoring case,
+// Finds the list entries an item's names stand for: its category, vehicle brand and vehicle model (within the vehicle
+// brand), and the part brand of one of its brands. A name a list doesn't hold yet is added to it with the writing rule; one it holds, ignoring case,
 // accents and extra spaces, is used as it is, so the item takes the list's spelling.
 
 /** The columns a list entry is read with. */
 const ENTRY = { id: true } as const;
 
-/** The names an item is saved with; on an edit, only the ones that came in. */
-type ItemNames = Partial<Pick<ItemCreate, "category" | "partBrand" | "vehicleBrand" | "vehicleModel">>;
+/** The names an item is saved with, or a brand's part brand; on an edit, only the ones that came in. */
+type ItemNames = Partial<Pick<ItemCreate, "category" | "vehicleBrand" | "vehicleModel">> & { partBrand?: string };
 
 /**
  * Finds the list entries of an item's names, adding the names the lists don't hold. A vehicle model is looked up
@@ -19,14 +19,14 @@ type ItemNames = Partial<Pick<ItemCreate, "category" | "partBrand" | "vehicleBra
  * @param tx Database client, usually in a transaction with the item's save.
  * @param names The names sent.
  * @param current The item's brand and model before an edit, for a model or a brand sent alone.
- * @returns The ids of the entries of the names sent.
+ * @returns The ids of the entries of the names sent; a part brand's as partBrandId.
  */
 export async function listIds(
   tx: Prisma.TransactionClient,
   names: ItemNames,
   current?: { vehicleBrandId: string; vehicleModel: string | null },
-): Promise<Partial<ListIds>> {
-  const ids: Partial<ListIds> = {};
+): Promise<Partial<ListIds> & { partBrandId?: string }> {
+  const ids: Partial<ListIds> & { partBrandId?: string } = {};
   if (names.category !== undefined) {
     ids.categoryId = (await tx.category.upsert({ ...listedName(names.category), select: ENTRY })).id;
   }

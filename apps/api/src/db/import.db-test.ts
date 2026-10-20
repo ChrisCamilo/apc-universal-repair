@@ -26,8 +26,8 @@ const PHOTO_ID = `00000000-0000-4000-8000-${randomBytes(6).toString("hex")}`;
 const opened: PrismaClient[] = [];
 
 before(async () => {
-  const item = (await prisma.item.findFirst({ where: { photos: { none: {} } }, orderBy: { code: "asc" } }))!;
-  await prisma.itemPhoto.create({ data: { id: PHOTO_ID, itemId: item.id, position: 0, file: `${PHOTO_ID}.webp`, thumbFile: `${PHOTO_ID}-thumb.webp` } });
+  const brand = (await prisma.itemBrand.findFirst({ where: { photos: { none: {} } }, orderBy: { code: "asc" } }))!;
+  await prisma.itemPhoto.create({ data: { id: PHOTO_ID, brandId: brand.id, position: 0, file: `${PHOTO_ID}.webp`, thumbFile: `${PHOTO_ID}-thumb.webp` } });
   mkdirSync(OLD_PHOTOS, { recursive: true });
   writeFileSync(path.join(OLD_PHOTOS, `${PHOTO_ID}.webp`), "photo");
   writeFileSync(path.join(OLD_PHOTOS, `${PHOTO_ID}-thumb.webp`), "thumbnail");

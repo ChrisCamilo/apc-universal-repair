@@ -58,11 +58,11 @@ after(async () => {
 });
 
 // Sends a GIF, a part that is neither a kept id nor a photo, and four photos, and checks each set is refused naming
-// the problem, before the item is looked up.
+// the problem, before the item and its brand are looked up.
 test("API: photos that break the rules are refused before anything is stored", async () => {
   const png = await photo("png");
   const gif = await photo("gif");
-  const url = `/items/${ID}/photos`;
+  const url = `/items/${ID}/brands/${ID}/photos`;
 
   const pngThenGif = multipart([
     { name: "photo", file: png, type: "image/png" },
@@ -79,11 +79,13 @@ test("API: photos that break the rules are refused before anything is stored", a
   const four = multipart(["aa", "ab", "ac", "ad"].map((end) => ({ name: "keep", value: PHOTO_ID.replace("aa", end) })));
   const tooMany = await app.inject({ method: "PUT", url, ...four });
   assert.equal(tooMany.statusCode, 400);
-  assert.deepEqual(tooMany.json().details, [{ field: "photos", message: "An item holds at most 3 photos." }]);
+  assert.deepEqual(tooMany.json().details, [{ field: "photos", message: "A brand of an item holds at most 3 photos." }]);
 
   const one = multipart([{ name: "photo", file: png, type: "image/png" }]);
-  const badId = await app.inject({ method: "PUT", url: "/items/123/photos", ...one });
+  const badId = await app.inject({ method: "PUT", url: `/items/123/brands/${ID}/photos`, ...one });
   assert.equal(badId.statusCode, 400);
+  const badBrand = await app.inject({ method: "PUT", url: `/items/${ID}/brands/123/photos`, ...one });
+  assert.equal(badBrand.statusCode, 400);
 });
 
 // Stores a photo and checks the photo and the thumbnail are served, without a token, at the paths signed for the

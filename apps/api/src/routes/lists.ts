@@ -28,19 +28,20 @@ import { prisma } from "../db/client.js";
 // can offer to merge them); the items that use it refer to it, so they show the new name. POST .../:id/merge merges an
 // entry into another of its list (a model into one of its brand) in one transaction: its items move there and it is
 // deleted, a vehicle brand's models moving along, those of a name the other brand has joining that model; it answers
-// how many items moved, and refuses a merge into itself or away from a catalog vehicle brand (409). DELETE removes an
-// entry no item uses, a vehicle brand with its models; an entry items use is refused naming how many (409), and so is
-// a vehicle brand of the catalog.
+// how many items moved, and refuses a merge into itself, away from a catalog vehicle brand, or of two part brands
+// an item has both of (409). DELETE removes an entry no item uses, a vehicle brand with its models; an entry items
+// use is refused naming how many (409), and so is a vehicle brand of the catalog. A part brand is used by the items
+// it makes a brand of.
 
 /** The columns a list entry is sent with. */
 const ENTRY = { id: true, name: true } as const;
-/** The item column that refers to each list's entries, to count the items using one. */
-const ITEM_REFERENCES = {
-  categories: "categoryId",
-  partBrands: "partBrandId",
-  vehicleBrands: "vehicleBrandId",
-  vehicleModels: "vehicleModelId",
-} as const satisfies Record<ItemListKind, keyof Prisma.ItemWhereInput>;
+/** The items using an entry of each list: by their own column, or a part brand through any of their brands. */
+const ITEMS_USING: Record<ItemListKind, (id: string) => Prisma.ItemWhereInput> = {
+  categories: (id) => ({ categoryId: id }),
+  partBrands: (id) => ({ brands: { some: { partBrandId: id } } }),
+  vehicleBrands: (id) => ({ vehicleBrandId: id }),
+  vehicleModels: (id) => ({ vehicleModelId: id }),
+};
 /** The columns a vehicle model is read with. */
 const MODEL = { id: true, name: true, brandId: true } as const;
 
@@ -137,7 +138,7 @@ function mergeEntries(kind: ItemListKind, id: string, into: string): Promise<num
       return count;
     }
     if (kind === "partBrands") {
-      const { count } = await tx.item.updateMany({ where: { partBrandId: id }, data: { partBrandId: into } });
+      const { count } = await tx.itemBrand.updateMany({ where: { partBrandId: id }, data: { partBrandId: into } });
       await tx.partBrand.delete({ where: { id } });
       return count;
     }
@@ -226,6 +227,11 @@ export function registerListRoutes(app: FastifyInstance) {
         if (kind === "vehicleBrands" && isCatalogBrand(held.name)) {
           return conflict(reply, `"${held.name}" is a catalog brand.`);
         }
+        // A part brand makes an item once: an item with both brands would hold the same part brand twice.
+        const both = kind === "partBrands" ? await prisma.item.count({ where: { AND: [ITEMS_USING.partBrands(id), ITEMS_USING.partBrands(into)] } }) : 0;
+        if (both > 0) {
+          return conflict(reply, `${both} items have both "${held.name}" and "${kept.name}".`, { itemCount: both });
+        }
         return { moved: await mergeEntries(kind, id, into) };
       },
     );
@@ -239,7 +245,7 @@ export function registerListRoutes(app: FastifyInstance) {
       if (kind === "vehicleBrands" && isCatalogBrand(held.name)) {
         return conflict(reply, `"${held.name}" is a catalog brand.`);
       }
-      const itemCount = await prisma.item.count({ where: { [ITEM_REFERENCES[kind]]: id } });
+      const itemCount = await prisma.item.count({ where: ITEMS_USING[kind](id) });
       if (itemCount > 0) {
         return conflict(reply, `"${held.name}" is used by ${itemCount} items.`, { itemCount });
       }
@@ -325,7 +331,7 @@ export function registerListRoutes(app: FastifyInstance) {
     if (!held) {
       return entryNotFound(reply);
     }
-    const itemCount = await prisma.item.count({ where: { [ITEM_REFERENCES.vehicleModels]: id } });
+    const itemCount = await prisma.item.count({ where: ITEMS_USING.vehicleModels(id) });
     if (itemCount > 0) {
       return conflict(reply, `"${held.name}" is used by ${itemCount} items.`, { itemCount });
     }
