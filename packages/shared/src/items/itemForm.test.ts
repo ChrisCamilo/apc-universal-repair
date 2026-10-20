@@ -15,6 +15,7 @@ import {
   modelsOfBrand,
   parsePrice,
   priceInput,
+  quantityInput,
   type ItemForm,
 } from "./itemForm.ts";
 import type { Item } from "./items.ts";
@@ -102,6 +103,34 @@ test("Shared: the item form names each required field left blank", () => {
   assert.deepEqual(itemFormErrors({ ...VALID, price: "0,00" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceInvalid });
   assert.deepEqual(itemFormErrors({ ...VALID, price: "abc" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceInvalid });
   assert.deepEqual(itemFormErrors(VALID, ITEMS, LISTS), {});
+});
+
+// Fills in quantities at the limit and past it, and checks only the ones past it are refused.
+test("Shared: the item form refuses quantities past the limit", () => {
+  assert.deepEqual(itemFormErrors({ ...VALID, quantity: "1000000", minQuantity: "1000000" }, ITEMS, LISTS), {});
+  assert.deepEqual(itemFormErrors({ ...VALID, quantity: "1000001", minQuantity: "99999999999" }, ITEMS, LISTS), {
+    quantity: ITEM_FORM_MESSAGES.quantityTooHigh,
+    minQuantity: ITEM_FORM_MESSAGES.quantityTooHigh,
+  });
+  assert.equal(ITEM_FORM_MESSAGES.quantityTooHigh, "Informe no máximo 1.000.000.");
+});
+
+// Types and pastes into a quantity field and checks whole numbers are taken, without leading zeros or thousands
+// dots, one other character typed is left out without a word, and a pasted fraction, sign or text is refused with
+// the message, the field keeping its value.
+test("Shared: quantity fields take whole numbers only, typed or pasted", () => {
+  assert.deepEqual(quantityInput("1", "12"), { value: "12" });
+  assert.deepEqual(quantityInput("12", "1"), { value: "1" });
+  assert.deepEqual(quantityInput("1", ""), { value: "" });
+  assert.deepEqual(quantityInput("", "007"), { value: "7" });
+  assert.deepEqual(quantityInput("", "0"), { value: "0" });
+  assert.deepEqual(quantityInput("", " 1.000 "), { value: "1000" });
+  for (const typed of ["12,", "12.", "-12", "12e"]) {
+    assert.deepEqual(quantityInput("12", typed), { value: "12" }, typed);
+  }
+  for (const pasted of ["1,5", "-2", "abc", "1.5", "2 un"]) {
+    assert.deepEqual(quantityInput("3", pasted), { value: "3", message: ITEM_FORM_MESSAGES.quantityInvalid }, pasted);
+  }
 });
 
 // Types a category, brands and a model the lists don't hold and checks each is refused pointing to the Create

@@ -3,6 +3,7 @@ import {
   codeKey,
   findOption,
   formatPrice,
+  MAX_QUANTITY,
   NOT_APPLICABLE,
   POSITION_NAMES,
   searchKey,
@@ -63,6 +64,8 @@ export const ITEM_FORM_MESSAGES = {
   vehicleBrand: "Informe a marca do veículo.",
   vehicleBrandNotListed: "Marca de veículo não cadastrada. Escolha “+ Criar marca” na lista.",
   vehicleModelNotListed: "Modelo não cadastrado para essa marca. Escolha “+ Criar modelo” na lista.",
+  quantityInvalid: "Use um número inteiro, de 0 em diante.",
+  quantityTooHigh: `Informe no máximo ${MAX_QUANTITY.toLocaleString("pt-BR")}.`,
   price: "Informe o valor unitário.",
   priceInvalid: "Informe um valor maior que zero, como 89,90.",
 } as const;
@@ -87,7 +90,7 @@ export type ItemForm = {
 };
 /** The message of each field that can't be saved; a field without one is fine. */
 export type ItemFormErrors = Partial<
-  Record<"code" | "name" | "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "price", string>
+  Record<"code" | "name" | "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "quantity" | "minQuantity" | "price", string>
 >;
 /** The options of the item form's comboboxes, from the lists, and its color, from the items in stock. */
 export type ItemFormOptions = { categories: string[]; partBrands: string[]; vehicleBrands: string[]; colors: string[] };
@@ -194,8 +197,8 @@ export function itemFormChanged(form: ItemForm, item: Item, colors: readonly str
 
 /**
  * Checks the form before saving: the code, name, category, part brand, vehicle brand and unit price are required,
- * the category, the brands and a vehicle model must be in their lists, the price must be a number above zero, and
- * the code can't be one another item uses (see codeTakenError).
+ * the category, the brands and a vehicle model must be in their lists, the quantities can't pass MAX_QUANTITY, the
+ * price must be a number above zero, and the code can't be one another item uses (see codeTakenError).
  * @param form The form as typed.
  * @param items Every item in stock.
  * @param lists The lists the API keeps.
@@ -227,6 +230,8 @@ export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: It
     ...(partBrand && { partBrand }),
     ...(vehicleBrand && { vehicleBrand }),
     ...(vehicleModel && { vehicleModel }),
+    ...(Number(form.quantity) > MAX_QUANTITY && { quantity: ITEM_FORM_MESSAGES.quantityTooHigh }),
+    ...(Number(form.minQuantity) > MAX_QUANTITY && { minQuantity: ITEM_FORM_MESSAGES.quantityTooHigh }),
     ...(!form.price.trim() ? { price: ITEM_FORM_MESSAGES.price } : price === null || price <= 0 ? { price: ITEM_FORM_MESSAGES.priceInvalid } : {}),
   };
 }
@@ -304,4 +309,22 @@ export function parsePrice(text: string): number | null {
  */
 export function priceInput(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Reads a change to a quantity field, which takes whole numbers from 0 up: digits are taken without leading zeros, and
+ * a whole number with dots between thousands without its dots ("1.000"); one other character typed is left out, and
+ * any other paste (a fraction, a sign, text) is refused with a message, the field keeping what it held.
+ * @param held What the field holds, digits only.
+ * @param typed The field's text after the change.
+ * @returns What the field takes, and why the change was refused, if it was.
+ */
+export function quantityInput(held: string, typed: string): { value: string; message?: string } {
+  const text = typed.trim();
+  if (/^(\d*|\d{1,3}(\.\d{3})+)$/.test(text)) {
+    return { value: text.replace(/\./g, "").replace(/^0+(?=\d)/, "") };
+  }
+  // One character typed among the digits held, e.g. "12," from "12".
+  const oneTyped = typed.length === held.length + 1 && typed.replace(/\D/g, "") === held;
+  return oneTyped ? { value: held } : { value: held, message: ITEM_FORM_MESSAGES.quantityInvalid };
 }
