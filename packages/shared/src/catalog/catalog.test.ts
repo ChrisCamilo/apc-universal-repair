@@ -13,6 +13,7 @@ import {
   modelsNamed,
   partFit,
 } from "./catalog.ts";
+import { testItem, type FlatItem } from "../items/testItems.ts";
 
 /**
  * Lists every node of a tree, depth first.
@@ -28,8 +29,8 @@ function allNodes(nodes: readonly TreeNode[]): TreeNode[] {
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function part(fields: Partial<Item> & Pick<Item, "code">): Item {
-  return {
+function part(fields: FlatItem & Required<Pick<FlatItem, "code">>): Item {
+  return testItem({
     id: fields.code,
     name: "Peça",
     category: "Motor",
@@ -47,7 +48,7 @@ function part(fields: Partial<Item> & Pick<Item, "code">): Item {
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
     ...fields,
-  };
+  });
 }
 
 // Checks every node id is unique across the whole catalog and the engines (the leaves) and the sheets match one to

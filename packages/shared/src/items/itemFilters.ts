@@ -103,26 +103,28 @@ export function followEntryChange(filters: FilterValues, change: ListEntryChange
 }
 
 /**
- * Lists what each filter offers: the categories, brands and locations in stock, the colors in use with N/A first,
+ * Lists what each filter offers: the categories, brands and locations in stock (of every brand of each item), the
+ * colors in use with N/A first,
  * and the vehicle models as "Opala 4.1 · Chevrolet", only of the chosen vehicle brands when there are any.
  * @param items Every item in stock.
  * @param vehicleBrands Vehicle brands chosen in the menu.
  * @returns The options of each filter, each list in alphabetical order.
  */
 export function itemFilterOptions(items: readonly Item[], vehicleBrands: readonly string[]): ItemFilterOptions {
-  const colors = distinct(items.map((item) => item.color).filter((color) => color !== NOT_APPLICABLE));
+  const brands = items.flatMap((item) => item.brands);
+  const colors = distinct(brands.map((brand) => brand.color).filter((color) => color !== NOT_APPLICABLE));
   const models = items.filter(
     (item) => item.vehicleModel && (vehicleBrands.length === 0 || vehicleBrands.includes(item.vehicleBrand)),
   );
   return {
     categories: distinct(items.map((item) => item.category)),
-    partBrands: distinct(items.map((item) => item.partBrand)),
+    partBrands: distinct(brands.map((brand) => brand.partBrand)),
     vehicleBrands: distinct(items.map((item) => item.vehicleBrand)),
     vehicleModels: distinct(models.map((item) => vehicleModelValue(item.vehicleBrand, item.vehicleModel!)))
       .map((value) => ({ value, label: vehicleModelLabel(value) }))
       .sort((a, b) => a.label.localeCompare(b.label, "pt-BR")),
-    colors: items.some((item) => item.color === NOT_APPLICABLE) ? [NOT_APPLICABLE, ...colors] : colors,
-    locations: distinct(items.flatMap((item) => (item.location ? [item.location] : []))),
+    colors: brands.some((brand) => brand.color === NOT_APPLICABLE) ? [NOT_APPLICABLE, ...colors] : colors,
+    locations: distinct(brands.flatMap((brand) => (brand.location ? [brand.location] : []))),
   };
 }
 

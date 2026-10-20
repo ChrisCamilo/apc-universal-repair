@@ -17,13 +17,13 @@ export const CATALOG_BRAND_MESSAGE = (name: string) => `“${name}” também es
 export const CATALOG_MERGE_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser juntada a outra marca.`;
 /** The four lists before they load: all empty. */
 export const EMPTY_ITEM_LISTS: ItemLists = { categories: [], partBrands: [], vehicleBrands: [], vehicleModels: [] };
-/** The item field each list holds the names of. */
+/** The item field each list holds the names of: a part brand is a field of each of the item's brands. */
 export const ITEM_LIST_FIELDS = {
   categories: "category",
   partBrands: "partBrand",
   vehicleBrands: "vehicleBrand",
   vehicleModels: "vehicleModel",
-} as const satisfies Record<ItemListKind, keyof Item>;
+} as const satisfies Record<ItemListKind, "category" | "partBrand" | "vehicleBrand" | "vehicleModel">;
 /** The API path of each list. */
 export const ITEM_LIST_PATHS: Record<ItemListKind, string> = {
   categories: "/categories",
@@ -232,8 +232,8 @@ function itemCount(count: number): string {
 }
 
 /**
- * Counts the items that use an entry, ignoring case, accents and extra spaces: by name, and a vehicle model by its
- * brand and name.
+ * Counts the items that use an entry, ignoring case, accents and extra spaces: by name, a part brand by any of the
+ * item's brands, and a vehicle model by its brand and name.
  * @param items Every item in stock.
  * @param kind The entry's list.
  * @param entry The entry.
@@ -243,9 +243,11 @@ function itemCount(count: number): string {
 export function itemsUsing(items: readonly Item[], kind: ItemListKind, entry: ListEntry | VehicleModel, lists: ItemLists): number {
   const field = ITEM_LIST_FIELDS[kind];
   const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
+  /** The names an item uses in the entry's list. */
+  const names = (item: Item) => (field === "partBrand" ? item.brands.map((each) => each.partBrand) : [item[field] ?? ""]);
   return items.filter(
     (item) =>
-      optionKey(item[field] ?? "") === optionKey(entry.name) &&
+      names(item).some((name) => optionKey(name) === optionKey(entry.name)) &&
       (kind !== "vehicleModels" || (brand !== undefined && optionKey(item.vehicleBrand) === optionKey(brand.name))),
   ).length;
 }

@@ -13,6 +13,7 @@ import {
   vehicleModelValue,
 } from "./itemFilters.ts";
 import type { Item } from "./items.ts";
+import { testItem, type FlatItem } from "./testItems.ts";
 
 const ITEMS = [
   item({ category: "Motor", partBrand: "Mann", vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1", color: "Preto", location: "A-2" }),
@@ -28,8 +29,8 @@ const ITEMS = [
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function item(fields: Partial<Item>): Item {
-  return {
+function item(fields: FlatItem): Item {
+  return testItem({
     id: "00000000-0000-4000-8000-000000000001",
     code: "X-1",
     name: "Peça",
@@ -48,7 +49,7 @@ function item(fields: Partial<Item>): Item {
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
     ...fields,
-  };
+  });
 }
 
 // Lists the options from the items in stock and checks each list is distinct and sorted, the colors in use come

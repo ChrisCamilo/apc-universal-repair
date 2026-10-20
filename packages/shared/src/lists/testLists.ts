@@ -17,7 +17,7 @@ export function itemListsOf(items: readonly Item[]): ItemLists {
   const vehicleBrands = entries(items.map((item) => item.vehicleBrand));
   return {
     categories: entries(items.map((item) => item.category)),
-    partBrands: entries(items.map((item) => item.partBrand)),
+    partBrands: entries(items.flatMap((item) => item.brands.map((brand) => brand.partBrand))),
     vehicleBrands,
     vehicleModels: vehicleBrands.flatMap((brand) =>
       entries(
