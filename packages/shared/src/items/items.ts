@@ -24,6 +24,8 @@ const ITEM_SORT_VALUES: Record<ItemSortKey, (item: SortableItem) => string | num
 };
 /** The status filter values: low stock (at or under the minimum, not zero) and out of stock (zero). */
 export const ITEM_STATUSES = ["low", "out"] as const;
+/** The most an item's quantity, or its minimum, can be: far above any stock, and well within the database's column. */
+export const MAX_QUANTITY = 1_000_000;
 /**
  * localStorage (web) and AsyncStorage (mobile) key of the "Abrir item ao clicar na linha" choice; on when not saved.
  */
@@ -61,8 +63,8 @@ export const itemCreateSchema = z.object({
   side: z.enum(SIDES).optional(),
   color: optionalText,
   location: optionalText,
-  quantity: z.int().min(0).optional(),
-  minQuantity: z.int().min(0).optional(),
+  quantity: z.int().min(0).max(MAX_QUANTITY).optional(),
+  minQuantity: z.int().min(0).max(MAX_QUANTITY).optional(),
   unitPriceCents: z.int().positive("Must be greater than zero."),
 });
 export const itemIdParamsSchema = z.object({ id: z.uuid() });

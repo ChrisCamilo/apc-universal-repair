@@ -180,6 +180,21 @@ test("Shared: invalid CSV rows say why", () => {
   assert.deepEqual(spaced.errors, ["Código repetido: já está na linha 4."]);
 });
 
+// Reads rows with quantities past the limit, a negative one and the limit itself, and checks only those past it and
+// the negative one are refused, naming the column.
+test("Shared: CSV quantities can't pass the limit", () => {
+  const text = [
+    HEADER,
+    "A-1,Junta,Motor,Mann,Volkswagen,,1000001,1000001,,10,,,",
+    "A-2,Junta,Motor,Mann,Volkswagen,,-2,0,,10,,,",
+    "A-3,Junta,Motor,Mann,Volkswagen,,1000000,1000000,,10,,,",
+  ].join("\n");
+  const [past, negative, limit] = rows(text);
+  assert.deepEqual(past.errors, ["Quantidade deve ser no máximo 1.000.000.", "Quantidade mínima deve ser no máximo 1.000.000."]);
+  assert.deepEqual(negative.errors, ["Quantidade deve ser um número inteiro, como 4."]);
+  assert.deepEqual(limit.errors, []);
+});
+
 // Checks a file that can't be read at all says why: empty, missing columns, or only the header.
 test("Shared: a CSV file without items or columns is refused", () => {
   assert.deepEqual(readItemsCsv("", LISTS), { error: "O arquivo está vazio." });

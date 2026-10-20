@@ -8,6 +8,7 @@ import {
   itemCreateSchema,
   itemDetails,
   itemListResponseSchema,
+  MAX_QUANTITY,
   NOT_APPLICABLE,
   optionKey,
   POSITIONS,
@@ -114,10 +115,12 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
     }
     return value(column);
   };
-  /** Reads a quantity, zero when empty. */
+  /** Reads a quantity, a whole number up to MAX_QUANTITY; zero when empty. */
   const count = (column: CsvColumn, label: string) => {
     if (value(column) && !/^\d+$/.test(value(column))) {
       errors.push(`${label} deve ser um número inteiro, como 4.`);
+    } else if (Number(value(column)) > MAX_QUANTITY) {
+      errors.push(`${label} deve ser no máximo ${MAX_QUANTITY.toLocaleString("pt-BR")}.`);
     }
     return Number(value(column)) || 0;
   };
