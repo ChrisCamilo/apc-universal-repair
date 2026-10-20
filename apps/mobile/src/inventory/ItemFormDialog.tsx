@@ -15,8 +15,8 @@ import {
   itemFormOf,
   itemFormOptions,
   modelsOfBrand,
-  parsePrice,
-  priceInput,
+  PRICE_PLACEHOLDER,
+  priceMask,
   quantityInput,
   type ItemForm,
   type ItemFormErrors,
@@ -45,7 +45,8 @@ import type { CreateListEntry } from './useItemLists';
 // is chosen and clears when the brand changes to one without it. A name not in its list can't be saved: the field
 // points to "+ Criar". The code turns uppercase while typing and says at once when another item uses it; the texts
 // start with a capital letter when leaving the field and again on save; the quantities take whole numbers only, up to
-// a million, and a pasted fraction or text is refused, saying so; and the price is shown back in reais. Saving
+// a million, and a pasted fraction or text is refused, saying so; and the price always shows in reais, digits filling
+// from the cents, a pasted price read with a dot or a comma alike, up to a million (see priceMask). Saving
 // checks the required fields and a code another item uses, then sends the item to the API, shows a toast and hands the
 // saved item over, then sends its photos when they changed: up to 3, the first the cover, picked from the phone's
 // library. When the item is saved but its photos aren't, a warning toast says so; an edit that changes nothing isn't
@@ -136,6 +137,13 @@ export function ItemFormDialog({
     const read = quantityInput(form[field], value);
     change(field, read.value);
     setErrors((shown) => ({ ...shown, [field]: read.message }));
+  };
+
+  /** Takes the price through the BRL mask; a paste that isn't a price, or passes the limit, is refused, saying so. */
+  const changePrice = (value: string) => {
+    const read = priceMask(form.price, value);
+    change('price', read.value);
+    setErrors((shown) => ({ ...shown, price: read.message }));
   };
 
   /** Takes a new vehicle brand, clearing a model the new brand doesn't have. */
@@ -373,16 +381,10 @@ export function ItemFormDialog({
           />
           <TextField
             label={ITEM_FIELD_LABELS.price}
-            kind="decimal"
+            kind="number"
             value={form.price}
-            onValueChange={(value) => change('price', value)}
-            onBlur={() => {
-              const cents = parsePrice(form.price);
-              if (cents !== null) {
-                change('price', priceInput(cents));
-              }
-            }}
-            placeholder="0,00"
+            onValueChange={changePrice}
+            placeholder={PRICE_PLACEHOLDER}
             error={errors.price}
           />
         </View>

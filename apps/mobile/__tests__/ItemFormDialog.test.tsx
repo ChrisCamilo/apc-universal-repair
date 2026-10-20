@@ -343,7 +343,7 @@ test('Mobile: leaving a field writes it back by the rules', async () => {
   await leave(tree, 'Valor unitário (R$)');
   expect(value(tree, 'Nome')).toBe('Vela de ignição');
   expect(value(tree, 'Cor')).toBe('Preto');
-  expect(value(tree, 'Valor unitário (R$)')).toBe('1.234,50');
+  expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 1.234,50');
 });
 
 // Fills in a new item and saves it, and checks it is posted with the writing rule applied, a toast says it was added
@@ -375,7 +375,7 @@ test('Mobile: an item opens filled in and is patched on save', async () => {
   expect(shows(tree, 'Editar item')).toBe(true);
   expect(value(tree, 'Código da peça')).toBe('W 712/95');
   expect(value(tree, 'Modelo do veículo')).toBe('Gol');
-  expect(value(tree, 'Valor unitário (R$)')).toBe('39,90');
+  expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 39,90');
   (fetch as jest.Mock).mockClear();
   answerSave(200, { ...FILTER, quantity: 7 });
   await type(tree, 'Quantidade', '7');
@@ -386,6 +386,28 @@ test('Mobile: an item opens filled in and is patched on save', async () => {
   expect(url).toMatch(new RegExp(`/items/${FILTER.id}$`));
   expect(init.method).toBe('PATCH');
   expect(shows(tree, 'Item “Filtro de óleo” salvo.')).toBe(true);
+});
+
+// Types digits into the empty price one by one and checks they fill from the cents, a pasted "7.50" reads as R$ 7,50,
+// and a paste past a million is refused with its message; then saves and checks 750 cents are sent.
+test('Mobile: the price always shows in reais, a dot and a comma alike', async () => {
+  const tree = await mount(FILTER);
+  (fetch as jest.Mock).mockClear();
+  answerSave(200, FILTER);
+  await type(tree, 'Valor unitário (R$)', '');
+  for (const typed of ['7', 'R$ 0,075', 'R$ 0,750']) {
+    await type(tree, 'Valor unitário (R$)', typed);
+  }
+  expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 7,50');
+  await type(tree, 'Valor unitário (R$)', '');
+  await type(tree, 'Valor unitário (R$)', '7.50');
+  expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 7,50');
+  await type(tree, 'Valor unitário (R$)', '2.000.000');
+  expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 7,50');
+  expect(shows(tree, ITEM_FORM_MESSAGES.priceTooHigh)).toBe(true);
+  await press(tree, 'Salvar alterações');
+  const [, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(JSON.parse(init.body).unitPriceCents).toBe(750);
 });
 
 // Pastes a fraction into the quantity and checks it is refused with its message, the field keeping its value, and a
