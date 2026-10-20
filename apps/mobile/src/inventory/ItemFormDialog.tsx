@@ -17,6 +17,7 @@ import {
   modelsOfBrand,
   parsePrice,
   priceInput,
+  quantityInput,
   type ItemForm,
   type ItemFormErrors,
 } from '@apc/shared/item-form';
@@ -43,7 +44,8 @@ import type { CreateListEntry } from './useItemLists';
 // the model only lists the chosen brand's models, is created under that brand, stays locked until a brand of the list
 // is chosen and clears when the brand changes to one without it. A name not in its list can't be saved: the field
 // points to "+ Criar". The code turns uppercase while typing and says at once when another item uses it; the texts
-// start with a capital letter when leaving the field and again on save, and the price is shown back in reais. Saving
+// start with a capital letter when leaving the field and again on save; the quantities take whole numbers only, up to
+// a million, and a pasted fraction or text is refused, saying so; and the price is shown back in reais. Saving
 // checks the required fields and a code another item uses, then sends the item to the API, shows a toast and hands the
 // saved item over, then sends its photos when they changed: up to 3, the first the cover, picked from the phone's
 // library. When the item is saved but its photos aren't, a warning toast says so; an edit that changes nothing isn't
@@ -127,6 +129,13 @@ export function ItemFormDialog({
   const changeCode = (value: string) => {
     change('code', value.toUpperCase());
     setErrors((shown) => ({ ...shown, code: codeTakenError(value, items, item?.id) }));
+  };
+
+  /** Takes a whole quantity, leaving out what isn't one; a paste that isn't one is refused, saying so. */
+  const changeQuantity = (field: 'quantity' | 'minQuantity') => (value: string) => {
+    const read = quantityInput(form[field], value);
+    change(field, read.value);
+    setErrors((shown) => ({ ...shown, [field]: read.message }));
   };
 
   /** Takes a new vehicle brand, clearing a model the new brand doesn't have. */
@@ -319,14 +328,16 @@ export function ItemFormDialog({
               label={ITEM_FIELD_LABELS.quantity}
               kind="number"
               value={form.quantity}
-              onValueChange={(value) => change('quantity', value.replace(/\D/g, ''))}
+              onValueChange={changeQuantity('quantity')}
+              error={errors.quantity}
             />
           </View>
           <TextField
             label={ITEM_FIELD_LABELS.minQuantity}
             kind="number"
             value={form.minQuantity}
-            onValueChange={(value) => change('minQuantity', value.replace(/\D/g, ''))}
+            onValueChange={changeQuantity('minQuantity')}
+            error={errors.minQuantity}
             helper="Abaixo disso o item aparece como estoque baixo."
           />
           <View style={styles.choice} testID={ids.choice}>

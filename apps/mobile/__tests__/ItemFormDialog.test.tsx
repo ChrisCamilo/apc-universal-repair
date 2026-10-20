@@ -378,6 +378,7 @@ test('Mobile: an item opens filled in and is patched on save', async () => {
   expect(value(tree, 'Valor unitário (R$)')).toBe('39,90');
   (fetch as jest.Mock).mockClear();
   answerSave(200, { ...FILTER, quantity: 7 });
+  await type(tree, 'Quantidade', '7');
   await type(tree, 'Quantidade', '7a');
   expect(value(tree, 'Quantidade')).toBe('7');
   await press(tree, 'Salvar alterações');
@@ -385,6 +386,24 @@ test('Mobile: an item opens filled in and is patched on save', async () => {
   expect(url).toMatch(new RegExp(`/items/${FILTER.id}$`));
   expect(init.method).toBe('PATCH');
   expect(shows(tree, 'Item “Filtro de óleo” salvo.')).toBe(true);
+});
+
+// Pastes a fraction into the quantity and checks it is refused with its message, the field keeping its value, and a
+// whole number with a thousands dot is taken without it; then a minimum past a million is refused on save and nothing
+// is sent.
+test('Mobile: the quantities take whole numbers only, up to a million', async () => {
+  const tree = await mount(FILTER);
+  (fetch as jest.Mock).mockClear();
+  await type(tree, 'Quantidade', '1,5');
+  expect(value(tree, 'Quantidade')).toBe('1');
+  expect(shows(tree, ITEM_FORM_MESSAGES.quantityInvalid)).toBe(true);
+  await type(tree, 'Quantidade', '1.000');
+  expect(value(tree, 'Quantidade')).toBe('1000');
+  expect(shows(tree, ITEM_FORM_MESSAGES.quantityInvalid)).toBe(false);
+  await type(tree, 'Quantidade mínima', '2000000');
+  await press(tree, 'Salvar alterações');
+  expect(shows(tree, ITEM_FORM_MESSAGES.quantityTooHigh)).toBe(true);
+  expect(fetch).not.toHaveBeenCalled();
 });
 
 // Opens an item's details and checks every field shows as text with its label, what doesn't apply said in words and
