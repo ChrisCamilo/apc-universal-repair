@@ -1,5 +1,15 @@
 import type { Page } from "@playwright/test";
-import { matchesSearch, optionKey, sortItems, stockStatus, type Item, type ItemSortKey } from "@apc/shared/items";
+import {
+  matchesSearch,
+  NOT_APPLICABLE,
+  optionKey,
+  sortableOf,
+  sortItems,
+  stockStatus,
+  type Item,
+  type ItemCreate,
+  type ItemSortKey,
+} from "@apc/shared/items";
 import {
   findEntry,
   isCatalogBrand,
@@ -21,7 +31,7 @@ import { itemListsOf } from "@apc/shared/test-lists";
 // a name, or gives back the one a list already holds; a PATCH renames an entry and the items using it, refusing a
 // name another entry has; a merge moves an entry's items to another and removes it (a category or part brand; brands
 // and models aren't merged here); a DELETE removes an entry no item uses, refusing one in use or a brand of the
-// catalog.
+// catalog. A part brand is a name of each brand of an item. savedItem answers a create or edit as the API would.
 
 /**
  * Answers GET /api/items, with or without a query, from a list of items the test may change as it goes, and the
@@ -48,7 +58,12 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
           (!status || stockStatus(item.quantity, item.minQuantity) === status),
       );
       const sort = query.get("sort") as ItemSortKey | null;
-      const sorted = sort ? sortItems(matching, { key: sort, dir: query.get("order") === "desc" ? "desc" : "asc" }) : matching;
+      const sorted = sort
+        ? sortItems(
+            matching.map((item) => ({ ...sortableOf(item), item })),
+            { key: sort, dir: query.get("order") === "desc" ? "desc" : "asc" },
+          ).map((row) => row.item)
+        : matching;
       const size = Number(query.get("pageSize")) || matching.length;
       const first = (Number(query.get("page") || 1) - 1) * size;
       return route.fulfill({ json: { items: sorted.slice(first, first + size), total: matching.length } });
@@ -104,8 +119,9 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
         let moved = 0;
         // Each item moved is replaced, leaving the test's own item objects as they were.
         stock.forEach((item, index) => {
-          if (optionKey(item[field] ?? "") === optionKey(entry.name)) {
-            stock[index] = { ...item, [field]: into.name };
+          const renamed = withName(item, field, entry.name, into.name);
+          if (renamed !== item) {
+            stock[index] = renamed;
             moved += 1;
           }
         });
@@ -123,8 +139,8 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
       const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
       // Each item renamed is replaced, leaving the test's own item objects as they were.
       stock.forEach((item, index) => {
-        if (optionKey(item[field] ?? "") === optionKey(entry.name) && (!brand || optionKey(item.vehicleBrand) === optionKey(brand.name))) {
-          stock[index] = { ...item, [field]: name };
+        if (!brand || optionKey(item.vehicleBrand) === optionKey(brand.name)) {
+          stock[index] = withName(item, field, entry.name, name);
         }
       });
       const renamed = { ...entry, name };
@@ -132,4 +148,59 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
       return route.fulfill({ json: renamed });
     },
   );
+}
+
+/**
+ * Answers a create or an edit as the API would: the item with the fields sent, its brands as sent (a kept one with its
+ * photos, a new one with an id), its codes in uppercase and its quantity the brands' sum.
+ * @param sent The body sent.
+ * @param held The item before an edit; none for a new one.
+ * @returns The item saved.
+ */
+export function savedItem(sent: Partial<ItemCreate>, held?: Item): Item {
+  const brands = sent.brands
+    ? sent.brands.map((brand) => ({
+        id: brand.id ?? crypto.randomUUID(),
+        partBrand: brand.partBrand,
+        code: brand.code.trim().toUpperCase(),
+        color: brand.color || NOT_APPLICABLE,
+        location: brand.location || null,
+        quantity: brand.quantity ?? 0,
+        unitPriceCents: brand.unitPriceCents,
+        photos: held?.brands.find((each) => each.id === brand.id)?.photos ?? [],
+      }))
+    : held!.brands;
+  const now = new Date().toISOString();
+  return {
+    id: held?.id ?? crypto.randomUUID(),
+    name: sent.name ?? held!.name,
+    category: sent.category ?? held!.category,
+    vehicleBrand: sent.vehicleBrand ?? held!.vehicleBrand,
+    vehicleModel: sent.vehicleModel === undefined ? (held?.vehicleModel ?? null) : sent.vehicleModel || null,
+    position: sent.position ?? held?.position ?? NOT_APPLICABLE,
+    side: sent.side ?? held?.side ?? NOT_APPLICABLE,
+    minQuantity: sent.minQuantity ?? held?.minQuantity ?? 0,
+    quantity: brands.reduce((sum, brand) => sum + brand.quantity, 0),
+    brands,
+    createdAt: held?.createdAt ?? now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Renames an entry of the lists in an item: its category, vehicle brand or model, or the part brand of its brands.
+ * @param item The item.
+ * @param field The item field the entry's list fills.
+ * @param from The entry's name.
+ * @param to Its new name.
+ * @returns A new item with the name changed, or the same item when it doesn't use the entry.
+ */
+function withName(item: Item, field: (typeof ITEM_LIST_FIELDS)[ItemListKind], from: string, to: string): Item {
+  if (field === "partBrand") {
+    const uses = item.brands.some((brand) => optionKey(brand.partBrand) === optionKey(from));
+    return uses
+      ? { ...item, brands: item.brands.map((brand) => (optionKey(brand.partBrand) === optionKey(from) ? { ...brand, partBrand: to } : brand)) }
+      : item;
+  }
+  return optionKey(item[field] ?? "") === optionKey(from) ? { ...item, [field]: to } : item;
 }

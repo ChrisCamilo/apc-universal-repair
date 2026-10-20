@@ -2,8 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import type { Item } from "@apc/shared/items";
 import { THEME_STORAGE_KEYS, themes, type Mode, type Style } from "@apc/shared/theme";
 import { TOAST_KIND_LOOKS, type ToastKind } from "@apc/shared/toast";
-import { serveItems } from "./items.ts";
+import { savedItem, serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
+import { testItem } from "@apc/shared/test-items";
 
 // A 1×1 PNG, what the API answers for a photo.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
@@ -12,7 +13,7 @@ const THEMES: [Style, Mode][] = [
   ["eighties", "night"],
   ["gt4", "day"],
 ];
-const FILTER: Item = {
+const FILTER: Item = testItem({
   id: "00000000-0000-4000-8000-000000000001",
   code: "W 712/95",
   name: "Filtro de óleo",
@@ -30,7 +31,7 @@ const FILTER: Item = {
   photos: [],
   createdAt: "2026-10-03T12:00:00.000Z",
   updatedAt: "2026-10-03T12:00:00.000Z",
-};
+});
 
 /**
  * Checks the toast showing has a kind's look in a theme: its pill in the kind's status color with its text color, the
@@ -105,7 +106,7 @@ for (const theme of THEMES) {
     await startIn(page, theme);
     const stock = [FILTER];
     await page.route("**/api/items", (route) => {
-      const saved = { ...FILTER, ...route.request().postDataJSON(), id: "00000000-0000-4000-8000-000000000002", vehicleModel: null };
+      const saved = { ...savedItem(route.request().postDataJSON()), id: "00000000-0000-4000-8000-000000000002" };
       stock.unshift(saved);
       return route.fulfill({ status: 201, json: saved });
     });
@@ -132,11 +133,14 @@ for (const theme of THEMES) {
   // with the "!", read out at once: the item is saved, its photos aren't.
   test(`Web: photos that fail to save show a warning toast in ${theme.join("/")}`, async ({ page }) => {
     await startIn(page, theme);
-    const withPhoto = { ...FILTER, photos: [{ id: "00000000-0000-4000-8000-0000000000aa", url: "/photos/aa.png", thumbUrl: "/photos/aa-thumb.png" }] };
+    const withPhoto = {
+      ...FILTER,
+      brands: [{ ...FILTER.brands[0], photos: [{ id: "00000000-0000-4000-8000-0000000000aa", url: "/photos/aa.png", thumbUrl: "/photos/aa-thumb.png" }] }],
+    };
     await page.route("**/api/photos/*", (route) => route.fulfill({ body: PNG, contentType: "image/png" }));
     await serveItems(page, [withPhoto]);
     await page.route("**/api/items/*", (route) => route.fulfill({ json: withPhoto }));
-    await page.route("**/api/items/*/photos", (route) => route.fulfill({ status: 500, body: "" }));
+    await page.route("**/api/items/*/brands/*/photos", (route) => route.fulfill({ status: 500, body: "" }));
     await page.goto("/inventory");
     await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
     const dialog = page.getByRole("dialog", { name: "Editar item" });

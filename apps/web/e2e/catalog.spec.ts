@@ -4,6 +4,7 @@ import type { Item } from "@apc/shared/items";
 import { DASHBOARD_TABS } from "@apc/shared/tabs";
 import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
+import { testItem, type FlatItem } from "@apc/shared/test-items";
 
 // The inventory the code search looks in: a part for an engine the catalog has, and one for a model it has no sheet
 // for.
@@ -17,8 +18,8 @@ const ITEMS: Item[] = [
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function item(fields: Pick<Item, "code" | "name" | "vehicleBrand" | "vehicleModel">): Item {
-  return {
+function item(fields: Required<Pick<FlatItem, "code" | "name" | "vehicleBrand" | "vehicleModel">>): Item {
+  return testItem({
     id: crypto.randomUUID(),
     category: "Freios",
     partBrand: "Cobreq",
@@ -33,7 +34,7 @@ function item(fields: Pick<Item, "code" | "name" | "vehicleBrand" | "vehicleMode
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
     ...fields,
-  };
+  });
 }
 
 // While the Catalog tab is a work in progress its screen sits out of reach behind the notice, so these tests wait for

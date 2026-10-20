@@ -1,10 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { Item } from "@apc/shared/items";
+import type { Item, ItemCreate } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
 import { TOAST_DURATION, TOAST_FADE_MS } from "@apc/shared/toast";
-import { serveItems } from "./items.ts";
+import { savedItem, serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
+import { testItem } from "@apc/shared/test-items";
 
 const ITEMS: Item[] = [item("00000000-0000-4000-8000-000000000001", "Filtro de óleo"), item("00000000-0000-4000-8000-000000000002", "Bomba d'água")];
 
@@ -15,7 +16,7 @@ const ITEMS: Item[] = [item("00000000-0000-4000-8000-000000000001", "Filtro de �
  * @returns A complete item.
  */
 function item(id: string, name: string): Item {
-  return {
+  return testItem({
     id,
     code: id.slice(-4),
     name,
@@ -33,7 +34,7 @@ function item(id: string, name: string): Item {
     photos: [],
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
-  };
+  });
 }
 
 /**
@@ -185,12 +186,12 @@ test("Web: items reaching their minimum stock are warned about once", async ({ p
   await serveItems(page, stock);
   await page.route("**/api/items/*", (route) => {
     const index = stock.findIndex((held) => route.request().url().endsWith(held.id));
-    stock[index] = { ...stock[index], ...route.request().postDataJSON(), vehicleModel: null, location: null };
+    stock[index] = savedItem(route.request().postDataJSON(), stock[index]);
     return route.fulfill({ json: stock[index] });
   });
   await page.route("**/api/items/import", (route) => {
-    for (const sent of route.request().postDataJSON().items as Item[]) {
-      stock.unshift({ ...item(crypto.randomUUID(), sent.name), ...sent, vehicleModel: null, location: null });
+    for (const sent of route.request().postDataJSON().items as ItemCreate[]) {
+      stock.unshift(savedItem(sent));
     }
     return route.fulfill({ json: { created: 2, updated: 0 } });
   });
