@@ -1,6 +1,6 @@
 import type { FilterValues } from "../filters/filters.ts";
 import { EMPTY_ITEM_FILTERS } from "../items/itemFilters.ts";
-import { itemFormOf, parsePrice, type ItemForm } from "../items/itemForm.ts";
+import { formValue, itemFormOf, parsePrice, withFormValues, type FormField, type ItemForm } from "../items/itemForm.ts";
 import { matchesSearch, optionKey, type Item } from "../items/items.ts";
 import type { TourStep } from "./tour.ts";
 
@@ -9,10 +9,11 @@ import type { TourStep } from "./tour.ts";
 // describes its screen (what is open, the items, the search and filters, where each part of the screen is) and the
 // actions "Fazer por mim" takes; the steps here say when each one is done, where to go back when the user leaves
 // one, and what to do for them. With "Abrir item ao clicar na linha" off, the steps through the item's details are
-// left out. The tutorial runs by itself the first time, and again from the user menu.
+// left out. The tutorial runs by itself the first time, and again from the user menu. The test item has one brand, so
+// its fields are named flat: the item's, or its brand's.
 
 /** The fields of each filling step of part 1. */
-const FILL_FIELDS: Record<"identity" | "stock", (keyof ItemForm)[]> = {
+const FILL_FIELDS: Record<"identity" | "stock", FormField[]> = {
   identity: ["code", "name", "category", "partBrand", "vehicleBrand", "vehicleModel"],
   stock: ["quantity", "minQuantity", "position", "side", "color", "location", "price"],
 };
@@ -67,7 +68,7 @@ const STEP_TEXTS: Record<TutorialStepId, { part?: number; title: string; text: s
 };
 
 /** The edits of part 3: a new name, and a quantity under the minimum, for the low-stock row. */
-export const TUTORIAL_EDIT: Pick<ItemForm, "name" | "quantity"> = { name: "Item de teste do tutorial editado", quantity: "1" };
+export const TUTORIAL_EDIT = { name: "Item de teste do tutorial editado", quantity: "1" } satisfies Partial<Record<FormField, string>>;
 /** The filters part 2 applies, which the test item matches. */
 export const TUTORIAL_FILTERS: FilterValues = {
   ...EMPTY_ITEM_FILTERS,
@@ -78,20 +79,17 @@ export const TUTORIAL_FILTERS: FilterValues = {
 };
 /** The test item, as typed in the form. */
 export const TUTORIAL_ITEM: ItemForm = {
-  code: "TUTORIAL-001",
   name: "Item de teste do tutorial",
   category: "Motor",
-  partBrand: "Bosch",
   vehicleBrand: "Volkswagen",
   vehicleModel: "Gol",
-  quantity: "5",
   minQuantity: "2",
   position: "D",
   side: "LD",
-  color: "Preto",
-  location: "T-1",
-  price: "R$ 49,90",
+  brands: [{ partBrand: "Bosch", code: "TUTORIAL-001", quantity: "5", price: "R$ 49,90", color: "Preto", location: "T-1" }],
 };
+/** The test item's part code, which tells it apart in the list. */
+export const TUTORIAL_CODE = TUTORIAL_ITEM.brands[0].code;
 /** The search part 2 types, which finds the test item by its name. */
 export const TUTORIAL_SEARCH = "tutorial";
 /** The Inventory tab as the tutorial sees it, read again on every check, and what it does for the user. */
@@ -179,9 +177,9 @@ export function filtersHave(applied: FilterValues, wanted: FilterValues): boolea
  * @param values The values it must hold.
  * @returns True when each value matches.
  */
-export function formHas(form: ItemForm, values: Partial<ItemForm>): boolean {
-  return (Object.entries(values) as [keyof ItemForm, string][]).every(([field, value]) =>
-    field === "price" ? parsePrice(form.price) === parsePrice(value) : optionKey(form[field]) === optionKey(value),
+export function formHas(form: ItemForm, values: Partial<Record<FormField, string>>): boolean {
+  return (Object.entries(values) as [FormField, string][]).every(([field, value]) =>
+    field === "price" ? parsePrice(formValue(form, field)) === parsePrice(value) : optionKey(formValue(form, field)) === optionKey(value),
   );
 }
 
@@ -194,11 +192,11 @@ export function formHas(form: ItemForm, values: Partial<ItemForm>): boolean {
  */
 export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Target>, opensOnRow: boolean): TourStep<Target>[] {
   /** The test item, while it is in stock. */
-  const testItem = () => screen().items.find((item) => item.code === TUTORIAL_ITEM.code);
+  const testItem = () => screen().items.find(isTestItem);
   /** Whether the form is open on the test item, on the edit when `viewing` is false. */
   const onTestItem = (viewing: boolean) => {
     const { form } = screen();
-    return form !== null && form.item !== undefined && form.item.code === TUTORIAL_ITEM.code && form.viewing === viewing;
+    return form !== null && isTestItem(form.item) && form.viewing === viewing;
   };
   /** Whether the form is open on a new item. */
   const onNew = () => screen().form !== null && screen().form?.item === undefined;
@@ -206,12 +204,12 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
   const typed = () => screen().form?.values ?? TUTORIAL_ITEM;
   const firstEdit: TutorialStepId = opensOnRow ? "details" : "pencil-first";
   const edited = () => testItem()?.name === TUTORIAL_EDIT.name && testItem()?.quantity === Number(TUTORIAL_EDIT.quantity);
-  const pick = (fields: (keyof ItemForm)[]) => Object.fromEntries(fields.map((field) => [field, TUTORIAL_ITEM[field]]));
+  const pick = (fields: FormField[]) => Object.fromEntries(fields.map((field) => [field, formValue(TUTORIAL_ITEM, field)]));
   /** Opens the edit of the test item with some values changed. */
-  const editWith = (values: Partial<ItemForm>) => {
+  const editWith = (values: Partial<Record<FormField, string>>) => {
     const item = testItem();
     if (item) {
-      screen().openForm(item, false, { ...itemFormOf(item), ...values });
+      screen().openForm(item, false, withFormValues(itemFormOf(item), values));
     }
   };
 
@@ -220,13 +218,13 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
     identity: {
       target: () => screen().target("form-identity"),
       done: () => onNew() && formHas(typed(), pick(FILL_FIELDS.identity)),
-      auto: () => screen().openForm(undefined, false, { ...typed(), ...pick(FILL_FIELDS.identity) }),
+      auto: () => screen().openForm(undefined, false, withFormValues(typed(), pick(FILL_FIELDS.identity))),
       lost: () => (screen().form ? null : "new"),
     },
     stock: {
       target: () => screen().target("form-stock"),
       done: () => onNew() && formHas(typed(), pick(FILL_FIELDS.stock)),
-      auto: () => screen().openForm(undefined, false, { ...typed(), ...pick(FILL_FIELDS.stock) }),
+      auto: () => screen().openForm(undefined, false, withFormValues(typed(), pick(FILL_FIELDS.stock))),
       lost: () => (screen().form ? null : "new"),
     },
     save: {
@@ -284,7 +282,7 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
       auto: () => {
         const item = testItem();
         if (item) {
-          screen().saveItem(item, { ...itemFormOf(item), ...TUTORIAL_EDIT });
+          screen().saveItem(item, withFormValues(itemFormOf(item), TUTORIAL_EDIT));
         }
       },
       lost: () => (screen().form || edited() ? null : firstEdit),
@@ -297,7 +295,7 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
       auto: () => {
         const item = testItem();
         if (item) {
-          screen().saveItem(item, { ...itemFormOf(item), quantity: "0" });
+          screen().saveItem(item, withFormValues(itemFormOf(item), { quantity: "0" }));
         }
       },
       lost: () => (screen().form || testItem()?.quantity === 0 ? null : "pencil"),
@@ -305,7 +303,7 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
     out: { target: () => screen().target("row") },
     delete: {
       target: () => screen().target("trash"),
-      done: () => screen().removing?.code === TUTORIAL_ITEM.code,
+      done: () => isTestItem(screen().removing),
       auto: () => {
         const item = testItem();
         if (item) {
@@ -351,4 +349,13 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
     const { lost, ...binding } = bindings[id];
     return { id, ...STEP_TEXTS[id], ...binding, ...(lost && { lost: () => (screen().busy ? null : lost()) }) };
   });
+}
+
+/**
+ * Tells whether an item is the tutorial's test item, by its part code.
+ * @param item An item, maybe none.
+ * @returns True for the test item.
+ */
+function isTestItem(item: Item | undefined): boolean {
+  return item?.brands.some((brand) => brand.code === TUTORIAL_CODE) ?? false;
 }
