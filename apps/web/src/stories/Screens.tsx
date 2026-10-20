@@ -1,7 +1,21 @@
 import { useState } from 'react'
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
 import { cubeIcon, documentIcon, pencilIcon, trashIcon } from '@apc/shared/icons'
-import { formatPrice, itemDetails, matchesSearch, resultSummary, searchKey, STOCK_STATUS_LABELS, stockStatus, type Item } from '@apc/shared/items'
+import {
+  brandsValue,
+  formatPriceRange,
+  itemCodes,
+  itemDetails,
+  matchesSearch,
+  partBrandsLabel,
+  resultSummary,
+  searchKey,
+  sortableOf,
+  STOCK_STATUS_LABELS,
+  stockStatus,
+  type Item,
+  type SortableItem,
+} from '@apc/shared/items'
 import { PAGE_SIZES } from '@apc/shared/pagination'
 import { sortRows, type Sort } from '@apc/shared/table'
 import type { TreeNode } from '@apc/shared/tree'
@@ -23,6 +37,7 @@ import { SearchField } from '../components/TextField.tsx'
 import { TreeView } from '../components/TreeView.tsx'
 import { Heading, NumericReadout, Text } from '../components/Typography.tsx'
 import { screens } from './Screens.styles.ts'
+import { testItem, type FlatItem } from '@apc/shared/test-items'
 
 // The wireframe screens rebuilt from the design system alone, to prove it is complete before the real screens:
 // the Dashboard on its Catalog and Inventory tabs (the Login story shows the real LoginScreen). They hold their
@@ -148,8 +163,8 @@ function firstEngine(nodes: TreeNode[]): string | undefined {
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
-  return {
+function item(fields: FlatItem & Required<Pick<FlatItem, 'code' | 'name'>>): Item {
+  return testItem({
     id: fields.code,
     category: 'Motor',
     partBrand: 'Bosch',
@@ -166,7 +181,7 @@ function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
-  }
+  })
 }
 
 /**
@@ -331,11 +346,11 @@ function InventoryTab() {
     (row) =>
       matchesSearch(row, search) &&
       (filters.cat.length === 0 || filters.cat.includes(row.category)) &&
-      (filters.part.length === 0 || filters.part.includes(row.partBrand)) &&
+      (filters.part.length === 0 || row.brands.some((brand) => filters.part.includes(brand.partBrand))) &&
       (status === null || stockStatus(row.quantity, row.minQuantity) === status),
   )
   const { classes, ids } = screens()
-  const sorted = sort ? sortRows(shown, (row) => row[sort.key as keyof Omit<Item, 'photos'>] ?? '', sort.dir) : shown
+  const sorted = sort ? sortRows(shown, (row) => sortableOf(row)[sort.key as keyof SortableItem] ?? '', sort.dir) : shown
 
   return (
     <Panel className={classes.inventory()}>
@@ -377,19 +392,19 @@ function InventoryTab() {
             header: 'Item',
             sortable: true,
             card: 'main',
-            cell: (row) => <TableTitle title={row.name} code={row.code} details={itemDetails(row)} />,
+            cell: (row) => <TableTitle title={row.name} code={itemCodes(row)} details={itemDetails(row)} />,
           },
           { key: 'category', header: 'Categoria', sortable: true, cell: (row) => row.category },
-          { key: 'partBrand', header: 'Marca', sortable: true, cell: (row) => row.partBrand },
+          { key: 'partBrand', header: 'Marca', sortable: true, cell: (row) => partBrandsLabel(row) },
           { key: 'vehicleBrand', header: 'Veículo', cell: (row) => [row.vehicleBrand, row.vehicleModel].filter(Boolean).join(' ') },
-          { key: 'location', header: 'Local', cell: (row) => row.location },
+          { key: 'location', header: 'Local', cell: (row) => brandsValue(row, 'location') },
           {
             key: 'unitPriceCents',
             header: 'Valor unit.',
             sortLabel: 'Valor unitário',
             numeric: true,
             sortable: true,
-            cell: (row) => formatPrice(row.unitPriceCents),
+            cell: (row) => formatPriceRange(row),
           },
           { key: 'quantity', header: 'Qtd.', sortLabel: 'Quantidade', numeric: true, sortable: true, card: 'end', cell: (row) => row.quantity },
           {
