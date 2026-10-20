@@ -5,7 +5,11 @@ import { sortRows, type Sort } from "../table/table.ts";
 
 // Inventory items as the API sends and receives them, and the rules web, mobile and the API apply alike:
 // how text is written (first letter capital, codes uppercase), how a search matches names and part codes,
-// how "Ambos" fits both front and rear (or both sides) in the filters, and how the list sorts by a column.
+// how "Ambos" fits both front and rear (or both sides) in the filters, and how the list sorts by a column. An item is
+// a part made by one brand or more, which replace each other: the item holds what they share (name, category,
+// vehicle, position, side and the minimum stock) and each brand its own part code, color, location, quantity, price
+// and photos. The item's quantity is its brands' sum, against its minimum; a column of the list reads the brands as
+// one value: the first brand's (the cover's), every brand's when they agree, or the lowest price.
 
 /** The columns the inventory list sorts by, as the list query's `sort` names them. */
 export const ITEM_SORT_KEYS = ["name", "category", "partBrand", "vehicle", "position", "side", "color", "location", "price", "quantity"] as const;
@@ -28,6 +32,8 @@ export const ITEM_STATUSES = ["low", "out"] as const;
 export const MAX_PRICE_CENTS = 100_000_000;
 /** The most an item's quantity, or its minimum, can be: far above any stock, and well within the database's column. */
 export const MAX_QUANTITY = 1_000_000;
+/** What a column of the list shows for the brands of an item when they differ, e.g. in color. */
+export const MIXED_VALUES = "Várias";
 /**
  * localStorage (web) and AsyncStorage (mobile) key of the "Abrir item ao clicar na linha" choice; on when not saved.
  */
@@ -54,20 +60,43 @@ export const SIDE_NAMES: Record<(typeof SIDES)[number], string> = {
 export const SIDES = ["N/A", "LD", "LE", "Ambos"] as const;
 /** What each stock status is called on screen and read out. */
 export const STOCK_STATUS_LABELS: Record<(typeof ITEM_STATUSES)[number], string> = { low: "Estoque baixo", out: "Esgotado" };
-export const itemCreateSchema = z.object({
+/** A brand of an item as it is sent: on an edit, with the id of the brand it keeps; without one, a new brand. */
+export const itemBrandCreateSchema = z.object({
+  id: z.uuid().optional(),
+  partBrand: requiredText,
   code: requiredText,
+  color: optionalText,
+  location: optionalText,
+  quantity: z.int().min(0).max(MAX_QUANTITY).optional(),
+  unitPriceCents: z.int().positive("Must be greater than zero.").max(MAX_PRICE_CENTS),
+});
+// An item's brands: at least one, each part brand and each part code once, as the search compares codes.
+const brandsSchema = z
+  .array(itemBrandCreateSchema)
+  .min(1, "An item has at least one brand.")
+  .superRefine((brands, context) => {
+    for (const [field, key] of [
+      ["partBrand", optionKey],
+      ["code", codeKey],
+    ] as const) {
+      const seen = new Set<string>();
+      brands.forEach((brand, index) => {
+        if (seen.has(key(brand[field]))) {
+          context.addIssue({ code: "custom", path: [index, field], message: `Repeated in the item's brands.` });
+        }
+        seen.add(key(brand[field]));
+      });
+    }
+  });
+export const itemCreateSchema = z.object({
   name: requiredText,
   category: requiredText,
-  partBrand: requiredText,
   vehicleBrand: requiredText,
   vehicleModel: optionalText,
   position: z.enum(POSITIONS).optional(),
   side: z.enum(SIDES).optional(),
-  color: optionalText,
-  location: optionalText,
-  quantity: z.int().min(0).max(MAX_QUANTITY).optional(),
   minQuantity: z.int().min(0).max(MAX_QUANTITY).optional(),
-  unitPriceCents: z.int().positive("Must be greater than zero.").max(MAX_PRICE_CENTS),
+  brands: brandsSchema,
 });
 export const itemIdParamsSchema = z.object({ id: z.uuid() });
 // A filter given once arrives as a string and given several times as an array; both become a list.
@@ -103,33 +132,45 @@ export const itemListQuerySchema = z.object({
  * (e.g. "/photos/<id>.jpg"), which the web reaches under /api and the phone under API_URL.
  */
 export const itemPhotoSchema = z.object({ id: z.uuid(), url: z.string(), thumbUrl: z.string() });
+/** A brand that makes an item's part, with what is its own. */
+export const itemBrandSchema = z.object({
+  id: z.uuid(),
+  partBrand: z.string(),
+  code: z.string(),
+  color: z.string(),
+  location: z.string().nullable(),
+  quantity: z.int().min(0),
+  unitPriceCents: z.int().positive(),
+  /** Photos in order, the first one the cover. */
+  photos: z.array(itemPhotoSchema).max(ITEM_PHOTO_LIMIT),
+});
+export const itemBrandIdParamsSchema = z.object({ id: z.uuid(), brandId: z.uuid() });
 export const itemSchema = z.object({
   id: z.uuid(),
-  code: z.string(),
   name: z.string(),
   category: z.string(),
-  partBrand: z.string(),
   vehicleBrand: z.string(),
   vehicleModel: z.string().nullable(),
   position: z.enum(POSITIONS),
   side: z.enum(SIDES),
-  color: z.string(),
-  location: z.string().nullable(),
+  /** The brands' quantities added up. */
   quantity: z.int().min(0),
   minQuantity: z.int().min(0),
-  unitPriceCents: z.int().positive(),
-  /** Photos in order, the first one the cover. */
-  photos: z.array(itemPhotoSchema).max(ITEM_PHOTO_LIMIT),
+  /** The brands in the order they were added, the first one the item's cover. */
+  brands: z.array(itemBrandSchema).min(1),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
 /** A list of items, newest first: one page of them when a page size was asked, and how many match in all. */
 export const itemListResponseSchema = z.object({ items: z.array(itemSchema), total: z.int().min(0) });
+/** An edit: the fields sent change, and brands, when sent, is the whole new set (see itemBrandCreateSchema). */
 export const itemUpdateSchema = itemCreateSchema.partial();
 /** The "doesn't apply" value of position, side and color, the default when nothing is chosen. */
 export const NOT_APPLICABLE = "N/A";
 
 export type Item = z.infer<typeof itemSchema>;
+export type ItemBrand = z.infer<typeof itemBrandSchema>;
+export type ItemBrandCreate = z.infer<typeof itemBrandCreateSchema>;
 export type ItemCreate = z.infer<typeof itemCreateSchema>;
 export type ItemListQuery = z.infer<typeof itemListQuerySchema>;
 export type ItemPhoto = z.infer<typeof itemPhotoSchema>;
@@ -137,11 +178,24 @@ export type ItemPhoto = z.infer<typeof itemPhotoSchema>;
 export type ItemSortKey = (typeof ITEM_SORT_KEYS)[number];
 export type ItemStatus = (typeof ITEM_STATUSES)[number];
 export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
-/** What sorting an item looks at; position and side as any text, as the database keeps them. */
-export type SortableItem = Pick<
-  Item,
-  "code" | "name" | "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "color" | "location" | "unitPriceCents" | "quantity"
-> & { position: string; side: string };
+/**
+ * What sorting an item looks at (see sortableOf): its brands read as one value each, the first brand's code, part
+ * brand, color and location and the lowest price; position and side as any text, as the database keeps them.
+ */
+export type SortableItem = Pick<Item, "name" | "category" | "vehicleBrand" | "vehicleModel" | "quantity"> &
+  Pick<ItemBrand, "code" | "partBrand" | "color" | "location" | "unitPriceCents"> & { position: string; side: string };
+
+/**
+ * Reads a field of an item's brands as one value, for a column of the list: the value every brand has, or "Várias"
+ * when they differ.
+ * @param item The item.
+ * @param field The brands' field, e.g. "color".
+ * @returns E.g. "Preto", or null for a location none of them has.
+ */
+export function brandsValue(item: { brands: readonly Pick<ItemBrand, "color" | "location">[] }, field: "color" | "location"): string | null {
+  const values = new Set(item.brands.map((brand) => brand[field]));
+  return values.size === 1 ? [...values][0] : MIXED_VALUES;
+}
 
 /**
  * Applies the writing rule to a text value: trimmed, first letter capital, the rest as typed, so acronyms
@@ -186,6 +240,16 @@ export function formatPrice(cents: number): string {
 }
 
 /**
+ * Writes an item's unit price: its one price, or the range from its lowest to its highest brand's.
+ * @param item The item.
+ * @returns E.g. "R$ 89,90", or "R$ 80,00 – R$ 120,00".
+ */
+export function formatPriceRange(item: { brands: readonly Pick<ItemBrand, "unitPriceCents">[] }): string {
+  const { lowest, highest } = priceRange(item);
+  return lowest === highest ? formatPrice(lowest) : `${formatPrice(lowest)} – ${formatPrice(highest)}`;
+}
+
+/**
  * Widens a position or side filter so items marked "Ambos" also match a specific front/rear or side,
  * since they fit both; picking only "Ambos" or "N/A" keeps the exact values.
  * @param values Chosen filter values, e.g. ["D"].
@@ -198,20 +262,34 @@ export function includeBoth(values: readonly string[], specific: readonly string
 }
 
 /**
+ * Writes an item's part codes for its row: the first brand's, and how many more the other brands have.
+ * @param item The item.
+ * @returns E.g. "W 712/95", or "W 712/95 +2".
+ */
+export function itemCodes(item: { brands: readonly Pick<ItemBrand, "code">[] }): string {
+  const [first, ...others] = item.brands;
+  return others.length > 0 ? `${first.code} +${others.length}` : first.code;
+}
+
+/**
  * Writes an item's details in one line, for the phone card under the name, leaving out what doesn't apply.
  * @param item Inventory item.
  * @returns E.g. "Freios · Cobreq · Volkswagen Gol · D · A-2 · R$ 89,90".
  */
-export function itemDetails(item: Omit<Item, "id" | "code" | "name" | "quantity" | "minQuantity" | "photos" | "createdAt" | "updatedAt">): string {
+export function itemDetails(
+  item: Pick<Item, "category" | "vehicleBrand" | "vehicleModel" | "position" | "side"> & {
+    brands: readonly Pick<ItemBrand, "partBrand" | "color" | "location" | "unitPriceCents">[];
+  },
+): string {
   return [
     item.category,
-    item.partBrand,
+    partBrandsLabel(item),
     [item.vehicleBrand, item.vehicleModel].filter(Boolean).join(" "),
     item.position,
     item.side,
-    item.color,
-    item.location,
-    formatPrice(item.unitPriceCents),
+    brandsValue(item, "color"),
+    brandsValue(item, "location"),
+    formatPriceRange(item),
   ]
     .filter((value) => value && value !== NOT_APPLICABLE)
     .join(" · ");
@@ -219,14 +297,17 @@ export function itemDetails(item: Omit<Item, "id" | "code" | "name" | "quantity"
 
 /**
  * Tells whether an item matches a search, the same way the API's `q` does: its name ignoring case and
- * accents, or its part code ignoring spaces and separators.
- * @param item The item's name and part code.
+ * accents, or any of its brands' part codes ignoring spaces and separators.
+ * @param item The item's name and its brands' part codes.
  * @param search The search as typed; an empty search matches every item.
  * @returns True when the item matches.
  */
-export function matchesSearch(item: Pick<Item, "name" | "code">, search: string): boolean {
+export function matchesSearch(item: Pick<Item, "name"> & { brands: readonly Pick<ItemBrand, "code">[] }, search: string): boolean {
   const byCode = codeKey(search);
-  return searchKey(item.name).includes(searchKey(search.trim())) || (byCode !== "" && codeKey(item.code).includes(byCode));
+  return (
+    searchKey(item.name).includes(searchKey(search.trim())) ||
+    (byCode !== "" && item.brands.some((brand) => codeKey(brand.code).includes(byCode)))
+  );
 }
 
 /**
@@ -255,6 +336,26 @@ export function optionKey(text: string): string {
 }
 
 /**
+ * Writes an item's part brands for its row: the first brand, and how many more make the part.
+ * @param item The item.
+ * @returns E.g. "Cobreq", or "Cobreq +2".
+ */
+export function partBrandsLabel(item: { brands: readonly Pick<ItemBrand, "partBrand">[] }): string {
+  const [first, ...others] = item.brands;
+  return others.length > 0 ? `${first.partBrand} +${others.length}` : first.partBrand;
+}
+
+/**
+ * Finds an item's lowest and highest unit price among its brands.
+ * @param item The item.
+ * @returns Both prices in cents, the same for an item with one brand.
+ */
+export function priceRange(item: { brands: readonly Pick<ItemBrand, "unitPriceCents">[] }): { lowest: number; highest: number } {
+  const prices = item.brands.map((brand) => brand.unitPriceCents);
+  return { lowest: Math.min(...prices), highest: Math.max(...prices) };
+}
+
+/**
  * Writes the result counter of the inventory: how many items show of the total, and how many of all items
  * are low and out of stock.
  * @param shown How many items the search and filters leave.
@@ -275,6 +376,29 @@ export function resultSummary(shown: number, items: readonly Pick<Item, "quantit
  */
 export function searchKey(text: string): string {
   return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+/**
+ * Reads what an item sorts by: its first brand's code, part brand, color and location, and its lowest price.
+ * @param item The item.
+ * @returns What sortItems looks at.
+ */
+export function sortableOf(item: Item): SortableItem {
+  const [first] = item.brands;
+  return {
+    name: item.name,
+    category: item.category,
+    vehicleBrand: item.vehicleBrand,
+    vehicleModel: item.vehicleModel,
+    position: item.position,
+    side: item.side,
+    quantity: item.quantity,
+    code: first.code,
+    partBrand: first.partBrand,
+    color: first.color,
+    location: first.location,
+    unitPriceCents: priceRange(item).lowest,
+  };
 }
 
 /**

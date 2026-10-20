@@ -75,6 +75,10 @@
       "apc-dist": "./dist/lists/lists.js",
       "default": "./src/lists/lists.ts"
     },
+    "./test-items": {
+      "apc-dist": "./dist/items/testItems.js",
+      "default": "./src/items/testItems.ts"
+    },
     "./test-lists": {
       "apc-dist": "./dist/lists/testLists.js",
       "default": "./src/lists/testLists.ts"
