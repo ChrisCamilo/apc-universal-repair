@@ -6,7 +6,6 @@ import {
   CSV_PHOTOS_COLUMN,
   CSV_TEMPLATE,
   csvExportName,
-  csvPrice,
   exportedSummary,
   exportItems,
   exportScope,
@@ -92,14 +91,20 @@ function rows(text: string): CsvItemRow[] {
   return read.rows;
 }
 
-// Reads prices with a decimal comma, with thousands, and with a decimal point, and refuses what isn't a price.
-test("Shared: CSV prices take a decimal comma or point", () => {
-  assert.equal(csvPrice("189,90"), 18990);
-  assert.equal(csvPrice("1.234,56"), 123456);
-  assert.equal(csvPrice("189.90"), 18990);
-  assert.equal(csvPrice("189.9"), 18990);
-  assert.equal(csvPrice("42"), 4200);
-  assert.equal(csvPrice("abc"), null);
+// Reads rows with prices in a decimal comma, with thousands, a decimal point, without cents, at the limit and past it,
+// and checks each is read in cents, a dot and a comma meaning the same, and only the one past the limit is refused.
+test("Shared: CSV prices take a decimal comma or point, up to a million", () => {
+  const prices = ["189,90", "1.234,56", "1,234.56", "189.9", "7.50", "42", "1000000", "1000000,01"];
+  const text = [HEADER, ...prices.map((price, index) => `A-${index},Junta,Motor,Mann,Volkswagen,,1,1,,"${price}",,,`)].join("\n");
+  const read = rows(text);
+  assert.deepEqual(
+    read.map((row) => row.item.unitPriceCents),
+    [18990, 123456, 123456, 18990, 750, 4200, 100_000_000, 100_000_001],
+  );
+  assert.deepEqual(
+    read.map((row) => row.errors),
+    [[], [], [], [], [], [], [], [ITEM_FORM_MESSAGES.priceTooHigh]],
+  );
 });
 
 // Splits records with quoted cells holding the separator, doubled quotes and a line break, CRLF line ends, and checks
