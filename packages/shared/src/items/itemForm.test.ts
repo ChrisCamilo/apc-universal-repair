@@ -15,6 +15,8 @@ import {
   modelsOfBrand,
   parsePrice,
   priceInput,
+  priceMask,
+  priceText,
   quantityInput,
   type ItemForm,
 } from "./itemForm.ts";
@@ -70,24 +72,61 @@ function item(fields: Partial<Item> & Pick<Item, "id" | "code" | "name">): Item 
   };
 }
 
-// Reads prices typed in the Brazilian format, with thousands, one or two decimals, no decimals and the currency
-// sign, and checks anything else isn't a price, such as a dot that isn't between thousands.
-test("Shared: prices are read in the Brazilian format", () => {
+// Reads prices with thousands, one or two decimals, no decimals and the currency sign, a dot and a comma meaning the
+// same: the last one before one or two digits starts the cents, any other one goes between thousands. Anything else
+// isn't a price.
+test("Shared: prices are read with a dot or a comma alike", () => {
   assert.equal(parsePrice("1.234,56"), 123456);
+  assert.equal(parsePrice("1,234.56"), 123456);
+  assert.equal(parsePrice("7,50"), 750);
+  assert.equal(parsePrice("7.50"), 750);
+  assert.equal(parsePrice("R$ 7,50"), 750);
   assert.equal(parsePrice("89,9"), 8990);
+  assert.equal(parsePrice("12.5"), 1250);
   assert.equal(parsePrice("R$ 12"), 1200);
   assert.equal(parsePrice(" 0,05 "), 5);
+  assert.equal(parsePrice("1.500"), 150000);
   assert.equal(parsePrice("1.234.567"), 123456700);
-  for (const wrong of ["", "12,345", "1,2,3", "abc", "12.5", "1.23,00"]) {
+  for (const wrong of ["", "1,2,3", "abc", "1.23,00", "12,3456", "-7,50"]) {
     assert.equal(parsePrice(wrong), null, wrong);
   }
 });
 
-// Writes prices back for the price field and checks they read the same.
+// Writes prices back, for the CSV and for the price field, and checks they read the same.
 test("Shared: prices are written back in the Brazilian format", () => {
   assert.equal(priceInput(123456), "1.234,56");
   assert.equal(priceInput(8990), "89,90");
   assert.equal(parsePrice(priceInput(5)), 5);
+  assert.equal(priceText(123456), "R$ 1.234,56");
+  assert.equal(parsePrice(priceText(5)), 5);
+});
+
+// Types digits into the price field one by one and erases them, and checks they fill from the cents, other characters
+// typed are left out and the field empties at zero; a digit that would pass a million is left out too.
+test("Shared: the price field fills from the cents as digits are typed", () => {
+  let field = "";
+  for (const digit of "750") {
+    field = priceMask(field, field + digit).value;
+  }
+  assert.equal(field, "R$ 7,50");
+  assert.deepEqual(priceMask(field, `${field},`), { value: "R$ 7,50" });
+  assert.deepEqual(priceMask("R$ 7,50", "R$ 7,5"), { value: "R$ 0,75" });
+  assert.deepEqual(priceMask("R$ 0,05", "R$ 0,0"), { value: "" });
+  assert.deepEqual(priceMask("R$ 12.345,67", "R$ 12.345,678"), { value: "R$ 123.456,78" });
+  assert.deepEqual(priceMask("R$ 1.000.000,00", "R$ 1.000.000,001"), { value: "R$ 1.000.000,00" });
+});
+
+// Pastes prices into the price field and checks a dot and a comma mean the same, a whole number is in reais, a paste
+// that isn't a price or passes a million is refused with its message, and clearing the field empties it.
+test("Shared: a price pasted into the field is read as a price", () => {
+  assert.deepEqual(priceMask("", "7.50"), { value: "R$ 7,50" });
+  assert.deepEqual(priceMask("", "7,50"), { value: "R$ 7,50" });
+  assert.deepEqual(priceMask("", "12"), { value: "R$ 12,00" });
+  assert.deepEqual(priceMask("R$ 39,90", "1,234.56"), { value: "R$ 1.234,56" });
+  assert.deepEqual(priceMask("R$ 39,90", "abc"), { value: "R$ 39,90", message: ITEM_FORM_MESSAGES.priceInvalid });
+  assert.deepEqual(priceMask("R$ 39,90", "2.000.000"), { value: "R$ 39,90", message: ITEM_FORM_MESSAGES.priceTooHigh });
+  assert.deepEqual(priceMask("R$ 39,90", ""), { value: "" });
+  assert.equal(ITEM_FORM_MESSAGES.priceTooHigh, "Informe no máximo R$ 1.000.000,00.");
 });
 
 // Checks a blank form names every required field, a price that isn't above zero says so, and a filled-in form passes.
@@ -102,6 +141,8 @@ test("Shared: the item form names each required field left blank", () => {
   });
   assert.deepEqual(itemFormErrors({ ...VALID, price: "0,00" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceInvalid });
   assert.deepEqual(itemFormErrors({ ...VALID, price: "abc" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceInvalid });
+  assert.deepEqual(itemFormErrors({ ...VALID, price: "R$ 1.000.000,01" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceTooHigh });
+  assert.deepEqual(itemFormErrors({ ...VALID, price: "R$ 1.000.000,00" }, ITEMS, LISTS), {});
   assert.deepEqual(itemFormErrors(VALID, ITEMS, LISTS), {});
 });
 
@@ -208,7 +249,7 @@ test("Shared: an item fills the form and saves back unchanged", () => {
     side: "N/A",
     color: "",
     location: "",
-    price: "39,90",
+    price: "R$ 39,90",
   });
   const body = itemFormBody(form, []);
   assert.equal(body.unitPriceCents, FILTER.unitPriceCents);

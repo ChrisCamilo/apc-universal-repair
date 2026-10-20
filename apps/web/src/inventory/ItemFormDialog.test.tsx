@@ -287,7 +287,7 @@ test('Web: leaving a field writes it back by the rules', async () => {
   await expect.element(screen.getByLabelText('Nome')).toHaveValue('Vela de ignição')
   await expect.element(screen.getByLabelText('Cor')).toHaveValue('Preto')
   await expect.element(screen.getByLabelText('Local')).toHaveValue('A-2')
-  await expect.element(screen.getByLabelText('Valor unitário (R$)')).toHaveValue('1.234,50')
+  await expect.element(screen.getByLabelText('Valor unitário (R$)')).toHaveValue('R$ 1.234,50')
 })
 
 // Fills in a new item and saves it, and checks it is posted with the writing rule applied and the price in cents, a
@@ -325,7 +325,7 @@ test('Web: an item opens filled in and is patched on save', async () => {
   await expect.element(screen.getByLabelText('Código da peça')).toHaveValue('W 712/95')
   await expect.element(screen.getByRole('combobox', { name: 'Modelo do veículo' })).toHaveValue('Gol')
   await expect.element(screen.getByLabelText('Cor')).toHaveValue('Preto')
-  await expect.element(screen.getByLabelText('Valor unitário (R$)')).toHaveValue('39,90')
+  await expect.element(screen.getByLabelText('Valor unitário (R$)')).toHaveValue('R$ 39,90')
   await screen.getByLabelText('Quantidade', { exact: true }).fill('7')
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect.element(screen.getByText('Item “Filtro de óleo” salvo.')).toBeVisible()
@@ -352,6 +352,27 @@ test('Web: the quantities take whole numbers only, up to a million', async () =>
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect.element(screen.getByText(ITEM_FORM_MESSAGES.quantityTooHigh)).toBeVisible()
   expect(fetch).not.toHaveBeenCalled()
+})
+
+// Types digits into the empty price and checks it shows the placeholder, then fills from the cents as each one is
+// typed, a comma typed is left out, and a pasted "7.50" reads as R$ 7,50; then saves and checks 750 cents are sent.
+test('Web: the price always shows in reais, a dot and a comma alike', async () => {
+  const fetch = answerSave(200)
+  const screen = await render(<Sample item={FILTER} />)
+  const price = screen.getByLabelText('Valor unitário (R$)')
+  await price.fill('')
+  await expect.element(price).toHaveAttribute('placeholder', 'R$ 0,00')
+  await userEvent.type(price, '7,50')
+  await expect.element(price).toHaveValue('R$ 7,50')
+  await price.fill('1234')
+  await expect.element(price).toHaveValue('R$ 1.234,00')
+  await price.fill('7.50')
+  await expect.element(price).toHaveValue('R$ 7,50')
+  await price.fill('abc')
+  await expect.element(price).toHaveValue('R$ 7,50')
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.priceInvalid)).toBeVisible()
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await vi.waitFor(() => expect(sent(fetch)).toMatchObject({ method: 'PATCH', body: { unitPriceCents: 750 } }))
 })
 
 // Opens the form at 1280×720 and on a 360×780 phone and checks Save is on screen without scrolling and the form

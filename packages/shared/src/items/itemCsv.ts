@@ -8,6 +8,7 @@ import {
   itemCreateSchema,
   itemDetails,
   itemListResponseSchema,
+  MAX_PRICE_CENTS,
   MAX_QUANTITY,
   NOT_APPLICABLE,
   optionKey,
@@ -139,9 +140,11 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
   const partBrand = required("part_brand", ITEM_FORM_MESSAGES.partBrand);
   const vehicleBrand = required("vehicle_brand", ITEM_FORM_MESSAGES.vehicleBrand);
   const priceText = required("unit_price", ITEM_FORM_MESSAGES.price);
-  const price = priceText ? csvPrice(priceText) : null;
+  const price = priceText ? parsePrice(priceText) : null;
   if (priceText && (price === null || price <= 0)) {
     errors.push(ITEM_FORM_MESSAGES.priceInvalid);
+  } else if (price !== null && price > MAX_PRICE_CENTS) {
+    errors.push(ITEM_FORM_MESSAGES.priceTooHigh);
   }
   const brand = findEntry(lists.vehicleBrands, vehicleBrand);
   const models = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
@@ -163,16 +166,6 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
     side: choice("side", SIDES, "Lado deve ser LD, LE ou Ambos, ou ficar vazio."),
   };
   return { item, errors };
-}
-
-/**
- * Reads a price as a spreadsheet writes it: a decimal comma ("189,90", "1.234,56") or a decimal point ("189.90").
- * @param text The price as in the file.
- * @returns The price in cents, or null when it isn't a price.
- */
-export function csvPrice(text: string): number | null {
-  const typed = text.trim();
-  return /^\d+\.\d{1,2}$/.test(typed) ? Math.round(Number(typed) * 100) : parsePrice(typed);
 }
 
 /**

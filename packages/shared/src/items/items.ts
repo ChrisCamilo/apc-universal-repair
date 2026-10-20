@@ -24,6 +24,8 @@ const ITEM_SORT_VALUES: Record<ItemSortKey, (item: SortableItem) => string | num
 };
 /** The status filter values: low stock (at or under the minimum, not zero) and out of stock (zero). */
 export const ITEM_STATUSES = ["low", "out"] as const;
+/** The most a unit price can be, in cents: R$ 1.000.000,00. */
+export const MAX_PRICE_CENTS = 100_000_000;
 /** The most an item's quantity, or its minimum, can be: far above any stock, and well within the database's column. */
 export const MAX_QUANTITY = 1_000_000;
 /**
@@ -65,7 +67,7 @@ export const itemCreateSchema = z.object({
   location: optionalText,
   quantity: z.int().min(0).max(MAX_QUANTITY).optional(),
   minQuantity: z.int().min(0).max(MAX_QUANTITY).optional(),
-  unitPriceCents: z.int().positive("Must be greater than zero."),
+  unitPriceCents: z.int().positive("Must be greater than zero.").max(MAX_PRICE_CENTS),
 });
 export const itemIdParamsSchema = z.object({ id: z.uuid() });
 // A filter given once arrives as a string and given several times as an array; both become a list.

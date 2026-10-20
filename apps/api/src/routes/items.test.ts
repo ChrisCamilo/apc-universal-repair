@@ -21,6 +21,17 @@ test("API: creating an item needs a price above zero", async () => {
   assert.equal(zero.statusCode, 400);
 });
 
+// Creates and imports items priced past a million and checks both are rejected, naming the field.
+test("API: prices can't pass a million", async () => {
+  const body = { code: "W 712/95", name: "Filtro", category: "Motor", partBrand: "Mann", vehicleBrand: "VW", unitPriceCents: 100_000_001 };
+  const created = await app.inject({ headers: AUTHORIZED, method: "POST", url: "/items", payload: body });
+  assert.equal(created.statusCode, 400);
+  assert.equal(created.json().details[0].field, "unitPriceCents");
+  const imported = await app.inject({ headers: AUTHORIZED, method: "POST", url: "/items/import", payload: { items: [body] } });
+  assert.equal(imported.statusCode, 400);
+  assert.equal(imported.json().details[0].field, "items/0/unitPriceCents");
+});
+
 // Creates, edits and imports items with quantities past a million and checks each is rejected, naming the field.
 test("API: quantities can't pass a million", async () => {
   const body = { code: "W 712/95", name: "Filtro", category: "Motor", partBrand: "Mann", vehicleBrand: "VW", unitPriceCents: 100 };

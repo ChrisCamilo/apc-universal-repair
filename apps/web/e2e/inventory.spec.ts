@@ -228,7 +228,7 @@ test("Web: items are added and edited through the item form", async ({ page }) =
 
   await page.getByRole("button", { name: "Editar Vela de ignição" }).click();
   const edit = page.getByRole("dialog", { name: "Editar item" });
-  await expect(edit.getByLabel("Valor unitário (R$)")).toHaveValue("34,90");
+  await expect(edit.getByLabel("Valor unitário (R$)")).toHaveValue("R$ 34,90");
   await edit.getByLabel("Quantidade", { exact: true }).fill("9");
   await edit.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("Item “Vela de ignição” salvo.")).toBeVisible();
