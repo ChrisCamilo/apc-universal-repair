@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   EMPTY_ITEM_FILTERS,
+  followEntryChange,
   itemFilterOptions,
   itemFilterRows,
   itemListQuery,
@@ -129,4 +130,28 @@ test("Shared: the filter menu has seven rows, models following the brands", () =
   const chips = rows[4];
   assert.ok("groups" in chips);
   assert.deepEqual(chips.groups.map((group) => group.key), ["position", "side"]);
+});
+
+// Renames and merges entries the filters name, in another spelling, and checks each value follows, a vehicle brand
+// taking its models along, a model only within its brand, and a value that repeats after a merge kept once; a change
+// to an entry no filter names leaves them as they are.
+test("Shared: the filters follow an entry renamed or merged", () => {
+  const filters = {
+    ...EMPTY_ITEM_FILTERS,
+    category: ["Parachoque", "Motor"],
+    vehicleBrand: ["GM", "Fiat"],
+    vehicleModel: [vehicleModelValue("GM", "Opala"), vehicleModelValue("Fiat", "Uno"), vehicleModelValue("Chevrolet", "Opala")],
+  };
+  assert.deepEqual(followEntryChange(filters, { kind: "categories", from: "parachoque", to: "Para-choque" }).category, ["Para-choque", "Motor"]);
+  assert.deepEqual(followEntryChange(filters, { kind: "categories", from: "Parachoque", to: "Motor" }).category, ["Motor"]);
+  const brands = followEntryChange(filters, { kind: "vehicleBrands", from: "GM", to: "Chevrolet" });
+  assert.deepEqual(brands.vehicleBrand, ["Chevrolet", "Fiat"]);
+  assert.deepEqual(brands.vehicleModel, [vehicleModelValue("Chevrolet", "Opala"), vehicleModelValue("Fiat", "Uno")]);
+  const models = followEntryChange(filters, { kind: "vehicleModels", from: "Opala", to: "Opala 4.1", vehicleBrand: "GM" });
+  assert.deepEqual(models.vehicleModel, [
+    vehicleModelValue("GM", "Opala 4.1"),
+    vehicleModelValue("Fiat", "Uno"),
+    vehicleModelValue("Chevrolet", "Opala"),
+  ]);
+  assert.deepEqual(followEntryChange(filters, { kind: "partBrands", from: "Mann", to: "Mann-Filter" }), filters);
 });

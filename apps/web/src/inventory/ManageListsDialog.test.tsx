@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Item } from '@apc/shared/items'
-import { withEntry, withoutEntry, type ItemLists } from '@apc/shared/lists'
+import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/shared/lists'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { itemListsOf } from '@apc/shared/test-lists'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
@@ -12,7 +12,7 @@ import '../fonts.ts'
 import '../index.css'
 import { themeCss } from '../theme.ts'
 import { ManageListsDialog } from './ManageListsDialog.tsx'
-import type { RemoveListEntry, RenameListEntry } from './useItemLists.ts'
+import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists.ts'
 
 const ITEMS = [
   item({ code: 'W 712/95', name: 'Filtro de óleo', category: 'Motor', vehicleBrand: 'Volkswagen', vehicleModel: 'Gol' }),
@@ -108,8 +108,8 @@ test('Web: Manage lists shows each list with the items using each name', async (
 })
 
 // Renames a category in place with Enter and checks the field starts with the name selected, the rename is sent, the
-// list shows the new name, a toast confirms it and the inventory is told to load again; Escape leaves a rename
-// without closing the dialog.
+// list shows the new name, a toast confirms it and the inventory is told to load again, with the names for its
+// filters; Escape leaves a rename without closing the dialog.
 test('Web: a name is renamed in place', async () => {
   const onRename = vi.fn<RenameListEntry>()
   const onChanged = vi.fn()
@@ -122,7 +122,7 @@ test('Web: a name is renamed in place', async () => {
   expect(onRename).toHaveBeenCalledWith('categories', turbo.id, 'turbo e escape')
   await expect.element(screen.getByText('Categoria renomeada para “Turbo e escape”.')).toBeVisible()
   await expect.element(screen.getByRole('button', { name: 'Renomear Turbo e escape' })).toBeVisible()
-  expect(onChanged).toHaveBeenCalledTimes(1)
+  expect(onChanged).toHaveBeenCalledExactlyOnceWith({ kind: 'categories', from: 'Turbo', to: 'Turbo e escape' })
 
   await screen.getByRole('button', { name: 'Renomear Freios' }).click()
   await userEvent.keyboard('{Escape}')
@@ -130,8 +130,8 @@ test('Web: a name is renamed in place', async () => {
   await expect.element(screen.getByRole('dialog', { name: 'Gerenciar listas' })).toBeVisible()
 })
 
-// Renames to a blank name and to the name of another category, in another case, and checks each is refused under the
-// field without sending anything; a name the API says is taken is refused the same way.
+// Renames to a blank name and checks it is refused under the field without sending anything; a name the API says is
+// taken, as another device took it first, is refused the same way.
 test('Web: a rename to a blank or taken name is refused', async () => {
   const onRename = vi.fn<RenameListEntry>(async () => 'taken')
   const screen = await render(<Sample onRename={onRename} />)
@@ -140,15 +140,60 @@ test('Web: a rename to a blank or taken name is refused', async () => {
   await field.fill(' ')
   await screen.getByRole('button', { name: 'Salvar' }).click()
   await expect.element(screen.getByText('Informe o nome.')).toBeVisible()
-  await field.fill('freios')
-  await screen.getByRole('button', { name: 'Salvar' }).click()
-  await expect.element(screen.getByText('Já existe uma categoria com esse nome.')).toBeVisible()
   expect(onRename).not.toHaveBeenCalled()
 
   await field.fill('Escapamento')
   await screen.getByRole('button', { name: 'Salvar' }).click()
   await expect.element(screen.getByText('Já existe uma categoria com esse nome.')).toBeVisible()
   expect(onRename).toHaveBeenCalledTimes(1)
+})
+
+// Renames a category to another's name, in another case, and checks the merge is asked, saying where its item goes;
+// Cancelar keeps the rename open, and Juntar sends the merge, the name leaves the list, a toast says how many items
+// moved and the inventory is told, with the names for its filters. Nothing is renamed.
+test('Web: a rename to a held name merges the two after confirming', async () => {
+  const onRename = vi.fn<RenameListEntry>()
+  const onMerge = vi.fn<MergeListEntries>()
+  const onChanged = vi.fn()
+  const screen = await render(<Sample onRename={onRename} onMerge={onMerge} onChanged={onChanged} />)
+  await screen.getByRole('button', { name: 'Renomear Freios' }).click()
+  await screen.getByLabelText('Novo nome de “Freios”').fill('motor')
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  const confirm = screen.getByRole('dialog', { name: 'Juntar “Freios” com “Motor”?' })
+  await expect
+    .element(confirm.getByText('O item de “Freios” passa para “Motor”, e “Freios” sai da lista de categorias.'))
+    .toBeVisible()
+  await confirm.getByRole('button', { name: 'Cancelar' }).click()
+  await expect.element(screen.getByLabelText('Novo nome de “Freios”')).toBeVisible()
+
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await screen.getByRole('dialog', { name: 'Juntar “Freios” com “Motor”?' }).getByRole('button', { name: 'Juntar' }).click()
+  const [freios, motor] = ['Freios', 'Motor'].map((name) => LISTS.categories.find((entry) => entry.name === name)!.id)
+  expect(onMerge).toHaveBeenCalledWith('categories', freios, motor)
+  await expect.element(screen.getByText('Categoria “Freios” juntada a “Motor”: 1 item mudou.')).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Renomear Freios' })).not.toBeInTheDocument()
+  expect(onChanged).toHaveBeenCalledExactlyOnceWith({ kind: 'categories', from: 'Freios', to: 'Motor' })
+  expect(onRename).not.toHaveBeenCalled()
+})
+
+// Renames a vehicle brand of the catalog to another brand's name and checks it is refused under the field, without
+// asking to merge; a merge the API refuses says so and keeps the name.
+test('Web: a catalog brand is not merged away, and a failed merge is reported', async () => {
+  const onMerge = vi.fn<MergeListEntries>(async () => null)
+  const screen = await render(<Sample onMerge={onMerge} />)
+  await screen.getByRole('button', { name: 'Renomear Chevrolet' }).click()
+  await screen.getByLabelText('Novo nome de “Chevrolet”').fill('renault')
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await expect.element(screen.getByText(CATALOG_MERGE_MESSAGE('Chevrolet'))).toBeVisible()
+  await screen.getByRole('button', { name: 'Cancelar' }).click()
+
+  await screen.getByRole('button', { name: 'Renomear Renault' }).click()
+  await screen.getByLabelText('Novo nome de “Renault”').fill('chevrolet')
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await screen.getByRole('button', { name: 'Juntar' }).click()
+  await expect.element(screen.getByText('Não foi possível juntar a marca de veículo. Tente de novo.')).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Juntar' })).toBeVisible()
+  expect(onMerge).toHaveBeenCalledTimes(1)
 })
 
 // Deletes a vehicle brand no item uses and checks the confirmation says its models go too, Excluir sends the delete,
@@ -198,15 +243,18 @@ test('Web: Manage lists fits the smallest phone', async () => {
 
 function Sample({
   onRename,
+  onMerge,
   onRemove,
   onChanged = () => {},
   onShowItems = () => {},
 }: {
   /** Called with each rename; the name is renamed as asked unless it returns "taken" or null. */
   onRename?: RenameListEntry
+  /** Called with each merge; the entry is merged unless it returns null. */
+  onMerge?: MergeListEntries
   /** Called with each delete; the entry is deleted unless it returns false. */
   onRemove?: RemoveListEntry
-  onChanged?: () => void
+  onChanged?: (change?: ListEntryChange) => void
   onShowItems?: () => void
 }) {
   const [lists, setLists] = useState<ItemLists>(LISTS)
@@ -221,6 +269,16 @@ function Sample({
     const renamed = { ...held, name: name.charAt(0).toUpperCase() + name.slice(1) }
     setLists((current) => withEntry(current, kind, renamed))
     return renamed
+  }
+
+  /** Merges as the API would, the entry leaving its list, unless onMerge says it failed. */
+  const merge: MergeListEntries = async (kind, id, into) => {
+    if ((await onMerge?.(kind, id, into)) === null) {
+      return null
+    }
+    const held = lists[kind].find((entry) => entry.id === id)!
+    setLists((current) => withoutEntry(current, kind, id))
+    return ITEMS.filter((each) => each.category === held.name).length
   }
 
   /** Deletes as the API would, unless onRemove says it failed. */
@@ -239,6 +297,7 @@ function Sample({
         lists={lists}
         items={ITEMS}
         onRename={rename}
+        onMerge={merge}
         onRemove={remove}
         onChanged={onChanged}
         onShowItems={onShowItems}

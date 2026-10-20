@@ -4,6 +4,7 @@ import {
   deleteListEntry,
   EMPTY_ITEM_LISTS,
   loadItemLists,
+  mergeListEntries,
   renameListEntry,
   withEntry,
   withoutEntry,
@@ -14,24 +15,27 @@ import {
 import { API_BASE } from '../api.ts'
 
 // Loads the lists the item form picks from (categories, part brands, vehicle brands and vehicle models), creates
-// new names in them, renames and deletes, keeping each change in the lists at once, and loads them again on reload,
-// e.g. after a CSV import created names. Lists that can't be loaded stay empty: the form then offers to create each
+// new names in them, renames, merges and deletes, keeping each change in the lists at once, and loads them again on
+// reload, e.g. after a CSV import created names. Lists that can't be loaded stay empty: the form then offers to create each
 // name, and creating one the API already holds gives that one back.
 
 /** Creates a name in a list, or finds it there; a vehicle model goes under its vehicle brand. */
 export type CreateListEntry = (kind: ItemListKind, name: string, vehicleBrandId?: string) => Promise<ListEntry | null>
 /** Deletes an entry, telling whether it was deleted. */
 export type RemoveListEntry = (kind: ItemListKind, id: string) => Promise<boolean>
+/** Merges an entry into another of its list: how many items moved, or null when it failed. */
+export type MergeListEntries = (kind: ItemListKind, id: string, into: string) => Promise<number | null>
 /** Renames an entry: the entry renamed, "taken" when another entry has the name, or null when it failed. */
 export type RenameListEntry = (kind: ItemListKind, id: string, name: string) => Promise<ListEntry | 'taken' | null>
 
 /**
  * Fetches the four lists, and again on reload, keeping the changes made since.
- * @returns The lists, create, rename and remove to change them, and reload to fetch them again.
+ * @returns The lists, create, merge, rename and remove to change them, and reload to fetch them again.
  */
 export function useItemLists(): {
   lists: ItemLists
   create: CreateListEntry
+  merge: MergeListEntries
   rename: RenameListEntry
   remove: RemoveListEntry
   reload: () => void
@@ -56,6 +60,14 @@ export function useItemLists(): {
         setLists((held) => withEntry(held, kind, entry))
       }
       return entry
+    },
+    merge: async (kind, id, into) => {
+      const moved = await mergeListEntries(API_BASE, kind, id, into)
+      // The entry leaves its list, and a vehicle brand's models go to the other brand: the lists load again.
+      if (moved !== null) {
+        setVersion((count) => count + 1)
+      }
+      return moved
     },
     rename: async (kind, id, name) => {
       const renamed = await renameListEntry(API_BASE, kind, id, name)

@@ -6,12 +6,15 @@ import { capitalizeFirst, optionKey, type Item } from "../items/items.ts";
 // The lists an item's category, part brand, vehicle brand and vehicle model are picked from, kept by the API, grown
 // from the item form and tidied in the "Gerenciar listas" dialog: each name is unique ignoring case, accents and
 // extra spaces (a vehicle model within its vehicle brand), so creating a name that already exists gives back the
-// existing one, and a rename can't take another entry's name. Renaming renames the items that use the entry; an entry
-// is only deleted while no item uses it, a vehicle brand with its models, and never a brand the catalog has. Web and
-// mobile load, create, rename and delete the same way, each through its own API address.
+// existing one, and a rename can't take another entry's name: it merges the entry into the one that has it instead,
+// moving its items there. Renaming renames the items that use the entry; an entry is only deleted while no item uses
+// it, a vehicle brand with its models, and never a brand the catalog has, which can't be merged away either. Web and
+// mobile load, create, rename, merge and delete the same way, each through its own API address.
 
 /** Why a vehicle brand of the catalog can't be deleted from the inventory. */
 export const CATALOG_BRAND_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser excluída do estoque.`;
+/** Why a vehicle brand of the catalog can't be merged into another one. */
+export const CATALOG_MERGE_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser juntada a outra marca.`;
 /** The four lists before they load: all empty. */
 export const EMPTY_ITEM_LISTS: ItemLists = { categories: [], partBrands: [], vehicleBrands: [], vehicleModels: [] };
 /** The item field each list holds the names of. */
@@ -28,7 +31,7 @@ export const ITEM_LIST_PATHS: Record<ItemListKind, string> = {
   vehicleBrands: "/vehicle-brands",
   vehicleModels: "/vehicle-models",
 };
-/** What the screens say about each list: its title, and the toasts and messages of creating, renaming and deleting. */
+/** What the screens say about each list: its title, and the toasts and messages of each change made to it. */
 export const ITEM_LIST_TEXTS: Record<ItemListKind, ItemListTexts> = {
   categories: {
     title: "Categorias",
@@ -41,6 +44,11 @@ export const ITEM_LIST_TEXTS: Record<ItemListKind, ItemListTexts> = {
     deleteFailed: "Não foi possível excluir a categoria. Tente de novo.",
     confirmDelete: (name) => `“${name}” sai da lista de categorias. Essa ação não pode ser desfeita.`,
     inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque a categoria desses itens antes de excluir.`,
+    confirmMerge: (from, into, count) =>
+      `${movedItems(from, into, count)}, e “${from}” sai da lista de categorias.`,
+    merged: (from, into, count) =>
+      `Categoria “${from}” juntada a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
+    mergeFailed: "Não foi possível juntar a categoria. Tente de novo.",
   },
   partBrands: {
     title: "Marcas de peça",
@@ -53,6 +61,11 @@ export const ITEM_LIST_TEXTS: Record<ItemListKind, ItemListTexts> = {
     deleteFailed: "Não foi possível excluir a marca de peça. Tente de novo.",
     confirmDelete: (name) => `“${name}” sai da lista de marcas de peça. Essa ação não pode ser desfeita.`,
     inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque a marca da peça desses itens antes de excluir.`,
+    confirmMerge: (from, into, count) =>
+      `${movedItems(from, into, count)}, e “${from}” sai da lista de marcas de peça.`,
+    merged: (from, into, count) =>
+      `Marca de peça “${from}” juntada a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
+    mergeFailed: "Não foi possível juntar a marca de peça. Tente de novo.",
   },
   vehicleBrands: {
     title: "Marcas de veículo",
@@ -65,6 +78,11 @@ export const ITEM_LIST_TEXTS: Record<ItemListKind, ItemListTexts> = {
     deleteFailed: "Não foi possível excluir a marca de veículo. Tente de novo.",
     confirmDelete: (name) => `“${name}” e os modelos dela saem da lista de marcas de veículo. Essa ação não pode ser desfeita.`,
     inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque a marca do veículo desses itens antes de excluir.`,
+    confirmMerge: (from, into, count) =>
+      `${movedItems(from, into, count)}, os modelos dela também (os de mesmo nome viram um só), e “${from}” sai da lista de marcas de veículo.`,
+    merged: (from, into, count) =>
+      `Marca de veículo “${from}” juntada a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
+    mergeFailed: "Não foi possível juntar a marca de veículo. Tente de novo.",
   },
   vehicleModels: {
     title: "Modelos de veículo",
@@ -77,12 +95,21 @@ export const ITEM_LIST_TEXTS: Record<ItemListKind, ItemListTexts> = {
     deleteFailed: "Não foi possível excluir o modelo. Tente de novo.",
     confirmDelete: (name) => `“${name}” sai da lista de modelos. Essa ação não pode ser desfeita.`,
     inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque o modelo do veículo desses itens antes de excluir.`,
+    confirmMerge: (from, into, count) =>
+      `${movedItems(from, into, count)}, e “${from}” sai da lista de modelos.`,
+    merged: (from, into, count) =>
+      `Modelo “${from}” juntado a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
+    mergeFailed: "Não foi possível juntar o modelo. Tente de novo.",
   },
 };
 export const listEntrySchema = z.object({ id: z.uuid(), name: z.string() });
 export const listEntriesSchema = z.array(listEntrySchema);
 export const listEntryCreateSchema = z.object({ name: z.string().trim().min(1, "Required.") });
 export const listEntryIdParamsSchema = z.object({ id: z.uuid() });
+/** Merging an entry into another of its list. */
+export const listEntryMergeSchema = z.object({ into: z.uuid() });
+/** What a merge answers: how many items moved to the entry merged into. */
+export const listEntryMergedSchema = z.object({ moved: z.int().min(0) });
 /** A vehicle model, which always belongs to a vehicle brand. */
 export const vehicleModelSchema = listEntrySchema.extend({ vehicleBrandId: z.uuid() });
 export const vehicleModelCreateSchema = listEntryCreateSchema.extend({ vehicleBrandId: z.uuid() });
@@ -104,7 +131,16 @@ export type ItemListTexts = {
   confirmDelete: (name: string) => string;
   /** Why an entry items use can't be deleted. */
   inUse: (name: string, count: number) => string;
+  /** What merging an entry into another does, asked before it is done. */
+  confirmMerge: (from: string, into: string, count: number) => string;
+  merged: (from: string, into: string, count: number) => string;
+  mergeFailed: string;
 };
+/**
+ * A rename, or a merge, of an entry, which the filters follow: its list, its name before and after, and a vehicle
+ * model's brand.
+ */
+export type ListEntryChange = { kind: ItemListKind; from: string; to: string; vehicleBrand?: string };
 /** The four lists, each sorted by name. */
 export type ItemLists = {
   categories: ListEntry[];
@@ -151,6 +187,19 @@ export async function createListEntry(
 export async function deleteListEntry(base: string, kind: ItemListKind, id: string): Promise<boolean> {
   const response = await apiFetch(`${base}${ITEM_LIST_PATHS[kind]}/${id}`, { method: "DELETE" }).catch(() => null);
   return response?.ok ?? false;
+}
+
+/**
+ * Describes an entry renamed, or merged into another, for the filters to follow (see followEntryChange).
+ * @param kind The entry's list.
+ * @param entry The entry as it was.
+ * @param to Its new name, or the name of the entry it was merged into.
+ * @param lists The four lists, for a vehicle model's brand.
+ * @returns The change.
+ */
+export function entryChange(kind: ItemListKind, entry: ListEntry | VehicleModel, to: string, lists: ItemLists): ListEntryChange {
+  const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
+  return { kind, from: entry.name, to, ...(brand && { vehicleBrand: brand.name }) };
 }
 
 /**
@@ -237,6 +286,38 @@ export async function loadItemLists(base: string, signal?: AbortSignal): Promise
     vehicleBrands: listEntriesSchema.parse(vehicleBrands),
     vehicleModels: vehicleModelsSchema.parse(vehicleModels),
   };
+}
+
+/**
+ * Merges an entry into another of its list: the items using it move there, and it is deleted; a vehicle brand's models
+ * move along, those of a name the other brand has joining its model.
+ * @param base Where the API is reached, e.g. "/api" on the web.
+ * @param kind The list.
+ * @param id The entry merged away.
+ * @param into The entry it is merged into.
+ * @returns How many items moved, or null when it couldn't be merged.
+ */
+export async function mergeListEntries(base: string, kind: ItemListKind, id: string, into: string): Promise<number | null> {
+  const response = await apiFetch(`${base}${ITEM_LIST_PATHS[kind]}/${id}/merge`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ into }),
+  }).catch(() => null);
+  return response?.ok ? listEntryMergedSchema.parse(await response.json()).moved : null;
+}
+
+/**
+ * Words where the items of a merged entry go.
+ * @param from The entry merged away.
+ * @param into The entry it is merged into.
+ * @param count How many items use it.
+ * @returns E.g. "Os 12 itens de “Parachoque” passam para “Para-choque”", or that no item uses it.
+ */
+function movedItems(from: string, into: string, count: number): string {
+  if (count === 0) {
+    return `Nenhum item usa “${from}”`;
+  }
+  return count === 1 ? `O item de “${from}” passa para “${into}”` : `Os ${count} itens de “${from}” passam para “${into}”`;
 }
 
 /**

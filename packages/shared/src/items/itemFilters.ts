@@ -1,13 +1,21 @@
 import type { FilterValues } from "../filters/filters.ts";
 import type { Sort } from "../table/table.ts";
-import { ITEM_LIST_FIELDS, type ItemListKind, type ItemLists, type ListEntry, type VehicleModel } from "../lists/lists.ts";
+import {
+  ITEM_LIST_FIELDS,
+  type ItemListKind,
+  type ItemLists,
+  type ListEntry,
+  type ListEntryChange,
+  type VehicleModel,
+} from "../lists/lists.ts";
 import { distinct } from "./itemForm.ts";
-import { NOT_APPLICABLE, POSITION_NAMES, SIDE_NAMES, type Item, type ItemStatus } from "./items.ts";
+import { NOT_APPLICABLE, optionKey, POSITION_NAMES, SIDE_NAMES, type Item, type ItemStatus } from "./items.ts";
 
 // The inventory filters shared by web and mobile: the filters of the Filtros menu and the options each one offers,
 // taken from the items in stock, and the list query that sends them, with the stock status, to the API. The
 // vehicle model keeps its brand in the value, since two brands may share a model name; with vehicle brands chosen,
-// it offers only their models. An entry of the item lists also leads to the filters that show the items using it.
+// it offers only their models. An entry of the item lists also leads to the filters that show the items using it, and
+// the filters follow an entry renamed or merged, so they keep showing its items.
 
 /** Every filter of the Filtros menu, none chosen. */
 export const EMPTY_ITEM_FILTERS: ItemFilters = {
@@ -68,6 +76,30 @@ export function entryFilters(kind: ItemListKind, entry: ListEntry | VehicleModel
   const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
   const value = brand ? vehicleModelValue(brand.name, entry.name) : entry.name;
   return { ...EMPTY_ITEM_FILTERS, [ITEM_LIST_FIELDS[kind]]: [value] };
+}
+
+/**
+ * Makes the filters follow an entry renamed, or merged into another: a value naming it, ignoring case, accents and
+ * extra spaces, names its new name, and a vehicle brand's models go with it; a value that then repeats is kept once.
+ * @param filters The filters chosen.
+ * @param change The entry's list and its names before and after (a vehicle model's within its brand).
+ * @returns The filters with the new name.
+ */
+export function followEntryChange(filters: FilterValues, change: ListEntryChange): FilterValues {
+  const { kind, from, to, vehicleBrand } = change;
+  const same = (a: string, b: string) => optionKey(a) === optionKey(b);
+  /** Swaps a vehicle model value's brand, or its model, when it names the entry. */
+  const model = (value: string) => {
+    const split = splitVehicleModel(value);
+    if (split && kind === "vehicleBrands" && same(split.vehicleBrand, from)) {
+      return vehicleModelValue(to, split.vehicleModel);
+    }
+    const ofEntry = split && kind === "vehicleModels" && same(split.vehicleBrand, vehicleBrand ?? "") && same(split.vehicleModel, from);
+    return ofEntry ? vehicleModelValue(split.vehicleBrand, to) : value;
+  };
+  const field = ITEM_LIST_FIELDS[kind];
+  const named = (filters[field] ?? []).map((value) => (kind !== "vehicleModels" && same(value, from) ? to : value));
+  return { ...filters, [field]: [...new Set(named)], vehicleModel: [...new Set((filters.vehicleModel ?? []).map(model))] };
 }
 
 /**

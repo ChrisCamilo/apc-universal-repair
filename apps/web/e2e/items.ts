@@ -19,7 +19,9 @@ import { itemListsOf } from "@apc/shared/test-lists";
 // categories and the stock status, one page at a time when a page size is asked, with how many match in all. Other methods fall through to the test's own
 // routes, registered before it. The item lists are answered too, starting with what the items use: a POST creates
 // a name, or gives back the one a list already holds; a PATCH renames an entry and the items using it, refusing a
-// name another entry has; a DELETE removes an entry no item uses, refusing one in use or a brand of the catalog.
+// name another entry has; a merge moves an entry's items to another and removes it (a category or part brand; brands
+// and models aren't merged here); a DELETE removes an entry no item uses, refusing one in use or a brand of the
+// catalog.
 
 /**
  * Answers GET /api/items, with or without a query, from a list of items the test may change as it goes, and the
@@ -80,7 +82,7 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
 
   const entryOf = (url: URL) => {
     const kind = (Object.keys(ITEM_LIST_PATHS) as ItemListKind[]).find((each) => url.pathname.startsWith(`/api${ITEM_LIST_PATHS[each]}/`));
-    const id = url.pathname.split("/").at(-1);
+    const id = url.pathname.replace(/\/merge$/, "").split("/").at(-1);
     const entry = kind && (lists[kind] as ListEntry[]).find((held) => held.id === id);
     return kind && entry ? { kind, entry } : undefined;
   };
@@ -95,6 +97,20 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
         }
         Object.assign(lists, withoutEntry(lists, kind, entry.id));
         return route.fulfill({ status: 204 });
+      }
+      if (route.request().url().endsWith("/merge")) {
+        const into = (lists[kind] as ListEntry[]).find((held) => held.id === route.request().postDataJSON().into)!;
+        const field = ITEM_LIST_FIELDS[kind];
+        let moved = 0;
+        // Each item moved is replaced, leaving the test's own item objects as they were.
+        stock.forEach((item, index) => {
+          if (optionKey(item[field] ?? "") === optionKey(entry.name)) {
+            stock[index] = { ...item, [field]: into.name };
+            moved += 1;
+          }
+        });
+        Object.assign(lists, withoutEntry(lists, kind, entry.id));
+        return route.fulfill({ json: { moved } });
       }
       const name = listName(route.request().postDataJSON().name);
       const siblings = (lists[kind] as ListEntry[]).filter(

@@ -15,7 +15,7 @@ import {
   type ItemStatus,
 } from '@apc/shared/items'
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
-import { EMPTY_ITEM_FILTERS, itemFilterRows, itemListQuery } from '@apc/shared/item-filters'
+import { EMPTY_ITEM_FILTERS, followEntryChange, itemFilterRows, itemListQuery } from '@apc/shared/item-filters'
 import { EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form'
 import { TUTORIAL_ITEM, type TutorialScreen } from '@apc/shared/inventory-tutorial'
 import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination'
@@ -62,9 +62,9 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // before. While the items load, skeleton rows hold their place; when nothing is in stock, the empty state offers
 // "Novo item", and when the search or the filters leave nothing, it offers to clear them; when the API fails, the
 // error state offers to try again. "Novo item" and each row's pencil open the item form, each row's trash asks to
-// confirm deleting the item, and the list loads again once an item is saved or deleted. "Gerenciar listas" renames
-// and deletes the categories, brands and models the form picks from; the list loads again after each change, and a
-// name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list
+// confirm deleting the item, and the list loads again once an item is saved or deleted. "Gerenciar listas" renames,
+// merges and deletes the categories, brands and models the form picks from; the list loads again after each change,
+// the filters following a name renamed or merged, and a name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list
 // and the lists load again; "Exportar CSV" saves every item of the list as it is, on every page, in the same format.
 // While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or
 // Enter on it) opens the item's details. Each row's thumbnail shows the item's cover and opens its photos in the
@@ -165,7 +165,7 @@ export function InventoryTab() {
   // Each time the stock loads, warn about the items newly at or below their minimum.
   useLowStockAlerts(state.status === 'ready' ? state.items : null, user?.id ?? '')
   // The lists the item form picks from and creates names in.
-  const { lists, create: createEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists()
+  const { lists, create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists()
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false)
   // Whether "Importar CSV" is open; each opening starts with no file.
@@ -516,8 +516,14 @@ export function InventoryTab() {
         lists={lists}
         items={items}
         onRename={renameEntry}
+        onMerge={mergeEntry}
         onRemove={removeEntry}
-        onChanged={reload}
+        onChanged={(change) => {
+          reload()
+          if (change) {
+            setFilters((held) => followEntryChange(held, change))
+          }
+        }}
         onShowItems={(shown) => {
           setManaging(false)
           narrow(() => {

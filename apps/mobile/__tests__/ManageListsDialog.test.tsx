@@ -7,12 +7,12 @@ import { Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Item } from '@apc/shared/items';
-import { withEntry, withoutEntry, type ItemLists } from '@apc/shared/lists';
+import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/shared/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { ManageListsDialog } from '../src/inventory/ManageListsDialog';
-import type { RemoveListEntry, RenameListEntry } from '../src/inventory/useItemLists';
+import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider } from '../src/Toast';
 
@@ -58,16 +58,23 @@ function item(fields: Partial<Item> & Pick<Item, 'id' | 'code' | 'name'>): Item 
 
 /**
  * Renders the dialog inside the theme and toast providers, holding the lists as the inventory does.
- * @param props onRename and onRemove, called with each change, which is made unless they answer otherwise; and
+ * @param props onRename, onMerge and onRemove, called with each change, which is made unless they answer otherwise; and
  * onChanged and onShowItems.
  * @returns The rendered tree.
  */
 async function mount({
   onRename,
+  onMerge,
   onRemove,
   onChanged = () => {},
   onShowItems = () => {},
-}: { onRename?: RenameListEntry; onRemove?: RemoveListEntry; onChanged?: () => void; onShowItems?: () => void } = {}) {
+}: {
+  onRename?: RenameListEntry;
+  onMerge?: MergeListEntries;
+  onRemove?: RemoveListEntry;
+  onChanged?: (change?: ListEntryChange) => void;
+  onShowItems?: () => void;
+} = {}) {
   /** Holds the lists and changes them as the API would. */
   function Owner() {
     const [lists, setLists] = useState<ItemLists>(LISTS);
@@ -79,6 +86,14 @@ async function mount({
       const renamed = { ...lists[kind].find((entry) => entry.id === id)!, name: name.charAt(0).toUpperCase() + name.slice(1) };
       setLists((current) => withEntry(current, kind, renamed));
       return renamed;
+    };
+    const merge: MergeListEntries = async (kind, id, into) => {
+      if ((await onMerge?.(kind, id, into)) === null) {
+        return null;
+      }
+      const held = lists[kind].find((entry) => entry.id === id)!;
+      setLists((current) => withoutEntry(current, kind, id));
+      return ITEMS.filter((each) => each.category === held.name).length;
     };
     const remove: RemoveListEntry = async (kind, id) => {
       if ((await onRemove?.(kind, id)) === false) {
@@ -93,6 +108,7 @@ async function mount({
         lists={lists}
         items={ITEMS}
         onRename={rename}
+        onMerge={merge}
         onRemove={remove}
         onChanged={onChanged}
         onShowItems={onShowItems}
@@ -176,7 +192,7 @@ test('Mobile: Manage lists shows each list with the items using each name', asyn
 });
 
 // Renames a category in place and checks the rename is sent, the list shows the new name, a toast confirms it and
-// the inventory is told to load again; Cancelar leaves a rename.
+// the inventory is told to load again, with the names for its filters; Cancelar leaves a rename.
 test('Mobile: a name is renamed in place', async () => {
   const onRename = jest.fn<ReturnType<RenameListEntry>, Parameters<RenameListEntry>>();
   const onChanged = jest.fn();
@@ -190,32 +206,73 @@ test('Mobile: a name is renamed in place', async () => {
   expect(onRename).toHaveBeenCalledWith('categories', turbo.id, 'turbo e escape');
   expect(texts(tree.root)).toEqual(expect.arrayContaining(['Turbo e escape', 'Categoria renomeada para “Turbo e escape”.']));
   expect(onChanged).toHaveBeenCalledTimes(1);
+  expect(onChanged).toHaveBeenCalledWith({ kind: 'categories', from: 'Turbo', to: 'Turbo e escape' });
 
   await press(tree, 'Renomear Freios');
   await press(tree, 'Cancelar');
   expect(tree.root.findAll((n) => n.type === TextInput)).toHaveLength(0);
 });
 
-// Renames to a blank name and to another category's name, in another case, and checks each is refused under the field
-// without sending anything; a name the API says is taken is refused the same way.
+// Renames to a blank name and checks it is refused under the field without sending anything; a name the API says is
+// taken, as another device took it first, is refused the same way.
 test('Mobile: a rename to a blank or taken name is refused', async () => {
   const onRename = jest.fn<ReturnType<RenameListEntry>, Parameters<RenameListEntry>>(async () => 'taken');
   const tree = await mount({ onRename });
   await press(tree, 'Renomear Turbo');
   const field = () => tree.root.find((n) => n.type === TextInput);
-  for (const [typed, message] of [
-    [' ', 'Informe o nome.'],
-    ['freios', 'Já existe uma categoria com esse nome.'],
-  ]) {
-    await ReactTestRenderer.act(async () => field().props.onChangeText(typed));
-    await press(tree, 'Salvar');
-    expect(texts(tree.root)).toContain(message);
-  }
+  await ReactTestRenderer.act(async () => field().props.onChangeText(' '));
+  await press(tree, 'Salvar');
+  expect(texts(tree.root)).toContain('Informe o nome.');
   expect(onRename).not.toHaveBeenCalled();
   await ReactTestRenderer.act(async () => field().props.onChangeText('Escapamento'));
   await press(tree, 'Salvar');
   expect(onRename).toHaveBeenCalledTimes(1);
   expect(texts(tree.root)).toContain('Já existe uma categoria com esse nome.');
+});
+
+// Renames a category to another's name, in another case, and checks the merge is asked, saying where its item goes;
+// Juntar sends the merge, the name leaves the list, a toast says how many items moved and the inventory is told, with
+// the names for its filters. Nothing is renamed.
+test('Mobile: a rename to a held name merges the two after confirming', async () => {
+  const onRename = jest.fn<ReturnType<RenameListEntry>, Parameters<RenameListEntry>>();
+  const onMerge = jest.fn<ReturnType<MergeListEntries>, Parameters<MergeListEntries>>();
+  const onChanged = jest.fn();
+  const tree = await mount({ onRename, onMerge, onChanged });
+  await press(tree, 'Renomear Freios');
+  await ReactTestRenderer.act(async () => tree.root.find((n) => n.type === TextInput).props.onChangeText('motor'));
+  await press(tree, 'Salvar');
+  expect(texts(tree.root)).toEqual(
+    expect.arrayContaining([
+      'Juntar “Freios” com “Motor”?',
+      'O item de “Freios” passa para “Motor”, e “Freios” sai da lista de categorias.',
+    ]),
+  );
+  await press(tree, 'Juntar');
+  const [freios, motor] = ['Freios', 'Motor'].map((name) => LISTS.categories.find((entry) => entry.name === name)!.id);
+  expect(onMerge).toHaveBeenCalledWith('categories', freios, motor);
+  expect(texts(tree.root)).toContain('Categoria “Freios” juntada a “Motor”: 1 item mudou.');
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Renomear Freios')).toHaveLength(0);
+  expect(onChanged).toHaveBeenCalledWith({ kind: 'categories', from: 'Freios', to: 'Motor' });
+  expect(onRename).not.toHaveBeenCalled();
+});
+
+// Renames a vehicle brand of the catalog to another brand's name and checks it is refused under the field, without
+// asking to merge; a merge the API refuses says so.
+test('Mobile: a catalog brand is not merged away, and a failed merge is reported', async () => {
+  const onMerge = jest.fn<ReturnType<MergeListEntries>, Parameters<MergeListEntries>>(async () => null);
+  const tree = await mount({ onMerge });
+  await press(tree, 'Renomear Chevrolet');
+  await ReactTestRenderer.act(async () => tree.root.find((n) => n.type === TextInput).props.onChangeText('renault'));
+  await press(tree, 'Salvar');
+  expect(texts(tree.root)).toContain(CATALOG_MERGE_MESSAGE('Chevrolet'));
+  await press(tree, 'Cancelar');
+
+  await press(tree, 'Renomear Renault');
+  await ReactTestRenderer.act(async () => tree.root.find((n) => n.type === TextInput).props.onChangeText('chevrolet'));
+  await press(tree, 'Salvar');
+  await press(tree, 'Juntar');
+  expect(onMerge).toHaveBeenCalledTimes(1);
+  expect(texts(tree.root)).toContain('Não foi possível juntar a marca de veículo. Tente de novo.');
 });
 
 // Deletes a vehicle brand no item uses and checks the confirmation says its models go too, Excluir sends the delete,
