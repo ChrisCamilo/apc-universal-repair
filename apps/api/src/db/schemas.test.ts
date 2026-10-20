@@ -24,7 +24,7 @@ test("API: a field in only one schema is a difference", () => {
 // Gives the PostgreSQL schema a native type and realigns a column, as `prisma format` would, and checks neither is a
 // difference, as the databases may differ there.
 test("API: native types and spacing aren't differences", () => {
-  const native = POSTGRESQL.replace("  color          String        @default(\"N/A\")", "  color String @default(\"N/A\") @db.VarChar(32)");
+  const native = POSTGRESQL.replace("  color          String      @default(\"N/A\")", "  color String @default(\"N/A\") @db.VarChar(32)");
   assert.notEqual(native, POSTGRESQL);
   assert.deepEqual(modelDifferences(native, SQLITE), []);
 });

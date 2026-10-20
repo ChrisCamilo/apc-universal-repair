@@ -46,7 +46,7 @@ model Item {
   /// The sum of the brands' quantities.
   quantity       Int           @default(0)
   minQuantity    Int           @default(0)
-  /// The brands that make the part, in the order they were added, the first one the item's cover.
+  /// The brands that make the part, in order (see ItemBrand.position), the first one the item's cover.
   brands         ItemBrand[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -63,6 +63,8 @@ model ItemBrand {
   id             String      @id @default(uuid())
   itemId         String
   item           Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  /// The brand's place among the item's brands, from 0, the cover's.
+  position       Int         @default(0)
   partBrandId    String
   partBrand      PartBrand   @relation(fields: [partBrandId], references: [id], onDelete: Restrict)
   /// Part code, stored in uppercase and unique.

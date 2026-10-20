@@ -169,7 +169,9 @@ async function checkMigrated(client: PrismaClient) {
     );
     assert.deepEqual(
       brand.photos.map((photo) => ({ id: photo.id, position: photo.position, file: photo.file, thumbFile: photo.thumbFile })),
-      OLD.photos.filter((photo) => photo.itemId === old.id).map(({ itemId: _itemId, ...photo }) => photo),
+      OLD.photos
+        .filter((photo) => photo.itemId === old.id)
+        .map((photo) => ({ id: photo.id, position: photo.position, file: photo.file, thumbFile: photo.thumbFile })),
     );
   }
 }

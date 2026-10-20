@@ -47,6 +47,7 @@ CREATE INDEX "Item_vehicleModelId_idx" ON "Item"("vehicleModelId");
 CREATE TABLE "ItemBrand" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "itemId" TEXT NOT NULL,
+    "position" INTEGER NOT NULL DEFAULT 0,
     "partBrandId" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "codeKey" TEXT NOT NULL,

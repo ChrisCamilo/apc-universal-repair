@@ -6,6 +6,7 @@
 CREATE TABLE "ItemBrand" (
     "id" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
+    "position" INTEGER NOT NULL DEFAULT 0,
     "partBrandId" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "codeKey" TEXT NOT NULL,
