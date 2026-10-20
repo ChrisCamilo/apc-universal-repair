@@ -10,6 +10,7 @@ import '../fonts.ts'
 import '../index.css'
 import { themeCss } from '../theme.ts'
 import { CatalogTab } from './CatalogTab.tsx'
+import { testItem, type FlatItem } from '@apc/shared/test-items'
 
 const OPALA_25 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-2.5']
 const OPALA_41 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1']
@@ -39,8 +40,8 @@ function rgb(hex: string): string {
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function part(fields: Pick<Item, 'code' | 'name' | 'vehicleBrand' | 'vehicleModel'>): Item {
-  return {
+function part(fields: Required<Pick<FlatItem, 'code' | 'name' | 'vehicleBrand' | 'vehicleModel'>>): Item {
+  return testItem({
     id: crypto.randomUUID(),
     category: 'Freios',
     partBrand: 'Cobreq',
@@ -55,7 +56,7 @@ function part(fields: Pick<Item, 'code' | 'name' | 'vehicleBrand' | 'vehicleMode
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
-  }
+  })
 }
 
 /**

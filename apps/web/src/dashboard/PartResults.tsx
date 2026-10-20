@@ -1,20 +1,19 @@
 import { useRef, type KeyboardEvent } from 'react'
-import { partFit, type PartResults as Results } from '@apc/shared/catalog'
-import type { Item } from '@apc/shared/items'
+import { partFit, type FoundPart, type PartResults as Results } from '@apc/shared/catalog'
 import { arrowTarget } from '../components/radioKeys.ts'
 import { Text } from '../components/Typography.tsx'
 import { partResults } from './PartResults.styles.ts'
 
-// The inventory parts a Catalog search by code found, in a tinted box above the tree: each with its code, its name
-// and which vehicle it fits. Choosing one reveals its vehicle in the tree; the chosen part has the accent frame.
+// The inventory parts a Catalog search by code found, in a tinted box above the tree: each brand of an item whose code
+// matched, with its code, the item's name and which vehicle it fits. Choosing one reveals its vehicle in the tree; the chosen part has the accent frame.
 // The parts are a radio group: one is always chosen, it is the only Tab stop and the arrows move the choice. When
 // more parts matched than fit, a line says how many more.
 
 type PartResultsProps = {
   results: Results
-  /** The chosen part's id. */
+  /** The chosen part's id, its brand's. */
   chosen?: string
-  onChoose: (part: Item) => void
+  onChoose: (part: FoundPart) => void
 }
 
 export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
@@ -55,9 +54,9 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
           >
             <span className={classes.line()} data-testid={ids.line}>
               <code className={classes.code()} data-testid={ids.code}>{part.code}</code>
-              <span className={classes.name()} data-testid={ids.name}>{part.name}</span>
+              <span className={classes.name()} data-testid={ids.name}>{part.item.name}</span>
             </span>
-            <span className={classes.fit()} data-testid={ids.fit}>{partFit(part)}</span>
+            <span className={classes.fit()} data-testid={ids.fit}>{partFit(part.item)}</span>
           </button>
         ))}
       </div>
