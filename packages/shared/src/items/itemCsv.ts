@@ -22,14 +22,18 @@ import {
 // file into the items it holds, each row checked as the item form checks it, with the reasons a row can't be saved. A
 // file is UTF-8, comma or semicolon separated (told by its header line), with a header naming the columns in any order;
 // a value with the separator, quotes or a line break in it is quoted, as a decimal comma is in a comma-separated file.
-// Text follows the writing rule, codes are uppercase, and a category, brand or model already in the lists takes its
-// spelling there; the names not in the lists yet are listed, to be created by the import. The valid rows go to the API
-// in one request, checked with the item schema, and come back as how many items were created and updated.
-// The export writes the items of the list as it is, every page of it, in the same format, so a file exported can be
-// imported again; on request it adds each item's photo paths in a column the import leaves aside for now.
+// Each row is a brand of an item: rows with the same value in the "item" column are the brands of one item, and must
+// describe it the same way (name, category, vehicle, position, side, minimum), each with its own part brand; a row
+// without one is an item of its own. Text follows the writing rule, codes are uppercase, and a category, brand or model
+// already in the lists takes its spelling there; the names not in the lists yet are listed, to be created by the
+// import. The valid items go to the API in one request, checked with the item schema, and come back as how many items
+// were created and updated; an item with a row in error is left out whole. The export writes the items of the list as
+// it is, every page of it, in the same format, each item numbered in the "item" column, so a file exported can be
+// imported again; on request it adds each brand's photo paths in a column the import leaves aside for now.
 
 /** The columns of the import, in the template's order. */
 export const CSV_COLUMNS = [
+  "item",
   "code",
   "name",
   "category",
@@ -44,24 +48,25 @@ export const CSV_COLUMNS = [
   "position",
   "side",
 ] as const;
-/** The template to download: the header and two example rows. */
+/** The template to download: the header, an item of one brand and an item of two. */
 export const CSV_TEMPLATE = [
   CSV_COLUMNS.join(","),
-  'W 712/95,Filtro de óleo,Motor,Mann,Volkswagen,Gol,8,2,A-2,"39,90",,,',
-  'BP-1020,Pastilha de freio,Freios,Cobreq,Chevrolet,,4,1,B-10,"89,90",,D,Ambos',
+  '1,W 712/95,Filtro de óleo,Motor,Mann,Volkswagen,Gol,8,2,A-2,"39,90",,,',
+  '2,BP-1020,Pastilha de freio,Freios,Cobreq,Chevrolet,,4,1,B-10,"89,90",,D,Ambos',
+  '2,PD/1020,Pastilha de freio,Freios,Fras-le,Chevrolet,,2,1,B-10,"94,90",,D,Ambos',
   "",
 ].join("\r\n");
 /** Name the template is downloaded with. */
 export const CSV_TEMPLATE_NAME = "modelo-estoque.csv";
 /** The column the export puts the photo paths in, when asked; the import leaves it aside. */
 export const CSV_PHOTOS_COLUMN = "photos";
-/** What separates an item's photo paths in the photos column. */
+/** What separates a brand's photo paths in the photos column. */
 export const CSV_PHOTO_SEPARATOR = " | ";
 /** Most rows one import takes. */
 export const ITEM_IMPORT_LIMIT = 1000;
 /** What POST /items/import answers: how many items were created, and how many updated for a code in use. */
 export const itemImportResultSchema = z.object({ created: z.int().min(0), updated: z.int().min(0) });
-/** What POST /items/import takes: the valid rows' items. */
+/** What POST /items/import takes: the valid rows' items, each with its brands. */
 export const itemImportSchema = z.object({ items: z.array(itemCreateSchema).min(1).max(ITEM_IMPORT_LIMIT) });
 /** The columns a file must have; the others may be left out. */
 const REQUIRED_COLUMNS: readonly CsvColumn[] = ["code", "name", "category", "part_brand", "vehicle_brand", "unit_price"];
@@ -70,8 +75,11 @@ const REQUIRED_COLUMNS: readonly CsvColumn[] = ["code", "name", "category", "par
 export type ItemImportResult = z.infer<typeof itemImportResultSchema>;
 /** One of the columns of the import. */
 export type CsvColumn = (typeof CSV_COLUMNS)[number];
-/** A row of the file: its line, the item it holds as it would be saved, and why it can't be, if it can't. */
-export type CsvItemRow = { line: number; item: ItemCreate; errors: string[] };
+/**
+ * A row of the file: its line, the item it holds as it would be saved with the row's one brand, the value of its "item"
+ * column (empty for an item of its own), and why it can't be, if it can't.
+ */
+export type CsvItemRow = { line: number; item: ItemCreate; group: string; errors: string[] };
 /** A file read: its rows, or why it can't be read at all. */
 export type CsvItems = { rows: CsvItemRow[] } | { error: string };
 /** The names an import creates in the lists, in the order the rows have them. */
@@ -81,6 +89,42 @@ export type NewListNames = {
   vehicleBrands: string[];
   vehicleModels: { vehicleBrand: string; name: string }[];
 };
+
+/**
+ * Checks the rows of each item of a file, adding to their errors: a row that describes the item otherwise than its
+ * first row (name, category, vehicle, position, side or minimum), a part brand a row before already has, and, once
+ * any row of an item has an error, every other row of it, since the item is left out whole.
+ * @param rows The rows read, changed in place.
+ */
+function checkGroups(rows: readonly CsvItemRow[]): void {
+  /** What a row says the item is, compared ignoring case, accents and extra spaces. */
+  const described = ({ item }: CsvItemRow) =>
+    [item.name, item.category, item.vehicleBrand, item.vehicleModel ?? "", item.position ?? NOT_APPLICABLE, item.side ?? NOT_APPLICABLE, String(item.minQuantity)]
+      .map(optionKey)
+      .join("|");
+  const groups = new Map<string, CsvItemRow[]>();
+  for (const row of rows.filter((each) => each.group)) {
+    groups.set(row.group, [...(groups.get(row.group) ?? []), row]);
+  }
+  for (const [group, members] of groups) {
+    const [first] = members;
+    members.forEach((row, index) => {
+      if (index > 0 && described(row) !== described(first)) {
+        row.errors.push(`O item ${group} está descrito de outro jeito na linha ${first.line}.`);
+      }
+      const brand = optionKey(row.item.brands[0].partBrand);
+      const before = members.slice(0, index).find((other) => brand && optionKey(other.item.brands[0].partBrand) === brand);
+      if (before) {
+        row.errors.push(`Marca repetida no item ${group}: já está na linha ${before.line}.`);
+      }
+    });
+    if (members.some((row) => row.errors.length > 0)) {
+      for (const row of members.filter((each) => each.errors.length === 0)) {
+        row.errors.push(`Outra linha do item ${group} tem erro.`);
+      }
+    }
+  }
+}
 
 /**
  * Writes a cell of the export, quoted when it holds the separator, quotes or a line break, as the import reads it.
@@ -150,22 +194,37 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
   const models = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
   /** Takes a name's spelling in its list, or writes a new one by the rule. */
   const listed = (entries: readonly ListEntry[], text: string) => (text ? (findEntry(entries, text)?.name ?? listName(text)) : "");
+  const quantity = count("quantity", "Quantidade");
+  const minQuantity = count("minimum", "Quantidade mínima");
   const item: ItemCreate = {
-    code,
     name: name && capitalizeFirst(name),
     category: listed(lists.categories, category),
-    partBrand: listed(lists.partBrands, partBrand),
     vehicleBrand: listed(lists.vehicleBrands, vehicleBrand),
     vehicleModel: listed(models, value("vehicle_model")),
-    quantity: count("quantity", "Quantidade"),
-    minQuantity: count("minimum", "Quantidade mínima"),
-    location: value("location") && capitalizeFirst(value("location")),
-    unitPriceCents: price ?? 0,
-    color: value("color") ? capitalizeFirst(value("color")) : NOT_APPLICABLE,
+    minQuantity,
     position: choice("position", POSITIONS, "Posição deve ser D, T ou Ambos, ou ficar vazia."),
     side: choice("side", SIDES, "Lado deve ser LD, LE ou Ambos, ou ficar vazio."),
+    brands: [
+      {
+        partBrand: listed(lists.partBrands, partBrand),
+        code,
+        quantity,
+        location: value("location") && capitalizeFirst(value("location")),
+        unitPriceCents: price ?? 0,
+        color: value("color") ? capitalizeFirst(value("color")) : NOT_APPLICABLE,
+      },
+    ],
   };
   return { item, errors };
+}
+
+/**
+ * Words an export's result for its toast.
+ * @param count How many items the file holds.
+ * @returns E.g. "12 itens exportados."
+ */
+export function exportedSummary(count: number): string {
+  return count === 1 ? "1 item exportado." : `${count} itens exportados.`;
 }
 
 /**
@@ -202,15 +261,6 @@ export function exportScope(count: number, narrowed: boolean): string {
 }
 
 /**
- * Words an export's result for its toast.
- * @param count How many items the file holds.
- * @returns E.g. "12 itens exportados."
- */
-export function exportedSummary(count: number): string {
-  return count === 1 ? "1 item exportado." : `${count} itens exportados.`;
-}
-
-/**
  * Writes an imported item's details in one line, as the inventory card does under the name.
  * @param item The item of a row.
  * @returns E.g. "Motor · Mann · Volkswagen Gol · A-2 · R$ 39,90".
@@ -219,11 +269,38 @@ export function importedDetails(item: ItemCreate): string {
   return itemDetails({
     ...item,
     vehicleModel: item.vehicleModel || null,
-    location: item.location || null,
     position: item.position ?? NOT_APPLICABLE,
     side: item.side ?? NOT_APPLICABLE,
-    color: item.color ?? NOT_APPLICABLE,
+    brands: item.brands.map((brand) => ({ ...brand, location: brand.location || null, color: brand.color ?? NOT_APPLICABLE })),
   });
+}
+
+/**
+ * Joins the valid rows of a file into the items they hold: the rows of one value in the "item" column are the brands of
+ * one item, described by its first row; a row without one is an item of its own. An item with a row in error is left
+ * out whole (see readItemsCsv).
+ * @param rows The rows read from a file.
+ * @returns The items to import, in the order of their first rows.
+ */
+export function importedItems(rows: readonly CsvItemRow[]): ItemCreate[] {
+  const items: ItemCreate[] = [];
+  const grouped = new Map<string, ItemCreate>();
+  for (const { item, group, errors } of rows) {
+    if (errors.length > 0) {
+      continue;
+    }
+    const held = group ? grouped.get(group) : undefined;
+    if (held) {
+      held.brands.push(...item.brands);
+      continue;
+    }
+    const copy = { ...item, brands: [...item.brands] };
+    items.push(copy);
+    if (group) {
+      grouped.set(group, copy);
+    }
+  }
+  return items;
 }
 
 /**
@@ -247,39 +324,43 @@ export async function importItems(base: string, rows: readonly CsvItemRow[]): Pr
   const response = await apiFetch(`${base}/items/import`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ items: rows.filter((row) => row.errors.length === 0).map((row) => row.item) }),
+    body: JSON.stringify({ items: importedItems(rows) }),
   }).catch(() => null);
   return response?.ok ? itemImportResultSchema.parse(await response.json()) : null;
 }
 
 /**
- * Writes items as a CSV file in the import's format: the template's columns in its order, comma separated, the price
- * with a decimal comma and "N/A" for what doesn't apply, after a byte-order mark so spreadsheets read it as UTF-8.
+ * Writes items as a CSV file in the import's format: the template's columns in its order, comma separated, a row for
+ * each brand of an item, the item numbered in the "item" column from 1, the price with a decimal comma and "N/A" for
+ * what doesn't apply, after a byte-order mark so spreadsheets read it as UTF-8.
  * @param items The items, in the order to write them.
- * @param options Whether to add a photos column, with each item's photo paths in their order, the cover first.
+ * @param options Whether to add a photos column, with each brand's photo paths in their order, the cover first.
  * @returns The file's text, each line ending in CRLF.
  */
 export function itemsCsv(items: readonly Item[], { photos }: { photos: boolean }): string {
   const header = photos ? [...CSV_COLUMNS, CSV_PHOTOS_COLUMN] : [...CSV_COLUMNS];
-  const rows = items.map((item) => {
-    const cells: Record<CsvColumn, string> = {
-      code: item.code,
-      name: item.name,
-      category: item.category,
-      part_brand: item.partBrand,
-      vehicle_brand: item.vehicleBrand,
-      vehicle_model: item.vehicleModel ?? "",
-      quantity: String(item.quantity),
-      minimum: String(item.minQuantity),
-      location: item.location ?? "",
-      unit_price: priceInput(item.unitPriceCents),
-      color: item.color,
-      position: item.position,
-      side: item.side,
-    };
-    const row = CSV_COLUMNS.map((column) => cells[column]);
-    return photos ? [...row, item.photos.map((photo) => photo.url).join(CSV_PHOTO_SEPARATOR)] : row;
-  });
+  const rows = items.flatMap((item, index) =>
+    item.brands.map((brand) => {
+      const cells: Record<CsvColumn, string> = {
+        item: String(index + 1),
+        code: brand.code,
+        name: item.name,
+        category: item.category,
+        part_brand: brand.partBrand,
+        vehicle_brand: item.vehicleBrand,
+        vehicle_model: item.vehicleModel ?? "",
+        quantity: String(brand.quantity),
+        minimum: String(item.minQuantity),
+        location: brand.location ?? "",
+        unit_price: priceInput(brand.unitPriceCents),
+        color: brand.color,
+        position: item.position,
+        side: item.side,
+      };
+      const row = CSV_COLUMNS.map((column) => cells[column]);
+      return photos ? [...row, brand.photos.map((photo) => photo.url).join(CSV_PHOTO_SEPARATOR)] : row;
+    }),
+  );
   return "\ufeff" + [header, ...rows].map((row) => row.map(csvCell).join(",") + "\r\n").join("");
 }
 
@@ -302,7 +383,9 @@ export function newListNames(rows: readonly CsvItemRow[], lists: ItemLists): New
       continue;
     }
     add(found.categories, lists.categories, item.category);
-    add(found.partBrands, lists.partBrands, item.partBrand);
+    for (const brand of item.brands) {
+      add(found.partBrands, lists.partBrands, brand.partBrand);
+    }
     add(found.vehicleBrands, lists.vehicleBrands, item.vehicleBrand);
     const brand = findEntry(lists.vehicleBrands, item.vehicleBrand);
     const models = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
@@ -367,7 +450,9 @@ export function parseCsv(text: string, separator: string): { line: number; cells
 
 /**
  * Reads a CSV file into the items it holds, checking each row: the required values, numbers that are numbers,
- * position and side among their values, and a part code only once in the file. Blank rows are skipped.
+ * position and side among their values, and a part code only once in the file; and, for the rows of one item, the
+ * same description as its first row, a part brand once, and the item left out whole when one of its rows has an error.
+ * Blank rows are skipped.
  * @param text The file's text, UTF-8.
  * @param lists The lists the API keeps, whose spelling the names take.
  * @returns The rows with their items and errors, or why the file can't be read.
@@ -392,29 +477,31 @@ export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
     return { error: `O arquivo tem ${records.length} itens; importe até ${ITEM_IMPORT_LIMIT} de cada vez.` };
   }
   const firstLine = new Map<string, number>();
-  const rows = records.map(({ line, cells }) => {
+  const rows = records.map(({ line, cells }): CsvItemRow => {
     const value = (column: CsvColumn) => (cells[columns.indexOf(column)] ?? "").trim();
     const { item, errors } = csvItem(value, lists);
     // Codes repeat as the search compares them (see codeKey): "CB4500" is "CB-4500".
-    const key = codeKey(item.code);
+    const key = codeKey(item.brands[0].code);
     const seen = firstLine.get(key);
     if (key && seen !== undefined) {
       errors.push(`Código repetido: já está na linha ${seen}.`);
     } else if (key) {
       firstLine.set(key, line);
     }
-    return { line, item, errors };
+    return { line, item, group: value("item"), errors };
   });
+  checkGroups(rows);
   return { rows };
 }
 
 /**
- * Counts the rows of a file for the preview: how many will be imported and how many have errors.
+ * Counts a file for the preview: how many items will be imported, the rows of one item counted once, and how many
+ * rows have errors.
  * @param rows The rows read from the file.
- * @returns E.g. "12 itens prontos para importar · 2 com erro".
+ * @returns E.g. "12 itens prontos para importar · 2 linhas com erro".
  */
 export function rowsSummary(rows: readonly CsvItemRow[]): string {
   const invalid = rows.filter((row) => row.errors.length > 0).length;
-  const valid = rows.length - invalid;
-  return `${valid} ${valid === 1 ? "item pronto" : "itens prontos"} para importar · ${invalid} com erro`;
+  const valid = importedItems(rows).length;
+  return `${valid} ${valid === 1 ? "item pronto" : "itens prontos"} para importar · ${invalid} ${invalid === 1 ? "linha" : "linhas"} com erro`;
 }
