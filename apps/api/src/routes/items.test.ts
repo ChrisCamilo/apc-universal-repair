@@ -21,6 +21,26 @@ test("API: creating an item needs a price above zero", async () => {
   assert.equal(zero.statusCode, 400);
 });
 
+// Creates, edits and imports items with quantities past a million and checks each is rejected, naming the field.
+test("API: quantities can't pass a million", async () => {
+  const body = { code: "W 712/95", name: "Filtro", category: "Motor", partBrand: "Mann", vehicleBrand: "VW", unitPriceCents: 100 };
+  const created = await app.inject({ headers: AUTHORIZED, method: "POST", url: "/items", payload: { ...body, quantity: 1_000_001 } });
+  assert.equal(created.statusCode, 400);
+  assert.equal(created.json().details[0].field, "quantity");
+  const id = "00000000-0000-4000-8000-000000000001";
+  const edited = await app.inject({ headers: AUTHORIZED, method: "PATCH", url: `/items/${id}`, payload: { minQuantity: 2_147_483_648 } });
+  assert.equal(edited.statusCode, 400);
+  assert.equal(edited.json().details[0].field, "minQuantity");
+  const imported = await app.inject({
+    headers: AUTHORIZED,
+    method: "POST",
+    url: "/items/import",
+    payload: { items: [{ ...body, quantity: 1_000_001 }] },
+  });
+  assert.equal(imported.statusCode, 400);
+  assert.equal(imported.json().details[0].field, "items/0/quantity");
+});
+
 // Asks for an unknown status and checks the list rejects it, naming the field.
 test("API: list filters reject unknown status values", async () => {
   const status = await app.inject({ headers: AUTHORIZED, method: "GET", url: "/items?status=ok" });
