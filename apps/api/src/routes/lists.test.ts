@@ -41,3 +41,16 @@ test("API: renaming and deleting in a list check the id and the name", async () 
     assert.equal(blank.json().details[0].field, "name", url);
   }
 });
+
+// Merges with an id that isn't a UUID, without the entry to merge into and into one that isn't a UUID, and checks each
+// is rejected before reaching the database.
+test("API: merging in a list checks both ids", async () => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  for (const url of ["/categories", "/part-brands", "/vehicle-brands", "/vehicle-models"]) {
+    const wrongId = await app.inject({ headers: AUTHORIZED, method: "POST", url: `${url}/123/merge`, payload: { into: id } });
+    const missing = await app.inject({ headers: AUTHORIZED, method: "POST", url: `${url}/${id}/merge`, payload: {} });
+    const wrongInto = await app.inject({ headers: AUTHORIZED, method: "POST", url: `${url}/${id}/merge`, payload: { into: "motor" } });
+    assert.deepEqual([wrongId.statusCode, missing.statusCode, wrongInto.statusCode], [400, 400, 400], url);
+    assert.equal(missing.json().details[0].field, "into", url);
+  }
+});
