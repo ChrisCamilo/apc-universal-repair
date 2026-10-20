@@ -85,7 +85,7 @@ export function entryFilters(kind: ItemListKind, entry: ListEntry | VehicleModel
  * @param change The entry's list and its names before and after (a vehicle model's within its brand).
  * @returns The filters with the new name.
  */
-export function followEntryChange(filters: ItemFilters, change: ListEntryChange): ItemFilters {
+export function followEntryChange(filters: FilterValues, change: ListEntryChange): FilterValues {
   const { kind, from, to, vehicleBrand } = change;
   const same = (a: string, b: string) => optionKey(a) === optionKey(b);
   /** Swaps a vehicle model value's brand, or its model, when it names the entry. */
@@ -98,8 +98,8 @@ export function followEntryChange(filters: ItemFilters, change: ListEntryChange)
     return ofEntry ? vehicleModelValue(split.vehicleBrand, to) : value;
   };
   const field = ITEM_LIST_FIELDS[kind];
-  const named = kind === "vehicleModels" ? filters[field] : filters[field].map((value) => (same(value, from) ? to : value));
-  return { ...filters, [field]: [...new Set(named)], vehicleModel: [...new Set(filters.vehicleModel.map(model))] };
+  const named = (filters[field] ?? []).map((value) => (kind !== "vehicleModels" && same(value, from) ? to : value));
+  return { ...filters, [field]: [...new Set(named)], vehicleModel: [...new Set((filters.vehicleModel ?? []).map(model))] };
 }
 
 /**
