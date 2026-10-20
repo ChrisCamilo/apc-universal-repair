@@ -3,6 +3,7 @@ import {
   codeKey,
   findOption,
   formatPrice,
+  MAX_PRICE_CENTS,
   MAX_QUANTITY,
   NOT_APPLICABLE,
   POSITION_NAMES,
@@ -16,7 +17,7 @@ import {
 import { findEntry, type ItemLists } from "../lists/lists.ts";
 
 // The item form shared by web and mobile, for creating and editing an inventory item: the fields as typed, the
-// unit price in the Brazilian format ("1.234,56"), the message of each field that can't be saved, the body sent to
+// unit price always formatted in reais ("R$ 1.234,56"), a dot and a comma meaning the same, the message of each field that can't be saved, the body sent to
 // the API with the writing rule applied, and the options the comboboxes offer, taken from the lists the API keeps.
 // Category, part brand, vehicle brand and vehicle model must be in their lists, where the form creates new names.
 // The same form shows an item's details for reading, each field written out as text.
@@ -68,9 +69,12 @@ export const ITEM_FORM_MESSAGES = {
   quantityTooHigh: `Informe no máximo ${MAX_QUANTITY.toLocaleString("pt-BR")}.`,
   price: "Informe o valor unitário.",
   priceInvalid: "Informe um valor maior que zero, como 89,90.",
+  priceTooHigh: `Informe no máximo ${formatPrice(MAX_PRICE_CENTS).replace(/\s/, " ")}.`,
 } as const;
 /** The info toast of an edit saved with nothing changed, which isn't sent. */
 export const ITEM_UNCHANGED_MESSAGE = "Nenhuma alteração para salvar.";
+/** What the empty price field shows. */
+export const PRICE_PLACEHOLDER = "R$ 0,00";
 
 /** The item form as typed: every field as text, except position and side, which are chosen. */
 export type ItemForm = {
@@ -232,7 +236,13 @@ export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: It
     ...(vehicleModel && { vehicleModel }),
     ...(Number(form.quantity) > MAX_QUANTITY && { quantity: ITEM_FORM_MESSAGES.quantityTooHigh }),
     ...(Number(form.minQuantity) > MAX_QUANTITY && { minQuantity: ITEM_FORM_MESSAGES.quantityTooHigh }),
-    ...(!form.price.trim() ? { price: ITEM_FORM_MESSAGES.price } : price === null || price <= 0 ? { price: ITEM_FORM_MESSAGES.priceInvalid } : {}),
+    ...(!form.price.trim()
+      ? { price: ITEM_FORM_MESSAGES.price }
+      : price === null || price <= 0
+        ? { price: ITEM_FORM_MESSAGES.priceInvalid }
+        : price > MAX_PRICE_CENTS
+          ? { price: ITEM_FORM_MESSAGES.priceTooHigh }
+          : {}),
   };
 }
 
@@ -255,7 +265,7 @@ export function itemFormOf(item: Item): ItemForm {
     side: item.side,
     color: item.color === NOT_APPLICABLE ? "" : item.color,
     location: item.location ?? "",
-    price: priceInput(item.unitPriceCents),
+    price: priceText(item.unitPriceCents),
   };
 }
 
@@ -287,28 +297,67 @@ export function modelsOfBrand(lists: ItemLists, vehicleBrand: string): string[] 
 }
 
 /**
- * Reads a unit price typed in the Brazilian format: a comma before the cents, dots between thousands, and an
- * optional "R$".
- * @param text The price as typed, e.g. "1.234,56", "89,9" or "R$ 12".
- * @returns The price in cents, or null when it isn't a price (e.g. "12.5", whose dot isn't between thousands).
+ * Reads a price as typed, pasted or written in a spreadsheet, a dot and a comma meaning the same: the last one,
+ * followed by one or two digits, comes before the cents, and any other one goes between thousands, followed by three
+ * digits; an "R$" is optional.
+ * @param text The price, e.g. "1.234,56", "1,234.56", "7.50", "89,9", "1.500" or "R$ 12".
+ * @returns The price in cents, or null when it isn't a price (e.g. "1,2,3" or "1.23,00").
  */
 export function parsePrice(text: string): number | null {
   const typed = text.replace(/R\$/i, "").trim();
-  if (!/^(\d{1,3}(\.\d{3})+|\d+)(,\d{1,2})?$/.test(typed)) {
+  const parts = /^(\d{1,3}(?:[.,]\d{3})+|\d+)(?:[.,](\d{1,2}))?$/.exec(typed);
+  if (!parts) {
     return null;
   }
-  const clean = typed.replace(/\./g, "");
-  const [reais, cents = ""] = clean.split(",");
-  return Number(reais) * 100 + Number(cents.padEnd(2, "0"));
+  const [, reais, cents = ""] = parts;
+  return Number(reais.replace(/[.,]/g, "")) * 100 + Number(cents.padEnd(2, "0"));
 }
 
 /**
- * Writes a price in cents for the price field: the Brazilian format without the currency sign.
+ * Writes a price in cents in the Brazilian format without the currency sign, as the CSV holds it.
  * @param cents Price in cents.
  * @returns E.g. "1.234,56".
  */
 export function priceInput(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Reads a change to the price field, which always shows the price formatted in reais. A digit typed or erased shifts
+ * the digits, filling from the cents ("750" is "R$ 7,50"), and any other character typed is left out; a paste is read
+ * as a price (see parsePrice), so "7.50" and "7,50" are the same. Past MAX_PRICE_CENTS, a digit typed is left out and
+ * a paste is refused, saying so, as is a paste that isn't a price; the field keeps what it held.
+ * @param held What the field holds, e.g. "R$ 7,50", or empty.
+ * @param typed The field's text after the change.
+ * @returns What the field takes, empty for a price of zero, and why the change was refused, if it was.
+ */
+export function priceMask(held: string, typed: string): { value: string; message?: string } {
+  const text = (cents: number) => (cents ? priceText(cents) : "");
+  // One character typed or erased: taking one character out of the longer text gives the shorter.
+  const [longer, shorter] = typed.length > held.length ? [typed, held] : [held, typed];
+  const oneChar =
+    longer.length === shorter.length + 1 && [...longer].some((_, at) => longer.slice(0, at) + longer.slice(at + 1) === shorter);
+  if (oneChar) {
+    const cents = Number(typed.replace(/\D/g, "") || 0);
+    return { value: cents > MAX_PRICE_CENTS ? held : text(cents) };
+  }
+  if (!typed.trim()) {
+    return { value: "" };
+  }
+  const cents = parsePrice(typed);
+  if (cents === null) {
+    return { value: held, message: ITEM_FORM_MESSAGES.priceInvalid };
+  }
+  return cents > MAX_PRICE_CENTS ? { value: held, message: ITEM_FORM_MESSAGES.priceTooHigh } : { value: text(cents) };
+}
+
+/**
+ * Writes a price in cents for the price field.
+ * @param cents Price in cents.
+ * @returns E.g. "R$ 1.234,56".
+ */
+export function priceText(cents: number): string {
+  return `R$ ${priceInput(cents)}`;
 }
 
 /**
