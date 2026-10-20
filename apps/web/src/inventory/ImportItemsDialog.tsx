@@ -3,6 +3,7 @@ import {
   CSV_TEMPLATE,
   CSV_TEMPLATE_NAME,
   importedDetails,
+  importedItems,
   importedSummary,
   importItems,
   newListNames,
@@ -19,10 +20,11 @@ import { Heading, Text } from '../components/Typography.tsx'
 import { importItemsDialog } from './ImportItemsDialog.styles.ts'
 
 // The "Importar CSV" dialog of the Inventory tab: it explains the file, downloads the template and reads the file
-// chosen, UTF-8, comma or semicolon separated. The preview counts the rows ready and those with errors, lists the
+// chosen, UTF-8, comma or semicolon separated. The preview counts the items ready and the rows with errors, lists the
 // categories, brands and models the import creates, and shows each row as it will be saved, the rows with errors
-// marked with their reasons. "Importar" sends the valid rows only, and a toast says how many items were created and
-// updated (a part code in use updates its item); a file that can't be read says why, and another can be chosen.
+// marked with their reasons; rows with the same "item" are the brands of one item. "Importar" sends the valid items
+// only, and a toast says how many items were created and updated (a part code in use updates its item); a file that
+// can't be read says why, and another can be chosen.
 
 /** How each list's new names are worded in the preview, e.g. "Categorias: Ignição, Turbo". */
 const NEW_NAMES = [
@@ -48,7 +50,8 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
   const [read, setRead] = useState<{ name: string; result: CsvItems }>()
   const [importing, setImporting] = useState(false)
   const rows = read && 'rows' in read.result ? read.result.rows : []
-  const valid = rows.filter((row) => row.errors.length === 0).length
+  // The items the import sends: the rows of one item count once.
+  const valid = importedItems(rows).length
   const created = newListNames(rows, lists)
   const creates = [
     ...NEW_NAMES.filter(([kind]) => created[kind].length > 0).map(([kind, title]) => `${title}: ${created[kind].join(', ')}`),
@@ -160,7 +163,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
                     Linha {line}
                   </span>
                   <span className={classes.code()} data-testid={ids.code}>
-                    {item.code || '—'}
+                    {item.brands[0].code || '—'}
                   </span>
                   <span className={classes.name()} data-testid={ids.name}>
                     {item.name || '—'}
