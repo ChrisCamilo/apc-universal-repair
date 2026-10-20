@@ -25,21 +25,17 @@ model Category {
   items   Item[]
 }
 
-/// An inventory item. nameKey and codeKey hold the name without accents in lowercase and the code with
-/// letters and digits only, so searches ignore accents and separators (see @apc/shared/items). Its category, part
-/// brand, vehicle brand and vehicle model are entries of their lists, which can't be deleted while an item uses them.
+/// An inventory item: a part, made by one brand or more (see ItemBrand), which replace each other. nameKey holds the
+/// name without accents in lowercase, so searches ignore accents (see @apc/shared/items). Its category, vehicle brand
+/// and vehicle model are entries of their lists, which can't be deleted while an item uses them. quantity is the sum
+/// of its brands' quantities, kept by the API on every change to them, so the list filters and sorts by it; the item
+/// is low on stock when that sum reaches minQuantity.
 model Item {
   id             String        @id @default(uuid())
-  /// Part code, stored in uppercase and unique.
-  code           String        @unique
-  /// The code as the search compares it, also unique, so codes that differ only in separators clash.
-  codeKey        String        @unique
   name           String
   nameKey        String
   categoryId     String
   category       Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  partBrandId    String
-  partBrand      PartBrand     @relation(fields: [partBrandId], references: [id], onDelete: Restrict)
   vehicleBrandId String
   vehicleBrand   Brand         @relation(fields: [vehicleBrandId], references: [id], onDelete: Restrict)
   /// A model of the vehicle brand; none when the part fits any model of the brand.
@@ -47,30 +43,53 @@ model Item {
   vehicleModel   VehicleModel? @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
   position       Position      @default(NA)
   side           Side          @default(NA)
-  /// Free text, "N/A" when the color doesn't apply.
-  color          String        @default("N/A")
-  location       String?
+  /// The sum of the brands' quantities.
   quantity       Int           @default(0)
   minQuantity    Int           @default(0)
-  /// Unit price in BRL, in cents, so prices add up without rounding errors.
-  unitPriceCents Int
-  /// Photos in order, the first one the cover.
-  photos         ItemPhoto[]
+  /// The brands that make the part, in the order they were added, the first one the item's cover.
+  brands         ItemBrand[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   @@index([categoryId])
-  @@index([partBrandId])
   @@index([vehicleBrandId])
   @@index([vehicleModelId])
 }
 
-/// A photo of an item. The photo, reduced to WebP, and its thumbnail are stored by the API under PHOTOS_DIR, named after the
-/// photo's id; position orders the item's photos from 0, the cover.
+/// A brand that makes an item's part, with its own part code, stock and price. codeKey holds the code with letters
+/// and digits only, so searches ignore separators; both are unique across the stock. A part brand makes an item once.
+/// An item from before brands were added kept its id for its brand, so its photos moved there as they were.
+model ItemBrand {
+  id             String      @id @default(uuid())
+  itemId         String
+  item           Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  partBrandId    String
+  partBrand      PartBrand   @relation(fields: [partBrandId], references: [id], onDelete: Restrict)
+  /// Part code, stored in uppercase and unique.
+  code           String      @unique
+  /// The code as the search compares it, also unique, so codes that differ only in separators clash.
+  codeKey        String      @unique
+  /// Free text, "N/A" when the color doesn't apply.
+  color          String      @default("N/A")
+  location       String?
+  quantity       Int         @default(0)
+  /// Unit price in BRL, in cents, so prices add up without rounding errors.
+  unitPriceCents Int
+  /// Photos in order, the first one the cover.
+  photos         ItemPhoto[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([itemId, partBrandId])
+  @@index([partBrandId])
+}
+
+/// A photo of an item's brand. The photo, reduced to WebP, and its thumbnail are stored by the API under PHOTOS_DIR,
+/// named after the photo's id; position orders the brand's photos from 0, the cover.
 model ItemPhoto {
-  id        String @id @default(uuid())
-  itemId    String
-  item      Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  brandId   String
+  brand     ItemBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
   position  Int
   /// Name of the reduced photo, e.g. "<id>.webp" (photos stored before the reduction may still be "<id>.jpg" until
   /// `pnpm --filter @apc/api photos:compress` runs).
@@ -78,15 +97,15 @@ model ItemPhoto {
   /// Name of the thumbnail, e.g. "<id>-thumb.webp".
   thumbFile String
 
-  @@unique([itemId, position])
+  @@unique([brandId, position])
 }
 
-/// A part brand, the list the item form picks the part brand from; nameKey as in Brand.
+/// A part brand, the list the item form picks each brand of an item from; nameKey as in Brand.
 model PartBrand {
   id      String @id @default(uuid())
   name    String
   nameKey String @unique
-  items   Item[]
+  brands  ItemBrand[]
 }
 
 /// Where a part fits, front to back: not applicable (the API's "N/A"), front ("D"), rear ("T") or both ("Ambos").
