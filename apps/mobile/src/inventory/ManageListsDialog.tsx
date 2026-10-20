@@ -5,6 +5,8 @@ import { entryFilters, type ItemFilters } from '@apc/shared/item-filters';
 import type { Item } from '@apc/shared/items';
 import {
   CATALOG_BRAND_MESSAGE,
+  CATALOG_MERGE_MESSAGE,
+  entryChange,
   findEntry,
   isCatalogBrand,
   ITEM_LIST_TEXTS,
@@ -12,6 +14,7 @@ import {
   type ItemListKind,
   type ItemLists,
   type ListEntry,
+  type ListEntryChange,
   type VehicleModel,
 } from '@apc/shared/lists';
 import { Button } from '../Button';
@@ -21,14 +24,17 @@ import { TextField } from '../TextField';
 import { useToast } from '../Toast';
 import { Heading, Text } from '../Typography';
 import { useStyles } from './ManageListsDialog.styles';
-import type { RemoveListEntry, RenameListEntry } from './useItemLists';
+import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists';
 
 // The "Gerenciar listas" dialog of the Inventory tab, the same as the web: a section for categories, part brands,
 // vehicle brands and vehicle models, the models grouped by their brand, each name with how many items use it. The
-// pencil renames it in place, on a field with Salvar and Cancelar, refusing a blank name or one another entry has;
-// the items using it take the new name. The trash asks to confirm deleting a name no item uses (a vehicle brand with
-// its models); a name items use can't be deleted, and the dialog says how many items use it, with "Ver itens" to
-// show them in the list; nor can a vehicle brand of the catalog. A toast confirms each rename and delete.
+// pencil renames it in place, on a field with Salvar and Cancelar, refusing a blank name; the items using it take the
+// new name. Renaming to the name of another entry (a model's, within its brand) asks to merge the two: Juntar moves
+// every item to the other entry and deletes this one, a vehicle brand's models going along; a vehicle brand of the
+// catalog can't be merged away. The trash asks to confirm deleting a name no item uses (a vehicle brand with its
+// models); a name items use can't be deleted, and the dialog says how many items use it, with "Ver itens" to show
+// them in the list; nor can a vehicle brand of the catalog. A toast confirms each rename, merge and delete, and the
+// owner hears of each rename and merge, for its filters.
 
 const KINDS: ItemListKind[] = ['categories', 'partBrands', 'vehicleBrands', 'vehicleModels'];
 
@@ -40,25 +46,39 @@ type ManageListsDialogProps = {
   /** Every item in stock, to count the items using each name. */
   items: Item[];
   onRename: RenameListEntry;
+  onMerge: MergeListEntries;
   onRemove: RemoveListEntry;
-  /** Called after a rename or a delete, so the inventory loads again. */
-  onChanged: () => void;
+  /** Called after a rename, a merge or a delete, so the inventory loads again; a rename or merge says what changed. */
+  onChanged: (change?: ListEntryChange) => void;
   /** Shows the items using a name in the list, with the filters given. */
   onShowItems: (filters: ItemFilters) => void;
   onClose: () => void;
 };
 
-export function ManageListsDialog({ open, lists, items, onRename, onRemove, onChanged, onShowItems, onClose }: ManageListsDialogProps) {
+export function ManageListsDialog({
+  open,
+  lists,
+  items,
+  onRename,
+  onMerge,
+  onRemove,
+  onChanged,
+  onShowItems,
+  onClose,
+}: ManageListsDialogProps) {
   const { styles, ids } = useStyles();
   const toast = useToast();
   // The entry being renamed, with the name typed and its message.
   const [editing, setEditing] = useState<Entry & { name: string; error?: string }>();
   const [saving, setSaving] = useState(false);
+  // The entry the merge dialog asks about, with the one that has the name typed.
+  const [merging, setMerging] = useState<Entry & { into: ListEntry | VehicleModel }>();
+  const [joining, setJoining] = useState(false);
   // The entry the delete dialog asks about.
   const [removing, setRemoving] = useState<Entry>();
   const [deleting, setDeleting] = useState(false);
 
-  /** Checks the typed name and renames the entry, or says why it can't. */
+  /** Checks the typed name and renames the entry, asks to merge it into the entry that has the name, or says why not. */
   const rename = async () => {
     if (!editing) {
       return;
@@ -71,8 +91,13 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
       setEditing({ ...editing, error: 'Informe o nome.' });
       return;
     }
-    if (findEntry(siblings, name) && findEntry(siblings, name)!.id !== entry.id) {
-      setEditing({ ...editing, error: texts.taken });
+    const other = findEntry(siblings, name);
+    if (other && other.id !== entry.id) {
+      if (kind === 'vehicleBrands' && isCatalogBrand(entry.name)) {
+        setEditing({ ...editing, error: CATALOG_MERGE_MESSAGE(entry.name) });
+        return;
+      }
+      setMerging({ kind, entry, into: other });
       return;
     }
     setSaving(true);
@@ -88,7 +113,27 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
     }
     setEditing(undefined);
     toast.success(texts.renamed(renamed.name));
-    onChanged();
+    onChanged(entryChange(kind, entry, renamed.name, lists));
+  };
+
+  /** Merges the entry the merge dialog asks about into the other one, then says how many items moved. */
+  const merge = async () => {
+    if (!merging) {
+      return;
+    }
+    const { kind, entry, into } = merging;
+    const texts = ITEM_LIST_TEXTS[kind];
+    setJoining(true);
+    const moved = await onMerge(kind, entry.id, into.id);
+    setJoining(false);
+    if (moved === null) {
+      toast.error(texts.mergeFailed);
+      return;
+    }
+    setMerging(undefined);
+    setEditing(undefined);
+    toast.success(texts.merged(entry.name, into.name, moved));
+    onChanged(entryChange(kind, entry, into.name, lists));
   };
 
   /** Deletes the entry the dialog asks about, then says so. */
@@ -221,6 +266,32 @@ export function ManageListsDialog({ open, lists, items, onRename, onRemove, onCh
               : removingUses > 0
                 ? ITEM_LIST_TEXTS[removing.kind].inUse(removing.entry.name, removingUses)
                 : ITEM_LIST_TEXTS[removing.kind].confirmDelete(removing.entry.name)}
+          </Text>
+        )}
+      </Dialog>
+      <Dialog
+        open={merging !== undefined}
+        onClose={() => setMerging(undefined)}
+        title={`Juntar “${merging?.entry.name ?? ''}” com “${merging?.into.name ?? ''}”?`}
+        size="confirm"
+        actions={
+          <>
+            <Button variant="secondary" size="sm" onPress={() => setMerging(undefined)}>
+              Cancelar
+            </Button>
+            <Button size="sm" loading={joining} onPress={merge}>
+              Juntar
+            </Button>
+          </>
+        }
+      >
+        {merging && (
+          <Text size="sm" tone="muted">
+            {ITEM_LIST_TEXTS[merging.kind].confirmMerge(
+              merging.entry.name,
+              merging.into.name,
+              itemsUsing(items, merging.kind, merging.entry, lists),
+            )}
           </Text>
         )}
       </Dialog>
