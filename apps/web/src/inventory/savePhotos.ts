@@ -4,8 +4,9 @@ import { PHOTO_PARTS, photoParts, photosChanged } from '@apc/shared/photos'
 import { API_BASE } from '../api.ts'
 import type { UploadPhoto } from '../components/ImageUpload.tsx'
 
-// Saves the photos of an item's brand as a photo field or the viewer holds them: the saved ones kept by their id and
-// the new files sent, all in one request, in their order. Nothing is sent when the photos didn't change.
+// Saves the photos of an item's brand as a photo field or the viewer holds them: the saved ones kept by their id, the
+// ones of another item copied by their id, as a duplicated item's are, and the new files sent, all in one request, in
+// their order. Nothing is sent when the photos didn't change.
 
 /**
  * Saves the photos of an item's brand when they changed, and lets go of the previews of the files sent once they are
@@ -25,6 +26,8 @@ export async function savePhotos(item: Item, brand: ItemBrand, photos: readonly 
   for (const part of parts) {
     if ('keep' in part) {
       body.append(PHOTO_PARTS.keep, part.keep)
+    } else if ('copy' in part) {
+      body.append(PHOTO_PARTS.copy, part.copy)
     } else {
       body.append(PHOTO_PARTS.file, part.file, part.file.name)
     }
