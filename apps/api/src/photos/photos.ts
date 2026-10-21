@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from "@apc/shared/photos";
@@ -10,7 +10,8 @@ import { signedPhotoPath, type ActiveSession } from "../sessions/sessions.js";
 // reduced and stored under PHOTOS_DIR as a WebP named after its id, next to a square WebP thumbnail for the list, and
 // served back from /photos, at paths signed for the caller's session (see sessions.ts). Reducing turns it upright as the camera meant, fits its longest side in
 // PHOTO_MAX_DIMENSION without enlarging it, saves it at PHOTO_QUALITY and drops its metadata (EXIF, location). The
-// database row keeps the two file names and the photo's place among the item's photos.
+// database row keeps the two file names and the photo's place among the item's photos. A photo copied to another item
+// gets files of its own, so deleting either leaves the other's.
 
 /** Formats accepted, by what sharp reads from the file's content. */
 const FORMATS = new Set(["jpeg", "png", "webp"]);
@@ -45,6 +46,21 @@ export async function compressPhoto(buffer: Buffer): Promise<Buffer> {
     .resize(PHOTO_MAX_DIMENSION, PHOTO_MAX_DIMENSION, { fit: "inside", withoutEnlargement: true })
     .webp({ quality: PHOTO_QUALITY })
     .toBuffer();
+}
+
+/**
+ * Copies a stored photo and its thumbnail into files named after a new photo's id, keeping their extensions.
+ * @param id The new photo's id, which names both copies.
+ * @param row The names of the stored photo's files.
+ * @returns The names of the copied photo and thumbnail.
+ */
+export async function copyStoredPhoto(id: string, row: Pick<ItemPhotoRow, "file" | "thumbFile">): Promise<{ file: string; thumbFile: string }> {
+  const dir = photosDir();
+  const file = `${id}${path.extname(row.file)}`;
+  const thumbFile = `${id}-thumb${path.extname(row.thumbFile)}`;
+  await copyFile(path.join(dir, row.file), path.join(dir, file));
+  await copyFile(path.join(dir, row.thumbFile), path.join(dir, thumbFile));
+  return { file, thumbFile };
 }
 
 /**

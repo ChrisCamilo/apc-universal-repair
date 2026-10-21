@@ -8,15 +8,16 @@ import { itemBrandIdParamsSchema, itemSchema } from "@apc/shared/items";
 import { ITEM_PHOTO_LIMIT, PHOTO_PARTS } from "@apc/shared/photos";
 import { prisma } from "../db/client.js";
 import { ITEM_INCLUDE, toItem } from "../items/items.js";
-import { checkPhoto, photosDir, removePhotoFiles, storePhoto } from "../photos/photos.js";
+import { checkPhoto, copyStoredPhoto, photosDir, removePhotoFiles, storePhoto } from "../photos/photos.js";
 import { validPhotoSignature, type SessionLookup } from "../sessions/sessions.js";
 import { notFound } from "./items.js";
 
 // The photos of an item's brand. PUT /items/:id/brands/:brandId/photos sets them all at once, in the order of the request's parts: a "keep" part
-// keeps a saved photo by its id and a "photo" part adds a new file, so one request adds, removes, replaces and
+// keeps a saved photo by its id, a "copy" part copies a saved photo of any brand, as a duplicated item's do, into a new
+// photo with files of its own, and a "photo" part adds a new file, so one request adds, removes, replaces and
 // reorders. Everything sent is checked before anything is stored: at most 3 photos, each new one a JPG, PNG or
-// WebP up to 3 MB by its content, and each kept one a photo of this brand. Photos left out are deleted with their
-// files. GET /photos/:file serves the stored files, which never change, since each new photo gets a new id. It is
+// WebP up to 3 MB by its content, each kept one a photo of this brand and each copied one a saved photo. Photos left
+// out are deleted with their files. GET /photos/:file serves the stored files, which never change, since each new photo gets a new id. It is
 // open without a session, as <img> can't send one, but only at a path the API signed for a live session (see
 // sessions.ts), answering 401 otherwise; the browser keeps the file only for this device, until the path changes.
 
@@ -31,8 +32,8 @@ const photoSignatureQuerySchema = z.object({ session: z.string().optional(), sig
 
 const uuidSchema = z.uuid();
 
-/** One photo of the new set: a saved one kept, or a new file checkPhoto accepted. */
-type PhotoEntry = { keep: string } | { buffer: Buffer };
+/** One photo of the new set: a saved one kept, a saved one copied, or a new file checkPhoto accepted. */
+type PhotoEntry = { keep: string } | { copy: string } | { buffer: Buffer };
 
 /**
  * Answers 400 naming what keeps the photos from being saved.
@@ -93,8 +94,10 @@ export function registerPhotoRoutes(app: FastifyInstance, sessions: SessionLooku
           }
         } else if (part.type === "field" && part.fieldname === PHOTO_PARTS.keep && isUuid(part.value)) {
           entries.push({ keep: String(part.value) });
+        } else if (part.type === "field" && part.fieldname === PHOTO_PARTS.copy && isUuid(part.value)) {
+          entries.push({ copy: String(part.value) });
         } else {
-          problems.push(`Part ${number} is neither a "${PHOTO_PARTS.keep}" photo id nor a "${PHOTO_PARTS.file}" file.`);
+          problems.push(`Part ${number} is neither a "${PHOTO_PARTS.keep}" or "${PHOTO_PARTS.copy}" photo id nor a "${PHOTO_PARTS.file}" file.`);
         }
       }
       if (entries.length + problems.length > ITEM_PHOTO_LIMIT) {
@@ -117,6 +120,13 @@ export function registerPhotoRoutes(app: FastifyInstance, sessions: SessionLooku
       if (kept.some((photoId) => !saved.has(photoId)) || new Set(kept).size < kept.length) {
         return badPhotos(reply, ["Kept photos must be this brand's photos, each kept once."]);
       }
+      const copied = entries.flatMap((entry) => ("copy" in entry ? [entry.copy] : []));
+      const sources = new Map(
+        (await prisma.itemPhoto.findMany({ where: { id: { in: copied } } })).map((photo) => [photo.id, photo]),
+      );
+      if (copied.some((photoId) => !sources.has(photoId))) {
+        return badPhotos(reply, ["Copied photos must be saved photos."]);
+      }
 
       const photos = await Promise.all(
         entries.map(async (entry) => {
@@ -124,6 +134,9 @@ export function registerPhotoRoutes(app: FastifyInstance, sessions: SessionLooku
             return saved.get(entry.keep)!;
           }
           const photoId = randomUUID();
+          if ("copy" in entry) {
+            return { id: photoId, ...(await copyStoredPhoto(photoId, sources.get(entry.copy)!)) };
+          }
           return { id: photoId, ...(await storePhoto(photoId, entry.buffer)) };
         }),
       );
