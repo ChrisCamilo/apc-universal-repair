@@ -23,6 +23,8 @@ export type DesktopConfig = {
   port?: number;
   /** The SQLite file's key, sealed by safeStorage, never in plain text (see database.ts). */
   sqliteKey?: string;
+  /** The key a change of the SQLite key is moving the file to, sealed, kept until the change ends (see database.ts). */
+  sqliteKeyNext?: string;
   /** Whether the user said they kept the key's recovery copy, which the Servidor dialog then stops showing. */
   sqliteKeySaved?: boolean;
   trayNoticeShown?: boolean;

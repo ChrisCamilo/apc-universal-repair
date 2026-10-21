@@ -7,6 +7,10 @@ import { mkdirSync } from "node:fs";
 import { readConfig, writeConfig } from "./config.ts";
 import {
   adoptInstallerChoice,
+  beginKeyChange,
+  dropKeyChange,
+  finishKeyChange,
+  openKeyChange,
   databaseCheckMessage,
   describePostgresql,
   ensureSqliteKey,
@@ -203,6 +207,28 @@ test("Desktop: a SQLite file that can't be read gets no new key", () => {
   assert.equal(sqliteFileState(path.join(folder, "data", "apc.db")), "encrypted");
   assert.deepEqual(ensureSqliteKey(folder, SEALER), { problem: "missing" });
   assert.equal(existsSync(path.join(folder, "config.json")), false);
+});
+
+// Changes the SQLite key: checks the new key is sealed beside the one in use before the file changes, then becomes the
+// key in use with its recovery copy still to be kept; a change that doesn't happen keeps the key in use.
+test("Desktop: a change of the SQLite key keeps the new key apart until the file reads back with it", () => {
+  const folder = userData();
+  writeConfig(folder, { database: "sqlite", sqliteKey: seal("1f".repeat(32), SEALER), sqliteKeySaved: true, trayNoticeShown: true });
+  const kept = readConfig(folder);
+
+  const next = beginKeyChange(folder, SEALER);
+  assert.match(next, /^[0-9a-f]{64}$/);
+  assert.equal(readFileSync(path.join(folder, "config.json"), "utf8").includes(next), false);
+  assert.deepEqual({ ...readConfig(folder), sqliteKeyNext: "sealed" }, { ...kept, sqliteKeyNext: "sealed" });
+  assert.equal(openKeyChange(readConfig(folder), SEALER), next);
+  finishKeyChange(folder);
+  assert.deepEqual(readConfig(folder), { database: "sqlite", sqliteKey: seal(next, SEALER), sqliteKeySaved: false, trayNoticeShown: true });
+  assert.deepEqual(ensureSqliteKey(folder, SEALER), { key: next });
+
+  beginKeyChange(folder, SEALER);
+  dropKeyChange(folder);
+  assert.deepEqual(readConfig(folder), { database: "sqlite", sqliteKey: seal(next, SEALER), sqliteKeySaved: false, trayNoticeShown: true });
+  assert.equal(openKeyChange(readConfig(folder), SEALER), undefined);
 });
 
 // Writes a key as its recovery copy, and checks it reads back as typed: grouped, in lowercase or with spaces; text that
