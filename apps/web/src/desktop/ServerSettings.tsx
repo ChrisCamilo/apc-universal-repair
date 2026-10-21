@@ -50,7 +50,7 @@ type Note = { tone: 'danger' | 'done'; text: string }
 /**
  * Words the phone's address.
  * @param settings The server's settings.
- * @returns e.g. "http://192.168.0.10:3333", or that there is no network.
+ * @returns e.g. "http://192.168.0.10:3000", or that there is no network.
  */
 function phoneLine(settings: Extract<ServerSettings, { kind: 'own' }>): string {
   return settings.phoneAddress ? `http://${settings.phoneAddress}:${settings.port}` : 'Sem rede para o celular'

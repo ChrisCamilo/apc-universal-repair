@@ -103,6 +103,10 @@
       "apc-dist": "./dist/screens/screens.js",
       "default": "./src/screens/screens.ts"
     },
+    "./server": {
+      "apc-dist": "./dist/server/ports.js",
+      "default": "./src/server/ports.ts"
+    },
     "./style-ids": {
       "apc-dist": "./dist/styles/styleIds.js",
       "default": "./src/styles/styleIds.ts"

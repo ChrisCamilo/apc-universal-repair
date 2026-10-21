@@ -59,7 +59,7 @@ export type ServerHost = {
   window: BrowserWindow;
   /** The address the app is served from, which the requests must come from. */
   appUrl: string;
-  /** The server's address on this computer, e.g. "http://127.0.0.1:3333". */
+  /** The server's address on this computer, e.g. "http://127.0.0.1:3000". */
   apiUrl: string;
   /** The "Ligando o servidor" page, static/starting.html. */
   startingPage: string;

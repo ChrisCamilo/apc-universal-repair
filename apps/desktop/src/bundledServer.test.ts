@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { test } from "node:test";
-import { serverEnvironment, usesBundledServer } from "./bundledServer.ts";
+import { DEV_SERVER_PORT, SERVER_PORT as SHARED_SERVER_PORT } from "@apc/shared/server";
+import { SERVER_PORT, serverEnvironment, usesBundledServer } from "./bundledServer.ts";
+import { DEFAULT_API_URL } from "./config.ts";
 
 // Builds the bundled server's environment and checks its data goes in userData's data folder, it applies the
 // migrations it ships, and it answers on the port and the version given; the SQLite file gets its key, and on PostgreSQL
@@ -24,6 +26,13 @@ test("Desktop: the bundled server keeps its data in userData", () => {
   assert.equal(onPostgresql.PHOTOS_DIR, path.join(userData, "data", "photos"));
   assert.equal(onPostgresql.APC_SQLITE_KEY, undefined);
   assert.equal(serverEnvironment({ serverDir, userData, port: 3333, version: "0.3.1", sqliteKey: key }).APC_SQLITE_KEY, key);
+});
+
+// Checks the bundled server's port and the development API's address are the ports of @apc/shared/server, which the
+// packaged app can't import, so the server the app ships and a development API never share a port.
+test("Desktop: the server's port and the development API's match the shared ports", () => {
+  assert.equal(SERVER_PORT, SHARED_SERVER_PORT);
+  assert.equal(new URL(DEFAULT_API_URL).port, String(DEV_SERVER_PORT));
 });
 
 // Checks the app runs its own server only when nothing names another: an address, from the environment or

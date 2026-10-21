@@ -5,12 +5,15 @@ import path from "node:path";
 // database.ts) and, for a server on another computer, its address, which APC_API_URL also sets. Without an address,
 // the app runs the server it ships (see bundledServer.ts).
 
-/** The API address when nothing sets another, as in development: the API on this computer. */
+/**
+ * The API address when nothing sets another, as in development: the API `pnpm dev` runs on this computer, on
+ * DEV_SERVER_PORT of @apc/shared/server, written here since the packaged app doesn't carry that package.
+ */
 export const DEFAULT_API_URL = "http://localhost:3333";
 
 /** The database the server on this computer uses, as the installer asked (see database.ts). */
 export type DatabaseChoice = "postgresql" | "sqlite";
-/** What config.json in the userData folder may set, e.g. `{ "apiUrl": "http://192.168.0.10:3333" }`. */
+/** What config.json in the userData folder may set, e.g. `{ "apiUrl": "http://192.168.0.10:3000" }`. */
 export type DesktopConfig = {
   apiUrl?: string;
   database?: DatabaseChoice;
@@ -61,7 +64,7 @@ export function readConfig(userData: string): DesktopConfig {
  * https is skipped. The trailing slash is dropped, so paths join on it.
  * @param envUrl APC_API_URL.
  * @param config What config.json sets.
- * @returns The API address, e.g. "http://192.168.0.10:3333".
+ * @returns The API address, e.g. "http://192.168.0.10:3000".
  */
 export function resolveApiUrl(envUrl: string | undefined, config: DesktopConfig): string {
   for (const candidate of [envUrl, config.apiUrl]) {

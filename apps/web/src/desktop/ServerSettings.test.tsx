@@ -15,7 +15,7 @@ const ON_SQLITE: Extract<ServerSettings, { kind: 'own' }> = {
   database: 'sqlite',
   location: 'C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data',
   photos: 'C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data\\photos',
-  port: 3333,
+  port: 3000,
   phoneAddress: '192.168.0.10',
   needsAddress: false,
   recoveryKeyPending: false,
@@ -112,8 +112,8 @@ test('Web: the Servidor dialog shows the database in use, the port and the phone
   await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
   const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
   await expect.element(dialog.getByText('SQLite criptografado, em C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data')).toBeVisible()
-  await expect.element(dialog.getByText('3333')).toBeVisible()
-  await expect.element(dialog.getByText('http://192.168.0.10:3333')).toBeVisible()
+  await expect.element(dialog.getByText('3000')).toBeVisible()
+  await expect.element(dialog.getByText('http://192.168.0.10:3000')).toBeVisible()
   await expect.element(dialog.getByRole('button', { name: 'Usar PostgreSQL' })).not.toBeInTheDocument()
   await expect.element(dialog.getByRole('button', { name: 'Fechar' }).first()).toBeVisible()
 })

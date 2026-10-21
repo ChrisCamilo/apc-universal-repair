@@ -3,8 +3,10 @@
 // refuses to start when the key doesn't open it (see db/cipher.ts). With APC_MIGRATE_ON_START=1, as the desktop app
 // runs the server it ships, the API then applies the pending migrations of its database (see db/migrate.ts), so it
 // migrates itself on every update, after copying a SQLite file to backups/ (see db/backup.ts); in development
-// `db:migrate` does. Then it turns WAL on for SQLite and listens.
+// `db:migrate` does. Then it turns WAL on for SQLite and listens on PORT, or else on DEV_SERVER_PORT when started for
+// development (`pnpm dev`, which passes --dev) and on SERVER_PORT otherwise, as the desktop app and `pnpm start` run it.
 import "dotenv/config";
+import { DEV_SERVER_PORT, SERVER_PORT } from "@apc/shared/server";
 import { buildApp } from "./app.js";
 import { backupBeforeMigrating } from "./db/backup.js";
 import { ensureEncrypted } from "./db/cipher.js";
@@ -14,7 +16,7 @@ import { databaseUrl } from "./db/provider.js";
 import { API_VERSION } from "./routes/health.js";
 
 const app = buildApp();
-const port = Number(process.env.PORT ?? 3333);
+const port = Number(process.env.PORT ?? (process.argv.includes("--dev") ? DEV_SERVER_PORT : SERVER_PORT));
 
 Promise.resolve()
   .then(() => {
