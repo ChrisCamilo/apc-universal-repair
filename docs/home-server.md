@@ -8,11 +8,11 @@ Como rodar o servidor do APC num computador Windows em casa, para o app do celul
 
 ```mermaid
 flowchart LR
-    phone["Phone · Celular<br/>http://&lt;ip&gt;:3333"]
+    phone["Phone · Celular<br/>http://&lt;ip&gt;:3000"]
 
     subgraph pc["Computer at home · Computador de casa"]
         app["APC Universal Repair<br/>window · janela + tray · bandeja"]
-        api["Server · Servidor<br/>port · porta 3333"]
+        api["Server · Servidor<br/>port · porta 3000"]
         db[("SQLite: data\\apc.db<br/>or · ou PostgreSQL")]
         files[("data\\photos")]
         logs[("logs\\api.log")]
@@ -29,7 +29,7 @@ flowchart LR
 
 ## 🇺🇸 English (US)
 
-> **Home network only.** The server asks for a login on every call, but has no HTTPS yet ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), so passwords and tokens cross the Wi-Fi in clear text. Never open port 3333 on the router or expose the computer to the internet.
+> **Home network only.** The server asks for a login on every call, but has no HTTPS yet ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), so passwords and tokens cross the Wi-Fi in clear text. Never open port 3000 on the router or expose the computer to the internet.
 
 ### 1. Install the app
 
@@ -73,13 +73,13 @@ Find the computer's address with `ipconfig` in a PowerShell (the *IPv4 Address* 
 
 ### 5. The phone
 
-The tray's menu shows the address the phone reaches the server at, such as *Servidor ligado em http://192.168.0.10:3333*; a click copies it. The same address is in *Servidor e banco de dados*. To check it, open `http://<that address>/health` in the phone's browser, on the same Wi-Fi: it should answer `{"status":"ok",...}`.
+The tray's menu shows the address the phone reaches the server at, such as *Servidor ligado em http://192.168.0.10:3000*; a click copies it. The same address is in *Servidor e banco de dados*. To check it, open `http://<that address>/health` in the phone's browser, on the same Wi-Fi: it should answer `{"status":"ok",...}`.
 
 The phone app needs a release APK built with that address. The steps to build and install it come with the Android release build ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
 
 If the phone gets no answer:
 
-1. Is the app running, in the window or in the tray? On the computer, `http://localhost:3333/health` should answer.
+1. Is the app running, in the window or in the tray? On the computer, `http://localhost:3000/health` should answer.
 2. Are the phone and the computer on the same Wi-Fi? A guest network usually keeps devices from seeing each other.
 3. Is the network profile **Private**, and is the app allowed through the firewall on private networks (step 3)?
 4. Did the computer's address change? Check the tray's menu and the reservation on the router.
@@ -125,7 +125,7 @@ To restore, with the app quit, use `pg_restore` with the copy and put the photos
 
 Up to v0.3.0, the server at home ran from a clone of the project, started by a Task Scheduler task or the *Ligar servidor APC* shortcut. To move such a computer to the server inside the app:
 
-1. **Stop the clone's server for good.** In a PowerShell, in the clone's folder, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which turns it off and removes its task. A task made with `-AtStartup` must be removed from a PowerShell opened as administrator. If the clone has no such script, open the Task Scheduler, delete the *APC Universal Repair API* task and restart the computer. Delete the *Ligar servidor APC* shortcut too. While the old server answers on port 3333, the app uses it instead of its own, and *Servidor e banco de dados* says so.
+1. **Stop the clone's server for good.** In a PowerShell, in the clone's folder, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which turns it off and removes its task. A task made with `-AtStartup` must be removed from a PowerShell opened as administrator. If the clone has no such script, open the Task Scheduler, delete the *APC Universal Repair API* task and restart the computer. Delete the *Ligar servidor APC* shortcut too. The old server answers on port 3333, apart from the app's 3000, so the phone would keep saving to it at that port.
 2. **Install the app** (step 1), or update it, and open it. If it was set to the clone with `apiDir` or `apiUrl` in `%APPDATA%\APC Universal Repair\config.json`, remove those settings, then quit with *Sair* and open it again. Don't sign up yet.
 3. **Import the data** (step 7): the clone's `apps\api\data\apc.db` for SQLite, or the address in its `apps\api\.env` for PostgreSQL, with its `apps\api\uploads\photos`. Log in with an old account and check the inventory and its photos.
 4. **Allow the app through the firewall** (step 3), and check the phone (step 5): the address stays the same. The old firewall rule for Node.js can be removed.
@@ -135,7 +135,7 @@ Up to v0.3.0, the server at home ran from a clone of the project, started by a T
 
 ## 🇧🇷 Português (Brasil)
 
-> **Só para a rede de casa.** O servidor pede login em toda chamada, mas ainda não tem HTTPS ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), então senhas e tokens passam pelo Wi-Fi em texto puro. Nunca abra a porta 3333 no roteador nem exponha o computador à internet.
+> **Só para a rede de casa.** O servidor pede login em toda chamada, mas ainda não tem HTTPS ([#216](https://github.com/ChrisCamilo/apc-universal-repair/issues/216)), então senhas e tokens passam pelo Wi-Fi em texto puro. Nunca abra a porta 3000 no roteador nem exponha o computador à internet.
 
 ### 1. Instalar o app
 
@@ -179,13 +179,13 @@ Descubra o endereço do computador com o `ipconfig` num PowerShell (o *Endereço
 
 ### 5. O celular
 
-O menu da bandeja mostra o endereço em que o celular chega ao servidor, como *Servidor ligado em http://192.168.0.10:3333*; um clique o copia. O mesmo endereço está no *Servidor e banco de dados*. Para conferir, abra `http://<esse endereço>/health` no navegador do celular, no mesmo Wi-Fi: ele deve responder `{"status":"ok",...}`.
+O menu da bandeja mostra o endereço em que o celular chega ao servidor, como *Servidor ligado em http://192.168.0.10:3000*; um clique o copia. O mesmo endereço está no *Servidor e banco de dados*. Para conferir, abra `http://<esse endereço>/health` no navegador do celular, no mesmo Wi-Fi: ele deve responder `{"status":"ok",...}`.
 
 O app do celular precisa de um APK de release gerado com esse endereço. Os passos para gerar e instalar vêm com o build de release do Android ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
 
 Se o celular não tiver resposta:
 
-1. O app está rodando, na janela ou na bandeja? No computador, o `http://localhost:3333/health` deve responder.
+1. O app está rodando, na janela ou na bandeja? No computador, o `http://localhost:3000/health` deve responder.
 2. O celular e o computador estão no mesmo Wi-Fi? Uma rede de convidados costuma impedir que os aparelhos se vejam.
 3. O perfil de rede está como **Privada**, e o app está liberado no firewall em redes privadas (passo 3)?
 4. O endereço do computador mudou? Confira o menu da bandeja e a reserva no roteador.
@@ -231,7 +231,7 @@ O *Importar dados de outro servidor*, no *Servidor e banco de dados*, traz os da
 
 Até a v0.3.0, o servidor de casa rodava de um clone do projeto, ligado por uma tarefa do Agendador de Tarefas ou pelo atalho *Ligar servidor APC*. Para passar um computador assim para o servidor dentro do app:
 
-1. **Desligue de vez o servidor do clone.** Num PowerShell, na pasta do clone, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que o desliga e remove a tarefa. Uma tarefa feita com `-AtStartup` precisa ser removida num PowerShell aberto como administrador. Se o clone não tiver esse script, abra o Agendador de Tarefas, apague a tarefa *APC Universal Repair API* e reinicie o computador. Apague também o atalho *Ligar servidor APC*. Enquanto o servidor antigo responde na porta 3333, o app usa ele no lugar do próprio, e o *Servidor e banco de dados* avisa.
+1. **Desligue de vez o servidor do clone.** Num PowerShell, na pasta do clone, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que o desliga e remove a tarefa. Uma tarefa feita com `-AtStartup` precisa ser removida num PowerShell aberto como administrador. Se o clone não tiver esse script, abra o Agendador de Tarefas, apague a tarefa *APC Universal Repair API* e reinicie o computador. Apague também o atalho *Ligar servidor APC*. O servidor antigo responde na porta 3333, separada da 3000 do app, então o celular continuaria salvando nele por essa porta.
 2. **Instale o app** (passo 1), ou atualize-o, e abra. Se ele estava apontado para o clone com `apiDir` ou `apiUrl` no `%APPDATA%\APC Universal Repair\config.json`, tire essas configurações, depois feche pelo *Sair* e abra de novo. Não crie conta ainda.
 3. **Importe os dados** (passo 7): o `apps\api\data\apc.db` do clone para o SQLite, ou o endereço do `apps\api\.env` dele para o PostgreSQL, com o `apps\api\uploads\photos` dele. Entre com uma conta antiga e confira o estoque e as fotos.
 4. **Libere o app no firewall** (passo 3) e confira o celular (passo 5): o endereço continua o mesmo. A regra antiga do firewall para o Node.js pode ser removida.
