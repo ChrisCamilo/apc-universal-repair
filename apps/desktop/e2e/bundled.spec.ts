@@ -3,7 +3,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { readConfig } from "../src/config.ts";
+import { readConfig, writeConfig } from "../src/config.ts";
 
 // The desktop app with the server it ships (server/, from scripts/bundle-server.mjs), as an installed app runs: no
 // APC_API_URL and no clone, its own userData folder, and a free port in place of 3000. Run `pnpm run build` first,
@@ -254,18 +254,93 @@ test("Desktop: the database is copied before the server applies new migrations",
   await app.close();
 });
 
-// Starts the app on a data\apc.db that isn't a database, which the server can't open, and checks that once the server
-// gave up starting, the window says it didn't start, with the last error of its log and where that log is, instead of
-// the login, and the app's log says so too.
+// Starts the app on PostgreSQL at an address no server answers, as when its server is off, which the server fails to
+// migrate each time it starts, and checks that once the server gave up starting, the window says it didn't start, with
+// the last error of its log and where that log is, instead of the login, and the app's log says so too.
 test("Desktop: a server that can't start is said so, with why", async () => {
-  test.setTimeout(120_000);
-  const { app, userData } = await launch({ files: { [path.join("data", "apc.db")]: "isto não é um banco" } });
+  test.setTimeout(150_000);
+  const first = await launch();
+  const address = await first.app.evaluate(({ safeStorage }) =>
+    safeStorage.encryptString("postgresql://apc:segredo@127.0.0.1:1/apc").toString("base64"),
+  );
+  await first.app.close();
+  writeConfig(first.userData, { ...readConfig(first.userData), database: "postgresql", databaseUrl: address });
+  const { app, userData } = await launch({ userData: first.userData });
   const page = await app.firstWindow();
   const failure = page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
   await expect(failure).toBeVisible({ timeout: 90_000 });
-  await expect(failure).toContainText("O servidor parou ao ligar, várias vezes seguidas. Último erro: The SQLite file");
+  await expect(failure).toContainText("O servidor parou ao ligar, várias vezes seguidas. Último erro:");
   await expect(failure).toContainText(path.join(userData, "logs", "api.log"));
   expect(readFileSync(path.join(userData, "logs", "app.log"), "utf8")).toContain("The bundled server isn't on");
+  await app.close();
+});
+
+// Closes the window of a fresh install to the tray, in the same session that made the SQLite key, and checks
+// config.json still holds the key next to the tray's notice, and the next start opens the data with it: the account
+// signed up logs in.
+test("Desktop: closing the window to the tray keeps the SQLite key", async () => {
+  const first = await launch();
+  const page = await first.app.firstWindow();
+  await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
+  await keepRecoveryKey(page);
+  await signUp(page);
+  await first.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+  await expect.poll(() => readConfig(first.userData).trayNoticeShown).toBe(true);
+  expect(readConfig(first.userData)).toMatchObject({ sqliteKey: expect.any(String), sqliteKeySaved: true });
+  await first.app.evaluate(({ app: electronApp }) => electronApp.quit());
+  await first.app.waitForEvent("close");
+
+  const { app } = await launch({ userData: first.userData });
+  const next = await app.firstWindow();
+  await expect(next.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+  await expect(next.getByRole("alert").filter({ hasText: "O servidor não ligou" })).toHaveCount(0);
+  await app.close();
+});
+
+// Signs up on a fresh install, keeping the recovery copy, then opens it again with no key in config.json, and then
+// with another key sealed there, as a config.json written from a stale copy left it: each start says the key doesn't
+// open the data, makes no key of its own and shows no recovery copy to keep. A copy that isn't the file's is refused;
+// the one kept opens the data again, where the account's session still is.
+test("Desktop: a missing or wrong SQLite key is asked for, never replaced", async () => {
+  test.setTimeout(150_000);
+  const first = await launch();
+  const firstPage = await first.app.firstWindow();
+  await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
+  const copy = await keepRecoveryKey(firstPage);
+  await signUp(firstPage);
+  const wrongKey = await first.app.evaluate(({ safeStorage }) => safeStorage.encryptString("ab".repeat(32)).toString("base64"));
+  await first.app.close();
+  const { userData } = first;
+  const kept = readConfig(userData);
+  const failure = (page: Page) => page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
+
+  writeConfig(userData, { ...kept, sqliteKey: undefined, sqliteKeySaved: undefined });
+  const missing = await launch({ userData });
+  const missingPage = await missing.app.firstWindow();
+  await expect(failure(missingPage)).toContainText("A chave do banco SQLite não está mais neste computador.", { timeout: 60_000 });
+  expect(readConfig(userData).sqliteKey).toBeUndefined();
+  await expect(missingPage.getByRole("dialog", { name: "Chave de recuperação do banco" })).toHaveCount(0);
+  await missing.app.close();
+
+  writeConfig(userData, { ...kept, sqliteKey: wrongKey, sqliteKeySaved: false });
+  const { app } = await launch({ userData });
+  const page = await app.firstWindow();
+  await expect(failure(page)).toContainText("A chave do banco SQLite guardada neste computador não abre o arquivo dele.", { timeout: 60_000 });
+  expect(readConfig(userData).sqliteKey).toBe(wrongKey);
+  await expect(page.getByRole("dialog", { name: "Chave de recuperação do banco" })).toHaveCount(0);
+
+  await page.getByLabel("Chave de recuperação", { exact: true }).fill("cd".repeat(32));
+  await page.getByRole("button", { name: "Usar a chave de recuperação" }).click();
+  await expect(page.getByText("Essa chave não abre o banco deste computador.", { exact: false })).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel("Chave de recuperação", { exact: true }).fill(copy);
+  await page.getByRole("button", { name: "Usar a chave de recuperação" }).click();
+  // The copy is checked and kept, and the server started on it, while the screen shows its spinner.
+  await expect.poll(() => readConfig(userData).sqliteKeySaved, { timeout: 60_000 }).toBe(true);
+  expect(readConfig(userData).sqliteKey).not.toBe(wrongKey);
+  // Ana's session, from before the key was lost, is still in the data the key opens again.
+  await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+  await expect(failure(page)).toHaveCount(0);
+  await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
   await app.close();
 });
 
