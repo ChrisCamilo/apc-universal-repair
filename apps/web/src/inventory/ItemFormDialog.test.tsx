@@ -99,7 +99,7 @@ function rgb(hex: string): string {
 }
 
 /**
- * Builds the item the API would send back for a body sent: its brands with ids and no photos.
+ * Builds the item the API would send back for a body sent: its vehicles, and its brands with ids and no photos.
  * @param sent The body sent.
  * @param photos The first brand's photos, as the API saved them.
  * @returns The saved item.
@@ -107,7 +107,7 @@ function rgb(hex: string): string {
 function savedOf(sent: ItemCreate, photos: ItemBrand['photos'] = []): Item {
   return testItem({
     ...sent,
-    vehicleModel: sent.vehicleModel || null,
+    vehicles: sent.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel || null })),
     brands: sent.brands.map((brand, index) => ({
       color: 'N/A',
       quantity: 0,
@@ -324,7 +324,7 @@ test('Web: a new item is posted, announced and handed over', async () => {
     body: expect.objectContaining({
       name: 'Vela',
       category: 'Ignição',
-      vehicleBrand: 'Chevrolet',
+      vehicles: [{ vehicleBrand: 'Chevrolet', vehicleModel: '' }],
       position: 'D',
       brands: [expect.objectContaining({ partBrand: 'NGK', code: 'NGK-B7', color: 'N/A', unitPriceCents: 3490 })],
     }),
@@ -422,7 +422,7 @@ test('Web: the details show the item as text and change nothing', async () => {
   await expect.element(dialog).toBeVisible()
   const value = (label: string) => screen.getByRole('group', { name: label, exact: true }).getByRole('paragraph')
   await expect.element(value('Código da peça')).toHaveTextContent('W 712/95')
-  await expect.element(value('Modelo do veículo')).toHaveTextContent('Gol')
+  await expect.element(value('Veículos')).toHaveTextContent('Volkswagen Gol')
   await expect.element(value('Posição')).toHaveTextContent('Não se aplica')
   await expect.element(value('Cor')).toHaveTextContent('Preto')
   await expect.element(value('Local')).toHaveTextContent('Não informado')
@@ -616,6 +616,37 @@ test('Web: an original code another item or a brand of the item has is refused, 
   await expect.element(alert.getByText(`W712/95: ${ITEM_FORM_MESSAGES.originalCodeInBrand}`)).toBeVisible()
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   expect(fetch).not.toHaveBeenCalled()
+})
+
+// Adds a second vehicle to an item, a model of the list, and a third that repeats the first written otherwise, and
+// checks the repeated one is refused on its line and nothing is sent; then removes it and checks the item is sent with
+// its two vehicles in order, and that Remover leaves the last line without one.
+test('Web: vehicles are added, refused when repeated, and removed', async () => {
+  const fetch = answerSave(200)
+  const screen = await render(<Sample item={FILTER} />)
+  const vehicles = screen.getByRole('group', { name: 'Veículos', exact: true })
+  expect(vehicles.getByRole('button', { name: /^Remover veículo/ }).elements()).toHaveLength(0)
+  await screen.getByRole('button', { name: 'Adicionar veículo' }).click()
+  const second = screen.getByRole('group', { name: 'Veículo 2' })
+  await second.getByRole('combobox', { name: 'Marca do veículo' }).fill('volkswagen')
+  await second.getByRole('combobox', { name: 'Modelo do veículo' }).fill('santana')
+  await screen.getByRole('button', { name: 'Adicionar veículo' }).click()
+  const third = screen.getByRole('group', { name: 'Veículo 3' })
+  await third.getByRole('combobox', { name: 'Marca do veículo' }).fill('VOLKSWAGEN')
+  await third.getByRole('combobox', { name: 'Modelo do veículo' }).fill(' gol ')
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await expect.element(third.getByText(ITEM_FORM_MESSAGES.vehicleRepeated)).toBeVisible()
+  expect(fetch).not.toHaveBeenCalled()
+
+  await screen.getByRole('button', { name: 'Remover veículo 3' }).click()
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+  expect(sent(fetch).body.vehicles).toEqual([
+    { vehicleBrand: 'Volkswagen', vehicleModel: 'Gol' },
+    { vehicleBrand: 'Volkswagen', vehicleModel: 'Santana' },
+  ])
+  await screen.getByRole('button', { name: 'Remover veículo 1' }).click()
+  expect(vehicles.getByRole('button', { name: /^Remover veículo/ }).elements()).toHaveLength(0)
 })
 
 // Opens the details of an item with original codes and checks they show apart, under Códigos originais.

@@ -8,6 +8,7 @@ import {
   codeTakenMessage,
   EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
+  EMPTY_VEHICLE_FORM,
   hasFormErrors,
   ITEM_FIELD_LABELS,
   ITEM_UNCHANGED_MESSAGE,
@@ -24,11 +25,15 @@ import {
   PRICE_PLACEHOLDER,
   priceMask,
   quantityInput,
+  VEHICLE_FIELD_LABELS,
+  VEHICLES_LABEL,
+  vehiclesText,
   type BrandField,
   type ItemBrandFormErrors,
   type ItemField,
   type ItemForm,
   type ItemFormErrors,
+  type VehicleField,
 } from '@apc/shared/item-form'
 import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists'
 import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/shared/photos'
@@ -48,15 +53,17 @@ import { savePhotos } from './savePhotos.ts'
 import type { CreateListEntry } from './useItemLists.ts'
 
 // The form that creates a new item or edits one, in a dialog whose content scrolls while Cancel and Save stay at the
-// bottom: first what the item's brands share (name, category, vehicle, position, side, the minimum stock and the
+// bottom: first what the item's brands share (name, category, the vehicles it fits, position, side, the minimum stock
+// and the
 // vehicle maker's original codes, typed as chips, each shown with its message when a brand of the item or another item
 // has it; see CodeListField), then a
 // section for each brand that makes the part, with its photos, part brand, code, quantity, unit price, color and
-// location. "Adicionar marca" adds a blank brand, and each brand's "Remover" takes it out while another is left.
-// Category, part brands and the vehicle's brand and model are comboboxes of the lists the API keeps, where "+ Criar"
-// adds a new name to its list, picks it and says so in a toast; the model only lists the chosen brand's models, is
-// created under that brand, stays locked until a brand of the list is chosen and clears when the brand changes to one
-// without it. A name not in its list can't be saved: the field points to "+ Criar". A code turns uppercase while
+// location. Each vehicle is a line of its brand and model; "Adicionar veículo" adds a blank line and "Adicionar marca"
+// a blank brand, and each line's or brand's "Remover" takes it out while another is left. Category, part brands and
+// the vehicles' brands and models are comboboxes of the lists the API keeps, where "+ Criar" adds a new name to its
+// list, picks it and says so in a toast; a line's model only lists its brand's models, is created under that brand,
+// stays locked until a brand of the list is chosen and clears when the brand changes to one without it. A vehicle
+// twice in the item, or Universal with others, is refused on its line. A name not in its list can't be saved: the field points to "+ Criar". A code turns uppercase while
 // typing and says at once when another item uses it; the texts start with a capital letter when leaving the field and
 // again on save; the quantities take whole numbers only, up to a million, and a pasted fraction or text is refused,
 // saying so; and the price always shows in reais, digits filling from the cents, a pasted price read with a dot or a
@@ -68,7 +75,8 @@ import type { CreateListEntry } from './useItemLists.ts'
 // as text in the form's layout, a section for each brand, with Fechar and Editar: nothing can be changed or saved
 // until Editar unlocks the fields in place, on the first one, and the buttons turn into Cancelar and Salvar
 // alterações, which save like the edit form. The owner may open it with values filled in and follow what is typed, as
-// the Inventory tutorial does, whose tour points at the name and at the first brand's code and quantity.
+// the Inventory tutorial does, whose tour points at the name and at the first brand's code and quantity; the details
+// list the vehicles apart, under Veículos.
 
 const PHOTOS_LABEL = 'Fotos do item'
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }))
@@ -131,8 +139,6 @@ export function ItemFormDialog({
   // How many names are being created; saving waits for them.
   const [creating, setCreating] = useState(0)
   const options = itemFormOptions(items, lists)
-  const models = modelsOfBrand(lists, form.vehicleBrand)
-  const vehicleBrand = findEntry(lists.vehicleBrands, form.vehicleBrand)
   const unlocked = details && !viewing
 
   // Tell the owner what the form holds as it changes.
@@ -196,12 +202,28 @@ export function ItemFormDialog({
     brandError(index, 'price', read.message)
   }
 
-  /** Takes a new vehicle brand, clearing a model the new brand doesn't have. */
-  const changeVehicleBrand = (value: string) => {
-    change('vehicleBrand', value)
-    if (form.vehicleModel && !findOption(modelsOfBrand(lists, value), form.vehicleModel)) {
-      change('vehicleModel', '')
+  /** Takes a field of a vehicle's line's new value and drops its line's messages. */
+  const changeVehicle = (index: number, field: VehicleField, value: string) => {
+    setForm((typed) => ({ ...typed, vehicles: typed.vehicles.map((vehicle, at) => (at === index ? { ...vehicle, [field]: value } : vehicle)) }))
+    setErrors((shown) => ({ ...shown, vehicles: shown.vehicles?.map((line, at) => (at === index ? {} : line)) }))
+  }
+
+  /** Takes a new brand on a vehicle's line, clearing a model the new brand doesn't have. */
+  const changeVehicleBrand = (index: number, value: string) => {
+    changeVehicle(index, 'vehicleBrand', value)
+    const model = form.vehicles[index].vehicleModel
+    if (model && !findOption(modelsOfBrand(lists, value), model)) {
+      changeVehicle(index, 'vehicleModel', '')
     }
+  }
+
+  /** Adds a blank vehicle's line at the end. */
+  const addVehicle = () => setForm((typed) => ({ ...typed, vehicles: [...typed.vehicles, EMPTY_VEHICLE_FORM] }))
+
+  /** Takes a vehicle's line out of the form, with its messages. */
+  const removeVehicle = (index: number) => {
+    setForm((typed) => ({ ...typed, vehicles: typed.vehicles.filter((_, at) => at !== index) }))
+    setErrors((shown) => ({ ...shown, vehicles: shown.vehicles?.filter((_, at) => at !== index) }))
   }
 
   /** Adds a blank brand at the end, with no photos. */
@@ -218,15 +240,16 @@ export function ItemFormDialog({
   }
 
   /**
-   * Creates a name typed in a combobox in its list, a vehicle model under the chosen brand, and fills the field with
+   * Creates a name typed in a combobox in its list, a vehicle model under its line's brand, and fills the field with
    * the name as the list holds it; a toast says it was created, or that it couldn't be, leaving the typed name.
    * @param kind The list.
    * @param fill Fills the field with the name as the list holds it.
+   * @param vehicleBrandId The vehicle brand a new vehicle model goes under.
    * @returns What the combobox calls with the typed name.
    */
-  const create = (kind: ItemListKind, fill: (name: string) => void) => async (typed: string) => {
+  const create = (kind: ItemListKind, fill: (name: string) => void, vehicleBrandId?: string) => async (typed: string) => {
     setCreating((count) => count + 1)
-    const entry = await onCreateEntry(kind, typed, kind === 'vehicleModels' ? vehicleBrand?.id : undefined)
+    const entry = await onCreateEntry(kind, typed, vehicleBrandId)
     setCreating((count) => count - 1)
     if (!entry) {
       toast.error(ITEM_LIST_TEXTS[kind].createFailed)
@@ -343,6 +366,9 @@ export function ItemFormDialog({
             <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />
           ))}
           <div className={classes.codes()} data-testid={ids.codes}>
+            <FieldValue label={VEHICLES_LABEL} value={vehiclesText(item)} />
+          </div>
+          <div className={classes.codes()} data-testid={ids.codes}>
             <FieldValue label={ORIGINAL_CODES_LABEL} value={originalCodesText(item)} />
           </div>
           <div className={classes.brands()} data-testid={ids.brands}>
@@ -395,31 +421,54 @@ export function ItemFormDialog({
             emptyLabel="Nenhuma categoria cadastrada"
             error={errors.category}
           />
-          <Combobox
-            label={ITEM_FIELD_LABELS.vehicleBrand}
-            value={form.vehicleBrand}
-            onValueChange={changeVehicleBrand}
-            options={options.vehicleBrands}
-            onCreate={create('vehicleBrands', (created) => change('vehicleBrand', created))}
-            noun="marca"
-            toggleLabel="Mostrar marcas de veículo"
-            emptyLabel="Nenhuma marca cadastrada"
-            error={errors.vehicleBrand}
-          />
-          <Combobox
-            label={ITEM_FIELD_LABELS.vehicleModel}
-            value={form.vehicleModel}
-            onValueChange={(value) => change('vehicleModel', value)}
-            options={models}
-            onCreate={create('vehicleModels', (created) => change('vehicleModel', created))}
-            noun="modelo"
-            toggleLabel="Mostrar modelos"
-            emptyLabel="Nenhum modelo cadastrado para essa marca"
-            placeholder={vehicleBrand ? 'Qualquer modelo' : 'Escolha a marca do veículo primeiro'}
-            helper="Deixe vazio se serve em qualquer modelo."
-            error={errors.vehicleModel}
-            disabled={!vehicleBrand}
-          />
+          <div role="group" aria-label={VEHICLES_LABEL} className={classes.vehicles()} data-testid={ids.vehicles}>
+            <Text size="sm" tone="muted">
+              Os veículos em que a peça serve. Deixe o modelo vazio se serve em qualquer modelo da marca.
+            </Text>
+            {form.vehicles.map((vehicle, index) => {
+              const brand = findEntry(lists.vehicleBrands, vehicle.vehicleBrand)
+              const shown = errors.vehicles?.[index] ?? {}
+              const line = `Veículo ${index + 1}`
+              return (
+                <div key={index} role="group" aria-label={line} className={classes.vehicle()} data-testid={ids.vehicle}>
+                  <Combobox
+                    label={VEHICLE_FIELD_LABELS.vehicleBrand}
+                    value={vehicle.vehicleBrand}
+                    onValueChange={(value) => changeVehicleBrand(index, value)}
+                    options={options.vehicleBrands}
+                    onCreate={create('vehicleBrands', (created) => changeVehicle(index, 'vehicleBrand', created))}
+                    noun="marca"
+                    toggleLabel="Mostrar marcas de veículo"
+                    emptyLabel="Nenhuma marca cadastrada"
+                    error={shown.vehicleBrand}
+                  />
+                  <Combobox
+                    label={VEHICLE_FIELD_LABELS.vehicleModel}
+                    value={vehicle.vehicleModel}
+                    onValueChange={(value) => changeVehicle(index, 'vehicleModel', value)}
+                    options={modelsOfBrand(lists, vehicle.vehicleBrand)}
+                    onCreate={create('vehicleModels', (created) => changeVehicle(index, 'vehicleModel', created), brand?.id)}
+                    noun="modelo"
+                    toggleLabel="Mostrar modelos"
+                    emptyLabel="Nenhum modelo cadastrado para essa marca"
+                    placeholder={brand ? 'Qualquer modelo' : 'Escolha a marca do veículo primeiro'}
+                    error={shown.vehicleModel}
+                    disabled={!brand}
+                  />
+                  {form.vehicles.length > 1 && (
+                    <Button variant="secondary" size="sm" aria-label={`Remover ${line.toLowerCase()}`} onClick={() => removeVehicle(index)}>
+                      Remover
+                    </Button>
+                  )}
+                </div>
+              )
+            })}
+            <div className={classes.addVehicle()} data-testid={ids.addVehicle}>
+              <Button variant="secondary" size="sm" onClick={addVehicle}>
+                Adicionar veículo
+              </Button>
+            </div>
+          </div>
           <div className={classes.choice()} data-testid={ids.choice}>
             <Label>{ITEM_FIELD_LABELS.position}</Label>
             <Segmented
