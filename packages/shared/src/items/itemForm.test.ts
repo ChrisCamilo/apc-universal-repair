@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  addCodes,
   BRAND_FIELD_LABELS,
   brandDetailTexts,
+  codesInput,
   codeTakenError,
   codeTakenMessage,
   EMPTY_BRAND_FORM,
@@ -18,11 +20,14 @@ import {
   itemFormOf,
   itemFormOptions,
   modelsOfBrand,
+  originalCodeMessages,
+  originalCodesText,
   parsePrice,
   priceInput,
   priceMask,
   priceText,
   quantityInput,
+  splitCodes,
   withFormValues,
   type ItemForm,
 } from "./itemForm.ts";
@@ -30,7 +35,16 @@ import type { Item } from "./items.ts";
 import type { ItemLists } from "../lists/lists.ts";
 import { testItem, type FlatItem } from "./testItems.ts";
 
-const FILTER = item({ id: "a", code: "W 712/95", name: "Filtro de óleo", vehicleBrand: "Volkswagen", vehicleModel: "Gol", color: "N/A" });
+// An oil filter with the vehicle maker's original code.
+const FILTER = item({
+  id: "a",
+  code: "W 712/95",
+  name: "Filtro de óleo",
+  vehicleBrand: "Volkswagen",
+  vehicleModel: "Gol",
+  color: "N/A",
+  originalCodes: ["030 115 561 AN"],
+});
 // A part of two brands, the second at its own price, quantity and location.
 const PADS = item({
   id: "b",
@@ -245,11 +259,60 @@ test("Shared: a code is checked against the other items as it is typed", () => {
   assert.equal(codeTakenError("PD-1000", ITEMS, PADS.id), undefined);
 });
 
+// Checks an original code against the other items' codes, their brands' and their original ones, compared as the
+// search compares codes, and that the item being edited keeps its own.
+test("Shared: an original code is checked against every code of the other items", () => {
+  assert.equal(codeTakenError("030-115-561-an", ITEMS), codeTakenMessage("Filtro de óleo"));
+  assert.equal(codeTakenError("030115561AN", ITEMS, FILTER.id), undefined);
+  assert.equal(codeTakenError("fra 1000", ITEMS), codeTakenMessage("Pastilha"));
+});
+
+// Splits codes pasted at once at commas, semicolons and line breaks, trimmed and uppercase, without empty ones.
+test("Shared: codes typed or pasted at once are split", () => {
+  assert.deepEqual(splitCodes("5u0 698 151; 5U0-698-151-A,\r\n  ,x"), ["5U0 698 151", "5U0-698-151-A", "X"]);
+  assert.deepEqual(splitCodes("  "), []);
+});
+
+// Adds codes to a list of chips and checks each joins once, as the search compares codes, uppercase and trimmed, at
+// the end, and an empty one is left out.
+test("Shared: a list of codes takes each code once", () => {
+  assert.deepEqual(addCodes(["CB-4500"], ["cb4500", " w 712 ", "", "W712"]), ["CB-4500", "W 712"]);
+  assert.deepEqual(addCodes([], []), []);
+});
+
+// Types into a field of chips and checks a comma, a semicolon or a line break typed ends a code, which joins the list,
+// what comes after it stays in the field, and a paste of several codes adds them all, the last one too.
+test("Shared: the code field adds a code where it ends, and every code pasted", () => {
+  assert.deepEqual(codesInput([], "5u0", "5u0,"), { codes: ["5U0"], text: "" });
+  assert.deepEqual(codesInput(["A"], "a", "a;"), { codes: ["A"], text: "" });
+  assert.deepEqual(codesInput([], "x", "xy"), { codes: [], text: "xy" });
+  assert.deepEqual(codesInput(["A"], "", "b; c\nd"), { codes: ["A", "B", "C", "D"], text: "" });
+});
+
+// Writes an item's original codes for its details, and says so when it has none.
+test("Shared: the details list an item's original codes", () => {
+  assert.equal(originalCodesText({ originalCodes: ["5U0 698 151", "5U0 698 151 A"] }), "5U0 698 151, 5U0 698 151 A");
+  assert.equal(originalCodesText(PADS), "Nenhum");
+});
+
+// Gives the form original codes that are a brand's code in the item, another item's code and a new one, and checks
+// each chip's message, that the form can't be saved with them, and that a list of codes without messages is fine.
+test("Shared: an original code is refused when a brand of the item or another item has it", () => {
+  const form = { ...VALID, originalCodes: ["NGK-B7", "030 115 561 AN", "NEW-1"] };
+  const messages = [ITEM_FORM_MESSAGES.originalCodeInBrand, codeTakenMessage("Filtro de óleo"), undefined];
+  assert.deepEqual(originalCodeMessages(form, ITEMS), messages);
+  assert.deepEqual(itemFormErrors(form, ITEMS, LISTS).originalCodes, messages);
+  assert.equal(hasFormErrors(itemFormErrors(form, ITEMS, LISTS)), true);
+  assert.equal(hasFormErrors(itemFormErrors({ ...VALID, originalCodes: ["NEW-1"] }, ITEMS, LISTS)), false);
+  assert.equal(hasFormErrors({ originalCodes: [undefined] }), false);
+});
+
 // Builds the body of a filled-in form and checks the writing rule: capitals on every text, uppercase codes, an
 // existing color in its own spelling, an empty color as N/A, blank quantities as zero, the price in cents, and an
 // edited brand sent with its id.
 test("Shared: the item body follows the writing rule", () => {
-  assert.deepEqual(itemFormBody(withFormValues(VALID, { color: "preto", location: "a-2", quantity: "3" }), ["Azul", "Preto"]), {
+  const form = withFormValues({ ...VALID, originalCodes: ["5u0 698 151 "] }, { color: "preto", location: "a-2", quantity: "3" });
+  assert.deepEqual(itemFormBody(form, ["Azul", "Preto"]), {
     name: "Vela de ignição",
     category: "Ignição",
     vehicleBrand: "Chevrolet",
@@ -257,6 +320,7 @@ test("Shared: the item body follows the writing rule", () => {
     minQuantity: 0,
     position: "N/A",
     side: "N/A",
+    originalCodes: ["5U0 698 151"],
     brands: [{ partBrand: "NGK", code: "NGK-B7", quantity: 3, unitPriceCents: 3490, color: "Preto", location: "A-2" }],
   });
   assert.equal(itemFormBody(VALID, []).brands[0].color, "N/A");
@@ -281,6 +345,7 @@ test("Shared: an item fills the form and saves back unchanged", () => {
     minQuantity: "2",
     position: "N/A",
     side: "N/A",
+    originalCodes: [],
     brands: [
       { id: PADS.brands[0].id, partBrand: "Bosch", code: "FRA-1000", quantity: "1", price: "R$ 39,90", color: "Preto", location: "" },
       { id: PADS.brands[1].id, partBrand: "Fras-le", code: "PD-1000", quantity: "3", price: "R$ 49,90", color: "", location: "B-10" },
@@ -295,7 +360,7 @@ test("Shared: an item fills the form and saves back unchanged", () => {
 
 // Fills the form with an item and checks it is no change as it is, nor with fields only written differently (the name
 // in lowercase, the price without its last zero), and is one once a quantity changes, a brand is added or one is
-// removed.
+// removed, or an original code is added.
 test("Shared: an edit only changes the item when what is sent differs", () => {
   const form = itemFormOf(PADS);
   assert.equal(itemFormChanged(form, PADS, []), false);
@@ -303,6 +368,7 @@ test("Shared: an edit only changes the item when what is sent differs", () => {
   assert.equal(itemFormChanged(withFormValues(form, { quantity: "7" }), PADS, []), true);
   assert.equal(itemFormChanged({ ...form, brands: [...form.brands, EMPTY_BRAND_FORM] }, PADS, []), true);
   assert.equal(itemFormChanged({ ...form, brands: form.brands.slice(1) }, PADS, []), true);
+  assert.equal(itemFormChanged({ ...form, originalCodes: ["5U0 698 151"] }, PADS, []), true);
 });
 
 // Lists the options and checks the comboboxes offer every name of the lists, sorted, the colors are the ones the

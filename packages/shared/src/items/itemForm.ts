@@ -1,4 +1,5 @@
 import {
+  allCodes,
   capitalizeFirst,
   codeKey,
   findOption,
@@ -19,12 +20,13 @@ import {
 import { findEntry, type ItemLists } from "../lists/lists.ts";
 
 // The item form shared by web and mobile, for creating and editing an inventory item: what the item's brands share
-// (name, category, vehicle, position, side, minimum stock) and a section for each brand that makes the part (part
+// (name, category, vehicle, position, side, minimum stock, and the vehicle maker's original codes, typed as chips: a
+// code added with Enter or a comma, or several pasted at once, once each) and a section for each brand that makes the part (part
 // brand, code, quantity, unit price, color, location), as typed, the unit price always formatted in reais ("R$
 // 1.234,56"), a dot and a comma meaning the same; the message of each field that can't be saved, the body sent to the
 // API with the writing rule applied, and the options the comboboxes offer, taken from the lists the API keeps.
 // Category, part brands, vehicle brand and vehicle model must be in their lists, where the form creates new names; a
-// part brand and a code appear once in an item, and a code nowhere else in stock. The same form shows an item's
+// part brand and a code appear once in an item, original or a brand's, and a code nowhere else in stock. The same form shows an item's
 // details for reading, each field written out as text.
 
 /** A new brand's section: every field blank. */
@@ -38,6 +40,7 @@ export const EMPTY_ITEM_FORM: ItemForm = {
   position: NOT_APPLICABLE,
   side: NOT_APPLICABLE,
   minQuantity: "",
+  originalCodes: [],
   brands: [EMPTY_BRAND_FORM],
 };
 /** Label of each field of a brand's section, in the order the form shows them. */
@@ -59,6 +62,8 @@ export const ITEM_FIELD_LABELS: Record<ItemField, string> = {
   side: "Lado",
   minQuantity: "Quantidade mínima",
 };
+/** What splits codes typed or pasted at once: commas, semicolons and line breaks. */
+const CODE_SEPARATORS = /[,;\r\n]/;
 /** Message under each field that can't be saved as it is. */
 export const ITEM_FORM_MESSAGES = {
   code: "Informe o código da peça.",
@@ -69,6 +74,7 @@ export const ITEM_FORM_MESSAGES = {
   partBrand: "Informe a marca da peça.",
   partBrandNotListed: "Marca de peça não cadastrada. Escolha “+ Criar marca” na lista.",
   partBrandRepeated: "Essa marca já está neste item.",
+  originalCodeInBrand: "Esse código já está numa marca deste item.",
   vehicleBrand: "Informe a marca do veículo.",
   vehicleBrandNotListed: "Marca de veículo não cadastrada. Escolha “+ Criar marca” na lista.",
   vehicleModelNotListed: "Modelo não cadastrado para essa marca. Escolha “+ Criar modelo” na lista.",
@@ -80,6 +86,8 @@ export const ITEM_FORM_MESSAGES = {
 } as const;
 /** The info toast of an edit saved with nothing changed, which isn't sent. */
 export const ITEM_UNCHANGED_MESSAGE = "Nenhuma alteração para salvar.";
+/** Label of the item's original codes, in the form and the details. */
+export const ORIGINAL_CODES_LABEL = "Códigos originais";
 /** What the empty price field shows. */
 export const PRICE_PLACEHOLDER = "R$ 0,00";
 
@@ -99,9 +107,12 @@ export type ItemBrandForm = {
 };
 /** The message of each field of a brand's section that can't be saved; a field without one is fine. */
 export type ItemBrandFormErrors = Partial<Record<"partBrand" | "code" | "quantity" | "price", string>>;
-/** A field the item's brands share. */
-export type ItemField = Exclude<keyof ItemForm, "brands">;
-/** The item form as typed: every field as text, except position and side, which are chosen, and its brands. */
+/** A field the item's brands share, written as one text or chosen. */
+export type ItemField = Exclude<keyof ItemForm, "brands" | "originalCodes">;
+/**
+ * The item form as typed: every field as text, except position and side, which are chosen, the original codes, a
+ * list, and its brands.
+ */
 export type ItemForm = {
   name: string;
   category: string;
@@ -110,17 +121,37 @@ export type ItemForm = {
   position: (typeof POSITIONS)[number];
   side: (typeof SIDES)[number];
   minQuantity: string;
+  /** The vehicle maker's original codes, uppercase, each once. */
+  originalCodes: string[];
   brands: ItemBrandForm[];
 };
 /**
- * The message of each field that can't be saved, the item's and each brand's, in the brands' order; a field without
- * one is fine.
+ * The message of each field that can't be saved, the item's, each original code's and each brand's, in their order; a
+ * field without one is fine.
  */
 export type ItemFormErrors = Partial<Record<"name" | "category" | "vehicleBrand" | "vehicleModel" | "minQuantity", string>> & {
+  originalCodes?: (string | undefined)[];
   brands?: ItemBrandFormErrors[];
 };
 /** The options of the item form's comboboxes, from the lists, and its color, from the brands in stock. */
 export type ItemFormOptions = { categories: string[]; partBrands: string[]; vehicleBrands: string[]; colors: string[] };
+
+/**
+ * Adds codes to a list of codes, uppercase and trimmed, leaving out the empty ones and those the list already has, as
+ * the search compares codes (see codeKey), so "cb-4500" is "CB4500".
+ * @param held The list's codes.
+ * @param typed The codes to add, e.g. from splitCodes.
+ * @returns The list with the new codes at its end.
+ */
+export function addCodes(held: readonly string[], typed: readonly string[]): string[] {
+  const codes = [...held];
+  for (const code of typed.map((each) => each.trim().toUpperCase())) {
+    if (codeKey(code) && !codes.some((other) => codeKey(other) === codeKey(code))) {
+      codes.push(code);
+    }
+  }
+  return codes;
+}
 
 /**
  * Writes out each field of a brand for an item's details, read-only: what doesn't apply or wasn't filled in is said
@@ -140,16 +171,17 @@ export function brandDetailTexts(brand: ItemBrand): Record<BrandField, string> {
 }
 
 /**
- * Checks a part code against the other items' brands as it is typed: the message when another item uses it, compared
- * as the search compares codes (see codeKey), so "cb4500" is "CB-4500"; nothing when it is free or still empty.
+ * Checks a part code against the other items' codes, their brands' and their original ones, as it is typed: the
+ * message when another item uses it, compared as the search compares codes (see codeKey), so "cb4500" is "CB-4500";
+ * nothing when it is free or still empty.
  * @param code The code as typed.
  * @param items Every item in stock.
- * @param editingId The id of the item being edited, whose brands may keep their own codes.
+ * @param editingId The id of the item being edited, which may keep its own codes.
  * @returns E.g. "Código já usado em “Filtro de óleo”.", or undefined.
  */
 export function codeTakenError(code: string, items: readonly Item[], editingId?: string): string | undefined {
   const typed = codeKey(code);
-  const owner = typed ? items.find((item) => item.id !== editingId && item.brands.some((brand) => codeKey(brand.code) === typed)) : undefined;
+  const owner = typed ? items.find((item) => item.id !== editingId && allCodes(item).some((held) => codeKey(held) === typed)) : undefined;
   return owner && codeTakenMessage(owner.name);
 }
 
@@ -160,6 +192,26 @@ export function codeTakenError(code: string, items: readonly Item[], editingId?:
  */
 export function codeTakenMessage(name: string): string {
   return `Código já usado em “${name}”.`;
+}
+
+/**
+ * Reads a change to a field of codes typed as chips: each code a comma, a semicolon or a line break ends joins the
+ * list (see addCodes), and what is typed after the last one stays in the field to go on typing; a paste of several
+ * codes adds them all.
+ * @param held The list's codes.
+ * @param text What the field held before the change.
+ * @param typed The field's text after the change.
+ * @returns The list's codes, and what the field keeps.
+ */
+export function codesInput(held: readonly string[], text: string, typed: string): { codes: string[]; text: string } {
+  if (!CODE_SEPARATORS.test(typed)) {
+    return { codes: [...held], text: typed };
+  }
+  const parts = typed.split(CODE_SEPARATORS);
+  // More than one character came in at once: a paste, whose last code is whole too.
+  const pasted = typed.length > text.length + 1;
+  const rest = pasted ? "" : parts.pop()!;
+  return { codes: addCodes(held, parts), text: rest.trimStart() };
 }
 
 /**
@@ -193,8 +245,8 @@ export function formValue(form: ItemForm, field: FormField): string {
  * @returns True when a field of the item or of a brand has one.
  */
 export function hasFormErrors(errors: ItemFormErrors): boolean {
-  const { brands = [], ...item } = errors;
-  return Object.values(item).some(Boolean) || brands.some((brand) => Object.values(brand).some(Boolean));
+  const { brands = [], originalCodes = [], ...item } = errors;
+  return Object.values(item).some(Boolean) || originalCodes.some(Boolean) || brands.some((brand) => Object.values(brand).some(Boolean));
 }
 
 /**
@@ -232,6 +284,7 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
     position: form.position,
     side: form.side,
     minQuantity: Number(form.minQuantity || 0),
+    originalCodes: form.originalCodes.map((code) => code.trim().toUpperCase()),
     brands: form.brands.map((brand) => ({
       ...(brand.id && { id: brand.id }),
       partBrand: capitalizeFirst(brand.partBrand),
@@ -260,7 +313,8 @@ export function itemFormChanged(form: ItemForm, item: Item, colors: readonly str
  * Checks the form before saving: the name, category, vehicle brand and each brand's part brand, code and unit price
  * are required; the category, the brands and a vehicle model must be in their lists; a part brand and a code appear
  * once in the item; the quantities can't pass MAX_QUANTITY, the price must be a number above zero and up to
- * MAX_PRICE_CENTS, and a code can't be one another item uses (see codeTakenError).
+ * MAX_PRICE_CENTS, and a code can't be one another item uses (see codeTakenError); an original code can't be a code
+ * of one of the item's brands either (see originalCodeMessages).
  * @param form The form as typed.
  * @param items Every item in stock.
  * @param lists The lists the API keeps.
@@ -310,12 +364,14 @@ export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: It
             : {}),
     };
   });
+  const originalCodes = originalCodeMessages(form, items, editingId);
   return {
     ...(!form.name.trim() && { name: ITEM_FORM_MESSAGES.name }),
     ...(category && { category }),
     ...(vehicleBrand && { vehicleBrand }),
     ...(vehicleModel && { vehicleModel }),
     ...(Number(form.minQuantity) > MAX_QUANTITY && { minQuantity: ITEM_FORM_MESSAGES.quantityTooHigh }),
+    ...(originalCodes.some(Boolean) && { originalCodes }),
     ...(brands.some((each) => Object.keys(each).length > 0) && { brands }),
   };
 }
@@ -334,6 +390,7 @@ export function itemFormOf(item: Item): ItemForm {
     position: item.position,
     side: item.side,
     minQuantity: String(item.minQuantity),
+    originalCodes: [...item.originalCodes],
     brands: item.brands.map((brand) => ({
       id: brand.id,
       partBrand: brand.partBrand,
@@ -371,6 +428,31 @@ export function itemFormOptions(items: readonly Item[], lists: ItemLists): ItemF
 export function modelsOfBrand(lists: ItemLists, vehicleBrand: string): string[] {
   const brand = findEntry(lists.vehicleBrands, vehicleBrand);
   return brand ? distinct(lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id).map((model) => model.name)) : [];
+}
+
+/**
+ * Checks each original code of the form, as its chip shows it: the message when one of the item's brands has it, or
+ * when another item uses it (see codeTakenError).
+ * @param form The form as typed.
+ * @param items Every item in stock.
+ * @param editingId The id of the item being edited, which may keep its own codes.
+ * @returns The message of each original code, in their order, undefined for a code that is fine.
+ */
+export function originalCodeMessages(form: ItemForm, items: readonly Item[], editingId?: string): (string | undefined)[] {
+  return form.originalCodes.map((code) =>
+    form.brands.some((brand) => codeKey(brand.code) !== "" && codeKey(brand.code) === codeKey(code))
+      ? ITEM_FORM_MESSAGES.originalCodeInBrand
+      : codeTakenError(code, items, editingId),
+  );
+}
+
+/**
+ * Writes an item's original codes for its details.
+ * @param item The item.
+ * @returns E.g. "5U0 698 151, 5U0 698 151 A", or "Nenhum" when it has none.
+ */
+export function originalCodesText(item: Pick<Item, "originalCodes">): string {
+  return item.originalCodes.length > 0 ? item.originalCodes.join(", ") : "Nenhum";
 }
 
 /**
@@ -453,6 +535,18 @@ export function quantityInput(held: string, typed: string): { value: string; mes
   // One character typed among the digits held, e.g. "12," from "12".
   const oneTyped = typed.length === held.length + 1 && typed.replace(/\D/g, "") === held;
   return oneTyped ? { value: held } : { value: held, message: ITEM_FORM_MESSAGES.quantityInvalid };
+}
+
+/**
+ * Splits codes typed or pasted at once, at commas, semicolons and line breaks.
+ * @param text E.g. "5U0 698 151; 5U0 698 151 A".
+ * @returns The codes, trimmed and uppercase, without empty ones, e.g. ["5U0 698 151", "5U0 698 151 A"].
+ */
+export function splitCodes(text: string): string[] {
+  return text
+    .split(CODE_SEPARATORS)
+    .map((code) => code.trim().toUpperCase())
+    .filter(Boolean);
 }
 
 /**
