@@ -18,6 +18,9 @@ import {
   itemFormOf,
   itemFormOptions,
   modelsOfBrand,
+  ORIGINAL_CODES_LABEL,
+  originalCodeMessages,
+  originalCodesText,
   PRICE_PLACEHOLDER,
   priceMask,
   quantityInput,
@@ -39,12 +42,15 @@ import { Segmented } from '../components/Segmented.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { Heading, Label, Text } from '../components/Typography.tsx'
+import { CodeListField } from './CodeListField.tsx'
 import { itemFormDialog } from './ItemFormDialog.styles.ts'
 import { savePhotos } from './savePhotos.ts'
 import type { CreateListEntry } from './useItemLists.ts'
 
 // The form that creates a new item or edits one, in a dialog whose content scrolls while Cancel and Save stay at the
-// bottom: first what the item's brands share (name, category, vehicle, position, side and the minimum stock), then a
+// bottom: first what the item's brands share (name, category, vehicle, position, side, the minimum stock and the
+// vehicle maker's original codes, typed as chips, each shown with its message when a brand of the item or another item
+// has it; see CodeListField), then a
 // section for each brand that makes the part, with its photos, part brand, code, quantity, unit price, color and
 // location. "Adicionar marca" adds a blank brand, and each brand's "Remover" takes it out while another is left.
 // Category, part brands and the vehicle's brand and model are comboboxes of the lists the API keeps, where "+ Criar"
@@ -336,6 +342,9 @@ export function ItemFormDialog({
           {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
             <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />
           ))}
+          <div className={classes.codes()} data-testid={ids.codes}>
+            <FieldValue label={ORIGINAL_CODES_LABEL} value={originalCodesText(item)} />
+          </div>
           <div className={classes.brands()} data-testid={ids.brands}>
             {item.brands.map((brand, index) => (
               <div
@@ -437,6 +446,15 @@ export function ItemFormDialog({
             error={errors.minQuantity}
             helper="Abaixo disso, somando todas as marcas, o item aparece como estoque baixo."
           />
+          <div className={classes.codes()} data-testid={ids.codes}>
+            <CodeListField
+              label={ORIGINAL_CODES_LABEL}
+              codes={form.originalCodes}
+              onCodesChange={(codes) => setForm((typed) => ({ ...typed, originalCodes: codes }))}
+              messages={originalCodeMessages(form, items, item?.id)}
+              helper="Os códigos da montadora, iguais em todas as marcas. Enter, vírgula ou ponto e vírgula separa um do outro."
+            />
+          </div>
           <div className={classes.brands()} data-testid={ids.brands}>
             <Text size="sm" tone="muted">
               As marcas que fazem esta peça, cada uma com seu código, estoque e valor.

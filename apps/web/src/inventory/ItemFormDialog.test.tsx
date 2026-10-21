@@ -592,6 +592,39 @@ test('Web: the details show each brand of an item', async () => {
   await expect.element(screen.getByRole('group', { name: 'Fotos da marca 2' })).toBeVisible()
 })
 
+// Types an item's original codes as chips, one with Enter and two pasted at once, and checks they are sent with the
+// item in uppercase, in order.
+test('Web: original codes are typed as chips and sent with the item', async () => {
+  const fetch = answerSave(200)
+  const screen = await render(<Sample item={FILTER} />)
+  const codes = screen.getByLabelText('Códigos originais')
+  await userEvent.type(codes, '030 115 561 an{Enter}')
+  await codes.fill('030-115-561-ap; 06a 115 561')
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+  expect(sent(fetch).body.originalCodes).toEqual(['030 115 561 AN', '030-115-561-AP', '06A 115 561'])
+})
+
+// Types an original code another item uses and one a brand of the item has, and checks each chip says so under the
+// field at once, and the item isn't sent.
+test('Web: an original code another item or a brand of the item has is refused, saying so', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch')
+  const screen = await render(<Sample item={FILTER} />)
+  await userEvent.type(screen.getByLabelText('Códigos originais'), 'fra 1000,w712/95,')
+  const alert = screen.getByRole('alert')
+  await expect.element(alert.getByText(`FRA 1000: ${codeTakenMessage('Pastilha de freio')}`)).toBeVisible()
+  await expect.element(alert.getByText(`W712/95: ${ITEM_FORM_MESSAGES.originalCodeInBrand}`)).toBeVisible()
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+// Opens the details of an item with original codes and checks they show apart, under Códigos originais.
+test("Web: the details list an item's original codes", async () => {
+  const screen = await render(<Sample item={{ ...FILTER, originalCodes: ['030 115 561 AN', '030 115 561 AP'] }} details />)
+  const value = screen.getByRole('group', { name: 'Códigos originais', exact: true }).getByRole('paragraph')
+  await expect.element(value).toHaveTextContent('030 115 561 AN, 030 115 561 AP')
+})
+
 function Sample({
   item: editing,
   details,
