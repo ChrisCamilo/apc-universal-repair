@@ -11,6 +11,9 @@ import {
   POSITION_NAMES,
   searchKey,
   SIDE_NAMES,
+  UNIVERSAL_BRAND,
+  vehicleKey,
+  vehicleLabel,
   type Item,
   type ItemBrand,
   type ItemCreate,
@@ -20,23 +23,26 @@ import {
 import { findEntry, type ItemLists } from "../lists/lists.ts";
 
 // The item form shared by web and mobile, for creating and editing an inventory item: what the item's brands share
-// (name, category, vehicle, position, side, minimum stock, and the vehicle maker's original codes, typed as chips: a
+// (name, category, the vehicles it fits, each a vehicle brand with its model or any model, position, side, minimum
+// stock, and the vehicle maker's original codes, typed as chips: a
 // code added with Enter or a comma, or several pasted at once, once each) and a section for each brand that makes the part (part
 // brand, code, quantity, unit price, color, location), as typed, the unit price always formatted in reais ("R$
 // 1.234,56"), a dot and a comma meaning the same; the message of each field that can't be saved, the body sent to the
 // API with the writing rule applied, and the options the comboboxes offer, taken from the lists the API keeps.
-// Category, part brands, vehicle brand and vehicle model must be in their lists, where the form creates new names; a
+// Category, part brands, vehicle brands and vehicle models must be in their lists, where the form creates new names; a
+// vehicle appears once in an item, and Universal (any vehicle) alone; a
 // part brand and a code appear once in an item, original or a brand's, and a code nowhere else in stock. The same form shows an item's
 // details for reading, each field written out as text.
 
 /** A new brand's section: every field blank. */
 export const EMPTY_BRAND_FORM: ItemBrandForm = { partBrand: "", code: "", quantity: "", price: "", color: "", location: "" };
-/** The empty form of a new item: every field blank, position and side on N/A, and one blank brand. */
+/** A new vehicle's line: its brand and model blank. */
+export const EMPTY_VEHICLE_FORM: ItemVehicleForm = { vehicleBrand: "", vehicleModel: "" };
+/** The empty form of a new item: every field blank, position and side on N/A, one blank vehicle and one blank brand. */
 export const EMPTY_ITEM_FORM: ItemForm = {
   name: "",
   category: "",
-  vehicleBrand: "",
-  vehicleModel: "",
+  vehicles: [EMPTY_VEHICLE_FORM],
   position: NOT_APPLICABLE,
   side: NOT_APPLICABLE,
   minQuantity: "",
@@ -56,12 +62,17 @@ export const BRAND_FIELD_LABELS: Record<BrandField, string> = {
 export const ITEM_FIELD_LABELS: Record<ItemField, string> = {
   name: "Nome",
   category: "Categoria",
-  vehicleBrand: "Marca do veículo",
-  vehicleModel: "Modelo do veículo",
   position: "Posição",
   side: "Lado",
   minQuantity: "Quantidade mínima",
 };
+/** Label of each field of a vehicle's line. */
+export const VEHICLE_FIELD_LABELS: Record<VehicleField, string> = {
+  vehicleBrand: "Marca do veículo",
+  vehicleModel: "Modelo do veículo",
+};
+/** Label of the item's vehicles, in the form and the details. */
+export const VEHICLES_LABEL = "Veículos";
 /** What splits codes typed or pasted at once: commas, semicolons and line breaks. */
 const CODE_SEPARATORS = /[,;\r\n]/;
 /** Message under each field that can't be saved as it is. */
@@ -78,6 +89,8 @@ export const ITEM_FORM_MESSAGES = {
   vehicleBrand: "Informe a marca do veículo.",
   vehicleBrandNotListed: "Marca de veículo não cadastrada. Escolha “+ Criar marca” na lista.",
   vehicleModelNotListed: "Modelo não cadastrado para essa marca. Escolha “+ Criar modelo” na lista.",
+  vehicleRepeated: "Esse veículo já está neste item.",
+  universalAlone: "Universal serve em qualquer veículo: deixe só ele na lista.",
   quantityInvalid: "Use um número inteiro, de 0 em diante.",
   quantityTooHigh: `Informe no máximo ${MAX_QUANTITY.toLocaleString("pt-BR")}.`,
   price: "Informe o valor unitário.",
@@ -93,8 +106,8 @@ export const PRICE_PLACEHOLDER = "R$ 0,00";
 
 /** A field of a brand's section. */
 export type BrandField = Exclude<keyof ItemBrandForm, "id">;
-/** A field of the form, the item's or a brand's, as the tutorial and the details name them. */
-export type FormField = ItemField | BrandField;
+/** A field of the form, the item's, a brand's or a vehicle's, as the tutorial and the details name them. */
+export type FormField = ItemField | BrandField | VehicleField;
 /** A brand's section as typed: on an edit, with the id of the brand it is. */
 export type ItemBrandForm = {
   id?: string;
@@ -108,16 +121,15 @@ export type ItemBrandForm = {
 /** The message of each field of a brand's section that can't be saved; a field without one is fine. */
 export type ItemBrandFormErrors = Partial<Record<"partBrand" | "code" | "quantity" | "price", string>>;
 /** A field the item's brands share, written as one text or chosen. */
-export type ItemField = Exclude<keyof ItemForm, "brands" | "originalCodes">;
+export type ItemField = Exclude<keyof ItemForm, "brands" | "originalCodes" | "vehicles">;
 /**
  * The item form as typed: every field as text, except position and side, which are chosen, the original codes, a
- * list, and its brands.
+ * list, and its vehicles and brands.
  */
 export type ItemForm = {
   name: string;
   category: string;
-  vehicleBrand: string;
-  vehicleModel: string;
+  vehicles: ItemVehicleForm[];
   position: (typeof POSITIONS)[number];
   side: (typeof SIDES)[number];
   minQuantity: string;
@@ -129,10 +141,15 @@ export type ItemForm = {
  * The message of each field that can't be saved, the item's, each original code's and each brand's, in their order; a
  * field without one is fine.
  */
-export type ItemFormErrors = Partial<Record<"name" | "category" | "vehicleBrand" | "vehicleModel" | "minQuantity", string>> & {
+export type ItemFormErrors = Partial<Record<"name" | "category" | "minQuantity", string>> & {
+  vehicles?: ItemVehicleFormErrors[];
   originalCodes?: (string | undefined)[];
   brands?: ItemBrandFormErrors[];
 };
+/** A vehicle's line as typed: its brand, and its model, empty for any model of the brand. */
+export type ItemVehicleForm = { vehicleBrand: string; vehicleModel: string };
+/** The message of each field of a vehicle's line that can't be saved; a field without one is fine. */
+export type ItemVehicleFormErrors = Partial<Record<VehicleField, string>>;
 /** The options of the item form's comboboxes, from the lists, and its color, from the brands in stock. */
 export type ItemFormOptions = { categories: string[]; partBrands: string[]; vehicleBrands: string[]; colors: string[] };
 
@@ -152,6 +169,9 @@ export function addCodes(held: readonly string[], typed: readonly string[]): str
   }
   return codes;
 }
+
+/** A field of a vehicle's line. */
+export type VehicleField = keyof ItemVehicleForm;
 
 /**
  * Writes out each field of a brand for an item's details, read-only: what doesn't apply or wasn't filled in is said
@@ -230,13 +250,16 @@ export function distinct(values: readonly string[]): string[] {
 }
 
 /**
- * Reads a field of the form: the item's, or its first brand's, as the tutorial names them.
+ * Reads a field of the form: the item's, or its first brand's or first vehicle's, as the tutorial names them.
  * @param form The form as typed.
  * @param field The field.
  * @returns Its value as typed.
  */
 export function formValue(form: ItemForm, field: FormField): string {
-  return field in BRAND_FIELD_LABELS ? form.brands[0][field as BrandField] : form[field as ItemField];
+  if (field in BRAND_FIELD_LABELS) {
+    return form.brands[0][field as BrandField];
+  }
+  return field in VEHICLE_FIELD_LABELS ? form.vehicles[0][field as VehicleField] : form[field as ItemField];
 }
 
 /**
@@ -245,13 +268,18 @@ export function formValue(form: ItemForm, field: FormField): string {
  * @returns True when a field of the item or of a brand has one.
  */
 export function hasFormErrors(errors: ItemFormErrors): boolean {
-  const { brands = [], originalCodes = [], ...item } = errors;
-  return Object.values(item).some(Boolean) || originalCodes.some(Boolean) || brands.some((brand) => Object.values(brand).some(Boolean));
+  const { brands = [], vehicles = [], originalCodes = [], ...item } = errors;
+  return (
+    Object.values(item).some(Boolean) ||
+    originalCodes.some(Boolean) ||
+    [...vehicles, ...brands].some((line) => Object.values(line).some(Boolean))
+  );
 }
 
 /**
  * Writes out each field the item's brands share for its details, read-only: what doesn't apply or wasn't filled in
- * is said in words, and the position and side by their full names; each brand's fields come from brandDetailTexts.
+ * is said in words, and the position and side by their full names; the vehicles come from vehiclesText, and each
+ * brand's fields from brandDetailTexts.
  * @param item The item.
  * @returns The text of each field of the item.
  */
@@ -260,8 +288,6 @@ export function itemDetailTexts(item: Item): Record<ItemField, string> {
   return {
     name: item.name,
     category: item.category,
-    vehicleBrand: item.vehicleBrand,
-    vehicleModel: item.vehicleModel ?? "Qualquer modelo",
     position: item.position === NOT_APPLICABLE ? notApplicable : POSITION_NAMES[item.position],
     side: item.side === NOT_APPLICABLE ? notApplicable : SIDE_NAMES[item.side],
     minQuantity: String(item.minQuantity),
@@ -279,8 +305,10 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
   return {
     name: capitalizeFirst(form.name),
     category: capitalizeFirst(form.category),
-    vehicleBrand: capitalizeFirst(form.vehicleBrand),
-    vehicleModel: form.vehicleModel.trim() ? capitalizeFirst(form.vehicleModel) : "",
+    vehicles: form.vehicles.map((vehicle) => ({
+      vehicleBrand: capitalizeFirst(vehicle.vehicleBrand),
+      vehicleModel: vehicle.vehicleModel.trim() ? capitalizeFirst(vehicle.vehicleModel) : "",
+    })),
     position: form.position,
     side: form.side,
     minQuantity: Number(form.minQuantity || 0),
@@ -310,8 +338,9 @@ export function itemFormChanged(form: ItemForm, item: Item, colors: readonly str
 }
 
 /**
- * Checks the form before saving: the name, category, vehicle brand and each brand's part brand, code and unit price
- * are required; the category, the brands and a vehicle model must be in their lists; a part brand and a code appear
+ * Checks the form before saving: the name, category, each vehicle's brand and each brand's part brand, code and unit
+ * price are required; the category, the brands, the vehicle brands and a vehicle model must be in their lists, a
+ * vehicle appears once in the item and Universal alone; a part brand and a code appear
  * once in the item; the quantities can't pass MAX_QUANTITY, the price must be a number above zero and up to
  * MAX_PRICE_CENTS, and a code can't be one another item uses (see codeTakenError); an original code can't be a code
  * of one of the item's brands either (see originalCodeMessages).
@@ -322,20 +351,25 @@ export function itemFormChanged(form: ItemForm, item: Item, colors: readonly str
  * @returns The message of each field that can't be saved, in form order; without any when the item can be saved.
  */
 export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: ItemLists, editingId?: string): ItemFormErrors {
-  const brand = findEntry(lists.vehicleBrands, form.vehicleBrand);
   /** The message of a list field: required when empty, or not listed when its list doesn't hold it. */
   const listed = (text: string, entries: ItemLists["categories"], required: string | undefined, notListed: string) =>
     !text.trim() ? required : findEntry(entries, text) ? undefined : notListed;
   const category = listed(form.category, lists.categories, ITEM_FORM_MESSAGES.category, ITEM_FORM_MESSAGES.categoryNotListed);
-  const vehicleBrand = listed(
-    form.vehicleBrand,
-    lists.vehicleBrands,
-    ITEM_FORM_MESSAGES.vehicleBrand,
-    ITEM_FORM_MESSAGES.vehicleBrandNotListed,
-  );
-  // A model is checked within a listed brand; without one, the brand's message says what to do first.
-  const brandModels = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
-  const vehicleModel = brand && listed(form.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES.vehicleModelNotListed);
+  const vehicles = form.vehicles.map((each, index): ItemVehicleFormErrors => {
+    const brand = findEntry(lists.vehicleBrands, each.vehicleBrand);
+    const universal = form.vehicles.length > 1 && optionKey(each.vehicleBrand) === optionKey(UNIVERSAL_BRAND);
+    const vehicleBrand = universal
+      ? ITEM_FORM_MESSAGES.universalAlone
+      : listed(each.vehicleBrand, lists.vehicleBrands, ITEM_FORM_MESSAGES.vehicleBrand, ITEM_FORM_MESSAGES.vehicleBrandNotListed);
+    // A model is checked within a listed brand; without one, the brand's message says what to do first.
+    const brandModels = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
+    const repeated =
+      each.vehicleBrand.trim() !== "" && form.vehicles.slice(0, index).some((other) => vehicleKey(other) === vehicleKey(each));
+    const vehicleModel = repeated
+      ? ITEM_FORM_MESSAGES.vehicleRepeated
+      : brand && listed(each.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES.vehicleModelNotListed);
+    return { ...(vehicleBrand && { vehicleBrand }), ...(vehicleModel && { vehicleModel }) };
+  });
   /** Whether an earlier brand of the form has the same value, compared by a key. */
   const repeated = (index: number, key: (brand: ItemBrandForm) => string) =>
     key(form.brands[index]) !== "" && form.brands.slice(0, index).some((other) => key(other) === key(form.brands[index]));
@@ -368,8 +402,7 @@ export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: It
   return {
     ...(!form.name.trim() && { name: ITEM_FORM_MESSAGES.name }),
     ...(category && { category }),
-    ...(vehicleBrand && { vehicleBrand }),
-    ...(vehicleModel && { vehicleModel }),
+    ...(vehicles.some((each) => Object.keys(each).length > 0) && { vehicles }),
     ...(Number(form.minQuantity) > MAX_QUANTITY && { minQuantity: ITEM_FORM_MESSAGES.quantityTooHigh }),
     ...(originalCodes.some(Boolean) && { originalCodes }),
     ...(brands.some((each) => Object.keys(each).length > 0) && { brands }),
@@ -385,8 +418,7 @@ export function itemFormOf(item: Item): ItemForm {
   return {
     name: item.name,
     category: item.category,
-    vehicleBrand: item.vehicleBrand,
-    vehicleModel: item.vehicleModel ?? "",
+    vehicles: item.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel ?? "" })),
     position: item.position,
     side: item.side,
     minQuantity: String(item.minQuantity),
@@ -550,15 +582,31 @@ export function splitCodes(text: string): string[] {
 }
 
 /**
- * Writes some fields into a form: the item's, or its first brand's, as the tutorial names them.
+ * Writes out each vehicle an item fits for its details.
+ * @param item The item.
+ * @returns E.g. "Volkswagen Gol G5, Volkswagen (qualquer modelo)".
+ */
+export function vehiclesText(item: Pick<Item, "vehicles">): string {
+  return item.vehicles.map((vehicle) => (vehicle.vehicleModel ? vehicleLabel(vehicle) : `${vehicle.vehicleBrand} (qualquer modelo)`)).join(", ");
+}
+
+/**
+ * Writes some fields into a form: the item's, or its first brand's or first vehicle's, as the tutorial names them.
  * @param form The form as typed.
  * @param values The fields to write, e.g. { name: "Junta", quantity: "1" }.
  * @returns A new form with the values.
  */
 export function withFormValues(form: ItemForm, values: Partial<Record<FormField, string>>): ItemForm {
   const entries = Object.entries(values) as [FormField, string][];
-  const brand = Object.fromEntries(entries.filter(([field]) => field in BRAND_FIELD_LABELS));
-  const item = Object.fromEntries(entries.filter(([field]) => !(field in BRAND_FIELD_LABELS)));
+  /** The values of one kind of field. */
+  const of = (labels: object) => Object.fromEntries(entries.filter(([field]) => field in labels));
+  const item = Object.fromEntries(entries.filter(([field]) => !(field in BRAND_FIELD_LABELS) && !(field in VEHICLE_FIELD_LABELS)));
   const [first, ...others] = form.brands;
-  return { ...form, ...item, brands: [{ ...first, ...brand }, ...others] };
+  const [vehicle, ...moreVehicles] = form.vehicles;
+  return {
+    ...form,
+    ...item,
+    vehicles: [{ ...vehicle, ...of(VEHICLE_FIELD_LABELS) }, ...moreVehicles],
+    brands: [{ ...first, ...of(BRAND_FIELD_LABELS) }, ...others],
+  };
 }

@@ -9,8 +9,8 @@ import type { TourStep } from "./tour.ts";
 // describes its screen (what is open, the items, the search and filters, where each part of the screen is) and the
 // actions "Fazer por mim" takes; the steps here say when each one is done, where to go back when the user leaves
 // one, and what to do for them. With "Abrir item ao clicar na linha" off, the steps through the item's details are
-// left out. The tutorial runs by itself the first time, and again from the user menu. The test item has one brand, so
-// its fields are named flat: the item's, or its brand's.
+// left out. The tutorial runs by itself the first time, and again from the user menu. The test item has one brand and
+// one vehicle, so its fields are named flat: the item's, its brand's or its vehicle's.
 
 /** The fields of each filling step of part 1. */
 const FILL_FIELDS: Record<"identity" | "stock", FormField[]> = {
@@ -81,8 +81,7 @@ export const TUTORIAL_FILTERS: FilterValues = {
 export const TUTORIAL_ITEM: ItemForm = {
   name: "Item de teste do tutorial",
   category: "Motor",
-  vehicleBrand: "Volkswagen",
-  vehicleModel: "Gol",
+  vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Gol" }],
   minQuantity: "2",
   position: "D",
   side: "LD",

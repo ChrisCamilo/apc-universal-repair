@@ -9,6 +9,7 @@ import {
   codeTakenMessage,
   EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
+  EMPTY_VEHICLE_FORM,
   formValue,
   hasFormErrors,
   ITEM_FIELD_LABELS,
@@ -28,6 +29,7 @@ import {
   priceText,
   quantityInput,
   splitCodes,
+  vehiclesText,
   withFormValues,
   type ItemForm,
 } from "./itemForm.ts";
@@ -166,7 +168,7 @@ test("Shared: the item form names each required field left blank", () => {
   assert.deepEqual(itemFormErrors(EMPTY_ITEM_FORM, ITEMS, LISTS), {
     name: ITEM_FORM_MESSAGES.name,
     category: ITEM_FORM_MESSAGES.category,
-    vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrand,
+    vehicles: [{ vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrand }],
     brands: [{ partBrand: ITEM_FORM_MESSAGES.partBrand, code: ITEM_FORM_MESSAGES.code, price: ITEM_FORM_MESSAGES.price }],
   });
   assert.deepEqual(itemFormErrors(withFormValues(VALID, { price: "0,00" }), ITEMS, LISTS), { brands: [{ price: ITEM_FORM_MESSAGES.priceInvalid }] });
@@ -216,14 +218,26 @@ test("Shared: the item form refuses names its lists don't hold", () => {
   const unlisted = withFormValues(VALID, { category: "Motor diesel", partBrand: "Cofap", vehicleBrand: "Fiat", vehicleModel: "Uno" });
   assert.deepEqual(itemFormErrors(unlisted, ITEMS, LISTS), {
     category: ITEM_FORM_MESSAGES.categoryNotListed,
-    vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrandNotListed,
+    vehicles: [{ vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrandNotListed }],
     brands: [{ partBrand: ITEM_FORM_MESSAGES.partBrandNotListed }],
   });
   assert.deepEqual(itemFormErrors(withFormValues(VALID, { vehicleBrand: "Volkswagen", vehicleModel: "Opala" }), ITEMS, LISTS), {
-    vehicleModel: ITEM_FORM_MESSAGES.vehicleModelNotListed,
+    vehicles: [{ vehicleModel: ITEM_FORM_MESSAGES.vehicleModelNotListed }],
   });
   const spelled = withFormValues(VALID, { category: " IGNICAO ", partBrand: "ngk", vehicleBrand: "volkswagen", vehicleModel: "gol" });
   assert.deepEqual(itemFormErrors(spelled, ITEMS, LISTS), {});
+});
+
+// Gives the form a second vehicle, then the first one again written otherwise, and Universal among others, and
+// checks the repeated vehicle and Universal are refused on their lines, while two models of one brand pass.
+test("Shared: a vehicle appears once in an item, and Universal alone", () => {
+  const two = { ...VALID, vehicles: [{ vehicleBrand: "Chevrolet", vehicleModel: "Opala" }, { vehicleBrand: "Volkswagen", vehicleModel: "Gol" }] };
+  assert.deepEqual(itemFormErrors(two, ITEMS, LISTS), {});
+  const repeated = { ...two, vehicles: [...two.vehicles, { vehicleBrand: " chevrolet ", vehicleModel: "OPALA" }] };
+  assert.deepEqual(itemFormErrors(repeated, ITEMS, LISTS).vehicles, [{}, {}, { vehicleModel: ITEM_FORM_MESSAGES.vehicleRepeated }]);
+  const universal = { ...two, vehicles: [{ vehicleBrand: "Universal", vehicleModel: "" }, EMPTY_VEHICLE_FORM] };
+  assert.equal(itemFormErrors(universal, ITEMS, LISTS).vehicles?.[0].vehicleBrand, ITEM_FORM_MESSAGES.universalAlone);
+  assert.equal(hasFormErrors({ vehicles: [{}] }), false);
 });
 
 // Types a code another item uses, in another case, and checks it is refused naming that item, while the item being
@@ -315,8 +329,7 @@ test("Shared: the item body follows the writing rule", () => {
   assert.deepEqual(itemFormBody(form, ["Azul", "Preto"]), {
     name: "Vela de ignição",
     category: "Ignição",
-    vehicleBrand: "Chevrolet",
-    vehicleModel: "",
+    vehicles: [{ vehicleBrand: "Chevrolet", vehicleModel: "" }],
     minQuantity: 0,
     position: "N/A",
     side: "N/A",
@@ -340,8 +353,7 @@ test("Shared: an item fills the form and saves back unchanged", () => {
   assert.deepEqual(form, {
     name: "Pastilha",
     category: "Motor",
-    vehicleBrand: "Chevrolet",
-    vehicleModel: "Opala",
+    vehicles: [{ vehicleBrand: "Chevrolet", vehicleModel: "Opala" }],
     minQuantity: "2",
     position: "N/A",
     side: "N/A",
@@ -394,8 +406,6 @@ test("Shared: an item's details are written out field by field", () => {
   assert.deepEqual(full, {
     name: "Pastilha",
     category: "Motor",
-    vehicleBrand: "Chevrolet",
-    vehicleModel: "Opala",
     position: "Dianteiro",
     side: "Lado esquerdo",
     minQuantity: "2",
@@ -411,8 +421,11 @@ test("Shared: an item's details are written out field by field", () => {
     location: "B-10",
   });
   assert.deepEqual(Object.keys(brand), Object.keys(BRAND_FIELD_LABELS));
-  const bare = itemDetailTexts({ ...FILTER, vehicleModel: null });
-  assert.equal(bare.vehicleModel, "Qualquer modelo");
+  assert.equal(
+    vehiclesText({ vehicles: [{ vehicleBrand: "Chevrolet", vehicleModel: "Opala" }, { vehicleBrand: "Volkswagen", vehicleModel: null }] }),
+    "Chevrolet Opala, Volkswagen (qualquer modelo)",
+  );
+  const bare = itemDetailTexts(FILTER);
   assert.equal(bare.position, "Não se aplica");
   assert.equal(bare.side, "Não se aplica");
   const plain = brandDetailTexts(FILTER.brands[0]);
@@ -420,13 +433,18 @@ test("Shared: an item's details are written out field by field", () => {
   assert.equal(plain.location, "Não informado");
 });
 
-// Reads and writes the form's fields flat, the item's and its first brand's, as the tutorial names them, leaving the
-// other brands as they are.
+// Reads and writes the form's fields flat, the item's, its first brand's and its first vehicle's, as the tutorial names
+// them, leaving the other brands and vehicles as they are.
 test("Shared: the form's fields read and write flat, the first brand's for a brand field", () => {
-  const form = itemFormOf(PADS);
+  const form = { ...itemFormOf(PADS), vehicles: [...itemFormOf(PADS).vehicles, { vehicleBrand: "Ford", vehicleModel: "Escort" }] };
   assert.deepEqual([formValue(form, "name"), formValue(form, "code"), formValue(form, "price")], ["Pastilha", "FRA-1000", "R$ 39,90"]);
-  const changed = withFormValues(form, { name: "Junta", quantity: "9" });
+  assert.deepEqual([formValue(form, "vehicleBrand"), formValue(form, "vehicleModel")], ["Chevrolet", "Opala"]);
+  const changed = withFormValues(form, { name: "Junta", quantity: "9", vehicleModel: "Caravan" });
   assert.equal(changed.name, "Junta");
   assert.equal(changed.brands[0].quantity, "9");
   assert.deepEqual(changed.brands[1], form.brands[1]);
+  assert.deepEqual(changed.vehicles, [
+    { vehicleBrand: "Chevrolet", vehicleModel: "Caravan" },
+    { vehicleBrand: "Ford", vehicleModel: "Escort" },
+  ]);
 });
