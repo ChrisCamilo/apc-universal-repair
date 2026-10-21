@@ -123,6 +123,7 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", asyn
       process: "undefined",
       bridge: ["notify", "onOpenNotifications", "onUpdateReady", "restartToUpdate", "server"],
       server: [
+        "changeKey",
         "checkImport",
         "chooseFolder",
         "chooseSqliteFile",

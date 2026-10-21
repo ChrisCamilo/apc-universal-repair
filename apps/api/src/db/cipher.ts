@@ -10,14 +10,58 @@ import { databaseProvider, sqliteFile } from "./provider.js";
 // the key first (keyScript): the API's client (client.ts) and the migration runner (migrate.ts). A plain file that
 // should be encrypted, as from before this was added, is encrypted in place when the server starts (ensureEncrypted),
 // from a backup copy that is removed once the encrypted file reads back. A key that doesn't open its file stops the
-// server with WRONG_KEY_ERROR, and keyOpens tells whether one does, as the desktop app asks of a recovery copy.
+// server with WRONG_KEY_ERROR, and keyOpens tells whether one does, as the desktop app asks of a recovery copy. The
+// desktop app changes the key of the server's own file with the server off (changeKey), through a copy beside it,
+// REKEY_COPY, that puts the file back when the change fails.
 
 /** A key: 32 random bytes in hex, as the desktop app makes it. */
 const KEY_FORMAT = /^[0-9a-f]{64}$/;
+/** What a file's copy is named while its key changes: the file's name and this. */
+export const REKEY_COPY = ".before-rekey";
 /** The code of the error a key that doesn't open its file throws, which the server exits on with WRONG_KEY_EXIT_CODE. */
 export const WRONG_KEY_ERROR = "APC_WRONG_SQLITE_KEY";
 /** The keys tasks gave, by file. */
 const keys = new Map<string, string>();
+
+/**
+ * Changes the key of a SQLite file, with no server on it: from its key (APC_SQLITE_KEY for the server's own file) to a
+ * new one. The file's journal goes back into it first, a copy is made beside it, and the file must read back with the
+ * new key and not with the old one; otherwise the copy is put back, and the file opens with its old key as before.
+ * @param url The file's DATABASE_URL.
+ * @param newKey The new key: 64 hex digits.
+ */
+export function changeKey(url: string, newKey: string): void {
+  const next = checked(newKey);
+  const file = sqliteFile(url);
+  const key = sqliteKey(url);
+  if (!key || !existsSync(file) || !opens(file, key)) {
+    throw new Error(`The SQLite file ${file} doesn't open with its key, so its key can't be changed.`);
+  }
+  // Rekeying needs the rollback journal: WAL's pages go into the file first.
+  const journal = new Database(file);
+  journal.exec(keyScript(key));
+  journal.pragma("journal_mode = DELETE");
+  journal.close();
+  const copy = `${file}${REKEY_COPY}`;
+  copyFileSync(file, copy);
+  try {
+    const db = new Database(file);
+    try {
+      db.exec(keyScript(key));
+      db.exec(`PRAGMA rekey = '${next}';`);
+    } finally {
+      db.close();
+    }
+    if (!opens(file, next) || opens(file, key)) {
+      throw new Error("The file doesn't read back with the new key.");
+    }
+  } catch (error) {
+    copyFileSync(copy, file);
+    rmSync(copy, { force: true });
+    throw new Error(`Couldn't change the key of ${file}; it was put back as it was: ${(error as Error).message}`, { cause: error });
+  }
+  rmSync(copy, { force: true });
+}
 
 /**
  * Checks a key before it goes into a statement.

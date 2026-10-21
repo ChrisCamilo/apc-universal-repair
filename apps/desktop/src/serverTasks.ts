@@ -13,6 +13,7 @@ export type ServerTask = (
   | { task: "importProblem"; from: string; to: string }
   | { task: "keyOpens"; url: string }
   | { task: "migrate"; url: string }
+  | { task: "rekey"; url: string; key: string }
 ) & { keys?: Record<string, string> };
 /** What server/tasks.mjs answers. */
 type TaskAnswer = { ok: true; result: unknown } | { ok: false; message: string };

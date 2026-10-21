@@ -52,6 +52,11 @@ contextBridge.exposeInMainWorld("apcDesktop", {
   /** The server the app runs and its settings, which the Servidor dialog shows and changes (see serverSettings.ts). */
   server: {
     /**
+     * Changes the SQLite file's key, with the server off; its new recovery copy is then still to be kept.
+     * @returns Done, or why not.
+     */
+    changeKey: () => ipcRenderer.invoke("apc:server-change-key"),
+    /**
      * Asks for the folder of an old server's photos.
      * @param defaultPath Where the folder dialog opens.
      * @returns The folder, or null when the dialog was closed.

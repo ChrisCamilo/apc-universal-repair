@@ -160,6 +160,15 @@ When the key in `config.json` is missing, or doesn't open the file, the app does
 - **Without the recovery copy** the data can't be opened: the copies in `data\backups` use the same key. Leave `data\apc.db` where it is, in case the copy turns up.
 - Versions v0.4.2 to v0.6.0 could drop the key from `config.json` the first time the window was closed to the tray, and the next start made a new one that doesn't open the data. If that happened, have the recovery copy at hand when you update.
 
+### 12. Changing the data's key
+
+Change the SQLite key when its recovery copy may have leaked, such as a note seen by someone else, or as routine. In *Servidor e banco de dados*, under *Chave do banco*, choose *Trocar a chave*. The dialog says what changes, and *Trocar a chave mesmo assim* goes ahead:
+
+- The server stops, the file is encrypted again with a new key, and the server starts again. The app keeps the new key apart until the file reads back with it, so a power cut in the middle leaves the data with a key the computer has.
+- The new key's recovery copy shows at once. Keep it as you kept the first, and throw the old one away.
+- The old recovery copy no longer opens the file. The copies in `data\backups`, made before updates, still open only with the old copy: keep it as long as you keep them.
+- On PostgreSQL there is no key to change: its password is in its address.
+
 ---
 
 ## 🇧🇷 Português (Brasil)
@@ -294,3 +303,12 @@ Quando a chave do `config.json` falta, ou não abre o arquivo, o app não liga o
 - **Digite a cópia de recuperação** em *Chave de recuperação*, nessa tela, e escolha *Usar a chave de recuperação*. O app confere se ela abre o arquivo, guarda-a lacrada no `config.json` e liga o servidor nos mesmos dados. Traços e espaços não importam.
 - **Sem a cópia de recuperação** os dados não abrem: as cópias em `data\backups` usam a mesma chave. Deixe o `data\apc.db` onde está, caso a cópia apareça.
 - As versões v0.4.2 a v0.6.0 podiam tirar a chave do `config.json` na primeira vez que a janela ia para a bandeja, e a abertura seguinte criava uma nova, que não abre os dados. Se isso aconteceu, tenha a cópia de recuperação à mão ao atualizar.
+
+### 12. Trocar a chave dos dados
+
+Troque a chave do SQLite quando a cópia de recuperação pode ter vazado, como uma anotação que outra pessoa viu, ou de tempos em tempos. Em *Servidor e banco de dados*, em *Chave do banco*, escolha *Trocar a chave*. O diálogo diz o que muda, e o *Trocar a chave mesmo assim* segue em frente:
+
+- O servidor desliga, o arquivo é criptografado de novo com uma chave nova, e o servidor liga de novo. O app guarda a chave nova à parte até o arquivo abrir com ela, então uma queda de energia no meio deixa os dados com uma chave que o computador tem.
+- A cópia de recuperação da chave nova aparece na hora. Guarde-a como guardou a primeira, e jogue a antiga fora.
+- A cópia de recuperação antiga deixa de abrir o arquivo. As cópias em `data\backups`, feitas antes das atualizações, continuam abrindo só com a cópia antiga: guarde-a enquanto guardar essas cópias.
+- No PostgreSQL não há chave para trocar: a senha dele está no endereço.

@@ -16,7 +16,9 @@ import { ServerSettingsContext, type ServerSettingsFocus } from './serverSetting
 // database of an earlier version is updated first, once the user agrees. After a change, closing the dialog opens the
 // app again on the new data. "Porta do servidor" moves the server to another port, from 1024 to 65535, once the user
 // confirms that the phone's address changes with it; the app checks the port is free first, and the window follows the
-// server there. Opened from the screen that says the port is taken, the dialog starts on that field. When PostgreSQL
+// server there. Opened from the screen that says the port is taken, the dialog starts on that field. On SQLite, "Chave
+// do banco" changes the file's key once the user confirms what that means: the old recovery copy, and the copies made
+// before updates, stop opening the file; the new key's recovery copy then shows at once, until it is kept. When PostgreSQL
 // was chosen at install with no address yet, the dialog opens by itself and
 // stays until the server has a database. The SQLite file is encrypted, and while its key's recovery copy isn't kept
 // the app shows it on opening, until the user says it is; an encrypted file of another install imports with its
@@ -146,6 +148,7 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
           focus={focus}
           settings={settings}
           onClose={close}
+          onKeyChanged={() => void server.recoveryKey().then(setRecoveryKey)}
           onChanged={async () => {
             const read = await load()
             // The first start goes on to the app once the server has a database.
@@ -219,14 +222,17 @@ type ServerSettingsDialogProps = {
   onClose: () => void
   /** Called after the database changed or an import copied, so the settings are read again. */
   onChanged: () => Promise<void>
+  /** Called after the SQLite key changed, so its new recovery copy shows. */
+  onKeyChanged: () => void
 }
 
-function ServerSettingsDialog({ open, focus, settings, onClose, onChanged }: ServerSettingsDialogProps) {
+function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKeyChanged }: ServerSettingsDialogProps) {
   const server = desktopBridge()!.server!
   const { classes, ids } = serverSettingsRecipe()
   const databaseHeading = useId()
   const importHeading = useId()
   const portHeading = useId()
+  const keyHeading = useId()
   const portField = useRef<HTMLInputElement>(null)
   const own = settings?.kind === 'own' ? settings : undefined
   const setup = own?.needsAddress ?? false
@@ -251,6 +257,10 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged }: Ser
   const [confirming, setConfirming] = useState(false)
   const [movingPort, setMovingPort] = useState(false)
   const [portNote, setPortNote] = useState<Note>()
+  // Whether the user is asked to confirm a new SQLite key, and how changing it went.
+  const [confirmingKey, setConfirmingKey] = useState(false)
+  const [changingKey, setChangingKey] = useState(false)
+  const [keyNote, setKeyNote] = useState<Note>()
 
   // Start on the port field when asked, once the Dialog has focused its first control.
   useEffect(() => {
@@ -300,6 +310,21 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged }: Ser
     setTypedPort(undefined)
     setPortNote({ tone: 'done', text: `Pronto: o servidor ligou na porta ${port}.` })
     await onChanged()
+  }
+
+  /** Changes the SQLite key, once the user confirmed what it means, then shows the new recovery copy or says why not. */
+  const changeKey = async () => {
+    setChangingKey(true)
+    setKeyNote(undefined)
+    const outcome = await server.changeKey()
+    setChangingKey(false)
+    setConfirmingKey(false)
+    if (!outcome.ok) {
+      setKeyNote({ tone: 'danger', text: outcome.message })
+      return
+    }
+    setKeyNote({ tone: 'done', text: 'Pronto: o banco tem uma chave nova. Guarde a cópia de recuperação dela.' })
+    onKeyChanged()
   }
 
   /** Picks the old server's SQLite file, and its clone's photos folder with it. */
@@ -470,6 +495,47 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged }: Ser
             </div>
             {note(switchNote)}
           </section>
+          {own.database === 'sqlite' && (
+            <section aria-labelledby={keyHeading} className={classes.section()} data-testid={ids.section}>
+              <Heading id={keyHeading} level={4}>
+                Chave do banco
+              </Heading>
+              <Text size="sm" tone="muted">
+                O arquivo é criptografado com uma chave. Troque-a se a cópia de recuperação dela vazou, ou de tempos em
+                tempos.
+              </Text>
+              {confirmingKey && (
+                <ul aria-label="O que muda com a chave nova" className={classes.results()} data-testid={ids.results}>
+                  <li className={classes.result()} data-testid={ids.result}>
+                    O arquivo é criptografado de novo, com uma chave nova.
+                  </li>
+                  <li className={classes.result()} data-testid={ids.result}>
+                    A cópia de recuperação antiga deixa de abrir o arquivo: guarde a nova, que aparece em seguida.
+                  </li>
+                  <li className={classes.result()} data-testid={ids.result}>
+                    As cópias em data\backups, feitas antes das atualizações, continuam abrindo só com a cópia antiga.
+                  </li>
+                </ul>
+              )}
+              <div className={classes.buttons()} data-testid={ids.buttons}>
+                {confirmingKey ? (
+                  <>
+                    <Button size="sm" loading={changingKey} onClick={() => void changeKey()}>
+                      Trocar a chave mesmo assim
+                    </Button>
+                    <Button variant="secondary" size="sm" disabled={changingKey} onClick={() => setConfirmingKey(false)}>
+                      Cancelar
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="secondary" size="sm" onClick={() => setConfirmingKey(true)}>
+                    Trocar a chave
+                  </Button>
+                )}
+              </div>
+              {note(keyNote)}
+            </section>
+          )}
           <section aria-labelledby={portHeading} className={classes.section()} data-testid={ids.section}>
             <Heading id={portHeading} level={4}>
               Porta do servidor

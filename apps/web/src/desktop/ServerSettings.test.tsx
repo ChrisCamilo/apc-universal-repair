@@ -45,6 +45,7 @@ function giveServer(settings: ServerSettings) {
   const calls = {
     chooseFolder: vi.fn<ServerBridge['chooseFolder']>(async () => null),
     chooseSqliteFile: vi.fn<ServerBridge['chooseSqliteFile']>(async () => null),
+    changeKey: vi.fn<ServerBridge['changeKey']>(async () => ({ ok: true })),
     checkImport: vi.fn<ServerBridge['checkImport']>(async () => ({ ok: true })),
     failure: vi.fn<ServerBridge['failure']>(async () => null),
     importServer: vi.fn<ServerBridge['importServer']>(async () => ({ ok: false, message: 'Nada importado.' })),
@@ -191,6 +192,47 @@ test('Web: the port moves once the phone\'s new address is confirmed', async () 
   expect(calls.usePort.mock.calls).toEqual([[3100], [3100]])
   await dialog.getByRole('button', { name: 'Fechar' }).first().click()
   expect(reload).toHaveBeenCalledOnce()
+})
+
+// Opens the dialog on SQLite and asks to change the key: it first says what changes, and Cancelar changes nothing; a
+// change that fails says why; one that works says so and shows the new key's recovery copy at once.
+test('Web: the SQLite key changes once confirmed, and its new recovery copy shows', async () => {
+  const { calls, openFromTray } = giveServer(ON_SQLITE)
+  const refused = 'A chave não foi trocada, e o banco continua com a de antes: disk I/O error'
+  calls.changeKey.mockResolvedValueOnce({ ok: false, message: refused })
+  const screen = await renderSettings()
+  openFromTray()
+  const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
+  await dialog.getByRole('button', { name: 'Trocar a chave' }).click()
+  const changes = dialog.getByRole('list', { name: 'O que muda com a chave nova' })
+  await expect.element(changes.getByText('A cópia de recuperação antiga deixa de abrir o arquivo', { exact: false })).toBeVisible()
+  await expect.element(changes.getByText('data\\backups', { exact: false })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Cancelar' }).click()
+  await expect.element(changes).not.toBeInTheDocument()
+  expect(calls.changeKey).not.toHaveBeenCalled()
+
+  await dialog.getByRole('button', { name: 'Trocar a chave' }).click()
+  await dialog.getByRole('button', { name: 'Trocar a chave mesmo assim' }).click()
+  await expect.element(dialog.getByRole('alert')).toHaveTextContent(refused)
+  expect(calls.recoveryKey).not.toHaveBeenCalled()
+
+  calls.recoveryKey.mockResolvedValue(RECOVERY_KEY)
+  await dialog.getByRole('button', { name: 'Trocar a chave' }).click()
+  await dialog.getByRole('button', { name: 'Trocar a chave mesmo assim' }).click()
+  await expect.element(dialog.getByRole('status')).toHaveTextContent('Pronto: o banco tem uma chave nova. Guarde a cópia de recuperação dela.')
+  const copy = screen.getByRole('dialog', { name: 'Chave de recuperação do banco' })
+  await expect.element(copy.getByLabelText('Chave de recuperação')).toHaveTextContent(RECOVERY_KEY)
+  expect(calls.changeKey).toHaveBeenCalledTimes(2)
+})
+
+// Opens the dialog on PostgreSQL, and checks it offers no key to change.
+test('Web: PostgreSQL has no key to change in the dialog', async () => {
+  const { openFromTray } = giveServer({ ...ON_SQLITE, database: 'postgresql', location: 'localhost:5432/apc' })
+  const screen = await renderSettings()
+  openFromTray()
+  const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
+  await expect.element(dialog.getByText('PostgreSQL, em localhost:5432/apc')).toBeVisible()
+  expect(dialog.getByRole('button', { name: 'Trocar a chave' }).elements()).toHaveLength(0)
 })
 
 // Opens the dialog the way the screen of a taken port does, and checks it starts on the port field.

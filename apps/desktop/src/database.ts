@@ -15,7 +15,9 @@ import { readConfig, updateConfig, type DatabaseChoice, type DesktopConfig } fro
 // sealed the same way as `sqliteKey`. The Servidor dialog shows its recovery copy until the user says it is kept apart
 // from the computer: without it, a copy of the file opens nowhere else. A key is only made while there is no file yet,
 // or it is still plain SQLite: a file already encrypted without its key in config.json is said to miss it, never given
-// a new one that couldn't open it, and the recovery copy typed back brings it back.
+// a new one that couldn't open it, and the recovery copy typed back brings it back. Changing the key keeps the new one
+// sealed as `sqliteKeyNext` before the file changes, and moves it to `sqliteKey` once the file reads back with it, so a
+// change cut short never leaves the file with a key the computer doesn't have.
 
 /** The choices the installer offers. */
 const CHOICES: readonly DatabaseChoice[] = ["sqlite", "postgresql"];
@@ -61,6 +63,19 @@ export function adoptInstallerChoice(userData: string): DesktopConfig {
 }
 
 /**
+ * Starts a change of the SQLite key: makes a new key and keeps it sealed in config.json as `sqliteKeyNext`, beside the
+ * key in use, before the file changes.
+ * @param userData The app's userData folder, where config.json is.
+ * @param sealer safeStorage.
+ * @returns The new key.
+ */
+export function beginKeyChange(userData: string, sealer: Sealer): string {
+  const key = randomBytes(32).toString("hex");
+  updateConfig(userData, { sqliteKeyNext: seal(key, sealer) });
+  return key;
+}
+
+/**
  * Says why the server can't run on a PostgreSQL database, from what it holds.
  * @param check What it holds.
  * @returns The reason, in Portuguese, or undefined when the server can run on it, migrating it if needed.
@@ -86,6 +101,14 @@ export function describePostgresql(url: string): string {
 }
 
 /**
+ * Ends a change of the SQLite key that didn't happen: forgets `sqliteKeyNext`, keeping the key in use.
+ * @param userData The app's userData folder, where config.json is.
+ */
+export function dropKeyChange(userData: string): void {
+  updateConfig(userData, { sqliteKeyNext: undefined });
+}
+
+/**
  * Gets the SQLite file's key, making one the first time, while there is no file yet or it is still plain: 32 random
  * bytes, sealed in config.json, read as it is now, with its recovery copy still to be shown.
  * @param userData The app's userData folder, where config.json and the file are.
@@ -105,6 +128,16 @@ export function ensureSqliteKey(userData: string, sealer: Sealer): SqliteKey {
   const key = randomBytes(32).toString("hex");
   updateConfig(userData, { sqliteKey: seal(key, sealer), sqliteKeySaved: false });
   return { key };
+}
+
+/**
+ * Ends a change of the SQLite key once the file reads back with the new one: `sqliteKeyNext` becomes the key in use,
+ * with its recovery copy still to be shown.
+ * @param userData The app's userData folder, where config.json is.
+ */
+export function finishKeyChange(userData: string): void {
+  const { sqliteKeyNext } = readConfig(userData);
+  updateConfig(userData, { sqliteKey: sqliteKeyNext, sqliteKeyNext: undefined, sqliteKeySaved: false });
 }
 
 /**
@@ -177,6 +210,16 @@ export function oldPhotosFolder(sqliteFile: string): string {
  */
 export function openDatabaseUrl(config: DesktopConfig, sealer: Sealer): string | undefined {
   return config.databaseUrl ? unseal(config.databaseUrl, sealer) : undefined;
+}
+
+/**
+ * Opens the key a change of the SQLite key is moving the file to, left in config.json when the change was cut short.
+ * @param config What config.json sets.
+ * @param sealer safeStorage.
+ * @returns The key, or undefined when there is none or it can't be opened.
+ */
+export function openKeyChange(config: DesktopConfig, sealer: Sealer): string | undefined {
+  return config.sqliteKeyNext ? unseal(config.sqliteKeyNext, sealer) : undefined;
 }
 
 /**

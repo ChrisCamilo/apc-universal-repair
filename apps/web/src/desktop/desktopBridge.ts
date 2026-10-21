@@ -13,6 +13,8 @@ export type ImportOutcome =
   | { ok: false; message: string }
 /** The server the desktop app runs, and its settings. */
 export type ServerBridge = {
+  /** Changes the SQLite file's key, with the server off; its new recovery copy is then still to be kept. */
+  changeKey: () => Promise<ServerOutcome>
   /** Asks for a folder, such as the old server's photos, opening at defaultPath; null when the dialog was closed. */
   chooseFolder: (defaultPath?: string) => Promise<string | null>
   /** Asks for an old server's SQLite file, and gives its clone's photos folder; null when the dialog was closed. */
