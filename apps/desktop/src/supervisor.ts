@@ -62,8 +62,12 @@ export function superviseServer(supervision: Supervision): (timeoutMs?: number) 
       return Promise.resolve();
     }
     const done = new Promise<void>((resolve) => {
-      exited = resolve;
-      setTimeout(resolve, timeoutMs).unref();
+      // Held, not unref'd, so the stop settles even when nothing else keeps the event loop going; cleared on exit.
+      const timer = setTimeout(resolve, timeoutMs);
+      exited = () => {
+        clearTimeout(timer);
+        resolve();
+      };
     });
     child?.kill();
     return done;
