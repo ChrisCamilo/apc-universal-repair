@@ -14,7 +14,8 @@ import { Label } from './Typography';
 // (sortRows in @apc/shared/table). A row's status tints the card with a stripe at its start and is also
 // read out, since color alone doesn't reach screen readers; the text keeps the text color on every tint. With
 // onRowOpen, a tap on a card opens it, shown by the raised fill while pressed, except on its own buttons
-// (thumbnail, actions), which keep their tap.
+// (thumbnail, actions), which keep their tap. A nested row (rowNested) belongs to the row above it, such as a brand
+// of an item: it is indented and never tinted.
 
 type CardArea = 'thumb' | 'main' | 'end' | 'actions';
 type Column<Row> = {
@@ -46,6 +47,8 @@ type DataTableProps<Row> = {
   empty: ReactNode;
   /** Opens a row, e.g. the item details; without it cards aren't pressable. */
   onRowOpen?: (row: Row) => void;
+  /** Whether a row belongs to the row above it, e.g. a brand of an item, indented under it. */
+  rowNested?: (row: Row) => boolean;
 };
 type RowActionProps = {
   icon: IconShape[];
@@ -86,6 +89,7 @@ export function DataTable<Row>({
   unsortedLabel,
   empty,
   onRowOpen,
+  rowNested,
 }: DataTableProps<Row>) {
   const { styles, ids } = useStyles();
   const sortable = columns.filter((column) => column.sortable);
@@ -98,9 +102,10 @@ export function DataTable<Row>({
       </View>
     ));
 
-  /** The styles of a row: its tint by status, stronger while pressed. */
-  const rowStyles = (tone: RowTone | undefined, pressed: boolean) => [
+  /** The styles of a row: indented when nested, its tint by status, stronger while pressed. */
+  const rowStyles = (nested: boolean, tone: RowTone | undefined, pressed: boolean) => [
     styles.row,
+    nested && styles.rowNested,
     !tone && pressed && styles.rowPressed,
     tone === 'warn' && (pressed ? styles.rowWarnPressed : styles.rowWarn),
     tone === 'danger' && (pressed ? styles.rowDangerPressed : styles.rowDanger),
@@ -129,7 +134,8 @@ export function DataTable<Row>({
       ) : (
         <View role="list" accessibilityLabel={label} style={styles.table} testID={ids.table}>
           {rows.map((row) => {
-            const status = rowStatus?.(row);
+            const nested = rowNested?.(row) ?? false;
+            const status = nested ? undefined : rowStatus?.(row);
             const content = (
               <>
                 {status && (
@@ -152,13 +158,13 @@ export function DataTable<Row>({
                 key={rowKey(row)}
                 role="listitem"
                 onPress={() => onRowOpen(row)}
-                style={({ pressed }) => rowStyles(status?.tone, pressed)}
+                style={({ pressed }) => rowStyles(nested, status?.tone, pressed)}
                 testID={ids.row}
               >
                 {content}
               </Pressable>
             ) : (
-              <View key={rowKey(row)} role="listitem" style={rowStyles(status?.tone, false)} testID={ids.row}>
+              <View key={rowKey(row)} role="listitem" style={rowStyles(nested, status?.tone, false)} testID={ids.row}>
                 {content}
               </View>
             );
