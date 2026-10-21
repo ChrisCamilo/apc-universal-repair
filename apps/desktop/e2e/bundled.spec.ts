@@ -117,7 +117,7 @@ test("Desktop: the app runs the server it ships, with its data in userData", asy
   await expect.poll(() => healthOf(server)).toBe("down");
   const apiLog = readFileSync(path.join(userData, "logs", "api.log"), "utf8");
   expect(apiLog.slice(apiLog.lastIndexOf("Starting the server."))).toMatch(/The server stopped \(exit code -?\d+\)\./);
-  expect(readFileSync(path.join(userData, "logs", "app.log"), "utf8")).toContain("The bundled server stopped; quitting.");
+  expect(readFileSync(path.join(userData, "logs", "app.log"), "utf8")).toContain("Storage written and the server stopped; quitting.");
 });
 
 // Closes the window, and checks it is hidden, not closed, with the server still answering; opening the app again
