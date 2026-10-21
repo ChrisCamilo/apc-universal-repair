@@ -1,13 +1,14 @@
-import { codeKey, searchKey, type Item } from "../items/items.ts";
+import { codeKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../items/items.ts";
 import type { TreeNode } from "../tree/tree.ts";
 
 // The vehicle catalog of the Catalog tab, mocked until the real data (EP-10): each brand's models as a tree, model →
 // generation → version → year → engine, and each engine's sheet. Branches whose data is still to come are empty
 // branches (see TreeNode), so every engine in a tree has a sheet. Engine ids are unique across brands, as the sheets
 // are looked up by them. The Catalog search finds brands and models by name, ignoring case and accents, and parts
-// of the inventory by the code of any of their brands, or by one of their original codes; a part leads to its vehicle in the catalog: the same brand,
-// the model by the start of the part's model name ("Opala 4.1" → Opala) and the engine by the displacement ("4.1" →
-// "4.1 L 6 cilindros").
+// of the inventory by the code of any of their brands, or by one of their original codes; a part leads to its vehicle
+// in the catalog (of a part that fits several, the first the catalog has a sheet for): the same brand, the model by
+// the start of the part's model name ("Opala 4.1" → Opala) and the engine by the displacement ("4.1" → "4.1 L 6
+// cilindros").
 
 /** The brands of the catalog, in the order of the rail, each with its model tree. */
 export const CATALOG: readonly CatalogBrand[] = [
@@ -165,8 +166,6 @@ export const ENGINE_SHEETS: Readonly<Record<string, EngineSheet>> = {
 export const PART_CODE_MIN_LENGTH = 3;
 /** Most parts the code search lists at once. */
 export const PART_RESULTS_LIMIT = 5;
-/** Vehicle brand of the parts that fit any vehicle. */
-export const UNIVERSAL_BRAND = "Universal";
 
 /** A brand of the catalog: its id, the name on its tile and its model tree. */
 export type CatalogBrand = { id: string; name: string; models: TreeNode[] };
@@ -181,8 +180,6 @@ export type PartLocation = { brandId: string; modelId?: string; engineId?: strin
 export type FoundPart = { id: string; code: string; item: Item };
 /** The parts a code search lists, and how many more matched past the limit. */
 export type PartResults = { parts: FoundPart[]; more: number };
-/** What a part needs to be placed in the catalog: its vehicle brand and model. */
-type PartVehicle = Pick<Item, "vehicleBrand" | "vehicleModel">;
 
 /**
  * Lists the brands whose name contains a search, ignoring case and accents.
@@ -249,6 +246,17 @@ export function firstSheet(nodes: readonly TreeNode[]): string | undefined {
 }
 
 /**
+ * Says which vehicles a part fits, as the code search lists it: the one it reveals in the catalog (see partFit), and
+ * how many more it fits.
+ * @param item The part's item.
+ * @returns E.g. "Serve no Chevrolet Opala 4.1", or "Serve no Chevrolet Opala 4.1 +2".
+ */
+export function itemFit(item: Pick<Item, "vehicles">): string {
+  const others = item.vehicles.length - 1;
+  return others > 0 ? `${partFit(revealedVehicle(item))} +${others}` : partFit(revealedVehicle(item));
+}
+
+/**
  * Lists the leaves of a tree: the engines under a model.
  * @param node A node of the tree.
  * @returns Its leaves, depth first.
@@ -263,7 +271,7 @@ function leaves(node: TreeNode): TreeNode[] {
  * @param part The part's vehicle brand and model.
  * @returns Its brand, model and engine as far as the catalog has them; null when the brand isn't in the catalog.
  */
-export function locatePart(part: PartVehicle): PartLocation | null {
+export function locatePart(part: ItemVehicle): PartLocation | null {
   const brand = CATALOG.find((b) => searchKey(b.name) === searchKey(part.vehicleBrand));
   if (!brand) {
     return null;
@@ -294,7 +302,7 @@ export function modelsNamed(models: readonly TreeNode[], query: string): TreeNod
  * @param part The part's vehicle brand and model.
  * @returns E.g. "Serve no Chevrolet Opala 4.1" or "Ford Escort (modelo ainda sem ficha no catálogo)".
  */
-export function partFit(part: PartVehicle): string {
+export function partFit(part: ItemVehicle): string {
   if (searchKey(part.vehicleBrand) === searchKey(UNIVERSAL_BRAND)) {
     return "Serve em qualquer veículo";
   }
@@ -311,4 +319,16 @@ export function partFit(part: PartVehicle): string {
     return `${vehicle} (modelo ainda sem ficha no catálogo)`;
   }
   return location.engineId ? `Serve no ${vehicle}` : `${vehicle} (motor ainda sem ficha no catálogo)`;
+}
+
+/**
+ * Picks the vehicle a part shows in the catalog: the first of its vehicles whose engine has a sheet, or else the first
+ * the catalog has, or else its first.
+ * @param item The part's item.
+ * @returns One of its vehicles.
+ */
+export function revealedVehicle(item: Pick<Item, "vehicles">): ItemVehicle {
+  return (
+    item.vehicles.find((vehicle) => locatePart(vehicle)?.engineId) ?? item.vehicles.find((vehicle) => locatePart(vehicle)) ?? item.vehicles[0]
+  );
 }
