@@ -38,6 +38,7 @@ const TABLE_LABELS: Record<string, string> = {
   brand: 'Marcas de veículo',
   vehicleModel: 'Modelos de veículo',
   item: 'Itens',
+  itemOriginalCode: 'Códigos originais dos itens',
   itemBrand: 'Marcas dos itens',
   itemPhoto: 'Fotos dos itens',
 }
