@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "predev": "pnpm run db:generate",
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch src/server.ts --dev",
     "prebuild": "pnpm run db:generate",
     "build": "tsc -p tsconfig.json",
     "start": "node --conditions=apc-dist dist/server.js",

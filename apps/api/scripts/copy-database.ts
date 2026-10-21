@@ -1,12 +1,14 @@
 import "dotenv/config";
 import { parseArgs } from "node:util";
+import { DEV_SERVER_PORT, SERVER_PORT } from "@apc/shared/server";
 import { createPrisma } from "../src/db/client.js";
 import { copyDatabase, copyProblems, serverAnswers } from "../src/db/copy.js";
 import { databaseProvider, sqliteFile } from "../src/db/provider.js";
 
 // `pnpm --filter @apc/api db:copy --from <DATABASE_URL> --to <DATABASE_URL> [--force]`: copies the data from one
 // database to another (see src/db/copy.ts), e.g. from the PostgreSQL in use to a new SQLite file made with db:migrate.
-// It refuses while a server answers on this computer, as it would keep writing to the source, unless --force.
+// It refuses while a server answers on this computer, on PORT or else on the development or the finished server's
+// port, as it would keep writing to the source, unless --force.
 
 const { values } = parseArgs({
   options: { from: { type: "string" }, to: { type: "string" }, force: { type: "boolean", default: false } },
@@ -21,10 +23,12 @@ if (describe(values.from) === describe(values.to) && (databaseProvider(values.fr
   process.exit(1);
 }
 // 127.0.0.1, not localhost, which Node may resolve to ::1 while the API listens on IPv4.
-const server = `http://127.0.0.1:${process.env.PORT ?? 3333}`;
-if (!values.force && (await serverAnswers(server))) {
-  console.error(`A server answers at ${server}: turn it off first (quit the desktop app, or stop pnpm dev), or pass --force.`);
-  process.exit(1);
+const ports = process.env.PORT ? [process.env.PORT] : [DEV_SERVER_PORT, SERVER_PORT];
+for (const server of ports.map((port) => `http://127.0.0.1:${port}`)) {
+  if (!values.force && (await serverAnswers(server))) {
+    console.error(`A server answers at ${server}: turn it off first (quit the desktop app, or stop pnpm dev), or pass --force.`);
+    process.exit(1);
+  }
 }
 
 const source = createPrisma(values.from);
