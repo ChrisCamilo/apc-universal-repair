@@ -7,12 +7,13 @@ import { Image, Text, TextInput, View } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { codeTakenMessage, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE } from '@apc/shared/item-form';
+import { codeTakenMessage, duplicateForm, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE, type ItemForm } from '@apc/shared/item-form';
 import type { Item, ItemBrand, ItemCreate } from '@apc/shared/items';
 import { withEntry, type ItemLists } from '@apc/shared/lists';
-import { PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/shared/photos';
+import { copiedPhotos, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/shared/photos';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
+import type { UploadPhoto } from '../src/ImageUpload';
 import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
 import type { CreateListEntry } from '../src/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -103,8 +104,9 @@ async function leave(tree: ReactTestRenderer.ReactTestRenderer, label: string) {
 /**
  * Renders the form inside the theme and toast providers.
  * @param editing The item to edit; a new item when left out.
- * @param props What else the owner hands the form: onSaved, details, onClose and onCreateEntry, called with each
- * name to create, which is created as asked unless it returns null.
+ * @param props What else the owner hands the form: onSaved, details, onClose, onCreateEntry, called with each
+ * name to create, which is created as asked unless it returns null, the values and photos it opens with, and
+ * onDuplicate.
  * @returns The rendered tree.
  */
 async function mount(
@@ -114,7 +116,18 @@ async function mount(
     details = false,
     onClose = () => {},
     onCreateEntry,
-  }: { onSaved?: (saved: Item) => void; details?: boolean; onClose?: () => void; onCreateEntry?: CreateListEntry } = {},
+    initialForm,
+    initialPhotos,
+    onDuplicate,
+  }: {
+    onSaved?: (saved: Item) => void;
+    details?: boolean;
+    onClose?: () => void;
+    onCreateEntry?: CreateListEntry;
+    initialForm?: ItemForm;
+    initialPhotos?: UploadPhoto[][];
+    onDuplicate?: (item: Item, withPhotos: boolean) => void;
+  } = {},
 ) {
   /** Holds the lists as the inventory does, adding each name created unless onCreateEntry says it failed. */
   function Owner() {
@@ -137,6 +150,9 @@ async function mount(
         onCreateEntry={create}
         onClose={onClose}
         onSaved={onSaved}
+        initialForm={initialForm}
+        initialPhotos={initialPhotos}
+        onDuplicate={onDuplicate}
       />
     );
   }
@@ -517,6 +533,60 @@ test('Mobile: Editar unlocks the details and saves like an edit', async () => {
   const [url, init] = (fetch as jest.Mock).mock.calls[0];
   expect(url).toMatch(new RegExp(`/items/${FILTER.id}$`));
   expect(init.method).toBe('PATCH');
+  expect(onSaved).toHaveBeenCalledTimes(1);
+});
+
+// Opens the details of an item with Duplicar, and checks it asks what to copy, each choice closes the question and
+// hands the item over with whether its photos go too, and Cancelar hands nothing over, leaving the details open.
+test('Mobile: Duplicar asks whether the copy takes the photos', async () => {
+  const onDuplicate = jest.fn();
+  const tree = await mount(FILTER, { details: true, onDuplicate });
+  for (const [choice, withPhotos] of [
+    ['Copiar dados e fotos', true],
+    ['Copiar só os dados', false],
+  ] as const) {
+    await press(tree, 'Duplicar');
+    expect(shows(tree, 'Duplicar item?')).toBe(true);
+    await press(tree, choice);
+    expect(onDuplicate).toHaveBeenLastCalledWith(FILTER, withPhotos);
+    expect(shows(tree, 'Duplicar item?')).toBe(false);
+  }
+  await press(tree, 'Duplicar');
+  await press(tree, 'Cancelar');
+  expect(shows(tree, 'Duplicar item?')).toBe(false);
+  expect(onDuplicate).toHaveBeenCalledTimes(2);
+  expect(shows(tree, 'Detalhes do item')).toBe(true);
+});
+
+// Opens a new item's form as a copy of an item with a photo, and checks it opens filled in without the code and with
+// the quantity at 0, showing the photo, and that saving it with a new code posts the item, then sends the photo as a
+// copy of the item's.
+test("Mobile: a duplicated item opens without codes or stock and saves copies of the item's photos", async () => {
+  const withPhoto = { ...FILTER, brands: [{ ...FILTER.brands[0], photos: [SAVED_PHOTO] }] };
+  const onSaved = jest.fn();
+  const tree = await mount(undefined, {
+    onSaved,
+    initialForm: duplicateForm(withPhoto),
+    initialPhotos: [copiedPhotos(withPhoto.brands[0].photos, 'http://api')],
+  });
+  expect(shows(tree, 'Novo item')).toBe(true);
+  expect([value(tree, 'Nome'), value(tree, 'Código da peça'), value(tree, 'Quantidade')]).toEqual(['Filtro de óleo', '', '0']);
+  expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual(['http://api/photos/aa.jpg']);
+  (fetch as jest.Mock).mockClear();
+  let posted: ItemCreate | undefined;
+  (fetch as jest.Mock)
+    .mockImplementationOnce(async (_url: string, init: RequestInit) => {
+      posted = JSON.parse(String(init.body));
+      return { ok: true, status: 201, json: () => Promise.resolve(savedOf(posted!)) };
+    })
+    .mockImplementationOnce(async () => ({ ok: true, status: 200, json: () => Promise.resolve(savedOf(posted!, [SAVED_PHOTO])) }));
+  await type(tree, 'Código da peça', 'w 712/96');
+  await press(tree, 'Salvar');
+  expect(posted!.brands.map((brand) => [brand.code, brand.quantity])).toEqual([['W 712/96', 0]]);
+  const [, [, photosInit]] = (fetch as jest.Mock).mock.calls;
+  expect(photosInit.body.getParts().map((part: { fieldName: string; string: string }) => [part.fieldName, part.string])).toEqual([
+    ['copy', SAVED_PHOTO.id],
+  ]);
   expect(onSaved).toHaveBeenCalledTimes(1);
 });
 
