@@ -7,8 +7,9 @@ import { sortRows, type Sort } from "../table/table.ts";
 // how text is written (first letter capital, codes uppercase), how a search matches names and part codes,
 // how "Ambos" fits both front and rear (or both sides) in the filters, and how the list sorts by a column. An item is
 // a part made by one brand or more, which replace each other: the item holds what they share (name, category,
-// vehicle, position, side and the minimum stock) and each brand its own part code, color, location, quantity, price
-// and photos. The item's quantity is its brands' sum, against its minimum; a column of the list reads the brands as
+// vehicle, position, side, the minimum stock and the vehicle maker's original codes) and each brand its own part code,
+// color, location, quantity, price and photos. Every code, original or a brand's, finds the item in the search and is
+// used once in the stock. The item's quantity is its brands' sum, against its minimum; a column of the list reads the brands as
 // one value: the first brand's (the cover's), every brand's when they agree, or the lowest price.
 
 /** The columns the inventory list sorts by, as the list query's `sort` names them. */
@@ -88,7 +89,18 @@ const brandsSchema = z
       });
     }
   });
-export const itemCreateSchema = z.object({
+// An item's original codes: each once, as the search compares codes.
+const originalCodesSchema = z.array(requiredText).superRefine((codes, context) => {
+  const seen = new Set<string>();
+  codes.forEach((code, index) => {
+    if (seen.has(codeKey(code))) {
+      context.addIssue({ code: "custom", path: [index], message: "Repeated in the item's original codes." });
+    }
+    seen.add(codeKey(code));
+  });
+});
+// The fields of an item as it is sent, before the check that its original codes aren't its brands' codes too.
+const itemFieldsSchema = z.object({
   name: requiredText,
   category: requiredText,
   vehicleBrand: requiredText,
@@ -96,8 +108,24 @@ export const itemCreateSchema = z.object({
   position: z.enum(POSITIONS).optional(),
   side: z.enum(SIDES).optional(),
   minQuantity: z.int().min(0).max(MAX_QUANTITY).optional(),
+  /** The vehicle maker's original codes (OEM), in order; none when left out. */
+  originalCodes: originalCodesSchema.optional(),
   brands: brandsSchema,
 });
+/**
+ * Refuses an original code that is also a code of one of the item's brands, when both are sent.
+ * @param item The item as sent.
+ * @param context Where the issue goes, on the original code.
+ */
+function checkCodesApart(item: { originalCodes?: string[]; brands?: { code: string }[] }, context: z.RefinementCtx): void {
+  const brandCodes = new Set((item.brands ?? []).map((brand) => codeKey(brand.code)));
+  item.originalCodes?.forEach((code, index) => {
+    if (brandCodes.has(codeKey(code))) {
+      context.addIssue({ code: "custom", path: ["originalCodes", index], message: "Also a code of one of the item's brands." });
+    }
+  });
+}
+export const itemCreateSchema = itemFieldsSchema.superRefine(checkCodesApart);
 export const itemIdParamsSchema = z.object({ id: z.uuid() });
 // A filter given once arrives as a string and given several times as an array; both become a list.
 const manyValues = z
@@ -156,6 +184,8 @@ export const itemSchema = z.object({
   /** The brands' quantities added up. */
   quantity: z.int().min(0),
   minQuantity: z.int().min(0),
+  /** The vehicle maker's original codes (OEM), in order, the same for every brand. */
+  originalCodes: z.array(z.string()),
   /** The brands in the order they were added, the first one the item's cover. */
   brands: z.array(itemBrandSchema).min(1),
   createdAt: z.iso.datetime(),
@@ -163,8 +193,11 @@ export const itemSchema = z.object({
 });
 /** A list of items, newest first: one page of them when a page size was asked, and how many match in all. */
 export const itemListResponseSchema = z.object({ items: z.array(itemSchema), total: z.int().min(0) });
-/** An edit: the fields sent change, and brands, when sent, is the whole new set (see itemBrandCreateSchema). */
-export const itemUpdateSchema = itemCreateSchema.partial();
+/**
+ * An edit: the fields sent change; brands, when sent, is the whole new set (see itemBrandCreateSchema), and so are the
+ * original codes.
+ */
+export const itemUpdateSchema = itemFieldsSchema.partial().superRefine(checkCodesApart);
 /** The "doesn't apply" value of position, side and color, the default when nothing is chosen. */
 export const NOT_APPLICABLE = "N/A";
 
@@ -184,6 +217,16 @@ export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
  */
 export type SortableItem = Pick<Item, "name" | "category" | "vehicleBrand" | "vehicleModel" | "quantity"> &
   Pick<ItemBrand, "code" | "partBrand" | "color" | "location" | "unitPriceCents"> & { position: string; side: string };
+
+/**
+ * Lists every code of an item, as the search and the stock's uniqueness see them: its brands' codes, in their order,
+ * then its original codes.
+ * @param item The item.
+ * @returns E.g. ["N-1210", "PD/1210", "5U0 698 151"].
+ */
+export function allCodes(item: { originalCodes: readonly string[]; brands: readonly Pick<ItemBrand, "code">[] }): string[] {
+  return [...item.brands.map((brand) => brand.code), ...item.originalCodes];
+}
 
 /**
  * Reads a field of an item's brands as one value, for a column of the list: the value every brand has, or "Várias"
@@ -297,16 +340,19 @@ export function itemDetails(
 
 /**
  * Tells whether an item matches a search, the same way the API's `q` does: its name ignoring case and
- * accents, or any of its brands' part codes ignoring spaces and separators.
- * @param item The item's name and its brands' part codes.
+ * accents, or any of its codes, its brands' or its original ones, ignoring spaces and separators.
+ * @param item The item's name, its original codes and its brands' part codes.
  * @param search The search as typed; an empty search matches every item.
  * @returns True when the item matches.
  */
-export function matchesSearch(item: Pick<Item, "name"> & { brands: readonly Pick<ItemBrand, "code">[] }, search: string): boolean {
+export function matchesSearch(
+  item: Pick<Item, "name" | "originalCodes"> & { brands: readonly Pick<ItemBrand, "code">[] },
+  search: string,
+): boolean {
   const byCode = codeKey(search);
   return (
     searchKey(item.name).includes(searchKey(search.trim())) ||
-    (byCode !== "" && item.brands.some((brand) => codeKey(brand.code).includes(byCode)))
+    (byCode !== "" && allCodes(item).some((code) => codeKey(code).includes(byCode)))
   );
 }
 
