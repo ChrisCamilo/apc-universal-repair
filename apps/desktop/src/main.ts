@@ -6,6 +6,7 @@ import { SERVER_PORT, usesBundledServer } from "./bundledServer.js";
 import { readConfig, resolveApiUrl, writeConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./database.js";
 import { windowsIdentity } from "./identity.js";
+import { keepAppLog } from "./logs.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
 import { readHealth } from "./server.js";
@@ -37,7 +38,7 @@ import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 // shows a notice, and installs it on quit, or at once when the page asks. Without internet it keeps working on its
 // version. The server it ships is always on its version; a server on another computer that answers another one on
 // /health gets a warning. Only one copy runs at a time, since two would share the same localStorage, and opening it
-// again shows its window.
+// again shows its window. What the main process and the updater say goes to logs/app.log in userData (see logs.ts).
 
 /** The notifications on screen, kept so they still answer a click once their request is gone. */
 const shown = new Set<Notification>();
@@ -58,6 +59,9 @@ if (process.env.APC_USER_DATA) {
 }
 if (!app.requestSingleInstanceLock()) {
   app.exit(0);
+} else {
+  keepAppLog(app.getPath("userData"));
+  console.log(`APC Universal Repair ${app.getVersion()} started with ${JSON.stringify(process.argv.slice(1))}.`);
 }
 
 /**
@@ -242,6 +246,8 @@ function watchForUpdates(window: BrowserWindow, appUrl: string, hidden: boolean)
   let ready: string | undefined;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  // What it checks, downloads and installs goes to app.log, with the rest of the main process.
+  autoUpdater.logger = console;
   autoUpdater.on("error", (error) => console.warn(`Couldn't update the app: ${error.message}`));
   autoUpdater.on("update-downloaded", ({ version }) => {
     ready = version;
