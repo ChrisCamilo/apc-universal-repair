@@ -7,24 +7,27 @@ import { TEST_SESSION } from "../sessions/testSessions.js";
 import { brandData, createData, itemWhere, toItem, toSortable, updateData } from "./items.js";
 
 // The list entries of an item, as listIds finds them.
-const IDS = { categoryId: "motor", vehicleBrandId: "vw", vehicleModelId: null };
+const IDS = { categoryId: "motor" };
+// An item's one vehicle, as it is sent.
+const VEHICLES = [{ vehicleBrand: "volkswagen", vehicleModel: "  " }];
 const MIN_QUANTITY = { name: "minQuantity" } as unknown as Prisma.FieldRef<"Item", "Int">;
 
-// Creates an item of two brands from typed values and checks the writing rule, the search key, the list entries
-// referenced, the defaults (N/A position and side, zero minimum) and the quantity as the brands' sum; a position and
+// Creates an item of two brands from typed values and checks the writing rule, the search key, the category
+// referenced (its vehicles are rows of their own), the defaults (N/A position and side, zero minimum) and the quantity as the brands' sum; a position and
 // side sent are kept as the database's values.
 test("API: new items follow the writing rule and get their defaults", () => {
   const brands = [
     { code: " w 712/95 ", partBrand: "mann", quantity: 3, unitPriceCents: 3990 },
     { code: "ab-1", partBrand: "tecfil", unitPriceCents: 3290 },
   ];
-  const data = createData({ name: "filtro de óleo", category: "motor", vehicleBrand: "volkswagen", vehicleModel: "  ", brands }, IDS);
+  const data = createData({ name: "filtro de óleo", category: "motor", vehicles: VEHICLES, brands }, IDS);
   assert.equal(data.name, "Filtro de óleo");
   assert.equal(data.nameKey, "filtro de oleo");
-  assert.deepEqual([data.categoryId, data.vehicleBrandId, data.vehicleModelId], ["motor", "vw", null]);
+  assert.equal(data.categoryId, "motor");
+  assert.equal("vehicles" in data, false);
   assert.deepEqual([data.position, data.side], ["NA", "NA"]);
   assert.deepEqual([data.quantity, data.minQuantity], [3, 0]);
-  const placed = createData({ name: "B", category: "C", vehicleBrand: "E", position: "Ambos", side: "LE", brands }, IDS);
+  const placed = createData({ name: "B", category: "C", vehicles: VEHICLES, position: "Ambos", side: "LE", brands }, IDS);
   assert.deepEqual([placed.position, placed.side], ["BOTH", "LEFT"]);
 });
 
@@ -54,11 +57,12 @@ test("API: a brand's row follows the writing rule and gets its defaults", () => 
 });
 
 // Edits a few fields and checks only those change, with the same rules, the search key kept in step and the list
-// entries that changed referenced; the brands sent are left to the routes.
+// entries that changed referenced; the brands and vehicles sent are left to the routes.
 test("API: edits apply the rules only to the fields sent", () => {
   assert.deepEqual(updateData({ name: "junta", minQuantity: 3 }, {}), { name: "Junta", nameKey: "junta", minQuantity: 3 });
   assert.deepEqual(updateData({ position: "T", side: "LD" }, {}), { position: "REAR", side: "RIGHT" });
-  assert.deepEqual(updateData({ vehicleModel: "" }, { vehicleModelId: null }), { vehicleModelId: null });
+  assert.deepEqual(updateData({ category: "motor" }, IDS), IDS);
+  assert.deepEqual(updateData({ vehicles: VEHICLES }, {}), {});
   assert.deepEqual(updateData({ brands: [{ code: "A", partBrand: "B", unitPriceCents: 1 }] }, {}), {});
   assert.deepEqual(updateData({}, {}), {});
 });
@@ -101,25 +105,30 @@ test("API: list filters match the search, any of the values and the status", () 
   });
 });
 
-// Filters by two vehicle models of brands that share a model name, and checks each matches with its own brand,
-// leaving out a value without one.
+// Filters by a vehicle brand and by two vehicle models of brands that share a model name, and checks each matches an
+// item by any of its vehicles, a model with its own brand, leaving out a value without one.
 test("API: a vehicle model filter matches the model with its brand", () => {
-  const query = itemListQuerySchema.parse({ vehicleModel: ["Ford|Gol", "Volkswagen|Gol", "Gol"] });
+  const query = itemListQuerySchema.parse({ vehicleBrand: "Fiat", vehicleModel: ["Ford|Gol", "Volkswagen|Gol", "Gol"] });
   assert.deepEqual(itemWhere(query, MIN_QUANTITY), {
     AND: [
+      { vehicles: { some: { vehicleBrand: { name: { in: ["Fiat"] } } } } },
       {
-        OR: [
-          { vehicleBrand: { name: "Ford" }, vehicleModel: { name: "Gol" } },
-          { vehicleBrand: { name: "Volkswagen" }, vehicleModel: { name: "Gol" } },
-        ],
+        vehicles: {
+          some: {
+            OR: [
+              { vehicleBrand: { name: "Ford" }, vehicleModel: { name: "Gol" } },
+              { vehicleBrand: { name: "Volkswagen" }, vehicleModel: { name: "Gol" } },
+            ],
+          },
+        },
       },
     ],
   });
 });
 
 // Turns a row into the item the API sends: dates as ISO text, no search keys or references, the names of its list
-// entries, the position and side as the API speaks them, its original codes in order, and its brands in order with
-// their photos at their paths, signed for the caller.
+// entries, its vehicles in order, the position and side as the API speaks them, its original codes in order, and its
+// brands in order with their photos at their paths, signed for the caller.
 test("API: items carry their entries' names and their brands' photos", () => {
   const date = new Date("2026-10-03T12:00:00.000Z");
   /** A brand's row, with what the item's include reads. */
@@ -146,8 +155,10 @@ test("API: items carry their entries' names and their brands' photos", () => {
       nameKey: "filtro de oleo",
       ...IDS,
       category: { name: "Motor" },
-      vehicleBrand: { name: "Volkswagen" },
-      vehicleModel: null,
+      vehicles: [
+        { vehicleBrand: { name: "Volkswagen" }, vehicleModel: null },
+        { vehicleBrand: { name: "Fiat" }, vehicleModel: { name: "Uno" } },
+      ],
       position: "FRONT",
       side: "BOTH",
       quantity: 4,
@@ -162,9 +173,13 @@ test("API: items carry their entries' names and their brands' photos", () => {
   assert.equal(item.createdAt, "2026-10-03T12:00:00.000Z");
   assert.equal("nameKey" in item || "categoryId" in item, false);
   assert.deepEqual(
-    [item.category, item.vehicleBrand, item.vehicleModel, item.position, item.side, item.quantity],
-    ["Motor", "Volkswagen", null, "D", "Ambos", 4],
+    [item.category, item.position, item.side, item.quantity],
+    ["Motor", "D", "Ambos", 4],
   );
+  assert.deepEqual(item.vehicles, [
+    { vehicleBrand: "Volkswagen", vehicleModel: null },
+    { vehicleBrand: "Fiat", vehicleModel: "Uno" },
+  ]);
   assert.deepEqual(item.originalCodes, ["030 115 561 AN", "030 115 561 AP"]);
   assert.deepEqual(
     item.brands.map((each) => [each.id, each.partBrand, each.code, "codeKey" in each]),
@@ -178,15 +193,14 @@ test("API: items carry their entries' names and their brands' photos", () => {
   ]);
 });
 
-// Turns a row of two brands read for sorting into what sortItems looks at: names, the position and side as the API
-// speaks them, the first brand's code, part brand, color and location, and the lowest price.
+// Turns a row of two brands read for sorting into what sortItems looks at: names, its first vehicle, the position and
+// side as the API speaks them, the first brand's code, part brand, color and location, and the lowest price.
 test("API: rows read for sorting carry names, the API's values and their first brand", () => {
   const sortable = toSortable({
     id: "i1",
     name: "Junta",
     category: { name: "Motor" },
-    vehicleBrand: { name: "Volkswagen" },
-    vehicleModel: { name: "Gol" },
+    vehicles: [{ vehicleBrand: { name: "Volkswagen" }, vehicleModel: { name: "Gol" } }],
     position: "REAR",
     side: "LEFT",
     quantity: 3,
@@ -195,7 +209,10 @@ test("API: rows read for sorting carry names, the API's values and their first b
       { code: "B-1", partBrand: { name: "Victor Reinz" }, color: "N/A", location: null, unitPriceCents: 500 },
     ],
   });
-  assert.deepEqual([sortable.category, sortable.vehicleModel, sortable.position, sortable.side], ["Motor", "Gol", "T", "LE"]);
+  assert.deepEqual(
+    [sortable.category, sortable.vehicleBrand, sortable.vehicleModel, sortable.position, sortable.side],
+    ["Motor", "Volkswagen", "Gol", "T", "LE"],
+  );
   assert.deepEqual(
     [sortable.code, sortable.partBrand, sortable.color, sortable.location, sortable.unitPriceCents, sortable.quantity],
     ["A-1", "Mann", "Preto", "B-1", 500, 3],

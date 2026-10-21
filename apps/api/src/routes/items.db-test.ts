@@ -83,8 +83,7 @@ function item(brands: object[], fields: object = {}) {
   return {
     name: `Pastilha de freio ${RUN}`,
     category: `Freios ${RUN}`,
-    vehicleBrand: `Gurgel ${RUN}`,
-    vehicleModel: `Xavante ${RUN}`,
+    vehicles: [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `Xavante ${RUN}` }],
     position: "D",
     side: "Ambos",
     minQuantity: 2,
@@ -159,15 +158,15 @@ test("API: items are filtered by stock and any brand, and sorted by their lowest
   assert.deepEqual(dearFirst.items.map((found: Item) => found.brands[0].code), [`BP-1-${RUN}`, `BP-2-${RUN}`]);
 });
 
-// Edits an item's vehicle model, adding a model to the list, gives its second brand a photo, then sends its brands
+// Edits an item's vehicle, adding a model to the list, gives its second brand a photo, then sends its brands
 // with the first changed, the second left out and a new one, and checks the answer carries every change, the
 // quantity follows, the left-out brand's photo is gone with its row and its files, and a brand of another item can't
 // be sent as this one's.
 test("API: an item is edited with its brands, and a brand left out goes with its photos", async () => {
   const found = await find("bp1");
-  const edited = await call("PATCH", `/items/${found.id}`, { vehicleModel: `Tocantins ${RUN}` });
+  const edited = await call("PATCH", `/items/${found.id}`, { vehicles: [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `Tocantins ${RUN}` }] });
   assert.equal(edited.statusCode, 200);
-  assert.equal(edited.json().vehicleModel, `Tocantins ${RUN}`);
+  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `Tocantins ${RUN}` }]);
 
   const [first, second] = found.brands;
   const photos = await sendPhoto(found.id, second.id);
@@ -275,6 +274,39 @@ test("API: an import finds the item of an original code and adds the codes it la
   );
   const crossed = await call("POST", "/items/import", { items: [item([brand("IMO-2", "Bosch")], { name: `Bieleta ${RUN}` })] });
   assert.equal(crossed.statusCode, 409);
+});
+
+// Creates an item that fits three vehicles, one of any model of its brand, and checks they come back in order and the
+// filters by a vehicle brand and by a vehicle model find it by any of them; that a vehicle twice, written otherwise,
+// and Universal among others are refused with 400; and that an edit replaces the list.
+test("API: an item fits several vehicles and is found by each one", async () => {
+  const vehicles = [
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `X12 ${RUN}` },
+    { vehicleBrand: `Puma ${RUN}`, vehicleModel: `GTE ${RUN}` },
+    { vehicleBrand: `Miura ${RUN}` },
+  ];
+  const created = await call("POST", "/items", item([brand("VE-1", "Cofap")], { name: `Lanterna ${RUN}`, vehicles }));
+  assert.equal(created.statusCode, 201);
+  assert.deepEqual(created.json().vehicles, [
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `X12 ${RUN}` },
+    { vehicleBrand: `Puma ${RUN}`, vehicleModel: `GTE ${RUN}` },
+    { vehicleBrand: `Miura ${RUN}`, vehicleModel: null },
+  ]);
+  /** The names of this run's items a list query finds. */
+  const names = async (query: string) =>
+    ((await call("GET", `/items?q=${RUN}&${query}`)).json().items as Item[]).map((each) => each.name);
+  assert.deepEqual(await names(`vehicleBrand=${encodeURIComponent(`Miura ${RUN}`)}`), [`Lanterna ${RUN}`]);
+  assert.deepEqual(await names(`vehicleModel=${encodeURIComponent(`Puma ${RUN}|GTE ${RUN}`)}`), [`Lanterna ${RUN}`]);
+  assert.deepEqual(await names(`vehicleModel=${encodeURIComponent(`Gurgel ${RUN}|GTE ${RUN}`)}`), []);
+
+  const twice = item([brand("VE-2", "Cofap")], { vehicles: [vehicles[0], { vehicleBrand: ` gurgel ${RUN}`, vehicleModel: `x12 ${RUN}` }] });
+  assert.equal((await call("POST", "/items", twice)).statusCode, 400);
+  const universal = item([brand("VE-3", "Cofap")], { vehicles: [{ vehicleBrand: "Universal" }, vehicles[2]] });
+  assert.equal((await call("POST", "/items", universal)).statusCode, 400);
+
+  const edited = await call("PATCH", `/items/${created.json().id}`, { vehicles: [vehicles[2]] });
+  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Miura ${RUN}`, vehicleModel: null }]);
+  assert.equal(await prisma.itemVehicle.count({ where: { itemId: created.json().id } }), 1);
 });
 
 // Deletes an item whose brand has a photo, and checks the item, its brands and its photos are gone.

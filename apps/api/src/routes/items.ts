@@ -26,6 +26,7 @@ import {
   toItem,
   toSortable,
   updateData,
+  vehiclesData,
   type ListIds,
 } from "../items/items.js";
 import { listIds } from "../items/listIds.js";
@@ -38,7 +39,7 @@ import { removePhotoFiles } from "../photos/photos.js";
 // don't hold yet (see listIds), in the same transaction. A code, a brand's or an item's original one, is unique across
 // the stock as the search compares it (see codeKey), so "CB4500" is "CB-4500": a code another item uses is rejected
 // with 409, naming that item and the code, so the form can say which, and one used twice in the item with 400. An
-// edit that sends original codes sends the whole new list. An edit that sends brands sends the whole new set: a brand
+// edit that sends original codes, or vehicles, sends the whole new list. An edit that sends brands sends the whole new set: a brand
 // with its id is kept and changed, one without is added, and one left out is deleted with its photos' files; an item
 // keeps at least one. The item's quantity is its brands' sum. Deleting an item also deletes its photos' files. POST
 // /items/import saves the items of a CSV file at once (see importItems).
@@ -162,6 +163,7 @@ export function registerItemRoutes(app: FastifyInstance) {
         return tx.item.create({
           data: {
             ...createData(request.body, ids),
+            vehicles: { create: await vehiclesData(tx, request.body.vehicles) },
             originalCodes: { create: originalCodesData(request.body.originalCodes ?? []) },
             brands: { create: brands },
           },
@@ -195,8 +197,6 @@ export function registerItemRoutes(app: FastifyInstance) {
       const held = await prisma.item.findUnique({
         where: { id },
         select: {
-          vehicleBrandId: true,
-          vehicleModel: { select: { name: true } },
           originalCodes: { select: { code: true } },
           brands: { select: { id: true, code: true, photos: true } },
         },
@@ -204,7 +204,7 @@ export function registerItemRoutes(app: FastifyInstance) {
       if (!held) {
         return notFound(reply);
       }
-      const { brands, originalCodes } = request.body;
+      const { brands, originalCodes, vehicles } = request.body;
       const heldIds = held.brands.map((brand) => brand.id);
       if (brands?.some((brand) => brand.id && !heldIds.includes(brand.id))) {
         return foreignBrand(reply);
@@ -221,9 +221,13 @@ export function registerItemRoutes(app: FastifyInstance) {
       if (taken) {
         return codeTaken(reply, taken);
       }
-      const current = { vehicleBrandId: held.vehicleBrandId, vehicleModel: held.vehicleModel?.name ?? null };
       const row = await prisma.$transaction(async (tx) => {
-        await tx.item.update({ where: { id }, data: updateData(request.body, await listIds(tx, request.body, current)) });
+        await tx.item.update({ where: { id }, data: updateData(request.body, await listIds(tx, request.body)) });
+        if (vehicles) {
+          const data = await vehiclesData(tx, vehicles);
+          await tx.itemVehicle.deleteMany({ where: { itemId: id } });
+          await tx.itemVehicle.createMany({ data: data.map((each) => ({ ...each, itemId: id })) });
+        }
         if (originalCodes) {
           await tx.itemOriginalCode.deleteMany({ where: { itemId: id } });
           await tx.itemOriginalCode.createMany({ data: originalCodesData(originalCodes).map((data) => ({ ...data, itemId: id })) });

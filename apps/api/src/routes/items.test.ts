@@ -16,7 +16,7 @@ after(() => app.close());
  * @returns The body to send.
  */
 function newItem(brand: object = {}) {
-  return { name: "Filtro", category: "Motor", vehicleBrand: "VW", brands: [{ code: "W 712/95", partBrand: "Mann", unitPriceCents: 100, ...brand }] };
+  return { name: "Filtro", category: "Motor", vehicles: [{ vehicleBrand: "VW" }], brands: [{ code: "W 712/95", partBrand: "Mann", unitPriceCents: 100, ...brand }] };
 }
 
 // Sends a new item whose brand has no price and a zero price, and one with no brand, and checks each is rejected with
