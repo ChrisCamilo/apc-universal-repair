@@ -17,7 +17,8 @@ import { photoOf } from "../photos/photos.js";
 import type { ActiveSession } from "../sessions/sessions.js";
 
 // Translates between the items API and the database: the writing rule and search keys applied on create and
-// update, the filters of the list, and the row sent back with its brands and their photos. The API speaks names and
+// update, the filters of the list, and the row sent back with its original codes and its brands and their photos.
+// The search finds an item by its name or any of its codes, its brands' or its original ones. The API speaks names and
 // the inventory's own position and side values ("D", "LE"); the database keeps references to the lists' entries (see
 // listIds) and enums, so the item comes back with the names its entries have. An item's brands keep the order they
 // were sent in, by their position; the item's quantity is their sum (see syncQuantity), so the list filters by stock
@@ -30,6 +31,7 @@ export const ITEM_INCLUDE = {
   category: { select: { name: true } },
   vehicleBrand: { select: { name: true } },
   vehicleModel: { select: { name: true } },
+  originalCodes: { orderBy: { position: "asc" }, select: { code: true } },
   brands: { orderBy: BRAND_ORDER, include: { partBrand: { select: { name: true } }, photos: { orderBy: { position: "asc" } } } },
 } satisfies Prisma.ItemInclude;
 /** The database's position for each position the API speaks. */
@@ -100,7 +102,8 @@ export function createData(input: ItemCreate, ids: ListIds): Prisma.ItemUnchecke
 }
 
 /**
- * Builds the list filter: the search matches the name or any brand's part code, every other filter matches any of
+ * Builds the list filter: the search matches the name, any brand's part code or any original code, every other
+ * filter matches any of
  * its values (with "Ambos" fitting a specific position or side, a vehicle model matching with its brand, and a part
  * brand, color or location matching an item when any of its brands has it), and the status compares the brands'
  * quantity with the item's own minimum.
@@ -113,7 +116,12 @@ export function itemWhere(query: ItemListQuery, minQuantity: Prisma.FieldRef<"It
   if (query.q) {
     const byCode = codeKey(query.q);
     and.push({
-      OR: [{ nameKey: { contains: searchKey(query.q) } }, ...(byCode ? [{ brands: { some: { codeKey: { contains: byCode } } } }] : [])],
+      OR: [
+        { nameKey: { contains: searchKey(query.q) } },
+        ...(byCode
+          ? [{ brands: { some: { codeKey: { contains: byCode } } } }, { originalCodes: { some: { codeKey: { contains: byCode } } } }]
+          : []),
+      ],
     });
   }
   for (const [entry, names] of [
@@ -165,6 +173,18 @@ function labelOf<Label extends string, Value extends string>(values: Record<Labe
 }
 
 /**
+ * Builds the rows of an item's original codes: each uppercase with its search key, at its place in the list.
+ * @param codes The codes as sent.
+ * @returns Data for prisma.itemOriginalCode.create, without the item.
+ */
+export function originalCodesData(codes: readonly string[]) {
+  return codes.map((typed, position) => {
+    const code = typed.trim().toUpperCase();
+    return { code, codeKey: codeKey(code), position };
+  });
+}
+
+/**
  * Adds up an item's brands' quantities into the item's, after its brands changed, in the same transaction.
  * @param tx Database client, in the transaction that changed the brands.
  * @param itemId The item.
@@ -185,7 +205,8 @@ function textOrNull(value: string | undefined): string | null {
 
 /**
  * Turns a database row into the item the API sends, without the search keys, with its list entries' names, its
- * position and side as the API speaks them, and its brands with their photos in order, at paths signed for the caller.
+ * position and side as the API speaks them, its original codes in order, and its brands with their photos in order, at
+ * paths signed for the caller.
  * @param row Item row, read with ITEM_INCLUDE.
  * @param session The caller's session.
  * @returns The item as described by itemSchema.
@@ -201,6 +222,7 @@ export function toItem(row: ItemRow, session: ActiveSession): Item {
     side: labelOf(SIDE_VALUES, row.side),
     quantity: row.quantity,
     minQuantity: row.minQuantity,
+    originalCodes: row.originalCodes.map((original) => original.code),
     brands: row.brands.map((brand) => ({
       id: brand.id,
       partBrand: brand.partBrand.name,

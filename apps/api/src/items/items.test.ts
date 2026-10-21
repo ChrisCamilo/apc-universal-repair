@@ -63,10 +63,10 @@ test("API: edits apply the rules only to the fields sent", () => {
   assert.deepEqual(updateData({}, {}), {});
 });
 
-// Builds the list filter for a search, several filters and a status, and checks the search covers the name and any
-// brand's code, each filter matches any of its values (a list's by its entries' names, a part brand, color or location
-// through any brand), Ambos joins a specific position, an unknown side matches nothing, and low stock compares the
-// quantity with the item's own minimum.
+// Builds the list filter for a search, several filters and a status, and checks the search covers the name, any
+// brand's code and any original code, each filter matches any of its values (a list's by its entries' names, a part
+// brand, color or location through any brand), Ambos joins a specific position, an unknown side matches nothing, and
+// low stock compares the quantity with the item's own minimum.
 test("API: list filters match the search, any of the values and the status", () => {
   const query = itemListQuerySchema.parse({
     q: "W712",
@@ -79,7 +79,13 @@ test("API: list filters match the search, any of the values and the status", () 
   });
   assert.deepEqual(itemWhere(query, MIN_QUANTITY), {
     AND: [
-      { OR: [{ nameKey: { contains: "w712" } }, { brands: { some: { codeKey: { contains: "W712" } } } }] },
+      {
+        OR: [
+          { nameKey: { contains: "w712" } },
+          { brands: { some: { codeKey: { contains: "W712" } } } },
+          { originalCodes: { some: { codeKey: { contains: "W712" } } } },
+        ],
+      },
       { category: { name: { in: ["Freios", "Motor"] } } },
       { brands: { some: { partBrand: { name: { in: ["Mann"] } } } } },
       { position: { in: ["FRONT", "BOTH"] } },
@@ -112,8 +118,8 @@ test("API: a vehicle model filter matches the model with its brand", () => {
 });
 
 // Turns a row into the item the API sends: dates as ISO text, no search keys or references, the names of its list
-// entries, the position and side as the API speaks them, and its brands in order with their photos at their paths,
-// signed for the caller.
+// entries, the position and side as the API speaks them, its original codes in order, and its brands in order with
+// their photos at their paths, signed for the caller.
 test("API: items carry their entries' names and their brands' photos", () => {
   const date = new Date("2026-10-03T12:00:00.000Z");
   /** A brand's row, with what the item's include reads. */
@@ -146,6 +152,7 @@ test("API: items carry their entries' names and their brands' photos", () => {
       side: "BOTH",
       quantity: 4,
       minQuantity: 2,
+      originalCodes: [{ code: "030 115 561 AN" }, { code: "030 115 561 AP" }],
       brands: [brand("b1", "W712", "Mann", [{ id: "p1", file: "p1.jpg", thumbFile: "p1-thumb.webp" }]), brand("b2", "C2433", "Tecfil", [])],
       createdAt: date,
       updatedAt: date,
@@ -158,6 +165,7 @@ test("API: items carry their entries' names and their brands' photos", () => {
     [item.category, item.vehicleBrand, item.vehicleModel, item.position, item.side, item.quantity],
     ["Motor", "Volkswagen", null, "D", "Ambos", 4],
   );
+  assert.deepEqual(item.originalCodes, ["030 115 561 AN", "030 115 561 AP"]);
   assert.deepEqual(
     item.brands.map((each) => [each.id, each.partBrand, each.code, "codeKey" in each]),
     [
