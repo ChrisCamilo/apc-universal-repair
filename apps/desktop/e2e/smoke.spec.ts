@@ -105,7 +105,7 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
 });
 
 // With the preload, the page still has no Node: no require and no process. The bridge gives it only its calls, for
-// the notifications, the update and the server's settings. Run unpackaged, the app doesn't check for updates, so the
+// the notifications, the update, the server's settings and its failure. Run unpackaged, the app doesn't check for updates, so the
 // update notice's live region is there and empty.
 test("Desktop: the page gets only the bridge's calls, with no Node access", async () => {
   const app = await launch(mkdtempSync(path.join(tmpdir(), "apc-desktop-")));
@@ -126,11 +126,14 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", asyn
         "checkImport",
         "chooseFolder",
         "chooseSqliteFile",
+        "failure",
         "importServer",
         "migrateImport",
+        "onFailure",
         "onOpen",
         "recoveryKey",
         "recoveryKeySaved",
+        "retry",
         "settings",
         "usePostgresql",
         "useSqlite",

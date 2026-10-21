@@ -98,7 +98,8 @@ async function signUp(page: Page): Promise<void> {
 }
 
 // Opens the app with no server named, and checks it starts its own: the login shows, a sign-up goes on to the empty
-// Inventory, and the database, the photos' folder and the server's log are in userData. Closing the app stops it.
+// Inventory, and the database, the photos' folder and the server's log are in userData. Closing the app waits for the
+// server to stop, which its log and the app's log record.
 test("Desktop: the app runs the server it ships, with its data in userData", async () => {
   const { app, userData, server } = await launch();
   const page = await app.firstWindow();
@@ -114,6 +115,9 @@ test("Desktop: the app runs the server it ships, with its data in userData", asy
 
   await app.close();
   await expect.poll(() => healthOf(server)).toBe("down");
+  const apiLog = readFileSync(path.join(userData, "logs", "api.log"), "utf8");
+  expect(apiLog.slice(apiLog.lastIndexOf("Starting the server."))).toMatch(/The server stopped \(exit code -?\d+\)\./);
+  expect(readFileSync(path.join(userData, "logs", "app.log"), "utf8")).toContain("The bundled server stopped; quitting.");
 });
 
 // Closes the window, and checks it is hidden, not closed, with the server still answering; opening the app again
@@ -247,6 +251,21 @@ test("Desktop: the database is copied before the server applies new migrations",
   expect(readdirSync(path.join(userData, "data", "backups"))).toEqual([expect.stringMatching(new RegExp(`^apc-before-${version.replaceAll(".", "\\.")}-.+\\.db$`))]);
   await keepRecoveryKey(page);
   await signUp(page);
+  await app.close();
+});
+
+// Starts the app on a data\apc.db that isn't a database, which the server can't open, and checks that once the server
+// gave up starting, the window says it didn't start, with the last error of its log and where that log is, instead of
+// the login, and the app's log says so too.
+test("Desktop: a server that can't start is said so, with why", async () => {
+  test.setTimeout(120_000);
+  const { app, userData } = await launch({ files: { [path.join("data", "apc.db")]: "isto não é um banco" } });
+  const page = await app.firstWindow();
+  const failure = page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
+  await expect(failure).toBeVisible({ timeout: 90_000 });
+  await expect(failure).toContainText("O servidor parou ao ligar, várias vezes seguidas. Último erro: The SQLite file");
+  await expect(failure).toContainText(path.join(userData, "logs", "api.log"));
+  expect(readFileSync(path.join(userData, "logs", "app.log"), "utf8")).toContain("The bundled server isn't on");
   await app.close();
 });
 
