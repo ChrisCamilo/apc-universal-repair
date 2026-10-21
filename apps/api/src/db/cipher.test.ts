@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 import Database from "better-sqlite3";
-import { ensureEncrypted, keyScript, readKey, setSqliteKey } from "./cipher.js";
+import { WRONG_KEY_EXIT_CODE } from "@apc/shared/server";
+import { ensureEncrypted, keyOpens, keyScript, readKey, setSqliteKey } from "./cipher.js";
 import { createPrisma } from "./client.js";
 import { migrate, migrationNames } from "./migrate.js";
 import { API_DIR } from "./provider.js";
@@ -107,8 +108,8 @@ test("API: a plain file is encrypted in place on start, keeping every row", asyn
   assert.equal(ensureEncrypted(url), "unchanged");
 });
 
-// Starts the server on a file encrypted with one key, giving it another, and checks it stops at once saying the key
-// doesn't open the file, without listening.
+// Starts the server on a file encrypted with one key, giving it another, and checks it stops at once with the wrong
+// key's exit code, saying the key doesn't open the file, without listening.
 test("API: a key that doesn't open the file stops the server with its message", async () => {
   const url = fileUrl("wrong-key");
   setSqliteKey(url, KEY);
@@ -120,8 +121,20 @@ test("API: a key that doesn't open the file stops the server with its message", 
     encoding: "utf8",
     timeout: 60_000,
   });
-  assert.equal(run.status, 1, run.stdout + run.stderr);
+  assert.equal(run.status, WRONG_KEY_EXIT_CODE, run.stdout + run.stderr);
   assert.match(run.stdout + run.stderr, /doesn't open with its key/);
+});
+
+// Checks a file opens with the key a task gives for it, not with another one, and that a file that isn't there opens
+// with none.
+test("API: a key is told whether it opens a file", async () => {
+  const url = fileUrl("key-opens");
+  assert.equal(keyOpens(url), false);
+  setSqliteKey(url, KEY);
+  await migrate(url);
+  assert.equal(keyOpens(url), true);
+  setSqliteKey(url, OTHER_KEY);
+  assert.equal(keyOpens(url), false);
 });
 
 // Reads keys typed back from a recovery copy, grouped, in uppercase or with spaces, and refuses what isn't one.

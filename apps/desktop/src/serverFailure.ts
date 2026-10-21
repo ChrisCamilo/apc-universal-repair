@@ -1,12 +1,16 @@
 import type { PortOwner } from "./ports.ts";
 
 // Why the server the app runs isn't on, in words the window shows (see serverSettings.ts) instead of a login that only
-// fails: the SQLite key that doesn't open with this Windows user, its port held by another program, named when the
+// fails: the SQLite key that doesn't open with this Windows user, that isn't on this computer any more or that doesn't
+// open the file, each of which the recovery copy typed back mends, its port held by another program, named when the
 // system says which (see ports.ts), a server that kept stopping as it started, or one that didn't answer in time; for
 // the last two, the last error the server wrote to logs/api.log, which also gives where to look.
 
-/** What kept the server off: its key, its port held by another program, its repeated stops, or no answer in time. */
-export type FailureKind = "key" | "portInUse" | "stopped" | "timeout";
+/**
+ * What kept the server off: its key that this Windows user can't open, that is missing or that is wrong, its port held
+ * by another program, its repeated stops, or no answer in time.
+ */
+export type FailureKind = "key" | "keyMissing" | "keyWrong" | "portInUse" | "stopped" | "timeout";
 /** What the window shows when the server isn't on: what kept it off, why in words, and the log to look at. */
 export type ServerFailure = { kind: FailureKind; reason: string; log: string };
 
@@ -29,12 +33,15 @@ export function serverFailure(
     const reason = `A porta ${taken?.port} já está em uso ${holder}. Feche esse programa e tente de novo, ou use outra porta.`;
     return { kind, reason, log };
   }
+  const recovery = "Digite a chave de recuperação que o app mostrou na primeira vez para abrir os dados.";
   const reasons: Record<Exclude<FailureKind, "portInUse">, string> = {
-    key: "A chave do banco SQLite guardada neste computador não abre com este usuário do Windows.",
+    key: `A chave do banco SQLite guardada neste computador não abre com este usuário do Windows. ${recovery}`,
+    keyMissing: `A chave do banco SQLite não está mais neste computador. ${recovery}`,
+    keyWrong: `A chave do banco SQLite guardada neste computador não abre o arquivo dele. ${recovery}`,
     stopped: "O servidor parou ao ligar, várias vezes seguidas.",
     timeout: "O servidor não respondeu a tempo.",
   };
-  const error = kind === "key" ? undefined : lastServerError(logText);
+  const error = kind === "stopped" || kind === "timeout" ? lastServerError(logText) : undefined;
   return { kind, reason: error ? `${reasons[kind]} Último erro: ${error}` : reasons[kind], log };
 }
 

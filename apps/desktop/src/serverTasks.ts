@@ -11,6 +11,7 @@ export type ServerTask = (
   | { task: "check"; url: string }
   | { task: "import"; setup: { from: string; to: string; photosFrom?: string; photosTo: string } }
   | { task: "importProblem"; from: string; to: string }
+  | { task: "keyOpens"; url: string }
   | { task: "migrate"; url: string }
 ) & { keys?: Record<string, string> };
 /** What server/tasks.mjs answers. */

@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { DEFAULT_API_URL, parseConfig, resolveApiUrl, writeConfig } from "./config.ts";
+import { DEFAULT_API_URL, parseConfig, readConfig, resolveApiUrl, updateConfig, writeConfig } from "./config.ts";
 
 // Resolves the API address with each source set, and checks APC_API_URL wins over config.json, which wins over the
 // default, and that a trailing slash is dropped so paths join on it.
@@ -26,6 +26,28 @@ test("Desktop: config.json is read only when it holds a JSON object", () => {
   assert.deepEqual(parseConfig(undefined), {});
   assert.deepEqual(parseConfig("{ apiUrl: "), {});
   assert.deepEqual(parseConfig("null"), {});
+});
+
+// Changes a setting after another one was written since the app read the file, as the SQLite key is on a first start,
+// and checks the later setting is kept, and a setting changed to undefined is taken out.
+test("Desktop: a change to config.json keeps what was written since the app read it", () => {
+  const folder = mkdtempSync(path.join(tmpdir(), "apc-config-"));
+  try {
+    writeConfig(folder, { database: "sqlite" });
+    const readAtStart = readConfig(folder);
+    updateConfig(folder, { sqliteKey: "c2VsYWRh", sqliteKeySaved: false });
+    assert.deepEqual(updateConfig(folder, { trayNoticeShown: true }), {
+      ...readAtStart,
+      sqliteKey: "c2VsYWRh",
+      sqliteKeySaved: false,
+      trayNoticeShown: true,
+    });
+    updateConfig(folder, { database: "sqlite", databaseUrl: "c2VsYWRh" });
+    assert.equal(updateConfig(folder, { databaseUrl: undefined }).databaseUrl, undefined);
+    assert.equal("databaseUrl" in readConfig(folder), false);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 });
 
 // Reads a config.json saved with a BOM, as Windows PowerShell 5.1's Set-Content -Encoding utf8 saves it, and checks its

@@ -140,6 +140,12 @@ contextBridge.exposeInMainWorld("apcDesktop", {
      */
     usePostgresql: (url: string) => ipcRenderer.invoke("apc:server-use-postgresql", url),
     /**
+     * Brings back the SQLite file's key from its recovery copy, checked to open the file first, and starts the server.
+     * @param text The recovery copy, as typed.
+     * @returns Done, or why not.
+     */
+    useRecoveryKey: (text: string) => ipcRenderer.invoke("apc:server-use-recovery-key", text),
+    /**
      * Moves the server back to its SQLite file.
      * @returns Done, or why not.
      */

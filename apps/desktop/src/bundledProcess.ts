@@ -1,14 +1,14 @@
 import { appendFileSync } from "node:fs";
 import path from "node:path";
 import { utilityProcess } from "electron";
-import { PORT_IN_USE_EXIT_CODE, serverEnvironment, type ServerSetup } from "./bundledServer.js";
+import { PORT_IN_USE_EXIT_CODE, serverEnvironment, WRONG_KEY_EXIT_CODE, type ServerSetup } from "./bundledServer.js";
 import { openLog } from "./logs.js";
 import { superviseServer } from "./supervisor.js";
 
 // Runs the bundled server (see bundledServer.ts) in an Electron utility process: a Node process of its own, so a busy
 // request never freezes the window, and one that needs no Node fuse turned on. Its output goes to logs/api.log in
 // userData (see logs.ts). When it stops by itself it starts again after a few seconds, a few times at most, and then
-// the app is told it stays off, at once when its port is taken (see supervisor.ts); it stops with the app, or when the app moves it to another
+// the app is told it stays off, at once when its port is taken or its key doesn't open its file (see supervisor.ts); it stops with the app, or when the app moves it to another
 // database, the stop waiting for it to exit, and once it has stopped the app can start it again. The database tasks
 // (see serverTasks.ts) run beside it the same way, one process each.
 
@@ -41,7 +41,7 @@ export function startBundledServer(setup: ServerSetup, onGiveUp: (code: number) 
     log: write,
     restartDelayMs: RESTART_DELAY_MS,
     restartLimit: RESTART_LIMIT,
-    stopsForGood: (code) => code === PORT_IN_USE_EXIT_CODE,
+    stopsForGood: (code) => code === PORT_IN_USE_EXIT_CODE || code === WRONG_KEY_EXIT_CODE,
     onGiveUp,
   });
 }

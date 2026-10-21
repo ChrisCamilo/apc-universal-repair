@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
+import { mkdirSync } from "node:fs";
 import { readConfig, writeConfig } from "./config.ts";
 import {
   adoptInstallerChoice,
@@ -19,6 +20,7 @@ import {
   readRecoveryKey,
   recoveryKeyPending,
   seal,
+  sqliteFileState,
   type Sealer,
 } from "./database.ts";
 
@@ -52,21 +54,25 @@ function userData(choice?: string): string {
 // keeping the address, and removes the installer's file.
 test("Desktop: the installer's choice moves into config.json", () => {
   const folder = userData("postgresql\r\n");
-  const config = adoptInstallerChoice(folder, { apiUrl: "http://localhost:3333" });
+  writeConfig(folder, { apiUrl: "http://localhost:3333" });
+  const config = adoptInstallerChoice(folder);
   assert.deepEqual(config, { apiUrl: "http://localhost:3333", database: "postgresql" });
   assert.deepEqual(JSON.parse(readFileSync(path.join(folder, "config.json"), "utf8")), config);
   assert.equal(existsSync(path.join(folder, INSTALLER_CHOICE_FILE)), false);
 });
 
 // Leaves a choice when config.json holds one already, one that isn't a choice, and none, and checks config.json keeps
-// what it had in each case, writing nothing.
+// what it had in each case.
 test("Desktop: a choice already made, or one that isn't a choice, is kept as it is", () => {
   const made = userData("sqlite");
-  assert.deepEqual(adoptInstallerChoice(made, { database: "postgresql" }), { database: "postgresql" });
-  assert.equal(existsSync(path.join(made, "config.json")), false);
+  writeConfig(made, { database: "postgresql" });
+  assert.deepEqual(adoptInstallerChoice(made), { database: "postgresql" });
+  assert.deepEqual(readConfig(made), { database: "postgresql" });
   assert.equal(existsSync(path.join(made, INSTALLER_CHOICE_FILE)), false);
-  assert.deepEqual(adoptInstallerChoice(userData("mysql"), {}), {});
-  assert.deepEqual(adoptInstallerChoice(userData(), { apiUrl: "http://localhost:3333" }), { apiUrl: "http://localhost:3333" });
+  assert.deepEqual(adoptInstallerChoice(userData("mysql")), {});
+  const none = userData();
+  writeConfig(none, { apiUrl: "http://localhost:3333" });
+  assert.deepEqual(adoptInstallerChoice(none), { apiUrl: "http://localhost:3333" });
 });
 
 // Seals PostgreSQL's address into config.json, and checks the file holds neither the address nor its password, and the
@@ -123,17 +129,29 @@ test("Desktop: an import says why it can't start, and finds the clone's photos",
   );
 });
 
+/**
+ * Leaves a SQLite file in a userData folder's data folder.
+ * @param folder The userData folder.
+ * @param content What the file starts with.
+ */
+function sqliteFile(folder: string, content: string | Buffer) {
+  mkdirSync(path.join(folder, "data"), { recursive: true });
+  writeFileSync(path.join(folder, "data", "apc.db"), content);
+}
+
 // Makes the SQLite key on a first start, and checks it is 64 hex digits, sealed in config.json and not in plain text,
 // with its recovery copy still to be kept; the next start gets the same key, and keeps the other settings.
 test("Desktop: the SQLite key is made once and kept sealed in config.json", () => {
   const folder = userData();
-  const key = ensureSqliteKey(folder, { database: "sqlite" }, SEALER)!;
-  assert.match(key, /^[0-9a-f]{64}$/);
+  writeConfig(folder, { database: "sqlite" });
+  const made = ensureSqliteKey(folder, SEALER);
+  assert.ok("key" in made);
+  assert.match(made.key, /^[0-9a-f]{64}$/);
   const config = readConfig(folder);
-  assert.equal(readFileSync(path.join(folder, "config.json"), "utf8").includes(key), false);
+  assert.equal(readFileSync(path.join(folder, "config.json"), "utf8").includes(made.key), false);
   assert.deepEqual({ ...config, sqliteKey: "sealed" }, { database: "sqlite", sqliteKey: "sealed", sqliteKeySaved: false });
   assert.equal(recoveryKeyPending(config), true);
-  assert.equal(ensureSqliteKey(folder, config, SEALER), key);
+  assert.deepEqual(ensureSqliteKey(folder, SEALER), made);
   assert.equal(recoveryKeyPending({ ...config, sqliteKeySaved: true }), false);
   assert.equal(recoveryKeyPending({}), false);
 });
@@ -142,8 +160,48 @@ test("Desktop: the SQLite key is made once and kept sealed in config.json", () =
 test("Desktop: a SQLite key that can't be opened is kept, not replaced", () => {
   const folder = userData();
   const sealed = seal("1f".repeat(32), SEALER);
+  writeConfig(folder, { sqliteKey: sealed });
   const refusing: Sealer = { ...SEALER, decryptString: () => assert.fail("Not this Windows user's.") };
-  assert.equal(ensureSqliteKey(folder, { sqliteKey: sealed }, refusing), undefined);
+  assert.deepEqual(ensureSqliteKey(folder, refusing), { problem: "unreadable" });
+  assert.deepEqual(readConfig(folder), { sqliteKey: sealed });
+});
+
+// Leaves an encrypted file with no key in config.json, as a config.json written from a copy read before the key was
+// made left it, and checks no key is made in its place; a plain file, from before files were encrypted, gets one.
+test("Desktop: a file already encrypted without its key gets no new one", () => {
+  const encrypted = userData();
+  sqliteFile(encrypted, Buffer.from("8c1f0e6a9b2d4c7f8e1a3b5c7d9e0f12", "hex"));
+  writeConfig(encrypted, { database: "sqlite", trayNoticeShown: true });
+  assert.deepEqual(ensureSqliteKey(encrypted, SEALER), { problem: "missing" });
+  assert.deepEqual(readConfig(encrypted), { database: "sqlite", trayNoticeShown: true });
+
+  const plain = userData();
+  sqliteFile(plain, "SQLite format 3\0 e o resto do arquivo");
+  assert.ok("key" in ensureSqliteKey(plain, SEALER));
+});
+
+// Reads the first bytes of a missing file, an empty one, a plain SQLite file and an encrypted one.
+test("Desktop: the SQLite file is told new, plain or encrypted from its first bytes", () => {
+  const folder = userData();
+  const file = path.join(folder, "data", "apc.db");
+  assert.equal(sqliteFileState(file), "new");
+  sqliteFile(folder, "");
+  assert.equal(sqliteFileState(file), "new");
+  sqliteFile(folder, "SQLite format 3\0");
+  assert.equal(sqliteFileState(file), "plain");
+  sqliteFile(folder, "SQLite");
+  assert.equal(sqliteFileState(file), "encrypted");
+  sqliteFile(folder, Buffer.from("8c1f0e6a9b2d4c7f8e1a3b5c7d9e0f12", "hex"));
+  assert.equal(sqliteFileState(file), "encrypted");
+});
+
+// Puts a folder where the SQLite file goes, which can't be read as one, and checks it counts as encrypted, so no key is
+// made over it.
+test("Desktop: a SQLite file that can't be read gets no new key", () => {
+  const folder = userData();
+  mkdirSync(path.join(folder, "data", "apc.db"), { recursive: true });
+  assert.equal(sqliteFileState(path.join(folder, "data", "apc.db")), "encrypted");
+  assert.deepEqual(ensureSqliteKey(folder, SEALER), { problem: "missing" });
   assert.equal(existsSync(path.join(folder, "config.json")), false);
 });
 

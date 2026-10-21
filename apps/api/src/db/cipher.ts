@@ -9,10 +9,13 @@ import { databaseProvider, sqliteFile } from "./provider.js";
 // an encrypted file being imported. Without a key a file is plain SQLite, as in development. Every connection sends
 // the key first (keyScript): the API's client (client.ts) and the migration runner (migrate.ts). A plain file that
 // should be encrypted, as from before this was added, is encrypted in place when the server starts (ensureEncrypted),
-// from a backup copy that is removed once the encrypted file reads back.
+// from a backup copy that is removed once the encrypted file reads back. A key that doesn't open its file stops the
+// server with WRONG_KEY_ERROR, and keyOpens tells whether one does, as the desktop app asks of a recovery copy.
 
 /** A key: 32 random bytes in hex, as the desktop app makes it. */
 const KEY_FORMAT = /^[0-9a-f]{64}$/;
+/** The code of the error a key that doesn't open its file throws, which the server exits on with WRONG_KEY_EXIT_CODE. */
+export const WRONG_KEY_ERROR = "APC_WRONG_SQLITE_KEY";
 /** The keys tasks gave, by file. */
 const keys = new Map<string, string>();
 
@@ -44,7 +47,9 @@ export function ensureEncrypted(url: string): "encrypted" | "unchanged" {
     return "unchanged";
   }
   if (!opens(file, undefined)) {
-    throw new Error(`The SQLite file ${file} doesn't open with its key: the key is wrong, or the file isn't a database.`);
+    throw Object.assign(new Error(`The SQLite file ${file} doesn't open with its key: the key is wrong, or the file isn't a database.`), {
+      code: WRONG_KEY_ERROR,
+    });
   }
   // Rekeying needs the rollback journal: WAL's pages go into the file first.
   const plain = new Database(file);
@@ -107,6 +112,16 @@ function opens(file: string, key: string | undefined): boolean {
 export function readKey(text: string): string | undefined {
   const key = text.replace(/[\s-]/g, "").toLowerCase();
   return KEY_FORMAT.test(key) ? key : undefined;
+}
+
+/**
+ * Tells whether a SQLite file opens with its key: the one a task gave for it, or APC_SQLITE_KEY for the server's own.
+ * @param url The file's DATABASE_URL.
+ * @returns True when the file exists and its key reads it.
+ */
+export function keyOpens(url: string): boolean {
+  const file = sqliteFile(url);
+  return existsSync(file) && opens(file, sqliteKey(url));
 }
 
 /**

@@ -86,6 +86,19 @@ export function resolveApiUrl(envUrl: string | undefined, config: DesktopConfig)
 }
 
 /**
+ * Changes some settings in config.json, reading it as it is now, so a setting written since the app opened, such as
+ * the SQLite key, is never lost to a copy read earlier. A setting changed to undefined is taken out.
+ * @param userData The app's userData folder.
+ * @param change The settings to change.
+ * @returns What config.json sets afterwards.
+ */
+export function updateConfig(userData: string, change: DesktopConfig): DesktopConfig {
+  const next = { ...readConfig(userData), ...change };
+  writeConfig(userData, next);
+  return next;
+}
+
+/**
  * Writes config.json, as UTF-8 without a BOM, keeping every setting it is given.
  * @param userData The app's userData folder.
  * @param config What config.json sets.

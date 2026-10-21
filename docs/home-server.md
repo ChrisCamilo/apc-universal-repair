@@ -150,6 +150,16 @@ With another port:
 - **The firewall** needs nothing new: the rule of step 3 is for the app, whatever its port.
 - **The phone** must use the new address, which the tray's menu shows. The phone app takes its server's address when it is built ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)), so it needs a build with the new port until it can change it by itself.
 
+### 11. The data's key doesn't open it
+
+The SQLite file in `%APPDATA%\APC Universal Repair\data` is encrypted with a key kept sealed in `config.json`, readable by this Windows user only. The first time, the app shows the key's *recovery copy*: keep it away from the computer, written down or in a password manager, since without it the data opens nowhere else.
+
+When the key in `config.json` is missing, or doesn't open the file, the app doesn't start the server and says why: *A chave do banco SQLite não está mais neste computador*, *… não abre o arquivo dele*, or *… não abre com este usuário do Windows*. It never makes a new key over a file that already has one.
+
+- **Type the recovery copy** in *Chave de recuperação* on that screen and choose *Usar a chave de recuperação*. The app checks it opens the file, keeps it sealed in `config.json` and starts the server on the same data. Dashes and spaces don't matter.
+- **Without the recovery copy** the data can't be opened: the copies in `data\backups` use the same key. Leave `data\apc.db` where it is, in case the copy turns up.
+- Versions v0.4.2 to v0.6.0 could drop the key from `config.json` the first time the window was closed to the tray, and the next start made a new one that doesn't open the data. If that happened, have the recovery copy at hand when you update.
+
 ---
 
 ## 🇧🇷 Português (Brasil)
@@ -274,3 +284,13 @@ O servidor escuta na porta 3000. Quando outro programa já a ocupa, o app não l
 Com outra porta:
 - **O firewall** não precisa de nada novo: a regra do passo 3 é para o app, qualquer que seja a porta.
 - **O celular** precisa usar o endereço novo, que aparece no menu da bandeja. O app do celular recebe o endereço do servidor quando é gerado ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)), então precisa de uma versão gerada com a porta nova até poder trocá-lo sozinho.
+
+### 11. A chave dos dados não os abre
+
+O arquivo SQLite em `%APPDATA%\APC Universal Repair\data` é criptografado com uma chave guardada lacrada no `config.json`, que só este usuário do Windows lê. Na primeira vez, o app mostra a *cópia de recuperação* da chave: guarde-a longe do computador, anotada ou num gerenciador de senhas, porque sem ela os dados não abrem em nenhum outro lugar.
+
+Quando a chave do `config.json` falta, ou não abre o arquivo, o app não liga o servidor e diz o motivo: *A chave do banco SQLite não está mais neste computador*, *… não abre o arquivo dele* ou *… não abre com este usuário do Windows*. Ele nunca cria uma chave nova por cima de um arquivo que já tem uma.
+
+- **Digite a cópia de recuperação** em *Chave de recuperação*, nessa tela, e escolha *Usar a chave de recuperação*. O app confere se ela abre o arquivo, guarda-a lacrada no `config.json` e liga o servidor nos mesmos dados. Traços e espaços não importam.
+- **Sem a cópia de recuperação** os dados não abrem: as cópias em `data\backups` usam a mesma chave. Deixe o `data\apc.db` onde está, caso a cópia apareça.
+- As versões v0.4.2 a v0.6.0 podiam tirar a chave do `config.json` na primeira vez que a janela ia para a bandeja, e a abertura seguinte criava uma nova, que não abre os dados. Se isso aconteceu, tenha a cópia de recuperação à mão ao atualizar.
