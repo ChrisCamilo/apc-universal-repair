@@ -11,6 +11,7 @@ import { DashboardLayout } from './dashboard/DashboardLayout.tsx'
 import { InventoryTab } from './dashboard/InventoryTab.tsx'
 import { UserMenu } from './dashboard/UserMenu.tsx'
 import { desktopBridge } from './desktop/desktopBridge.ts'
+import { ServerFailure } from './desktop/ServerFailure.tsx'
 import { ServerSettingsProvider } from './desktop/ServerSettings.tsx'
 import { useOpenServerSettings } from './desktop/serverSettingsContext.ts'
 import { UpdateNotice } from './desktop/UpdateNotice.tsx'
@@ -20,7 +21,7 @@ import { NotificationsMenu } from './notifications/NotificationsMenu.tsx'
 // tab at its own path. "/" opens the last tab used (the Inventory tab the first time) and any unknown path goes back
 // there. Only a logged user reaches the Dashboard: anyone else goes to /login and, once logged in or signed up, back
 // to where they were going. In the desktop app, the notice that a new version is ready and the Servidor dialog show
-// over any of them.
+// over any of them, and when its server isn't on, the screen that says why covers them all.
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
         </SessionProvider>
       </BrowserRouter>
       <UpdateNotice />
+      <ServerFailure />
     </ServerSettingsProvider>
   )
 }
