@@ -128,6 +128,12 @@ contextBridge.exposeInMainWorld("apcDesktop", {
      */
     settings: () => ipcRenderer.invoke("apc:server-settings"),
     /**
+     * Moves the server to another port, checked free first.
+     * @param port The new port.
+     * @returns Done, or why not.
+     */
+    usePort: (port: number) => ipcRenderer.invoke("apc:server-use-port", port),
+    /**
      * Moves the server to a PostgreSQL database.
      * @param url Its address.
      * @returns Done, or why not.
