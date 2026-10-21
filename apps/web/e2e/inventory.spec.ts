@@ -955,3 +955,41 @@ test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(NOTEBOOK_WIDTH);
   }
 });
+
+// Lists an item of two brands and checks its row shows both codes, the quantity added up and "2 marcas", which opens
+// a row for each brand under it, with the brand's part brand, code and quantity, no tint and no actions, and closes
+// them again.
+test("Web: an item of several brands opens a row for each brand", async ({ page }) => {
+  const pads = testItem({
+    name: "Pastilha dianteira",
+    minQuantity: 4,
+    brands: [
+      { ...item({ code: "N-1210", name: "" }).brands[0], partBrand: "Cobreq", quantity: 1 },
+      { ...item({ code: "PD/1210", name: "" }).brands[0], partBrand: "Fras-le", quantity: 2 },
+    ],
+  });
+  await serveItems(page, [pads]);
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0)).toContainText("N-1210 +1");
+  await expect(rows.nth(0)).toHaveAttribute("data-status", "warn");
+  const toggle = page.getByRole("button", { name: "2 marcas" });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(1)).toContainText("Cobreq");
+  await expect(rows.nth(1)).toContainText("N-1210");
+  await expect(rows.nth(2)).toContainText("Fras-le");
+  await expect(rows.nth(2)).toContainText("PD/1210");
+  for (const nested of [rows.nth(1), rows.nth(2)]) {
+    await expect(nested).not.toHaveAttribute("data-status");
+    await expect(nested.getByRole("button", { name: /^Editar / })).toHaveCount(0);
+  }
+  await expect(rows.nth(0).getByRole("button", { name: "Editar Pastilha dianteira" })).toBeVisible();
+
+  await toggle.click();
+  await expect(rows).toHaveCount(1);
+});
