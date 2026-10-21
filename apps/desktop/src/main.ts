@@ -410,7 +410,8 @@ void app.whenReady().then(async () => {
       void stopOwnServer().then(() => {
         serverStopped = true;
         console.log("The bundled server stopped; quitting.");
-        app.quit();
+        // A server already off stops at once, while this quit is still being turned down: quit on the next turn.
+        setImmediate(() => app.quit());
       });
     });
     // A start hidden at sign-in shows the window when the page has to ask for PostgreSQL's address.
