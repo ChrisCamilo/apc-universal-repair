@@ -1,23 +1,44 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  brandsValue,
   capitalizeFirst,
   codeKey,
   findOption,
   formatPrice,
+  formatPriceRange,
   includeBoth,
+  itemCodes,
   itemCreateSchema,
   itemDetails,
   itemListQuerySchema,
   matchesSearch,
   matchingOptions,
+  MIXED_VALUES,
   optionKey,
+  partBrandsLabel,
   resultSummary,
   searchKey,
+  sortableOf,
   sortItems,
   stockStatus,
   type SortableItem,
 } from "./items.ts";
+import { testItem } from "./testItems.ts";
+
+// A part made by three brands, which differ in code, price, color and location.
+const PADS = testItem({
+  name: "Pastilha de freio",
+  category: "Freios",
+  vehicleBrand: "Volkswagen",
+  vehicleModel: "Gol",
+  position: "D",
+  brands: [
+    { id: "00000000-0000-4000-8000-000000000001", partBrand: "Cobreq", code: "N-1210", color: "N/A", location: "B-12", quantity: 2, unitPriceCents: 7990, photos: [] },
+    { id: "00000000-0000-4000-8000-000000000002", partBrand: "Fras-le", code: "PD/1210", color: "N/A", location: "B-12", quantity: 1, unitPriceCents: 9490, photos: [] },
+    { id: "00000000-0000-4000-8000-000000000003", partBrand: "Bosch", code: "BB 1210", color: "Preto", location: "B-13", quantity: 0, unitPriceCents: 11290, photos: [] },
+  ],
+});
 
 // Capitalizes the first letter of text values, a single letter too, keeping the rest as typed.
 test("Shared: text values start with a capital letter and keep the rest", () => {
@@ -75,19 +96,28 @@ test("Shared: the list query takes a page of 25, 50 or 100 items", () => {
   assert.equal(itemListQuerySchema.safeParse({ page: "0", pageSize: "25" }).success, false);
 });
 
-// Requires the name, code, category, brands and a price over zero, and leaves the rest optional.
-test("Shared: new items need the required fields and a positive price", () => {
-  const valid = { code: "w 712/95", name: "Filtro de óleo", category: "Motor", partBrand: "Mann", vehicleBrand: "Volkswagen", unitPriceCents: 3990 };
+// Requires the name, category, vehicle brand and a brand with its code, part brand and a price over zero, and leaves
+// the rest optional; an item needs a brand, and its brands can't repeat a part brand or a code as the search compares
+// them.
+test("Shared: new items need the required fields, a brand and a positive price", () => {
+  const brand = { code: "w 712/95", partBrand: "Mann", unitPriceCents: 3990 };
+  const valid = { name: "Filtro de óleo", category: "Motor", vehicleBrand: "Volkswagen", brands: [brand] };
   assert.equal(itemCreateSchema.safeParse(valid).success, true);
-  assert.equal(itemCreateSchema.safeParse({ ...valid, unitPriceCents: 0 }).success, false);
+  assert.equal(itemCreateSchema.safeParse({ ...valid, brands: [{ ...brand, unitPriceCents: 0 }] }).success, false);
   assert.equal(itemCreateSchema.safeParse({ ...valid, name: "   " }).success, false);
+  assert.equal(itemCreateSchema.safeParse({ ...valid, brands: [] }).success, false);
+  const twoBrands = itemCreateSchema.safeParse({ ...valid, brands: [brand, { ...brand, code: "W71295-B", partBrand: " mann " }] });
+  assert.deepEqual(twoBrands.error?.issues.map((issue) => issue.path), [["brands", 1, "partBrand"]]);
+  const twoCodes = itemCreateSchema.safeParse({ ...valid, brands: [brand, { ...brand, code: "W712-95", partBrand: "Tecfil" }] });
+  assert.deepEqual(twoCodes.error?.issues.map((issue) => issue.path), [["brands", 1, "code"]]);
+  assert.equal(itemCreateSchema.safeParse({ ...valid, brands: [brand, { ...brand, code: "C 2433", partBrand: "Tecfil" }] }).success, true);
   assert.equal(itemCreateSchema.safeParse({ ...valid, position: "Frente" }).success, false);
 });
 
-// Finds items by name ignoring case and accents and by part code ignoring separators, and keeps every item
-// for an empty search.
+// Finds items by name ignoring case and accents and by any brand's part code ignoring separators, and keeps every
+// item for an empty search.
 test("Shared: the item search matches names and part codes", () => {
-  const item = { name: "Bomba d'água", code: "W 712/95" };
+  const item = { name: "Bomba d'água", brands: [{ code: "X-1" }, { code: "W 712/95" }] };
   assert.equal(matchesSearch(item, "AGUA"), true);
   assert.equal(matchesSearch(item, "w712"), true);
   assert.equal(matchesSearch(item, "  "), true);
@@ -117,16 +147,45 @@ test("Shared: the result counter shows totals and stock alerts", () => {
 test("Shared: item details fit in one line without what doesn't apply", () => {
   const details = itemDetails({
     category: "Freios",
-    partBrand: "Cobreq",
     vehicleBrand: "Chevrolet",
     vehicleModel: null,
     position: "D",
     side: "N/A",
-    color: "N/A",
-    location: null,
-    unitPriceCents: 8990,
+    brands: [{ partBrand: "Cobreq", color: "N/A", location: null, unitPriceCents: 8990 }],
   });
   assert.equal(details.replace(/\s/g, " "), "Freios · Cobreq · Chevrolet · D · R$ 89,90");
+  assert.equal(itemDetails(PADS).replace(/\s/g, " "), "Freios · Cobreq +2 · Volkswagen Gol · D · Várias · Várias · R$ 79,90 – R$ 112,90");
+});
+
+// Reads an item of three brands for its row: the first code and part brand with how many more, a value the brands
+// share or "Várias", and the price from the lowest to the highest; one brand reads as itself.
+test("Shared: an item's brands read as one value for its row", () => {
+  assert.equal(itemCodes(PADS), "N-1210 +2");
+  assert.equal(partBrandsLabel(PADS), "Cobreq +2");
+  assert.equal(brandsValue(PADS, "color"), MIXED_VALUES);
+  assert.equal(brandsValue({ brands: PADS.brands.slice(0, 2) }, "location"), "B-12");
+  assert.equal(formatPriceRange(PADS).replace(/\s/g, " "), "R$ 79,90 – R$ 112,90");
+  const one = testItem({ code: "W 712/95", partBrand: "Mann", unitPriceCents: 3990 });
+  assert.deepEqual([itemCodes(one), partBrandsLabel(one), formatPriceRange(one).replace(/\s/g, " ")], ["W 712/95", "Mann", "R$ 39,90"]);
+});
+
+// Reads what an item of three brands sorts by: its first brand's code, part brand, color and location, its lowest
+// price and its brands' total quantity.
+test("Shared: an item sorts by its first brand and its lowest price", () => {
+  assert.deepEqual(sortableOf(PADS), {
+    name: "Pastilha de freio",
+    category: "Freios",
+    vehicleBrand: "Volkswagen",
+    vehicleModel: "Gol",
+    position: "D",
+    side: "N/A",
+    quantity: 3,
+    code: "N-1210",
+    partBrand: "Cobreq",
+    color: "N/A",
+    location: "B-12",
+    unitPriceCents: 7990,
+  });
 });
 
 // Finds the option a typed text names whatever its case, accents or spaces, and nothing for a new value.

@@ -9,6 +9,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import {
   matchesSearch,
   OPEN_ITEM_ON_ROW_STORAGE_KEY,
+  sortableOf,
   sortItems,
   stockStatus,
   type Item,
@@ -23,6 +24,7 @@ import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/das
 import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
 import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
 import { themeStorage, ThemeProvider } from '../src/theme';
+import { testItem, type FlatItem } from '@apc/shared/test-items';
 
 // A photo the API saved, as items carry it.
 const COVER = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.jpg', thumbUrl: '/photos/aa-thumb.webp' };
@@ -42,8 +44,8 @@ const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOB
  * @param fields The fields that matter for the test.
  * @returns A complete item.
  */
-function item(n: number, fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
-  return {
+function item(n: number, fields: FlatItem & Required<Pick<FlatItem, 'code' | 'name'>>): Item {
+  return testItem({
     id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
     category: 'Motor',
     partBrand: 'Mann',
@@ -60,7 +62,7 @@ function item(n: number, fields: Partial<Item> & Pick<Item, 'code' | 'name'>): I
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
-  };
+  });
 }
 
 /**
@@ -86,7 +88,12 @@ function answerItems(stock: Item[]) {
         (!status || stockStatus(it.quantity, it.minQuantity) === status),
     );
     const sort = query.get('sort') as ItemSortKey | null;
-    const sorted = sort ? sortItems(matching, { key: sort, dir: query.get('order') === 'desc' ? 'desc' : 'asc' }) : matching;
+    const sorted = sort
+      ? sortItems(
+          matching.map((it) => ({ ...sortableOf(it), it })),
+          { key: sort, dir: query.get('order') === 'desc' ? 'desc' : 'asc' },
+        ).map((row) => row.it)
+      : matching;
     const size = Number(query.get('pageSize')) || matching.length;
     const first = (Number(query.get('page') || 1) - 1) * size;
     return { ok: true, json: () => Promise.resolve({ items: sorted.slice(first, first + size), total: matching.length }) };
@@ -264,7 +271,7 @@ function Preferences({ children }: { children: React.ReactNode }) {
 }
 
 // Checks a card's thumbnail shows the item's cover from the API and opens its photos large; removing the photo there
-// sends the set left, empty, and the list loads again.
+// sends the set left, empty, to the item's brand, and the list loads again.
 test('Mobile: the thumbnail opens the item photos, saved as they change', async () => {
   const tree = await mount();
   const thumbnail = tree.root.find(
@@ -280,11 +287,11 @@ test('Mobile: the thumbnail opens the item photos, saved as they change', async 
     );
   await ReactTestRenderer.act(async () => pressable('Remover esta foto')[0].props.onPress());
   (fetch as jest.Mock).mockClear();
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ ...ITEMS[0], photos: [] }) });
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ ...ITEMS[0], brands: [{ ...ITEMS[0].brands[0], photos: [] }] }) });
   const remove = pressable('Remover').filter((n) => typeof n.type !== 'string');
   await ReactTestRenderer.act(async () => remove[remove.length - 1].props.onPress());
   const [photosUrl, photosInit] = (fetch as jest.Mock).mock.calls[0];
-  expect(photosUrl).toMatch(new RegExp(`/items/${ITEMS[0].id}/photos$`));
+  expect(photosUrl).toMatch(new RegExp(`/items/${ITEMS[0].id}/brands/${ITEMS[0].brands[0].id}/photos$`));
   expect(photosInit.method).toBe('PUT');
   expect(photosInit.body.getParts()).toEqual([]);
   expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items$/);
@@ -459,4 +466,38 @@ test('Mobile: the "Ordenar" select sorts the list through the API', async () => 
   expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toMatch(/\/items\?page=1&pageSize=25&sort=price&order=desc$/);
   const names = texts(tree).filter((text) => /^Peça \d+$/.test(text));
   expect(names.slice(0, 3)).toEqual(['Peça 7', 'Peça 14', 'Peça 21']);
+});
+
+// Lists an item of two brands and checks its card shows both codes and "2 marcas", which opens a card for each brand
+// under it, with the brand's part brand and code, no tint and no actions, and closes them again.
+test('Mobile: an item of several brands opens a card for each brand', async () => {
+  const pads = item(4, {
+    name: 'Pastilha dianteira',
+    code: 'N-1210',
+    quantity: 3,
+    minQuantity: 4,
+    brands: [
+      { ...item(5, { code: 'N-1210', name: '' }).brands[0], partBrand: 'Cobreq', quantity: 1 },
+      { ...item(6, { code: 'PD/1210', name: '' }).brands[0], partBrand: 'Fras-le', quantity: 2 },
+    ],
+  });
+  const tree = await mount([pads]);
+  const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
+  const toggle = () => tree.root.findAll((n) => n.props.testID === 'inventory.inventory-tab.brands' && typeof n.props.onPress === 'function')[0];
+  expect(cards()).toHaveLength(1);
+  expect(texts(tree)).toEqual(expect.arrayContaining(['N-1210 +1', '2 marcas', '3']));
+  expect(toggle().props.accessibilityState).toEqual({ expanded: false });
+
+  await ReactTestRenderer.act(async () => toggle().props.onPress());
+  expect(cards()).toHaveLength(3);
+  expect(toggle().props.accessibilityState).toEqual({ expanded: true });
+  const [own, cobreq, frasle] = cards().map((card) => card.findAll((n) => n.type === Text).map((n) => String(n.props.children)));
+  expect(own).toContain('Estoque baixo: ');
+  expect(cobreq).toEqual(expect.arrayContaining(['Cobreq', 'N-1210', '1']));
+  expect(frasle).toEqual(expect.arrayContaining(['Fras-le', 'PD/1210', '2']));
+  expect([...cobreq, ...frasle]).not.toContain('Estoque baixo: ');
+  expect(cards().map((card) => card.findAll((n) => n.props.testID === 'inventory.inventory-tab.actions').length > 0)).toEqual([true, false, false]);
+
+  await ReactTestRenderer.act(async () => toggle().props.onPress());
+  expect(cards()).toHaveLength(1);
 });

@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { Item } from "@apc/shared/items";
+import type { Item, ItemCreate } from "@apc/shared/items";
 import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
-import { serveItems } from "./items.ts";
+import { savedItem, serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
+import { testItem, type FlatItem } from "@apc/shared/test-items";
 
 // The API answers GET /items with these items, newest first, so the list is the same on every run without a database.
 const ITEMS: Item[] = [
@@ -17,8 +18,8 @@ const ITEMS: Item[] = [
  * @param fields The fields that matter for the test.
  * @returns A complete item.
  */
-function item(fields: Partial<Item> & Pick<Item, "code" | "name">): Item {
-  return {
+function item(fields: FlatItem & Required<Pick<FlatItem, "code" | "name">>): Item {
+  return testItem({
     id: crypto.randomUUID(),
     category: "Motor",
     partBrand: "Bosch",
@@ -35,7 +36,7 @@ function item(fields: Partial<Item> & Pick<Item, "code" | "name">): Item {
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
     ...fields,
-  };
+  });
 }
 
 /**
@@ -194,16 +195,14 @@ test("Web: the search finds items by name or part code", async ({ page }) => {
 test("Web: items are added and edited through the item form", async ({ page }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
-    const sent = route.request().postDataJSON();
-    const saved = item({ ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null });
+    const saved = savedItem(route.request().postDataJSON());
     stock.unshift(saved);
     return route.fulfill({ status: 201, json: saved });
   });
   await serveItems(page, stock);
   await page.route("**/api/items/*", async (route) => {
-    const sent = route.request().postDataJSON();
     const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
-    stock[index] = { ...stock[index], ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null };
+    stock[index] = savedItem(route.request().postDataJSON(), stock[index]);
     return route.fulfill({ json: stock[index] });
   });
   await page.goto("/inventory");
@@ -275,7 +274,7 @@ test("Web: a part code in use is named while it is typed", async ({ page }) => {
 test("Web: categories, brands and models are created from the item form", async ({ page }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
-    const saved = item({ ...route.request().postDataJSON() });
+    const saved = savedItem(route.request().postDataJSON());
     stock.unshift(saved);
     return route.fulfill({ status: 201, json: saved });
   });
@@ -315,7 +314,7 @@ test("Web: categories, brands and models are created from the item form", async 
   await category.fill("motor diesel");
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("Item “Turbina” cadastrado.")).toBeVisible();
-  expect(stock[0]).toMatchObject({ category: "Motor diesel", partBrand: "NGK", vehicleBrand: "Renault", vehicleModel: "Clio" });
+  expect(stock[0]).toMatchObject({ category: "Motor diesel", vehicleBrand: "Renault", vehicleModel: "Clio", brands: [{ partBrand: "NGK" }] });
 
   await page.getByRole("button", { name: "Filtros" }).click();
   await page.getByRole("dialog", { name: "Filtros do estoque" }).getByRole("combobox", { name: "Categoria" }).click();
@@ -380,14 +379,15 @@ test("Web: items are imported from a CSV file", async ({ page }) => {
   const imported: string[] = [];
   await page.route("**/api/items/import", async (route) => {
     const result = { created: 0, updated: 0 };
-    for (const sent of route.request().postDataJSON().items as Item[]) {
-      imported.push(sent.code);
-      const index = stock.findIndex((held) => held.code === sent.code);
+    for (const sent of route.request().postDataJSON().items as ItemCreate[]) {
+      const codes = sent.brands.map((brand) => brand.code);
+      imported.push(...codes);
+      const index = stock.findIndex((held) => held.brands.some((brand) => codes.includes(brand.code)));
       if (index >= 0) {
-        stock[index] = { ...stock[index], ...sent };
+        stock[index] = savedItem({ ...sent, brands: sent.brands.map((brand) => ({ ...brand, id: stock[index].brands[0].id })) }, stock[index]);
         result.updated++;
       } else {
-        stock.unshift(item({ ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null }));
+        stock.unshift(savedItem(sent));
         result.created++;
       }
     }
@@ -411,7 +411,7 @@ test("Web: items are imported from a CSV file", async ({ page }) => {
     ";sem código;Freios;Cobreq;Ford;;1;;;0;;;",
   ].join("\n");
   await dialog.getByLabel("Arquivo CSV").setInputFiles({ name: "estoque.csv", mimeType: "text/csv", buffer: Buffer.from(file) });
-  await expect(dialog.getByText("estoque.csv · 2 itens prontos para importar · 1 com erro")).toBeVisible();
+  await expect(dialog.getByText("estoque.csv · 2 itens prontos para importar · 1 linha com erro")).toBeVisible();
   await expect(dialog.getByText("Categorias: Ignição")).toBeVisible();
   await expect(dialog.getByText("Marcas de peça: NGK")).toBeVisible();
   await expect(dialog.locator("li[data-invalid]")).toContainText("Informe o código da peça.");
@@ -436,8 +436,7 @@ test("Web: the Inventory tutorial creates, finds, edits and deletes a test item"
   await signIn(page, false);
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
-    const sent = route.request().postDataJSON();
-    const saved = item({ ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null });
+    const saved = savedItem(route.request().postDataJSON());
     stock.unshift(saved);
     return route.fulfill({ status: 201, json: saved });
   });
@@ -448,8 +447,7 @@ test("Web: the Inventory tutorial creates, finds, edits and deletes a test item"
       stock.splice(index, 1);
       return route.fulfill({ status: 204 });
     }
-    const sent = route.request().postDataJSON();
-    stock[index] = { ...stock[index], ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null };
+    stock[index] = savedItem(route.request().postDataJSON(), stock[index]);
     return route.fulfill({ json: stock[index] });
   });
   await page.goto("/inventory");
@@ -515,7 +513,7 @@ test("Web: the Inventory tutorial creates, finds, edits and deletes a test item"
   await expect(rows).toHaveCount(4);
   await expect(page.getByLabel("Procure pelo nome ou código da peça")).toHaveValue("");
   await expect(page.getByRole("button", { name: "Filtros", exact: true })).toBeVisible();
-  expect(stock.some((held) => held.code === "TUTORIAL-001")).toBe(false);
+  expect(stock.some((held) => held.brands.some((brand) => brand.code === "TUTORIAL-001"))).toBe(false);
 
   await page.getByRole("button", { name: "Menu do usuário" }).click();
   await page.getByRole("menuitem", { name: "Tutorial do estoque" }).click();
@@ -648,7 +646,7 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
   await serveItems(page, stock);
   await page.route("**/api/items/*", async (route) => {
     const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
-    stock[index] = { ...stock[index], ...route.request().postDataJSON() };
+    stock[index] = savedItem(route.request().postDataJSON(), stock[index]);
     return route.fulfill({ json: stock[index] });
   });
   await page.goto("/inventory");
@@ -661,13 +659,13 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
   await expect(details.getByRole("textbox")).toHaveCount(0);
   await details.getByRole("button", { name: "Editar" }).click();
   const edit = page.getByRole("dialog", { name: "Editar item" });
-  await expect(edit.getByLabel("Código da peça")).toBeFocused();
+  await expect(edit.getByLabel("Nome")).toBeFocused();
   await edit.getByLabel("Local").fill("A-11");
   await expect(edit.getByRole("button", { name: "Salvar alterações" })).toBeInViewport();
   await edit.getByRole("button", { name: "Salvar alterações" }).click();
   await expect(page.getByText("Item “Amortecedor” salvo.")).toBeVisible();
   await expect(edit).toBeHidden();
-  expect(stock[3].location).toBe("A-11");
+  expect(stock[3].brands[0].location).toBe("A-11");
 
   await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
   await expect(page.getByRole("dialog", { name: "Editar item" })).toBeVisible();
@@ -723,26 +721,26 @@ test("Web: item photos are added and removed from the list and the form", async 
     "base64",
   );
   const cover = { id: crypto.randomUUID(), url: "/photos/cover.png", thumbUrl: "/photos/cover-thumb.webp" };
-  const stock = ITEMS.map((it, index) => (index === 0 ? { ...it, photos: [cover] } : it));
+  const stock = ITEMS.map((it, index) => (index === 0 ? { ...it, brands: [{ ...it.brands[0], photos: [cover] }] } : it));
   const sent: string[][] = [];
   await page.route("**/api/photos/*", (route) => route.fulfill({ body: png, contentType: "image/png" }));
   await serveItems(page, stock);
   await page.route("**/api/items/*", (route) => {
     const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
-    stock[index] = { ...stock[index], ...route.request().postDataJSON() };
+    stock[index] = savedItem(route.request().postDataJSON(), stock[index]);
     return route.fulfill({ json: stock[index] });
   });
-  await page.route("**/api/items/*/photos", (route) => {
-    const index = stock.findIndex((it) => route.request().url().endsWith(`${it.id}/photos`));
+  await page.route("**/api/items/*/brands/*/photos", (route) => {
+    const index = stock.findIndex((it) => route.request().url().includes(`/items/${it.id}/brands/`));
     const body = route.request().postDataBuffer()!.toString("latin1");
     const parts = [...body.matchAll(/name="(keep|photo)"(?:; filename="([^"]+)")?[^\r]*\r\n(?:Content-Type[^\r]*\r\n)?\r\n([^\r]*)/g)];
     sent.push(parts.map(([, name, file, value]) => (name === "keep" ? `keep ${value}` : `photo ${file}`)));
     const photos = parts.map(([, name, , value], position) =>
       name === "keep"
-        ? stock[index].photos.find((photo) => photo.id === value)!
+        ? stock[index].brands[0].photos.find((photo) => photo.id === value)!
         : { id: crypto.randomUUID(), url: `/photos/new-${position}.png`, thumbUrl: `/photos/new-${position}-thumb.webp` },
     );
-    stock[index] = { ...stock[index], photos };
+    stock[index] = { ...stock[index], brands: [{ ...stock[index].brands[0], photos }, ...stock[index].brands.slice(1)] };
     return route.fulfill({ json: stock[index] });
   });
   await page.goto("/inventory");
@@ -761,7 +759,7 @@ test("Web: item photos are added and removed from the list and the form", async 
   await viewer.getByRole("button", { name: "Remover esta foto" }).click();
   await page.getByRole("dialog", { name: "Remover esta foto?" }).getByRole("button", { name: "Remover" }).click();
   await expect(viewer.getByText("Foto removida")).toBeVisible();
-  expect(sent[1]).toEqual([`keep ${stock[0].photos[0].id}`]);
+  expect(sent[1]).toEqual([`keep ${stock[0].brands[0].photos[0].id}`]);
   await viewer.getByRole("button", { name: "Fechar" }).click();
   await expect(thumbnail.locator("img")).toHaveAttribute("src", "/api/photos/new-1-thumb.webp");
 
@@ -881,7 +879,7 @@ test("Web: the inventory list shows one page at a time", async ({ page }) => {
   );
   const queries: string[] = [];
   await page.route("**/api/items", async (route) => {
-    const saved = item({ ...route.request().postDataJSON() });
+    const saved = savedItem(route.request().postDataJSON());
     stock.unshift(saved);
     return route.fulfill({ status: 201, json: saved });
   });
@@ -956,4 +954,42 @@ test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({
     expect(await page.getByTestId("common.data-table.scroll").evaluate((box) => box.scrollHeight > box.clientHeight)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(NOTEBOOK_WIDTH);
   }
+});
+
+// Lists an item of two brands and checks its row shows both codes, the quantity added up and "2 marcas", which opens
+// a row for each brand under it, with the brand's part brand, code and quantity, no tint and no actions, and closes
+// them again.
+test("Web: an item of several brands opens a row for each brand", async ({ page }) => {
+  const pads = testItem({
+    name: "Pastilha dianteira",
+    minQuantity: 4,
+    brands: [
+      { ...item({ code: "N-1210", name: "" }).brands[0], partBrand: "Cobreq", quantity: 1 },
+      { ...item({ code: "PD/1210", name: "" }).brands[0], partBrand: "Fras-le", quantity: 2 },
+    ],
+  });
+  await serveItems(page, [pads]);
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0)).toContainText("N-1210 +1");
+  await expect(rows.nth(0)).toHaveAttribute("data-status", "warn");
+  const toggle = page.getByRole("button", { name: "2 marcas" });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(1)).toContainText("Cobreq");
+  await expect(rows.nth(1)).toContainText("N-1210");
+  await expect(rows.nth(2)).toContainText("Fras-le");
+  await expect(rows.nth(2)).toContainText("PD/1210");
+  for (const nested of [rows.nth(1), rows.nth(2)]) {
+    await expect(nested).not.toHaveAttribute("data-status");
+    await expect(nested.getByRole("button", { name: /^Editar / })).toHaveCount(0);
+  }
+  await expect(rows.nth(0).getByRole("button", { name: "Editar Pastilha dianteira" })).toBeVisible();
+
+  await toggle.click();
+  await expect(rows).toHaveCount(1);
 });

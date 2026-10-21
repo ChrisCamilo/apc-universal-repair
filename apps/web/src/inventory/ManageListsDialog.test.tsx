@@ -13,6 +13,7 @@ import '../index.css'
 import { themeCss } from '../theme.ts'
 import { ManageListsDialog } from './ManageListsDialog.tsx'
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists.ts'
+import { testItem, type FlatItem } from '@apc/shared/test-items'
 
 const ITEMS = [
   item({ code: 'W 712/95', name: 'Filtro de óleo', category: 'Motor', vehicleBrand: 'Volkswagen', vehicleModel: 'Gol' }),
@@ -31,8 +32,8 @@ const root = document.documentElement
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
-  return {
+function item(fields: FlatItem & Required<Pick<FlatItem, 'code' | 'name'>>): Item {
+  return testItem({
     id: crypto.randomUUID(),
     category: 'Motor',
     partBrand: 'Bosch',
@@ -49,7 +50,7 @@ function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
-  }
+  })
 }
 
 /**

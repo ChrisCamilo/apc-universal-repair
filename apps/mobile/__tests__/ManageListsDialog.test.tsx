@@ -15,6 +15,7 @@ import { ManageListsDialog } from '../src/inventory/ManageListsDialog';
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider } from '../src/Toast';
+import { testItem, type FlatItem } from '@apc/shared/test-items';
 
 const ITEMS = [
   item({ id: '00000000-0000-4000-8000-0000000000c1', code: 'W 712/95', name: 'Filtro de óleo', category: 'Motor', vehicleModel: 'Gol' }),
@@ -36,8 +37,8 @@ const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOB
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function item(fields: Partial<Item> & Pick<Item, 'id' | 'code' | 'name'>): Item {
-  return {
+function item(fields: FlatItem & Required<Pick<FlatItem, 'id' | 'code' | 'name'>>): Item {
+  return testItem({
     category: 'Motor',
     partBrand: 'Bosch',
     vehicleBrand: 'Volkswagen',
@@ -53,7 +54,7 @@ function item(fields: Partial<Item> & Pick<Item, 'id' | 'code' | 'name'>): Item 
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
-  };
+  });
 }
 
 /**

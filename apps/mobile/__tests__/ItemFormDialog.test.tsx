@@ -8,7 +8,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { codeTakenMessage, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE } from '@apc/shared/item-form';
-import type { Item } from '@apc/shared/items';
+import type { Item, ItemBrand, ItemCreate } from '@apc/shared/items';
 import { withEntry, type ItemLists } from '@apc/shared/lists';
 import { PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/shared/photos';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
@@ -17,6 +17,7 @@ import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
 import type { CreateListEntry } from '../src/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider } from '../src/Toast';
+import { testItem, type FlatItem } from '@apc/shared/test-items';
 
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
@@ -46,12 +47,11 @@ const LISTS = itemListsOf([
 /**
  * Answers the next save with the item the API would send back, made of what was sent.
  * @param status The response status.
- * @param body The response body; by default the sent item with an id.
+ * @param body The response body; by default the sent item with an id (see savedOf).
  */
 function answerSave(status = 201, body?: unknown) {
   (fetch as jest.Mock).mockImplementationOnce(async (_url: string, init: RequestInit) => {
-    const sent = JSON.parse(String(init.body));
-    const saved = body ?? { ...FILTER, ...sent, id: '00000000-0000-4000-8000-000000000009', vehicleModel: sent.vehicleModel || null, location: sent.location || null };
+    const saved = body ?? savedOf(JSON.parse(String(init.body)));
     return { ok: status < 400, status, json: () => Promise.resolve(saved) };
   });
 }
@@ -71,8 +71,8 @@ function field(tree: ReactTestRenderer.ReactTestRenderer, label: string): ReactT
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function item(fields: Partial<Item> & Pick<Item, 'id' | 'code' | 'name'>): Item {
-  return {
+function item(fields: FlatItem & Required<Pick<FlatItem, 'id' | 'code' | 'name'>>): Item {
+  return testItem({
     category: 'Motor',
     partBrand: 'Bosch',
     vehicleBrand: 'Volkswagen',
@@ -88,7 +88,7 @@ function item(fields: Partial<Item> & Pick<Item, 'id' | 'code' | 'name'>): Item 
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
-  };
+  });
 }
 
 /**
@@ -172,6 +172,38 @@ async function press(tree: ReactTestRenderer.ReactTestRenderer, name: string) {
 }
 
 /**
+ * Builds the item the API would send back for a body sent: its id, its brands with ids and no photos.
+ * @param sent The body sent.
+ * @param photos The first brand's photos, as the API saved them.
+ * @returns The saved item.
+ */
+function savedOf(sent: ItemCreate, photos: ItemBrand['photos'] = []): Item {
+  return testItem({
+    ...sent,
+    id: '00000000-0000-4000-8000-000000000009',
+    vehicleModel: sent.vehicleModel || null,
+    brands: sent.brands.map((brand, index) => ({
+      color: 'N/A',
+      quantity: 0,
+      ...brand,
+      id: brand.id ?? `00000000-0000-4000-8000-${String(index + 101).padStart(12, '0')}`,
+      location: brand.location || null,
+      photos: index === 0 ? photos : [],
+    })),
+  });
+}
+
+/**
+ * Finds a brand's section of the form by its name.
+ * @param tree Rendered tree.
+ * @param name E.g. "Marca 2".
+ * @returns The section.
+ */
+function section(tree: ReactTestRenderer.ReactTestRenderer, name: string): ReactTestRenderer.ReactTestInstance {
+  return tree.root.findAll((n) => n.props.role === 'group' && n.props.accessibilityLabel === name)[0];
+}
+
+/**
  * Tells whether a text is on screen.
  * @param tree Rendered tree.
  * @param text Exact text.
@@ -188,7 +220,18 @@ function shows(tree: ReactTestRenderer.ReactTestRenderer, text: string): boolean
  * @param text Text to type.
  */
 async function type(tree: ReactTestRenderer.ReactTestRenderer, label: string, text: string) {
-  await ReactTestRenderer.act(async () => field(tree, label).props.onChangeText(text));
+  await typeIn(tree.root, label, text);
+}
+
+/**
+ * Types into a field of a part of the screen, e.g. a brand's section.
+ * @param scope Where the field is.
+ * @param label The field's label.
+ * @param text Text to type.
+ */
+async function typeIn(scope: ReactTestRenderer.ReactTestInstance, label: string, text: string) {
+  const input = scope.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === label)[0];
+  await ReactTestRenderer.act(async () => input.props.onChangeText(text));
 }
 
 /**
@@ -363,7 +406,12 @@ test('Mobile: a new item is posted, announced and handed over', async () => {
   const [url, init] = (fetch as jest.Mock).mock.calls[0];
   expect(url).toMatch(/\/items$/);
   expect(init.method).toBe('POST');
-  expect(JSON.parse(init.body)).toMatchObject({ code: 'NGK-B7', name: 'Vela', category: 'Ignição', vehicleBrand: 'Chevrolet', unitPriceCents: 3490 });
+  expect(JSON.parse(init.body)).toMatchObject({
+    name: 'Vela',
+    category: 'Ignição',
+    vehicleBrand: 'Chevrolet',
+    brands: [expect.objectContaining({ partBrand: 'NGK', code: 'NGK-B7', unitPriceCents: 3490 })],
+  });
   expect(onSaved).toHaveBeenCalledTimes(1);
   expect(shows(tree, 'Item “Vela” cadastrado.')).toBe(true);
 });
@@ -407,7 +455,7 @@ test('Mobile: the price always shows in reais, a dot and a comma alike', async (
   expect(shows(tree, ITEM_FORM_MESSAGES.priceTooHigh)).toBe(true);
   await press(tree, 'Salvar alterações');
   const [, init] = (fetch as jest.Mock).mock.calls[0];
-  expect(JSON.parse(init.body).unitPriceCents).toBe(750);
+  expect(JSON.parse(init.body).brands[0].unitPriceCents).toBe(750);
 });
 
 // Pastes a fraction into the quantity and checks it is refused with its message, the field keeping its value, and a
@@ -473,8 +521,8 @@ test('Mobile: Editar unlocks the details and saves like an edit', async () => {
 });
 
 // Picks two photos for a new item and saves it, and checks the library is asked for photos reduced to the stored
-// size and quality, the item is posted first, then its photos are sent to it in order as files from the phone, and
-// the item handed over carries the photos the API saved.
+// size and quality, the item is posted first, then its brand's photos are sent to the brand in order as files from the
+// phone, and the item handed over carries the photos the API saved.
 test('Mobile: a new item is saved with its photos', async () => {
   const onSaved = jest.fn();
   const tree = await mount(undefined, { onSaved });
@@ -488,12 +536,13 @@ test('Mobile: a new item is saved with its photos', async () => {
   );
   expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual(['file:///fotos/frente.jpg', 'file:///fotos/lado.jpg']);
   (fetch as jest.Mock).mockClear();
-  answerSave();
-  (fetch as jest.Mock).mockImplementationOnce(async () => ({
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ ...FILTER, id: '00000000-0000-4000-8000-000000000009', photos: [SAVED_PHOTO] }),
-  }));
+  let posted: ItemCreate | undefined;
+  (fetch as jest.Mock)
+    .mockImplementationOnce(async (_url: string, init: RequestInit) => {
+      posted = JSON.parse(String(init.body));
+      return { ok: true, status: 201, json: () => Promise.resolve(savedOf(posted!)) };
+    })
+    .mockImplementationOnce(async () => ({ ok: true, status: 200, json: () => Promise.resolve(savedOf(posted!, [SAVED_PHOTO])) }));
   await type(tree, 'Código da peça', 'ngk-b7');
   await type(tree, 'Nome', 'vela');
   await type(tree, 'Categoria', 'Ignição');
@@ -503,13 +552,13 @@ test('Mobile: a new item is saved with its photos', async () => {
   await press(tree, 'Salvar');
   const [[postUrl], [photosUrl, photosInit]] = (fetch as jest.Mock).mock.calls;
   expect(postUrl).toMatch(/\/items$/);
-  expect(photosUrl).toMatch(/\/items\/00000000-0000-4000-8000-000000000009\/photos$/);
+  expect(photosUrl).toMatch(/\/items\/00000000-0000-4000-8000-000000000009\/brands\/00000000-0000-4000-8000-000000000101\/photos$/);
   expect(photosInit.method).toBe('PUT');
   expect(photosInit.body.getParts().map((part: { fieldName: string; name: string }) => [part.fieldName, part.name])).toEqual([
     ['photo', 'frente.jpg'],
     ['photo', 'lado.jpg'],
   ]);
-  expect(onSaved.mock.calls[0][0].photos).toEqual([SAVED_PHOTO]);
+  expect(onSaved.mock.calls[0][0].brands[0].photos).toEqual([SAVED_PHOTO]);
 });
 
 // Saves an item to edit without changing anything, and checks nothing is sent, an info toast says there is nothing to
@@ -527,7 +576,7 @@ test('Mobile: an unchanged edit is not sent, and an info toast says so', async (
 // Edits an item, removes its photo while the API can't save photos, and checks the toast says the item was saved
 // without its photos and the item is still handed over.
 test('Mobile: photos that fail to save are reported', async () => {
-  const withPhoto = { ...FILTER, photos: [SAVED_PHOTO] };
+  const withPhoto = { ...FILTER, brands: [{ ...FILTER.brands[0], photos: [SAVED_PHOTO] }] };
   const onSaved = jest.fn();
   const tree = await mount(withPhoto, { onSaved });
   await press(tree, 'Remover foto 1');
@@ -544,8 +593,71 @@ test('Mobile: photos that fail to save are reported', async () => {
 // Opens the details of an item with a photo and checks it shows read-only, from the API, with no way to remove it or
 // pick more.
 test('Mobile: the details show the photos read-only', async () => {
-  const tree = await mount({ ...FILTER, photos: [SAVED_PHOTO] }, { details: true });
+  const tree = await mount({ ...FILTER, brands: [{ ...FILTER.brands[0], photos: [SAVED_PHOTO] }] }, { details: true });
   expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual([expect.stringMatching(/\/photos\/aa\.jpg$/)]);
   expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Remover foto 1')).toHaveLength(0);
   expect(tree.root.findAll((n) => n.props.testID === 'common.image-upload.drop')).toHaveLength(0);
+});
+
+// Adds a second brand to an item, fills it in its own section, and checks it is sent after the first with its own
+// code, price and part brand, and that Remover takes a brand out, the form back to one brand without Remover.
+test('Mobile: a second brand is added, sent with the item, and removed', async () => {
+  const tree = await mount(FILTER);
+  expect(tree.root.findAll((n) => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('Remover marca'))).toHaveLength(0);
+  await press(tree, 'Adicionar marca');
+  const second = section(tree, 'Marca 2');
+  await typeIn(second, 'Marca da peça', 'NGK');
+  await typeIn(second, 'Código da peça', 'w 712-b');
+  await typeIn(second, 'Quantidade', '4');
+  await typeIn(second, 'Valor unitário (R$)', '29,90');
+  (fetch as jest.Mock).mockClear();
+  answerSave(200);
+  await press(tree, 'Salvar alterações');
+  const [, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(JSON.parse(init.body).brands).toEqual([
+    expect.objectContaining({ id: FILTER.brands[0].id, code: 'W 712/95' }),
+    expect.objectContaining({ partBrand: 'NGK', code: 'W 712-B', quantity: 4, unitPriceCents: 2990 }),
+  ]);
+
+  const again = await mount(FILTER);
+  await press(again, 'Adicionar marca');
+  await press(again, 'Remover marca 1');
+  expect(section(again, 'Marca 2')).toBeUndefined();
+  expect(value(again, 'Código da peça')).toBe('');
+  expect(again.root.findAll((n) => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('Remover marca'))).toHaveLength(0);
+});
+
+// Gives a second brand the first one's part brand and code, and checks each is refused under its field, on the second
+// brand, and nothing is sent.
+test('Mobile: a part brand and a code appear once in an item', async () => {
+  const tree = await mount(FILTER);
+  await press(tree, 'Adicionar marca');
+  const second = section(tree, 'Marca 2');
+  await typeIn(second, 'Marca da peça', 'bosch');
+  await typeIn(second, 'Código da peça', 'W712-95');
+  await typeIn(second, 'Valor unitário (R$)', '1000');
+  (fetch as jest.Mock).mockClear();
+  await press(tree, 'Salvar alterações');
+  const inSecond = (message: string) => second.findAll((n) => typeof n.type === 'string' && n.props.children === message).length > 0;
+  expect(inSecond(ITEM_FORM_MESSAGES.partBrandRepeated)).toBe(true);
+  expect(inSecond(ITEM_FORM_MESSAGES.codeRepeated)).toBe(true);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+// Opens the details of an item of two brands and checks each brand shows in its own section, with its code, price
+// and quantity, and its own photos.
+test('Mobile: the details show each brand of an item', async () => {
+  const both = {
+    ...FILTER,
+    quantity: 5,
+    brands: [
+      FILTER.brands[0],
+      { ...FILTER.brands[0], id: '00000000-0000-4000-8000-0000000000b2', partBrand: 'Cobreq', code: 'N-1210', quantity: 4, unitPriceCents: 7990 },
+    ],
+  };
+  const tree = await mount(both, { details: true });
+  const second = section(tree, 'Marca 2');
+  const shown = second.findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string').map((n) => n.props.children.replace(/\s/g, ' '));
+  expect(shown).toEqual(expect.arrayContaining(['Cobreq', 'N-1210', '4', 'R$ 79,90']));
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Fotos da marca 2').length).toBeGreaterThan(0);
 });

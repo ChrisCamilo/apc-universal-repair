@@ -14,6 +14,7 @@ import { NotificationsMenu } from '../src/notifications/NotificationsMenu';
 import { useLowStockAlerts } from '../src/notifications/useLowStockAlerts';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider } from '../src/Toast';
+import { testItem } from '@apc/shared/test-items';
 
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 const USER_ID = 'user-christian';
@@ -32,7 +33,7 @@ const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
  * @returns A complete item.
  */
 function item(id: string, name: string, quantity: number, minQuantity: number): Item {
-  return {
+  return testItem({
     id,
     code: id.toUpperCase(),
     name,
@@ -50,7 +51,7 @@ function item(id: string, name: string, quantity: number, minQuantity: number): 
     photos: [],
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
-  };
+  });
 }
 
 /**

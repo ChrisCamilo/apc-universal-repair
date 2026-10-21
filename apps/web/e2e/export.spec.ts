@@ -4,14 +4,15 @@ import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from "@apc/shared/item-csv";
 import type { Item } from "@apc/shared/items";
 import { serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
+import { testItem, type FlatItem } from "@apc/shared/test-items";
 
 /**
  * Fills in an item with the fields the export doesn't look at.
  * @param fields The fields that matter for the test.
  * @returns A complete item.
  */
-function item(fields: Partial<Item> & Pick<Item, "code" | "name">): Item {
-  return {
+function item(fields: FlatItem & Required<Pick<FlatItem, "code" | "name">>): Item {
+  return testItem({
     id: crypto.randomUUID(),
     category: "Motor",
     partBrand: "Bosch",
@@ -28,7 +29,7 @@ function item(fields: Partial<Item> & Pick<Item, "code" | "name">): Item {
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
     ...fields,
-  };
+  });
 }
 
 // 30 parts the search finds, over two pages of 25, the first with a photo, and 5 filters it leaves out.
@@ -82,11 +83,11 @@ test("Web: the CSV export takes every page of the list as it is", async ({ page 
   const plain = await exportList(page, false);
   expect(plain.name).toMatch(/^estoque-\d{4}-\d{2}-\d{2}\.csv$/);
   expect(plain.lines[0]).toBe(CSV_COLUMNS.join(","));
-  const codes = plain.lines.slice(1, -1).map((line) => line.split(",")[0]);
+  const codes = plain.lines.slice(1, -1).map((line) => line.split(",")[1]);
   expect(codes.sort()).toEqual(Array.from({ length: 30 }, (_, index) => `P-${index + 1}`).sort());
   expect(plain.lines.at(-1)).toBe("");
 
   const withPhotos = await exportList(page, true);
   expect(withPhotos.lines[0]).toBe(`${CSV_COLUMNS.join(",")},${CSV_PHOTOS_COLUMN}`);
-  expect(withPhotos.lines.find((line) => line.startsWith("P-1,"))).toMatch(/,\/photos\/p1\.jpg$/);
+  expect(withPhotos.lines.find((line) => line.split(",")[1] === "P-1")).toMatch(/,\/photos\/p1\.jpg$/);
 });

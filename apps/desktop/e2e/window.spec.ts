@@ -7,6 +7,7 @@ import type { Item } from "@apc/shared/items";
 import { NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { startStubApi } from "./stubApi.ts";
+import { testItem } from "@apc/shared/test-items";
 
 // The desktop app in a window on a 1360×768 notebook, whose content is about 1360×689 once the taskbar and the title
 // bar are taken off: the compiled app (dist/main.js) with the web build, on a stand-in API with enough items to fill
@@ -15,25 +16,27 @@ import { startStubApi } from "./stubApi.ts";
 /** The desktop app's folder, which Electron opens as the app. */
 const APP_DIR = path.join(import.meta.dirname, "..");
 /** Items enough to fill the list past the window. */
-const ITEMS: Item[] = Array.from({ length: 40 }, (_, index) => ({
-  id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
-  code: `P-${index + 1}`,
-  name: `Peça ${index + 1}`,
-  category: "Motor",
-  partBrand: "Mann",
-  vehicleBrand: "Volkswagen",
-  vehicleModel: null,
-  position: "N/A",
-  side: "N/A",
-  color: "N/A",
-  location: null,
-  quantity: 5,
-  minQuantity: 1,
-  unitPriceCents: 3990,
-  photos: [],
-  createdAt: "2026-10-03T12:00:00.000Z",
-  updatedAt: "2026-10-03T12:00:00.000Z",
-}));
+const ITEMS: Item[] = Array.from({ length: 40 }, (_, index) =>
+  testItem({
+    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    code: `P-${index + 1}`,
+    name: `Peça ${index + 1}`,
+    category: "Motor",
+    partBrand: "Mann",
+    vehicleBrand: "Volkswagen",
+    vehicleModel: null,
+    position: "N/A",
+    side: "N/A",
+    color: "N/A",
+    location: null,
+    quantity: 5,
+    minQuantity: 1,
+    unitPriceCents: 3990,
+    photos: [],
+    createdAt: "2026-10-03T12:00:00.000Z",
+    updatedAt: "2026-10-03T12:00:00.000Z",
+  }),
+);
 
 let api: { server: Server; url: string };
 

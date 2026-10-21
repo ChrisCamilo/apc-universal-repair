@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { apiFetch } from '@apc/shared/auth'
-import type { Item } from '@apc/shared/items'
+import { itemCodes, type Item } from '@apc/shared/items'
 import { Button } from '../components/Button.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { useToast } from '../components/toastContext.ts'
@@ -57,7 +57,7 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
       }
     >
       <Text size="sm" tone="muted">
-        {item?.name} ({item?.code}) sai do estoque. Essa ação não pode ser desfeita.
+        {item?.name} ({item && itemCodes(item)}) sai do estoque. Essa ação não pode ser desfeita.
       </Text>
     </Dialog>
   )

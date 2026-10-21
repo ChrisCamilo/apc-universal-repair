@@ -21,7 +21,7 @@ export type ServerBridge = {
   checkImport: (source: ImportSource) => Promise<ImportCheck>
   /** Imports an old server's data and photos into the database in use, with the server off meanwhile. */
   importServer: (source: ImportSource, photosFrom?: string) => Promise<ImportOutcome>
-  /** Applies this version's migrations to an old server's database, which only adds tables. */
+  /** Applies this version's migrations to an old server's database, which change its structure and keep its data. */
   migrateImport: (source: ImportSource) => Promise<ServerOutcome>
   /** Calls a listener each time the tray asks to open the Servidor dialog, and gives the way to stop. */
   onOpen: (listener: () => void) => () => void

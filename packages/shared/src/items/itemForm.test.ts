@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  BRAND_FIELD_LABELS,
+  brandDetailTexts,
   codeTakenError,
   codeTakenMessage,
+  EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
+  formValue,
+  hasFormErrors,
   ITEM_FIELD_LABELS,
   ITEM_FORM_MESSAGES,
   itemDetailTexts,
@@ -18,13 +23,26 @@ import {
   priceMask,
   priceText,
   quantityInput,
+  withFormValues,
   type ItemForm,
 } from "./itemForm.ts";
 import type { Item } from "./items.ts";
 import type { ItemLists } from "../lists/lists.ts";
+import { testItem, type FlatItem } from "./testItems.ts";
 
 const FILTER = item({ id: "a", code: "W 712/95", name: "Filtro de óleo", vehicleBrand: "Volkswagen", vehicleModel: "Gol", color: "N/A" });
-const PADS = item({ id: "b", code: "FRA-1000", name: "Pastilha", vehicleBrand: "Chevrolet", vehicleModel: "Opala", color: "Preto" });
+// A part of two brands, the second at its own price, quantity and location.
+const PADS = item({
+  id: "b",
+  name: "Pastilha",
+  vehicleBrand: "Chevrolet",
+  vehicleModel: "Opala",
+  minQuantity: 2,
+  brands: [
+    { id: "b1", partBrand: "Bosch", code: "FRA-1000", color: "Preto", location: null, quantity: 1, unitPriceCents: 3990, photos: [] },
+    { id: "b2", partBrand: "Fras-le", code: "PD-1000", color: "N/A", location: "B-10", quantity: 3, unitPriceCents: 4990, photos: [] },
+  ],
+});
 const ITEMS = [FILTER, PADS, item({ id: "c", code: "X-1", name: "Junta", vehicleBrand: "volkswagen", vehicleModel: "Santana", color: "Azul" })];
 // The lists the API keeps: what the items use, plus the category and the brand of a new spark plug.
 const LISTS: ItemLists = {
@@ -37,23 +55,22 @@ const LISTS: ItemLists = {
     { id: "gol", name: "Gol", vehicleBrandId: "volkswagen" },
   ],
 };
-const VALID: ItemForm = {
-  ...EMPTY_ITEM_FORM,
+const VALID: ItemForm = withFormValues(EMPTY_ITEM_FORM, {
   code: "ngk-b7",
   name: "vela de ignição",
   category: "ignição",
   partBrand: "NGK",
   vehicleBrand: "chevrolet",
   price: "34,9",
-};
+});
 
 /**
  * Fills in an item with the fields a test doesn't look at.
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function item(fields: Partial<Item> & Pick<Item, "id" | "code" | "name">): Item {
-  return {
+function item(fields: FlatItem & Required<Pick<FlatItem, "id" | "name">>): Item {
+  return testItem({
     category: "Motor",
     partBrand: "Bosch",
     vehicleBrand: "Volkswagen",
@@ -69,7 +86,7 @@ function item(fields: Partial<Item> & Pick<Item, "id" | "code" | "name">): Item 
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
     ...fields,
-  };
+  });
 }
 
 // Reads prices with thousands, one or two decimals, no decimals and the currency sign, a dot and a comma meaning the
@@ -129,29 +146,33 @@ test("Shared: a price pasted into the field is read as a price", () => {
   assert.equal(ITEM_FORM_MESSAGES.priceTooHigh, "Informe no máximo R$ 1.000.000,00.");
 });
 
-// Checks a blank form names every required field, a price that isn't above zero says so, and a filled-in form passes.
+// Checks a blank form names every required field, the item's and its brand's, a price that isn't above zero says so,
+// and a filled-in form passes.
 test("Shared: the item form names each required field left blank", () => {
   assert.deepEqual(itemFormErrors(EMPTY_ITEM_FORM, ITEMS, LISTS), {
-    code: ITEM_FORM_MESSAGES.code,
     name: ITEM_FORM_MESSAGES.name,
     category: ITEM_FORM_MESSAGES.category,
-    partBrand: ITEM_FORM_MESSAGES.partBrand,
     vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrand,
-    price: ITEM_FORM_MESSAGES.price,
+    brands: [{ partBrand: ITEM_FORM_MESSAGES.partBrand, code: ITEM_FORM_MESSAGES.code, price: ITEM_FORM_MESSAGES.price }],
   });
-  assert.deepEqual(itemFormErrors({ ...VALID, price: "0,00" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceInvalid });
-  assert.deepEqual(itemFormErrors({ ...VALID, price: "abc" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceInvalid });
-  assert.deepEqual(itemFormErrors({ ...VALID, price: "R$ 1.000.000,01" }, ITEMS, LISTS), { price: ITEM_FORM_MESSAGES.priceTooHigh });
-  assert.deepEqual(itemFormErrors({ ...VALID, price: "R$ 1.000.000,00" }, ITEMS, LISTS), {});
+  assert.deepEqual(itemFormErrors(withFormValues(VALID, { price: "0,00" }), ITEMS, LISTS), { brands: [{ price: ITEM_FORM_MESSAGES.priceInvalid }] });
+  assert.deepEqual(itemFormErrors(withFormValues(VALID, { price: "abc" }), ITEMS, LISTS), { brands: [{ price: ITEM_FORM_MESSAGES.priceInvalid }] });
+  assert.deepEqual(itemFormErrors(withFormValues(VALID, { price: "R$ 1.000.000,01" }), ITEMS, LISTS), {
+    brands: [{ price: ITEM_FORM_MESSAGES.priceTooHigh }],
+  });
+  assert.deepEqual(itemFormErrors(withFormValues(VALID, { price: "R$ 1.000.000,00" }), ITEMS, LISTS), {});
   assert.deepEqual(itemFormErrors(VALID, ITEMS, LISTS), {});
+  assert.equal(hasFormErrors(itemFormErrors(VALID, ITEMS, LISTS)), false);
+  assert.equal(hasFormErrors({ brands: [{}, { code: ITEM_FORM_MESSAGES.code }] }), true);
+  assert.equal(hasFormErrors({ name: ITEM_FORM_MESSAGES.name }), true);
 });
 
 // Fills in quantities at the limit and past it, and checks only the ones past it are refused.
 test("Shared: the item form refuses quantities past the limit", () => {
-  assert.deepEqual(itemFormErrors({ ...VALID, quantity: "1000000", minQuantity: "1000000" }, ITEMS, LISTS), {});
-  assert.deepEqual(itemFormErrors({ ...VALID, quantity: "1000001", minQuantity: "99999999999" }, ITEMS, LISTS), {
-    quantity: ITEM_FORM_MESSAGES.quantityTooHigh,
+  assert.deepEqual(itemFormErrors(withFormValues(VALID, { quantity: "1000000", minQuantity: "1000000" }), ITEMS, LISTS), {});
+  assert.deepEqual(itemFormErrors(withFormValues(VALID, { quantity: "1000001", minQuantity: "99999999999" }), ITEMS, LISTS), {
     minQuantity: ITEM_FORM_MESSAGES.quantityTooHigh,
+    brands: [{ quantity: ITEM_FORM_MESSAGES.quantityTooHigh }],
   });
   assert.equal(ITEM_FORM_MESSAGES.quantityTooHigh, "Informe no máximo 1.000.000.");
 });
@@ -178,96 +199,115 @@ test("Shared: quantity fields take whole numbers only, typed or pasted", () => {
 // option, while names the lists hold pass ignoring case, accents and extra spaces, and a model is only checked
 // within a listed brand.
 test("Shared: the item form refuses names its lists don't hold", () => {
-  const unlisted = { ...VALID, category: "Motor diesel", partBrand: "Cofap", vehicleBrand: "Fiat", vehicleModel: "Uno" };
+  const unlisted = withFormValues(VALID, { category: "Motor diesel", partBrand: "Cofap", vehicleBrand: "Fiat", vehicleModel: "Uno" });
   assert.deepEqual(itemFormErrors(unlisted, ITEMS, LISTS), {
     category: ITEM_FORM_MESSAGES.categoryNotListed,
-    partBrand: ITEM_FORM_MESSAGES.partBrandNotListed,
     vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrandNotListed,
+    brands: [{ partBrand: ITEM_FORM_MESSAGES.partBrandNotListed }],
   });
-  assert.deepEqual(itemFormErrors({ ...VALID, vehicleBrand: "Volkswagen", vehicleModel: "Opala" }, ITEMS, LISTS), {
+  assert.deepEqual(itemFormErrors(withFormValues(VALID, { vehicleBrand: "Volkswagen", vehicleModel: "Opala" }), ITEMS, LISTS), {
     vehicleModel: ITEM_FORM_MESSAGES.vehicleModelNotListed,
   });
-  const spelled = { ...VALID, category: " IGNICAO ", partBrand: "ngk", vehicleBrand: "volkswagen", vehicleModel: "gol" };
+  const spelled = withFormValues(VALID, { category: " IGNICAO ", partBrand: "ngk", vehicleBrand: "volkswagen", vehicleModel: "gol" });
   assert.deepEqual(itemFormErrors(spelled, ITEMS, LISTS), {});
 });
 
 // Types a code another item uses, in another case, and checks it is refused naming that item, while the item being
 // edited keeps its own code.
 test("Shared: a code another item uses is refused, naming it", () => {
-  assert.deepEqual(itemFormErrors({ ...VALID, code: "fra-1000" }, ITEMS, LISTS), { code: codeTakenMessage("Pastilha") });
-  assert.deepEqual(itemFormErrors({ ...VALID, code: "FRA-1000" }, ITEMS, LISTS, PADS.id), {});
+  assert.deepEqual(itemFormErrors(withFormValues(VALID, { code: "fra-1000" }), ITEMS, LISTS), { brands: [{ code: codeTakenMessage("Pastilha") }] });
+  assert.deepEqual(itemFormErrors(withFormValues(VALID, { code: "FRA-1000" }), ITEMS, LISTS, PADS.id), {});
 });
 
-// Checks codes as they are typed: one another item uses, in another case, with spaces around it or with other
-// separators, as the search compares codes, names that item; a code on its way to it, a free one and an empty one say
-// nothing; and the item being edited keeps its own code.
+// Adds a second brand that repeats the first's part brand, in another case, and its code, with other separators, and
+// checks each is refused on the second brand only; a second brand of its own passes.
+test("Shared: a part brand and a code appear once in an item", () => {
+  const twice = { ...VALID, brands: [VALID.brands[0], { ...EMPTY_BRAND_FORM, partBrand: "ngk", code: "NGK B7", price: "R$ 10,00" }] };
+  assert.deepEqual(itemFormErrors(twice, ITEMS, LISTS), {
+    brands: [{}, { partBrand: ITEM_FORM_MESSAGES.partBrandRepeated, code: ITEM_FORM_MESSAGES.codeRepeated }],
+  });
+  const other = { ...VALID, brands: [VALID.brands[0], { ...EMPTY_BRAND_FORM, partBrand: "Bosch", code: "FR7DC", price: "R$ 10,00" }] };
+  assert.deepEqual(itemFormErrors(other, ITEMS, LISTS), {});
+});
+
+// Checks codes as they are typed: one another item's brand uses, in another case, with spaces around it or with
+// other separators, as the search compares codes, names that item; a code on its way to it, a free one and an empty
+// one say nothing; and the item being edited keeps its own codes, its second brand's too.
 test("Shared: a code is checked against the other items as it is typed", () => {
   assert.equal(codeTakenError(" w 712/95 ", ITEMS), codeTakenMessage("Filtro de óleo"));
   assert.equal(codeTakenError("w71295", ITEMS), codeTakenMessage("Filtro de óleo"));
   assert.equal(codeTakenError("FRA 1000", ITEMS), codeTakenMessage("Pastilha"));
+  assert.equal(codeTakenError("PD/1000", ITEMS), codeTakenMessage("Pastilha"));
   assert.equal(codeTakenError("W 712", ITEMS), undefined);
   assert.equal(codeTakenError("NOVO-1", ITEMS), undefined);
   assert.equal(codeTakenError("", ITEMS), undefined);
   assert.equal(codeTakenError("W 712/95", ITEMS, FILTER.id), undefined);
+  assert.equal(codeTakenError("PD-1000", ITEMS, PADS.id), undefined);
 });
 
-// Builds the body of a filled-in form and checks the writing rule: capitals on every text, an uppercase code, an
-// existing color in its own spelling, an empty color as N/A, blank quantities as zero and the price in cents.
+// Builds the body of a filled-in form and checks the writing rule: capitals on every text, uppercase codes, an
+// existing color in its own spelling, an empty color as N/A, blank quantities as zero, the price in cents, and an
+// edited brand sent with its id.
 test("Shared: the item body follows the writing rule", () => {
-  assert.deepEqual(itemFormBody({ ...VALID, color: "preto", location: "a-2", quantity: "3" }, ["Azul", "Preto"]), {
-    code: "NGK-B7",
+  assert.deepEqual(itemFormBody(withFormValues(VALID, { color: "preto", location: "a-2", quantity: "3" }), ["Azul", "Preto"]), {
     name: "Vela de ignição",
     category: "Ignição",
-    partBrand: "NGK",
     vehicleBrand: "Chevrolet",
     vehicleModel: "",
-    quantity: 3,
     minQuantity: 0,
     position: "N/A",
     side: "N/A",
-    color: "Preto",
-    location: "A-2",
-    unitPriceCents: 3490,
+    brands: [{ partBrand: "NGK", code: "NGK-B7", quantity: 3, unitPriceCents: 3490, color: "Preto", location: "A-2" }],
   });
-  assert.equal(itemFormBody(VALID, []).color, "N/A");
+  assert.equal(itemFormBody(VALID, []).brands[0].color, "N/A");
+  assert.deepEqual(
+    itemFormBody(itemFormOf(PADS), []).brands.map((brand) => [brand.id, brand.code]),
+    [
+      [PADS.brands[0].id, "FRA-1000"],
+      [PADS.brands[1].id, "PD-1000"],
+    ],
+  );
 });
 
-// Fills the form with an item to edit and checks every field, the N/A color left blank and the price in the
-// Brazilian format, and that saving it back gives the same values.
+// Fills the form with an item of two brands to edit and checks every field, each brand with its id, the N/A color left
+// blank and the price in reais, and that saving it back gives the same values.
 test("Shared: an item fills the form and saves back unchanged", () => {
-  const form = itemFormOf(FILTER);
+  const form = itemFormOf(PADS);
   assert.deepEqual(form, {
-    code: "W 712/95",
-    name: "Filtro de óleo",
+    name: "Pastilha",
     category: "Motor",
-    partBrand: "Bosch",
-    vehicleBrand: "Volkswagen",
-    vehicleModel: "Gol",
-    quantity: "1",
-    minQuantity: "0",
+    vehicleBrand: "Chevrolet",
+    vehicleModel: "Opala",
+    minQuantity: "2",
     position: "N/A",
     side: "N/A",
-    color: "",
-    location: "",
-    price: "R$ 39,90",
+    brands: [
+      { id: PADS.brands[0].id, partBrand: "Bosch", code: "FRA-1000", quantity: "1", price: "R$ 39,90", color: "Preto", location: "" },
+      { id: PADS.brands[1].id, partBrand: "Fras-le", code: "PD-1000", quantity: "3", price: "R$ 49,90", color: "", location: "B-10" },
+    ],
   });
   const body = itemFormBody(form, []);
-  assert.equal(body.unitPriceCents, FILTER.unitPriceCents);
-  assert.equal(body.color, "N/A");
+  assert.deepEqual(
+    body.brands.map((brand) => [brand.unitPriceCents, brand.color]),
+    PADS.brands.map((brand) => [brand.unitPriceCents, brand.color]),
+  );
 });
 
 // Fills the form with an item and checks it is no change as it is, nor with fields only written differently (the name
-// in lowercase, the price without its last zero), and is one once a quantity changes.
+// in lowercase, the price without its last zero), and is one once a quantity changes, a brand is added or one is
+// removed.
 test("Shared: an edit only changes the item when what is sent differs", () => {
-  const form = itemFormOf(FILTER);
-  assert.equal(itemFormChanged(form, FILTER, []), false);
-  assert.equal(itemFormChanged({ ...form, name: "filtro de óleo", price: "39,9" }, FILTER, []), false);
-  assert.equal(itemFormChanged({ ...form, quantity: "7" }, FILTER, []), true);
+  const form = itemFormOf(PADS);
+  assert.equal(itemFormChanged(form, PADS, []), false);
+  assert.equal(itemFormChanged(withFormValues({ ...form, name: "pastilha" }, { price: "39,9" }), PADS, []), false);
+  assert.equal(itemFormChanged(withFormValues(form, { quantity: "7" }), PADS, []), true);
+  assert.equal(itemFormChanged({ ...form, brands: [...form.brands, EMPTY_BRAND_FORM] }, PADS, []), true);
+  assert.equal(itemFormChanged({ ...form, brands: form.brands.slice(1) }, PADS, []), true);
 });
 
-// Lists the options and checks the comboboxes offer every name of the lists, sorted, the colors are the ones in
-// stock without N/A, and the models are those of the chosen vehicle brand, ignoring case, with none before a
-// brand of the list.
+// Lists the options and checks the comboboxes offer every name of the lists, sorted, the colors are the ones the
+// brands in stock use without N/A, and the models are those of the chosen vehicle brand, ignoring case, with none
+// before a brand of the list.
 test("Shared: the form's options come from the lists", () => {
   assert.deepEqual(itemFormOptions(ITEMS, LISTS), {
     categories: ["Ignição", "Motor"],
@@ -281,30 +321,46 @@ test("Shared: the form's options come from the lists", () => {
 });
 
 // Writes out the details of an item with every field filled in and of one with nothing optional, and checks the
-// position and side by their full names, the price in reais, what doesn't apply or is missing said in words, and a
-// text for every labeled field, in the form's order.
+// position and side by their full names, each brand's price in reais, what doesn't apply or is missing said in
+// words, and a text for every labeled field, in the form's order.
 test("Shared: an item's details are written out field by field", () => {
-  const full = itemDetailTexts({ ...PADS, position: "D", side: "LE", location: "B-10", unitPriceCents: 123456 });
+  const full = itemDetailTexts({ ...PADS, position: "D", side: "LE" });
   assert.deepEqual(full, {
-    code: "FRA-1000",
     name: "Pastilha",
     category: "Motor",
-    partBrand: "Bosch",
     vehicleBrand: "Chevrolet",
     vehicleModel: "Opala",
-    quantity: "1",
-    minQuantity: "0",
     position: "Dianteiro",
     side: "Lado esquerdo",
-    color: "Preto",
-    location: "B-10",
-    price: "R$ 1.234,56",
+    minQuantity: "2",
   });
   assert.deepEqual(Object.keys(full), Object.keys(ITEM_FIELD_LABELS));
+  const brand = brandDetailTexts({ ...PADS.brands[0], location: "B-10", unitPriceCents: 123456 });
+  assert.deepEqual({ ...brand, price: brand.price.replace(/\s/g, " ") }, {
+    partBrand: "Bosch",
+    code: "FRA-1000",
+    quantity: "1",
+    price: "R$ 1.234,56",
+    color: "Preto",
+    location: "B-10",
+  });
+  assert.deepEqual(Object.keys(brand), Object.keys(BRAND_FIELD_LABELS));
   const bare = itemDetailTexts({ ...FILTER, vehicleModel: null });
   assert.equal(bare.vehicleModel, "Qualquer modelo");
   assert.equal(bare.position, "Não se aplica");
   assert.equal(bare.side, "Não se aplica");
-  assert.equal(bare.color, "Não se aplica");
-  assert.equal(bare.location, "Não informado");
+  const plain = brandDetailTexts(FILTER.brands[0]);
+  assert.equal(plain.color, "Não se aplica");
+  assert.equal(plain.location, "Não informado");
+});
+
+// Reads and writes the form's fields flat, the item's and its first brand's, as the tutorial names them, leaving the
+// other brands as they are.
+test("Shared: the form's fields read and write flat, the first brand's for a brand field", () => {
+  const form = itemFormOf(PADS);
+  assert.deepEqual([formValue(form, "name"), formValue(form, "code"), formValue(form, "price")], ["Pastilha", "FRA-1000", "R$ 39,90"]);
+  const changed = withFormValues(form, { name: "Junta", quantity: "9" });
+  assert.equal(changed.name, "Junta");
+  assert.equal(changed.brands[0].quantity, "9");
+  assert.deepEqual(changed.brands[1], form.brands[1]);
 });

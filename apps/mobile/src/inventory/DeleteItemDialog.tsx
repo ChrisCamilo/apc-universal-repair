@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
-import type { Item } from '@apc/shared/items';
+import { itemCodes, type Item } from '@apc/shared/items';
 import { API_URL } from '../api';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
@@ -9,7 +9,7 @@ import { useToast } from '../Toast';
 import { tourTarget } from '../tourTargets';
 import { Text } from '../Typography';
 
-// The confirmation that removes an item from the inventory, the same as the web: it names the item and its code.
+// The confirmation that removes an item from the inventory, the same as the web: it names the item and its codes.
 // Excluir sends the delete to the API, shows a toast and hands the removal over; Cancel and the back button close
 // it with nothing changed. A failed delete keeps the dialog open and says so in a toast, so it can be tried again.
 
@@ -62,7 +62,7 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
       }
     >
       <Text size="sm" tone="muted">
-        {`${item?.name} (${item?.code}) sai do estoque. Essa ação não pode ser desfeita.`}
+        {`${item?.name} (${item && itemCodes(item)}) sai do estoque. Essa ação não pode ser desfeita.`}
       </Text>
     </Dialog>
   );

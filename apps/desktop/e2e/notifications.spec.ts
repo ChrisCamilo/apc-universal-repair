@@ -6,6 +6,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import type { Item } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { startStubApi } from "./stubApi.ts";
+import { testItem } from "@apc/shared/test-items";
 
 // The desktop app's Windows notifications: the compiled app (dist/main.js) with the web build, on a stand-in API whose
 // one item is below its minimum stock, so the Inventory warns about it as it opens. The main process's Notification is
@@ -15,7 +16,7 @@ import { startStubApi } from "./stubApi.ts";
 /** The desktop app's folder, which Electron opens as the app. */
 const APP_DIR = path.join(import.meta.dirname, "..");
 /** The one item in stock, below its minimum. */
-const LOW: Item = {
+const LOW: Item = testItem({
   id: "00000000-0000-4000-8000-000000000001",
   code: "W 712/95",
   name: "Filtro de óleo",
@@ -33,7 +34,7 @@ const LOW: Item = {
   photos: [],
   createdAt: "2026-10-03T12:00:00.000Z",
   updatedAt: "2026-10-03T12:00:00.000Z",
-};
+});
 
 let api: { server: Server; url: string };
 

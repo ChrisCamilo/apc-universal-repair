@@ -1,6 +1,6 @@
 import { launchImageLibrary, type PhotoQuality } from 'react-native-image-picker';
 import { apiFetch } from '@apc/shared/auth';
-import { itemSchema, type Item } from '@apc/shared/items';
+import { itemSchema, type Item, type ItemBrand } from '@apc/shared/items';
 import {
   ITEM_PHOTO_LIMIT,
   PHOTO_MAX_DIMENSION,
@@ -13,8 +13,8 @@ import { API_URL } from '../api';
 import type { PickedPhoto, UploadPhoto } from '../ImageUpload';
 
 // The item photos on the phone: the photo library to pick them from, which hands them over already reduced to
-// PHOTO_MAX_DIMENSION at PHOTO_QUALITY, so less is sent and a photo over 3 MB can still be taken; and saving an item's
-// photos as a photo field or the viewer holds them, the same as the web: the saved ones kept by their id and the new
+// PHOTO_MAX_DIMENSION at PHOTO_QUALITY, so less is sent and a photo over 3 MB can still be taken; and saving the photos
+// of an item's brand as a photo field or the viewer holds them, the same as the web: the saved ones kept by their id and the new
 // files sent, all in one request, in their order, and nothing sent when the photos didn't change.
 
 /**
@@ -35,15 +35,16 @@ export async function pickPhotos(): Promise<PickedPhoto[]> {
 }
 
 /**
- * Saves an item's photos when they changed.
- * @param item The item as saved, with its saved photos.
- * @param photos The photos it should have, in order.
+ * Saves the photos of an item's brand when they changed.
+ * @param item The item as saved.
+ * @param brand Its brand, with its saved photos.
+ * @param photos The photos the brand should have, in order.
  * @returns The item with its photos as the API saved them (the same item when nothing changed), or null when the
  * photos couldn't be saved.
  */
-export async function savePhotos(item: Item, photos: readonly UploadPhoto[]): Promise<Item | null> {
-  const parts = photoParts(photos, item.photos, API_URL);
-  if (!photosChanged(parts, item.photos)) {
+export async function savePhotos(item: Item, brand: ItemBrand, photos: readonly UploadPhoto[]): Promise<Item | null> {
+  const parts = photoParts(photos, brand.photos, API_URL);
+  if (!photosChanged(parts, brand.photos)) {
     return item;
   }
   const body = new FormData();
@@ -55,6 +56,6 @@ export async function savePhotos(item: Item, photos: readonly UploadPhoto[]): Pr
       body.append(PHOTO_PARTS.file, { uri: part.file.url, name: part.file.name, type: part.file.type } as unknown as Blob);
     }
   }
-  const response = await apiFetch(`${API_URL}/items/${item.id}/photos`, { method: 'PUT', body }).catch(() => null);
+  const response = await apiFetch(`${API_URL}/items/${item.id}/brands/${brand.id}/photos`, { method: 'PUT', body }).catch(() => null);
   return response?.ok ? itemSchema.parse(await response.json()) : null;
 }

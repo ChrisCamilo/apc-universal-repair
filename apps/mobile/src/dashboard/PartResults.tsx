@@ -1,19 +1,18 @@
 import { Pressable, View, Text as NativeText } from 'react-native';
-import { partFit, type PartResults as Results } from '@apc/shared/catalog';
-import type { Item } from '@apc/shared/items';
+import { partFit, type FoundPart, type PartResults as Results } from '@apc/shared/catalog';
 import { Text } from '../Typography';
 import { useStyles } from './PartResults.styles';
 
 // The inventory parts a Catalog search by code found, the same as the web: a tinted box above the tree with each
-// part's code, name and the vehicle it fits. Choosing one reveals its vehicle in the tree; the chosen part has the
+// brand of an item whose code matched, with its code, the item's name and the vehicle it fits. Choosing one reveals its vehicle in the tree; the chosen part has the
 // accent frame. The parts are a radio group with one always chosen; when more parts matched than fit, a line says
 // how many more.
 
 type PartResultsProps = {
   results: Results;
-  /** The chosen part's id. */
+  /** The chosen part's id, its brand's. */
   chosen?: string;
-  onChoose: (part: Item) => void;
+  onChoose: (part: FoundPart) => void;
 };
 
 export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
@@ -29,7 +28,7 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
           <Pressable
             key={part.id}
             accessibilityRole="radio"
-            accessibilityLabel={`${part.code} ${part.name}, ${partFit(part)}`}
+            accessibilityLabel={`${part.code} ${part.item.name}, ${partFit(part.item)}`}
             accessibilityState={{ checked: part.id === chosen }}
             onPress={() => onChoose(part)}
             style={({ pressed }) => [styles.part, pressed && styles.partPressed, part.id === chosen && styles.partChosen]}
@@ -37,10 +36,10 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
           >
             <View style={styles.line} testID={ids.line}>
               <NativeText style={styles.code} testID={ids.code}>{part.code}</NativeText>
-              <Text size="sm">{part.name}</Text>
+              <Text size="sm">{part.item.name}</Text>
             </View>
             <Text size="sm" tone="muted">
-              {partFit(part)}
+              {partFit(part.item)}
             </Text>
           </Pressable>
         ))}

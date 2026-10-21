@@ -5,7 +5,8 @@ import { recipe, tv } from '../styles/tv.ts'
 // a soft hairline that light up on hover, tinted with a bar on their first cell when they need attention (warn or
 // danger); numbers right-aligned in tabular mono figures. Below the card breakpoint each row becomes a card in a grid
 // (thumbnail | main | end and actions), the header hides and the "Ordenar" select takes its place. A row that opens on
-// a click gets the pointer and an accent outline inside its edges while focused by keyboard. A table that fills its
+// a click gets the pointer and an accent outline inside its edges while focused by keyboard. A nested row, such as a
+// brand under its item, is indented on its first cell, or on the card at phone width. A table that fills its
 // column (fill) takes the room left and scrolls inside it, both ways, with the header row pinned on the panel's fill;
 // with no rows, the empty state is centered in that room. Below the card breakpoint it doesn't scroll on its own: the
 // screen scrolls the cards with what is above them. The table's body only groups the rows, so it adds no level to
@@ -64,6 +65,7 @@ export const dataTable = recipe(
       openable: {
         true: { row: 'cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-accent' },
       },
+      nested: { true: { row: '[&>td:first-child]:pl-8 max-card:pl-8' } },
       area: {
         none: { cell: 'max-card:hidden' },
         thumb: { cell: 'max-card:[grid-area:thumb]' },
@@ -72,7 +74,7 @@ export const dataTable = recipe(
         actions: { cell: 'max-card:[grid-area:actions] max-card:justify-self-end' },
       },
     },
-    defaultVariants: { numeric: false, sorted: false, tint: 'none', openable: false, area: 'none', fill: false },
+    defaultVariants: { numeric: false, sorted: false, tint: 'none', openable: false, nested: false, area: 'none', fill: false },
   }),
   {
     base: '',

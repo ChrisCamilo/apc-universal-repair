@@ -23,7 +23,7 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.item.deleteMany({ where: { code: { contains: RUN } } });
+  await prisma.item.deleteMany({ where: { brands: { some: { code: { contains: RUN } } } } });
   await prisma.vehicleModel.deleteMany({ where: { name: { contains: RUN } } });
   await prisma.brand.deleteMany({ where: { name: { contains: RUN } } });
   await prisma.category.deleteMany({ where: { name: { contains: RUN } } });
@@ -51,12 +51,10 @@ function call(method: "GET" | "POST" | "PATCH", url: string, payload?: object) {
  */
 async function createItem(code: string, fields: { category?: string; vehicleBrand?: string; vehicleModel?: string } = {}) {
   const created = await call("POST", "/items", {
-    code: `${code}-${RUN}`,
     name: `Para-choque ${RUN}`,
     category: `Para-choque ${RUN}`,
-    partBrand: `Arteb ${RUN}`,
     vehicleBrand: `Gurgel ${RUN}`,
-    unitPriceCents: 19990,
+    brands: [{ code: `${code}-${RUN}`, partBrand: `Arteb ${RUN}`, unitPriceCents: 19990 }],
     ...fields,
   });
   assert.equal(created.statusCode, 201, created.body);
@@ -98,11 +96,12 @@ test("API: a vehicle brand merged into another takes its items and models there"
 
   const merged = await call("POST", `/vehicle-brands/${from.id}/merge`, { into: into.id });
   assert.deepEqual(merged.json(), { moved: 2 });
-  const items = await prisma.item.findMany({
-    where: { code: { startsWith: "VB-" }, AND: { code: { contains: RUN } } },
-    select: { vehicleBrandId: true, vehicleModel: { select: { name: true, brandId: true } } },
-    orderBy: { code: "asc" },
-  });
+  const items = (
+    await prisma.item.findMany({
+      where: { brands: { some: { code: { startsWith: "VB-", contains: RUN } } } },
+      select: { vehicleBrandId: true, vehicleModel: { select: { name: true, brandId: true } }, brands: { select: { code: true } } },
+    })
+  ).sort((a, b) => a.brands[0].code.localeCompare(b.brands[0].code));
   assert.ok(items.every((item) => item.vehicleBrandId === into.id && item.vehicleModel?.brandId === into.id));
   assert.deepEqual(
     items.map((item) => item.vehicleModel?.name),

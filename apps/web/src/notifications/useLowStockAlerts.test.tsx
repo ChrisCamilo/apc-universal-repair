@@ -10,6 +10,7 @@ import { Button } from '../components/Button.tsx'
 import { ToastProvider } from '../components/Toast.tsx'
 import { NotificationsMenu } from './NotificationsMenu.tsx'
 import { useLowStockAlerts } from './useLowStockAlerts.ts'
+import { testItem } from '@apc/shared/test-items'
 
 const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true }
 const FILTER = item('a', 'Filtro de óleo', 8, 2)
@@ -25,7 +26,7 @@ const PUMP = item('c', "Bomba d'água", 4, 1)
  * @returns A complete item.
  */
 function item(id: string, name: string, quantity: number, minQuantity: number): Item {
-  return {
+  return testItem({
     id,
     code: id.toUpperCase(),
     name,
@@ -43,7 +44,7 @@ function item(id: string, name: string, quantity: number, minQuantity: number): 
     photos: [],
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
-  }
+  })
 }
 
 /**

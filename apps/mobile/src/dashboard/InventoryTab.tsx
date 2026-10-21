@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
-import { pencilIcon, trashIcon } from '@apc/shared/icons';
+import { chevronIcon, ICON_SIZES, pencilIcon, trashIcon } from '@apc/shared/icons';
 import {
+  itemCodes,
   ITEM_STATUSES,
   itemDetails,
   resultSummary,
   STOCK_STATUS_LABELS,
   stockStatus,
   type Item,
+  type ItemBrand,
   type ItemStatus,
 } from '@apc/shared/items';
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters';
 import { EMPTY_ITEM_FILTERS, followEntryChange, itemFilterRows, itemListQuery } from '@apc/shared/item-filters';
 import { EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form';
-import { TUTORIAL_ITEM } from '@apc/shared/inventory-tutorial';
+import { isTestItem, TUTORIAL_CODE } from '@apc/shared/inventory-tutorial';
 import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination';
 import type { Sort } from '@apc/shared/table';
 import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
@@ -24,6 +26,7 @@ import { DataTable, RowAction, TableThumbnail } from '../DataTable';
 import { EmptyState, ErrorState } from '../EmptyState';
 import { FilterChipGroup } from '../FilterChip';
 import { ClearFilters, FilterMenu } from '../FilterMenu';
+import { Icon } from '../Icon';
 import type { UploadPhoto } from '../ImageUpload';
 import { ImageViewer } from '../ImageViewer';
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog';
@@ -40,6 +43,7 @@ import { Panel } from '../Panel';
 import { Skeleton } from '../Skeleton';
 import { Spinner } from '../Spinner';
 import { SearchField } from '../TextField';
+import { useTheme } from '../theme';
 import { tourTarget } from '../tourTargets';
 import { NumericReadout, Text } from '../Typography';
 import { useInventoryTutorial } from './inventoryTutorialContext';
@@ -53,7 +57,9 @@ import { usePageSize } from './pageSizeContext';
 // that reaches its minimum raises a warning in the bell, once while it stays there (a toast too when a save or an
 // import brought it there).
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
-// the list loads again once an item is saved or deleted. "Gerenciar listas" renames, merges and deletes the
+// the list loads again once an item is saved or deleted. A card is an item; one made by several brands shows their
+// codes, the quantity added up, and a "N marcas" that opens a card for each brand under it, indented, with the
+// brand's own part brand, code, quantity and photos, no tint (the stock status is the item's) and no actions. "Gerenciar listas" renames, merges and deletes the
 // categories, brands and models the form picks from; the list loads again after each change, the filters following a
 // name renamed or merged, and a name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list and the lists load again;
 // "Exportar CSV" hands every item of the list as it is, on every page, to the share sheet in the same format.
@@ -64,26 +70,12 @@ import { usePageSize } from './pageSizeContext';
 // web's columns, going back to the first page. While the items load, skeleton cards hold their place; when nothing is
 // in stock, the empty state offers "Novo item", and when the search or the filters leave nothing, it offers to clear
 // them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and
-// opens its photos in the ImageViewer, where each photo removed, changed or added is saved at once and the list
+// opens its photos in the ImageViewer (a brand's card, that brand's photos), where each photo removed, changed or added is saved at once and the list
 // follows. The Inventory tutorial runs over the tab by itself the first time, and again from the user menu: it starts
 // and ends with the test item deleted and the search, filters and sort off.
 
-const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
-  {
-    key: 'name',
-    header: 'Item',
-    sortable: true,
-    card: 'main',
-    cell: (item) => (
-      <View ref={item.code === TUTORIAL_ITEM.code ? tourTarget('tutorial-row') : undefined} collapsable={false}>
-        <Text>{item.name}</Text>
-        <NumericReadout tone="muted">{item.code}</NumericReadout>
-        <Text size="sm" tone="muted">
-          {itemDetails(item)}
-        </Text>
-      </View>
-    ),
-  },
+// The columns after the item's name, each reading the card as one item (see rowItem).
+const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
   // The card shows these in the line under the name; they are here so "Ordenar" sorts by them, as the web's columns do.
   ...(
     [
@@ -104,14 +96,18 @@ const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
     sortable: true,
     numeric: true,
     card: 'end',
-    cell: (item) => <NumericReadout>{item.quantity}</NumericReadout>,
+    cell: (row) => <NumericReadout>{rowItem(row).quantity}</NumericReadout>,
   },
 ];
 // The stock status chips, outside the menu: one at a time, none for every item.
 const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }));
 
+/** A card of the list: an item, or one of its brands, under it once the item is opened. */
+type InventoryRow = { item: Item; brand?: ItemBrand };
+
 /**
- * Builds the column of each card's actions: the pencil that opens the item to edit and the trash that deletes it.
+ * Builds the column of each card's actions: the pencil that opens the item to edit and the trash that deletes it; a
+ * brand's card has none, since the item's card edits and deletes the item with its brands.
  * @param onEdit Opens an item in the item form.
  * @param onDelete Asks to confirm deleting an item.
  * @param ui The tab's styles and ids.
@@ -121,50 +117,119 @@ function actionsColumn(
   onEdit: (item: Item) => void,
   onDelete: (item: Item) => void,
   { styles, ids }: ReturnType<typeof useStyles>,
-): ComponentProps<typeof DataTable<Item>>['columns'][number] {
+): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
   return {
     key: 'actions',
     header: 'Ações',
     card: 'actions',
-    cell: (item) => (
-      <View style={styles.actions} testID={ids.actions}>
-        <View ref={item.code === TUTORIAL_ITEM.code ? tourTarget('tutorial-pencil') : undefined} collapsable={false}>
-          <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onPress={() => onEdit(item)} />
+    cell: ({ item, brand }) =>
+      !brand && (
+        <View style={styles.actions} testID={ids.actions}>
+          <View ref={isTestItem(item) ? tourTarget('tutorial-pencil') : undefined} collapsable={false}>
+            <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onPress={() => onEdit(item)} />
+          </View>
+          <View ref={isTestItem(item) ? tourTarget('tutorial-trash') : undefined} collapsable={false}>
+            <RowAction icon={trashIcon} label={`Excluir ${item.name}`} tone="danger" onPress={() => onDelete(item)} />
+          </View>
         </View>
-        <View ref={item.code === TUTORIAL_ITEM.code ? tourTarget('tutorial-trash') : undefined} collapsable={false}>
-          <RowAction icon={trashIcon} label={`Excluir ${item.name}`} tone="danger" onPress={() => onDelete(item)} />
-        </View>
-      </View>
-    ),
+      ),
   };
 }
 
 /**
- * Builds the column of each card's thumbnail: the item's cover, which opens its photos.
- * @param onOpen Opens an item's photos in the viewer.
+ * Builds the column of each card's name: an item's name, codes and details, with a "N marcas" that opens a card for
+ * each brand when it has several; or a brand's part brand, code and details.
+ * @param opened The items opened into their brands' cards, by id.
+ * @param onToggle Opens an item into its brands' cards, or closes it.
+ * @param accent The accent color, of the "N marcas" chevron.
+ * @param ui The tab's styles and ids.
+ * @returns The name column.
+ */
+function nameColumn(
+  opened: ReadonlySet<string>,
+  onToggle: (id: string) => void,
+  accent: string,
+  { styles, ids }: ReturnType<typeof useStyles>,
+): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
+  return {
+    key: 'name',
+    header: 'Item',
+    sortable: true,
+    card: 'main',
+    cell: (row) =>
+      row.brand ? (
+        <View>
+          <Text>{row.brand.partBrand}</Text>
+          <NumericReadout tone="muted">{row.brand.code}</NumericReadout>
+          <Text size="sm" tone="muted">
+            {itemDetails(rowItem(row))}
+          </Text>
+        </View>
+      ) : (
+        <View ref={isTestItem(row.item) ? tourTarget('tutorial-row') : undefined} collapsable={false}>
+          <Text>{row.item.name}</Text>
+          <NumericReadout tone="muted">{itemCodes(row.item)}</NumericReadout>
+          <Text size="sm" tone="muted">
+            {itemDetails(row.item)}
+          </Text>
+          {row.item.brands.length > 1 && (
+            <Pressable
+              role="button"
+              accessibilityState={{ expanded: opened.has(row.item.id) }}
+              onPress={() => onToggle(row.item.id)}
+              style={styles.brands}
+              testID={ids.brands}
+            >
+              <View style={[styles.chevron, opened.has(row.item.id) && styles.chevronOpen]} testID={ids.chevron}>
+                <Icon icon={chevronIcon} size={ICON_SIZES.inline} color={accent} />
+              </View>
+              <NumericReadout tone="accent">{`${row.item.brands.length} marcas`}</NumericReadout>
+            </Pressable>
+          )}
+        </View>
+      ),
+  };
+}
+
+/**
+ * Builds the column of each card's thumbnail: the cover of the item's first brand, or of the card's brand, which
+ * opens that brand's photos.
+ * @param onOpen Opens the photos of an item's brand in the viewer.
  * @returns The photo column.
  */
-function photoColumn(onOpen: (item: Item) => void): ComponentProps<typeof DataTable<Item>>['columns'][number] {
+function photoColumn(onOpen: (item: Item, brand: ItemBrand) => void): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
   return {
     key: 'photo',
     header: 'Foto',
     card: 'thumb',
-    cell: (item) => (
-      <TableThumbnail
-        src={item.photos[0] && `${API_URL}${item.photos[0].thumbUrl}`}
-        label={`Ver fotos de ${item.name}`}
-        onOpen={() => onOpen(item)}
-      />
-    ),
+    cell: (row) => {
+      const [brand] = rowItem(row).brands;
+      return (
+        <TableThumbnail
+          src={brand.photos[0] && `${API_URL}${brand.photos[0].thumbUrl}`}
+          label={row.brand ? `Ver fotos de ${row.item.name} ${brand.partBrand}` : `Ver fotos de ${row.item.name}`}
+          onOpen={() => onOpen(row.item, brand)}
+        />
+      );
+    },
   };
 }
 
 /**
+ * Reads a card as one item: the item itself, or for a brand's card an item of that brand alone, with its quantity.
+ * @param row A card of the list.
+ * @returns What the card's cells show.
+ */
+function rowItem(row: InventoryRow): Item {
+  return row.brand ? { ...row.item, brands: [row.brand], quantity: row.brand.quantity } : row.item;
+}
+
+/**
  * Tells a card's status for the table's tint, from the item's quantity and minimum.
- * @param item Inventory item.
+ * @param row A card of the list; a brand's card is never tinted (see DataTable's rowNested).
  * @returns The tint and the label read out, or undefined when stock is fine.
  */
-function rowStatus(item: Item): { tone: 'warn' | 'danger'; label: string } | undefined {
+function rowStatus({ item }: InventoryRow): { tone: 'warn' | 'danger'; label: string } | undefined {
   const status = stockStatus(item.quantity, item.minQuantity);
   return status ? { tone: status === 'out' ? 'danger' : 'warn', label: STOCK_STATUS_LABELS[status] } : undefined;
 }
@@ -177,6 +242,7 @@ type InventoryTabProps = {
 export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const ui = useStyles();
   const { styles, ids } = ui;
+  const { colors } = useTheme();
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS);
   const [status, setStatus] = useState<ItemStatus | null>(null);
   const [search, setSearch] = useState('');
@@ -226,10 +292,16 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const [sentWith, setSentWith] = useState<Item[]>();
   // The item the delete confirmation asks about, while it is open.
   const [removing, setRemoving] = useState<Item>();
-  // The item whose photos the viewer shows, while it is open, with the photos on screen.
-  const [viewer, setViewer] = useState<{ item: Item; photos: UploadPhoto[] }>();
+  // The brand of an item whose photos the viewer shows, while it is open, with the photos on screen.
+  const [viewer, setViewer] = useState<{ item: Item; brand: ItemBrand; photos: UploadPhoto[] }>();
+  // The items opened into their brands' cards, by id.
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   const items = state.status === 'ready' ? state.items : [];
   const shown = listed.status === 'ready' ? listed.items : [];
+  const rows = shown.flatMap((item): InventoryRow[] => [
+    { item },
+    ...(opened.has(item.id) && item.brands.length > 1 ? item.brands.map((brand) => ({ item, brand })) : []),
+  ]);
   const failed = state.status === 'error' || listed.status === 'error';
   // The list's total as last loaded, so the pagination keeps its pages while the next page loads; none on an error.
   const [loadedTotal, setLoadedTotal] = useState(0);
@@ -261,7 +333,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
 
   /**
    * Saves the photos the viewer changed, showing them at once and going back to the saved ones if they can't be saved.
-   * @param photos The item's photos after the change.
+   * @param photos The brand's photos after the change.
    * @returns Whether they were saved.
    */
   const changePhotos = async (photos: UploadPhoto[]) => {
@@ -269,15 +341,26 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       return false;
     }
     setViewer({ ...viewer, photos });
-    const saved = await savePhotos(viewer.item, photos);
+    const saved = await savePhotos(viewer.item, viewer.brand, photos);
     if (!saved) {
       setViewer((current) => current && { ...current, photos: viewer.photos });
       return false;
     }
-    setViewer((current) => current && { item: saved, photos: heldPhotos(saved.photos, API_URL) });
+    const brand = saved.brands.find((each) => each.id === viewer.brand.id) ?? viewer.brand;
+    setViewer((current) => current && { item: saved, brand, photos: heldPhotos(brand.photos, API_URL) });
     reload();
     return true;
   };
+
+  /** Opens an item into its brands' cards, or closes it. */
+  const toggleBrands = (id: string) =>
+    setOpened((held) => {
+      const next = new Set(held);
+      if (!next.delete(id)) {
+        next.add(id);
+      }
+      return next;
+    });
 
   /** Opens the item form on a new item, an item to edit, or an item's details, maybe with values filled in. */
   const openForm = (item?: Item, details = false, initial?: ItemForm) =>
@@ -294,11 +377,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
 
   /** Deletes the tutorial's test item, if one is left from a run that didn't end, and loads the list again. */
   const deleteTestItem = async () => {
-    const found = await apiFetch(`${API_URL}/items?${new URLSearchParams({ q: TUTORIAL_ITEM.code })}`)
+    const found = await apiFetch(`${API_URL}/items?${new URLSearchParams({ q: TUTORIAL_CODE })}`)
       .then((response) => (response.ok ? response.json() : null))
       .catch(() => null);
     for (const item of (found?.items ?? []) as Item[]) {
-      if (item.code === TUTORIAL_ITEM.code) {
+      if (isTestItem(item)) {
         await apiFetch(`${API_URL}/items/${item.id}`, { method: 'DELETE' }).catch(() => null);
       }
     }
@@ -402,14 +485,16 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
               <DataTable
                 label="Itens do estoque"
                 columns={[
-                  photoColumn((item) => setViewer({ item, photos: heldPhotos(item.photos, API_URL) })),
+                  photoColumn((item, brand) => setViewer({ item, brand, photos: heldPhotos(brand.photos, API_URL) })),
+                  nameColumn(opened, toggleBrands, colors.accent, ui),
                   ...COLUMNS,
                   actionsColumn((item) => openForm(item), setRemoving, ui),
                 ]}
-                rows={shown}
-                rowKey={(item) => item.id}
+                rows={rows}
+                rowKey={(row) => (row.brand ? `${row.item.id}:${row.brand.id}` : row.item.id)}
                 rowStatus={rowStatus}
-                onRowOpen={opensOnRow ? (item) => openForm(item, true) : undefined}
+                rowNested={(row) => row.brand !== undefined}
+                onRowOpen={opensOnRow ? (row) => openForm(row.item, true) : undefined}
                 sort={sort}
                 onSortChange={(next) => narrow(() => setSort(next))}
                 unsortedLabel="Ordem de cadastro"
@@ -542,7 +627,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         open={viewer !== undefined}
         onClose={() => setViewer(undefined)}
         name={viewer?.item.name ?? ''}
-        code={viewer?.item.code ?? ''}
+        code={viewer?.brand.code ?? ''}
         photos={viewer?.photos ?? []}
         onPhotosChange={changePhotos}
         limit={ITEM_PHOTO_LIMIT}

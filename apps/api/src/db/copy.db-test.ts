@@ -32,8 +32,8 @@ before(async () => {
   const user = (await prisma.user.findUnique({ where: { username: USER.username } }))!;
   seenBefore = user.inventoryTutorialSeenAt;
   await prisma.user.update({ where: { id: user.id }, data: { inventoryTutorialSeenAt: new Date("2026-10-01T12:34:56.789Z") } });
-  const item = (await prisma.item.findFirst({ where: { photos: { none: {} } }, orderBy: { code: "asc" } }))!;
-  await prisma.itemPhoto.create({ data: { id: PHOTO_ID, itemId: item.id, position: 0, file: `${PHOTO_ID}.webp`, thumbFile: `${PHOTO_ID}-thumb.webp` } });
+  const brand = (await prisma.itemBrand.findFirst({ where: { photos: { none: {} } }, orderBy: { code: "asc" } }))!;
+  await prisma.itemPhoto.create({ data: { id: PHOTO_ID, brandId: brand.id, position: 0, file: `${PHOTO_ID}.webp`, thumbFile: `${PHOTO_ID}-thumb.webp` } });
   await createSession(user.id);
 });
 

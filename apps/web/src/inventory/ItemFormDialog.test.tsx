@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { codeTakenMessage, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE } from '@apc/shared/item-form'
-import type { Item } from '@apc/shared/items'
+import type { Item, ItemBrand, ItemCreate } from '@apc/shared/items'
 import { withEntry, type ItemLists } from '@apc/shared/lists'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { itemListsOf } from '@apc/shared/test-lists'
@@ -14,6 +14,7 @@ import '../index.css'
 import { themeCss } from '../theme.ts'
 import { ItemFormDialog } from './ItemFormDialog.tsx'
 import type { CreateListEntry } from './useItemLists.ts'
+import { testItem, type FlatItem } from '@apc/shared/test-items'
 
 // A photo the API saved, as items carry it.
 const SAVED_PHOTO = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.png', thumbUrl: '/photos/aa-thumb.webp' }
@@ -31,11 +32,7 @@ const root = document.documentElement
  * @returns The fetch mock, to read what was sent.
  */
 function answerSave(status = 201, body?: unknown) {
-  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
-    const sent = JSON.parse(String(init?.body))
-    const saved = body ?? { ...item({ code: sent.code, name: sent.name }), ...sent, vehicleModel: sent.vehicleModel || null, location: sent.location || null }
-    return new Response(JSON.stringify(saved), { status })
-  })
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => new Response(JSON.stringify(body ?? savedOf(JSON.parse(String(init?.body)))), { status }))
 }
 
 /**
@@ -60,8 +57,8 @@ async function fill(
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
-  return {
+function item(fields: FlatItem & Required<Pick<FlatItem, 'code' | 'name'>>): Item {
+  return testItem({
     id: crypto.randomUUID(),
     category: 'Motor',
     partBrand: 'Bosch',
@@ -78,7 +75,7 @@ function item(fields: Partial<Item> & Pick<Item, 'code' | 'name'>): Item {
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
-  }
+  })
 }
 
 /**
@@ -99,6 +96,27 @@ function png(name: string): File {
 function rgb(hex: string): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
   return `rgb(${r}, ${g}, ${b})`
+}
+
+/**
+ * Builds the item the API would send back for a body sent: its brands with ids and no photos.
+ * @param sent The body sent.
+ * @param photos The first brand's photos, as the API saved them.
+ * @returns The saved item.
+ */
+function savedOf(sent: ItemCreate, photos: ItemBrand['photos'] = []): Item {
+  return testItem({
+    ...sent,
+    vehicleModel: sent.vehicleModel || null,
+    brands: sent.brands.map((brand, index) => ({
+      color: 'N/A',
+      quantity: 0,
+      ...brand,
+      id: brand.id ?? `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      location: brand.location || null,
+      photos: index === 0 ? photos : [],
+    })),
+  })
 }
 
 /**
@@ -170,7 +188,7 @@ test('Web: the code turns uppercase and a code in use names its item', async () 
   await screen.getByRole('button', { name: 'Salvar' }).click()
   await expect.element(screen.getByText(codeTakenMessage('Pastilha de freio'))).toBeVisible()
 
-  answerSave(409, { details: [{ field: 'code', itemName: 'Correia dentada' }] })
+  answerSave(409, { details: [{ field: 'brands/0/code', code: 'NOVA-1', itemName: 'Correia dentada' }] })
   await fill(screen, { code: 'nova-1', name: 'Vela', category: 'Ignição', partBrand: 'NGK', vehicleBrand: 'Fiat', price: '10' })
   await screen.getByRole('button', { name: 'Salvar' }).click()
   await expect.element(screen.getByText(codeTakenMessage('Correia dentada'))).toBeVisible()
@@ -304,13 +322,11 @@ test('Web: a new item is posted, announced and handed over', async () => {
     url: '/api/items',
     method: 'POST',
     body: expect.objectContaining({
-      code: 'NGK-B7',
       name: 'Vela',
       category: 'Ignição',
       vehicleBrand: 'Chevrolet',
       position: 'D',
-      color: 'N/A',
-      unitPriceCents: 3490,
+      brands: [expect.objectContaining({ partBrand: 'NGK', code: 'NGK-B7', color: 'N/A', unitPriceCents: 3490 })],
     }),
   })
   await expect.element(screen.getByText('Item “Vela” cadastrado.')).toBeVisible()
@@ -329,7 +345,11 @@ test('Web: an item opens filled in and is patched on save', async () => {
   await screen.getByLabelText('Quantidade', { exact: true }).fill('7')
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect.element(screen.getByText('Item “Filtro de óleo” salvo.')).toBeVisible()
-  expect(sent(fetch)).toMatchObject({ url: `/api/items/${FILTER.id}`, method: 'PATCH', body: { quantity: 7, code: 'W 712/95' } })
+  expect(sent(fetch)).toMatchObject({
+    url: `/api/items/${FILTER.id}`,
+    method: 'PATCH',
+    body: { brands: [{ id: FILTER.brands[0].id, quantity: 7, code: 'W 712/95' }] },
+  })
 })
 
 // Types a quantity with a comma and pastes a fraction, and checks the comma is left out, the fraction is refused with
@@ -372,7 +392,7 @@ test('Web: the price always shows in reais, a dot and a comma alike', async () =
   await expect.element(price).toHaveValue('R$ 7,50')
   await expect.element(screen.getByText(ITEM_FORM_MESSAGES.priceInvalid)).toBeVisible()
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
-  await vi.waitFor(() => expect(sent(fetch)).toMatchObject({ method: 'PATCH', body: { unitPriceCents: 750 } }))
+  await vi.waitFor(() => expect(sent(fetch)).toMatchObject({ method: 'PATCH', body: { brands: [{ unitPriceCents: 750 }] } }))
 })
 
 // Opens the form at 1280×720 and on a 360×780 phone and checks Save is on screen without scrolling and the form
@@ -414,8 +434,9 @@ test('Web: the details show the item as text and change nothing', async () => {
   expect(fetch).not.toHaveBeenCalled()
 })
 
-// Opens the details, presses Editar and checks the fields unlock in place, each where its value was under the photos
-// (whose field grows a drop area), with the focus on the first, Cancelar and Salvar alterações; then changes the quantity and checks it is patched like an edit.
+// Opens the details, presses Editar and checks the fields unlock in place, the brand's each where its value was under
+// its photos (whose field grows a drop area), with the focus on the first field, the name, Cancelar and Salvar
+// alterações; then changes the quantity and checks it is patched like an edit.
 test('Web: Editar unlocks the details in place and saves like an edit', async () => {
   const fetch = answerSave(200)
   const onSaved = vi.fn()
@@ -426,8 +447,8 @@ test('Web: Editar unlocks the details in place and saves like an edit', async ()
   const beforeGap = below(before)
   await screen.getByRole('button', { name: 'Editar' }).click()
   await expect.element(screen.getByRole('heading', { name: 'Editar item' })).toBeVisible()
+  await expect.element(screen.getByLabelText('Nome')).toHaveFocus()
   const code = screen.getByLabelText('Código da peça')
-  await expect.element(code).toHaveFocus()
   await expect.element(code).toHaveValue('W 712/95')
   const after = code.element().parentElement!.getBoundingClientRect()
   expect([below(after), after.left, after.height]).toEqual([beforeGap, before.left, before.height])
@@ -435,18 +456,20 @@ test('Web: Editar unlocks the details in place and saves like an edit', async ()
   await screen.getByLabelText('Quantidade', { exact: true }).fill('7')
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(sent(fetch)).toMatchObject({ url: `/api/items/${FILTER.id}`, method: 'PATCH', body: { quantity: 7 } })
+  expect(sent(fetch)).toMatchObject({ url: `/api/items/${FILTER.id}`, method: 'PATCH', body: { brands: [{ quantity: 7 }] } })
   await expect.element(screen.getByText('Item “Filtro de óleo” salvo.')).toBeVisible()
 })
 
-// Saves a new item with two photos chosen, and checks the item is posted first, then its photos are sent to it in
-// order as files, and the item handed over carries the photos the API saved.
+// Saves a new item with two photos chosen, and checks the item is posted first, then its brand's photos are sent to
+// the brand in order as files, and the item handed over carries the photos the API saved.
 test('Web: a new item is saved with its photos', async () => {
+  let posted: ItemCreate | undefined
   const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
     if (String(url).endsWith('/photos')) {
-      return new Response(JSON.stringify({ ...item({ code: 'NGK-B7', name: 'Vela' }), photos: [SAVED_PHOTO] }), { status: 200 })
+      return new Response(JSON.stringify(savedOf(posted!, [SAVED_PHOTO])), { status: 200 })
     }
-    return new Response(JSON.stringify({ ...item({ code: 'NGK-B7', name: 'Vela' }), ...JSON.parse(String(init?.body)) }), { status: 201 })
+    posted = JSON.parse(String(init?.body))
+    return new Response(JSON.stringify(savedOf(posted!)), { status: 201 })
   })
   const onSaved = vi.fn()
   const screen = await render(<Sample onSaved={onSaved} />)
@@ -457,13 +480,13 @@ test('Web: a new item is saved with its photos', async () => {
   const [[firstUrl], [photosUrl, photosInit]] = fetch.mock.calls
   expect(firstUrl).toBe('/api/items')
   expect(photosInit?.method).toBe('PUT')
-  expect(photosUrl).toMatch(/^\/api\/items\/[0-9a-f-]+\/photos$/)
+  expect(photosUrl).toMatch(/^\/api\/items\/[0-9a-f-]+\/brands\/00000000-0000-4000-8000-000000000001\/photos$/)
   const parts = [...(photosInit!.body as FormData).entries()].map(([name, value]) => [name, (value as File).name])
   expect(parts).toEqual([
     ['photo', 'frente.png'],
     ['photo', 'lado.png'],
   ])
-  expect(onSaved.mock.calls[0][0].photos).toEqual([SAVED_PHOTO])
+  expect(onSaved.mock.calls[0][0].brands[0].photos).toEqual([SAVED_PHOTO])
   await expect.element(screen.getByText('Item “Vela” cadastrado.')).toBeVisible()
 })
 
@@ -471,7 +494,7 @@ test('Web: a new item is saved with its photos', async () => {
 // to save; with a quantity changed, only the item is sent, not its unchanged photos; with a photo removed, a warning
 // toast says the item was saved without its photos and the item is still handed over.
 test('Web: an unchanged edit is not sent, and photos that fail to save are reported', async () => {
-  const withPhoto = { ...FILTER, photos: [SAVED_PHOTO] }
+  const withPhoto = { ...FILTER, brands: [{ ...FILTER.brands[0], photos: [SAVED_PHOTO] }] }
   const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
     String(url).endsWith('/photos') ? new Response(null, { status: 500 }) : new Response(JSON.stringify(withPhoto), { status: 200 }),
   )
@@ -498,10 +521,75 @@ test('Web: an unchanged edit is not sent, and photos that fail to save are repor
 
 // Opens the details of an item with a photo and checks it shows read-only, with no way to remove it or add more.
 test('Web: the details show the photos read-only', async () => {
-  const screen = await render(<Sample item={{ ...FILTER, photos: [SAVED_PHOTO] }} details />)
+  const screen = await render(<Sample item={{ ...FILTER, brands: [{ ...FILTER.brands[0], photos: [SAVED_PHOTO] }] }} details />)
   await expect.element(screen.getByRole('img', { name: 'Foto 1, capa' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Remover foto 1' }).elements()).toHaveLength(0)
   expect(document.querySelector('dialog input[type="file"]')).toBeNull()
+})
+
+// Adds a second brand to an item, fills it in its own section, and checks it is sent after the first with its own
+// code, price and part brand, and that Remover takes a brand out, the form back to one brand without Remover.
+test('Web: a second brand is added, sent with the item, and removed', async () => {
+  const fetch = answerSave(200)
+  const screen = await render(<Sample item={FILTER} />)
+  expect(screen.getByRole('button', { name: /^Remover marca/ }).elements()).toHaveLength(0)
+  await screen.getByRole('button', { name: 'Adicionar marca' }).click()
+  const second = screen.getByRole('group', { name: 'Marca 2' })
+  await second.getByRole('combobox', { name: 'Marca da peça' }).fill('NGK')
+  await second.getByLabelText('Código da peça').fill('w 712-b')
+  await second.getByLabelText('Quantidade', { exact: true }).fill('4')
+  await second.getByLabelText('Valor unitário (R$)').fill('29,90')
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+  expect(sent(fetch).body.brands).toEqual([
+    expect.objectContaining({ id: FILTER.brands[0].id, code: 'W 712/95' }),
+    expect.objectContaining({ partBrand: 'NGK', code: 'W 712-B', quantity: 4, unitPriceCents: 2990 }),
+  ])
+  await screen.unmount()
+
+  const again = await render(<Sample item={FILTER} />)
+  await again.getByRole('button', { name: 'Adicionar marca' }).click()
+  await again.getByRole('button', { name: 'Remover marca 1' }).click()
+  await expect.element(again.getByRole('group', { name: 'Marca 2' })).not.toBeInTheDocument()
+  await expect.element(again.getByLabelText('Código da peça')).toHaveValue('')
+  expect(again.getByRole('button', { name: /^Remover marca/ }).elements()).toHaveLength(0)
+})
+
+// Gives a second brand the first one's part brand and code, and checks each is refused under its field, on the second
+// brand, and nothing is sent.
+test('Web: a part brand and a code appear once in an item', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch')
+  const screen = await render(<Sample item={FILTER} />)
+  await screen.getByRole('button', { name: 'Adicionar marca' }).click()
+  const second = screen.getByRole('group', { name: 'Marca 2' })
+  await second.getByRole('combobox', { name: 'Marca da peça' }).fill('bosch')
+  await second.getByLabelText('Código da peça').fill('W712-95')
+  await second.getByLabelText('Valor unitário (R$)').fill('10')
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await expect.element(second.getByText(ITEM_FORM_MESSAGES.partBrandRepeated)).toBeVisible()
+  await expect.element(second.getByText(ITEM_FORM_MESSAGES.codeRepeated)).toBeVisible()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+// Opens the details of an item of two brands and checks each brand shows in its own section, with its code, price
+// and quantity.
+test('Web: the details show each brand of an item', async () => {
+  const both = {
+    ...PADS,
+    quantity: 5,
+    brands: [
+      PADS.brands[0],
+      { ...PADS.brands[0], id: '00000000-0000-4000-8000-0000000000b2', partBrand: 'Cobreq', code: 'N-1210', quantity: 4, unitPriceCents: 7990 },
+    ],
+  }
+  const screen = await render(<Sample item={both} details />)
+  const second = screen.getByRole('group', { name: 'Marca 2' })
+  const value = (label: string) => second.getByRole('group', { name: label, exact: true }).getByRole('paragraph')
+  await expect.element(value('Marca da peça')).toHaveTextContent('Cobreq')
+  await expect.element(value('Código da peça')).toHaveTextContent('N-1210')
+  await expect.element(value('Quantidade')).toHaveTextContent('4')
+  expect(value('Valor unitário (R$)').element().textContent).toMatch(/^R\$\s79,90$/)
+  await expect.element(screen.getByRole('group', { name: 'Fotos da marca 2' })).toBeVisible()
 })
 
 function Sample({

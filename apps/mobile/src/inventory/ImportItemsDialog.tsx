@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import {
   importedDetails,
+  importedItems,
   importedSummary,
   importItems,
   newListNames,
@@ -19,9 +20,10 @@ import { pickCsv, shareTemplate } from './csv';
 import { useStyles } from './ImportItemsDialog.styles';
 
 // The "Importar CSV" dialog of the Inventory tab, the same as the web: it explains the file, shares the template
-// (to save it or send it to a computer) and reads the file picked from the phone's files. The preview counts the rows
-// ready and those with errors, lists the categories, brands and models the import creates, and shows each row as it
-// will be saved, the rows with errors marked with their reasons. "Importar" sends the valid rows only, and a toast
+// (to save it or send it to a computer) and reads the file picked from the phone's files. The preview counts the items
+// ready and the rows with errors, lists the categories, brands and models the import creates, and shows each row as it
+// will be saved, the rows with errors marked with their reasons; rows with the same "item" are the brands of one item.
+// "Importar" sends the valid items only, and a toast
 // says how many items were created and updated; a file that can't be read says why, and another can be picked.
 
 /** How each list's new names are worded in the preview, e.g. "Categorias: Ignição, Turbo". */
@@ -47,7 +49,8 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
   const [read, setRead] = useState<{ name: string; result: CsvItems }>();
   const [importing, setImporting] = useState(false);
   const rows = read && 'rows' in read.result ? read.result.rows : [];
-  const valid = rows.filter((row) => row.errors.length === 0).length;
+  // The items the import sends: the rows of one item count once.
+  const valid = importedItems(rows).length;
   const created = newListNames(rows, lists);
   const creates = [
     ...NEW_NAMES.filter(([kind]) => created[kind].length > 0).map(([kind, title]) => `${title}: ${created[kind].join(', ')}`),
@@ -97,8 +100,9 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
       }
     >
       <Text size="sm" tone="muted">
-        Use o modelo: uma linha por item, separada por vírgula ou ponto e vírgula, em UTF-8. Com vírgula, um valor como
-        “189,90” vai entre aspas. Um código que já está no estoque atualiza o item.
+        Use o modelo: uma linha por marca da peça, separada por vírgula ou ponto e vírgula, em UTF-8; as linhas com o mesmo
+        número na coluna “item” são as marcas de um item. Com vírgula, um valor como “189,90” vai entre aspas. Um código
+        que já está no estoque atualiza o item.
       </Text>
       <View style={styles.buttons} testID={ids.buttons}>
         <Button variant="secondary" size="sm" onPress={shareTemplate}>
@@ -130,7 +134,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
             <View key={line} style={[styles.row, errors.length > 0 && styles.rowInvalid]} testID={ids.row}>
               <View style={styles.head} testID={ids.head}>
                 <NumericReadout tone="muted">{`Linha ${line}`}</NumericReadout>
-                <NumericReadout>{item.code || '—'}</NumericReadout>
+                <NumericReadout>{item.brands[0].code || '—'}</NumericReadout>
                 <Text size="sm">{item.name || '—'}</Text>
               </View>
               <Text size="sm" tone="muted">

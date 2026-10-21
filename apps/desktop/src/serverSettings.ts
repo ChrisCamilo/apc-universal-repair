@@ -215,7 +215,7 @@ async function importServer(host: ServerHost, source: Source, photosFrom?: strin
 }
 
 /**
- * Applies this version's migrations to an old server's database, which only adds tables.
+ * Applies this version's migrations to an old server's database, which change its structure and keep its data.
  * @param host The server.
  * @param source The old server.
  * @returns Done, or why not.

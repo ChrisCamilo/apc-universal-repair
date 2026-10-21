@@ -6,7 +6,7 @@ import React from 'react';
 import { Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { INVENTORY_TUTORIAL_STORAGE_KEY, TUTORIAL_ITEM } from '@apc/shared/inventory-tutorial';
+import { INVENTORY_TUTORIAL_STORAGE_KEY, TUTORIAL_CODE } from '@apc/shared/inventory-tutorial';
 import { matchesSearch, type Item } from '@apc/shared/items';
 import { ITEM_LIST_PATHS } from '@apc/shared/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
@@ -45,8 +45,21 @@ function answerApi(stock: Item[]): string[] {
     changes.push(`${method} ${pathname.replace(/[0-9a-f-]{36}$/, ':id')}`);
     if (method === 'POST') {
       const sent = JSON.parse(String(init?.body));
-      const saved = { ...sent, id: '00000000-0000-4000-8000-0000000000aa', photos: [], vehicleModel: sent.vehicleModel || null };
-      stock.unshift({ ...saved, location: sent.location || null, createdAt: '2026-10-08T12:00:00.000Z', updatedAt: '2026-10-08T12:00:00.000Z' });
+      const saved = {
+        ...sent,
+        id: '00000000-0000-4000-8000-0000000000aa',
+        vehicleModel: sent.vehicleModel || null,
+        quantity: sent.brands.reduce((sum: number, brand: { quantity: number }) => sum + brand.quantity, 0),
+        brands: sent.brands.map((brand: { location?: string }) => ({
+          ...brand,
+          id: '00000000-0000-4000-8000-0000000000ab',
+          location: brand.location || null,
+          photos: [],
+        })),
+        createdAt: '2026-10-08T12:00:00.000Z',
+        updatedAt: '2026-10-08T12:00:00.000Z',
+      };
+      stock.unshift(saved);
       return reply(saved, 201);
     }
     stock.splice(0, stock.length, ...stock.filter((held) => !pathname.endsWith(held.id)));
@@ -146,7 +159,7 @@ test('Mobile: the Inventory tutorial starts by itself and creates the test item'
     await wait(1000);
   }
   expect(changes).toEqual(['POST /items']);
-  expect(stock.map((held) => held.code)).toEqual([TUTORIAL_ITEM.code]);
+  expect(stock.map((held) => held.brands.map((brand) => brand.code))).toEqual([[TUTORIAL_CODE]]);
   expect(texts(tree)).toContain('Procure pelo nome');
 });
 

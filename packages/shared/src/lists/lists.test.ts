@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
-import type { Item } from "../items/items.ts";
 import { entryFilters } from "../items/itemFilters.ts";
 import {
   createListEntry,
@@ -21,6 +20,7 @@ import {
   withoutEntry,
   type ItemLists,
 } from "./lists.ts";
+import { testItem } from "../items/testItems.ts";
 import { itemListsOf } from "./testLists.ts";
 
 const BRAND_ID = "00000000-0000-4000-8000-000000000001";
@@ -80,7 +80,7 @@ test("Shared: a deleted entry leaves its list, a vehicle brand with its models",
   const lists = itemListsOf([
     { category: "Motor", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: "Uno" },
     { category: "Freios", partBrand: "Bosch", vehicleBrand: "Ford", vehicleModel: "Ka" },
-  ] as unknown as Item[]);
+  ].map((fields) => testItem(fields)));
   const fiat = findEntry(lists.vehicleBrands, "Fiat")!;
   const withoutFiat = withoutEntry(lists, "vehicleBrands", fiat.id);
   assert.deepEqual(withoutFiat.vehicleBrands.map((entry) => entry.name), ["Ford"]);
@@ -94,7 +94,7 @@ test("Shared: the items using an entry are counted", () => {
     { category: "Elétrica", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: "Uno" },
     { category: "eletrica", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: null },
     { category: "Motor", partBrand: "Bosch", vehicleBrand: "Ford", vehicleModel: "Uno" },
-  ] as unknown as Item[];
+  ].map((fields) => testItem(fields));
   const lists = itemListsOf(items);
   assert.equal(itemsUsing(items, "categories", findEntry(lists.categories, "Elétrica")!, lists), 2);
   assert.equal(itemsUsing(items, "vehicleBrands", findEntry(lists.vehicleBrands, "Fiat")!, lists), 2);
@@ -105,7 +105,7 @@ test("Shared: the items using an entry are counted", () => {
 
 // Sets the filters of an entry's items: a category by its name, and a vehicle model with its brand.
 test("Shared: an entry leads to the filters of its items", () => {
-  const lists = itemListsOf([{ category: "Motor", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: "Uno" }] as unknown as Item[]);
+  const lists = itemListsOf([{ category: "Motor", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: "Uno" }].map((fields) => testItem(fields)));
   assert.deepEqual(entryFilters("categories", lists.categories[0], lists).category, ["Motor"]);
   const filters = entryFilters("vehicleModels", lists.vehicleModels[0], lists);
   assert.deepEqual(filters.vehicleModel, ["Fiat|Uno"]);
@@ -234,7 +234,7 @@ test("Shared: the test lists hold what the items use", () => {
     { ...base, category: "Motor", partBrand: "Bosch", vehicleBrand: "Volkswagen", vehicleModel: "Gol" },
     { ...base, category: "motor", partBrand: "NGK", vehicleBrand: "Chevrolet", vehicleModel: "Opala" },
     { ...base, category: "Freios", partBrand: "Bosch", vehicleBrand: "Volkswagen", vehicleModel: null },
-  ] as unknown as Item[];
+  ].map((fields) => testItem(fields));
   const lists = itemListsOf(items);
   assert.deepEqual(
     lists.categories.map((entry) => entry.name),

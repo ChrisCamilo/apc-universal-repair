@@ -1,4 +1,5 @@
 import { CSV_COLUMNS } from '@apc/shared/item-csv'
+import type { ItemCreate } from '@apc/shared/items'
 import type { ItemLists } from '@apc/shared/lists'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
@@ -18,12 +19,14 @@ const LISTS: ItemLists = {
   vehicleBrands: [{ id: '00000000-0000-4000-8000-000000000003', name: 'Volkswagen' }],
   vehicleModels: [{ id: '00000000-0000-4000-8000-000000000004', name: 'Gol', vehicleBrandId: '00000000-0000-4000-8000-000000000003' }],
 }
-// A file with a valid row, a row with new names, and a row with errors.
+// A file with a valid row, a row with new names, a row with errors, and two rows of one item made by two brands.
 const FILE = [
   CSV_COLUMNS.join(';'),
-  'w 712/95;filtro de óleo;MOTOR;mann;volkswagen;gol;8;2;a-2;39,90;;;',
-  'ngk-b7;vela;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;D;',
-  ';sem código;Freios;Cobreq;Ford;;x;;;0;;;',
+  ';w 712/95;filtro de óleo;MOTOR;mann;volkswagen;gol;8;2;a-2;39,90;;;',
+  ';ngk-b7;vela;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;D;',
+  ';;sem código;Freios;Cobreq;Ford;;x;;;0;;;',
+  '1;c 2433;filtro de ar;Motor;Mann;Volkswagen;Gol;3;3;A-4;49,90;;;',
+  '1;arl 4433;filtro de ar;Motor;Tecfil;Volkswagen;Gol;5;3;A-5;32,90;;;',
 ].join('\n')
 const root = document.documentElement
 
@@ -86,35 +89,35 @@ for (const style of STYLES) {
 test('Web: a CSV file is previewed before importing', async () => {
   const screen = await pick(FILE)
   const preview = screen.getByRole('region', { name: 'Prévia da importação' })
-  await expect.element(preview.getByText('estoque.csv · 2 itens prontos para importar · 1 com erro')).toBeVisible()
+  await expect.element(preview.getByText('estoque.csv · 3 itens prontos para importar · 1 linha com erro')).toBeVisible()
   await expect.element(preview.getByText('Categorias: Ignição')).toBeVisible()
-  await expect.element(preview.getByText('Marcas de peça: NGK')).toBeVisible()
+  await expect.element(preview.getByText('Marcas de peça: NGK, Tecfil')).toBeVisible()
   await expect.element(preview.getByText('Marcas de veículo: Fiat')).toBeVisible()
   await expect.element(preview.getByText('Modelos de veículo: Uno (Fiat)')).toBeVisible()
   const rows = screen.getByRole('list', { name: 'Linhas do arquivo' }).getByRole('listitem')
   expect(rows.nth(0).element().textContent).toMatch(/^Linha 2W 712\/95Filtro de óleoMotor · Mann · Volkswagen Gol · A-2 · R\$\s39,90$/)
-  expect(rows.elements().map((row) => row.hasAttribute('data-invalid'))).toEqual([false, false, true])
+  expect(rows.elements().map((row) => row.hasAttribute('data-invalid'))).toEqual([false, false, true, false, false])
   expect(rows.nth(2).element().textContent).toContain('Informe o código da peça.')
   expect(rows.nth(2).element().textContent).toContain('Quantidade deve ser um número inteiro, como 4.')
-  await expect.element(screen.getByRole('button', { name: 'Importar 2 itens' })).toBeEnabled()
+  await expect.element(screen.getByRole('button', { name: 'Importar 3 itens' })).toBeEnabled()
 })
 
-// Imports the file and checks only the valid rows are sent, a toast says how many items were created and updated,
-// and the import is handed over.
+// Imports the file and checks only the valid items are sent, the two rows of one item as its brands, a toast says how
+// many items were created and updated, and the import is handed over.
 test('Web: the valid rows are imported', async () => {
   const fetch = vi
     .spyOn(globalThis, 'fetch')
     .mockResolvedValue(new Response(JSON.stringify({ created: 1, updated: 1 }), { status: 200 }))
   const onImported = vi.fn()
   const screen = await pick(FILE, onImported)
-  await screen.getByRole('button', { name: 'Importar 2 itens' }).click()
+  await screen.getByRole('button', { name: 'Importar 3 itens' }).click()
   await expect.element(screen.getByText('Importação concluída: 1 item criado, 1 atualizado.')).toBeVisible()
   expect(onImported).toHaveBeenCalledTimes(1)
   const [url, init] = fetch.mock.calls[0]
   expect(url).toBe('/api/items/import')
   const sent = JSON.parse(String(init?.body)).items
-  expect(sent.map((item: { code: string }) => item.code)).toEqual(['W 712/95', 'NGK-B7'])
-  expect(sent[0]).toMatchObject({ name: 'Filtro de óleo', category: 'Motor', unitPriceCents: 3990, vehicleModel: 'Gol' })
+  expect(sent.map((item: ItemCreate) => item.brands.map((brand) => brand.code))).toEqual([['W 712/95'], ['NGK-B7'], ['C 2433', 'ARL 4433']])
+  expect(sent[0]).toMatchObject({ name: 'Filtro de óleo', category: 'Motor', vehicleModel: 'Gol', brands: [{ unitPriceCents: 3990 }] })
 })
 
 // Picks a file without the required columns and checks it says why, with nothing to import; a failed import says so
@@ -128,7 +131,7 @@ test('Web: a file that can not be read or imported says why', async () => {
 
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 500 }))
   await userEvent.upload(screen.getByLabelText('Arquivo CSV'), new File([FILE], 'estoque.csv', { type: 'text/csv' }))
-  await screen.getByRole('button', { name: 'Importar 2 itens' }).click()
+  await screen.getByRole('button', { name: 'Importar 3 itens' }).click()
   await expect.element(screen.getByText('Não foi possível importar os itens. Tente de novo.')).toBeVisible()
 })
 
@@ -146,7 +149,7 @@ test('Web: the template is downloaded', async () => {
 test('Web: the CSV import fits the smallest phone', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   const screen = await pick(FILE)
-  const button = screen.getByRole('button', { name: 'Importar 2 itens' })
+  const button = screen.getByRole('button', { name: 'Importar 3 itens' })
   // The file is read after it is picked: measure once the preview is on screen.
   await expect.element(button).toBeVisible()
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)

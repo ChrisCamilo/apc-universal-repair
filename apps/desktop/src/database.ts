@@ -112,7 +112,7 @@ export function formatRecoveryKey(key: string): string {
 export function importProblemMessage(problem: ImportProblem): string {
   switch (problem) {
     case "sourceBehind":
-      return "O banco antigo é de uma versão anterior do APC. Atualize-o primeiro: isso só acrescenta tabelas, sem mudar os dados.";
+      return "O banco antigo é de uma versão anterior do APC. Atualize-o primeiro: as migrações desta versão mudam a estrutura dele e mantêm os dados.";
     case "sourceNewer":
       return "O banco antigo é de uma versão mais nova do APC. Atualize este app antes de importar.";
     case "sourceNotApc":

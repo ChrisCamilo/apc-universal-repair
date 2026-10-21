@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { EMPTY_ITEM_FILTERS } from "../items/itemFilters.ts";
-import { EMPTY_ITEM_FORM, itemFormOf } from "../items/itemForm.ts";
+import { EMPTY_ITEM_FORM, itemFormOf, withFormValues } from "../items/itemForm.ts";
 import type { Item } from "../items/items.ts";
+import { testItem } from "../items/testItems.ts";
 import {
   filtersHave,
   formHas,
@@ -16,7 +17,7 @@ import {
 import { stepHeader } from "./tour.ts";
 
 // The test item as the API would send it back.
-const SAVED: Item = {
+const SAVED: Item = testItem({
   id: "00000000-0000-4000-8000-000000000001",
   code: "TUTORIAL-001",
   name: "Item de teste do tutorial",
@@ -31,10 +32,18 @@ const SAVED: Item = {
   quantity: 5,
   minQuantity: 2,
   unitPriceCents: 4990,
-  photos: [],
   createdAt: "2026-10-08T12:00:00.000Z",
   updatedAt: "2026-10-08T12:00:00.000Z",
-};
+});
+
+/**
+ * Names an item for the calls the screen records, by its first brand's code.
+ * @param item The item, or none for a new one.
+ * @returns E.g. "TUTORIAL-001", or "new".
+ */
+function codeOf(item: Item | undefined): string {
+  return item?.brands[0].code ?? "new";
+}
 
 /**
  * Builds a screen the test changes as it goes, recording what the tutorial asks it to do.
@@ -51,7 +60,7 @@ function fakeScreen() {
     busy: false,
     target: (name) => name,
     openForm: (item, details, values) => {
-      calls.push(`open ${item?.code ?? "new"} ${details ? "details" : "edit"}`);
+      calls.push(`open ${codeOf(item)} ${details ? "details" : "edit"}`);
       screen.form = { item, viewing: details, values: values ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM) };
     },
     setSearch: (search) => {
@@ -62,13 +71,13 @@ function fakeScreen() {
       screen.filtersOpen = false;
     },
     saveItem: (item, values) => {
-      calls.push(`save ${item?.code ?? "new"} ${values.name} ${values.quantity}`);
+      calls.push(`save ${codeOf(item)} ${values.name} ${values.brands[0].quantity}`);
     },
     askDelete: (item) => {
       screen.removing = item;
     },
     deleteItem: (item) => {
-      calls.push(`delete ${item.code}`);
+      calls.push(`delete ${codeOf(item)}`);
     },
   };
   return { screen, calls };
@@ -92,7 +101,7 @@ test("Shared: the tutorial has three parts, with the details steps only when a r
 // Checks a form matches typed values ignoring case, accents and spaces and the price by its value, and that applied
 // filters hold the wanted values among others.
 test("Shared: the tutorial reads the form and the filters loosely", () => {
-  assert.equal(formHas({ ...TUTORIAL_ITEM, category: " motor ", price: "49,9" }, { category: "Motor", price: "49,90" }), true);
+  assert.equal(formHas(withFormValues(TUTORIAL_ITEM, { category: " motor ", price: "49,9" }), { category: "Motor", price: "49,90" }), true);
   assert.equal(formHas(TUTORIAL_ITEM, { quantity: "4" }), false);
   assert.equal(filtersHave({ ...TUTORIAL_FILTERS, color: ["Azul", "Preto"] }, TUTORIAL_FILTERS), true);
   assert.equal(filtersHave(EMPTY_ITEM_FILTERS, TUTORIAL_FILTERS), false);
@@ -110,7 +119,7 @@ test("Shared: part 1 fills and saves the test item, going back when the form clo
   assert.equal(identity.done?.(), false);
   identity.auto?.();
   assert.equal(identity.done?.(), true);
-  assert.equal(screen.form?.values.quantity, "");
+  assert.equal(screen.form?.values.brands[0].quantity, "");
   stock.auto?.();
   assert.deepEqual(screen.form?.values, TUTORIAL_ITEM);
   screen.form = null;

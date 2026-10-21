@@ -10,8 +10,9 @@ import '../fonts.ts'
 import '../index.css'
 import { themeCss } from '../theme.ts'
 import { DeleteItemDialog } from './DeleteItemDialog.tsx'
+import { testItem } from '@apc/shared/test-items'
 
-const FILTER: Item = {
+const FILTER: Item = testItem({
   id: '00000000-0000-4000-8000-000000000001',
   code: 'W 712/95',
   name: 'Filtro de óleo',
@@ -29,7 +30,7 @@ const FILTER: Item = {
   photos: [],
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z',
-}
+})
 const root = document.documentElement
 
 /**
