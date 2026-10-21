@@ -233,7 +233,7 @@ function itemCount(count: number): string {
 
 /**
  * Counts the items that use an entry, ignoring case, accents and extra spaces: by name, a part brand by any of the
- * item's brands, and a vehicle model by its brand and name.
+ * item's brands, a vehicle brand by any of its vehicles, and a vehicle model by a vehicle of its brand and name.
  * @param items Every item in stock.
  * @param kind The entry's list.
  * @param entry The entry.
@@ -243,13 +243,23 @@ function itemCount(count: number): string {
 export function itemsUsing(items: readonly Item[], kind: ItemListKind, entry: ListEntry | VehicleModel, lists: ItemLists): number {
   const field = ITEM_LIST_FIELDS[kind];
   const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
-  /** The names an item uses in the entry's list. */
-  const names = (item: Item) => (field === "partBrand" ? item.brands.map((each) => each.partBrand) : [item[field] ?? ""]);
-  return items.filter(
-    (item) =>
-      names(item).some((name) => optionKey(name) === optionKey(entry.name)) &&
-      (kind !== "vehicleModels" || (brand !== undefined && optionKey(item.vehicleBrand) === optionKey(brand.name))),
-  ).length;
+  const same = (name: string | null) => optionKey(name ?? "") === optionKey(entry.name);
+  /** Whether an item uses the entry, by one of its brands or vehicles for the lists they fill. */
+  const uses = (item: Item) => {
+    if (field === "category") {
+      return same(item.category);
+    }
+    if (field === "partBrand") {
+      return item.brands.some((each) => same(each.partBrand));
+    }
+    if (field === "vehicleBrand") {
+      return item.vehicles.some((vehicle) => same(vehicle.vehicleBrand));
+    }
+    return item.vehicles.some(
+      (vehicle) => same(vehicle.vehicleModel) && brand !== undefined && optionKey(vehicle.vehicleBrand) === optionKey(brand.name),
+    );
+  };
+  return items.filter(uses).length;
 }
 
 /**

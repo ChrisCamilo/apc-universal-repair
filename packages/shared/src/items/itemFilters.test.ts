@@ -22,6 +22,14 @@ const ITEMS = [
   item({ category: "Suspensão", partBrand: "Cofap", vehicleBrand: "Chevrolet", vehicleModel: "Chevette", location: "A-2" }),
   item({ category: "Motor", partBrand: "Mann", vehicleBrand: "Ford", vehicleModel: "Gol", location: "C-1" }),
   item({ category: "Motor", partBrand: "Mann", vehicleBrand: "Ford", vehicleModel: null }),
+  item({
+    category: "Motor",
+    partBrand: "Mann",
+    vehicles: [
+      { vehicleBrand: "Ford", vehicleModel: null },
+      { vehicleBrand: "Renault", vehicleModel: "Clio" },
+    ],
+  }),
 ];
 
 /**
@@ -53,18 +61,18 @@ function item(fields: FlatItem): Item {
 }
 
 // Lists the options from the items in stock and checks each list is distinct and sorted, the colors in use come
-// after N/A, the locations leave the items without one out, and the vehicle models carry their brand, two brands'
-// "Gol" apart, sorted by how they read.
+// after N/A, the locations leave the items without one out, the vehicle brands and models come from every vehicle of
+// an item, and the vehicle models carry their brand, two brands' "Gol" apart, sorted by how they read.
 test("Shared: the filters offer what is in stock", () => {
   const options = itemFilterOptions(ITEMS, []);
   assert.deepEqual(options.categories, ["Freios", "Motor", "Suspensão"]);
   assert.deepEqual(options.partBrands, ["Bosch", "Cobreq", "Cofap", "Mann"]);
-  assert.deepEqual(options.vehicleBrands, ["Chevrolet", "Fiat", "Ford", "Volkswagen"]);
+  assert.deepEqual(options.vehicleBrands, ["Chevrolet", "Fiat", "Ford", "Renault", "Volkswagen"]);
   assert.deepEqual(options.colors, ["N/A", "Azul", "Preto"]);
   assert.deepEqual(options.locations, ["A-2", "B-1", "C-1"]);
   assert.deepEqual(
     options.vehicleModels.map((model) => model.label),
-    ["Chevette · Chevrolet", "Gol · Ford", "Gol · Volkswagen", "Opala 4.1 · Chevrolet", "Uno · Fiat"],
+    ["Chevette · Chevrolet", "Clio · Renault", "Gol · Ford", "Gol · Volkswagen", "Opala 4.1 · Chevrolet", "Uno · Fiat"],
   );
 });
 
