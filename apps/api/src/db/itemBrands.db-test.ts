@@ -122,10 +122,11 @@ async function writeOld(run: (sql: string, values: unknown[]) => Promise<unknown
 
 /**
  * Reads the migrated items with their brands and photos, and checks each item kept its data in its one brand, with
- * the item's id, and its photos in order.
+ * the item's id, and its photos in order; and, migrated on, that they start without original codes.
  * @param client The migrated database.
  */
 async function checkMigrated(client: PrismaClient) {
+  assert.equal(await client.itemOriginalCode.count(), 0);
   const items = await client.item.findMany({
     orderBy: { createdAt: "asc" },
     include: { brands: { include: { photos: { orderBy: { position: "asc" } }, partBrand: true } }, vehicleModel: true },
@@ -186,7 +187,8 @@ test("API: on SQLite, every item from before becomes an item with one brand, its
   await writeOld(async (sql, values) => db.prepare(sql).run(...values), () => "?");
   db.close();
 
-  assert.deepEqual(await migrate(url), [MIGRATION]);
+  // The migration under test goes first, and the later ones after it.
+  assert.equal((await migrate(url))[0], MIGRATION);
   const client = createPrisma(url);
   opened.push(client);
   await checkMigrated(client);
@@ -211,7 +213,7 @@ test("API: on PostgreSQL, every item from before becomes an item with one brand,
     await writeOld((sql, values) => db.query(sql, values), (place) => `$${place}`);
     await db.end();
 
-    assert.deepEqual(await migrate(url.toString()), [MIGRATION]);
+    assert.equal((await migrate(url.toString()))[0], MIGRATION);
     const client = createPrisma(url.toString());
     await checkMigrated(client);
     await client.$disconnect();

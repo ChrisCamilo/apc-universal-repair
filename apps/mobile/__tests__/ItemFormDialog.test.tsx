@@ -661,3 +661,35 @@ test('Mobile: the details show each brand of an item', async () => {
   expect(shown).toEqual(expect.arrayContaining(['Cobreq', 'N-1210', '4', 'R$ 79,90']));
   expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Fotos da marca 2').length).toBeGreaterThan(0);
 });
+
+// Types an item's original codes as chips, one with the return key and two pasted at once, and checks they are sent
+// with the item in uppercase, in order.
+test('Mobile: original codes are typed as chips and sent with the item', async () => {
+  const tree = await mount(FILTER);
+  await type(tree, 'Códigos originais', '030 115 561 an');
+  await ReactTestRenderer.act(async () => field(tree, 'Códigos originais').props.onSubmitEditing());
+  await type(tree, 'Códigos originais', '030-115-561-ap; 06a 115 561');
+  (fetch as jest.Mock).mockClear();
+  answerSave(200);
+  await press(tree, 'Salvar alterações');
+  const [, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(JSON.parse(init.body).originalCodes).toEqual(['030 115 561 AN', '030-115-561-AP', '06A 115 561']);
+});
+
+// Types an original code another item uses and one a brand of the item has, and checks each says so under the field
+// at once, and the item isn't sent.
+test('Mobile: an original code another item or a brand of the item has is refused, saying so', async () => {
+  const tree = await mount(FILTER);
+  await type(tree, 'Códigos originais', 'fra 1000,w712/95,');
+  expect(shows(tree, `FRA 1000: ${codeTakenMessage('Pastilha de freio')}`)).toBe(true);
+  expect(shows(tree, `W712/95: ${ITEM_FORM_MESSAGES.originalCodeInBrand}`)).toBe(true);
+  (fetch as jest.Mock).mockClear();
+  await press(tree, 'Salvar alterações');
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+// Opens the details of an item with original codes and checks they show apart, under Códigos originais.
+test("Mobile: the details list an item's original codes", async () => {
+  const tree = await mount({ ...FILTER, originalCodes: ['030 115 561 AN', '030 115 561 AP'] }, { details: true });
+  expect(shows(tree, '030 115 561 AN, 030 115 561 AP')).toBe(true);
+});

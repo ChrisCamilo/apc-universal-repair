@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  allCodes,
   brandsValue,
   capitalizeFirst,
   codeKey,
@@ -12,6 +13,7 @@ import {
   itemCreateSchema,
   itemDetails,
   itemListQuerySchema,
+  itemUpdateSchema,
   matchesSearch,
   matchingOptions,
   MIXED_VALUES,
@@ -114,12 +116,29 @@ test("Shared: new items need the required fields, a brand and a positive price",
   assert.equal(itemCreateSchema.safeParse({ ...valid, position: "Frente" }).success, false);
 });
 
-// Finds items by name ignoring case and accents and by any brand's part code ignoring separators, and keeps every
-// item for an empty search.
+// Sends items with original codes and checks they are optional, each is taken once as the search compares codes, one
+// can't be a code of one of the item's brands too, and an edit sending only some of the fields is checked the same.
+test("Shared: an item's original codes are each used once in it", () => {
+  const brand = { code: "W 712/95", partBrand: "Mann", unitPriceCents: 3990 };
+  const valid = { name: "Filtro de óleo", category: "Motor", vehicleBrand: "Volkswagen", brands: [brand] };
+  assert.equal(itemCreateSchema.safeParse({ ...valid, originalCodes: ["030 115 561 AN", "030115561AP"] }).success, true);
+  const repeated = itemCreateSchema.safeParse({ ...valid, originalCodes: ["030 115 561 AN", "030-115-561-an"] });
+  assert.deepEqual(repeated.error?.issues.map((issue) => issue.path), [["originalCodes", 1]]);
+  const aBrands = itemCreateSchema.safeParse({ ...valid, originalCodes: ["X-1", "w712/95"] });
+  assert.deepEqual(aBrands.error?.issues.map((issue) => issue.path), [["originalCodes", 1]]);
+  assert.equal(itemCreateSchema.safeParse({ ...valid, originalCodes: [" "] }).success, false);
+  assert.equal(itemUpdateSchema.safeParse({ originalCodes: ["W 712/95"] }).success, true);
+  assert.equal(itemUpdateSchema.safeParse({ originalCodes: ["W 712/95"], brands: [brand] }).success, false);
+});
+
+// Finds items by name ignoring case and accents and by any brand's part code or original code ignoring separators,
+// and keeps every item for an empty search; every code is listed, the brands' first.
 test("Shared: the item search matches names and part codes", () => {
-  const item = { name: "Bomba d'água", brands: [{ code: "X-1" }, { code: "W 712/95" }] };
+  const item = { name: "Bomba d'água", originalCodes: ["030 121 008 C"], brands: [{ code: "X-1" }, { code: "W 712/95" }] };
+  assert.deepEqual(allCodes(item), ["X-1", "W 712/95", "030 121 008 C"]);
   assert.equal(matchesSearch(item, "AGUA"), true);
   assert.equal(matchesSearch(item, "w712"), true);
+  assert.equal(matchesSearch(item, "030121"), true);
   assert.equal(matchesSearch(item, "  "), true);
   assert.equal(matchesSearch(item, "freio"), false);
   assert.equal(matchesSearch(item, "-"), false);

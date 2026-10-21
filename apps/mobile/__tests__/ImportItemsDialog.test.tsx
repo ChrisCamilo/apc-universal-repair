@@ -26,11 +26,11 @@ const LISTS: ItemLists = {
 // A file with a valid row, a row with new names, a row with errors, and two rows of one item made by two brands.
 const FILE = [
   CSV_COLUMNS.join(';'),
-  ';w 712/95;filtro de óleo;MOTOR;mann;volkswagen;gol;8;2;a-2;39,90;;;',
-  ';ngk-b7;vela;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;D;',
-  ';;sem código;Freios;Cobreq;Ford;;x;;;0;;;',
-  '1;c 2433;filtro de ar;Motor;Mann;Volkswagen;Gol;3;3;A-4;49,90;;;',
-  '1;arl 4433;filtro de ar;Motor;Tecfil;Volkswagen;Gol;5;3;A-5;32,90;;;',
+  ';w 712/95;;filtro de óleo;MOTOR;mann;volkswagen;gol;8;2;a-2;39,90;;;',
+  ';ngk-b7;;vela;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;D;',
+  ';;;sem código;Freios;Cobreq;Ford;;x;;;0;;;',
+  '1;c 2433;;filtro de ar;Motor;Mann;Volkswagen;Gol;3;3;A-4;49,90;;;',
+  '1;arl 4433;;filtro de ar;Motor;Tecfil;Volkswagen;Gol;5;3;A-5;32,90;;;',
 ].join('\n');
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];

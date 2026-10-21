@@ -48,6 +48,7 @@ export function testItem(fields: FlatItem = {}): Item {
     position: NOT_APPLICABLE,
     side: NOT_APPLICABLE,
     minQuantity: 0,
+    originalCodes: [],
     createdAt: "2026-10-03T12:00:00.000Z",
     updatedAt: "2026-10-03T12:00:00.000Z",
     ...own,

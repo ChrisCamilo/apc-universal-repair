@@ -12,7 +12,7 @@ import { prisma } from "../db/client.js";
 import { hashToken } from "../sessions/sessions.js";
 
 // The inventory against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded, on PostgreSQL or
-// SQLite: creating items with their brands, searching, filtering, sorting, editing them and their brands, photos, the
+// SQLite: creating items with their brands and original codes, searching, filtering, sorting, editing them and their brands, photos, the
 // CSV import and deleting go through the routes, so every query the inventory makes runs on the database. Each run
 // uses its own codes and names, removed at the end.
 
@@ -219,6 +219,62 @@ test("API: an import adds brands to the item of a code in use, and refuses what 
   );
   const twice = await call("POST", "/items/import", { items: [item([brand("BP-2", "Cobreq"), brand("FL-9", "Fras-le")])] });
   assert.equal(twice.statusCode, 409);
+});
+
+// Creates an item with two original codes and checks they come back uppercase and in order and the search finds it by
+// each one; that a code another item uses is refused with 409 naming the field and the item, whether it is the other
+// item's original code or its brand's code; that a code held twice in the item, as an original and a brand's code, is
+// refused with 400 on a create and on an edit sending only one of them; and that an edit replaces the list.
+test("API: items keep the vehicle maker's original codes and are found by each one", async () => {
+  const codes = [`oe-1-${RUN}`, `OE 2-${RUN}`];
+  const created = await call("POST", "/items", item([brand("OEB-1", "Cobreq")], { name: `Junta ${RUN}`, originalCodes: codes }));
+  assert.equal(created.statusCode, 201);
+  assert.deepEqual(created.json().originalCodes, [`OE-1-${RUN}`, `OE 2-${RUN}`]);
+  assert.equal((await find("oe2")).id, created.json().id);
+  assert.equal((await find("o.e.1-")).id, created.json().id);
+
+  for (const [sent, field] of [
+    [{ originalCodes: [`OE2-${RUN}`] }, "originalCodes/0"],
+    [{ originalCodes: [`OEB 1-${RUN}`] }, "originalCodes/0"],
+    [{ brands: [brand("OE-1", "Bosch")] }, "brands/0/code"],
+  ] as const) {
+    const taken = await call("POST", "/items", { ...item([brand("OEB-2", "Bosch")], { name: `Outra ${RUN}` }), ...sent });
+    assert.equal(taken.statusCode, 409);
+    assert.deepEqual([taken.json().details[0].field, taken.json().details[0].itemName], [field, `Junta ${RUN}`]);
+  }
+  const twice = await call("POST", "/items", item([brand("OEB-3", "Bosch")], { name: `Outra ${RUN}`, originalCodes: [`OEB-3-${RUN}`] }));
+  assert.equal(twice.statusCode, 400);
+  const id = created.json().id;
+  assert.equal((await call("PATCH", `/items/${id}`, { originalCodes: [`OEB1-${RUN}`] })).statusCode, 400);
+  const [own] = created.json().brands;
+  const moved = { id: own.id, partBrand: own.partBrand, code: `OE-2-${RUN}`, unitPriceCents: 8990 };
+  assert.equal((await call("PATCH", `/items/${id}`, { brands: [moved] })).statusCode, 400);
+
+  const edited = await call("PATCH", `/items/${id}`, { originalCodes: [`OE-3-${RUN}`] });
+  assert.deepEqual(edited.json().originalCodes, [`OE-3-${RUN}`]);
+  assert.equal(await find("oe1"), undefined);
+  assert.equal(await prisma.itemOriginalCode.count({ where: { itemId: id } }), 1);
+  assert.equal((await call("POST", "/items", item([brand("OEB-4", "Bosch")], { name: `Outra ${RUN}`, originalCodes: [`OE-1-${RUN}`] }))).statusCode, 201);
+});
+
+// Imports an item whose only code in use is another item's original code, and checks it updates that item, its new
+// brand and its new original code joining the ones it has; then that a code the item holds as an original one, sent
+// as a brand's, is refused.
+test("API: an import finds the item of an original code and adds the codes it lacks", async () => {
+  const held = await call("POST", "/items", item([brand("IMB-1", "Cobreq")], { name: `Bieleta ${RUN}`, originalCodes: [`IMO-1-${RUN}`] }));
+  const sent = item([brand("IMB-2", "Fras-le")], { name: `Bieleta ${RUN}`, originalCodes: [`imo 1-${RUN}`, `IMO-2-${RUN}`] });
+  assert.deepEqual((await call("POST", "/items/import", { items: [sent] })).json(), { created: 0, updated: 1 });
+  const updated = await find("imo2");
+  assert.equal(updated.id, held.json().id);
+  assert.deepEqual(
+    [updated.originalCodes, updated.brands.map((each) => each.code)],
+    [
+      [`IMO-1-${RUN}`, `IMO-2-${RUN}`],
+      [`IMB-1-${RUN}`, `IMB-2-${RUN}`],
+    ],
+  );
+  const crossed = await call("POST", "/items/import", { items: [item([brand("IMO-2", "Bosch")], { name: `Bieleta ${RUN}` })] });
+  assert.equal(crossed.statusCode, 409);
 });
 
 // Deletes an item whose brand has a photo, and checks the item, its brands and its photos are gone.

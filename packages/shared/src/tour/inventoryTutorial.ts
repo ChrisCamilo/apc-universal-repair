@@ -86,6 +86,7 @@ export const TUTORIAL_ITEM: ItemForm = {
   minQuantity: "2",
   position: "D",
   side: "LD",
+  originalCodes: [],
   brands: [{ partBrand: "Bosch", code: "TUTORIAL-001", quantity: "5", price: "R$ 49,90", color: "Preto", location: "T-1" }],
 };
 /** The test item's part code, which tells it apart in the list. */

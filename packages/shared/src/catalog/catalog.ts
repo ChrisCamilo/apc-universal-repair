@@ -5,7 +5,7 @@ import type { TreeNode } from "../tree/tree.ts";
 // generation → version → year → engine, and each engine's sheet. Branches whose data is still to come are empty
 // branches (see TreeNode), so every engine in a tree has a sheet. Engine ids are unique across brands, as the sheets
 // are looked up by them. The Catalog search finds brands and models by name, ignoring case and accents, and parts
-// of the inventory by the code of any of their brands; a part leads to its vehicle in the catalog: the same brand,
+// of the inventory by the code of any of their brands, or by one of their original codes; a part leads to its vehicle in the catalog: the same brand,
 // the model by the start of the part's model name ("Opala 4.1" → Opala) and the engine by the displacement ("4.1" →
 // "4.1 L 6 cilindros").
 
@@ -174,7 +174,10 @@ export type CatalogBrand = { id: string; name: string; models: TreeNode[] };
 export type EngineSheet = { title: string; specs: string[]; summary: string };
 /** Where a part's vehicle is in the catalog: its brand, and its model and engine when the catalog has them. */
 export type PartLocation = { brandId: string; modelId?: string; engineId?: string };
-/** A part a code search found: the brand of an item whose code matched, by the brand's id, with its code and its item. */
+/**
+ * A part a code search found: the brand of an item whose code matched, by the brand's id, or an item whose original
+ * code matched, by the item's id and the code; with the code and its item.
+ */
 export type FoundPart = { id: string; code: string; item: Item };
 /** The parts a code search lists, and how many more matched past the limit. */
 export type PartResults = { parts: FoundPart[]; more: number };
@@ -208,8 +211,8 @@ export function brandWithModel(brandId: string, query: string): string | null {
 
 /**
  * Lists the inventory parts whose code contains a search, ignoring case, spaces and separators, once the search has
- * enough letters and digits: each brand of an item whose code matches, the exact codes first, then the others, up to
- * the limit.
+ * enough letters and digits: each brand of an item whose code matches, and each original code of an item that
+ * matches, the exact codes first, then the others, up to the limit.
  * @param items Every inventory item.
  * @param query The search as typed, e.g. "fra1000" for "FRA-1000".
  * @returns The parts to list and how many more matched; no parts while the search is too short.
@@ -219,9 +222,10 @@ export function findParts(items: readonly Item[], query: string): PartResults {
   if (key.length < PART_CODE_MIN_LENGTH) {
     return { parts: [], more: 0 };
   }
-  const found = items.flatMap((item) =>
-    item.brands.filter((brand) => codeKey(brand.code).includes(key)).map((brand) => ({ id: brand.id, code: brand.code, item })),
-  );
+  const found = items.flatMap((item): FoundPart[] => [
+    ...item.brands.filter((brand) => codeKey(brand.code).includes(key)).map((brand) => ({ id: brand.id, code: brand.code, item })),
+    ...item.originalCodes.filter((code) => codeKey(code).includes(key)).map((code) => ({ id: `${item.id}:${codeKey(code)}`, code, item })),
+  ]);
   const exactFirst = [...found.filter((part) => codeKey(part.code) === key), ...found.filter((part) => codeKey(part.code) !== key)];
   return { parts: exactFirst.slice(0, PART_RESULTS_LIMIT), more: Math.max(0, found.length - PART_RESULTS_LIMIT) };
 }

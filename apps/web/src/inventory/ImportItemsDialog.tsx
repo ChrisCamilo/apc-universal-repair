@@ -108,8 +108,8 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
     >
       <Text size="sm" tone="muted">
         Use o modelo: uma linha por marca da peça, separada por vírgula ou ponto e vírgula, em UTF-8; as linhas com o mesmo
-        número na coluna “item” são as marcas de um item. Com vírgula, um valor como “189,90” vai entre aspas. Um código
-        que já está no estoque atualiza o item.
+        número na coluna “item” são as marcas de um item, e os códigos originais dele vão em “original_codes”, separados por
+        “|”. Com vírgula, um valor como “189,90” vai entre aspas. Um código que já está no estoque atualiza o item.
       </Text>
       <div className={classes.buttons()} data-testid={ids.buttons}>
         <Button variant="secondary" size="sm" onClick={downloadTemplate}>

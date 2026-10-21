@@ -18,13 +18,13 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 
 - 🔐 Login and account sign-up (name, username, e-mail and password), with the users kept in the database and the passwords stored hashed, sessions the API checks on every call, and a forgotten-password notice saying whom to ask
 - 🗂️ Dashboard with tabs that can be dragged into a new order, and a user menu with the visual style, dark mode, the list preferences, the tutorial and logout
-- 📦 Parts inventory: add, view, edit and delete parts, each with its category, vehicle brand and model, position, side and minimum stock, made by one or more part brands, each with its own part code, color, location, quantity, unit price (R$) and photos
+- 📦 Parts inventory: add, view, edit and delete parts, each with its category, vehicle brand and model, position, side, minimum stock and the vehicle maker's original codes, made by one or more part brands, each with its own part code, color, location, quantity, unit price (R$) and photos
 - 🏷️ Categories, part brands and vehicle models created right from the item form, and renamed, merged or deleted in their own lists
 - 🔢 A part code already in use is flagged while it is typed, ignoring case, spaces and separators ("CB4500" is "CB-4500")
 - 🧭 Inventory search by name or part code, filters, sorting on every column and pagination (25, 50 or 100 per page)
 - 🚦 Low-stock and out-of-stock rows highlighted in color
 - 🖼️ Up to 3 photos per part, with a large viewer
-- 📄 Batch import of parts from CSV, the rows of one item's brands grouped by its "item" column, and export of the list (every page, optionally with the photo paths) in the same format
+- 📄 Batch import of parts from CSV, the rows of one item's brands grouped by its "item" column and its original codes in "original_codes", and export of the list (every page, optionally with the photo paths) in the same format
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
 - 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes; by day each one is tinted in its own hue (sand, steel blue, warm grey-red and sage), with no white panels
 
@@ -214,13 +214,13 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 
 - 🔐 Login e cadastro de conta (nome, usuário, e-mail e senha), com os usuários guardados no banco e as senhas em hash, sessões conferidas pela API em toda chamada, e um aviso de senha esquecida dizendo a quem pedir
 - 🗂️ Dashboard com abas que podem ser arrastadas para outra ordem, e um menu do usuário com o estilo visual, o modo escuro, as preferências da lista, o tutorial e a saída
-- 📦 Estoque de peças: adicionar, ver, editar e excluir peças, cada uma com categoria, marca e modelo do veículo, posição, lado e estoque mínimo, feita por uma ou mais marcas de peça, cada uma com o próprio código da peça, cor, local, quantidade, valor unitário (R$) e fotos
+- 📦 Estoque de peças: adicionar, ver, editar e excluir peças, cada uma com categoria, marca e modelo do veículo, posição, lado, estoque mínimo e os códigos originais da montadora, feita por uma ou mais marcas de peça, cada uma com o próprio código da peça, cor, local, quantidade, valor unitário (R$) e fotos
 - 🏷️ Categorias, marcas de peça e modelos de veículo criados direto no formulário do item, e renomeados, juntados ou excluídos nas próprias listas
 - 🔢 Um código de peça já usado é apontado enquanto é digitado, sem levar em conta maiúsculas, espaços e separadores ("CB4500" é "CB-4500")
 - 🧭 Busca no estoque por nome ou código da peça, filtros, ordenação em todas as colunas e paginação (25, 50 ou 100 por página)
 - 🚦 Linhas com estoque baixo e esgotado destacadas por cor
 - 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande
-- 📄 Importação de peças em lote por CSV, as linhas das marcas de um item agrupadas pela coluna "item", e exportação da lista (todas as páginas, com o caminho das fotos se quiser) no mesmo formato
+- 📄 Importação de peças em lote por CSV, as linhas das marcas de um item agrupadas pela coluna "item" e os códigos originais dele em "original_codes", e exportação da lista (todas as páginas, com o caminho das fotos se quiser) no mesmo formato
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
 - 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro; de dia cada um é tingido no seu próprio tom (areia, azul-aço, cinza-avermelhado e sálvia), sem painéis brancos
 

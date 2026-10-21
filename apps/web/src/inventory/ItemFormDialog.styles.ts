@@ -1,7 +1,7 @@
 import { recipe, tv } from '../styles/tv.ts'
 
-// The look of the item form, inside its Dialog: the item's fields in two columns from sm, one below, and the
-// position and side choices each with its label over it; then the brands across both columns, each a framed section
+// The look of the item form, inside its Dialog: the item's fields in two columns from sm, one below, the position and
+// side choices each with its label over it, and its original codes across both columns; then the brands across both columns, each a framed section
 // with its heading (and its Remover) over its photos and its fields, in the same two columns, and "Adicionar marca"
 // after them. The details use the same layout, with the values as text. The Dialog draws the window, so the base has
 // no classes; the photos' cell only places the ImageUpload, which keeps its own id.
@@ -14,6 +14,7 @@ export const itemFormDialog = recipe(
       base: '',
       fields: 'grid items-start gap-x-4 gap-y-3 sm:grid-cols-2',
       choice: 'grid content-start gap-1.5',
+      codes: 'sm:col-span-2',
       brands: 'grid gap-3 sm:col-span-2',
       brand: 'grid items-start gap-x-4 gap-y-3 rounded-tile border border-hairline-soft p-3 sm:grid-cols-2',
       brandHead: 'flex items-center justify-between gap-2 sm:col-span-2',
@@ -25,6 +26,7 @@ export const itemFormDialog = recipe(
     base: '',
     fields: 'fields',
     choice: 'fields.choice',
+    codes: 'fields.codes',
     brands: 'fields.brands',
     brand: 'fields.brands.brand',
     brandHead: 'fields.brands.brand.head',
