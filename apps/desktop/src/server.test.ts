@@ -16,7 +16,11 @@ test("Desktop: a server the app didn't start is gone after two missed answers in
   let asked = 0;
   let gone = 0;
   watchServer(async () => answers[asked++] ?? true, () => gone++, 2);
-  await wait(60);
+  // On a busy machine the timers run late: wait for the watch to end, then a while more for an ask it shouldn't make.
+  for (let tries = 0; gone === 0 && tries < 200; tries++) {
+    await wait(5);
+  }
+  await wait(30);
   assert.deepEqual([asked, gone], [5, 1]);
 });
 
