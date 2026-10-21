@@ -51,6 +51,7 @@ function giveServer(settings: ServerSettings) {
     migrateImport: vi.fn<ServerBridge['migrateImport']>(async () => ({ ok: true })),
     settings: vi.fn<ServerBridge['settings']>(async () => settings),
     usePort: vi.fn<ServerBridge['usePort']>(async () => ({ ok: true })),
+    useRecoveryKey: vi.fn<ServerBridge['useRecoveryKey']>(async () => ({ ok: true })),
     usePostgresql: vi.fn<ServerBridge['usePostgresql']>(async () => ({ ok: true })),
     useSqlite: vi.fn<ServerBridge['useSqlite']>(async () => ({ ok: true })),
     recoveryKey: vi.fn<ServerBridge['recoveryKey']>(async () => null),

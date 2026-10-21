@@ -41,11 +41,13 @@ export type ServerBridge = {
   usePort: (port: number) => Promise<ServerOutcome>
   /** Moves the server to a PostgreSQL database, checked and migrated first, and restarts it there. */
   usePostgresql: (url: string) => Promise<ServerOutcome>
+  /** Brings back the SQLite file's key from its recovery copy, checked to open the file first, and starts the server. */
+  useRecoveryKey: (text: string) => Promise<ServerOutcome>
   /** Moves the server back to its SQLite file, and restarts it there. */
   useSqlite: () => Promise<ServerOutcome>
 }
 /** Why the server the desktop app runs isn't on: what kept it off, why in words, and the log to look at. */
-export type ServerFailure = { kind: 'key' | 'portInUse' | 'stopped' | 'timeout'; reason: string; log: string }
+export type ServerFailure = { kind: 'key' | 'keyMissing' | 'keyWrong' | 'portInUse' | 'stopped' | 'timeout'; reason: string; log: string }
 /** How a change of database ended: done, or the message saying why not. */
 export type ServerOutcome = { ok: true } | { ok: false; message: string }
 /**
