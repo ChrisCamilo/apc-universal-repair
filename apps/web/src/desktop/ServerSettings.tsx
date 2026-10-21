@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Button } from '../components/Button.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { Segmented } from '../components/Segmented.tsx'
@@ -6,7 +6,7 @@ import { TextField } from '../components/TextField.tsx'
 import { Heading, Text } from '../components/Typography.tsx'
 import { desktopBridge, type ImportOutcome, type ImportSource, type ServerSettings } from './desktopBridge.ts'
 import { serverSettings as serverSettingsRecipe } from './ServerSettings.styles.ts'
-import { ServerSettingsContext } from './serverSettingsContext.ts'
+import { ServerSettingsContext, type ServerSettingsFocus } from './serverSettingsContext.ts'
 
 // The desktop app's Servidor dialog, over any screen, opened from the user menu or the tray's "Servidor e banco de
 // dados…": the database the server runs on, SQLite with its folder or PostgreSQL with its server, its port and the
@@ -14,7 +14,10 @@ import { ServerSettingsContext } from './serverSettingsContext.ts'
 // keeps sealed, or back to SQLite; switching doesn't move the data, which "Importar dados de outro servidor" brings
 // from an old server's PostgreSQL or SQLite file, with its photos, into the database in use while it is empty. An old
 // database of an earlier version is updated first, once the user agrees. After a change, closing the dialog opens the
-// app again on the new data. When PostgreSQL was chosen at install with no address yet, the dialog opens by itself and
+// app again on the new data. "Porta do servidor" moves the server to another port, from 1024 to 65535, once the user
+// confirms that the phone's address changes with it; the app checks the port is free first, and the window follows the
+// server there. Opened from the screen that says the port is taken, the dialog starts on that field. When PostgreSQL
+// was chosen at install with no address yet, the dialog opens by itself and
 // stays until the server has a database. The SQLite file is encrypted, and while its key's recovery copy isn't kept
 // the app shows it on opening, until the user says it is; an encrypted file of another install imports with its
 // recovery copy. With a server the app doesn't run, it only says where the server is. In a browser there is no
@@ -82,6 +85,8 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
   const [openings, setOpenings] = useState(0)
   // The SQLite key's recovery copy, shown on opening while it isn't kept.
   const [recoveryKey, setRecoveryKey] = useState<string | null>(null)
+  // The field the dialog opens on, when asked.
+  const [focus, setFocus] = useState<ServerSettingsFocus>()
 
   /** Reads the settings again, as after a change. */
   const load = async () => {
@@ -106,14 +111,19 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
     })
     return server.onOpen(() => {
       setOpen(true)
+      setFocus(undefined)
       setOpenings((count) => count + 1)
       void server.settings().then(setSettings)
     })
   }, [server])
 
-  /** Opens the dialog with the settings read again. */
-  const show = () => {
+  /**
+   * Opens the dialog with the settings read again.
+   * @param on The field to start on; anything else, such as a click's event, starts at the top.
+   */
+  const show = (on?: ServerSettingsFocus) => {
     setOpen(true)
+    setFocus(on === 'port' ? 'port' : undefined)
     setOpenings((count) => count + 1)
     void load()
   }
@@ -133,6 +143,7 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
         <ServerSettingsDialog
           key={openings}
           open={open}
+          focus={focus}
           settings={settings}
           onClose={close}
           onChanged={async () => {
@@ -202,17 +213,21 @@ function RecoveryKeyDialog({ recoveryKey, onLater, onSaved }: RecoveryKeyDialogP
 
 type ServerSettingsDialogProps = {
   open: boolean
+  /** The field to start on, past the one the dialog focuses first. */
+  focus?: ServerSettingsFocus
   settings: ServerSettings | undefined
   onClose: () => void
   /** Called after the database changed or an import copied, so the settings are read again. */
   onChanged: () => Promise<void>
 }
 
-function ServerSettingsDialog({ open, settings, onClose, onChanged }: ServerSettingsDialogProps) {
+function ServerSettingsDialog({ open, focus, settings, onClose, onChanged }: ServerSettingsDialogProps) {
   const server = desktopBridge()!.server!
   const { classes, ids } = serverSettingsRecipe()
   const databaseHeading = useId()
   const importHeading = useId()
+  const portHeading = useId()
+  const portField = useRef<HTMLInputElement>(null)
   const own = settings?.kind === 'own' ? settings : undefined
   const setup = own?.needsAddress ?? false
   // The database picked, the one in use until another is.
@@ -230,6 +245,23 @@ function ServerSettingsDialog({ open, settings, onClose, onChanged }: ServerSett
   const [importNote, setImportNote] = useState<Note>()
   const [behind, setBehind] = useState(false)
   const [result, setResult] = useState<Extract<ImportOutcome, { ok: true }>>()
+  // The port typed, the one in use until another is; whether the user is asked to confirm the phone's new address.
+  const [typedPort, setTypedPort] = useState<string>()
+  const port = typedPort ?? String(own?.port ?? '')
+  const [confirming, setConfirming] = useState(false)
+  const [movingPort, setMovingPort] = useState(false)
+  const [portNote, setPortNote] = useState<Note>()
+
+  // Start on the port field when asked, once the Dialog has focused its first control.
+  useEffect(() => {
+    if (open && focus === 'port' && own) {
+      const frame = requestAnimationFrame(() => {
+        portField.current?.scrollIntoView({ block: 'center' })
+        portField.current?.focus()
+      })
+      return () => cancelAnimationFrame(frame)
+    }
+  }, [open, focus, own])
   const source: ImportSource | undefined =
     sourceKind === 'sqlite'
       ? sourceFile
@@ -251,6 +283,22 @@ function ServerSettingsDialog({ open, settings, onClose, onChanged }: ServerSett
     }
     setAddress('')
     setSwitchNote({ tone: 'done', text: to === 'postgresql' ? 'Pronto: o servidor ligou no PostgreSQL.' : 'Pronto: o servidor voltou ao SQLite.' })
+    await onChanged()
+  }
+
+  /** Moves the server to the port typed, once the user confirmed the phone's new address, then says how it went. */
+  const movePort = async () => {
+    setMovingPort(true)
+    setPortNote(undefined)
+    const outcome = await server.usePort(Number(port))
+    setMovingPort(false)
+    setConfirming(false)
+    if (!outcome.ok) {
+      setPortNote({ tone: 'danger', text: outcome.message })
+      return
+    }
+    setTypedPort(undefined)
+    setPortNote({ tone: 'done', text: `Pronto: o servidor ligou na porta ${port}.` })
     await onChanged()
   }
 
@@ -421,6 +469,52 @@ function ServerSettingsDialog({ open, settings, onClose, onChanged }: ServerSett
               )}
             </div>
             {note(switchNote)}
+          </section>
+          <section aria-labelledby={portHeading} className={classes.section()} data-testid={ids.section}>
+            <Heading id={portHeading} level={4}>
+              Porta do servidor
+            </Heading>
+            <TextField
+              ref={portField}
+              label="Porta"
+              kind="number"
+              value={port}
+              onValueChange={(typed) => {
+                setTypedPort(typed.replace(/\D/g, '').slice(0, 5))
+                setConfirming(false)
+                setPortNote(undefined)
+              }}
+              helper="De 1024 a 65535. Troque se outro programa usa a porta do servidor."
+            />
+            {confirming && own.phoneAddress && (
+              <Text size="sm" tone="muted">
+                O endereço do celular muda para http://{own.phoneAddress}:{port}. Depois de trocar, configure o celular
+                com esse endereço.
+              </Text>
+            )}
+            {confirming && !own.phoneAddress && (
+              <Text size="sm" tone="muted">
+                O endereço do celular muda para a porta {port}. Depois de trocar, configure o celular com o endereço que
+                aparece no menu do APC perto do relógio.
+              </Text>
+            )}
+            <div className={classes.buttons()} data-testid={ids.buttons}>
+              {confirming ? (
+                <>
+                  <Button size="sm" loading={movingPort} onClick={() => void movePort()}>
+                    Trocar mesmo assim
+                  </Button>
+                  <Button variant="secondary" size="sm" disabled={movingPort} onClick={() => setConfirming(false)}>
+                    Cancelar
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" disabled={!port || Number(port) === own.port} onClick={() => setConfirming(true)}>
+                  Trocar a porta
+                </Button>
+              )}
+            </div>
+            {note(portNote)}
           </section>
           <section aria-labelledby={importHeading} className={classes.section()} data-testid={ids.section}>
             <Heading id={importHeading} level={4}>

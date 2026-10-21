@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { test } from "node:test";
-import { DEV_SERVER_PORT, SERVER_PORT as SHARED_SERVER_PORT } from "@apc/shared/server";
-import { SERVER_PORT, serverEnvironment, usesBundledServer } from "./bundledServer.ts";
+import { DEV_SERVER_PORT, PORT_IN_USE_EXIT_CODE as SHARED_PORT_IN_USE_EXIT_CODE, SERVER_PORT as SHARED_SERVER_PORT } from "@apc/shared/server";
+import { PORT_IN_USE_EXIT_CODE, SERVER_PORT, serverEnvironment, usesBundledServer } from "./bundledServer.ts";
 import { DEFAULT_API_URL } from "./config.ts";
 
 // Builds the bundled server's environment and checks its data goes in userData's data folder, it applies the
@@ -28,10 +28,12 @@ test("Desktop: the bundled server keeps its data in userData", () => {
   assert.equal(serverEnvironment({ serverDir, userData, port: 3333, version: "0.3.1", sqliteKey: key }).APC_SQLITE_KEY, key);
 });
 
-// Checks the bundled server's port and the development API's address are the ports of @apc/shared/server, which the
-// packaged app can't import, so the server the app ships and a development API never share a port.
+// Checks the bundled server's port, the development API's address and the exit code of a taken port are those of
+// @apc/shared/server, which the packaged app can't import, so the server the app ships and a development API never
+// share a port, and a taken port is told apart.
 test("Desktop: the server's port and the development API's match the shared ports", () => {
   assert.equal(SERVER_PORT, SHARED_SERVER_PORT);
+  assert.equal(PORT_IN_USE_EXIT_CODE, SHARED_PORT_IN_USE_EXIT_CODE);
   assert.equal(new URL(DEFAULT_API_URL).port, String(DEV_SERVER_PORT));
 });
 

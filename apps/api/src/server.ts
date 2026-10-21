@@ -5,8 +5,9 @@
 // migrates itself on every update, after copying a SQLite file to backups/ (see db/backup.ts); in development
 // `db:migrate` does. Then it turns WAL on for SQLite and listens on PORT, or else on DEV_SERVER_PORT when started for
 // development (`pnpm dev`, which passes --dev) and on SERVER_PORT otherwise, as the desktop app and `pnpm start` run it.
+// A port another program holds exits with PORT_IN_USE_EXIT_CODE, any other failure with 1.
 import "dotenv/config";
-import { DEV_SERVER_PORT, SERVER_PORT } from "@apc/shared/server";
+import { DEV_SERVER_PORT, PORT_IN_USE_EXIT_CODE, SERVER_PORT } from "@apc/shared/server";
 import { buildApp } from "./app.js";
 import { backupBeforeMigrating } from "./db/backup.js";
 import { ensureEncrypted } from "./db/cipher.js";
@@ -40,5 +41,5 @@ Promise.resolve()
   .then(() => app.listen({ port, host: "0.0.0.0" }))
   .catch((error) => {
     app.log.error(error);
-    process.exit(1);
+    process.exit((error as NodeJS.ErrnoException).code === "EADDRINUSE" ? PORT_IN_USE_EXIT_CODE : 1);
   });

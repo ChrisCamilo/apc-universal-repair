@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { dialog, ipcMain, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import { startBundledServer } from "./bundledProcess.js";
-import { serverData, serverEnvironment, type ServerSetup } from "./bundledServer.js";
+import { PORT_IN_USE_EXIT_CODE, serverData, serverEnvironment, type ServerSetup } from "./bundledServer.js";
 import { readConfig, writeConfig } from "./config.js";
 import {
   databaseCheckMessage,
@@ -21,6 +21,7 @@ import {
   type DatabaseCheck,
   type ImportProblem,
 } from "./database.js";
+import { MAX_PORT, MIN_PORT, portFree, portOwner, validPort, type PortOwner } from "./ports.js";
 import { apiAnswers, waitForApi, watchServer } from "./server.js";
 import { serverFailure, type FailureKind, type ServerFailure } from "./serverFailure.js";
 import { runServerTask, type ServerTask } from "./serverTasks.js";
@@ -36,8 +37,10 @@ import { phoneAddress } from "./tray.js";
 // the dialog shows its recovery copy until the user says it is kept, and an encrypted file of another install imports
 // with its recovery copy. When another server already answers on the port, such as an old clone's, the app uses it and
 // changes nothing, until it is gone, when the app starts its own. A server that doesn't start, from a key that doesn't
-// open, repeated stops or no answer in time, is told to the page with why (see serverFailure.ts), which shows it
-// instead of the login, and can ask to try again. Only the app's own page may ask, as with the notifications.
+// open, its port held by another program, repeated stops or no answer in time, is told to the page with why (see
+// serverFailure.ts), which shows it instead of the login, and can ask to try again. A taken port is found before the
+// server starts, naming the program that holds it (see ports.ts), and the page can move the server to another port,
+// kept in config.json. Only the app's own page may ask, as with the notifications.
 
 /** The channels the page asks on (also written in preload.cts, which can't import this file). */
 const CHANNELS = {
@@ -51,6 +54,7 @@ const CHANNELS = {
   recoveryKeySaved: "apc:server-recovery-key-saved",
   retry: "apc:server-retry",
   settings: "apc:server-settings",
+  usePort: "apc:server-use-port",
   usePostgresql: "apc:server-use-postgresql",
   useSqlite: "apc:server-use-sqlite",
 } as const;
@@ -67,11 +71,11 @@ export type ServerHost = {
   window: BrowserWindow;
   /** The address the app is served from, which the requests must come from. */
   appUrl: string;
-  /** The server's address on this computer, e.g. "http://127.0.0.1:3000". */
+  /** The server's address on this computer, e.g. "http://127.0.0.1:3000", which follows a change of port. */
   apiUrl: string;
   /** The "Ligando o servidor" page, static/starting.html. */
   startingPage: string;
-  /** How it runs, but for the database. */
+  /** How it runs, but for the database; its port follows a change in the Servidor dialog. */
   setup: Omit<ServerSetup, "databaseUrl">;
 };
 /** An old server to import: a PostgreSQL address, or a SQLite file with the recovery copy of its key when it is encrypted. */
@@ -198,6 +202,7 @@ export function handleServerSettings(host: ServerHost): void {
   handle(host, CHANNELS.recoveryKeySaved, async () => writeConfig(host.setup.userData, { ...readConfig(host.setup.userData), sqliteKeySaved: true }));
   handle(host, CHANNELS.failure, async () => failure ?? null);
   handle(host, CHANNELS.retry, () => runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)));
+  handle(host, CHANNELS.usePort, (port: number) => usePort(host, port));
 }
 
 /**
@@ -255,6 +260,14 @@ function openError(error: Error): string {
 }
 
 /**
+ * Tells whether the server the phone reaches is on: the app's own, or another one it found on its port.
+ * @returns False while the app's own server is off, or before it started.
+ */
+export function ownServerOn(): boolean {
+  return portTaken || (stopServer !== undefined && failure === undefined);
+}
+
+/**
  * Builds the server's setup on the database in use: PostgreSQL's address, or the SQLite file with its key, made the
  * first time.
  * @param host The server.
@@ -281,8 +294,9 @@ function recoveryKey(host: ServerHost): string | null {
  * Tells the page the server isn't on, and why, keeping it for a page that asks later.
  * @param host The server.
  * @param kind What kept it off.
+ * @param owner For a taken port, the program holding it, when the system says which.
  */
-function reportFailure(host: ServerHost, kind: FailureKind): void {
+function reportFailure(host: ServerHost, kind: FailureKind, owner?: PortOwner): void {
   const log = path.join(host.setup.userData, "logs", "api.log");
   let logText = "";
   try {
@@ -290,7 +304,7 @@ function reportFailure(host: ServerHost, kind: FailureKind): void {
   } catch {
     // No log yet.
   }
-  failure = serverFailure(kind, logText, log);
+  failure = serverFailure(kind, logText, log, { port: host.setup.port, owner });
   console.warn(`The bundled server isn't on: ${failure.reason}`);
   host.window.webContents.send(SERVER_FAILED_CHANNEL, failure);
 }
@@ -305,6 +319,12 @@ function reportFailure(host: ServerHost, kind: FailureKind): void {
 async function runServer(host: ServerHost, databaseUrl: string | undefined): Promise<boolean> {
   await stopServer?.();
   failure = undefined;
+  if (!(await portFree(host.setup.port))) {
+    console.warn(`Port ${host.setup.port} is taken; the server isn't started.`);
+    stopServer = undefined;
+    reportFailure(host, "portInUse", await portOwner(host.setup.port));
+    return false;
+  }
   const sqliteKey = databaseUrl ? undefined : ensureSqliteKey(host.setup.userData, readConfig(host.setup.userData), safeStorage);
   if (!databaseUrl && !sqliteKey) {
     console.warn("config.json keeps a SQLite key this Windows user can't open; the server stays off.");
@@ -314,9 +334,17 @@ async function runServer(host: ServerHost, databaseUrl: string | undefined): Pro
   }
   console.log(`Starting the bundled server from ${host.setup.serverDir}`);
   const gaveUp = new AbortController();
-  stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey }, () => {
-    reportFailure(host, "stopped");
-    gaveUp.abort();
+  stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey }, (code) => {
+    if (code !== PORT_IN_USE_EXIT_CODE) {
+      reportFailure(host, "stopped");
+      gaveUp.abort();
+      return;
+    }
+    // Taken since the check: the program holding it is looked up before the wait ends, so the page hears it.
+    void portOwner(host.setup.port).then((owner) => {
+      reportFailure(host, "portInUse", owner);
+      gaveUp.abort();
+    });
   });
   const answers = await waitForApi(host.apiUrl, gaveUp.signal);
   if (!answers && !gaveUp.signal.aborted) {
@@ -434,6 +462,35 @@ async function takeOverPort(host: ServerHost): Promise<void> {
     await runServer(host, openDatabaseUrl(config, safeStorage));
   }
   await host.window.loadURL(host.appUrl);
+}
+
+/**
+ * Moves the server to another port, kept in config.json: checks the port is free, then restarts the server on it,
+ * where the window follows it. The phone's address changes with it, which the page warns about first.
+ * @param host The server.
+ * @param port The new port.
+ * @returns Done, or why not; then the server stays where it was.
+ */
+async function usePort(host: ServerHost, port: number): Promise<Outcome> {
+  if (!validPort(port)) {
+    return { ok: false, message: `A porta é um número de ${MIN_PORT} a ${MAX_PORT}.` };
+  }
+  if (port === host.setup.port && ownServerOn() && !portTaken) {
+    return { ok: true };
+  }
+  if (port !== host.setup.port && !(await portFree(port))) {
+    return { ok: false, message: serverFailure("portInUse", "", "", { port, owner: await portOwner(port) }).reason };
+  }
+  console.log(`Moving the bundled server to port ${port}.`);
+  stopWatching?.();
+  stopWatching = undefined;
+  portTaken = false;
+  writeConfig(host.setup.userData, { ...readConfig(host.setup.userData), port });
+  host.setup.port = port;
+  host.apiUrl = `http://127.0.0.1:${port}`;
+  return (await runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)))
+    ? { ok: true }
+    : { ok: false, message: failure?.reason ?? `O servidor não ligou na porta ${port}. Veja logs\\api.log em ${host.setup.userData}.` };
 }
 
 /**

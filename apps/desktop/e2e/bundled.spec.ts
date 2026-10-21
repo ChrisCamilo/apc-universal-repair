@@ -16,17 +16,17 @@ const APP_DIR = path.join(import.meta.dirname, "..");
 /**
  * Opens the app with its own server, with a new userData folder and a free port.
  * @param options What the app is started with besides its folder, e.g. "--hidden", what to leave in its userData
- * folder first, such as the installer's answers, by their path in it, and a userData folder of an earlier run to open
- * again.
+ * folder first, such as the installer's answers, by their path in it, a userData folder of an earlier run to open
+ * again, and the port its server should take, a free one unless a test holds it.
  * @returns The running app, its userData folder and its server's address.
  */
-async function launch(options: { args?: string[]; files?: Record<string, string>; userData?: string } = {}) {
+async function launch(options: { args?: string[]; files?: Record<string, string>; userData?: string; port?: number } = {}) {
   const userData = options.userData ?? mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
   for (const [name, text] of Object.entries(options.files ?? {})) {
     mkdirSync(path.dirname(path.join(userData, name)), { recursive: true });
     writeFileSync(path.join(userData, name), text);
   }
-  const port = await freePort();
+  const port = options.port ?? (await freePort());
   const env: Record<string, string> = { ...(process.env as Record<string, string>), APC_USER_DATA: userData, APC_SERVER_PORT: String(port) };
   // With it set, Electron runs as plain Node instead of opening the app.
   delete env.ELECTRON_RUN_AS_NODE;
@@ -267,6 +267,42 @@ test("Desktop: a server that can't start is said so, with why", async () => {
   await expect(failure).toContainText(path.join(userData, "logs", "api.log"));
   expect(readFileSync(path.join(userData, "logs", "app.log"), "utf8")).toContain("The bundled server isn't on");
   await app.close();
+});
+
+// Holds the app's port with this test's own Node before the app opens, and checks the window says the port is in use
+// by that program, naming its process, and the server was never started; then "Usar outra porta" moves the server to a
+// free port, kept in config.json, where it answers and the login shows, with the SQLite key's recovery copy the first
+// start makes.
+test("Desktop: a taken port is said so, and the server moves to another port", async () => {
+  const holder = createServer();
+  const port = await freePort();
+  await new Promise<void>((resolve) => holder.listen(port, "0.0.0.0", resolve));
+  try {
+    const { app, userData } = await launch({ port });
+    const page = await app.firstWindow();
+    const failure = page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
+    await expect(failure).toContainText(`A porta ${port} já está em uso pelo programa node.exe (processo ${process.pid}).`);
+    const apiLog = path.join(userData, "logs", "api.log");
+    expect(existsSync(apiLog) && readFileSync(apiLog, "utf8").includes("Starting the server.")).toBe(false);
+
+    await page.getByRole("button", { name: "Usar outra porta" }).click();
+    const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
+    const other = await freePort();
+    await dialog.getByLabel("Porta", { exact: true }).fill(String(other));
+    await dialog.getByRole("button", { name: "Trocar a porta" }).click();
+    await dialog.getByRole("button", { name: "Trocar mesmo assim" }).click();
+    await expect(dialog.getByRole("status")).toHaveText(`Pronto: o servidor ligou na porta ${other}.`, { timeout: 60_000 });
+    expect(readConfig(userData).port).toBe(other);
+    expect(await healthOf(`http://127.0.0.1:${other}`)).toBe("up");
+
+    await dialog.getByRole("button", { name: "Fechar" }).first().click();
+    await keepRecoveryKey(page);
+    await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
+    await expect(failure).toHaveCount(0);
+    await app.close();
+  } finally {
+    holder.close();
+  }
 });
 
 // Starts the app as Windows does at sign-in, with --hidden, and checks the window stays hidden while the server answers.

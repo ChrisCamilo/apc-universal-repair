@@ -1,28 +1,41 @@
-// Why the server the app runs isn't on, in words the window shows (see serverSettings.ts) instead of a login that only
-// fails: the SQLite key that doesn't open with this Windows user, a server that kept stopping as it started, or one
-// that didn't answer in time; for the last two, the last error the server wrote to logs/api.log, which also gives
-// where to look.
+import type { PortOwner } from "./ports.ts";
 
-/** What kept the server off: its key, its repeated stops, or no answer in time. */
-export type FailureKind = "key" | "stopped" | "timeout";
-/** What the window shows when the server isn't on: why, and the log to look at. */
-export type ServerFailure = { reason: string; log: string };
+// Why the server the app runs isn't on, in words the window shows (see serverSettings.ts) instead of a login that only
+// fails: the SQLite key that doesn't open with this Windows user, its port held by another program, named when the
+// system says which (see ports.ts), a server that kept stopping as it started, or one that didn't answer in time; for
+// the last two, the last error the server wrote to logs/api.log, which also gives where to look.
+
+/** What kept the server off: its key, its port held by another program, its repeated stops, or no answer in time. */
+export type FailureKind = "key" | "portInUse" | "stopped" | "timeout";
+/** What the window shows when the server isn't on: what kept it off, why in words, and the log to look at. */
+export type ServerFailure = { kind: FailureKind; reason: string; log: string };
 
 /**
  * Words why the server isn't on.
  * @param kind What kept it off.
  * @param logText The end of logs/api.log, where the server wrote its errors.
  * @param log The log's path, shown to look at.
- * @returns The reason and the log.
+ * @param taken For a taken port: the port, and the program holding it when the system says which.
+ * @returns What kept it off, the reason and the log.
  */
-export function serverFailure(kind: FailureKind, logText: string, log: string): ServerFailure {
-  const reasons: Record<FailureKind, string> = {
+export function serverFailure(
+  kind: FailureKind,
+  logText: string,
+  log: string,
+  taken?: { port: number; owner?: PortOwner },
+): ServerFailure {
+  if (kind === "portInUse") {
+    const holder = taken?.owner ? `pelo programa ${taken.owner.name ?? "sem nome"} (processo ${taken.owner.pid})` : "por outro programa";
+    const reason = `A porta ${taken?.port} já está em uso ${holder}. Feche esse programa e tente de novo, ou use outra porta.`;
+    return { kind, reason, log };
+  }
+  const reasons: Record<Exclude<FailureKind, "portInUse">, string> = {
     key: "A chave do banco SQLite guardada neste computador não abre com este usuário do Windows.",
     stopped: "O servidor parou ao ligar, várias vezes seguidas.",
     timeout: "O servidor não respondeu a tempo.",
   };
   const error = kind === "key" ? undefined : lastServerError(logText);
-  return { reason: error ? `${reasons[kind]} Último erro: ${error}` : reasons[kind], log };
+  return { kind, reason: error ? `${reasons[kind]} Último erro: ${error}` : reasons[kind], log };
 }
 
 /**
