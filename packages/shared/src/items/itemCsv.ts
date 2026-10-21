@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
 import { findEntry, listName, type ItemLists, type ListEntry } from "../lists/lists.ts";
-import { ITEM_FORM_MESSAGES, parsePrice, priceInput } from "./itemForm.ts";
+import { addCodes, ITEM_FORM_MESSAGES, parsePrice, priceInput } from "./itemForm.ts";
 import {
   capitalizeFirst,
   codeKey,
@@ -23,8 +23,9 @@ import {
 // file is UTF-8, comma or semicolon separated (told by its header line), with a header naming the columns in any order;
 // a value with the separator, quotes or a line break in it is quoted, as a decimal comma is in a comma-separated file.
 // Each row is a brand of an item: rows with the same value in the "item" column are the brands of one item, and must
-// describe it the same way (name, category, vehicle, position, side, minimum), each with its own part brand; a row
-// without one is an item of its own. Text follows the writing rule, codes are uppercase, and a category, brand or model
+// describe it the same way (name, category, vehicle, position, side, minimum, original codes), each with its own part
+// brand; a row without one is an item of its own. The "original_codes" column holds the vehicle maker's codes,
+// separated by "|". Text follows the writing rule, codes are uppercase, and a category, brand or model
 // already in the lists takes its spelling there; the names not in the lists yet are listed, to be created by the
 // import. The valid items go to the API in one request, checked with the item schema, and come back as how many items
 // were created and updated; an item with a row in error is left out whole. The export writes the items of the list as
@@ -35,6 +36,7 @@ import {
 export const CSV_COLUMNS = [
   "item",
   "code",
+  "original_codes",
   "name",
   "category",
   "part_brand",
@@ -51,11 +53,13 @@ export const CSV_COLUMNS = [
 /** The template to download: the header, an item of one brand and an item of two. */
 export const CSV_TEMPLATE = [
   CSV_COLUMNS.join(","),
-  '1,W 712/95,Filtro de óleo,Motor,Mann,Volkswagen,Gol,8,2,A-2,"39,90",,,',
-  '2,BP-1020,Pastilha de freio,Freios,Cobreq,Chevrolet,,4,1,B-10,"89,90",,D,Ambos',
-  '2,PD/1020,Pastilha de freio,Freios,Fras-le,Chevrolet,,2,1,B-10,"94,90",,D,Ambos',
+  '1,W 712/95,,Filtro de óleo,Motor,Mann,Volkswagen,Gol,8,2,A-2,"39,90",,,',
+  '2,BP-1020,52098472 | 52098473,Pastilha de freio,Freios,Cobreq,Chevrolet,,4,1,B-10,"89,90",,D,Ambos',
+  '2,PD/1020,52098472 | 52098473,Pastilha de freio,Freios,Fras-le,Chevrolet,,2,1,B-10,"94,90",,D,Ambos',
   "",
 ].join("\r\n");
+/** What separates an item's original codes in the original_codes column, as the export writes them. */
+export const CSV_CODE_SEPARATOR = " | ";
 /** Name the template is downloaded with. */
 export const CSV_TEMPLATE_NAME = "modelo-estoque.csv";
 /** The column the export puts the photo paths in, when asked; the import leaves it aside. */
@@ -92,14 +96,23 @@ export type NewListNames = {
 
 /**
  * Checks the rows of each item of a file, adding to their errors: a row that describes the item otherwise than its
- * first row (name, category, vehicle, position, side or minimum), a part brand a row before already has, and, once
+ * first row (name, category, vehicle, position, side, minimum or original codes), a part brand a row before already has, and, once
  * any row of an item has an error, every other row of it, since the item is left out whole.
  * @param rows The rows read, changed in place.
  */
 function checkGroups(rows: readonly CsvItemRow[]): void {
   /** What a row says the item is, compared ignoring case, accents and extra spaces. */
   const described = ({ item }: CsvItemRow) =>
-    [item.name, item.category, item.vehicleBrand, item.vehicleModel ?? "", item.position ?? NOT_APPLICABLE, item.side ?? NOT_APPLICABLE, String(item.minQuantity)]
+    [
+      item.name,
+      item.category,
+      item.vehicleBrand,
+      item.vehicleModel ?? "",
+      item.position ?? NOT_APPLICABLE,
+      item.side ?? NOT_APPLICABLE,
+      String(item.minQuantity),
+      (item.originalCodes ?? []).map(codeKey).join(" "),
+    ]
       .map(optionKey)
       .join("|");
   const groups = new Map<string, CsvItemRow[]>();
@@ -204,6 +217,7 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
     minQuantity,
     position: choice("position", POSITIONS, "Posição deve ser D, T ou Ambos, ou ficar vazia."),
     side: choice("side", SIDES, "Lado deve ser LD, LE ou Ambos, ou ficar vazio."),
+    originalCodes: addCodes([], value("original_codes").split("|")),
     brands: [
       {
         partBrand: listed(lists.partBrands, partBrand),
@@ -344,6 +358,7 @@ export function itemsCsv(items: readonly Item[], { photos }: { photos: boolean }
       const cells: Record<CsvColumn, string> = {
         item: String(index + 1),
         code: brand.code,
+        original_codes: item.originalCodes.join(CSV_CODE_SEPARATOR),
         name: item.name,
         category: item.category,
         part_brand: brand.partBrand,
@@ -450,7 +465,8 @@ export function parseCsv(text: string, separator: string): { line: number; cells
 
 /**
  * Reads a CSV file into the items it holds, checking each row: the required values, numbers that are numbers,
- * position and side among their values, and a part code only once in the file; and, for the rows of one item, the
+ * position and side among their values, and a code only once in the file, a brand's or an item's original one (which
+ * the rows of one item share); and, for the rows of one item, the
  * same description as its first row, a part brand once, and the item left out whole when one of its rows has an error.
  * Blank rows are skipped.
  * @param text The file's text, UTF-8.
@@ -476,19 +492,27 @@ export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
   if (records.length > ITEM_IMPORT_LIMIT) {
     return { error: `O arquivo tem ${records.length} itens; importe até ${ITEM_IMPORT_LIMIT} de cada vez.` };
   }
-  const firstLine = new Map<string, number>();
+  // Where each code was first seen: its line, and the item group of an original code, which its other rows repeat.
+  const firstSeen = new Map<string, { line: number; originalOf?: string }>();
   const rows = records.map(({ line, cells }): CsvItemRow => {
     const value = (column: CsvColumn) => (cells[columns.indexOf(column)] ?? "").trim();
     const { item, errors } = csvItem(value, lists);
-    // Codes repeat as the search compares them (see codeKey): "CB4500" is "CB-4500".
-    const key = codeKey(item.brands[0].code);
-    const seen = firstLine.get(key);
-    if (key && seen !== undefined) {
-      errors.push(`Código repetido: já está na linha ${seen}.`);
-    } else if (key) {
-      firstLine.set(key, line);
+    const group = value("item");
+    /** Notes a code, or says it repeats, as the search compares codes (see codeKey): "CB4500" is "CB-4500". */
+    const see = (code: string, originalOf?: string) => {
+      const key = codeKey(code);
+      const seen = firstSeen.get(key);
+      if (key && seen && !(originalOf && seen.originalOf === originalOf)) {
+        errors.push(`Código repetido: já está na linha ${seen.line}.`);
+      } else if (key && !seen) {
+        firstSeen.set(key, { line, originalOf });
+      }
+    };
+    see(item.brands[0].code);
+    for (const code of item.originalCodes ?? []) {
+      see(code, group || undefined);
     }
-    return { line, item, group: value("item"), errors };
+    return { line, item, group, errors };
   });
   checkGroups(rows);
   return { rows };
