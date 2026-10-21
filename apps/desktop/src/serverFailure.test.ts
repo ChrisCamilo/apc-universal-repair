@@ -22,8 +22,8 @@ test("Desktop: the last error the server wrote since it started is found", () =>
   assert.equal(lastServerError(`${earlier}\n2026-10-21T12:00:05.000Z Starting the server.\n`), undefined);
 });
 
-// Words each failure, and checks the stops and the timeout name the last error when there is one, the key doesn't, and
-// each gives the log to look at.
+// Words each failure, and checks the stops and the timeout name the last error when there is one, the keys don't and
+// ask for the recovery copy instead, and each gives the log to look at.
 test("Desktop: a server that isn't on says why, with its log", () => {
   const log = "2026-10-21T12:00:05.000Z Starting the server.\nError: listen EADDRINUSE: address already in use 127.0.0.1:3000";
   assert.deepEqual(serverFailure("stopped", log, LOG), {
@@ -32,7 +32,13 @@ test("Desktop: a server that isn't on says why, with its log", () => {
     log: LOG,
   });
   assert.equal(serverFailure("timeout", "", LOG).reason, "O servidor não respondeu a tempo.");
-  assert.equal(serverFailure("key", log, LOG).reason, "A chave do banco SQLite guardada neste computador não abre com este usuário do Windows.");
+  const recovery = "Digite a chave de recuperação que o app mostrou na primeira vez para abrir os dados.";
+  assert.equal(
+    serverFailure("key", log, LOG).reason,
+    `A chave do banco SQLite guardada neste computador não abre com este usuário do Windows. ${recovery}`,
+  );
+  assert.equal(serverFailure("keyMissing", log, LOG).reason, `A chave do banco SQLite não está mais neste computador. ${recovery}`);
+  assert.equal(serverFailure("keyWrong", log, LOG).reason, `A chave do banco SQLite guardada neste computador não abre o arquivo dele. ${recovery}`);
 });
 
 // Words a taken port, and checks it names the program and its process when the system says which, and otherwise only

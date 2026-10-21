@@ -13,6 +13,8 @@ import type { DesktopConfig } from "./config.js";
  * in @apc/shared/server, written here since the packaged app doesn't carry that package.
  */
 export const PORT_IN_USE_EXIT_CODE = 98;
+/** The exit code of a server whose SQLite key doesn't open its file, WRONG_KEY_EXIT_CODE in @apc/shared/server. */
+export const WRONG_KEY_EXIT_CODE = 97;
 /**
  * The port the server listens on, for the phone: http://<this computer's address>:3000. It is SERVER_PORT in
  * @apc/shared/server, written here since the packaged app doesn't carry that package, and apart from the development
