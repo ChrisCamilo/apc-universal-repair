@@ -1,12 +1,13 @@
 import { Pressable, View, Text as NativeText } from 'react-native';
-import { partFit, type FoundPart, type PartResults as Results } from '@apc/shared/catalog';
+import { itemFit, type FoundPart, type PartResults as Results } from '@apc/shared/catalog';
 import { Text } from '../Typography';
 import { useStyles } from './PartResults.styles';
 
 // The inventory parts a Catalog search by code found, the same as the web: a tinted box above the tree with each
-// brand of an item whose code matched, with its code, the item's name and the vehicle it fits. Choosing one reveals its vehicle in the tree; the chosen part has the
-// accent frame. The parts are a radio group with one always chosen; when more parts matched than fit, a line says
-// how many more.
+// brand of an item whose code matched, or its original code, with the code, the item's name and the vehicle it fits
+// (of several, the one the catalog knows best and how many more). Choosing one reveals that vehicle in the tree; the
+// chosen part has the accent frame. The parts are a radio group with one always chosen; when more parts matched than
+// fit, a line says how many more.
 
 type PartResultsProps = {
   results: Results;
@@ -28,7 +29,7 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
           <Pressable
             key={part.id}
             accessibilityRole="radio"
-            accessibilityLabel={`${part.code} ${part.item.name}, ${partFit(part.item)}`}
+            accessibilityLabel={`${part.code} ${part.item.name}, ${itemFit(part.item)}`}
             accessibilityState={{ checked: part.id === chosen }}
             onPress={() => onChoose(part)}
             style={({ pressed }) => [styles.part, pressed && styles.partPressed, part.id === chosen && styles.partChosen]}
@@ -39,7 +40,7 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
               <Text size="sm">{part.item.name}</Text>
             </View>
             <Text size="sm" tone="muted">
-              {partFit(part.item)}
+              {itemFit(part.item)}
             </Text>
           </Pressable>
         ))}

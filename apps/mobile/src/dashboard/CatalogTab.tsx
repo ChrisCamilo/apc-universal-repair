@@ -9,6 +9,7 @@ import {
   firstSheet,
   locatePart,
   modelsNamed,
+  revealedVehicle,
   type FoundPart,
 } from '@apc/shared/catalog';
 import { EmptyState } from '../EmptyState';
@@ -47,11 +48,13 @@ export function CatalogTab() {
   const brand = CATALOG.find((b) => b.id === brandId)!;
   const results = findParts(items, query);
   const searchingParts = results.parts.length > 0;
-  const location = searchingParts && part ? locatePart(part.item) : null;
+  // The vehicle of the chosen part the catalog shows: the one it knows best, of a part of several.
+  const vehicle = part && revealedVehicle(part.item);
+  const location = searchingParts && vehicle ? locatePart(vehicle) : null;
   const models = modelsNamed(brand.models, searchingParts ? '' : query);
   const sheet = engine ? ENGINE_SHEETS[engine] : undefined;
   // A part for a model the catalog has no sheet for says so, instead of showing another vehicle.
-  const missingVehicle = location && part?.item.vehicleModel && !location.engineId ? `${part.item.vehicleBrand} ${part.item.vehicleModel}` : null;
+  const missingVehicle = location && vehicle?.vehicleModel && !location.engineId ? `${vehicle.vehicleBrand} ${vehicle.vehicleModel}` : null;
 
   /** Opens a brand on its first engine. */
   const openBrand = (id: string) => {
@@ -62,7 +65,7 @@ export function CatalogTab() {
   /** Reveals a part's vehicle: its brand, its engine, and the tree open on them. */
   const choosePart = (chosen: FoundPart) => {
     setPart(chosen);
-    const found = locatePart(chosen.item);
+    const found = locatePart(revealedVehicle(chosen.item));
     if (found) {
       setBrandId(found.brandId);
       setEngine(found.engineId ?? (found.modelId ? undefined : firstSheet(CATALOG.find((b) => b.id === found.brandId)!.models)));
