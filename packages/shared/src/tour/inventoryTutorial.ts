@@ -356,6 +356,6 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
  * @param item An item, maybe none.
  * @returns True for the test item.
  */
-function isTestItem(item: Item | undefined): boolean {
+export function isTestItem(item: Item | undefined): boolean {
   return item?.brands.some((brand) => brand.code === TUTORIAL_CODE) ?? false;
 }
