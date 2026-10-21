@@ -188,6 +188,20 @@ test("Web: the search finds items by name or part code", async ({ page }) => {
   await expect(rows).toHaveCount(4);
 });
 
+// Searches by the second of an item's original codes, written without its separators, and checks the list finds that
+// item alone; its row keeps showing its brand's code.
+test("Web: an item is found by its second original code", async ({ page }) => {
+  const shoe = item({ code: "N-1210", name: "Pastilha dianteira", originalCodes: ["5U0 698 151", "5U0 698 151 A"] });
+  await serveItems(page, [shoe, ...ITEMS]);
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(5);
+  await page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" }).fill("5u0698151a");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("Pastilha dianteira");
+  await expect(rows.first()).toContainText("N-1210");
+});
+
 // Adds an item through "Novo item" against an API that keeps what it is sent: saving the blank form names the
 // required fields, the filled-in form is posted with the writing rule applied, a toast confirms it and the list
 // shows the new item first without a reload; then the item's pencil opens it filled in and an edit is patched. Save is on
