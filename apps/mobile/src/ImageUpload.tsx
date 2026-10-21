@@ -16,8 +16,11 @@ import { Label, Text } from './Typography';
 // there are none: no ×, no area to tap.
 
 export type PickedPhoto = PhotoFile & { url: string };
-/** A photo the field holds: one already saved has only its URL; one just picked also has its file. */
-export type UploadPhoto = { url: string; file?: PickedPhoto };
+/**
+ * A photo the field holds: one already saved has only its URL; one just picked also has its file; one of another item,
+ * to be copied, also has that photo's id.
+ */
+export type UploadPhoto = { url: string; file?: PickedPhoto; copyOf?: string };
 type ImageUploadProps = {
   label: string;
   photos: readonly UploadPhoto[];

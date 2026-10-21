@@ -14,8 +14,9 @@ import type { PickedPhoto, UploadPhoto } from '../ImageUpload';
 
 // The item photos on the phone: the photo library to pick them from, which hands them over already reduced to
 // PHOTO_MAX_DIMENSION at PHOTO_QUALITY, so less is sent and a photo over 3 MB can still be taken; and saving the photos
-// of an item's brand as a photo field or the viewer holds them, the same as the web: the saved ones kept by their id and the new
-// files sent, all in one request, in their order, and nothing sent when the photos didn't change.
+// of an item's brand as a photo field or the viewer holds them, the same as the web: the saved ones kept by their id, the ones of
+// another item copied by their id, as a duplicated item's are, and the new files sent, all in one request, in their
+// order, and nothing sent when the photos didn't change.
 
 /**
  * Opens the phone's photo library to pick up to ITEM_PHOTO_LIMIT photos, reduced to PHOTO_MAX_DIMENSION.
@@ -51,6 +52,8 @@ export async function savePhotos(item: Item, brand: ItemBrand, photos: readonly 
   for (const part of parts) {
     if ('keep' in part) {
       body.append(PHOTO_PARTS.keep, part.keep);
+    } else if ('copy' in part) {
+      body.append(PHOTO_PARTS.copy, part.copy);
     } else {
       // React Native's FormData sends a file given by where it is on the phone.
       body.append(PHOTO_PARTS.file, { uri: part.file.url, name: part.file.name, type: part.file.type } as unknown as Blob);

@@ -48,6 +48,7 @@ import { TextField } from '../components/TextField.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { Heading, Label, Text } from '../components/Typography.tsx'
 import { CodeListField } from './CodeListField.tsx'
+import { DuplicateItemDialog } from './DuplicateItemDialog.tsx'
 import { itemFormDialog } from './ItemFormDialog.styles.ts'
 import { savePhotos } from './savePhotos.ts'
 import type { CreateListEntry } from './useItemLists.ts'
@@ -74,7 +75,9 @@ import type { CreateListEntry } from './useItemLists.ts'
 // changes nothing isn't sent, and an info toast says so. Opened on an item's details, the same dialog shows each field
 // as text in the form's layout, a section for each brand, with Fechar and Editar: nothing can be changed or saved
 // until Editar unlocks the fields in place, on the first one, and the buttons turn into Cancelar and Salvar
-// alterações, which save like the edit form. The owner may open it with values filled in and follow what is typed, as
+// alterações, which save like the edit form. The details may also offer Duplicar, which asks whether the copy takes the
+// photos too (see DuplicateItemDialog) and hands the answer over. The owner may open it with values and photos filled
+// in, as a duplicated item's are, and follow what is typed, as
 // the Inventory tutorial does, whose tour points at the name and at the first brand's code and quantity; the details
 // list the vehicles apart, under Veículos.
 
@@ -99,6 +102,10 @@ type ItemFormDialogProps = {
   onSaved: (item: Item) => void
   /** Values the form opens with instead of the item's own, e.g. filled in by the tutorial. */
   initialForm?: ItemForm
+  /** Each brand's photos the form opens with instead of the item's own, e.g. a duplicated item's copies. */
+  initialPhotos?: UploadPhoto[][]
+  /** Offers Duplicar in the details, called with the item and whether the copy takes the photos too. */
+  onDuplicate?: (item: Item, withPhotos: boolean) => void
   /** Called with the form as typed and whether it shows the details, on each change, e.g. for the tutorial. */
   onFormChange?: (form: ItemForm, viewing: boolean) => void
 }
@@ -123,6 +130,8 @@ export function ItemFormDialog({
   onClose,
   onSaved,
   initialForm,
+  initialPhotos,
+  onDuplicate,
   onFormChange,
 }: ItemFormDialogProps) {
   const toast = useToast()
@@ -131,11 +140,13 @@ export function ItemFormDialog({
   const name = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM))
   // Each brand's photos, in the order of the form's brands; a brand the form fills in for the item keeps its own.
-  const [photos, setPhotos] = useState<UploadPhoto[][]>(() =>
-    form.brands.map((brand) => heldPhotos(item?.brands.find((held) => held.id === brand.id)?.photos ?? [], API_BASE)),
+  const [photos, setPhotos] = useState<UploadPhoto[][]>(
+    () => initialPhotos ?? form.brands.map((brand) => heldPhotos(item?.brands.find((held) => held.id === brand.id)?.photos ?? [], API_BASE)),
   )
   const [errors, setErrors] = useState<ItemFormErrors>({})
   const [saving, setSaving] = useState(false)
+  // Whether Duplicar's question is open.
+  const [asking, setAsking] = useState(false)
   // How many names are being created; saving waits for them.
   const [creating, setCreating] = useState(0)
   const options = itemFormOptions(items, lists)
@@ -333,264 +344,282 @@ export function ItemFormDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={viewing ? 'Detalhes do item' : item ? 'Editar item' : 'Novo item'}
-      closable
-      actions={
-        viewing ? (
-          <>
-            <Button variant="secondary" size="sm" onClick={onClose}>
-              Fechar
-            </Button>
-            <Button size="sm" data-tour="form-edit" onClick={() => setViewing(false)}>
-              Editar
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button variant="secondary" size="sm" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button size="sm" data-tour="form-save" loading={saving || creating > 0} onClick={save}>
-              {item ? 'Salvar alterações' : 'Salvar'}
-            </Button>
-          </>
-        )
-      }
-    >
-      {viewing && item ? (
-        <div className={classes.fields()} data-testid={ids.fields}>
-          {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
-            <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />
-          ))}
-          <div className={classes.codes()} data-testid={ids.codes}>
-            <FieldValue label={VEHICLES_LABEL} value={vehiclesText(item)} />
-          </div>
-          <div className={classes.codes()} data-testid={ids.codes}>
-            <FieldValue label={ORIGINAL_CODES_LABEL} value={originalCodesText(item)} />
-          </div>
-          <div className={classes.brands()} data-testid={ids.brands}>
-            {item.brands.map((brand, index) => (
-              <div
-                key={brand.id}
-                role="group"
-                aria-label={brandNames(index, item.brands.length).section}
-                className={classes.brand()}
-                data-testid={ids.brand}
-              >
-                <div className={classes.brandHead()} data-testid={ids.brandHead}>
-                  <Heading level={4}>{brandNames(index, item.brands.length).section}</Heading>
-                </div>
-                <div className={classes.photos()} data-testid={ids.photos}>
-                  <ImageUpload
-                    label={brandNames(index, item.brands.length).photos}
-                    photos={photos[index] ?? []}
-                    onPhotosChange={() => {}}
-                    limit={ITEM_PHOTO_LIMIT}
-                    readOnly
-                  />
-                </div>
-                {Object.entries(brandDetailTexts(brand)).map(([field, text]) => (
-                  <FieldValue key={field} label={BRAND_FIELD_LABELS[field as BrandField]} value={text} />
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className={classes.fields()} data-testid={ids.fields}>
-          <TextField
-            ref={name}
-            data-tour="form-name"
-            label={ITEM_FIELD_LABELS.name}
-            value={form.name}
-            onValueChange={(value) => change('name', value)}
-            onBlur={() => change('name', form.name.trim() ? capitalizeFirst(form.name) : form.name)}
-            error={errors.name}
-          />
-          <Combobox
-            label={ITEM_FIELD_LABELS.category}
-            value={form.category}
-            onValueChange={(value) => change('category', value)}
-            options={options.categories}
-            onCreate={create('categories', (created) => change('category', created))}
-            noun="categoria"
-            toggleLabel="Mostrar categorias"
-            emptyLabel="Nenhuma categoria cadastrada"
-            error={errors.category}
-          />
-          <div role="group" aria-label={VEHICLES_LABEL} className={classes.vehicles()} data-testid={ids.vehicles}>
-            <Text size="sm" tone="muted">
-              Os veículos em que a peça serve. Deixe o modelo vazio se serve em qualquer modelo da marca.
-            </Text>
-            {form.vehicles.map((vehicle, index) => {
-              const brand = findEntry(lists.vehicleBrands, vehicle.vehicleBrand)
-              const shown = errors.vehicles?.[index] ?? {}
-              const line = `Veículo ${index + 1}`
-              return (
-                <div key={index} role="group" aria-label={line} className={classes.vehicle()} data-testid={ids.vehicle}>
-                  <Combobox
-                    label={VEHICLE_FIELD_LABELS.vehicleBrand}
-                    value={vehicle.vehicleBrand}
-                    onValueChange={(value) => changeVehicleBrand(index, value)}
-                    options={options.vehicleBrands}
-                    onCreate={create('vehicleBrands', (created) => changeVehicle(index, 'vehicleBrand', created))}
-                    noun="marca"
-                    toggleLabel="Mostrar marcas de veículo"
-                    emptyLabel="Nenhuma marca cadastrada"
-                    error={shown.vehicleBrand}
-                  />
-                  <Combobox
-                    label={VEHICLE_FIELD_LABELS.vehicleModel}
-                    value={vehicle.vehicleModel}
-                    onValueChange={(value) => changeVehicle(index, 'vehicleModel', value)}
-                    options={modelsOfBrand(lists, vehicle.vehicleBrand)}
-                    onCreate={create('vehicleModels', (created) => changeVehicle(index, 'vehicleModel', created), brand?.id)}
-                    noun="modelo"
-                    toggleLabel="Mostrar modelos"
-                    emptyLabel="Nenhum modelo cadastrado para essa marca"
-                    placeholder={brand ? 'Qualquer modelo' : 'Escolha a marca do veículo primeiro'}
-                    error={shown.vehicleModel}
-                    disabled={!brand}
-                  />
-                  {form.vehicles.length > 1 && (
-                    <Button variant="secondary" size="sm" aria-label={`Remover ${line.toLowerCase()}`} onClick={() => removeVehicle(index)}>
-                      Remover
-                    </Button>
-                  )}
-                </div>
-              )
-            })}
-            <div className={classes.addVehicle()} data-testid={ids.addVehicle}>
-              <Button variant="secondary" size="sm" onClick={addVehicle}>
-                Adicionar veículo
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        title={viewing ? 'Detalhes do item' : item ? 'Editar item' : 'Novo item'}
+        closable
+        actions={
+          viewing ? (
+            <>
+              <Button variant="secondary" size="sm" onClick={onClose}>
+                Fechar
               </Button>
+              {onDuplicate && (
+                <Button variant="secondary" size="sm" onClick={() => setAsking(true)}>
+                  Duplicar
+                </Button>
+              )}
+              <Button size="sm" data-tour="form-edit" onClick={() => setViewing(false)}>
+                Editar
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" size="sm" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button size="sm" data-tour="form-save" loading={saving || creating > 0} onClick={save}>
+                {item ? 'Salvar alterações' : 'Salvar'}
+              </Button>
+            </>
+          )
+        }
+      >
+        {viewing && item ? (
+          <div className={classes.fields()} data-testid={ids.fields}>
+            {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
+              <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />
+            ))}
+            <div className={classes.codes()} data-testid={ids.codes}>
+              <FieldValue label={VEHICLES_LABEL} value={vehiclesText(item)} />
+            </div>
+            <div className={classes.codes()} data-testid={ids.codes}>
+              <FieldValue label={ORIGINAL_CODES_LABEL} value={originalCodesText(item)} />
+            </div>
+            <div className={classes.brands()} data-testid={ids.brands}>
+              {item.brands.map((brand, index) => (
+                <div
+                  key={brand.id}
+                  role="group"
+                  aria-label={brandNames(index, item.brands.length).section}
+                  className={classes.brand()}
+                  data-testid={ids.brand}
+                >
+                  <div className={classes.brandHead()} data-testid={ids.brandHead}>
+                    <Heading level={4}>{brandNames(index, item.brands.length).section}</Heading>
+                  </div>
+                  <div className={classes.photos()} data-testid={ids.photos}>
+                    <ImageUpload
+                      label={brandNames(index, item.brands.length).photos}
+                      photos={photos[index] ?? []}
+                      onPhotosChange={() => {}}
+                      limit={ITEM_PHOTO_LIMIT}
+                      readOnly
+                    />
+                  </div>
+                  {Object.entries(brandDetailTexts(brand)).map(([field, text]) => (
+                    <FieldValue key={field} label={BRAND_FIELD_LABELS[field as BrandField]} value={text} />
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
-          <div className={classes.choice()} data-testid={ids.choice}>
-            <Label>{ITEM_FIELD_LABELS.position}</Label>
-            <Segmented
-              label={ITEM_FIELD_LABELS.position}
-              options={POSITION_OPTIONS}
-              value={form.position}
-              onValueChange={(value) => change('position', value)}
+        ) : (
+          <div className={classes.fields()} data-testid={ids.fields}>
+            <TextField
+              ref={name}
+              data-tour="form-name"
+              label={ITEM_FIELD_LABELS.name}
+              value={form.name}
+              onValueChange={(value) => change('name', value)}
+              onBlur={() => change('name', form.name.trim() ? capitalizeFirst(form.name) : form.name)}
+              error={errors.name}
             />
-          </div>
-          <div className={classes.choice()} data-testid={ids.choice}>
-            <Label>{ITEM_FIELD_LABELS.side}</Label>
-            <Segmented
-              label={ITEM_FIELD_LABELS.side}
-              options={SIDE_OPTIONS}
-              value={form.side}
-              onValueChange={(value) => change('side', value)}
+            <Combobox
+              label={ITEM_FIELD_LABELS.category}
+              value={form.category}
+              onValueChange={(value) => change('category', value)}
+              options={options.categories}
+              onCreate={create('categories', (created) => change('category', created))}
+              noun="categoria"
+              toggleLabel="Mostrar categorias"
+              emptyLabel="Nenhuma categoria cadastrada"
+              error={errors.category}
             />
-          </div>
-          <TextField
-            label={ITEM_FIELD_LABELS.minQuantity}
-            kind="number"
-            value={form.minQuantity}
-            onValueChange={changeMinimum}
-            error={errors.minQuantity}
-            helper="Abaixo disso, somando todas as marcas, o item aparece como estoque baixo."
-          />
-          <div className={classes.codes()} data-testid={ids.codes}>
-            <CodeListField
-              label={ORIGINAL_CODES_LABEL}
-              codes={form.originalCodes}
-              onCodesChange={(codes) => setForm((typed) => ({ ...typed, originalCodes: codes }))}
-              messages={originalCodeMessages(form, items, item?.id)}
-              helper="Os códigos da montadora, iguais em todas as marcas. Enter, vírgula ou ponto e vírgula separa um do outro."
-            />
-          </div>
-          <div className={classes.brands()} data-testid={ids.brands}>
-            <Text size="sm" tone="muted">
-              As marcas que fazem esta peça, cada uma com seu código, estoque e valor.
-            </Text>
-            {form.brands.map((brand, index) => {
-              const names = brandNames(index, form.brands.length)
-              const shown = errors.brands?.[index] ?? {}
-              // The tutorial points at the first brand's code and quantity.
-              const tour = (field: string) => (index === 0 ? field : undefined)
-              return (
-                <div key={brand.id ?? `new-${index}`} role="group" aria-label={names.section} className={classes.brand()} data-testid={ids.brand}>
-                  <div className={classes.brandHead()} data-testid={ids.brandHead}>
-                    <Heading level={4}>{names.section}</Heading>
-                    {form.brands.length > 1 && (
-                      <Button variant="secondary" size="sm" aria-label={`Remover ${names.section.toLowerCase()}`} onClick={() => removeBrand(index)}>
+            <div role="group" aria-label={VEHICLES_LABEL} className={classes.vehicles()} data-testid={ids.vehicles}>
+              <Text size="sm" tone="muted">
+                Os veículos em que a peça serve. Deixe o modelo vazio se serve em qualquer modelo da marca.
+              </Text>
+              {form.vehicles.map((vehicle, index) => {
+                const brand = findEntry(lists.vehicleBrands, vehicle.vehicleBrand)
+                const shown = errors.vehicles?.[index] ?? {}
+                const line = `Veículo ${index + 1}`
+                return (
+                  <div key={index} role="group" aria-label={line} className={classes.vehicle()} data-testid={ids.vehicle}>
+                    <Combobox
+                      label={VEHICLE_FIELD_LABELS.vehicleBrand}
+                      value={vehicle.vehicleBrand}
+                      onValueChange={(value) => changeVehicleBrand(index, value)}
+                      options={options.vehicleBrands}
+                      onCreate={create('vehicleBrands', (created) => changeVehicle(index, 'vehicleBrand', created))}
+                      noun="marca"
+                      toggleLabel="Mostrar marcas de veículo"
+                      emptyLabel="Nenhuma marca cadastrada"
+                      error={shown.vehicleBrand}
+                    />
+                    <Combobox
+                      label={VEHICLE_FIELD_LABELS.vehicleModel}
+                      value={vehicle.vehicleModel}
+                      onValueChange={(value) => changeVehicle(index, 'vehicleModel', value)}
+                      options={modelsOfBrand(lists, vehicle.vehicleBrand)}
+                      onCreate={create('vehicleModels', (created) => changeVehicle(index, 'vehicleModel', created), brand?.id)}
+                      noun="modelo"
+                      toggleLabel="Mostrar modelos"
+                      emptyLabel="Nenhum modelo cadastrado para essa marca"
+                      placeholder={brand ? 'Qualquer modelo' : 'Escolha a marca do veículo primeiro'}
+                      error={shown.vehicleModel}
+                      disabled={!brand}
+                    />
+                    {form.vehicles.length > 1 && (
+                      <Button variant="secondary" size="sm" aria-label={`Remover ${line.toLowerCase()}`} onClick={() => removeVehicle(index)}>
                         Remover
                       </Button>
                     )}
                   </div>
-                  <div className={classes.photos()} data-testid={ids.photos}>
-                    <ImageUpload
-                      label={names.photos}
-                      photos={photos[index] ?? []}
-                      onPhotosChange={(next) => setPhotos((held) => held.map((each, at) => (at === index ? next : each)))}
-                      limit={ITEM_PHOTO_LIMIT}
+                )
+              })}
+              <div className={classes.addVehicle()} data-testid={ids.addVehicle}>
+                <Button variant="secondary" size="sm" onClick={addVehicle}>
+                  Adicionar veículo
+                </Button>
+              </div>
+            </div>
+            <div className={classes.choice()} data-testid={ids.choice}>
+              <Label>{ITEM_FIELD_LABELS.position}</Label>
+              <Segmented
+                label={ITEM_FIELD_LABELS.position}
+                options={POSITION_OPTIONS}
+                value={form.position}
+                onValueChange={(value) => change('position', value)}
+              />
+            </div>
+            <div className={classes.choice()} data-testid={ids.choice}>
+              <Label>{ITEM_FIELD_LABELS.side}</Label>
+              <Segmented
+                label={ITEM_FIELD_LABELS.side}
+                options={SIDE_OPTIONS}
+                value={form.side}
+                onValueChange={(value) => change('side', value)}
+              />
+            </div>
+            <TextField
+              label={ITEM_FIELD_LABELS.minQuantity}
+              kind="number"
+              value={form.minQuantity}
+              onValueChange={changeMinimum}
+              error={errors.minQuantity}
+              helper="Abaixo disso, somando todas as marcas, o item aparece como estoque baixo."
+            />
+            <div className={classes.codes()} data-testid={ids.codes}>
+              <CodeListField
+                label={ORIGINAL_CODES_LABEL}
+                codes={form.originalCodes}
+                onCodesChange={(codes) => setForm((typed) => ({ ...typed, originalCodes: codes }))}
+                messages={originalCodeMessages(form, items, item?.id)}
+                helper="Os códigos da montadora, iguais em todas as marcas. Enter, vírgula ou ponto e vírgula separa um do outro."
+              />
+            </div>
+            <div className={classes.brands()} data-testid={ids.brands}>
+              <Text size="sm" tone="muted">
+                As marcas que fazem esta peça, cada uma com seu código, estoque e valor.
+              </Text>
+              {form.brands.map((brand, index) => {
+                const names = brandNames(index, form.brands.length)
+                const shown = errors.brands?.[index] ?? {}
+                // The tutorial points at the first brand's code and quantity.
+                const tour = (field: string) => (index === 0 ? field : undefined)
+                return (
+                  <div key={brand.id ?? `new-${index}`} role="group" aria-label={names.section} className={classes.brand()} data-testid={ids.brand}>
+                    <div className={classes.brandHead()} data-testid={ids.brandHead}>
+                      <Heading level={4}>{names.section}</Heading>
+                      {form.brands.length > 1 && (
+                        <Button variant="secondary" size="sm" aria-label={`Remover ${names.section.toLowerCase()}`} onClick={() => removeBrand(index)}>
+                          Remover
+                        </Button>
+                      )}
+                    </div>
+                    <div className={classes.photos()} data-testid={ids.photos}>
+                      <ImageUpload
+                        label={names.photos}
+                        photos={photos[index] ?? []}
+                        onPhotosChange={(next) => setPhotos((held) => held.map((each, at) => (at === index ? next : each)))}
+                        limit={ITEM_PHOTO_LIMIT}
+                      />
+                    </div>
+                    <Combobox
+                      label={BRAND_FIELD_LABELS.partBrand}
+                      value={brand.partBrand}
+                      onValueChange={(value) => changeBrand(index, 'partBrand', value)}
+                      options={options.partBrands}
+                      onCreate={create('partBrands', (created) => changeBrand(index, 'partBrand', created))}
+                      noun="marca"
+                      toggleLabel="Mostrar marcas de peça"
+                      emptyLabel="Nenhuma marca cadastrada"
+                      error={shown.partBrand}
+                    />
+                    <TextField
+                      data-tour={tour('form-code')}
+                      label={BRAND_FIELD_LABELS.code}
+                      value={brand.code}
+                      onValueChange={(value) => changeCode(index, value)}
+                      error={shown.code}
+                    />
+                    <TextField
+                      data-tour={tour('form-quantity')}
+                      label={BRAND_FIELD_LABELS.quantity}
+                      kind="number"
+                      value={brand.quantity}
+                      onValueChange={(value) => changeQuantity(index, value)}
+                      error={shown.quantity}
+                    />
+                    <TextField
+                      label={BRAND_FIELD_LABELS.price}
+                      kind="number"
+                      value={brand.price}
+                      onValueChange={(value) => changePrice(index, value)}
+                      placeholder={PRICE_PLACEHOLDER}
+                      error={shown.price}
+                    />
+                    <TextField
+                      label={BRAND_FIELD_LABELS.color}
+                      value={brand.color}
+                      onValueChange={(value) => changeBrand(index, 'color', value)}
+                      onBlur={() =>
+                        changeBrand(index, 'color', brand.color.trim() ? (findOption(options.colors, brand.color) ?? capitalizeFirst(brand.color)) : '')
+                      }
+                      helper="Deixe vazio se a cor não se aplica."
+                    />
+                    <TextField
+                      label={BRAND_FIELD_LABELS.location}
+                      value={brand.location}
+                      onValueChange={(value) => changeBrand(index, 'location', value)}
+                      onBlur={() => changeBrand(index, 'location', brand.location.trim() ? capitalizeFirst(brand.location) : brand.location)}
                     />
                   </div>
-                  <Combobox
-                    label={BRAND_FIELD_LABELS.partBrand}
-                    value={brand.partBrand}
-                    onValueChange={(value) => changeBrand(index, 'partBrand', value)}
-                    options={options.partBrands}
-                    onCreate={create('partBrands', (created) => changeBrand(index, 'partBrand', created))}
-                    noun="marca"
-                    toggleLabel="Mostrar marcas de peça"
-                    emptyLabel="Nenhuma marca cadastrada"
-                    error={shown.partBrand}
-                  />
-                  <TextField
-                    data-tour={tour('form-code')}
-                    label={BRAND_FIELD_LABELS.code}
-                    value={brand.code}
-                    onValueChange={(value) => changeCode(index, value)}
-                    error={shown.code}
-                  />
-                  <TextField
-                    data-tour={tour('form-quantity')}
-                    label={BRAND_FIELD_LABELS.quantity}
-                    kind="number"
-                    value={brand.quantity}
-                    onValueChange={(value) => changeQuantity(index, value)}
-                    error={shown.quantity}
-                  />
-                  <TextField
-                    label={BRAND_FIELD_LABELS.price}
-                    kind="number"
-                    value={brand.price}
-                    onValueChange={(value) => changePrice(index, value)}
-                    placeholder={PRICE_PLACEHOLDER}
-                    error={shown.price}
-                  />
-                  <TextField
-                    label={BRAND_FIELD_LABELS.color}
-                    value={brand.color}
-                    onValueChange={(value) => changeBrand(index, 'color', value)}
-                    onBlur={() =>
-                      changeBrand(index, 'color', brand.color.trim() ? (findOption(options.colors, brand.color) ?? capitalizeFirst(brand.color)) : '')
-                    }
-                    helper="Deixe vazio se a cor não se aplica."
-                  />
-                  <TextField
-                    label={BRAND_FIELD_LABELS.location}
-                    value={brand.location}
-                    onValueChange={(value) => changeBrand(index, 'location', value)}
-                    onBlur={() => changeBrand(index, 'location', brand.location.trim() ? capitalizeFirst(brand.location) : brand.location)}
-                  />
-                </div>
-              )
-            })}
-            <div className={classes.add()} data-testid={ids.add}>
-              <Button variant="secondary" size="sm" onClick={addBrand}>
-                Adicionar marca
-              </Button>
+                )
+              })}
+              <div className={classes.add()} data-testid={ids.add}>
+                <Button variant="secondary" size="sm" onClick={addBrand}>
+                  Adicionar marca
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+      </Dialog>
+      {item && onDuplicate && (
+        <DuplicateItemDialog
+          open={open && asking}
+          name={item.name}
+          onClose={() => setAsking(false)}
+          onDuplicate={(withPhotos) => {
+            setAsking(false)
+            onDuplicate(item, withPhotos)
+          }}
+        />
       )}
-    </Dialog>
+    </>
   )
 }

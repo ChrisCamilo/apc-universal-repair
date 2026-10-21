@@ -21,11 +21,11 @@ import {
 } from '@apc/shared/items'
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
 import { EMPTY_ITEM_FILTERS, followEntryChange, itemFilterRows, itemListQuery } from '@apc/shared/item-filters'
-import { EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form'
+import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form'
 import { TUTORIAL_CODE, type TutorialScreen } from '@apc/shared/inventory-tutorial'
 import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination'
 import type { Sort } from '@apc/shared/table'
-import { heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
+import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
 import { API_BASE } from '../api.ts'
 import { useSession } from '../auth/sessionContext.ts'
 import { Button } from '../components/Button.tsx'
@@ -77,7 +77,8 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // the filters following a name renamed or merged, and a name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list
 // and the lists load again; "Exportar CSV" saves every item of the list as it is, on every page, in the same format.
 // While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or
-// Enter on it) opens the item's details. Each row's thumbnail shows the item's cover and opens its photos in the
+// Enter on it) opens the item's details, whose Duplicar opens a new item's form filled in as a copy of it, with copies
+// of its photos or without them, its codes left blank and its stock at 0. Each row's thumbnail shows the item's cover and opens its photos in the
 // ImageViewer (a brand's row, that brand's photos), where each photo removed, changed or added is saved at once and
 // the list follows. Low and
 // out-of-stock rows are tinted by the table, and an item that reaches its minimum raises a warning in the bell, once
@@ -203,9 +204,16 @@ export function InventoryTab() {
   // Whether "Exportar CSV" is open; each opening starts without the photo paths.
   const [exporter, setExporter] = useState({ open: false, session: 0 })
   const { opensOnRow } = useOpenItemOnRow()
-  // The item form: closed, open on a new item, an item to edit or an item's details, maybe with values filled in.
-  // Each opening starts a new form.
-  const [form, setForm] = useState<{ open: boolean; item?: Item; details?: boolean; initial?: ItemForm; session: number }>({
+  // The item form: closed, open on a new item, an item to edit or an item's details, maybe with values and photos
+  // filled in. Each opening starts a new form.
+  const [form, setForm] = useState<{
+    open: boolean
+    item?: Item
+    details?: boolean
+    initial?: ItemForm
+    photos?: UploadPhoto[][]
+    session: number
+  }>({
     open: false,
     session: 0,
   })
@@ -289,9 +297,17 @@ export function InventoryTab() {
       return next
     })
 
-  /** Opens the item form on a new item, an item to edit, or an item's details, maybe with values filled in. */
-  const openForm = (item?: Item, details = false, initial?: ItemForm) =>
-    setForm((current) => ({ open: true, item, details, initial, session: current.session + 1 }))
+  /** Opens the item form on a new item, an item to edit, or an item's details, maybe with values and photos filled in. */
+  const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][]) =>
+    setForm((current) => ({ open: true, item, details, initial, photos, session: current.session + 1 }))
+
+  /**
+   * Opens a new item's form filled in as a copy of an item, in place of its details.
+   * @param item The item to copy.
+   * @param withPhotos Whether each brand of the copy takes copies of its brand's photos.
+   */
+  const duplicate = (item: Item, withPhotos: boolean) =>
+    openForm(undefined, false, duplicateForm(item), withPhotos ? item.brands.map((brand) => copiedPhotos(brand.photos, API_BASE)) : undefined)
 
   /** Sends an item request for the tutorial, then loads the list and the lists again. */
   const send = async (url: string, method: string, body?: unknown) => {
@@ -560,6 +576,8 @@ export function InventoryTab() {
         lists={lists}
         onCreateEntry={createEntry}
         initialForm={form.initial}
+        initialPhotos={form.photos}
+        onDuplicate={duplicate}
         onFormChange={followForm}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {

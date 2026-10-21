@@ -7,6 +7,7 @@ import {
   codesInput,
   codeTakenError,
   codeTakenMessage,
+  duplicateForm,
   EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
   EMPTY_VEHICLE_FORM,
@@ -368,6 +369,29 @@ test("Shared: an item fills the form and saves back unchanged", () => {
     body.brands.map((brand) => [brand.unitPriceCents, brand.color]),
     PADS.brands.map((brand) => [brand.unitPriceCents, brand.color]),
   );
+});
+
+// Copies an item of two brands that fits two vehicles and has an original code, and checks the copy keeps every field,
+// the vehicles and the brands in their order, each a new brand without its code and with its quantity at 0, and leaves
+// the original codes out.
+test("Shared: a duplicated item keeps every field but the codes, with no stock", () => {
+  const fits = { ...PADS, originalCodes: ["93 234 567"], vehicles: [...PADS.vehicles, { vehicleBrand: "Ford", vehicleModel: null }] };
+  assert.deepEqual(duplicateForm(fits), {
+    name: "Pastilha",
+    category: "Motor",
+    vehicles: [
+      { vehicleBrand: "Chevrolet", vehicleModel: "Opala" },
+      { vehicleBrand: "Ford", vehicleModel: "" },
+    ],
+    minQuantity: "2",
+    position: "N/A",
+    side: "N/A",
+    originalCodes: [],
+    brands: [
+      { partBrand: "Bosch", code: "", quantity: "0", price: "R$ 39,90", color: "Preto", location: "" },
+      { partBrand: "Fras-le", code: "", quantity: "0", price: "R$ 49,90", color: "", location: "B-10" },
+    ],
+  });
 });
 
 // Fills the form with an item and checks it is no change as it is, nor with fields only written differently (the name

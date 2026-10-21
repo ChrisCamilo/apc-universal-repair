@@ -32,7 +32,8 @@ import { findEntry, type ItemLists } from "../lists/lists.ts";
 // Category, part brands, vehicle brands and vehicle models must be in their lists, where the form creates new names; a
 // vehicle appears once in an item, and Universal (any vehicle) alone; a
 // part brand and a code appear once in an item, original or a brand's, and a code nowhere else in stock. The same form shows an item's
-// details for reading, each field written out as text.
+// details for reading, each field written out as text, and fills in a new item as a copy of one, without its codes or
+// its stock.
 
 /** A new brand's section: every field blank. */
 export const EMPTY_BRAND_FORM: ItemBrandForm = { partBrand: "", code: "", quantity: "", price: "", color: "", location: "" };
@@ -247,6 +248,21 @@ export function distinct(values: readonly string[]): string[] {
     }
   }
   return [...seen.values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+/**
+ * Fills in a new item's form as a copy of an item: every field and brand in its order, but no codes, since each one is
+ * unique in stock, and every quantity at 0, so the stock isn't counted twice.
+ * @param item The item to copy.
+ * @returns The form of the copy, its brands new ones.
+ */
+export function duplicateForm(item: Item): ItemForm {
+  const form = itemFormOf(item);
+  return {
+    ...form,
+    originalCodes: [],
+    brands: form.brands.map(({ partBrand, price, color, location }) => ({ partBrand, code: "", quantity: "0", price, color, location })),
+  };
 }
 
 /**

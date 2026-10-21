@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { ItemPhoto } from "../items/items.ts";
 import {
+  copiedPhotos,
   fitPhoto,
   heldPhotos,
   ITEM_PHOTO_LIMIT,
@@ -79,4 +80,17 @@ test("Shared: a field's photos become the parts that save them, only when change
   const replaced = photoParts([{ url: "blob:nova", file: "nova.png" }, held[1]], SAVED, "/api");
   assert.deepEqual(replaced, [{ file: "nova.png" }, { keep: "b" }]);
   assert.equal(photosChanged(replaced, SAVED), true);
+});
+
+// Copies another item's two photos into a brand with none, and checks they show at their URLs, become copy parts in
+// their order, even after a new file, and are a change to save.
+test("Shared: another item's photos become the parts that copy them", () => {
+  const copies = copiedPhotos(SAVED, "/api");
+  assert.deepEqual(copies, [
+    { url: "/api/photos/a.jpg", copyOf: "a" },
+    { url: "/api/photos/b.jpg", copyOf: "b" },
+  ]);
+  const parts = photoParts([copies[1], { url: "blob:nova", file: "nova.png" }, copies[0]], [], "/api");
+  assert.deepEqual(parts, [{ copy: "b" }, { file: "nova.png" }, { copy: "a" }]);
+  assert.equal(photosChanged(parts, []), true);
 });

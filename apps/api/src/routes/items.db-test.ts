@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
@@ -71,6 +71,24 @@ function call(method: "GET" | "POST" | "PATCH" | "DELETE", url: string, payload?
 async function find(code: string): Promise<Item> {
   const [found] = (await call("GET", `/items?q=${encodeURIComponent(`${code}${RUN}`)}`)).json().items;
   return found;
+}
+
+/**
+ * Sets a brand's photos to copies of saved photos, as a duplicated item's are.
+ * @param itemId The item.
+ * @param brandId Its brand.
+ * @param photoIds The photos to copy, in order.
+ * @returns The answer.
+ */
+function copyPhotos(itemId: string, brandId: string, photoIds: string[]) {
+  const boundary = "apc-boundary";
+  const parts = photoIds.map((photoId) => `--${boundary}\r\nContent-Disposition: form-data; name="copy"\r\n\r\n${photoId}\r\n`);
+  return app.inject({
+    method: "PUT",
+    url: `/items/${itemId}/brands/${brandId}/photos`,
+    payload: `${parts.join("")}--${boundary}--\r\n`,
+    headers: { authorization: `Bearer ${token}`, "content-type": `multipart/form-data; boundary=${boundary}` },
+  });
 }
 
 /**
@@ -307,6 +325,29 @@ test("API: an item fits several vehicles and is found by each one", async () => 
   const edited = await call("PATCH", `/items/${created.json().id}`, { vehicles: [vehicles[2]] });
   assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Miura ${RUN}`, vehicleModel: null }]);
   assert.equal(await prisma.itemVehicle.count({ where: { itemId: created.json().id } }), 1);
+});
+
+// Duplicates an item with a photo, copying it twice into the copy's brand, and checks the copies are new photos with
+// files of their own, which stay once the first item is deleted, and that a photo that doesn't exist is refused.
+test("API: a duplicated item's photos are copies with files of their own", async () => {
+  const first = (await call("POST", "/items", item([brand("DP-1", "Cobreq")]))).json();
+  const photo = (await sendPhoto(first.id, first.brands[0].id)).json().brands[0].photos[0];
+  const copy = (await call("POST", "/items", item([brand("DP-2", "Cobreq")]))).json();
+
+  const copied = await copyPhotos(copy.id, copy.brands[0].id, [photo.id, photo.id]);
+  assert.equal(copied.statusCode, 200);
+  const rows = await prisma.itemPhoto.findMany({ where: { brandId: copy.brands[0].id }, orderBy: { position: "asc" } });
+  assert.equal(rows.length, 2);
+  assert.equal(rows.some((row) => row.id === photo.id), false);
+  const [source] = await prisma.itemPhoto.findMany({ where: { id: photo.id } });
+  const files = rows.flatMap((row) => [row.file, row.thumbFile]);
+  assert.equal(new Set([...files, source.file, source.thumbFile]).size, 6);
+
+  assert.equal((await call("DELETE", `/items/${first.id}`)).statusCode, 204);
+  await Promise.all(files.map((file) => access(path.join(process.env.PHOTOS_DIR!, file))));
+  const unknown = await copyPhotos(copy.id, copy.brands[0].id, [first.id]);
+  assert.equal(unknown.statusCode, 400);
+  assert.deepEqual(unknown.json().details, [{ field: "photos", message: "Copied photos must be saved photos." }]);
 });
 
 // Deletes an item whose brand has a photo, and checks the item, its brands and its photos are gone.
