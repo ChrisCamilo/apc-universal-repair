@@ -53,6 +53,8 @@ import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 // keeps working on its version. The server it ships is always on its version; a server on another computer that answers another one on
 // /health gets a warning. Only one copy runs at a time, since two would share the same localStorage, and opening it
 // again shows its window. What the main process and the updater say goes to logs/app.log in userData (see logs.ts).
+// Quitting first writes the page's storage to disk, so a tab, theme or session chosen just before is there on the next
+// start, and waits for the server the app runs to exit.
 
 /** The notifications on screen, kept so they still answer a click once their request is gone. */
 const shown = new Set<Notification>();
@@ -61,8 +63,8 @@ const shown = new Set<Notification>();
 const devUrl = process.env.APC_DEV_URL;
 /** Whether the app is quitting, when closing the window ends it instead of hiding it in the tray. */
 let quitting = false;
-/** Whether the server the app runs has stopped, so quitting can go on. */
-let serverStopped = false;
+/** Whether the page's storage is written and the server the app runs has stopped, so quitting can go on. */
+let readyToQuit = false;
 /** The tray's icon, kept so it isn't garbage collected. */
 let tray: Tray | undefined;
 // electron-updater is CommonJS, so its named exports come from the default one.
@@ -245,8 +247,9 @@ async function restartToUpdate(window: BrowserWindow, userData: string, version:
   console.log(`Restarting to install ${version}.`);
   await window.loadFile(path.join(app.getAppPath(), "static", "updating.html")).catch(() => undefined);
   writeInstallMarker(userData, { version, startedAt: Date.now(), reopens: true });
+  session.defaultSession.flushStorageData();
   await stopOwnServer();
-  serverStopped = true;
+  readyToQuit = true;
   autoUpdater.quitAndInstall(true, true);
 }
 
@@ -348,6 +351,22 @@ app.on("before-quit", () => {
 
 app.on("window-all-closed", () => app.quit());
 
+// Quitting writes the page's storage to disk, which Chromium would otherwise do a moment later, and waits for the server
+// the app runs to exit, so its database and files are let go before the app, or an installer replacing it, goes on.
+app.on("will-quit", (event) => {
+  if (readyToQuit) {
+    return;
+  }
+  event.preventDefault();
+  session.defaultSession.flushStorageData();
+  void stopOwnServer().then(() => {
+    readyToQuit = true;
+    console.log("Storage written and the server stopped; quitting.");
+    // A server already off stops at once, while this quit is still being turned down: quit on the next turn.
+    setImmediate(() => app.quit());
+  });
+});
+
 void app.whenReady().then(async () => {
   const userData = app.getPath("userData");
   const marker = readInstallMarker(userData);
@@ -406,20 +425,6 @@ void app.whenReady().then(async () => {
     host = own;
     handleServerSettings(own);
     keepInTray(window, () => own.setup.port, installed, config);
-    // Quitting waits for the server to exit, so its database and files are let go before the app, or an installer
-    // replacing it, goes on.
-    app.on("will-quit", (event) => {
-      if (serverStopped) {
-        return;
-      }
-      event.preventDefault();
-      void stopOwnServer().then(() => {
-        serverStopped = true;
-        console.log("The bundled server stopped; quitting.");
-        // A server already off stops at once, while this quit is still being turned down: quit on the next turn.
-        setImmediate(() => app.quit());
-      });
-    });
     // A start hidden at sign-in shows the window when the page has to ask for PostgreSQL's address.
     if ((await startOwnServer(own)) === "waiting" && hidden) {
       window.once("ready-to-show", () => window.show());
