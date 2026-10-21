@@ -6,7 +6,7 @@ import path from "node:path";
 import { after, test } from "node:test";
 import Database from "better-sqlite3";
 import { WRONG_KEY_EXIT_CODE } from "@apc/shared/server";
-import { ensureEncrypted, keyOpens, keyScript, readKey, setSqliteKey } from "./cipher.js";
+import { changeKey, ensureEncrypted, keyOpens, keyScript, readKey, REKEY_COPY, setSqliteKey } from "./cipher.js";
 import { createPrisma } from "./client.js";
 import { migrate, migrationNames } from "./migrate.js";
 import { API_DIR } from "./provider.js";
@@ -135,6 +135,28 @@ test("API: a key is told whether it opens a file", async () => {
   assert.equal(keyOpens(url), true);
   setSqliteKey(url, OTHER_KEY);
   assert.equal(keyOpens(url), false);
+});
+
+// Changes the key of a migrated file, and checks it opens with the new key and not the old one, with every row kept
+// and no copy left beside it; a change to a key that isn't one fails, and leaves the file opening with its old key.
+test("API: a file's key changes, or stays as it was when the change fails", async () => {
+  const url = fileUrl("rekey");
+  setSqliteKey(url, KEY);
+  await migrate(url);
+  const tables = readTables(url, KEY);
+  const file = url.slice("file:".length);
+
+  changeKey(url, OTHER_KEY);
+  assert.deepEqual(readTables(url, OTHER_KEY), tables);
+  assert.match(String(readTables(url, KEY)), /not a database/);
+  assert.equal(existsSync(`${file}${REKEY_COPY}`), false);
+
+  setSqliteKey(url, OTHER_KEY);
+  assert.throws(() => changeKey(url, "não é uma chave"), /64 hex digits/);
+  assert.deepEqual(readTables(url, OTHER_KEY), tables);
+  assert.equal(existsSync(`${file}${REKEY_COPY}`), false);
+  setSqliteKey(url, KEY);
+  assert.throws(() => changeKey(url, OTHER_KEY), /doesn't open with its key/);
 });
 
 // Reads keys typed back from a recovery copy, grouped, in uppercase or with spaces, and refuses what isn't one.
