@@ -26,11 +26,11 @@ const LISTS: ItemLists = {
 // A file with a valid row, a row with new names, a row with errors, and two rows of one item made by two brands.
 const FILE = [
   CSV_COLUMNS.join(';'),
-  ';w 712/95;;filtro de óleo;MOTOR;mann;volkswagen;gol;8;2;a-2;39,90;;;',
-  ';ngk-b7;;vela;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;D;',
-  ';;;sem código;Freios;Cobreq;Ford;;x;;;0;;;',
-  '1;c 2433;;filtro de ar;Motor;Mann;Volkswagen;Gol;3;3;A-4;49,90;;;',
-  '1;arl 4433;;filtro de ar;Motor;Tecfil;Volkswagen;Gol;5;3;A-5;32,90;;;',
+  ';w 712/95;;filtro de óleo;MOTOR;mann;volkswagen / gol;8;2;a-2;39,90;;;',
+  ';ngk-b7;;vela;Ignição;NGK;Fiat / Uno;10;3;B-1;34.9;;D;',
+  ';;;sem código;Freios;Cobreq;Ford;x;;;0;;;',
+  '1;c 2433;;filtro de ar;Motor;Mann;Volkswagen / Gol;3;3;A-4;49,90;;;',
+  '1;arl 4433;;filtro de ar;Motor;Tecfil;Volkswagen / Gol;5;3;A-5;32,90;;;',
 ].join('\n');
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
@@ -171,7 +171,7 @@ test("Mobile: a file that can't be read or opened says why", async () => {
   const tree = await mount();
   answerPick('code,name\nA,B');
   await press(tree, 'Escolher arquivo');
-  expect(texts(tree.root)).toContain('estoque.csv: Faltam colunas no arquivo: category, part_brand, vehicle_brand, unit_price. Use o modelo.');
+  expect(texts(tree.root)).toContain('estoque.csv: Faltam colunas no arquivo: category, part_brand, vehicles, unit_price. Use o modelo.');
   expect(texts(tree.root)).toContain('Importar 0 itens');
 
   await press(tree, 'Escolher outro arquivo');

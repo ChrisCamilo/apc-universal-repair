@@ -6,6 +6,7 @@ import {
   formatPriceRange,
   itemCodes,
   itemDetails,
+  itemVehiclesText,
   NOT_APPLICABLE,
   partBrandsLabel,
   POSITION_NAMES,
@@ -94,14 +95,19 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
     key: 'vehicle',
     header: 'Veículo',
     sortable: true,
-    cell: ({ item }) => (
-      <span className={CELLS.classes.vehicle()} data-testid={CELLS.ids.vehicle}>
-        <span>{item.vehicleBrand}</span>
-        <span className={CELLS.classes.model()} data-testid={CELLS.ids.model}>
-          {item.vehicleModel ?? 'qualquer modelo'}
+    // The first vehicle, and how many more the item fits, every one in the tooltip.
+    cell: ({ item }) => {
+      const [first, ...others] = item.vehicles
+      return (
+        <span className={CELLS.classes.vehicle()} data-testid={CELLS.ids.vehicle} title={others.length > 0 ? itemVehiclesText(item) : undefined}>
+          <span>{first.vehicleBrand}</span>
+          <span className={CELLS.classes.model()} data-testid={CELLS.ids.model}>
+            {first.vehicleModel ?? 'qualquer modelo'}
+            {others.length > 0 && ` +${others.length}`}
+          </span>
         </span>
-      </span>
-    ),
+      )
+    },
   },
   { key: 'position', sortable: true, header: 'Posição', cell: ({ item }) => <Coded value={item.position} name={POSITION_NAMES[item.position]} /> },
   { key: 'side', sortable: true, header: 'Lado', cell: ({ item }) => <Coded value={item.side} name={SIDE_NAMES[item.side]} /> },

@@ -1,13 +1,14 @@
 import { useRef, type KeyboardEvent } from 'react'
-import { partFit, type FoundPart, type PartResults as Results } from '@apc/shared/catalog'
+import { itemFit, type FoundPart, type PartResults as Results } from '@apc/shared/catalog'
 import { arrowTarget } from '../components/radioKeys.ts'
 import { Text } from '../components/Typography.tsx'
 import { partResults } from './PartResults.styles.ts'
 
 // The inventory parts a Catalog search by code found, in a tinted box above the tree: each brand of an item whose code
-// matched, with its code, the item's name and which vehicle it fits. Choosing one reveals its vehicle in the tree; the chosen part has the accent frame.
-// The parts are a radio group: one is always chosen, it is the only Tab stop and the arrows move the choice. When
-// more parts matched than fit, a line says how many more.
+// matched, or its original code, with the code, the item's name and which vehicle it fits (of several, the one the
+// catalog knows best and how many more). Choosing one reveals that vehicle in the tree; the chosen part has the accent
+// frame. The parts are a radio group: one is always chosen, it is the only Tab stop and the arrows move the choice.
+// When more parts matched than fit, a line says how many more.
 
 type PartResultsProps = {
   results: Results
@@ -56,7 +57,7 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
               <code className={classes.code()} data-testid={ids.code}>{part.code}</code>
               <span className={classes.name()} data-testid={ids.name}>{part.item.name}</span>
             </span>
-            <span className={classes.fit()} data-testid={ids.fit}>{partFit(part.item)}</span>
+            <span className={classes.fit()} data-testid={ids.fit}>{itemFit(part.item)}</span>
           </button>
         ))}
       </div>

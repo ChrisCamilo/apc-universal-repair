@@ -88,18 +88,27 @@ test("Shared: a deleted entry leaves its list, a vehicle brand with its models",
   assert.deepEqual(withoutEntry(lists, "categories", lists.categories[0].id).categories.map((entry) => entry.name), ["Motor"]);
 });
 
-// Counts the items using a category whatever its spelling, and a model only within its own brand.
+// Counts the items using a category whatever its spelling, a vehicle brand or model by any of an item's vehicles, and a
+// model only within its own brand.
 test("Shared: the items using an entry are counted", () => {
   const items = [
     { category: "Elétrica", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: "Uno" },
     { category: "eletrica", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: null },
     { category: "Motor", partBrand: "Bosch", vehicleBrand: "Ford", vehicleModel: "Uno" },
+    {
+      category: "Motor",
+      partBrand: "Bosch",
+      vehicles: [
+        { vehicleBrand: "Volkswagen", vehicleModel: "Gol" },
+        { vehicleBrand: "Fiat", vehicleModel: "Uno" },
+      ],
+    },
   ].map((fields) => testItem(fields));
   const lists = itemListsOf(items);
   assert.equal(itemsUsing(items, "categories", findEntry(lists.categories, "Elétrica")!, lists), 2);
-  assert.equal(itemsUsing(items, "vehicleBrands", findEntry(lists.vehicleBrands, "Fiat")!, lists), 2);
+  assert.equal(itemsUsing(items, "vehicleBrands", findEntry(lists.vehicleBrands, "Fiat")!, lists), 3);
   const fiatUno = lists.vehicleModels.find((model) => model.vehicleBrandId === findEntry(lists.vehicleBrands, "Fiat")!.id)!;
-  assert.equal(itemsUsing(items, "vehicleModels", fiatUno, lists), 1);
+  assert.equal(itemsUsing(items, "vehicleModels", fiatUno, lists), 2);
   assert.equal(itemsUsing(items, "categories", { id: BRAND_ID, name: "Freios" }, lists), 0);
 });
 

@@ -122,14 +122,15 @@ async function writeOld(run: (sql: string, values: unknown[]) => Promise<unknown
 
 /**
  * Reads the migrated items with their brands and photos, and checks each item kept its data in its one brand, with
- * the item's id, and its photos in order; and, migrated on, that they start without original codes.
+ * the item's id, and its photos in order; and, migrated on, that they start without original codes and fit their one
+ * vehicle, with the item's id.
  * @param client The migrated database.
  */
 async function checkMigrated(client: PrismaClient) {
   assert.equal(await client.itemOriginalCode.count(), 0);
   const items = await client.item.findMany({
     orderBy: { createdAt: "asc" },
-    include: { brands: { include: { photos: { orderBy: { position: "asc" } }, partBrand: true } }, vehicleModel: true },
+    include: { brands: { include: { photos: { orderBy: { position: "asc" } }, partBrand: true } }, vehicles: true },
   });
   assert.equal(items.length, OLD.items.length);
   for (const [index, item] of items.entries()) {
@@ -140,7 +141,10 @@ async function checkMigrated(client: PrismaClient) {
     assert.equal(item.side, old.side);
     assert.equal(item.quantity, old.quantity);
     assert.equal(item.minQuantity, old.minQuantity);
-    assert.equal(item.vehicleModelId, old.vehicleModelId);
+    assert.deepEqual(
+      item.vehicles.map((vehicle) => ({ ...vehicle })),
+      [{ id: old.id, itemId: old.id, position: 0, vehicleBrandId: OLD.brand.id, vehicleModelId: old.vehicleModelId }],
+    );
     assert.equal(item.createdAt.toISOString(), new Date(old.createdAt).toISOString());
     assert.equal(item.brands.length, 1);
     const [brand] = item.brands;

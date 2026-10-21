@@ -14,14 +14,17 @@ export function itemListsOf(items: readonly Item[]): ItemLists {
   let count = 0;
   const entries = (names: string[]) =>
     distinct(names).map((name) => ({ id: `00000000-0000-4000-8000-${String(++count).padStart(12, "0")}`, name }));
-  const vehicleBrands = entries(items.map((item) => item.vehicleBrand));
+  const vehicles = items.flatMap((item) => item.vehicles);
+  const vehicleBrands = entries(vehicles.map((vehicle) => vehicle.vehicleBrand));
   return {
     categories: entries(items.map((item) => item.category)),
     partBrands: entries(items.flatMap((item) => item.brands.map((brand) => brand.partBrand))),
     vehicleBrands,
     vehicleModels: vehicleBrands.flatMap((brand) =>
       entries(
-        items.flatMap((item) => (item.vehicleModel && optionKey(item.vehicleBrand) === optionKey(brand.name) ? [item.vehicleModel] : [])),
+        vehicles.flatMap((vehicle) =>
+          vehicle.vehicleModel && optionKey(vehicle.vehicleBrand) === optionKey(brand.name) ? [vehicle.vehicleModel] : [],
+        ),
       ).map((model) => ({ ...model, vehicleBrandId: brand.id })),
     ),
   };

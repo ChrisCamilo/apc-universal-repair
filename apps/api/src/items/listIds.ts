@@ -1,44 +1,41 @@
-import { optionKey, type ItemCreate } from "@apc/shared/items";
+import { optionKey, type ItemVehicleCreate } from "@apc/shared/items";
 import { listName } from "@apc/shared/lists";
 import type { Prisma } from "../generated/prisma/client.js";
 import type { ListIds } from "./items.js";
 
-// Finds the list entries an item's names stand for: its category, vehicle brand and vehicle model (within the vehicle
-// brand), and the part brand of one of its brands. A name a list doesn't hold yet is added to it with the writing rule; one it holds, ignoring case,
-// accents and extra spaces, is used as it is, so the item takes the list's spelling.
+// Finds the list entries an item's names stand for: its category, the part brand of one of its brands, and a vehicle
+// it fits, its brand and its model within the brand. A name a list doesn't hold yet is added to it with the writing
+// rule; one it holds, ignoring case, accents and extra spaces, is used as it is, so the item takes the list's spelling.
 
 /** The columns a list entry is read with. */
 const ENTRY = { id: true } as const;
 
-/** The names an item is saved with, or a brand's part brand; on an edit, only the ones that came in. */
-type ItemNames = Partial<Pick<ItemCreate, "category" | "vehicleBrand" | "vehicleModel">> & { partBrand?: string };
+/** The names an item is saved with: on an edit, only the ones that came in; or a brand's part brand, or a vehicle. */
+type ItemNames = { category?: string; partBrand?: string; vehicle?: ItemVehicleCreate };
 
 /**
- * Finds the list entries of an item's names, adding the names the lists don't hold. A vehicle model is looked up
- * when the model or the brand changes, under the item's brand; without a model, the item fits any model.
+ * Finds the list entries of an item's names, adding the names the lists don't hold. A vehicle's model is looked up
+ * under its brand; without a model, the vehicle is any model of the brand.
  * @param tx Database client, usually in a transaction with the item's save.
  * @param names The names sent.
- * @param current The item's brand and model before an edit, for a model or a brand sent alone.
- * @returns The ids of the entries of the names sent; a part brand's as partBrandId.
+ * @returns The ids of the entries of the names sent: a part brand's as partBrandId, a vehicle's as vehicleBrandId and
+ * vehicleModelId (null for any model).
  */
 export async function listIds(
   tx: Prisma.TransactionClient,
   names: ItemNames,
-  current?: { vehicleBrandId: string; vehicleModel: string | null },
-): Promise<Partial<ListIds> & { partBrandId?: string }> {
-  const ids: Partial<ListIds> & { partBrandId?: string } = {};
+): Promise<Partial<ListIds> & { partBrandId?: string; vehicleBrandId?: string; vehicleModelId?: string | null }> {
+  const ids: Partial<ListIds> & { partBrandId?: string; vehicleBrandId?: string; vehicleModelId?: string | null } = {};
   if (names.category !== undefined) {
     ids.categoryId = (await tx.category.upsert({ ...listedName(names.category), select: ENTRY })).id;
   }
   if (names.partBrand !== undefined) {
     ids.partBrandId = (await tx.partBrand.upsert({ ...listedName(names.partBrand), select: ENTRY })).id;
   }
-  if (names.vehicleBrand !== undefined) {
-    ids.vehicleBrandId = (await tx.brand.upsert({ ...listedName(names.vehicleBrand), select: ENTRY })).id;
-  }
-  if (names.vehicleModel !== undefined || names.vehicleBrand !== undefined) {
-    const brandId = ids.vehicleBrandId ?? current!.vehicleBrandId;
-    const model = names.vehicleModel ?? current?.vehicleModel ?? "";
+  if (names.vehicle !== undefined) {
+    const brandId = (await tx.brand.upsert({ ...listedName(names.vehicle.vehicleBrand), select: ENTRY })).id;
+    const model = names.vehicle.vehicleModel ?? "";
+    ids.vehicleBrandId = brandId;
     ids.vehicleModelId = model.trim() ? (await tx.vehicleModel.upsert({ ...listedModel(model, brandId), select: ENTRY })).id : null;
   }
   return ids;

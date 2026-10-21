@@ -6,6 +6,7 @@ import {
   formatPriceRange,
   itemCodes,
   itemDetails,
+  itemVehiclesLabel,
   matchesSearch,
   partBrandsLabel,
   resultSummary,
@@ -396,7 +397,7 @@ function InventoryTab() {
           },
           { key: 'category', header: 'Categoria', sortable: true, cell: (row) => row.category },
           { key: 'partBrand', header: 'Marca', sortable: true, cell: (row) => partBrandsLabel(row) },
-          { key: 'vehicleBrand', header: 'Veículo', cell: (row) => [row.vehicleBrand, row.vehicleModel].filter(Boolean).join(' ') },
+          { key: 'vehicleBrand', header: 'Veículo', cell: (row) => itemVehiclesLabel(row) },
           { key: 'location', header: 'Local', cell: (row) => brandsValue(row, 'location') },
           {
             key: 'unitPriceCents',

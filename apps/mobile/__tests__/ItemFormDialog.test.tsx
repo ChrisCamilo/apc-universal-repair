@@ -181,7 +181,7 @@ function savedOf(sent: ItemCreate, photos: ItemBrand['photos'] = []): Item {
   return testItem({
     ...sent,
     id: '00000000-0000-4000-8000-000000000009',
-    vehicleModel: sent.vehicleModel || null,
+    vehicles: sent.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel || null })),
     brands: sent.brands.map((brand, index) => ({
       color: 'N/A',
       quantity: 0,
@@ -409,7 +409,7 @@ test('Mobile: a new item is posted, announced and handed over', async () => {
   expect(JSON.parse(init.body)).toMatchObject({
     name: 'Vela',
     category: 'Ignição',
-    vehicleBrand: 'Chevrolet',
+    vehicles: [{ vehicleBrand: 'Chevrolet', vehicleModel: '' }],
     brands: [expect.objectContaining({ partBrand: 'NGK', code: 'NGK-B7', unitPriceCents: 3490 })],
   });
   expect(onSaved).toHaveBeenCalledTimes(1);
@@ -487,7 +487,7 @@ test('Mobile: the details show the item as text and change nothing', async () =>
   expect(labels).toEqual(
     expect.arrayContaining([
       'Código da peça: W 712/95',
-      'Modelo do veículo: Gol',
+      'Veículos: Volkswagen Gol',
       'Posição: Não se aplica',
       'Cor: Preto',
       'Local: Não informado',
@@ -692,4 +692,35 @@ test('Mobile: an original code another item or a brand of the item has is refuse
 test("Mobile: the details list an item's original codes", async () => {
   const tree = await mount({ ...FILTER, originalCodes: ['030 115 561 AN', '030 115 561 AP'] }, { details: true });
   expect(shows(tree, '030 115 561 AN, 030 115 561 AP')).toBe(true);
+});
+
+// Adds a second vehicle to an item and a third that repeats the first written otherwise, and checks the repeated one
+// is refused on its line and nothing is sent; then removes it and checks the item is sent with its two vehicles in
+// order, and that Remover leaves the last line without one.
+test('Mobile: vehicles are added, refused when repeated, and removed', async () => {
+  const tree = await mount(FILTER);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Remover veículo 1' && typeof n.props.onPress === 'function')).toHaveLength(0);
+  await press(tree, 'Adicionar veículo');
+  await typeIn(section(tree, 'Veículo 2'), 'Marca do veículo', 'Volkswagen');
+  await typeIn(section(tree, 'Veículo 2'), 'Modelo do veículo', 'Santana');
+  await press(tree, 'Adicionar veículo');
+  await typeIn(section(tree, 'Veículo 3'), 'Marca do veículo', 'VOLKSWAGEN');
+  await typeIn(section(tree, 'Veículo 3'), 'Modelo do veículo', ' gol ');
+  (fetch as jest.Mock).mockClear();
+  await press(tree, 'Salvar alterações');
+  expect(section(tree, 'Veículo 3').findAll((n) => typeof n.type === 'string' && n.props.children === ITEM_FORM_MESSAGES.vehicleRepeated).length).toBeGreaterThan(0);
+  expect(fetch).not.toHaveBeenCalled();
+
+  await press(tree, 'Remover veículo 3');
+  answerSave(200);
+  await press(tree, 'Salvar alterações');
+  const [, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(JSON.parse(init.body).vehicles).toEqual([
+    { vehicleBrand: 'Volkswagen', vehicleModel: 'Gol' },
+    { vehicleBrand: 'Volkswagen', vehicleModel: 'Santana' },
+  ]);
+  const again = await mount(FILTER);
+  await press(again, 'Adicionar veículo');
+  await press(again, 'Remover veículo 1');
+  expect(again.root.findAll((n) => n.props.accessibilityLabel === 'Remover veículo 1' && typeof n.props.onPress === 'function')).toHaveLength(0);
 });

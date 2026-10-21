@@ -9,9 +9,11 @@ import {
   ENGINE_SHEETS,
   findParts,
   firstSheet,
+  itemFit,
   locatePart,
   modelsNamed,
   partFit,
+  revealedVehicle,
 } from "./catalog.ts";
 import { testItem, type FlatItem } from "../items/testItems.ts";
 
@@ -143,4 +145,17 @@ test("Shared: the part list says which vehicle each part fits", () => {
   assert.equal(partFit({ vehicleBrand: "Volkswagen", vehicleModel: null }), "Serve em qualquer Volkswagen");
   assert.equal(partFit({ vehicleBrand: "Universal", vehicleModel: null }), "Serve em qualquer veículo");
   assert.equal(partFit({ vehicleBrand: "Toyota", vehicleModel: "Corolla" }), "Toyota não está no catálogo");
+});
+
+// Lists a part of several vehicles: it shows the first whose engine has a sheet, or else the first the catalog has, or
+// else its first, with how many more it fits; one vehicle reads as itself.
+test("Shared: a part of several vehicles shows the one the catalog knows best", () => {
+  const toyota = { vehicleBrand: "Toyota", vehicleModel: "Corolla" };
+  const escort = { vehicleBrand: "Ford", vehicleModel: "Escort" };
+  const opala = { vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1" };
+  assert.deepEqual(revealedVehicle({ vehicles: [toyota, escort, opala] }), opala);
+  assert.deepEqual(revealedVehicle({ vehicles: [toyota, escort] }), escort);
+  assert.deepEqual(revealedVehicle({ vehicles: [toyota] }), toyota);
+  assert.equal(itemFit({ vehicles: [toyota, escort, opala] }), "Serve no Chevrolet Opala 4.1 +2");
+  assert.equal(itemFit({ vehicles: [opala] }), "Serve no Chevrolet Opala 4.1");
 });

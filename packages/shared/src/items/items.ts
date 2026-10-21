@@ -6,15 +6,18 @@ import { sortRows, type Sort } from "../table/table.ts";
 // Inventory items as the API sends and receives them, and the rules web, mobile and the API apply alike:
 // how text is written (first letter capital, codes uppercase), how a search matches names and part codes,
 // how "Ambos" fits both front and rear (or both sides) in the filters, and how the list sorts by a column. An item is
-// a part made by one brand or more, which replace each other: the item holds what they share (name, category,
-// vehicle, position, side, the minimum stock and the vehicle maker's original codes) and each brand its own part code,
+// a part made by one brand or more, which replace each other, that fits one vehicle or more: the item holds what its
+// brands share (name, category, the vehicles it fits, position, side, the minimum stock and the vehicle maker's
+// original codes) and each brand its own part code,
 // color, location, quantity, price and photos. Every code, original or a brand's, finds the item in the search and is
 // used once in the stock. The item's quantity is its brands' sum, against its minimum; a column of the list reads the brands as
-// one value: the first brand's (the cover's), every brand's when they agree, or the lowest price.
+// one value: the first brand's (the cover's), every brand's when they agree, or the lowest price. A vehicle is a
+// vehicle brand with, optionally, one of its models; without one, any model of the brand. "Universal" fits any vehicle
+// and stands alone in an item's list.
 
 /** The columns the inventory list sorts by, as the list query's `sort` names them. */
 export const ITEM_SORT_KEYS = ["name", "category", "partBrand", "vehicle", "position", "side", "color", "location", "price", "quantity"] as const;
-/** The value each column sorts by: the vehicle by its brand (then its model), the price in cents. */
+/** The value each column sorts by: the vehicle by its first vehicle's brand (then its model), the price in cents. */
 const ITEM_SORT_VALUES: Record<ItemSortKey, (item: SortableItem) => string | number> = {
   name: (item) => item.name,
   category: (item) => item.category,
@@ -59,6 +62,8 @@ export const SIDE_NAMES: Record<(typeof SIDES)[number], string> = {
 };
 /** Sides an item fits: not applicable, right, left, or both. */
 export const SIDES = ["N/A", "LD", "LE", "Ambos"] as const;
+/** The vehicle brand of the parts that fit any vehicle, alone in an item's vehicles. */
+export const UNIVERSAL_BRAND = "Universal";
 /** What each stock status is called on screen and read out. */
 export const STOCK_STATUS_LABELS: Record<(typeof ITEM_STATUSES)[number], string> = { low: "Estoque baixo", out: "Esgotado" };
 /** A brand of an item as it is sent: on an edit, with the id of the brand it keeps; without one, a new brand. */
@@ -89,6 +94,25 @@ const brandsSchema = z
       });
     }
   });
+/** A vehicle an item fits as it is sent: a vehicle brand and, optionally, a model of it; any model without one. */
+export const itemVehicleCreateSchema = z.object({ vehicleBrand: requiredText, vehicleModel: optionalText });
+// An item's vehicles: at least one, each pair once, compared ignoring case and accents, and Universal alone.
+const vehiclesSchema = z
+  .array(itemVehicleCreateSchema)
+  .min(1, "An item fits at least one vehicle.")
+  .superRefine((vehicles, context) => {
+    const seen = new Set<string>();
+    vehicles.forEach((vehicle, index) => {
+      const key = vehicleKey(vehicle);
+      if (seen.has(key)) {
+        context.addIssue({ code: "custom", path: [index], message: "Repeated in the item's vehicles." });
+      }
+      seen.add(key);
+      if (vehicles.length > 1 && optionKey(vehicle.vehicleBrand) === optionKey(UNIVERSAL_BRAND)) {
+        context.addIssue({ code: "custom", path: [index, "vehicleBrand"], message: "Universal fits any vehicle and stands alone." });
+      }
+    });
+  });
 // An item's original codes: each once, as the search compares codes.
 const originalCodesSchema = z.array(requiredText).superRefine((codes, context) => {
   const seen = new Set<string>();
@@ -103,8 +127,8 @@ const originalCodesSchema = z.array(requiredText).superRefine((codes, context) =
 const itemFieldsSchema = z.object({
   name: requiredText,
   category: requiredText,
-  vehicleBrand: requiredText,
-  vehicleModel: optionalText,
+  /** The vehicles the part fits, in order. */
+  vehicles: vehiclesSchema,
   position: z.enum(POSITIONS).optional(),
   side: z.enum(SIDES).optional(),
   minQuantity: z.int().min(0).max(MAX_QUANTITY).optional(),
@@ -173,12 +197,14 @@ export const itemBrandSchema = z.object({
   photos: z.array(itemPhotoSchema).max(ITEM_PHOTO_LIMIT),
 });
 export const itemBrandIdParamsSchema = z.object({ id: z.uuid(), brandId: z.uuid() });
+/** A vehicle an item fits: a vehicle brand, and its model, or null for any model of the brand. */
+export const itemVehicleSchema = z.object({ vehicleBrand: z.string(), vehicleModel: z.string().nullable() });
 export const itemSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   category: z.string(),
-  vehicleBrand: z.string(),
-  vehicleModel: z.string().nullable(),
+  /** The vehicles the part fits, in order. */
+  vehicles: z.array(itemVehicleSchema).min(1),
   position: z.enum(POSITIONS),
   side: z.enum(SIDES),
   /** The brands' quantities added up. */
@@ -211,11 +237,15 @@ export type ItemPhoto = z.infer<typeof itemPhotoSchema>;
 export type ItemSortKey = (typeof ITEM_SORT_KEYS)[number];
 export type ItemStatus = (typeof ITEM_STATUSES)[number];
 export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
+export type ItemVehicle = z.infer<typeof itemVehicleSchema>;
+export type ItemVehicleCreate = z.infer<typeof itemVehicleCreateSchema>;
 /**
- * What sorting an item looks at (see sortableOf): its brands read as one value each, the first brand's code, part
- * brand, color and location and the lowest price; position and side as any text, as the database keeps them.
+ * What sorting an item looks at (see sortableOf): its first vehicle, its brands read as one value each, the first
+ * brand's code, part brand, color and location and the lowest price; position and side as any text, as the database
+ * keeps them.
  */
-export type SortableItem = Pick<Item, "name" | "category" | "vehicleBrand" | "vehicleModel" | "quantity"> &
+export type SortableItem = Pick<Item, "name" | "category" | "quantity"> &
+  ItemVehicle &
   Pick<ItemBrand, "code" | "partBrand" | "color" | "location" | "unitPriceCents"> & { position: string; side: string };
 
 /**
@@ -315,19 +345,39 @@ export function itemCodes(item: { brands: readonly Pick<ItemBrand, "code">[] }):
 }
 
 /**
+ * Writes an item's vehicles for its row: the first, and how many more it fits.
+ * @param item The item.
+ * @returns E.g. "Volkswagen Gol", or "Volkswagen Gol +1".
+ */
+export function itemVehiclesLabel(item: { vehicles: readonly ItemVehicle[] }): string {
+  const [first, ...others] = item.vehicles;
+  return others.length > 0 ? `${vehicleLabel(first)} +${others.length}` : vehicleLabel(first);
+}
+
+/**
+ * Writes every vehicle an item fits, for the row's tooltip and the details.
+ * @param item The item.
+ * @returns E.g. "Volkswagen Gol G5, Volkswagen Voyage".
+ */
+export function itemVehiclesText(item: { vehicles: readonly ItemVehicle[] }): string {
+  return item.vehicles.map(vehicleLabel).join(", ");
+}
+
+/**
  * Writes an item's details in one line, for the phone card under the name, leaving out what doesn't apply.
  * @param item Inventory item.
- * @returns E.g. "Freios · Cobreq · Volkswagen Gol · D · A-2 · R$ 89,90".
+ * @returns E.g. "Freios · Cobreq · Volkswagen Gol · D · A-2 · R$ 89,90", or "… · Volkswagen Gol +1 · …".
  */
 export function itemDetails(
-  item: Pick<Item, "category" | "vehicleBrand" | "vehicleModel" | "position" | "side"> & {
+  item: Pick<Item, "category" | "position" | "side"> & {
+    vehicles: readonly ItemVehicle[];
     brands: readonly Pick<ItemBrand, "partBrand" | "color" | "location" | "unitPriceCents">[];
   },
 ): string {
   return [
     item.category,
     partBrandsLabel(item),
-    [item.vehicleBrand, item.vehicleModel].filter(Boolean).join(" "),
+    itemVehiclesLabel(item),
     item.position,
     item.side,
     brandsValue(item, "color"),
@@ -425,7 +475,8 @@ export function searchKey(text: string): string {
 }
 
 /**
- * Reads what an item sorts by: its first brand's code, part brand, color and location, and its lowest price.
+ * Reads what an item sorts by: its first vehicle, its first brand's code, part brand, color and location, and its
+ * lowest price.
  * @param item The item.
  * @returns What sortItems looks at.
  */
@@ -434,8 +485,8 @@ export function sortableOf(item: Item): SortableItem {
   return {
     name: item.name,
     category: item.category,
-    vehicleBrand: item.vehicleBrand,
-    vehicleModel: item.vehicleModel,
+    vehicleBrand: item.vehicles[0].vehicleBrand,
+    vehicleModel: item.vehicles[0].vehicleModel,
     position: item.position,
     side: item.side,
     quantity: item.quantity,
@@ -472,4 +523,23 @@ export function stockStatus(quantity: number, minQuantity: number): ItemStatus |
     return "out";
   }
   return quantity <= minQuantity ? "low" : null;
+}
+
+/**
+ * Reduces a vehicle to what tells vehicles apart: its brand and model ignoring case, accents and extra spaces, so an
+ * item fits each vehicle once.
+ * @param vehicle The vehicle, its model empty or missing for any model.
+ * @returns E.g. "volkswagen|gol g5".
+ */
+export function vehicleKey(vehicle: { vehicleBrand: string; vehicleModel?: string | null }): string {
+  return `${optionKey(vehicle.vehicleBrand)}|${optionKey(vehicle.vehicleModel ?? "")}`;
+}
+
+/**
+ * Writes a vehicle as people say it: the brand, then the model when it has one.
+ * @param vehicle The vehicle.
+ * @returns E.g. "Volkswagen Gol G5", or "Volkswagen" for any model of the brand.
+ */
+export function vehicleLabel(vehicle: ItemVehicle): string {
+  return [vehicle.vehicleBrand, vehicle.vehicleModel].filter(Boolean).join(" ");
 }

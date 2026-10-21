@@ -328,7 +328,11 @@ test("Web: categories, brands and models are created from the item form", async 
   await category.fill("motor diesel");
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("Item “Turbina” cadastrado.")).toBeVisible();
-  expect(stock[0]).toMatchObject({ category: "Motor diesel", vehicleBrand: "Renault", vehicleModel: "Clio", brands: [{ partBrand: "NGK" }] });
+  expect(stock[0]).toMatchObject({
+    category: "Motor diesel",
+    vehicles: [{ vehicleBrand: "Renault", vehicleModel: "Clio" }],
+    brands: [{ partBrand: "NGK" }],
+  });
 
   await page.getByRole("button", { name: "Filtros" }).click();
   await page.getByRole("dialog", { name: "Filtros do estoque" }).getByRole("combobox", { name: "Categoria" }).click();
@@ -1006,4 +1010,41 @@ test("Web: an item of several brands opens a row for each brand", async ({ page 
 
   await toggle.click();
   await expect(rows).toHaveCount(1);
+});
+
+// Lists an item that fits two vehicles among the test items, and checks its row shows the first with "+1" and both in
+// its tooltip, and that the vehicle brand filter of each vehicle finds it, the second's alone.
+test("Web: an item fitting two vehicles is found by the filter of each", async ({ page }) => {
+  const bumper = item({
+    code: "PC-500",
+    name: "Para-choque dianteiro",
+    vehicles: [
+      { vehicleBrand: "Volkswagen", vehicleModel: "Gol" },
+      { vehicleBrand: "Renault", vehicleModel: "Clio" },
+    ],
+  });
+  await serveItems(page, [bumper, ...ITEMS]);
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(5);
+  const vehicle = rows.first().getByTestId("inventory.inventory-tab.vehicle");
+  await expect(vehicle).toHaveAttribute("title", "Volkswagen Gol, Renault Clio");
+  await expect(vehicle).toContainText("Gol +1");
+
+  /** Applies the vehicle brand filter of one brand. */
+  const filterBy = async (brand: string) => {
+    await page.getByRole("button", { name: /^Filtros/ }).click();
+    const menu = page.getByRole("dialog", { name: "Filtros do estoque" });
+    await menu.getByRole("combobox", { name: "Marca do veículo" }).click();
+    await page.getByRole("option", { name: brand, exact: true }).click();
+    await page.keyboard.press("Escape");
+    await menu.getByRole("button", { name: "Aplicar" }).click();
+  };
+  await filterBy("Renault");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("Para-choque dianteiro");
+  await page.getByRole("button", { name: "Limpar filtros" }).click();
+  await expect(rows).toHaveCount(5);
+  await filterBy("Volkswagen");
+  await expect(rows.filter({ hasText: "Para-choque dianteiro" })).toHaveCount(1);
 });

@@ -14,8 +14,12 @@ import {
   optionKey,
   POSITIONS,
   SIDES,
+  UNIVERSAL_BRAND,
+  vehicleKey,
   type Item,
   type ItemCreate,
+  type ItemVehicle,
+  type ItemVehicleCreate,
 } from "./items.ts";
 
 // The CSV batch import and export of the inventory, shared by web and mobile: the template to download, and reading a
@@ -23,9 +27,11 @@ import {
 // file is UTF-8, comma or semicolon separated (told by its header line), with a header naming the columns in any order;
 // a value with the separator, quotes or a line break in it is quoted, as a decimal comma is in a comma-separated file.
 // Each row is a brand of an item: rows with the same value in the "item" column are the brands of one item, and must
-// describe it the same way (name, category, vehicle, position, side, minimum, original codes), each with its own part
-// brand; a row without one is an item of its own. The "original_codes" column holds the vehicle maker's codes,
-// separated by "|". Text follows the writing rule, codes are uppercase, and a category, brand or model
+// describe it the same way (name, category, vehicles, position, side, minimum, original codes), each with its own part
+// brand; a row without one is an item of its own. The "vehicles" column holds the vehicles the item fits, separated by
+// "|", each "Marca / Modelo" or the brand alone for any model; a file with the "vehicle_brand" and "vehicle_model"
+// columns of before still reads, as the item's one vehicle. The "original_codes" column holds the vehicle maker's
+// codes, separated by "|". Text follows the writing rule, codes are uppercase, and a category, brand or model
 // already in the lists takes its spelling there; the names not in the lists yet are listed, to be created by the
 // import. The valid items go to the API in one request, checked with the item schema, and come back as how many items
 // were created and updated; an item with a row in error is left out whole. The export writes the items of the list as
@@ -40,8 +46,7 @@ export const CSV_COLUMNS = [
   "name",
   "category",
   "part_brand",
-  "vehicle_brand",
-  "vehicle_model",
+  "vehicles",
   "quantity",
   "minimum",
   "location",
@@ -53,13 +58,17 @@ export const CSV_COLUMNS = [
 /** The template to download: the header, an item of one brand and an item of two. */
 export const CSV_TEMPLATE = [
   CSV_COLUMNS.join(","),
-  '1,W 712/95,,Filtro de óleo,Motor,Mann,Volkswagen,Gol,8,2,A-2,"39,90",,,',
-  '2,BP-1020,52098472 | 52098473,Pastilha de freio,Freios,Cobreq,Chevrolet,,4,1,B-10,"89,90",,D,Ambos',
-  '2,PD/1020,52098472 | 52098473,Pastilha de freio,Freios,Fras-le,Chevrolet,,2,1,B-10,"94,90",,D,Ambos',
+  '1,W 712/95,,Filtro de óleo,Motor,Mann,Volkswagen / Gol | Volkswagen / Voyage,8,2,A-2,"39,90",,,',
+  '2,BP-1020,52098472 | 52098473,Pastilha de freio,Freios,Cobreq,Chevrolet,4,1,B-10,"89,90",,D,Ambos',
+  '2,PD/1020,52098472 | 52098473,Pastilha de freio,Freios,Fras-le,Chevrolet,2,1,B-10,"94,90",,D,Ambos',
   "",
 ].join("\r\n");
 /** What separates an item's original codes in the original_codes column, as the export writes them. */
 export const CSV_CODE_SEPARATOR = " | ";
+/** What separates a vehicle's brand from its model in the vehicles column. */
+export const CSV_MODEL_SEPARATOR = " / ";
+/** What separates the vehicles in the vehicles column, as the export writes them. */
+export const CSV_VEHICLE_SEPARATOR = " | ";
 /** Name the template is downloaded with. */
 export const CSV_TEMPLATE_NAME = "modelo-estoque.csv";
 /** The column the export puts the photo paths in, when asked; the import leaves it aside. */
@@ -73,7 +82,7 @@ export const itemImportResultSchema = z.object({ created: z.int().min(0), update
 /** What POST /items/import takes: the valid rows' items, each with its brands. */
 export const itemImportSchema = z.object({ items: z.array(itemCreateSchema).min(1).max(ITEM_IMPORT_LIMIT) });
 /** The columns a file must have; the others may be left out. */
-const REQUIRED_COLUMNS: readonly CsvColumn[] = ["code", "name", "category", "part_brand", "vehicle_brand", "unit_price"];
+const REQUIRED_COLUMNS: readonly CsvColumn[] = ["code", "name", "category", "part_brand", "vehicles", "unit_price"];
 
 /** How many items an import created and updated. */
 export type ItemImportResult = z.infer<typeof itemImportResultSchema>;
@@ -106,8 +115,7 @@ function checkGroups(rows: readonly CsvItemRow[]): void {
     [
       item.name,
       item.category,
-      item.vehicleBrand,
-      item.vehicleModel ?? "",
+      item.vehicles.map(vehicleKey).join(" "),
       item.position ?? NOT_APPLICABLE,
       item.side ?? NOT_APPLICABLE,
       String(item.minQuantity),
@@ -195,7 +203,7 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
   const name = required("name", ITEM_FORM_MESSAGES.name);
   const category = required("category", ITEM_FORM_MESSAGES.category);
   const partBrand = required("part_brand", ITEM_FORM_MESSAGES.partBrand);
-  const vehicleBrand = required("vehicle_brand", ITEM_FORM_MESSAGES.vehicleBrand);
+  const vehicles = csvVehicles(value("vehicles"), lists, errors);
   const priceText = required("unit_price", ITEM_FORM_MESSAGES.price);
   const price = priceText ? parsePrice(priceText) : null;
   if (priceText && (price === null || price <= 0)) {
@@ -203,8 +211,6 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
   } else if (price !== null && price > MAX_PRICE_CENTS) {
     errors.push(ITEM_FORM_MESSAGES.priceTooHigh);
   }
-  const brand = findEntry(lists.vehicleBrands, vehicleBrand);
-  const models = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
   /** Takes a name's spelling in its list, or writes a new one by the rule. */
   const listed = (entries: readonly ListEntry[], text: string) => (text ? (findEntry(entries, text)?.name ?? listName(text)) : "");
   const quantity = count("quantity", "Quantidade");
@@ -212,8 +218,7 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
   const item: ItemCreate = {
     name: name && capitalizeFirst(name),
     category: listed(lists.categories, category),
-    vehicleBrand: listed(lists.vehicleBrands, vehicleBrand),
-    vehicleModel: listed(models, value("vehicle_model")),
+    vehicles,
     minQuantity,
     position: choice("position", POSITIONS, "Posição deve ser D, T ou Ambos, ou ficar vazia."),
     side: choice("side", SIDES, "Lado deve ser LD, LE ou Ambos, ou ficar vazio."),
@@ -230,6 +235,50 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
     ],
   };
   return { item, errors };
+}
+
+/**
+ * Writes a vehicle as the vehicles column holds it.
+ * @param vehicle The vehicle.
+ * @returns E.g. "Volkswagen / Gol", or "Volkswagen" for any model.
+ */
+function csvVehicle(vehicle: ItemVehicle): string {
+  return vehicle.vehicleModel ? `${vehicle.vehicleBrand}${CSV_MODEL_SEPARATOR}${vehicle.vehicleModel}` : vehicle.vehicleBrand;
+}
+
+/**
+ * Reads the vehicles column of a row: each vehicle "Marca / Modelo", or the brand alone for any model, separated by
+ * "|", the names in their lists' spelling or written by the rule; and checks at least one is given, each once, and
+ * Universal alone.
+ * @param text The column's value.
+ * @param lists The lists the API keeps.
+ * @param errors The row's errors, added to.
+ * @returns The vehicles as they would be saved.
+ */
+function csvVehicles(text: string, lists: ItemLists, errors: string[]): ItemVehicleCreate[] {
+  const vehicles = text
+    .split("|")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part): ItemVehicleCreate => {
+      const at = part.indexOf("/");
+      const [brandText, modelText] = at < 0 ? [part, ""] : [part.slice(0, at).trim(), part.slice(at + 1).trim()];
+      const brand = findEntry(lists.vehicleBrands, brandText);
+      const models = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
+      const model = modelText && (findEntry(models, modelText)?.name ?? listName(modelText));
+      return { vehicleBrand: brand?.name ?? listName(brandText), vehicleModel: model };
+    });
+  if (vehicles.length === 0) {
+    errors.push(ITEM_FORM_MESSAGES.vehicleBrand);
+  }
+  const repeated = vehicles.find((vehicle, index) => vehicles.slice(0, index).some((other) => vehicleKey(other) === vehicleKey(vehicle)));
+  if (repeated) {
+    errors.push(`Veículo repetido: ${csvVehicle({ vehicleBrand: repeated.vehicleBrand, vehicleModel: repeated.vehicleModel || null })}.`);
+  }
+  if (vehicles.length > 1 && vehicles.some((vehicle) => optionKey(vehicle.vehicleBrand) === optionKey(UNIVERSAL_BRAND))) {
+    errors.push(ITEM_FORM_MESSAGES.universalAlone);
+  }
+  return vehicles;
 }
 
 /**
@@ -282,7 +331,7 @@ export function exportScope(count: number, narrowed: boolean): string {
 export function importedDetails(item: ItemCreate): string {
   return itemDetails({
     ...item,
-    vehicleModel: item.vehicleModel || null,
+    vehicles: item.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel || null })),
     position: item.position ?? NOT_APPLICABLE,
     side: item.side ?? NOT_APPLICABLE,
     brands: item.brands.map((brand) => ({ ...brand, location: brand.location || null, color: brand.color ?? NOT_APPLICABLE })),
@@ -362,8 +411,7 @@ export function itemsCsv(items: readonly Item[], { photos }: { photos: boolean }
         name: item.name,
         category: item.category,
         part_brand: brand.partBrand,
-        vehicle_brand: item.vehicleBrand,
-        vehicle_model: item.vehicleModel ?? "",
+        vehicles: item.vehicles.map(csvVehicle).join(CSV_VEHICLE_SEPARATOR),
         quantity: String(brand.quantity),
         minimum: String(item.minQuantity),
         location: brand.location ?? "",
@@ -401,15 +449,17 @@ export function newListNames(rows: readonly CsvItemRow[], lists: ItemLists): New
     for (const brand of item.brands) {
       add(found.partBrands, lists.partBrands, brand.partBrand);
     }
-    add(found.vehicleBrands, lists.vehicleBrands, item.vehicleBrand);
-    const brand = findEntry(lists.vehicleBrands, item.vehicleBrand);
-    const models = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
-    const model = item.vehicleModel ?? "";
-    const known = found.vehicleModels.some(
-      (held) => optionKey(held.vehicleBrand) === optionKey(item.vehicleBrand) && optionKey(held.name) === optionKey(model),
-    );
-    if (model && !findEntry(models, model) && !known) {
-      found.vehicleModels.push({ vehicleBrand: item.vehicleBrand, name: model });
+    for (const vehicle of item.vehicles) {
+      add(found.vehicleBrands, lists.vehicleBrands, vehicle.vehicleBrand);
+      const brand = findEntry(lists.vehicleBrands, vehicle.vehicleBrand);
+      const models = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
+      const model = vehicle.vehicleModel ?? "";
+      const known = found.vehicleModels.some(
+        (held) => optionKey(held.vehicleBrand) === optionKey(vehicle.vehicleBrand) && optionKey(held.name) === optionKey(model),
+      );
+      if (model && !findEntry(models, model) && !known) {
+        found.vehicleModels.push({ vehicleBrand: vehicle.vehicleBrand, name: model });
+      }
     }
   }
   return found;
@@ -482,7 +532,9 @@ export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
     return { error: "O arquivo está vazio." };
   }
   const columns = names.cells.map((name) => name.trim().toLowerCase());
-  const missing = REQUIRED_COLUMNS.filter((column) => !columns.includes(column));
+  // A file of before names the one vehicle in two columns, read as the vehicles column.
+  const legacy = !columns.includes("vehicles") && columns.includes("vehicle_brand");
+  const missing = REQUIRED_COLUMNS.filter((column) => !columns.includes(column) && !(column === "vehicles" && legacy));
   if (missing.length > 0) {
     return { error: `Faltam colunas no arquivo: ${missing.join(", ")}. Use o modelo.` };
   }
@@ -495,7 +547,11 @@ export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
   // Where each code was first seen: its line, and the item group of an original code, which its other rows repeat.
   const firstSeen = new Map<string, { line: number; originalOf?: string }>();
   const rows = records.map(({ line, cells }): CsvItemRow => {
-    const value = (column: CsvColumn) => (cells[columns.indexOf(column)] ?? "").trim();
+    /** Reads a column of the row, trimmed; empty when the file has no such column. */
+    const cell = (column: string) => (cells[columns.indexOf(column)] ?? "").trim();
+    /** Reads a column, the vehicles of a file of before from its brand and model columns. */
+    const value = (column: CsvColumn) =>
+      column === "vehicles" && legacy ? [cell("vehicle_brand"), cell("vehicle_model")].filter(Boolean).join(CSV_MODEL_SEPARATOR) : cell(column);
     const { item, errors } = csvItem(value, lists);
     const group = value("item");
     /** Notes a code, or says it repeats, as the search compares codes (see codeKey): "CB4500" is "CB-4500". */

@@ -9,28 +9,34 @@ import {
   type ItemCreate,
   type ItemListQuery,
   type ItemUpdate,
+  type ItemVehicleCreate,
   type SortableItem,
 } from "@apc/shared/items";
 import { splitVehicleModel } from "@apc/shared/item-filters";
 import type { Position, Prisma, Side } from "../generated/prisma/client.js";
 import { photoOf } from "../photos/photos.js";
+import { listIds } from "./listIds.js";
 import type { ActiveSession } from "../sessions/sessions.js";
 
 // Translates between the items API and the database: the writing rule and search keys applied on create and
-// update, the filters of the list, and the row sent back with its original codes and its brands and their photos.
+// update, the filters of the list, and the row sent back with its vehicles, its original codes and its brands and
+// their photos.
 // The search finds an item by its name or any of its codes, its brands' or its original ones. The API speaks names and
 // the inventory's own position and side values ("D", "LE"); the database keeps references to the lists' entries (see
-// listIds) and enums, so the item comes back with the names its entries have. An item's brands keep the order they
-// were sent in, by their position; the item's quantity is their sum (see syncQuantity), so the list filters by stock
+// listIds) and enums, so the item comes back with the names its entries have. An item's vehicles and brands keep the
+// order they were sent in, by their position; the filters by vehicle match any of an item's vehicles; the item's quantity is their sum (see syncQuantity), so the list filters by stock
 // on the item.
 
 /** The order of an item's brands: by their position, the cover's first. */
 export const BRAND_ORDER = [{ position: "asc" }, { id: "asc" }] satisfies Prisma.ItemBrandOrderByWithRelationInput[];
+/** The order of an item's vehicles: by their position, the first one the row shows. */
+const VEHICLE_ORDER = [{ position: "asc" }, { id: "asc" }] satisfies Prisma.ItemVehicleOrderByWithRelationInput[];
+/** What a vehicle is read with: the names of its brand and model. */
+const VEHICLE_NAMES = { vehicleBrand: { select: { name: true } }, vehicleModel: { select: { name: true } } } satisfies Prisma.ItemVehicleSelect;
 /** What every item query includes: the names of its list entries, and its brands with their photos, in order. */
 export const ITEM_INCLUDE = {
   category: { select: { name: true } },
-  vehicleBrand: { select: { name: true } },
-  vehicleModel: { select: { name: true } },
+  vehicles: { orderBy: VEHICLE_ORDER, select: VEHICLE_NAMES },
   originalCodes: { orderBy: { position: "asc" }, select: { code: true } },
   brands: { orderBy: BRAND_ORDER, include: { partBrand: { select: { name: true } }, photos: { orderBy: { position: "asc" } } } },
 } satisfies Prisma.ItemInclude;
@@ -43,8 +49,7 @@ export const SORT_SELECT = {
   id: true,
   name: true,
   category: { select: { name: true } },
-  vehicleBrand: { select: { name: true } },
-  vehicleModel: { select: { name: true } },
+  vehicles: { orderBy: VEHICLE_ORDER, take: 1, select: VEHICLE_NAMES },
   position: true,
   side: true,
   quantity: true,
@@ -56,8 +61,8 @@ export const SORT_SELECT = {
 
 /** An item row with what ITEM_INCLUDE reads. */
 type ItemRow = Prisma.ItemGetPayload<{ include: typeof ITEM_INCLUDE }>;
-/** The references of an item to its list entries, as listIds finds them. */
-export type ListIds = { categoryId: string; vehicleBrandId: string; vehicleModelId: string | null };
+/** The references of an item to its list entries, as listIds finds them; its vehicles' are rows of their own. */
+export type ListIds = { categoryId: string };
 
 /**
  * Builds the row of a brand of an item: the code uppercase with its search key, the part brand referenced, and the
@@ -103,10 +108,9 @@ export function createData(input: ItemCreate, ids: ListIds): Prisma.ItemUnchecke
 
 /**
  * Builds the list filter: the search matches the name, any brand's part code or any original code, every other
- * filter matches any of
- * its values (with "Ambos" fitting a specific position or side, a vehicle model matching with its brand, and a part
- * brand, color or location matching an item when any of its brands has it), and the status compares the brands'
- * quantity with the item's own minimum.
+ * filter matches any of its values (with "Ambos" fitting a specific position or side, a vehicle brand, or a vehicle
+ * model with its brand, matching an item when any of its vehicles has it, and a part brand, color or location when
+ * any of its brands has it), and the status compares the brands' quantity with the item's own minimum.
  * @param query Validated list query.
  * @param minQuantity Reference to the minQuantity column, for comparing two columns of the same row.
  * @returns The where clause for prisma.item.findMany.
@@ -124,13 +128,11 @@ export function itemWhere(query: ItemListQuery, minQuantity: Prisma.FieldRef<"It
       ],
     });
   }
-  for (const [entry, names] of [
-    ["category", query.category],
-    ["vehicleBrand", query.vehicleBrand],
-  ] as const) {
-    if (names.length > 0) {
-      and.push({ [entry]: { name: { in: names } } });
-    }
+  if (query.category.length > 0) {
+    and.push({ category: { name: { in: query.category } } });
+  }
+  if (query.vehicleBrand.length > 0) {
+    and.push({ vehicles: { some: { vehicleBrand: { name: { in: query.vehicleBrand } } } } });
   }
   if (query.partBrand.length > 0) {
     and.push({ brands: { some: { partBrand: { name: { in: query.partBrand } } } } });
@@ -151,7 +153,7 @@ export function itemWhere(query: ItemListQuery, minQuantity: Prisma.FieldRef<"It
   const models = query.vehicleModel.flatMap((value) => splitVehicleModel(value) ?? []);
   if (models.length > 0) {
     and.push({
-      OR: models.map((pair) => ({ vehicleBrand: { name: pair.vehicleBrand }, vehicleModel: { name: pair.vehicleModel } })),
+      vehicles: { some: { OR: models.map((pair) => ({ vehicleBrand: { name: pair.vehicleBrand }, vehicleModel: { name: pair.vehicleModel } })) } },
     });
   }
   if (query.status === "out") {
@@ -204,8 +206,24 @@ function textOrNull(value: string | undefined): string | null {
 }
 
 /**
+ * Builds the rows of an item's vehicles, each at its place in the list, adding the vehicle brands and models the lists
+ * don't hold (see listIds).
+ * @param tx Database client, in the transaction that saves the item.
+ * @param vehicles The vehicles as sent.
+ * @returns Data for prisma.itemVehicle.create, without the item.
+ */
+export async function vehiclesData(tx: Prisma.TransactionClient, vehicles: readonly ItemVehicleCreate[]) {
+  const rows = [];
+  for (const [position, vehicle] of vehicles.entries()) {
+    const ids = await listIds(tx, { vehicle });
+    rows.push({ position, vehicleBrandId: ids.vehicleBrandId!, vehicleModelId: ids.vehicleModelId ?? null });
+  }
+  return rows;
+}
+
+/**
  * Turns a database row into the item the API sends, without the search keys, with its list entries' names, its
- * position and side as the API speaks them, its original codes in order, and its brands with their photos in order, at
+ * vehicles in order, its position and side as the API speaks them, its original codes in order, and its brands with their photos in order, at
  * paths signed for the caller.
  * @param row Item row, read with ITEM_INCLUDE.
  * @param session The caller's session.
@@ -216,8 +234,7 @@ export function toItem(row: ItemRow, session: ActiveSession): Item {
     id: row.id,
     name: row.name,
     category: row.category.name,
-    vehicleBrand: row.vehicleBrand.name,
-    vehicleModel: row.vehicleModel?.name ?? null,
+    vehicles: row.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand.name, vehicleModel: vehicle.vehicleModel?.name ?? null })),
     position: labelOf(POSITION_VALUES, row.position),
     side: labelOf(SIDE_VALUES, row.side),
     quantity: row.quantity,
@@ -239,19 +256,20 @@ export function toItem(row: ItemRow, session: ActiveSession): Item {
 }
 
 /**
- * Turns a row read with SORT_SELECT into what sortItems looks at, as sortableOf reads an item: the first brand's
- * code, part brand, color and location, and the lowest price.
+ * Turns a row read with SORT_SELECT into what sortItems looks at, as sortableOf reads an item: the first vehicle, the
+ * first brand's code, part brand, color and location, and the lowest price.
  * @param row The row.
  * @returns The item's id and what it sorts by, with names and the position and side as the API speaks them.
  */
 export function toSortable(row: Prisma.ItemGetPayload<{ select: typeof SORT_SELECT }>): SortableItem & { id: string } {
   const [first] = row.brands;
+  const [vehicle] = row.vehicles;
   return {
     id: row.id,
     name: row.name,
     category: row.category.name,
-    vehicleBrand: row.vehicleBrand.name,
-    vehicleModel: row.vehicleModel?.name ?? null,
+    vehicleBrand: vehicle.vehicleBrand.name,
+    vehicleModel: vehicle.vehicleModel?.name ?? null,
     position: labelOf(POSITION_VALUES, row.position),
     side: labelOf(SIDE_VALUES, row.side),
     quantity: row.quantity,

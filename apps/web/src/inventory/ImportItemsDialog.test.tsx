@@ -22,11 +22,11 @@ const LISTS: ItemLists = {
 // A file with a valid row, a row with new names, a row with errors, and two rows of one item made by two brands.
 const FILE = [
   CSV_COLUMNS.join(';'),
-  ';w 712/95;;filtro de óleo;MOTOR;mann;volkswagen;gol;8;2;a-2;39,90;;;',
-  ';ngk-b7;;vela;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;D;',
-  ';;;sem código;Freios;Cobreq;Ford;;x;;;0;;;',
-  '1;c 2433;;filtro de ar;Motor;Mann;Volkswagen;Gol;3;3;A-4;49,90;;;',
-  '1;arl 4433;;filtro de ar;Motor;Tecfil;Volkswagen;Gol;5;3;A-5;32,90;;;',
+  ';w 712/95;;filtro de óleo;MOTOR;mann;volkswagen / gol;8;2;a-2;39,90;;;',
+  ';ngk-b7;;vela;Ignição;NGK;Fiat / Uno;10;3;B-1;34.9;;D;',
+  ';;;sem código;Freios;Cobreq;Ford;x;;;0;;;',
+  '1;c 2433;;filtro de ar;Motor;Mann;Volkswagen / Gol;3;3;A-4;49,90;;;',
+  '1;arl 4433;;filtro de ar;Motor;Tecfil;Volkswagen / Gol;5;3;A-5;32,90;;;',
 ].join('\n')
 const root = document.documentElement
 
@@ -117,7 +117,12 @@ test('Web: the valid rows are imported', async () => {
   expect(url).toBe('/api/items/import')
   const sent = JSON.parse(String(init?.body)).items
   expect(sent.map((item: ItemCreate) => item.brands.map((brand) => brand.code))).toEqual([['W 712/95'], ['NGK-B7'], ['C 2433', 'ARL 4433']])
-  expect(sent[0]).toMatchObject({ name: 'Filtro de óleo', category: 'Motor', vehicleModel: 'Gol', brands: [{ unitPriceCents: 3990 }] })
+  expect(sent[0]).toMatchObject({
+    name: 'Filtro de óleo',
+    category: 'Motor',
+    vehicles: [{ vehicleBrand: 'Volkswagen', vehicleModel: 'Gol' }],
+    brands: [{ unitPriceCents: 3990 }],
+  })
 })
 
 // Picks a file without the required columns and checks it says why, with nothing to import; a failed import says so
@@ -125,7 +130,7 @@ test('Web: the valid rows are imported', async () => {
 test('Web: a file that can not be read or imported says why', async () => {
   const screen = await pick('code,name\nA,B')
   await expect.element(screen.getByRole('alert')).toHaveTextContent(
-    'estoque.csv: Faltam colunas no arquivo: category, part_brand, vehicle_brand, unit_price. Use o modelo.',
+    'estoque.csv: Faltam colunas no arquivo: category, part_brand, vehicles, unit_price. Use o modelo.',
   )
   await expect.element(screen.getByRole('button', { name: 'Importar 0 itens' })).toBeDisabled()
 

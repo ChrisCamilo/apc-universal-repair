@@ -9,7 +9,9 @@ import {
   type Item,
   type ItemCreate,
   type ItemSortKey,
+  type ItemVehicle,
 } from "@apc/shared/items";
+import { splitVehicleModel } from "@apc/shared/item-filters";
 import {
   findEntry,
   isCatalogBrand,
@@ -50,11 +52,18 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
       const query = new URL(route.request().url()).searchParams;
       onQuery?.(query);
       const categories = query.getAll("category");
+      const vehicleBrands = query.getAll("vehicleBrand");
+      const models = query.getAll("vehicleModel").flatMap((value) => splitVehicleModel(value) ?? []);
       const status = query.get("status");
       const matching = stock.filter(
         (item) =>
           matchesSearch(item, query.get("q") ?? "") &&
           (categories.length === 0 || categories.includes(item.category)) &&
+          (vehicleBrands.length === 0 || item.vehicles.some((vehicle) => vehicleBrands.includes(vehicle.vehicleBrand))) &&
+          (models.length === 0 ||
+            item.vehicles.some((vehicle) =>
+              models.some((pair) => pair.vehicleBrand === vehicle.vehicleBrand && pair.vehicleModel === vehicle.vehicleModel),
+            )) &&
           (!status || stockStatus(item.quantity, item.minQuantity) === status),
       );
       const sort = query.get("sort") as ItemSortKey | null;
@@ -116,10 +125,11 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
       if (route.request().url().endsWith("/merge")) {
         const into = (lists[kind] as ListEntry[]).find((held) => held.id === route.request().postDataJSON().into)!;
         const field = ITEM_LIST_FIELDS[kind];
+        const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
         let moved = 0;
         // Each item moved is replaced, leaving the test's own item objects as they were.
         stock.forEach((item, index) => {
-          const renamed = withName(item, field, entry.name, into.name);
+          const renamed = withName(item, field, entry.name, into.name, brand?.name);
           if (renamed !== item) {
             stock[index] = renamed;
             moved += 1;
@@ -139,9 +149,7 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
       const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
       // Each item renamed is replaced, leaving the test's own item objects as they were.
       stock.forEach((item, index) => {
-        if (!brand || optionKey(item.vehicleBrand) === optionKey(brand.name)) {
-          stock[index] = withName(item, field, entry.name, name);
-        }
+        stock[index] = withName(item, field, entry.name, name, brand?.name);
       });
       const renamed = { ...entry, name };
       Object.assign(lists, withEntry(lists, kind, renamed));
@@ -176,8 +184,9 @@ export function savedItem(sent: Partial<ItemCreate>, held?: Item): Item {
     id: held?.id ?? crypto.randomUUID(),
     name: sent.name ?? held!.name,
     category: sent.category ?? held!.category,
-    vehicleBrand: sent.vehicleBrand ?? held!.vehicleBrand,
-    vehicleModel: sent.vehicleModel === undefined ? (held?.vehicleModel ?? null) : sent.vehicleModel || null,
+    vehicles: sent.vehicles
+      ? sent.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel || null }))
+      : held!.vehicles,
     position: sent.position ?? held?.position ?? NOT_APPLICABLE,
     side: sent.side ?? held?.side ?? NOT_APPLICABLE,
     minQuantity: sent.minQuantity ?? held?.minQuantity ?? 0,
@@ -190,19 +199,28 @@ export function savedItem(sent: Partial<ItemCreate>, held?: Item): Item {
 }
 
 /**
- * Renames an entry of the lists in an item: its category, vehicle brand or model, or the part brand of its brands.
+ * Renames an entry of the lists in an item: its category, the part brand of its brands, or the brand or model (within
+ * its brand) of its vehicles.
  * @param item The item.
  * @param field The item field the entry's list fills.
  * @param from The entry's name.
  * @param to Its new name.
+ * @param vehicleBrand A vehicle model's brand.
  * @returns A new item with the name changed, or the same item when it doesn't use the entry.
  */
-function withName(item: Item, field: (typeof ITEM_LIST_FIELDS)[ItemListKind], from: string, to: string): Item {
+function withName(item: Item, field: (typeof ITEM_LIST_FIELDS)[ItemListKind], from: string, to: string, vehicleBrand?: string): Item {
+  const same = (name: string | null) => optionKey(name ?? "") === optionKey(from);
   if (field === "partBrand") {
-    const uses = item.brands.some((brand) => optionKey(brand.partBrand) === optionKey(from));
-    return uses
-      ? { ...item, brands: item.brands.map((brand) => (optionKey(brand.partBrand) === optionKey(from) ? { ...brand, partBrand: to } : brand)) }
-      : item;
+    const uses = item.brands.some((brand) => same(brand.partBrand));
+    return uses ? { ...item, brands: item.brands.map((brand) => (same(brand.partBrand) ? { ...brand, partBrand: to } : brand)) } : item;
   }
-  return optionKey(item[field] ?? "") === optionKey(from) ? { ...item, [field]: to } : item;
+  if (field === "category") {
+    return same(item.category) ? { ...item, category: to } : item;
+  }
+  /** Whether a vehicle uses the entry: by its brand, or by its model within the model's brand. */
+  const uses = (vehicle: ItemVehicle) =>
+    field === "vehicleBrand"
+      ? same(vehicle.vehicleBrand)
+      : same(vehicle.vehicleModel) && (!vehicleBrand || optionKey(vehicle.vehicleBrand) === optionKey(vehicleBrand));
+  return item.vehicles.some(uses) ? { ...item, vehicles: item.vehicles.map((vehicle) => (uses(vehicle) ? { ...vehicle, [field]: to } : vehicle)) } : item;
 }
