@@ -21,6 +21,7 @@ function giveServer(failure: Failure | null) {
   const calls = {
     failure: vi.fn<ServerBridge['failure']>(async () => failure),
     retry: vi.fn<ServerBridge['retry']>(async () => true),
+    useRecoveryKey: vi.fn<ServerBridge['useRecoveryKey']>(async () => ({ ok: true })),
   }
   window.apcDesktop = {
     notify: () => {},
@@ -88,6 +89,46 @@ test('Web: a taken port is said so, and leads to the port field', async () => {
   await screen.getByRole('button', { name: 'Usar outra porta' }).click()
   expect(openSettings).toHaveBeenCalledWith('port')
   await expect.element(screen.getByRole('button', { name: 'Como liberar a porta' })).toBeVisible()
+})
+
+// Opens over a page with its own message, as the Inventory's error under the screen, and checks the screen has a
+// background of its own that hides what is under it.
+test('Web: the server failure screen covers what is under it', async () => {
+  giveServer(STOPPED)
+  const screen = await render(
+    <>
+      <p>Não foi possível carregar o estoque</p>
+      <ServerFailure />
+    </>,
+  )
+  const cover = screen.getByTestId('setup.server-failure')
+  await expect.element(cover).toBeVisible()
+  expect(getComputedStyle(cover.element()).backgroundColor).not.toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/)
+})
+
+// Opens with the SQLite key missing from this computer, and checks the screen asks for the recovery copy, without a
+// log to look at; a copy that doesn't open the data is refused with why, and one that does opens the app.
+test('Web: a key that doesn\'t open the data asks for its recovery copy', async () => {
+  const reason = 'A chave do banco SQLite não está mais neste computador. Digite a chave de recuperação que o app mostrou na primeira vez para abrir os dados.'
+  const { calls } = giveServer({ kind: 'keyMissing', reason, log: LOG })
+  const refused = 'Essa chave não abre o banco deste computador. Confira se é a chave de recuperação deste app.'
+  calls.useRecoveryKey.mockResolvedValueOnce({ ok: false, message: refused })
+  const reload = vi.fn()
+  const screen = await render(<ServerFailure reload={reload} />)
+  await expect.element(screen.getByRole('alert').getByText(reason, { exact: true })).toBeVisible()
+  const use = screen.getByRole('button', { name: 'Usar a chave de recuperação' })
+  await expect.element(use).toBeDisabled()
+
+  await screen.getByLabelText('Chave de recuperação').fill('01234567-89ABCDEF')
+  await use.click()
+  await expect.element(screen.getByText(refused)).toBeVisible()
+  expect(reload).not.toHaveBeenCalled()
+
+  const copy = '01234567-89ABCDEF-01234567-89ABCDEF-01234567-89ABCDEF-01234567-89ABCDEF'
+  await screen.getByLabelText('Chave de recuperação').fill(copy)
+  await use.click()
+  await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce())
+  expect(calls.useRecoveryKey).toHaveBeenLastCalledWith(copy)
 })
 
 // Opens with the server on, then hears it failed, and checks the screen shows; a retry that still fails shows why
