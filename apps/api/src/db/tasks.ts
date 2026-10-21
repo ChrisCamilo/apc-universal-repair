@@ -1,11 +1,11 @@
-import { keyOpens, setSqliteKey } from "./cipher.js";
+import { changeKey, keyOpens, setSqliteKey } from "./cipher.js";
 import { importProblem, importServer, type ImportSetup } from "./import.js";
 import { checkDatabase, migrate } from "./migrate.js";
 
 // The database tasks the desktop app runs beside its server, each in an Electron utility process of its own (see
 // apps/desktop/src/serverTasks.ts), bundled as server/tasks.mjs: checking a database before the server moves onto it,
-// migrating it, importing an old server (see import.ts), and telling whether a key, such as a recovery copy typed
-// back, opens a SQLite file. The app sends one task and gets one answer back: what the
+// migrating it, importing an old server (see import.ts), telling whether a key, such as a recovery copy typed back,
+// opens a SQLite file, and changing the key of the server's own file. The app sends one task and gets one answer back: what the
 // task gave, or the message of what failed, such as a PostgreSQL address that doesn't connect. The app's own SQLite
 // file takes its key from APC_SQLITE_KEY; a task may bring the keys of other files, such as an encrypted one being
 // imported (see cipher.ts).
@@ -24,7 +24,8 @@ export type Task =
   | { task: "import"; setup: ImportSetup }
   | { task: "importProblem"; from: string; to: string }
   | { task: "keyOpens"; url: string }
-  | { task: "migrate"; url: string };
+  | { task: "migrate"; url: string }
+  | { task: "rekey"; url: string; key: string };
 /** What the app gets back. */
 export type TaskAnswer = { ok: true; result: unknown } | { ok: false; message: string };
 
@@ -45,6 +46,8 @@ function run(task: Task): Promise<unknown> {
       return Promise.resolve(keyOpens(task.url));
     case "migrate":
       return migrate(task.url);
+    case "rekey":
+      return Promise.resolve(changeKey(task.url, task.key));
   }
 }
 
