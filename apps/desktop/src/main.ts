@@ -6,6 +6,7 @@ import { SERVER_PORT, usesBundledServer } from "./bundledServer.js";
 import { readConfig, resolveApiUrl, writeConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./database.js";
 import { windowsIdentity } from "./identity.js";
+import { keepAppLog } from "./logs.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
 import { readHealth } from "./server.js";
@@ -19,7 +20,18 @@ import {
 } from "./serverSettings.js";
 import { HIDDEN_ARG, takeInstallerStartup } from "./startup.js";
 import { phoneAddress, trayMenu, type TrayItem } from "./tray.js";
-import { CHECK_INTERVAL_MS, checksForUpdates, RESTART_TO_UPDATE_CHANNEL, serverVersionWarning, UPDATE_READY_CHANNEL } from "./update.js";
+import {
+  CHECK_INTERVAL_MS,
+  checksForUpdates,
+  clearInstallMarker,
+  installInProgress,
+  readInstallMarker,
+  RESTART_TO_UPDATE_CHANNEL,
+  serverVersionWarning,
+  UPDATE_READY_CHANNEL,
+  writeInstallMarker,
+  type InstallMarker,
+} from "./update.js";
 import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
@@ -34,10 +46,11 @@ import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
 // error or a warning, shown while the window isn't focused; clicking it brings the window up with the bell's menu
 // open. The installed app updates itself from GitHub Releases (see update.ts): it checks once its window shows (or a
 // minute after a hidden start) and every 6 hours, downloads a new version in the background, tells the page so it
-// shows a notice, and installs it on quit, or at once when the page asks. Without internet it keeps working on its
-// version. The server it ships is always on its version; a server on another computer that answers another one on
+// shows a notice, and installs it on quit, or at once when the page asks: then the window says "Atualizando o APC", the
+// server stops and the installer takes over, and an app opened while it installs leaves it alone. Without internet it
+// keeps working on its version. The server it ships is always on its version; a server on another computer that answers another one on
 // /health gets a warning. Only one copy runs at a time, since two would share the same localStorage, and opening it
-// again shows its window.
+// again shows its window. What the main process and the updater say goes to logs/app.log in userData (see logs.ts).
 
 /** The notifications on screen, kept so they still answer a click once their request is gone. */
 const shown = new Set<Notification>();
@@ -46,6 +59,8 @@ const shown = new Set<Notification>();
 const devUrl = process.env.APC_DEV_URL;
 /** Whether the app is quitting, when closing the window ends it instead of hiding it in the tray. */
 let quitting = false;
+/** Whether the server the app runs has stopped, so quitting can go on. */
+let serverStopped = false;
 /** The tray's icon, kept so it isn't garbage collected. */
 let tray: Tray | undefined;
 // electron-updater is CommonJS, so its named exports come from the default one.
@@ -58,6 +73,9 @@ if (process.env.APC_USER_DATA) {
 }
 if (!app.requestSingleInstanceLock()) {
   app.exit(0);
+} else {
+  keepAppLog(app.getPath("userData"));
+  console.log(`APC Universal Repair ${app.getVersion()} started with ${JSON.stringify(process.argv.slice(1))}.`);
 }
 
 /**
@@ -196,6 +214,40 @@ function notify(appUrl: string, sender: Electron.WebContents, senderUrl: string,
 }
 
 /**
+ * Leaves the install folder to an update being installed, as an app opened meanwhile must: says so in a Windows
+ * notification and exits, starting no server and locking no file the installer still writes.
+ * @param marker What the update's marker says.
+ */
+function leaveToInstaller(marker: InstallMarker): void {
+  console.log(`Version ${marker.version} is being installed; this start leaves the folder to the installer.`);
+  app.setAppUserModelId(windowsIdentity({ isPackaged: app.isPackaged, execPath: process.execPath, appPath: app.getAppPath() }).appId);
+  if (Notification.isSupported()) {
+    new Notification({
+      title: "O APC está sendo atualizado",
+      body: marker.reopens ? "Ele abre sozinho em instantes, já na versão nova." : "Abra de novo em instantes, quando a versão nova estiver instalada.",
+      icon: path.join(app.getAppPath(), "build", "icon.png"),
+    }).show();
+  }
+  setTimeout(() => app.exit(0), 1_000);
+}
+
+/**
+ * Closes the app to install the version downloaded: the window says "Atualizando o APC", the marker says which version
+ * goes in, the server stops, and the installer takes over and opens the new version once it is in.
+ * @param window The app's window.
+ * @param userData The app's userData folder.
+ * @param version The version going in.
+ */
+async function restartToUpdate(window: BrowserWindow, userData: string, version: string): Promise<void> {
+  console.log(`Restarting to install ${version}.`);
+  await window.loadFile(path.join(app.getAppPath(), "static", "updating.html")).catch(() => undefined);
+  writeInstallMarker(userData, { version, startedAt: Date.now(), reopens: true });
+  await stopOwnServer();
+  serverStopped = true;
+  autoUpdater.quitAndInstall(true, true);
+}
+
+/**
  * Warns over the window, once it shows, when a server on another computer answers another version than the app's: the
  * web build the app carries expects the API of its own version. A server that doesn't answer is left to the screens,
  * which say the connection failed.
@@ -237,11 +289,14 @@ function showWindow(window: BrowserWindow): void {
  * @param window The app's window.
  * @param appUrl The address the app is served from, which a restart request must come from.
  * @param hidden Whether the window starts hidden, as at sign-in, when the first check waits a minute instead.
+ * @param userData The app's userData folder, where the marker of an update being installed goes.
  */
-function watchForUpdates(window: BrowserWindow, appUrl: string, hidden: boolean): void {
+function watchForUpdates(window: BrowserWindow, appUrl: string, hidden: boolean, userData: string): void {
   let ready: string | undefined;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  // What it checks, downloads and installs goes to app.log, with the rest of the main process.
+  autoUpdater.logger = console;
   autoUpdater.on("error", (error) => console.warn(`Couldn't update the app: ${error.message}`));
   autoUpdater.on("update-downloaded", ({ version }) => {
     ready = version;
@@ -255,7 +310,13 @@ function watchForUpdates(window: BrowserWindow, appUrl: string, hidden: boolean)
   });
   ipcMain.on(RESTART_TO_UPDATE_CHANNEL, (event) => {
     if (ready && (event.senderFrame?.url ?? "").startsWith(appUrl)) {
-      autoUpdater.quitAndInstall(true, true);
+      void restartToUpdate(window, userData, ready);
+    }
+  });
+  // Quitting with a version ready installs it, without opening it after.
+  app.on("will-quit", () => {
+    if (ready && !readInstallMarker(userData)) {
+      writeInstallMarker(userData, { version: ready, startedAt: Date.now(), reopens: false });
     }
   });
   // The error listener has logged what went wrong already.
@@ -286,6 +347,15 @@ app.on("window-all-closed", () => app.quit());
 
 void app.whenReady().then(async () => {
   const userData = app.getPath("userData");
+  const marker = readInstallMarker(userData);
+  if (marker && installInProgress(marker, app.getVersion(), Date.now())) {
+    leaveToInstaller(marker);
+    return;
+  }
+  if (marker) {
+    console.log(`The update to ${marker.version} is done, or was left unfinished; its marker is cleared.`);
+    clearInstallMarker(userData);
+  }
   const config = adoptInstallerChoice(userData, readConfig(userData));
   const bundled = usesBundledServer({ envApiUrl: process.env.APC_API_URL, devUrl }, config);
   // APC_SERVER_PORT moves the bundled server off its port, for the smoke test.
@@ -317,7 +387,7 @@ void app.whenReady().then(async () => {
   const hidden = bundled && process.argv.includes(HIDDEN_ARG);
   const window = createWindow(appUrl, hidden);
   if (installed) {
-    watchForUpdates(window, appUrl, hidden);
+    watchForUpdates(window, appUrl, hidden, userData);
   }
   if (bundled) {
     const serverDir = app.isPackaged ? path.join(process.resourcesPath, "server") : path.join(app.getAppPath(), "server");
@@ -330,7 +400,20 @@ void app.whenReady().then(async () => {
     };
     handleServerSettings(host);
     keepInTray(window, port, installed, config);
-    app.on("will-quit", stopOwnServer);
+    // Quitting waits for the server to exit, so its database and files are let go before the app, or an installer
+    // replacing it, goes on.
+    app.on("will-quit", (event) => {
+      if (serverStopped) {
+        return;
+      }
+      event.preventDefault();
+      void stopOwnServer().then(() => {
+        serverStopped = true;
+        console.log("The bundled server stopped; quitting.");
+        // A server already off stops at once, while this quit is still being turned down: quit on the next turn.
+        setImmediate(() => app.quit());
+      });
+    });
     // A start hidden at sign-in shows the window when the page has to ask for PostgreSQL's address.
     if ((await startOwnServer(host)) === "waiting" && hidden) {
       window.once("ready-to-show", () => window.show());

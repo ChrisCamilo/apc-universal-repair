@@ -1,0 +1,52 @@
+<!doctype html>
+<!-- Shown while the desktop app stops its server and closes to install a new version (see src/main.ts), in the
+     eighties/night colors, so no one opens it again in the middle of the install. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'" />
+    <title>APC Universal Repair</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #0b0c0e;
+        color: #e8e6e1;
+        font: 16px system-ui, sans-serif;
+      }
+      .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(232, 230, 225, 0.25);
+        border-top-color: #ffa31a;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      p {
+        margin: 0;
+      }
+      .hint {
+        color: rgba(232, 230, 225, 0.6);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="spinner" role="progressbar" aria-label="Atualizando o app"></div>
+    <p>Atualizando o APC…</p>
+    <p class="hint">O app fecha e abre sozinho em instantes, já na versão nova. Não precisa abrir de novo.</p>
+  </body>
+</html>

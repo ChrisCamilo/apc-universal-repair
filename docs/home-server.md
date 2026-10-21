@@ -131,6 +131,14 @@ Up to v0.3.0, the server at home ran from a clone of the project, started by a T
 4. **Allow the app through the firewall** (step 3), and check the phone (step 5): the address stays the same. The old firewall rule for Node.js can be removed.
 5. **Delete the clone** once you're sure, and uninstall Node.js, pnpm and Git if nothing else needs them. A PostgreSQL in use stays.
 
+### 9. After an update, the server doesn't connect
+
+*Reiniciar agora* shows *Atualizando o APC…*, closes the app and installs the new version, which opens by itself in a few moments: there is no need to open it again. An app opened while it installs says so in a notification and closes. When the server the app runs doesn't start, the window says *O servidor não ligou*, with why and where its log is, and *Tentar de novo*. If it keeps saying so:
+
+1. **Read the logs**, in `%APPDATA%\APC Universal Repair\logs`: `api.log` is the server's (its last error is the one the window shows), and `app.log` is the app's and the updater's, with each start, update and stop. In a PowerShell: `Get-Content "$env:APPDATA\APC Universal Repair\logs\api.log" -Tail 60`.
+2. **Quit and open it again:** *Sair* in the tray's menu, check no *APC Universal Repair* is left in the Task Manager, and open the app.
+3. **Install the release's Setup over it:** download `APC-Universal-Repair-Setup-<version>.exe` from the [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) and run it. It repairs an install left half done and keeps the data in `%APPDATA%\APC Universal Repair`.
+
 ---
 
 ## 🇧🇷 Português (Brasil)
@@ -236,3 +244,11 @@ Até a v0.3.0, o servidor de casa rodava de um clone do projeto, ligado por uma 
 3. **Importe os dados** (passo 7): o `apps\api\data\apc.db` do clone para o SQLite, ou o endereço do `apps\api\.env` dele para o PostgreSQL, com o `apps\api\uploads\photos` dele. Entre com uma conta antiga e confira o estoque e as fotos.
 4. **Libere o app no firewall** (passo 3) e confira o celular (passo 5): o endereço continua o mesmo. A regra antiga do firewall para o Node.js pode ser removida.
 5. **Apague o clone** quando tiver certeza, e desinstale o Node.js, o pnpm e o Git se nada mais precisar deles. Um PostgreSQL em uso fica.
+
+### 9. Depois de atualizar, o servidor não conecta
+
+O *Reiniciar agora* mostra *Atualizando o APC…*, fecha o app e instala a versão nova, que abre sozinha em instantes: não precisa abrir de novo. Um app aberto enquanto ela instala avisa numa notificação e fecha. Quando o servidor do app não liga, a janela diz *O servidor não ligou*, com o motivo e onde está o registro dele, e *Tentar de novo*. Se continuar assim:
+
+1. **Leia os registros**, em `%APPDATA%\APC Universal Repair\logs`: o `api.log` é o do servidor (o último erro dele é o que a janela mostra), e o `app.log` é o do app e do atualizador, com cada abertura, atualização e parada. Num PowerShell: `Get-Content "$env:APPDATA\APC Universal Repair\logs\api.log" -Tail 60`.
+2. **Saia e abra de novo:** *Sair* no menu da bandeja, confira que não sobrou nenhum *APC Universal Repair* no Gerenciador de Tarefas, e abra o app.
+3. **Instale o Setup da release por cima:** baixe o `APC-Universal-Repair-Setup-<versão>.exe` da [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) e rode. Ele conserta uma instalação que ficou pela metade e mantém os dados em `%APPDATA%\APC Universal Repair`.

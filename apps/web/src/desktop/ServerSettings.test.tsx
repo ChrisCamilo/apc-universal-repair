@@ -46,6 +46,7 @@ function giveServer(settings: ServerSettings) {
     chooseFolder: vi.fn<ServerBridge['chooseFolder']>(async () => null),
     chooseSqliteFile: vi.fn<ServerBridge['chooseSqliteFile']>(async () => null),
     checkImport: vi.fn<ServerBridge['checkImport']>(async () => ({ ok: true })),
+    failure: vi.fn<ServerBridge['failure']>(async () => null),
     importServer: vi.fn<ServerBridge['importServer']>(async () => ({ ok: false, message: 'Nada importado.' })),
     migrateImport: vi.fn<ServerBridge['migrateImport']>(async () => ({ ok: true })),
     settings: vi.fn<ServerBridge['settings']>(async () => settings),
@@ -53,6 +54,7 @@ function giveServer(settings: ServerSettings) {
     useSqlite: vi.fn<ServerBridge['useSqlite']>(async () => ({ ok: true })),
     recoveryKey: vi.fn<ServerBridge['recoveryKey']>(async () => null),
     recoveryKeySaved: vi.fn<ServerBridge['recoveryKeySaved']>(async () => {}),
+    retry: vi.fn<ServerBridge['retry']>(async () => true),
   }
   window.apcDesktop = {
     notify: () => {},
@@ -61,6 +63,7 @@ function giveServer(settings: ServerSettings) {
     restartToUpdate: () => {},
     server: {
       ...calls,
+      onFailure: () => () => {},
       onOpen: (listener) => {
         trayOpens = listener
         return () => {}
