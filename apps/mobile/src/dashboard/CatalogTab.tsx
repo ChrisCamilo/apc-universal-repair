@@ -9,8 +9,8 @@ import {
   firstSheet,
   locatePart,
   modelsNamed,
+  type FoundPart,
 } from '@apc/shared/catalog';
-import type { Item } from '@apc/shared/items';
 import { EmptyState } from '../EmptyState';
 import { ImageFrame } from '../ImageFrame';
 import { Panel } from '../Panel';
@@ -41,17 +41,17 @@ export function CatalogTab() {
   const [query, setQuery] = useState('');
   const [brandId, setBrandId] = useState(CATALOG[0].id);
   const [engine, setEngine] = useState(() => firstSheet(CATALOG[0].models));
-  const [part, setPart] = useState<Item | null>(null);
+  const [part, setPart] = useState<FoundPart | null>(null);
   // Bumped to draw the tree again, open on the engine of a part just chosen.
   const [revealed, setRevealed] = useState(0);
   const brand = CATALOG.find((b) => b.id === brandId)!;
   const results = findParts(items, query);
   const searchingParts = results.parts.length > 0;
-  const location = searchingParts && part ? locatePart(part) : null;
+  const location = searchingParts && part ? locatePart(part.item) : null;
   const models = modelsNamed(brand.models, searchingParts ? '' : query);
   const sheet = engine ? ENGINE_SHEETS[engine] : undefined;
   // A part for a model the catalog has no sheet for says so, instead of showing another vehicle.
-  const missingVehicle = location && part?.vehicleModel && !location.engineId ? `${part.vehicleBrand} ${part.vehicleModel}` : null;
+  const missingVehicle = location && part?.item.vehicleModel && !location.engineId ? `${part.item.vehicleBrand} ${part.item.vehicleModel}` : null;
 
   /** Opens a brand on its first engine. */
   const openBrand = (id: string) => {
@@ -60,9 +60,9 @@ export function CatalogTab() {
   };
 
   /** Reveals a part's vehicle: its brand, its engine, and the tree open on them. */
-  const choosePart = (chosen: Item) => {
+  const choosePart = (chosen: FoundPart) => {
     setPart(chosen);
-    const found = locatePart(chosen);
+    const found = locatePart(chosen.item);
     if (found) {
       setBrandId(found.brandId);
       setEngine(found.engineId ?? (found.modelId ? undefined : firstSheet(CATALOG.find((b) => b.id === found.brandId)!.models)));
