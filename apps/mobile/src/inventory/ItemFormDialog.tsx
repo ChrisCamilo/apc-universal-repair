@@ -19,6 +19,9 @@ import {
   itemFormOf,
   itemFormOptions,
   modelsOfBrand,
+  ORIGINAL_CODES_LABEL,
+  originalCodeMessages,
+  originalCodesText,
   PRICE_PLACEHOLDER,
   priceMask,
   quantityInput,
@@ -41,13 +44,15 @@ import { TextField } from '../TextField';
 import { useToast } from '../Toast';
 import { Heading, Label, Text } from '../Typography';
 import { tourTarget } from '../tourTargets';
+import { CodeListField } from './CodeListField';
 import { useStyles } from './ItemFormDialog.styles';
 import { pickPhotos, savePhotos } from './photos';
 import type { CreateListEntry } from './useItemLists';
 
 // The form that creates a new item or edits one, the same as the web, in one column: the content scrolls inside the
 // dialog while Cancel and Save stay at the bottom. First what the item's brands share (name, category, vehicle,
-// position, side and the minimum stock), then a section for each brand that makes the part, with its photos, part
+// position, side, the minimum stock and the vehicle maker's original codes, typed as chips, each shown with its message
+// when a brand of the item or another item has it; see CodeListField), then a section for each brand that makes the part, with its photos, part
 // brand, code, quantity, unit price, color and location. "Adicionar marca" adds a blank brand, and each brand's
 // "Remover" takes it out while another is left. Category, part brands and the vehicle's brand and model are comboboxes
 // of the lists the API keeps, where "+ Criar" adds a new name to its list, picks it and says so in a toast; the model
@@ -343,6 +348,7 @@ export function ItemFormDialog({
           {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
             <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />
           ))}
+          <FieldValue label={ORIGINAL_CODES_LABEL} value={originalCodesText(item)} />
           <View style={styles.brands} testID={ids.brands}>
             {item.brands.map((brand, index) => (
               <View
@@ -443,6 +449,13 @@ export function ItemFormDialog({
             onValueChange={changeMinimum}
             error={errors.minQuantity}
             helper="Abaixo disso, somando todas as marcas, o item aparece como estoque baixo."
+          />
+          <CodeListField
+            label={ORIGINAL_CODES_LABEL}
+            codes={form.originalCodes}
+            onCodesChange={(codes) => setForm((typed) => ({ ...typed, originalCodes: codes }))}
+            messages={originalCodeMessages(form, items, item?.id)}
+            helper="Os códigos da montadora, iguais em todas as marcas. Vírgula, ponto e vírgula ou a tecla de enviar separa um do outro."
           />
           <View style={styles.brands} testID={ids.brands}>
             <Text size="sm" tone="muted">
