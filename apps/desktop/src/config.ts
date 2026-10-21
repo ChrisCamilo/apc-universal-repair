@@ -19,6 +19,8 @@ export type DesktopConfig = {
   database?: DatabaseChoice;
   /** PostgreSQL's address, sealed by safeStorage, never in plain text (see database.ts). */
   databaseUrl?: string;
+  /** The port the server the app runs listens on, once the user changed it (see ports.ts). */
+  port?: number;
   /** The SQLite file's key, sealed by safeStorage, never in plain text (see database.ts). */
   sqliteKey?: string;
   /** Whether the user said they kept the key's recovery copy, which the Servidor dialog then stops showing. */
