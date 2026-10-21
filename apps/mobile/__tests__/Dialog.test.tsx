@@ -16,6 +16,8 @@ import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider, useToast } from '../src/Toast';
 import { TOAST_RISE } from '../src/Toast.styles';
 
+// Trees the test rendered, unmounted after it so a toast's hide timer doesn't outlive the test.
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 
 /**
@@ -37,15 +39,10 @@ async function mount(style: Style, mode: Mode, element: React.ReactElement) {
       </SafeAreaProvider>,
     );
   });
+  mounted.push(tree!);
   return tree!;
 }
 
-/**
- * Reads the flattened style of the View with a testID.
- * @param tree Rendered tree.
- * @param testID The testID to look for.
- * @returns The View's style as one object.
- */
 /**
  * Finds the toasts' pills on screen, the leaving ones first.
  * @param tree Rendered tree.
@@ -71,6 +68,12 @@ function fadeOf(pill: ReactTestRenderer.ReactTestInstance): { opacity: number; r
   return { opacity: animated.opacity.__getValue(), rise: animated.transform[0].translateY.__getValue() };
 }
 
+/**
+ * Reads the flattened style of the View with a testID.
+ * @param tree Rendered tree.
+ * @param testID The testID to look for.
+ * @returns The View's style as one object.
+ */
 function styleOf(tree: ReactTestRenderer.ReactTestRenderer, testID: string) {
   const node = tree.root.findAll((n) => n.props.testID === testID && typeof n.type === 'string')[0];
   return Object.assign({}, ...[node.props.style].flat(Infinity).filter(Boolean));
@@ -78,6 +81,10 @@ function styleOf(tree: ReactTestRenderer.ReactTestRenderer, testID: string) {
 
 beforeEach(async () => {
   await themeStorage.clear();
+});
+
+afterEach(async () => {
+  await ReactTestRenderer.act(async () => mounted.splice(0).forEach((tree) => tree.unmount()));
 });
 
 for (const style of STYLES) {
