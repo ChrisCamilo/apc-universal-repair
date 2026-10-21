@@ -1,5 +1,5 @@
 import { useRef, type KeyboardEvent } from 'react'
-import { partFit, type FoundPart, type PartResults as Results } from '@apc/shared/catalog'
+import { itemFit, type FoundPart, type PartResults as Results } from '@apc/shared/catalog'
 import { arrowTarget } from '../components/radioKeys.ts'
 import { Text } from '../components/Typography.tsx'
 import { partResults } from './PartResults.styles.ts'
@@ -56,7 +56,7 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
               <code className={classes.code()} data-testid={ids.code}>{part.code}</code>
               <span className={classes.name()} data-testid={ids.name}>{part.item.name}</span>
             </span>
-            <span className={classes.fit()} data-testid={ids.fit}>{partFit(part.item)}</span>
+            <span className={classes.fit()} data-testid={ids.fit}>{itemFit(part.item)}</span>
           </button>
         ))}
       </div>
