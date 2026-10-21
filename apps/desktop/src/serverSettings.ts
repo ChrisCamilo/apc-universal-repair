@@ -278,7 +278,7 @@ async function runServer(host: ServerHost, databaseUrl: string | undefined): Pro
     return false;
   }
   console.log(`Starting the bundled server from ${host.setup.serverDir}`);
-  stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey });
+  stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey }, () => console.warn("The bundled server keeps stopping; it stays off."));
   const answers = await waitForApi(host.apiUrl);
   if (!answers) {
     console.warn(`The bundled server didn't answer in time. See logs/api.log in ${host.setup.userData}.`);
