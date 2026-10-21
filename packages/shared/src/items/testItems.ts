@@ -1,10 +1,16 @@
-import { NOT_APPLICABLE, type Item, type ItemBrand } from "./items.ts";
+import { NOT_APPLICABLE, type Item, type ItemBrand, type ItemVehicle } from "./items.ts";
 
 // Items for the tests of web, mobile, the API and the E2E stand-ins, written flat: an item's own fields and those of
-// its one brand side by side, as items were before they had brands, or its brands given whole. Not for the app itself.
+// its one brand and its one vehicle side by side, as items were before they had brands and vehicles, or its brands and
+// vehicles given whole. Not for the app itself.
 
-/** An item's fields and its one brand's, flat; brandId names that brand, and brands, when given, replaces it. */
-export type FlatItem = Partial<Omit<Item, "brands">> & Partial<Omit<ItemBrand, "id">> & { brandId?: string; brands?: ItemBrand[] };
+/**
+ * An item's fields, its one brand's and its one vehicle's, flat; brandId names that brand, and brands and vehicles,
+ * when given, replace them.
+ */
+export type FlatItem = Partial<Omit<Item, "brands" | "vehicles">> &
+  Partial<Omit<ItemBrand, "id">> &
+  Partial<ItemVehicle> & { brandId?: string; brands?: ItemBrand[]; vehicles?: ItemVehicle[] };
 
 /** How many ids testItem has made, for the next one. */
 let idCount = 0;
@@ -20,13 +26,13 @@ function nextId(): string {
 
 /**
  * Builds an item for a test from flat fields, filling in what the test doesn't look at. Its one brand takes the
- * item's id, as an item from before brands has after the migration, unless brandId names another; its quantity is
- * the brands' sum unless given.
+ * item's id, as an item from before brands has after the migration, unless brandId names another; its one vehicle is
+ * its vehicle brand and model, a Volkswagen of any model unless given; its quantity is the brands' sum unless given.
  * @param fields The fields that matter for the test.
  * @returns A complete item.
  */
 export function testItem(fields: FlatItem = {}): Item {
-  const { brandId, brands, partBrand, code, color, location, unitPriceCents, photos, ...own } = fields;
+  const { brandId, brands, partBrand, code, color, location, unitPriceCents, photos, vehicleBrand, vehicleModel, vehicles, ...own } = fields;
   const id = own.id ?? nextId();
   const made: ItemBrand[] = brands ?? [
     {
@@ -43,8 +49,7 @@ export function testItem(fields: FlatItem = {}): Item {
   return {
     name: "Item",
     category: "Motor",
-    vehicleBrand: "Volkswagen",
-    vehicleModel: null,
+    vehicles: vehicles ?? [{ vehicleBrand: vehicleBrand ?? "Volkswagen", vehicleModel: vehicleModel ?? null }],
     position: NOT_APPLICABLE,
     side: NOT_APPLICABLE,
     minQuantity: 0,

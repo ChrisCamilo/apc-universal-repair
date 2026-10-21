@@ -14,6 +14,8 @@ import {
   itemDetails,
   itemListQuerySchema,
   itemUpdateSchema,
+  itemVehiclesLabel,
+  itemVehiclesText,
   matchesSearch,
   matchingOptions,
   MIXED_VALUES,
@@ -103,7 +105,7 @@ test("Shared: the list query takes a page of 25, 50 or 100 items", () => {
 // them.
 test("Shared: new items need the required fields, a brand and a positive price", () => {
   const brand = { code: "w 712/95", partBrand: "Mann", unitPriceCents: 3990 };
-  const valid = { name: "Filtro de óleo", category: "Motor", vehicleBrand: "Volkswagen", brands: [brand] };
+  const valid = { name: "Filtro de óleo", category: "Motor", vehicles: [{ vehicleBrand: "Volkswagen" }], brands: [brand] };
   assert.equal(itemCreateSchema.safeParse(valid).success, true);
   assert.equal(itemCreateSchema.safeParse({ ...valid, brands: [{ ...brand, unitPriceCents: 0 }] }).success, false);
   assert.equal(itemCreateSchema.safeParse({ ...valid, name: "   " }).success, false);
@@ -120,7 +122,7 @@ test("Shared: new items need the required fields, a brand and a positive price",
 // can't be a code of one of the item's brands too, and an edit sending only some of the fields is checked the same.
 test("Shared: an item's original codes are each used once in it", () => {
   const brand = { code: "W 712/95", partBrand: "Mann", unitPriceCents: 3990 };
-  const valid = { name: "Filtro de óleo", category: "Motor", vehicleBrand: "Volkswagen", brands: [brand] };
+  const valid = { name: "Filtro de óleo", category: "Motor", vehicles: [{ vehicleBrand: "Volkswagen" }], brands: [brand] };
   assert.equal(itemCreateSchema.safeParse({ ...valid, originalCodes: ["030 115 561 AN", "030115561AP"] }).success, true);
   const repeated = itemCreateSchema.safeParse({ ...valid, originalCodes: ["030 115 561 AN", "030-115-561-an"] });
   assert.deepEqual(repeated.error?.issues.map((issue) => issue.path), [["originalCodes", 1]]);
@@ -129,6 +131,22 @@ test("Shared: an item's original codes are each used once in it", () => {
   assert.equal(itemCreateSchema.safeParse({ ...valid, originalCodes: [" "] }).success, false);
   assert.equal(itemUpdateSchema.safeParse({ originalCodes: ["W 712/95"] }).success, true);
   assert.equal(itemUpdateSchema.safeParse({ originalCodes: ["W 712/95"], brands: [brand] }).success, false);
+});
+
+// Sends items with several vehicles and checks one is needed, a model is optional, a vehicle written twice otherwise
+// is refused on its place, and Universal stands alone.
+test("Shared: an item fits at least one vehicle, each once and Universal alone", () => {
+  const brand = { code: "W 712/95", partBrand: "Mann", unitPriceCents: 3990 };
+  const item = (vehicles: object[]) => itemCreateSchema.safeParse({ name: "Filtro", category: "Motor", vehicles, brands: [brand] });
+  assert.equal(item([{ vehicleBrand: "Volkswagen", vehicleModel: "Gol" }, { vehicleBrand: "Volkswagen" }]).success, true);
+  assert.equal(item([]).success, false);
+  assert.deepEqual(item([{ vehicleBrand: "Fiat", vehicleModel: "Uno" }, { vehicleBrand: " fiat ", vehicleModel: "UNO" }]).error?.issues.map((issue) => issue.path), [
+    ["vehicles", 1],
+  ]);
+  assert.deepEqual(item([{ vehicleBrand: "Universal" }, { vehicleBrand: "Fiat" }]).error?.issues.map((issue) => issue.path), [
+    ["vehicles", 0, "vehicleBrand"],
+  ]);
+  assert.equal(item([{ vehicleBrand: "Universal" }]).success, true);
 });
 
 // Finds items by name ignoring case and accents and by any brand's part code or original code ignoring separators,
@@ -162,18 +180,22 @@ test("Shared: the result counter shows totals and stock alerts", () => {
   assert.equal(resultSummary(1, [{ quantity: 5, minQuantity: 1 }]), "1 de 1 item · 0 baixos · 0 esgotados");
 });
 
-// Writes an item's details in one line, leaving out N/A values and a missing vehicle model or location.
+// Writes an item's details in one line, leaving out N/A values and a missing vehicle model or location, and an item of
+// several vehicles with its first and how many more, as its row does.
 test("Shared: item details fit in one line without what doesn't apply", () => {
   const details = itemDetails({
     category: "Freios",
-    vehicleBrand: "Chevrolet",
-    vehicleModel: null,
+    vehicles: [{ vehicleBrand: "Chevrolet", vehicleModel: null }],
     position: "D",
     side: "N/A",
     brands: [{ partBrand: "Cobreq", color: "N/A", location: null, unitPriceCents: 8990 }],
   });
   assert.equal(details.replace(/\s/g, " "), "Freios · Cobreq · Chevrolet · D · R$ 89,90");
   assert.equal(itemDetails(PADS).replace(/\s/g, " "), "Freios · Cobreq +2 · Volkswagen Gol · D · Várias · Várias · R$ 79,90 – R$ 112,90");
+  const both = { vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Gol G5" }, { vehicleBrand: "Volkswagen", vehicleModel: null }] };
+  assert.equal(itemVehiclesLabel(both), "Volkswagen Gol G5 +1");
+  assert.equal(itemVehiclesText(both), "Volkswagen Gol G5, Volkswagen");
+  assert.equal(itemVehiclesLabel(PADS), "Volkswagen Gol");
 });
 
 // Reads an item of three brands for its row: the first code and part brand with how many more, a value the brands
