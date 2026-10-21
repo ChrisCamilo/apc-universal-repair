@@ -368,9 +368,13 @@ export async function startOwnServer(host: ServerHost): Promise<"started" | "wai
   return "started";
 }
 
-/** Stops the server the app runs, as the app quits. */
-export function stopOwnServer(): void {
-  void stopServer?.();
+/**
+ * Stops the server the app runs, as the app quits or before it installs an update.
+ * @returns Once it has exited, or after the stop's timeout.
+ */
+export async function stopOwnServer(): Promise<void> {
+  await stopServer?.();
+  stopServer = undefined;
 }
 
 /**

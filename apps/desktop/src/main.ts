@@ -47,6 +47,8 @@ const shown = new Set<Notification>();
 const devUrl = process.env.APC_DEV_URL;
 /** Whether the app is quitting, when closing the window ends it instead of hiding it in the tray. */
 let quitting = false;
+/** Whether the server the app runs has stopped, so quitting can go on. */
+let serverStopped = false;
 /** The tray's icon, kept so it isn't garbage collected. */
 let tray: Tray | undefined;
 // electron-updater is CommonJS, so its named exports come from the default one.
@@ -336,7 +338,19 @@ void app.whenReady().then(async () => {
     };
     handleServerSettings(host);
     keepInTray(window, port, installed, config);
-    app.on("will-quit", stopOwnServer);
+    // Quitting waits for the server to exit, so its database and files are let go before the app, or an installer
+    // replacing it, goes on.
+    app.on("will-quit", (event) => {
+      if (serverStopped) {
+        return;
+      }
+      event.preventDefault();
+      void stopOwnServer().then(() => {
+        serverStopped = true;
+        console.log("The bundled server stopped; quitting.");
+        app.quit();
+      });
+    });
     // A start hidden at sign-in shows the window when the page has to ask for PostgreSQL's address.
     if ((await startOwnServer(host)) === "waiting" && hidden) {
       window.once("ready-to-show", () => window.show());
