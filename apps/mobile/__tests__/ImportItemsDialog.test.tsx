@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { keepLocalCopy, pick } from '@react-native-documents/picker';
 import { CSV_COLUMNS, CSV_TEMPLATE } from '@apc/shared/item-csv';
+import type { ItemCreate } from '@apc/shared/items';
 import type { ItemLists } from '@apc/shared/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
@@ -22,12 +23,14 @@ const LISTS: ItemLists = {
   vehicleBrands: [{ id: '00000000-0000-4000-8000-000000000003', name: 'Volkswagen' }],
   vehicleModels: [{ id: '00000000-0000-4000-8000-000000000004', name: 'Gol', vehicleBrandId: '00000000-0000-4000-8000-000000000003' }],
 };
-// A file with a valid row, a row with new names, and a row with errors.
+// A file with a valid row, a row with new names, a row with errors, and two rows of one item made by two brands.
 const FILE = [
   CSV_COLUMNS.join(';'),
-  'w 712/95;filtro de óleo;MOTOR;mann;volkswagen;gol;8;2;a-2;39,90;;;',
-  'ngk-b7;vela;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;D;',
-  ';sem código;Freios;Cobreq;Ford;;x;;;0;;;',
+  ';w 712/95;filtro de óleo;MOTOR;mann;volkswagen;gol;8;2;a-2;39,90;;;',
+  ';ngk-b7;vela;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;D;',
+  ';;sem código;Freios;Cobreq;Ford;;x;;;0;;;',
+  '1;c 2433;filtro de ar;Motor;Mann;Volkswagen;Gol;3;3;A-4;49,90;;;',
+  '1;arl 4433;filtro de ar;Motor;Tecfil;Volkswagen;Gol;5;3;A-5;32,90;;;',
 ].join('\n');
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
@@ -123,13 +126,13 @@ test('Mobile: a CSV file is previewed before importing', async () => {
   const shown = texts(tree.root);
   expect(shown).toEqual(
     expect.arrayContaining([
-      'estoque.csv · 2 itens prontos para importar · 1 com erro',
+      'estoque.csv · 3 itens prontos para importar · 1 linha com erro',
       'Categorias: Ignição',
-      'Marcas de peça: NGK',
+      'Marcas de peça: NGK, Tecfil',
       'Marcas de veículo: Fiat',
       'Modelos de veículo: Uno (Fiat)',
       'Informe o código da peça.',
-      'Importar 2 itens',
+      'Importar 3 itens',
     ]),
   );
   const first = tree.root.findAll((n) => n.props.testID === 'inventory.import-items-dialog.preview.row' && typeof n.type === 'string')[0];
@@ -141,8 +144,8 @@ test('Mobile: a CSV file is previewed before importing', async () => {
   ]);
 });
 
-// Imports the file and checks only the valid rows are sent, a toast says how many items were created and updated,
-// and the import is handed over.
+// Imports the file and checks only the valid items are sent, the two rows of one item as its brands, a toast says how
+// many items were created and updated, and the import is handed over.
 test('Mobile: the valid rows are imported', async () => {
   const onImported = jest.fn();
   const tree = await mount(onImported);
@@ -150,10 +153,14 @@ test('Mobile: the valid rows are imported', async () => {
   await press(tree, 'Escolher arquivo');
   (fetch as jest.Mock).mockClear();
   (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ created: 1, updated: 1 }) });
-  await press(tree, 'Importar 2 itens');
+  await press(tree, 'Importar 3 itens');
   const [url, init] = (fetch as jest.Mock).mock.calls[0];
   expect(url).toMatch(/\/items\/import$/);
-  expect(JSON.parse(init.body).items.map((item: { code: string }) => item.code)).toEqual(['W 712/95', 'NGK-B7']);
+  expect(JSON.parse(init.body).items.map((item: ItemCreate) => item.brands.map((brand) => brand.code))).toEqual([
+    ['W 712/95'],
+    ['NGK-B7'],
+    ['C 2433', 'ARL 4433'],
+  ]);
   expect(texts(tree.root)).toContain('Importação concluída: 1 item criado, 1 atualizado.');
   expect(onImported).toHaveBeenCalledTimes(1);
 });
