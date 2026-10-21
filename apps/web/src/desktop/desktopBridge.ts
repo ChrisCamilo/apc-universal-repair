@@ -1,7 +1,7 @@
 // What the desktop app's preload hands the page (see apps/desktop/src/preload.cts): asking for a Windows notification
 // and hearing when one was clicked, hearing when a new version is ready and asking to restart into it, and the
-// settings of the server the app runs (see apps/desktop/src/serverSettings.ts). In a browser there is none, and the
-// web app shows nothing extra.
+// settings of the server the app runs (see apps/desktop/src/serverSettings.ts), and why that server isn't on, when it
+// isn't. In a browser there is none, and the web app shows nothing extra.
 
 /** An old server to import: a PostgreSQL address, or a SQLite file with the recovery copy of its key when it is encrypted. */
 export type ImportSource = { kind: 'postgresql'; url: string } | { kind: 'sqlite'; file: string; key?: string }
@@ -19,16 +19,22 @@ export type ServerBridge = {
   chooseSqliteFile: () => Promise<{ file: string; photos: string } | null>
   /** Checks an import can start. */
   checkImport: (source: ImportSource) => Promise<ImportCheck>
+  /** Tells why the server isn't on, while it isn't; null while it is. */
+  failure: () => Promise<ServerFailure | null>
   /** Imports an old server's data and photos into the database in use, with the server off meanwhile. */
   importServer: (source: ImportSource, photosFrom?: string) => Promise<ImportOutcome>
   /** Applies this version's migrations to an old server's database, which change its structure and keep its data. */
   migrateImport: (source: ImportSource) => Promise<ServerOutcome>
+  /** Calls a listener each time the server turns out not to be on, and gives the way to stop. */
+  onFailure: (listener: (failure: ServerFailure) => void) => () => void
   /** Calls a listener each time the tray asks to open the Servidor dialog, and gives the way to stop. */
   onOpen: (listener: () => void) => () => void
   /** Gives the SQLite key's recovery copy, in groups of 8, while the user hasn't said it is kept; null after. */
   recoveryKey: () => Promise<string | null>
   /** Says the user kept the recovery copy, which stops it showing. */
   recoveryKeySaved: () => Promise<void>
+  /** Starts the server again after it didn't start; true once it answers. */
+  retry: () => Promise<boolean>
   /** Reads the server's settings. */
   settings: () => Promise<ServerSettings>
   /** Moves the server to a PostgreSQL database, checked and migrated first, and restarts it there. */
@@ -36,6 +42,8 @@ export type ServerBridge = {
   /** Moves the server back to its SQLite file, and restarts it there. */
   useSqlite: () => Promise<ServerOutcome>
 }
+/** Why the server the desktop app runs isn't on, in words, and the log to look at. */
+export type ServerFailure = { reason: string; log: string }
 /** How a change of database ended: done, or the message saying why not. */
 export type ServerOutcome = { ok: true } | { ok: false; message: string }
 /**
