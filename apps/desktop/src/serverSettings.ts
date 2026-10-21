@@ -63,6 +63,11 @@ const CHANNELS = {
 } as const;
 /** The channel the main process asks the page to open the Servidor dialog on, from the tray. */
 export const OPEN_SERVER_SETTINGS_CHANNEL = "apc:open-server-settings";
+/**
+ * How long to let a server that gave up finish writing its log: its last lines reach api.log a moment after it exits,
+ * and the reason the page shows is its last error.
+ */
+const LOG_SETTLE_MS = 500;
 /** The channel the main process tells the page on that the server isn't on, with why. */
 export const SERVER_FAILED_CHANNEL = "apc:server-failed";
 
@@ -350,8 +355,10 @@ async function runServer(host: ServerHost, databaseUrl: string | undefined): Pro
   const gaveUp = new AbortController();
   stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey }, (code) => {
     if (code !== PORT_IN_USE_EXIT_CODE) {
-      reportFailure(host, code === WRONG_KEY_EXIT_CODE ? "keyWrong" : "stopped");
-      gaveUp.abort();
+      setTimeout(() => {
+        reportFailure(host, code === WRONG_KEY_EXIT_CODE ? "keyWrong" : "stopped");
+        gaveUp.abort();
+      }, LOG_SETTLE_MS);
       return;
     }
     // Taken since the check: the program holding it is looked up before the wait ends, so the page hears it.
