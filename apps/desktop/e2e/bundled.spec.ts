@@ -344,6 +344,96 @@ test("Desktop: a missing or wrong SQLite key is asked for, never replaced", asyn
   await app.close();
 });
 
+/**
+ * Changes the SQLite key from the Servidor dialog, as the tray opens it, and keeps the new key's recovery copy.
+ * @param app The running app.
+ * @param page Its window.
+ * @returns The new recovery copy.
+ */
+async function changeKey(app: ElectronApplication, page: Page): Promise<string> {
+  await openServerSettings(app);
+  const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
+  await dialog.getByRole("button", { name: "Trocar a chave" }).click();
+  await dialog.getByRole("button", { name: "Trocar a chave mesmo assim" }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Pronto: o banco tem uma chave nova. Guarde a cópia de recuperação dela.", { timeout: 60_000 });
+  return keepRecoveryKey(page);
+}
+
+// Signs up, then changes the SQLite key from the Servidor dialog, and checks the new recovery copy shows, config.json
+// keeps no key apart, and the next start opens the data with the new key. Then, with the key taken out of
+// config.json, the old recovery copy no longer opens the data, and the new one does.
+test("Desktop: the SQLite key changes, and the old recovery copy no longer opens the data", async () => {
+  test.setTimeout(180_000);
+  const first = await launch();
+  const firstPage = await first.app.firstWindow();
+  await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
+  const oldCopy = await keepRecoveryKey(firstPage);
+  await signUp(firstPage);
+  const before = readConfig(first.userData).sqliteKey;
+  const newCopy = await changeKey(first.app, firstPage);
+  expect(newCopy).not.toBe(oldCopy);
+  const changed = readConfig(first.userData);
+  expect(changed.sqliteKey).not.toBe(before);
+  expect(changed).toMatchObject({ sqliteKeySaved: true });
+  expect(changed).not.toHaveProperty("sqliteKeyNext");
+  await first.app.close();
+  const { userData } = first;
+
+  const again = await launch({ userData });
+  const againPage = await again.app.firstWindow();
+  await expect(againPage.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+  await expect(againPage.getByText("Nenhum item cadastrado")).toBeVisible();
+  await again.app.close();
+
+  writeConfig(userData, { ...readConfig(userData), sqliteKey: undefined, sqliteKeySaved: undefined });
+  const { app } = await launch({ userData });
+  const page = await app.firstWindow();
+  await expect(page.getByRole("alert").filter({ hasText: "O servidor não ligou" })).toBeVisible({ timeout: 60_000 });
+  await page.getByLabel("Chave de recuperação", { exact: true }).fill(oldCopy);
+  await page.getByRole("button", { name: "Usar a chave de recuperação" }).click();
+  await expect(page.getByText("Essa chave não abre o banco deste computador.", { exact: false })).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel("Chave de recuperação", { exact: true }).fill(newCopy);
+  await page.getByRole("button", { name: "Usar a chave de recuperação" }).click();
+  await expect.poll(() => readConfig(userData).sqliteKeySaved, { timeout: 60_000 }).toBe(true);
+  await expect(page.getByText("Nenhum item cadastrado")).toBeVisible({ timeout: 60_000 });
+  await app.close();
+});
+
+// Leaves config.json as a change of the SQLite key cut short leaves it, and checks the next start ends it with the key
+// that opens the file: cut short after the file changed, the new key, apart as sqliteKeyNext, becomes the key in use;
+// cut short before, a new key that opens nothing is dropped and the key in use stays. Each start opens the data.
+test("Desktop: a change of the SQLite key cut short is ended on the next start", async () => {
+  test.setTimeout(180_000);
+  const first = await launch();
+  const firstPage = await first.app.firstWindow();
+  await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
+  await keepRecoveryKey(firstPage);
+  await signUp(firstPage);
+  const before = readConfig(first.userData).sqliteKey;
+  await changeKey(first.app, firstPage);
+  const inUse = readConfig(first.userData).sqliteKey;
+  const strayKey = await first.app.evaluate(({ safeStorage }) => safeStorage.encryptString("cd".repeat(32)).toString("base64"));
+  await first.app.close();
+  const { userData } = first;
+  const opensTheData = async () => {
+    const { app } = await launch({ userData });
+    const page = await app.firstWindow();
+    await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+    await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
+    await app.close();
+  };
+
+  writeConfig(userData, { ...readConfig(userData), sqliteKey: before, sqliteKeyNext: inUse });
+  await opensTheData();
+  expect(readConfig(userData).sqliteKey).toBe(inUse);
+  expect(readConfig(userData)).not.toHaveProperty("sqliteKeyNext");
+
+  writeConfig(userData, { ...readConfig(userData), sqliteKeyNext: strayKey });
+  await opensTheData();
+  expect(readConfig(userData).sqliteKey).toBe(inUse);
+  expect(readConfig(userData)).not.toHaveProperty("sqliteKeyNext");
+});
+
 // Holds the app's port with this test's own Node before the app opens, and checks the window says the port is in use
 // by that program, naming its process, and the server was never started; then "Usar outra porta" moves the server to a
 // free port, kept in config.json, where it answers and the login shows, with the SQLite key's recovery copy the first
