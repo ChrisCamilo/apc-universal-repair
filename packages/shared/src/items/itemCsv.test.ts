@@ -73,8 +73,10 @@ const STOCK: Item[] = [
     name: "Filtro de ar",
     originalCodes: ["1J0 129 620", "1J0129620A"],
     category: "Motor",
-    vehicleBrand: "Volkswagen",
-    vehicleModel: "Gol",
+    vehicles: [
+      { vehicleBrand: "Volkswagen", vehicleModel: "Gol" },
+      { vehicleBrand: "Volkswagen", vehicleModel: "Voyage" },
+    ],
     minQuantity: 3,
     brands: [
       { id: "00000000-0000-4000-8000-0000000000b1", partBrand: "Mann", code: "C 2433", color: "N/A", location: "A-4", quantity: 3, unitPriceCents: 4990, photos: [] },
@@ -103,8 +105,7 @@ function createOf(item: Item): ItemCreate {
   return {
     name: item.name,
     category: item.category,
-    vehicleBrand: item.vehicleBrand,
-    vehicleModel: item.vehicleModel ?? "",
+    vehicles: item.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel ?? "" })),
     minQuantity: item.minQuantity,
     position: item.position,
     side: item.side,
@@ -135,7 +136,7 @@ function rows(text: string): CsvItemRow[] {
 // and checks each is read in cents, a dot and a comma meaning the same, and only the one past the limit is refused.
 test("Shared: CSV prices take a decimal comma or point, up to a million", () => {
   const prices = ["189,90", "1.234,56", "1,234.56", "189.9", "7.50", "42", "1000000", "1000000,01"];
-  const text = [HEADER, ...prices.map((price, index) => `,A-${index},,Junta,Motor,Mann,Volkswagen,,1,1,,"${price}",,,`)].join("\n");
+  const text = [HEADER, ...prices.map((price, index) => `,A-${index},,Junta,Motor,Mann,Volkswagen,1,1,,"${price}",,,`)].join("\n");
   const read = rows(text);
   assert.deepEqual(
     read.map((row) => row.item.brands[0].unitPriceCents),
@@ -161,8 +162,8 @@ test("Shared: CSV records keep quoted separators, quotes and line breaks", () =>
   );
 });
 
-// Reads the template, comma separated, and checks its rows are valid with the price, quantities, an empty model, and
-// position and side taken from the file, and the last two rows make one item of two brands.
+// Reads the template, comma separated, and checks its rows are valid with the price, quantities, two vehicles and one of
+// any model, and position and side taken from the file, and the last two rows make one item of two brands.
 test("Shared: the CSV template reads as an item of one brand and one of two", () => {
   const read = rows(CSV_TEMPLATE);
   assert.deepEqual(
@@ -172,18 +173,28 @@ test("Shared: the CSV template reads as an item of one brand and one of two", ()
   const [filter, pads] = read;
   assert.equal(filter.line, 2);
   assert.deepEqual(
-    [filter.item.brands[0].code, filter.item.brands[0].unitPriceCents, filter.item.brands[0].quantity, filter.item.minQuantity, filter.item.vehicleModel],
-    ["W 712/95", 3990, 8, 2, "Gol"],
+    [filter.item.brands[0].code, filter.item.brands[0].unitPriceCents, filter.item.brands[0].quantity, filter.item.minQuantity],
+    ["W 712/95", 3990, 8, 2],
   );
-  assert.deepEqual([pads.item.vehicleModel, pads.item.position, pads.item.side, pads.item.brands[0].color], ["", "D", "Ambos", "N/A"]);
+  assert.deepEqual(filter.item.vehicles, [
+    { vehicleBrand: "Volkswagen", vehicleModel: "Gol" },
+    { vehicleBrand: "Volkswagen", vehicleModel: "Voyage" },
+  ]);
+  assert.deepEqual([pads.item.vehicles, pads.item.position, pads.item.side, pads.item.brands[0].color], [
+    [{ vehicleBrand: "Chevrolet", vehicleModel: "" }],
+    "D",
+    "Ambos",
+    "N/A",
+  ]);
   assert.deepEqual(
     importedItems(read).map((item) => item.brands.map((brand) => [brand.partBrand, brand.code])),
     [[["Mann", "W 712/95"]], [["Cobreq", "BP-1020"], ["Fras-le", "PD/1020"]]],
   );
 });
 
-// Reads a semicolon-separated file with a BOM and its columns in another order, and checks the writing rule: codes
-// uppercase, capitals on text, acronyms kept, and names already in the lists in their spelling.
+// Reads a semicolon-separated file with a BOM, its columns in another order and its vehicle in the brand and model
+// columns of before, and checks the writing rule: codes uppercase, capitals on text, acronyms kept, and names already
+// in the lists in their spelling, the vehicle among them.
 test("Shared: a semicolon file is read with the writing rule and the lists' spelling", () => {
   const text = "﻿name;code;unit_price;category;part_brand;vehicle_brand;vehicle_model;location;color;position;side\n" +
     "vela xR3;ngk-b7;34,9;MOTOR;ngk;volkswagen;gol;a-2;preto;d;ld\n";
@@ -193,8 +204,7 @@ test("Shared: a semicolon file is read with the writing rule and the lists' spel
   assert.deepEqual(row.item, {
     name: "Vela xR3",
     category: "Motor",
-    vehicleBrand: "Volkswagen",
-    vehicleModel: "Gol",
+    vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Gol" }],
     minQuantity: 0,
     position: "D",
     side: "LD",
@@ -208,11 +218,11 @@ test("Shared: a semicolon file is read with the writing rule and the lists' spel
 test("Shared: invalid CSV rows say why", () => {
   const text = [
     HEADER,
-    ",,,,,,,,,,,,,,",
-    ",,,Filtro,Motor,Mann,Volkswagen,,x,2.5,,0,,Cima,Meio",
-    ",A-1,,Junta,Motor,Mann,Volkswagen,,1,1,,abc,,,",
-    ",a-1,,Junta,Motor,Mann,Volkswagen,,1,1,,10,,,",
-    ",A 1,,Junta,Motor,Mann,Volkswagen,,1,1,,10,,,",
+    ",,,,,,,,,,,,,",
+    ",,,Filtro,Motor,Mann,Volkswagen,x,2.5,,0,,Cima,Meio",
+    ",A-1,,Junta,Motor,Mann,Volkswagen,1,1,,abc,,,",
+    ",a-1,,Junta,Motor,Mann,Volkswagen,1,1,,10,,,",
+    ",A 1,,Junta,Motor,Mann,Volkswagen,1,1,,10,,,",
   ].join("\n");
   const [missing, wrong, repeated, spaced] = rows(text);
   assert.equal(missing.line, 3);
@@ -235,12 +245,12 @@ test("Shared: invalid CSV rows say why", () => {
 test("Shared: the rows of one item describe it the same way, each with its part brand", () => {
   const text = [
     HEADER,
-    '1,N-1,,Pastilha,Freios,Cobreq,Volkswagen,Gol,2,4,,"79,90",,D,',
-    '1,N-2,,Pastilha traseira,Freios,Fras-le,Volkswagen,Gol,1,4,,"94,90",,D,',
-    '2,M-1,,Filtro,Motor,Mann,Volkswagen,,1,1,,"10,00",,,',
-    '2,M-2,,filtro,MOTOR,mann,Volkswagen,,1,1,,"11,00",,,',
-    '3,C-1,,Junta,Motor,Mann,Volkswagen,,1,1,,"10,00",,,',
-    '3,C-2,,junta,motor,Victor Reinz,volkswagen,,2,1,,"12,00",,,',
+    '1,N-1,,Pastilha,Freios,Cobreq,Volkswagen / Gol,2,4,,"79,90",,D,',
+    '1,N-2,,Pastilha traseira,Freios,Fras-le,Volkswagen / Gol,1,4,,"94,90",,D,',
+    '2,M-1,,Filtro,Motor,Mann,Volkswagen,1,1,,"10,00",,,',
+    '2,M-2,,filtro,MOTOR,mann,Volkswagen,1,1,,"11,00",,,',
+    '3,C-1,,Junta,Motor,Mann,Volkswagen,1,1,,"10,00",,,',
+    '3,C-2,,junta,motor,Victor Reinz,volkswagen,2,1,,"12,00",,,',
   ].join("\n");
   const read = rows(text);
   assert.deepEqual(
@@ -267,13 +277,13 @@ test("Shared: the rows of one item describe it the same way, each with its part 
 test("Shared: CSV original codes are split at a bar and used once in the file", () => {
   const text = [
     HEADER,
-    '1,C 2433,1j0 129 620 | 1J0129620A | 1J0-129-620,Filtro de ar,Motor,Mann,Volkswagen,Gol,3,3,,"49,90",,,',
-    '1,ARL 4433,1J0 129 620|1J0129620A,Filtro de ar,Motor,Tecfil,Volkswagen,Gol,5,3,,"32,90",,,',
-    ',W 712/95,030 115 561 AN,Filtro de óleo,Motor,Mann,Volkswagen,,1,1,,"39,90",,,',
-    ',X-1,1J0129620,Junta,Motor,Mann,Volkswagen,,1,1,,10,,,',
-    ',X-2,w712/95,Junta,Motor,Mann,Volkswagen,,1,1,,10,,,',
-    '2,Y-1,Y-0,Vela,Motor,NGK,Volkswagen,,1,1,,10,,,',
-    '2,Y-2,Y-9,Vela,Motor,Mann,Volkswagen,,1,1,,10,,,',
+    '1,C 2433,1j0 129 620 | 1J0129620A | 1J0-129-620,Filtro de ar,Motor,Mann,Volkswagen / Gol,3,3,,"49,90",,,',
+    '1,ARL 4433,1J0 129 620|1J0129620A,Filtro de ar,Motor,Tecfil,Volkswagen / Gol,5,3,,"32,90",,,',
+    ',W 712/95,030 115 561 AN,Filtro de óleo,Motor,Mann,Volkswagen,1,1,,"39,90",,,',
+    ',X-1,1J0129620,Junta,Motor,Mann,Volkswagen,1,1,,10,,,',
+    ',X-2,w712/95,Junta,Motor,Mann,Volkswagen,1,1,,10,,,',
+    '2,Y-1,Y-0,Vela,Motor,NGK,Volkswagen,1,1,,10,,,',
+    '2,Y-2,Y-9,Vela,Motor,Mann,Volkswagen,1,1,,10,,,',
   ].join("\n");
   const read = rows(text);
   assert.deepEqual(read[0].item.originalCodes, ["1J0 129 620", "1J0129620A"]);
@@ -298,14 +308,46 @@ test("Shared: CSV original codes are split at a bar and used once in the file", 
   );
 });
 
+// Reads the vehicles column: several vehicles split at "|", each "Marca / Modelo" or a brand alone for any model, in
+// the lists' spelling or written by the rule, a brand of two words kept whole; and checks a row with none, one with a
+// vehicle twice and one with Universal among others are refused, and the rows of one item must agree on them.
+test("Shared: CSV vehicles are split at a bar, each a brand and maybe a model", () => {
+  const text = [
+    HEADER,
+    ',A-1,,Junta,Motor,Mann,volkswagen / gol | Land Rover / defender 110 | fiat,1,1,,10,,,',
+    ',A-2,,Junta,Motor,Mann,,1,1,,10,,,',
+    ',A-3,,Junta,Motor,Mann,Volkswagen / Gol | VOLKSWAGEN / gol,1,1,,10,,,',
+    ',A-4,,Junta,Motor,Mann,Universal | Fiat,1,1,,10,,,',
+    '1,B-1,,Filtro,Motor,Mann,Volkswagen / Gol | Fiat,1,1,,10,,,',
+    '1,B-2,,Filtro,Motor,Tecfil,Fiat | Volkswagen / Gol,1,1,,10,,,',
+  ].join("\n");
+  const read = rows(text);
+  assert.deepEqual(read[0].item.vehicles, [
+    { vehicleBrand: "Volkswagen", vehicleModel: "Gol" },
+    { vehicleBrand: "Land Rover", vehicleModel: "Defender 110" },
+    { vehicleBrand: "Fiat", vehicleModel: "" },
+  ]);
+  assert.deepEqual(
+    read.map((row) => row.errors),
+    [
+      [],
+      [ITEM_FORM_MESSAGES.vehicleBrand],
+      ["Veículo repetido: Volkswagen / Gol."],
+      [ITEM_FORM_MESSAGES.universalAlone],
+      ["Outra linha do item 1 tem erro."],
+      ["O item 1 está descrito de outro jeito na linha 6."],
+    ],
+  );
+});
+
 // Reads rows with quantities past the limit, a negative one and the limit itself, and checks only those past it and
 // the negative one are refused, naming the column.
 test("Shared: CSV quantities can't pass the limit", () => {
   const text = [
     HEADER,
-    ",A-1,,Junta,Motor,Mann,Volkswagen,,1000001,1000001,,10,,,",
-    ",A-2,,Junta,Motor,Mann,Volkswagen,,-2,0,,10,,,",
-    ",A-3,,Junta,Motor,Mann,Volkswagen,,1000000,1000000,,10,,,",
+    ",A-1,,Junta,Motor,Mann,Volkswagen,1000001,1000001,,10,,,",
+    ",A-2,,Junta,Motor,Mann,Volkswagen,-2,0,,10,,,",
+    ",A-3,,Junta,Motor,Mann,Volkswagen,1000000,1000000,,10,,,",
   ].join("\n");
   const [past, negative, limit] = rows(text);
   assert.deepEqual(past.errors, ["Quantidade deve ser no máximo 1.000.000.", "Quantidade mínima deve ser no máximo 1.000.000."]);
@@ -317,7 +359,7 @@ test("Shared: CSV quantities can't pass the limit", () => {
 test("Shared: a CSV file without items or columns is refused", () => {
   assert.deepEqual(readItemsCsv("", LISTS), { error: "O arquivo está vazio." });
   assert.deepEqual(readItemsCsv("code,name\nA,B", LISTS), {
-    error: "Faltam colunas no arquivo: category, part_brand, vehicle_brand, unit_price. Use o modelo.",
+    error: "Faltam colunas no arquivo: category, part_brand, vehicles, unit_price. Use o modelo.",
   });
   assert.deepEqual(readItemsCsv(`${HEADER}\n`, LISTS), { error: "O arquivo não tem itens, só o cabeçalho." });
 });
@@ -327,10 +369,10 @@ test("Shared: a CSV file without items or columns is refused", () => {
 test("Shared: the names a CSV import creates are listed once", () => {
   const text = [
     HEADER,
-    ",A,,Junta,Motor,Mann,Volkswagen,Santana,,,,10,,,",
-    ",B,,Vela,Ignição,mann,Renault,Clio,,,,10,,,",
-    ",C,,Filtro,Ignicao,NGK,volkswagen,santana,,,,10,,,",
-    ",D,,Erro,Turbo,Cofap,Fiat,Uno,,,,0,,,",
+    ",A,,Junta,Motor,Mann,Volkswagen / Santana,,,,10,,,",
+    ",B,,Vela,Ignição,mann,Renault / Clio,,,,10,,,",
+    ",C,,Filtro,Ignicao,NGK,volkswagen / santana,,,,10,,,",
+    ",D,,Erro,Turbo,Cofap,Fiat / Uno,,,,0,,,",
   ].join("\n");
   assert.deepEqual(newListNames(rows(text), LISTS), {
     categories: ["Ignição"],
@@ -346,7 +388,7 @@ test("Shared: the names a CSV import creates are listed once", () => {
 // Sends the template with an invalid row and checks only the valid items go, the rows of one item as its brands,
 // then that a failed import gives null.
 test("Shared: an import sends the valid items only", async () => {
-  const read = rows(`${CSV_TEMPLATE},,,,,,,,,,,0,,,
+  const read = rows(`${CSV_TEMPLATE},,,,,,,,,,0,,,
 `);
   const fetch = mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ created: 1, updated: 1 }), { status: 200 }));
   assert.deepEqual(await importItems("/api", read), { created: 1, updated: 1 });
@@ -371,11 +413,11 @@ test("Shared: an import takes from one item up to the limit", () => {
 // Words the preview's count of items and rows in error, an item's details line, and the toast of an import, in
 // singular and plural.
 test("Shared: the import is worded for the preview and the toast", () => {
-  const read = rows(`${CSV_TEMPLATE},,,,,,,,,,,0,,,
+  const read = rows(`${CSV_TEMPLATE},,,,,,,,,,0,,,
 `);
   assert.equal(rowsSummary(read), "2 itens prontos para importar · 1 linha com erro");
   assert.equal(rowsSummary(read.slice(0, 1)), "1 item pronto para importar · 0 linhas com erro");
-  assert.equal(importedDetails(read[0].item).replace(/\s/g, " "), "Motor · Mann · Volkswagen Gol · A-2 · R$ 39,90");
+  assert.equal(importedDetails(read[0].item).replace(/\s/g, " "), "Motor · Mann · Volkswagen Gol +1 · A-2 · R$ 39,90");
   assert.equal(importedSummary({ created: 3, updated: 1 }), "Importação concluída: 3 itens criados, 1 atualizado.");
   assert.equal(importedSummary({ created: 1, updated: 0 }), "Importação concluída: 1 item criado, 0 atualizados.");
 });
@@ -389,10 +431,10 @@ test("Shared: the export writes the import's columns, a row per brand, with phot
   assert.ok(plain.startsWith("﻿"));
   const lines = plain.slice(1).split("\r\n");
   assert.equal(lines[0], CSV_COLUMNS.join(","));
-  assert.equal(lines[1], '1,BP-1020,,"Pastilha de freio ""cerâmica"", dianteira",Freios,Cobreq,Volkswagen,Gol,4,1,B-10,"1.234,56",Preto,D,Ambos');
-  assert.equal(lines[2], '2,BKR6E,,Vela de ignição,Motor,NGK,Volkswagen,,0,0,,"24,90",N/A,N/A,N/A');
-  assert.equal(lines[3], '3,C 2433,1J0 129 620 | 1J0129620A,Filtro de ar,Motor,Mann,Volkswagen,Gol,3,3,A-4,"49,90",N/A,N/A,N/A');
-  assert.equal(lines[4], '3,ARL 4433,1J0 129 620 | 1J0129620A,Filtro de ar,Motor,Tecfil,Volkswagen,Gol,5,3,A-5,"32,90",N/A,N/A,N/A');
+  assert.equal(lines[1], '1,BP-1020,,"Pastilha de freio ""cerâmica"", dianteira",Freios,Cobreq,Volkswagen / Gol,4,1,B-10,"1.234,56",Preto,D,Ambos');
+  assert.equal(lines[2], '2,BKR6E,,Vela de ignição,Motor,NGK,Volkswagen,0,0,,"24,90",N/A,N/A,N/A');
+  assert.equal(lines[3], '3,C 2433,1J0 129 620 | 1J0129620A,Filtro de ar,Motor,Mann,Volkswagen / Gol | Volkswagen / Voyage,3,3,A-4,"49,90",N/A,N/A,N/A');
+  assert.equal(lines[4], '3,ARL 4433,1J0 129 620 | 1J0129620A,Filtro de ar,Motor,Tecfil,Volkswagen / Gol | Volkswagen / Voyage,5,3,A-5,"32,90",N/A,N/A,N/A');
   assert.equal(lines[5], "");
   const withPhotos = itemsCsv(STOCK, { photos: true }).slice(1).split("\r\n");
   assert.equal(withPhotos[0], `${CSV_COLUMNS.join(",")},${CSV_PHOTOS_COLUMN}`);
