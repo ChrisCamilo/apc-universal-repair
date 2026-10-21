@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
+import { DEV_SERVER_PORT } from '@apc/shared/server'
 import { themeBootScript, themeCss } from './src/theme.ts'
 
 /**
@@ -21,12 +22,13 @@ function themePlugin(): Plugin {
 }
 
 // https://vite.dev/config/
+// Calls to /api go to the API `pnpm dev` runs, on the development port, never to the desktop app's server.
 export default defineConfig({
   plugins: [react(), tailwindcss(), themePlugin()],
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:3333",
+        target: `http://localhost:${DEV_SERVER_PORT}`,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },

@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from "@apc/shared/screens";
+import { DEV_SERVER_PORT } from "@apc/shared/server";
 
 const isCI = !!process.env.CI;
 
@@ -27,7 +28,7 @@ export default defineConfig({
   webServer: [
     {
       command: "pnpm --filter @apc/api run dev",
-      url: "http://localhost:3333/health",
+      url: `http://localhost:${DEV_SERVER_PORT}/health`,
       reuseExistingServer: !isCI,
     },
     {
