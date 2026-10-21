@@ -7,7 +7,7 @@ import '../index.css'
 import { themeCss } from '../theme.ts'
 import type { ServerBridge, ServerSettings } from './desktopBridge.ts'
 import { ServerSettingsProvider } from './ServerSettings.tsx'
-import { useOpenServerSettings } from './serverSettingsContext.ts'
+import { useOpenServerSettings, type ServerSettingsFocus } from './serverSettingsContext.ts'
 
 /** The app's own server on SQLite, as a fresh install has it once its key's recovery copy is kept. */
 const ON_SQLITE: Extract<ServerSettings, { kind: 'own' }> = {
@@ -50,6 +50,7 @@ function giveServer(settings: ServerSettings) {
     importServer: vi.fn<ServerBridge['importServer']>(async () => ({ ok: false, message: 'Nada importado.' })),
     migrateImport: vi.fn<ServerBridge['migrateImport']>(async () => ({ ok: true })),
     settings: vi.fn<ServerBridge['settings']>(async () => settings),
+    usePort: vi.fn<ServerBridge['usePort']>(async () => ({ ok: true })),
     usePostgresql: vi.fn<ServerBridge['usePostgresql']>(async () => ({ ok: true })),
     useSqlite: vi.fn<ServerBridge['useSqlite']>(async () => ({ ok: true })),
     recoveryKey: vi.fn<ServerBridge['recoveryKey']>(async () => null),
@@ -160,6 +161,47 @@ test('Web: moving to PostgreSQL says so and opens the app again on closing', asy
   await expect.element(dialog.getByText('PostgreSQL, em localhost:5432/apc')).toBeVisible()
   await dialog.getByRole('button', { name: 'Fechar' }).first().click()
   expect(reload).toHaveBeenCalledOnce()
+})
+
+// Opens the dialog from the tray and types another port: Trocar a porta first says the phone's address changes with
+// it; a port another program holds is refused with why, and a free one moves the server and says so, and closing the
+// dialog opens the app again. The port in use can't be "changed" to itself.
+test('Web: the port moves once the phone\'s new address is confirmed', async () => {
+  const { calls, openFromTray } = giveServer(ON_SQLITE)
+  const taken = 'A porta 3100 já está em uso pelo programa node.exe (processo 4321). Feche esse programa e tente de novo, ou use outra porta.'
+  calls.usePort.mockResolvedValueOnce({ ok: false, message: taken })
+  const reload = vi.fn()
+  const screen = await renderSettings(reload)
+  openFromTray()
+  const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
+  const field = dialog.getByLabelText('Porta', { exact: true })
+  await expect.element(field).toHaveValue('3000')
+  await expect.element(dialog.getByRole('button', { name: 'Trocar a porta' })).toBeDisabled()
+
+  await field.fill('3100')
+  await dialog.getByRole('button', { name: 'Trocar a porta' }).click()
+  await expect.element(dialog.getByText('O endereço do celular muda para http://192.168.0.10:3100. Depois de trocar, configure o celular com esse endereço.')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Trocar mesmo assim' }).click()
+  await expect.element(dialog.getByRole('alert')).toHaveTextContent(taken)
+
+  await dialog.getByRole('button', { name: 'Trocar a porta' }).click()
+  await dialog.getByRole('button', { name: 'Trocar mesmo assim' }).click()
+  await expect.element(dialog.getByRole('status')).toHaveTextContent('Pronto: o servidor ligou na porta 3100.')
+  expect(calls.usePort.mock.calls).toEqual([[3100], [3100]])
+  await dialog.getByRole('button', { name: 'Fechar' }).first().click()
+  expect(reload).toHaveBeenCalledOnce()
+})
+
+// Opens the dialog the way the screen of a taken port does, and checks it starts on the port field.
+test('Web: opened for a taken port, the dialog starts on its port field', async () => {
+  giveServer(ON_SQLITE)
+  const screen = await render(
+    <ServerSettingsProvider>
+      <Opener focus="port" />
+    </ServerSettingsProvider>,
+  )
+  await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
+  await expect.element(screen.getByRole('dialog', { name: 'Servidor e banco de dados' }).getByLabelText('Porta', { exact: true })).toHaveFocus()
 })
 
 // Starts with PostgreSQL chosen at install and no address: the dialog opens by itself, can't be closed with Escape,
@@ -293,7 +335,7 @@ for (const style of STYLES) {
   }
 }
 
-function Opener() {
+function Opener({ focus }: { focus?: ServerSettingsFocus }) {
   const open = useOpenServerSettings()
-  return <button onClick={open}>Abrir as configurações</button>
+  return <button onClick={() => open(focus)}>Abrir as configurações</button>
 }
