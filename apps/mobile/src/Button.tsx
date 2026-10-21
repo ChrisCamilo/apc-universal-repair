@@ -19,6 +19,8 @@ type ButtonProps = {
   loading?: boolean;
   disabled?: boolean;
   onPress?: () => void;
+  /** Accessible name when the text alone doesn't say what the button acts on, e.g. "Remover marca 2". */
+  label?: string;
   children: string;
 };
 
@@ -29,6 +31,7 @@ export function Button({
   loading = false,
   disabled = false,
   onPress,
+  label: accessibleName,
   children,
 }: ButtonProps) {
   const { styles, ids } = useStyles();
@@ -65,6 +68,7 @@ export function Button({
     <View style={[styles.ring, focused && styles.ringFocused]} testID={ids.ring}>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={accessibleName}
         accessibilityState={{ disabled: inactive, busy: loading }}
         disabled={inactive}
         focusable
