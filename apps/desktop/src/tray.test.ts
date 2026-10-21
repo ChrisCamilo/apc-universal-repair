@@ -35,24 +35,29 @@ test("Desktop: the phone's address is the Wi-Fi's IPv4, never a loopback or a vi
   assert.equal(phoneAddress({ ...loopback, ...virtual }), undefined);
 });
 
-// Lists the tray's menu with a network and starting with Windows on, then without either, and checks the items and
-// their order, the address's label and the check.
+// Lists the tray's menu with a network and starting with Windows on, then without either, then with the server off,
+// and checks the items and their order, the address's label and the check.
 test("Desktop: the tray's menu opens the app, shows the phone's address, opens the server's settings and quits", () => {
-  assert.deepEqual(trayMenu({ address: "192.168.0.202", port: 3333, startsWithWindows: true, canStartWithWindows: true }), [
+  assert.deepEqual(trayMenu({ address: "192.168.0.202", port: 3000, serverOn: true, startsWithWindows: true, canStartWithWindows: true }), [
     { id: "open", label: "Abrir o APC" },
-    { id: "address", label: "Servidor ligado em http://192.168.0.202:3333 (clique para copiar)", enabled: true },
+    { id: "address", label: "Servidor ligado em http://192.168.0.202:3000 (clique para copiar)", enabled: true },
     { id: "settings", label: "Servidor e banco de dados…" },
     { id: "startup", label: "Iniciar com o Windows", checked: true },
     { id: "separator" },
     { id: "quit", label: "Sair" },
   ]);
   assert.deepEqual(
-    trayMenu({ port: 3333, startsWithWindows: false, canStartWithWindows: false }).map((item) => item.id),
+    trayMenu({ port: 3000, serverOn: true, startsWithWindows: false, canStartWithWindows: false }).map((item) => item.id),
     ["open", "address", "settings", "separator", "quit"],
   );
-  assert.deepEqual(trayMenu({ port: 3333, startsWithWindows: false, canStartWithWindows: false })[1], {
+  assert.deepEqual(trayMenu({ port: 3000, serverOn: true, startsWithWindows: false, canStartWithWindows: false })[1], {
     id: "address",
     label: "Servidor ligado, sem rede para o celular",
+    enabled: false,
+  });
+  assert.deepEqual(trayMenu({ address: "192.168.0.202", port: 3000, serverOn: false, startsWithWindows: false, canStartWithWindows: false })[1], {
+    id: "address",
+    label: "Servidor desligado: veja Servidor e banco de dados",
     enabled: false,
   });
 });

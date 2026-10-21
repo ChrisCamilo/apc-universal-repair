@@ -2,7 +2,7 @@ import type { NetworkInterfaceInfo } from "node:os";
 
 // The tray icon of the app that runs its own server (see bundledServer.ts): closing the window hides it there, so the
 // server stays on for the phone. Its menu opens the app, shows the address the phone reaches the server at (a click
-// copies it), opens the server's settings (see serverSettings.ts), turns starting with Windows on and off for the
+// copies it), or that the server is off, opens the server's settings (see serverSettings.ts), turns starting with Windows on and off for the
 // installed app, and quits, which turns the server off.
 
 /** Adapters that aren't the computer's network: virtual machines', WSL's and VPN tunnels'. */
@@ -36,14 +36,22 @@ export function phoneAddress(interfaces: NodeJS.Dict<NetworkInterfaceInfo[]>): s
 
 /**
  * Lists the tray's menu items, in order.
- * @param state The phone's address and the server's port, and whether starting with Windows is on and can be changed
- * (only for the installed app).
+ * @param state The phone's address, the server's port and whether it is on, and whether starting with Windows is on and
+ * can be changed (only for the installed app).
  * @returns The items.
  */
-export function trayMenu(state: { address?: string; port: number; startsWithWindows: boolean; canStartWithWindows: boolean }): TrayItem[] {
-  const address: TrayItem = state.address
-    ? { id: "address", label: `Servidor ligado em http://${state.address}:${state.port} (clique para copiar)`, enabled: true }
-    : { id: "address", label: "Servidor ligado, sem rede para o celular", enabled: false };
+export function trayMenu(state: {
+  address?: string;
+  port: number;
+  serverOn: boolean;
+  startsWithWindows: boolean;
+  canStartWithWindows: boolean;
+}): TrayItem[] {
+  const address: TrayItem = !state.serverOn
+    ? { id: "address", label: "Servidor desligado: veja Servidor e banco de dados", enabled: false }
+    : state.address
+      ? { id: "address", label: `Servidor ligado em http://${state.address}:${state.port} (clique para copiar)`, enabled: true }
+      : { id: "address", label: "Servidor ligado, sem rede para o celular", enabled: false };
   return [
     { id: "open", label: "Abrir o APC" },
     address,
