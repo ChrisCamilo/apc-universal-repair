@@ -19,6 +19,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🔐 Login and account sign-up (name, username, e-mail and password), with the users kept in the database and the passwords stored hashed, sessions the API checks on every call, and a forgotten-password notice saying whom to ask
 - 🗂️ Dashboard with tabs that can be dragged into a new order, and a user menu with the visual style, dark mode, the list preferences, the tutorial and logout
 - 📦 Parts inventory: add, view, edit and delete parts, each with its category, the vehicles it fits (each a vehicle brand and, optionally, its model), position, side, minimum stock and the vehicle maker's original codes, made by one or more part brands, each with its own part code, color, location, quantity, unit price (R$) and photos
+- 👯 *Duplicar* in a part's details opens a new part filled in as a copy of it, with or without copies of its photos, its codes left blank and its stock at 0
 - 🏷️ Categories, part brands and vehicle models created right from the item form, and renamed, merged or deleted in their own lists
 - 🔢 A part code already in use is flagged while it is typed, ignoring case, spaces and separators ("CB4500" is "CB-4500")
 - 🧭 Inventory search by name or part code, filters, sorting on every column and pagination (25, 50 or 100 per page)
@@ -215,6 +216,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🔐 Login e cadastro de conta (nome, usuário, e-mail e senha), com os usuários guardados no banco e as senhas em hash, sessões conferidas pela API em toda chamada, e um aviso de senha esquecida dizendo a quem pedir
 - 🗂️ Dashboard com abas que podem ser arrastadas para outra ordem, e um menu do usuário com o estilo visual, o modo escuro, as preferências da lista, o tutorial e a saída
 - 📦 Estoque de peças: adicionar, ver, editar e excluir peças, cada uma com categoria, os veículos em que serve (cada um uma marca de veículo e, se quiser, o modelo), posição, lado, estoque mínimo e os códigos originais da montadora, feita por uma ou mais marcas de peça, cada uma com o próprio código da peça, cor, local, quantidade, valor unitário (R$) e fotos
+- 👯 *Duplicar*, nos detalhes de uma peça, abre uma peça nova preenchida como cópia dela, com ou sem cópias das fotos, os códigos em branco e o estoque zerado
 - 🏷️ Categorias, marcas de peça e modelos de veículo criados direto no formulário do item, e renomeados, juntados ou excluídos nas próprias listas
 - 🔢 Um código de peça já usado é apontado enquanto é digitado, sem levar em conta maiúsculas, espaços e separadores ("CB4500" é "CB-4500")
 - 🧭 Busca no estoque por nome ou código da peça, filtros, ordenação em todas as colunas e paginação (25, 50 ou 100 por página)
