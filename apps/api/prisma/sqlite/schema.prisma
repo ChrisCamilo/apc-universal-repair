@@ -10,11 +10,11 @@ datasource db {
 /// A vehicle brand, the list the item form picks the vehicle brand from. nameKey holds the name in lowercase
 /// without accents or extra spaces, so names that differ only in those are the same brand (see @apc/shared/lists).
 model Brand {
-  id      String         @id @default(uuid())
-  name    String         @unique
-  nameKey String         @unique
-  models  VehicleModel[]
-  items   Item[]
+  id       String         @id @default(uuid())
+  name     String         @unique
+  nameKey  String         @unique
+  models   VehicleModel[]
+  vehicles ItemVehicle[]
 }
 
 /// An item category, the list the item form picks the category from; nameKey as in Brand.
@@ -26,36 +26,32 @@ model Category {
 }
 
 /// An inventory item: a part, made by one brand or more (see ItemBrand), which replace each other. nameKey holds the
-/// name without accents in lowercase, so searches ignore accents (see @apc/shared/items). Its category, vehicle brand
-/// and vehicle model are entries of their lists, which can't be deleted while an item uses them. quantity is the sum
+/// name without accents in lowercase, so searches ignore accents (see @apc/shared/items). It fits one vehicle or more
+/// (see ItemVehicle). Its category and its vehicles' brands and models are entries of their lists, which can't be
+/// deleted while an item uses them. quantity is the sum
 /// of its brands' quantities, kept by the API on every change to them, so the list filters and sorts by it; the item
 /// is low on stock when that sum reaches minQuantity.
 model Item {
-  id             String             @id @default(uuid())
-  name           String
-  nameKey        String
-  categoryId     String
-  category       Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  vehicleBrandId String
-  vehicleBrand   Brand              @relation(fields: [vehicleBrandId], references: [id], onDelete: Restrict)
-  /// A model of the vehicle brand; none when the part fits any model of the brand.
-  vehicleModelId String?
-  vehicleModel   VehicleModel?      @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
-  position       Position           @default(NA)
-  side           Side               @default(NA)
+  id            String             @id @default(uuid())
+  name          String
+  nameKey       String
+  categoryId    String
+  category      Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  /// The vehicles the part fits, in order (see ItemVehicle.position).
+  vehicles      ItemVehicle[]
+  position      Position           @default(NA)
+  side          Side               @default(NA)
   /// The sum of the brands' quantities.
-  quantity       Int                @default(0)
-  minQuantity    Int                @default(0)
+  quantity      Int                @default(0)
+  minQuantity   Int                @default(0)
   /// The brands that make the part, in order (see ItemBrand.position), the first one the item's cover.
-  brands         ItemBrand[]
+  brands        ItemBrand[]
   /// The vehicle maker's codes of the part, in order (see ItemOriginalCode.position).
-  originalCodes  ItemOriginalCode[]
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  originalCodes ItemOriginalCode[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
   @@index([categoryId])
-  @@index([vehicleBrandId])
-  @@index([vehicleModelId])
 }
 
 /// A brand that makes an item's part, with its own part code, stock and price. codeKey holds the code with letters
@@ -101,6 +97,24 @@ model ItemOriginalCode {
   codeKey  String @unique
 
   @@index([itemId])
+}
+
+/// A vehicle an item's part fits: a vehicle brand and, optionally, one of its models; without one, any model of the
+/// brand. position orders the item's vehicles from 0. The API keeps each vehicle once in an item, and Universal alone.
+/// An item from before vehicles were added kept its id for its first vehicle.
+model ItemVehicle {
+  id             String        @id @default(uuid())
+  itemId         String
+  item           Item          @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  position       Int
+  vehicleBrandId String
+  vehicleBrand   Brand         @relation(fields: [vehicleBrandId], references: [id], onDelete: Restrict)
+  vehicleModelId String?
+  vehicleModel   VehicleModel? @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
+
+  @@index([itemId])
+  @@index([vehicleBrandId])
+  @@index([vehicleModelId])
 }
 
 /// A photo of an item's brand. The photo, reduced to WebP, and its thumbnail are stored by the API under PHOTOS_DIR,
@@ -177,12 +191,12 @@ model User {
 
 /// A vehicle model of a vehicle brand, unique within it; nameKey as in Brand.
 model VehicleModel {
-  id      String @id @default(uuid())
-  name    String
-  nameKey String
-  brandId String
-  brand   Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  items   Item[]
+  id       String        @id @default(uuid())
+  name     String
+  nameKey  String
+  brandId  String
+  brand    Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  vehicles ItemVehicle[]
 
   @@unique([brandId, nameKey])
 }

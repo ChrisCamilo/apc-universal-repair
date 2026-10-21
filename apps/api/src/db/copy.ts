@@ -14,7 +14,7 @@ const COPY_TIMEOUT_MS = 10 * 60 * 1000;
 /** How many rows go in each insert, under SQLite's limit of variables per statement. */
 const ROWS_PER_INSERT = 500;
 /** The tables copied, by their client's name, each after the ones it references. */
-export const TABLES = ["user", "category", "partBrand", "brand", "vehicleModel", "item", "itemOriginalCode", "itemBrand", "itemPhoto"] as const;
+export const TABLES = ["user", "category", "partBrand", "brand", "vehicleModel", "item", "itemVehicle", "itemOriginalCode", "itemBrand", "itemPhoto"] as const;
 
 /** A table of a client, as the copy uses it. */
 type Table = {
