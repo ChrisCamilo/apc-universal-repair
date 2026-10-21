@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { TextInput, View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
-import { capitalizeFirst, findOption, itemSchema, POSITIONS, SIDES, type Item } from '@apc/shared/items';
+import { capitalizeFirst, codeKey, findOption, itemSchema, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/shared/items';
 import {
+  BRAND_FIELD_LABELS,
+  brandDetailTexts,
   codeTakenError,
   codeTakenMessage,
+  EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
+  hasFormErrors,
   ITEM_FIELD_LABELS,
   ITEM_UNCHANGED_MESSAGE,
   itemDetailTexts,
@@ -18,6 +22,9 @@ import {
   PRICE_PLACEHOLDER,
   priceMask,
   quantityInput,
+  type BrandField,
+  type ItemBrandFormErrors,
+  type ItemField,
   type ItemForm,
   type ItemFormErrors,
 } from '@apc/shared/item-form';
@@ -32,29 +39,33 @@ import { ImageUpload, type UploadPhoto } from '../ImageUpload';
 import { Segmented } from '../Segmented';
 import { TextField } from '../TextField';
 import { useToast } from '../Toast';
-import { Label } from '../Typography';
+import { Heading, Label, Text } from '../Typography';
 import { tourTarget } from '../tourTargets';
 import { useStyles } from './ItemFormDialog.styles';
 import { pickPhotos, savePhotos } from './photos';
 import type { CreateListEntry } from './useItemLists';
 
 // The form that creates a new item or edits one, the same as the web, in one column: the content scrolls inside the
-// dialog while Cancel and Save stay at the bottom. Category, part brand and the vehicle's brand and model are
-// comboboxes of the lists the API keeps, where "+ Criar" adds a new name to its list, picks it and says so in a toast;
-// the model only lists the chosen brand's models, is created under that brand, stays locked until a brand of the list
-// is chosen and clears when the brand changes to one without it. A name not in its list can't be saved: the field
-// points to "+ Criar". The code turns uppercase while typing and says at once when another item uses it; the texts
-// start with a capital letter when leaving the field and again on save; the quantities take whole numbers only, up to
-// a million, and a pasted fraction or text is refused, saying so; and the price always shows in reais, digits filling
-// from the cents, a pasted price read with a dot or a comma alike, up to a million (see priceMask). Saving
-// checks the required fields and a code another item uses, then sends the item to the API, shows a toast and hands the
-// saved item over, then sends its photos when they changed: up to 3, the first the cover, picked from the phone's
-// library. When the item is saved but its photos aren't, a warning toast says so; an edit that changes nothing isn't
-// sent, and an info toast says so. Opened on an item's details, the same
-// dialog shows each field as text in the form's layout, with Fechar and Editar: nothing can be changed or saved until
-// Editar unlocks the fields in place, on the first one, and the buttons turn into Cancelar and Salvar alterações, which
-// save like the edit form. The owner may open it with values filled in and follow what is typed, as the Inventory
-// tutorial does, whose tour points at the marked fields and buttons.
+// dialog while Cancel and Save stay at the bottom. First what the item's brands share (name, category, vehicle,
+// position, side and the minimum stock), then a section for each brand that makes the part, with its photos, part
+// brand, code, quantity, unit price, color and location. "Adicionar marca" adds a blank brand, and each brand's
+// "Remover" takes it out while another is left. Category, part brands and the vehicle's brand and model are comboboxes
+// of the lists the API keeps, where "+ Criar" adds a new name to its list, picks it and says so in a toast; the model
+// only lists the chosen brand's models, is created under that brand, stays locked until a brand of the list is chosen
+// and clears when the brand changes to one without it. A name not in its list can't be saved: the field points to
+// "+ Criar". A code turns uppercase while typing and says at once when another item uses it; the texts start with a
+// capital letter when leaving the field and again on save; the quantities take whole numbers only, up to a million,
+// and a pasted fraction or text is refused, saying so; and the price always shows in reais, digits filling from the
+// cents, a pasted price read with a dot or a comma alike, up to a million (see priceMask). Saving checks the required
+// fields, a part brand or code repeated in the item and a code another item uses, then sends the item with its brands
+// to the API, shows a toast and hands the saved item over, then sends each brand's photos when they changed: up to 3
+// a brand, the first the cover, picked from the phone's library. When the item is saved but its photos aren't, a
+// warning toast says so; an edit that changes nothing isn't sent, and an info toast says so. Opened on an item's
+// details, the same dialog shows each field as text in the form's layout, a section for each brand, with Fechar and
+// Editar: nothing can be changed or saved until Editar unlocks the fields in place, on the first one, and the buttons
+// turn into Cancelar and Salvar alterações, which save like the edit form. The owner may open it with values filled
+// in and follow what is typed, as the Inventory tutorial does, whose tour points at the name, at the first brand's
+// code and quantity, and at the buttons.
 
 const PHOTOS_LABEL = 'Fotos do item';
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }));
@@ -81,6 +92,16 @@ type ItemFormDialogProps = {
   onFormChange?: (form: ItemForm, viewing: boolean) => void;
 };
 
+/**
+ * Names a brand's section, and its photos, for the screen and screen readers.
+ * @param index The brand's place in the form.
+ * @param count How many brands the form has.
+ * @returns E.g. "Marca 2", and "Fotos da marca 2"; the photos of an item of one brand are the item's.
+ */
+function brandNames(index: number, count: number): { section: string; photos: string } {
+  return { section: `Marca ${index + 1}`, photos: count === 1 ? PHOTOS_LABEL : `Fotos da marca ${index + 1}` };
+}
+
 export function ItemFormDialog({
   open,
   item,
@@ -96,9 +117,12 @@ export function ItemFormDialog({
   const toast = useToast();
   const { styles, ids } = useStyles();
   const [viewing, setViewing] = useState(details && item !== undefined);
-  const code = useRef<ComponentRef<typeof TextInput>>(null);
+  const name = useRef<ComponentRef<typeof TextInput>>(null);
   const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM));
-  const [photos, setPhotos] = useState<UploadPhoto[]>(() => (item ? heldPhotos(item.photos, API_URL) : []));
+  // Each brand's photos, in the order of the form's brands; a brand the form fills in for the item keeps its own.
+  const [photos, setPhotos] = useState<UploadPhoto[][]>(() =>
+    form.brands.map((brand) => heldPhotos(item?.brands.find((held) => held.id === brand.id)?.photos ?? [], API_URL)),
+  );
   const [errors, setErrors] = useState<ItemFormErrors>({});
   const [saving, setSaving] = useState(false);
   // How many names are being created; saving waits for them.
@@ -116,61 +140,122 @@ export function ItemFormDialog({
   // Once Editar unlocks the fields, start on the first one.
   useEffect(() => {
     if (unlocked) {
-      code.current?.focus();
+      name.current?.focus();
     }
   }, [unlocked]);
 
   /** Takes a field's new value and drops its message. */
-  const change = (field: keyof ItemForm, value: string) => {
+  const change = (field: ItemField, value: string) => {
     setForm((typed) => ({ ...typed, [field]: value }));
     setErrors((shown) => ({ ...shown, [field]: undefined }));
   };
 
-  /** Takes the code in uppercase and says at once when another item uses it. */
-  const changeCode = (value: string) => {
-    change('code', value.toUpperCase());
-    setErrors((shown) => ({ ...shown, code: codeTakenError(value, items, item?.id) }));
+  /** Sets the message of a brand's field, or drops it. */
+  const brandError = (index: number, field: keyof ItemBrandFormErrors, message: string | undefined) =>
+    setErrors((shown) => {
+      const brands = [...(shown.brands ?? [])];
+      brands[index] = { ...brands[index], [field]: message };
+      return { ...shown, brands };
+    });
+
+  /** Takes a field of a brand's new value and drops its message. */
+  const changeBrand = (index: number, field: BrandField, value: string) => {
+    setForm((typed) => ({ ...typed, brands: typed.brands.map((brand, at) => (at === index ? { ...brand, [field]: value } : brand)) }));
+    if (field !== 'color' && field !== 'location') {
+      brandError(index, field, undefined);
+    }
   };
 
-  /** Takes a whole quantity, leaving out what isn't one; a paste that isn't one is refused, saying so. */
-  const changeQuantity = (field: 'quantity' | 'minQuantity') => (value: string) => {
-    const read = quantityInput(form[field], value);
-    change(field, read.value);
-    setErrors((shown) => ({ ...shown, [field]: read.message }));
+  /** Takes a brand's code in uppercase and says at once when another item uses it. */
+  const changeCode = (index: number, value: string) => {
+    changeBrand(index, 'code', value.toUpperCase());
+    brandError(index, 'code', codeTakenError(value, items, item?.id));
   };
 
-  /** Takes the price through the BRL mask; a paste that isn't a price, or passes the limit, is refused, saying so. */
-  const changePrice = (value: string) => {
-    const read = priceMask(form.price, value);
-    change('price', read.value);
-    setErrors((shown) => ({ ...shown, price: read.message }));
+  /** Takes a brand's whole quantity, leaving out what isn't one; a paste that isn't one is refused, saying so. */
+  const changeQuantity = (index: number, value: string) => {
+    const read = quantityInput(form.brands[index].quantity, value);
+    changeBrand(index, 'quantity', read.value);
+    brandError(index, 'quantity', read.message);
+  };
+
+  /** Takes the minimum, a whole quantity, as changeQuantity does a brand's. */
+  const changeMinimum = (value: string) => {
+    const read = quantityInput(form.minQuantity, value);
+    change('minQuantity', read.value);
+    setErrors((shown) => ({ ...shown, minQuantity: read.message }));
+  };
+
+  /** Takes a brand's price through the BRL mask; a paste that isn't a price, or passes the limit, is refused, saying so. */
+  const changePrice = (index: number, value: string) => {
+    const read = priceMask(form.brands[index].price, value);
+    changeBrand(index, 'price', read.value);
+    brandError(index, 'price', read.message);
   };
 
   /** Takes a new vehicle brand, clearing a model the new brand doesn't have. */
-  const changeBrand = (value: string) => {
+  const changeVehicleBrand = (value: string) => {
     change('vehicleBrand', value);
     if (form.vehicleModel && !findOption(modelsOfBrand(lists, value), form.vehicleModel)) {
       change('vehicleModel', '');
     }
   };
 
-  /** Starts a text with a capital letter when leaving its field. */
-  const capitalize = (field: 'name' | 'location') => () => change(field, form[field].trim() ? capitalizeFirst(form[field]) : form[field]);
+  /** Adds a blank brand at the end, with no photos. */
+  const addBrand = () => {
+    setForm((typed) => ({ ...typed, brands: [...typed.brands, EMPTY_BRAND_FORM] }));
+    setPhotos((held) => [...held, []]);
+  };
+
+  /** Takes a brand out of the form, with its photos and its messages. */
+  const removeBrand = (index: number) => {
+    setForm((typed) => ({ ...typed, brands: typed.brands.filter((_, at) => at !== index) }));
+    setPhotos((held) => held.filter((_, at) => at !== index));
+    setErrors((shown) => ({ ...shown, brands: shown.brands?.filter((_, at) => at !== index) }));
+  };
 
   /**
    * Creates a name typed in a combobox in its list, a vehicle model under the chosen brand, and fills the field with
    * the name as the list holds it; a toast says it was created, or that it couldn't be, leaving the typed name.
+   * @param kind The list.
+   * @param fill Fills the field with the name as the list holds it.
+   * @returns What the combobox calls with the typed name.
    */
-  const create = (field: 'category' | 'partBrand' | 'vehicleBrand' | 'vehicleModel', kind: ItemListKind) => async (name: string) => {
+  const create = (kind: ItemListKind, fill: (name: string) => void) => async (typed: string) => {
     setCreating((count) => count + 1);
-    const entry = await onCreateEntry(kind, name, kind === 'vehicleModels' ? vehicleBrand?.id : undefined);
+    const entry = await onCreateEntry(kind, typed, kind === 'vehicleModels' ? vehicleBrand?.id : undefined);
     setCreating((count) => count - 1);
     if (!entry) {
       toast.error(ITEM_LIST_TEXTS[kind].createFailed);
       return;
     }
-    change(field, entry.name);
+    fill(entry.name);
     toast.success(ITEM_LIST_TEXTS[kind].created(entry.name));
+  };
+
+  /** Tells whether any brand's photos differ from what the item holds. */
+  const photosEdited = () =>
+    form.brands.some((brand, index) => {
+      const held = item?.brands.find((each) => each.id === brand.id)?.photos ?? [];
+      return photosChanged(photoParts(photos[index], held, API_URL), held);
+    });
+
+  /**
+   * Sends each brand's photos when they changed, finding the saved brand by its code.
+   * @param saved The item as the API saved it.
+   * @returns The item with its photos saved, or null when some couldn't be.
+   */
+  const saveBrandPhotos = async (saved: Item): Promise<Item | null> => {
+    let current = saved;
+    for (const [index, typed] of form.brands.entries()) {
+      const brand: ItemBrand | undefined = current.brands.find((each) => codeKey(each.code) === codeKey(typed.code));
+      const next = brand && (await savePhotos(current, brand, photos[index]));
+      if (brand && !next) {
+        return null;
+      }
+      current = next ?? current;
+    }
+    return current;
   };
 
   /**
@@ -180,10 +265,10 @@ export function ItemFormDialog({
   const save = async () => {
     const found = itemFormErrors(form, items, lists, item?.id);
     setErrors(found);
-    if (Object.values(found).some(Boolean)) {
+    if (hasFormErrors(found)) {
       return;
     }
-    if (item && !itemFormChanged(form, item, options.colors) && !photosChanged(photoParts(photos, item.photos, API_URL), item.photos)) {
+    if (item && !itemFormChanged(form, item, options.colors) && !photosEdited()) {
       toast.info(ITEM_UNCHANGED_MESSAGE);
       onClose();
       return;
@@ -196,8 +281,12 @@ export function ItemFormDialog({
     }).catch(() => null);
     if (response?.status === 409) {
       setSaving(false);
-      const { details: clashes } = await response.json();
-      setErrors({ code: codeTakenMessage(clashes[0].itemName) });
+      const [taken] = (await response.json()).details;
+      const index = Math.max(
+        0,
+        form.brands.findIndex((brand) => codeKey(brand.code) === codeKey(taken.code)),
+      );
+      brandError(index, 'code', codeTakenMessage(taken.itemName));
       return;
     }
     if (!response?.ok) {
@@ -206,7 +295,7 @@ export function ItemFormDialog({
       return;
     }
     const saved = itemSchema.parse(await response.json());
-    const withPhotos = await savePhotos(saved, photos);
+    const withPhotos = await saveBrandPhotos(saved);
     setSaving(false);
     if (!withPhotos) {
       toast.warning(`Item “${saved.name}” salvo, mas as fotos não foram salvas. Tente de novo.`);
@@ -251,36 +340,45 @@ export function ItemFormDialog({
     >
       {viewing && item ? (
         <View style={styles.fields} testID={ids.fields}>
-          <ImageUpload
-            label={PHOTOS_LABEL}
-            photos={photos}
-            onPhotosChange={setPhotos}
-            limit={ITEM_PHOTO_LIMIT}
-            onPick={pickPhotos}
-            readOnly
-          />
           {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
-            <FieldValue key={field} label={ITEM_FIELD_LABELS[field as keyof ItemForm]} value={text} />
+            <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />
           ))}
+          <View style={styles.brands} testID={ids.brands}>
+            {item.brands.map((brand, index) => (
+              <View
+                key={brand.id}
+                role="group"
+                accessibilityLabel={brandNames(index, item.brands.length).section}
+                style={styles.brand}
+                testID={ids.brand}
+              >
+                <View style={styles.brandHead} testID={ids.brandHead}>
+                  <Heading level={4}>{brandNames(index, item.brands.length).section}</Heading>
+                </View>
+                <ImageUpload
+                  label={brandNames(index, item.brands.length).photos}
+                  photos={photos[index] ?? []}
+                  onPhotosChange={() => {}}
+                  limit={ITEM_PHOTO_LIMIT}
+                  onPick={pickPhotos}
+                  readOnly
+                />
+                {Object.entries(brandDetailTexts(brand)).map(([field, text]) => (
+                  <FieldValue key={field} label={BRAND_FIELD_LABELS[field as BrandField]} value={text} />
+                ))}
+              </View>
+            ))}
+          </View>
         </View>
       ) : (
         <View style={styles.fields} testID={ids.fields}>
-          <ImageUpload label={PHOTOS_LABEL} photos={photos} onPhotosChange={setPhotos} limit={ITEM_PHOTO_LIMIT} onPick={pickPhotos} />
-          <View ref={tourTarget('form-code')} collapsable={false}>
-            <TextField
-              ref={code}
-              label={ITEM_FIELD_LABELS.code}
-              value={form.code}
-              onValueChange={changeCode}
-              error={errors.code}
-            />
-          </View>
           <View ref={tourTarget('form-name')} collapsable={false}>
             <TextField
+              ref={name}
               label={ITEM_FIELD_LABELS.name}
               value={form.name}
               onValueChange={(value) => change('name', value)}
-              onBlur={capitalize('name')}
+              onBlur={() => change('name', form.name.trim() ? capitalizeFirst(form.name) : form.name)}
               error={errors.name}
             />
           </View>
@@ -289,29 +387,18 @@ export function ItemFormDialog({
             value={form.category}
             onValueChange={(value) => change('category', value)}
             options={options.categories}
-            onCreate={create('category', 'categories')}
+            onCreate={create('categories', (created) => change('category', created))}
             noun="categoria"
             toggleLabel="Mostrar categorias"
             emptyLabel="Nenhuma categoria cadastrada"
             error={errors.category}
           />
           <Combobox
-            label={ITEM_FIELD_LABELS.partBrand}
-            value={form.partBrand}
-            onValueChange={(value) => change('partBrand', value)}
-            options={options.partBrands}
-            onCreate={create('partBrand', 'partBrands')}
-            noun="marca"
-            toggleLabel="Mostrar marcas de peça"
-            emptyLabel="Nenhuma marca cadastrada"
-            error={errors.partBrand}
-          />
-          <Combobox
             label={ITEM_FIELD_LABELS.vehicleBrand}
             value={form.vehicleBrand}
-            onValueChange={changeBrand}
+            onValueChange={changeVehicleBrand}
             options={options.vehicleBrands}
-            onCreate={create('vehicleBrand', 'vehicleBrands')}
+            onCreate={create('vehicleBrands', (created) => change('vehicleBrand', created))}
             noun="marca"
             toggleLabel="Mostrar marcas de veículo"
             emptyLabel="Nenhuma marca cadastrada"
@@ -322,7 +409,7 @@ export function ItemFormDialog({
             value={form.vehicleModel}
             onValueChange={(value) => change('vehicleModel', value)}
             options={models}
-            onCreate={create('vehicleModel', 'vehicleModels')}
+            onCreate={create('vehicleModels', (created) => change('vehicleModel', created))}
             noun="modelo"
             toggleLabel="Mostrar modelos"
             emptyLabel="Nenhum modelo cadastrado para essa marca"
@@ -330,23 +417,6 @@ export function ItemFormDialog({
             helper="Deixe vazio se serve em qualquer modelo."
             error={errors.vehicleModel}
             disabled={!vehicleBrand}
-          />
-          <View ref={tourTarget('form-quantity')} collapsable={false}>
-            <TextField
-              label={ITEM_FIELD_LABELS.quantity}
-              kind="number"
-              value={form.quantity}
-              onValueChange={changeQuantity('quantity')}
-              error={errors.quantity}
-            />
-          </View>
-          <TextField
-            label={ITEM_FIELD_LABELS.minQuantity}
-            kind="number"
-            value={form.minQuantity}
-            onValueChange={changeQuantity('minQuantity')}
-            error={errors.minQuantity}
-            helper="Abaixo disso o item aparece como estoque baixo."
           />
           <View style={styles.choice} testID={ids.choice}>
             <Label>{ITEM_FIELD_LABELS.position}</Label>
@@ -367,26 +437,99 @@ export function ItemFormDialog({
             />
           </View>
           <TextField
-            label={ITEM_FIELD_LABELS.color}
-            value={form.color}
-            onValueChange={(value) => change('color', value)}
-            onBlur={() => change('color', form.color.trim() ? (findOption(options.colors, form.color) ?? capitalizeFirst(form.color)) : '')}
-            helper="Deixe vazio se a cor não se aplica."
-          />
-          <TextField
-            label={ITEM_FIELD_LABELS.location}
-            value={form.location}
-            onValueChange={(value) => change('location', value)}
-            onBlur={capitalize('location')}
-          />
-          <TextField
-            label={ITEM_FIELD_LABELS.price}
+            label={ITEM_FIELD_LABELS.minQuantity}
             kind="number"
-            value={form.price}
-            onValueChange={changePrice}
-            placeholder={PRICE_PLACEHOLDER}
-            error={errors.price}
+            value={form.minQuantity}
+            onValueChange={changeMinimum}
+            error={errors.minQuantity}
+            helper="Abaixo disso, somando todas as marcas, o item aparece como estoque baixo."
           />
+          <View style={styles.brands} testID={ids.brands}>
+            <Text size="sm" tone="muted">
+              As marcas que fazem esta peça, cada uma com seu código, estoque e valor.
+            </Text>
+            {form.brands.map((brand, index) => {
+              const names = brandNames(index, form.brands.length);
+              const shown = errors.brands?.[index] ?? {};
+              // The tutorial points at the first brand's code and quantity.
+              const tour = (target: 'form-code' | 'form-quantity') => (index === 0 ? tourTarget(target) : undefined);
+              return (
+                <View key={brand.id ?? `new-${index}`} role="group" accessibilityLabel={names.section} style={styles.brand} testID={ids.brand}>
+                  <View style={styles.brandHead} testID={ids.brandHead}>
+                    <Heading level={4}>{names.section}</Heading>
+                    {form.brands.length > 1 && (
+                      <Button variant="secondary" size="sm" label={`Remover ${names.section.toLowerCase()}`} onPress={() => removeBrand(index)}>
+                        Remover
+                      </Button>
+                    )}
+                  </View>
+                  <ImageUpload
+                    label={names.photos}
+                    photos={photos[index] ?? []}
+                    onPhotosChange={(next) => setPhotos((held) => held.map((each, at) => (at === index ? next : each)))}
+                    limit={ITEM_PHOTO_LIMIT}
+                    onPick={pickPhotos}
+                  />
+                  <Combobox
+                    label={BRAND_FIELD_LABELS.partBrand}
+                    value={brand.partBrand}
+                    onValueChange={(value) => changeBrand(index, 'partBrand', value)}
+                    options={options.partBrands}
+                    onCreate={create('partBrands', (created) => changeBrand(index, 'partBrand', created))}
+                    noun="marca"
+                    toggleLabel="Mostrar marcas de peça"
+                    emptyLabel="Nenhuma marca cadastrada"
+                    error={shown.partBrand}
+                  />
+                  <View ref={tour('form-code')} collapsable={false}>
+                    <TextField
+                      label={BRAND_FIELD_LABELS.code}
+                      value={brand.code}
+                      onValueChange={(value) => changeCode(index, value)}
+                      error={shown.code}
+                    />
+                  </View>
+                  <View ref={tour('form-quantity')} collapsable={false}>
+                    <TextField
+                      label={BRAND_FIELD_LABELS.quantity}
+                      kind="number"
+                      value={brand.quantity}
+                      onValueChange={(value) => changeQuantity(index, value)}
+                      error={shown.quantity}
+                    />
+                  </View>
+                  <TextField
+                    label={BRAND_FIELD_LABELS.price}
+                    kind="number"
+                    value={brand.price}
+                    onValueChange={(value) => changePrice(index, value)}
+                    placeholder={PRICE_PLACEHOLDER}
+                    error={shown.price}
+                  />
+                  <TextField
+                    label={BRAND_FIELD_LABELS.color}
+                    value={brand.color}
+                    onValueChange={(value) => changeBrand(index, 'color', value)}
+                    onBlur={() =>
+                      changeBrand(index, 'color', brand.color.trim() ? (findOption(options.colors, brand.color) ?? capitalizeFirst(brand.color)) : '')
+                    }
+                    helper="Deixe vazio se a cor não se aplica."
+                  />
+                  <TextField
+                    label={BRAND_FIELD_LABELS.location}
+                    value={brand.location}
+                    onValueChange={(value) => changeBrand(index, 'location', value)}
+                    onBlur={() => changeBrand(index, 'location', brand.location.trim() ? capitalizeFirst(brand.location) : brand.location)}
+                  />
+                </View>
+              );
+            })}
+            <View style={styles.add} testID={ids.add}>
+              <Button variant="secondary" size="sm" onPress={addBrand}>
+                Adicionar marca
+              </Button>
+            </View>
+          </View>
         </View>
       )}
     </Dialog>
