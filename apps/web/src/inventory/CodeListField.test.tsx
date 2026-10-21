@@ -32,7 +32,7 @@ beforeAll(async () => {
 test('Web: codes join the list as chips with Enter, a comma, a paste or on leaving the field', async () => {
   const screen = await render(<Sample />)
   const input = screen.getByLabelText('Códigos originais')
-  const chips = () => screen.container.querySelectorAll('[data-testid="inventory.code-list-field.frame.chips.chip.code"]')
+  const chips = () => screen.container.querySelectorAll('[data-testid="inventory.code-list-field.frame.chip.code"]')
   await userEvent.type(input, '5u0 698 151{Enter}')
   await userEvent.type(input, 'x1,')
   await userEvent.type(input, 'X-1{Enter}')
