@@ -701,6 +701,79 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
   await expect(rows.first()).not.toHaveAttribute("tabindex");
 });
 
+// Duplicates an item of two photos from its details against an API that keeps what it is sent: Copiar dados e fotos
+// opens a new item's form filled in without the code and with the quantity at 0, and saving it with a code of its own
+// posts the item, then sends the photos as copies of the first item's, which become photos of the copy's own. Deleting
+// the first item leaves the copy's photos; duplicating the copy with Copiar só os dados gives an item without photos.
+test("Web: an item is duplicated from its details, with or without its photos", async ({ page }) => {
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  const photos = ["frente", "lado"].map((name) => ({ id: crypto.randomUUID(), url: `/photos/${name}.png`, thumbUrl: `/photos/${name}-thumb.webp` }));
+  const stock = ITEMS.map((it, index) => (index === 0 ? { ...it, brands: [{ ...it.brands[0], photos }] } : it));
+  const sent: string[][] = [];
+  await page.route("**/api/photos/*", (route) => route.fulfill({ body: png, contentType: "image/png" }));
+  await serveItems(page, stock);
+  await page.route("**/api/items", (route) => {
+    if (route.request().method() !== "POST") {
+      return route.fallback();
+    }
+    stock.unshift(savedItem(route.request().postDataJSON()));
+    return route.fulfill({ status: 201, json: stock[0] });
+  });
+  await page.route("**/api/items/*", (route) => {
+    stock.splice(stock.findIndex((it) => route.request().url().endsWith(it.id)), 1);
+    return route.fulfill({ status: 204 });
+  });
+  await page.route("**/api/items/*/brands/*/photos", (route) => {
+    const index = stock.findIndex((it) => route.request().url().includes(`/items/${it.id}/brands/`));
+    const body = route.request().postDataBuffer()!.toString("latin1");
+    const copies = [...body.matchAll(/name="copy"\r\n\r\n([^\r]*)/g)].map(([, id]) => id);
+    sent.push(copies.map((id) => `copy ${id}`));
+    const copied = copies.map((_, position) => ({ id: crypto.randomUUID(), url: `/photos/copy-${position}.png`, thumbUrl: `/photos/copy-${position}-thumb.webp` }));
+    stock[index] = { ...stock[index], brands: [{ ...stock[index].brands[0], photos: copied }] };
+    return route.fulfill({ json: stock[index] });
+  });
+  await page.goto("/inventory");
+  const rows = page.locator("tbody tr");
+  const details = page.getByRole("dialog", { name: "Detalhes do item" });
+  const question = page.getByRole("dialog", { name: "Duplicar item?" });
+  const form = page.getByRole("dialog", { name: "Novo item" });
+
+  await rows.first().getByText("Filtro de óleo").click();
+  await details.getByRole("button", { name: "Duplicar" }).click();
+  await expect(question.getByRole("button", { name: "Copiar dados e fotos" })).toBeInViewport();
+  await question.getByRole("button", { name: "Copiar dados e fotos" }).click();
+  await expect(details).toBeHidden();
+  await expect(form.getByLabel("Nome")).toHaveValue("Filtro de óleo");
+  await expect(form.getByLabel("Código da peça")).toHaveValue("");
+  await expect(form.getByLabel("Quantidade", { exact: true })).toHaveValue("0");
+  await expect(form.getByRole("img", { name: /^Foto \d/ })).toHaveCount(2);
+  await form.getByLabel("Código da peça").fill("W 712/96");
+  await form.getByRole("button", { name: "Salvar" }).click();
+  await expect(page.getByText("Item “Filtro de óleo” cadastrado.")).toBeVisible();
+  expect(sent).toEqual([photos.map((photo) => `copy ${photo.id}`)]);
+  await expect(rows).toHaveCount(5);
+  const copy = stock[0];
+  expect([copy.brands[0].code, copy.quantity, copy.brands[0].photos.some((photo) => photos.includes(photo))]).toEqual(["W 712/96", 0, false]);
+
+  await rows.nth(1).getByRole("button", { name: "Excluir Filtro de óleo" }).click();
+  await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
+  await expect(rows).toHaveCount(4);
+  await expect(page.getByRole("button", { name: "Ver fotos de Filtro de óleo" }).locator("img")).toHaveAttribute("src", "/api/photos/copy-0-thumb.webp");
+
+  await rows.first().getByText("Filtro de óleo").click();
+  await details.getByRole("button", { name: "Duplicar" }).click();
+  await question.getByRole("button", { name: "Copiar só os dados" }).click();
+  await expect(form.getByRole("img", { name: /^Foto \d/ })).toHaveCount(0);
+  await form.getByLabel("Código da peça").fill("W 712/97");
+  await form.getByRole("button", { name: "Salvar" }).click();
+  await expect(rows).toHaveCount(5);
+  expect([stock[0].brands[0].code, stock[0].brands[0].photos]).toEqual(["W 712/97", []]);
+  expect(sent).toHaveLength(1);
+});
+
 // Closes Novo item, Editar item, Detalhes do item and Gerenciar listas with the round × at the top right of each,
 // on screen without scrolling at both screen sizes, and checks nothing was sent.
 test("Web: the item form and Manage lists close on the ×", async ({ page }) => {
