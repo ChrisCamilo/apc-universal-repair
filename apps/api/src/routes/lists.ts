@@ -29,18 +29,18 @@ import { prisma } from "../db/client.js";
 // entry into another of its list (a model into one of its brand) in one transaction: its items move there and it is
 // deleted, a vehicle brand's models moving along, those of a name the other brand has joining that model; it answers
 // how many items moved, and refuses a merge into itself, away from a catalog vehicle brand, or of two part brands
-// an item has both of (409). DELETE removes an entry no item uses, a vehicle brand with its models; an entry items
+// an item has both of (409); an item that ends up with a vehicle twice keeps it once. DELETE removes an entry no item uses, a vehicle brand with its models; an entry items
 // use is refused naming how many (409), and so is a vehicle brand of the catalog. A part brand is used by the items
-// it makes a brand of.
+// it makes a brand of, and a vehicle brand or model by the items with a vehicle of it.
 
 /** The columns a list entry is sent with. */
 const ENTRY = { id: true, name: true } as const;
-/** The items using an entry of each list: by their own column, or a part brand through any of their brands. */
+/** The items using an entry of each list: by their category, or through any of their brands or vehicles. */
 const ITEMS_USING: Record<ItemListKind, (id: string) => Prisma.ItemWhereInput> = {
   categories: (id) => ({ categoryId: id }),
   partBrands: (id) => ({ brands: { some: { partBrandId: id } } }),
-  vehicleBrands: (id) => ({ vehicleBrandId: id }),
-  vehicleModels: (id) => ({ vehicleModelId: id }),
+  vehicleBrands: (id) => ({ vehicles: { some: { vehicleBrandId: id } } }),
+  vehicleModels: (id) => ({ vehicles: { some: { vehicleModelId: id } } }),
 };
 /** The columns a vehicle model is read with. */
 const MODEL = { id: true, name: true, brandId: true } as const;
@@ -123,8 +123,32 @@ function entryNotFound(reply: FastifyReply) {
 }
 
 /**
+ * Takes out the vehicles an item holds twice after a merge, keeping each one's first place.
+ * @param tx Database client, in the merge's transaction.
+ * @param itemIds The items whose vehicles moved.
+ */
+async function dropRepeatedVehicles(tx: Prisma.TransactionClient, itemIds: readonly string[]) {
+  const rows = await tx.itemVehicle.findMany({
+    where: { itemId: { in: [...itemIds] } },
+    orderBy: [{ itemId: "asc" }, { position: "asc" }, { id: "asc" }],
+    select: { id: true, itemId: true, vehicleBrandId: true, vehicleModelId: true },
+  });
+  const seen = new Set<string>();
+  const repeated = [];
+  for (const row of rows) {
+    const key = `${row.itemId}|${row.vehicleBrandId}|${row.vehicleModelId ?? ""}`;
+    if (seen.has(key)) {
+      repeated.push(row);
+    }
+    seen.add(key);
+  }
+  await tx.itemVehicle.deleteMany({ where: { id: { in: repeated.map((row) => row.id) } } });
+}
+
+/**
  * Merges an entry into another of its list in one transaction: the items using it move there and it is deleted. A
- * vehicle brand's models move to the other brand, and one whose name that brand already has joins its model instead.
+ * vehicle brand's models move to the other brand, and one whose name that brand already has joins its model instead;
+ * an item left with a vehicle twice keeps it once.
  * @param kind The list.
  * @param id The entry merged away.
  * @param into The entry it is merged into.
@@ -142,10 +166,18 @@ function mergeEntries(kind: ItemListKind, id: string, into: string): Promise<num
       await tx.partBrand.delete({ where: { id } });
       return count;
     }
+    // The items with a vehicle of the entry, before it moves.
+    const rows = await tx.itemVehicle.findMany({
+      where: kind === "vehicleModels" ? { vehicleModelId: id } : { vehicleBrandId: id },
+      distinct: ["itemId"],
+      select: { itemId: true },
+    });
+    const moved = rows.map((row) => row.itemId);
     if (kind === "vehicleModels") {
-      const { count } = await tx.item.updateMany({ where: { vehicleModelId: id }, data: { vehicleModelId: into } });
+      await tx.itemVehicle.updateMany({ where: { vehicleModelId: id }, data: { vehicleModelId: into } });
+      await dropRepeatedVehicles(tx, moved);
       await tx.vehicleModel.delete({ where: { id } });
-      return count;
+      return moved.length;
     }
     for (const model of await tx.vehicleModel.findMany({ where: { brandId: id }, select: { id: true, nameKey: true } })) {
       const twin = await tx.vehicleModel.findUnique({
@@ -153,15 +185,16 @@ function mergeEntries(kind: ItemListKind, id: string, into: string): Promise<num
         select: { id: true },
       });
       if (twin) {
-        await tx.item.updateMany({ where: { vehicleModelId: model.id }, data: { vehicleModelId: twin.id } });
+        await tx.itemVehicle.updateMany({ where: { vehicleModelId: model.id }, data: { vehicleModelId: twin.id } });
         await tx.vehicleModel.delete({ where: { id: model.id } });
       } else {
         await tx.vehicleModel.update({ where: { id: model.id }, data: { brandId: into } });
       }
     }
-    const { count } = await tx.item.updateMany({ where: { vehicleBrandId: id }, data: { vehicleBrandId: into } });
+    await tx.itemVehicle.updateMany({ where: { vehicleBrandId: id }, data: { vehicleBrandId: into } });
+    await dropRepeatedVehicles(tx, moved);
     await tx.brand.delete({ where: { id } });
-    return count;
+    return moved.length;
   });
 }
 
