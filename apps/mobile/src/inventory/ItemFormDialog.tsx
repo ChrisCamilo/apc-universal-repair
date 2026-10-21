@@ -52,6 +52,7 @@ import { tourTarget } from '../tourTargets';
 import { CodeListField } from './CodeListField';
 import { useStyles } from './ItemFormDialog.styles';
 import { pickPhotos, savePhotos } from './photos';
+import { DuplicateItemDialog } from './DuplicateItemDialog';
 import type { CreateListEntry } from './useItemLists';
 
 // The form that creates a new item or edits one, the same as the web, in one column: the content scrolls inside the
@@ -75,8 +76,10 @@ import type { CreateListEntry } from './useItemLists';
 // warning toast says so; an edit that changes nothing isn't sent, and an info toast says so. Opened on an item's
 // details, the same dialog shows each field as text in the form's layout, a section for each brand, with Fechar and
 // Editar: nothing can be changed or saved until Editar unlocks the fields in place, on the first one, and the buttons
-// turn into Cancelar and Salvar alterações, which save like the edit form. The owner may open it with values filled
-// in and follow what is typed, as the Inventory tutorial does, whose tour points at the name, at the first brand's
+// turn into Cancelar and Salvar alterações, which save like the edit form. The details may also offer Duplicar, which
+// asks whether the copy takes the photos too (see DuplicateItemDialog), over the details since a modal opens over
+// another only from inside it, and hands the answer over. The owner may open it with values and photos filled in, as a
+// duplicated item's are, and follow what is typed, as the Inventory tutorial does, whose tour points at the name, at the first brand's
 // code and quantity, and at the buttons.
 
 const PHOTOS_LABEL = 'Fotos do item';
@@ -100,6 +103,10 @@ type ItemFormDialogProps = {
   onSaved: (item: Item) => void;
   /** Values the form opens with instead of the item's own, e.g. filled in by the tutorial. */
   initialForm?: ItemForm;
+  /** Each brand's photos the form opens with instead of the item's own, e.g. a duplicated item's copies. */
+  initialPhotos?: UploadPhoto[][];
+  /** Offers Duplicar in the details, called with the item and whether the copy takes the photos too. */
+  onDuplicate?: (item: Item, withPhotos: boolean) => void;
   /** Called with the form as typed and whether it shows the details, on each change, e.g. for the tutorial. */
   onFormChange?: (form: ItemForm, viewing: boolean) => void;
 };
@@ -124,6 +131,8 @@ export function ItemFormDialog({
   onClose,
   onSaved,
   initialForm,
+  initialPhotos,
+  onDuplicate,
   onFormChange,
 }: ItemFormDialogProps) {
   const toast = useToast();
@@ -132,11 +141,13 @@ export function ItemFormDialog({
   const name = useRef<ComponentRef<typeof TextInput>>(null);
   const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM));
   // Each brand's photos, in the order of the form's brands; a brand the form fills in for the item keeps its own.
-  const [photos, setPhotos] = useState<UploadPhoto[][]>(() =>
-    form.brands.map((brand) => heldPhotos(item?.brands.find((held) => held.id === brand.id)?.photos ?? [], API_URL)),
+  const [photos, setPhotos] = useState<UploadPhoto[][]>(
+    () => initialPhotos ?? form.brands.map((brand) => heldPhotos(item?.brands.find((held) => held.id === brand.id)?.photos ?? [], API_URL)),
   );
   const [errors, setErrors] = useState<ItemFormErrors>({});
   const [saving, setSaving] = useState(false);
+  // Whether Duplicar's question is open.
+  const [asking, setAsking] = useState(false);
   // How many names are being created; saving waits for them.
   const [creating, setCreating] = useState(0);
   const options = itemFormOptions(items, lists);
@@ -345,6 +356,11 @@ export function ItemFormDialog({
             <Button variant="secondary" size="sm" onPress={onClose}>
               Fechar
             </Button>
+            {onDuplicate && (
+              <Button variant="secondary" size="sm" onPress={() => setAsking(true)}>
+                Duplicar
+              </Button>
+            )}
             <View ref={tourTarget('form-edit')} collapsable={false}>
               <Button size="sm" onPress={() => setViewing(false)}>
                 Editar
@@ -590,6 +606,17 @@ export function ItemFormDialog({
             </View>
           </View>
         </View>
+      )}
+      {item && onDuplicate && (
+        <DuplicateItemDialog
+          open={open && asking}
+          name={item.name}
+          onClose={() => setAsking(false)}
+          onDuplicate={(withPhotos) => {
+            setAsking(false);
+            onDuplicate(item, withPhotos);
+          }}
+        />
       )}
     </Dialog>
   );
