@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { dialog, ipcMain, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
@@ -20,7 +21,8 @@ import {
   type DatabaseCheck,
   type ImportProblem,
 } from "./database.js";
-import { apiAnswers, waitForApi } from "./server.js";
+import { apiAnswers, waitForApi, watchServer } from "./server.js";
+import { serverFailure, type FailureKind, type ServerFailure } from "./serverFailure.js";
 import { runServerTask, type ServerTask } from "./serverTasks.js";
 import { phoneAddress } from "./tray.js";
 
@@ -33,23 +35,29 @@ import { phoneAddress } from "./tray.js";
 // waits for the page to ask for it. On SQLite the file is encrypted with a key made the first time (see database.ts):
 // the dialog shows its recovery copy until the user says it is kept, and an encrypted file of another install imports
 // with its recovery copy. When another server already answers on the port, such as an old clone's, the app uses it and
-// changes nothing. Only the app's own page may ask, as with the notifications.
+// changes nothing, until it is gone, when the app starts its own. A server that doesn't start, from a key that doesn't
+// open, repeated stops or no answer in time, is told to the page with why (see serverFailure.ts), which shows it
+// instead of the login, and can ask to try again. Only the app's own page may ask, as with the notifications.
 
 /** The channels the page asks on (also written in preload.cts, which can't import this file). */
 const CHANNELS = {
   chooseFolder: "apc:server-choose-folder",
   chooseSqliteFile: "apc:server-choose-sqlite-file",
   checkImport: "apc:server-check-import",
+  failure: "apc:server-failure",
   importServer: "apc:server-import",
   migrateImport: "apc:server-migrate-import",
   recoveryKey: "apc:server-recovery-key",
   recoveryKeySaved: "apc:server-recovery-key-saved",
+  retry: "apc:server-retry",
   settings: "apc:server-settings",
   usePostgresql: "apc:server-use-postgresql",
   useSqlite: "apc:server-use-sqlite",
 } as const;
 /** The channel the main process asks the page to open the Servidor dialog on, from the tray. */
 export const OPEN_SERVER_SETTINGS_CHANNEL = "apc:open-server-settings";
+/** The channel the main process tells the page on that the server isn't on, with why. */
+export const SERVER_FAILED_CHANNEL = "apc:server-failed";
 
 /** How a change of database or an import ended: done, or the message saying why not, in Portuguese. */
 type Outcome = { ok: true } | { ok: false; message: string };
@@ -69,10 +77,14 @@ export type ServerHost = {
 /** An old server to import: a PostgreSQL address, or a SQLite file with the recovery copy of its key when it is encrypted. */
 type Source = { kind: "postgresql"; url: string } | { kind: "sqlite"; file: string; key?: string };
 
+/** Why the server the app runs isn't on, while it isn't. */
+let failure: ServerFailure | undefined;
 /** Whether another server answered on the port when the app opened, so the app runs none. */
 let portTaken = false;
 /** Stops the server the app runs, while it runs one. */
 let stopServer: (() => Promise<void>) | undefined;
+/** Stops watching the server on the port the app uses but didn't start, while it does. */
+let stopWatching: (() => void) | undefined;
 
 /**
  * Checks an import can start: the old server's database opens, is an APC server's of this version, and the database
@@ -184,6 +196,8 @@ export function handleServerSettings(host: ServerHost): void {
   handle(host, CHANNELS.importServer, (source: Source, photosFrom?: string) => importServer(host, source, photosFrom));
   handle(host, CHANNELS.recoveryKey, async () => recoveryKey(host));
   handle(host, CHANNELS.recoveryKeySaved, async () => writeConfig(host.setup.userData, { ...readConfig(host.setup.userData), sqliteKeySaved: true }));
+  handle(host, CHANNELS.failure, async () => failure ?? null);
+  handle(host, CHANNELS.retry, () => runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)));
 }
 
 /**
@@ -264,24 +278,50 @@ function recoveryKey(host: ServerHost): string | null {
 }
 
 /**
- * Starts the server on a database, stopping the one running first, and waits for it to answer.
+ * Tells the page the server isn't on, and why, keeping it for a page that asks later.
+ * @param host The server.
+ * @param kind What kept it off.
+ */
+function reportFailure(host: ServerHost, kind: FailureKind): void {
+  const log = path.join(host.setup.userData, "logs", "api.log");
+  let logText = "";
+  try {
+    logText = readFileSync(log, "utf8").slice(-65_536);
+  } catch {
+    // No log yet.
+  }
+  failure = serverFailure(kind, logText, log);
+  console.warn(`The bundled server isn't on: ${failure.reason}`);
+  host.window.webContents.send(SERVER_FAILED_CHANNEL, failure);
+}
+
+/**
+ * Starts the server on a database, stopping the one running first, and waits for it to answer; when it doesn't, the
+ * page is told why (see reportFailure).
  * @param host The server.
  * @param databaseUrl PostgreSQL's address, or undefined for the SQLite file in userData.
  * @returns Whether it answers.
  */
 async function runServer(host: ServerHost, databaseUrl: string | undefined): Promise<boolean> {
   await stopServer?.();
+  failure = undefined;
   const sqliteKey = databaseUrl ? undefined : ensureSqliteKey(host.setup.userData, readConfig(host.setup.userData), safeStorage);
   if (!databaseUrl && !sqliteKey) {
     console.warn("config.json keeps a SQLite key this Windows user can't open; the server stays off.");
     stopServer = undefined;
+    reportFailure(host, "key");
     return false;
   }
   console.log(`Starting the bundled server from ${host.setup.serverDir}`);
-  stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey }, () => console.warn("The bundled server keeps stopping; it stays off."));
-  const answers = await waitForApi(host.apiUrl);
-  if (!answers) {
+  const gaveUp = new AbortController();
+  stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey }, () => {
+    reportFailure(host, "stopped");
+    gaveUp.abort();
+  });
+  const answers = await waitForApi(host.apiUrl, gaveUp.signal);
+  if (!answers && !gaveUp.signal.aborted) {
     console.warn(`The bundled server didn't answer in time. See logs/api.log in ${host.setup.userData}.`);
+    reportFailure(host, "timeout");
   }
   return answers;
 }
@@ -356,6 +396,7 @@ export async function startOwnServer(host: ServerHost): Promise<"started" | "wai
   if (await apiAnswers(host.apiUrl)) {
     console.log(`A server already answers at ${host.apiUrl}; using it.`);
     portTaken = true;
+    stopWatching = watchServer(() => apiAnswers(host.apiUrl), () => void takeOverPort(host));
     return "started";
   }
   const config = readConfig(host.setup.userData);
@@ -373,8 +414,26 @@ export async function startOwnServer(host: ServerHost): Promise<"started" | "wai
  * @returns Once it has exited, or after the stop's timeout.
  */
 export async function stopOwnServer(): Promise<void> {
+  stopWatching?.();
   await stopServer?.();
   stopServer = undefined;
+}
+
+/**
+ * Starts the app's own server once the one it used on the port is gone, showing "Ligando o servidor" meanwhile, then
+ * the app again.
+ * @param host The server.
+ */
+async function takeOverPort(host: ServerHost): Promise<void> {
+  console.log(`The server at ${host.apiUrl} is gone; starting the app's own.`);
+  portTaken = false;
+  stopWatching = undefined;
+  const config = readConfig(host.setup.userData);
+  if (!needsDatabaseAddress(config, safeStorage)) {
+    await host.window.loadFile(host.startingPage);
+    await runServer(host, openDatabaseUrl(config, safeStorage));
+  }
+  await host.window.loadURL(host.appUrl);
 }
 
 /**
