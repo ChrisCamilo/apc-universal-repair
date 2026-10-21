@@ -11,6 +11,7 @@ import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { CatalogTab } from '../src/dashboard/CatalogTab';
 import { themeStorage, ThemeProvider } from '../src/theme';
+import { testItem, type FlatItem } from '@apc/shared/test-items';
 
 const OPALA_25 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-2.5'];
 // Parts in the inventory, for the code search: an engine the catalog has and one it lacks.
@@ -55,8 +56,8 @@ async function mount(style: Style, mode: Mode) {
  * @param fields The fields that matter here.
  * @returns A complete item.
  */
-function part(fields: Pick<Item, 'id' | 'code' | 'name' | 'vehicleBrand' | 'vehicleModel'>): Item {
-  return {
+function part(fields: Required<Pick<FlatItem, 'id' | 'code' | 'name' | 'vehicleBrand' | 'vehicleModel'>>): Item {
+  return testItem({
     category: 'Freios',
     partBrand: 'Cobreq',
     position: 'N/A',
@@ -70,7 +71,7 @@ function part(fields: Pick<Item, 'id' | 'code' | 'name' | 'vehicleBrand' | 'vehi
     createdAt: '2026-10-03T12:00:00.000Z',
     updatedAt: '2026-10-03T12:00:00.000Z',
     ...fields,
-  };
+  });
 }
 
 /**

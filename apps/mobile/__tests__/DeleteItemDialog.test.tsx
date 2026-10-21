@@ -12,8 +12,9 @@ import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from
 import { DeleteItemDialog } from '../src/inventory/DeleteItemDialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider } from '../src/Toast';
+import { testItem } from '@apc/shared/test-items';
 
-const FILTER: Item = {
+const FILTER: Item = testItem({
   id: '00000000-0000-4000-8000-000000000001',
   code: 'W 712/95',
   name: 'Filtro de óleo',
@@ -31,7 +32,7 @@ const FILTER: Item = {
   photos: [],
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z',
-};
+});
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 // A phone's screen with no notch, so the toast has its insets.

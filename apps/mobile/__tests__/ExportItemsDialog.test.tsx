@@ -14,9 +14,10 @@ import { API_URL } from '../src/api';
 import { ExportItemsDialog } from '../src/inventory/ExportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider } from '../src/Toast';
+import { testItem } from '@apc/shared/test-items';
 
 // An item as the API sends it, with a photo.
-const ITEM: Item = {
+const ITEM: Item = testItem({
   id: '00000000-0000-4000-8000-000000000001',
   code: 'BKR6E',
   name: 'Vela de ignição',
@@ -34,7 +35,7 @@ const ITEM: Item = {
   photos: [{ id: '00000000-0000-4000-8000-0000000000a1', url: '/photos/a1.jpg', thumbUrl: '/photos/a1-thumb.webp' }],
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z',
-};
+});
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 // A phone's screen with no notch, so the toast has its insets.
