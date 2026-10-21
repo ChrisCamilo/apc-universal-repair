@@ -16,6 +16,7 @@ erDiagram
     Brand ||--o{ VehicleModel : "has · tem"
     VehicleModel |o--o{ Item : "fits · serve em"
     Item ||--|{ ItemBrand : "made by · feito por (1+)"
+    Item ||--o{ ItemOriginalCode : "has · tem (0+)"
     ItemBrand ||--o{ ItemPhoto : "shows · mostra (0-3)"
     User ||--o{ Session : "logs in · entra"
 
@@ -46,6 +47,13 @@ erDiagram
         int unitPriceCents "BRL in cents"
         datetime createdAt
         datetime updatedAt
+    }
+    ItemOriginalCode {
+        string id PK "uuid"
+        string itemId FK "Item.id, cascade"
+        int position "order in the item"
+        string code UK "vehicle maker's code, uppercase"
+        string codeKey UK "code: letters and digits only"
     }
     ItemPhoto {
         string id PK "uuid, names its files"
@@ -104,6 +112,7 @@ erDiagram
 |---|---|
 | `Item` | An inventory item: a part in stock, with what its brands share: its name, category, the vehicle it fits and where on it, the minimum stock, and how many there are, added up from its brands. |
 | `ItemBrand` | A brand that makes an item's part (Cobreq, Fras-le…), in order: its part code, color, location, quantity and unit price. Every item has at least one; an item from before brands became its first, with the item's id. |
+| `ItemOriginalCode` | The vehicle maker's codes of an item's part (OEM), in order, the same for every brand that makes it. An item may have none. |
 | `ItemPhoto` | Up to 3 photos of an item's brand, in order; the first one is the cover in the list. The files themselves are stored by the API under `PHOTOS_DIR`, each photo reduced to a WebP of up to 1600px next to its thumbnail. |
 | `Category` | The categories an item is filed under (Motor, Freios…). |
 | `PartBrand` | The brands of the parts (Bosch, NGK…). |
@@ -117,6 +126,7 @@ erDiagram
 - Every item has **one** category and vehicle brand, **at most one** vehicle model, and **one or more** brands, each of **one** part brand, a part brand at most once in an item. An item without a vehicle model fits **any model** of its vehicle brand.
 - A vehicle model belongs to **one** vehicle brand; a vehicle brand has **many** models.
 - An item's brand has **0 to 3** photos (the limit is checked by the API).
+- An item has **any number** of original codes, none at first.
 - The item and its brands store **references** (`categoryId`, `partBrandId`, …), not names: renaming a list entry renames it on every item at once, and merging an entry into another moves its items there in one transaction (a vehicle brand moving its models along) before deleting it.
 
 ### Rules
@@ -124,12 +134,13 @@ erDiagram
 | Rule | Where |
 |---|---|
 | Names are unique ignoring case, accents and extra spaces: `nameKey` holds the name in that form and is unique (a vehicle model's within its brand). | `Category`, `PartBrand`, `Brand`, `VehicleModel` |
-| A part code is stored in uppercase and is unique as the search compares it, across every item's brands: `codeKey`, the code with letters and digits only, is unique too, so `CB4500` and `CB-4500` can't both be in stock. `codeKey` and `nameKey` let the search ignore separators and accents. | `ItemBrand.code`, `Item.nameKey` |
+| A part code is stored in uppercase and is unique as the search compares it, across every item's brands and original codes: `codeKey`, the code with letters and digits only, is unique too, so `CB4500` and `CB-4500` can't both be in stock. Each table keeps its own codes unique; the API keeps a brand's code and an original code apart, refusing one another item uses (409) or one the item holds twice (400). `codeKey` and `nameKey` let the search ignore separators and accents, and the search finds an item by any of its codes. | `ItemBrand.code`, `ItemOriginalCode.code`, `Item.nameKey` |
 | The unit price is an integer in cents, so prices add up without rounding errors, from R$ 0,01 to R$ 1.000.000,00, which the API checks. | `ItemBrand.unitPriceCents` |
 | `position` and `side` default to "not applicable", and so does a brand's `color`. The API speaks `N/A`, `D`, `T`, `Ambos` (position) and `N/A`, `LD`, `LE`, `Ambos` (side); the database keeps them as the `Position` and `Side` enums. | `Item`, `ItemBrand.color` |
 | The quantities and the minimum are whole numbers from 0 to 1,000,000, which the API checks. The item's quantity is its brands' sum, kept by the API on every save. Stock status isn't stored: an item is out of stock at 0 and low at or under its minimum, counting all its brands. | `ItemBrand.quantity`, `Item.quantity`, `Item.minQuantity` |
 | An item's brands keep their order in `position`; the API saves an edit's brands as the whole set: one sent with its id is kept, one without is new, and one left out is deleted with its photos. | `ItemBrand` |
-| A list entry an item or a brand uses can't be deleted (`RESTRICT`), and two part brands both in one item can't be merged; deleting a vehicle brand deletes its models (`CASCADE`); deleting an item deletes its brands, and a brand its photos (`CASCADE`). | Foreign keys, API |
+| An item's original codes keep their order in `position`; an edit that sends them replaces the whole list. | `ItemOriginalCode` |
+| A list entry an item or a brand uses can't be deleted (`RESTRICT`), and two part brands both in one item can't be merged; deleting a vehicle brand deletes its models (`CASCADE`); deleting an item deletes its brands and its original codes, and a brand its photos (`CASCADE`). | Foreign keys, API |
 | Vehicle brands of the catalog can't be deleted from the inventory. | API |
 | A username is kept in lowercase and is unique, so names that differ only in case are the same user. It takes 3 to 32 lowercase letters, digits, dots or hyphens. | `User.username`, API |
 | A password is never kept as typed: `passwordHash` holds `scrypt$<salt>$<hash>` with a random salt per user, and the API never sends it. | `User.passwordHash` |
@@ -174,7 +185,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 
 ### Starting data
 
-`pnpm --filter @apc/api db:seed` fills a new database with the test users (`christian.camilo` and `oficina`, from `@apc/shared/test-users`, with their passwords hashed), the default categories, part brands, vehicle brands with their models and a few sample items, three of them made by several brands (front brake pads, front shock absorber and air filter). It can run again without duplicating anything.
+`pnpm --filter @apc/api db:seed` fills a new database with the test users (`christian.camilo` and `oficina`, from `@apc/shared/test-users`, with their passwords hashed), the default categories, part brands, vehicle brands with their models and a few sample items, three of them made by several brands (front brake pads, front shock absorber and air filter), with their original codes. It can run again without duplicating anything.
 
 ---
 
@@ -186,6 +197,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 |---|---|
 | `Item` | Um item do estoque: uma peça, com o que as marcas dela têm em comum: o nome, a categoria, o veículo em que serve e onde, o estoque mínimo, e quantas há, somando as marcas. |
 | `ItemBrand` | Uma marca que fabrica a peça do item (Cobreq, Fras-le…), em ordem: o código da peça, a cor, o local, a quantidade e o valor unitário. Todo item tem pelo menos uma; um item de antes das marcas virou a primeira, com o id do item. |
+| `ItemOriginalCode` | Os códigos da montadora para a peça do item (OEM), em ordem, os mesmos para todas as marcas que a fabricam. Um item pode não ter nenhum. |
 | `ItemPhoto` | Até 3 fotos de uma marca do item, em ordem; a primeira é a capa na lista. Os arquivos ficam guardados pela API em `PHOTOS_DIR`, cada foto reduzida a um WebP de até 1600px ao lado da miniatura. |
 | `Category` | As categorias dos itens (Motor, Freios…). |
 | `PartBrand` | As marcas das peças (Bosch, NGK…). |
@@ -199,6 +211,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 - Todo item tem **uma** categoria e marca de veículo, **no máximo um** modelo de veículo e **uma ou mais** marcas, cada uma de **uma** marca de peça, uma marca de peça no máximo uma vez num item. Um item sem modelo serve em **qualquer modelo** da marca.
 - Um modelo pertence a **uma** marca de veículo; uma marca tem **vários** modelos.
 - Uma marca do item tem de **0 a 3** fotos (o limite é conferido pela API).
+- Um item tem **quantos** códigos originais precisar, nenhum no começo.
 - O item e as marcas dele guardam **referências** (`categoryId`, `partBrandId`, …), não nomes: renomear uma entrada de lista renomeia em todos os itens de uma vez, e juntar uma entrada a outra passa os itens dela para a outra numa só transação (uma marca de veículo levando os modelos junto) antes de excluí-la.
 
 ### Regras
@@ -206,12 +219,13 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | Regra | Onde |
 |---|---|
 | Os nomes são únicos ignorando maiúsculas, acentos e espaços a mais: `nameKey` guarda o nome nessa forma e é único (o de um modelo, dentro da marca). | `Category`, `PartBrand`, `Brand`, `VehicleModel` |
-| O código da peça é guardado em maiúsculas e é único do jeito que a busca compara, entre as marcas de todos os itens: `codeKey`, o código só com letras e números, também é único, então `CB4500` e `CB-4500` não podem estar os dois no estoque. `codeKey` e `nameKey` deixam a busca ignorar separadores e acentos. | `ItemBrand.code`, `Item.nameKey` |
+| O código da peça é guardado em maiúsculas e é único do jeito que a busca compara, entre as marcas e os códigos originais de todos os itens: `codeKey`, o código só com letras e números, também é único, então `CB4500` e `CB-4500` não podem estar os dois no estoque. Cada tabela mantém os próprios códigos únicos; a API separa o código de uma marca de um código original, recusando um que outro item usa (409) ou um que o item teria duas vezes (400). `codeKey` e `nameKey` deixam a busca ignorar separadores e acentos, e a busca acha um item por qualquer um dos seus códigos. | `ItemBrand.code`, `ItemOriginalCode.code`, `Item.nameKey` |
 | O valor unitário é um inteiro em centavos, para os valores somarem sem erro de arredondamento, de R$ 0,01 a R$ 1.000.000,00, que a API confere. | `ItemBrand.unitPriceCents` |
 | `position` e `side` começam como "não se aplica", e a `color` de uma marca também. A API usa `N/A`, `D`, `T`, `Ambos` (posição) e `N/A`, `LD`, `LE`, `Ambos` (lado); o banco guarda nos enums `Position` e `Side`. | `Item`, `ItemBrand.color` |
 | As quantidades e o mínimo são números inteiros de 0 a 1.000.000, que a API confere. A quantidade do item é a soma das marcas, mantida pela API a cada gravação. A situação do estoque não é guardada: o item está esgotado em 0 e baixo quando está no mínimo ou abaixo, somando todas as marcas. | `ItemBrand.quantity`, `Item.quantity`, `Item.minQuantity` |
 | As marcas de um item mantêm a ordem em `position`; a API grava as marcas de uma edição como o conjunto inteiro: uma enviada com o id é mantida, uma sem id é nova, e uma que ficou de fora é excluída com as fotos. | `ItemBrand` |
-| Uma entrada de lista usada por um item ou uma marca não pode ser excluída (`RESTRICT`), e duas marcas de peça que estão no mesmo item não podem ser juntadas; excluir uma marca de veículo exclui os modelos dela (`CASCADE`); excluir um item exclui as marcas dele, e uma marca as fotos dela (`CASCADE`). | Chaves estrangeiras, API |
+| Os códigos originais de um item mantêm a ordem em `position`; uma edição que os envia troca a lista inteira. | `ItemOriginalCode` |
+| Uma entrada de lista usada por um item ou uma marca não pode ser excluída (`RESTRICT`), e duas marcas de peça que estão no mesmo item não podem ser juntadas; excluir uma marca de veículo exclui os modelos dela (`CASCADE`); excluir um item exclui as marcas e os códigos originais dele, e uma marca as fotos dela (`CASCADE`). | Chaves estrangeiras, API |
 | As marcas de veículo do catálogo não podem ser excluídas pelo estoque. | API |
 | O usuário é guardado em minúsculas e é único, então nomes que só mudam em maiúsculas são o mesmo usuário. Ele aceita de 3 a 32 letras minúsculas, números, pontos ou hífens. | `User.username`, API |
 | A senha nunca é guardada como foi digitada: `passwordHash` guarda `scrypt$<sal>$<hash>` com um sal aleatório por usuário, e a API nunca o envia. | `User.passwordHash` |
@@ -256,4 +270,4 @@ A [#221](https://github.com/ChrisCamilo/apc-universal-repair/issues/221) provou 
 
 ### Dados iniciais
 
-`pnpm --filter @apc/api db:seed` preenche um banco novo com os usuários de teste (`christian.camilo` e `oficina`, de `@apc/shared/test-users`, com as senhas em hash), as categorias, marcas de peça, marcas de veículo com seus modelos e alguns itens de exemplo, três deles de várias marcas (pastilha de freio dianteira, amortecedor dianteiro e filtro de ar). Pode rodar de novo sem duplicar nada.
+`pnpm --filter @apc/api db:seed` preenche um banco novo com os usuários de teste (`christian.camilo` e `oficina`, de `@apc/shared/test-users`, com as senhas em hash), as categorias, marcas de peça, marcas de veículo com seus modelos e alguns itens de exemplo, três deles de várias marcas (pastilha de freio dianteira, amortecedor dianteiro e filtro de ar), com os códigos originais. Pode rodar de novo sem duplicar nada.
