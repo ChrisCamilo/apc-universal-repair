@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { codeTakenMessage, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE } from '@apc/shared/item-form'
+import { codeTakenMessage, duplicateForm, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE, type ItemForm } from '@apc/shared/item-form'
 import type { Item, ItemBrand, ItemCreate } from '@apc/shared/items'
 import { withEntry, type ItemLists } from '@apc/shared/lists'
+import { copiedPhotos } from '@apc/shared/photos'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { itemListsOf } from '@apc/shared/test-lists'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
+import type { UploadPhoto } from '../components/ImageUpload.tsx'
 import { ToastProvider } from '../components/Toast.tsx'
 import '../fonts.ts'
 import '../index.css'
@@ -656,15 +658,76 @@ test("Web: the details list an item's original codes", async () => {
   await expect.element(value).toHaveTextContent('030 115 561 AN, 030 115 561 AP')
 })
 
+// Opens the details of an item with Duplicar, and checks it asks what to copy, each choice closes the question and
+// hands the item over with whether its photos go too, and Cancelar hands nothing over, leaving the details open.
+test('Web: Duplicar asks whether the copy takes the photos', async () => {
+  const onDuplicate = vi.fn()
+  const screen = await render(<Sample item={FILTER} details onDuplicate={onDuplicate} />)
+  const question = screen.getByRole('dialog', { name: 'Duplicar item?' })
+  for (const [choice, withPhotos] of [
+    ['Copiar dados e fotos', true],
+    ['Copiar só os dados', false],
+  ] as const) {
+    await screen.getByRole('button', { name: 'Duplicar' }).click()
+    await expect.element(question).toBeVisible()
+    await question.getByRole('button', { name: choice }).click()
+    expect(onDuplicate).toHaveBeenLastCalledWith(FILTER, withPhotos)
+    await expect.element(question).not.toBeInTheDocument()
+  }
+  await screen.getByRole('button', { name: 'Duplicar' }).click()
+  await question.getByRole('button', { name: 'Cancelar' }).click()
+  await expect.element(question).not.toBeInTheDocument()
+  expect(onDuplicate).toHaveBeenCalledTimes(2)
+  await expect.element(screen.getByRole('heading', { name: 'Detalhes do item' })).toBeVisible()
+})
+
+// Opens a new item's form as a copy of an item with a photo, and checks it opens filled in without the code and with
+// the quantity at 0, showing the photo, and that saving it with a new code posts the item, then sends the photo as a
+// copy of the item's.
+test("Web: a duplicated item opens without codes or stock and saves copies of the item's photos", async () => {
+  const withPhoto = { ...FILTER, brands: [{ ...FILTER.brands[0], photos: [SAVED_PHOTO] }] }
+  let posted: ItemCreate | undefined
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+    if (String(url).endsWith('/photos')) {
+      return new Response(JSON.stringify(savedOf(posted!, [SAVED_PHOTO])), { status: 200 })
+    }
+    posted = JSON.parse(String(init?.body))
+    return new Response(JSON.stringify(savedOf(posted!)), { status: 201 })
+  })
+  const onSaved = vi.fn()
+  const screen = await render(
+    <Sample onSaved={onSaved} initialForm={duplicateForm(withPhoto)} initialPhotos={[copiedPhotos(withPhoto.brands[0].photos, '/api')]} />,
+  )
+  await expect.element(screen.getByRole('heading', { name: 'Novo item' })).toBeVisible()
+  await expect.element(screen.getByLabelText('Nome')).toHaveValue('Filtro de óleo')
+  await expect.element(screen.getByLabelText('Código da peça')).toHaveValue('')
+  await expect.element(screen.getByLabelText('Quantidade', { exact: true })).toHaveValue('0')
+  await expect.element(screen.getByRole('img', { name: 'Foto 1, capa' })).toHaveAttribute('src', '/api/photos/aa.png')
+
+  await screen.getByLabelText('Código da peça').fill('w 712/96')
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+  const [[firstUrl, firstInit], [, photosInit]] = fetch.mock.calls
+  expect([firstUrl, firstInit?.method]).toEqual(['/api/items', 'POST'])
+  expect(posted!.brands.map((brand) => [brand.code, brand.quantity])).toEqual([['W 712/96', 0]])
+  expect([...(photosInit!.body as FormData).entries()]).toEqual([['copy', SAVED_PHOTO.id]])
+})
+
 function Sample({
   item: editing,
   details,
   onSaved = () => {},
   onCreateEntry,
+  initialForm,
+  initialPhotos,
+  onDuplicate,
 }: {
   item?: Item
   details?: boolean
   onSaved?: (item: Item) => void
+  initialForm?: ItemForm
+  initialPhotos?: UploadPhoto[][]
+  onDuplicate?: (item: Item, withPhotos: boolean) => void
   /** Called with each name to create; the name is created as asked unless it returns null. */
   onCreateEntry?: CreateListEntry
 }) {
@@ -692,6 +755,9 @@ function Sample({
         onCreateEntry={create}
         onClose={() => setOpen(false)}
         onSaved={onSaved}
+        initialForm={initialForm}
+        initialPhotos={initialPhotos}
+        onDuplicate={onDuplicate}
       />
     </ToastProvider>
   )
