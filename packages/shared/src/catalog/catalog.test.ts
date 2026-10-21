@@ -99,6 +99,26 @@ test("Shared: parts are found by code, exact codes first, five at most", () => {
   assert.deepEqual(findParts(items, "zzz"), { parts: [], more: 0 });
 });
 
+// Finds parts by their items' original codes, ignoring separators, each listed with its code and an id of its own
+// apart from its brands', next to a brand whose code matches too, the exact code first.
+test("Shared: parts are found by their original codes too", () => {
+  const filter = part({ code: "W 712/95", originalCodes: ["030 115 561 AN", "030115561AP"] });
+  const found = findParts([filter, part({ code: "030-115-561" })], "030115561");
+  assert.deepEqual(
+    found.parts.map((each) => [each.code, each.item.id]),
+    [
+      ["030-115-561", "030-115-561"],
+      ["030 115 561 AN", "W 712/95"],
+      ["030115561AP", "W 712/95"],
+    ],
+  );
+  assert.equal(new Set([...found.parts.map((each) => each.id), filter.brands[0].id]).size, 4);
+  assert.deepEqual(
+    findParts([filter], "030-115-561-an").parts.map((each) => each.code),
+    ["030 115 561 AN"],
+  );
+});
+
 // Places parts in the catalog: an engine by its displacement, a model with no such engine, a model the catalog lacks,
 // a part for any model of a brand, and a brand the catalog lacks.
 test("Shared: a part leads to its brand, model and engine in the catalog", () => {
