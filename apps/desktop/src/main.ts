@@ -2,18 +2,20 @@ import os from "node:os";
 import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, screen, session, shell, Tray } from "electron";
 import electronUpdater from "electron-updater";
-import { SERVER_PORT, usesBundledServer } from "./bundledServer.js";
+import { usesBundledServer } from "./bundledServer.js";
 import { readConfig, resolveApiUrl, writeConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./database.js";
 import { windowsIdentity } from "./identity.js";
 import { keepAppLog } from "./logs.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
+import { configuredPort } from "./ports.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
 import { readHealth } from "./server.js";
 import {
   handleServerElsewhere,
   handleServerSettings,
   OPEN_SERVER_SETTINGS_CHANNEL,
+  ownServerOn,
   startOwnServer,
   stopOwnServer,
   type ServerHost,
@@ -128,14 +130,14 @@ function createWindow(appUrl: string, hidden: boolean): BrowserWindow {
 
 /**
  * Keeps the app in the tray while it runs its own server: closing the window hides it, the first time saying so in a
- * Windows notification, and the tray's menu opens it, copies the phone's address, opens the server's settings in it,
- * turns starting with Windows on and off (the installed app only) and quits.
+ * Windows notification, and the tray's menu opens it, copies the phone's address or says the server is off, opens the
+ * server's settings in it, turns starting with Windows on and off (the installed app only) and quits.
  * @param window The app's window.
- * @param port The server's port.
+ * @param port Gives the server's port, which the Servidor dialog can change.
  * @param installed Whether this is the installed app, the only one that can start with Windows.
  * @param config What config.json sets, to show the notice once.
  */
-function keepInTray(window: BrowserWindow, port: number, installed: boolean, config: DesktopConfig): void {
+function keepInTray(window: BrowserWindow, port: () => number, installed: boolean, config: DesktopConfig): void {
   let noticeShown = config.trayNoticeShown === true;
   window.on("close", (event) => {
     if (quitting) {
@@ -156,7 +158,7 @@ function keepInTray(window: BrowserWindow, port: number, installed: boolean, con
   const address = () => phoneAddress(os.networkInterfaces());
   const actions: Record<Exclude<TrayItem["id"], "separator">, (item: Electron.MenuItem) => void> = {
     open: () => showWindow(window),
-    address: () => clipboard.writeText(`http://${address()}:${port}`),
+    address: () => clipboard.writeText(`http://${address()}:${port()}`),
     settings: () => {
       showWindow(window);
       window.webContents.send(OPEN_SERVER_SETTINGS_CHANNEL);
@@ -168,7 +170,8 @@ function keepInTray(window: BrowserWindow, port: number, installed: boolean, con
     Menu.buildFromTemplate(
       trayMenu({
         address: address(),
-        port,
+        port: port(),
+        serverOn: ownServerOn(),
         startsWithWindows: installed && app.getLoginItemSettings({ args: [HIDDEN_ARG] }).openAtLogin,
         canStartWithWindows: installed,
       }).map((item): Electron.MenuItemConstructorOptions =>
@@ -358,8 +361,8 @@ void app.whenReady().then(async () => {
   }
   const config = adoptInstallerChoice(userData, readConfig(userData));
   const bundled = usesBundledServer({ envApiUrl: process.env.APC_API_URL, devUrl }, config);
-  // APC_SERVER_PORT moves the bundled server off its port, for the smoke test.
-  const port = Number(process.env.APC_SERVER_PORT) || SERVER_PORT;
+  // APC_SERVER_PORT moves the bundled server off its port, for the smoke test; otherwise config.json's port, or 3000.
+  const port = Number(process.env.APC_SERVER_PORT) || configuredPort(config);
   // 127.0.0.1, not localhost, which Node may resolve to ::1 while the server listens on IPv4.
   const apiUrl = bundled ? `http://127.0.0.1:${port}` : resolveApiUrl(process.env.APC_API_URL, config);
   console.log(`API: ${apiUrl}`);
@@ -370,12 +373,14 @@ void app.whenReady().then(async () => {
   session.defaultSession.setPermissionCheckHandler(() => false);
 
   const appUrl = devUrl ?? `${APP_ORIGIN}/`;
+  // The server the app runs, once it has one: its address follows a change of port in the Servidor dialog.
+  let host: ServerHost | undefined;
   ipcMain.on(NOTIFY_CHANNEL, (event, payload) => notify(appUrl, event.sender, event.senderFrame?.url ?? "", payload));
   if (!devUrl) {
     const webRoot = app.isPackaged
       ? path.join(process.resourcesPath, "web")
       : path.resolve(app.getAppPath(), "..", "web", "dist");
-    serveApp(webRoot, apiUrl);
+    serveApp(webRoot, () => host?.apiUrl ?? apiUrl);
   }
   const installed = checksForUpdates({ isPackaged: app.isPackaged, devUrl, portableDir: process.env.PORTABLE_EXECUTABLE_DIR });
   // Only the installed app starts with Windows: a run from the clone or the portable exe would register a path that moves.
@@ -391,15 +396,16 @@ void app.whenReady().then(async () => {
   }
   if (bundled) {
     const serverDir = app.isPackaged ? path.join(process.resourcesPath, "server") : path.join(app.getAppPath(), "server");
-    const host: ServerHost = {
+    const own: ServerHost = {
       window,
       appUrl,
       apiUrl,
       startingPage: path.join(app.getAppPath(), "static", "starting.html"),
       setup: { serverDir, userData, port, version: app.getVersion() },
     };
-    handleServerSettings(host);
-    keepInTray(window, port, installed, config);
+    host = own;
+    handleServerSettings(own);
+    keepInTray(window, () => own.setup.port, installed, config);
     // Quitting waits for the server to exit, so its database and files are let go before the app, or an installer
     // replacing it, goes on.
     app.on("will-quit", (event) => {
@@ -415,7 +421,7 @@ void app.whenReady().then(async () => {
       });
     });
     // A start hidden at sign-in shows the window when the page has to ask for PostgreSQL's address.
-    if ((await startOwnServer(host)) === "waiting" && hidden) {
+    if ((await startOwnServer(own)) === "waiting" && hidden) {
       window.once("ready-to-show", () => window.show());
     }
   } else {

@@ -25,16 +25,16 @@ export function registerAppScheme(): void {
 /**
  * Answers app://apc requests: /api/* goes to the API, the rest to the web build.
  * @param webRoot The web build folder.
- * @param apiUrl The API address, e.g. "http://localhost:3333".
+ * @param apiUrl Gives the API address, e.g. "http://127.0.0.1:3000", read on each request since its port can change.
  */
-export function serveApp(webRoot: string, apiUrl: string): void {
+export function serveApp(webRoot: string, apiUrl: () => string): void {
   protocol.handle("app", async (request) => {
     const url = new URL(request.url);
     if (url.host !== "apc") {
       return new Response(null, { status: 404 });
     }
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
-      return forward(request, `${apiUrl}${url.pathname.slice("/api".length)}${url.search}`);
+      return forward(request, `${apiUrl()}${url.pathname.slice("/api".length)}${url.search}`);
     }
     const file = staticFile(webRoot, url.pathname);
     if (!file) {
