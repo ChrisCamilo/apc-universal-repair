@@ -756,7 +756,7 @@ test("Web: an item is duplicated from its details, with or without its photos", 
   expect(sent).toEqual([photos.map((photo) => `copy ${photo.id}`)]);
   await expect(rows).toHaveCount(5);
   const copy = stock[0];
-  expect([copy.brands[0].code, copy.quantity, copy.brands[0].photos.some((photo) => photos.includes(photo))]).toEqual(["W 712/96", 0, false]);
+  expect([copy.brands[0].code, copy.quantity, copy.brands[0].photos.some((photo) => photos.some((each) => each.id === photo.id))]).toEqual(["W 712/96", 0, false]);
 
   await rows.nth(1).getByRole("button", { name: "Excluir Filtro de óleo" }).click();
   await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
