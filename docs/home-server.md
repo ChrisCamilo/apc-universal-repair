@@ -139,6 +139,17 @@ Up to v0.3.0, the server at home ran from a clone of the project, started by a T
 2. **Quit and open it again:** *Sair* in the tray's menu, check no *APC Universal Repair* is left in the Task Manager, and open the app.
 3. **Install the release's Setup over it:** download `APC-Universal-Repair-Setup-<version>.exe` from the [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) and run it. It repairs an install left half done and keeps the data in `%APPDATA%\APC Universal Repair`.
 
+### 10. The port is in use
+
+The server listens on port 3000. When another program already holds it, the app doesn't start the server: the window says *O servidor não ligou* and *A porta 3000 já está em uso pelo programa …*, naming the program and its process, and the tray's menu says the server is off. Then either:
+
+1. **Close that program,** and press *Tentar de novo*. To see which program holds the port, in a PowerShell: `Get-NetTCPConnection -LocalPort 3000 -State Listen | ForEach-Object { Get-Process -Id $_.OwningProcess }`.
+2. **Or use another port:** *Usar outra porta* opens *Servidor e banco de dados* on its *Porta* field. Type a port from 1024 to 65535 and choose *Trocar a porta*. The app warns that the phone's address changes with it, checks the port is free, and starts the server there. The port is kept in `%APPDATA%\APC Universal Repair\config.json` as `port`.
+
+With another port:
+- **The firewall** needs nothing new: the rule of step 3 is for the app, whatever its port.
+- **The phone** must use the new address, which the tray's menu shows. The phone app takes its server's address when it is built ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)), so it needs a build with the new port until it can change it by itself.
+
 ---
 
 ## 🇧🇷 Português (Brasil)
@@ -252,3 +263,14 @@ O *Reiniciar agora* mostra *Atualizando o APC…*, fecha o app e instala a vers�
 1. **Leia os registros**, em `%APPDATA%\APC Universal Repair\logs`: o `api.log` é o do servidor (o último erro dele é o que a janela mostra), e o `app.log` é o do app e do atualizador, com cada abertura, atualização e parada. Num PowerShell: `Get-Content "$env:APPDATA\APC Universal Repair\logs\api.log" -Tail 60`.
 2. **Saia e abra de novo:** *Sair* no menu da bandeja, confira que não sobrou nenhum *APC Universal Repair* no Gerenciador de Tarefas, e abra o app.
 3. **Instale o Setup da release por cima:** baixe o `APC-Universal-Repair-Setup-<versão>.exe` da [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) e rode. Ele conserta uma instalação que ficou pela metade e mantém os dados em `%APPDATA%\APC Universal Repair`.
+
+### 10. A porta está em uso
+
+O servidor escuta na porta 3000. Quando outro programa já a ocupa, o app não liga o servidor: a janela diz *O servidor não ligou* e *A porta 3000 já está em uso pelo programa …*, com o nome do programa e o processo dele, e o menu da bandeja diz que o servidor está desligado. Então:
+
+1. **Feche esse programa** e toque em *Tentar de novo*. Para ver qual programa ocupa a porta, num PowerShell: `Get-NetTCPConnection -LocalPort 3000 -State Listen | ForEach-Object { Get-Process -Id $_.OwningProcess }`.
+2. **Ou use outra porta:** o *Usar outra porta* abre o *Servidor e banco de dados* no campo *Porta*. Digite uma porta de 1024 a 65535 e escolha *Trocar a porta*. O app avisa que o endereço do celular muda junto, confere se a porta está livre e liga o servidor nela. A porta fica guardada no `%APPDATA%\APC Universal Repair\config.json`, como `port`.
+
+Com outra porta:
+- **O firewall** não precisa de nada novo: a regra do passo 3 é para o app, qualquer que seja a porta.
+- **O celular** precisa usar o endereço novo, que aparece no menu da bandeja. O app do celular recebe o endereço do servidor quando é gerado ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)), então precisa de uma versão gerada com a porta nova até poder trocá-lo sozinho.
