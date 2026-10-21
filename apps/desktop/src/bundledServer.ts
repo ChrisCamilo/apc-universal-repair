@@ -8,8 +8,12 @@ import type { DesktopConfig } from "./config.js";
 // database on start, so an update of the app updates the server and its database together, with no clone, script or
 // tag to move.
 
-/** The port the server listens on, for the phone: http://<this computer's address>:3333. */
-export const SERVER_PORT = 3333;
+/**
+ * The port the server listens on, for the phone: http://<this computer's address>:3000. It is SERVER_PORT in
+ * @apc/shared/server, written here since the packaged app doesn't carry that package, and apart from the development
+ * API's, so a run from the repo never meets the real data.
+ */
+export const SERVER_PORT = 3000;
 
 /**
  * How the bundled server runs: where its files are, the app's userData folder, its port, the app's version, and

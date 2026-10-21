@@ -288,7 +288,7 @@ void app.whenReady().then(async () => {
   const userData = app.getPath("userData");
   const config = adoptInstallerChoice(userData, readConfig(userData));
   const bundled = usesBundledServer({ envApiUrl: process.env.APC_API_URL, devUrl }, config);
-  // APC_SERVER_PORT moves the bundled server off 3333, for the smoke test.
+  // APC_SERVER_PORT moves the bundled server off its port, for the smoke test.
   const port = Number(process.env.APC_SERVER_PORT) || SERVER_PORT;
   // 127.0.0.1, not localhost, which Node may resolve to ::1 while the server listens on IPv4.
   const apiUrl = bundled ? `http://127.0.0.1:${port}` : resolveApiUrl(process.env.APC_API_URL, config);

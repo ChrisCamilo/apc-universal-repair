@@ -6,7 +6,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { readConfig } from "../src/config.ts";
 
 // The desktop app with the server it ships (server/, from scripts/bundle-server.mjs), as an installed app runs: no
-// APC_API_URL and no clone, its own userData folder, and a free port in place of 3333. Run `pnpm run build` first,
+// APC_API_URL and no clone, its own userData folder, and a free port in place of 3000. Run `pnpm run build` first,
 // which bundles the server. A fresh install shows its SQLite key's recovery copy on opening, which each test keeps
 // before going on.
 
