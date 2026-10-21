@@ -210,26 +210,27 @@ export function seal(text: string, sealer: Sealer): string {
 }
 
 /**
- * Tells what the SQLite file is, from its first bytes: none yet, plain SQLite, or encrypted.
+ * Tells what the SQLite file is, from its first bytes: none yet, plain SQLite, or encrypted. A file that can't be read,
+ * such as one locked or a folder in its place, counts as encrypted, so no key is ever made over one it can't see.
  * @param file The file, e.g. data\apc.db in userData.
  * @returns "new" when it is missing or empty, "plain" when it starts with SQLite's header, otherwise "encrypted".
  */
 export function sqliteFileState(file: string): "new" | "plain" | "encrypted" {
-  let fd: number;
+  let fd: number | undefined;
   try {
     fd = openSync(file, "r");
-  } catch {
-    return "new";
-  }
-  try {
     const head = Buffer.alloc(SQLITE_HEADER.length);
     const read = readSync(fd, head, 0, head.length, 0);
     if (read === 0) {
       return "new";
     }
     return head.subarray(0, read).toString("latin1") === SQLITE_HEADER ? "plain" : "encrypted";
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT" ? "new" : "encrypted";
   } finally {
-    closeSync(fd);
+    if (fd !== undefined) {
+      closeSync(fd);
+    }
   }
 }
 

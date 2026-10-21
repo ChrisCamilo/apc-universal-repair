@@ -195,6 +195,16 @@ test("Desktop: the SQLite file is told new, plain or encrypted from its first by
   assert.equal(sqliteFileState(file), "encrypted");
 });
 
+// Puts a folder where the SQLite file goes, which can't be read as one, and checks it counts as encrypted, so no key is
+// made over it.
+test("Desktop: a SQLite file that can't be read gets no new key", () => {
+  const folder = userData();
+  mkdirSync(path.join(folder, "data", "apc.db"), { recursive: true });
+  assert.equal(sqliteFileState(path.join(folder, "data", "apc.db")), "encrypted");
+  assert.deepEqual(ensureSqliteKey(folder, SEALER), { problem: "missing" });
+  assert.equal(existsSync(path.join(folder, "config.json")), false);
+});
+
 // Writes a key as its recovery copy, and checks it reads back as typed: grouped, in lowercase or with spaces; text that
 // isn't a key is refused.
 test("Desktop: the recovery copy of the key reads back however it is typed", () => {
