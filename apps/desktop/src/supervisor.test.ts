@@ -40,7 +40,7 @@ test("Desktop: a server that keeps stopping is started again a few times, then g
   const { spawn, made } = processes();
   const lines: string[] = [];
   let gaveUp = 0;
-  superviseServer({ spawn, log: (line) => lines.push(line), restartDelayMs: 1, restartLimit: 2, onGiveUp: () => gaveUp++ });
+  superviseServer({ spawn, log: (line) => lines.push(line), restartDelayMs: 1, restartLimit: 2, stopsForGood: () => false, onGiveUp: () => gaveUp++ });
   for (let start = 0; start < 3; start++) {
     made[start].exit(1);
     await wait(10);
@@ -51,12 +51,23 @@ test("Desktop: a server that keeps stopping is started again a few times, then g
   assert.match(lines.at(-1)!, /The server stopped 3 times in a row; it stays off until the app starts it again\.\n$/);
 });
 
+// Starts a server that exits with a code a new try can't fix, such as a taken port's, and checks it isn't started again
+// and is given up at once, with that code.
+test("Desktop: a server that stops for good isn't started again", async () => {
+  const { spawn, made } = processes();
+  const codes: number[] = [];
+  superviseServer({ spawn, log: () => {}, restartDelayMs: 1, restartLimit: 5, stopsForGood: (code) => code === 98, onGiveUp: (code) => codes.push(code) });
+  made[0].exit(98);
+  await wait(10);
+  assert.deepEqual([made.length, codes], [1, [98]]);
+});
+
 // Stops a running server and checks the stop settles only once it has exited, without starting it again or giving up;
 // a server stopped already settles at once.
 test("Desktop: stopping the server settles once it has exited", async () => {
   const { spawn, made } = processes();
   let gaveUp = false;
-  const stop = superviseServer({ spawn, log: () => {}, restartDelayMs: 1, restartLimit: 5, onGiveUp: () => (gaveUp = true) });
+  const stop = superviseServer({ spawn, log: () => {}, restartDelayMs: 1, restartLimit: 5, stopsForGood: () => false, onGiveUp: () => (gaveUp = true) });
   let settled = false;
   const stopping = stop().then(() => (settled = true));
   assert.equal(made[0].killed, true);
@@ -70,7 +81,7 @@ test("Desktop: stopping the server settles once it has exited", async () => {
 // Stops a server that doesn't exit when killed, and checks the stop still settles after its timeout.
 test("Desktop: stopping a server that doesn't exit settles after the timeout", async () => {
   const { spawn } = processes(false);
-  const stop = superviseServer({ spawn, log: () => {}, restartDelayMs: 1, restartLimit: 5, onGiveUp: () => {} });
+  const stop = superviseServer({ spawn, log: () => {}, restartDelayMs: 1, restartLimit: 5, stopsForGood: () => false, onGiveUp: () => {} });
   const started = Date.now();
   await stop(30);
   assert.ok(Date.now() - started >= 25);

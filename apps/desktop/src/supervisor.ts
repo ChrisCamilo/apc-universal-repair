@@ -1,6 +1,6 @@
 // Keeps the server process running (see bundledProcess.ts): when it stops by itself it starts again after a delay, a
 // few times at most, and then it gives up and says so, so a server that can't start doesn't loop forever and the app
-// can tell the user. Stopping it waits for it to exit, up to a timeout, so the app quits or moves the server only once
+// can tell the user. An exit code that can't go better on a new try, such as a taken port's, gives up at once. Stopping it waits for it to exit, up to a timeout, so the app quits or moves the server only once
 // its files and database are let go; once it has stopped, it can be supervised again.
 
 /** How long stopping waits for the server to exit before going on anyway. */
@@ -21,8 +21,10 @@ export type Supervision = {
   restartDelayMs: number;
   /** How many times a server that stops by itself is started again. */
   restartLimit: number;
-  /** Called once the server stopped by itself past the limit and stays off. */
-  onGiveUp: () => void;
+  /** Tells whether an exit code means a new try would fail the same way, so the server stays off at once. */
+  stopsForGood: (code: number) => boolean;
+  /** Called with the last exit code once the server stopped by itself for good and stays off. */
+  onGiveUp: (code: number) => void;
 };
 
 /**
@@ -31,7 +33,7 @@ export type Supervision = {
  * @returns A function that stops it for good, settling once it has exited or after the timeout.
  */
 export function superviseServer(supervision: Supervision): (timeoutMs?: number) => Promise<void> {
-  const { spawn, log, restartDelayMs, restartLimit, onGiveUp } = supervision;
+  const { spawn, log, restartDelayMs, restartLimit, stopsForGood, onGiveUp } = supervision;
   let child: ServerProcess | undefined;
   let running = false;
   let stopped = false;
@@ -46,12 +48,15 @@ export function superviseServer(supervision: Supervision): (timeoutMs?: number) 
       log(`${new Date().toISOString()} The server stopped (exit code ${code}).\n`);
       if (stopped) {
         exited();
+      } else if (stopsForGood(code)) {
+        log(`${new Date().toISOString()} A new start would stop the same way; the server stays off until the app starts it again.\n`);
+        onGiveUp(code);
       } else if (restarts < restartLimit) {
         restarts++;
         setTimeout(() => !stopped && start(), restartDelayMs).unref();
       } else {
         log(`${new Date().toISOString()} The server stopped ${restarts + 1} times in a row; it stays off until the app starts it again.\n`);
-        onGiveUp();
+        onGiveUp(code);
       }
     });
   };
