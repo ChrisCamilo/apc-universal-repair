@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { dialog, ipcMain, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
@@ -6,15 +6,19 @@ import { startBundledServer } from "./bundledProcess.js";
 import { PORT_IN_USE_EXIT_CODE, serverData, serverEnvironment, WRONG_KEY_EXIT_CODE, type ServerSetup } from "./bundledServer.js";
 import { readConfig, updateConfig } from "./config.js";
 import {
+  beginKeyChange,
   databaseCheckMessage,
   describePostgresql,
+  dropKeyChange,
   ensureSqliteKey,
+  finishKeyChange,
   formatRecoveryKey,
   importProblemMessage,
   isPostgresqlUrl,
   needsDatabaseAddress,
   oldPhotosFolder,
   openDatabaseUrl,
+  openKeyChange,
   readRecoveryKey,
   recoveryKeyPending,
   seal,
@@ -41,11 +45,14 @@ import { phoneAddress } from "./tray.js";
 // serverFailure.ts), which shows it instead of the login, and can ask to try again. A taken port is found before the
 // server starts, naming the program that holds it (see ports.ts), and the page can move the server to another port,
 // kept in config.json. A SQLite key missing from config.json, or one that doesn't open the file, is never replaced:
-// the page asks for the recovery copy, which the app checks opens the file before keeping it sealed. Only the app's
+// the page asks for the recovery copy, which the app checks opens the file before keeping it sealed. The page can
+// change the key, with the server off: the new key is kept apart until the file reads back with it, and a change cut
+// short is ended on the next start with the key that opens the file (see database.ts). Only the app's
 // own page may ask, as with the notifications.
 
 /** The channels the page asks on (also written in preload.cts, which can't import this file). */
 const CHANNELS = {
+  changeKey: "apc:server-change-key",
   chooseFolder: "apc:server-choose-folder",
   chooseSqliteFile: "apc:server-choose-sqlite-file",
   checkImport: "apc:server-check-import",
@@ -63,6 +70,8 @@ const CHANNELS = {
 } as const;
 /** The channel the main process asks the page to open the Servidor dialog on, from the tray. */
 export const OPEN_SERVER_SETTINGS_CHANNEL = "apc:open-server-settings";
+/** What the SQLite file's copy is named while its key changes, as apps/api/src/db/cipher.ts names it (REKEY_COPY). */
+const REKEY_COPY = ".before-rekey";
 /**
  * How long to let a server that gave up finish writing its log: its last lines reach api.log a moment after it exits,
  * and the reason the page shows is its last error.
@@ -97,6 +106,37 @@ let portTaken = false;
 let stopServer: (() => Promise<void>) | undefined;
 /** Stops watching the server on the port the app uses but didn't start, while it does. */
 let stopWatching: (() => void) | undefined;
+
+/**
+ * Changes the SQLite file's key, with the server off: a new key kept apart in config.json, the file encrypted again
+ * with it by the rekey task, which puts the file back when it fails, and then the new key in use, its recovery copy
+ * still to be kept. The server starts again either way.
+ * @param host The server.
+ * @returns Done, or why not; then the file keeps its old key.
+ */
+async function changeKey(host: ServerHost): Promise<Outcome> {
+  if (readConfig(host.setup.userData).database === "postgresql") {
+    return { ok: false, message: "Só o banco SQLite tem chave; o PostgreSQL usa a senha do endereço dele." };
+  }
+  if (!safeStorage.isEncryptionAvailable()) {
+    return { ok: false, message: "O Windows não deixou guardar a chave nova com segurança, então ela não foi trocada." };
+  }
+  const url = `file:${serverData(host.setup.userData).sqliteFile}`;
+  await stopServer?.();
+  const key = beginKeyChange(host.setup.userData, safeStorage);
+  try {
+    await runTask(host, { task: "rekey", url, key });
+  } catch (error) {
+    dropKeyChange(host.setup.userData);
+    await runServer(host, undefined);
+    return { ok: false, message: `A chave não foi trocada, e o banco continua com a de antes: ${(error as Error).message}` };
+  }
+  finishKeyChange(host.setup.userData);
+  console.log("The SQLite key was changed; its new recovery copy is still to be kept.");
+  return (await runServer(host, undefined))
+    ? { ok: true }
+    : { ok: false, message: failure?.reason ?? `O servidor não ligou. Veja logs\\api.log em ${host.setup.userData}.` };
+}
 
 /**
  * Checks an import can start: the old server's database opens, is an APC server's of this version, and the database
@@ -199,6 +239,7 @@ export function handleServerElsewhere(appUrl: string, apiUrl: string): void {
  */
 export function handleServerSettings(host: ServerHost): void {
   handle(host, CHANNELS.settings, async () => settings(host));
+  handle(host, CHANNELS.changeKey, () => changeKey(host));
   handle(host, CHANNELS.usePostgresql, (url: string) => usePostgresql(host, url));
   handle(host, CHANNELS.useSqlite, () => useSqlite(host));
   handle(host, CHANNELS.chooseSqliteFile, () => chooseSqliteFile(host.window));
@@ -333,6 +374,9 @@ function reportFailure(host: ServerHost, kind: FailureKind, owner?: PortOwner): 
 async function runServer(host: ServerHost, databaseUrl: string | undefined): Promise<boolean> {
   await stopServer?.();
   failure = undefined;
+  if (!databaseUrl) {
+    await settleKeyChange(host);
+  }
   if (!(await portFree(host.setup.port))) {
     console.warn(`Port ${host.setup.port} is taken; the server isn't started.`);
     stopServer = undefined;
@@ -384,6 +428,34 @@ async function runServer(host: ServerHost, databaseUrl: string | undefined): Pro
  */
 function runTask<T>(host: ServerHost, task: ServerTask): Promise<T> {
   return runServerTask<T>(host.setup.serverDir, serverEnvironment(ownSetup(host)), task);
+}
+
+/**
+ * Ends a change of the SQLite key left in config.json, as by a power cut in the middle: when the new key opens the file
+ * it becomes the key in use; otherwise the file is put back from its copy, if one is left, and keeps its old key.
+ * @param host The server.
+ */
+async function settleKeyChange(host: ServerHost): Promise<void> {
+  const config = readConfig(host.setup.userData);
+  if (!config.sqliteKeyNext) {
+    return;
+  }
+  const file = serverData(host.setup.userData).sqliteFile;
+  const url = `file:${file}`;
+  const copy = `${file}${REKEY_COPY}`;
+  const next = openKeyChange(config, safeStorage);
+  const opens = next !== undefined && (await runTask<boolean>(host, { task: "keyOpens", url, keys: { [url]: next } }).catch(() => false));
+  if (opens) {
+    console.log("A change of the SQLite key was cut short after the file changed; the new key is kept.");
+    finishKeyChange(host.setup.userData);
+  } else {
+    console.log("A change of the SQLite key was cut short before the file changed; the old key is kept.");
+    if (existsSync(copy)) {
+      copyFileSync(copy, file);
+    }
+    dropKeyChange(host.setup.userData);
+  }
+  rmSync(copy, { force: true });
 }
 
 /**
