@@ -31,25 +31,27 @@ model Category {
 /// of its brands' quantities, kept by the API on every change to them, so the list filters and sorts by it; the item
 /// is low on stock when that sum reaches minQuantity.
 model Item {
-  id             String        @id @default(uuid())
+  id             String             @id @default(uuid())
   name           String
   nameKey        String
   categoryId     String
-  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category       Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   vehicleBrandId String
-  vehicleBrand   Brand         @relation(fields: [vehicleBrandId], references: [id], onDelete: Restrict)
+  vehicleBrand   Brand              @relation(fields: [vehicleBrandId], references: [id], onDelete: Restrict)
   /// A model of the vehicle brand; none when the part fits any model of the brand.
   vehicleModelId String?
-  vehicleModel   VehicleModel? @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
-  position       Position      @default(NA)
-  side           Side          @default(NA)
+  vehicleModel   VehicleModel?      @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
+  position       Position           @default(NA)
+  side           Side               @default(NA)
   /// The sum of the brands' quantities.
-  quantity       Int           @default(0)
-  minQuantity    Int           @default(0)
+  quantity       Int                @default(0)
+  minQuantity    Int                @default(0)
   /// The brands that make the part, in order (see ItemBrand.position), the first one the item's cover.
   brands         ItemBrand[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  /// The vehicle maker's codes of the part, in order (see ItemOriginalCode.position).
+  originalCodes  ItemOriginalCode[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   @@index([categoryId])
   @@index([vehicleBrandId])
@@ -86,6 +88,21 @@ model ItemBrand {
   @@index([partBrandId])
 }
 
+/// A code the vehicle maker gave an item's part (OEM), the same for every brand of the item.
+model ItemOriginalCode {
+  id       String @id @default(uuid())
+  itemId   String
+  item     Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  /// The code's place among the item's original codes, from 0.
+  position Int
+  /// Stored in uppercase and unique; the API also keeps it apart from every brand's code.
+  code     String @unique
+  /// The code as the search compares it, also unique.
+  codeKey  String @unique
+
+  @@index([itemId])
+}
+
 /// A photo of an item's brand. The photo, reduced to WebP, and its thumbnail are stored by the API under PHOTOS_DIR,
 /// named after the photo's id; position orders the brand's photos from 0, the cover.
 model ItemPhoto {
@@ -104,9 +121,9 @@ model ItemPhoto {
 
 /// A part brand, the list the item form picks each brand of an item from; nameKey as in Brand.
 model PartBrand {
-  id      String @id @default(uuid())
+  id      String      @id @default(uuid())
   name    String
-  nameKey String @unique
+  nameKey String      @unique
   brands  ItemBrand[]
 }
 
