@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { readFileSync, rmSync } from "node:fs";
+import { closeSync, openSync, readFileSync, readSync, rmSync } from "node:fs";
 import path from "node:path";
-import { writeConfig, type DatabaseChoice, type DesktopConfig } from "./config.ts";
+import { serverData } from "./bundledServer.ts";
+import { readConfig, updateConfig, type DatabaseChoice, type DesktopConfig } from "./config.ts";
 
 // The database the server the app ships runs on (see bundledServer.ts): SQLite, a file in userData, or PostgreSQL, at
 // an address given in the app's server settings (see serverSettings.ts). The installer asks which
@@ -12,7 +13,9 @@ import { writeConfig, type DatabaseChoice, type DesktopConfig } from "./config.t
 // alone opens nothing on another account or computer, and an address that can't be opened is asked for again. The
 // SQLite file is encrypted with a key the app makes the first time it runs the server on it (apps/api/src/db/cipher.ts),
 // sealed the same way as `sqliteKey`. The Servidor dialog shows its recovery copy until the user says it is kept apart
-// from the computer: without it, a copy of the file opens nowhere else.
+// from the computer: without it, a copy of the file opens nowhere else. A key is only made while there is no file yet,
+// or it is still plain SQLite: a file already encrypted without its key in config.json is said to miss it, never given
+// a new one that couldn't open it, and the recovery copy typed back brings it back.
 
 /** The choices the installer offers. */
 const CHOICES: readonly DatabaseChoice[] = ["sqlite", "postgresql"];
@@ -20,6 +23,8 @@ const CHOICES: readonly DatabaseChoice[] = ["sqlite", "postgresql"];
 export const INSTALLER_CHOICE_FILE = "installer-database.txt";
 /** A SQLite key: 32 bytes in hex, as the server takes it. */
 const KEY_FORMAT = /^[0-9a-f]{64}$/;
+/** How every plain SQLite file starts; an encrypted one starts with random bytes. */
+const SQLITE_HEADER = "SQLite format 3\0";
 
 /** What a database holds, as the server's checkDatabase task answers (apps/api/src/db/migrate.ts). */
 export type DatabaseCheck = { missing: string[]; newer: string[]; foreign: boolean };
@@ -27,14 +32,19 @@ export type DatabaseCheck = { missing: string[]; newer: string[]; foreign: boole
 export type ImportProblem = "sourceBehind" | "sourceNewer" | "sourceNotApc" | "targetHasData";
 /** Seals and opens text for this Windows user, as Electron's safeStorage does. */
 export type Sealer = { encryptString: (text: string) => Buffer; decryptString: (sealed: Buffer) => string };
+/**
+ * The SQLite file's key, or why there is none: config.json keeps one this Windows user can't open, or keeps none for a
+ * file already encrypted.
+ */
+export type SqliteKey = { key: string } | { problem: "unreadable" | "missing" };
 
 /**
  * Moves the installer's choice into config.json, unless it holds one already, and removes the installer's file.
  * @param userData The app's userData folder, where config.json is.
- * @param config What config.json sets now.
  * @returns What config.json sets afterwards.
  */
-export function adoptInstallerChoice(userData: string, config: DesktopConfig): DesktopConfig {
+export function adoptInstallerChoice(userData: string): DesktopConfig {
+  const config = readConfig(userData);
   const file = path.join(userData, INSTALLER_CHOICE_FILE);
   let left: string;
   try {
@@ -47,9 +57,7 @@ export function adoptInstallerChoice(userData: string, config: DesktopConfig): D
   if (!choice || config.database) {
     return config;
   }
-  const next = { ...config, database: choice };
-  writeConfig(userData, next);
-  return next;
+  return updateConfig(userData, { database: choice });
 }
 
 /**
@@ -78,21 +86,25 @@ export function describePostgresql(url: string): string {
 }
 
 /**
- * Gets the SQLite file's key, making one the first time: 32 random bytes, sealed in config.json, with its recovery copy
- * still to be shown.
- * @param userData The app's userData folder, where config.json is.
- * @param config What config.json sets now.
+ * Gets the SQLite file's key, making one the first time, while there is no file yet or it is still plain: 32 random
+ * bytes, sealed in config.json, read as it is now, with its recovery copy still to be shown.
+ * @param userData The app's userData folder, where config.json and the file are.
  * @param sealer safeStorage.
- * @returns The key, or undefined when config.json keeps one this Windows user can't open: a new one wouldn't open the
- * file either.
+ * @returns The key; or "unreadable" when config.json keeps one this Windows user can't open, and "missing" when it keeps
+ * none for a file already encrypted: a new key wouldn't open the file, and would take the place of the right one.
  */
-export function ensureSqliteKey(userData: string, config: DesktopConfig, sealer: Sealer): string | undefined {
-  if (config.sqliteKey) {
-    return unseal(config.sqliteKey, sealer);
+export function ensureSqliteKey(userData: string, sealer: Sealer): SqliteKey {
+  const { sqliteKey } = readConfig(userData);
+  if (sqliteKey) {
+    const key = unseal(sqliteKey, sealer);
+    return key ? { key } : { problem: "unreadable" };
+  }
+  if (sqliteFileState(serverData(userData).sqliteFile) === "encrypted") {
+    return { problem: "missing" };
   }
   const key = randomBytes(32).toString("hex");
-  writeConfig(userData, { ...config, sqliteKey: seal(key, sealer), sqliteKeySaved: false });
-  return key;
+  updateConfig(userData, { sqliteKey: seal(key, sealer), sqliteKeySaved: false });
+  return { key };
 }
 
 /**
@@ -195,6 +207,30 @@ export function recoveryKeyPending(config: DesktopConfig): boolean {
  */
 export function seal(text: string, sealer: Sealer): string {
   return sealer.encryptString(text).toString("base64");
+}
+
+/**
+ * Tells what the SQLite file is, from its first bytes: none yet, plain SQLite, or encrypted.
+ * @param file The file, e.g. data\apc.db in userData.
+ * @returns "new" when it is missing or empty, "plain" when it starts with SQLite's header, otherwise "encrypted".
+ */
+export function sqliteFileState(file: string): "new" | "plain" | "encrypted" {
+  let fd: number;
+  try {
+    fd = openSync(file, "r");
+  } catch {
+    return "new";
+  }
+  try {
+    const head = Buffer.alloc(SQLITE_HEADER.length);
+    const read = readSync(fd, head, 0, head.length, 0);
+    if (read === 0) {
+      return "new";
+    }
+    return head.subarray(0, read).toString("latin1") === SQLITE_HEADER ? "plain" : "encrypted";
+  } finally {
+    closeSync(fd);
+  }
 }
 
 /**

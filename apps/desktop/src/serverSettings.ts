@@ -3,8 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { dialog, ipcMain, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import { startBundledServer } from "./bundledProcess.js";
-import { PORT_IN_USE_EXIT_CODE, serverData, serverEnvironment, type ServerSetup } from "./bundledServer.js";
-import { readConfig, writeConfig } from "./config.js";
+import { PORT_IN_USE_EXIT_CODE, serverData, serverEnvironment, WRONG_KEY_EXIT_CODE, type ServerSetup } from "./bundledServer.js";
+import { readConfig, updateConfig } from "./config.js";
 import {
   databaseCheckMessage,
   describePostgresql,
@@ -40,7 +40,9 @@ import { phoneAddress } from "./tray.js";
 // open, its port held by another program, repeated stops or no answer in time, is told to the page with why (see
 // serverFailure.ts), which shows it instead of the login, and can ask to try again. A taken port is found before the
 // server starts, naming the program that holds it (see ports.ts), and the page can move the server to another port,
-// kept in config.json. Only the app's own page may ask, as with the notifications.
+// kept in config.json. A SQLite key missing from config.json, or one that doesn't open the file, is never replaced:
+// the page asks for the recovery copy, which the app checks opens the file before keeping it sealed. Only the app's
+// own page may ask, as with the notifications.
 
 /** The channels the page asks on (also written in preload.cts, which can't import this file). */
 const CHANNELS = {
@@ -53,6 +55,7 @@ const CHANNELS = {
   recoveryKey: "apc:server-recovery-key",
   recoveryKeySaved: "apc:server-recovery-key-saved",
   retry: "apc:server-retry",
+  useRecoveryKey: "apc:server-use-recovery-key",
   settings: "apc:server-settings",
   usePort: "apc:server-use-port",
   usePostgresql: "apc:server-use-postgresql",
@@ -199,10 +202,11 @@ export function handleServerSettings(host: ServerHost): void {
   handle(host, CHANNELS.migrateImport, (source: Source) => migrateImport(host, source));
   handle(host, CHANNELS.importServer, (source: Source, photosFrom?: string) => importServer(host, source, photosFrom));
   handle(host, CHANNELS.recoveryKey, async () => recoveryKey(host));
-  handle(host, CHANNELS.recoveryKeySaved, async () => writeConfig(host.setup.userData, { ...readConfig(host.setup.userData), sqliteKeySaved: true }));
+  handle(host, CHANNELS.recoveryKeySaved, async () => void updateConfig(host.setup.userData, { sqliteKeySaved: true }));
   handle(host, CHANNELS.failure, async () => failure ?? null);
   handle(host, CHANNELS.retry, () => runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)));
   handle(host, CHANNELS.usePort, (port: number) => usePort(host, port));
+  handle(host, CHANNELS.useRecoveryKey, (text: string) => useRecoveryKey(host, text));
 }
 
 /**
@@ -276,7 +280,8 @@ export function ownServerOn(): boolean {
 function ownSetup(host: ServerHost): ServerSetup {
   const config = readConfig(host.setup.userData);
   const databaseUrl = config.database === "postgresql" ? openDatabaseUrl(config, safeStorage) : undefined;
-  return { ...host.setup, databaseUrl, sqliteKey: databaseUrl ? undefined : ensureSqliteKey(host.setup.userData, config, safeStorage) };
+  const sqlite = databaseUrl ? undefined : ensureSqliteKey(host.setup.userData, safeStorage);
+  return { ...host.setup, databaseUrl, sqliteKey: sqlite && "key" in sqlite ? sqlite.key : undefined };
 }
 
 /**
@@ -285,6 +290,10 @@ function ownSetup(host: ServerHost): ServerSetup {
  * @returns The key in groups of 8, or null once it is kept, or on PostgreSQL.
  */
 function recoveryKey(host: ServerHost): string | null {
+  // A server that isn't on may hold a key that doesn't open its file: none is shown as the one to keep.
+  if (failure) {
+    return null;
+  }
   const config = readConfig(host.setup.userData);
   const key = config.database !== "postgresql" && recoveryKeyPending(config) ? ownSetup(host).sqliteKey : undefined;
   return key ? formatRecoveryKey(key) : null;
@@ -325,18 +334,23 @@ async function runServer(host: ServerHost, databaseUrl: string | undefined): Pro
     reportFailure(host, "portInUse", await portOwner(host.setup.port));
     return false;
   }
-  const sqliteKey = databaseUrl ? undefined : ensureSqliteKey(host.setup.userData, readConfig(host.setup.userData), safeStorage);
-  if (!databaseUrl && !sqliteKey) {
-    console.warn("config.json keeps a SQLite key this Windows user can't open; the server stays off.");
+  const sqlite = databaseUrl ? undefined : ensureSqliteKey(host.setup.userData, safeStorage);
+  if (sqlite && "problem" in sqlite) {
+    console.warn(
+      sqlite.problem === "missing"
+        ? "config.json keeps no key for the encrypted SQLite file; the server stays off until the recovery copy is typed back."
+        : "config.json keeps a SQLite key this Windows user can't open; the server stays off.",
+    );
     stopServer = undefined;
-    reportFailure(host, "key");
+    reportFailure(host, sqlite.problem === "missing" ? "keyMissing" : "key");
     return false;
   }
+  const sqliteKey = sqlite?.key;
   console.log(`Starting the bundled server from ${host.setup.serverDir}`);
   const gaveUp = new AbortController();
   stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey }, (code) => {
     if (code !== PORT_IN_USE_EXIT_CODE) {
-      reportFailure(host, "stopped");
+      reportFailure(host, code === WRONG_KEY_EXIT_CODE ? "keyWrong" : "stopped");
       gaveUp.abort();
       return;
     }
@@ -485,7 +499,7 @@ async function usePort(host: ServerHost, port: number): Promise<Outcome> {
   stopWatching?.();
   stopWatching = undefined;
   portTaken = false;
-  writeConfig(host.setup.userData, { ...readConfig(host.setup.userData), port });
+  updateConfig(host.setup.userData, { port });
   host.setup.port = port;
   host.apiUrl = `http://127.0.0.1:${port}`;
   return (await runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)))
@@ -522,10 +536,43 @@ async function usePostgresql(host: ServerHost, url: string): Promise<Outcome> {
   } catch (error) {
     return { ok: false, message: `Não foi possível preparar o banco: ${(error as Error).message}` };
   }
-  writeConfig(host.setup.userData, { ...readConfig(host.setup.userData), database: "postgresql", databaseUrl: seal(url, safeStorage) });
+  updateConfig(host.setup.userData, { database: "postgresql", databaseUrl: seal(url, safeStorage) });
   return (await runServer(host, url))
     ? { ok: true }
     : { ok: false, message: `O servidor não ligou com esse banco. Veja logs\\api.log em ${host.setup.userData}.` };
+}
+
+/**
+ * Brings back the SQLite file's key from its recovery copy, as typed: checks it opens the file, keeps it sealed in
+ * config.json in place of a missing or wrong one, and starts the server on it.
+ * @param host The server.
+ * @param text The recovery copy, as typed.
+ * @returns Done, or why not; then config.json is left as it was.
+ */
+async function useRecoveryKey(host: ServerHost, text: string): Promise<Outcome> {
+  const key = readRecoveryKey(text);
+  if (!key) {
+    return { ok: false, message: "A chave de recuperação tem 64 letras e números, de 0 a 9 e de A a F; os traços não contam." };
+  }
+  if (!safeStorage.isEncryptionAvailable()) {
+    return { ok: false, message: "O Windows não deixou guardar a chave com segurança, então ela não foi salva." };
+  }
+  const url = `file:${serverData(host.setup.userData).sqliteFile}`;
+  await stopServer?.();
+  let opens: boolean;
+  try {
+    opens = await runTask<boolean>(host, { task: "keyOpens", url, keys: { [url]: key } });
+  } catch (error) {
+    return { ok: false, message: `Não foi possível conferir a chave: ${(error as Error).message}` };
+  }
+  if (!opens) {
+    return { ok: false, message: "Essa chave não abre o banco deste computador. Confira se é a chave de recuperação deste app." };
+  }
+  console.log("The recovery copy opens the SQLite file; it is kept sealed in config.json.");
+  updateConfig(host.setup.userData, { database: "sqlite", sqliteKey: seal(key, safeStorage), sqliteKeySaved: true });
+  return (await runServer(host, undefined))
+    ? { ok: true }
+    : { ok: false, message: failure?.reason ?? `O servidor não ligou. Veja logs\\api.log em ${host.setup.userData}.` };
 }
 
 /**
@@ -534,9 +581,7 @@ async function usePostgresql(host: ServerHost, url: string): Promise<Outcome> {
  * @returns Done, or why not.
  */
 async function useSqlite(host: ServerHost): Promise<Outcome> {
-  const config = readConfig(host.setup.userData);
-  delete config.databaseUrl;
-  writeConfig(host.setup.userData, { ...config, database: "sqlite" });
+  updateConfig(host.setup.userData, { database: "sqlite", databaseUrl: undefined });
   return (await runServer(host, undefined))
     ? { ok: true }
     : { ok: false, message: `O servidor não ligou. Veja logs\\api.log em ${host.setup.userData}.` };

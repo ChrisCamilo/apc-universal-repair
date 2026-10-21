@@ -3,7 +3,7 @@ import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, screen, session, shell, Tray } from "electron";
 import electronUpdater from "electron-updater";
 import { usesBundledServer } from "./bundledServer.js";
-import { readConfig, resolveApiUrl, writeConfig, type DesktopConfig } from "./config.js";
+import { resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./database.js";
 import { windowsIdentity } from "./identity.js";
 import { keepAppLog } from "./logs.js";
@@ -147,7 +147,7 @@ function keepInTray(window: BrowserWindow, port: () => number, installed: boolea
     window.hide();
     if (!noticeShown && Notification.isSupported()) {
       noticeShown = true;
-      writeConfig(app.getPath("userData"), { ...config, trayNoticeShown: true });
+      updateConfig(app.getPath("userData"), { trayNoticeShown: true });
       new Notification({
         title: "O APC continua ligado",
         body: "O servidor segue ligado para o celular. Para sair, use Sair no ícone do APC perto do relógio.",
@@ -359,7 +359,7 @@ void app.whenReady().then(async () => {
     console.log(`The update to ${marker.version} is done, or was left unfinished; its marker is cleared.`);
     clearInstallMarker(userData);
   }
-  const config = adoptInstallerChoice(userData, readConfig(userData));
+  const config = adoptInstallerChoice(userData);
   const bundled = usesBundledServer({ envApiUrl: process.env.APC_API_URL, devUrl }, config);
   // APC_SERVER_PORT moves the bundled server off its port, for the smoke test; otherwise config.json's port, or 3000.
   const port = Number(process.env.APC_SERVER_PORT) || configuredPort(config);
