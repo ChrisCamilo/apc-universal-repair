@@ -8,17 +8,15 @@ import { Segmented } from '../Segmented';
 import { Switch } from '../Switch';
 import { useTheme } from '../theme';
 import { useInventoryTutorial } from './inventoryTutorialContext';
-import { useOpenItemOnRow } from './openItemOnRowContext';
 import { usePageSize } from './pageSizeContext';
 import { useTabReorder } from './tabReorderContext';
 
 // The user menu at the right of the Dashboard header, the same as the web: the logged user's initials on the
 // trigger (the username too on wide screens), and the display preferences. Dark mode and the theme go through the
 // ThemeProvider, which applies and saves them at once; "Arrastar para reordenar" goes through the Dashboard
-// (TabReorderContext), which saves it and makes the tabs reorderable while it is on, and "Abrir item ao clicar na
-// linha" likewise makes the Inventory cards open the item details; "Itens por página" sets how many items the
-// Inventory list shows, now and each time it opens. Every choice keeps the menu open, so several can
-// be changed in a row. "Tutorial do estoque", with a play icon, goes to the Inventory tab and runs its tutorial again.
+// (TabReorderContext), which saves it and makes the tabs reorderable while it is on; "Itens por página" sets how many
+// items the Inventory list shows, now and each time it opens. Every choice keeps the menu open, so several can be
+// changed in a row. "Tutorial do estoque", with a play icon, goes to the Inventory tab and runs its tutorial again.
 // "Sair", at the end and set apart from the preferences, hands the logout to the owner, which ends the session and
 // goes back to the login; the preferences stay on the device for the next login.
 
@@ -34,7 +32,6 @@ type UserMenuProps = {
 export function UserMenu({ user, onLogout }: UserMenuProps) {
   const { style, mode, setStyle, setMode } = useTheme();
   const { reorderable, setReorderable } = useTabReorder();
-  const { opensOnRow, setOpensOnRow } = useOpenItemOnRow();
   const { pageSize, setPageSize } = usePageSize();
   const tutorial = useInventoryTutorial();
 
@@ -62,13 +59,6 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
         value={String(pageSize)}
         onValueChange={(size) => setPageSize(Number(size))}
       />
-      <Switch
-        checked={opensOnRow}
-        onCheckedChange={setOpensOnRow}
-        description="Mostra os detalhes; editar fica a um toque"
-      >
-        Abrir item ao clicar na linha
-      </Switch>
       <MenuItem icon={playIcon} onSelect={tutorial.replay}>
         Tutorial do estoque
       </MenuItem>
