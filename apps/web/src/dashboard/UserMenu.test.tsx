@@ -1,6 +1,5 @@
 import { SESSION_STORAGE_KEY, type SessionUser } from '@apc/shared/auth'
 import { playIcon } from '@apc/shared/icons'
-import { OPEN_ITEM_ON_ROW_STORAGE_KEY } from '@apc/shared/items'
 import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/shared/screens'
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
@@ -16,7 +15,6 @@ import type { DesktopBridge } from '../desktop/desktopBridge.ts'
 import { ServerSettingsContext } from '../desktop/serverSettingsContext.ts'
 import { themeCss } from '../theme.ts'
 import { ThemeProvider } from '../ThemeProvider.tsx'
-import { OpenItemOnRowContext, useOpenItemOnRowChoice } from './openItemOnRowContext.ts'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
 import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 import { UserMenu } from './UserMenu.tsx'
@@ -52,8 +50,8 @@ beforeEach(() => {
 })
 
 // Opens the menu and checks the trigger and the header show the logged user, and the menu holds dark mode (on, at
-// night), the theme on the active style, the tab reorder choice, off until turned on, and the Inventory's "Abrir
-// item ao clicar na linha", on until turned off.
+// night), the theme on the active style, the tab reorder choice, off until turned on, and the Inventory's section,
+// with no choice of opening an item on a row's click, which the list always does.
 test('Web: the user menu shows the logged user and the display preferences', async () => {
   const screen = await render(<Sample />)
   const trigger = screen.getByRole('button', { name: 'Menu do usuário' })
@@ -64,7 +62,7 @@ test('Web: the user menu shows the logged user and the display preferences', asy
   await expect.element(screen.getByRole('menuitemradio', { name: 'Anos 80' })).toHaveAttribute('aria-checked', 'true')
   await expect.element(screen.getByRole('menuitemcheckbox', { name: /Arrastar para reordenar/ })).toHaveAttribute('aria-checked', 'false')
   await expect.element(screen.getByRole('menu').getByText('Estoque')).toBeVisible()
-  await expect.element(screen.getByRole('menuitemcheckbox', { name: /Abrir item ao clicar na linha/ })).toHaveAttribute('aria-checked', 'true')
+  expect(screen.getByRole('menuitemcheckbox', { name: /Abrir item ao clicar na linha/ }).elements()).toHaveLength(0)
 })
 
 // Opens the menu and checks "Tutorial do estoque" shows the play icon, its ring and triangle, in the accent.
@@ -104,21 +102,6 @@ test('Web: the tab reorder choice is saved and comes back', async () => {
   const again = await render(<Sample />)
   await again.getByRole('button', { name: 'Menu do usuário' }).last().click()
   await expect.element(again.getByRole('menuitemcheckbox', { name: /Arrastar para reordenar/ })).toHaveAttribute('aria-checked', 'true')
-})
-
-// Turns "Abrir item ao clicar na linha" off and checks it is saved on the device and comes back off when the menu is
-// drawn again.
-test('Web: the open-item-on-row choice is saved and comes back', async () => {
-  const screen = await render(<Sample />)
-  await screen.getByRole('button', { name: 'Menu do usuário' }).click()
-  await screen.getByRole('menuitemcheckbox', { name: /Abrir item ao clicar na linha/ }).click()
-  expect(localStorage.getItem(OPEN_ITEM_ON_ROW_STORAGE_KEY)).toBe('false')
-  await expect.element(screen.getByRole('menu')).toBeVisible()
-  await userEvent.keyboard('{Escape}')
-
-  const again = await render(<Sample />)
-  await again.getByRole('button', { name: 'Menu do usuário' }).last().click()
-  await expect.element(again.getByRole('menuitemcheckbox', { name: /Abrir item ao clicar na linha/ })).toHaveAttribute('aria-checked', 'false')
 })
 
 // Picks 50 items per page and checks it is saved on the device and comes back chosen when the menu is drawn again,
@@ -203,9 +186,7 @@ function Sample({ openServerSettings = () => {} }: { openServerSettings?: () => 
 function Preferences({ children }: { children: ReactNode }) {
   return (
     <TabReorderContext.Provider value={useReorderChoice()}>
-      <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>
-        <PageSizeContext.Provider value={usePageSizeChoice()}>{children}</PageSizeContext.Provider>
-      </OpenItemOnRowContext.Provider>
+      <PageSizeContext.Provider value={usePageSizeChoice()}>{children}</PageSizeContext.Provider>
     </TabReorderContext.Provider>
   )
 }
