@@ -651,6 +651,19 @@ test('Web: vehicles are added, refused when repeated, and removed', async () => 
   expect(vehicles.getByRole('button', { name: /^Remover veículo/ }).elements()).toHaveLength(0)
 })
 
+// Adds a second vehicle at the minimum desktop size and checks the form doesn't scroll sideways and each line's
+// remove button stays inside the dialog.
+test('Web: the vehicle lines fit the dialog at the minimum desktop size', async () => {
+  const screen = await render(<Sample item={FILTER} />)
+  await screen.getByRole('button', { name: 'Adicionar veículo' }).click()
+  const body = screen.getByTestId('common.dialog.body').element()
+  expect(body.scrollWidth).toBeLessThanOrEqual(body.clientWidth)
+  const dialog = screen.getByRole('dialog').element().getBoundingClientRect()
+  for (const remove of screen.getByRole('button', { name: /^Remover veículo/ }).elements()) {
+    expect(remove.getBoundingClientRect().right).toBeLessThanOrEqual(dialog.right)
+  }
+})
+
 // Opens the details of an item with original codes and checks they show apart, under Códigos originais.
 test("Web: the details list an item's original codes", async () => {
   const screen = await render(<Sample item={{ ...FILTER, originalCodes: ['030 115 561 AN', '030 115 561 AP'] }} details />)
