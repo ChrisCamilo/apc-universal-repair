@@ -652,15 +652,23 @@ test('Web: vehicles are added, refused when repeated, and removed', async () => 
 })
 
 // Adds a second vehicle at the minimum desktop size and checks the form doesn't scroll sideways and each line's
-// remove button stays inside the dialog.
+// trash stays inside the dialog, in the danger color, centered on the line's fields.
 test('Web: the vehicle lines fit the dialog at the minimum desktop size', async () => {
+  root.dataset.style = 'eighties'
+  root.dataset.mode = 'night'
   const screen = await render(<Sample item={FILTER} />)
   await screen.getByRole('button', { name: 'Adicionar veículo' }).click()
   const body = screen.getByTestId('common.dialog.body').element()
   expect(body.scrollWidth).toBeLessThanOrEqual(body.clientWidth)
   const dialog = screen.getByRole('dialog').element().getBoundingClientRect()
-  for (const remove of screen.getByRole('button', { name: /^Remover veículo/ }).elements()) {
-    expect(remove.getBoundingClientRect().right).toBeLessThanOrEqual(dialog.right)
+  for (const line of ['Veículo 1', 'Veículo 2']) {
+    const group = screen.getByRole('group', { name: line })
+    const remove = group.getByRole('button', { name: `Remover ${line.toLowerCase()}` }).element()
+    const trash = remove.getBoundingClientRect()
+    const field = group.getByRole('combobox', { name: 'Marca do veículo' }).element().getBoundingClientRect()
+    expect(trash.right).toBeLessThanOrEqual(dialog.right)
+    expect(Math.abs(trash.top + trash.height / 2 - (field.top + field.height / 2))).toBeLessThanOrEqual(1)
+    expect(getComputedStyle(remove).color).toBe(rgb(themes.eighties.night.colors.danger))
   }
 })
 
