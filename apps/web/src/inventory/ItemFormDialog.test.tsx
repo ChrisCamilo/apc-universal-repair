@@ -594,6 +594,22 @@ test('Web: the details show each brand of an item', async () => {
   await expect.element(screen.getByRole('group', { name: 'Fotos da marca 2' })).toBeVisible()
 })
 
+// Opens the details of an item of three brands on its third, as a brand's row in the list does, and checks the form
+// scrolls down to that brand's section: its top in view, the first brand's above the dialog's body.
+test('Web: the details open scrolled to the brand they were opened on', async () => {
+  const third = { ...PADS.brands[0], id: '00000000-0000-4000-8000-0000000000b3', partBrand: 'Fras-le', code: 'PD-580' }
+  const three = {
+    ...PADS,
+    brands: [PADS.brands[0], { ...PADS.brands[0], id: '00000000-0000-4000-8000-0000000000b2', partBrand: 'Cobreq', code: 'N-1210' }, third],
+  }
+  const screen = await render(<Sample item={three} details scrollToBrand={third.id} />)
+  const body = screen.getByTestId('common.dialog.body').element().getBoundingClientRect()
+  const section = screen.getByRole('group', { name: 'Marca 3' }).element().getBoundingClientRect()
+  expect(section.top).toBeGreaterThanOrEqual(body.top - 1)
+  expect(section.top).toBeLessThan(body.bottom)
+  expect(screen.getByRole('group', { name: 'Marca 1' }).element().getBoundingClientRect().top).toBeLessThan(body.top)
+})
+
 // Types an item's original codes as chips, one with Enter and two pasted at once, and checks they are sent with the
 // item in uppercase, in order.
 test('Web: original codes are typed as chips and sent with the item', async () => {
@@ -737,6 +753,7 @@ test("Web: a duplicated item opens without codes or stock and saves copies of th
 function Sample({
   item: editing,
   details,
+  scrollToBrand,
   onSaved = () => {},
   onCreateEntry,
   initialForm,
@@ -745,6 +762,7 @@ function Sample({
 }: {
   item?: Item
   details?: boolean
+  scrollToBrand?: string
   onSaved?: (item: Item) => void
   initialForm?: ItemForm
   initialPhotos?: UploadPhoto[][]
@@ -771,6 +789,7 @@ function Sample({
         open={open}
         item={editing}
         details={details}
+        scrollToBrand={scrollToBrand}
         items={ITEMS}
         lists={lists}
         onCreateEntry={create}

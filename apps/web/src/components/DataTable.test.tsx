@@ -155,21 +155,22 @@ test('Web: thumbnails and row actions are named buttons', async () => {
   expect(onOpen).toHaveBeenCalledOnce()
   expect(onEdit).toHaveBeenCalledOnce()
   expect(onDelete).toHaveBeenCalledOnce()
-
-  root.dataset.style = 'eighties'
-  root.dataset.mode = 'night'
-  await userEvent.hover(screen.getByRole('button', { name: 'Excluir Amortecedor' }))
-  await expect
-    .poll(() => getComputedStyle(screen.getByRole('button', { name: 'Excluir Amortecedor' }).element()).color)
-    .toBe(rgb(themes.eighties.night.colors.danger))
 })
 
-// Renders a remove action and checks it takes the danger color at rest, not only on hover.
-test('Web: a remove action is red at rest', async () => {
+// Renders an edit and a delete action and checks each takes its color at rest, the accent and the danger color,
+// without a hover.
+test('Web: row actions take their colors at rest', async () => {
   root.dataset.style = 'eighties'
   root.dataset.mode = 'night'
-  const screen = await render(<RowAction icon={trashIcon} label="Remover veículo 2" tone="remove" onClick={() => {}} />)
-  expect(getComputedStyle(screen.getByRole('button', { name: 'Remover veículo 2' }).element()).color).toBe(rgb(themes.eighties.night.colors.danger))
+  const { colors } = themes.eighties.night
+  const screen = await render(
+    <>
+      <RowAction icon={pencilIcon} label="Editar Amortecedor" onClick={() => {}} />
+      <RowAction icon={trashIcon} label="Excluir Amortecedor" tone="danger" onClick={() => {}} />
+    </>,
+  )
+  expect(getComputedStyle(screen.getByRole('button', { name: 'Editar Amortecedor' }).element()).color).toBe(rgb(colors.accent))
+  expect(getComputedStyle(screen.getByRole('button', { name: 'Excluir Amortecedor' }).element()).color).toBe(rgb(colors.danger))
 })
 
 // Shows the empty slot instead of the table when there are no rows.

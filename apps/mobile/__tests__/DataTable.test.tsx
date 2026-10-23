@@ -9,6 +9,7 @@ import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import { sortRows, type Sort } from '@apc/shared/table';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { DataTable, RowAction, TableThumbnail } from '../src/DataTable';
+import { Icon } from '../src/Icon';
 import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
 
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
@@ -149,6 +150,21 @@ test('Mobile: thumbnails and row actions are named buttons', async () => {
   expect(onOpen).toHaveBeenCalledTimes(1);
   expect(onEdit).toHaveBeenCalledTimes(1);
   expect(onDelete).toHaveBeenCalledTimes(1);
+});
+
+// Shows an edit and a delete action and checks each icon takes its color without a press, the accent and the danger
+// color.
+test('Mobile: row actions take their colors at rest', async () => {
+  const { colors } = themes.eighties.night;
+  const tree = await mount(
+    'eighties',
+    'night',
+    <>
+      <RowAction icon={pencilIcon} label="Editar Amortecedor" onPress={() => {}} />
+      <RowAction icon={trashIcon} label="Excluir Amortecedor" tone="danger" onPress={() => {}} />
+    </>,
+  );
+  expect(tree.root.findAllByType(Icon).map((icon) => icon.props.color)).toEqual([colors.accent, colors.danger]);
 });
 
 // Opens cards by a tap and checks the tapped row is handed over, a card being pressed takes the raised fill (or the

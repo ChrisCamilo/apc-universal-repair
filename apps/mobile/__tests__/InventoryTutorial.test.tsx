@@ -12,7 +12,6 @@ import { ITEM_LIST_PATHS } from '@apc/shared/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
-import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
 import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider } from '../src/Toast';
@@ -198,10 +197,8 @@ function Preferences({ children }: { children: React.ReactNode }) {
   });
   replay = tutorial.replay;
   return (
-    <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>
-      <PageSizeContext.Provider value={usePageSizeChoice()}>
-        <InventoryTutorialContext.Provider value={tutorial}>{children}</InventoryTutorialContext.Provider>
-      </PageSizeContext.Provider>
-    </OpenItemOnRowContext.Provider>
+    <PageSizeContext.Provider value={usePageSizeChoice()}>
+      <InventoryTutorialContext.Provider value={tutorial}>{children}</InventoryTutorialContext.Provider>
+    </PageSizeContext.Provider>
   );
 }

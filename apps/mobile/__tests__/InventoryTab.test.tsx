@@ -8,7 +8,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import {
   matchesSearch,
-  OPEN_ITEM_ON_ROW_STORAGE_KEY,
   sortableOf,
   sortItems,
   stockStatus,
@@ -21,8 +20,9 @@ import { itemListsOf } from '@apc/shared/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
-import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
 import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
+import { Icon } from '../src/Icon';
+import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 
@@ -239,9 +239,8 @@ test('Mobile: the trash asks to confirm, and a delete reloads the list', async (
   expect(texts(tree)).toContain('2 de 2 itens · 1 baixo · 0 esgotados');
 });
 
-// Taps a card and checks the item's details open read-only; then, with "Abrir item ao clicar na linha" saved off,
-// checks the cards don't open.
-test('Mobile: a card opens the item details while the option is on', async () => {
+// Taps the card of an item of one brand and checks the item's details open read-only, with no choice to turn it off.
+test('Mobile: a card of one brand opens the item details', async () => {
   const tree = await mount();
   const card = (code: string) =>
     tree.root.findAll(
@@ -254,19 +253,14 @@ test('Mobile: a card opens the item details while the option is on', async () =>
   await ReactTestRenderer.act(async () => card('BP-1020').props.onPress());
   expect(texts(tree)).toContain('Detalhes do item');
   expect(tree.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')).toHaveLength(0);
-
-  await themeStorage.setItem(OPEN_ITEM_ON_ROW_STORAGE_KEY, 'false');
-  const off = await mount();
-  expect(off.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.props.onPress === 'function')).toHaveLength(0);
+  expect(card('BP-1020').props.accessibilityState).toEqual({ expanded: undefined });
 });
 
 function Preferences({ children }: { children: React.ReactNode }) {
   return (
-    <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>
-      <PageSizeContext.Provider value={usePageSizeChoice()}>
-        <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
-      </PageSizeContext.Provider>
-    </OpenItemOnRowContext.Provider>
+    <PageSizeContext.Provider value={usePageSizeChoice()}>
+      <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
+    </PageSizeContext.Provider>
   );
 }
 
@@ -468,8 +462,9 @@ test('Mobile: the "Ordenar" select sorts the list through the API', async () => 
   expect(names.slice(0, 3)).toEqual(['Peça 7', 'Peça 14', 'Peça 21']);
 });
 
-// Lists an item of two brands and checks its card shows both codes and "2 marcas", which opens a card for each brand
-// under it, with the brand's part brand and code, no tint and no actions, and closes them again.
+// Lists an item of two brands and checks its card shows both codes, "2 marcas" and a chevron in the accent; a tap on
+// the card opens a card for each brand under it, with the brand's part brand and code, no tint and no actions, and a
+// tap on the second brand's card opens the item's details on that brand. A tap on the item closes them again.
 test('Mobile: an item of several brands opens a card for each brand', async () => {
   const pads = item(4, {
     name: 'Pastilha dianteira',
@@ -483,10 +478,13 @@ test('Mobile: an item of several brands opens a card for each brand', async () =
   });
   const tree = await mount([pads]);
   const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
-  const toggle = () => tree.root.findAll((n) => n.props.testID === 'inventory.inventory-tab.brands' && typeof n.props.onPress === 'function')[0];
+  const pressables = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.props.onPress === 'function');
+  const toggle = () => pressables()[0];
   expect(cards()).toHaveLength(1);
   expect(texts(tree)).toEqual(expect.arrayContaining(['N-1210 +1', '2 marcas', '3']));
   expect(toggle().props.accessibilityState).toEqual({ expanded: false });
+  const chevron = toggle().findByProps({ testID: 'inventory.inventory-tab.chevron' });
+  expect(chevron.findByType(Icon).props.color).toBe(themes.eighties.night.colors.accent);
 
   await ReactTestRenderer.act(async () => toggle().props.onPress());
   expect(cards()).toHaveLength(3);
@@ -497,6 +495,11 @@ test('Mobile: an item of several brands opens a card for each brand', async () =
   expect(frasle).toEqual(expect.arrayContaining(['Fras-le', 'PD/1210', '2']));
   expect([...cobreq, ...frasle]).not.toContain('Estoque baixo: ');
   expect(cards().map((card) => card.findAll((n) => n.props.testID === 'inventory.inventory-tab.actions').length > 0)).toEqual([true, false, false]);
+  expect(cards().map((card) => card.findAll((n) => n.props.testID === 'inventory.inventory-tab.chevron' && typeof n.type === 'string').length)).toEqual([1, 0, 0]);
+
+  await ReactTestRenderer.act(async () => pressables()[2].props.onPress());
+  expect(texts(tree)).toContain('Detalhes do item');
+  expect(tree.root.findByType(ItemFormDialog).props.scrollToBrand).toBe(pads.brands[1].id);
 
   await ReactTestRenderer.act(async () => toggle().props.onPress());
   expect(cards()).toHaveLength(1);

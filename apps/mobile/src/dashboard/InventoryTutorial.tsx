@@ -31,11 +31,9 @@ type InventoryTutorialProps = {
   onClose: () => void;
   /** The Inventory tab as it is now; its target is filled in here. */
   screen: Omit<TutorialScreen<HostInstance>, 'target'>;
-  /** Whether "Abrir item ao clicar na linha" is on, which adds the details steps. */
-  opensOnRow: boolean;
 };
 
-export function InventoryTutorial({ open, onClose, screen, opensOnRow }: InventoryTutorialProps) {
-  const steps = inventoryTutorialSteps(() => ({ ...screen, target: (name) => findTourTarget(TARGET_VIEWS[name]) }), opensOnRow);
+export function InventoryTutorial({ open, onClose, screen }: InventoryTutorialProps) {
+  const steps = inventoryTutorialSteps(() => ({ ...screen, target: (name) => findTourTarget(TARGET_VIEWS[name]) }));
   return <Tour open={open} onClose={onClose} steps={steps} parts={INVENTORY_TUTORIAL_PARTS} />;
 }

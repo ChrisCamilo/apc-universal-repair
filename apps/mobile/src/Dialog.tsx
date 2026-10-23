@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentRef, ReactNode, RefObject } from 'react';
 import { Modal, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import type { DialogSize } from '@apc/shared/dialog';
 import { CloseButton } from './CloseButton';
@@ -12,7 +12,8 @@ import { Heading } from './Typography';
 // scrolls inside while the action bar stays pinned at the bottom, so the main action is visible without
 // scrolling at 360×780. A `dismissible` dialog, one with nothing to lose such as a notice, also closes on a tap
 // outside it, on the backdrop. A `closable` dialog has the round × at the right of its title, the same as the photo
-// viewer's, which closes it like the back button.
+// viewer's, which closes it like the back button. The owner may hold the content's scroll (scrollRef), to open it
+// further down.
 
 type DialogProps = {
   open: boolean;
@@ -27,10 +28,12 @@ type DialogProps = {
   closable?: boolean;
   /** Also closes on a tap outside, for dialogs with nothing to lose, such as a notice; off for forms. */
   dismissible?: boolean;
+  /** The content's scroll, for the owner to move it, e.g. to a section. */
+  scrollRef?: RefObject<ComponentRef<typeof ScrollView> | null>;
   children: ReactNode;
 };
 
-export function Dialog({ open, onClose, title, size = 'form', actions, closable = false, dismissible = false, children }: DialogProps) {
+export function Dialog({ open, onClose, title, size = 'form', actions, closable = false, dismissible = false, scrollRef, children }: DialogProps) {
   const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
   return (
@@ -38,7 +41,7 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
       <View style={styles.backdrop} testID={ids.backdrop}>
         {dismissible && <Pressable accessibilityLabel="Fechar" onPress={onClose} style={styles.outside} testID={ids.outside} />}
         <View accessibilityViewIsModal accessibilityLabel={title} style={[styles.window, windowBox(size, screen)]} testID={ids.window}>
-          <ScrollView contentContainerStyle={styles.body} testID={ids.body}>
+          <ScrollView ref={scrollRef} contentContainerStyle={styles.body} testID={ids.body}>
             {closable ? (
               <View style={styles.header} testID={ids.header}>
                 <View style={styles.title} testID={ids.title}>

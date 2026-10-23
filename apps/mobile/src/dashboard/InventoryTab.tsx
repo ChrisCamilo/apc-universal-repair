@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
 import { chevronIcon, ICON_SIZES, pencilIcon, trashIcon } from '@apc/shared/icons';
 import {
@@ -49,7 +49,6 @@ import { NumericReadout, Text } from '../Typography';
 import { useInventoryTutorial } from './inventoryTutorialContext';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './InventoryTutorial';
-import { useOpenItemOnRow } from './openItemOnRowContext';
 import { usePageSize } from './pageSizeContext';
 
 // The Inventory tab, the same as the web: every item as a card, a search by name or part code, and a counter
@@ -58,13 +57,14 @@ import { usePageSize } from './pageSizeContext';
 // import brought it there).
 // "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
 // the list loads again once an item is saved or deleted. A card is an item; one made by several brands shows their
-// codes, the quantity added up, and a "N marcas" that opens a card for each brand under it, indented, with the
-// brand's own part brand, code, quantity and photos, no tint (the stock status is the item's) and no actions. "Gerenciar listas" renames, merges and deletes the
+// codes, the quantity added up and "N marcas", with a chevron at its left in the accent: a tap anywhere on it opens a
+// card for each brand under it, indented, with the brand's own part brand, code, quantity and photos, no tint (the
+// stock status is the item's) and no actions, and closes them again. A tap on a brand's card opens the item's details
+// scrolled to that brand, and one on an item of one brand opens its details. "Gerenciar listas" renames, merges and deletes the
 // categories, brands and models the form picks from; the list loads again after each change, the filters following a
 // name renamed or merged, and a name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list and the lists load again;
 // "Exportar CSV" hands every item of the list as it is, on every page, to the share sheet in the same format.
-// While "Abrir item ao clicar na linha" is on in the user menu, a tap on a card opens the item's details, whose
-// Duplicar opens a new item's form filled in as a copy of it, with copies of its photos or without them. The
+// The details' Duplicar opens a new item's form filled in as a copy of it, with copies of its photos or without them. The
 // Filtros menu, the stock status chips (one at a time) and "Limpar filtros" narrow the list the same as the web, sent
 // to the API as the list query with the search, and the list shows one page of what matches, newest first, the size
 // set in the user menu, moving pages as the web does. The "Ordenar" select sorts the list in the API by any of the
@@ -138,20 +138,39 @@ function actionsColumn(
 }
 
 /**
- * Builds the column of each card's name: an item's name, codes and details, with a "N marcas" that opens a card for
- * each brand when it has several; or a brand's part brand, code and details.
+ * Builds the column of each card's chevron, at its left: on an item of several brands, in the accent, turned down
+ * while its brands' cards are open.
  * @param opened The items opened into their brands' cards, by id.
- * @param onToggle Opens an item into its brands' cards, or closes it.
- * @param accent The accent color, of the "N marcas" chevron.
+ * @param accent The accent color.
  * @param ui The tab's styles and ids.
- * @returns The name column.
+ * @returns The chevron column.
  */
-function nameColumn(
+function chevronColumn(
   opened: ReadonlySet<string>,
-  onToggle: (id: string) => void,
   accent: string,
   { styles, ids }: ReturnType<typeof useStyles>,
 ): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
+  return {
+    key: 'expand',
+    header: 'Expandir',
+    card: 'lead',
+    cell: (row) =>
+      !row.brand &&
+      row.item.brands.length > 1 && (
+        <View style={[styles.chevron, opened.has(row.item.id) && styles.chevronOpen]} testID={ids.chevron}>
+          <Icon icon={chevronIcon} size={ICON_SIZES.label} color={accent} />
+        </View>
+      ),
+  };
+}
+
+/**
+ * Builds the column of each card's name: an item's name, codes and details, with "N marcas" when it has several; or
+ * a brand's part brand, code and details.
+ * @param ui The tab's styles and ids.
+ * @returns The name column.
+ */
+function nameColumn({ styles, ids }: ReturnType<typeof useStyles>): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
   return {
     key: 'name',
     header: 'Item',
@@ -174,18 +193,9 @@ function nameColumn(
             {itemDetails(row.item)}
           </Text>
           {row.item.brands.length > 1 && (
-            <Pressable
-              role="button"
-              accessibilityState={{ expanded: opened.has(row.item.id) }}
-              onPress={() => onToggle(row.item.id)}
-              style={styles.brands}
-              testID={ids.brands}
-            >
-              <View style={[styles.chevron, opened.has(row.item.id) && styles.chevronOpen]} testID={ids.chevron}>
-                <Icon icon={chevronIcon} size={ICON_SIZES.inline} color={accent} />
-              </View>
+            <View style={styles.brands} testID={ids.brands}>
               <NumericReadout tone="accent">{`${row.item.brands.length} marcas`}</NumericReadout>
-            </Pressable>
+            </View>
           )}
         </View>
       ),
@@ -274,13 +284,13 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const [importer, setImporter] = useState({ open: false, session: 0 });
   // Whether "Exportar CSV" is open; each opening starts without the photo paths.
   const [exporter, setExporter] = useState({ open: false, session: 0 });
-  const { opensOnRow } = useOpenItemOnRow();
-  // The item form: closed, open on a new item, an item to edit or an item's details, maybe with values and photos
-  // filled in. Each opening starts a new form.
+  // The item form: closed, open on a new item, an item to edit or an item's details (maybe scrolled to a brand),
+  // maybe with values and photos filled in. Each opening starts a new form.
   const [form, setForm] = useState<{
     open: boolean;
     item?: Item;
     details?: boolean;
+    brand?: string;
     initial?: ItemForm;
     photos?: UploadPhoto[][];
     session: number;
@@ -371,8 +381,23 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     });
 
   /** Opens the item form on a new item, an item to edit, or an item's details, maybe with values and photos filled in. */
-  const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][]) =>
-    setForm((current) => ({ open: true, item, details, initial, photos, session: current.session + 1 }));
+  const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][], brand?: string) =>
+    setForm((current) => ({ open: true, item, details, brand, initial, photos, session: current.session + 1 }));
+
+  /**
+   * Opens a card: an item of several brands into its brands' cards, or closes it; an item of one brand into its
+   * details; a brand's card into the item's details, scrolled to that brand.
+   * @param row The card tapped.
+   */
+  const openRow = ({ item, brand }: InventoryRow) => {
+    if (brand) {
+      openForm(item, true, undefined, undefined, brand.id);
+    } else if (item.brands.length > 1) {
+      toggleBrands(item.id);
+    } else {
+      openForm(item, true);
+    }
+  };
 
   /**
    * Opens a new item's form filled in as a copy of an item, in place of its details.
@@ -501,8 +526,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
               <DataTable
                 label="Itens do estoque"
                 columns={[
+                  chevronColumn(opened, colors.accent, ui),
                   photoColumn((item, brand) => setViewer({ item, brand, photos: heldPhotos(brand.photos, API_URL) })),
-                  nameColumn(opened, toggleBrands, colors.accent, ui),
+                  nameColumn(ui),
                   ...COLUMNS,
                   actionsColumn((item) => openForm(item), setRemoving, ui),
                 ]}
@@ -510,7 +536,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
                 rowKey={(row) => (row.brand ? `${row.item.id}:${row.brand.id}` : row.item.id)}
                 rowStatus={rowStatus}
                 rowNested={(row) => row.brand !== undefined}
-                onRowOpen={opensOnRow ? (row) => openForm(row.item, true) : undefined}
+                rowExpanded={(row) => (!row.brand && row.item.brands.length > 1 ? opened.has(row.item.id) : undefined)}
+                onRowOpen={openRow}
                 sort={sort}
                 onSortChange={(next) => narrow(() => setSort(next))}
                 unsortedLabel="Ordem de cadastro"
@@ -548,6 +575,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         open={form.open}
         item={form.item}
         details={form.details}
+        scrollToBrand={form.brand}
         items={items}
         lists={lists}
         onCreateEntry={createEntry}
@@ -639,7 +667,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             void send(`${API_URL}/items/${item.id}`, 'DELETE');
           },
         }}
-        opensOnRow={opensOnRow}
       />
       <ImageViewer
         open={viewer !== undefined}

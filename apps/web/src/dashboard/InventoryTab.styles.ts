@@ -2,10 +2,9 @@ import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the Inventory tab, on its Panel: the search on the left, which grows to fill the row up to max-w-xl
 // from sm, and the buttons as one group pushed to the panel's right edge, also when they wrap under the search on a
-// narrow screen; the filters, with the result count in mono at the end; the table's cells, the name of an item of
-// several brands with its "N marcas" in the accent, whose chevron turns down while the item is open; and, while the
-// list loads,
-// skeleton rows in the table's shape. The panel fills the screen down to the bottom: on desktop the toolbar and the
+// narrow screen; the filters, with the result count in mono at the end; the table's cells, the chevron of an item of
+// several brands in the accent, which turns down while the item is open, and its "N marcas" under its name; and,
+// while the list loads, skeleton rows in the table's shape. The panel fills the screen down to the bottom: on desktop the toolbar and the
 // filters stay at its top, the pagination at its bottom, and only the list between them scrolls; on a phone (below
 // the card breakpoint) the toolbar, the filters and the cards scroll together above the pagination. The loading rows,
 // the empty state and the error state take the list's room, the last two centered in it. The Panel, the Spinner and
@@ -33,9 +32,8 @@ export const inventoryTab = recipe(
       filters: 'flex flex-wrap items-center gap-x-3 gap-y-2',
       count: 'm-0 ml-auto font-mono text-xs tabular-nums text-text-muted',
       title: 'grid justify-items-start gap-0.5',
-      brands:
-        'inline-flex cursor-pointer items-center gap-1 rounded-tile font-mono text-xs text-accent outline-none hover:underline focus-visible:shadow-ring',
-      chevron: 'inline-flex transition-transform',
+      brands: 'font-mono text-xs text-accent',
+      chevron: 'grid place-items-center text-accent transition-transform',
       vehicle: 'grid',
       model: 'text-text-muted',
       coded: '',
@@ -67,7 +65,7 @@ export const inventoryTab = recipe(
     count: 'filters.count',
     title: 'title',
     brands: 'title.brands',
-    chevron: 'title.brands.chevron',
+    chevron: 'chevron',
     vehicle: 'vehicle',
     model: 'vehicle.model',
     coded: 'coded',

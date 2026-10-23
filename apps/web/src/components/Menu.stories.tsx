@@ -34,7 +34,6 @@ function UserMenu() {
   const [style, setStyle] = useState('eighties')
   const [reorder, setReorder] = useState(false)
   const [pageSize, setPageSize] = useState('25')
-  const [rowOpen, setRowOpen] = useState(true)
   return (
     <div className="flex min-h-[calc(var(--spacing)*130)] justify-end p-6">
       <Menu
@@ -69,9 +68,6 @@ function UserMenu() {
           value={pageSize}
           onValueChange={setPageSize}
         />
-        <Switch checked={rowOpen} onCheckedChange={setRowOpen} description="Mostra os detalhes; editar fica a um clique">
-          Abrir item ao clicar na linha
-        </Switch>
         <MenuItem icon={documentIcon} description="Criar, procurar, editar e excluir um item de teste" onSelect={() => {}}>
           Tutorial do estoque
         </MenuItem>

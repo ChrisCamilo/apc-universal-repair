@@ -6,8 +6,10 @@ import { recipe, tv } from '../styles/tv.ts'
 // danger); numbers right-aligned in tabular mono figures. Below the card breakpoint each row becomes a card in a grid
 // (thumbnail | main | end and actions), the header hides and the "Ordenar" select takes its place. A row that opens on
 // a click gets the pointer and an accent outline inside its edges while focused by keyboard. A nested row, such as a
-// brand under its item, is indented on its first cell, or on the card at phone width. A table that fills its
-// column (fill) takes the room left and scrolls inside it, both ways, with the header row pinned on the panel's fill;
+// brand under its item, is indented on its first cell (after the lead column, when there is one), or on the card at
+// phone width. A lead column, such as an item's chevron, is a narrow first column, and on the card a column at its
+// left. A table that fills its column (fill) takes the room left and scrolls inside it, both ways, with the header row
+// pinned on the panel's fill;
 // with no rows, the empty state is centered in that room. Below the card breakpoint it doesn't scroll on its own: the
 // screen scrolls the cards with what is above them. The table's body only groups the rows, so it adds no level to
 // their ids, which are the same as on mobile.
@@ -72,9 +74,17 @@ export const dataTable = recipe(
         main: { cell: 'max-card:[grid-area:main]' },
         end: { cell: 'max-card:[grid-area:end] max-card:justify-self-end' },
         actions: { cell: 'max-card:[grid-area:actions] max-card:justify-self-end' },
+        lead: { cell: 'pr-0 max-card:[grid-area:lead]' },
+      },
+      lead: {
+        true: {
+          row: "max-card:grid-cols-[auto_calc(var(--spacing)*11)_minmax(0,1fr)_auto] max-card:[grid-template-areas:'lead_thumb_main_end''lead_thumb_main_actions']",
+        },
       },
     },
-    defaultVariants: { numeric: false, sorted: false, tint: 'none', openable: false, nested: false, area: 'none', fill: false },
+    // With a lead column, a nested row is indented after it, so the lead column stays narrow.
+    compoundVariants: [{ nested: true, lead: true, class: { row: '[&>td:first-child]:pl-2.5 [&>td:nth-child(2)]:pl-8' } }],
+    defaultVariants: { numeric: false, sorted: false, tint: 'none', openable: false, nested: false, area: 'none', fill: false, lead: false },
   }),
   {
     base: '',
@@ -95,14 +105,14 @@ export const dataTable = recipe(
   },
 )
 
-/** A row's icon action, the accent on hover, or the danger color for one that deletes, at rest for one that removes. */
+/** A row's icon action, in the accent, or in the danger color for one that deletes, with the panel's fill on hover. */
 export const rowAction = recipe(
   'common.row-action',
   tv({
     slots: {
-      base: 'grid size-8 cursor-pointer place-items-center rounded-tile text-text-muted outline-none transition-colors hover:bg-panel focus-visible:shadow-ring',
+      base: 'grid size-8 cursor-pointer place-items-center rounded-tile outline-none transition-colors hover:bg-panel focus-visible:shadow-ring',
     },
-    variants: { tone: { default: 'hover:text-accent', danger: 'hover:text-danger', remove: 'text-danger' } },
+    variants: { tone: { default: 'text-accent', danger: 'text-danger' } },
     defaultVariants: { tone: 'default' },
   }),
   { base: '' },

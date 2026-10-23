@@ -38,10 +38,6 @@ export const MAX_PRICE_CENTS = 100_000_000;
 export const MAX_QUANTITY = 1_000_000;
 /** What a column of the list shows for the brands of an item when they differ, e.g. in color. */
 export const MIXED_VALUES = "Várias";
-/**
- * localStorage (web) and AsyncStorage (mobile) key of the "Abrir item ao clicar na linha" choice; on when not saved.
- */
-export const OPEN_ITEM_ON_ROW_STORAGE_KEY = "apc-open-item-on-row";
 const optionalText = z.string().trim().optional();
 /** Full names of the positions, for tooltips and screen readers. */
 export const POSITION_NAMES: Record<(typeof POSITIONS)[number], string> = {
