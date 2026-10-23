@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@apc/shared/auth'
+import { trashIcon } from '@apc/shared/icons'
 import { capitalizeFirst, codeKey, findOption, itemSchema, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/shared/items'
 import {
   BRAND_FIELD_LABELS,
@@ -39,6 +40,7 @@ import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@
 import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/shared/photos'
 import { Button } from '../components/Button.tsx'
 import { Combobox } from '../components/Combobox.tsx'
+import { RowAction } from '../components/DataTable.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { FieldValue } from '../components/FieldValue.tsx'
 import { API_BASE } from '../api.ts'
@@ -60,7 +62,7 @@ import type { CreateListEntry } from './useItemLists.ts'
 // has it; see CodeListField), then a
 // section for each brand that makes the part, with its photos, part brand, code, quantity, unit price, color and
 // location. Each vehicle is a line of its brand and model; "Adicionar veículo" adds a blank line and "Adicionar marca"
-// a blank brand, and each line's or brand's "Remover" takes it out while another is left. Category, part brands and
+// a blank brand, and each line's or brand's trash, in red, takes it out while another is left. Category, part brands and
 // the vehicles' brands and models are comboboxes of the lists the API keeps, where "+ Criar" adds a new name to its
 // list, picks it and says so in a toast; a line's model only lists its brand's models, is created under that brand,
 // stays locked until a brand of the list is chosen and clears when the brand changes to one without it. A vehicle
@@ -473,9 +475,9 @@ export function ItemFormDialog({
                       disabled={!brand}
                     />
                     {form.vehicles.length > 1 && (
-                      <Button variant="secondary" size="sm" aria-label={`Remover ${line.toLowerCase()}`} onClick={() => removeVehicle(index)}>
-                        Remover
-                      </Button>
+                      <div className={classes.removeVehicle()} data-testid={ids.removeVehicle}>
+                        <RowAction icon={trashIcon} label={`Remover ${line.toLowerCase()}`} tone="remove" onClick={() => removeVehicle(index)} />
+                      </div>
                     )}
                   </div>
                 )
@@ -535,9 +537,7 @@ export function ItemFormDialog({
                     <div className={classes.brandHead()} data-testid={ids.brandHead}>
                       <Heading level={4}>{names.section}</Heading>
                       {form.brands.length > 1 && (
-                        <Button variant="secondary" size="sm" aria-label={`Remover ${names.section.toLowerCase()}`} onClick={() => removeBrand(index)}>
-                          Remover
-                        </Button>
+                        <RowAction icon={trashIcon} label={`Remover ${names.section.toLowerCase()}`} tone="remove" onClick={() => removeBrand(index)} />
                       )}
                     </div>
                     <div className={classes.photos()} data-testid={ids.photos}>

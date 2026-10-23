@@ -1,12 +1,13 @@
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the item form, inside its Dialog: the item's fields in two columns from sm, one below, its vehicles
-// across both columns, a line each of its brand, its model and its Remover, the position and side choices each with
+// across both columns, a line each of its brand, its model and its trash, the position and side choices each with
 // its label over it, and its original codes across both columns; then the brands across both columns, each a framed section
-// with its heading (and its Remover) over its photos and its fields, in the same two columns, and "Adicionar marca"
+// with its heading (and its trash) over its photos and its fields, in the same two columns, and "Adicionar marca"
 // after them. The details use the same layout, with the values as text. The Dialog draws the window, so the base has
 // no classes; the photos' cell only places the ImageUpload, which keeps its own id. The vehicles' columns start at no
-// width, so a line's brand and model share the dialog's width and shrink in it instead of scrolling it sideways.
+// width, so a line's brand and model share the dialog's width and shrink in it instead of scrolling it sideways; a
+// line's trash sits in a cell as tall as a field's frame, centered on it.
 
 /** The item form: its fields grid, the labeled choices, the brands' sections and their photos' cells. */
 export const itemFormDialog = recipe(
@@ -19,6 +20,7 @@ export const itemFormDialog = recipe(
       codes: 'sm:col-span-2',
       vehicles: 'grid grid-cols-1 gap-3 sm:col-span-2',
       vehicle: 'grid grid-cols-1 items-end gap-x-4 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]',
+      removeVehicle: 'flex h-11.5 items-center',
       addVehicle: 'flex',
       brands: 'grid gap-3 sm:col-span-2',
       brand: 'grid items-start gap-x-4 gap-y-3 rounded-tile border border-hairline-soft p-3 sm:grid-cols-2',
@@ -34,6 +36,7 @@ export const itemFormDialog = recipe(
     codes: 'fields.codes',
     vehicles: 'fields.vehicles',
     vehicle: 'fields.vehicles.vehicle',
+    removeVehicle: 'fields.vehicles.vehicle.remove',
     addVehicle: 'fields.vehicles.add',
     brands: 'fields.brands',
     brand: 'fields.brands.brand',
