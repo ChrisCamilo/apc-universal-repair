@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Item, ItemCreate } from "@apc/shared/items";
 import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
+import { themes, type Mode, type Style } from "@apc/shared/theme";
 import { savedItem, serveItems } from "./items.ts";
 import { signIn } from "./session.ts";
 import { testItem, type FlatItem } from "@apc/shared/test-items";
@@ -70,7 +71,7 @@ test("Web: the inventory lists every item with its stock alerts", async ({ page 
   if (testInfo.project.name === "desktop") {
     // The sort arrows are left out, as screen readers leave them out.
     const headers = (await page.getByRole("columnheader").allTextContents()).map((header) => header.replace(/[↕↑↓]/g, ""));
-    expect(headers).toEqual(["Foto", "Item", "Categoria", "Marca", "Veículo", "Posição", "Lado", "Cor", "Local", "Valor unit.", "Qtd.", "Ações"]);
+    expect(headers).toEqual(["Expandir", "Foto", "Item", "Categoria", "Marca", "Veículo", "Posição", "Lado", "Cor", "Local", "Valor unit.", "Qtd.", "Ações"]);
     await expect(rows.nth(1)).toContainText(/R\$\s1\.234,56/);
     await expect(rows.nth(1)).toContainText("qualquer modelo");
     const position = rows.nth(1).getByTitle("Dianteiro");
@@ -120,6 +121,16 @@ async function layout(page: Page) {
     pageExtra: document.scrollingElement!.scrollHeight - window.innerHeight,
   }));
   return { gapBelow: height - (panel.y + panel.height), pageExtra };
+}
+
+/**
+ * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
+ * @param hex Color as `#RRGGBB`.
+ * @returns The same color as `rgb(r, g, b)`.
+ */
+function rgb(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 // Opens the Inventory with a few items, with none and with the API failing, and checks each time the panel reaches the
@@ -657,8 +668,7 @@ test("Web: an item is deleted after confirming", async ({ page }) => {
 
 // Opens an item's details from its row against an API that keeps what it is sent: the details show the item as
 // text, Editar unlocks the fields in place and Salvar alterações patches the item. The pencil still opens the edit
-// form and Enter on a focused row opens the details. With "Abrir item ao clicar na linha" turned off in the user
-// menu, a click on a row opens nothing.
+// form and Enter on a focused row opens the details; the user menu has no choice to turn this off.
 test("Web: a row opens the item details, editable after Editar", async ({ page }) => {
   const stock = [...ITEMS];
   await serveItems(page, stock);
@@ -694,11 +704,7 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
   await details.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }).click();
 
   await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitemcheckbox", { name: /Abrir item ao clicar na linha/ }).click();
-  await page.keyboard.press("Escape");
-  await rows.first().getByText("Filtro de óleo").click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(rows.first()).not.toHaveAttribute("tabindex");
+  await expect(page.getByRole("menuitemcheckbox", { name: /Abrir item ao clicar na linha/ })).toHaveCount(0);
 });
 
 // Duplicates an item of two photos from its details against an API that keeps what it is sent: Copiar dados e fotos
@@ -1047,9 +1053,10 @@ test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({
   }
 });
 
-// Lists an item of two brands and checks its row shows both codes, the quantity added up and "2 marcas", which opens
-// a row for each brand under it, with the brand's part brand, code and quantity, no tint and no actions, and closes
-// them again.
+// Lists an item of two brands and checks its row shows both codes, the quantity added up, "2 marcas" and a chevron
+// in the accent at its left; a click anywhere on it opens a row for each brand under it, with the brand's part brand,
+// code and quantity, no tint and no actions, and a click on the second brand opens the item's details on that brand.
+// A click on the item closes the brands' rows again, and Enter on it opens them.
 test("Web: an item of several brands opens a row for each brand", async ({ page }) => {
   const pads = testItem({
     name: "Pastilha dianteira",
@@ -1065,11 +1072,13 @@ test("Web: an item of several brands opens a row for each brand", async ({ page 
   await expect(rows).toHaveCount(1);
   await expect(rows.nth(0)).toContainText("N-1210 +1");
   await expect(rows.nth(0)).toHaveAttribute("data-status", "warn");
-  const toggle = page.getByRole("button", { name: "2 marcas" });
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(rows.nth(0)).toContainText("2 marcas");
+  await expect(rows.nth(0)).toHaveAttribute("aria-expanded", "false");
+  const [style, mode] = await page.evaluate(() => [document.documentElement.dataset.style, document.documentElement.dataset.mode]);
+  await expect(rows.nth(0).getByTestId("inventory.inventory-tab.chevron")).toHaveCSS("color", rgb(themes[style as Style][mode as Mode].colors.accent));
 
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await rows.nth(0).getByText("Pastilha dianteira").click();
+  await expect(rows.nth(0)).toHaveAttribute("aria-expanded", "true");
   await expect(rows).toHaveCount(3);
   await expect(rows.nth(1)).toContainText("Cobreq");
   await expect(rows.nth(1)).toContainText("N-1210");
@@ -1081,8 +1090,17 @@ test("Web: an item of several brands opens a row for each brand", async ({ page 
   }
   await expect(rows.nth(0).getByRole("button", { name: "Editar Pastilha dianteira" })).toBeVisible();
 
-  await toggle.click();
+  await rows.nth(2).getByText("PD/1210").click();
+  const details = page.getByRole("dialog", { name: "Detalhes do item" });
+  await expect(details.getByRole("group", { name: "Marca 2", exact: true })).toBeInViewport();
+  await details.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }).click();
+
+  await rows.nth(0).getByText("N-1210 +1").click();
   await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0)).toHaveAttribute("aria-expanded", "false");
+  await rows.nth(0).focus();
+  await page.keyboard.press("Enter");
+  await expect(rows).toHaveCount(3);
 });
 
 // Lists an item that fits two vehicles among the test items, and checks its row shows the first with "+1" and both in
