@@ -75,7 +75,8 @@ import type { CreateListEntry } from './useItemLists.ts'
 // saved item over, then sends each brand's photos when they changed: up to 3 a brand, the first the cover, as its
 // ImageUpload field holds them. When the item is saved but its photos aren't, a warning toast says so; an edit that
 // changes nothing isn't sent, and an info toast says so. Opened on an item's details, the same dialog shows each field
-// as text in the form's layout, a section for each brand, with Fechar and Editar: nothing can be changed or saved
+// as text in the form's layout, a section for each brand (scrolled to one when opened on it, as a brand's row in the
+// list does), with Fechar and Editar: nothing can be changed or saved
 // until Editar unlocks the fields in place, on the first one, and the buttons turn into Cancelar and Salvar
 // alterações, which save like the edit form. The details may also offer Duplicar, which asks whether the copy takes the
 // photos too (see DuplicateItemDialog) and hands the answer over. The owner may open it with values and photos filled
@@ -93,6 +94,8 @@ type ItemFormDialogProps = {
   item?: Item
   /** Opens on the item's details, read-only until Editar. */
   details?: boolean
+  /** The id of the brand whose section the details open scrolled to, e.g. a brand's row clicked in the list. */
+  scrollToBrand?: string
   /** Every item in stock, for the colors and the code check. */
   items: Item[]
   /** The lists the comboboxes pick from. */
@@ -126,6 +129,7 @@ export function ItemFormDialog({
   open,
   item,
   details = false,
+  scrollToBrand,
   items,
   lists,
   onCreateEntry,
@@ -140,6 +144,8 @@ export function ItemFormDialog({
   const { classes, ids } = itemFormDialog()
   const [viewing, setViewing] = useState(details && item !== undefined)
   const name = useRef<HTMLInputElement>(null)
+  // The section of the brand the details open scrolled to.
+  const scrolledBrand = useRef<HTMLDivElement>(null)
   const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM))
   // Each brand's photos, in the order of the form's brands; a brand the form fills in for the item keeps its own.
   const [photos, setPhotos] = useState<UploadPhoto[][]>(
@@ -158,6 +164,13 @@ export function ItemFormDialog({
   useEffect(() => {
     onFormChange?.(form, viewing)
   }, [form, viewing, onFormChange])
+
+  // Opened on a brand, the details show its section first, once the window is open.
+  useEffect(() => {
+    if (open) {
+      scrolledBrand.current?.scrollIntoView({ block: 'start' })
+    }
+  }, [open])
 
   // Once Editar unlocks the fields, start on the first one.
   useEffect(() => {
@@ -394,6 +407,7 @@ export function ItemFormDialog({
               {item.brands.map((brand, index) => (
                 <div
                   key={brand.id}
+                  ref={brand.id === scrollToBrand ? scrolledBrand : undefined}
                   role="group"
                   aria-label={brandNames(index, item.brands.length).section}
                   className={classes.brand()}
