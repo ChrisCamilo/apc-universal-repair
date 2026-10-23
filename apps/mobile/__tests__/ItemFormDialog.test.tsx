@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Image, Text, TextInput, View } from 'react-native';
+import { Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
@@ -105,8 +105,8 @@ async function leave(tree: ReactTestRenderer.ReactTestRenderer, label: string) {
  * Renders the form inside the theme and toast providers.
  * @param editing The item to edit; a new item when left out.
  * @param props What else the owner hands the form: onSaved, details, onClose, onCreateEntry, called with each
- * name to create, which is created as asked unless it returns null, the values and photos it opens with, and
- * onDuplicate.
+ * name to create, which is created as asked unless it returns null, the values and photos it opens with, onDuplicate
+ * and the brand the details open scrolled to.
  * @returns The rendered tree.
  */
 async function mount(
@@ -119,6 +119,7 @@ async function mount(
     initialForm,
     initialPhotos,
     onDuplicate,
+    scrollToBrand,
   }: {
     onSaved?: (saved: Item) => void;
     details?: boolean;
@@ -127,6 +128,7 @@ async function mount(
     initialForm?: ItemForm;
     initialPhotos?: UploadPhoto[][];
     onDuplicate?: (item: Item, withPhotos: boolean) => void;
+    scrollToBrand?: string;
   } = {},
 ) {
   /** Holds the lists as the inventory does, adding each name created unless onCreateEntry says it failed. */
@@ -145,6 +147,7 @@ async function mount(
         open
         item={editing}
         details={details}
+        scrollToBrand={scrollToBrand}
         items={ITEMS}
         lists={lists}
         onCreateEntry={create}
@@ -730,6 +733,24 @@ test('Mobile: the details show each brand of an item', async () => {
   const shown = second.findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string').map((n) => n.props.children.replace(/\s/g, ' '));
   expect(shown).toEqual(expect.arrayContaining(['Cobreq', 'N-1210', '4', 'R$ 79,90']));
   expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Fotos da marca 2').length).toBeGreaterThan(0);
+});
+
+// Opens the details of an item of two brands on its second, as a brand's card in the list does, lays the sections out
+// and checks the details scroll once to that brand's top: the fields', the brands' and the brand's own tops added up.
+test('Mobile: the details open scrolled to the brand they were opened on', async () => {
+  const second = { ...FILTER.brands[0], id: '00000000-0000-4000-8000-0000000000b2', partBrand: 'Cobreq', code: 'N-1210' };
+  const tree = await mount({ ...FILTER, brands: [FILTER.brands[0], second] }, { details: true, scrollToBrand: second.id });
+  const scrollTo = tree.root.findByType(ScrollView).instance.scrollTo as jest.Mock;
+  const layOut = (node: ReactTestRenderer.ReactTestInstance, y: number) =>
+    ReactTestRenderer.act(() => node.props.onLayout({ nativeEvent: { layout: { x: 0, y, width: 300, height: 100 } } }));
+  await layOut(section(tree, 'Marca 2'), 400);
+  await layOut(tree.root.findByProps({ testID: 'inventory.item-form-dialog.fields.brands' }), 600);
+  expect(scrollTo).not.toHaveBeenCalled();
+  await layOut(tree.root.findByProps({ testID: 'inventory.item-form-dialog.fields' }), 50);
+  expect(scrollTo).toHaveBeenCalledWith({ y: 1050, animated: false });
+  await layOut(section(tree, 'Marca 2'), 420);
+  expect(scrollTo).toHaveBeenCalledTimes(1);
+  expect(section(tree, 'Marca 1').props.onLayout).toBeUndefined();
 });
 
 // Types an item's original codes as chips, one with the return key and two pasted at once, and checks they are sent
