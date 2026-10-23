@@ -3,9 +3,9 @@ import { createStyles } from '../styles/createStyles';
 
 // The look of the Inventory tab, the same as the web on a phone: the Panel fills the screen down to the bottom, with
 // one column that scrolls inside it (the toolbar, the filters and the cards) above the pagination, which stays at its
-// bottom; the filters in a wrapping row; each card's pencil and trash side by side; the "N marcas" of an item of
-// several brands, whose chevron turns down while the item is open; and, while the list loads,
-// skeleton rows in the cards' shape. The list takes the room left, with the error and the empty states centered in
+// bottom; the filters in a wrapping row; each card's pencil and trash side by side; the chevron of an item of several
+// brands, which turns down while the item is open, and its "N marcas"; and, while the list loads, skeleton rows in the
+// cards' shape. The list takes the room left, with the error and the empty states centered in
 // it. The Panel and the skeletons keep their own ids.
 
 /** The skeleton's line widths: the name, then the details. */
@@ -24,14 +24,14 @@ export const useStyles = createStyles(
     list: 'list',
     actions: 'actions',
     brands: 'brands',
-    chevron: 'brands.chevron',
+    chevron: 'chevron',
     loading: 'loading',
     loadingRow: 'loading.row',
     loadingLines: 'loading.row.lines',
   },
   () => ({
     actions: { flexDirection: 'row', gap: scales.space.s1 },
-    brands: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: scales.space.s1 },
+    brands: { alignSelf: 'flex-start' },
     chevron: {},
     // An item opened into its brands' cards.
     chevronOpen: { transform: [{ rotate: '90deg' }] },
