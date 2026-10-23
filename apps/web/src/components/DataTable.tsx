@@ -63,8 +63,8 @@ type RowActionProps = {
   /** Accessible name, e.g. "Editar Pastilha de freio". */
   label: string
   onClick: () => void
-  /** Danger tints the hover, for actions like delete. */
-  tone?: 'default' | 'danger'
+  /** Danger tints the hover, for actions like delete; remove is red at rest, for taking a line out of a form. */
+  tone?: 'default' | 'danger' | 'remove'
 }
 type RowTone = 'warn' | 'danger'
 type TableTitleProps = {
