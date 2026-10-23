@@ -476,7 +476,7 @@ export function ItemFormDialog({
                     />
                     {form.vehicles.length > 1 && (
                       <div className={classes.removeVehicle()} data-testid={ids.removeVehicle}>
-                        <RowAction icon={trashIcon} label={`Remover ${line.toLowerCase()}`} tone="remove" onClick={() => removeVehicle(index)} />
+                        <RowAction icon={trashIcon} label={`Remover ${line.toLowerCase()}`} tone="danger" onClick={() => removeVehicle(index)} />
                       </div>
                     )}
                   </div>
@@ -537,7 +537,7 @@ export function ItemFormDialog({
                     <div className={classes.brandHead()} data-testid={ids.brandHead}>
                       <Heading level={4}>{names.section}</Heading>
                       {form.brands.length > 1 && (
-                        <RowAction icon={trashIcon} label={`Remover ${names.section.toLowerCase()}`} tone="remove" onClick={() => removeBrand(index)} />
+                        <RowAction icon={trashIcon} label={`Remover ${names.section.toLowerCase()}`} tone="danger" onClick={() => removeBrand(index)} />
                       )}
                     </div>
                     <div className={classes.photos()} data-testid={ids.photos}>
