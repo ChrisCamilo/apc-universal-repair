@@ -482,7 +482,7 @@ export function InventoryTab() {
               columns={[
                 {
                   key: 'expand',
-                  header: 'Marcas',
+                  header: 'Expandir',
                   headerHidden: true,
                   card: 'lead',
                   // An item of several brands: a chevron that turns down while its brands' rows are open.
