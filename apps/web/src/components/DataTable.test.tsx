@@ -164,6 +164,14 @@ test('Web: thumbnails and row actions are named buttons', async () => {
     .toBe(rgb(themes.eighties.night.colors.danger))
 })
 
+// Renders a remove action and checks it takes the danger color at rest, not only on hover.
+test('Web: a remove action is red at rest', async () => {
+  root.dataset.style = 'eighties'
+  root.dataset.mode = 'night'
+  const screen = await render(<RowAction icon={trashIcon} label="Remover veículo 2" tone="remove" onClick={() => {}} />)
+  expect(getComputedStyle(screen.getByRole('button', { name: 'Remover veículo 2' }).element()).color).toBe(rgb(themes.eighties.night.colors.danger))
+})
+
 // Shows the empty slot instead of the table when there are no rows.
 test('Web: the empty state replaces the table with no rows', async () => {
   const screen = await render(<Inventory items={[]} />)
