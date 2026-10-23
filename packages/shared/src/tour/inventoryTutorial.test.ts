@@ -83,14 +83,11 @@ function fakeScreen() {
   return { screen, calls };
 }
 
-// Lists the steps with and without the item details and checks their order, that the details steps come only when
-// a row opens the item, that every step but the last belongs to a part, and the header of a step.
-test("Shared: the tutorial has three parts, with the details steps only when a row opens the item", () => {
-  const ids = (opensOnRow: boolean) => inventoryTutorialSteps(() => fakeScreen().screen, opensOnRow).map((step) => step.id);
-  assert.deepEqual(ids(true).slice(7, 11), ["found", "details", "unlock", "rename"]);
-  assert.deepEqual(ids(false).slice(7, 10), ["found", "pencil-first", "rename"]);
-  assert.equal(ids(true).length, ids(false).length + 1);
-  const steps = inventoryTutorialSteps(() => fakeScreen().screen, true);
+// Lists the steps and checks their order, the test item opened from its row into its details before the edit, that
+// every step but the last belongs to a part, and the header of a step.
+test("Shared: the tutorial has three parts, opening the item from its row", () => {
+  const steps = inventoryTutorialSteps(() => fakeScreen().screen);
+  assert.deepEqual(steps.map((step) => step.id).slice(7, 11), ["found", "details", "unlock", "rename"]);
   assert.deepEqual(
     steps.filter((step) => !step.part).map((step) => step.id),
     ["end"],
@@ -111,7 +108,7 @@ test("Shared: the tutorial reads the form and the filters loosely", () => {
 // but not while a save is on its way, and saves the test item.
 test("Shared: part 1 fills and saves the test item, going back when the form closes", () => {
   const { screen, calls } = fakeScreen();
-  const [create, identity, stock, save] = inventoryTutorialSteps(() => screen, true);
+  const [create, identity, stock, save] = inventoryTutorialSteps(() => screen);
   assert.equal(create.target?.(), "new");
   assert.equal(create.done?.(), false);
   create.auto?.();
@@ -138,7 +135,7 @@ test("Shared: part 1 fills and saves the test item, going back when the form clo
 test("Shared: part 2 searches and filters for the test item", () => {
   const { screen } = fakeScreen();
   screen.items = [SAVED];
-  const steps = inventoryTutorialSteps(() => screen, true);
+  const steps = inventoryTutorialSteps(() => screen);
   const step = (id: string) => steps.find((each) => each.id === id)!;
   step("search").auto?.();
   assert.equal(step("search").done?.(), true);
@@ -156,7 +153,7 @@ test("Shared: part 2 searches and filters for the test item", () => {
 test("Shared: part 3 edits the test item twice, then deletes it", () => {
   const { screen, calls } = fakeScreen();
   screen.items = [SAVED];
-  const steps = inventoryTutorialSteps(() => screen, true);
+  const steps = inventoryTutorialSteps(() => screen);
   const step = (id: string) => steps.find((each) => each.id === id)!;
   step("details").auto?.();
   assert.equal(calls.at(-1), "open TUTORIAL-001 details");
