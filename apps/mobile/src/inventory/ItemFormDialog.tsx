@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { TextInput, View } from 'react-native';
+import { ScrollView, TextInput, View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
 import { capitalizeFirst, codeKey, findOption, itemSchema, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/shared/items';
 import {
@@ -74,8 +74,8 @@ import type { CreateListEntry } from './useItemLists';
 // to the API, shows a toast and hands the saved item over, then sends each brand's photos when they changed: up to 3
 // a brand, the first the cover, picked from the phone's library. When the item is saved but its photos aren't, a
 // warning toast says so; an edit that changes nothing isn't sent, and an info toast says so. Opened on an item's
-// details, the same dialog shows each field as text in the form's layout, a section for each brand, with Fechar and
-// Editar: nothing can be changed or saved until Editar unlocks the fields in place, on the first one, and the buttons
+// details, the same dialog shows each field as text in the form's layout, a section for each brand (scrolled to one
+// when opened on it, as a brand's card in the list does), with Fechar and Editar: nothing can be changed or saved until Editar unlocks the fields in place, on the first one, and the buttons
 // turn into Cancelar and Salvar alterações, which save like the edit form. The details may also offer Duplicar, which
 // asks whether the copy takes the photos too (see DuplicateItemDialog), over the details since a modal opens over
 // another only from inside it, and hands the answer over. The owner may open it with values and photos filled in, as a
@@ -92,6 +92,8 @@ type ItemFormDialogProps = {
   item?: Item;
   /** Opens on the item's details, read-only until Editar. */
   details?: boolean;
+  /** The id of the brand whose section the details open scrolled to, e.g. a brand's card tapped in the list. */
+  scrollToBrand?: string;
   /** Every item in stock, for the colors and the code check. */
   items: Item[];
   /** The lists the comboboxes pick from. */
@@ -125,6 +127,7 @@ export function ItemFormDialog({
   open,
   item,
   details = false,
+  scrollToBrand,
   items,
   lists,
   onCreateEntry,
@@ -139,6 +142,10 @@ export function ItemFormDialog({
   const { styles, ids } = useStyles();
   const [viewing, setViewing] = useState(details && item !== undefined);
   const name = useRef<ComponentRef<typeof TextInput>>(null);
+  // The content's scroll, and where the brand the details open on sits in it: the fields' top, the brands' top in
+  // them and the brand's top in those, each from its own layout.
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const brandAt = useRef<{ fields?: number; brands?: number; brand?: number; scrolled?: boolean }>({});
   const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM));
   // Each brand's photos, in the order of the form's brands; a brand the form fills in for the item keeps its own.
   const [photos, setPhotos] = useState<UploadPhoto[][]>(
@@ -164,6 +171,20 @@ export function ItemFormDialog({
       name.current?.focus();
     }
   }, [unlocked]);
+
+  /**
+   * Takes a layout on the way to the brand the details open on and, once all three are in, scrolls to it, once.
+   * @param part Which of the fields, the brands and the brand laid out.
+   * @param y Its top in its parent.
+   */
+  const placeBrand = (part: 'fields' | 'brands' | 'brand', y: number) => {
+    const at = brandAt.current;
+    at[part] = y;
+    if (!at.scrolled && at.fields !== undefined && at.brands !== undefined && at.brand !== undefined) {
+      at.scrolled = true;
+      scroll.current?.scrollTo({ y: at.fields + at.brands + at.brand, animated: false });
+    }
+  };
 
   /** Takes a field's new value and drops its message. */
   const change = (field: ItemField, value: string) => {
@@ -350,6 +371,7 @@ export function ItemFormDialog({
       onClose={onClose}
       title={viewing ? 'Detalhes do item' : item ? 'Editar item' : 'Novo item'}
       closable
+      scrollRef={scroll}
       actions={
         viewing ? (
           <>
@@ -382,16 +404,17 @@ export function ItemFormDialog({
       }
     >
       {viewing && item ? (
-        <View style={styles.fields} testID={ids.fields}>
+        <View style={styles.fields} testID={ids.fields} onLayout={scrollToBrand ? (event) => placeBrand('fields', event.nativeEvent.layout.y) : undefined}>
           {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
             <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />
           ))}
           <FieldValue label={VEHICLES_LABEL} value={vehiclesText(item)} />
           <FieldValue label={ORIGINAL_CODES_LABEL} value={originalCodesText(item)} />
-          <View style={styles.brands} testID={ids.brands}>
+          <View style={styles.brands} testID={ids.brands} onLayout={scrollToBrand ? (event) => placeBrand('brands', event.nativeEvent.layout.y) : undefined}>
             {item.brands.map((brand, index) => (
               <View
                 key={brand.id}
+                onLayout={brand.id === scrollToBrand ? (event) => placeBrand('brand', event.nativeEvent.layout.y) : undefined}
                 role="group"
                 accessibilityLabel={brandNames(index, item.brands.length).section}
                 style={styles.brand}
