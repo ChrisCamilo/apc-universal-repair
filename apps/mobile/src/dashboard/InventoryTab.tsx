@@ -639,7 +639,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             void send(`${API_URL}/items/${item.id}`, 'DELETE');
           },
         }}
-        opensOnRow={opensOnRow}
       />
       <ImageViewer
         open={viewer !== undefined}

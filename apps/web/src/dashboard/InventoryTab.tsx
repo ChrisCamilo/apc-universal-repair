@@ -641,7 +641,6 @@ export function InventoryTab() {
           void deleteTestItem()
         }}
         screen={screen}
-        opensOnRow={opensOnRow}
       />
       <ImageViewer
         open={viewer !== undefined}

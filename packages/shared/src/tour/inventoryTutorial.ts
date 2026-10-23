@@ -8,9 +8,9 @@ import type { TourStep } from "./tour.ts";
 // with the search and the filters, edits it (to a low, then an out-of-stock row) and deletes it. Each platform
 // describes its screen (what is open, the items, the search and filters, where each part of the screen is) and the
 // actions "Fazer por mim" takes; the steps here say when each one is done, where to go back when the user leaves
-// one, and what to do for them. With "Abrir item ao clicar na linha" off, the steps through the item's details are
-// left out. The tutorial runs by itself the first time, and again from the user menu. The test item has one brand and
-// one vehicle, so its fields are named flat: the item's, its brand's or its vehicle's.
+// one, and what to do for them. The test item is opened from its row, into its details (a click on an item of one
+// brand opens them), and edited from there. The tutorial runs by itself the first time, and again from the user menu.
+// The test item has one brand and one vehicle, so its fields are named flat: the item's, its brand's or its vehicle's.
 
 /** The fields of each filling step of part 1. */
 const FILL_FIELDS: Record<"identity" | "stock", FormField[]> = {
@@ -48,7 +48,6 @@ const STEP_TEXTS: Record<TutorialStepId, { part?: number; title: string; text: s
   found: { part: 2, title: "Achou", text: "A busca e os filtros juntos deixaram na lista o item de teste." },
   details: { part: 3, title: "Abra o item", text: "Clique na linha do item de teste para ver os detalhes dele." },
   unlock: { part: 3, title: "Libere a edição", text: "Os detalhes só mostram o item. Clique em Editar para liberar os campos." },
-  "pencil-first": { part: 3, title: "Edite o item", text: "Clique no lápis do item de teste para editá-lo." },
   rename: {
     part: 3,
     title: "Mude o nome e a quantidade",
@@ -134,7 +133,6 @@ export type TutorialStepId =
   | "found"
   | "details"
   | "unlock"
-  | "pencil-first"
   | "rename"
   | "save-low"
   | "low"
@@ -187,10 +185,9 @@ export function formHas(form: ItemForm, values: Partial<Record<FormField, string
  * Lists the tutorial's steps for a screen: each with its texts, target, check, the step to go back to and what
  * "Fazer por mim" does.
  * @param screen Reads the screen as it is now.
- * @param opensOnRow Whether "Abrir item ao clicar na linha" is on: the details steps are left out when it's off.
  * @returns The steps in order.
  */
-export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Target>, opensOnRow: boolean): TourStep<Target>[] {
+export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Target>): TourStep<Target>[] {
   /** The test item, while it is in stock. */
   const testItem = () => screen().items.find(isTestItem);
   /** Whether the form is open on the test item, on the edit when `viewing` is false. */
@@ -202,7 +199,6 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
   const onNew = () => screen().form !== null && screen().form?.item === undefined;
   /** The values the form holds, or the test item's own. */
   const typed = () => screen().form?.values ?? TUTORIAL_ITEM;
-  const firstEdit: TutorialStepId = opensOnRow ? "details" : "pencil-first";
   const edited = () => testItem()?.name === TUTORIAL_EDIT.name && testItem()?.quantity === Number(TUTORIAL_EDIT.quantity);
   const pick = (fields: FormField[]) => Object.fromEntries(fields.map((field) => [field, formValue(TUTORIAL_ITEM, field)]));
   /** Opens the edit of the test item with some values changed. */
@@ -269,12 +265,11 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
       auto: () => editWith({}),
       lost: () => (screen().form ? null : "details"),
     },
-    "pencil-first": { target: () => screen().target("pencil"), done: () => onTestItem(false), auto: () => editWith({}) },
     rename: {
       target: () => screen().target("form-name"),
       done: () => onTestItem(false) && formHas(typed(), TUTORIAL_EDIT),
       auto: () => editWith(TUTORIAL_EDIT),
-      lost: () => (screen().form ? null : firstEdit),
+      lost: () => (screen().form ? null : "details"),
     },
     "save-low": {
       target: () => screen().target("form-save"),
@@ -285,7 +280,7 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
           screen().saveItem(item, withFormValues(itemFormOf(item), TUTORIAL_EDIT));
         }
       },
-      lost: () => (screen().form || edited() ? null : firstEdit),
+      lost: () => (screen().form || edited() ? null : "details"),
     },
     low: { target: () => screen().target("row") },
     pencil: { target: () => screen().target("pencil"), done: () => onTestItem(false), auto: () => editWith({}) },
@@ -334,7 +329,8 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
     "filters",
     "filter",
     "found",
-    ...(opensOnRow ? (["details", "unlock"] as const) : (["pencil-first"] as const)),
+    "details",
+    "unlock",
     "rename",
     "save-low",
     "low",

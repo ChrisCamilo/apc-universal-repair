@@ -15,11 +15,9 @@ type InventoryTutorialProps = {
   onClose: () => void
   /** The Inventory tab as it is now. */
   screen: TutorialScreen<Element>
-  /** Whether "Abrir item ao clicar na linha" is on, which adds the details steps. */
-  opensOnRow: boolean
 }
 
-export function InventoryTutorial({ open, onClose, screen, opensOnRow }: InventoryTutorialProps) {
-  const steps = inventoryTutorialSteps(() => screen, opensOnRow)
+export function InventoryTutorial({ open, onClose, screen }: InventoryTutorialProps) {
+  const steps = inventoryTutorialSteps(() => screen)
   return <Tour open={open} onClose={onClose} steps={steps} parts={INVENTORY_TUTORIAL_PARTS} />
 }
