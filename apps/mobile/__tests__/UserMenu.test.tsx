@@ -7,12 +7,10 @@ import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { SessionUser } from '@apc/shared/auth';
 import { playIcon } from '@apc/shared/icons';
-import { OPEN_ITEM_ON_ROW_STORAGE_KEY } from '@apc/shared/items';
 import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
-import { OpenItemOnRowContext, useOpenItemOnRowChoice } from '../src/dashboard/openItemOnRowContext';
 import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
 import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorderContext';
 import { UserMenu } from '../src/dashboard/UserMenu';
@@ -82,8 +80,8 @@ beforeEach(async () => {
 });
 
 // Opens the menu and checks the header shows the logged user, dark mode is on at night, the theme sits on the
-// active style, the tab reorder choice is off until turned on and "Abrir item ao clicar na linha" is on until
-// turned off.
+// active style, the tab reorder choice is off until turned on, and the Inventory's section has no choice of opening
+// an item on a card's tap, which the list always does.
 test('Mobile: the user menu shows the logged user and the display preferences', async () => {
   const tree = await openMenu();
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Christian Camilo')).not.toHaveLength(0);
@@ -91,7 +89,7 @@ test('Mobile: the user menu shows the logged user and the display preferences', 
   expect(byName(tree, 'Anos 80').props.accessibilityState).toMatchObject({ checked: true });
   expect(byName(tree, 'Arrastar para reordenar').props.accessibilityState).toMatchObject({ checked: false });
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Estoque')).not.toHaveLength(0);
-  expect(byName(tree, 'Abrir item ao clicar na linha').props.accessibilityState).toMatchObject({ checked: true });
+  expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Abrir item ao clicar na linha')).toHaveLength(0);
 });
 
 // Opens the menu and checks "Tutorial do estoque" shows the play icon, its ring and triangle.
@@ -126,16 +124,6 @@ test('Mobile: the tab reorder choice is saved and comes back', async () => {
   expect(byName(again, 'Arrastar para reordenar').props.accessibilityState).toMatchObject({ checked: true });
 });
 
-// Turns "Abrir item ao clicar na linha" off and checks it is saved on the device and comes back off when the menu
-// is drawn again.
-test('Mobile: the open-item-on-row choice is saved and comes back', async () => {
-  const tree = await openMenu();
-  await press(tree, 'Abrir item ao clicar na linha');
-  expect(await themeStorage.getItem(OPEN_ITEM_ON_ROW_STORAGE_KEY)).toBe('false');
-  const again = await openMenu();
-  expect(byName(again, 'Abrir item ao clicar na linha').props.accessibilityState).toMatchObject({ checked: false });
-});
-
 // Picks 50 items per page and checks it is saved on the device and comes back chosen when the menu is drawn again,
 // with 25 chosen until then.
 test('Mobile: the items per page default is saved and comes back', async () => {
@@ -168,11 +156,9 @@ function ActiveTheme() {
 function Preferences({ children }: { children: React.ReactNode }) {
   return (
     <TabReorderContext.Provider value={useReorderChoice()}>
-      <OpenItemOnRowContext.Provider value={useOpenItemOnRowChoice()}>
-        <PageSizeContext.Provider value={usePageSizeChoice()}>
-          <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
-        </PageSizeContext.Provider>
-      </OpenItemOnRowContext.Provider>
+      <PageSizeContext.Provider value={usePageSizeChoice()}>
+        <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
+      </PageSizeContext.Provider>
     </TabReorderContext.Provider>
   );
 }
