@@ -66,7 +66,7 @@ export const useStyles = createStyles(
   },
 );
 
-/** A row's icon action: the panel fill while pressed. */
+/** A row's icon action, its icon in the accent or the danger color: the panel fill while pressed. */
 export const useRowActionStyles = createStyles('common.row-action', { action: '' }, (theme) => ({
   action: {
     width: scales.space.s6,

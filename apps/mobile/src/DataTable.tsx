@@ -55,7 +55,7 @@ type RowActionProps = {
   /** Accessible name, e.g. "Editar Pastilha de freio". */
   label: string;
   onPress: () => void;
-  /** Danger tints the press, for actions like delete. */
+  /** Danger is red instead of the accent, for actions like delete. */
   tone?: 'default' | 'danger';
 };
 type RowTone = 'warn' | 'danger';
@@ -187,9 +187,7 @@ export function RowAction({ icon, label, onPress, tone = 'default' }: RowActionP
       style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
       testID={ids.action}
     >
-      {({ pressed }) => (
-        <Icon icon={icon} size={ICON_SIZES.label} color={pressed ? (tone === 'danger' ? colors.danger : colors.accent) : colors.textMuted} />
-      )}
+      <Icon icon={icon} size={ICON_SIZES.label} color={tone === 'danger' ? colors.danger : colors.accent} />
     </Pressable>
   );
 }
