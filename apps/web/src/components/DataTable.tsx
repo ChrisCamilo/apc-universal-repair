@@ -17,11 +17,12 @@ import { Label } from './Typography.tsx'
 // onRowOpen, a click on a row opens it, except on its own buttons (thumbnail, actions), which keep their click; the
 // rows join the Tab order with a focus outline and open with Enter or Space. With fill, the table takes the room left
 // in its column and scrolls inside it, with the header pinned and the empty state centered. A nested row (rowNested)
-// belongs to the row above it, such as a brand of an item: it is indented and never tinted.
+// belongs to the row above it, such as a brand of an item: it is indented and never tinted. A row that opens into
+// nested rows says whether it is open (rowExpanded), and a lead column, such as its chevron, comes first on the card.
 
 const SORT_ARROWS = { ascending: '↑', descending: '↓', none: '↕' }
 
-type CardArea = 'thumb' | 'main' | 'end' | 'actions'
+type CardArea = 'lead' | 'thumb' | 'main' | 'end' | 'actions'
 type Column<Row> = {
   key: string
   header: string
@@ -57,6 +58,8 @@ type DataTableProps<Row> = {
   onRowOpen?: (row: Row) => void
   /** Whether a row belongs to the row above it, e.g. a brand of an item, indented under it. */
   rowNested?: (row: Row) => boolean
+  /** Whether a row that opens into nested rows is open; undefined for a row that doesn't. */
+  rowExpanded?: (row: Row) => boolean | undefined
 }
 type RowActionProps = {
   icon: IconShape[]
@@ -110,10 +113,12 @@ export function DataTable<Row>({
   fill = false,
   onRowOpen,
   rowNested,
+  rowExpanded,
 }: DataTableProps<Row>) {
   const sortId = useId()
   const sortable = columns.filter((column) => column.sortable)
   const { classes, ids } = dataTable({ fill })
+  const lead = columns.some((column) => column.card === 'lead')
 
   return (
     <div className={classes.base()} data-testid={ids.base}>
@@ -185,8 +190,9 @@ export function DataTable<Row>({
                   <tr
                     key={rowKey(row)}
                     data-status={status?.tone}
+                    aria-expanded={rowExpanded?.(row)}
                     tabIndex={onRowOpen ? 0 : undefined}
-                    className={dataTable({ tint: status?.tone ?? 'none', openable: Boolean(onRowOpen), nested }).classes.row()}
+                    className={dataTable({ tint: status?.tone ?? 'none', openable: Boolean(onRowOpen), nested, lead }).classes.row()}
                     data-testid={ids.row}
                     onClick={
                       onRowOpen &&
