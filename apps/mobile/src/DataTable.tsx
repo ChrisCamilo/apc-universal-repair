@@ -15,9 +15,10 @@ import { Label } from './Typography';
 // read out, since color alone doesn't reach screen readers; the text keeps the text color on every tint. With
 // onRowOpen, a tap on a card opens it, shown by the raised fill while pressed, except on its own buttons
 // (thumbnail, actions), which keep their tap. A nested row (rowNested) belongs to the row above it, such as a brand
-// of an item: it is indented and never tinted.
+// of an item: it is indented and never tinted. A row that opens into nested rows says whether it is open
+// (rowExpanded), and a lead cell, such as its chevron, comes first on the card, at its left.
 
-type CardArea = 'thumb' | 'main' | 'end' | 'actions';
+type CardArea = 'lead' | 'thumb' | 'main' | 'end' | 'actions';
 type Column<Row> = {
   key: string;
   header: string;
@@ -49,6 +50,8 @@ type DataTableProps<Row> = {
   onRowOpen?: (row: Row) => void;
   /** Whether a row belongs to the row above it, e.g. a brand of an item, indented under it. */
   rowNested?: (row: Row) => boolean;
+  /** Whether a row that opens into nested rows is open; undefined for a row that doesn't. */
+  rowExpanded?: (row: Row) => boolean | undefined;
 };
 type RowActionProps = {
   icon: IconShape[];
@@ -90,6 +93,7 @@ export function DataTable<Row>({
   empty,
   onRowOpen,
   rowNested,
+  rowExpanded,
 }: DataTableProps<Row>) {
   const { styles, ids } = useStyles();
   const sortable = columns.filter((column) => column.sortable);
@@ -143,6 +147,7 @@ export function DataTable<Row>({
                     {`${status.label}: `}
                   </Text>
                 )}
+                {cells(row, 'lead')}
                 {cells(row, 'thumb')}
                 <View style={styles.main} testID={ids.main}>
                   {cells(row, 'main')}
@@ -157,6 +162,7 @@ export function DataTable<Row>({
               <Pressable
                 key={rowKey(row)}
                 role="listitem"
+                accessibilityState={{ expanded: rowExpanded?.(row) }}
                 onPress={() => onRowOpen(row)}
                 style={({ pressed }) => rowStyles(nested, status?.tone, pressed)}
                 testID={ids.row}

@@ -3,10 +3,9 @@ import { createStyles } from './styles/createStyles';
 import { softHairline, withAlpha } from './theme';
 
 // The look of the list of rows on a phone, the same as the web table below the card breakpoint: each row is a card
-// (thumbnail | main | end and actions) on a soft hairline, the raised fill while pressed; a row that needs attention
-// (warn or danger) is tinted with a stripe at its start, a stronger tint while pressed; a nested row, such as a brand
-// under its item, is indented. The "Ordenar" select takes the
-// place of the header.
+// (lead | thumbnail | main | end and actions) on a soft hairline, the raised fill while pressed; a row that needs
+// attention (warn or danger) is tinted with a stripe at its start, a stronger tint while pressed; a nested row, such
+// as a brand under its item, is indented. The "Ordenar" select takes the place of the header.
 
 /** The width of a tinted row's stripe, in px (the web's spacing × 0.75). */
 export const STRIPE_WIDTH = scales.space.s1 * 0.75;
