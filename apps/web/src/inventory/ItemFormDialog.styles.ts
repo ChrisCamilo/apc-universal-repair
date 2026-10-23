@@ -5,7 +5,8 @@ import { recipe, tv } from '../styles/tv.ts'
 // its label over it, and its original codes across both columns; then the brands across both columns, each a framed section
 // with its heading (and its Remover) over its photos and its fields, in the same two columns, and "Adicionar marca"
 // after them. The details use the same layout, with the values as text. The Dialog draws the window, so the base has
-// no classes; the photos' cell only places the ImageUpload, which keeps its own id.
+// no classes; the photos' cell only places the ImageUpload, which keeps its own id. The vehicles' columns start at no
+// width, so a line's brand and model share the dialog's width and shrink in it instead of scrolling it sideways.
 
 /** The item form: its fields grid, the labeled choices, the brands' sections and their photos' cells. */
 export const itemFormDialog = recipe(
@@ -16,8 +17,8 @@ export const itemFormDialog = recipe(
       fields: 'grid items-start gap-x-4 gap-y-3 sm:grid-cols-2',
       choice: 'grid content-start gap-1.5',
       codes: 'sm:col-span-2',
-      vehicles: 'grid gap-3 sm:col-span-2',
-      vehicle: 'grid items-end gap-x-4 gap-y-3 sm:grid-cols-[1fr_1fr_auto]',
+      vehicles: 'grid grid-cols-1 gap-3 sm:col-span-2',
+      vehicle: 'grid grid-cols-1 items-end gap-x-4 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]',
       addVehicle: 'flex',
       brands: 'grid gap-3 sm:col-span-2',
       brand: 'grid items-start gap-x-4 gap-y-3 rounded-tile border border-hairline-soft p-3 sm:grid-cols-2',
