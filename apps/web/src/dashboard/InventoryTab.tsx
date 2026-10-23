@@ -53,7 +53,6 @@ import { useLowStockAlerts } from '../notifications/useLowStockAlerts.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
 import { inventoryTab, LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB } from './InventoryTab.styles.ts'
 import { InventoryTutorial } from './InventoryTutorial.tsx'
-import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 import { usePageSize } from './pageSizeContext.ts'
 import { tutorialTarget } from './tutorialTarget.ts'
 
@@ -70,14 +69,15 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // error state offers to try again. "Novo item" and each row's pencil open the item form, each row's trash asks to
 // confirm deleting the item, and the list loads again once an item is saved or deleted. A row is an item; one made by
 // several brands shows them as one value (the first brand's code and part brand with how many more, a color or
-// location they share or "Várias", the price from the lowest to the highest, the quantity added up), and its "N marcas"
-// opens a row for each brand under it, with the brand's own values, its photos and no tint, since the stock status is
-// the item's. "Gerenciar listas" renames,
+// location they share or "Várias", the price from the lowest to the highest, the quantity added up, and "N marcas"),
+// with a chevron at its left, in the accent: a click anywhere on it (or Enter on it) opens a row for each brand under
+// it, with the brand's own values, its photos and no tint, since the stock status is the item's, and closes them
+// again. A click on a brand's row opens the item's details scrolled to that brand, and one on an item of one brand
+// opens its details. "Gerenciar listas" renames,
 // merges and deletes the categories, brands and models the form picks from; the list loads again after each change,
 // the filters following a name renamed or merged, and a name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list
 // and the lists load again; "Exportar CSV" saves every item of the list as it is, on every page, in the same format.
-// While "Abrir item ao clicar na linha" is on in the user menu, a click on a row (or
-// Enter on it) opens the item's details, whose Duplicar opens a new item's form filled in as a copy of it, with copies
+// The details' Duplicar opens a new item's form filled in as a copy of it, with copies
 // of its photos or without them, its codes left blank and its stock at 0. Each row's thumbnail shows the item's cover and opens its photos in the
 // ImageViewer (a brand's row, that brand's photos), where each photo removed, changed or added is saved at once and
 // the list follows. Low and
@@ -203,13 +203,13 @@ export function InventoryTab() {
   const [importer, setImporter] = useState({ open: false, session: 0 })
   // Whether "Exportar CSV" is open; each opening starts without the photo paths.
   const [exporter, setExporter] = useState({ open: false, session: 0 })
-  const { opensOnRow } = useOpenItemOnRow()
-  // The item form: closed, open on a new item, an item to edit or an item's details, maybe with values and photos
-  // filled in. Each opening starts a new form.
+  // The item form: closed, open on a new item, an item to edit or an item's details (maybe scrolled to a brand),
+  // maybe with values and photos filled in. Each opening starts a new form.
   const [form, setForm] = useState<{
     open: boolean
     item?: Item
     details?: boolean
+    brand?: string
     initial?: ItemForm
     photos?: UploadPhoto[][]
     session: number
@@ -298,8 +298,23 @@ export function InventoryTab() {
     })
 
   /** Opens the item form on a new item, an item to edit, or an item's details, maybe with values and photos filled in. */
-  const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][]) =>
-    setForm((current) => ({ open: true, item, details, initial, photos, session: current.session + 1 }))
+  const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][], brand?: string) =>
+    setForm((current) => ({ open: true, item, details, brand, initial, photos, session: current.session + 1 }))
+
+  /**
+   * Opens a row: an item of several brands into its brands' rows, or closes it; an item of one brand into its
+   * details; a brand's row into the item's details, scrolled to that brand.
+   * @param row The row clicked, or the one Enter was pressed on.
+   */
+  const openRow = ({ item, brand }: InventoryRow) => {
+    if (brand) {
+      openForm(item, true, undefined, undefined, brand.id)
+    } else if (item.brands.length > 1) {
+      toggleBrands(item.id)
+    } else {
+      openForm(item, true)
+    }
+  }
 
   /**
    * Opens a new item's form filled in as a copy of an item, in place of its details.
@@ -466,6 +481,20 @@ export function InventoryTab() {
               label="Itens do estoque"
               columns={[
                 {
+                  key: 'expand',
+                  header: 'Marcas',
+                  headerHidden: true,
+                  card: 'lead',
+                  // An item of several brands: a chevron that turns down while its brands' rows are open.
+                  cell: (row) =>
+                    !row.brand &&
+                    row.item.brands.length > 1 && (
+                      <span aria-hidden="true" className={inventoryTab({ open: opened.has(row.item.id) }).classes.chevron()} data-testid={ids.chevron}>
+                        <Icon icon={chevronIcon} size={ICON_SIZES.label} />
+                      </span>
+                    ),
+                },
+                {
                   key: 'photo',
                   header: 'Foto',
                   headerHidden: true,
@@ -493,18 +522,9 @@ export function InventoryTab() {
                       <span className={classes.title()} data-testid={ids.title}>
                         <TableTitle title={row.item.name} code={itemCodes(row.item)} details={itemDetails(row.item)} />
                         {row.item.brands.length > 1 && (
-                          <button
-                            type="button"
-                            aria-expanded={opened.has(row.item.id)}
-                            className={inventoryTab({ open: opened.has(row.item.id) }).classes.brands()}
-                            data-testid={ids.brands}
-                            onClick={() => toggleBrands(row.item.id)}
-                          >
-                            <span className={inventoryTab({ open: opened.has(row.item.id) }).classes.chevron()} data-testid={ids.chevron}>
-                              <Icon icon={chevronIcon} size={ICON_SIZES.inline} />
-                            </span>
+                          <span className={classes.brands()} data-testid={ids.brands}>
                             {row.item.brands.length} marcas
-                          </button>
+                          </span>
                         )}
                       </span>
                     ),
@@ -535,7 +555,8 @@ export function InventoryTab() {
               rowKey={(row) => (row.brand ? `${row.item.id}:${row.brand.id}` : row.item.id)}
               rowStatus={rowStatus}
               rowNested={(row) => row.brand !== undefined}
-              onRowOpen={opensOnRow ? (row) => openForm(row.item, true) : undefined}
+              rowExpanded={(row) => (!row.brand && row.item.brands.length > 1 ? opened.has(row.item.id) : undefined)}
+              onRowOpen={openRow}
               sort={sort}
               onSortChange={(next) => narrow(() => setSort(next))}
               unsortedLabel="Ordem de cadastro"
@@ -572,6 +593,7 @@ export function InventoryTab() {
         open={form.open}
         item={form.item}
         details={form.details}
+        scrollToBrand={form.brand}
         items={items}
         lists={lists}
         onCreateEntry={createEntry}
