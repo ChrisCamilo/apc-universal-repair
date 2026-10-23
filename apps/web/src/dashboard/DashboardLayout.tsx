@@ -7,7 +7,6 @@ import { TabPanel, Tabs } from '../components/Tabs.tsx'
 import { WorkInProgress } from '../components/WorkInProgress.tsx'
 import { readStored, writeStored } from '../storage.ts'
 import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext.ts'
-import { OpenItemOnRowContext, useOpenItemOnRowChoice } from './openItemOnRowContext.ts'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
 import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 
@@ -15,8 +14,8 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 // panel below. Each tab is a route (/inventory…); the tab bar follows the route and remembers it, so the
 // Dashboard reopens on the last tab used. While "Arrastar para reordenar" is on in the user menu, the tabs can be
 // dragged (or moved with Alt + arrows) into a new order, which is saved and comes back on reload, with tabs added
-// later at its end; the open tab stays open. The Dashboard also holds "Abrir item ao clicar na linha" and "Itens por
-// página", which the user menu sets and the Inventory tab follows, and the Inventory tutorial's state, which the
+// later at its end; the open tab stays open. The Dashboard also holds "Itens por página", which the user menu sets
+// and the Inventory tab follows, and the Inventory tutorial's state, which the
 // Inventory tab runs (by itself the first time) and the user menu replays. A tab still being built (`wip` in
 // DASHBOARD_TABS) opens blurred behind a notice saying it isn't ready yet.
 
@@ -44,7 +43,6 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   const navigate = useNavigate()
   const tab = tabOfPath(pathname)
   const reorder = useReorderChoice()
-  const openItemOnRow = useOpenItemOnRowChoice()
   const pageSize = usePageSizeChoice()
   const tutorial = useInventoryTutorialChoice()
   const [order, setOrder] = useState(() => orderTabs(TAB_IDS, readStored(TAB_ORDER_STORAGE_KEY)))
@@ -62,39 +60,37 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
 
   return (
     <TabReorderContext.Provider value={reorder}>
-      <OpenItemOnRowContext.Provider value={openItemOnRow}>
-        <PageSizeContext.Provider value={pageSize}>
-          <InventoryTutorialContext.Provider value={tutorial}>
-            <AppFrame
-              navLabel="Seções do Dashboard"
-              nav={
-                <Tabs
-                  label="Seções do Dashboard"
-                  tabs={order.map((id) => TABS[id])}
-                  selected={tab}
-                  onSelect={(id) => navigate(`/${id}`)}
-                  reorderable={reorder.reorderable}
-                  onReorder={(ids) => {
-                    setOrder(ids)
-                    writeStored(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids))
-                  }}
-                />
-              }
-              end={userMenu}
-            >
-              <TabPanel id={tab} selected={tab}>
-                {TABS[tab].wip ? (
-                  <WorkInProgress label={TABS[tab].label}>
-                    <Outlet />
-                  </WorkInProgress>
-                ) : (
+      <PageSizeContext.Provider value={pageSize}>
+        <InventoryTutorialContext.Provider value={tutorial}>
+          <AppFrame
+            navLabel="Seções do Dashboard"
+            nav={
+              <Tabs
+                label="Seções do Dashboard"
+                tabs={order.map((id) => TABS[id])}
+                selected={tab}
+                onSelect={(id) => navigate(`/${id}`)}
+                reorderable={reorder.reorderable}
+                onReorder={(ids) => {
+                  setOrder(ids)
+                  writeStored(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids))
+                }}
+              />
+            }
+            end={userMenu}
+          >
+            <TabPanel id={tab} selected={tab}>
+              {TABS[tab].wip ? (
+                <WorkInProgress label={TABS[tab].label}>
                   <Outlet />
-                )}
-              </TabPanel>
-            </AppFrame>
-          </InventoryTutorialContext.Provider>
-        </PageSizeContext.Provider>
-      </OpenItemOnRowContext.Provider>
+                </WorkInProgress>
+              ) : (
+                <Outlet />
+              )}
+            </TabPanel>
+          </AppFrame>
+        </InventoryTutorialContext.Provider>
+      </PageSizeContext.Provider>
     </TabReorderContext.Provider>
   )
 }

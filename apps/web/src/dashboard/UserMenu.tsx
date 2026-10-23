@@ -12,16 +12,14 @@ import { desktopBridge } from '../desktop/desktopBridge.ts'
 import { useOpenServerSettings } from '../desktop/serverSettingsContext.ts'
 import { useTheme } from '../useTheme.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
-import { useOpenItemOnRow } from './openItemOnRowContext.ts'
 import { usePageSize } from './pageSizeContext.ts'
 import { useTabReorder } from './tabReorderContext.ts'
 
 // The user menu at the right of the Dashboard header: the logged user's initials and username on the trigger
 // (initials only on phones), and the display preferences. Dark mode and the theme go through the ThemeProvider,
 // which applies and saves them at once; "Arrastar para reordenar" goes through the Dashboard (TabReorderContext),
-// which saves it and makes the tabs reorderable while it is on, and "Abrir item ao clicar na linha" likewise makes
-// the Inventory rows open the item details; "Itens por página" sets how many items the Inventory list shows, now and
-// each time it opens. Every choice keeps the menu open, so several can be changed in a row. "Tutorial do estoque",
+// which saves it and makes the tabs reorderable while it is on; "Itens por página" sets how many items the Inventory
+// list shows, now and each time it opens. Every choice keeps the menu open, so several can be changed in a row. "Tutorial do estoque",
 // with a play icon, goes to the Inventory tab and runs its tutorial again. In the desktop app, "Servidor e banco de
 // dados", with a gear, opens the Servidor dialog (see ServerSettings.tsx).
 // "Sair", at the end and set apart from the preferences, ends the session and goes back to /login; the preferences
@@ -35,7 +33,6 @@ export function UserMenu() {
   const navigate = useNavigate()
   const { style, mode, setStyle, setMode } = useTheme()
   const { reorderable, setReorderable } = useTabReorder()
-  const { opensOnRow, setOpensOnRow } = useOpenItemOnRow()
   const { pageSize, setPageSize } = usePageSize()
   const tutorial = useInventoryTutorial()
   const openServerSettings = useOpenServerSettings()
@@ -67,13 +64,6 @@ export function UserMenu() {
         value={String(pageSize)}
         onValueChange={(size) => setPageSize(Number(size))}
       />
-      <Switch
-        checked={opensOnRow}
-        onCheckedChange={setOpensOnRow}
-        description="Mostra os detalhes; editar fica a um clique"
-      >
-        Abrir item ao clicar na linha
-      </Switch>
       <MenuItem
         icon={playIcon}
         onSelect={() => {
