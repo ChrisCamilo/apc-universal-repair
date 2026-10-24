@@ -7,7 +7,7 @@ import { TextField } from '../components/TextField.tsx'
 import { Heading, Text } from '../components/Typography.tsx'
 import { desktopBridge, type ImportOutcome, type ImportSource, type ServerSettings } from './desktopBridge.ts'
 import { serverSettings as serverSettingsRecipe } from './ServerSettings.styles.ts'
-import { ServerSettingsContext, type ServerSettingsFocus } from './serverSettingsContext.ts'
+import { EntryScreenContext, ServerSettingsContext, type ServerSettingsFocus } from './serverSettingsContext.ts'
 
 // The desktop app's Servidor dialog, over any screen, opened from the user menu or the tray's "Servidor e banco de
 // dados…": the database the server runs on, SQLite with its folder or PostgreSQL with its server, its port and, while
@@ -94,8 +94,10 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
   const [openings, setOpenings] = useState(0)
   // The SQLite key's recovery copy, shown on opening while it isn't kept.
   const [recoveryKey, setRecoveryKey] = useState<string | null>(null)
-  // Whether this start offers to import an old server, while the database in use is empty.
+  // Whether this start offers to import an old server, while the database in use is empty, and whether a screen it
+  // shows over, the login or the sign-up, is on: an answer that comes after a sign-up shows nothing.
   const [firstStart, setFirstStart] = useState(false)
+  const [onEntryScreen, setOnEntryScreen] = useState(false)
   // The field the dialog opens on, when asked.
   const [focus, setFocus] = useState<ServerSettingsFocus>()
 
@@ -152,7 +154,7 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
 
   return (
     <ServerSettingsContext.Provider value={show}>
-      {children}
+      <EntryScreenContext.Provider value={setOnEntryScreen}>{children}</EntryScreenContext.Provider>
       {server && (
         <ServerSettingsDialog
           key={openings}
@@ -172,7 +174,7 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
           }}
         />
       )}
-      {server && firstStart && !recoveryKey && !open && (
+      {server && firstStart && onEntryScreen && !recoveryKey && !open && (
         <FirstStartDialog
           onImport={() => {
             setFirstStart(false)
