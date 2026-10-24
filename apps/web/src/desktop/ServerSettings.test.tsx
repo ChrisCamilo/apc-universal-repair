@@ -49,6 +49,7 @@ function giveServer(settings: ServerSettings) {
     changeKey: vi.fn<ServerBridge['changeKey']>(async () => ({ ok: true })),
     checkImport: vi.fn<ServerBridge['checkImport']>(async () => ({ ok: true })),
     failure: vi.fn<ServerBridge['failure']>(async () => null),
+    firstStart: vi.fn<ServerBridge['firstStart']>(async () => false),
     importServer: vi.fn<ServerBridge['importServer']>(async () => ({ ok: false, message: 'Nada importado.' })),
     migrateImport: vi.fn<ServerBridge['migrateImport']>(async () => ({ ok: true })),
     settings: vi.fn<ServerBridge['settings']>(async () => settings),
@@ -60,6 +61,7 @@ function giveServer(settings: ServerSettings) {
     recoveryKey: vi.fn<ServerBridge['recoveryKey']>(async () => null),
     recoveryKeySaved: vi.fn<ServerBridge['recoveryKeySaved']>(async () => {}),
     retry: vi.fn<ServerBridge['retry']>(async () => true),
+    startFromScratch: vi.fn<ServerBridge['startFromScratch']>(async () => {}),
   }
   window.apcDesktop = {
     notify: () => {},
@@ -346,6 +348,47 @@ test('Web: an old database of an earlier version is updated first, once the user
   await expect.poll(() => calls.importServer.mock.calls.length).toBe(1)
   expect(calls.migrateImport).toHaveBeenCalledWith(source)
   expect(calls.importServer).toHaveBeenCalledWith(source, undefined)
+})
+
+// Starts on an empty database with the key's recovery copy kept, and checks the app offers to import an old server;
+// "Começar do zero" tells the app, which stops the offer, and closes it.
+test('Web: an empty database offers to import an old server, until starting from scratch', async () => {
+  const { calls } = giveServer(ON_SQLITE)
+  calls.firstStart.mockResolvedValue(true)
+  const screen = await renderSettings()
+  const choice = screen.getByRole('dialog', { name: 'Começar o APC' })
+  await expect.element(choice.getByText(/O banco deste computador está vazio\./)).toBeVisible()
+  await choice.getByRole('button', { name: 'Começar do zero' }).click()
+  await expect.element(choice).not.toBeInTheDocument()
+  expect(calls.startFromScratch).toHaveBeenCalledOnce()
+  await expect.element(screen.getByRole('dialog', { name: 'Servidor e banco de dados' })).not.toBeInTheDocument()
+})
+
+// Offers the import on an empty database and checks "Importar de um servidor antigo" opens the Servidor dialog
+// scrolled to its import, without stopping the offer for the next start.
+test('Web: the first start\'s import opens the Servidor dialog on its import', async () => {
+  const { calls } = giveServer(ON_SQLITE)
+  calls.firstStart.mockResolvedValue(true)
+  const screen = await renderSettings()
+  await screen.getByRole('dialog', { name: 'Começar o APC' }).getByRole('button', { name: 'Importar de um servidor antigo' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
+  await expect.element(dialog.getByRole('heading', { name: 'Importar dados de outro servidor' })).toBeInViewport()
+  await expect.element(screen.getByRole('dialog', { name: 'Começar o APC' })).not.toBeInTheDocument()
+  expect(calls.startFromScratch).not.toHaveBeenCalled()
+})
+
+// Starts on an empty database with the key's recovery copy still to be kept, and checks the copy shows first, and the
+// offer to import only once it is kept.
+test('Web: the first start\'s offer waits for the recovery copy', async () => {
+  const { calls } = giveServer({ ...ON_SQLITE, recoveryKeyPending: true })
+  calls.recoveryKey.mockResolvedValue(RECOVERY_KEY)
+  calls.firstStart.mockResolvedValue(true)
+  const screen = await renderSettings()
+  const key = screen.getByRole('dialog', { name: 'Chave de recuperação do banco' })
+  await expect.element(key).toBeVisible()
+  expect(screen.getByRole('dialog', { name: 'Começar o APC' }).elements()).toHaveLength(0)
+  await key.getByRole('button', { name: 'Já guardei a chave' }).click()
+  await expect.element(screen.getByRole('dialog', { name: 'Começar o APC' })).toBeVisible()
 })
 
 // Starts with the key's recovery copy still to be kept, and checks it shows by itself, with the key, and "Depois"
