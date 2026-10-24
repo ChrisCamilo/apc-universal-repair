@@ -23,6 +23,8 @@ export type ServerBridge = {
   checkImport: (source: ImportSource) => Promise<ImportCheck>
   /** Tells why the server isn't on, while it isn't; null while it is. */
   failure: () => Promise<ServerFailure | null>
+  /** Tells whether to offer importing an old server on this start, while the database in use is empty. */
+  firstStart: () => Promise<boolean>
   /** Imports an old server's data and photos into the database in use, with the server off meanwhile. */
   importServer: (source: ImportSource, photosFrom?: string) => Promise<ImportOutcome>
   /** Applies this version's migrations to an old server's database, which change its structure and keep its data. */
@@ -39,6 +41,8 @@ export type ServerBridge = {
   retry: () => Promise<boolean>
   /** Reads the server's settings. */
   settings: () => Promise<ServerSettings>
+  /** Says the user starts from scratch, which stops the offer to import an old server. */
+  startFromScratch: () => Promise<void>
   /** Turns the phone's access on, restarting the server on the network, or off, back on this computer only. */
   usePhoneAccess: (on: boolean) => Promise<ServerOutcome>
   /** Moves the server to another port, checked free first, and restarts it there. */

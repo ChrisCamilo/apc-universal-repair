@@ -13,17 +13,20 @@ import { ServerSettingsContext, type ServerSettingsFocus } from './serverSetting
 // dados…": the database the server runs on, SQLite with its folder or PostgreSQL with its server, its port and,
 // while the phone's access is on, the address the phone reaches it at. "Acesso pelo celular" puts the server on the
 // network for the phone, or keeps it answering this computer only, as it starts; Windows may ask about its firewall
-// then, and the dialog says to allow private networks only. "Banco de dados" moves it to PostgreSQL, at an address the app checks, migrates and
-// keeps sealed, or back to SQLite; switching doesn't move the data, which "Importar dados de outro servidor" brings
-// from an old server's PostgreSQL or SQLite file, with its photos, into the database in use while it is empty. An old
-// database of an earlier version is updated first, once the user agrees. After a change, closing the dialog opens the
-// app again on the new data. "Porta do servidor" moves the server to another port, from 1024 to 65535, once the user
-// confirms, saying the phone's address changes with it while the phone's access is on; the app checks the port is free first, and the window follows the
-// server there. Opened from the screen that says the port is taken, the dialog starts on that field. On SQLite, "Chave
-// do banco" changes the file's key once the user confirms what that means: the old recovery copy, and the copies made
-// before updates, stop opening the file; the new key's recovery copy then shows at once, until it is kept. When PostgreSQL
-// was chosen at install with no address yet, the dialog opens by itself and
-// stays until the server has a database. The SQLite file is encrypted, and while its key's recovery copy isn't kept
+// then, and the dialog says to allow private networks only. "Banco de dados" moves it to PostgreSQL, at an address the
+// app checks, migrates and keeps sealed, or back to SQLite; switching doesn't move the data, which "Importar dados de
+// outro servidor" brings from an old server's PostgreSQL or SQLite file, with its photos, into the database in use
+// while it is empty. An old database of an earlier version is updated first, once the user agrees. After a change,
+// closing the dialog opens the app again on the new data. "Porta do servidor" moves the server to another port, from
+// 1024 to 65535, once the user confirms, saying the phone's address changes with it while the phone's access is on;
+// the app checks the port is free first, and the window follows the server there. Opened from the screen that says the
+// port is taken, the dialog starts on that field. While the database in use is empty, the app's start offers, once the
+// recovery copy is dealt with, to import an old server before anyone signs up: "Importar de um servidor antigo" opens
+// the dialog on its import, and "Começar do zero" stops the offer for good; it shows again on the next start
+// otherwise, until the database holds data. On SQLite, "Chave do banco" changes the file's key once the user confirms
+// what that means: the old recovery copy, and the copies made before updates, stop opening the file; the new key's
+// recovery copy then shows at once, until it is kept. When PostgreSQL was chosen at install with no address yet, the
+// dialog opens by itself and stays until the server has a database. The SQLite file is encrypted, and while its key's recovery copy isn't kept
 // the app shows it on opening, until the user says it is; an encrypted file of another install imports with its
 // recovery copy. With a server the app doesn't run, it only says where the server is. In a browser there is no
 // bridge, and nothing is drawn.
@@ -90,6 +93,8 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
   const [openings, setOpenings] = useState(0)
   // The SQLite key's recovery copy, shown on opening while it isn't kept.
   const [recoveryKey, setRecoveryKey] = useState<string | null>(null)
+  // Whether this start offers to import an old server, while the database in use is empty.
+  const [firstStart, setFirstStart] = useState(false)
   // The field the dialog opens on, when asked.
   const [focus, setFocus] = useState<ServerSettingsFocus>()
 
@@ -101,7 +106,7 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
   }
 
   // Read the settings on start, opening the dialog when PostgreSQL's address is missing, or showing the key's recovery
-  // copy while it isn't kept, and hear the tray.
+  // copy while it isn't kept and offering to import an old server into an empty database, and hear the tray.
   useEffect(() => {
     if (!server) {
       return
@@ -110,8 +115,11 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
       setSettings(read)
       if (read.kind === 'own' && read.needsAddress) {
         setOpen(true)
-      } else if (read.kind === 'own' && read.recoveryKeyPending) {
-        void server.recoveryKey().then(setRecoveryKey)
+      } else if (read.kind === 'own') {
+        if (read.recoveryKeyPending) {
+          void server.recoveryKey().then(setRecoveryKey)
+        }
+        void server.firstStart().then(setFirstStart)
       }
     })
     return server.onOpen(() => {
@@ -128,7 +136,7 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
    */
   const show = (on?: ServerSettingsFocus) => {
     setOpen(true)
-    setFocus(on === 'port' ? 'port' : undefined)
+    setFocus(on === 'import' || on === 'port' ? on : undefined)
     setOpenings((count) => count + 1)
     void load()
   }
@@ -163,6 +171,19 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
           }}
         />
       )}
+      {server && firstStart && !recoveryKey && !open && (
+        <FirstStartDialog
+          onImport={() => {
+            setFirstStart(false)
+            show('import')
+          }}
+          onLater={() => setFirstStart(false)}
+          onScratch={async () => {
+            await server.startFromScratch()
+            setFirstStart(false)
+          }}
+        />
+      )}
       {server && recoveryKey && (
         <RecoveryKeyDialog
           recoveryKey={recoveryKey}
@@ -174,6 +195,40 @@ export function ServerSettingsProvider({ children, reload = () => window.locatio
         />
       )}
     </ServerSettingsContext.Provider>
+  )
+}
+
+type FirstStartDialogProps = {
+  /** Opens the Servidor dialog on its import. */
+  onImport: () => void
+  /** Closes it for now, to offer it again on the next start. */
+  onLater: () => void
+  /** Says the user starts from scratch, which stops the offer. */
+  onScratch: () => Promise<void>
+}
+
+function FirstStartDialog({ onImport, onLater, onScratch }: FirstStartDialogProps) {
+  return (
+    <Dialog
+      open
+      onClose={onLater}
+      title="Começar o APC"
+      actions={
+        <>
+          <Button variant="secondary" size="sm" onClick={() => void onScratch()}>
+            Começar do zero
+          </Button>
+          <Button size="sm" onClick={onImport}>
+            Importar de um servidor antigo
+          </Button>
+        </>
+      }
+    >
+      <Text size="sm" tone="muted">
+        O banco deste computador está vazio. Se o APC já rodava em outro computador ou num clone, importe os dados antes
+        de criar contas: depois do primeiro cadastro, a importação não aceita mais este banco.
+      </Text>
+    </Dialog>
   )
 }
 
@@ -238,6 +293,7 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
   const keyHeading = useId()
   const phoneHeading = useId()
   const portField = useRef<HTMLInputElement>(null)
+  const importSection = useRef<HTMLElement>(null)
   const own = settings?.kind === 'own' ? settings : undefined
   const setup = own?.needsAddress ?? false
   // The database picked, the one in use until another is.
@@ -269,13 +325,17 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
   const [changingAccess, setChangingAccess] = useState(false)
   const [accessNote, setAccessNote] = useState<Note>()
 
-  // Start on the port field when asked, once the Dialog has focused its first control.
+  // Start on the port field or the import when asked, once the Dialog has focused its first control.
   useEffect(() => {
     if (open && focus === 'port' && own) {
       const frame = requestAnimationFrame(() => {
         portField.current?.scrollIntoView({ block: 'center' })
         portField.current?.focus()
       })
+      return () => cancelAnimationFrame(frame)
+    }
+    if (open && focus === 'import' && own) {
+      const frame = requestAnimationFrame(() => importSection.current?.scrollIntoView({ block: 'start' }))
       return () => cancelAnimationFrame(frame)
     }
   }, [open, focus, own])
@@ -617,7 +677,7 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
             </div>
             {note(portNote)}
           </section>
-          <section aria-labelledby={importHeading} className={classes.section()} data-testid={ids.section}>
+          <section ref={importSection} aria-labelledby={importHeading} className={classes.section()} data-testid={ids.section}>
             <Heading id={importHeading} level={4}>
               Importar dados de outro servidor
             </Heading>

@@ -12,6 +12,7 @@ import {
   dropKeyChange,
   ensureSqliteKey,
   finishKeyChange,
+  firstStartPending,
   formatRecoveryKey,
   importProblemMessage,
   isPostgresqlUrl,
@@ -48,8 +49,9 @@ import { phoneAddress } from "./tray.js";
 // kept in config.json. A SQLite key missing from config.json, or one that doesn't open the file, is never replaced:
 // the page asks for the recovery copy, which the app checks opens the file before keeping it sealed. The page can
 // change the key, with the server off: the new key is kept apart until the file reads back with it, and a change cut
-// short is ended on the next start with the key that opens the file (see database.ts). Only the app's
-// own page may ask, as with the notifications.
+// short is ended on the next start with the key that opens the file (see database.ts). While the database in use is
+// empty, the page offers to import an old server before anyone signs up (firstStart), until it holds data or the
+// user starts from scratch. Only the app's own page may ask, as with the notifications.
 
 /** The channels the page asks on (also written in preload.cts, which can't import this file). */
 const CHANNELS = {
@@ -58,6 +60,8 @@ const CHANNELS = {
   chooseSqliteFile: "apc:server-choose-sqlite-file",
   checkImport: "apc:server-check-import",
   failure: "apc:server-failure",
+  firstStart: "apc:server-first-start",
+  firstStartDone: "apc:server-first-start-done",
   importServer: "apc:server-import",
   migrateImport: "apc:server-migrate-import",
   recoveryKey: "apc:server-recovery-key",
@@ -205,6 +209,28 @@ function databaseUrlInUse(host: ServerHost): string {
 }
 
 /**
+ * Tells whether the page offers to import an old server on this start: while the app's own server is on and its
+ * database is empty, and the user hasn't chosen to start from scratch. Once the database holds data, the offer is over
+ * for good, kept in config.json, so the database isn't looked at again.
+ * @param host The server.
+ * @returns True to offer it; false too when the database can't be looked at.
+ */
+async function firstStart(host: ServerHost): Promise<boolean> {
+  const config = readConfig(host.setup.userData);
+  if (config.firstStartDone === true || portTaken || !ownServerOn()) {
+    return false;
+  }
+  const holdsData = await runTask<boolean>(host, { task: "holdsData", url: databaseUrlInUse(host) }).catch(() => undefined);
+  if (holdsData === undefined) {
+    return false;
+  }
+  if (holdsData) {
+    updateConfig(host.setup.userData, { firstStartDone: true });
+  }
+  return firstStartPending(config, holdsData);
+}
+
+/**
  * Answers the page's requests about the server, only those from the app itself.
  * @param host The server.
  * @param channel The channel.
@@ -252,6 +278,8 @@ export function handleServerSettings(host: ServerHost): void {
   handle(host, CHANNELS.recoveryKey, async () => recoveryKey(host));
   handle(host, CHANNELS.recoveryKeySaved, async () => void updateConfig(host.setup.userData, { sqliteKeySaved: true }));
   handle(host, CHANNELS.failure, async () => failure ?? null);
+  handle(host, CHANNELS.firstStart, () => firstStart(host));
+  handle(host, CHANNELS.firstStartDone, async () => void updateConfig(host.setup.userData, { firstStartDone: true }));
   handle(host, CHANNELS.retry, () => runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)));
   handle(host, CHANNELS.usePhoneAccess, (on: boolean) => usePhoneAccess(host, on));
   handle(host, CHANNELS.usePort, (port: number) => usePort(host, port));

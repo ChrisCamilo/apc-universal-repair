@@ -10,6 +10,7 @@ import {
   beginKeyChange,
   dropKeyChange,
   finishKeyChange,
+  firstStartPending,
   openKeyChange,
   databaseCheckMessage,
   describePostgresql,
@@ -158,6 +159,15 @@ test("Desktop: the SQLite key is made once and kept sealed in config.json", () =
   assert.deepEqual(ensureSqliteKey(folder, SEALER), made);
   assert.equal(recoveryKeyPending({ ...config, sqliteKeySaved: true }), false);
   assert.equal(recoveryKeyPending({}), false);
+});
+
+// Checks the first start offers to import an old server while the database is empty and the user hasn't chosen to
+// start from scratch, and not once it holds data or the choice is made.
+test("Desktop: the first start offers an import only on an empty database, until the user chooses", () => {
+  assert.equal(firstStartPending({}, false), true);
+  assert.equal(firstStartPending({ database: "postgresql" }, false), true);
+  assert.equal(firstStartPending({}, true), false);
+  assert.equal(firstStartPending({ firstStartDone: true }, false), false);
 });
 
 // Checks a key this Windows user can't open isn't replaced by a new one, which wouldn't open the file either.

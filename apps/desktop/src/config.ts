@@ -19,6 +19,8 @@ export type DesktopConfig = {
   database?: DatabaseChoice;
   /** PostgreSQL's address, sealed by safeStorage, never in plain text (see database.ts). */
   databaseUrl?: string;
+  /** Whether the first start's offer to import an old server is over (see database.ts). */
+  firstStartDone?: boolean;
   /** Whether the server the app runs listens on the network, for the phone, as the Servidor dialog turned it on. */
   phoneAccess?: boolean;
   /** The port the server the app runs listens on, once the user changed it (see ports.ts). */
