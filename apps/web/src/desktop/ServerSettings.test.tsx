@@ -7,7 +7,7 @@ import '../index.css'
 import { themeCss } from '../theme.ts'
 import type { ServerBridge, ServerSettings } from './desktopBridge.ts'
 import { ServerSettingsProvider } from './ServerSettings.tsx'
-import { useOpenServerSettings, type ServerSettingsFocus } from './serverSettingsContext.ts'
+import { useEntryScreen, useOpenServerSettings, type ServerSettingsFocus } from './serverSettingsContext.ts'
 
 /** The app's own server on SQLite, as a fresh install has it once its key's recovery copy is kept. */
 const ON_SQLITE: Extract<ServerSettings, { kind: 'own' }> = {
@@ -82,14 +82,16 @@ function giveServer(settings: ServerSettings) {
 }
 
 /**
- * Renders the provider over a button that opens the dialog, as the user menu's item does.
+ * Renders the provider over a button that opens the dialog, as the login's and the user menu's do.
  * @param reload Called when the app would open again after a change.
+ * @param entry Whether the button stands on a screen before the session, as the login's does, where the first start's
+ * offer shows; the user menu's isn't.
  * @returns The rendered screen.
  */
-async function renderSettings(reload = () => {}) {
+async function renderSettings(reload = () => {}, entry = true) {
   const screen = await render(
     <ServerSettingsProvider reload={reload}>
-      <Opener />
+      {entry ? <EntryScreen /> : <Opener />}
     </ServerSettingsProvider>,
   )
   return screen
@@ -394,6 +396,17 @@ test('Web: an empty database offers to import an old server, until starting from
   await expect.element(screen.getByRole('dialog', { name: 'Servidor e banco de dados' })).not.toBeInTheDocument()
 })
 
+// Answers the first start's check on an empty database with no screen before the session on, as after a quick
+// sign-up, and checks the offer doesn't show over the Dashboard.
+test('Web: the first start\'s offer shows only over the login and the sign-up', async () => {
+  const { calls } = giveServer(ON_SQLITE)
+  calls.firstStart.mockResolvedValue(true)
+  const screen = await renderSettings(() => {}, false)
+  await expect.poll(() => calls.firstStart.mock.calls.length).toBe(1)
+  await expect.element(screen.getByRole('button', { name: 'Abrir as configurações' })).toBeVisible()
+  expect(screen.getByRole('dialog', { name: 'Começar o APC' }).elements()).toHaveLength(0)
+})
+
 // Offers the import on an empty database and checks "Importar de um servidor antigo" opens the Servidor dialog
 // scrolled to its import, without stopping the offer for the next start.
 test('Web: the first start\'s import opens the Servidor dialog on its import', async () => {
@@ -479,6 +492,11 @@ for (const style of STYLES) {
       expect(getComputedStyle(alert.element()).color).toBe(rgb(themes[style][mode].colors.danger))
     })
   }
+}
+
+function EntryScreen() {
+  useEntryScreen()
+  return <Opener />
 }
 
 function Opener({ focus }: { focus?: ServerSettingsFocus }) {

@@ -211,6 +211,7 @@ test("Desktop: an old server's SQLite file imports into a fresh install", async 
   const oldPage = await old.app.firstWindow();
   await expect(oldPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const oldKey = await keepRecoveryKey(oldPage);
+  await startFromScratch(oldPage);
   await signUp(oldPage);
   await old.app.close();
 
@@ -265,6 +266,7 @@ test("Desktop: the SQLite file is encrypted with a key kept for the next start",
   const firstPage = await first.app.firstWindow();
   await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const key = (await keepRecoveryKey(firstPage)).replaceAll("-", "").toLowerCase();
+  await startFromScratch(firstPage);
   await signUp(firstPage);
   await first.app.close();
 
@@ -352,6 +354,7 @@ test("Desktop: a missing or wrong SQLite key is asked for, never replaced", asyn
   const firstPage = await first.app.firstWindow();
   await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const copy = await keepRecoveryKey(firstPage);
+  await startFromScratch(firstPage);
   await signUp(firstPage);
   const wrongKey = await first.app.evaluate(({ safeStorage }) => safeStorage.encryptString("ab".repeat(32)).toString("base64"));
   await first.app.close();
@@ -454,6 +457,7 @@ test("Desktop: a change of the SQLite key cut short is ended on the next start",
   const firstPage = await first.app.firstWindow();
   await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(firstPage);
+  await startFromScratch(firstPage);
   await signUp(firstPage);
   const before = readConfig(first.userData).sqliteKey;
   await changeKey(first.app, firstPage);
