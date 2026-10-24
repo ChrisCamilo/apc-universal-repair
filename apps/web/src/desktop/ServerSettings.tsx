@@ -10,26 +10,27 @@ import { serverSettings as serverSettingsRecipe } from './ServerSettings.styles.
 import { ServerSettingsContext, type ServerSettingsFocus } from './serverSettingsContext.ts'
 
 // The desktop app's Servidor dialog, over any screen, opened from the user menu or the tray's "Servidor e banco de
-// dados…": the database the server runs on, SQLite with its folder or PostgreSQL with its server, its port and,
-// while the phone's access is on, the address the phone reaches it at. "Acesso pelo celular" puts the server on the
-// network for the phone, or keeps it answering this computer only, as it starts; Windows may ask about its firewall
-// then, and the dialog says to allow private networks only. "Banco de dados" moves it to PostgreSQL, at an address the
-// app checks, migrates and keeps sealed, or back to SQLite; switching doesn't move the data, which "Importar dados de
-// outro servidor" brings from an old server's PostgreSQL or SQLite file, with its photos, into the database in use
-// while it is empty. An old database of an earlier version is updated first, once the user agrees. After a change,
-// closing the dialog opens the app again on the new data. "Porta do servidor" moves the server to another port, from
-// 1024 to 65535, once the user confirms, saying the phone's address changes with it while the phone's access is on;
-// the app checks the port is free first, and the window follows the server there. Opened from the screen that says the
-// port is taken, the dialog starts on that field. While the database in use is empty, the app's start offers, once the
-// recovery copy is dealt with, to import an old server before anyone signs up: "Importar de um servidor antigo" opens
-// the dialog on its import, and "Começar do zero" stops the offer for good; it shows again on the next start
-// otherwise, until the database holds data. On SQLite, "Chave do banco" changes the file's key once the user confirms
-// what that means: the old recovery copy, and the copies made before updates, stop opening the file; the new key's
-// recovery copy then shows at once, until it is kept. When PostgreSQL was chosen at install with no address yet, the
-// dialog opens by itself and stays until the server has a database. The SQLite file is encrypted, and while its key's recovery copy isn't kept
-// the app shows it on opening, until the user says it is; an encrypted file of another install imports with its
-// recovery copy. With a server the app doesn't run, it only says where the server is. In a browser there is no
-// bridge, and nothing is drawn.
+// dados…": the database the server runs on, SQLite with its folder or PostgreSQL with its server, its port and, while
+// the phone's access is on, the address the phone reaches it at. "Acesso pelo celular" puts the server on the network
+// for the phone, or keeps it answering this computer only, as it starts; Windows may ask about its firewall then, and
+// the dialog says to allow private networks only. While it is on, the dialog warns when the network is set to Public or
+// a firewall rule lets the app in on public networks, checked each time it opens or the access turns on. "Banco de
+// dados" moves it to PostgreSQL, at an address the app checks, migrates and keeps sealed, or back to SQLite; switching
+// doesn't move the data, which "Importar dados de outro servidor" brings from an old server's PostgreSQL or SQLite
+// file, with its photos, into the database in use while it is empty. An old database of an earlier version is updated
+// first, once the user agrees. After a change, closing the dialog opens the app again on the new data. "Porta do
+// servidor" moves the server to another port, from 1024 to 65535, once the user confirms, saying the phone's address
+// changes with it while the phone's access is on; the app checks the port is free first, and the window follows the
+// server there. Opened from the screen that says the port is taken, the dialog starts on that field. While the database
+// in use is empty, the app's start offers, once the recovery copy is dealt with, to import an old server before anyone
+// signs up: "Importar de um servidor antigo" opens the dialog on its import, and "Começar do zero" stops the offer for
+// good; it shows again on the next start otherwise, until the database holds data. On SQLite, "Chave do banco" changes
+// the file's key once the user confirms what that means: the old recovery copy, and the copies made before updates,
+// stop opening the file; the new key's recovery copy then shows at once, until it is kept. When PostgreSQL was chosen
+// at install with no address yet, the dialog opens by itself and stays until the server has a database. The SQLite file
+// is encrypted, and while its key's recovery copy isn't kept the app shows it on opening, until the user says it is; an
+// encrypted file of another install imports with its recovery copy. With a server the app doesn't run, it only says
+// where the server is. In a browser there is no bridge, and nothing is drawn.
 
 /** The databases offered. */
 const DATABASES = [
@@ -324,6 +325,9 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
   // Whether the phone's access is changing, and how it went.
   const [changingAccess, setChangingAccess] = useState(false)
   const [accessNote, setAccessNote] = useState<Note>()
+  // What leaves the server public while the phone's access is on, read each time it opens or the access turns on.
+  const [networkWarnings, setNetworkWarnings] = useState<string[]>([])
+  const phoneAccess = own?.phoneAccess === true
 
   // Start on the port field or the import when asked, once the Dialog has focused its first control.
   useEffect(() => {
@@ -339,6 +343,14 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
       return () => cancelAnimationFrame(frame)
     }
   }, [open, focus, own])
+
+  // Ask what leaves the server public each time the dialog opens, or the phone's access turns on.
+  useEffect(() => {
+    if (open && phoneAccess) {
+      void server.networkWarnings().then(setNetworkWarnings)
+    }
+  }, [open, phoneAccess, server])
+
   const source: ImportSource | undefined =
     sourceKind === 'sqlite'
       ? sourceFile
@@ -629,6 +641,12 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
                 ? `Na rede de casa, o celular acessa ${phoneLine(own)}. Se o Windows perguntar sobre o firewall, marque só Redes privadas.`
                 : 'Desligado, o servidor só responde a este computador, e nada na rede o alcança. Ligue quando for usar o app do celular.'}
             </Text>
+            {own.phoneAccess &&
+              networkWarnings.map((warning) => (
+                <p key={warning} role="alert" className={classes.note({ tone: 'warn' })} data-testid={ids.note}>
+                  {warning}
+                </p>
+              ))}
             {note(accessNote)}
           </section>
           <section aria-labelledby={portHeading} className={classes.section()} data-testid={ids.section}>
