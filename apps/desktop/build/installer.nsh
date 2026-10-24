@@ -7,9 +7,15 @@
 ;   default) or only when opened, each saying what it means. It leaves "yes" or "no" in installer-startup.txt, which
 ;   the app applies on its next start (see src/startup.ts). An update or an install over the app keeps the setting and
 ;   skips it.
-; A silent install shows neither page and leaves no answers. electron-builder includes this file before its own
-; headers, so the pages and their functions are defined in its macros, which it inserts later:
-; customPageAfterChangeDir after the folder page, customInstall while installing.
+; A silent install shows neither page and leaves no answers.
+; *Reiniciar agora* runs the installer of the new version with its window (see src/update.ts), so its progress bar
+; shows. On such an update, electron-builder's own pages ask nothing more: the install mode page keeps the mode found
+; (customInstallMode), the progress page says it is updating (instFilesShow), and the finish page starts the new
+; version and closes the installer (customFinishPage); a fresh install, or one over the app run by hand, shows them as
+; before. The progress bar ends full once the files are in (customInstall). Nothing here removes a file.
+; electron-builder includes this file before its own headers, so the pages and their functions are defined in its
+; macros, which it inserts later: customInstallMode in the install mode page, customPageAfterChangeDir after the
+; folder page, customInstall while installing, customFinishPage as the last page.
 
 !ifndef BUILD_UNINSTALLER
   !include LogicLib.nsh
@@ -29,6 +35,16 @@
 !macro customPageAfterChangeDir
   Page custom databasePageCreate databasePageLeave
   Page custom startupPageCreate startupPageLeave
+
+  ; electron-builder's progress page comes next, and takes this function: on an update it says the app is updating, in
+  ; its header and in the window's title, instead of installing.
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW instFilesShow
+  Function instFilesShow
+    ${If} ${isUpdated}
+      !insertmacro MUI_HEADER_TEXT "Atualizando o APC" "Espere enquanto a versão nova é instalada. O APC abre sozinho no fim."
+      SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Atualização do ${PRODUCT_NAME}"
+    ${EndIf}
+  FunctionEnd
 
   ; Tells whether the app is being updated or installed over itself. Leaves "1" in $R0 when so, "0" otherwise.
   Function appInstalledBefore
@@ -155,7 +171,61 @@
   FunctionEnd
 !macroend
 
+; On an update, keeps the mode of the installation found, for this user or for all of them, when only one is found:
+; the page asking whom to install for then doesn't show. With both or neither found, it shows, as on a fresh install.
+!macro customInstallMode
+  !ifndef BUILD_UNINSTALLER
+    ${If} ${isUpdated}
+      ${If} $hasPerUserInstallation == "1"
+      ${AndIf} $hasPerMachineInstallation == "0"
+        StrCpy $isForceCurrentInstall "1"
+      ${ElseIf} $hasPerUserInstallation == "0"
+      ${AndIf} $hasPerMachineInstallation == "1"
+        StrCpy $isForceMachineInstall "1"
+      ${EndIf}
+    ${EndIf}
+  !endif
+!macroend
+
+; electron-builder's finish page, with its run checkbox, but skipped on an update: the new version starts at once, as
+; after a silent update, and the installer closes by itself once its progress bar is done.
+!macro customFinishPage
+  ; Starts the app, as electron-builder's finish page does.
+  Function startAppAfterFinish
+    ${If} ${isUpdated}
+      StrCpy $1 "--updated"
+    ${Else}
+      StrCpy $1 ""
+    ${EndIf}
+    ${StdUtils.ExecShellAsUser} $0 "$launchLink" "open" "$1"
+  FunctionEnd
+
+  ; Skips the page on an update, starting the new version.
+  Function finishPagePre
+    ${If} ${isUpdated}
+      Call startAppAfterFinish
+      Abort
+    ${EndIf}
+  FunctionEnd
+
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE finishPagePre
+  !ifndef HIDE_RUN_AFTER_FINISH
+    !define MUI_FINISHPAGE_RUN
+    !define MUI_FINISHPAGE_RUN_FUNCTION startAppAfterFinish
+  !endif
+  !insertmacro MUI_PAGE_FINISH
+!macroend
+
 !macro customInstall
+  ; NSIS moves the progress bar by the instructions run, and the unpacking is one of them while an update skips many
+  ; others, so the bar stops short of the end. With the files in, its range shrinks to one step: whatever position NSIS
+  ; sets after this is past it, and the bar shows full.
+  ${IfNot} ${Silent}
+    FindWindow $R1 "#32770" "" $HWNDPARENT
+    GetDlgItem $R1 $R1 1004
+    SendMessage $R1 ${PBM_SETRANGE32} 0 1
+    SendMessage $R1 ${PBM_SETPOS} 1 0
+  ${EndIf}
   ${If} $databaseChoice != ""
     ReadEnvStr $R1 APPDATA
     CreateDirectory "$R1\${PRODUCT_NAME}"
