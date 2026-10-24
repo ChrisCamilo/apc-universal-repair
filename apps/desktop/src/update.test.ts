@@ -17,6 +17,19 @@ import {
   writeInstallMarker,
 } from "./update.ts";
 
+/** The installer's own script, with the pages and macros electron-builder inserts into its installer and uninstaller. */
+const INSTALLER_SCRIPT = readFileSync(path.join(import.meta.dirname, "..", "build", "installer.nsh"), "utf8");
+
+/**
+ * Reads one macro of the installer's script, matched by its exact name.
+ * @param name The macro's name, e.g. "customInstall".
+ * @returns Its text, from `!macro` to its `!macroend`.
+ */
+function installerMacro(name: string): string {
+  const start = INSTALLER_SCRIPT.search(new RegExp(`!macro ${name}\\r?\\n`));
+  return INSTALLER_SCRIPT.slice(start, INSTALLER_SCRIPT.indexOf("!macroend", start));
+}
+
 // Checks only the installed app looks for updates: packaged, with no dev server and not as the portable exe.
 test("Desktop: only the installed app checks for updates", () => {
   const installed = { isPackaged: true, devUrl: undefined, portableDir: undefined };
@@ -78,18 +91,32 @@ test("Desktop: restarting to update shows the installer and opens the new versio
 
 // Reads the installer's own script and checks its update macros act only on an update (isUpdated): the install mode
 // kept, the progress page saying it is updating and the finish page skipped, which keeps its run checkbox otherwise;
-// that the progress bar is filled once the files are in, and that nothing in it removes a file or the app's data.
+// that the progress bar is filled once the files are in, and that none of them removes a file or the app's data.
 test("Desktop: the installer asks nothing more on an update, and removes nothing", () => {
-  const script = readFileSync(path.join(import.meta.dirname, "..", "build", "installer.nsh"), "utf8");
-  const macro = (name: string) => {
-    const start = script.search(new RegExp(`!macro ${name}\\r?\\n`));
-    return script.slice(start, script.indexOf("!macroend", start));
-  };
-  assert.match(macro("customInstallMode"), /\$\{If\} \$\{isUpdated\}[\s\S]*isForceCurrentInstall[\s\S]*isForceMachineInstall/);
-  const finish = macro("customFinishPage");
+  const mode = installerMacro("customInstallMode");
+  assert.match(mode, /\$\{If\} \$\{isUpdated\}[\s\S]*isForceCurrentInstall[\s\S]*isForceMachineInstall/);
+  const finish = installerMacro("customFinishPage");
   assert.match(finish, /Function finishPagePre\s+\$\{If\} \$\{isUpdated\}\s+Call startAppAfterFinish\s+Abort/);
   assert.match(finish, /MUI_FINISHPAGE_RUN_FUNCTION startAppAfterFinish[\s\S]*MUI_PAGE_FINISH/);
-  assert.match(macro("customPageAfterChangeDir"), /MUI_PAGE_CUSTOMFUNCTION_SHOW instFilesShow[\s\S]*\$\{If\} \$\{isUpdated\}\s+!insertmacro MUI_HEADER_TEXT "Atualizando o APC"/);
-  assert.match(macro("customInstall"), /\$\{IfNot\} \$\{Silent\}[\s\S]*PBM_SETRANGE32\} 0 1[\s\S]*PBM_SETPOS\} 1 0/);
-  assert.doesNotMatch(script, /\bDelete\b|\bRMDir\b|delete-app-data/);
+  const pages = installerMacro("customPageAfterChangeDir");
+  assert.match(pages, /MUI_PAGE_CUSTOMFUNCTION_SHOW instFilesShow[\s\S]*\$\{If\} \$\{isUpdated\}\s+!insertmacro MUI_HEADER_TEXT "Atualizando o APC"/);
+  const install = installerMacro("customInstall");
+  assert.match(install, /\$\{IfNot\} \$\{Silent\}[\s\S]*PBM_SETRANGE32\} 0 1[\s\S]*PBM_SETPOS\} 1 0/);
+  for (const text of [mode, finish, pages, install]) {
+    assert.doesNotMatch(text, /\bDelete\b|\bRMDir\b|delete-app-data/);
+  }
+});
+
+// Reads the installer's own script and checks the uninstaller's page about the data shows on a real uninstall only,
+// not a silent one nor an update, keeps the data by default and asks again before deleting it; and that the script's
+// one removal is of the app's own userData folder, once deleting was confirmed, outside a silent uninstall or update.
+test("Desktop: the uninstaller asks whether to keep the data, and deletes only the app's folder", () => {
+  const page = installerMacro("customUnWelcomePage");
+  assert.match(page, /Function un\.dataPageCreate\s+\$\{If\} \$\{Silent\}\s+\$\{OrIf\} \$\{isUpdated\}\s+Abort/);
+  assert.match(page, /ReadEnvStr \$R1 APPDATA[\s\S]*StrCpy \$dataFolder "\$R1\\\$\{PRODUCT_NAME\}"/);
+  assert.match(page, /\$\{If\} \$dataChoice == delete\s+\$\{NSD_Check\} \$dataDelete\s+\$\{Else\}\s+\$\{NSD_Check\} \$dataKeep/);
+  assert.match(page, /MB_DEFBUTTON2 \$R1 IDYES \+2\s+Abort\s+StrCpy \$dataChoice delete/);
+  const uninstall = installerMacro("customUnInstall");
+  assert.match(uninstall, /\$\{If\} \$dataChoice == delete\s+\$\{AndIfNot\} \$\{Silent\}\s+\$\{AndIfNot\} \$\{isUpdated\}[\s\S]*RMDir \/r "\$dataFolder"/);
+  assert.deepEqual(INSTALLER_SCRIPT.match(/\bDelete\b|\bRMDir\b|delete-app-data/g), ["RMDir"]);
 });

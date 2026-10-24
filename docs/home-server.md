@@ -38,7 +38,7 @@ Download `APC-Universal-Repair-Setup-<version>.exe` from the latest [release](ht
 - **Banco de dados:** SQLite or PostgreSQL, see step 2.
 - **Iniciar com o Windows:** whether the app starts hidden in the tray when you sign in to Windows, with the server on, so the phone works without opening the app (yes by default). It can be changed later in *Iniciar com o Windows*, in the menu of the APC icon by the clock.
 
-The server runs while the app runs. Closing the window keeps the app in the tray, by the clock, with the server on; *Sair* in the tray's menu quits the app and turns the server off. Its data is in `%APPDATA%\APC Universal Repair\data`, and its log in `%APPDATA%\APC Universal Repair\logs\api.log`. Uninstalling the app keeps the data.
+The server runs while the app runs. Closing the window keeps the app in the tray, by the clock, with the server on; *Sair* in the tray's menu quits the app and turns the server off. Its data is in `%APPDATA%\APC Universal Repair\data`, and its log in `%APPDATA%\APC Universal Repair\logs\api.log`. Uninstalling the app asks whether to keep the data, the default, or delete it: see [Uninstalling the app](#13-uninstalling-the-app).
 
 The app updates itself: it checks the releases when it opens and every 6 hours, downloads a new version in the background, and installs it when it closes, or at once from the notice. The server updates with it, along with its database: on its first start after an update that brings new migrations, it copies the SQLite file to `data\backups` before applying them (see step 6).
 
@@ -187,6 +187,17 @@ Change the SQLite key when its recovery copy may have leaked, such as a note see
 - The old recovery copy no longer opens the file. The copies in `data\backups`, made before updates, still open only with the old copy: keep it as long as you keep them.
 - On PostgreSQL there is no key to change: its password is in its address.
 
+### 13. Uninstalling the app
+
+Uninstall the app from Windows' *Settings → Apps*. After its first page, the uninstaller asks, on *Dados do APC*, what to do with the data in `%APPDATA%\APC Universal Repair`, showing that folder, its size and *Abrir a pasta*, which opens it:
+
+- **Manter os dados neste computador**, the default: only the program goes. The inventory, the users, the photos and the copies in `data\backups` stay in the folder, which keeps taking up its size. Installing the app again on this computer, with the same Windows user, opens everything as it was, with no import and no recovery copy. On another computer, or after reinstalling Windows, the SQLite data opens only with the key's recovery copy (see [The data's key doesn't open it](#11-the-datas-key-doesnt-open-it)).
+- **Apagar todos os dados do APC:** the program and that folder go: the inventory, the users, every photo and the backups. There is no undoing it: the app keeps no copy elsewhere, and the recovery copy opens nothing once the file is gone. Installing again starts with an empty stock. The uninstaller asks again first, *Apagar mesmo assim?*, with *Não* as the default, which goes back to the page. If the data may be needed again, copy the folder somewhere else before, as in [Backup](#6-backup).
+
+Deleting removes only that folder: not a PostgreSQL server, not a folder an import came from, not an old clone. On PostgreSQL the inventory and the users stay in its database either way, and the folder holds only the photos, the sealed address and the logs, which the page then says.
+
+An update, or a newer installer run over the app, never shows the page and always keeps the data, as does a silent uninstall (`/S`).
+
 ---
 
 ## 🇧🇷 Português (Brasil)
@@ -200,7 +211,7 @@ Baixe o `APC-Universal-Repair-Setup-<versão>.exe` da [release](https://github.c
 - **Banco de dados:** SQLite ou PostgreSQL, veja o passo 2.
 - **Iniciar com o Windows:** se o app liga escondido na bandeja quando você entra no Windows, com o servidor ligado, para o celular funcionar sem abrir o app (sim por padrão). Dá para trocar depois em *Iniciar com o Windows*, no menu do ícone do APC perto do relógio.
 
-O servidor roda enquanto o app roda. Fechar a janela deixa o app na bandeja, perto do relógio, com o servidor ligado; o *Sair* do menu da bandeja fecha o app e desliga o servidor. Os dados ficam em `%APPDATA%\APC Universal Repair\data`, e o log em `%APPDATA%\APC Universal Repair\logs\api.log`. Desinstalar o app mantém os dados.
+O servidor roda enquanto o app roda. Fechar a janela deixa o app na bandeja, perto do relógio, com o servidor ligado; o *Sair* do menu da bandeja fecha o app e desliga o servidor. Os dados ficam em `%APPDATA%\APC Universal Repair\data`, e o log em `%APPDATA%\APC Universal Repair\logs\api.log`. Desinstalar o app pergunta se mantém os dados, o padrão, ou se os apaga: veja [Desinstalar o app](#13-desinstalar-o-app).
 
 O app se atualiza sozinho: ele consulta as releases ao abrir e a cada 6 horas, baixa a versão nova em segundo plano e a instala quando fecha, ou na hora pelo aviso. O servidor se atualiza junto, com o banco dele: na primeira vez que liga depois de uma atualização que traz migrações novas, ele copia o arquivo SQLite para `data\backups` antes de aplicá-las (veja o passo 6).
 
@@ -348,3 +359,14 @@ Troque a chave do SQLite quando a cópia de recuperação pode ter vazado, como 
 - A cópia de recuperação da chave nova aparece na hora. Guarde-a como guardou a primeira, e jogue a antiga fora.
 - A cópia de recuperação antiga deixa de abrir o arquivo. As cópias em `data\backups`, feitas antes das atualizações, continuam abrindo só com a cópia antiga: guarde-a enquanto guardar essas cópias.
 - No PostgreSQL não há chave para trocar: a senha dele está no endereço.
+
+### 13. Desinstalar o app
+
+Desinstale o app em *Configurações → Aplicativos* do Windows. Depois da primeira página, o desinstalador pergunta, em *Dados do APC*, o que fazer com os dados em `%APPDATA%\APC Universal Repair`, mostrando essa pasta, o tamanho dela e o *Abrir a pasta*, que a abre:
+
+- **Manter os dados neste computador**, o padrão: só o programa sai. O estoque, os usuários, as fotos e as cópias em `data\backups` ficam na pasta, que continua ocupando o espaço dela. Instalar o app de novo neste computador, no mesmo usuário do Windows, abre tudo como estava, sem importar nada nem usar a cópia de recuperação. Em outro computador, ou depois de reinstalar o Windows, os dados do SQLite só abrem com a cópia de recuperação da chave (veja [A chave dos dados não os abre](#11-a-chave-dos-dados-não-os-abre)).
+- **Apagar todos os dados do APC:** saem o programa e essa pasta: o estoque, os usuários, todas as fotos e as cópias de segurança. Não dá para desfazer: o app não guarda cópia em outro lugar, e a cópia de recuperação não abre nada depois que o arquivo some. Instalar de novo começa com o estoque vazio. O desinstalador pergunta de novo antes, *Apagar mesmo assim?*, com o *Não* como padrão, que volta para a página. Se os dados puderem servir de novo, copie a pasta para outro lugar antes, como no [Backup](#6-backup-1).
+
+Apagar remove só essa pasta: não um servidor PostgreSQL, não uma pasta de onde veio uma importação, não um clone antigo. No PostgreSQL o estoque e os usuários ficam no banco dele de qualquer forma, e a pasta guarda só as fotos, o endereço lacrado e os registros, o que a página então diz.
+
+Uma atualização, ou um instalador mais novo rodado por cima do app, nunca mostra a página e sempre mantém os dados, como uma desinstalação silenciosa (`/S`).
