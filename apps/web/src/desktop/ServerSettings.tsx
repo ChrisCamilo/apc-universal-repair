@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Button } from '../components/Button.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { Segmented } from '../components/Segmented.tsx'
+import { Switch } from '../components/Switch.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { Heading, Text } from '../components/Typography.tsx'
 import { desktopBridge, type ImportOutcome, type ImportSource, type ServerSettings } from './desktopBridge.ts'
@@ -9,13 +10,15 @@ import { serverSettings as serverSettingsRecipe } from './ServerSettings.styles.
 import { ServerSettingsContext, type ServerSettingsFocus } from './serverSettingsContext.ts'
 
 // The desktop app's Servidor dialog, over any screen, opened from the user menu or the tray's "Servidor e banco de
-// dados…": the database the server runs on, SQLite with its folder or PostgreSQL with its server, its port and the
-// address the phone reaches it at. "Banco de dados" moves it to PostgreSQL, at an address the app checks, migrates and
+// dados…": the database the server runs on, SQLite with its folder or PostgreSQL with its server, its port and,
+// while the phone's access is on, the address the phone reaches it at. "Acesso pelo celular" puts the server on the
+// network for the phone, or keeps it answering this computer only, as it starts; Windows may ask about its firewall
+// then, and the dialog says to allow private networks only. "Banco de dados" moves it to PostgreSQL, at an address the app checks, migrates and
 // keeps sealed, or back to SQLite; switching doesn't move the data, which "Importar dados de outro servidor" brings
 // from an old server's PostgreSQL or SQLite file, with its photos, into the database in use while it is empty. An old
 // database of an earlier version is updated first, once the user agrees. After a change, closing the dialog opens the
 // app again on the new data. "Porta do servidor" moves the server to another port, from 1024 to 65535, once the user
-// confirms that the phone's address changes with it; the app checks the port is free first, and the window follows the
+// confirms, saying the phone's address changes with it while the phone's access is on; the app checks the port is free first, and the window follows the
 // server there. Opened from the screen that says the port is taken, the dialog starts on that field. On SQLite, "Chave
 // do banco" changes the file's key once the user confirms what that means: the old recovery copy, and the copies made
 // before updates, stop opening the file; the new key's recovery copy then shows at once, until it is kept. When PostgreSQL
@@ -233,6 +236,7 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
   const importHeading = useId()
   const portHeading = useId()
   const keyHeading = useId()
+  const phoneHeading = useId()
   const portField = useRef<HTMLInputElement>(null)
   const own = settings?.kind === 'own' ? settings : undefined
   const setup = own?.needsAddress ?? false
@@ -261,6 +265,9 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
   const [confirmingKey, setConfirmingKey] = useState(false)
   const [changingKey, setChangingKey] = useState(false)
   const [keyNote, setKeyNote] = useState<Note>()
+  // Whether the phone's access is changing, and how it went.
+  const [changingAccess, setChangingAccess] = useState(false)
+  const [accessNote, setAccessNote] = useState<Note>()
 
   // Start on the port field when asked, once the Dialog has focused its first control.
   useEffect(() => {
@@ -309,6 +316,20 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
     }
     setTypedPort(undefined)
     setPortNote({ tone: 'done', text: `Pronto: o servidor ligou na porta ${port}.` })
+    await onChanged()
+  }
+
+  /** Turns the phone's access on or off, which restarts the server, then says how it went. */
+  const switchPhoneAccess = async (on: boolean) => {
+    setChangingAccess(true)
+    setAccessNote(undefined)
+    const outcome = await server.usePhoneAccess(on)
+    setChangingAccess(false)
+    if (!outcome.ok) {
+      setAccessNote({ tone: 'danger', text: outcome.message })
+      return
+    }
+    setAccessNote({ tone: 'done', text: on ? 'Pronto: o celular já pode acessar o servidor.' : 'Pronto: o servidor responde só a este computador.' })
     await onChanged()
   }
 
@@ -461,7 +482,7 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
               Endereço para o celular
             </dt>
             <dd className={classes.value()} data-testid={ids.value}>
-              {phoneLine(own)}
+              {own.phoneAccess ? phoneLine(own) : 'Desligado: só este computador acessa o servidor'}
             </dd>
           </dl>
           <section aria-labelledby={databaseHeading} className={classes.section()} data-testid={ids.section}>
@@ -536,6 +557,20 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
               {note(keyNote)}
             </section>
           )}
+          <section aria-labelledby={phoneHeading} className={classes.section()} data-testid={ids.section}>
+            <Heading id={phoneHeading} level={4}>
+              Acesso pelo celular
+            </Heading>
+            <Switch checked={own.phoneAccess} onCheckedChange={(on) => void switchPhoneAccess(on)} disabled={changingAccess}>
+              Deixar o celular acessar o servidor
+            </Switch>
+            <Text size="sm" tone="muted">
+              {own.phoneAccess
+                ? `Na rede de casa, o celular acessa ${phoneLine(own)}. Se o Windows perguntar sobre o firewall, marque só Redes privadas.`
+                : 'Desligado, o servidor só responde a este computador, e nada na rede o alcança. Ligue quando for usar o app do celular.'}
+            </Text>
+            {note(accessNote)}
+          </section>
           <section aria-labelledby={portHeading} className={classes.section()} data-testid={ids.section}>
             <Heading id={portHeading} level={4}>
               Porta do servidor
@@ -552,13 +587,13 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
               }}
               helper="De 1024 a 65535. Troque se outro programa usa a porta do servidor."
             />
-            {confirming && own.phoneAddress && (
+            {confirming && own.phoneAccess && own.phoneAddress && (
               <Text size="sm" tone="muted">
                 O endereço do celular muda para http://{own.phoneAddress}:{port}. Depois de trocar, configure o celular
                 com esse endereço.
               </Text>
             )}
-            {confirming && !own.phoneAddress && (
+            {confirming && own.phoneAccess && !own.phoneAddress && (
               <Text size="sm" tone="muted">
                 O endereço do celular muda para a porta {port}. Depois de trocar, configure o celular com o endereço que
                 aparece no menu do APC perto do relógio.
