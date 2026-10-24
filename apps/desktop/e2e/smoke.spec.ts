@@ -136,6 +136,7 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", asyn
         "recoveryKeySaved",
         "retry",
         "settings",
+        "usePhoneAccess",
         "usePort",
         "usePostgresql",
         "useRecoveryKey",

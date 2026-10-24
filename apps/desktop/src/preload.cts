@@ -129,9 +129,15 @@ contextBridge.exposeInMainWorld("apcDesktop", {
     retry: () => ipcRenderer.invoke("apc:server-retry"),
     /**
      * Reads the server's settings.
-     * @returns The database in use and where, the port and the phone's address, or where a server elsewhere is.
+     * @returns The database in use and where, the port, the phone's access and address, or where a server elsewhere is.
      */
     settings: () => ipcRenderer.invoke("apc:server-settings"),
+    /**
+     * Turns the phone's access on, restarting the server on the network, or off, back on this computer only.
+     * @param on Whether the phone reaches the server.
+     * @returns Done, or why not.
+     */
+    usePhoneAccess: (on: boolean) => ipcRenderer.invoke("apc:server-use-phone-access", on),
     /**
      * Moves the server to another port, checked free first.
      * @param port The new port.

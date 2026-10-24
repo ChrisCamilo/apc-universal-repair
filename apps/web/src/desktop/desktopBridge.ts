@@ -39,6 +39,8 @@ export type ServerBridge = {
   retry: () => Promise<boolean>
   /** Reads the server's settings. */
   settings: () => Promise<ServerSettings>
+  /** Turns the phone's access on, restarting the server on the network, or off, back on this computer only. */
+  usePhoneAccess: (on: boolean) => Promise<ServerOutcome>
   /** Moves the server to another port, checked free first, and restarts it there. */
   usePort: (port: number) => Promise<ServerOutcome>
   /** Moves the server to a PostgreSQL database, checked and migrated first, and restarts it there. */
@@ -54,7 +56,7 @@ export type ServerFailure = { kind: 'key' | 'keyMissing' | 'keyWrong' | 'portInU
 export type ServerOutcome = { ok: true } | { ok: false; message: string }
 /**
  * The server's settings: the app's own server, on SQLite with its folder or PostgreSQL with its server, its photos'
- * folder, port and phone's address, whether PostgreSQL's address is still missing and whether the SQLite key's
+ * folder, port, whether the phone's access is on and the phone's address, whether PostgreSQL's address is still missing and whether the SQLite key's
  * recovery copy is still to be kept; a server on another computer; or another server that took the port when the app
  * opened.
  */
@@ -65,6 +67,7 @@ export type ServerSettings =
       location: string
       photos: string
       port: number
+      phoneAccess: boolean
       phoneAddress?: string
       needsAddress: boolean
       recoveryKeyPending: boolean

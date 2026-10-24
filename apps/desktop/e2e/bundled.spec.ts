@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
+import { networkInterfaces, tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { readConfig, writeConfig } from "../src/config.ts";
+import { phoneAddress } from "../src/tray.ts";
 
 // The desktop app with the server it ships (server/, from scripts/bundle-server.mjs), as an installed app runs: no
 // APC_API_URL and no clone, its own userData folder, and a free port in place of 3000. Run `pnpm run build` first,
@@ -434,14 +435,14 @@ test("Desktop: a change of the SQLite key cut short is ended on the next start",
   expect(readConfig(userData)).not.toHaveProperty("sqliteKeyNext");
 });
 
-// Holds the app's port with this test's own Node before the app opens, and checks the window says the port is in use
+// Holds the app's port on 127.0.0.1 with this test's own Node before the app opens, and checks the window says the port is in use
 // by that program, naming its process, and the server was never started; then "Usar outra porta" moves the server to a
 // free port, kept in config.json, where it answers and the login shows, with the SQLite key's recovery copy the first
 // start makes.
 test("Desktop: a taken port is said so, and the server moves to another port", async () => {
   const holder = createServer();
   const port = await freePort();
-  await new Promise<void>((resolve) => holder.listen(port, "0.0.0.0", resolve));
+  await new Promise<void>((resolve) => holder.listen(port, "127.0.0.1", resolve));
   try {
     const { app, userData } = await launch({ port });
     const page = await app.firstWindow();
@@ -468,6 +469,37 @@ test("Desktop: a taken port is said so, and the server moves to another port", a
   } finally {
     holder.close();
   }
+});
+
+// Opens the app and checks its server answers on 127.0.0.1 but not on the computer's network address, as the phone's
+// access is off on a fresh install; turning it on in the Servidor dialog restarts the server, which then answers on
+// both, kept in config.json, and turning it off takes it off the network again.
+test("Desktop: the server reaches the network only with the phone's access on", async () => {
+  const address = phoneAddress(networkInterfaces());
+  test.skip(!address, "This computer has no network address to try.");
+  const { app, userData, server } = await launch();
+  const page = await app.firstWindow();
+  await keepRecoveryKey(page);
+  const onNetwork = `http://${address}:${new URL(server).port}`;
+  expect(await healthOf(server)).toBe("up");
+  expect(await healthOf(onNetwork)).toBe("down");
+
+  await openServerSettings(app);
+  const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
+  const access = dialog.getByRole("switch", { name: "Deixar o celular acessar o servidor" });
+  await expect(access).toHaveAttribute("aria-checked", "false");
+  await access.click();
+  await expect(dialog.getByRole("status")).toHaveText("Pronto: o celular já pode acessar o servidor.", { timeout: 60_000 });
+  expect(readConfig(userData).phoneAccess).toBe(true);
+  expect(await healthOf(onNetwork)).toBe("up");
+  expect(await healthOf(server)).toBe("up");
+
+  await access.click();
+  await expect(dialog.getByRole("status")).toHaveText("Pronto: o servidor responde só a este computador.", { timeout: 60_000 });
+  expect(readConfig(userData).phoneAccess).toBe(false);
+  expect(await healthOf(onNetwork)).toBe("down");
+  expect(await healthOf(server)).toBe("up");
+  await app.close();
 });
 
 // Starts the app as Windows does at sign-in, with --hidden, and checks the window stays hidden while the server answers.

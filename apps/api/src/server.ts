@@ -4,11 +4,12 @@
 // runs the server it ships, the API then applies the pending migrations of its database (see db/migrate.ts), so it
 // migrates itself on every update, after copying a SQLite file to backups/ (see db/backup.ts); in development
 // `db:migrate` does. Then it turns WAL on for SQLite and listens on PORT, or else on DEV_SERVER_PORT when started for
-// development (`pnpm dev`, which passes --dev) and on SERVER_PORT otherwise, as the desktop app and `pnpm start` run it.
+// development (`pnpm dev`, which passes --dev) and on SERVER_PORT otherwise, as the desktop app and `pnpm start` run it,
+// on the address APC_HOST names, or on every one (NETWORK_HOST), as development, the emulator and a phone need.
 // A port another program holds exits with PORT_IN_USE_EXIT_CODE, a SQLite key that doesn't open the file with
 // WRONG_KEY_EXIT_CODE, any other failure with 1.
 import "dotenv/config";
-import { DEV_SERVER_PORT, PORT_IN_USE_EXIT_CODE, SERVER_PORT, WRONG_KEY_EXIT_CODE } from "@apc/shared/server";
+import { DEV_SERVER_PORT, NETWORK_HOST, PORT_IN_USE_EXIT_CODE, SERVER_PORT, WRONG_KEY_EXIT_CODE } from "@apc/shared/server";
 import { buildApp } from "./app.js";
 import { backupBeforeMigrating } from "./db/backup.js";
 import { ensureEncrypted, WRONG_KEY_ERROR } from "./db/cipher.js";
@@ -19,6 +20,7 @@ import { API_VERSION } from "./routes/health.js";
 
 const app = buildApp();
 const port = Number(process.env.PORT ?? (process.argv.includes("--dev") ? DEV_SERVER_PORT : SERVER_PORT));
+const host = process.env.APC_HOST || NETWORK_HOST;
 
 Promise.resolve()
   .then(() => {
@@ -39,7 +41,7 @@ Promise.resolve()
     await migrate(databaseUrl(), (name) => app.log.info(`Applied the migration ${name}`));
   })
   .then(prepareDatabase)
-  .then(() => app.listen({ port, host: "0.0.0.0" }))
+  .then(() => app.listen({ port, host }))
   .catch((error) => {
     app.log.error(error);
     const { code } = error as NodeJS.ErrnoException;

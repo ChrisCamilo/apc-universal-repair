@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:net";
 import { test } from "node:test";
-import { configuredPort, listeningPid, portFree, processName, validPort } from "./ports.ts";
+import { LOCAL_HOST, NETWORK_HOST } from "./bundledServer.ts";
+import { configuredPort, listeningPid, portFree, processName, serverHosts, validPort } from "./ports.ts";
 
 // The TCP table of a Windows in Portuguese, its states written in the system's language, with a program listening on
 // 3000 over IPv6 and a connection that only goes out from another port 3000.
@@ -35,12 +36,30 @@ test("Desktop: the program holding a port is read from the TCP table", () => {
   assert.equal(processName("INFORMAÇÕES: Nenhuma tarefa em execução corresponde aos critérios especificados.\r\n"), undefined);
 });
 
-// Holds a port and checks it isn't free while held and is once let go.
+// Holds a port on this computer's address and checks it isn't free there while held, for the server with the phone's
+// access off or on, and is once let go.
 test("Desktop: a port is free only while no program holds it", async () => {
   const holder = createServer();
-  await new Promise<void>((resolve) => holder.listen(0, "0.0.0.0", resolve));
+  await new Promise<void>((resolve) => holder.listen(0, LOCAL_HOST, resolve));
   const { port } = holder.address() as { port: number };
-  assert.equal(await portFree(port), false);
+  assert.equal(await portFree(port, serverHosts(false)), false);
+  assert.equal(await portFree(port, serverHosts(true)), false);
   await new Promise((resolve) => holder.close(resolve));
-  assert.equal(await portFree(port), true);
+  assert.equal(await portFree(port, serverHosts(false)), true);
+});
+
+// Holds a port on every address and checks the server with the phone's access off still finds it free on this
+// computer's address, without trying every address, while with the access on it doesn't. Only Windows lets the two
+// share a port; Linux, where CI runs, refuses the second.
+test("Desktop: a port held on every address is free for a server on this computer only", { skip: process.platform !== "win32" }, async () => {
+  const holder = createServer();
+  await new Promise<void>((resolve) => holder.listen(0, NETWORK_HOST, resolve));
+  const { port } = holder.address() as { port: number };
+  try {
+    assert.deepEqual(serverHosts(false), [LOCAL_HOST]);
+    assert.equal(await portFree(port, serverHosts(false)), true);
+    assert.equal(await portFree(port, serverHosts(true)), false);
+  } finally {
+    await new Promise((resolve) => holder.close(resolve));
+  }
 });

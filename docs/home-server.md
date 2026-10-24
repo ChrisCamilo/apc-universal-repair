@@ -61,7 +61,9 @@ The app updates itself: it checks the releases when it opens and every 6 hours, 
 
 ### 3. Allow it through the firewall
 
-The first time the server starts, Windows asks whether *APC Universal Repair* may use the network. Tick **private networks only** and choose *Allow* (this needs an administrator's password). Don't press *Cancel*: that creates a rule that blocks the app, and the phone can't reach it.
+Out of the box the server answers only this computer: nothing on the network reaches it, and Windows asks nothing. It goes on the network when *Acesso pelo celular* is turned on in *Servidor e banco de dados* (step 5); turn it off again and it answers only this computer once more.
+
+When the access is turned on the first time, Windows asks whether *APC Universal Repair* may use the network. Tick **private networks only** and choose *Allow* (this needs an administrator's password). Don't press *Cancel*: that creates a rule that blocks the app, and the phone can't reach it.
 
 Then make sure the Wi-Fi is a private network: in *Settings → Network & internet → Wi-Fi → (your network)*, set the network profile to **Private**.
 
@@ -73,18 +75,21 @@ Find the computer's address with `ipconfig` in a PowerShell (the *IPv4 Address* 
 
 ### 5. The phone
 
-The tray's menu shows the address the phone reaches the server at, such as *Servidor ligado em http://192.168.0.10:3000*; a click copies it. The same address is in *Servidor e banco de dados*. To check it, open `http://<that address>/health` in the phone's browser, on the same Wi-Fi: it should answer `{"status":"ok",...}`.
+First turn on **Acesso pelo celular** in *Servidor e banco de dados* (in the user menu or the tray's menu): the server restarts on the network, and the dialog shows the address the phone reaches it at. Allow it through the firewall when Windows asks (step 3). With the access off, the tray says *Servidor ligado só neste computador*.
+
+With the access on, the tray's menu shows the address the phone reaches the server at, such as *Servidor ligado em http://192.168.0.10:3000*; a click copies it. The same address is in *Servidor e banco de dados*. To check it, open `http://<that address>/health` in the phone's browser, on the same Wi-Fi: it should answer `{"status":"ok",...}`.
 
 The phone app needs a release APK built with that address. The steps to build and install it come with the Android release build ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
 
 If the phone gets no answer:
 
 1. Is the app running, in the window or in the tray? On the computer, `http://localhost:3000/health` should answer.
-2. Are the phone and the computer on the same Wi-Fi? A guest network usually keeps devices from seeing each other.
-3. Is the network profile **Private**, and is the app allowed through the firewall on private networks (step 3)?
-4. Did the computer's address change? Check the tray's menu and the reservation on the router.
-5. Does `/health` answer *403 Forbidden* saying the server doesn't answer for that host? The phone is using a name, not the computer's address. Add the name to a Windows user environment variable `APC_ALLOWED_HOSTS` (comma separated, e.g. `oficina.local`), then quit the app with *Sair* and open it again.
-6. Still nothing: look at the end of `%APPDATA%\APC Universal Repair\logs\api.log`.
+2. Is *Acesso pelo celular* on in *Servidor e banco de dados*? With it off, the server answers only the computer.
+3. Are the phone and the computer on the same Wi-Fi? A guest network usually keeps devices from seeing each other.
+4. Is the network profile **Private**, and is the app allowed through the firewall on private networks (step 3)?
+5. Did the computer's address change? Check the tray's menu and the reservation on the router.
+6. Does `/health` answer *403 Forbidden* saying the server doesn't answer for that host? The phone is using a name, not the computer's address. Add the name to a Windows user environment variable `APC_ALLOWED_HOSTS` (comma separated, e.g. `oficina.local`), then quit the app with *Sair* and open it again.
+7. Still nothing: look at the end of `%APPDATA%\APC Universal Repair\logs\api.log`.
 
 ### 6. Backup
 
@@ -128,7 +133,7 @@ Up to v0.3.0, the server at home ran from a clone of the project, started by a T
 1. **Stop the clone's server for good.** In a PowerShell, in the clone's folder, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which turns it off and removes its task. A task made with `-AtStartup` must be removed from a PowerShell opened as administrator. If the clone has no such script, open the Task Scheduler, delete the *APC Universal Repair API* task and restart the computer. Delete the *Ligar servidor APC* shortcut too. The old server answers on port 3333, apart from the app's 3000, so the phone would keep saving to it at that port.
 2. **Install the app** (step 1), or update it, and open it. If it was set to the clone with `apiDir` or `apiUrl` in `%APPDATA%\APC Universal Repair\config.json`, remove those settings, then quit with *Sair* and open it again. Don't sign up yet.
 3. **Import the data** (step 7): the clone's `apps\api\data\apc.db` for SQLite, or the address in its `apps\api\.env` for PostgreSQL, with its `apps\api\uploads\photos`. Log in with an old account and check the inventory and its photos.
-4. **Allow the app through the firewall** (step 3), and check the phone (step 5): the address stays the same. The old firewall rule for Node.js can be removed.
+4. **Turn on the phone's access and allow the app through the firewall** (steps 5 and 3), and check the phone: the address stays the same. The old firewall rule for Node.js can be removed.
 5. **Delete the clone** once you're sure, and uninstall Node.js, pnpm and Git if nothing else needs them. A PostgreSQL in use stays.
 
 ### 9. After an update, the server doesn't connect
@@ -144,7 +149,7 @@ Up to v0.3.0, the server at home ran from a clone of the project, started by a T
 The server listens on port 3000. When another program already holds it, the app doesn't start the server: the window says *O servidor não ligou* and *A porta 3000 já está em uso pelo programa …*, naming the program and its process, and the tray's menu says the server is off. Then either:
 
 1. **Close that program,** and press *Tentar de novo*. To see which program holds the port, in a PowerShell: `Get-NetTCPConnection -LocalPort 3000 -State Listen | ForEach-Object { Get-Process -Id $_.OwningProcess }`.
-2. **Or use another port:** *Usar outra porta* opens *Servidor e banco de dados* on its *Porta* field. Type a port from 1024 to 65535 and choose *Trocar a porta*. The app warns that the phone's address changes with it, checks the port is free, and starts the server there. The port is kept in `%APPDATA%\APC Universal Repair\config.json` as `port`.
+2. **Or use another port:** *Usar outra porta* opens *Servidor e banco de dados* on its *Porta* field. Type a port from 1024 to 65535 and choose *Trocar a porta*. With the phone's access on, the app warns that the phone's address changes with it. It checks the port is free, and starts the server there. The port is kept in `%APPDATA%\APC Universal Repair\config.json` as `port`.
 
 With another port:
 - **The firewall** needs nothing new: the rule of step 3 is for the app, whatever its port.
@@ -205,7 +210,9 @@ O app se atualiza sozinho: ele consulta as releases ao abrir e a cada 6 horas, b
 
 ### 3. Liberar no firewall
 
-Na primeira vez que o servidor liga, o Windows pergunta se o *APC Universal Repair* pode usar a rede. Marque **só redes privadas** e clique em *Permitir* (isso pede a senha de um administrador). Não clique em *Cancelar*: isso cria uma regra que bloqueia o app, e o celular não chega a ele.
+De fábrica, o servidor responde só a este computador: nada na rede chega a ele, e o Windows não pergunta nada. Ele vai para a rede quando o *Acesso pelo celular* é ligado no *Servidor e banco de dados* (passo 5); desligado de novo, ele volta a responder só a este computador.
+
+Na primeira vez que o acesso é ligado, o Windows pergunta se o *APC Universal Repair* pode usar a rede. Marque **só redes privadas** e clique em *Permitir* (isso pede a senha de um administrador). Não clique em *Cancelar*: isso cria uma regra que bloqueia o app, e o celular não chega a ele.
 
 Depois confira que o Wi-Fi é uma rede privada: em *Configurações → Rede e internet → Wi-Fi → (sua rede)*, deixe o perfil de rede como **Privada**.
 
@@ -217,18 +224,21 @@ Descubra o endereço do computador com o `ipconfig` num PowerShell (o *Endereço
 
 ### 5. O celular
 
-O menu da bandeja mostra o endereço em que o celular chega ao servidor, como *Servidor ligado em http://192.168.0.10:3000*; um clique o copia. O mesmo endereço está no *Servidor e banco de dados*. Para conferir, abra `http://<esse endereço>/health` no navegador do celular, no mesmo Wi-Fi: ele deve responder `{"status":"ok",...}`.
+Primeiro ligue o **Acesso pelo celular** no *Servidor e banco de dados* (no menu do usuário ou no menu da bandeja): o servidor religa na rede, e o diálogo mostra o endereço em que o celular chega a ele. Libere no firewall quando o Windows perguntar (passo 3). Com o acesso desligado, a bandeja diz *Servidor ligado só neste computador*.
+
+Com o acesso ligado, o menu da bandeja mostra o endereço em que o celular chega ao servidor, como *Servidor ligado em http://192.168.0.10:3000*; um clique o copia. O mesmo endereço está no *Servidor e banco de dados*. Para conferir, abra `http://<esse endereço>/health` no navegador do celular, no mesmo Wi-Fi: ele deve responder `{"status":"ok",...}`.
 
 O app do celular precisa de um APK de release gerado com esse endereço. Os passos para gerar e instalar vêm com o build de release do Android ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
 
 Se o celular não tiver resposta:
 
 1. O app está rodando, na janela ou na bandeja? No computador, o `http://localhost:3000/health` deve responder.
-2. O celular e o computador estão no mesmo Wi-Fi? Uma rede de convidados costuma impedir que os aparelhos se vejam.
-3. O perfil de rede está como **Privada**, e o app está liberado no firewall em redes privadas (passo 3)?
-4. O endereço do computador mudou? Confira o menu da bandeja e a reserva no roteador.
-5. O `/health` responde *403 Forbidden* dizendo que o servidor não responde para esse host? O celular está usando um nome, não o endereço do computador. Coloque o nome numa variável de ambiente do usuário do Windows, `APC_ALLOWED_HOSTS` (separados por vírgula, ex.: `oficina.local`), e depois feche o app pelo *Sair* e abra de novo.
-6. Nada ainda: veja o fim do `%APPDATA%\APC Universal Repair\logs\api.log`.
+2. O *Acesso pelo celular* está ligado no *Servidor e banco de dados*? Desligado, o servidor só responde ao computador.
+3. O celular e o computador estão no mesmo Wi-Fi? Uma rede de convidados costuma impedir que os aparelhos se vejam.
+4. O perfil de rede está como **Privada**, e o app está liberado no firewall em redes privadas (passo 3)?
+5. O endereço do computador mudou? Confira o menu da bandeja e a reserva no roteador.
+6. O `/health` responde *403 Forbidden* dizendo que o servidor não responde para esse host? O celular está usando um nome, não o endereço do computador. Coloque o nome numa variável de ambiente do usuário do Windows, `APC_ALLOWED_HOSTS` (separados por vírgula, ex.: `oficina.local`), e depois feche o app pelo *Sair* e abra de novo.
+7. Nada ainda: veja o fim do `%APPDATA%\APC Universal Repair\logs\api.log`.
 
 ### 6. Backup
 
@@ -272,7 +282,7 @@ Até a v0.3.0, o servidor de casa rodava de um clone do projeto, ligado por uma 
 1. **Desligue de vez o servidor do clone.** Num PowerShell, na pasta do clone, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que o desliga e remove a tarefa. Uma tarefa feita com `-AtStartup` precisa ser removida num PowerShell aberto como administrador. Se o clone não tiver esse script, abra o Agendador de Tarefas, apague a tarefa *APC Universal Repair API* e reinicie o computador. Apague também o atalho *Ligar servidor APC*. O servidor antigo responde na porta 3333, separada da 3000 do app, então o celular continuaria salvando nele por essa porta.
 2. **Instale o app** (passo 1), ou atualize-o, e abra. Se ele estava apontado para o clone com `apiDir` ou `apiUrl` no `%APPDATA%\APC Universal Repair\config.json`, tire essas configurações, depois feche pelo *Sair* e abra de novo. Não crie conta ainda.
 3. **Importe os dados** (passo 7): o `apps\api\data\apc.db` do clone para o SQLite, ou o endereço do `apps\api\.env` dele para o PostgreSQL, com o `apps\api\uploads\photos` dele. Entre com uma conta antiga e confira o estoque e as fotos.
-4. **Libere o app no firewall** (passo 3) e confira o celular (passo 5): o endereço continua o mesmo. A regra antiga do firewall para o Node.js pode ser removida.
+4. **Ligue o acesso pelo celular e libere o app no firewall** (passos 5 e 3), e confira o celular: o endereço continua o mesmo. A regra antiga do firewall para o Node.js pode ser removida.
 5. **Apague o clone** quando tiver certeza, e desinstale o Node.js, o pnpm e o Git se nada mais precisar deles. Um PostgreSQL em uso fica.
 
 ### 9. Depois de atualizar, o servidor não conecta
@@ -288,7 +298,7 @@ O *Reiniciar agora* mostra *Atualizando o APC…*, fecha o app e instala a vers�
 O servidor escuta na porta 3000. Quando outro programa já a ocupa, o app não liga o servidor: a janela diz *O servidor não ligou* e *A porta 3000 já está em uso pelo programa …*, com o nome do programa e o processo dele, e o menu da bandeja diz que o servidor está desligado. Então:
 
 1. **Feche esse programa** e toque em *Tentar de novo*. Para ver qual programa ocupa a porta, num PowerShell: `Get-NetTCPConnection -LocalPort 3000 -State Listen | ForEach-Object { Get-Process -Id $_.OwningProcess }`.
-2. **Ou use outra porta:** o *Usar outra porta* abre o *Servidor e banco de dados* no campo *Porta*. Digite uma porta de 1024 a 65535 e escolha *Trocar a porta*. O app avisa que o endereço do celular muda junto, confere se a porta está livre e liga o servidor nela. A porta fica guardada no `%APPDATA%\APC Universal Repair\config.json`, como `port`.
+2. **Ou use outra porta:** o *Usar outra porta* abre o *Servidor e banco de dados* no campo *Porta*. Digite uma porta de 1024 a 65535 e escolha *Trocar a porta*. Com o acesso pelo celular ligado, o app avisa que o endereço do celular muda junto. Ele confere se a porta está livre e liga o servidor nela. A porta fica guardada no `%APPDATA%\APC Universal Repair\config.json`, como `port`.
 
 Com outra porta:
 - **O firewall** não precisa de nada novo: a regra do passo 3 é para o app, qualquer que seja a porta.

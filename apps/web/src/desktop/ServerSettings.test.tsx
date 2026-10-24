@@ -16,6 +16,7 @@ const ON_SQLITE: Extract<ServerSettings, { kind: 'own' }> = {
   location: 'C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data',
   photos: 'C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data\\photos',
   port: 3000,
+  phoneAccess: true,
   phoneAddress: '192.168.0.10',
   needsAddress: false,
   recoveryKeyPending: false,
@@ -51,6 +52,7 @@ function giveServer(settings: ServerSettings) {
     importServer: vi.fn<ServerBridge['importServer']>(async () => ({ ok: false, message: 'Nada importado.' })),
     migrateImport: vi.fn<ServerBridge['migrateImport']>(async () => ({ ok: true })),
     settings: vi.fn<ServerBridge['settings']>(async () => settings),
+    usePhoneAccess: vi.fn<ServerBridge['usePhoneAccess']>(async () => ({ ok: true })),
     usePort: vi.fn<ServerBridge['usePort']>(async () => ({ ok: true })),
     useRecoveryKey: vi.fn<ServerBridge['useRecoveryKey']>(async () => ({ ok: true })),
     usePostgresql: vi.fn<ServerBridge['usePostgresql']>(async () => ({ ok: true })),
@@ -122,6 +124,34 @@ test('Web: the Servidor dialog shows the database in use, the port and the phone
   await expect.element(dialog.getByText('http://192.168.0.10:3000')).toBeVisible()
   await expect.element(dialog.getByRole('button', { name: 'Usar PostgreSQL' })).not.toBeInTheDocument()
   await expect.element(dialog.getByRole('button', { name: 'Fechar' }).first()).toBeVisible()
+})
+
+// Opens the dialog with the phone's access off, as a fresh install has it, and checks it says the server answers only
+// this computer, with no phone address; turning the access on asks the app, says so and opens the app again on
+// closing. A refusal, such as a port held on the network, says why and leaves it off.
+test('Web: the phone\'s access turns on from the dialog, off by default', async () => {
+  const { calls } = giveServer({ ...ON_SQLITE, phoneAccess: false })
+  const held = 'A porta 3000 já está em uso pelo programa node.exe (processo 4321). Feche esse programa e tente de novo, ou use outra porta.'
+  calls.usePhoneAccess.mockResolvedValueOnce({ ok: false, message: held })
+  const reload = vi.fn()
+  const screen = await renderSettings(reload)
+  await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
+  await expect.element(dialog.getByText('Desligado: só este computador acessa o servidor')).toBeVisible()
+  await expect.element(dialog.getByText('http://192.168.0.10:3000')).not.toBeInTheDocument()
+  const access = dialog.getByRole('switch', { name: 'Deixar o celular acessar o servidor' })
+  await expect.element(access).toHaveAttribute('aria-checked', 'false')
+
+  await access.click()
+  await expect.element(dialog.getByRole('alert')).toHaveTextContent(held)
+  calls.settings.mockResolvedValue({ ...ON_SQLITE, phoneAccess: true })
+  await access.click()
+  await expect.element(dialog.getByRole('status')).toHaveTextContent('Pronto: o celular já pode acessar o servidor.')
+  await expect.element(access).toHaveAttribute('aria-checked', 'true')
+  await expect.element(dialog.getByText(/o celular acessa http:\/\/192\.168\.0\.10:3000\. Se o Windows perguntar sobre o firewall, marque só Redes privadas\./)).toBeVisible()
+  expect(calls.usePhoneAccess.mock.calls).toEqual([[true], [true]])
+  await dialog.getByRole('button', { name: 'Fechar' }).first().click()
+  expect(reload).toHaveBeenCalledOnce()
 })
 
 // Opens the dialog from the tray, picks PostgreSQL and gives an address that doesn't connect, and checks the dialog
