@@ -128,6 +128,16 @@ contextBridge.exposeInMainWorld("apcDesktop", {
      */
     retry: () => ipcRenderer.invoke("apc:server-retry"),
     /**
+     * Tells whether to offer importing an old server on this start, while the database in use is empty.
+     * @returns True to offer it.
+     */
+    firstStart: () => ipcRenderer.invoke("apc:server-first-start"),
+    /**
+     * Says the user starts from scratch, which stops the offer to import an old server.
+     * @returns Once it is kept.
+     */
+    startFromScratch: () => ipcRenderer.invoke("apc:server-first-start-done"),
+    /**
      * Reads the server's settings.
      * @returns The database in use and where, the port, the phone's access and address, or where a server elsewhere is.
      */

@@ -3,12 +3,14 @@ import { utilityProcess } from "electron";
 
 // Runs one of the database tasks the server ships (server/tasks.mjs, from apps/api/src/db/tasks.ts) in an Electron
 // utility process of its own, with the server's environment (its database, the SQLite file's key and the migrations
-// the app ships), and gives back its answer: checking a database, migrating it, and importing an old server. A task
+// the app ships), and gives back its answer: checking a database, migrating it, telling whether it holds any data,
+// and importing an old server. A task
 // brings the keys of the other encrypted files it opens. The process ends once it has answered.
 
 /** A task of server/tasks.mjs, as apps/api/src/db/tasks.ts takes it, with the keys of the encrypted files it opens. */
 export type ServerTask = (
   | { task: "check"; url: string }
+  | { task: "holdsData"; url: string }
   | { task: "import"; setup: { from: string; to: string; photosFrom?: string; photosTo: string } }
   | { task: "importProblem"; from: string; to: string }
   | { task: "keyOpens"; url: string }

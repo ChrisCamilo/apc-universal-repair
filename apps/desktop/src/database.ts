@@ -17,7 +17,9 @@ import { readConfig, updateConfig, type DatabaseChoice, type DesktopConfig } fro
 // or it is still plain SQLite: a file already encrypted without its key in config.json is said to miss it, never given
 // a new one that couldn't open it, and the recovery copy typed back brings it back. Changing the key keeps the new one
 // sealed as `sqliteKeyNext` before the file changes, and moves it to `sqliteKey` once the file reads back with it, so a
-// change cut short never leaves the file with a key the computer doesn't have.
+// change cut short never leaves the file with a key the computer doesn't have. While the database in use is empty, the
+// first start offers to import an old server before anyone signs up, until someone does, an import fills it, or the
+// user starts from scratch, kept as `firstStartDone`.
 
 /** The choices the installer offers. */
 const CHOICES: readonly DatabaseChoice[] = ["sqlite", "postgresql"];
@@ -138,6 +140,16 @@ export function ensureSqliteKey(userData: string, sealer: Sealer): SqliteKey {
 export function finishKeyChange(userData: string): void {
   const { sqliteKeyNext } = readConfig(userData);
   updateConfig(userData, { sqliteKey: sqliteKeyNext, sqliteKeyNext: undefined, sqliteKeySaved: false });
+}
+
+/**
+ * Tells whether the first start offers to import an old server.
+ * @param config What config.json sets.
+ * @param holdsData Whether the database in use holds any data.
+ * @returns True while it is empty and the user hasn't chosen to start from scratch.
+ */
+export function firstStartPending(config: DesktopConfig, holdsData: boolean): boolean {
+  return config.firstStartDone !== true && !holdsData;
 }
 
 /**
