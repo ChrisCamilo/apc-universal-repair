@@ -93,6 +93,8 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
   const mode = await modeOf();
   await page.getByRole("tab", { name: /Catálogo/ }).click();
   await expect(page).toHaveURL(/\/catalog$/);
+  // The URL changes at once, in a transition, but the tab is open, and kept, only once the Catálogo screen renders.
+  await expect(page.getByRole("tab", { name: /Catálogo/ })).toHaveAttribute("aria-selected", "true");
   expect(blocked).toEqual([]);
   await app.close();
 
