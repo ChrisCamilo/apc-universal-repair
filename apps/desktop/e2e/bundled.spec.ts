@@ -82,6 +82,17 @@ async function openServerSettings(app: ElectronApplication): Promise<void> {
 }
 
 /**
+ * Answers the first start's offer to import an old server, which an empty database shows once the recovery copy is
+ * kept, with "Começar do zero".
+ * @param page The app's window.
+ */
+async function startFromScratch(page: Page): Promise<void> {
+  const choice = page.getByRole("dialog", { name: "Começar o APC" });
+  await choice.getByRole("button", { name: "Começar do zero" }).click();
+  await expect(choice).toBeHidden();
+}
+
+/**
  * Signs Ana up from the login, and skips the Inventory tutorial her first login starts, leaving the empty Inventory.
  * @param page The app's window.
  */
@@ -106,6 +117,7 @@ test("Desktop: the app runs the server it ships, with its data in userData", asy
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(page);
+  await startFromScratch(page);
 
   await signUp(page);
 
@@ -119,6 +131,36 @@ test("Desktop: the app runs the server it ships, with its data in userData", asy
   const apiLog = readFileSync(path.join(userData, "logs", "api.log"), "utf8");
   expect(apiLog.slice(apiLog.lastIndexOf("Starting the server."))).toMatch(/The server stopped \(exit code -?\d+\)\./);
   expect(readFileSync(path.join(userData, "logs", "app.log"), "utf8")).toContain("Storage written and the server stopped; quitting.");
+});
+
+// Opens a fresh install and checks it offers to import an old server once the recovery copy is kept, and "Importar de
+// um servidor antigo" opens the Servidor dialog on its import. The offer shows again on the next start, while the
+// database is empty; once someone signs up, the start after offers nothing, and config.json keeps it over.
+test("Desktop: a fresh install offers to import an old server until someone signs up", async () => {
+  const first = await launch();
+  let page = await first.app.firstWindow();
+  await keepRecoveryKey(page);
+  await page.getByRole("dialog", { name: "Começar o APC" }).getByRole("button", { name: "Importar de um servidor antigo" }).click();
+  const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
+  await expect(dialog.getByRole("heading", { name: "Importar dados de outro servidor" })).toBeInViewport();
+  await first.app.close();
+
+  const second = await launch({ userData: first.userData });
+  page = await second.app.firstWindow();
+  const choice = page.getByRole("dialog", { name: "Começar o APC" });
+  await expect(choice).toBeVisible({ timeout: 60_000 });
+  await page.keyboard.press("Escape");
+  await expect(choice).toBeHidden();
+  await signUp(page);
+  expect(readConfig(first.userData).firstStartDone).toBeUndefined();
+  await second.app.close();
+
+  const third = await launch({ userData: first.userData });
+  page = await third.app.firstWindow();
+  await expect(page.getByRole("tab", { name: "Estoque" })).toBeVisible({ timeout: 60_000 });
+  await expect.poll(() => readConfig(first.userData).firstStartDone, { timeout: 30_000 }).toBe(true);
+  await expect(page.getByRole("dialog", { name: "Começar o APC" })).toHaveCount(0);
+  await third.app.close();
 });
 
 // Closes the window, and checks it is hidden, not closed, with the server still answering; opening the app again
@@ -251,6 +293,7 @@ test("Desktop: the database is copied before the server applies new migrations",
   const version = await app.evaluate(({ app: electronApp }) => electronApp.getVersion());
   expect(readdirSync(path.join(userData, "data", "backups"))).toEqual([expect.stringMatching(new RegExp(`^apc-before-${version.replaceAll(".", "\\.")}-.+\\.db$`))]);
   await keepRecoveryKey(page);
+  await startFromScratch(page);
   await signUp(page);
   await app.close();
 });
@@ -284,6 +327,7 @@ test("Desktop: closing the window to the tray keeps the SQLite key", async () =>
   const page = await first.app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(page);
+  await startFromScratch(page);
   await signUp(page);
   await first.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
   await expect.poll(() => readConfig(first.userData).trayNoticeShown).toBe(true);
@@ -369,6 +413,7 @@ test("Desktop: the SQLite key changes, and the old recovery copy no longer opens
   const firstPage = await first.app.firstWindow();
   await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const oldCopy = await keepRecoveryKey(firstPage);
+  await startFromScratch(firstPage);
   await signUp(firstPage);
   const before = readConfig(first.userData).sqliteKey;
   const newCopy = await changeKey(first.app, firstPage);
