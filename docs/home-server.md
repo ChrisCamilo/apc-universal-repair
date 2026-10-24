@@ -55,9 +55,12 @@ The app updates itself: it checks the releases when it opens and every 6 hours, 
 
 - **To PostgreSQL:** pick *PostgreSQL*, type its address and choose *Usar PostgreSQL*. The app checks it connects, creates the tables in an empty database (or adds the new ones to an APC database of an earlier version), and restarts the server on it. It refuses a database of a newer APC, or one holding another program's tables, saying why. The address holds the password, so `config.json` keeps it only sealed by Windows (DPAPI), which this Windows user alone can open.
 - **Back to SQLite:** pick *SQLite* and choose *Voltar ao SQLite*. The app forgets the address.
+- **PostgreSQL on this computer:** the app is its only client, so it should listen on this computer only. In its `postgresql.conf` (in the data folder, e.g. `C:\Program Files\PostgreSQL\17\data`), set `listen_addresses = 'localhost'` and restart the *postgresql* service in *Services*. Check it in a PowerShell with `netstat -ano | findstr :5432`: only `127.0.0.1` and `[::1]` should listen. A PostgreSQL other computers share keeps listening on the network, with `pg_hba.conf` letting in only them.
 - **Switching doesn't move the data:** the server starts on the other database as it is. To bring the data along, import it (step 7), which needs the new database empty.
 
 **The recovery key.** On SQLite, the file is encrypted, so a copy of it, on a USB drive or a stolen disk, can't be read. Its key is made the first time the server runs, and kept in `config.json` sealed by Windows, for this Windows user alone. The first time, the app shows the key's *recovery copy*, 8 groups of letters and numbers: write it on paper or keep it in a password manager, away from this computer, and choose *Já guardei a chave*. It shows on each opening until then. Without it, a copy of the file opens on no other computer, and the data is lost if Windows is reinstalled. A file from a version before this one is encrypted on its first start, by itself.
+
+**The Windows account guards the data.** Windows opens the sealed key for whoever logs into this Windows account, so anyone who logs in opens the app with the data. Give the account a password or a PIN (*Settings → Accounts → Sign-in options*), and don't share it. If the recovery copy may have been seen, change the key (step 12): the old copy then opens nothing.
 
 ### 3. Allow it through the firewall
 
@@ -68,6 +71,16 @@ When the access is turned on the first time, Windows asks whether *APC Universal
 Then make sure the Wi-Fi is a private network: in *Settings → Network & internet → Wi-Fi → (your network)*, set the network profile to **Private**.
 
 If the prompt was missed or cancelled, look under *Windows Security → Firewall & network protection → Allow an app through firewall*: *APC Universal Repair* should be allowed on *Private*, and not blocked.
+
+**The app warns.** While the phone's access is on, *Servidor e banco de dados* warns, each time it opens, when the network in use is set to *Public* or a firewall rule lets the app in on public networks (*Public networks* ticked on the prompt), and `logs\app.log` records it. It only reads them: the fixes are yours.
+
+- **A rule open on public networks:** in a PowerShell opened as administrator, make the app's rules private only, wherever it was installed:
+
+  ```powershell
+  Get-NetFirewallApplicationFilter | Where-Object Program -Like '*\APC Universal Repair.exe' | Get-NetFirewallRule | Set-NetFirewallRule -Profile Private
+  ```
+
+- **Check it:** `Get-NetConnectionProfile` shows the network's *NetworkCategory*, which should be *Private*, and the same command without `Set-NetFirewallRule` lists the rules with their *Profile*, which should say *Private* only. Open the dialog again: the warning is gone.
 
 ### 4. Reserve the computer's address
 
@@ -204,9 +217,12 @@ O app se atualiza sozinho: ele consulta as releases ao abrir e a cada 6 horas, b
 
 - **Para o PostgreSQL:** escolha *PostgreSQL*, digite o endereço e clique em *Usar PostgreSQL*. O app confere se ele conecta, cria as tabelas num banco vazio (ou acrescenta as novas num banco do APC de uma versão anterior) e religa o servidor nele. Ele recusa um banco de um APC mais novo, ou com tabelas de outro programa, dizendo por quê. O endereço tem a senha, então o `config.json` só o guarda lacrado pelo Windows (DPAPI), que só este usuário do Windows abre.
 - **Voltar ao SQLite:** escolha *SQLite* e clique em *Voltar ao SQLite*. O app esquece o endereço.
+- **PostgreSQL neste computador:** o app é o único cliente dele, então ele deve escutar só neste computador. No `postgresql.conf` dele (na pasta de dados, ex.: `C:\Program Files\PostgreSQL\17\data`), deixe `listen_addresses = 'localhost'` e reinicie o serviço *postgresql* em *Serviços*. Confira num PowerShell com `netstat -ano | findstr :5432`: só `127.0.0.1` e `[::1]` devem escutar. Um PostgreSQL que outros computadores usam continua escutando na rede, com o `pg_hba.conf` deixando entrar só eles.
 - **Trocar não leva os dados:** o servidor liga no outro banco como ele está. Para levar os dados junto, importe-os (passo 7), o que pede o banco novo vazio.
 
 **A chave de recuperação.** No SQLite, o arquivo é criptografado, então uma cópia dele, num pendrive ou num disco roubado, não pode ser lida. A chave dele é criada na primeira vez que o servidor liga, e guardada no `config.json` lacrada pelo Windows, só para este usuário do Windows. Na primeira vez, o app mostra a *cópia de recuperação* da chave, 8 grupos de letras e números: anote num papel ou guarde num gerenciador de senhas, longe deste computador, e clique em *Já guardei a chave*. Até lá, ela aparece toda vez que o app abre. Sem ela, uma cópia do arquivo não abre em nenhum outro computador, e os dados se perdem se o Windows for reinstalado. Um arquivo de uma versão anterior a esta é criptografado sozinho na primeira vez que o servidor liga.
+
+**A conta do Windows protege os dados.** O Windows abre a chave lacrada para quem entra nesta conta do Windows, então quem entrar abre o app com os dados. Dê à conta uma senha ou um PIN (*Configurações → Contas → Opções de entrada*), e não a compartilhe. Se a cópia de recuperação pode ter sido vista, troque a chave (passo 12): a cópia antiga deixa de abrir qualquer coisa.
 
 ### 3. Liberar no firewall
 
@@ -217,6 +233,16 @@ Na primeira vez que o acesso é ligado, o Windows pergunta se o *APC Universal R
 Depois confira que o Wi-Fi é uma rede privada: em *Configurações → Rede e internet → Wi-Fi → (sua rede)*, deixe o perfil de rede como **Privada**.
 
 Se a pergunta passou ou foi cancelada, veja em *Segurança do Windows → Firewall e proteção de rede → Permitir um aplicativo pelo firewall*: o *APC Universal Repair* deve estar permitido em *Privada*, e não bloqueado.
+
+**O app avisa.** Com o acesso pelo celular ligado, o *Servidor e banco de dados* avisa, toda vez que abre, quando a rede em uso está como *Pública* ou uma regra do firewall libera o app em redes públicas (*Redes públicas* marcado na pergunta), e o `logs\app.log` registra. Ele só lê essas configurações: as correções são suas.
+
+- **Uma regra aberta em redes públicas:** num PowerShell aberto como administrador, deixe as regras do app só para redes privadas, onde quer que ele esteja instalado:
+
+  ```powershell
+  Get-NetFirewallApplicationFilter | Where-Object Program -Like '*\APC Universal Repair.exe' | Get-NetFirewallRule | Set-NetFirewallRule -Profile Private
+  ```
+
+- **Confira:** o `Get-NetConnectionProfile` mostra a *NetworkCategory* da rede, que deve ser *Private*, e o mesmo comando sem o `Set-NetFirewallRule` lista as regras com o *Profile* delas, que deve dizer só *Private*. Abra o diálogo de novo: o aviso some.
 
 ### 4. Reservar o endereço do computador
 

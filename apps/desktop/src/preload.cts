@@ -138,6 +138,12 @@ contextBridge.exposeInMainWorld("apcDesktop", {
      */
     startFromScratch: () => ipcRenderer.invoke("apc:server-first-start-done"),
     /**
+     * Tells what leaves the server public while the phone's access is on: a network set to Public, or a firewall rule
+     * open on public networks.
+     * @returns The warnings; none with the access off or when all is private.
+     */
+    networkWarnings: () => ipcRenderer.invoke("apc:server-network-warnings"),
+    /**
      * Reads the server's settings.
      * @returns The database in use and where, the port, the phone's access and address, or where a server elsewhere is.
      */

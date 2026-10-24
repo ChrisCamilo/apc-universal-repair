@@ -26,32 +26,35 @@ import {
   type DatabaseCheck,
   type ImportProblem,
 } from "./database.js";
+import { networkWarnings, readNetworkReport } from "./network.js";
 import { MAX_PORT, MIN_PORT, portFree, portOwner, serverHosts, validPort, type PortOwner } from "./ports.js";
 import { apiAnswers, waitForApi, watchServer } from "./server.js";
 import { serverFailure, type FailureKind, type ServerFailure } from "./serverFailure.js";
 import { runServerTask, type ServerTask } from "./serverTasks.js";
 import { phoneAddress } from "./tray.js";
 
-// The server the app runs (see bundledServer.ts) and its settings, which the page shows in its Servidor dialog
-// through the preload's bridge (see preload.cts): the database in use, SQLite with its folder or PostgreSQL with its
-// server, the port, and the phone's access with its address. The server answers only this computer until the page
-// turns the phone's access on, kept in config.json, which restarts it on the network, and back off. From there the page
-// also moves the server to PostgreSQL, at an address checked and migrated first and kept sealed (see database.ts), or
-// back to SQLite, which restarts the server; and imports an old server (see apps/api/src/db/import.ts) into the database in use, with the server off meanwhile. The database
-// tasks run beside the server (see serverTasks.ts). With PostgreSQL chosen at install and no address yet, the server
-// waits for the page to ask for it. On SQLite the file is encrypted with a key made the first time (see database.ts):
-// the dialog shows its recovery copy until the user says it is kept, and an encrypted file of another install imports
-// with its recovery copy. When another server already answers on the port, such as an old clone's, the app uses it and
-// changes nothing, until it is gone, when the app starts its own. A server that doesn't start, from a key that doesn't
-// open, its port held by another program, repeated stops or no answer in time, is told to the page with why (see
-// serverFailure.ts), which shows it instead of the login, and can ask to try again. A taken port is found before the
-// server starts, naming the program that holds it (see ports.ts), and the page can move the server to another port,
-// kept in config.json. A SQLite key missing from config.json, or one that doesn't open the file, is never replaced:
-// the page asks for the recovery copy, which the app checks opens the file before keeping it sealed. The page can
-// change the key, with the server off: the new key is kept apart until the file reads back with it, and a change cut
-// short is ended on the next start with the key that opens the file (see database.ts). While the database in use is
-// empty, the page offers to import an old server before anyone signs up (firstStart), until it holds data or the
-// user starts from scratch. Only the app's own page may ask, as with the notifications.
+// The server the app runs (see bundledServer.ts) and its settings, which the page shows in its Servidor dialog through
+// the preload's bridge (see preload.cts): the database in use, SQLite with its folder or PostgreSQL with its server,
+// the port, and the phone's access with its address. The server answers only this computer until the page turns the
+// phone's access on, kept in config.json, which restarts it on the network, and back off; while it is on, the page asks
+// whether the network or the firewall leaves the server public (see network.ts), which app.log records. From there the
+// page also moves the server to PostgreSQL, at an address checked and migrated first and kept sealed (see database.ts),
+// or back to SQLite, which restarts the server; and imports an old server (see apps/api/src/db/import.ts) into the
+// database in use, with the server off meanwhile. The database tasks run beside the server (see serverTasks.ts). With
+// PostgreSQL chosen at install and no address yet, the server waits for the page to ask for it. On SQLite the file is
+// encrypted with a key made the first time (see database.ts): the dialog shows its recovery copy until the user says it
+// is kept, and an encrypted file of another install imports with its recovery copy. When another server already answers
+// on the port, such as an old clone's, the app uses it and changes nothing, until it is gone, when the app starts its
+// own. A server that doesn't start, from a key that doesn't open, its port held by another program, repeated stops or
+// no answer in time, is told to the page with why (see serverFailure.ts), which shows it instead of the login, and can
+// ask to try again. A taken port is found before the server starts, naming the program that holds it (see ports.ts),
+// and the page can move the server to another port, kept in config.json. A SQLite key missing from config.json, or one
+// that doesn't open the file, is never replaced: the page asks for the recovery copy, which the app checks opens the
+// file before keeping it sealed. The page can change the key, with the server off: the new key is kept apart until the
+// file reads back with it, and a change cut short is ended on the next start with the key that opens the file (see
+// database.ts). While the database in use is empty, the page offers to import an old server before anyone signs up
+// (firstStart), until it holds data or the user starts from scratch. Only the app's own page may ask, as with the
+// notifications.
 
 /** The channels the page asks on (also written in preload.cts, which can't import this file). */
 const CHANNELS = {
@@ -64,6 +67,7 @@ const CHANNELS = {
   firstStartDone: "apc:server-first-start-done",
   importServer: "apc:server-import",
   migrateImport: "apc:server-migrate-import",
+  networkWarnings: "apc:server-network-warnings",
   recoveryKey: "apc:server-recovery-key",
   recoveryKeySaved: "apc:server-recovery-key-saved",
   retry: "apc:server-retry",
@@ -274,6 +278,7 @@ export function handleServerSettings(host: ServerHost): void {
   handle(host, CHANNELS.chooseFolder, (defaultPath?: string) => chooseFolder(host.window, defaultPath));
   handle(host, CHANNELS.checkImport, (source: Source) => checkImport(host, source));
   handle(host, CHANNELS.migrateImport, (source: Source) => migrateImport(host, source));
+  handle(host, CHANNELS.networkWarnings, () => networkWarningsOf(host));
   handle(host, CHANNELS.importServer, (source: Source, photosFrom?: string) => importServer(host, source, photosFrom));
   handle(host, CHANNELS.recoveryKey, async () => recoveryKey(host));
   handle(host, CHANNELS.recoveryKeySaved, async () => void updateConfig(host.setup.userData, { sqliteKeySaved: true }));
@@ -327,6 +332,24 @@ async function migrateImport(host: ServerHost, source: Source): Promise<Outcome>
   } catch (error) {
     return { ok: false, message: `Não foi possível atualizar o banco antigo: ${openError(error as Error)}` };
   }
+}
+
+/**
+ * Tells what leaves the server public while the phone's access is on: a network set to Public, or a firewall rule open
+ * on public networks, recorded in app.log too.
+ * @param host The server.
+ * @returns The warnings, in Portuguese; none with the access off, when all is private, or when it can't be read.
+ */
+async function networkWarningsOf(host: ServerHost): Promise<string[]> {
+  if (!host.setup.phoneAccess) {
+    return [];
+  }
+  const report = await readNetworkReport(process.execPath);
+  const warnings = report ? networkWarnings(report) : [];
+  for (const warning of warnings) {
+    console.warn(`The phone's access is on, but: ${warning}`);
+  }
+  return warnings;
 }
 
 /**

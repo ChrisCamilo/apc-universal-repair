@@ -131,6 +131,7 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", asyn
         "firstStart",
         "importServer",
         "migrateImport",
+        "networkWarnings",
         "onFailure",
         "onOpen",
         "recoveryKey",

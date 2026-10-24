@@ -29,6 +29,8 @@ export type ServerBridge = {
   importServer: (source: ImportSource, photosFrom?: string) => Promise<ImportOutcome>
   /** Applies this version's migrations to an old server's database, which change its structure and keep its data. */
   migrateImport: (source: ImportSource) => Promise<ServerOutcome>
+  /** Tells what leaves the server public while the phone's access is on; none with it off or when all is private. */
+  networkWarnings: () => Promise<string[]>
   /** Calls a listener each time the server turns out not to be on, and gives the way to stop. */
   onFailure: (listener: (failure: ServerFailure) => void) => () => void
   /** Calls a listener each time the tray asks to open the Servidor dialog, and gives the way to stop. */
