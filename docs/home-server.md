@@ -151,7 +151,7 @@ Up to v0.3.0, the server at home ran from a clone of the project, started by a T
 
 ### 9. After an update, the server doesn't connect
 
-*Reiniciar agora* shows *Atualizando o APC…*, closes the app and installs the new version, which opens by itself in a few moments: there is no need to open it again. An app opened while it installs says so in a notification and closes. When the server the app runs doesn't start, the window says *O servidor não ligou*, with why and where its log is, and *Tentar de novo*. If it keeps saying so:
+*Reiniciar agora* shows *Atualizando o APC…* and closes the app. The installer's window follows, *Atualização do APC Universal Repair*, with a progress bar under *Atualizando o APC*: nothing to choose or click in it, and *Cancelar* stays off while it installs. It closes by itself, and the new version opens by itself: there is no need to open it again. If it doesn't open, open it from its shortcut. A version installed on quitting the app, without *Reiniciar agora*, installs with no window. An app opened while it installs says so in a notification and closes. When the server the app runs doesn't start, the window says *O servidor não ligou*, with why and where its log is, and *Tentar de novo*. If it keeps saying so:
 
 1. **Read the logs**, in `%APPDATA%\APC Universal Repair\logs`: `api.log` is the server's (its last error is the one the window shows), and `app.log` is the app's and the updater's, with each start, update and stop. In a PowerShell: `Get-Content "$env:APPDATA\APC Universal Repair\logs\api.log" -Tail 60`.
 2. **Quit and open it again:** *Sair* in the tray's menu, check no *APC Universal Repair* is left in the Task Manager, and open the app.
@@ -313,7 +313,7 @@ Até a v0.3.0, o servidor de casa rodava de um clone do projeto, ligado por uma 
 
 ### 9. Depois de atualizar, o servidor não conecta
 
-O *Reiniciar agora* mostra *Atualizando o APC…*, fecha o app e instala a versão nova, que abre sozinha em instantes: não precisa abrir de novo. Um app aberto enquanto ela instala avisa numa notificação e fecha. Quando o servidor do app não liga, a janela diz *O servidor não ligou*, com o motivo e onde está o registro dele, e *Tentar de novo*. Se continuar assim:
+O *Reiniciar agora* mostra *Atualizando o APC…* e fecha o app. Vem em seguida a janela do instalador, *Atualização do APC Universal Repair*, com uma barra de andamento sob *Atualizando o APC*: nada para escolher nem clicar nela, e o *Cancelar* fica desligado enquanto instala. Ela fecha sozinha, e a versão nova abre sozinha: não precisa abrir de novo. Se ela não abrir, abra pelo atalho. Uma versão instalada ao sair do app, sem o *Reiniciar agora*, instala sem janela. Um app aberto enquanto ela instala avisa numa notificação e fecha. Quando o servidor do app não liga, a janela diz *O servidor não ligou*, com o motivo e onde está o registro dele, e *Tentar de novo*. Se continuar assim:
 
 1. **Leia os registros**, em `%APPDATA%\APC Universal Repair\logs`: o `api.log` é o do servidor (o último erro dele é o que a janela mostra), e o `app.log` é o do app e do atualizador, com cada abertura, atualização e parada. Num PowerShell: `Get-Content "$env:APPDATA\APC Universal Repair\logs\api.log" -Tail 60`.
 2. **Saia e abra de novo:** *Sair* no menu da bandeja, confira que não sobrou nenhum *APC Universal Repair* no Gerenciador de Tarefas, e abra o app.

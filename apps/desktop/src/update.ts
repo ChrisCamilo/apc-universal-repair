@@ -5,8 +5,9 @@ import path from "node:path";
 // and the channels through which the main process tells the page a new version is ready and the page asks to restart
 // into it. Only the installed app checks: in development, unpackaged or as the portable exe there is nothing to update.
 // The web build the app carries expects the API of the same version, so a server on another computer that answers
-// another one on /health gets a warning. While an update installs, which takes a while and shows nothing, a file in
-// userData says which version goes in: an app opened meanwhile, still the old one or half installed, finds it and
+// another one on /health gets a warning. *Reiniciar agora* runs the installer with its window, so its progress shows
+// and the new version opens by itself (RESTART_INSTALL, and build/installer.nsh); a version installed on quitting
+// installs silently. While an update installs, a file in userData says which version goes in: an app opened meanwhile, still the old one or half installed, finds it and
 // leaves the folder to the installer, and the new version deletes it once it opens.
 
 /** How often the open app checks again: every 6 hours. */
@@ -15,6 +16,11 @@ export const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 export const INSTALL_MARKER = "installing-update.json";
 /** How long an update counts as being installed; a marker older than this was left by an install that didn't end. */
 export const INSTALL_WINDOW_MS = 5 * 60 * 1000;
+/**
+ * How *Reiniciar agora* runs the installer, as autoUpdater.quitAndInstall's arguments: with its window, so its progress
+ * bar shows, and starting the new version once done.
+ */
+export const RESTART_INSTALL = { silent: false, runAfter: true } as const;
 /** The channel the page asks to restart into the new version on (also written in preload.cts, which can't import this file). */
 export const RESTART_TO_UPDATE_CHANNEL = "apc:restart-to-update";
 /** The channel the main process tells the page a new version is ready on, with its number. */
