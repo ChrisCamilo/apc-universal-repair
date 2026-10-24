@@ -119,7 +119,7 @@ To restore, with the app quit, use `pg_restore` with the copy and put the photos
 
 ### 7. Importing an old server
 
-*Importar dados de outro servidor*, in *Servidor e banco de dados*, brings an old server's data and photos, such as a clone's, into the database in use. That database must be empty: import before anyone signs up on the new install, opening *Servidor e banco de dados* from the login screen.
+*Importar dados de outro servidor*, in *Servidor e banco de dados*, brings an old server's data and photos, such as a clone's, into the database in use. That database must be empty: import before anyone signs up on the new install. While it is empty, the app offers it on opening, once the recovery key is kept: *Importar de um servidor antigo* opens the import, and *Começar do zero* stops the offer. It can also be opened from the login screen's *Servidor e banco de dados*. The offer shows on each opening until someone signs up or an import fills the database.
 
 1. **Pick where the old data is:** *Arquivo SQLite*, such as an old clone's `apps\api\data\apc.db`, or *PostgreSQL*, its address (the `DATABASE_URL` in the old clone's `apps\api\.env`). A file from another install of the app, such as a backup, is encrypted: type its recovery key in *Chave de recuperação do arquivo*. A clone's file has none.
 2. **Pick the old photos folder,** such as the old clone's `apps\api\uploads\photos`. Picking the SQLite file fills it in.
@@ -131,7 +131,7 @@ To restore, with the app quit, use `pg_restore` with the copy and put the photos
 Up to v0.3.0, the server at home ran from a clone of the project, started by a Task Scheduler task or the *Ligar servidor APC* shortcut. To move such a computer to the server inside the app:
 
 1. **Stop the clone's server for good.** In a PowerShell, in the clone's folder, run `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, which turns it off and removes its task. A task made with `-AtStartup` must be removed from a PowerShell opened as administrator. If the clone has no such script, open the Task Scheduler, delete the *APC Universal Repair API* task and restart the computer. Delete the *Ligar servidor APC* shortcut too. The old server answers on port 3333, apart from the app's 3000, so the phone would keep saving to it at that port.
-2. **Install the app** (step 1), or update it, and open it. If it was set to the clone with `apiDir` or `apiUrl` in `%APPDATA%\APC Universal Repair\config.json`, remove those settings, then quit with *Sair* and open it again. Don't sign up yet.
+2. **Install the app** (step 1), or update it, and open it. If it was set to the clone with `apiDir` or `apiUrl` in `%APPDATA%\APC Universal Repair\config.json`, remove those settings, then quit with *Sair* and open it again. Don't sign up yet: the app offers *Importar de um servidor antigo*, the next step.
 3. **Import the data** (step 7): the clone's `apps\api\data\apc.db` for SQLite, or the address in its `apps\api\.env` for PostgreSQL, with its `apps\api\uploads\photos`. Log in with an old account and check the inventory and its photos.
 4. **Turn on the phone's access and allow the app through the firewall** (steps 5 and 3), and check the phone: the address stays the same. The old firewall rule for Node.js can be removed.
 5. **Delete the clone** once you're sure, and uninstall Node.js, pnpm and Git if nothing else needs them. A PostgreSQL in use stays.
@@ -268,7 +268,7 @@ Para restaurar, com o app fechado, use o `pg_restore` com a cópia e coloque a p
 
 ### 7. Importar um servidor antigo
 
-O *Importar dados de outro servidor*, no *Servidor e banco de dados*, traz os dados e as fotos de um servidor antigo, como o de um clone, para o banco em uso. Esse banco precisa estar vazio: importe antes de alguém criar uma conta na instalação nova, abrindo o *Servidor e banco de dados* pela tela de login.
+O *Importar dados de outro servidor*, no *Servidor e banco de dados*, traz os dados e as fotos de um servidor antigo, como o de um clone, para o banco em uso. Esse banco precisa estar vazio: importe antes de alguém criar uma conta na instalação nova. Enquanto ele está vazio, o app oferece isso ao abrir, depois de guardada a chave de recuperação: o *Importar de um servidor antigo* abre a importação, e o *Começar do zero* para de oferecer. Ela também se abre pelo *Servidor e banco de dados* da tela de login. A oferta aparece em cada abertura até alguém criar uma conta ou uma importação encher o banco.
 
 1. **Escolha onde estão os dados antigos:** *Arquivo SQLite*, como o `apps\api\data\apc.db` de um clone antigo, ou *PostgreSQL*, o endereço dele (o `DATABASE_URL` do `apps\api\.env` do clone antigo). Um arquivo de outra instalação do app, como um backup, é criptografado: digite a chave de recuperação dele em *Chave de recuperação do arquivo*. O arquivo de um clone não tem.
 2. **Escolha a pasta das fotos antigas,** como o `apps\api\uploads\photos` do clone antigo. Escolher o arquivo SQLite já a preenche.
@@ -280,7 +280,7 @@ O *Importar dados de outro servidor*, no *Servidor e banco de dados*, traz os da
 Até a v0.3.0, o servidor de casa rodava de um clone do projeto, ligado por uma tarefa do Agendador de Tarefas ou pelo atalho *Ligar servidor APC*. Para passar um computador assim para o servidor dentro do app:
 
 1. **Desligue de vez o servidor do clone.** Num PowerShell, na pasta do clone, rode `powershell -ExecutionPolicy Bypass -File apps\api\scripts\uninstall-task.ps1`, que o desliga e remove a tarefa. Uma tarefa feita com `-AtStartup` precisa ser removida num PowerShell aberto como administrador. Se o clone não tiver esse script, abra o Agendador de Tarefas, apague a tarefa *APC Universal Repair API* e reinicie o computador. Apague também o atalho *Ligar servidor APC*. O servidor antigo responde na porta 3333, separada da 3000 do app, então o celular continuaria salvando nele por essa porta.
-2. **Instale o app** (passo 1), ou atualize-o, e abra. Se ele estava apontado para o clone com `apiDir` ou `apiUrl` no `%APPDATA%\APC Universal Repair\config.json`, tire essas configurações, depois feche pelo *Sair* e abra de novo. Não crie conta ainda.
+2. **Instale o app** (passo 1), ou atualize-o, e abra. Se ele estava apontado para o clone com `apiDir` ou `apiUrl` no `%APPDATA%\APC Universal Repair\config.json`, tire essas configurações, depois feche pelo *Sair* e abra de novo. Não crie conta ainda: o app oferece o *Importar de um servidor antigo*, o próximo passo.
 3. **Importe os dados** (passo 7): o `apps\api\data\apc.db` do clone para o SQLite, ou o endereço do `apps\api\.env` dele para o PostgreSQL, com o `apps\api\uploads\photos` dele. Entre com uma conta antiga e confira o estoque e as fotos.
 4. **Ligue o acesso pelo celular e libere o app no firewall** (passos 5 e 3), e confira o celular: o endereço continua o mesmo. A regra antiga do firewall para o Node.js pode ser removida.
 5. **Apague o clone** quando tiver certeza, e desinstale o Node.js, o pnpm e o Git se nada mais precisar deles. Um PostgreSQL em uso fica.
