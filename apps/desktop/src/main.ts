@@ -28,6 +28,7 @@ import {
   clearInstallMarker,
   installInProgress,
   readInstallMarker,
+  RESTART_INSTALL,
   RESTART_TO_UPDATE_CHANNEL,
   serverVersionWarning,
   UPDATE_READY_CHANNEL,
@@ -241,7 +242,8 @@ function leaveToInstaller(marker: InstallMarker): void {
 
 /**
  * Closes the app to install the version downloaded: the window says "Atualizando o APC", the marker says which version
- * goes in, the server stops, and the installer takes over and opens the new version once it is in.
+ * goes in, the server stops, and the installer takes over, showing its progress, and opens the new version once it is
+ * in.
  * @param window The app's window.
  * @param userData The app's userData folder.
  * @param version The version going in.
@@ -253,7 +255,7 @@ async function restartToUpdate(window: BrowserWindow, userData: string, version:
   session.defaultSession.flushStorageData();
   await stopOwnServer();
   readyToQuit = true;
-  autoUpdater.quitAndInstall(true, true);
+  autoUpdater.quitAndInstall(RESTART_INSTALL.silent, RESTART_INSTALL.runAfter);
 }
 
 /**
