@@ -52,6 +52,7 @@ function giveServer(settings: ServerSettings) {
     firstStart: vi.fn<ServerBridge['firstStart']>(async () => false),
     importServer: vi.fn<ServerBridge['importServer']>(async () => ({ ok: false, message: 'Nada importado.' })),
     migrateImport: vi.fn<ServerBridge['migrateImport']>(async () => ({ ok: true })),
+    networkWarnings: vi.fn<ServerBridge['networkWarnings']>(async () => []),
     settings: vi.fn<ServerBridge['settings']>(async () => settings),
     usePhoneAccess: vi.fn<ServerBridge['usePhoneAccess']>(async () => ({ ok: true })),
     usePort: vi.fn<ServerBridge['usePort']>(async () => ({ ok: true })),
@@ -126,6 +127,35 @@ test('Web: the Servidor dialog shows the database in use, the port and the phone
   await expect.element(dialog.getByText('http://192.168.0.10:3000')).toBeVisible()
   await expect.element(dialog.getByRole('button', { name: 'Usar PostgreSQL' })).not.toBeInTheDocument()
   await expect.element(dialog.getByRole('button', { name: 'Fechar' }).first()).toBeVisible()
+})
+
+// Opens the dialog with the phone's access on, on a network set to Public with a firewall rule open on public
+// networks, and checks both warnings show under the access, as alerts in the warn color.
+test('Web: the dialog warns of a public network while the phone\'s access is on', async () => {
+  const { colors } = themes.eighties.night
+  const warnings = [
+    'A rede “Camilo” está como Pública, então quem estiver nela chega ao servidor. Deixe-a como Privada nas configurações de Wi-Fi do Windows (passo 3 do guia do servidor em casa).',
+    'Uma regra do firewall do Windows libera o APC em redes públicas. Deixe-a só para redes privadas (passo 3 do guia do servidor em casa).',
+  ]
+  const { calls } = giveServer(ON_SQLITE)
+  calls.networkWarnings.mockResolvedValue(warnings)
+  const screen = await renderSettings()
+  await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
+  for (const warning of warnings) {
+    const alert = dialog.getByRole('alert').filter({ hasText: warning })
+    await expect.element(alert).toBeVisible()
+    expect(getComputedStyle(alert.element()).color).toBe(rgb(colors.warn))
+  }
+})
+
+// Opens the dialog with the phone's access off and checks the app isn't asked about the network.
+test('Web: the dialog doesn\'t check the network while the phone\'s access is off', async () => {
+  const { calls } = giveServer({ ...ON_SQLITE, phoneAccess: false })
+  const screen = await renderSettings()
+  await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
+  await expect.element(screen.getByText('Desligado: só este computador acessa o servidor')).toBeVisible()
+  expect(calls.networkWarnings).not.toHaveBeenCalled()
 })
 
 // Opens the dialog with the phone's access off, as a fresh install has it, and checks it says the server answers only
