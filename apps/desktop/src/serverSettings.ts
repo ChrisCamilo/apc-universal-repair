@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { dialog, ipcMain, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import { startBundledServer } from "./bundledProcess.js";
-import { PORT_IN_USE_EXIT_CODE, serverData, serverEnvironment, WRONG_KEY_EXIT_CODE, type ServerSetup } from "./bundledServer.js";
+import { NETWORK_HOST, PORT_IN_USE_EXIT_CODE, serverData, serverEnvironment, WRONG_KEY_EXIT_CODE, type ServerSetup } from "./bundledServer.js";
 import { readConfig, updateConfig } from "./config.js";
 import {
   beginKeyChange,
@@ -25,7 +25,7 @@ import {
   type DatabaseCheck,
   type ImportProblem,
 } from "./database.js";
-import { MAX_PORT, MIN_PORT, portFree, portOwner, validPort, type PortOwner } from "./ports.js";
+import { MAX_PORT, MIN_PORT, portFree, portOwner, serverHosts, validPort, type PortOwner } from "./ports.js";
 import { apiAnswers, waitForApi, watchServer } from "./server.js";
 import { serverFailure, type FailureKind, type ServerFailure } from "./serverFailure.js";
 import { runServerTask, type ServerTask } from "./serverTasks.js";
@@ -33,9 +33,10 @@ import { phoneAddress } from "./tray.js";
 
 // The server the app runs (see bundledServer.ts) and its settings, which the page shows in its Servidor dialog
 // through the preload's bridge (see preload.cts): the database in use, SQLite with its folder or PostgreSQL with its
-// server, the port and the phone's address. From there the page moves the server to PostgreSQL, at an address checked
-// and migrated first and kept sealed (see database.ts), or back to SQLite, which restarts the server; and imports an
-// old server (see apps/api/src/db/import.ts) into the database in use, with the server off meanwhile. The database
+// server, the port, and the phone's access with its address. The server answers only this computer until the page
+// turns the phone's access on, kept in config.json, which restarts it on the network, and back off. From there the page
+// also moves the server to PostgreSQL, at an address checked and migrated first and kept sealed (see database.ts), or
+// back to SQLite, which restarts the server; and imports an old server (see apps/api/src/db/import.ts) into the database in use, with the server off meanwhile. The database
 // tasks run beside the server (see serverTasks.ts). With PostgreSQL chosen at install and no address yet, the server
 // waits for the page to ask for it. On SQLite the file is encrypted with a key made the first time (see database.ts):
 // the dialog shows its recovery copy until the user says it is kept, and an encrypted file of another install imports
@@ -64,6 +65,7 @@ const CHANNELS = {
   retry: "apc:server-retry",
   useRecoveryKey: "apc:server-use-recovery-key",
   settings: "apc:server-settings",
+  usePhoneAccess: "apc:server-use-phone-access",
   usePort: "apc:server-use-port",
   usePostgresql: "apc:server-use-postgresql",
   useSqlite: "apc:server-use-sqlite",
@@ -92,7 +94,7 @@ export type ServerHost = {
   apiUrl: string;
   /** The "Ligando o servidor" page, static/starting.html. */
   startingPage: string;
-  /** How it runs, but for the database; its port follows a change in the Servidor dialog. */
+  /** How it runs, but for the database; its port and the phone's access follow a change in the Servidor dialog. */
   setup: Omit<ServerSetup, "databaseUrl">;
 };
 /** An old server to import: a PostgreSQL address, or a SQLite file with the recovery copy of its key when it is encrypted. */
@@ -251,6 +253,7 @@ export function handleServerSettings(host: ServerHost): void {
   handle(host, CHANNELS.recoveryKeySaved, async () => void updateConfig(host.setup.userData, { sqliteKeySaved: true }));
   handle(host, CHANNELS.failure, async () => failure ?? null);
   handle(host, CHANNELS.retry, () => runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)));
+  handle(host, CHANNELS.usePhoneAccess, (on: boolean) => usePhoneAccess(host, on));
   handle(host, CHANNELS.usePort, (port: number) => usePort(host, port));
   handle(host, CHANNELS.useRecoveryKey, (text: string) => useRecoveryKey(host, text));
 }
@@ -377,7 +380,7 @@ async function runServer(host: ServerHost, databaseUrl: string | undefined): Pro
   if (!databaseUrl) {
     await settleKeyChange(host);
   }
-  if (!(await portFree(host.setup.port))) {
+  if (!(await portFree(host.setup.port, serverHosts(host.setup.phoneAccess === true)))) {
     console.warn(`Port ${host.setup.port} is taken; the server isn't started.`);
     stopServer = undefined;
     reportFailure(host, "portInUse", await portOwner(host.setup.port));
@@ -461,9 +464,9 @@ async function settleKeyChange(host: ServerHost): Promise<void> {
 /**
  * Builds the settings the page shows.
  * @param host The server.
- * @returns The database in use and where, the photos' folder, the port and the phone's address, whether PostgreSQL's
- * address is still missing, and whether the SQLite key's recovery copy is still to be kept; or that another server
- * took the port.
+ * @returns The database in use and where, the photos' folder, the port, whether the phone's access is on and the
+ * phone's address, whether PostgreSQL's address is still missing, and whether the SQLite key's recovery copy is still
+ * to be kept; or that another server took the port.
  */
 function settings(host: ServerHost): object {
   if (portTaken) {
@@ -479,6 +482,7 @@ function settings(host: ServerHost): object {
     location: postgresql ? describePostgresql(postgresql) : onPostgresql ? "" : data.folder,
     photos: data.photos,
     port: host.setup.port,
+    phoneAccess: host.setup.phoneAccess === true,
     phoneAddress: phoneAddress(os.networkInterfaces()),
     needsAddress: needsDatabaseAddress(config, safeStorage),
     recoveryKeyPending: !onPostgresql && recoveryKeyPending(config),
@@ -558,6 +562,32 @@ async function takeOverPort(host: ServerHost): Promise<void> {
 }
 
 /**
+ * Turns the phone's access on or off, kept in config.json, and restarts the server on the network or on this computer
+ * only. Turning it on checks first that no other program holds the port on the network, so the server isn't left off.
+ * While another server holds the port, the choice is only kept, for the app's own once it starts.
+ * @param host The server.
+ * @param on Whether the phone reaches the server.
+ * @returns Done, or why not; then the server stays as it was.
+ */
+async function usePhoneAccess(host: ServerHost, on: boolean): Promise<Outcome> {
+  if (on === (host.setup.phoneAccess === true) && (ownServerOn() || portTaken)) {
+    return { ok: true };
+  }
+  if (on && !portTaken && !(await portFree(host.setup.port, [NETWORK_HOST]))) {
+    return { ok: false, message: serverFailure("portInUse", "", "", { port: host.setup.port, owner: await portOwner(host.setup.port) }).reason };
+  }
+  console.log(on ? "Opening the bundled server to the network, for the phone." : "Keeping the bundled server on this computer only.");
+  updateConfig(host.setup.userData, { phoneAccess: on });
+  host.setup.phoneAccess = on;
+  if (portTaken) {
+    return { ok: true };
+  }
+  return (await runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)))
+    ? { ok: true }
+    : { ok: false, message: failure?.reason ?? `O servidor não ligou. Veja logs\\api.log em ${host.setup.userData}.` };
+}
+
+/**
  * Moves the server to another port, kept in config.json: checks the port is free, then restarts the server on it,
  * where the window follows it. The phone's address changes with it, which the page warns about first.
  * @param host The server.
@@ -571,7 +601,7 @@ async function usePort(host: ServerHost, port: number): Promise<Outcome> {
   if (port === host.setup.port && ownServerOn() && !portTaken) {
     return { ok: true };
   }
-  if (port !== host.setup.port && !(await portFree(port))) {
+  if (port !== host.setup.port && !(await portFree(port, serverHosts(host.setup.phoneAccess === true)))) {
     return { ok: false, message: serverFailure("portInUse", "", "", { port, owner: await portOwner(port) }).reason };
   }
   console.log(`Moving the bundled server to port ${port}.`);

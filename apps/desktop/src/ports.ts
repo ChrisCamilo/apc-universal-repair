@@ -1,12 +1,12 @@
 import { execFile } from "node:child_process";
 import { createServer } from "node:net";
 import { promisify } from "node:util";
-import { SERVER_PORT } from "./bundledServer.ts";
+import { LOCAL_HOST, NETWORK_HOST, SERVER_PORT } from "./bundledServer.ts";
 import type { DesktopConfig } from "./config.ts";
 
 // The port the server the app runs listens on: SERVER_PORT, or the one config.json keeps once the user changed it in
-// the Servidor dialog; whether it is free, tried the way the server binds it; and, when it isn't, which program holds
-// it, from the system's TCP table (`netstat -ano`, whose listening sockets have a foreign address of port 0 in every
+// the Servidor dialog; whether it is free on the addresses the server needs (see serverHosts); and, when it isn't,
+// which program holds it, from the system's TCP table (`netstat -ano`, whose listening sockets have a foreign address of port 0 in every
 // language) and the process list (`tasklist`). Only Windows names the program.
 
 /** The lowest port the user may pick: the ones below need administrator rights. */
@@ -48,16 +48,23 @@ export function listeningPid(netstat: string, port: number): number | undefined 
 }
 
 /**
- * Tells whether a port is free, binding it on every address as the server does, and letting it go at once.
+ * Tells whether a port is free on some addresses, binding it on each in turn and letting it go at once.
  * @param port The port.
- * @returns True when it could be bound.
+ * @param hosts The addresses, e.g. serverHosts' for the server.
+ * @returns True when it could be bound on every one.
  */
-export function portFree(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const probe = createServer();
-    probe.once("error", () => resolve(false));
-    probe.listen(port, "0.0.0.0", () => probe.close(() => resolve(true)));
-  });
+export async function portFree(port: number, hosts: string[]): Promise<boolean> {
+  for (const host of hosts) {
+    const free = await new Promise<boolean>((resolve) => {
+      const probe = createServer();
+      probe.once("error", () => resolve(false));
+      probe.listen(port, host, () => probe.close(() => resolve(true)));
+    });
+    if (!free) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -88,6 +95,18 @@ export async function portOwner(port: number): Promise<PortOwner | undefined> {
  */
 export function processName(tasklist: string): string | undefined {
   return /^"([^"]+)","\d+"/m.exec(tasklist)?.[1];
+}
+
+/**
+ * Lists the addresses the server's port must be free on. Windows lets a program hold a port on one of them while
+ * another holds it on the other, and a request to this computer reaches the one on 127.0.0.1. So this computer's own
+ * address is always tried, and every address too while the phone's access is on, when the server listens there. With
+ * the access off, every address isn't tried, which would bring up Windows' firewall prompt.
+ * @param phoneAccess Whether the phone's access is on.
+ * @returns LOCAL_HOST, and NETWORK_HOST with the access on.
+ */
+export function serverHosts(phoneAccess: boolean): string[] {
+  return phoneAccess ? [LOCAL_HOST, NETWORK_HOST] : [LOCAL_HOST];
 }
 
 /**
