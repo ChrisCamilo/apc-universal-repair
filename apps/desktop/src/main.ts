@@ -135,11 +135,11 @@ function createWindow(appUrl: string, hidden: boolean): BrowserWindow {
  * Windows notification, and the tray's menu opens it, copies the phone's address or says the server is off, opens the
  * server's settings in it, turns starting with Windows on and off (the installed app only) and quits.
  * @param window The app's window.
- * @param port Gives the server's port, which the Servidor dialog can change.
+ * @param server Gives the server's port and whether the phone's access is on, which the Servidor dialog can change.
  * @param installed Whether this is the installed app, the only one that can start with Windows.
  * @param config What config.json sets, to show the notice once.
  */
-function keepInTray(window: BrowserWindow, port: () => number, installed: boolean, config: DesktopConfig): void {
+function keepInTray(window: BrowserWindow, server: () => { port: number; phoneAccess?: boolean }, installed: boolean, config: DesktopConfig): void {
   let noticeShown = config.trayNoticeShown === true;
   window.on("close", (event) => {
     if (quitting) {
@@ -152,7 +152,9 @@ function keepInTray(window: BrowserWindow, port: () => number, installed: boolea
       updateConfig(app.getPath("userData"), { trayNoticeShown: true });
       new Notification({
         title: "O APC continua ligado",
-        body: "O servidor segue ligado para o celular. Para sair, use Sair no ícone do APC perto do relógio.",
+        body: server().phoneAccess
+          ? "O servidor segue ligado para o celular. Para sair, use Sair no ícone do APC perto do relógio."
+          : "O servidor segue ligado. Para sair, use Sair no ícone do APC perto do relógio.",
         icon: path.join(app.getAppPath(), "build", "icon.png"),
       }).show();
     }
@@ -160,7 +162,7 @@ function keepInTray(window: BrowserWindow, port: () => number, installed: boolea
   const address = () => phoneAddress(os.networkInterfaces());
   const actions: Record<Exclude<TrayItem["id"], "separator">, (item: Electron.MenuItem) => void> = {
     open: () => showWindow(window),
-    address: () => clipboard.writeText(`http://${address()}:${port()}`),
+    address: () => clipboard.writeText(`http://${address()}:${server().port}`),
     settings: () => {
       showWindow(window);
       window.webContents.send(OPEN_SERVER_SETTINGS_CHANNEL);
@@ -172,8 +174,9 @@ function keepInTray(window: BrowserWindow, port: () => number, installed: boolea
     Menu.buildFromTemplate(
       trayMenu({
         address: address(),
-        port: port(),
+        port: server().port,
         serverOn: ownServerOn(),
+        phoneAccess: server().phoneAccess === true,
         startsWithWindows: installed && app.getLoginItemSettings({ args: [HIDDEN_ARG] }).openAtLogin,
         canStartWithWindows: installed,
       }).map((item): Electron.MenuItemConstructorOptions =>
@@ -420,11 +423,11 @@ void app.whenReady().then(async () => {
       appUrl,
       apiUrl,
       startingPage: path.join(app.getAppPath(), "static", "starting.html"),
-      setup: { serverDir, userData, port, version: app.getVersion() },
+      setup: { serverDir, userData, port, phoneAccess: config.phoneAccess === true, version: app.getVersion() },
     };
     host = own;
     handleServerSettings(own);
-    keepInTray(window, () => own.setup.port, installed, config);
+    keepInTray(window, () => own.setup, installed, config);
     // A start hidden at sign-in shows the window when the page has to ask for PostgreSQL's address.
     if ((await startOwnServer(own)) === "waiting" && hidden) {
       window.once("ready-to-show", () => window.show());
