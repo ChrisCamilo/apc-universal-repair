@@ -10,6 +10,7 @@ import {
   INSTALL_WINDOW_MS,
   installInProgress,
   readInstallMarker,
+  RESTART_INSTALL,
   RESTART_TO_UPDATE_CHANNEL,
   serverVersionWarning,
   UPDATE_READY_CHANNEL,
@@ -68,4 +69,27 @@ test("Desktop: the warning about a remote server names both versions", () => {
     "O servidor APC está na versão 0.2.0, e este app na 0.2.1. Atualize o servidor no computador onde ele roda para evitar erros.",
   );
   assert.match(serverVersionWarning("0.2.1", undefined), /numa versão anterior à 0\.2\.0, e este app na 0\.2\.1/);
+});
+
+// Checks *Reiniciar agora* runs the installer with its window, so its progress shows, and starts the new version after.
+test("Desktop: restarting to update shows the installer and opens the new version", () => {
+  assert.deepEqual(RESTART_INSTALL, { silent: false, runAfter: true });
+});
+
+// Reads the installer's own script and checks its update macros act only on an update (isUpdated): the install mode
+// kept, the progress page saying it is updating and the finish page skipped, which keeps its run checkbox otherwise;
+// that the progress bar is filled once the files are in, and that nothing in it removes a file or the app's data.
+test("Desktop: the installer asks nothing more on an update, and removes nothing", () => {
+  const script = readFileSync(path.join(import.meta.dirname, "..", "build", "installer.nsh"), "utf8");
+  const macro = (name: string) => {
+    const start = script.search(new RegExp(`!macro ${name}\\r?\\n`));
+    return script.slice(start, script.indexOf("!macroend", start));
+  };
+  assert.match(macro("customInstallMode"), /\$\{If\} \$\{isUpdated\}[\s\S]*isForceCurrentInstall[\s\S]*isForceMachineInstall/);
+  const finish = macro("customFinishPage");
+  assert.match(finish, /Function finishPagePre\s+\$\{If\} \$\{isUpdated\}\s+Call startAppAfterFinish\s+Abort/);
+  assert.match(finish, /MUI_FINISHPAGE_RUN_FUNCTION startAppAfterFinish[\s\S]*MUI_PAGE_FINISH/);
+  assert.match(macro("customPageAfterChangeDir"), /MUI_PAGE_CUSTOMFUNCTION_SHOW instFilesShow[\s\S]*\$\{If\} \$\{isUpdated\}\s+!insertmacro MUI_HEADER_TEXT "Atualizando o APC"/);
+  assert.match(macro("customInstall"), /\$\{IfNot\} \$\{Silent\}[\s\S]*PBM_SETRANGE32\} 0 1[\s\S]*PBM_SETPOS\} 1 0/);
+  assert.doesNotMatch(script, /\bDelete\b|\bRMDir\b|delete-app-data/);
 });
