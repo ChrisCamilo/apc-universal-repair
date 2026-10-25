@@ -219,6 +219,11 @@ test("Desktop: an old server's SQLite file imports into a fresh install", async 
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(page);
+  // The empty database's offer to import comes over the login once its check answers; Escape puts it off for now.
+  const offer = page.getByRole("dialog", { name: "Começar o APC" });
+  await expect(offer).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(offer).toBeHidden();
   const file = path.join(old.userData, "data", "apc.db");
   await app.evaluate(({ dialog }, chosen) => {
     dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [chosen] })) as typeof dialog.showOpenDialog;
