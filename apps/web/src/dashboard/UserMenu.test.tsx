@@ -6,6 +6,7 @@ import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme'
 import { useState, type ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
+import { RELEASE_NOTES, RELEASE_VERSION } from 'virtual:apc-release'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -136,6 +137,23 @@ test('Web: Sair ends the session and goes to the login, keeping the preferences'
   expect(localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull()
   expect(localStorage.getItem(THEME_STORAGE_KEYS.style)).toBe('fiat90')
   expect(localStorage.getItem(REORDER_TABS_STORAGE_KEY)).toBe('true')
+})
+
+// Picks "Sobre esta versão", set apart just before Sair, and checks the menu closes and the dialog opens on the version
+// the app was built for, with its notes, which the build found in docs/releases, until Fechar closes it.
+test('Web: Sobre esta versão opens the version in use and its notes', async () => {
+  const screen = await render(<Sample />)
+  await screen.getByRole('button', { name: 'Menu do usuário' }).click()
+  const items = screen.getByRole('menu').element().querySelectorAll('[role^="menuitem"]')
+  expect(items[items.length - 2].textContent).toBe('Sobre esta versão')
+  await screen.getByRole('menuitem', { name: 'Sobre esta versão' }).click()
+  await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+  const dialog = screen.getByRole('dialog', { name: 'Sobre esta versão' })
+  await expect.element(dialog.getByText(`APC Universal Repair ${RELEASE_VERSION}`)).toBeVisible()
+  expect(RELEASE_NOTES).toContain(`APC-Universal-Repair-Setup-${RELEASE_VERSION}.exe`)
+  await expect.element(dialog.getByRole('heading', { level: 4 }).first()).toBeVisible()
+  await dialog.getByRole('button', { name: 'Fechar' }).last().click()
+  await expect.element(dialog).not.toBeInTheDocument()
 })
 
 // In a browser the menu has no Servidor item; in the desktop app it has "Servidor e banco de dados", which opens the
