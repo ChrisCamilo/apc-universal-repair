@@ -108,23 +108,29 @@ test('Web: the tree has tree, treeitem and group semantics', async () => {
 
 // Opens on the path to the selected engine with the rest closed, then clicks a closed branch, an open one, an
 // empty one and an engine, and checks the branches open and close, the empty one stays put and the engine goes
-// to onSelect and becomes the selected one.
+// to onSelect and becomes the selected one. Motion is reduced, so a branch opens at once and a click on a child just
+// shown can't land while it is still cut off; the slide itself is checked below.
 test('Web: clicks open and close branches and select leaves', async () => {
-  const onSelect = vi.fn()
-  const screen = await render(<Sample onSelect={onSelect} />)
-  await expect.element(screen.getByRole('treeitem', { name: 'Segunda geração' })).not.toBeInTheDocument()
-  await screen.getByText('Chevette').click()
-  await expect.element(screen.getByRole('treeitem', { name: 'Segunda geração' })).toBeVisible()
-  await screen.getByText('Diplomata').click()
-  await expect.element(screen.getByRole('treeitem', { name: 'Diplomata' })).toHaveAttribute('aria-expanded', 'false')
-  await expect.element(screen.getByRole('treeitem', { name: '1986' })).not.toBeInTheDocument()
-  await screen.getByText('Monza').click()
-  await expect.element(screen.getByRole('treeitem', { name: 'Monza' })).not.toHaveAttribute('aria-expanded')
-  await screen.getByText('Diplomata').click()
-  await screen.getByText('2.5 L 4 cilindros').click()
-  expect(onSelect).toHaveBeenLastCalledWith('2.5')
-  await expect.element(screen.getByRole('treeitem', { name: '2.5 L 4 cilindros' })).toHaveAttribute('aria-selected', 'true')
-  await expect.element(screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' })).toHaveAttribute('aria-selected', 'false')
+  await commands.reduceMotion(true)
+  try {
+    const onSelect = vi.fn()
+    const screen = await render(<Sample onSelect={onSelect} />)
+    await expect.element(screen.getByRole('treeitem', { name: 'Segunda geração' })).not.toBeInTheDocument()
+    await screen.getByText('Chevette').click()
+    await expect.element(screen.getByRole('treeitem', { name: 'Segunda geração' })).toBeVisible()
+    await screen.getByText('Diplomata').click()
+    await expect.element(screen.getByRole('treeitem', { name: 'Diplomata' })).toHaveAttribute('aria-expanded', 'false')
+    await expect.element(screen.getByRole('treeitem', { name: '1986' })).not.toBeInTheDocument()
+    await screen.getByText('Monza').click()
+    await expect.element(screen.getByRole('treeitem', { name: 'Monza' })).not.toHaveAttribute('aria-expanded')
+    await screen.getByText('Diplomata').click()
+    await screen.getByText('2.5 L 4 cilindros').click()
+    expect(onSelect).toHaveBeenLastCalledWith('2.5')
+    await expect.element(screen.getByRole('treeitem', { name: '2.5 L 4 cilindros' })).toHaveAttribute('aria-selected', 'true')
+    await expect.element(screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' })).toHaveAttribute('aria-selected', 'false')
+  } finally {
+    await commands.reduceMotion(false)
+  }
 })
 
 // Tabs in from a button before the tree and out to one after it, and checks the tree is a single Tab stop on the
