@@ -133,6 +133,27 @@ test("Desktop: the app runs the server it ships, with its data in userData", asy
   expect(readFileSync(path.join(userData, "logs", "app.log"), "utf8")).toContain("Storage written and the server stopped; quitting.");
 });
 
+// Signs up on a fresh install and opens "Sobre esta versão" from the user menu, and checks it shows the app's own
+// version and the first heading of that version's notes in Portuguese, which came with the web build.
+test("Desktop: Sobre esta versão shows the app's version and its notes", async () => {
+  const { app } = await launch();
+  const page = await app.firstWindow();
+  await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
+  await keepRecoveryKey(page);
+  await startFromScratch(page);
+  await signUp(page);
+  const version = await app.evaluate(({ app: electronApp }) => electronApp.getVersion());
+  const notes = readFileSync(path.join(APP_DIR, "..", "..", "docs", "releases", `v${version}.md`), "utf8");
+  const heading = /^### (.+)$/m.exec(notes.slice(notes.search(/^---\s*$/m)))![1].trim();
+
+  await page.getByRole("button", { name: "Menu do usuário" }).click();
+  await page.getByRole("menuitem", { name: "Sobre esta versão" }).click();
+  const dialog = page.getByRole("dialog", { name: "Sobre esta versão" });
+  await expect(dialog.getByText(`APC Universal Repair ${version}`)).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();
+  await app.close();
+});
+
 // Opens a fresh install and checks it offers to import an old server once the recovery copy is kept, and "Importar de
 // um servidor antigo" opens the Servidor dialog on its import. The offer shows again on the next start, while the
 // database is empty; once someone signs up, the start after offers nothing, and config.json keeps it over.
