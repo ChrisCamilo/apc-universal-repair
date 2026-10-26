@@ -49,7 +49,11 @@ export const scales = {
   /** Status tints behind rows: the warn and danger colors at these opacities, at rest and on hover. */
   statusTint: { warn: 0.15, danger: 0.13, warnHover: 0.24, dangerHover: 0.22 },
   radiusPill: 999,
-  motion: { durationMs: 180, easing: [0.2, 0.6, 0.2, 1] as const },
+  /**
+   * Motion: every transition's duration and easing, and where an opening overlay comes in from: a dialog grows from
+   * this scale, and a menu or a list slides this many px from its trigger. Closing goes back the same way.
+   */
+  motion: { durationMs: 180, easing: [0.2, 0.6, 0.2, 1] as const, enterScale: 0.98, enterShift: 4 },
   /** Backdrop behind dialogs: the canvas at this opacity, over a light blur of this many px. */
   backdrop: { opacity: 0.72, blur: 2 },
   /** Shadow under floating lists and menus: black at this opacity, offset down and blurred, in px. */
