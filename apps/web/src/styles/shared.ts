@@ -24,6 +24,15 @@ export const FIELD = {
   option: 'relative flex h-9 cursor-pointer items-center gap-2 truncate rounded-tile px-2.5 font-body text-sm text-text aria-selected:text-accent data-active:bg-panel-raised',
 }
 
+/**
+ * How a popover or a dropdown list opens and closes: it fades in sliding down from its trigger (the motion token's
+ * enterShift, 4px), and goes back the same way while it leaves, inert, in the motion's duration; with reduced motion it
+ * shows and goes at once. Menu, FilterMenu, Combobox and Select put it on the element usePresence keeps while it
+ * leaves. Mobile does the same in motion.ts.
+ */
+export const POPOVER_MOTION =
+  'transition-[opacity,translate] starting:-translate-y-1 starting:opacity-0 inert:-translate-y-1 inert:opacity-0 motion-reduce:transition-none'
+
 /** A full-width menu item: Switch, Segmented and MenuItem rows, with the raised fill on hover and focus. */
 export const menuItem = tv({
   base: [

@@ -3,12 +3,14 @@ import { selectionSummary, toggleValue } from '@apc/shared/filters'
 import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/shared/icons'
 import { Icon } from './Icon.tsx'
 import { select } from './Select.styles.ts'
+import { usePresence } from './usePresence.ts'
 
 // A pick-only dropdown with its own list instead of the native one, so the list looks the same in every
 // browser and shows at most SELECT_VISIBLE_OPTIONS options (the rest by scrolling), like the Combobox.
 // The button is a select-only combobox (WAI-ARIA): arrows, Home/End, Enter/Space and typing nothing.
 // In a multiple choice the list shows checkboxes and stays open while the user picks; the button shows
-// the first choice plus a count ("Freios +2"), with the full list in its tooltip, and "All" clears it.
+// the first choice plus a count ("Freios +2"), with the full list in its tooltip, and "All" clears it. The list
+// slides in from the button and back out, staying inert while it leaves (see usePresence).
 
 type Option = { value: string; label: string }
 type SelectProps = {
@@ -41,6 +43,7 @@ export function Select(props: SelectProps) {
   const items: Option[] = props.multiple ? [{ value: '', label: props.allLabel }, ...options] : options
   const chosen = props.multiple ? options.filter((o) => props.value.includes(o.value)).map((o) => o.label) : []
   const { classes, ids } = select({ picked: Boolean(props.multiple && chosen.length), open })
+  const { present, leaving } = usePresence(open, list)
   const shown = props.multiple
     ? selectionSummary(chosen, props.allLabel)
     : (options.find((o) => o.value === props.value)?.label ?? '')
@@ -123,8 +126,8 @@ export function Select(props: SelectProps) {
         </span>
         <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
       </button>
-      {open && (
-        <ul ref={list} id={listId} role="listbox" aria-multiselectable={props.multiple || undefined} className={classes.list()} data-testid={ids.list}>
+      {present && (
+        <ul ref={list} inert={leaving} id={listId} role="listbox" aria-multiselectable={props.multiple || undefined} className={classes.list()} data-testid={ids.list}>
           {items.map((item, index) => {
             const selected = isSelected(item)
             return (

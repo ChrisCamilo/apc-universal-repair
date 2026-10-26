@@ -1,4 +1,4 @@
-import { DISPLAY_LABEL } from '../styles/shared.ts'
+import { DISPLAY_LABEL, POPOVER_MOTION } from '../styles/shared.ts'
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the filter menu: a pill trigger in the display face that lights up in the accent while filters are on,
@@ -17,7 +17,10 @@ export const filterMenu = recipe(
         'transition-[background-color,color,border-color,box-shadow] focus-visible:shadow-ring',
       ],
       count: 'min-w-4.5 rounded-pill bg-accent px-1.5 text-center font-mono text-xs font-medium tracking-normal text-on-accent',
-      panel: 'absolute left-0 top-full z-20 mt-1.5 grid w-[min(calc(var(--spacing)*90),calc(100vw-var(--spacing)*20))] gap-2 shadow-pop',
+      panel: [
+        'absolute left-0 top-full z-20 mt-1.5 grid w-[min(calc(var(--spacing)*90),calc(100vw-var(--spacing)*20))] gap-2 shadow-pop',
+        POPOVER_MOTION,
+      ],
       row: 'grid grid-cols-[calc(var(--spacing)*28)_minmax(0,1fr)] items-center gap-3',
       chips: 'flex flex-wrap items-center gap-x-4 gap-y-1.5',
       actions: 'mt-0.5 flex justify-end gap-2 border-t border-hairline-soft pt-2',

@@ -4,13 +4,14 @@ import { chevronIcon, ICON_SIZES } from '@apc/shared/icons'
 import { combobox } from './Combobox.styles.ts'
 import { Icon } from './Icon.tsx'
 import { Label, Text } from './Typography.tsx'
+import { usePresence } from './usePresence.ts'
 
 // A text field with a list of options that filters as the user types, ignoring case and accents, and that
 // lets them create a new option without leaving the field: when the text names no option, the list ends with
 // "+ Criar <noun> “<text>”". The chevron opens the full list. It is an editable combobox (WAI-ARIA): Up/Down
 // move through the list, Enter picks, Escape closes only the list, not a dialog around it. On blur, a text
 // that names an option takes that option's spelling, and any other text starts with a capital letter. It looks like the TextField, with its error and hint,
-// and its list is the Select's, showing at most five options.
+// and its list is the Select's, showing at most five options, sliding in and out as the Select's does.
 
 type Entry = { kind: 'option'; value: string } | { kind: 'create'; value: string }
 type ComboboxProps = {
@@ -65,6 +66,7 @@ export function Combobox({
   ]
   const note = error ?? helper
   const { classes, ids } = combobox({ disabled: Boolean(disabled), error: Boolean(error), open })
+  const { present, leaving } = usePresence(open, list)
 
   /** Opens the list on its first entry, the full list when the chevron asks for it, or closes it. */
   const show = (next: boolean, all = false) => {
@@ -167,8 +169,8 @@ export function Combobox({
             <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
           </button>
         </div>
-        {open && (
-          <ul ref={list} id={listId} role="listbox" aria-label={label} className={classes.list()} data-testid={ids.list}>
+        {present && (
+          <ul ref={list} inert={leaving} id={listId} role="listbox" aria-label={label} className={classes.list()} data-testid={ids.list}>
             {entries.length === 0 && (
               <li role="presentation" className={classes.empty()} data-testid={ids.empty}>
                 {emptyLabel}

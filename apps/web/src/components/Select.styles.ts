@@ -1,4 +1,4 @@
-import { FIELD } from '../styles/shared.ts'
+import { FIELD, POPOVER_MOTION } from '../styles/shared.ts'
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the compact dropdown: a small pill button on the panel, its border in the accent while a multiple choice
@@ -17,7 +17,7 @@ export const select = recipe(
       ],
       shown: 'min-w-0 flex-1 truncate',
       chevron: 'shrink-0 text-text-muted transition-transform rotate-90',
-      list: FIELD.list,
+      list: [FIELD.list, POPOVER_MOTION],
       option: FIELD.option,
       box: 'grid size-3.5 shrink-0 place-items-center rounded-[calc(var(--tile-radius)/4)] border border-hairline bg-panel',
       text: 'min-w-0 flex-1 truncate',
