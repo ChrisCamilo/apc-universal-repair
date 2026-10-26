@@ -6,7 +6,7 @@ import { recipe, tv } from '../styles/tv.ts'
 // a 4:3 frame on the canvas that never grows past 62% of the screen's height; round arrows over the photo, lit in the
 // accent on hover; dots under it, the current one in the accent; the problems in the danger color; and the note and
 // buttons at the bottom. The footer only lines the note up with the buttons, so it adds no level to their ids, which are
-// the same as on mobile.
+// the same as on mobile. It opens and closes as a Dialog does, growing and fading in, and back.
 
 /** The viewer: the window, its body, head and name, the frame with the photo or the empty note, arrows, dots and footer. */
 export const imageViewer = recipe(
@@ -16,6 +16,9 @@ export const imageViewer = recipe(
       base: [
         'm-auto max-w-none overflow-y-auto rounded-panel border border-hairline bg-panel p-0 text-text shadow-pop',
         'backdrop:bg-backdrop backdrop:backdrop-blur-backdrop',
+        'transition-[opacity,scale,display,overlay] transition-discrete starting:scale-98 starting:opacity-0 not-open:scale-98 not-open:opacity-0',
+        'backdrop:transition-[opacity,display,overlay] backdrop:transition-discrete backdrop:starting:opacity-0 not-open:backdrop:opacity-0',
+        'motion-reduce:transition-none motion-reduce:backdrop:transition-none',
       ],
       body: 'grid gap-3 p-4',
       head: 'flex items-start justify-between gap-3',

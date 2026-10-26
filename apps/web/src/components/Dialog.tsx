@@ -3,6 +3,7 @@ import type { DialogSize } from '@apc/shared/dialog'
 import { CloseButton } from './CloseButton.tsx'
 import { dialog as dialogRecipe, dialogBox } from './Dialog.styles.ts'
 import { Heading } from './Typography.tsx'
+import { usePresence } from './usePresence.ts'
 
 // A modal window for forms and confirmations, built on the native <dialog> opened with showModal(): it sits
 // on top of the page behind a dimmed, blurred backdrop, moves the focus inside and keeps it there, and gives
@@ -11,6 +12,7 @@ import { Heading } from './Typography.tsx'
 // without scrolling at 1280×720 and 360×780. A `dismissible` dialog, one with nothing to lose such as a notice,
 // also closes on a click outside it, on the backdrop. A `closable` dialog has the round × at the right of its title,
 // the same as the photo viewer's, which closes it like Escape; the focus still starts past it, on a control.
+// It grows and fades in, and back out, its content kept while it leaves and the window inert (see usePresence).
 
 // The elements the focus can start on: the scrolling body is focusable too, but the focus belongs on a control.
 const CONTROLS = 'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
@@ -36,6 +38,7 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
   const dialog = useRef<HTMLDialogElement>(null)
   const close = useRef<HTMLButtonElement>(null)
   const { classes, ids } = dialogRecipe()
+  const { present, leaving } = usePresence(open, dialog)
 
   // Open and close the native dialog as `open` changes.
   useEffect(() => {
@@ -53,6 +56,7 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
   return (
     <dialog
       ref={dialog}
+      inert={leaving}
       aria-labelledby={titleId}
       className={classes.base()}
       data-testid={ids.base}
@@ -72,7 +76,7 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
         }
       }}
     >
-      {open && (
+      {present && (
         <div className={classes.layout()} data-testid={ids.layout}>
           <div className={classes.body()} data-testid={ids.body}>
             {closable ? (

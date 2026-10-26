@@ -10,6 +10,7 @@ import { imageViewer, viewerBox } from './ImageViewer.styles.ts'
 import { ToastProvider } from './Toast.tsx'
 import { useToast } from './toastContext.ts'
 import { Heading, NumericReadout, Text } from './Typography.tsx'
+import { usePresence } from './usePresence.ts'
 
 // A large view of an item's photos, opened from its thumbnail: one photo at a time, as large as the screen
 // allows and never cropped, under the item's name and code. With more than one photo, arrows over the photo
@@ -19,7 +20,7 @@ import { Heading, NumericReadout, Text } from './Typography.tsx'
 // takes its place. "Trocar esta foto" replaces the one on screen and "Adicionar foto" shows while there is
 // room, both with the ImageUpload rules and messages. The owner may save each change as it happens: when it says
 // the change couldn't be saved, the toast says so instead of confirming it. Toasts show inside the viewer, the only
-// part of the page that stays visible and announced while it is open.
+// part of the page that stays visible and announced while it is open. It opens and closes as a Dialog does.
 
 type ImageViewerProps = {
   open: boolean
@@ -51,6 +52,7 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
   const titleId = useId()
   const dialog = useRef<HTMLDialogElement>(null)
   const { classes, ids } = imageViewer()
+  const { present, leaving } = usePresence(open, dialog)
 
   // Open and close the native dialog as `open` changes.
   useEffect(() => {
@@ -65,6 +67,7 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
   return (
     <dialog
       ref={dialog}
+      inert={leaving}
       aria-labelledby={titleId}
       className={classes.base()}
       data-testid={ids.base}
@@ -84,7 +87,7 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
         }
       }}
     >
-      {open && (
+      {present && (
         <ToastProvider>
           <ViewerBody titleId={titleId} onClose={onClose} {...rest} />
         </ToastProvider>
