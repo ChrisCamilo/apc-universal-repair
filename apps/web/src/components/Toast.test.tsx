@@ -1,6 +1,6 @@
 import { themes, type Mode, type Style } from '@apc/shared/theme'
 import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast'
-import { afterEach, beforeAll, expect, test, vi } from 'vitest'
+import { beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { commands } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
@@ -22,7 +22,8 @@ function rgb(hex: string): string {
   return `rgb(${r}, ${g}, ${b})`
 }
 
-afterEach(async () => {
+// These tests are about motion, which test-setup.ts turns off before each test: turn it on again.
+beforeEach(async () => {
   await commands.reduceMotion(false)
 })
 
