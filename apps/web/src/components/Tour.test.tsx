@@ -98,7 +98,8 @@ test('Web: leaving a step goes back to the step it names', async () => {
 })
 
 // Walks an info-only step with Next and checks the last step has no target, reads concluded, offers only
-// Finish, and that Finish and Skip both close the tour.
+// Finish, and that Finish and Skip both close the tour. The spotlight follows the step on the next frame, so the
+// check waits for it to go.
 test('Web: info steps use Next and the last step finishes the tour', async () => {
   const onClose = vi.fn()
   const screen = await render(<Sample from={2} onClose={onClose} />)
@@ -109,7 +110,7 @@ test('Web: info steps use Next and the last step finishes the tour', async () =>
   const last = screen.getByRole('dialog', { name: 'Pronto!' })
   await expect.element(last).toMatchTextContent(/Tutorial concluído/)
   await expect.element(last.getByRole('button', { name: 'Pular tutorial' })).not.toBeInTheDocument()
-  expect(spotlight()).toBeNull()
+  await expect.poll(spotlight).toBeNull()
   await last.getByRole('button', { name: 'Concluir' }).click()
   expect(onClose).toHaveBeenCalledTimes(1)
 
