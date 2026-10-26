@@ -1,8 +1,9 @@
 import type { ComponentRef, ReactNode, RefObject } from 'react';
-import { Modal, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import type { DialogSize } from '@apc/shared/dialog';
 import { CloseButton } from './CloseButton';
 import { useStyles, windowBox } from './Dialog.styles';
+import { useOverlayMotion } from './motion';
 import { ToastLayer } from './Toast';
 import { TourLayer } from './Tour';
 import { Heading } from './Typography';
@@ -13,7 +14,7 @@ import { Heading } from './Typography';
 // scrolling at 360×780. A `dismissible` dialog, one with nothing to lose such as a notice, also closes on a tap
 // outside it, on the backdrop. A `closable` dialog has the round × at the right of its title, the same as the photo
 // viewer's, which closes it like the back button. The owner may hold the content's scroll (scrollRef), to open it
-// further down.
+// further down. It fades in with its backdrop while the window grows, and back out, as on the web (see motion.ts).
 
 type DialogProps = {
   open: boolean;
@@ -36,11 +37,12 @@ type DialogProps = {
 export function Dialog({ open, onClose, title, size = 'form', actions, closable = false, dismissible = false, scrollRef, children }: DialogProps) {
   const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
+  const motion = useOverlayMotion(open, 'scale');
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop} testID={ids.backdrop}>
+    <Modal visible={motion.shown} transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View style={[styles.backdrop, motion.fade]} testID={ids.backdrop}>
         {dismissible && <Pressable accessibilityLabel="Fechar" onPress={onClose} style={styles.outside} testID={ids.outside} />}
-        <View accessibilityViewIsModal accessibilityLabel={title} style={[styles.window, windowBox(size, screen)]} testID={ids.window}>
+        <Animated.View accessibilityViewIsModal accessibilityLabel={title} style={[styles.window, windowBox(size, screen), motion.moved]} testID={ids.window}>
           <ScrollView ref={scrollRef} contentContainerStyle={styles.body} testID={ids.body}>
             {closable ? (
               <View style={styles.header} testID={ids.header}>
@@ -57,8 +59,8 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
           <View style={styles.actions} testID={ids.actions}>
             {actions}
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
       {/* A toast and a guided tour draw here while the dialog is open, the only place above the Modal. */}
       <ToastLayer />
       <TourLayer />

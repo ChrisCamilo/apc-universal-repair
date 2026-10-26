@@ -1,5 +1,5 @@
 import { useRef, useState, type ComponentRef, type ReactNode } from 'react';
-import { Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { chevronIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
@@ -15,13 +15,14 @@ import {
   useStyles,
 } from './Menu.styles';
 import { MenuContext, useMenu } from './menuContext';
+import { useOverlayMotion } from './motion';
 import { useTheme } from './theme';
 
 // A dropdown menu, the same as the web (see Menu.styles.ts), such as the Dashboard's user menu: a trigger and a
 // popover anchored under it, kept inside the screen when the trigger isn't at its edge. Checkbox and radio items (Switch, Segmented) keep the menu open when chosen, and only
 // plain action items (MenuItem) close it. A tap outside, the back button or the trigger closes the menu. UserBadge is
 // the user menu's trigger content, as on the web: the initials on the accent, then the username, which phones leave
-// out.
+// out. The popover fades and slides in from the trigger, and back out, as on the web (see motion.ts).
 
 type Anchor = { top: number; right: number };
 type MenuItemProps = {
@@ -48,6 +49,7 @@ export function Menu({ label, trigger, onOpenChange, children }: MenuProps) {
   const { styles, ids } = useStyles();
   const { width } = useWindowDimensions();
   const [open, setOpen] = useState(false);
+  const motion = useOverlayMotion(open, 'translate');
   const [anchor, setAnchor] = useState<Anchor>({ top: scales.space.s8, right: scales.space.s4 });
   const button = useRef<ComponentRef<typeof View>>(null);
   const popoverWidth = Math.min(MENU_MAX_WIDTH, width - MENU_INSET);
@@ -82,7 +84,7 @@ export function Menu({ label, trigger, onOpenChange, children }: MenuProps) {
           <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={colors.textMuted} />
         </View>
       </Pressable>
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => toggle(false)}>
+      <Modal visible={motion.shown} transparent animationType="none" onRequestClose={() => toggle(false)}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Fechar menu"
@@ -90,14 +92,14 @@ export function Menu({ label, trigger, onOpenChange, children }: MenuProps) {
           style={styles.backdrop}
           testID={ids.backdrop}
         />
-        <View
+        <Animated.View
           accessibilityRole="menu"
           accessibilityLabel={label}
-          style={[styles.popover, { top: anchor.top, right: anchor.right, width: popoverWidth }]}
+          style={[styles.popover, motion.fade, motion.moved, { top: anchor.top, right: anchor.right, width: popoverWidth }]}
           testID={ids.popover}
         >
           <MenuContext.Provider value={{ close: () => toggle(false) }}>{children}</MenuContext.Provider>
-        </View>
+        </Animated.View>
       </Modal>
     </>
   );
