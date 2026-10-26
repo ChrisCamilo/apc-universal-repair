@@ -1,5 +1,5 @@
 import { MODES, STYLES, themes } from '@apc/shared/theme'
-import { afterEach, beforeAll, expect, test, vi } from 'vitest'
+import { beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { commands } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
@@ -26,7 +26,8 @@ beforeAll(() => {
   document.head.append(tag)
 })
 
-afterEach(async () => {
+// These tests are about motion, which test-setup.ts turns off before each test: turn it on again.
+beforeEach(async () => {
   await commands.reduceMotion(false)
 })
 

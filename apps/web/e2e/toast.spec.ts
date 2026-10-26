@@ -211,8 +211,9 @@ async function openEdit(page: Page) {
 }
 
 // Samples a toast's opacity every frame, from the save until it leaves the page: it starts transparent and rises to full
-// opacity, and once its time is up it fades back down before it leaves.
+// opacity, and once its time is up it fades back down before it leaves. Motion is on, which the config turns off.
 test("Web: a toast fades in and fades out before it leaves", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   const save = await openEdit(page);
   const sampled = sampleOpacity(page, "gone");
   await save.click();

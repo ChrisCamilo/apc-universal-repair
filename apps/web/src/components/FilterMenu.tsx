@@ -8,6 +8,7 @@ import { Icon } from './Icon.tsx'
 import { Panel } from './Panel.tsx'
 import { Select } from './Select.tsx'
 import { Label } from './Typography.tsx'
+import { usePresence } from './usePresence.ts'
 
 // The detailed filters of a list: a button that opens a panel with one row per filter. A row holds a
 // multiple-choice Select, or toggle chips split into labeled groups for small fixed sets of values; a row
@@ -15,6 +16,7 @@ import { Label } from './Typography.tsx'
 // away; Escape or a click outside closes the panel without applying. The button counts the filters on. Rows may
 // depend on what is chosen in the panel, e.g. the vehicle models of the chosen brands: a value a row stops
 // offering leaves the choice. An owner may also open and close the panel itself, as the Inventory tutorial does.
+// The panel slides in from the button and back out, staying inert while it leaves (see usePresence).
 
 type ChipsRow = {
   label: string
@@ -78,8 +80,10 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
   const [draft, setDraft] = useState(values)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
   const count = activeFilterCount(values)
   const { classes, ids } = filterMenu({ active: count > 0 })
+  const { present, leaving } = usePresence(open, panel)
   const rows = typeof rowsFor === 'function' ? rowsFor(draft) : rowsFor
 
   /** Opens or closes the panel, telling the owner. */
@@ -159,8 +163,10 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
           </span>
         )}
       </button>
-      {open && (
+      {present && (
         <Panel
+          ref={panel}
+          inert={leaving}
           id={panelId}
           role="dialog"
           aria-label={label}

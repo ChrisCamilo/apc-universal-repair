@@ -1,4 +1,4 @@
-import { FIELD } from '../styles/shared.ts'
+import { FIELD, POPOVER_MOTION } from '../styles/shared.ts'
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the combobox: a text field's frame with a chevron button at its end that turns while the list is open,
@@ -17,7 +17,7 @@ export const combobox = recipe(
       input: FIELD.input,
       toggle: FIELD.button,
       chevron: 'transition-transform rotate-90',
-      list: FIELD.list,
+      list: [FIELD.list, POPOVER_MOTION],
       empty: 'flex h-9 items-center px-2.5 font-body text-sm text-text-muted',
       option: FIELD.option,
       error: 'm-0 font-body text-sm text-danger',

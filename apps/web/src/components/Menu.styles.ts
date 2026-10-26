@@ -1,4 +1,4 @@
-import { DISPLAY_LABEL, menuItem as menuItemClasses } from '../styles/shared.ts'
+import { DISPLAY_LABEL, menuItem as menuItemClasses, POPOVER_MOTION } from '../styles/shared.ts'
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the dropdown menu: a pill trigger that lights up in the accent on hover and while open, its chevron
@@ -20,6 +20,7 @@ export const menu = recipe(
       popover: [
         'absolute top-full z-30 mt-1 grid w-[min(calc(var(--spacing)*72.5),calc(100vw-var(--spacing)*16))] gap-0.5 rounded-panel',
         'border border-hairline-soft bg-panel bg-(image:--sheen) p-2 shadow-pop',
+        POPOVER_MOTION,
       ],
     },
     variants: {

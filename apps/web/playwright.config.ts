@@ -10,8 +10,11 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
   reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
+  // Reduced motion, as in the component tests: dialogs, menus and lists open and close at once, so a test never reads
+  // one halfway through a transition.
   use: {
     baseURL: "http://localhost:5173",
+    reducedMotion: "reduce",
     trace: "on-first-retry",
   },
   // Minimum supported screen sizes from AGENTS.md.

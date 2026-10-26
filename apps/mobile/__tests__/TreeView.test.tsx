@@ -145,8 +145,10 @@ test('Mobile: the tree has tree, treeitem and group semantics', async () => {
 });
 
 // Presses a closed branch, an open one and an engine, and checks the branches open and close with their
-// children sliding in, and the engine goes to onSelect and becomes the selected one.
+// children sliding in, and the engine goes to onSelect and becomes the selected one. Motion is on, which the test
+// setup turns off.
 test('Mobile: presses open and close branches and select leaves', async () => {
+  jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
   const configure = jest.spyOn(LayoutAnimation, 'configureNext');
   const onSelect = jest.fn();
   const tree = await mount('gt4', 'day', <Sample onSelect={onSelect} />);
@@ -165,8 +167,10 @@ test('Mobile: presses open and close branches and select leaves', async () => {
 });
 
 // Opens a branch and checks its chevron turns over the motion duration, then turns reduced motion on and checks
-// the next branch opens and its chevron turns at once, with no layout animation.
+// the next branch opens and its chevron turns at once, with no layout animation. Motion starts on, which the test
+// setup turns off.
 test('Mobile: the chevron turns and the children slide in, at once with reduced motion', async () => {
+  jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
   const configure = jest.spyOn(LayoutAnimation, 'configureNext');
   const timing = jest.spyOn(Animated, 'timing');
   const tree = await mount('bmw90', 'night', <Sample />);

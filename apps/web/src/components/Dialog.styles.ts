@@ -4,7 +4,8 @@ import { recipe, tv } from '../styles/tv.ts'
 
 // The look of a modal window: the panel with its sheen and hairline frame over a dimmed, blurred backdrop, its content
 // scrolling inside while the action bar stays pinned at the bottom under a soft hairline. A closable dialog has the ×
-// at the right of its title.
+// at the right of its title. It opens fading in while it grows from the motion token's enterScale (98%), with its
+// backdrop fading in, and closes back the same way, staying on top until it is gone; with reduced motion, at once.
 
 /** A dialog: the window, its layout, the scrolling body, the title row and the action bar. */
 export const dialog = recipe(
@@ -14,6 +15,9 @@ export const dialog = recipe(
       base: [
         'm-auto max-w-none overflow-hidden rounded-panel border border-hairline bg-panel bg-(image:--sheen) p-0 text-text shadow-pop',
         'backdrop:bg-backdrop backdrop:backdrop-blur-backdrop',
+        'transition-[opacity,scale,display,overlay] transition-discrete starting:scale-98 starting:opacity-0 not-open:scale-98 not-open:opacity-0',
+        'backdrop:transition-[opacity,display,overlay] backdrop:transition-discrete backdrop:starting:opacity-0 not-open:backdrop:opacity-0',
+        'motion-reduce:transition-none motion-reduce:backdrop:transition-none',
       ],
       layout: 'flex max-h-[inherit] flex-col',
       body: 'grid min-h-0 gap-4 overflow-y-auto p-6',

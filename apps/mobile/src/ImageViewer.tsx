@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, Modal, Pressable, Text as NativeText, View, useWindowDimensions } from 'react-native';
+import { Animated, Image, Modal, Pressable, Text as NativeText, View, useWindowDimensions } from 'react-native';
 import { chevronIcon, ICON_SIZES, imageIcon } from '@apc/shared/icons';
 import { photoCount, takePhotos } from '@apc/shared/photos';
 import { scales } from '@apc/shared/theme';
@@ -9,6 +9,7 @@ import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import type { PickedPhoto, UploadPhoto } from './ImageUpload';
 import { FRAME_MAX_SHARE, useStyles, viewerBox } from './ImageViewer.styles';
+import { useOverlayMotion } from './motion';
 import { useTheme } from './theme';
 import { ToastProvider, useToast } from './Toast';
 import { Heading, NumericReadout, Text } from './Typography';
@@ -20,7 +21,8 @@ import { Heading, NumericReadout, Text } from './Typography';
 // warning when the photo is the cover; the next photo takes its place. "Trocar esta foto" replaces the one on
 // screen and "Adicionar foto" shows while there is room, both through the owner's picker and with the
 // ImageUpload rules and messages. The owner may save each change as it happens: when it says the change couldn't be
-// saved, the toast says so instead of confirming it. Toasts show inside the viewer, above the rest of the app.
+// saved, the toast says so instead of confirming it. Toasts show inside the viewer, above the rest of the app. It
+// opens and closes as a Dialog does.
 
 type ImageViewerProps = {
   open: boolean;
@@ -41,19 +43,29 @@ type ImageViewerProps = {
 
 export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
   const { styles, ids } = useStyles();
+  const motion = useOverlayMotion(open, 'scale');
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={motion.shown} transparent animationType="none" onRequestClose={onClose}>
       <ToastProvider>
-        <View style={styles.backdrop} testID={ids.backdrop}>
+        <Animated.View style={[styles.backdrop, motion.fade]} testID={ids.backdrop}>
           <Pressable accessibilityLabel="Fechar" onPress={onClose} style={styles.outside} testID={ids.outside} />
-          <ViewerBody onClose={onClose} {...rest} />
-        </View>
+          <ViewerBody onClose={onClose} moved={motion.moved} {...rest} />
+        </Animated.View>
       </ToastProvider>
     </Modal>
   );
 }
 
-function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick }: Omit<ImageViewerProps, 'open'>) {
+function ViewerBody({
+  onClose,
+  name,
+  code,
+  photos,
+  onPhotosChange,
+  limit,
+  onPick,
+  moved,
+}: Omit<ImageViewerProps, 'open'> & { moved: ReturnType<typeof useOverlayMotion>['moved'] }) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
@@ -113,7 +125,7 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
   };
 
   return (
-    <View accessibilityViewIsModal accessibilityLabel={name} style={[styles.window, viewerBox(screen)]} testID={ids.window}>
+    <Animated.View accessibilityViewIsModal accessibilityLabel={name} style={[styles.window, viewerBox(screen), moved]} testID={ids.window}>
       <View style={styles.body} testID={ids.body}>
         <View style={styles.head} testID={ids.head}>
           <View style={styles.name} testID={ids.name}>
@@ -229,6 +241,6 @@ function ViewerBody({ onClose, name, code, photos, onPhotosChange, limit, onPick
             (current === 0 && count > 1 ? ' Ela é a capa; a próxima foto passa a ser a capa na lista.' : '')}
         </Text>
       </Dialog>
-    </View>
+    </Animated.View>
   );
 }

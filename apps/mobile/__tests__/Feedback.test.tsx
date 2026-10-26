@@ -72,8 +72,10 @@ for (const style of STYLES) {
 }
 
 // Renders a spinner with a label and one without, and checks the first is announced as loading and the
-// second is hidden; both turn, and with reduced motion they fade instead.
+// second is hidden; both turn, and with reduced motion they fade instead. Motion starts on, which the test setup
+// turns off.
 test('Mobile: spinners are announced only with a label and fade with reduced motion', async () => {
+  jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
   const tree = await mount(
     'eighties',
     'night',

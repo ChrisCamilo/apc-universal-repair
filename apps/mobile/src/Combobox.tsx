@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, Text as NativeText, ScrollView, TextInput, View } from 'react-native';
+import { Animated, Pressable, Text as NativeText, TextInput, View } from 'react-native';
 import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
 import { capitalizeFirst, findOption, matchingOptions } from '@apc/shared/items';
 import { CHEVRON_HIT_SLOP, useStyles } from './Combobox.styles';
 import { Icon } from './Icon';
+import { useOverlayMotion } from './motion';
 import { useTheme } from './theme';
 import { Label, Text } from './Typography';
 
@@ -12,7 +13,7 @@ import { Label, Text } from './Typography';
 // it without leaving the field. The chevron opens the full list. On a phone the list opens right under the
 // field and pushes what follows down; tapping an option keeps the keyboard and the focus in the field. On
 // blur the list closes, a text that names an option takes that option's spelling, and any other text starts with
-// a capital letter.
+// a capital letter. The list fades and slides in under the field, and back out, as on the web (see motion.ts).
 
 type ComboboxProps = {
   label: string;
@@ -55,6 +56,7 @@ export function Combobox({
   const { styles, ids } = useStyles();
   const [focused, setFocused] = useState(false);
   const [open, setOpen] = useState(false);
+  const motion = useOverlayMotion(open, 'translate');
   const [showAll, setShowAll] = useState(false);
   const typed = value.trim().replace(/\s+/g, ' ');
   const current = findOption(options, value);
@@ -127,11 +129,11 @@ export function Combobox({
           </Pressable>
         </View>
       </View>
-      {open && (
-        <ScrollView
+      {motion.shown && (
+        <Animated.ScrollView
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
-          style={styles.fieldList}
+          style={[styles.fieldList, motion.fade, motion.moved]}
           contentContainerStyle={styles.fieldListContent}
           testID={ids.fieldList}
         >
@@ -154,7 +156,7 @@ export function Combobox({
               </NativeText>
             </Pressable>
           ))}
-        </ScrollView>
+        </Animated.ScrollView>
       )}
       {error ? (
         <NativeText accessibilityLiveRegion="polite" style={styles.fieldError} testID={ids.fieldError}>

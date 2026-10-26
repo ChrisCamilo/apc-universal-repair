@@ -3,12 +3,14 @@ import { chevronIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
 import { Icon } from './Icon.tsx'
 import { menu as menuRecipe, menuHeader, menuItem, menuLabel, userBadge } from './Menu.styles.ts'
 import { MenuContext, useMenu } from './menuContext.ts'
+import { usePresence } from './usePresence.ts'
 
 // A dropdown menu, such as the Dashboard's user menu: a trigger button and a popover anchored under it.
 // Up/Down (and Home/End) move between the items; checkbox and radio items (Switch, Segmented) keep the menu
 // open when chosen, and only plain action items (MenuItem) close it. A click outside, Escape or the trigger
 // closes the menu and puts the focus back on the trigger. UserBadge is the user menu's trigger content: the
-// initials on the accent, then the username, which phones leave out to save room.
+// initials on the accent, then the username, which phones leave out to save room. The popover slides in from the
+// trigger and back out, staying inert while it leaves (see usePresence).
 
 const ITEMS_SELECTOR = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]'
 
@@ -70,6 +72,7 @@ export function Menu({ label, trigger, align = 'end', anchor = 'trigger', open: 
   const button = useRef<HTMLButtonElement>(null)
   const popover = useRef<HTMLDivElement>(null)
   const { classes, ids } = menuRecipe({ align, anchor, open })
+  const { present, leaving } = usePresence(open, popover)
 
   /** Opens or closes the menu, and says so. */
   const toggle = (next: boolean) => {
@@ -138,9 +141,10 @@ export function Menu({ label, trigger, align = 'end', anchor = 'trigger', open: 
         {trigger}
         <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
       </button>
-      {open && (
+      {present && (
         <div
           ref={popover}
+          inert={leaving}
           id={menuId}
           role="menu"
           aria-label={label}

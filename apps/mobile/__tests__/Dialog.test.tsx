@@ -281,10 +281,11 @@ for (const [style, mode] of [
 
 // Shows a toast and then another, and checks the first starts transparent, below its place, and fades in to full
 // opacity in the toasts' fade time on the native driver; once replaced it fades out under the second, hidden from
-// screen readers, and leaves after the fade.
+// screen readers, and leaves after the fade. Motion is on, which the test setup turns off.
 test('Mobile: a toast fades in, and fades out under the one replacing it', async () => {
   jest.useFakeTimers();
   const timing = jest.spyOn(Animated, 'timing');
+  const motion = jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
   try {
     const tree = await mount(
       'eighties',
@@ -320,6 +321,7 @@ test('Mobile: a toast fades in, and fades out under the one replacing it', async
     expect(pills(tree)).toHaveLength(1);
   } finally {
     timing.mockRestore();
+    motion.mockRestore();
     jest.useRealTimers();
   }
 });

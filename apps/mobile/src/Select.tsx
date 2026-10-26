@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Pressable, Text, View } from 'react-native';
 import { selectionSummary, toggleValue } from '@apc/shared/filters';
 import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/shared/icons';
 import { Icon } from './Icon';
+import { useOverlayMotion } from './motion';
 import { useStyles } from './Select.styles';
 import { useTheme } from './theme';
 
@@ -10,7 +11,8 @@ import { useTheme } from './theme';
 // rest scroll. On a phone the list opens right under the button and pushes what follows down, so it works
 // inside panels and sheets without measuring the screen. A multiple choice shows checkboxes and stays open
 // while the user picks; the button shows the first choice plus a count ("Freios +2") and screen readers
-// hear the full list; "All" clears the choice.
+// hear the full list; "All" clears the choice. The list fades and slides in under the button, and back out, as on the
+// web (see motion.ts).
 
 type Option = { value: string; label: string };
 type SelectProps = {
@@ -34,6 +36,7 @@ export function Select(props: SelectProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   const [open, setOpen] = useState(false);
+  const motion = useOverlayMotion(open, 'translate');
   // A multiple choice lists "All" first, with the empty value.
   const items: Option[] = props.multiple ? [{ value: '', label: props.allLabel }, ...options] : options;
   const chosen = props.multiple ? options.filter((o) => props.value.includes(o.value)).map((o) => o.label) : [];
@@ -74,8 +77,13 @@ export function Select(props: SelectProps) {
           <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={colors.textMuted} />
         </View>
       </Pressable>
-      {open && (
-        <ScrollView nestedScrollEnabled style={styles.fieldList} contentContainerStyle={styles.fieldListContent} testID={ids.fieldList}>
+      {motion.shown && (
+        <Animated.ScrollView
+          nestedScrollEnabled
+          style={[styles.fieldList, motion.fade, motion.moved]}
+          contentContainerStyle={styles.fieldListContent}
+          testID={ids.fieldList}
+        >
           {items.map((item) => {
             const selected = isSelected(item);
             return (
@@ -99,7 +107,7 @@ export function Select(props: SelectProps) {
               </Pressable>
             );
           })}
-        </ScrollView>
+        </Animated.ScrollView>
       )}
     </View>
   );

@@ -5,6 +5,7 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
+import { expectOverlayAtOnce, expectOverlayMotion } from '../test-motion.ts'
 import { themeCss } from '../theme.ts'
 import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from './Menu.tsx'
 import { Segmented } from './Segmented.tsx'
@@ -111,6 +112,25 @@ test('Web: Escape, the trigger and a click outside close the menu', async () => 
   await trigger.click()
   await screen.getByText('Fora do menu').click()
   await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+})
+
+// Opens and closes the menu with motion on, and checks the popover slides and fades in from the trigger, in the motion
+// token, and back out while it leaves, inert, until its transitions end; with reduced motion, at once. The focus goes
+// back to the trigger as soon as Escape closes it, either way.
+test('Web: the menu slides in and out, at once with reduced motion', async () => {
+  const screen = await render(<UserMenu onTutorial={() => {}} />)
+  const trigger = screen.getByRole('button', { name: 'Menu do usuário' })
+  const overlay = {
+    open: () => trigger.click(),
+    close: async () => {
+      await userEvent.keyboard('{Escape}')
+      await expect.element(trigger).toHaveFocus()
+    },
+    find: () => screen.getByTestId('common.menu.popover').element(),
+    gone: () => !document.querySelector('[data-testid="common.menu.popover"]'),
+  }
+  await expectOverlayMotion({ ...overlay, move: 'translate' })
+  await expectOverlayAtOnce(overlay)
 })
 
 // Checks the menu never gets wider than 290px or the screen minus 64px, and lines up with the trigger's end.

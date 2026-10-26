@@ -1,11 +1,12 @@
 import { useState, type Ref } from 'react';
-import { Modal, Pressable, ScrollView, Text, View, useWindowDimensions, type HostInstance } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, Text, View, useWindowDimensions, type HostInstance } from 'react-native';
 import { activeFilterCount, clearedFilters, type FilterValues } from '@apc/shared/filters';
 import { filterIcon, ICON_SIZES } from '@apc/shared/icons';
 import { Button } from './Button';
 import { FilterChipGroup } from './FilterChip';
 import { PANEL_INSET, PANEL_MAX_WIDTH, useStyles } from './FilterMenu.styles';
 import { Icon } from './Icon';
+import { useOverlayMotion } from './motion';
 import { Panel } from './Panel';
 import { Select } from './Select';
 import { useTheme } from './theme';
@@ -18,7 +19,7 @@ import { Label } from './Typography';
 // button or a tap outside closes the panel without applying. The button counts the filters on. Rows may depend on
 // what is chosen in the panel, e.g. the vehicle models of the chosen brands: a value a row stops offering leaves the
 // choice. An owner may also open and close the panel itself, as the Inventory tutorial does, whose tour draws above
-// the panel.
+// the panel. The panel fades and slides in from the button, and back out, as on the web (see motion.ts).
 
 type ChipsRow = {
   label: string;
@@ -82,6 +83,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
   const { width } = useWindowDimensions();
   const [ownOpen, setOwnOpen] = useState(false);
   const open = openProp ?? ownOpen;
+  const motion = useOverlayMotion(open, 'translate');
   const [draft, setDraft] = useState(values);
   const rows = typeof rowsFor === 'function' ? rowsFor(draft) : rowsFor;
   const count = activeFilterCount(values);
@@ -132,7 +134,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
           </Text>
         )}
       </Pressable>
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => show(false)}>
+      <Modal visible={motion.shown} transparent animationType="none" onRequestClose={() => show(false)}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Fechar filtros"
@@ -140,10 +142,10 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
           style={styles.backdrop}
           testID={ids.backdrop}
         />
-        <View
+        <Animated.View
           ref={panelRef}
           accessibilityLabel={label}
-          style={[styles.panel, { width: Math.min(PANEL_MAX_WIDTH, width - PANEL_INSET) }]}
+          style={[styles.panel, motion.fade, motion.moved, { width: Math.min(PANEL_MAX_WIDTH, width - PANEL_INSET) }]}
           testID={ids.panel}
         >
           <Panel>
@@ -191,7 +193,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
               </View>
             </ScrollView>
           </Panel>
-        </View>
+        </Animated.View>
         {/* A guided tour draws here while the panel is open, the only place above the Modal. */}
         <TourLayer />
       </Modal>

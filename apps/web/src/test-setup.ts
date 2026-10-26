@@ -3,6 +3,8 @@ import { commands } from 'vitest/browser'
 
 // The pointer stays where the previous test left it, even across test files that share the browser page,
 // so whatever renders under it next starts out hovered. Park it away from the content before each test.
+// Every test also starts with reduced motion on, so overlays open and close at once and a test checks the screen
+// as it ends up, never halfway through a transition. A test about motion turns it off for itself, before it renders.
 
 declare module 'vitest/browser' {
   interface BrowserCommands {
@@ -15,4 +17,5 @@ declare module 'vitest/browser' {
 
 beforeEach(async () => {
   await commands.parkPointer()
+  await commands.reduceMotion(true)
 })

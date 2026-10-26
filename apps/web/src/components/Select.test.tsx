@@ -5,6 +5,7 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
+import { expectOverlayAtOnce, expectOverlayMotion } from '../test-motion.ts'
 import { themeCss } from '../theme.ts'
 import { Select } from './Select.tsx'
 
@@ -130,6 +131,21 @@ test('Web: single selects take one value and close', async () => {
   await select.click()
   await expect.element(screen.getByRole('option', { name: 'Preço' })).toHaveAttribute('aria-selected', 'true')
   await expect.element(screen.getByRole('listbox')).not.toHaveAttribute('aria-multiselectable')
+})
+
+// Opens and closes the list with motion on, and checks it slides and fades in under the button, in the motion token,
+// and back out while it leaves, inert, until its transitions end; with reduced motion, at once.
+test('Web: the select list slides in and out, at once with reduced motion', async () => {
+  const screen = await render(<Single />)
+  const select = screen.getByRole('combobox', { name: 'Ordenar' })
+  const overlay = {
+    open: () => select.click(),
+    close: () => userEvent.keyboard('{Escape}'),
+    find: () => screen.getByTestId('common.select.list').element(),
+    gone: () => !document.querySelector('[role="listbox"]'),
+  }
+  await expectOverlayMotion({ ...overlay, move: 'translate' })
+  await expectOverlayAtOnce(overlay)
 })
 
 // Leaves an open list with Tab and checks it closes, and that a disabled select does not open.
