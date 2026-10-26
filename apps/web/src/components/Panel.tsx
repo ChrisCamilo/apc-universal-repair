@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import type { HTMLAttributes, ReactNode, Ref } from 'react'
 import { divider, panel } from './Panel.styles.ts'
 import { PanelContext, useInPanel } from './panelContext.ts'
 
@@ -13,6 +13,8 @@ type PanelProps = HTMLAttributes<HTMLDivElement> & {
   raised?: boolean
   /** Top-down highlight; on by default for outer panels and off for nested ones. */
   sheen?: boolean
+  /** The panel's element, e.g. for an overlay to wait for its transitions. */
+  ref?: Ref<HTMLDivElement>
   children: ReactNode
 }
 
