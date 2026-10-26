@@ -5,6 +5,7 @@ import path from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { readConfig, writeConfig } from "../src/config.ts";
 import { phoneAddress } from "../src/tray.ts";
+import { reduceMotion } from "./reducedMotion.ts";
 
 // The desktop app with the server it ships (server/, from scripts/bundle-server.mjs), as an installed app runs: no
 // APC_API_URL and no clone, its own userData folder, and a free port in place of 3000. Run `pnpm run build` first,
@@ -32,7 +33,7 @@ async function launch(options: { args?: string[]; files?: Record<string, string>
   // With it set, Electron runs as plain Node instead of opening the app.
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.APC_API_URL;
-  const app = await electron.launch({ args: [APP_DIR, ...(options.args ?? [])], env });
+  const app = reduceMotion(await electron.launch({ args: [APP_DIR, ...(options.args ?? [])], env }));
   return { app, userData, server: `http://127.0.0.1:${port}` };
 }
 
@@ -134,11 +135,13 @@ test("Desktop: the app runs the server it ships, with its data in userData", asy
 });
 
 // Signs up on a fresh install and opens "Sobre esta versão" from the user menu, and checks it shows the app's own
-// version and the first heading of that version's notes in Portuguese, which came with the web build.
+// version and the first heading of that version's notes in Portuguese, which came with the web build. The window
+// reports reduced motion, as every smoke test starts the app, so the menu and the dialog open at once.
 test("Desktop: Sobre esta versão shows the app's version and its notes", async () => {
   const { app } = await launch();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
+  await expect.poll(() => page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
   await keepRecoveryKey(page);
   await startFromScratch(page);
   await signUp(page);

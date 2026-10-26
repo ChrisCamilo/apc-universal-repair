@@ -6,6 +6,7 @@ import { _electron as electron, expect, test } from "@playwright/test";
 import type { Item } from "@apc/shared/items";
 import { NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { TEST_USERS } from "@apc/shared/test-users";
+import { reduceMotion } from "./reducedMotion.ts";
 import { startStubApi } from "./stubApi.ts";
 import { testItem } from "@apc/shared/test-items";
 
@@ -54,7 +55,7 @@ test("Desktop: in a window on a 1360×768 notebook only the Inventory's table sc
   const env: Record<string, string> = { ...(process.env as Record<string, string>), APC_API_URL: api.url, APC_USER_DATA: mkdtempSync(path.join(tmpdir(), "apc-desktop-")) };
   // With it set, Electron runs as plain Node instead of opening the app.
   delete env.ELECTRON_RUN_AS_NODE;
-  const app = await electron.launch({ args: [APP_DIR], env });
+  const app = reduceMotion(await electron.launch({ args: [APP_DIR], env }));
   try {
     const page = await app.firstWindow();
     await page.getByLabel("Usuário", { exact: true }).fill(TEST_USERS[0].username);

@@ -6,6 +6,7 @@ import { _electron as electron, expect, test, type ElectronApplication } from "@
 import { TEST_USERS } from "@apc/shared/test-users";
 import { INSTALLER_CHOICE_FILE } from "../src/database.ts";
 import { MIN_WINDOW_SIZE, openingContentSize } from "../src/window.ts";
+import { reduceMotion } from "./reducedMotion.ts";
 import { startStubApi } from "./stubApi.ts";
 
 // The desktop app's smoke test: the compiled main process (dist/main.js) with the web build, pointed at a stand-in
@@ -26,7 +27,7 @@ async function launch(userData: string): Promise<ElectronApplication> {
   const env: Record<string, string> = { ...(process.env as Record<string, string>), APC_API_URL: api.url, APC_USER_DATA: userData };
   // With it set, Electron runs as plain Node instead of opening the app.
   delete env.ELECTRON_RUN_AS_NODE;
-  return electron.launch({ args: [APP_DIR], env });
+  return reduceMotion(await electron.launch({ args: [APP_DIR], env }));
 }
 
 test.beforeAll(async () => {
