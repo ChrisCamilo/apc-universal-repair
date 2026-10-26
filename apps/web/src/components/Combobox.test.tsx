@@ -5,6 +5,7 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
+import { expectOverlayAtOnce, expectOverlayMotion } from '../test-motion.ts'
 import { themeCss } from '../theme.ts'
 import { Combobox } from './Combobox.tsx'
 import { Dialog } from './Dialog.tsx'
@@ -140,6 +141,20 @@ test('Web: the chevron opens the full list, five options at a time', async () =>
 
   await userEvent.keyboard('{ArrowUp}')
   await expect.poll(() => list.scrollTop).toBeGreaterThan(0)
+})
+
+// Opens and closes the list with motion on, and checks it slides and fades in under the field, in the motion token,
+// and back out while it leaves, inert, until its transitions end; with reduced motion, at once.
+test('Web: the list slides in and out, at once with reduced motion', async () => {
+  const screen = await render(<Category initial="" />)
+  const overlay = {
+    open: () => screen.getByRole('button', { name: 'Mostrar categorias' }).click(),
+    close: () => userEvent.keyboard('{Escape}'),
+    find: () => screen.getByTestId('common.combobox.list').element(),
+    gone: () => !document.querySelector('[role="listbox"]'),
+  }
+  await expectOverlayMotion({ ...overlay, move: 'translate' })
+  await expectOverlayAtOnce(overlay)
 })
 
 // Checks the error is read out with the field and marks it invalid, and that an empty list says so.

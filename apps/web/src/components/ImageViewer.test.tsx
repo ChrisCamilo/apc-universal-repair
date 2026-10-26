@@ -6,6 +6,7 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
+import { expectOverlayAtOnce, expectOverlayMotion } from '../test-motion.ts'
 import { themeCss } from '../theme.ts'
 import type { UploadPhoto } from './ImageUpload.tsx'
 import { ImageViewer } from './ImageViewer.tsx'
@@ -123,6 +124,22 @@ test('Web: the ×, Escape and a click outside close the viewer', async () => {
   // A click on the content doesn't close it.
   await screen.getByRole('heading', { name: NAME }).click()
   expect(onClose).toHaveBeenCalledTimes(3)
+})
+
+// Opens and closes the viewer with motion on, and checks it grows and fades in with its backdrop, as a dialog does,
+// and goes back the same way, its photos kept while it leaves, inert, until its transitions end; with reduced motion,
+// at once.
+test('Web: the viewer grows and fades in and out, at once with reduced motion', async () => {
+  // Each opening is a new viewer, open from the start; the one under test is the last on the page.
+  const viewer = () => [...document.querySelectorAll('[data-testid="common.image-viewer"]')].at(-1)!
+  const overlay = {
+    open: () => render(<Sample initial={PHOTOS} />),
+    close: () => userEvent.keyboard('{Escape}'),
+    find: viewer,
+    gone: () => !viewer().querySelector('[data-testid="common.image-viewer.body"]'),
+  }
+  await expectOverlayMotion({ ...overlay, move: 'scale', backdrop: true })
+  await expectOverlayAtOnce(overlay)
 })
 
 // Asks to remove the cover and checks the confirmation names the item and warns about the cover; Cancel

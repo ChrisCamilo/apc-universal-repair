@@ -5,6 +5,7 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
+import { expectOverlayAtOnce, expectOverlayMotion } from '../test-motion.ts'
 import { themeCss } from '../theme.ts'
 import { ClearFilters, FilterMenu } from './FilterMenu.tsx'
 
@@ -96,6 +97,25 @@ test('Web: Escape and a click outside close the panel without applying', async (
   await screen.getByText('Fora do menu').click()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
   expect(onApply).not.toHaveBeenCalled()
+})
+
+// Opens and closes the panel with motion on, and checks it slides and fades in from the button, in the motion token,
+// and back out while it leaves, inert, until its transitions end; with reduced motion, at once. The focus goes back to
+// the button as soon as Escape closes it, either way.
+test('Web: the filter panel slides in and out, at once with reduced motion', async () => {
+  const screen = await render(<Menu initial={NO_FILTERS} onApplied={() => {}} />)
+  const button = screen.getByRole('button', { name: 'Filtros' })
+  const overlay = {
+    open: () => button.click(),
+    close: async () => {
+      await userEvent.keyboard('{Escape}')
+      await expect.element(button).toHaveFocus()
+    },
+    find: () => screen.getByRole('dialog').element(),
+    gone: () => !document.querySelector('[role="dialog"]'),
+  }
+  await expectOverlayMotion({ ...overlay, move: 'translate' })
+  await expectOverlayAtOnce(overlay)
 })
 
 // Opens a Select inside the panel and presses Escape: only the list closes, and the panel stays open.

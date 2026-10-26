@@ -5,6 +5,7 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
+import { expectOverlayAtOnce, expectOverlayMotion } from '../test-motion.ts'
 import { themeCss } from '../theme.ts'
 import { Button } from './Button.tsx'
 import { Dialog } from './Dialog.tsx'
@@ -110,6 +111,25 @@ test('Web: Cancel closes the dialog', async () => {
   const screen = await render(<Opener initiallyOpen />)
   await screen.getByRole('button', { name: 'Cancelar' }).click()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+})
+
+// Opens and closes a dialog with motion on, and checks it grows and fades in, with its backdrop, in the motion token,
+// and goes back the same way, its content kept while it leaves, inert, until its transitions end; with reduced motion,
+// at once. The focus goes back to the button that opened it as soon as it closes, either way.
+test('Web: a dialog grows and fades in and out, at once with reduced motion', async () => {
+  const screen = await render(<Opener />)
+  const opener = screen.getByRole('button', { name: 'Excluir item' })
+  const overlay = {
+    open: () => opener.click(),
+    close: async () => {
+      await screen.getByRole('button', { name: 'Cancelar' }).click()
+      await expect.element(opener).toHaveFocus()
+    },
+    find: () => document.querySelector('dialog')!,
+    gone: () => !document.querySelector('[data-testid="common.dialog.layout"]'),
+  }
+  await expectOverlayMotion({ ...overlay, move: 'scale', backdrop: true })
+  await expectOverlayAtOnce(overlay)
 })
 
 // Opens a closable form and checks the × sits at the top right, beside the title, while the focus starts on the
