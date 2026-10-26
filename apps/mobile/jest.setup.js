@@ -36,3 +36,8 @@ jest.mock('@react-native-documents/picker', () => ({
 // Requests carry React Native's FormData, which takes a file by where it is on the phone, as the app does; Node's
 // own FormData would turn it into text.
 global.FormData = jest.requireActual('react-native/Libraries/Network/FormData').default;
+
+// Every test starts with the phone's reduced motion on, so dialogs, menus and lists open and close at once and a test
+// reads the screen as it ends up. A plain function, not a mock, so a test that spies on it to turn motion on gets this
+// back when it restores the spy.
+require('react-native').AccessibilityInfo.isReduceMotionEnabled = () => Promise.resolve(true);
