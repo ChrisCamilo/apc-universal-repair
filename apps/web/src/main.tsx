@@ -6,18 +6,16 @@ import { ToastProvider } from './components/Toast.tsx'
 import { ThemeProvider } from './ThemeProvider.tsx'
 import App from './App.tsx'
 
-// The demo's build (VITE_DEMO) answers /api in the browser, with no server (see src/demo); the app's own build leaves
-// it out, which its build script checks.
-if (import.meta.env.VITE_DEMO) {
-  const { installDemoApi } = await import('./demo/installDemoApi.ts')
-  installDemoApi()
-}
+// The demo's build (VITE_DEMO) answers /api in the browser, with no server, logs its user in and shows its notice (see
+// src/demo/startDemo.ts); the app's own build leaves it out, which its build script checks.
+const demo = import.meta.env.VITE_DEMO ? await (await import('./demo/startDemo.ts')).startDemo() : undefined
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <ToastProvider>
-        <App />
+        {demo && <demo.Notice />}
+        <App login={demo?.login} />
       </ToastProvider>
     </ThemeProvider>
   </StrictMode>,

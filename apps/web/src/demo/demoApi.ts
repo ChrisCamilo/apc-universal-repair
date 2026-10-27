@@ -174,7 +174,7 @@ function conflict(message: string, reason: { itemCount?: number; entryId?: strin
  */
 export function createDemoApi(): { handle: (request: Request) => Promise<Response> } {
   const db: Db = { users: [], sessions: new Map(), categories: [], partBrands: [], vehicleBrands: [], vehicleModels: [], items: [], files: new Map() }
-  db.users.push({ id: crypto.randomUUID(), ...DEMO_USER, inventoryTutorialSeen: true })
+  db.users.push({ id: crypto.randomUUID(), ...DEMO_USER, inventoryTutorialSeen: false })
   const start = Date.now() - DEMO_ITEMS.length * DAY_MS
   DEMO_ITEMS.forEach((input, index) => createItem(db, input, new Date(start + index * DAY_MS).toISOString()))
   addSamplePhotos(db)
