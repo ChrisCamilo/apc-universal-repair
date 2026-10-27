@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import sharp from "sharp";
-import type { Item } from "@apc/shared/items";
+import { itemMatchesQuery } from "@apc/shared/item-filters";
+import { itemListQuerySchema, type Item } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
@@ -174,6 +175,58 @@ test("API: items are filtered by stock and any brand, and sorted by their lowest
   assert.deepEqual(cheapFirst.items.map((found: Item) => found.brands[0].code), [`BP-2-${RUN}`, `BP-1-${RUN}`]);
   const dearFirst = (await call("GET", `/items?${run}&sort=price&order=desc&page=1&pageSize=25`)).json();
   assert.deepEqual(dearFirst.items.map((found: Item) => found.brands[0].code), [`BP-1-${RUN}`, `BP-2-${RUN}`]);
+});
+
+// Adds items of every kind the filters tell apart, then asks the API for the same queries the shared matcher reads in
+// memory, for the web app's demo, and checks both choose the same items, of the run's and the seed's: the search, each
+// filter, "Ambos" and the stock status. The demo answers the list with the matcher, so it keeps choosing as the API.
+test("API: the shared item matcher chooses the items the API's list does", async () => {
+  const added = [
+    item([brand("MQ-1", "Cobreq", { quantity: 0, color: "Preto", location: "A-2" })], { name: `Lona de freio ${RUN}`, position: "T", side: "LE" }),
+    item([brand("MQ-2", "Mann", { quantity: 9, location: "B-1" })], {
+      name: `Filtro de óleo ${RUN}`,
+      category: `Motor ${RUN}`,
+      position: "N/A",
+      side: "N/A",
+      originalCodes: [`OEM 77-${RUN}`],
+      vehicles: [{ vehicleBrand: `Gurgel ${RUN}` }, { vehicleBrand: `Lafer ${RUN}`, vehicleModel: `LL ${RUN}` }],
+    }),
+    item([brand("MQ-3", "Cofap", { quantity: 1 }), brand("MQ-4", "Mann", { quantity: 1, color: "Azul" })], {
+      name: `Amortecedor ${RUN}`,
+      category: `Suspensão ${RUN}`,
+      position: "Ambos",
+      minQuantity: 5,
+    }),
+  ];
+  for (const each of added) {
+    assert.equal((await call("POST", "/items", each)).statusCode, 201);
+  }
+  const all = (await call("GET", "/items")).json().items as Item[];
+  const queries: Record<string, string | string[]>[] = [
+    { q: RUN },
+    { q: `mq3${RUN}` },
+    { q: `oem77${RUN}` },
+    { q: `oleo ${RUN}` },
+    { category: [`Freios ${RUN}`, `Motor ${RUN}`] },
+    { partBrand: `Mann ${RUN}` },
+    { vehicleBrand: `Lafer ${RUN}` },
+    { vehicleModel: [`Lafer ${RUN}|LL ${RUN}`, `Gurgel ${RUN}|Xavante ${RUN}`] },
+    { position: "D" },
+    { position: "T", q: RUN },
+    { side: ["LD"] },
+    { side: "N/A" },
+    { color: "Azul" },
+    { location: ["A-2", "B-1"] },
+    { status: "low" },
+    { status: "out" },
+    { q: RUN, status: "low", partBrand: `Cofap ${RUN}` },
+  ];
+  for (const query of queries) {
+    const search = new URLSearchParams(Object.entries(query).flatMap(([key, values]) => [values].flat().map((value): [string, string] => [key, value])));
+    const fromApi = ((await call("GET", `/items?${search}`)).json().items as Item[]).map((found) => found.id).sort();
+    const fromMatcher = all.filter((each) => itemMatchesQuery(each, itemListQuerySchema.parse(query))).map((found) => found.id).sort();
+    assert.deepEqual(fromMatcher, fromApi, JSON.stringify(query));
+  }
 });
 
 // Edits an item's vehicle, adding a model to the list, gives its second brand a photo, then sends its brands
