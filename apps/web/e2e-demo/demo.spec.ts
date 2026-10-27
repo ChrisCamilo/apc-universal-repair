@@ -35,14 +35,19 @@ test("Web: the demo opens logged in on the Inventory with the notice", async ({ 
   expect(scrollHeight).toBe(page.viewportSize()!.height);
 });
 
-// Searches the sample stock, then creates an item, edits its quantity and deletes it, all answered by the demo's own
-// API in the browser.
-test("Web: the demo finds, creates, edits and deletes items", async ({ page }) => {
+// Searches the sample stock and filters it to the parts out of stock, then creates an item, edits its quantity and
+// deletes it, all answered by the demo's own API in the browser.
+test("Web: the demo finds, filters, creates, edits and deletes items", async ({ page }) => {
   await openDemo(page);
   await page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" }).fill("bpr6es");
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await expect(page.locator("tbody tr")).toContainText("Vela de ignição");
   await page.getByRole("button", { name: "Limpar busca" }).click();
+  await page.getByRole("button", { name: "Esgotado" }).click();
+  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("4 de 30 itens · 5 baixos · 4 esgotados");
+  await expect(page.locator("tbody tr")).toHaveCount(4);
+  await page.getByRole("button", { name: "Esgotado" }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(25);
 
   await page.getByRole("button", { name: "Novo item" }).click();
   const dialog = page.getByRole("dialog", { name: "Novo item" });
