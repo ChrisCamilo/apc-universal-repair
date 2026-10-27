@@ -1,9 +1,15 @@
 import type { ItemBrandCreate, ItemCreate, ItemVehicleCreate } from '@apc/shared/items'
+import shockAbsorber from './photos/amortecedor.svg'
+import timingBelt from './photos/correia-dentada.svg'
+import brakeDisc from './photos/disco-de-freio.svg'
+import oilFilter from './photos/filtro-de-oleo.svg'
+import sparkPlug from './photos/vela-de-ignicao.svg'
 
 // The web app's demo starts from these, all of them made up: one user, already through the Inventory's tutorial, and
 // the stock of a small workshop of Brazilian cars of the 80s and 90s, a few parts low or out of stock, some with more
 // than one brand or the maker's original codes. They go through the demo's own create (see demoApi.ts), so they follow
 // the API's rules; each is a day older than the one after it, so the list's newest-first order is the same every time.
+// A few carry a drawing of the part, made for the demo (photos/), as the photo of their first brand.
 
 /** The stock, oldest first. */
 export const DEMO_ITEMS: ItemCreate[] = [
@@ -39,6 +45,14 @@ export const DEMO_ITEMS: ItemCreate[] = [
   part('Junta homocinética', 'Transmissão', [car('Ford', 'Escort')], [brand('Albarus', 'JH-1260', 2, 21900, 'E-3')], { position: 'D', side: 'Ambos', minQuantity: 1 }),
 ]
 
+/** The drawings of the parts that have one, by the part's name. */
+export const DEMO_PHOTOS: Record<string, string> = {
+  'Amortecedor dianteiro': shockAbsorber,
+  'Correia dentada': timingBelt,
+  'Disco de freio ventilado': brakeDisc,
+  'Filtro de óleo': oilFilter,
+  'Vela de ignição': sparkPlug,
+}
 /** The demo's user, whom the demo logs in as; signing up adds others, in memory. */
 export const DEMO_USER = { username: 'oficina', displayName: 'Oficina Demonstração', password: 'demo1234' }
 
