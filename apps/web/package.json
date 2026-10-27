@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node --experimental-strip-types scripts/check-no-demo.mjs",
     "lint": "oxlint && pnpm run lint:styles",
     "lint:styles": "node --experimental-strip-types ../../packages/shared/src/styles/checkStyles.ts web src",
     "preview": "vite preview",
