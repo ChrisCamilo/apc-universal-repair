@@ -1,0 +1,44 @@
+<!doctype html>
+<!--
+  The page GitHub Pages serves for any path of the site it has no file for. Pages serves files only, so a reload or a
+  link to one of the web app's demo's routes, e.g. /apc-universal-repair/demo/inventory, lands here: the script sends
+  it to the demo's page with the route in "?route=", which the demo puts back in the address before it starts
+  (apps/web/src/demo/startDemo.ts, ROUTE_PARAM). Any other path shows that the page doesn't exist, with the way home.
+-->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Página não encontrada · APC Universal Repair</title>
+    <script>
+      var demo = '/apc-universal-repair/demo/'
+      if (location.pathname.indexOf(demo) === 0) {
+        location.replace(demo + '?route=' + encodeURIComponent(location.pathname.slice(demo.length) + location.search) + location.hash)
+      }
+    </script>
+    <style>
+      /* The root page's colors (index.html), with its fonts when the browser has them already. */
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        background: #0b0c0e;
+        color: #e8e6e1;
+        font: 400 1rem/1.6 'Barlow', system-ui, sans-serif;
+        text-align: center;
+        color-scheme: dark;
+      }
+      a {
+        color: #ffa31a;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>Esta página não existe. · This page doesn't exist.</p>
+      <p><a href="/apc-universal-repair/">APC Universal Repair</a></p>
+    </main>
+  </body>
+</html>
