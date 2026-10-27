@@ -6,13 +6,14 @@ import {
   itemFilterOptions,
   itemFilterRows,
   itemListQuery,
+  itemMatchesQuery,
   POSITION_FILTERS,
   SIDE_FILTERS,
   splitVehicleModel,
   vehicleModelLabel,
   vehicleModelValue,
 } from "./itemFilters.ts";
-import type { Item } from "./items.ts";
+import { itemListQuerySchema, type Item } from "./items.ts";
 import { testItem, type FlatItem } from "./testItems.ts";
 
 const ITEMS = [
@@ -163,4 +164,53 @@ test("Shared: the filters follow an entry renamed or merged", () => {
     vehicleModelValue("Chevrolet", "Opala"),
   ]);
   assert.deepEqual(followEntryChange(filters, { kind: "partBrands", from: "Mann", to: "Mann-Filter" }), filters);
+});
+
+// Reads list queries on a few items as the API's GET /items would choose them: the search by name or any code, each
+// filter by any of its values, "Ambos" fitting a specific position or side, vehicles and brands by any of theirs, a
+// model with its brand, and the stock status.
+test("Shared: an item matches a list query as the API chooses it", () => {
+  const pads = testItem({
+    name: "Pastilha de freio",
+    category: "Freios",
+    position: "D",
+    side: "Ambos",
+    minQuantity: 4,
+    originalCodes: ["5U0 698 151"],
+    vehicles: [
+      { vehicleBrand: "Volkswagen", vehicleModel: "Gol" },
+      { vehicleBrand: "Chevrolet", vehicleModel: null },
+    ],
+    brands: [
+      { id: "00000000-0000-4000-b000-000000000001", partBrand: "Cobreq", code: "N-1210", color: "N/A", location: "A-2", quantity: 3, unitPriceCents: 8990, photos: [] },
+      { id: "00000000-0000-4000-b000-000000000002", partBrand: "Fras-le", code: "PD/1210", color: "Preto", location: null, quantity: 0, unitPriceCents: 9990, photos: [] },
+    ],
+  });
+  const empty = testItem({ name: "Bomba d'água", category: "Arrefecimento", position: "Ambos", quantity: 0, minQuantity: 2 });
+  const match = (item: Item, query: Record<string, unknown>) => itemMatchesQuery(item, itemListQuerySchema.parse(query));
+  assert.equal(match(pads, {}), true);
+  assert.equal(match(pads, { q: "pastilha" }), true);
+  assert.equal(match(empty, { q: "agua" }), true);
+  assert.equal(match(pads, { q: "pd1210" }), true);
+  assert.equal(match(pads, { q: "5u0698" }), true);
+  assert.equal(match(pads, { q: "vela" }), false);
+  assert.equal(match(pads, { category: ["Motor", "Freios"] }), true);
+  assert.equal(match(pads, { category: "freios" }), false);
+  assert.equal(match(pads, { partBrand: "Fras-le" }), true);
+  assert.equal(match(pads, { vehicleBrand: "Chevrolet" }), true);
+  assert.equal(match(pads, { vehicleModel: vehicleModelValue("Volkswagen", "Gol") }), true);
+  assert.equal(match(pads, { vehicleModel: vehicleModelValue("Fiat", "Gol") }), false);
+  assert.equal(match(pads, { color: "Preto" }), true);
+  assert.equal(match(pads, { location: "A-2" }), true);
+  assert.equal(match(pads, { location: "B-1" }), false);
+  assert.equal(match(pads, { position: "D" }), true);
+  assert.equal(match(empty, { position: "T" }), true);
+  assert.equal(match(empty, { position: "N/A" }), false);
+  assert.equal(match(pads, { side: "LE" }), true);
+  assert.equal(match(pads, { side: "N/A" }), false);
+  assert.equal(match(pads, { status: "low" }), true);
+  assert.equal(match(pads, { status: "out" }), false);
+  assert.equal(match(empty, { status: "out" }), true);
+  assert.equal(match(empty, { status: "low" }), false);
+  assert.equal(match(pads, { category: "Freios", partBrand: "Bosch" }), false);
 });

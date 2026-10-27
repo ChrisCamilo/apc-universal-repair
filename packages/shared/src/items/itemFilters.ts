@@ -9,13 +9,25 @@ import {
   type VehicleModel,
 } from "../lists/lists.ts";
 import { distinct } from "./itemForm.ts";
-import { NOT_APPLICABLE, optionKey, POSITION_NAMES, SIDE_NAMES, type Item, type ItemStatus } from "./items.ts";
+import {
+  includeBoth,
+  matchesSearch,
+  NOT_APPLICABLE,
+  optionKey,
+  POSITION_NAMES,
+  SIDE_NAMES,
+  type Item,
+  type ItemListQuery,
+  type ItemStatus,
+} from "./items.ts";
 
 // The inventory filters shared by web and mobile: the filters of the Filtros menu and the options each one offers,
 // taken from the items in stock, and the list query that sends them, with the stock status, to the API. The
 // vehicle model keeps its brand in the value, since two brands may share a model name; with vehicle brands chosen,
 // it offers only their models. An entry of the item lists also leads to the filters that show the items using it, and
-// the filters follow an entry renamed or merged, so they keep showing its items.
+// the filters follow an entry renamed or merged, so they keep showing its items. itemMatchesQuery reads a list query
+// on an item in memory with the rules the API's query applies in the database (itemWhere), for the web app's demo,
+// which has no server.
 
 /** Every filter of the Filtros menu, none chosen. */
 export const EMPTY_ITEM_FILTERS: ItemFilters = {
@@ -191,6 +203,39 @@ export function itemListQuery(
     query.set("order", list.sort.dir);
   }
   return query.toString();
+}
+
+/**
+ * Tells whether an item matches a list query, as the API's GET /items chooses its items (itemWhere in apps/api): the
+ * search by name or any code (matchesSearch); each filter by any of its values, with "Ambos" fitting a specific
+ * position or side; a vehicle brand or model when any of the item's vehicles has it; a part brand, color or location
+ * when any of its brands has it; and the status, out at zero or low from one up to the item's minimum.
+ * @param item The item.
+ * @param query The list query, as itemListQuerySchema reads it.
+ * @returns True when the item is one GET /items sends for the query.
+ */
+export function itemMatchesQuery(item: Item, query: ItemListQuery): boolean {
+  /** Whether a filter is off, or one of the values it chose is among the item's. */
+  const any = (chosen: readonly string[], values: readonly (string | null)[]) =>
+    chosen.length === 0 || values.some((value) => value !== null && chosen.includes(value));
+  const models = query.vehicleModel.flatMap((value) => splitVehicleModel(value) ?? []);
+  const status =
+    query.status === "out" ? item.quantity === 0 : query.status === "low" ? item.quantity > 0 && item.quantity <= item.minQuantity : true;
+  return (
+    (!query.q || matchesSearch(item, query.q)) &&
+    any(query.category, [item.category]) &&
+    any(query.vehicleBrand, item.vehicles.map((vehicle) => vehicle.vehicleBrand)) &&
+    any(query.partBrand, item.brands.map((brand) => brand.partBrand)) &&
+    (query.position.length === 0 || includeBoth(query.position, ["D", "T"]).includes(item.position)) &&
+    (query.side.length === 0 || includeBoth(query.side, ["LD", "LE"]).includes(item.side)) &&
+    any(query.color, item.brands.map((brand) => brand.color)) &&
+    any(query.location, item.brands.map((brand) => brand.location)) &&
+    (models.length === 0 ||
+      item.vehicles.some((vehicle) =>
+        models.some((pair) => pair.vehicleBrand === vehicle.vehicleBrand && pair.vehicleModel === vehicle.vehicleModel),
+      )) &&
+    status
+  );
 }
 
 /**
