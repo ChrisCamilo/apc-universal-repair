@@ -1,0 +1,83 @@
+name: Pages
+
+# The project's GitHub Pages site, https://chriscamilo.github.io/apc-universal-repair/ (Settings → Pages takes its
+# source from GitHub Actions). The root page is docs/site/index.html, with the banner and the fonts it uses beside it;
+# the web app's Storybook, with sample data only, is in storybook/.
+# - Pushes to main that change what the site shows, and runs by hand: build the site and publish it.
+# - Pull requests that change it: only build it, so a broken build shows there. A failed build never replaces the site
+#   already up.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/shared/**"
+      - "docs/site/**"
+      - "docs/banner/**"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/shared/**"
+      - "docs/site/**"
+      - "docs/banner/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer one waits for the one in progress to end, as GitHub advises for Pages.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Placeholder: only needed for `prisma generate` to resolve its config while installing, no database is used.
+      DATABASE_URL: "postgresql://user:password@localhost:5432/apc_universal_repair"
+      # The desktop app's Electron binary is only needed by the Desktop workflow, on Windows.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the Storybook
+        run: pnpm --filter @apc/web exec storybook build --quiet --output-dir ../../site/storybook
+
+      # The root page loads nothing from outside the site: its banner and the two faces it uses come along.
+      - name: Add the root page
+        run: |
+          cp docs/site/index.html docs/banner/banner.jpg site/
+          mkdir site/fonts
+          cp apps/web/node_modules/@fontsource/barlow/files/barlow-latin-{400,600}-normal.woff2 site/fonts/
+          cp apps/web/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-{600,700}-normal.woff2 site/fonts/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

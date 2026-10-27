@@ -12,6 +12,8 @@
 
 It also includes a **parts inventory**, so a workshop can keep track of the parts it has in stock and find, from a part's code, which vehicles it fits.
 
+🌐 **Try it in the browser:** the [design system and screens](https://chriscamilo.github.io/apc-universal-repair/storybook/?path=/story/screens--dashboard&panel=false), with sample data, are published on [GitHub Pages](https://chriscamilo.github.io/apc-universal-repair/): the Inventory and the Catalog, in the 4 styles, day and night (the toolbar at the top switches them). It is the Storybook, not the app with a server, so creating or saving an item does nothing there.
+
 ### Features
 
 **MVP ✅ (done, on web and mobile)**
@@ -124,7 +126,7 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm test:e2e` | Runs the web E2E tests at 1280×720 and 360×780 (starts the API and the web app) |
 | `pnpm --filter @apc/api start` | Starts the built API with Node (run `pnpm build` first) |
 | `pnpm --filter @apc/web test:e2e:ui` | Opens the Playwright UI to run and debug the tests |
-| `pnpm --filter @apc/web storybook` | Opens Storybook on :6006, with the design system foundations, components and screen mockups |
+| `pnpm --filter @apc/web storybook` | Opens Storybook on :6006, with the design system foundations, components and screen mockups. Every merge that changes the web app or the shared package publishes it on GitHub Pages, in `/storybook/` (`.github/workflows/pages.yml`) |
 | `pnpm --filter @apc/mobile start` | Starts the React Native bundler |
 | `pnpm --filter @apc/mobile android` | Runs the mobile app on Android |
 | `pnpm --filter @apc/api photos:compress` | Reduces the photos stored before photos were reduced on saving (run once; safe to run again) |
@@ -210,6 +212,8 @@ Help mechanics, enthusiasts, and vehicle owners preserve correct maintenance pra
 O **APC Universal Repair** é um catálogo de veículos separados por marca, onde você pode visualizar o modelo 3D de cada veículo e saber como cada parte foi originalmente colocada. A ideia é preservar as boas práticas de manutenção, oferecendo acesso à ficha técnica do veículo — medidas de parafusos, torque, código original da peça, possíveis diagnósticos e valores de referência, quando possível.
 
 Ele também inclui um **estoque de peças**, para a oficina controlar as peças que tem e descobrir, pelo código de uma peça, em quais veículos ela serve.
+
+🌐 **Experimente no navegador:** o [design system e as telas](https://chriscamilo.github.io/apc-universal-repair/storybook/?path=/story/screens--dashboard&panel=false), com dados de exemplo, estão publicados no [GitHub Pages](https://chriscamilo.github.io/apc-universal-repair/): o Estoque e o Catálogo, nos 4 estilos, de dia e de noite (a barra do topo troca). É o Storybook, não o app com servidor, então cadastrar ou salvar um item não faz nada lá.
 
 ### Funcionalidades
 
@@ -323,7 +327,7 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm test:e2e` | Roda os testes E2E da web em 1280×720 e 360×780 (sobe a API e o app web) |
 | `pnpm --filter @apc/api start` | Sobe a API compilada com o Node (rode `pnpm build` antes) |
 | `pnpm --filter @apc/web test:e2e:ui` | Abre a interface do Playwright para rodar e depurar os testes |
-| `pnpm --filter @apc/web storybook` | Abre o Storybook na porta 6006, com as bases, os componentes e os mockups de tela do design system |
+| `pnpm --filter @apc/web storybook` | Abre o Storybook na porta 6006, com as bases, os componentes e os mockups de tela do design system. Todo merge que muda o app web ou o pacote compartilhado o publica no GitHub Pages, em `/storybook/` (`.github/workflows/pages.yml`) |
 | `pnpm --filter @apc/mobile start` | Inicia o bundler do React Native |
 | `pnpm --filter @apc/mobile android` | Roda o app no Android |
 | `pnpm --filter @apc/api photos:compress` | Reduz as fotos guardadas antes de as fotos serem reduzidas ao salvar (rode uma vez; pode rodar de novo) |
