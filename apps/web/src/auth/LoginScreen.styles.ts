@@ -1,7 +1,8 @@
 import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the login and sign-up screens: the badge on a panel beside the form, or above it, smaller, on phones
-// and narrow screens, all centered on the page. The layout only places the badge and the form, so it adds no level to
+// and narrow screens, all centered on the window, less the room the page keeps above the app (--top-inset, the web
+// app's demo's notice). The layout only places the badge and the form, so it adds no level to
 // their ids, which are the same as on mobile.
 
 /** Each part's path in an auth screen. */
@@ -16,7 +17,7 @@ export const AUTH_SCREEN_PATHS = {
 }
 /** The parts of an auth screen: the page, the badge's panel and heading, and the form with its actions. */
 export const AUTH_SCREEN_SLOTS = {
-  base: 'grid min-h-dvh place-items-center px-4 py-8 sm:px-6',
+  base: 'grid min-h-[calc(100dvh-var(--top-inset,0px))] place-items-center px-4 py-8 sm:px-6',
   layout: 'grid w-full max-w-4xl items-center gap-6 md:grid-cols-2 md:gap-12',
   brand: 'grid place-items-center py-6 md:py-12',
   title: 'm-0 flex',

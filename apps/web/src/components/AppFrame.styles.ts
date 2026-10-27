@@ -1,6 +1,7 @@
 import { recipe, tv } from '../styles/tv.ts'
 
-// The look of the app's frame: exactly the window's height, so the page itself never scrolls; a header on the canvas
+// The look of the app's frame: exactly the window's height, less the room the page keeps above the app (--top-inset,
+// the web app's demo's notice), so the page itself never scrolls; a header on the canvas
 // with the APC mark, the navigation and the end slot over one soft hairline that the selected tab's underline sits on,
 // always in view; and the content under it, filling the rest as a column its screen can stretch into. Only what the
 // screen puts in it scrolls (the Inventory's list, or the content itself when a screen is taller than the room left).
@@ -13,7 +14,7 @@ export const appFrame = recipe(
   'common.app-frame',
   tv({
     slots: {
-      base: 'flex h-dvh flex-col overflow-hidden bg-canvas',
+      base: 'flex h-[calc(100dvh-var(--top-inset,0px))] flex-col overflow-hidden bg-canvas',
       header: 'z-40 shrink-0 bg-canvas px-4 pt-3 sm:px-6',
       bar: 'flex flex-wrap items-end gap-x-5 gap-y-3 border-b border-hairline-soft',
       brand: 'm-0 flex pb-2.5',

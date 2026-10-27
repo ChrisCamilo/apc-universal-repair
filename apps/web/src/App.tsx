@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
-import { LOGIN_MESSAGES } from '@apc/shared/auth'
+import { LOGIN_MESSAGES, type Credentials } from '@apc/shared/auth'
 import { auth } from './auth/auth.ts'
 import { LoginScreen } from './auth/LoginScreen.tsx'
 import { RegisterScreen } from './auth/RegisterScreen.tsx'
@@ -22,15 +22,16 @@ import { NotificationsMenu } from './notifications/NotificationsMenu.tsx'
 // there. Only a logged user reaches the Dashboard: anyone else goes to /login and, once logged in or signed up, back
 // to where they were going. In the desktop app, the notice that a new version is ready and the Servidor dialog show
 // over any of them, and when its server isn't on, the screen that says why covers them all; the first start's offer
-// to import an old server shows over the login and the sign-up only.
+// to import an old server shows over the login and the sign-up only. The routes live under the build's base: "/"
+// for the app, "/apc-universal-repair/demo/" for the web app's demo on GitHub Pages, whose user the login fills in.
 
-export default function App() {
+export default function App({ login }: { login?: Credentials }) {
   return (
     <ServerSettingsProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
         <SessionProvider auth={auth}>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPage login={login} />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route
               path="/"
@@ -62,8 +63,8 @@ export default function App() {
 
 // The login, or straight on to the Dashboard when someone is already logged in. A login goes on to the route
 // that sent the user here, or to the Dashboard. After the API refused the session, it says the session expired. In the
-// desktop app it also opens the Servidor dialog.
-function LoginPage() {
+// desktop app it also opens the Servidor dialog. The demo fills in its user.
+function LoginPage({ login }: { login?: Credentials }) {
   useEntryScreen()
   const { user, expired, setUser } = useSession()
   const openServerSettings = useOpenServerSettings()
@@ -85,6 +86,7 @@ function LoginPage() {
       }}
       onRegister={() => navigate('/register', { state: { from } })}
       onServerSettings={desktopBridge()?.server ? openServerSettings : undefined}
+      initialCredentials={login}
     />
   )
 }
