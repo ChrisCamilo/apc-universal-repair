@@ -10,6 +10,11 @@ import { themeCss } from '../theme.ts'
 import { ImageUpload, type UploadPhoto } from './ImageUpload.tsx'
 
 const MB = 1024 * 1024
+/**
+ * How long a test waits for a large photo to be reduced, in ms: the browser draws and encodes it, which takes more
+ * than a second while the whole suite runs at once.
+ */
+const REDUCE_TIMEOUT_MS = 15_000
 const SAVED: UploadPhoto[] = ['a', 'b', 'c'].map((name) => ({ url: `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" id="${name}"/>` }))
 const root = document.documentElement
 
@@ -103,15 +108,16 @@ test('Web: choosing files keeps the good ones and names each one left out', asyn
 })
 
 // Chooses a photo over 3 MB and larger than PHOTO_MAX_DIMENSION, and checks it is taken, reduced before it is sent:
-// a WebP named after it, fitted in PHOTO_MAX_DIMENSION in proportion, and under 3 MB.
-test('Web: a large photo is reduced before it is sent, and taken once under 3 MB', async () => {
+// a WebP named after it, fitted in PHOTO_MAX_DIMENSION in proportion, and under 3 MB. The reduction is real work for
+// the browser, so the test waits for it as long as REDUCE_TIMEOUT_MS.
+test('Web: a large photo is reduced before it is sent, and taken once under 3 MB', { timeout: 2 * REDUCE_TIMEOUT_MS }, async () => {
   const large = await grainyPng('motor.png', 2400, 1800)
   expect(large.size).toBeGreaterThan(PHOTO_MAX_BYTES)
   const onPhotosChange = vi.fn()
   const screen = await render(<ImageUpload label="Fotos do item" photos={[]} onPhotosChange={onPhotosChange} limit={ITEM_PHOTO_LIMIT} />)
   await userEvent.upload(screen.getByLabelText(/Arraste até 3 fotos/), [large])
 
-  await expect.poll(() => onPhotosChange.mock.calls.length).toBe(1)
+  await expect.poll(() => onPhotosChange.mock.calls.length, { timeout: REDUCE_TIMEOUT_MS }).toBe(1)
   const [[{ file }]] = onPhotosChange.mock.calls[0] as [[UploadPhoto]]
   expect([file!.name, file!.type]).toEqual(['motor.webp', 'image/webp'])
   expect(file!.size).toBeLessThan(PHOTO_MAX_BYTES)
