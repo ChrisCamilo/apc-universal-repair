@@ -19,7 +19,7 @@ import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type Ite
 import { isTestItem, TUTORIAL_CODE } from '@apc/shared/inventory-tutorial';
 import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination';
 import type { Sort } from '@apc/shared/table';
-import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
+import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos';
 import { API_URL } from '../api';
 import { Button } from '../Button';
 import { DataTable, RowAction, TableThumbnail } from '../DataTable';
@@ -217,7 +217,7 @@ function photoColumn(onOpen: (item: Item, brand: ItemBrand) => void): ComponentP
       const [brand] = rowItem(row).brands;
       return (
         <TableThumbnail
-          src={brand.photos[0] && `${API_URL}${brand.photos[0].thumbUrl}`}
+          src={brand.photos[0] && photoAddress(brand.photos[0].thumbUrl, API_URL)}
           label={row.brand ? `Ver fotos de ${row.item.name} ${brand.partBrand}` : `Ver fotos de ${row.item.name}`}
           onOpen={() => onOpen(row.item, brand)}
         />

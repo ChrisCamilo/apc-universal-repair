@@ -3,7 +3,9 @@ import type { ItemPhoto } from "../items/items.ts";
 // Photo rules shared by the web and mobile ImageUpload and the API: which files are accepted, how many photos an
 // item holds, the messages that name each file left out and say why, how the photos are sent to be saved, and how
 // far a photo is reduced: the web and the phone shrink it before sending it, and the API stores it as WebP at that
-// size and quality, so a photo over 3 MB is only refused when it is still over 3 MB once reduced.
+// size and quality, so a photo over 3 MB is only refused when it is still over 3 MB once reduced. The API sends a saved
+// photo as a path the apps reach through its address; a photo already given as a whole address, as the web app's demo
+// gives its own, is reached as it is (photoAddress).
 
 /** Photos an inventory item holds; the first one is its cover in the list. */
 export const ITEM_PHOTO_LIMIT = 3;
@@ -43,7 +45,7 @@ export type PhotoFile = { name: string; type: string; size: number };
  * @returns One held photo per photo to copy.
  */
 export function copiedPhotos(saved: readonly ItemPhoto[], apiBase: string): HeldPhoto<never>[] {
-  return saved.map((photo) => ({ url: `${apiBase}${photo.url}`, copyOf: photo.id }));
+  return saved.map((photo) => ({ url: photoAddress(photo.url, apiBase), copyOf: photo.id }));
 }
 
 /**
@@ -65,7 +67,18 @@ export function fitPhoto(width: number, height: number): { width: number; height
  * @returns One held photo per saved photo.
  */
 export function heldPhotos(saved: readonly ItemPhoto[], apiBase: string): HeldPhoto<never>[] {
-  return saved.map((photo) => ({ url: `${apiBase}${photo.url}` }));
+  return saved.map((photo) => ({ url: photoAddress(photo.url, apiBase) }));
+}
+
+/**
+ * Gives where a saved photo, or its thumbnail, is reached: its path under the API's address, or, when it is a whole
+ * address already (blob:, https:), that address.
+ * @param url The photo's url or thumbUrl, as the API sends it.
+ * @param apiBase Where the API is reached: "/api" on the web, API_URL on the phone.
+ * @returns E.g. "/api/photos/<id>.webp", or "blob:https://…" as it came.
+ */
+export function photoAddress(url: string, apiBase: string): string {
+  return /^[a-z][a-z\d+.-]*:/i.test(url) ? url : `${apiBase}${url}`;
 }
 
 /**
@@ -98,7 +111,7 @@ export function photoParts<Picked>(
     if (photo.copyOf) {
       return [{ copy: photo.copyOf }];
     }
-    const kept = saved.find((savedPhoto) => `${apiBase}${savedPhoto.url}` === photo.url);
+    const kept = saved.find((savedPhoto) => photoAddress(savedPhoto.url, apiBase) === photo.url);
     return kept ? [{ keep: kept.id }] : [];
   });
 }
