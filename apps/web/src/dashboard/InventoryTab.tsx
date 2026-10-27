@@ -25,7 +25,7 @@ import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type Ite
 import { TUTORIAL_CODE, type TutorialScreen } from '@apc/shared/inventory-tutorial'
 import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination'
 import type { Sort } from '@apc/shared/table'
-import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
+import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos'
 import { API_BASE } from '../api.ts'
 import { useSession } from '../auth/sessionContext.ts'
 import { Button } from '../components/Button.tsx'
@@ -503,7 +503,7 @@ export function InventoryTab() {
                     const [brand] = rowItem(row).brands
                     return (
                       <TableThumbnail
-                        src={brand.photos[0] && `${API_BASE}${brand.photos[0].thumbUrl}`}
+                        src={brand.photos[0] && photoAddress(brand.photos[0].thumbUrl, API_BASE)}
                         label={row.brand ? `Ver fotos de ${row.item.name} ${brand.partBrand}` : `Ver fotos de ${row.item.name}`}
                         onOpen={() => setViewer({ item: row.item, brand, photos: heldPhotos(brand.photos, API_BASE) })}
                       />

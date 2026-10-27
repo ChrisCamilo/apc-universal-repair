@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480">
+  <title>Disco de freio ventilado (ilustração da demo)</title>
+  <defs>
+    <radialGradient id="metal" cx="45%" cy="40%" r="65%">
+      <stop offset="0" stop-color="#d9dde2"/>
+      <stop offset="0.6" stop-color="#9aa2ab"/>
+      <stop offset="1" stop-color="#5d646c"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2d31"/>
+      <stop offset="1" stop-color="#15171a"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="480" fill="url(#bg)"/>
+  <ellipse cx="320" cy="430" rx="190" ry="22" fill="#000" opacity="0.35"/>
+  <circle cx="320" cy="235" r="185" fill="url(#metal)" stroke="#454b52" stroke-width="4"/>
+  <circle cx="320" cy="235" r="160" fill="none" stroke="#6f7780" stroke-width="2" opacity="0.6"/>
+  <g fill="#3a3f45">
+    <circle cx="320" cy="105" r="9"/><circle cx="412" cy="143" r="9"/><circle cx="450" cy="235" r="9"/>
+    <circle cx="412" cy="327" r="9"/><circle cx="320" cy="365" r="9"/><circle cx="228" cy="327" r="9"/>
+    <circle cx="190" cy="235" r="9"/><circle cx="228" cy="143" r="9"/>
+  </g>
+  <circle cx="320" cy="235" r="88" fill="#7d858e" stroke="#4d535a" stroke-width="4"/>
+  <circle cx="320" cy="235" r="34" fill="#1c1f23"/>
+  <g fill="#2f3439">
+    <circle cx="320" cy="173" r="10"/><circle cx="379" cy="216" r="10"/><circle cx="357" cy="285" r="10"/>
+    <circle cx="283" cy="285" r="10"/><circle cx="261" cy="216" r="10"/>
+  </g>
+</svg>

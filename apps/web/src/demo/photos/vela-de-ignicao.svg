@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480">
+  <title>Vela de ignição (ilustração da demo)</title>
+  <defs>
+    <linearGradient id="porcelain" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c9ccd0"/>
+      <stop offset="0.45" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#b8bcc1"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6f7780"/>
+      <stop offset="0.5" stop-color="#d0d4d9"/>
+      <stop offset="1" stop-color="#5d646c"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2d31"/>
+      <stop offset="1" stop-color="#15171a"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="480" fill="url(#bg)"/>
+  <g transform="rotate(-18 320 240)">
+    <rect x="304" y="40" width="32" height="44" rx="6" fill="url(#steel)"/>
+    <rect x="290" y="84" width="60" height="150" rx="14" fill="url(#porcelain)"/>
+    <g stroke="#9aa2ab" stroke-width="3">
+      <line x1="290" y1="110" x2="350" y2="110"/><line x1="290" y1="130" x2="350" y2="130"/><line x1="290" y1="150" x2="350" y2="150"/>
+    </g>
+    <polygon points="270,234 370,234 382,260 370,286 270,286 258,260" fill="url(#steel)" stroke="#454b52" stroke-width="3"/>
+    <rect x="290" y="286" width="60" height="96" fill="url(#steel)"/>
+    <g stroke="#454b52" stroke-width="4">
+      <line x1="290" y1="300" x2="350" y2="306"/><line x1="290" y1="318" x2="350" y2="324"/>
+      <line x1="290" y1="336" x2="350" y2="342"/><line x1="290" y1="354" x2="350" y2="360"/>
+    </g>
+    <rect x="316" y="382" width="8" height="20" fill="#d0d4d9"/>
+    <path d="M300 382 v28 h30" fill="none" stroke="#9aa2ab" stroke-width="6"/>
+  </g>
+</svg>

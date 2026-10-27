@@ -75,6 +75,16 @@ export const CSV_TEMPLATE_NAME = "modelo-estoque.csv";
 export const CSV_PHOTOS_COLUMN = "photos";
 /** What separates a brand's photo paths in the photos column. */
 export const CSV_PHOTO_SEPARATOR = " | ";
+/**
+ * Why the items of a file can't be saved as they are, as POST /items/import answers them (409), on the API and in the web
+ * app's demo: codes of two different items in one item, a code an item holds as a brand's sent as an original one or
+ * the other way around, or a new code for a part brand the item already has under another code.
+ */
+export const IMPORT_CONFLICTS = {
+  owners: (name: string, count: number) => `The codes of "${name}" belong to ${count} different items.`,
+  crossed: (name: string, code: string) => `"${name}" already has the code ${code}, as a brand's code and an original code at once.`,
+  partBrand: (name: string, partBrand: string, code: string) => `"${name}" already has the part brand "${partBrand}" under another code than ${code}.`,
+};
 /** Most rows one import takes. */
 export const ITEM_IMPORT_LIMIT = 1000;
 /** What POST /items/import answers: how many items were created, and how many updated for a code in use. */

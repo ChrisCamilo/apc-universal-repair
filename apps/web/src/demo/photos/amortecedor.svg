@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480">
+  <title>Amortecedor dianteiro (ilustração da demo)</title>
+  <defs>
+    <linearGradient id="tube" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7a1e12"/>
+      <stop offset="0.4" stop-color="#d4452c"/>
+      <stop offset="1" stop-color="#6a190f"/>
+    </linearGradient>
+    <linearGradient id="rod" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a9198"/>
+      <stop offset="0.5" stop-color="#f2f3f4"/>
+      <stop offset="1" stop-color="#7d858e"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2d31"/>
+      <stop offset="1" stop-color="#15171a"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="480" fill="url(#bg)"/>
+  <g transform="rotate(-62 320 240)">
+    <circle cx="320" cy="20" r="26" fill="none" stroke="#9aa2ab" stroke-width="12"/>
+    <rect x="310" y="40" width="20" height="130" fill="url(#rod)"/>
+    <rect x="300" y="150" width="40" height="18" rx="4" fill="#3a3f45"/>
+    <rect x="282" y="168" width="76" height="250" rx="12" fill="url(#tube)"/>
+    <rect x="282" y="210" width="76" height="40" fill="#e8e6e1" opacity="0.85"/>
+    <circle cx="320" cy="448" r="26" fill="none" stroke="#9aa2ab" stroke-width="12"/>
+    <rect x="310" y="418" width="20" height="10" fill="#7d858e"/>
+  </g>
+</svg>

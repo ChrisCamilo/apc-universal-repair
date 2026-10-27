@@ -1,10 +1,12 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { loggedInSchema } from '@apc/shared/auth'
+import { IMPORT_CONFLICTS } from '@apc/shared/item-csv'
 import { itemMatchesQuery } from '@apc/shared/item-filters'
 import { itemListQuerySchema, itemListResponseSchema, itemSchema, type Item } from '@apc/shared/items'
 import { listEntriesSchema, listEntrySchema, vehicleModelsSchema, type ListEntry } from '@apc/shared/lists'
+import { ITEM_PHOTO_LIMIT, PHOTO_PARTS } from '@apc/shared/photos'
 import { createDemoApi } from './demoApi.ts'
-import { DEMO_ITEMS, DEMO_USER } from './demoData.ts'
+import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 import { installDemoApi } from './installDemoApi.ts'
 
@@ -41,7 +43,32 @@ async function demo() {
   const items = async () => (await (await as('GET', '/items')).json()).items as Item[]
   /** Reads one of the lists. */
   const list = async (path: string) => (await (await as('GET', path)).json()) as ListEntry[]
-  return { call, as, token, items, list }
+  /** Sets a brand's photos, sending the parts as the app does, in order. */
+  const sendPhotos = (itemId: string, brandId: string, parts: [string, string | Blob][]) => {
+    const form = new FormData()
+    parts.forEach(([name, value]) => form.append(name, value))
+    return api.handle(
+      new Request(`http://demo.test/api/items/${itemId}/brands/${brandId}/photos`, {
+        method: 'PUT',
+        body: form,
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    )
+  }
+  return { call, as, token, items, list, sendPhotos }
+}
+
+/**
+ * Draws a small PNG, as a photo the app sends once reduced.
+ * @param name The file's name.
+ * @returns The file.
+ */
+async function png(name = 'foto.png'): Promise<File> {
+  const canvas = document.createElement('canvas')
+  canvas.width = 4
+  canvas.height = 3
+  const blob = await new Promise<Blob>((done) => canvas.toBlob((made) => done(made!), 'image/png'))
+  return new File([blob], name, { type: 'image/png' })
 }
 
 // Logs in as the demo's user and with a wrong password, signs up a new user and the same username again, and checks
@@ -72,7 +99,7 @@ test('Web: the demo signs up, logs in and out as the API does', async () => {
   expect((await call('DELETE', '/sessions/current', undefined, ana)).status).toBe(204)
   expect((await call('GET', '/items', undefined, ana)).status).toBe(401)
   expect((await as('GET', '/items')).status).toBe(200)
-  expect((await as('GET', '/photos/foto.jpg')).status).toBe(404)
+  expect((await as('GET', '/nada')).status).toBe(404)
   expect(token).not.toBe(ana)
 })
 
@@ -237,4 +264,93 @@ test("Web: the demo answers the page's requests to /api, and lets the others thr
   expect(outside).not.toHaveBeenCalled()
   expect(await (await fetch('/assets/app.js')).text()).toBe('fora')
   expect(outside).toHaveBeenCalledOnce()
+})
+
+// Opens the sample items' drawings, then sends a part's photos: one new, then it kept with a new one and a copy of a
+// sample, then too many, a file that isn't a photo and another brand's photo, then none, and deletes the item. Checks
+// each answer is the API's, a photo sent is reached at its own address in the browser, and one removed stops being.
+test('Web: the demo keeps photos in the browser under the API rules', async () => {
+  const { as, call, items, sendPhotos } = await demo()
+  const drawn = (await items()).filter((item) => item.brands[0].photos.length > 0)
+  expect(drawn.map((item) => item.name).sort()).toEqual(Object.keys(DEMO_PHOTOS).sort())
+  expect((await fetch(drawn[0].brands[0].photos[0].url)).ok).toBe(true)
+
+  const cable = (await items()).find((item) => item.name === 'Cabo de vela')!
+  const [brand] = cable.brands
+  const first = await sendPhotos(cable.id, brand.id, [[PHOTO_PARTS.file, await png()]])
+  expect(first.status).toBe(200)
+  const [sent] = itemSchema.parse(await first.json()).brands[0].photos
+  expect(sent.url).toMatch(/^blob:/)
+  expect((await (await fetch(sent.url)).blob()).type).toBe('image/png')
+  expect((await call('GET', `/photos/${sent.id}.webp`)).status).toBe(200)
+  expect((await call('GET', `/photos/${crypto.randomUUID()}.webp`)).status).toBe(404)
+
+  const sample = drawn[0].brands[0].photos[0]
+  const second = await sendPhotos(cable.id, brand.id, [
+    [PHOTO_PARTS.keep, sent.id],
+    [PHOTO_PARTS.file, await png('outra.png')],
+    [PHOTO_PARTS.copy, sample.id],
+  ])
+  const three = itemSchema.parse(await second.json()).brands[0].photos
+  expect([three.length, three[0], three[2].url]).toEqual([ITEM_PHOTO_LIMIT, sent, sample.url])
+  expect(three[2].id).not.toBe(sample.id)
+
+  const tooMany = await sendPhotos(cable.id, brand.id, three.map((photo): [string, string] => [PHOTO_PARTS.keep, photo.id]).concat([[PHOTO_PARTS.copy, sample.id]]))
+  expect([tooMany.status, (await tooMany.json()).details.at(-1).message]).toEqual([400, `A brand of an item holds at most ${ITEM_PHOTO_LIMIT} photos.`])
+  const text = await sendPhotos(cable.id, brand.id, [[PHOTO_PARTS.file, new File(['oi'], 'nota.png', { type: 'image/png' })]])
+  expect((await text.json()).details[0].message).toBe('Photo 1 is not a JPG, PNG or WebP image.')
+  const foreign = await sendPhotos(cable.id, brand.id, [[PHOTO_PARTS.keep, sample.id]])
+  expect((await foreign.json()).details[0].message).toBe("Kept photos must be this brand's photos, each kept once.")
+  expect((await sendPhotos(cable.id, crypto.randomUUID(), [])).status).toBe(404)
+
+  const none = await sendPhotos(cable.id, brand.id, [[PHOTO_PARTS.keep, three[1].id]])
+  expect(itemSchema.parse(await none.json()).brands[0].photos).toEqual([three[1]])
+  await expect(fetch(sent.url)).rejects.toThrow()
+  expect((await as('DELETE', `/items/${cable.id}`)).status).toBe(204)
+  await expect(fetch(three[1].url)).rejects.toThrow()
+  expect((await fetch(sample.url)).ok).toBe(true)
+})
+
+// Imports a new item and one whose code is in use, then files with the codes of two items in one, a code held the
+// other way and a new code for a part brand the item has, each after a valid item, and checks the first file goes in
+// as the API saves it and each of the others is refused whole, with the API's reason.
+test('Web: the demo imports a file whole or not at all, as the API does', async () => {
+  const { as, items } = await demo()
+  const created = { ...ITEM, name: 'Coxim do motor', brands: [{ ...BRAND, code: 'CX-9' }] }
+  const pads = {
+    name: 'Pastilha de freio dianteira',
+    category: 'Freios',
+    vehicles: [{ vehicleBrand: 'Fiat', vehicleModel: 'Uno' }],
+    originalCodes: ['5U0 698 151', 'GM-0042'],
+    brands: [
+      { partBrand: 'Cobreq', code: 'n-1210', quantity: 20, unitPriceCents: 7990 },
+      { partBrand: 'Jurid', code: 'JU-1210', quantity: 2, unitPriceCents: 8490 },
+    ],
+  }
+  const imported = await as('POST', '/items/import', { items: [created, pads] })
+  expect([imported.status, await imported.json()]).toEqual([200, { created: 1, updated: 1 }])
+  const after = (await items()).find((item) => item.name === 'Pastilha de freio dianteira')!
+  expect(after.vehicles).toEqual([{ vehicleBrand: 'Fiat', vehicleModel: 'Uno' }])
+  expect(after.originalCodes).toEqual(['5U0 698 151', 'GM-0042'])
+  expect(after.brands.map((brand) => [brand.partBrand, brand.code, brand.quantity])).toEqual([
+    ['Cobreq', 'N-1210', 20],
+    ['Fras-le', 'PD/1210', 4],
+    ['Jurid', 'JU-1210', 2],
+  ])
+  expect((await items()).some((item) => item.name === 'Coxim do motor')).toBe(true)
+
+  const count = (await items()).length
+  const valid = { ...ITEM, name: 'Suporte do câmbio', brands: [{ ...BRAND, code: 'SC-1' }] }
+  const refusals: [object, string][] = [
+    [{ ...pads, originalCodes: [], brands: [{ ...pads.brands[0] }, { partBrand: 'Mann', code: 'W 712/95', quantity: 1, unitPriceCents: 3990 }] }, IMPORT_CONFLICTS.owners(pads.name, 2)],
+    [{ ...pads, originalCodes: ['PD/1210'], brands: [{ ...pads.brands[0] }] }, IMPORT_CONFLICTS.crossed(pads.name, 'PD/1210')],
+    [{ ...pads, originalCodes: [], brands: [{ ...pads.brands[0] }, { partBrand: 'Fras-le', code: 'FR-9', quantity: 1, unitPriceCents: 9990 }] }, IMPORT_CONFLICTS.partBrand(pads.name, 'Fras-le', 'FR-9')],
+  ]
+  for (const [item, message] of refusals) {
+    const refused = await as('POST', '/items/import', { items: [valid, item] })
+    expect([refused.status, (await refused.json()).message]).toEqual([409, message])
+    expect((await items()).length).toBe(count)
+  }
+  expect((await items()).find((item) => item.name === 'Pastilha de freio dianteira')).toEqual(after)
+  expect((await as('POST', '/items/import', { items: [] })).status).toBe(400)
 })
