@@ -21,7 +21,8 @@ import { loginScreen } from './LoginScreen.styles.ts'
 // the real backend (EP-10); it closes on "Entendi", Escape or a click outside, and the focus goes back to the link.
 // "Criar conta" opens the sign-up. In the desktop app, "Servidor e banco de dados" opens the Servidor dialog with no
 // session, so an old server can be imported while the database is still empty. A notice, such as the session having
-// expired, shows above the form until a login is sent.
+// expired, shows above the form until a login is sent. The fields may open filled in, as the web app's demo fills in
+// its user.
 
 const FIELD_ORDER = ['username', 'password'] as const
 
@@ -36,10 +37,12 @@ type LoginScreenProps = {
   onRegister: () => void
   /** Opens the desktop app's Servidor dialog; without it, as in a browser, there is no link. */
   onServerSettings?: () => void
+  /** The fields filled in on opening, e.g. the demo's user; empty otherwise. */
+  initialCredentials?: Credentials
 }
 
-export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSettings }: LoginScreenProps) {
-  const [credentials, setCredentials] = useState<Credentials>({ username: '', password: '' })
+export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSettings, initialCredentials }: LoginScreenProps) {
+  const [credentials, setCredentials] = useState<Credentials>(initialCredentials ?? { username: '', password: '' })
   const [errors, setErrors] = useState<LoginErrors>({})
   const [sending, setSending] = useState(false)
   // Why the last login didn't go through: the user or password refused, or the API out of reach.
