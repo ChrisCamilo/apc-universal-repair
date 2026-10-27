@@ -123,30 +123,44 @@ test("Web: each user sees only their own notifications", async () => {
 })
 
 // Opens the gear in the bell's menu and checks "Tempo do aviso" starts at 5 s; each press applies at once, is saved and
-// keeps the menu open; − stops at 2 s and + at 15 s.
+// keeps the menu open; − stops at 2 s. Opened again with 14 s saved, so the test doesn't press its way up, + stops at
+// 15 s.
 test('Web: the gear sets how long a toast stays, from 2 s to 15 s', async () => {
-  const screen = await render(<Sample />)
-  await screen.getByRole('button', { name: /^Notificações/ }).click()
-  const gear = screen.getByRole('button', { name: 'Configurações das notificações' })
-  await expect.element(gear).toHaveAttribute('aria-expanded', 'false')
-  await gear.click()
-  const setting = screen.getByRole('group', { name: 'Tempo do aviso' })
-  const value = setting.getByRole('status')
-  const shorter = setting.getByRole('button', { name: 'Diminuir o tempo do aviso' })
-  const longer = setting.getByRole('button', { name: 'Aumentar o tempo do aviso' })
-  await expect.element(value).toHaveTextContent('5 s')
-
-  await longer.click()
-  await expect.element(value).toHaveTextContent('6 s')
+  const first = await openSetting()
+  await expect.element(first.value).toHaveTextContent('5 s')
+  await first.longer.click()
+  await expect.element(first.value).toHaveTextContent('6 s')
   expect(localStorage.getItem(TOAST_DURATION_STORAGE_KEY)).toBe('6000')
-  await expect.element(screen.getByRole('menu')).toBeVisible()
-  for (let press = 0; press < 4; press++) await shorter.click()
-  await expect.element(value).toHaveTextContent('2 s')
-  await expect.element(shorter).toBeDisabled()
-  for (let press = 0; press < 13; press++) await longer.click()
-  await expect.element(value).toHaveTextContent('15 s')
-  await expect.element(longer).toBeDisabled()
+  await expect.element(first.screen.getByRole('menu')).toBeVisible()
+  for (let press = 0; press < 4; press++) await first.shorter.click()
+  await expect.element(first.value).toHaveTextContent('2 s')
+  await expect.element(first.shorter).toBeDisabled()
+  expect(localStorage.getItem(TOAST_DURATION_STORAGE_KEY)).toBe(String(TOAST_DURATION.minMs))
+  await first.screen.unmount()
+
+  localStorage.setItem(TOAST_DURATION_STORAGE_KEY, String(TOAST_DURATION.maxMs - TOAST_DURATION.stepMs))
+  const second = await openSetting()
+  await expect.element(second.value).toHaveTextContent('14 s')
+  await second.longer.click()
+  await expect.element(second.value).toHaveTextContent('15 s')
+  await expect.element(second.longer).toBeDisabled()
   expect(localStorage.getItem(TOAST_DURATION_STORAGE_KEY)).toBe(String(TOAST_DURATION.maxMs))
+
+  /** Opens the bell's menu and its gear, and finds "Tempo do aviso" with its value and buttons. */
+  async function openSetting() {
+    const screen = await render(<Sample />)
+    await screen.getByRole('button', { name: /^Notificações/ }).click()
+    const gear = screen.getByRole('button', { name: 'Configurações das notificações' })
+    await expect.element(gear).toHaveAttribute('aria-expanded', 'false')
+    await gear.click()
+    const setting = screen.getByRole('group', { name: 'Tempo do aviso' })
+    return {
+      screen,
+      value: setting.getByRole('status'),
+      shorter: setting.getByRole('button', { name: 'Diminuir o tempo do aviso' }),
+      longer: setting.getByRole('button', { name: 'Aumentar o tempo do aviso' }),
+    }
+  }
 })
 
 // Sets 2 s in the gear and checks the next toast starts to leave after 2 s, not the default 5 s.
