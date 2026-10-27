@@ -1,4 +1,4 @@
-import type { ItemImportResult } from "@apc/shared/item-csv";
+import { IMPORT_CONFLICTS, type ItemImportResult } from "@apc/shared/item-csv";
 import type { ItemCreate } from "@apc/shared/items";
 import { prisma } from "../db/client.js";
 import { brandData, createData, originalCodesData, syncQuantity, updateData, vehiclesData, type ListIds } from "./items.js";
@@ -41,7 +41,7 @@ export async function importItems(items: readonly ItemCreate[]): Promise<ItemImp
         const heldOriginals = await tx.itemOriginalCode.findMany({ where: { codeKey: { in: keys } }, select });
         const owners = [...new Set([...held, ...heldOriginals].map((code) => code.itemId))];
         if (owners.length > 1) {
-          throw new ImportConflict(`The codes of "${input.name}" belong to ${owners.length} different items.`);
+          throw new ImportConflict(IMPORT_CONFLICTS.owners(input.name, owners.length));
         }
         if (owners.length === 0) {
           await tx.item.create({
@@ -53,7 +53,7 @@ export async function importItems(items: readonly ItemCreate[]): Promise<ItemImp
         const [itemId] = owners;
         /** Refuses a code the item holds the other way, a brand's as an original one or an original one as a brand's. */
         const crossed = (code: string) => {
-          throw new ImportConflict(`"${input.name}" already has the code ${code}, as a brand's code and an original code at once.`);
+          throw new ImportConflict(IMPORT_CONFLICTS.crossed(input.name, code));
         };
         await tx.item.update({ where: { id: itemId }, data: updateData(input, ids) });
         await tx.itemVehicle.deleteMany({ where: { itemId } });
@@ -79,9 +79,7 @@ export async function importItems(items: readonly ItemCreate[]): Promise<ItemImp
           if (same) {
             await tx.itemBrand.update({ where: { id: same.id }, data: { ...brand, position: undefined } });
           } else if (itemBrands.some((row) => row.partBrandId === brand.partBrandId)) {
-            throw new ImportConflict(
-              `"${input.name}" already has the part brand "${input.brands[index].partBrand}" under another code than ${brand.code}.`,
-            );
+            throw new ImportConflict(IMPORT_CONFLICTS.partBrand(input.name, input.brands[index].partBrand, brand.code));
           } else {
             await tx.itemBrand.create({ data: { ...brand, position: next++, itemId } });
           }
