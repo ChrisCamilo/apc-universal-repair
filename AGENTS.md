@@ -378,3 +378,4 @@ The project is all rights reserved ([LICENSE](LICENSE), `"license": "UNLICENSED"
 - Keep commits atomic and `main` always deployable.
 - Prefer reusing existing components/utilities over introducing new ones.
 - Do not add features, abstractions, or error handling beyond what the current task requires.
+- **The Storybook is public:** every merge that changes `apps/web` or `packages/shared` publishes it on GitHub Pages, at `https://chriscamilo.github.io/apc-universal-repair/storybook/` (`.github/workflows/pages.yml`), so a new story shows there once merged. Stories show their own sample data only: no API, browser storage or desktop bridge, which `apps/web/src/stories/Stories.test.ts` checks. The site's root page is `docs/site/index.html`.
