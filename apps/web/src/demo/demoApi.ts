@@ -1,9 +1,11 @@
 import { RELEASE_VERSION } from 'virtual:apc-release'
 import { credentialsSchema, initials, userCreateSchema } from '@apc/shared/auth'
+import { IMPORT_CONFLICTS, itemImportSchema } from '@apc/shared/item-csv'
 import { itemMatchesQuery } from '@apc/shared/item-filters'
 import {
   capitalizeFirst,
   codeKey,
+  itemBrandIdParamsSchema,
   itemCreateSchema,
   itemIdParamsSchema,
   itemListQuerySchema,
@@ -29,16 +31,19 @@ import {
   type ItemListKind,
   type ListEntry,
 } from '@apc/shared/lists'
-import { DEMO_ITEMS, DEMO_USER } from './demoData.ts'
+import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_PARTS } from '@apc/shared/photos'
+import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 
 // The API of the web app's demo, answered in the browser: the demo has no server (it runs on GitHub Pages), so its
-// requests to /api never leave the page (see installDemoApi.ts). It answers every route of apps/api but the photos and
-// the CSV import with the API's statuses and bodies, under the API's rules: the shared schemas check what comes in,
-// the list chooses its items with the shared matcher (itemMatchesQuery) and sorts them with sortItems, codes are unique
-// across the stock, and the lists' names follow the writing rule and stay apart ignoring case and accents. Everything is
-// held in memory and starts over from demoData.ts when the page loads again. Each answer carries the demo's marker
-// (demoMarker.ts).
+// requests to /api never leave the page (see installDemoApi.ts). It answers every route of apps/api with the API's
+// statuses and bodies, under the API's rules: the shared schemas check what comes in, the list chooses its items with
+// the shared matcher (itemMatchesQuery) and sorts them with sortItems, codes are unique across the stock, the lists'
+// names follow the writing rule and stay apart ignoring case and accents, and the CSV import goes in whole or not at
+// all, refused with the API's own reasons (IMPORT_CONFLICTS). A photo sent stays in the browser as an object URL, which
+// the item carries as its whole address (see photoAddress in @apc/shared/photos), and is let go once the photo is
+// removed; a few sample items carry drawings of the demo's own. Everything is held in memory and starts over from
+// demoData.ts when the page loads again. Each answer carries the demo's marker (demoMarker.ts).
 
 /** One day, in milliseconds, between the demo's items' creation. */
 const DAY_MS = 86_400_000
@@ -51,6 +56,8 @@ const ITEMS_USING: Record<ItemListKind, (item: StoredItem, id: string) => boolea
 }
 /** The lists of plain names, by their path. */
 const NAME_LISTS = ['categories', 'partBrands', 'vehicleBrands'] as const
+/** A photo's id, as a part of the photos' request names one. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** The demo's data: users and their sessions, the four lists and the items, which refer to the lists' entries. */
 type Db = {
@@ -62,13 +69,18 @@ type Db = {
   vehicleBrands: ListEntry[]
   vehicleModels: (ListEntry & { brandId: string })[]
   items: StoredItem[]
+  /** The files of the photos sent or copied, by photo id; a sample photo is a file of the site and has none. */
+  files: Map<string, Blob>
 }
-/** What a route gets: the request's path parameters, its query, its body, and the caller's token and id, when logged in. */
-type Call = { params: Record<string, string>; query: URLSearchParams; body: unknown; token?: string; userId?: string }
+/**
+ * What a route gets: the request, its path parameters, its query, its JSON body (none for a multipart one, which the
+ * route reads from the request), and the caller's token and id, when logged in.
+ */
+type Call = { request: Request; params: Record<string, string>; query: URLSearchParams; body: unknown; token?: string; userId?: string }
 /** What a shared schema reports when a value fails it: each issue's path and message. */
 type Issues = { issues: readonly { path: readonly PropertyKey[]; message: string }[] }
 /** A route of the demo: its method, its path with :params, whether it is open without a session, and its answer. */
-type Route = { method: string; path: string; open?: boolean; answer: (call: Call) => Response }
+type Route = { method: string; path: string; open?: boolean; answer: (call: Call) => Response | Promise<Response> }
 /** A shared schema, as the demo reads with it: a parse that tells the value read or why it failed. */
 type Schema<Value> = { safeParse: (value: unknown) => { success: true; data: Value } | { success: false; error: Issues } }
 /** An item as the demo keeps it: its list entries by id, so a renamed entry shows its new name on every item. */
@@ -77,8 +89,39 @@ type StoredItem = Omit<Item, 'category' | 'vehicles' | 'brands' | 'quantity'> & 
   vehicles: { brandId: string; modelId: string | null }[]
   brands: (Omit<Item['brands'][number], 'partBrand'> & { partBrandId: string })[]
 }
+/** Why the items of a file can't be saved as they are; the import answers it with 409 and keeps none of them. */
+class ImportConflict extends Error {}
+
 /** A user of the demo. */
 type User = { id: string; username: string; displayName: string; password: string; inventoryTutorialSeen: boolean }
+
+/**
+ * Gives the sample items their drawings (DEMO_PHOTOS), on their first brand, at the site's whole address.
+ * @param db The demo's data.
+ */
+function addSamplePhotos(db: Db): void {
+  for (const item of db.items) {
+    const drawing = DEMO_PHOTOS[item.name]
+    if (drawing) {
+      const url = new URL(drawing, window.location.href).href
+      item.brands[0].photos = [{ id: crypto.randomUUID(), url, thumbUrl: url }]
+    }
+  }
+}
+
+/**
+ * Answers 400 naming what keeps the photos from being saved, as the API does.
+ * @param messages One message per problem, e.g. "Photo 2 is larger than 3 MB."
+ * @returns The answer.
+ */
+function badPhotos(messages: string[]): Response {
+  return json(400, {
+    statusCode: 400,
+    error: 'Bad Request',
+    message: "The photos can't be saved.",
+    details: messages.map((message) => ({ field: 'photos', message })),
+  })
+}
 
 /**
  * Answers 400 for a body, query or path that fails its schema, as the API's error handler does.
@@ -130,11 +173,12 @@ function conflict(message: string, reason: { itemCount?: number; entryId?: strin
  * @returns How the demo answers a request to /api.
  */
 export function createDemoApi(): { handle: (request: Request) => Promise<Response> } {
-  const db: Db = { users: [], sessions: new Map(), categories: [], partBrands: [], vehicleBrands: [], vehicleModels: [], items: [] }
+  const db: Db = { users: [], sessions: new Map(), categories: [], partBrands: [], vehicleBrands: [], vehicleModels: [], items: [], files: new Map() }
   db.users.push({ id: crypto.randomUUID(), ...DEMO_USER, inventoryTutorialSeen: true })
   const start = Date.now() - DEMO_ITEMS.length * DAY_MS
   DEMO_ITEMS.forEach((input, index) => createItem(db, input, new Date(start + index * DAY_MS).toISOString()))
-  const routes = [...sessionRoutes(db), ...itemRoutes(db), ...listRoutes(db)]
+  addSamplePhotos(db)
+  const routes = [...sessionRoutes(db), ...itemRoutes(db), ...photoRoutes(db), ...listRoutes(db)]
 
   return {
     async handle(request) {
@@ -150,14 +194,16 @@ export function createDemoApi(): { handle: (request: Request) => Promise<Respons
         if (!route.open && !userId) {
           return json(401, { statusCode: 401, error: 'Unauthorized', message: 'Log in to use the API.' })
         }
-        const text = await request.text()
         let body: unknown
-        try {
-          body = text ? JSON.parse(text) : undefined
-        } catch {
-          return json(400, { statusCode: 400, error: 'Bad Request', message: 'The body is not valid JSON.' })
+        if (!request.headers.get('content-type')?.startsWith('multipart/form-data')) {
+          const text = await request.text()
+          try {
+            body = text ? JSON.parse(text) : undefined
+          } catch {
+            return json(400, { statusCode: 400, error: 'Bad Request', message: 'The body is not valid JSON.' })
+          }
         }
-        return route.answer({ params, query: url.searchParams, body, token, userId })
+        return route.answer({ request, params, query: url.searchParams, body, token, userId })
       }
       return json(404, { message: `Route ${request.method}:${path} not found`, error: 'Not Found', statusCode: 404 })
     },
@@ -204,6 +250,24 @@ function dropRepeatedVehicles(item: StoredItem): void {
 }
 
 /**
+ * Says why a file sent can't be a photo, as the API checks it by its content: larger than 3 MB, or not a JPG, PNG or
+ * WebP image.
+ * @param file The file.
+ * @returns The reason, or null when it is a photo.
+ */
+async function fileProblem(file: Blob): Promise<string | null> {
+  if (file.size > PHOTO_MAX_BYTES) {
+    return 'is larger than 3 MB'
+  }
+  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+  const text = (from: number, to: number) => String.fromCharCode(...head.slice(from, to))
+  const jpg = head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff
+  const png = head[0] === 0x89 && text(1, 4) === 'PNG'
+  const webp = text(0, 4) === 'RIFF' && text(8, 12) === 'WEBP'
+  return jpg || png || webp ? null : 'is not a JPG, PNG or WebP image'
+}
+
+/**
  * Finds the first code sent that another item uses, as a brand's code or an original one.
  * @param db The demo's data.
  * @param body The create or edit body.
@@ -226,6 +290,78 @@ function findTakenCode(db: Db, body: { brands?: readonly { code: string }[]; ori
     }
   }
   return undefined
+}
+
+/**
+ * Lets the files of photos removed go: their object URLs stop working and their files are dropped. A sample photo is a
+ * file of the site and stays.
+ * @param db The demo's data.
+ * @param photos The photos removed.
+ */
+function forget(db: Db, photos: readonly ItemPhoto[]): void {
+  for (const photo of photos) {
+    if (db.files.delete(photo.id)) {
+      URL.revokeObjectURL(photo.url)
+    }
+  }
+}
+
+/**
+ * Saves the items of a CSV file as the API's import does: an item whose codes, its brands' or its original ones, are in
+ * use updates the item they belong to, its vehicles replaced, the brands of codes in use changed, the others and the
+ * original codes it lacks joining it; any other item is added. It throws ImportConflict for codes of two items in one,
+ * a code held the other way (a brand's as an original one, or the other way around), or a new code for a part brand
+ * the item already has.
+ * @param db The demo's data.
+ * @param inputs The file's items, checked.
+ * @returns How many items were created and updated.
+ */
+function importItems(db: Db, inputs: readonly ItemCreate[]): { created: number; updated: number } {
+  const result = { created: 0, updated: 0 }
+  for (const input of inputs) {
+    const originals = (input.originalCodes ?? []).map((code) => code.trim().toUpperCase())
+    const keys = [...input.brands.map((brand) => codeKey(brand.code)), ...originals.map(codeKey)]
+    const owners = db.items.filter((item) => [...item.brands.map((brand) => brand.code), ...item.originalCodes].some((code) => keys.includes(codeKey(code))))
+    if (owners.length > 1) {
+      throw new ImportConflict(IMPORT_CONFLICTS.owners(input.name, owners.length))
+    }
+    if (owners.length === 0) {
+      createItem(db, input)
+      result.created++
+      continue
+    }
+    const [item] = owners
+    const heldCodes = item.brands.map((brand) => codeKey(brand.code))
+    const heldOriginals = item.originalCodes.map(codeKey)
+    const { name, category, position, side, minQuantity } = input
+    updateItem(db, item, { name, category, position, side, minQuantity }, { vehicles: input.vehicles })
+    for (const original of originals) {
+      if (heldCodes.includes(codeKey(original))) {
+        throw new ImportConflict(IMPORT_CONFLICTS.crossed(input.name, original))
+      }
+      if (!heldOriginals.includes(codeKey(original))) {
+        item.originalCodes.push(original)
+      }
+    }
+    const before = [...item.brands]
+    for (const sent of input.brands) {
+      const code = sent.code.trim().toUpperCase()
+      if (heldOriginals.includes(codeKey(code))) {
+        throw new ImportConflict(IMPORT_CONFLICTS.crossed(input.name, code))
+      }
+      const same = before.find((brand) => codeKey(brand.code) === codeKey(code))
+      const brand = brandOf(db, { ...sent, id: same?.id }, same?.photos)
+      if (same) {
+        item.brands[item.brands.indexOf(same)] = brand
+      } else if (before.some((held) => held.partBrandId === brand.partBrandId)) {
+        throw new ImportConflict(IMPORT_CONFLICTS.partBrand(input.name, sent.partBrand, code))
+      } else {
+        item.brands.push(brand)
+      }
+    }
+    result.updated++
+  }
+  return result
 }
 
 /**
@@ -264,6 +400,28 @@ function itemRoutes(db: Db): Route[] {
         }
         const taken = findTakenCode(db, sent.value)
         return taken ? codeTaken(taken) : json(201, toItem(db, createItem(db, sent.value)))
+      },
+    },
+    {
+      method: 'POST',
+      path: '/items/import',
+      answer: ({ body }) => {
+        const sent = read(itemImportSchema, body)
+        if (!sent.ok) {
+          return sent.answer
+        }
+        // A file goes in whole or not at all: what it changed is put back when it is refused.
+        const { categories, partBrands, vehicleBrands, vehicleModels, items } = db
+        const saved = structuredClone({ categories, partBrands, vehicleBrands, vehicleModels, items })
+        try {
+          return json(200, importItems(db, sent.value.items))
+        } catch (error) {
+          if (error instanceof ImportConflict) {
+            Object.assign(db, saved)
+            return json(409, { statusCode: 409, error: 'Conflict', message: error.message })
+          }
+          throw error
+        }
       },
     },
     {
@@ -311,7 +469,8 @@ function itemRoutes(db: Db): Route[] {
         if (index < 0) {
           return itemNotFound()
         }
-        db.items.splice(index, 1)
+        const [removed] = db.items.splice(index, 1)
+        forget(db, removed.brands.flatMap((brand) => brand.photos))
         return noContent()
       },
     },
@@ -666,6 +825,101 @@ function noContent(): Response {
 }
 
 /**
+ * Lists the routes of the photos: setting a brand's photos at once, and serving a photo's file.
+ * @param db The demo's data.
+ * @returns The routes.
+ */
+function photoRoutes(db: Db): Route[] {
+  return [
+    {
+      method: 'PUT',
+      path: '/items/:id/brands/:brandId/photos',
+      answer: async ({ request, params }) => {
+        const ids = read(itemBrandIdParamsSchema, params)
+        if (!ids.ok) {
+          return ids.answer
+        }
+        const entries: ({ keep: string } | { copy: string } | { file: Blob })[] = []
+        const problems: string[] = []
+        for (const [name, value] of (await request.formData()).entries()) {
+          const number = entries.length + problems.length + 1
+          if (name === PHOTO_PARTS.file && value instanceof Blob) {
+            const problem = await fileProblem(value)
+            if (problem) {
+              problems.push(`Photo ${number} ${problem}.`)
+            } else {
+              entries.push({ file: value })
+            }
+          } else if (name === PHOTO_PARTS.keep && typeof value === 'string' && UUID.test(value)) {
+            entries.push({ keep: value })
+          } else if (name === PHOTO_PARTS.copy && typeof value === 'string' && UUID.test(value)) {
+            entries.push({ copy: value })
+          } else {
+            problems.push(`Part ${number} is neither a "${PHOTO_PARTS.keep}" or "${PHOTO_PARTS.copy}" photo id nor a "${PHOTO_PARTS.file}" file.`)
+          }
+        }
+        if (entries.length + problems.length > ITEM_PHOTO_LIMIT) {
+          problems.push(`A brand of an item holds at most ${ITEM_PHOTO_LIMIT} photos.`)
+        }
+        if (problems.length > 0) {
+          return badPhotos(problems)
+        }
+        const item = db.items.find((each) => each.id === ids.value.id)
+        if (!item) {
+          return json(404, { statusCode: 404, error: 'Not Found', message: 'Item not found.' })
+        }
+        const brand = item.brands.find((each) => each.id === ids.value.brandId)
+        if (!brand) {
+          return json(404, { statusCode: 404, error: 'Not Found', message: 'Brand not found on this item.' })
+        }
+        const kept = entries.flatMap((entry) => ('keep' in entry ? [entry.keep] : []))
+        if (kept.some((id) => !brand.photos.some((photo) => photo.id === id)) || new Set(kept).size < kept.length) {
+          return badPhotos(["Kept photos must be this brand's photos, each kept once."])
+        }
+        const everyPhoto = db.items.flatMap((each) => each.brands.flatMap((held) => held.photos))
+        const copied = entries.flatMap((entry) => ('copy' in entry ? [entry.copy] : []))
+        if (copied.some((id) => !everyPhoto.some((photo) => photo.id === id))) {
+          return badPhotos(['Copied photos must be saved photos.'])
+        }
+        const photos = entries.map((entry): ItemPhoto => {
+          if ('keep' in entry) {
+            return brand.photos.find((photo) => photo.id === entry.keep)!
+          }
+          const id = crypto.randomUUID()
+          const source = 'copy' in entry ? everyPhoto.find((photo) => photo.id === entry.copy)! : undefined
+          const file = source ? db.files.get(source.id) : (entry as { file: Blob }).file
+          if (!file) {
+            return { id, url: source!.url, thumbUrl: source!.thumbUrl }
+          }
+          db.files.set(id, file)
+          const url = URL.createObjectURL(file)
+          return { id, url, thumbUrl: url }
+        })
+        forget(db, brand.photos.filter((photo) => !kept.includes(photo.id)))
+        brand.photos = photos
+        item.updatedAt = new Date().toISOString()
+        return json(200, toItem(db, item))
+      },
+    },
+    {
+      method: 'GET',
+      path: '/photos/:file',
+      open: true,
+      answer: ({ params }) => {
+        const named = /^([0-9a-f-]{36})(-thumb)?\.(jpg|png|webp)$/.exec(params.file)
+        if (!named) {
+          return badRequest({ issues: [{ path: ['file'], message: 'Not a photo file.' }] })
+        }
+        const file = db.files.get(named[1])
+        return file
+          ? new Response(file, { headers: { 'content-type': file.type, [DEMO_HEADER]: DEMO_MARKER } })
+          : json(404, { statusCode: 404, error: 'Not Found', message: 'Photo not found.' })
+      },
+    },
+  ]
+}
+
+/**
  * Reads a query as the API's server does: a key given once is a string, given more times a list.
  * @param query The query.
  * @returns The query as an object.
@@ -816,6 +1070,8 @@ function updateItem(
     item.originalCodes = lists.originalCodes.map((code) => code.trim().toUpperCase())
   }
   if (lists.brands) {
+    const kept = new Set(lists.brands.flatMap((brand) => (brand.id ? [brand.id] : [])))
+    forget(db, item.brands.filter((brand) => !kept.has(brand.id)).flatMap((brand) => brand.photos))
     item.brands = lists.brands.map((brand) => brandOf(db, brand, item.brands.find((held) => held.id === brand.id)?.photos))
   }
   item.updatedAt = new Date().toISOString()
