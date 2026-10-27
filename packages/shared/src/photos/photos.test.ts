@@ -8,6 +8,7 @@ import {
   ITEM_PHOTO_LIMIT,
   PHOTO_MAX_BYTES,
   PHOTO_MAX_DIMENSION,
+  photoAddress,
   photoCount,
   photoParts,
   photoProblem,
@@ -93,4 +94,17 @@ test("Shared: another item's photos become the parts that copy them", () => {
   const parts = photoParts([copies[1], { url: "blob:nova", file: "nova.png" }, copies[0]], [], "/api");
   assert.deepEqual(parts, [{ copy: "b" }, { file: "nova.png" }, { copy: "a" }]);
   assert.equal(photosChanged(parts, []), true);
+});
+
+// Reaches saved photos given as paths through the API's address, and ones given as whole addresses, as the web app's
+// demo gives its own, as they are, and checks a field holding them still keeps them by their ids.
+test("Shared: a photo is reached under the API's address, or at its own whole address", () => {
+  assert.equal(photoAddress("/photos/a.jpg", "/api"), "/api/photos/a.jpg");
+  assert.equal(photoAddress("/photos/a.jpg", "http://192.168.0.10:3000"), "http://192.168.0.10:3000/photos/a.jpg");
+  assert.equal(photoAddress("blob:https://chriscamilo.github.io/123", "/api"), "blob:https://chriscamilo.github.io/123");
+  assert.equal(photoAddress("https://chriscamilo.github.io/demo/disco.svg", "/api"), "https://chriscamilo.github.io/demo/disco.svg");
+  const demo: ItemPhoto[] = [{ id: "d", url: "blob:https://site/1", thumbUrl: "blob:https://site/1" }];
+  const held = heldPhotos(demo, "/api");
+  assert.deepEqual(held, [{ url: "blob:https://site/1" }]);
+  assert.deepEqual(photoParts(held, demo, "/api"), [{ keep: "d" }]);
 });
