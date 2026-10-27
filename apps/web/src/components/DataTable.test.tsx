@@ -208,6 +208,22 @@ test('Web: a filling table scrolls inside its column with the header pinned', as
   expect(Math.abs(text.top + text.height / 2 - (box.top + box.height / 2))).toBeLessThanOrEqual(2)
 })
 
+// Puts a filling table of many out-of-stock rows in a 240px column, on a desktop and a phone, and checks the page
+// doesn't scroll: the status each row writes out for screen readers stays in the table, however far down the row is.
+test('Web: the rows status far down a filling table does not make the page scroll', async () => {
+  const many = Array.from({ length: 30 }, (_, index) => ({ ...ITEMS[2], code: `P-${index}`, name: `Peça ${index}` }))
+  await render(
+    <div style={{ display: 'flex', flexDirection: 'column', height: 240, overflow: 'auto' }}>
+      <Inventory items={many} fill />
+    </div>,
+  )
+  for (const [width, height] of [[MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT], [MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT]]) {
+    await page.viewport(width, height)
+    await expect.poll(() => document.documentElement.scrollHeight).toBe(window.innerHeight)
+  }
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+})
+
 // At phone width, checks the header hides, rows become cards with only the card cells, and the "Ordenar"
 // select sorts the same way the headers do.
 test('Web: at phone width rows become cards sorted by a select', async () => {

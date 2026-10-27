@@ -11,8 +11,9 @@ import { recipe, tv } from '../styles/tv.ts'
 // left. A table that fills its column (fill) takes the room left and scrolls inside it, both ways, with the header row
 // pinned on the panel's fill;
 // with no rows, the empty state is centered in that room. Below the card breakpoint it doesn't scroll on its own: the
-// screen scrolls the cards with what is above them. The table's body only groups the rows, so it adds no level to
-// their ids, which are the same as on mobile.
+// screen scrolls the cards with what is above them. The scroll box holds the rows' status, written out only for screen
+// readers, so far down a long list it doesn't make the page scroll. The table's body only groups the rows, so it adds
+// no level to their ids, which are the same as on mobile.
 
 // A tinted row: its fill, its hover, and the bar on its first cell, or on the card at phone width.
 const TINT = {
@@ -34,7 +35,7 @@ export const dataTable = recipe(
       base: 'grid min-w-0 gap-3',
       sortBar: 'hidden items-center gap-2 max-card:flex',
       sortSelect: 'min-w-0 flex-1',
-      scroll: 'overflow-x-auto max-card:overflow-visible',
+      scroll: 'relative overflow-x-auto max-card:overflow-visible',
       table: 'w-full border-collapse font-body text-sm text-text max-card:block',
       head: 'max-card:hidden',
       header: `whitespace-nowrap border-b border-hairline px-2.5 py-2 text-xs ${DISPLAY_LABEL} text-left text-text-muted`,
