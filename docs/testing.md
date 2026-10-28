@@ -85,10 +85,12 @@ apps/web/
 │   │   ├── notifications.ts    # bell()
 │   │   └── catalog.ts          # catalog()
 │   ├── api-guard.spec.ts       # checks the guard fails a call no stand-in answers
+│   ├── seed.spec.ts            # where Playwright's test agents start (below)
 │   └── <area>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
 │                               # notifications, register, theme, toast, user-menu
-└── e2e-demo/
-    └── demo.spec.ts
+├── e2e-demo/
+│   └── demo.spec.ts
+└── specs/                      # the test plans of Playwright's planner agent
 
 apps/desktop/
 ├── playwright.config.ts
@@ -174,6 +176,40 @@ The title keeps its prefix (`Web:`, `Desktop:`), and the tags follow it in the r
 5. Assert with Playwright's web-first assertions (`toBeVisible`, `toHaveText`, `toHaveURL`), `expect.poll` for a value read from the page. Never wait a fixed time. A color in `toHaveCSS` comes from the theme through `rgb()`, and a page that must not scroll sideways is checked with `await expect(page).not.toScrollSideways()`, both from `./support/expect.ts`.
 6. Check the minimum sizes: the test runs in both projects. A test that only holds on a desktop screen gets `TEST_TAGS.desktopOnly`, and the `mobile` project leaves it out. A test that differs on the phone reads Playwright's `isMobile` fixture, never the project's name. Screens that fill the window are also checked on a notebook, in full screen and in a window, with `atNotebookSizes(page, async (size) => …)` from `./support/sizes.ts`, naming `size` in each assertion's message.
 7. A test about a motion turns it on for itself: `page.emulateMedia({ reducedMotion: "no-preference" })`.
+
+### Writing tests with Playwright's agents
+
+Claude Code can read the app as a test does, and plan, write and fix tests by running them, through Playwright's MCP and its test agents:
+
+| | What it is | Where |
+|---|---|---|
+| `playwright` | Playwright's MCP (`@playwright/mcp` 0.0.80, on Playwright 1.63 and its Chromium): a browser at 1280×720 with a profile kept in memory, which Claude Code drives by the page's accessibility tree | `.mcp.json` |
+| `playwright-test` | The test runner's MCP: it opens the page from a seed spec, records what the generator does, writes a test file, and runs and debugs the tests through `apps/web/playwright.config.ts` | `.mcp.json` |
+| `playwright-test-planner`, `playwright-test-generator`, `playwright-test-healer` | Playwright's test agents, made by `playwright init-agents --loop=claude`, with the project's rules added | `.claude/agents/` |
+| `e2e/seed.spec.ts` | The seed: the Dashboard with a test user and an empty stock, from the fixtures | `apps/web/` |
+| `specs/` | The planner's test plans | `apps/web/` |
+
+**Setting it up.** Open Claude Code at the repository's root and approve the two servers of `.mcp.json` when it asks; `/mcp` lists them. Both start through `cmd /c`, as Windows needs. The browser is Playwright's Chromium, downloaded with `playwright install chromium` ([Running the tests](#running-the-tests)). The servers save their page snapshots in `.playwright-mcp/`, which is in `.gitignore`. [CLAUDE.md](../CLAUDE.md#tests-made-with-playwrights-agents) has the rules every test they make follows.
+
+**Exploring a screen.** Ask Claude Code to open the demo with the `playwright` server, on the Pages site (https://chriscamilo.github.io/apc-universal-repair/demo/) or from `site/` served on :4174, and read the screen's accessibility tree: the roles and names a locator needs are there. Never point it at the web app on an API you didn't start: a server on port 3333 may be the installed desktop app, with real data.
+
+**From a screen to a test.**
+
+1. Ask for the `playwright-test-planner` agent. It opens the app from the seed, on the API and web app the test server's run starts itself, explores the screen, and saves a plan in `apps/web/specs/<screen-or-flow>.plan.md`.
+2. Ask for the `playwright-test-generator` agent with a scenario of the plan. It does each step on the page and writes the test to a new `e2e/<scope>-<behavior>.spec.ts`, never to a spec that exists, as its tool replaces the whole file.
+3. Bring the test into the project's shape, as CLAUDE.md says: its locators into `e2e/locators/<scope>.ts`, the title prefix, the comment above it, the tags, and no comment before each step. Move it into its area's spec when there is one.
+4. Run it in both projects, then the whole suite ([Running the tests](#running-the-tests)).
+
+**Fixing a failing test.** Ask for the `playwright-test-healer` agent. It runs the tests, pauses on a failure with the page's snapshot, fixes the test and runs it again. It never weakens an assertion, skips the test or adds a wait: when the app is wrong, it leaves the test failing and says what the app does.
+
+**Reviewing what the agents change.** Read the diff as any other, and check:
+
+- every assertion the test had is still there, with the same expected values, unless the app's intended behavior changed;
+- there is no `waitForTimeout`, longer timeout, `test.fixme()` or `test.skip()`;
+- the locators come from `e2e/locators/`, and the state from the fixtures, not from steps that build it;
+- the test adds coverage no other test has. Otherwise drop it, with its plan.
+
+**After an update of Playwright,** `playwright init-agents --loop=claude` in `apps/web` writes the new agents to `apps/web/.claude/agents/`, with a seed and a `.mcp.json` of its own. Move the agents to `.claude/agents/` and add back the project's paragraphs, keep `e2e/seed.spec.ts` and the root's `.mcp.json`, and pin the `@playwright/mcp` release built on the same Playwright.
 
 ### Running the tests
 
@@ -340,10 +376,12 @@ apps/web/
 │   │   ├── notifications.ts    # bell()
 │   │   └── catalog.ts          # catalog()
 │   ├── api-guard.spec.ts       # confere que a guarda reprova uma chamada que nenhum substituto responde
+│   ├── seed.spec.ts            # de onde partem os agentes de teste do Playwright (abaixo)
 │   └── <área>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
 │                               # notifications, register, theme, toast, user-menu
-└── e2e-demo/
-    └── demo.spec.ts
+├── e2e-demo/
+│   └── demo.spec.ts
+└── specs/                      # os planos de teste do agente planejador do Playwright
 
 apps/desktop/
 ├── playwright.config.ts
@@ -429,6 +467,40 @@ O título mantém o prefixo (`Web:`, `Desktop:`), e as tags vêm depois dele no 
 5. Verifique com as asserções web-first do Playwright (`toBeVisible`, `toHaveText`, `toHaveURL`), e `expect.poll` para um valor lido da página. Nunca espere um tempo fixo. Uma cor no `toHaveCSS` vem do tema pelo `rgb()`, e uma página que não pode rolar para o lado é conferida com `await expect(page).not.toScrollSideways()`, os dois de `./support/expect.ts`.
 6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Um teste que só vale numa tela de desktop ganha `TEST_TAGS.desktopOnly`, e o projeto `mobile` o deixa de fora. Um teste que muda no celular lê a fixture `isMobile` do Playwright, nunca o nome do projeto. Telas que ocupam a janela também são conferidas num notebook, em tela cheia e numa janela, com `atNotebookSizes(page, async (size) => …)` de `./support/sizes.ts`, citando `size` na mensagem de cada asserção.
 7. Um teste sobre um movimento o liga para si: `page.emulateMedia({ reducedMotion: "no-preference" })`.
+
+### Escrevendo testes com os agentes do Playwright
+
+O Claude Code pode ler o app como um teste lê, e planejar, escrever e corrigir testes rodando-os, pelo MCP do Playwright e pelos agentes de teste dele:
+
+| | O que é | Onde |
+|---|---|---|
+| `playwright` | O MCP do Playwright (`@playwright/mcp` 0.0.80, no Playwright 1.63 e no Chromium dele): um navegador em 1280×720 com o perfil guardado na memória, que o Claude Code conduz pela árvore de acessibilidade da página | `.mcp.json` |
+| `playwright-test` | O MCP do executor de testes: abre a página a partir de uma spec semente, grava o que o gerador faz, escreve o arquivo do teste e roda e depura os testes pelo `apps/web/playwright.config.ts` | `.mcp.json` |
+| `playwright-test-planner`, `playwright-test-generator`, `playwright-test-healer` | Os agentes de teste do Playwright, feitos pelo `playwright init-agents --loop=claude`, com as regras do projeto acrescentadas | `.claude/agents/` |
+| `e2e/seed.spec.ts` | A semente: o Dashboard com um usuário de teste e o estoque vazio, pelas fixtures | `apps/web/` |
+| `specs/` | Os planos de teste do planejador | `apps/web/` |
+
+**Configurando.** Abra o Claude Code na raiz do repositório e aprove os dois servidores do `.mcp.json` quando ele pedir; o `/mcp` os lista. Os dois sobem pelo `cmd /c`, como o Windows exige. O navegador é o Chromium do Playwright, baixado com `playwright install chromium` ([Rodando os testes](#rodando-os-testes)). Os servidores salvam os snapshots das páginas em `.playwright-mcp/`, que está no `.gitignore`. O [CLAUDE.md](../CLAUDE.md#tests-made-with-playwrights-agents) tem as regras que todo teste feito com eles segue.
+
+**Explorando uma tela.** Peça ao Claude Code para abrir a demo com o servidor `playwright`, no site do Pages (https://chriscamilo.github.io/apc-universal-repair/demo/) ou a partir do `site/` servido na :4174, e ler a árvore de acessibilidade da tela: os papéis e nomes de que um locator precisa estão ali. Nunca o aponte para o app web numa API que você não subiu: um servidor na porta 3333 pode ser o app desktop instalado, com dados reais.
+
+**De uma tela a um teste.**
+
+1. Peça o agente `playwright-test-planner`. Ele abre o app a partir da semente, na API e no app web que a execução do servidor de testes sobe ela mesma, explora a tela e salva um plano em `apps/web/specs/<tela-ou-fluxo>.plan.md`.
+2. Peça o agente `playwright-test-generator` com um cenário do plano. Ele faz cada passo na página e escreve o teste num novo `e2e/<escopo>-<comportamento>.spec.ts`, nunca numa spec que já existe, porque a ferramenta dele substitui o arquivo inteiro.
+3. Deixe o teste no formato do projeto, como o CLAUDE.md diz: os locators em `e2e/locators/<escopo>.ts`, o prefixo no título, o comentário acima dele, as tags, e nenhum comentário antes de cada passo. Leve-o para a spec da área dele quando houver uma.
+4. Rode-o nos dois projetos, e depois a suíte inteira ([Rodando os testes](#rodando-os-testes)).
+
+**Corrigindo um teste que falha.** Peça o agente `playwright-test-healer`. Ele roda os testes, pausa numa falha com o snapshot da página, corrige o teste e o roda de novo. Ele nunca enfraquece uma asserção, pula o teste ou acrescenta uma espera: quando o app está errado, deixa o teste falhando e diz o que o app faz.
+
+**Revisando o que os agentes mudam.** Leia o diff como qualquer outro, e confira:
+
+- toda asserção que o teste tinha continua lá, com os mesmos valores esperados, a menos que o comportamento pretendido do app tenha mudado;
+- não há `waitForTimeout`, timeout maior, `test.fixme()` nem `test.skip()`;
+- os locators vêm de `e2e/locators/`, e o estado das fixtures, não de passos que o montam;
+- o teste acrescenta uma cobertura que nenhum outro tem. Se não, descarte-o, com o plano dele.
+
+**Depois de uma atualização do Playwright,** o `playwright init-agents --loop=claude` em `apps/web` escreve os novos agentes em `apps/web/.claude/agents/`, com uma semente e um `.mcp.json` próprios. Leve os agentes para `.claude/agents/` e devolva os parágrafos do projeto, mantenha o `e2e/seed.spec.ts` e o `.mcp.json` da raiz, e fixe a versão do `@playwright/mcp` feita no mesmo Playwright.
 
 ### Rodando os testes
 
