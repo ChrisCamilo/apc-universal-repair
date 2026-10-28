@@ -3,7 +3,7 @@
   "productName": "APC Universal Repair",
   "private": true,
   "license": "UNLICENSED",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "description": "APC Universal Repair for Windows",
   "author": "Christian Camilo",
   "type": "module",
