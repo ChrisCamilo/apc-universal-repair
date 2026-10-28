@@ -3,6 +3,10 @@
     "playwright": {
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@playwright/mcp@0.0.80", "--browser", "chromium", "--isolated", "--viewport-size", "1280x720"]
+    },
+    "playwright-test": {
+      "command": "cmd",
+      "args": ["/c", "pnpm", "--silent", "--filter", "@apc/web", "exec", "playwright", "run-test-mcp-server"]
     }
   }
 }
