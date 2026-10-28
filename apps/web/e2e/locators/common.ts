@@ -26,8 +26,8 @@ export function dialog(page: Page, name: string | RegExp) {
  */
 export function dataTable(page: Page) {
   return {
-    rows: page.getByTestId("common.data-table.row"),
-    head: page.getByTestId("common.data-table.head"),
+    rows: page.getByTestId("common.data-table.table.row"),
+    head: page.getByTestId("common.data-table.table.head"),
     header: (name: string | RegExp) => page.getByRole("columnheader", { name }),
     scroll: page.getByTestId("common.data-table.scroll"),
     sort: page.getByRole("combobox", { name: "Ordenar" }),
