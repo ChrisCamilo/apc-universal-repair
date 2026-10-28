@@ -10,13 +10,16 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
+  // A failed test leaves a trace, a screenshot and the HTML report, which never opens by itself: on CI the trace of its
+  // first retry, locally of its one run.
+  reporter: [[isCI ? "github" : "list"], ["html", { open: "never" }]],
   // Reduced motion, as in the component tests: dialogs, menus and lists open and close at once, so a test never reads
   // one halfway through a transition.
   use: {
     baseURL: "http://localhost:5173",
     reducedMotion: "reduce",
-    trace: "on-first-retry",
+    trace: isCI ? "on-first-retry" : "retain-on-failure",
+    screenshot: "only-on-failure",
   },
   // Minimum supported screen sizes from AGENTS.md. The phone leaves out the tests of a desktop screen.
   projects: [
