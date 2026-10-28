@@ -1,5 +1,6 @@
 import { expect, test } from "./support/fixtures.ts";
 import { rgb } from "./support/expect.ts";
+import { dashboard } from "./locators/dashboard.ts";
 import { MODES, STYLES, scales, themes } from "@apc/shared/theme";
 
 for (const style of STYLES) {
@@ -21,7 +22,7 @@ for (const style of STYLES) {
       await expect(page.locator("body")).toHaveCSS("background-color", rgb(theme.colors.canvas));
       await expect(page.locator("body")).toHaveCSS("color", rgb(theme.colors.text));
 
-      const tab = page.getByRole("tab", { name: "Estoque" });
+      const tab = dashboard(page).tab("inventory");
       await expect(tab).toHaveCSS("color", rgb(theme.colors.accent));
       await expect(tab).toHaveCSS("font-family", new RegExp(`^"?${theme.displayFont}`));
       const tracking = +(theme.displayTracking * scales.fontSize.sm).toFixed(2);

@@ -1,4 +1,6 @@
 import { expect, test } from "./support/fixtures.ts";
+import { logIn, loginForm } from "./locators/auth.ts";
+import { dashboard, userMenu } from "./locators/dashboard.ts";
 import { SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { THEME_STORAGE_KEYS } from "@apc/shared/theme";
 import { TEST_USERS } from "@apc/shared/test-users";
@@ -12,8 +14,8 @@ test.use({ colorScheme: "dark" });
 // off and picks GT4 with the menu staying open, and checks both apply at once and are still there after a reload.
 // On the phone, the menu also stays on screen.
 test("Web: the user menu changes and keeps the display preferences", async ({ page }, testInfo) => {
+  const { trigger, menu, checkbox, radio } = userMenu(page);
   await page.goto("/inventory");
-  const trigger = page.getByRole("button", { name: "Menu do usuário" });
   await expect(trigger.getByText("CC")).toBeVisible();
   if (testInfo.project.name === "desktop") {
     await expect(trigger.getByText("christian.camilo")).toBeVisible();
@@ -21,7 +23,6 @@ test("Web: the user menu changes and keeps the display preferences", async ({ pa
     await expect(trigger.getByText("christian.camilo")).toBeHidden();
   }
   await trigger.click();
-  const menu = page.getByRole("menu", { name: "Menu do usuário" });
   await expect(menu.getByText("Christian Camilo")).toBeVisible();
   const box = (await menu.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);
@@ -29,9 +30,9 @@ test("Web: the user menu changes and keeps the display preferences", async ({ pa
 
   const html = page.locator("html");
   await expect(html).toHaveAttribute("data-mode", "night");
-  await page.getByRole("menuitemcheckbox", { name: "Modo escuro" }).click();
+  await checkbox("Modo escuro").click();
   await expect(html).toHaveAttribute("data-mode", "day");
-  await page.getByRole("menuitemradio", { name: "GT4" }).click();
+  await radio("GT4").click();
   await expect(html).toHaveAttribute("data-style", "gt4");
   await expect(menu).toBeVisible();
 
@@ -43,19 +44,18 @@ test("Web: the user menu changes and keeps the display preferences", async ({ pa
 // Picks GT4, then "Sair" at the end of the menu, and checks the app is on the login with the session gone and GT4
 // still applied and saved; logging in again goes back to the Dashboard.
 test("Web: Sair ends the session and keeps the preferences", async ({ page }) => {
+  const { trigger, radio, item } = userMenu(page);
   await page.goto("/inventory");
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitemradio", { name: "GT4" }).click();
-  await page.getByRole("menuitem", { name: "Sair" }).click();
+  await trigger.click();
+  await radio("GT4").click();
+  await item("Sair").click();
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByLabel("Usuário", { exact: true })).toBeVisible();
+  await expect(loginForm(page).username).toBeVisible();
   expect(await page.evaluate((key) => localStorage.getItem(key), SESSION_STORAGE_KEY)).toBeNull();
   await expect(page.locator("html")).toHaveAttribute("data-style", "gt4");
   expect(await page.evaluate((key) => localStorage.getItem(key), THEME_STORAGE_KEYS.style)).toBe("gt4");
 
-  await page.getByLabel("Usuário", { exact: true }).fill(USER.username);
-  await page.getByLabel("Senha", { exact: true }).fill(USER.password);
-  await page.getByLabel("Senha", { exact: true }).press("Enter");
+  await logIn(page, USER);
   await expect(page).toHaveURL(/\/inventory$/);
 });
 
@@ -63,16 +63,17 @@ test("Web: Sair ends the session and keeps the preferences", async ({ page }) =>
 // turns it off and checks they are fixed again. The MVP has a single tab, so the order itself can't change here; the
 // component tests move tabs with three of them.
 test("Web: the reorder choice makes the tabs draggable and comes back", async ({ page }) => {
+  const { trigger, checkbox } = userMenu(page);
   await page.goto("/inventory");
-  const tab = page.getByRole("tab", { name: "Estoque" });
+  const tab = dashboard(page).tab("inventory");
   await expect(tab).not.toHaveAttribute("draggable");
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitemcheckbox", { name: /Arrastar para reordenar/ }).click();
+  await trigger.click();
+  await checkbox(/Arrastar para reordenar/).click();
   await expect(tab).toHaveAttribute("draggable", "true");
 
   await page.reload();
   await expect(tab).toHaveAttribute("draggable", "true");
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitemcheckbox", { name: /Arrastar para reordenar/ }).click();
+  await trigger.click();
+  await checkbox(/Arrastar para reordenar/).click();
   await expect(tab).not.toHaveAttribute("draggable");
 });
