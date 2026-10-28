@@ -1,5 +1,8 @@
 import { expect, test } from "./support/fixtures.ts";
 import { atNotebookSizes } from "./support/sizes.ts";
+import { loginForm } from "./locators/auth.ts";
+import { dialog } from "./locators/common.ts";
+import { dashboard } from "./locators/dashboard.ts";
 import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { TEST_USERS } from "@apc/shared/test-users";
 
@@ -11,17 +14,19 @@ test.use({ signedIn: false });
 // Opens /login and checks the badge heads the page with both fields and "Entrar" on screen, laid out without
 // sideways scroll, beside the form on desktop and above it on a phone.
 test("Web: the login screen shows the badge and the form", async ({ page }, testInfo) => {
+  const form = loginForm(page);
+  const { heading, mark } = dashboard(page);
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: "APC Universal Repair" })).toBeVisible();
-  await expect(page.getByLabel("Usuário")).toBeVisible();
-  await expect(page.getByLabel("Senha", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Entrar" })).toBeInViewport();
-  const mark = (await page.getByRole("img", { name: "APC Universal Repair" }).boundingBox())!;
-  const field = (await page.getByLabel("Usuário").boundingBox())!;
+  await expect(heading).toBeVisible();
+  await expect(form.username).toBeVisible();
+  await expect(form.password).toBeVisible();
+  await expect(form.submit).toBeInViewport();
+  const markBox = (await mark.boundingBox())!;
+  const field = (await form.username.boundingBox())!;
   if (testInfo.project.name === "desktop") {
-    expect(field.x).toBeGreaterThan(mark.x + mark.width);
+    expect(field.x).toBeGreaterThan(markBox.x + markBox.width);
   } else {
-    expect(field.y).toBeGreaterThan(mark.y + mark.height);
+    expect(field.y).toBeGreaterThan(markBox.y + markBox.height);
   }
   await expect(page).not.toScrollSideways();
 });
@@ -30,25 +35,26 @@ test("Web: the login screen shows the badge and the form", async ({ page }, test
 // get their messages, the refused login says so above the form and empties the password, and the accepted one
 // saves the session with its token, which is still there after a reload, and goes on to the Dashboard.
 test("Web: the login checks the fields and the user, and saves the session", async ({ page }) => {
+  const form = loginForm(page);
   await page.goto("/login");
-  await page.getByRole("button", { name: "Entrar" }).click();
+  await form.submit.click();
   await expect(page.getByText(LOGIN_MESSAGES.username)).toBeVisible();
   await expect(page.getByText(LOGIN_MESSAGES.password)).toBeVisible();
-  await expect(page.getByLabel("Usuário")).toBeFocused();
+  await expect(form.username).toBeFocused();
 
-  await page.getByLabel("Usuário").fill(USER.username);
+  await form.username.fill(USER.username);
   await expect(page.getByText(LOGIN_MESSAGES.username)).toBeHidden();
-  await page.getByLabel("Senha", { exact: true }).fill("errada");
-  await page.getByLabel("Senha", { exact: true }).press("Enter");
-  await expect(page.getByRole("alert")).toHaveText(LOGIN_MESSAGES.failed);
-  await expect(page.getByLabel("Senha", { exact: true })).toHaveValue("");
-  await expect(page.getByLabel("Senha", { exact: true })).toBeFocused();
+  await form.password.fill("errada");
+  await form.password.press("Enter");
+  await expect(form.error).toHaveText(LOGIN_MESSAGES.failed);
+  await expect(form.password).toHaveValue("");
+  await expect(form.password).toBeFocused();
   await expect(page).toHaveURL(/\/login$/);
 
-  await page.getByLabel("Senha", { exact: true }).fill(USER.password);
-  await page.getByLabel("Senha", { exact: true }).press("Enter");
+  await form.password.fill(USER.password);
+  await form.password.press("Enter");
   await expect(page).toHaveURL(/\/inventory$/);
-  await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
+  await expect(dashboard(page).tab("inventory")).toHaveAttribute("aria-selected", "true");
   const session = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null"), SESSION_STORAGE_KEY);
   expect(await session()).toMatchObject({ username: USER.username, displayName: USER.displayName, initials: "CC", token: `token-${USER.id}` });
   await page.reload();
@@ -59,20 +65,20 @@ test("Web: the login checks the fields and the user, and saves the session", asy
 // backdrop in the screen's corner, checks the focus is back on the link, then opens and closes it with "Entendi".
 test("Web: the forgotten-password notice opens from the link and closes", async ({ page }) => {
   await page.goto("/login");
-  const link = page.getByRole("button", { name: "Esqueceu a senha?" });
-  const dialog = page.getByRole("dialog", { name: "Esqueceu a senha?" });
+  const link = loginForm(page).forgotPassword;
+  const notice = dialog(page, "Esqueceu a senha?").root;
   await link.click();
-  await expect(dialog).toContainText(LOGIN_MESSAGES.forgotPassword);
-  const box = (await dialog.boundingBox())!;
+  await expect(notice).toContainText(LOGIN_MESSAGES.forgotPassword);
+  const box = (await notice.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
   await page.mouse.click(4, 4);
-  await expect(dialog).toBeHidden();
+  await expect(notice).toBeHidden();
   await expect(link).toBeFocused();
 
   await link.click();
-  await page.getByRole("button", { name: "Entendi" }).click();
-  await expect(dialog).toBeHidden();
+  await notice.getByRole("button", { name: "Entendi" }).click();
+  await expect(notice).toBeHidden();
   await expect(link).toBeFocused();
 });
 
@@ -84,6 +90,6 @@ test("Web: on a 1360×768 notebook the login fits without scrolling", async ({ p
   await atNotebookSizes(page, async (size) => {
     expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), size).toBe(0);
     await expect(page, size).not.toScrollSideways();
-    await expect(page.getByRole("button", { name: "Entrar" }), size).toBeInViewport();
+    await expect(loginForm(page).submit, size).toBeInViewport();
   });
 });
