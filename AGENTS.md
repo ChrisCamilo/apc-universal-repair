@@ -64,6 +64,19 @@ For small work with no clear epic, the epic slug may be omitted: `<type>/<short-
 
 `main` is the single long-lived branch and should always stay deployable. Feature branches are created off `main` and merged back once done; there are no long-lived epic branches — that would be over-engineering at this stage.
 
+## Pull Request Title Convention
+
+A pull request for an issue is titled after the issue:
+
+```
+APC-<issue number> - <issue title>
+```
+
+The issue title is copied as it is, with no commit type in front.
+
+Example, for issue #323 "Fade nested table rows in and out when a row opens and closes":
+- `APC-323 - Fade nested table rows in and out when a row opens and closes`
+
 ## Epic Structure
 
 Epics group work by product area and are referenced by their slug in branch names and issue tracking.
