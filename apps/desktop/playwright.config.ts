@@ -9,6 +9,8 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
   timeout: 60_000,
-  reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
-  use: { trace: "on-first-retry" },
+  // A failed test leaves a trace, a screenshot and the HTML report, as in the web's end-to-end tests. The launch
+  // fixture (e2e/support/fixtures.ts) records the apps' traces, which Playwright doesn't.
+  reporter: [[isCI ? "github" : "list"], ["html", { open: "never" }]],
+  use: { trace: isCI ? "on-first-retry" : "retain-on-failure", screenshot: "only-on-failure" },
 });

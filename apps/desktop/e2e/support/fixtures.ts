@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { _electron as electron, expect, test as base, type ElectronApplication, type Page } from "@playwright/test";
+import { _electron as electron, expect, test as base, type ElectronApplication, type Page, type TraceMode } from "@playwright/test";
 import type { Item } from "@apc/shared/items";
 import type { TEST_USERS } from "@apc/shared/test-users";
 import { reduceMotion } from "../reducedMotion.ts";
@@ -14,6 +14,9 @@ import { startStubApi } from "../stubApi.ts";
 // the userData folders it made are removed after, so the next test on the one worker starts with no app, server, port
 // or file left over. Run `pnpm --filter @apc/web build` and `pnpm run build` first, which `pnpm test:e2e` from the root
 // does through Turbo.
+//
+// Playwright's `screenshot` option captures the apps' windows, but its `trace` option keeps only the test's steps, so
+// launchApp records a trace of each app's context itself, by the same option, and attaches it to the test.
 //
 // Playwright names a fixture's second argument `use`; it is `provide` here, as in the web E2E's fixtures.
 
@@ -69,9 +72,11 @@ export const test = base.extend<Options & Fixtures, WorkerOptions & WorkerFixtur
     },
     { scope: "worker" },
   ],
-  launchApp: async ({ server, stubApi }, provide) => {
+  launchApp: async ({ server, stubApi, trace }, provide, testInfo) => {
     const open = new Set<ElectronApplication>();
     const made: string[] = [];
+    const tracing = traceRule(typeof trace === "string" ? trace : trace.mode, testInfo.retry);
+    const traces: string[] = [];
     await provide(async (options = {}) => {
       const userData = options.userData ?? mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
       if (!options.userData) {
@@ -96,10 +101,35 @@ export const test = base.extend<Options & Fixtures, WorkerOptions & WorkerFixtur
       const app = reduceMotion(await electron.launch({ args: [APP_DIR, ...(options.args ?? [])], env }));
       open.add(app);
       app.once("close", () => open.delete(app));
+      if (tracing.record) {
+        await app.context().tracing.start({ screenshots: true, snapshots: true, sources: true });
+        // The trace is saved as the app closes, whether the test or the teardown closes it. One that quits the app
+        // some other way has none.
+        const close = app.close.bind(app);
+        app.close = async () => {
+          if (open.has(app)) {
+            const file = testInfo.outputPath(`trace-${traces.length + 1}.zip`);
+            traces.push(file);
+            await app.context().tracing.stop({ path: file });
+          }
+          await close();
+        };
+      }
       return { app, userData, server: address };
     });
     for (const app of open) {
       await app.close();
+    }
+    for (const file of traces) {
+      if (testInfo.status !== testInfo.expectedStatus || tracing.keepPassed) {
+        testInfo.attachments.push({ name: "trace", path: file, contentType: "application/zip" });
+      } else {
+        rmSync(file, { force: true });
+      }
+    }
+    // Saving a trace made the test's results folder, which a passing test leaves empty.
+    if (existsSync(testInfo.outputDir) && readdirSync(testInfo.outputDir).length === 0) {
+      rmSync(testInfo.outputDir, { recursive: true });
     }
     // The shipped server may still be letting go of its files for a moment after the app quits.
     for (const folder of made) {
@@ -109,6 +139,32 @@ export const test = base.extend<Options & Fixtures, WorkerOptions & WorkerFixtur
 });
 
 export { expect };
+
+/**
+ * Reads the `trace` option as Playwright does for its own pages, for the apps a test opens.
+ * @param mode The `trace` option's mode, from the config or `--trace`.
+ * @param retry The test's retry, 0 on its first run.
+ * @returns Whether the test records its apps' traces, and whether it keeps them though it passed.
+ */
+function traceRule(mode: TraceMode | "retry-with-trace", retry: number): { record: boolean; keepPassed: boolean } {
+  switch (mode) {
+    case "on":
+      return { record: true, keepPassed: true };
+    case "retain-on-failure":
+      return { record: true, keepPassed: false };
+    case "retain-on-first-failure":
+      return { record: retry === 0, keepPassed: false };
+    case "retain-on-failure-and-retries":
+      return { record: true, keepPassed: retry > 0 };
+    case "on-first-retry":
+    case "retry-with-trace":
+      return { record: retry === 1, keepPassed: true };
+    case "on-all-retries":
+      return { record: retry > 0, keepPassed: true };
+    default:
+      return { record: false, keepPassed: false };
+  }
+}
 
 /**
  * Finds a port no one listens on.

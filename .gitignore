@@ -41,6 +41,9 @@ storybook-static/
 # Playwright
 test-results/
 playwright-report/
+# The web app's demo suite (apps/web/playwright.demo.config.ts)
+test-results-demo/
+playwright-report-demo/
 blob-report/
 playwright/.cache/
 
