@@ -48,12 +48,13 @@ flowchart LR
 | | Web (`apps/web/playwright.config.ts`) | Demo (`apps/web/playwright.demo.config.ts`) | Desktop (`apps/desktop/playwright.config.ts`) |
 |---|---|---|---|
 | Runs against | Vite dev server on :5173, which proxies `/api` to the dev API on :3333 | The Pages site in `site/`, served by `scripts/serve-pages.mjs` on :4174 under `/apc-universal-repair/demo/` | The compiled app (`dist/main.js`) with the web build, opened by `_electron.launch` |
-| Servers started | `pnpm --filter @apc/api run dev` and `pnpm dev` (`webServer`), reused locally if already up | `serve-pages.mjs` | None: each spec starts its stand-in API or the app's own server |
+| Servers started | `pnpm --filter @apc/api run dev` and `pnpm dev` (`webServer`), reused locally only with `E2E_REUSE=1` | `serve-pages.mjs` | None: each spec starts its stand-in API or the app's own server |
 | Projects | `desktop` 1280×720, `mobile` 360×780 (touch, `isMobile`) | the same two | none (one Electron app) |
 | Parallelism | `fullyParallel` | `fullyParallel` | `workers: 1`, 60 s per test |
 | Retries | 2 on CI, 0 locally | 2 on CI, 0 locally | 2 on CI, 0 locally |
-| Reporter | `list` locally; `github` + `html` on CI | same | same |
-| Trace | `on-first-retry` | `on-first-retry` | `on-first-retry` (see [Reports](#reports-and-traces)) |
+| Reporter | `list` + `html` locally; `github` + `html` on CI | same, in `playwright-report-demo/` | same |
+| Trace | `retain-on-failure` locally, `on-first-retry` on CI | same, in `test-results-demo/` | same, recorded by `launchApp` (see [Reports](#reports-and-traces)) |
+| Screenshot | `only-on-failure` | `only-on-failure` | `only-on-failure` |
 | Motion | `reducedMotion: "reduce"` | `reducedMotion: "reduce"` | `reduceMotion(app)` from `e2e/reducedMotion.ts` |
 
 `forbidOnly` is on in CI, so a `test.only` left behind fails the run.
@@ -141,6 +142,7 @@ test("Desktop: …", { tag: [TEST_TAGS.setup] }, async ({ launchApp }) => {
 - **Stand-in API** (the default, `smoke`, `window`, `notifications`): the worker-scoped `stubApi` fixture, started once for the spec's tests, whose address the app gets in `APC_API_URL`. It answers health, the test users' login, the tutorial, logout, `/items` and empty item lists, only for requests that carry a test user's token and are addressed to `127.0.0.1`/`localhost`. `test.use({ stubStock: { items: ITEMS } })` gives `GET /items` its items.
 - **The server the app ships** (`bundled`): `test.use({ server: "bundled" })`. No `APC_API_URL`, a free port in `APC_SERVER_PORT`, and the app's own SQLite in its `userData`. A fresh install shows its recovery key first, which `keepRecoveryKey()` keeps.
 - **`logIn(page, user)`** types a user into the login and waits for the Inventory.
+- **A failed test** gets a trace of each app it opened, which `launchApp` records ([Reports](#reports-and-traces)).
 
 ### Tags
 
@@ -198,10 +200,16 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm --filter @apc/web test:e2e:demo` | Demo E2E (put `site/` together first, below) |
 | `pnpm --filter @apc/desktop test:e2e` | Desktop E2E (build the web app and the desktop app first) |
 
-**Before a local web run, check who answers on port 3333.** Locally the config reuses a server that already answers, and the installed desktop app may be serving its real data there. The web E2E only send fake tokens, but a test should never reach real data: close the desktop app, or check the port's owner first in PowerShell (nothing printed means nothing listens there):
+**The web run starts its own API and web app.** If something already answers on port 3333 or 5173, the run fails with `… is already used`: on 3333 that may be the installed desktop app, serving its real data. Close it, or find who holds the port in PowerShell (nothing printed means nothing listens there):
 
 ```powershell
 Get-NetTCPConnection -LocalPort 3333 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" | Select-Object ProcessId, CommandLine }
+```
+
+To reuse an API and a web app you started yourself (`pnpm dev`), for quicker runs, set `E2E_REUSE=1`. Check who answers on 3333 first: the web E2E only send fake tokens, but a test should never reach real data.
+
+```bash
+E2E_REUSE=1 pnpm --filter @apc/web test:e2e
 ```
 
 **Demo:** the suite runs on the site as Pages serves it, so put it together in `site/` as the Pages workflow does:
@@ -230,34 +238,37 @@ pnpm --filter @apc/desktop test:e2e
 
 ### Reports and traces
 
-- **Locally** the reporter is `list`: the results print in the terminal and no HTML report is written. For one, pass `--reporter=html` and open it:
+- **A failed test leaves a trace, a screenshot and the HTML report,** locally and on CI. Locally every test records a trace, kept only when it fails (`retain-on-failure`); on CI the first retry records one (`on-first-retry`). The terminal still lists the results; the HTML report is written on every run and never opens by itself:
 
-  ```bash
-  pnpm --filter @apc/web exec playwright test --reporter=html
-  ```
+  | Suite | HTML report | Traces and screenshots |
+  |---|---|---|
+  | Web | `apps/web/playwright-report/` | `apps/web/test-results/<test>/` |
+  | Demo | `apps/web/playwright-report-demo/` | `apps/web/test-results-demo/<test>/` |
+  | Desktop | `apps/desktop/playwright-report/` | `apps/desktop/test-results/<test>/` |
 
   ```bash
   pnpm --filter @apc/web exec playwright show-report
   ```
 
-  The report lands in `apps/web/playwright-report/` (`apps/desktop/playwright-report/` for the desktop). The web and the demo suites write to the same folder, so the last run wins.
-- **Traces** are recorded on the first retry, and there are no retries locally. To record one on a local run, pass `--trace on` (or `retain-on-failure`); it is saved under `apps/web/test-results/<test>/trace.zip`, and opens in the HTML report or with (`exec` runs in `apps/web`, so the path starts there):
+  `show-report playwright-report-demo` opens the demo's; `pnpm --filter @apc/desktop exec playwright show-report`, the desktop's.
+- **A trace** opens from the failed test's page in the report, or with (`exec` runs in `apps/web`, so the path starts there):
 
   ```bash
   pnpm --filter @apc/web exec playwright show-trace test-results/<test>/trace.zip
   ```
 
-  The desktop specs launch Electron themselves, outside the `page` fixture, so check `test-results/` for a trace before relying on one there.
+  To keep one of a test that passes, pass `--trace on`.
+- **Desktop:** Playwright's screenshot captures the app's windows, but its `trace.zip` holds only the test's steps. So `launchApp` records each app the test opened by the same `trace` option, in `trace-1.zip`, `trace-2.zip`…, attached to the test. An app's trace is saved as it closes, through the test's `app.close()` or once the test ends; an app that quits some other way has none.
 - **On CI** the `github` reporter puts each failure on the pull request's lines, and the HTML report is uploaded when the job fails, kept 7 days:
 
   | Workflow | Suite | Artifact |
   |---|---|---|
   | `ci.yml` (every pull request and push to main) | Web E2E | `playwright-report` |
   | `desktop.yml` (pull requests that touch the desktop, web or shared) | Desktop E2E, on `windows-latest` | `desktop-playwright-report` |
-  | `pages.yml` (pull requests that touch the API, web, shared or the site) | Demo E2E | none: read the job's log |
+  | `pages.yml` (pull requests that touch the API, web, shared or the site) | Demo E2E | `demo-playwright-report` |
 
   Download the artifact from the run's *Summary* page, unzip it and open it with `playwright show-report <folder>`. The traces of the retried tests are inside.
-- `test-results/`, `playwright-report/` and `blob-report/` are in `.gitignore`.
+- `test-results/`, `playwright-report/`, the demo's `test-results-demo/` and `playwright-report-demo/`, and `blob-report/` are in `.gitignore`.
 
 ### Keeping the tests up
 
@@ -292,12 +303,13 @@ pnpm --filter @apc/desktop test:e2e
 | | Web (`apps/web/playwright.config.ts`) | Demo (`apps/web/playwright.demo.config.ts`) | Desktop (`apps/desktop/playwright.config.ts`) |
 |---|---|---|---|
 | Roda contra | O servidor de desenvolvimento do Vite na :5173, que repassa `/api` para a API de desenvolvimento na :3333 | O site do Pages em `site/`, servido pelo `scripts/serve-pages.mjs` na :4174 em `/apc-universal-repair/demo/` | O app compilado (`dist/main.js`) com o build da web, aberto pelo `_electron.launch` |
-| Servidores que sobe | `pnpm --filter @apc/api run dev` e `pnpm dev` (`webServer`), reaproveitados localmente se já estiverem no ar | `serve-pages.mjs` | Nenhum: cada spec sobe sua API substituta ou o servidor do próprio app |
+| Servidores que sobe | `pnpm --filter @apc/api run dev` e `pnpm dev` (`webServer`), reaproveitados localmente só com `E2E_REUSE=1` | `serve-pages.mjs` | Nenhum: cada spec sobe sua API substituta ou o servidor do próprio app |
 | Projetos | `desktop` 1280×720, `mobile` 360×780 (toque, `isMobile`) | os mesmos dois | nenhum (um app Electron) |
 | Paralelismo | `fullyParallel` | `fullyParallel` | `workers: 1`, 60 s por teste |
 | Retentativas | 2 no CI, 0 local | 2 no CI, 0 local | 2 no CI, 0 local |
-| Reporter | `list` local; `github` + `html` no CI | igual | igual |
-| Trace | `on-first-retry` | `on-first-retry` | `on-first-retry` (veja [Relatórios](#relatórios-e-traces)) |
+| Reporter | `list` + `html` local; `github` + `html` no CI | igual, em `playwright-report-demo/` | igual |
+| Trace | `retain-on-failure` local, `on-first-retry` no CI | igual, em `test-results-demo/` | igual, gravado pelo `launchApp` (veja [Relatórios](#relatórios-e-traces)) |
+| Screenshot | `only-on-failure` | `only-on-failure` | `only-on-failure` |
 | Movimento | `reducedMotion: "reduce"` | `reducedMotion: "reduce"` | `reduceMotion(app)` de `e2e/reducedMotion.ts` |
 
 O `forbidOnly` fica ligado no CI, então um `test.only` esquecido derruba a execução.
@@ -385,6 +397,7 @@ test("Desktop: …", { tag: [TEST_TAGS.setup] }, async ({ launchApp }) => {
 - **API substituta** (o padrão; `smoke`, `window`, `notifications`): a fixture `stubApi`, com escopo de worker, iniciada uma vez para os testes da spec; o app recebe o endereço dela em `APC_API_URL`. Responde health, o login dos usuários de teste, o tutorial, o logout, `/items` e listas de itens vazias, só para requisições que levam o token de um usuário de teste e são endereçadas a `127.0.0.1`/`localhost`. O `test.use({ stubStock: { items: ITEMS } })` dá os itens do `GET /items`.
 - **O servidor que o app traz** (`bundled`): `test.use({ server: "bundled" })`. Sem `APC_API_URL`, uma porta livre em `APC_SERVER_PORT` e o SQLite do próprio app no `userData` dele. Uma instalação nova mostra primeiro a chave de recuperação, que o `keepRecoveryKey()` guarda.
 - **`logIn(page, user)`** digita um usuário no login e espera o Estoque.
+- **Um teste que falha** ganha um trace de cada app que abriu, gravado pelo `launchApp` ([Relatórios](#relatórios-e-traces)).
 
 ### Tags
 
@@ -442,10 +455,16 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm --filter @apc/web test:e2e:demo` | E2E da demo (monte o `site/` antes, abaixo) |
 | `pnpm --filter @apc/desktop test:e2e` | E2E do desktop (faça antes o build da web e do desktop) |
 
-**Antes de rodar o E2E da web localmente, confira quem responde na porta 3333.** Localmente a config reaproveita um servidor que já responde, e o app desktop instalado pode estar servindo seus dados reais ali. O E2E da web só manda tokens falsos, mas um teste nunca deve alcançar dados reais: feche o app desktop, ou confira antes o dono da porta no PowerShell (se nada aparecer, ninguém escuta ali):
+**O E2E da web sobe a própria API e o próprio app web.** Se algo já responde na porta 3333 ou na 5173, a execução falha com `… is already used`: na 3333 pode ser o app desktop instalado, servindo seus dados reais. Feche-o, ou descubra quem ocupa a porta no PowerShell (se nada aparecer, ninguém escuta ali):
 
 ```powershell
 Get-NetTCPConnection -LocalPort 3333 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" | Select-Object ProcessId, CommandLine }
+```
+
+Para reaproveitar uma API e um app web que você mesmo subiu (`pnpm dev`), e rodar mais rápido, defina `E2E_REUSE=1`. Confira antes quem responde na 3333: o E2E da web só manda tokens falsos, mas um teste nunca deve alcançar dados reais.
+
+```bash
+E2E_REUSE=1 pnpm --filter @apc/web test:e2e
 ```
 
 **Demo:** a suíte roda no site como o Pages o serve, então monte-o em `site/` como o workflow do Pages faz:
@@ -474,34 +493,37 @@ pnpm --filter @apc/desktop test:e2e
 
 ### Relatórios e traces
 
-- **Localmente** o reporter é o `list`: o resultado sai no terminal e nenhum relatório HTML é gerado. Para ter um, passe `--reporter=html` e abra:
+- **Um teste que falha deixa um trace, um screenshot e o relatório HTML,** localmente e no CI. Localmente todo teste grava um trace, guardado só quando falha (`retain-on-failure`); no CI a primeira retentativa grava um (`on-first-retry`). O terminal continua listando os resultados; o relatório HTML é gerado a cada execução e nunca abre sozinho:
 
-  ```bash
-  pnpm --filter @apc/web exec playwright test --reporter=html
-  ```
+  | Suíte | Relatório HTML | Traces e screenshots |
+  |---|---|---|
+  | Web | `apps/web/playwright-report/` | `apps/web/test-results/<teste>/` |
+  | Demo | `apps/web/playwright-report-demo/` | `apps/web/test-results-demo/<teste>/` |
+  | Desktop | `apps/desktop/playwright-report/` | `apps/desktop/test-results/<teste>/` |
 
   ```bash
   pnpm --filter @apc/web exec playwright show-report
   ```
 
-  O relatório fica em `apps/web/playwright-report/` (`apps/desktop/playwright-report/` no desktop). As suítes da web e da demo escrevem na mesma pasta, então vale a última execução.
-- **Traces** são gravados na primeira retentativa, e localmente não há retentativas. Para gravar um localmente, passe `--trace on` (ou `retain-on-failure`); ele fica em `apps/web/test-results/<teste>/trace.zip` e abre no relatório HTML ou com (o `exec` roda em `apps/web`, então o caminho começa ali):
+  `show-report playwright-report-demo` abre o da demo; `pnpm --filter @apc/desktop exec playwright show-report`, o do desktop.
+- **Um trace** abre na página do teste que falhou no relatório, ou com (o `exec` roda em `apps/web`, então o caminho começa ali):
 
   ```bash
   pnpm --filter @apc/web exec playwright show-trace test-results/<teste>/trace.zip
   ```
 
-  As specs do desktop abrem o Electron elas mesmas, fora da fixture `page`, então confira se há um trace em `test-results/` antes de contar com ele ali.
+  Para guardar o de um teste que passa, passe `--trace on`.
+- **Desktop:** o screenshot do Playwright captura as janelas do app, mas o `trace.zip` dele só tem os passos do teste. Então o `launchApp` grava cada app que o teste abriu, pela mesma opção `trace`, em `trace-1.zip`, `trace-2.zip`…, anexados ao teste. O trace de um app é salvo quando ele fecha, pelo `app.close()` do teste ou quando o teste termina; um app que sai de outro jeito fica sem.
 - **No CI** o reporter `github` marca cada falha nas linhas do pull request, e o relatório HTML é enviado quando o job falha, guardado por 7 dias:
 
   | Workflow | Suíte | Artefato |
   |---|---|---|
   | `ci.yml` (todo pull request e push na main) | E2E da web | `playwright-report` |
   | `desktop.yml` (pull requests que mexem no desktop, na web ou no shared) | E2E do desktop, no `windows-latest` | `desktop-playwright-report` |
-  | `pages.yml` (pull requests que mexem na API, na web, no shared ou no site) | E2E da demo | nenhum: leia o log do job |
+  | `pages.yml` (pull requests que mexem na API, na web, no shared ou no site) | E2E da demo | `demo-playwright-report` |
 
   Baixe o artefato na página *Summary* da execução, descompacte e abra com `playwright show-report <pasta>`. Os traces dos testes que tiveram retentativa estão dentro.
-- `test-results/`, `playwright-report/` e `blob-report/` estão no `.gitignore`.
+- `test-results/`, `playwright-report/`, os `test-results-demo/` e `playwright-report-demo/` da demo, e `blob-report/` estão no `.gitignore`.
 
 ### Mantendo os testes
 
