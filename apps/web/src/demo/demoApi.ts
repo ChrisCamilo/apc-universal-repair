@@ -170,9 +170,9 @@ function conflict(message: string, reason: { itemCount?: number; entryId?: strin
 
 /**
  * Creates the demo's API, with its data fresh from demoData.ts.
- * @returns How the demo answers a request to /api.
+ * @returns The routes it answers, as the API's server writes them, and how it answers a request to /api.
  */
-export function createDemoApi(): { handle: (request: Request) => Promise<Response> } {
+export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; handle: (request: Request) => Promise<Response> } {
   const db: Db = { users: [], sessions: new Map(), categories: [], partBrands: [], vehicleBrands: [], vehicleModels: [], items: [], files: new Map() }
   db.users.push({ id: crypto.randomUUID(), ...DEMO_USER, inventoryTutorialSeen: false })
   const start = Date.now() - DEMO_ITEMS.length * DAY_MS
@@ -181,6 +181,7 @@ export function createDemoApi(): { handle: (request: Request) => Promise<Respons
   const routes = [...sessionRoutes(db), ...itemRoutes(db), ...photoRoutes(db), ...listRoutes(db)]
 
   return {
+    routes: routes.map(({ method, path }) => ({ method, path })),
     async handle(request) {
       const url = new URL(request.url)
       const path = url.pathname.replace(/^\/api/, '')
