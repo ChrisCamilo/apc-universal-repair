@@ -15,6 +15,7 @@
     "lint": "eslint src e2e scripts",
     "test": "node --experimental-strip-types --test \"src/**/*.test.ts\" \"scripts/**/*.test.ts\"",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --grep @smoke",
     "typecheck": "tsc -p tsconfig.test.json"
   },
   "devDependencies": {
