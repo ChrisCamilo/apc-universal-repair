@@ -92,6 +92,7 @@ apps/web/
 apps/desktop/
 ├── playwright.config.ts
 └── e2e/
+    ├── support/fixtures.ts     # test and expect for every spec: launchApp, stubApi, logIn()
     ├── reducedMotion.ts        # reduceMotion(app): every window reports reduced motion
     ├── stubApi.ts              # startStubApi(items): a stand-in API on a free port
     ├── smoke.spec.ts           # sign in, restart, bridge without Node, installer's database choice
@@ -126,10 +127,20 @@ Routes, `localStorage` and the init scripts belong to the test's own browser con
 
 ### How the desktop E2E run
 
-- **Stand-in API** (`smoke`, `window`, `notifications`): `startStubApi(items)` in `beforeAll`, closed in `afterAll`. It answers health, the test users' login, the tutorial, logout, `/items` and empty item lists, only for requests that carry a test user's token and are addressed to `127.0.0.1`/`localhost`.
-- **The server the app ships** (`bundled`): no `APC_API_URL`, a free port in `APC_SERVER_PORT`, and the app's own SQLite in a new `userData` folder. A fresh install shows its recovery key first, which `keepRecoveryKey()` keeps.
-- Each launch gets its own `userData` under the system's temporary folder (`apc-desktop-*`), so a test never touches the installed app's data.
-- The specs delete `ELECTRON_RUN_AS_NODE` from the app's environment; with it set, Electron runs as plain Node.
+Every spec imports `test` and `expect` from `e2e/support/fixtures.ts`. A test opens the app with the `launchApp` fixture, as often as it needs:
+
+```ts
+test("Desktop: …", { tag: [TEST_TAGS.setup] }, async ({ launchApp }) => {
+  const { app, userData, server } = await launchApp({ files: { "installer-database.txt": "postgresql" } });
+```
+
+- **Its options:** `args` after the app's folder (`--hidden`), `files` to leave in `userData` first (the installer's answers, a `config.json`), the `userData` of an earlier launch of the same test, to open again (a restart), and the `port` for the shipped server.
+- **It returns** the running app, its `userData` and the address of the server it uses.
+- **Each launch gets its own `userData`** under the system's temporary folder (`apc-desktop-*`), so a test never touches the installed app's data. It also deletes `ELECTRON_RUN_AS_NODE` from the app's environment (with it set, Electron runs as plain Node) and makes every window report reduced motion.
+- **Once the test ends, passed or failed,** every app it opened that is still running is closed, with the server it ships, and the `userData` folders it made are removed. So a failed assertion leaves no Electron, port or file for the next test on the one worker, and a test needs no `try/finally` and no last `app.close()`. It still closes an app itself to open the same `userData` again, or to check what quitting does.
+- **Stand-in API** (the default, `smoke`, `window`, `notifications`): the worker-scoped `stubApi` fixture, started once for the spec's tests, whose address the app gets in `APC_API_URL`. It answers health, the test users' login, the tutorial, logout, `/items` and empty item lists, only for requests that carry a test user's token and are addressed to `127.0.0.1`/`localhost`. `test.use({ stubStock: { items: ITEMS } })` gives `GET /items` its items.
+- **The server the app ships** (`bundled`): `test.use({ server: "bundled" })`. No `APC_API_URL`, a free port in `APC_SERVER_PORT`, and the app's own SQLite in its `userData`. A fresh install shows its recovery key first, which `keepRecoveryKey()` keeps.
+- **`logIn(page, user)`** types a user into the login and waits for the Inventory.
 
 ### Tags
 
@@ -325,6 +336,7 @@ apps/web/
 apps/desktop/
 ├── playwright.config.ts
 └── e2e/
+    ├── support/fixtures.ts     # test e expect de toda spec: launchApp, stubApi, logIn()
     ├── reducedMotion.ts        # reduceMotion(app): toda janela informa movimento reduzido
     ├── stubApi.ts              # startStubApi(items): uma API substituta numa porta livre
     ├── smoke.spec.ts           # login, reinício, ponte sem Node, banco escolhido no instalador
@@ -359,10 +371,20 @@ Rotas, `localStorage` e init scripts pertencem ao contexto de navegador do próp
 
 ### Como o E2E do desktop roda
 
-- **API substituta** (`smoke`, `window`, `notifications`): `startStubApi(items)` no `beforeAll`, fechada no `afterAll`. Responde health, o login dos usuários de teste, o tutorial, o logout, `/items` e listas de itens vazias, só para requisições que levam o token de um usuário de teste e são endereçadas a `127.0.0.1`/`localhost`.
-- **O servidor que o app traz** (`bundled`): sem `APC_API_URL`, uma porta livre em `APC_SERVER_PORT` e o SQLite do próprio app numa pasta `userData` nova. Uma instalação nova mostra primeiro a chave de recuperação, que o `keepRecoveryKey()` guarda.
-- Cada abertura ganha seu próprio `userData` na pasta temporária do sistema (`apc-desktop-*`), então um teste nunca mexe nos dados do app instalado.
-- As specs apagam `ELECTRON_RUN_AS_NODE` do ambiente do app; com ela definida, o Electron roda como Node puro.
+Toda spec importa `test` e `expect` de `e2e/support/fixtures.ts`. Um teste abre o app com a fixture `launchApp`, quantas vezes precisar:
+
+```ts
+test("Desktop: …", { tag: [TEST_TAGS.setup] }, async ({ launchApp }) => {
+  const { app, userData, server } = await launchApp({ files: { "installer-database.txt": "postgresql" } });
+```
+
+- **As opções dela:** `args` depois da pasta do app (`--hidden`), `files` para deixar no `userData` antes (as respostas do instalador, um `config.json`), o `userData` de uma abertura anterior do mesmo teste, para abrir de novo (um reinício), e a `port` do servidor que o app traz.
+- **Ela devolve** o app rodando, o `userData` dele e o endereço do servidor que ele usa.
+- **Cada abertura ganha seu próprio `userData`** na pasta temporária do sistema (`apc-desktop-*`), então um teste nunca mexe nos dados do app instalado. Ela também apaga `ELECTRON_RUN_AS_NODE` do ambiente do app (com ela definida, o Electron roda como Node puro) e faz toda janela informar movimento reduzido.
+- **Quando o teste termina, passando ou falhando,** todo app que ele abriu e ainda está rodando é fechado, com o servidor que traz, e as pastas `userData` que ele criou são apagadas. Assim uma asserção que falha não deixa Electron, porta nem arquivo para o próximo teste no único worker, e um teste não precisa de `try/finally` nem de um último `app.close()`. Ele ainda fecha um app por conta própria para abrir o mesmo `userData` de novo, ou para conferir o que sair do app faz.
+- **API substituta** (o padrão; `smoke`, `window`, `notifications`): a fixture `stubApi`, com escopo de worker, iniciada uma vez para os testes da spec; o app recebe o endereço dela em `APC_API_URL`. Responde health, o login dos usuários de teste, o tutorial, o logout, `/items` e listas de itens vazias, só para requisições que levam o token de um usuário de teste e são endereçadas a `127.0.0.1`/`localhost`. O `test.use({ stubStock: { items: ITEMS } })` dá os itens do `GET /items`.
+- **O servidor que o app traz** (`bundled`): `test.use({ server: "bundled" })`. Sem `APC_API_URL`, uma porta livre em `APC_SERVER_PORT` e o SQLite do próprio app no `userData` dele. Uma instalação nova mostra primeiro a chave de recuperação, que o `keepRecoveryKey()` guarda.
+- **`logIn(page, user)`** digita um usuário no login e espera o Estoque.
 
 ### Tags
 
