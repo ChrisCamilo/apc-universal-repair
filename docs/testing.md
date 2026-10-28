@@ -66,6 +66,8 @@ apps/web/
 ├── playwright.demo.config.ts   # demo E2E
 ├── tsconfig.e2e.json           # typechecks e2e/, e2e-demo/ and both configs
 ├── e2e/
+│   ├── support/fixtures.ts     # test and expect for every spec: session, stock, users, API guard
+│   ├── api-guard.spec.ts       # checks the guard fails a call no stand-in answers
 │   ├── session.ts              # signIn(): a saved session before the page loads
 │   ├── users.ts                # serveUsers(): stand-in for sign-up, login, logout, tutorial
 │   ├── items.ts                # serveItems(), savedItem(): stand-in for /items and the item lists
@@ -89,14 +91,23 @@ Test data shared with the other kinds of tests lives in `@apc/shared`: `TEST_USE
 
 ### How the web E2E stand in for the API
 
-The web E2E don't depend on a database. Apart from `health.spec.ts`, which checks the web app reaches the real API through the proxy, every spec answers the API in the page with `page.route`:
+The web E2E don't depend on a database. Apart from `health.spec.ts`, which checks the web app reaches the real API through the proxy (`page.request` doesn't go through the page's routes), every spec answers the API in the page with `page.route`.
+
+Every spec imports `test` and `expect` from `e2e/support/fixtures.ts`, not from `@playwright/test`. Its `page` starts with:
+
+- **a test user logged in,** unless the spec says `test.use({ signedIn: false })`, as the login, sign-up and guard specs do for the screens before the login;
+- **the spec's stock:** `test.use({ stock: { items: ITEMS } })` for the items `GET /api/items` answers with, copied for each test; none by default;
+- **the users' stand-in,** whose list a test reads from the `users` fixture to check a sign-up;
+- **the API guard:** any `/api/**` call no stand-in or test answered gets a 501, and the test fails after it ends, listing each call. So a test never reaches whatever API listens on port 3333, and a call a test forgot shows up in its result.
+
+The fixtures use these stand-ins, which a test may also start itself, with items of its own:
 
 - **`signIn(page, tutorialSeen?, user?)`** saves a test user's session in `localStorage` with `addInitScript`, before any script of the app runs, so a test starts on the Dashboard. The token is `token-<id>`, which no stand-in checks. Marking the tutorial seen is answered with a 204.
 - **`serveUsers(page)`** answers sign-up (`POST /api/users`), login (`POST /api/sessions`), the tutorial and logout, from `TEST_USERS` and whoever signs up meanwhile. It returns the users it knows, so a test can check a sign-up.
 - **`serveItems(page, stock, onQuery?)`** answers `GET /api/items` with search, filters, sorting and pages as the API does, and the item lists (create, rename, merge, delete). `stock` is read on every request, so a test may change it as it goes. Methods other than GET on `/api/items` fall through (`route.fallback()`) to the routes the test registered **before** it.
 - **`savedItem(sent, held?)`** builds what the API answers for a create or an edit.
 
-Playwright tries the routes last registered first. So a test that answers a write itself registers its `page.route("**/api/items", …)` before `serveItems`, and a test that must override a GET (an expired session, an API error) registers it after.
+Playwright tries the routes last registered first. The fixtures register the guard first, so it is tried last, then the session and the stock, then the users; the test's own routes come after all of them. So a test that answers a write itself registers its `page.route("**/api/items", …)` before its own `serveItems`, and a test that must override a GET (an expired session, an API error) registers it after. A test never calls `page.unrouteAll()`, which would take the guard away too.
 
 Routes, `localStorage` and the init scripts belong to the test's own browser context, which Playwright throws away after each test: no `afterEach` is needed to clean up.
 
@@ -111,7 +122,7 @@ Routes, `localStorage` and the init scripts belong to the test's own browser con
 
 1. Put it in the spec of its area (`inventory.spec.ts` for the Inventory). A new area gets a new `<area>.spec.ts`.
 2. Title it with the prefix, `Web:` or `Desktop:`, and the behavior in English; write what it checks and why in a comment right above it ([AGENTS.md](../AGENTS.md#writing-tests)).
-3. Start from the state it needs: `signIn()` for the Dashboard, `serveItems()` with only the items that matter (each spec has an `item()` filling in the rest with `testItem()`), `serveUsers()` for logins.
+3. Import `test` and `expect` from `./support/fixtures.ts` and start from the state it needs: the Dashboard with a test user is the default, `test.use({ signedIn: false })` for the screens before the login, `test.use({ stock: { items } })` or `serveItems()` with only the items that matter (each spec has an `item()` filling in the rest with `testItem()`). Answer every API call the test makes: the guard fails any it doesn't.
 4. Find elements as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`; then the style id (`getByTestId("inventory.inventory-tab.filters.count")`) for an element with no role or text of its own; CSS only for what has neither (`tbody tr`, `header`, `html`).
 5. Assert with Playwright's web-first assertions (`toBeVisible`, `toHaveText`, `toHaveURL`), `expect.poll` for a value read from the page. Never wait a fixed time.
 6. Check the minimum sizes: the test runs in both projects. When it can only hold on one, skip the other with a reason: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Screens that fill the window are also checked at `NOTEBOOK_WIDTH` × `NOTEBOOK_HEIGHT`/`NOTEBOOK_WINDOW_HEIGHT`.
@@ -251,6 +262,8 @@ apps/web/
 ├── playwright.demo.config.ts   # E2E da demo
 ├── tsconfig.e2e.json           # checa os tipos de e2e/, e2e-demo/ e das duas configs
 ├── e2e/
+│   ├── support/fixtures.ts     # test e expect de toda spec: sessão, estoque, usuários, guarda da API
+│   ├── api-guard.spec.ts       # confere que a guarda reprova uma chamada que nenhum substituto responde
 │   ├── session.ts              # signIn(): uma sessão salva antes de a página carregar
 │   ├── users.ts                # serveUsers(): substituto do cadastro, login, logout e tutorial
 │   ├── items.ts                # serveItems(), savedItem(): substituto de /items e das listas de itens
@@ -274,14 +287,23 @@ Os dados de teste compartilhados com os outros tipos de teste ficam no `@apc/sha
 
 ### Como o E2E da web substitui a API
 
-O E2E da web não depende de banco. Fora o `health.spec.ts`, que confere que o app web alcança a API de verdade pelo proxy, toda spec responde a API dentro da página com `page.route`:
+O E2E da web não depende de banco. Fora o `health.spec.ts`, que confere que o app web alcança a API de verdade pelo proxy (o `page.request` não passa pelas rotas da página), toda spec responde a API dentro da página com `page.route`.
+
+Toda spec importa `test` e `expect` de `e2e/support/fixtures.ts`, não de `@playwright/test`. A `page` dela começa com:
+
+- **um usuário de teste logado,** a não ser que a spec diga `test.use({ signedIn: false })`, como fazem as specs de login, cadastro e guarda para as telas antes do login;
+- **o estoque da spec:** `test.use({ stock: { items: ITEMS } })` para os itens que o `GET /api/items` responde, copiados para cada teste; nenhum por padrão;
+- **o substituto dos usuários,** cuja lista o teste lê na fixture `users` para conferir um cadastro;
+- **a guarda da API:** toda chamada a `/api/**` que nenhum substituto ou teste respondeu recebe um 501, e o teste falha quando termina, listando cada chamada. Assim um teste nunca alcança a API que estiver escutando na porta 3333, e uma chamada esquecida aparece no resultado dele.
+
+As fixtures usam estes substitutos, que um teste também pode iniciar ele mesmo, com itens próprios:
 
 - **`signIn(page, tutorialSeen?, user?)`** salva a sessão de um usuário de teste no `localStorage` com `addInitScript`, antes de qualquer script do app rodar, para o teste começar no Dashboard. O token é `token-<id>`, que nenhum substituto confere. Marcar o tutorial como visto é respondido com 204.
 - **`serveUsers(page)`** responde o cadastro (`POST /api/users`), o login (`POST /api/sessions`), o tutorial e o logout, a partir de `TEST_USERS` e de quem se cadastrar no meio do teste. Devolve os usuários que conhece, para o teste conferir um cadastro.
 - **`serveItems(page, stock, onQuery?)`** responde `GET /api/items` com busca, filtros, ordenação e páginas como a API faz, e as listas de itens (criar, renomear, mesclar, excluir). O `stock` é lido a cada requisição, então o teste pode alterá-lo no caminho. Métodos que não são GET em `/api/items` passam adiante (`route.fallback()`) para as rotas que o teste registrou **antes** dele.
 - **`savedItem(sent, held?)`** monta o que a API responde a uma criação ou edição.
 
-O Playwright tenta primeiro as rotas registradas por último. Então um teste que responde ele mesmo a uma escrita registra o seu `page.route("**/api/items", …)` antes do `serveItems`, e um teste que precisa sobrepor um GET (sessão expirada, erro da API) registra depois.
+O Playwright tenta primeiro as rotas registradas por último. As fixtures registram primeiro a guarda, que assim é tentada por último, depois a sessão e o estoque, depois os usuários; as rotas do próprio teste vêm depois de todas. Então um teste que responde ele mesmo a uma escrita registra o seu `page.route("**/api/items", …)` antes do seu `serveItems`, e um teste que precisa sobrepor um GET (sessão expirada, erro da API) registra depois. Um teste nunca chama `page.unrouteAll()`, que tiraria a guarda também.
 
 Rotas, `localStorage` e init scripts pertencem ao contexto de navegador do próprio teste, que o Playwright descarta depois de cada teste: não é preciso `afterEach` para limpar.
 
@@ -296,7 +318,7 @@ Rotas, `localStorage` e init scripts pertencem ao contexto de navegador do próp
 
 1. Coloque-o na spec da sua área (`inventory.spec.ts` para o Estoque). Uma área nova ganha um `<área>.spec.ts` novo.
 2. Dê o título com o prefixo, `Web:` ou `Desktop:`, e o comportamento em inglês; escreva o que ele confere e por quê num comentário logo acima ([AGENTS.md](../AGENTS.md#writing-tests)).
-3. Comece do estado de que ele precisa: `signIn()` para o Dashboard, `serveItems()` só com os itens que importam (cada spec tem um `item()` que completa o resto com `testItem()`), `serveUsers()` para logins.
+3. Importe `test` e `expect` de `./support/fixtures.ts` e comece do estado de que ele precisa: o Dashboard com um usuário de teste é o padrão, `test.use({ signedIn: false })` para as telas antes do login, `test.use({ stock: { items } })` ou `serveItems()` só com os itens que importam (cada spec tem um `item()` que completa o resto com `testItem()`). Responda toda chamada à API que o teste faz: a guarda reprova as que ficarem sem resposta.
 4. Encontre os elementos como um usuário encontra, nesta ordem: `getByRole` com o nome acessível, `getByLabel`, `getByText`; depois o style id (`getByTestId("inventory.inventory-tab.filters.count")`) para um elemento sem papel ou texto próprio; CSS só para o que não tem nenhum dos dois (`tbody tr`, `header`, `html`).
 5. Verifique com as asserções web-first do Playwright (`toBeVisible`, `toHaveText`, `toHaveURL`), e `expect.poll` para um valor lido da página. Nunca espere um tempo fixo.
 6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Quando ele só vale em um, pule o outro com o motivo: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Telas que ocupam a janela também são conferidas em `NOTEBOOK_WIDTH` × `NOTEBOOK_HEIGHT`/`NOTEBOOK_WINDOW_HEIGHT`.
