@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Animated, Image, Pressable, Text, View } from 'react-native';
 import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
-import { sortFromValue, sortOptions, sortValue, type Sort } from '@apc/shared/table';
+import { shownRows, sortFromValue, sortOptions, sortValue, type ShownRow, type Sort } from '@apc/shared/table';
 import { scales } from '@apc/shared/theme';
 import { useRowActionStyles, useStyles, useThumbnailStyles } from './DataTable.styles';
 import { Icon } from './Icon';
+import { useOverlayMotion, useReducedMotion } from './motion';
 import { Select } from './Select';
 import { useTheme } from './theme';
 import { Label } from './Typography';
@@ -16,7 +17,9 @@ import { Label } from './Typography';
 // onRowOpen, a tap on a card opens it, shown by the raised fill while pressed, except on its own buttons
 // (thumbnail, actions), which keep their tap. A nested row (rowNested) belongs to the row above it, such as a brand
 // of an item: it is indented and never tinted. A row that opens into nested rows says whether it is open
-// (rowExpanded), and a lead cell, such as its chevron, comes first on the card, at its left.
+// (rowExpanded), and a lead cell, such as its chevron, comes first on the card, at its left. Nested rows fade in as
+// their row opens, and fade out in place as it closes (shownRows in @apc/shared/table), taking no taps and hidden from
+// screen readers meanwhile, as on the web; with reduced motion they show and go at once.
 
 type CardArea = 'lead' | 'thumb' | 'main' | 'end' | 'actions';
 type Column<Row> = {
@@ -97,6 +100,17 @@ export function DataTable<Row>({
 }: DataTableProps<Row>) {
   const { styles, ids } = useStyles();
   const sortable = columns.filter((column) => column.sortable);
+  const reduced = useReducedMotion();
+  const [shown, setShown] = useState<ShownRow<Row>[]>(() => rows.map((row) => ({ row, leaving: false })));
+  const [shownFor, setShownFor] = useState(rows);
+  // New rows keep the nested rows of a row that closed, fading out, unless motion is reduced.
+  if (shownFor !== rows) {
+    setShownFor(rows);
+    setShown(rowNested && !reduced ? shownRows(shown, rows, rowKey, rowNested) : rows.map((row) => ({ row, leaving: false })));
+  }
+
+  /** Lets a nested row go once it has faded out. */
+  const gone = (key: string) => setShown((current) => current.filter((each) => !(each.leaving && rowKey(each.row) === key)));
 
   /** Renders the cells of one card area for a row. */
   const cells = (row: Row, area: CardArea) =>
@@ -137,7 +151,8 @@ export function DataTable<Row>({
         empty
       ) : (
         <View role="list" accessibilityLabel={label} style={styles.table} testID={ids.table}>
-          {rows.map((row) => {
+          {shown.map(({ row, leaving }) => {
+            const key = rowKey(row);
             const nested = rowNested?.(row) ?? false;
             const status = nested ? undefined : rowStatus?.(row);
             const content = (
@@ -158,11 +173,11 @@ export function DataTable<Row>({
                 </View>
               </>
             );
-            return onRowOpen ? (
+            const card = onRowOpen ? (
               <Pressable
-                key={rowKey(row)}
+                key={key}
                 role="listitem"
-                accessibilityState={{ expanded: rowExpanded?.(row) }}
+                accessibilityState={{ expanded: leaving ? undefined : rowExpanded?.(row) }}
                 onPress={() => onRowOpen(row)}
                 style={({ pressed }) => rowStyles(nested, status?.tone, pressed)}
                 testID={ids.row}
@@ -170,14 +185,43 @@ export function DataTable<Row>({
                 {content}
               </Pressable>
             ) : (
-              <View key={rowKey(row)} role="listitem" style={rowStyles(nested, status?.tone, false)} testID={ids.row}>
+              <View key={key} role="listitem" style={rowStyles(nested, status?.tone, false)} testID={ids.row}>
                 {content}
               </View>
+            );
+            return nested ? (
+              <NestedRow key={key} leaving={leaving} onGone={() => gone(key)}>
+                {card}
+              </NestedRow>
+            ) : (
+              card
             );
           })}
         </View>
       )}
     </View>
+  );
+}
+
+// A nested row's box: it fades in as the row comes and out while it leaves, in the motion token, taking no taps and
+// hidden from screen readers meanwhile, and says when it has gone.
+function NestedRow({ leaving, onGone, children }: { leaving: boolean; onGone: () => void; children: ReactNode }) {
+  const { styles, ids } = useStyles();
+  const { shown, fade } = useOverlayMotion(!leaving, 'translate');
+  useEffect(() => {
+    if (!shown) {
+      onGone();
+    }
+  }, [shown, onGone]);
+  return (
+    <Animated.View
+      style={[styles.fade, fade]}
+      accessibilityElementsHidden={leaving}
+      importantForAccessibility={leaving ? 'no-hide-descendants' : 'auto'}
+      testID={ids.fade}
+    >
+      {children}
+    </Animated.View>
   );
 }
 

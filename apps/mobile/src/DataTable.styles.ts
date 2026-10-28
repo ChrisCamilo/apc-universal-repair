@@ -5,14 +5,15 @@ import { softHairline, withAlpha } from './theme';
 // The look of the list of rows on a phone, the same as the web table below the card breakpoint: each row is a card
 // (lead | thumbnail | main | end and actions) on a soft hairline, the raised fill while pressed; a row that needs
 // attention (warn or danger) is tinted with a stripe at its start, a stronger tint while pressed; a nested row, such
-// as a brand under its item, is indented. The "Ordenar" select takes the place of the header.
+// as a brand under its item, is indented, inside the box it fades in and out in (see DataTable.tsx). The "Ordenar"
+// select takes the place of the header.
 
 /** The width of a tinted row's stripe, in px (the web's spacing × 0.75). */
 export const STRIPE_WIDTH = scales.space.s1 * 0.75;
 /** A row thumbnail's width and height, in px (size-11 on the web). */
 export const THUMB_SIZE = scales.space.s1 * 11;
 
-/** The list: the block, the sort bar, the list, a row by tint and press, its status, cells and areas. */
+/** The list: the block, the sort bar, the list, a nested row's fade, a row by tint and press, its status, cells and areas. */
 export const useStyles = createStyles(
   'common.data-table',
   {
@@ -20,6 +21,7 @@ export const useStyles = createStyles(
     sortBar: 'sort-bar',
     sortSelect: 'sort-bar.select',
     table: 'table',
+    fade: 'table.fade',
     row: 'table.row',
     status: 'table.row.status',
     main: 'table.row.main',
@@ -36,6 +38,7 @@ export const useStyles = createStyles(
     return {
       base: { gap: scales.space.s3 },
       cell: {},
+      fade: {},
       main: { flex: 1, minWidth: 0 },
       row: {
         flexDirection: 'row',
