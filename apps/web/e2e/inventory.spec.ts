@@ -3,8 +3,8 @@ import { expect, test } from "./support/fixtures.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
 import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
-import { savedItem, serveItems } from "./items.ts";
-import { signIn } from "./session.ts";
+import { savedItem, serveItems } from "./stubs/items.ts";
+import { signIn } from "./stubs/session.ts";
 import { testItem, type FlatItem } from "@apc/shared/test-items";
 
 // The API answers GET /items with these items, newest first, so the list is the same on every run without a database.

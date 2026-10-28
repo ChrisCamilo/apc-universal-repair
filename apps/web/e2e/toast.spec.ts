@@ -3,7 +3,7 @@ import { expect, test } from "./support/fixtures.ts";
 import type { Item } from "@apc/shared/items";
 import { THEME_STORAGE_KEYS, themes, type Mode, type Style } from "@apc/shared/theme";
 import { TOAST_KIND_LOOKS, type ToastKind } from "@apc/shared/toast";
-import { savedItem, serveItems } from "./items.ts";
+import { savedItem, serveItems } from "./stubs/items.ts";
 import { testItem } from "@apc/shared/test-items";
 
 // A 1×1 PNG, what the API answers for a photo.

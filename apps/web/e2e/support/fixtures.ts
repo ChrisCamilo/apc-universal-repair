@@ -1,9 +1,9 @@
 import { expect, test as base } from "@playwright/test";
 import type { TestUser } from "@apc/shared/auth";
 import type { Item } from "@apc/shared/items";
-import { serveItems } from "../items.ts";
-import { signIn } from "../session.ts";
-import { serveUsers } from "../users.ts";
+import { serveItems } from "../stubs/items.ts";
+import { signIn } from "../stubs/session.ts";
+import { serveUsers } from "../stubs/users.ts";
 
 // The web E2E's own test: every spec imports test and expect from here instead of @playwright/test. Each page starts
 // with a test user logged in, the items of the spec's stock and the users' stand-in, and answers any other API call

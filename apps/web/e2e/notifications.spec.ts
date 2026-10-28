@@ -4,8 +4,8 @@ import type { Item, ItemCreate } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
 import { TOAST_DURATION, TOAST_FADE_MS } from "@apc/shared/toast";
-import { savedItem, serveItems } from "./items.ts";
-import { signIn } from "./session.ts";
+import { savedItem, serveItems } from "./stubs/items.ts";
+import { signIn } from "./stubs/session.ts";
 import { testItem } from "@apc/shared/test-items";
 
 const ITEMS: Item[] = [item("00000000-0000-4000-8000-000000000001", "Filtro de óleo"), item("00000000-0000-4000-8000-000000000002", "Bomba d'água")];
