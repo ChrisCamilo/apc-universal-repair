@@ -112,6 +112,7 @@ Epics group work by product area and are referenced by their slug in branch name
 | Epic ID | Slug | Scope |
 |---|---|---|
 | EP-13 | `optimizations` | Refactors that change no behavior: organized, consistent and generic code, such as style recipes beside each component, style ids and shared constants instead of hardcoded values |
+| EP-15 | `qa` | Test quality: shared fixtures, locators and tags for the Playwright suites, reports and traces that explain a failure, and the tooling to write and fix tests, such as Playwright's MCP in Claude Code |
 
 The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard → Inventory. Login was mocked/static for the MVP; it now goes through the API, which checks a session token on every call (EP-10), and inventory items, photos included, are persisted through the API. Phase 2 adds the Catalog tab (EP-04), on mocked/static vehicle data, and phase 3 the notifications and toasts (EP-14). Car Specs (EP-05) is TBD: an epic with no phase yet. 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to later epics.
 
@@ -149,6 +150,8 @@ All web tests are written in TypeScript. Each kind of test has one tool:
 | End-to-end (web demo) | Playwright Test, the same projects, on the GitHub Pages site as Pages serves it | `apps/web/e2e-demo/*.spec.ts` |
 | Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` |
 | Desktop | Node test runner for the main process, Playwright's Electron support for the smoke test | `apps/desktop/src/*.test.ts`, `apps/desktop/e2e/*.spec.ts` |
+
+How the suites are laid out, how to run them, where their reports and traces are and how to keep them up is in [docs/testing.md](docs/testing.md).
 
 - **Component tests** check one component alone: every style (`eighties`, `gt4`, `bmw90`, `fiat90`) and mode (light, dark), keyboard and focus, and the minimum screen sizes. They run in a real browser, so CSS and tokens apply as they do in the app. Vitest is added by the first Design System task that needs a component test.
 - **E2E tests** check a user flow across the app, with the API and the web app running.
