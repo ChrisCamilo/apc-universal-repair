@@ -112,6 +112,7 @@ Epics group work by product area and are referenced by their slug in branch name
 | Epic ID | Slug | Scope |
 |---|---|---|
 | EP-13 | `optimizations` | Refactors that change no behavior: organized, consistent and generic code, such as style recipes beside each component, style ids and shared constants instead of hardcoded values |
+| EP-15 | `qa` | Test quality: shared fixtures, locators and tags for the Playwright suites, reports and traces that explain a failure, and the tooling to write and fix tests, such as Playwright's MCP in Claude Code |
 
 The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard → Inventory. Login was mocked/static for the MVP; it now goes through the API, which checks a session token on every call (EP-10), and inventory items, photos included, are persisted through the API. Phase 2 adds the Catalog tab (EP-04), on mocked/static vehicle data, and phase 3 the notifications and toasts (EP-14). Car Specs (EP-05) is TBD: an epic with no phase yet. 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to later epics.
 
