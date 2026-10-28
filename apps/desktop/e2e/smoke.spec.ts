@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication } from "@playwright/test";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { INSTALLER_CHOICE_FILE } from "../src/database.ts";
 import { MIN_WINDOW_SIZE, openingContentSize } from "../src/window.ts";
@@ -41,7 +42,7 @@ test.afterAll(async () => {
 // Opens the app, signs in through the API, and checks the Dashboard and the empty Inventory in a window of 1280×720, or
 // of what the screen's work area holds, that can't be made smaller than 1280×640. Then switches to dark mode and the Catalog tab, restarts the app with the same userData,
 // and checks the session, the theme and the open tab are still there.
-test("Desktop: the app signs in, shows the Inventory and keeps the session, theme and tab after a restart", async () => {
+test("Desktop: the app signs in, shows the Inventory and keeps the session, theme and tab after a restart", { tag: [TEST_TAGS.auth, TEST_TAGS.smoke] }, async () => {
   const userData = mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
   const { username, password } = TEST_USERS[0];
 
@@ -110,7 +111,7 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
 // With the preload, the page still has no Node: no require and no process. The bridge gives it only its calls, for
 // the notifications, the update, the server's settings and its failure. Run unpackaged, the app doesn't check for updates, so the
 // update notice's live region is there and empty.
-test("Desktop: the page gets only the bridge's calls, with no Node access", async () => {
+test("Desktop: the page gets only the bridge's calls, with no Node access", { tag: [TEST_TAGS.setup] }, async () => {
   const app = await launch(mkdtempSync(path.join(tmpdir(), "apc-desktop-")));
   try {
     const page = await app.firstWindow();
@@ -157,7 +158,7 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", asyn
 
 // Leaves the installer's PostgreSQL choice next to a config.json that sets the API address, opens the app, and checks
 // it moved the choice into config.json, keeping the address, and removed the installer's file.
-test("Desktop: the app takes the database the installer asked for", async () => {
+test("Desktop: the app takes the database the installer asked for", { tag: [TEST_TAGS.setup] }, async () => {
   const userData = mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
   writeFileSync(path.join(userData, "config.json"), JSON.stringify({ apiUrl: api.url }));
   writeFileSync(path.join(userData, INSTALLER_CHOICE_FILE), "postgresql");

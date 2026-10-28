@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import type { Item } from "@apc/shared/items";
 import { NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { TEST_USERS } from "@apc/shared/test-users";
@@ -51,7 +52,7 @@ test.afterAll(async () => {
 
 // Signs in and sizes the window's content to 1360×689, and checks the page itself doesn't scroll: the header is at
 // the top, the toolbar and the pagination are in view, and only the Inventory's table scrolls.
-test("Desktop: in a window on a 1360×768 notebook only the Inventory's table scrolls", async () => {
+test("Desktop: in a window on a 1360×768 notebook only the Inventory's table scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async () => {
   const env: Record<string, string> = { ...(process.env as Record<string, string>), APC_API_URL: api.url, APC_USER_DATA: mkdtempSync(path.join(tmpdir(), "apc-desktop-")) };
   // With it set, Electron runs as plain Node instead of opening the app.
   delete env.ELECTRON_RUN_AS_NODE;

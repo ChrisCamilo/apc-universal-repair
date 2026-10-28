@@ -3,6 +3,7 @@ import { createServer } from "node:net";
 import { networkInterfaces, tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { readConfig, writeConfig } from "../src/config.ts";
 import { phoneAddress } from "../src/tray.ts";
 import { reduceMotion } from "./reducedMotion.ts";
@@ -113,7 +114,7 @@ async function signUp(page: Page): Promise<void> {
 // Opens the app with no server named, and checks it starts its own: the login shows, a sign-up goes on to the empty
 // Inventory, and the database, the photos' folder and the server's log are in userData. Closing the app waits for the
 // server to stop, which its log and the app's log record.
-test("Desktop: the app runs the server it ships, with its data in userData", async () => {
+test("Desktop: the app runs the server it ships, with its data in userData", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const { app, userData, server } = await launch();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
@@ -137,7 +138,7 @@ test("Desktop: the app runs the server it ships, with its data in userData", asy
 // Signs up on a fresh install and opens "Sobre esta versão" from the user menu, and checks it shows the app's own
 // version and the first heading of that version's notes in Portuguese, which came with the web build. The window
 // reports reduced motion, as every smoke test starts the app, so the menu and the dialog open at once.
-test("Desktop: Sobre esta versão shows the app's version and its notes", async () => {
+test("Desktop: Sobre esta versão shows the app's version and its notes", { tag: [TEST_TAGS.dashboard, TEST_TAGS.bundled] }, async () => {
   const { app } = await launch();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
@@ -160,7 +161,7 @@ test("Desktop: Sobre esta versão shows the app's version and its notes", async 
 // Opens a fresh install and checks it offers to import an old server once the recovery copy is kept, and "Importar de
 // um servidor antigo" opens the Servidor dialog on its import. The offer shows again on the next start, while the
 // database is empty; once someone signs up, the start after offers nothing, and config.json keeps it over.
-test("Desktop: a fresh install offers to import an old server until someone signs up", async () => {
+test("Desktop: a fresh install offers to import an old server until someone signs up", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const first = await launch();
   let page = await first.app.firstWindow();
   await keepRecoveryKey(page);
@@ -189,7 +190,7 @@ test("Desktop: a fresh install offers to import an old server until someone sign
 
 // Closes the window, and checks it is hidden, not closed, with the server still answering; opening the app again
 // shows the same window, and quitting, as "Sair" in the tray does, turns the server off.
-test("Desktop: closing the window keeps the server on in the tray, until the app quits", async () => {
+test("Desktop: closing the window keeps the server on in the tray, until the app quits", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const { app, server } = await launch();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
@@ -208,7 +209,7 @@ test("Desktop: closing the window keeps the server on in the tray, until the app
 
 // Opens the Servidor dialog as the tray does, picks PostgreSQL with an address no server listens on, and checks the
 // dialog says it didn't connect, SQLite stays in use, config.json keeps no address, and the server still answers.
-test("Desktop: a PostgreSQL address that doesn't connect says so and keeps SQLite", async () => {
+test("Desktop: a PostgreSQL address that doesn't connect says so and keeps SQLite", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const { app, userData, server } = await launch();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
@@ -230,7 +231,7 @@ test("Desktop: a PostgreSQL address that doesn't connect says so and keeps SQLit
 // Signs up on one install, then imports its encrypted SQLite file into a fresh one through the Servidor dialog, opened
 // from the login screen, with the file dialog answered as the user would and the old install's recovery copy typed,
 // and checks every table's rows show and the account logs in on the new install.
-test("Desktop: an old server's SQLite file imports into a fresh install", async () => {
+test("Desktop: an old server's SQLite file imports into a fresh install", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const old = await launch();
   const oldPage = await old.app.firstWindow();
   await expect(oldPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
@@ -272,7 +273,7 @@ test("Desktop: an old server's SQLite file imports into a fresh install", async 
 
 // Starts the app after the installer's PostgreSQL choice, and checks the server waits while the dialog asks for the
 // address, and "Usar SQLite" starts it on SQLite, saved in config.json, and goes on to the login.
-test("Desktop: with PostgreSQL chosen at install, the app asks for its address before starting the server", async () => {
+test("Desktop: with PostgreSQL chosen at install, the app asks for its address before starting the server", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const { app, userData, server } = await launch({ files: { "installer-database.txt": "postgresql" } });
   const page = await app.firstWindow();
   const dialog = page.getByRole("dialog", { name: "Banco de dados do servidor" });
@@ -290,7 +291,7 @@ test("Desktop: with PostgreSQL chosen at install, the app asks for its address b
 // Signs up on a fresh install and quits, and checks the SQLite file isn't plain SQLite and holds no text of the account,
 // config.json holds the key only sealed, and on the next start the same key opens the file: the account logs in, and
 // the recovery copy, already kept, doesn't show again.
-test("Desktop: the SQLite file is encrypted with a key kept for the next start", async () => {
+test("Desktop: the SQLite file is encrypted with a key kept for the next start", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const first = await launch();
   const firstPage = await first.app.firstWindow();
   await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
@@ -317,7 +318,7 @@ test("Desktop: the SQLite file is encrypted with a key kept for the next start",
 
 // Starts the app on a database from before its migrations, as an update that brings new ones finds it, and checks the
 // server copies it to data/backups first, named after the app's version, then migrates it and answers.
-test("Desktop: the database is copied before the server applies new migrations", async () => {
+test("Desktop: the database is copied before the server applies new migrations", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const { app, userData } = await launch({ files: { [path.join("data", "apc.db")]: "" } });
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
@@ -332,7 +333,7 @@ test("Desktop: the database is copied before the server applies new migrations",
 // Starts the app on PostgreSQL at an address no server answers, as when its server is off, which the server fails to
 // migrate each time it starts, and checks that once the server gave up starting, the window says it didn't start, with
 // the last error of its log and where that log is, instead of the login, and the app's log says so too.
-test("Desktop: a server that can't start is said so, with why", async () => {
+test("Desktop: a server that can't start is said so, with why", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   test.setTimeout(150_000);
   const first = await launch();
   const address = await first.app.evaluate(({ safeStorage }) =>
@@ -353,7 +354,7 @@ test("Desktop: a server that can't start is said so, with why", async () => {
 // Closes the window of a fresh install to the tray, in the same session that made the SQLite key, and checks
 // config.json still holds the key next to the tray's notice, and the next start opens the data with it: the account
 // signed up logs in.
-test("Desktop: closing the window to the tray keeps the SQLite key", async () => {
+test("Desktop: closing the window to the tray keeps the SQLite key", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const first = await launch();
   const page = await first.app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
@@ -377,7 +378,7 @@ test("Desktop: closing the window to the tray keeps the SQLite key", async () =>
 // with another key sealed there, as a config.json written from a stale copy left it: each start says the key doesn't
 // open the data, makes no key of its own and shows no recovery copy to keep. A copy that isn't the file's is refused;
 // the one kept opens the data again, where the account's session still is.
-test("Desktop: a missing or wrong SQLite key is asked for, never replaced", async () => {
+test("Desktop: a missing or wrong SQLite key is asked for, never replaced", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   test.setTimeout(150_000);
   const first = await launch();
   const firstPage = await first.app.firstWindow();
@@ -439,7 +440,7 @@ async function changeKey(app: ElectronApplication, page: Page): Promise<string> 
 // Signs up, then changes the SQLite key from the Servidor dialog, and checks the new recovery copy shows, config.json
 // keeps no key apart, and the next start opens the data with the new key. Then, with the key taken out of
 // config.json, the old recovery copy no longer opens the data, and the new one does.
-test("Desktop: the SQLite key changes, and the old recovery copy no longer opens the data", async () => {
+test("Desktop: the SQLite key changes, and the old recovery copy no longer opens the data", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   test.setTimeout(180_000);
   const first = await launch();
   const firstPage = await first.app.firstWindow();
@@ -480,7 +481,7 @@ test("Desktop: the SQLite key changes, and the old recovery copy no longer opens
 // Leaves config.json as a change of the SQLite key cut short leaves it, and checks the next start ends it with the key
 // that opens the file: cut short after the file changed, the new key, apart as sqliteKeyNext, becomes the key in use;
 // cut short before, a new key that opens nothing is dropped and the key in use stays. Each start opens the data.
-test("Desktop: a change of the SQLite key cut short is ended on the next start", async () => {
+test("Desktop: a change of the SQLite key cut short is ended on the next start", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   test.setTimeout(180_000);
   const first = await launch();
   const firstPage = await first.app.firstWindow();
@@ -517,7 +518,7 @@ test("Desktop: a change of the SQLite key cut short is ended on the next start",
 // by that program, naming its process, and the server was never started; then "Usar outra porta" moves the server to a
 // free port, kept in config.json, where it answers and the login shows, with the SQLite key's recovery copy the first
 // start makes.
-test("Desktop: a taken port is said so, and the server moves to another port", async () => {
+test("Desktop: a taken port is said so, and the server moves to another port", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const holder = createServer();
   const port = await freePort();
   await new Promise<void>((resolve) => holder.listen(port, "127.0.0.1", resolve));
@@ -552,7 +553,7 @@ test("Desktop: a taken port is said so, and the server moves to another port", a
 // Opens the app and checks its server answers on 127.0.0.1 but not on the computer's network address, as the phone's
 // access is off on a fresh install; turning it on in the Servidor dialog restarts the server, which then answers on
 // both, kept in config.json, and turning it off takes it off the network again.
-test("Desktop: the server reaches the network only with the phone's access on", async () => {
+test("Desktop: the server reaches the network only with the phone's access on", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const address = phoneAddress(networkInterfaces());
   test.skip(!address, "This computer has no network address to try.");
   const { app, userData, server } = await launch();
@@ -581,7 +582,7 @@ test("Desktop: the server reaches the network only with the phone's access on", 
 });
 
 // Starts the app as Windows does at sign-in, with --hidden, and checks the window stays hidden while the server answers.
-test("Desktop: started hidden, the app shows no window and its server answers", async () => {
+test("Desktop: started hidden, the app shows no window and its server answers", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
   const { app, server } = await launch({ args: ["--hidden"] });
   await expect.poll(() => healthOf(server), { timeout: 60_000 }).toBe("up");
   expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((window) => window.isVisible()))).toEqual([false]);

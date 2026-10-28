@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import type { Item } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { reduceMotion } from "./reducedMotion.ts";
@@ -74,7 +75,7 @@ test.afterAll(async () => {
 // Logs in with the window focused: the low-stock warning goes to the bell and no Windows notification is shown. Logs
 // in as another user with the window in the background: the warning is shown as a Windows notification, titled
 // "Aviso"; clicking it brings the window up with the bell's menu open.
-test("Desktop: warnings show as Windows notifications while the window isn't focused, and a click opens the bell", async () => {
+test("Desktop: warnings show as Windows notifications while the window isn't focused, and a click opens the bell", { tag: [TEST_TAGS.notifications] }, async () => {
   const env: Record<string, string> = { ...(process.env as Record<string, string>), APC_API_URL: api.url, APC_USER_DATA: mkdtempSync(path.join(tmpdir(), "apc-desktop-")) };
   // With it set, Electron runs as plain Node instead of opening the app.
   delete env.ELECTRON_RUN_AS_NODE;
