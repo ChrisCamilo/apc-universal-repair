@@ -1,8 +1,8 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
 import { rgb } from "./support/expect.ts";
+import { atNotebookSizes } from "./support/sizes.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
-import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { signIn } from "./stubs/session.ts";
@@ -1003,16 +1003,14 @@ test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({
   await page.goto("/inventory");
   await page.getByRole("radio", { name: "100" }).click();
   await expect(page.locator("tbody tr")).toHaveCount(100);
-  for (const height of [NOTEBOOK_HEIGHT, NOTEBOOK_WINDOW_HEIGHT]) {
-    await page.setViewportSize({ width: NOTEBOOK_WIDTH, height });
-    await expect.poll(() => page.evaluate(() => innerHeight)).toBe(height);
-    expect((await layout(page)).pageExtra, `1360×${height}`).toBe(0);
-    expect((await page.locator("header").boundingBox())!.y, `1360×${height}`).toBe(0);
-    await expect(page.getByRole("button", { name: "Novo item" })).toBeInViewport();
-    await expect(page.getByRole("navigation", { name: "Páginas do estoque" })).toBeInViewport();
-    expect(await page.getByTestId("common.data-table.scroll").evaluate((box) => box.scrollHeight > box.clientHeight)).toBe(true);
-    await expect(page).not.toScrollSideways();
-  }
+  await atNotebookSizes(page, async (size) => {
+    expect((await layout(page)).pageExtra, size).toBe(0);
+    expect((await page.locator("header").boundingBox())!.y, size).toBe(0);
+    await expect(page.getByRole("button", { name: "Novo item" }), size).toBeInViewport();
+    await expect(page.getByRole("navigation", { name: "Páginas do estoque" }), size).toBeInViewport();
+    expect(await page.getByTestId("common.data-table.scroll").evaluate((box) => box.scrollHeight > box.clientHeight), size).toBe(true);
+    await expect(page, size).not.toScrollSideways();
+  });
 });
 
 // Lists an item of two brands and checks its row shows both codes, the quantity added up, "2 marcas" and a chevron

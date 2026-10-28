@@ -1,5 +1,5 @@
 import { expect, test } from "./support/fixtures.ts";
-import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
+import { atNotebookSizes } from "./support/sizes.ts";
 import { DASHBOARD_TABS } from "@apc/shared/tabs";
 
 // The first tab still being built, if any.
@@ -85,11 +85,9 @@ test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", asy
   test.skip(testInfo.project.name !== "desktop", "A desktop screen");
   await page.goto("/catalog");
   await expect(page.getByRole("tab", { name: /Catálogo/ })).toHaveAttribute("aria-selected", "true");
-  for (const height of [NOTEBOOK_HEIGHT, NOTEBOOK_WINDOW_HEIGHT]) {
-    await page.setViewportSize({ width: NOTEBOOK_WIDTH, height });
-    await expect.poll(() => page.evaluate(() => innerHeight)).toBe(height);
-    expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), `1360×${height}`).toBe(0);
-    await expect(page, `1360×${height}`).not.toScrollSideways();
-    expect((await page.locator("header").boundingBox())!.y, `1360×${height}`).toBe(0);
-  }
+  await atNotebookSizes(page, async (size) => {
+    expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), size).toBe(0);
+    await expect(page, size).not.toScrollSideways();
+    expect((await page.locator("header").boundingBox())!.y, size).toBe(0);
+  });
 });
