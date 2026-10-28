@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { rgb } from "./support/expect.ts";
 import type { Item } from "@apc/shared/items";
 import { THEME_STORAGE_KEYS, themes, type Mode, type Style } from "@apc/shared/theme";
 import { TOAST_KIND_LOOKS, type ToastKind } from "@apc/shared/toast";
@@ -59,16 +60,6 @@ async function fillNewItem(page: Page) {
   await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Volkswagen");
   await dialog.getByLabel("Valor unitário (R$)").fill("34,9");
   return dialog;
-}
-
-/**
- * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
- * @param hex Color as `#RRGGBB`.
- * @returns The same color as `rgb(r, g, b)`.
- */
-function rgb(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgb(${r}, ${g}, ${b})`;
 }
 
 /**

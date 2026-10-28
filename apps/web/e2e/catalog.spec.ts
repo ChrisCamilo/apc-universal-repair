@@ -37,7 +37,7 @@ test("Web: the Catalog browses brands, models and engine sheets", async ({ page 
 
   await page.getByRole("radio", { name: "Ford" }).click();
   await expect(page.getByText("Nenhuma ficha cadastrada")).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()!.width);
+  await expect(page).not.toScrollSideways();
 });
 
 // Narrows the brands by name, looks for a model another brand has, then types a part code without its separator and
@@ -66,5 +66,5 @@ test("Web: the Catalog search finds brands, models and inventory parts", async (
   await expect(page.getByText("Ford Escort", { exact: true })).toBeVisible();
   await search.fill("");
   await expect(parts).toBeHidden();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()!.width);
+  await expect(page).not.toScrollSideways();
 });

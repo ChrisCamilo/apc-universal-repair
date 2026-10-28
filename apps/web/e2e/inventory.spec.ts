@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { rgb } from "./support/expect.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
 import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
@@ -56,7 +57,7 @@ test("Web: the inventory lists every item with its stock alerts", async ({ page 
     await expect(page.locator("thead")).toBeHidden();
     await expect(rows.nth(3)).toContainText("Suspensão · Cofap · Ford Escort · T · LE · Preto · A-10");
   }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()!.width);
+  await expect(page).not.toScrollSideways();
 });
 
 // Checks the toolbar has the search at its left edge and "Novo item", the last of the buttons, at its right edge, the
@@ -92,16 +93,6 @@ async function layout(page: Page) {
     pageExtra: document.scrollingElement!.scrollHeight - window.innerHeight,
   }));
   return { gapBelow: height - (panel.y + panel.height), pageExtra };
-}
-
-/**
- * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
- * @param hex Color as `#RRGGBB`.
- * @returns The same color as `rgb(r, g, b)`.
- */
-function rgb(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgb(${r}, ${g}, ${b})`;
 }
 
 // Opens the Inventory with a few items, with none and with the API failing, and checks each time the panel reaches the
@@ -1020,7 +1011,7 @@ test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({
     await expect(page.getByRole("button", { name: "Novo item" })).toBeInViewport();
     await expect(page.getByRole("navigation", { name: "Páginas do estoque" })).toBeInViewport();
     expect(await page.getByTestId("common.data-table.scroll").evaluate((box) => box.scrollHeight > box.clientHeight)).toBe(true);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(NOTEBOOK_WIDTH);
+    await expect(page).not.toScrollSideways();
   }
 });
 

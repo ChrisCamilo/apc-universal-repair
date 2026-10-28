@@ -1,15 +1,6 @@
 import { expect, test } from "./support/fixtures.ts";
+import { rgb } from "./support/expect.ts";
 import { MODES, STYLES, scales, themes } from "@apc/shared/theme";
-
-/**
- * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
- * @param hex Color as `#RRGGBB`.
- * @returns The same color as `rgb(r, g, b)`.
- */
-function rgb(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgb(${r}, ${g}, ${b})`;
-}
 
 for (const style of STYLES) {
   for (const mode of MODES) {

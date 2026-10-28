@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { rgb } from "./support/expect.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
@@ -48,16 +49,6 @@ async function toastLifetime(page: Page): Promise<number> {
   );
   await page.getByRole("dialog", { name: "Editar item" }).getByRole("button", { name: "Salvar" }).click();
   return lifetime;
-}
-
-/**
- * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
- * @param hex Color as `#RRGGBB`.
- * @returns The same color as `rgb(r, g, b)`.
- */
-function rgb(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgb(${r}, ${g}, ${b})`;
 }
 
 // Deletes one item, and fails to delete another, and checks the bell, to the left of the user menu, counts 2 unread;

@@ -19,7 +19,7 @@ test("Web: the Dashboard opens on the Inventory tab", async ({ page }) => {
   const viewport = page.viewportSize()!;
   expect(mark.x).toBeGreaterThanOrEqual(0);
   expect(mark.x + mark.width).toBeLessThanOrEqual(viewport.width);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
+  await expect(page).not.toScrollSideways();
 });
 
 // Opens a tab by its link and another by its tab, an unknown path and "/" with the last tab and with a stale saved
@@ -76,7 +76,7 @@ test("Web: a tab still being built opens behind the work-in-progress notice", as
   await tab.click();
   await expect(page.getByRole("heading", { name: `A aba ${WIP_TAB!.label} ainda não está pronta` })).toBeVisible();
   await expect(page.getByTestId("common.work-in-progress.content")).toHaveJSProperty("inert", true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+  await expect(page).not.toScrollSideways();
 });
 
 // On a 1360×768 notebook, in full screen and in a window (1360×689), opens the Catalog tab and checks the page itself
@@ -88,8 +88,8 @@ test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", asy
   for (const height of [NOTEBOOK_HEIGHT, NOTEBOOK_WINDOW_HEIGHT]) {
     await page.setViewportSize({ width: NOTEBOOK_WIDTH, height });
     await expect.poll(() => page.evaluate(() => innerHeight)).toBe(height);
-    const scroll = await page.evaluate(() => [document.scrollingElement!.scrollHeight - innerHeight, document.documentElement.scrollWidth]);
-    expect(scroll, `1360×${height}`).toEqual([0, NOTEBOOK_WIDTH]);
+    expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), `1360×${height}`).toBe(0);
+    await expect(page, `1360×${height}`).not.toScrollSideways();
     expect((await page.locator("header").boundingBox())!.y, `1360×${height}`).toBe(0);
   }
 });

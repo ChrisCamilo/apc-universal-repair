@@ -23,7 +23,7 @@ test("Web: the login screen shows the badge and the form", async ({ page }, test
   } else {
     expect(field.y).toBeGreaterThan(mark.y + mark.height);
   }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()!.width);
+  await expect(page).not.toScrollSideways();
 });
 
 // Sends the login empty, then with a wrong password, then as a test user with Enter, and checks the empty fields
@@ -84,8 +84,8 @@ test("Web: on a 1360×768 notebook the login fits without scrolling", async ({ p
   for (const height of [NOTEBOOK_HEIGHT, NOTEBOOK_WINDOW_HEIGHT]) {
     await page.setViewportSize({ width: NOTEBOOK_WIDTH, height });
     await expect.poll(() => page.evaluate(() => innerHeight)).toBe(height);
-    const scroll = await page.evaluate(() => [document.scrollingElement!.scrollHeight - innerHeight, document.documentElement.scrollWidth]);
-    expect(scroll, `1360×${height}`).toEqual([0, NOTEBOOK_WIDTH]);
+    expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), `1360×${height}`).toBe(0);
+    await expect(page, `1360×${height}`).not.toScrollSideways();
     await expect(page.getByRole("button", { name: "Entrar" })).toBeInViewport();
   }
 });
