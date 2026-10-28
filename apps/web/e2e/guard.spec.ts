@@ -1,4 +1,6 @@
 import { expect, test } from "./support/fixtures.ts";
+import { logIn, loginForm } from "./locators/auth.ts";
+import { dashboard } from "./locators/dashboard.ts";
 import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { TEST_USERS } from "@apc/shared/test-users";
 
@@ -21,23 +23,19 @@ test.describe(() => {
     });
     await page.goto("/inventory");
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByLabel("Usuário")).toBeVisible();
+    await expect(loginForm(page).username).toBeVisible();
     expect(await page.evaluate(() => localStorage.getItem("saw-dashboard"))).toBeNull();
 
-    await page.getByLabel("Usuário").fill(USER.username);
-    await page.getByLabel("Senha", { exact: true }).fill(USER.password);
-    await page.getByLabel("Senha", { exact: true }).press("Enter");
+    await logIn(page, USER);
     await expect(page).toHaveURL(/\/inventory$/);
-    await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
+    await expect(dashboard(page).tab("inventory")).toHaveAttribute("aria-selected", "true");
   });
 
   // Opens an unknown path with nobody logged in and checks it also goes to the login, and on to the Dashboard after.
   test("Web: an unknown path asks for the login too", async ({ page }) => {
     await page.goto("/nao-existe");
     await expect(page).toHaveURL(/\/login$/);
-    await page.getByLabel("Usuário").fill(USER.username);
-    await page.getByLabel("Senha", { exact: true }).fill(USER.password);
-    await page.getByRole("button", { name: "Entrar" }).click();
+    await logIn(page, USER);
     await expect(page).toHaveURL(/\/inventory$/);
   });
 });
@@ -46,8 +44,8 @@ test.describe(() => {
 test("Web: a logged user skips the login", async ({ page }) => {
   await page.goto("/login");
   await expect(page).toHaveURL(/\/inventory$/);
-  await expect(page.getByRole("tab", { name: "Estoque" })).toBeVisible();
-  await expect(page.getByLabel("Usuário", { exact: true })).toHaveCount(0);
+  await expect(dashboard(page).tab("inventory")).toBeVisible();
+  await expect(loginForm(page).username).toHaveCount(0);
 });
 
 // Opens the Dashboard with a saved session whose token the API refuses, and checks the items call carried the token,
@@ -67,9 +65,7 @@ test("Web: an expired session goes back to the login, which says so", async ({ p
   expect(await page.evaluate((key) => localStorage.getItem(key), SESSION_STORAGE_KEY)).toBeNull();
 
   await page.unroute("**/api/items*");
-  await page.getByLabel("Usuário").fill(USER.username);
-  await page.getByLabel("Senha", { exact: true }).fill(USER.password);
-  await page.getByLabel("Senha", { exact: true }).press("Enter");
+  await logIn(page, USER);
   await expect(page).toHaveURL(/\/inventory$/);
   await expect(page.getByText(LOGIN_MESSAGES.expired)).toBeHidden();
 });

@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
 import { rgb } from "./support/expect.ts";
+import { toasts } from "./locators/common.ts";
+import { fillItem, inventory, itemForm } from "./locators/inventory.ts";
 import type { Item } from "@apc/shared/items";
 import { THEME_STORAGE_KEYS, themes, type Mode, type Style } from "@apc/shared/theme";
 import { TOAST_KIND_LOOKS, type ToastKind } from "@apc/shared/toast";
@@ -35,7 +37,8 @@ const FILTER: Item = item({
  */
 async function expectToast(page: Page, kind: ToastKind, message: string, [style, mode]: [Style, Mode]) {
   const look = TOAST_KIND_LOOKS[kind];
-  const pill = page.getByRole(look.urgent ? "alert" : "status").getByTestId("common.toast.message").filter({ hasText: message });
+  const { urgent, polite, messages } = toasts(page);
+  const pill = (look.urgent ? urgent : polite).locator(messages).filter({ hasText: message });
   await expect(pill).toBeVisible();
   await expect(pill).toHaveAttribute("data-kind", kind);
   const { colors } = themes[style][mode];
@@ -48,18 +51,12 @@ async function expectToast(page: Page, kind: ToastKind, message: string, [style,
 /**
  * Opens the new item form and fills in a valid item.
  * @param page The test's page.
- * @returns The form's dialog.
+ * @returns The form.
  */
 async function fillNewItem(page: Page) {
-  await page.getByRole("button", { name: "Novo item" }).click();
-  const dialog = page.getByRole("dialog", { name: "Novo item" });
-  await dialog.getByLabel("Código da peça").fill("NGK-B7");
-  await dialog.getByLabel("Nome").fill("Vela de ignição");
-  await dialog.getByRole("combobox", { name: "Categoria" }).fill("Motor");
-  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("Mann");
-  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Volkswagen");
-  await dialog.getByLabel("Valor unitário (R$)").fill("34,9");
-  return dialog;
+  await inventory(page).newItem.click();
+  await fillItem(page, "Novo item", { code: "NGK-B7", name: "Vela de ignição", category: "Motor", partBrand: "Mann", vehicleBrand: "Volkswagen", unitPrice: "34,9" });
+  return itemForm(page, "Novo item");
 }
 
 /**
@@ -89,7 +86,7 @@ for (const theme of THEMES) {
     });
     await serveItems(page, stock);
     await page.goto("/inventory");
-    await (await fillNewItem(page)).getByRole("button", { name: "Salvar" }).click();
+    await (await fillNewItem(page)).save.click();
     await expectToast(page, "success", "Item “Vela de ignição” cadastrado.", theme);
   });
 
@@ -100,10 +97,10 @@ for (const theme of THEMES) {
     await page.route("**/api/items", (route) => route.fulfill({ status: 500, body: "" }));
     await serveItems(page, [FILTER]);
     await page.goto("/inventory");
-    const dialog = await fillNewItem(page);
-    await dialog.getByRole("button", { name: "Salvar" }).click();
+    const form = await fillNewItem(page);
+    await form.save.click();
     await expectToast(page, "error", "Não foi possível salvar o item. Tente de novo.", theme);
-    await expect(dialog).toBeVisible();
+    await expect(form.root).toBeVisible();
   });
 
   // Removes an item's photo in the edit form while the API can't save photos, and checks the warning toast in yellow
@@ -119,10 +116,10 @@ for (const theme of THEMES) {
     await page.route("**/api/items/*", (route) => route.fulfill({ json: withPhoto }));
     await page.route("**/api/items/*/brands/*/photos", (route) => route.fulfill({ status: 500, body: "" }));
     await page.goto("/inventory");
-    await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
-    const dialog = page.getByRole("dialog", { name: "Editar item" });
-    await dialog.getByRole("button", { name: "Remover foto 1" }).click();
-    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await inventory(page).edit("Filtro de óleo").click();
+    const form = itemForm(page, "Editar item");
+    await form.removePhoto(1).click();
+    await form.save.click();
     await expectToast(page, "warning", "Item “Filtro de óleo” salvo, mas as fotos não foram salvas. Tente de novo.", theme);
   });
 
@@ -137,11 +134,11 @@ for (const theme of THEMES) {
       return route.fulfill({ json: FILTER });
     });
     await page.goto("/inventory");
-    await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
-    const dialog = page.getByRole("dialog", { name: "Editar item" });
-    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await inventory(page).edit("Filtro de óleo").click();
+    const form = itemForm(page, "Editar item");
+    await form.save.click();
     await expectToast(page, "info", "Nenhuma alteração para salvar.", theme);
-    await expect(dialog).toBeHidden();
+    await expect(form.root).toBeHidden();
     expect(patched).toEqual([]);
   });
 }
@@ -183,8 +180,8 @@ function sampleOpacity(page: Page, until: "shown" | "gone"): Promise<number[]> {
 async function openEdit(page: Page) {
   await serveItems(page, [FILTER]);
   await page.goto("/inventory");
-  await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
-  return page.getByRole("dialog", { name: "Editar item" }).getByRole("button", { name: "Salvar" });
+  await inventory(page).edit("Filtro de óleo").click();
+  return itemForm(page, "Editar item").save;
 }
 
 // Samples a toast's opacity every frame, from the save until it leaves the page: it starts transparent and rises to full

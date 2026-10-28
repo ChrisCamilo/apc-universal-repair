@@ -76,6 +76,13 @@ apps/web/
 │   │   └── items.ts            # serveItems(), savedItem(): stand-in for /items and the item lists
 │   ├── data/
 │   │   └── items.ts            # item(): a test item from the fields that matter
+│   ├── locators/               # the elements the specs find, one file per style-id scope:
+│   │   ├── common.ts           # dialog(), dataTable(), pagination(), options(), toasts(), tour()
+│   │   ├── auth.ts             # loginForm(), registerForm(), logIn()
+│   │   ├── dashboard.ts        # dashboard(), userMenu(), logOut()
+│   │   ├── inventory.ts        # inventory(), itemForm(), itemDetails(), deleteDialog(), manageLists()…
+│   │   ├── notifications.ts    # bell()
+│   │   └── catalog.ts          # catalog()
 │   ├── api-guard.spec.ts       # checks the guard fails a call no stand-in answers
 │   └── <area>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
 │                               # notifications, register, theme, toast, user-menu
@@ -129,7 +136,7 @@ Routes, `localStorage` and the init scripts belong to the test's own browser con
 1. Put it in the spec of its area (`inventory.spec.ts` for the Inventory). A new area gets a new `<area>.spec.ts`.
 2. Title it with the prefix, `Web:` or `Desktop:`, and the behavior in English; write what it checks and why in a comment right above it ([AGENTS.md](../AGENTS.md#writing-tests)).
 3. Import `test` and `expect` from `./support/fixtures.ts` and start from the state it needs: the Dashboard with a test user is the default, `test.use({ signedIn: false })` for the screens before the login, `test.use({ stock: { items } })` or `serveItems()` with only the items that matter (`item()` from `./data/items.ts` fills in the rest). Answer every API call the test makes: the guard fails any it doesn't.
-4. Find elements as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`; then the style id (`getByTestId("inventory.inventory-tab.filters.count")`) for an element with no role or text of its own; CSS only for what has neither (`tbody tr`, `header`, `html`).
+4. Find elements through `./locators/<scope>.ts`, the file of the scope of the element's style id: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, and flows many specs repeat, such as `logIn()`, `fillItem()` and `deleteItem()`. An element a spec reaches more than once is added there, with no assertions. A locator finds an element as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`. It uses the style id (`getByTestId("inventory.inventory-tab.filters.count")`) for an element with no role or text of its own, and CSS only for what has none of these (`html`, `body`, `header`). The demo's spec uses the same locators.
 5. Assert with Playwright's web-first assertions (`toBeVisible`, `toHaveText`, `toHaveURL`), `expect.poll` for a value read from the page. Never wait a fixed time. A color in `toHaveCSS` comes from the theme through `rgb()`, and a page that must not scroll sideways is checked with `await expect(page).not.toScrollSideways()`, both from `./support/expect.ts`.
 6. Check the minimum sizes: the test runs in both projects. When it can only hold on one, skip the other with a reason: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Screens that fill the window are also checked on a notebook, in full screen and in a window, with `atNotebookSizes(page, async (size) => …)` from `./support/sizes.ts`, naming `size` in each assertion's message.
 7. A test about a motion turns it on for itself: `page.emulateMedia({ reducedMotion: "no-preference" })`.
@@ -221,7 +228,7 @@ pnpm --filter @apc/desktop test:e2e
 
 - **UI copy changes:** the E2E find elements by their Portuguese names. Rename the text in the test too, or better, read it from the shared module that already holds it (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), as the login and sign-up specs do.
 - **API changes:** a route added or changed reaches three stand-ins: `apps/web/e2e/stubs/items.ts`/`users.ts` (web E2E), `apps/desktop/e2e/stubApi.ts` (desktop E2E) and `apps/web/src/demo/demoApi.ts` (the demo; CI checks this one against `@apc/shared/api-routes`). The first two are not checked: update them in the same pull request.
-- **Style ids change** with a component's file name or slots. A test that reads one fails with "element not found": search the id in `e2e/` and follow the new one.
+- **Style ids change** with a component's file name or slots. A test that reads one fails with "element not found": search the id in `e2e/locators/` and follow the new one there, and the specs follow too. A renamed label is changed there the same way.
 - **A work-in-progress tab** keeps its tests skipped (`catalog.spec.ts` while the Catalog tab has `wip`). They come back by themselves once `wip` is gone.
 - **A flaky test:** run it many times to see it fail (`--repeat-each=20 --workers=4`), record a trace (`--trace on`), and fix the wait, not the timeout: wait for what the user would see (`toBeVisible`, `toHaveURL`, `expect.poll`), never `waitForTimeout`.
 - **Upgrading Playwright:** `@playwright/test` and `playwright` in `apps/web`, `@playwright/test` in `apps/desktop` and `@vitest/browser-playwright` move together. Then download the browser again (`playwright install chromium`); CI installs it on each run.
@@ -278,6 +285,13 @@ apps/web/
 │   │   └── items.ts            # serveItems(), savedItem(): substituto de /items e das listas de itens
 │   ├── data/
 │   │   └── items.ts            # item(): um item de teste a partir dos campos que importam
+│   ├── locators/               # os elementos que as specs encontram, um arquivo por escopo de style id:
+│   │   ├── common.ts           # dialog(), dataTable(), pagination(), options(), toasts(), tour()
+│   │   ├── auth.ts             # loginForm(), registerForm(), logIn()
+│   │   ├── dashboard.ts        # dashboard(), userMenu(), logOut()
+│   │   ├── inventory.ts        # inventory(), itemForm(), itemDetails(), deleteDialog(), manageLists()…
+│   │   ├── notifications.ts    # bell()
+│   │   └── catalog.ts          # catalog()
 │   ├── api-guard.spec.ts       # confere que a guarda reprova uma chamada que nenhum substituto responde
 │   └── <área>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
 │                               # notifications, register, theme, toast, user-menu
@@ -331,7 +345,7 @@ Rotas, `localStorage` e init scripts pertencem ao contexto de navegador do próp
 1. Coloque-o na spec da sua área (`inventory.spec.ts` para o Estoque). Uma área nova ganha um `<área>.spec.ts` novo.
 2. Dê o título com o prefixo, `Web:` ou `Desktop:`, e o comportamento em inglês; escreva o que ele confere e por quê num comentário logo acima ([AGENTS.md](../AGENTS.md#writing-tests)).
 3. Importe `test` e `expect` de `./support/fixtures.ts` e comece do estado de que ele precisa: o Dashboard com um usuário de teste é o padrão, `test.use({ signedIn: false })` para as telas antes do login, `test.use({ stock: { items } })` ou `serveItems()` só com os itens que importam (o `item()` de `./data/items.ts` completa o resto). Responda toda chamada à API que o teste faz: a guarda reprova as que ficarem sem resposta.
-4. Encontre os elementos como um usuário encontra, nesta ordem: `getByRole` com o nome acessível, `getByLabel`, `getByText`; depois o style id (`getByTestId("inventory.inventory-tab.filters.count")`) para um elemento sem papel ou texto próprio; CSS só para o que não tem nenhum dos dois (`tbody tr`, `header`, `html`).
+4. Encontre os elementos por `./locators/<escopo>.ts`, o arquivo do escopo do style id do elemento: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, e fluxos que muitas specs repetem, como `logIn()`, `fillItem()` e `deleteItem()`. Um elemento que uma spec alcança mais de uma vez entra lá, sem asserções. Um locator encontra o elemento como um usuário encontra, nesta ordem: `getByRole` com o nome acessível, `getByLabel`, `getByText`. Ele usa o style id (`getByTestId("inventory.inventory-tab.filters.count")`) para um elemento sem papel ou texto próprio, e CSS só para o que não tem nenhum deles (`html`, `body`, `header`). A spec da demo usa os mesmos locators.
 5. Verifique com as asserções web-first do Playwright (`toBeVisible`, `toHaveText`, `toHaveURL`), e `expect.poll` para um valor lido da página. Nunca espere um tempo fixo. Uma cor no `toHaveCSS` vem do tema pelo `rgb()`, e uma página que não pode rolar para o lado é conferida com `await expect(page).not.toScrollSideways()`, os dois de `./support/expect.ts`.
 6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Quando ele só vale em um, pule o outro com o motivo: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Telas que ocupam a janela também são conferidas num notebook, em tela cheia e numa janela, com `atNotebookSizes(page, async (size) => …)` de `./support/sizes.ts`, citando `size` na mensagem de cada asserção.
 7. Um teste sobre um movimento o liga para si: `page.emulateMedia({ reducedMotion: "no-preference" })`.
@@ -423,7 +437,7 @@ pnpm --filter @apc/desktop test:e2e
 
 - **Mudou um texto da interface:** o E2E encontra os elementos pelos nomes em português. Troque o texto no teste também, ou melhor, leia-o do módulo compartilhado que já o guarda (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), como as specs de login e cadastro fazem.
 - **Mudou a API:** uma rota nova ou alterada chega a três substitutos: `apps/web/e2e/stubs/items.ts`/`users.ts` (E2E da web), `apps/desktop/e2e/stubApi.ts` (E2E do desktop) e `apps/web/src/demo/demoApi.ts` (a demo; o CI confere este contra o `@apc/shared/api-routes`). Os dois primeiros não são conferidos: atualize-os no mesmo pull request.
-- **Style ids mudam** com o nome do arquivo de um componente ou seus slots. Um teste que lê um deles falha com "element not found": procure o id em `e2e/` e siga o novo.
+- **Style ids mudam** com o nome do arquivo de um componente ou seus slots. Um teste que lê um deles falha com "element not found": procure o id em `e2e/locators/` e siga o novo ali, que as specs seguem junto. Um rótulo renomeado muda ali do mesmo jeito.
 - **Uma aba em construção** deixa seus testes pulados (`catalog.spec.ts` enquanto a aba Catálogo tem `wip`). Eles voltam sozinhos quando o `wip` sai.
 - **Um teste instável:** rode-o muitas vezes para vê-lo falhar (`--repeat-each=20 --workers=4`), grave um trace (`--trace on`) e corrija a espera, não o timeout: espere pelo que o usuário veria (`toBeVisible`, `toHaveURL`, `expect.poll`), nunca `waitForTimeout`.
 - **Atualizando o Playwright:** `@playwright/test` e `playwright` no `apps/web`, `@playwright/test` no `apps/desktop` e `@vitest/browser-playwright` andam juntos. Depois baixe o navegador de novo (`playwright install chromium`); o CI o instala a cada execução.

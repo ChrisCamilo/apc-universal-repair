@@ -1,5 +1,6 @@
 import { expect, test } from "./support/fixtures.ts";
-import { ENGINE_SHEETS } from "@apc/shared/catalog";
+import { catalog } from "./locators/catalog.ts";
+import { dashboard } from "./locators/dashboard.ts";
 import type { Item } from "@apc/shared/items";
 import { DASHBOARD_TABS } from "@apc/shared/tabs";
 import { item } from "./data/items.ts";
@@ -22,20 +23,21 @@ test.use({ stock: { items: ITEMS } });
 // engine, Fiat and Ford, and checks the sheet follows each choice, Ford saying it has no sheet yet. Nothing scrolls
 // sideways at either screen size.
 test("Web: the Catalog browses brands, models and engine sheets", async ({ page }) => {
+  const tab = catalog(page);
   await page.goto("/inventory");
-  await page.getByRole("tab", { name: "Catálogo" }).click();
+  await dashboard(page).tab("catalog").click();
   await expect(page).toHaveURL(/\/catalog$/);
-  await expect(page.getByRole("radio", { name: "Chevrolet", exact: true })).toBeChecked();
-  await expect(page.getByRole("heading", { name: ENGINE_SHEETS["chevrolet-opala-diplomata-1986-2.5"].title })).toBeVisible();
+  await expect(tab.brand("Chevrolet", true)).toBeChecked();
+  await expect(tab.sheet("chevrolet-opala-diplomata-1986-2.5")).toBeVisible();
 
-  await page.getByRole("treeitem", { name: "4.1 L 6 cilindros" }).click();
-  await expect(page.getByRole("heading", { name: ENGINE_SHEETS["chevrolet-opala-diplomata-1986-4.1"].title })).toBeVisible();
+  await tab.model("4.1 L 6 cilindros").click();
+  await expect(tab.sheet("chevrolet-opala-diplomata-1986-4.1")).toBeVisible();
 
-  await page.getByRole("radio", { name: "Fiat" }).click();
-  await expect(page.getByRole("tree", { name: "Modelos Fiat" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: ENGINE_SHEETS["fiat-uno-mille-1991-1.0"].title })).toBeVisible();
+  await tab.brand("Fiat").click();
+  await expect(tab.models("Fiat")).toBeVisible();
+  await expect(tab.sheet("fiat-uno-mille-1991-1.0")).toBeVisible();
 
-  await page.getByRole("radio", { name: "Ford" }).click();
+  await tab.brand("Ford").click();
   await expect(page.getByText("Nenhuma ficha cadastrada")).toBeVisible();
   await expect(page).not.toScrollSideways();
 });
@@ -44,27 +46,26 @@ test("Web: the Catalog browses brands, models and engine sheets", async ({ page 
 // checks the part is listed and reveals its vehicle, and a part for a model without a sheet says so; clearing the
 // search drops the part list.
 test("Web: the Catalog search finds brands, models and inventory parts", async ({ page }) => {
+  const tab = catalog(page);
   await page.goto("/catalog");
-  await page.getByRole("searchbox", { name: "Procure marca" }).fill("fia");
-  await expect(page.getByRole("radio")).toHaveCount(1);
-  await page.getByRole("searchbox", { name: "Procure marca" }).fill("");
+  await tab.brandSearch.fill("fia");
+  await expect(tab.brands).toHaveCount(1);
+  await tab.brandSearch.fill("");
 
-  const search = page.getByRole("searchbox", { name: "Procure modelo ou código da peça" });
-  await search.fill("gol");
-  await expect(page.getByRole("radio", { name: "Volkswagen", exact: true })).toBeChecked();
-  await expect(page.getByRole("heading", { name: ENGINE_SHEETS["volkswagen-gol-gts-1989-1.8"].title })).toBeVisible();
+  await tab.search.fill("gol");
+  await expect(tab.brand("Volkswagen", true)).toBeChecked();
+  await expect(tab.sheet("volkswagen-gol-gts-1989-1.8")).toBeVisible();
 
-  await search.fill("fra1000");
-  const parts = page.getByRole("radiogroup", { name: "Peças do estoque com esse código" });
-  await expect(parts.getByRole("radio")).toHaveCount(1);
-  await expect(parts).toContainText("Serve no Chevrolet Opala 4.1");
-  await expect(page.getByRole("radio", { name: "Chevrolet", exact: true })).toBeChecked();
-  await expect(page.getByRole("treeitem", { name: "Opala", exact: true })).toHaveAttribute("aria-current", "true");
-  await expect(page.getByRole("heading", { name: ENGINE_SHEETS["chevrolet-opala-diplomata-1986-4.1"].title })).toBeVisible();
+  await tab.search.fill("fra1000");
+  await expect(tab.parts.getByRole("radio")).toHaveCount(1);
+  await expect(tab.parts).toContainText("Serve no Chevrolet Opala 4.1");
+  await expect(tab.brand("Chevrolet", true)).toBeChecked();
+  await expect(tab.model("Opala", true)).toHaveAttribute("aria-current", "true");
+  await expect(tab.sheet("chevrolet-opala-diplomata-1986-4.1")).toBeVisible();
 
-  await search.fill("esc200");
+  await tab.search.fill("esc200");
   await expect(page.getByText("Ford Escort", { exact: true })).toBeVisible();
-  await search.fill("");
-  await expect(parts).toBeHidden();
+  await tab.search.fill("");
+  await expect(tab.parts).toBeHidden();
   await expect(page).not.toScrollSideways();
 });

@@ -188,6 +188,7 @@ These rules apply to every test, whatever the tool (Playwright, Vitest, Jest, `n
   | `Repo:` | `scripts/`, the repository's own tooling |
 
   The prefix goes on every `test`/`it` title, also inside a `describe`, so a failing test is identified by its title alone in any report.
+- **The web E2E find an element through `apps/web/e2e/locators/<scope>.ts`,** the file of the scope of its style id (`common`, `auth`, `dashboard`, `inventory`, `notifications`, `catalog`). Each file has functions that take the page and return its elements, with no assertions, e.g. `itemForm(page, "Novo item").save`. An element a spec reaches more than once goes there. A locator finds an element as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`. It uses the style id (`getByTestId`) for an element with no role or text of its own, and CSS only for what has none of these (`html`, `body`, `header`).
 
 ```ts
 // Switches style and mode on <html> and checks the page picks up that combination's colors and display font.
