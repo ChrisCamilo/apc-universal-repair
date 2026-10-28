@@ -1,15 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { DASHBOARD_TABS } from "@apc/shared/tabs";
-import { signIn } from "./session.ts";
 
 // The first tab still being built, if any.
 const WIP_TAB = DASHBOARD_TABS.find((tab) => tab.wip);
-
-// Every test here starts on the Dashboard, so a test user is logged in first.
-test.beforeEach(async ({ page }) => {
-  await signIn(page);
-});
 
 // Opens the app at "/" and checks it lands on the Inventory tab at /inventory: the APC mark heads the page,
 // the tab is selected and its content shows, and nothing scrolls sideways.

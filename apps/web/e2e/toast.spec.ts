@@ -1,9 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 import type { Item } from "@apc/shared/items";
 import { THEME_STORAGE_KEYS, themes, type Mode, type Style } from "@apc/shared/theme";
 import { TOAST_KIND_LOOKS, type ToastKind } from "@apc/shared/toast";
 import { savedItem, serveItems } from "./items.ts";
-import { signIn } from "./session.ts";
 import { testItem } from "@apc/shared/test-items";
 
 // A 1×1 PNG, what the API answers for a photo.
@@ -94,11 +94,6 @@ async function startIn(page: Page, [style, mode]: [Style, Mode]) {
     [THEME_STORAGE_KEYS, [style, mode]] as const,
   );
 }
-
-// Every test here starts on the Inventory, so a test user is logged in first.
-test.beforeEach(async ({ page }) => {
-  await signIn(page);
-});
 
 for (const theme of THEMES) {
   // Adds an item through the form against an API that saves it, and checks the success toast in green with the check.

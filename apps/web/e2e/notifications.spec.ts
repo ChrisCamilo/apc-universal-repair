@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
@@ -8,6 +9,9 @@ import { signIn } from "./session.ts";
 import { testItem } from "@apc/shared/test-items";
 
 const ITEMS: Item[] = [item("00000000-0000-4000-8000-000000000001", "Filtro de óleo"), item("00000000-0000-4000-8000-000000000002", "Bomba d'água")];
+
+// The Inventory the tests start on, unless a test serves its own.
+test.use({ stock: { items: ITEMS } });
 
 /**
  * Fills in an item with the fields the bell doesn't look at.
@@ -89,8 +93,6 @@ function rgb(hex: string): string {
 // reload both are still listed; another user logging in on the same browser has none, and "Limpar notificações"
 // empties the list.
 test("Web: the bell keeps the latest toasts for each user", async ({ page }) => {
-  await signIn(page);
-  await serveItems(page, [...ITEMS]);
   let deletes = 0;
   await page.route("**/api/items/*", (route) => route.fulfill({ status: ++deletes === 1 ? 204 : 500, body: "" }));
   await page.goto("/inventory");
@@ -141,8 +143,6 @@ test("Web: the bell keeps the latest toasts for each user", async ({ page }) => 
 // Measures how long a toast stays: 5 s by default. Sets 3 s with the gear in the bell's menu, and checks the next toast
 // stays 3 s and the time is still 3 s after a reload; − stops at 2 s and + at 15 s.
 test("Web: the gear sets how long a toast stays", async ({ page }) => {
-  await signIn(page);
-  await serveItems(page, [...ITEMS]);
   await page.goto("/inventory");
   const fade = TOAST_FADE_MS + 300;
   const byDefault = await toastLifetime(page);
@@ -181,7 +181,6 @@ test("Web: the gear sets how long a toast stays", async ({ page }) => {
 // minimum shows the warning as a toast and adds it to the bell; saving it again while still low adds no other; importing
 // two items below their minimum adds one warning for both.
 test("Web: items reaching their minimum stock are warned about once", async ({ page }) => {
-  await signIn(page);
   const stock: Item[] = [{ ...ITEMS[0], quantity: 6, minQuantity: 2 }, { ...item("00000000-0000-4000-8000-000000000003", "Correia dentada"), quantity: 0 }];
   await serveItems(page, stock);
   await page.route("**/api/items/*", (route) => {

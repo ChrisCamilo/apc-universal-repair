@@ -1,11 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { TEST_USERS } from "@apc/shared/test-users";
-import { serveItems } from "./items.ts";
-import { serveUsers } from "./users.ts";
 
 const USER = TEST_USERS[0];
+
+// Nobody is logged in when these start.
+test.use({ signedIn: false });
 
 // Opens /login and checks the badge heads the page with both fields and "Entrar" on screen, laid out without
 // sideways scroll, beside the form on desktop and above it on a phone.
@@ -29,8 +30,6 @@ test("Web: the login screen shows the badge and the form", async ({ page }, test
 // get their messages, the refused login says so above the form and empties the password, and the accepted one
 // saves the session with its token, which is still there after a reload, and goes on to the Dashboard.
 test("Web: the login checks the fields and the user, and saves the session", async ({ page }) => {
-  await serveItems(page, []);
-  await serveUsers(page);
   await page.goto("/login");
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByText(LOGIN_MESSAGES.username)).toBeVisible();

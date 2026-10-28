@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 
 // Calls the API through the web app's /api proxy and checks it answers healthy, which proves the web app
 // reaches the API.

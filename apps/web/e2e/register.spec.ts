@@ -1,8 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 import { REGISTER_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { TEST_USERS } from "@apc/shared/test-users";
-import { serveItems } from "./items.ts";
-import { serveUsers } from "./users.ts";
+
+// Nobody is logged in when these start.
+test.use({ signedIn: false });
 
 // A new user as they fill in the sign-up.
 const NEW_USER = { displayName: "Ana Souza", username: "Ana.Souza", email: "ana@oficina.com", password: "freio1234" };
@@ -24,9 +25,7 @@ async function fillIn(page: import("@playwright/test").Page, user = NEW_USER) {
 // and checks they land on the Dashboard logged in, where the Inventory tutorial starts on this first login. Logs out
 // and in again with the new user, and checks it doesn't start again; then a test user logging in on the same browser
 // gets it on their own first login. Nothing scrolls sideways at either screen size.
-test("Web: a new user signs up, lands on the Dashboard and logs in again", async ({ page }) => {
-  await serveItems(page, []);
-  const users = await serveUsers(page);
+test("Web: a new user signs up, lands on the Dashboard and logs in again", async ({ page, users }) => {
   const skip = page.getByRole("button", { name: "Pular tutorial" });
   const logIn = async (username: string, password: string) => {
     await page.getByLabel("Usuário").fill(username);
