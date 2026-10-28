@@ -3,33 +3,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
 import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from "@apc/shared/item-csv";
 import type { Item } from "@apc/shared/items";
-import { testItem, type FlatItem } from "@apc/shared/test-items";
-
-/**
- * Fills in an item with the fields the export doesn't look at.
- * @param fields The fields that matter for the test.
- * @returns A complete item.
- */
-function item(fields: FlatItem & Required<Pick<FlatItem, "code" | "name">>): Item {
-  return testItem({
-    id: crypto.randomUUID(),
-    category: "Motor",
-    partBrand: "Bosch",
-    vehicleBrand: "Volkswagen",
-    vehicleModel: null,
-    position: "N/A",
-    side: "N/A",
-    color: "N/A",
-    location: null,
-    quantity: 1,
-    minQuantity: 0,
-    unitPriceCents: 100,
-    photos: [],
-    createdAt: "2026-10-03T12:00:00.000Z",
-    updatedAt: "2026-10-03T12:00:00.000Z",
-    ...fields,
-  });
-}
+import { item } from "./data/items.ts";
 
 // 30 parts the search finds, over two pages of 25, the first with a photo, and 5 filters it leaves out.
 const STOCK: Item[] = [

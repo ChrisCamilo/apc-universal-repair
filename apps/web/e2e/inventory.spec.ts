@@ -5,7 +5,8 @@ import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/sh
 import { themes, type Mode, type Style } from "@apc/shared/theme";
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { signIn } from "./stubs/session.ts";
-import { testItem, type FlatItem } from "@apc/shared/test-items";
+import { testItem } from "@apc/shared/test-items";
+import { item } from "./data/items.ts";
 
 // The API answers GET /items with these items, newest first, so the list is the same on every run without a database.
 const ITEMS: Item[] = [
@@ -14,32 +15,6 @@ const ITEMS: Item[] = [
   item({ code: "BA-77", name: "Bomba d'água", category: "Arrefecimento", partBrand: "Urba", vehicleBrand: "Fiat", vehicleModel: "Uno", quantity: 0, minQuantity: 1, unitPriceCents: 13240, location: "C-1" }),
   item({ code: "AM-501", name: "Amortecedor", category: "Suspensão", partBrand: "Cofap", vehicleBrand: "Ford", vehicleModel: "Escort", position: "T", side: "LE", color: "Preto", quantity: 4, minQuantity: 1, unitPriceCents: 24900, location: "A-10" }),
 ];
-
-/**
- * Fills in an item with the fields the list doesn't look at.
- * @param fields The fields that matter for the test.
- * @returns A complete item.
- */
-function item(fields: FlatItem & Required<Pick<FlatItem, "code" | "name">>): Item {
-  return testItem({
-    id: crypto.randomUUID(),
-    category: "Motor",
-    partBrand: "Bosch",
-    vehicleBrand: "Volkswagen",
-    vehicleModel: null,
-    position: "N/A",
-    side: "N/A",
-    color: "N/A",
-    location: null,
-    quantity: 1,
-    minQuantity: 0,
-    unitPriceCents: 100,
-    photos: [],
-    createdAt: "2026-10-03T12:00:00.000Z",
-    updatedAt: "2026-10-03T12:00:00.000Z",
-    ...fields,
-  });
-}
 
 /**
  * Answers GET /items with the test items and opens the Inventory tab.

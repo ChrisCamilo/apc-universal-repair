@@ -4,7 +4,7 @@ import type { Item } from "@apc/shared/items";
 import { THEME_STORAGE_KEYS, themes, type Mode, type Style } from "@apc/shared/theme";
 import { TOAST_KIND_LOOKS, type ToastKind } from "@apc/shared/toast";
 import { savedItem, serveItems } from "./stubs/items.ts";
-import { testItem } from "@apc/shared/test-items";
+import { item } from "./data/items.ts";
 
 // A 1×1 PNG, what the API answers for a photo.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
@@ -13,24 +13,15 @@ const THEMES: [Style, Mode][] = [
   ["eighties", "night"],
   ["gt4", "day"],
 ];
-const FILTER: Item = testItem({
+const FILTER: Item = item({
   id: "00000000-0000-4000-8000-000000000001",
   code: "W 712/95",
   name: "Filtro de óleo",
-  category: "Motor",
   partBrand: "Mann",
-  vehicleBrand: "Volkswagen",
-  vehicleModel: null,
-  position: "N/A",
-  side: "N/A",
-  color: "N/A",
   location: "A-2",
   quantity: 8,
   minQuantity: 2,
   unitPriceCents: 3990,
-  photos: [],
-  createdAt: "2026-10-03T12:00:00.000Z",
-  updatedAt: "2026-10-03T12:00:00.000Z",
 });
 
 /**

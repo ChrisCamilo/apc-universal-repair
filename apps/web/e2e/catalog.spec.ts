@@ -2,7 +2,7 @@ import { expect, test } from "./support/fixtures.ts";
 import { ENGINE_SHEETS } from "@apc/shared/catalog";
 import type { Item } from "@apc/shared/items";
 import { DASHBOARD_TABS } from "@apc/shared/tabs";
-import { testItem, type FlatItem } from "@apc/shared/test-items";
+import { item } from "./data/items.ts";
 
 // The inventory the code search looks in: a part for an engine the catalog has, and one for a model it has no sheet
 // for.
@@ -10,30 +10,6 @@ const ITEMS: Item[] = [
   item({ code: "FRA-1000", name: "Pastilha de freio dianteira", vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1" }),
   item({ code: "ESC-200", name: "Amortecedor", vehicleBrand: "Ford", vehicleModel: "Escort" }),
 ];
-
-/**
- * Fills in an item with the fields the Catalog doesn't look at.
- * @param fields The fields that matter here.
- * @returns A complete item.
- */
-function item(fields: Required<Pick<FlatItem, "code" | "name" | "vehicleBrand" | "vehicleModel">>): Item {
-  return testItem({
-    id: crypto.randomUUID(),
-    category: "Freios",
-    partBrand: "Cobreq",
-    position: "N/A",
-    side: "N/A",
-    color: "N/A",
-    location: null,
-    quantity: 1,
-    minQuantity: 0,
-    unitPriceCents: 100,
-    photos: [],
-    createdAt: "2026-10-03T12:00:00.000Z",
-    updatedAt: "2026-10-03T12:00:00.000Z",
-    ...fields,
-  });
-}
 
 // While the Catalog tab is a work in progress its screen sits out of reach behind the notice, so these tests wait for
 // it to come back; the notice itself is tested in dashboard.spec.ts.
