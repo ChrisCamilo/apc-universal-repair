@@ -13,8 +13,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  // A failed test leaves a trace, a screenshot and the HTML report, as in the app's end-to-end tests.
-  reporter: [[isCI ? "github" : "list"], ["html", { open: "never" }]],
+  // A failed test leaves a trace, a screenshot and the HTML report, as in the app's end-to-end tests, in folders of
+  // their own so a run of either suite keeps the other's.
+  outputDir: "test-results-demo",
+  reporter: [[isCI ? "github" : "list"], ["html", { open: "never", outputFolder: "playwright-report-demo" }]],
   // Reduced motion, as in the app's end-to-end tests (playwright.config.ts).
   use: {
     baseURL: `http://localhost:${PORT}/apc-universal-repair/demo/`,
