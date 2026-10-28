@@ -134,18 +134,25 @@ export async function deleteItem(page: Page, name: string) {
 }
 
 /**
- * Manage lists: its sections by name, e.g. "Categorias", and an entry's buttons and rename field.
+ * Manage lists: its sections by name, e.g. "Categorias", an entry's buttons and rename field, and the notice that an
+ * entry in use can't be deleted.
  * @param page The test's page.
  * @returns The dialog's elements.
  */
 export function manageLists(page: Page) {
   const { root, close, closeText } = dialog(page, "Gerenciar listas");
+  const section = (name: string) => root.getByRole("region", { name });
+  const inUse = page.getByRole("dialog", { name: "Não é possível excluir" });
   return {
     root,
     close,
     closeText,
-    section: (name: string) => root.getByRole("region", { name }),
+    section,
+    remove: (name: string, entry: string) => section(name).getByRole("button", { name: `Excluir ${entry}` }),
+    rename: (name: string, entry: string) => section(name).getByRole("button", { name: `Renomear ${entry}` }),
     newName: (entry: string) => root.getByLabel(`Novo nome de “${entry}”`),
+    inUse,
+    showItems: inUse.getByRole("button", { name: "Ver itens" }),
   };
 }
 

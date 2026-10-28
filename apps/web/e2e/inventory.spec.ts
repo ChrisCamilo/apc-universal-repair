@@ -535,14 +535,14 @@ test("Web: the lists are renamed and cleaned up in Manage lists", async ({ page 
   await expect(lists.closeText).toBeInViewport();
   const categories = lists.section("Categorias");
   await expect(categories.getByRole("listitem").filter({ hasText: "Arrefecimento" })).toContainText("sem itens");
-  await categories.getByRole("button", { name: "Excluir Arrefecimento" }).click();
+  await lists.remove("Categorias", "Arrefecimento").click();
   const confirm = dialog(page, "Excluir “Arrefecimento”?").root.getByRole("button", { name: "Excluir" });
   await expect(confirm).toBeInViewport();
   await confirm.click();
   await expect(page.getByText("Categoria “Arrefecimento” excluída.")).toBeVisible();
-  await expect(categories.getByRole("button", { name: "Excluir Arrefecimento" })).toBeHidden();
+  await expect(lists.remove("Categorias", "Arrefecimento")).toBeHidden();
 
-  await categories.getByRole("button", { name: "Renomear Suspensão" }).click();
+  await lists.rename("Categorias", "Suspensão").click();
   await lists.newName("Suspensão").fill("suspensão e direção");
   await page.keyboard.press("Enter");
   await expect(page.getByText("Categoria renomeada para “Suspensão e direção”.")).toBeVisible();
@@ -550,10 +550,9 @@ test("Web: the lists are renamed and cleaned up in Manage lists", async ({ page 
   await expect(rows.filter({ hasText: "Amortecedor" })).toContainText("Suspensão e direção");
 
   await inv.manageLists.click();
-  await categories.getByRole("button", { name: "Excluir Freios" }).click();
-  const blocked = dialog(page, "Não é possível excluir").root;
-  await expect(blocked).toContainText("1 item usa “Freios”.");
-  await blocked.getByRole("button", { name: "Ver itens" }).click();
+  await lists.remove("Categorias", "Freios").click();
+  await expect(lists.inUse).toContainText("1 item usa “Freios”.");
+  await lists.showItems.click();
   await expect(lists.root).toBeHidden();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Pastilha de freio");
@@ -570,20 +569,19 @@ test("Web: a name merged into another keeps the filters on its items", async ({ 
   const { rows } = dataTable(page);
   await inv.manageLists.click();
   const lists = manageLists(page);
-  const categories = lists.section("Categorias");
-  await categories.getByRole("button", { name: "Excluir Freios" }).click();
-  await dialog(page, "Não é possível excluir").root.getByRole("button", { name: "Ver itens" }).click();
+  await lists.remove("Categorias", "Freios").click();
+  await lists.showItems.click();
   await expect(rows).toHaveCount(1);
 
   await inv.manageLists.click();
-  await categories.getByRole("button", { name: "Renomear Freios" }).click();
+  await lists.rename("Categorias", "Freios").click();
   await lists.newName("Freios").fill("motor");
   await page.keyboard.press("Enter");
   const confirm = dialog(page, "Juntar “Freios” com “Motor”?").root;
   await expect(confirm).toContainText("O item de “Freios” passa para “Motor”");
   await confirm.getByRole("button", { name: "Juntar" }).click();
   await expect(page.getByText("Categoria “Freios” juntada a “Motor”: 1 item mudou.")).toBeVisible();
-  await expect(categories.getByRole("button", { name: "Renomear Freios" })).toBeHidden();
+  await expect(lists.rename("Categorias", "Freios")).toBeHidden();
   await lists.closeText.click();
   await expect(rows).toHaveCount(2);
   await expect(rows.filter({ hasText: "Pastilha de freio" })).toContainText("Motor");
@@ -714,8 +712,9 @@ test("Web: an item is duplicated from its details, with or without its photos", 
 
   await rows.first().getByText("Filtro de óleo").click();
   await details.duplicate.click();
-  await expect(question.getByRole("button", { name: "Copiar dados e fotos" })).toBeInViewport();
-  await question.getByRole("button", { name: "Copiar dados e fotos" }).click();
+  const withPhotos = question.getByRole("button", { name: "Copiar dados e fotos" });
+  await expect(withPhotos).toBeInViewport();
+  await withPhotos.click();
   await expect(details.root).toBeHidden();
   await expect(form.name).toHaveValue("Filtro de óleo");
   await expect(form.code).toHaveValue("");
