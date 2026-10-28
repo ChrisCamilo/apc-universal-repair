@@ -4,6 +4,9 @@ node_modules/
 
 # Build output
 dist/
+# The web app's demo, and the GitHub Pages site the Pages workflow puts together
+dist-demo/
+/site/
 build/
 # electron-builder's resources (the desktop app icon), not build output
 !apps/desktop/build/

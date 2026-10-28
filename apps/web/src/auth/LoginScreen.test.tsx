@@ -95,6 +95,19 @@ test('Web: Enter sends the filled-in login and hands over the user', async () =>
   login.mockRestore()
 })
 
+// Opens the login filled in, as the demo does after "Sair", and checks the fields show the user and password, and
+// "Entrar" sends them as they are.
+test('Web: a login opened filled in sends what it shows', async () => {
+  const login = vi.spyOn(AUTH, 'login')
+  const filled = { username: USER.username, password: USER.password }
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} initialCredentials={filled} />)
+  await expect.element(screen.getByLabelText('Usuário')).toHaveValue(USER.username)
+  await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveValue(USER.password)
+  await screen.getByRole('button', { name: 'Entrar' }).click()
+  expect(login).toHaveBeenCalledWith(filled)
+  login.mockRestore()
+})
+
 // Sends a wrong password and checks one message shows above the form without blaming a field, the password is
 // emptied and focused, the user stays, and nothing is handed over.
 test('Web: a refused login says so above the form and empties the password', async () => {

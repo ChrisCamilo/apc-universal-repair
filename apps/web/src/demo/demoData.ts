@@ -5,11 +5,11 @@ import brakeDisc from './photos/disco-de-freio.svg'
 import oilFilter from './photos/filtro-de-oleo.svg'
 import sparkPlug from './photos/vela-de-ignicao.svg'
 
-// The web app's demo starts from these, all of them made up: one user, already through the Inventory's tutorial, and
-// the stock of a small workshop of Brazilian cars of the 80s and 90s, a few parts low or out of stock, some with more
-// than one brand or the maker's original codes. They go through the demo's own create (see demoApi.ts), so they follow
-// the API's rules; each is a day older than the one after it, so the list's newest-first order is the same every time.
-// A few carry a drawing of the part, made for the demo (photos/), as the photo of their first brand.
+// The web app's demo starts from these, all of them made up: one user, whose first login runs the Inventory's
+// tutorial, and the stock of a small workshop of Brazilian cars of the 80s and 90s, a few parts low or out of stock,
+// some with more than one brand or the maker's original codes. They go through the demo's own create (see demoApi.ts),
+// so they follow the API's rules; each is a day older than the one after it, so the list's newest-first order is the
+// same every time. A few carry a drawing of the part, made for the demo (photos/), as the photo of their first brand.
 
 /** The stock, oldest first. */
 export const DEMO_ITEMS: ItemCreate[] = [
