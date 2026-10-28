@@ -131,14 +131,35 @@ Routes, `localStorage` and the init scripts belong to the test's own browser con
 - Each launch gets its own `userData` under the system's temporary folder (`apc-desktop-*`), so a test never touches the installed app's data.
 - The specs delete `ELECTRON_RUN_AS_NODE` from the app's environment; with it set, Electron runs as plain Node.
 
+### Tags
+
+Every Playwright test, web, demo and desktop, has one area tag and the kind tags that apply. They come from `TEST_TAGS` in `@apc/shared/test-tags`, so a typo doesn't compile:
+
+```ts
+test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page }) => {
+```
+
+| Tag | Tests |
+|---|---|
+| `@auth`, `@dashboard`, `@catalog`, `@inventory`, `@notifications`, `@setup` | The area: the style-id scope the test covers. Each test has exactly one. |
+| `@smoke` | The flows a release needs: the web app reaching the API, the login, the Inventory's list, creating and editing an item, the desktop's sign-in |
+| `@layout` | Sizes and scrolling |
+| `@theme` | The styles and modes |
+| `@motion` | A motion, with reduced motion off |
+| `@demo` | The demo, as Pages serves it |
+| `@bundled` | The desktop app with the server it ships, much slower than with the stand-in API |
+| `@desktop-only` | A desktop screen: the web's `mobile` project leaves it out (`grepInvert` in `playwright.config.ts`) instead of skipping it |
+
+The title keeps its prefix (`Web:`, `Desktop:`), and the tags follow it in the report. A test skipped until an issue is done says so in an `issue` annotation, as the Catalog's do for #151.
+
 ### Writing a test
 
 1. Put it in the spec of its area (`inventory.spec.ts` for the Inventory). A new area gets a new `<area>.spec.ts`.
-2. Title it with the prefix, `Web:` or `Desktop:`, and the behavior in English; write what it checks and why in a comment right above it ([AGENTS.md](../AGENTS.md#writing-tests)).
+2. Title it with the prefix, `Web:` or `Desktop:`, and the behavior in English; write what it checks and why in a comment right above it ([AGENTS.md](../AGENTS.md#writing-tests)). Give it its area tag and the kind tags that apply ([Tags](#tags)).
 3. Import `test` and `expect` from `./support/fixtures.ts` and start from the state it needs: the Dashboard with a test user is the default, `test.use({ signedIn: false })` for the screens before the login, `test.use({ stock: { items } })` or `serveItems()` with only the items that matter (`item()` from `./data/items.ts` fills in the rest). Answer every API call the test makes: the guard fails any it doesn't.
 4. Find elements through `./locators/<scope>.ts`, the file of the scope of the element's style id: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, and flows many specs repeat, such as `logIn()`, `fillItem()` and `deleteItem()`. An element a spec reaches more than once is added there, with no assertions. A locator finds an element as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`. It uses the style id (`getByTestId("inventory.inventory-tab.filters.count")`) for an element with no role or text of its own, and CSS only for what has none of these (`html`, `body`, `header`). The demo's spec uses the same locators.
 5. Assert with Playwright's web-first assertions (`toBeVisible`, `toHaveText`, `toHaveURL`), `expect.poll` for a value read from the page. Never wait a fixed time. A color in `toHaveCSS` comes from the theme through `rgb()`, and a page that must not scroll sideways is checked with `await expect(page).not.toScrollSideways()`, both from `./support/expect.ts`.
-6. Check the minimum sizes: the test runs in both projects. When it can only hold on one, skip the other with a reason: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Screens that fill the window are also checked on a notebook, in full screen and in a window, with `atNotebookSizes(page, async (size) => …)` from `./support/sizes.ts`, naming `size` in each assertion's message.
+6. Check the minimum sizes: the test runs in both projects. A test that only holds on a desktop screen gets `TEST_TAGS.desktopOnly`, and the `mobile` project leaves it out. A test that differs on the phone reads Playwright's `isMobile` fixture, never the project's name. Screens that fill the window are also checked on a notebook, in full screen and in a window, with `atNotebookSizes(page, async (size) => …)` from `./support/sizes.ts`, naming `size` in each assertion's message.
 7. A test about a motion turns it on for itself: `page.emulateMedia({ reducedMotion: "no-preference" })`.
 
 ### Running the tests
@@ -155,6 +176,9 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm --filter @apc/web exec playwright test e2e/login.spec.ts` | One spec |
 | `pnpm --filter @apc/web exec playwright test e2e/login.spec.ts:31` | The test on that line |
 | `pnpm --filter @apc/web exec playwright test -g "user menu"` | Tests whose title matches |
+| `pnpm --filter @apc/web test:e2e:smoke` | The `@smoke` tests; `@apc/desktop` has the same script |
+| `pnpm --filter @apc/web exec playwright test --grep @inventory` | The tests with a tag; `--grep-invert @layout` leaves a tag out |
+| `pnpm --filter @apc/web exec playwright test --list --grep @smoke` | Lists the tests with a tag, without running them |
 | `pnpm --filter @apc/web exec playwright test --project=mobile` | Only the 360×780 project |
 | `pnpm --filter @apc/web test:e2e:ui` | UI mode: pick, watch and time-travel the tests |
 | `pnpm --filter @apc/web exec playwright test --headed` | With the browser on screen |
@@ -340,14 +364,35 @@ Rotas, `localStorage` e init scripts pertencem ao contexto de navegador do próp
 - Cada abertura ganha seu próprio `userData` na pasta temporária do sistema (`apc-desktop-*`), então um teste nunca mexe nos dados do app instalado.
 - As specs apagam `ELECTRON_RUN_AS_NODE` do ambiente do app; com ela definida, o Electron roda como Node puro.
 
+### Tags
+
+Todo teste do Playwright, da web, da demo e do desktop, tem uma tag de área e as tags de tipo que se aplicam. Elas vêm de `TEST_TAGS` em `@apc/shared/test-tags`, então um erro de digitação não compila:
+
+```ts
+test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page }) => {
+```
+
+| Tag | Testes |
+|---|---|
+| `@auth`, `@dashboard`, `@catalog`, `@inventory`, `@notifications`, `@setup` | A área: o escopo de style id que o teste cobre. Cada teste tem exatamente uma. |
+| `@smoke` | Os fluxos de que uma versão precisa: o app web alcançando a API, o login, a lista do Estoque, criar e editar um item, o login do desktop |
+| `@layout` | Tamanhos e rolagem |
+| `@theme` | Os estilos e modos |
+| `@motion` | Um movimento, com o movimento reduzido desligado |
+| `@demo` | A demo, como o Pages a serve |
+| `@bundled` | O app desktop com o servidor que ele traz, bem mais lento que com a API substituta |
+| `@desktop-only` | Uma tela de desktop: o projeto `mobile` da web o deixa de fora (`grepInvert` no `playwright.config.ts`) em vez de pulá-lo |
+
+O título mantém o prefixo (`Web:`, `Desktop:`), e as tags vêm depois dele no relatório. Um teste pulado até uma issue ficar pronta diz isso numa anotação `issue`, como os do Catálogo fazem para a #151.
+
 ### Escrevendo um teste
 
 1. Coloque-o na spec da sua área (`inventory.spec.ts` para o Estoque). Uma área nova ganha um `<área>.spec.ts` novo.
-2. Dê o título com o prefixo, `Web:` ou `Desktop:`, e o comportamento em inglês; escreva o que ele confere e por quê num comentário logo acima ([AGENTS.md](../AGENTS.md#writing-tests)).
+2. Dê o título com o prefixo, `Web:` ou `Desktop:`, e o comportamento em inglês; escreva o que ele confere e por quê num comentário logo acima ([AGENTS.md](../AGENTS.md#writing-tests)). Dê a ele a tag da área e as tags de tipo que se aplicam ([Tags](#tags-1)).
 3. Importe `test` e `expect` de `./support/fixtures.ts` e comece do estado de que ele precisa: o Dashboard com um usuário de teste é o padrão, `test.use({ signedIn: false })` para as telas antes do login, `test.use({ stock: { items } })` ou `serveItems()` só com os itens que importam (o `item()` de `./data/items.ts` completa o resto). Responda toda chamada à API que o teste faz: a guarda reprova as que ficarem sem resposta.
 4. Encontre os elementos por `./locators/<escopo>.ts`, o arquivo do escopo do style id do elemento: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, e fluxos que muitas specs repetem, como `logIn()`, `fillItem()` e `deleteItem()`. Um elemento que uma spec alcança mais de uma vez entra lá, sem asserções. Um locator encontra o elemento como um usuário encontra, nesta ordem: `getByRole` com o nome acessível, `getByLabel`, `getByText`. Ele usa o style id (`getByTestId("inventory.inventory-tab.filters.count")`) para um elemento sem papel ou texto próprio, e CSS só para o que não tem nenhum deles (`html`, `body`, `header`). A spec da demo usa os mesmos locators.
 5. Verifique com as asserções web-first do Playwright (`toBeVisible`, `toHaveText`, `toHaveURL`), e `expect.poll` para um valor lido da página. Nunca espere um tempo fixo. Uma cor no `toHaveCSS` vem do tema pelo `rgb()`, e uma página que não pode rolar para o lado é conferida com `await expect(page).not.toScrollSideways()`, os dois de `./support/expect.ts`.
-6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Quando ele só vale em um, pule o outro com o motivo: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Telas que ocupam a janela também são conferidas num notebook, em tela cheia e numa janela, com `atNotebookSizes(page, async (size) => …)` de `./support/sizes.ts`, citando `size` na mensagem de cada asserção.
+6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Um teste que só vale numa tela de desktop ganha `TEST_TAGS.desktopOnly`, e o projeto `mobile` o deixa de fora. Um teste que muda no celular lê a fixture `isMobile` do Playwright, nunca o nome do projeto. Telas que ocupam a janela também são conferidas num notebook, em tela cheia e numa janela, com `atNotebookSizes(page, async (size) => …)` de `./support/sizes.ts`, citando `size` na mensagem de cada asserção.
 7. Um teste sobre um movimento o liga para si: `page.emulateMedia({ reducedMotion: "no-preference" })`.
 
 ### Rodando os testes
@@ -364,6 +409,9 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm --filter @apc/web exec playwright test e2e/login.spec.ts` | Uma spec |
 | `pnpm --filter @apc/web exec playwright test e2e/login.spec.ts:31` | O teste daquela linha |
 | `pnpm --filter @apc/web exec playwright test -g "user menu"` | Os testes cujo título casa |
+| `pnpm --filter @apc/web test:e2e:smoke` | Os testes `@smoke`; o `@apc/desktop` tem o mesmo script |
+| `pnpm --filter @apc/web exec playwright test --grep @inventory` | Os testes com uma tag; `--grep-invert @layout` deixa uma tag de fora |
+| `pnpm --filter @apc/web exec playwright test --list --grep @smoke` | Lista os testes com uma tag, sem rodá-los |
 | `pnpm --filter @apc/web exec playwright test --project=mobile` | Só o projeto 360×780 |
 | `pnpm --filter @apc/web test:e2e:ui` | Modo UI: escolher, acompanhar e voltar no tempo dos testes |
 | `pnpm --filter @apc/web exec playwright test --headed` | Com o navegador na tela |

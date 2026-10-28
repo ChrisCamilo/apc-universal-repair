@@ -188,6 +188,7 @@ These rules apply to every test, whatever the tool (Playwright, Vitest, Jest, `n
   | `Repo:` | `scripts/`, the repository's own tooling |
 
   The prefix goes on every `test`/`it` title, also inside a `describe`, so a failing test is identified by its title alone in any report.
+- **Every Playwright test has one area tag,** the style-id scope it covers, and the kind tags that apply (`@smoke`, `@layout`, `@theme`, `@motion`, `@demo`, `@bundled`, `@desktop-only`), from `TEST_TAGS` in `@apc/shared/test-tags`: `test("Web: …", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, …)`. The title keeps its prefix. A test of a desktop screen is tagged `@desktop-only` instead of skipping the phone by project name ([docs/testing.md](docs/testing.md#tags)).
 - **The web E2E find an element through `apps/web/e2e/locators/<scope>.ts`,** the file of the scope of its style id (`common`, `auth`, `dashboard`, `inventory`, `notifications`, `catalog`). Each file has functions that take the page and return its elements, with no assertions, e.g. `itemForm(page, "Novo item").save`. An element a spec reaches more than once goes there. A locator finds an element as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`. It uses the style id (`getByTestId`) for an element with no role or text of its own, and CSS only for what has none of these (`html`, `body`, `header`).
 
 ```ts
