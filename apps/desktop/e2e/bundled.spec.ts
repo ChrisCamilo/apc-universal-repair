@@ -1,42 +1,20 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createServer } from "node:net";
-import { networkInterfaces, tmpdir } from "node:os";
+import { networkInterfaces } from "node:os";
 import path from "node:path";
-import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
+import type { ElectronApplication, Page } from "@playwright/test";
+import { APP_DIR, expect, freePort, logIn, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/shared/test-tags";
 import { readConfig, writeConfig } from "../src/config.ts";
 import { phoneAddress } from "../src/tray.ts";
-import { reduceMotion } from "./reducedMotion.ts";
 
 // The desktop app with the server it ships (server/, from scripts/bundle-server.mjs), as an installed app runs: no
-// APC_API_URL and no clone, its own userData folder, and a free port in place of 3000. Run `pnpm run build` first,
-// which bundles the server. A fresh install shows its SQLite key's recovery copy on opening, which each test keeps
-// before going on.
+// APC_API_URL and no clone, its own userData folder, and a free port in place of 3000 (support/fixtures.ts). Run
+// `pnpm run build` first, which bundles the server. A fresh install shows its SQLite key's recovery copy on opening,
+// which each test keeps before going on.
 
-/** The desktop app's folder, which Electron opens as the app. */
-const APP_DIR = path.join(import.meta.dirname, "..");
+test.use({ server: "bundled" });
 
-/**
- * Opens the app with its own server, with a new userData folder and a free port.
- * @param options What the app is started with besides its folder, e.g. "--hidden", what to leave in its userData
- * folder first, such as the installer's answers, by their path in it, a userData folder of an earlier run to open
- * again, and the port its server should take, a free one unless a test holds it.
- * @returns The running app, its userData folder and its server's address.
- */
-async function launch(options: { args?: string[]; files?: Record<string, string>; userData?: string; port?: number } = {}) {
-  const userData = options.userData ?? mkdtempSync(path.join(tmpdir(), "apc-desktop-"));
-  for (const [name, text] of Object.entries(options.files ?? {})) {
-    mkdirSync(path.dirname(path.join(userData, name)), { recursive: true });
-    writeFileSync(path.join(userData, name), text);
-  }
-  const port = options.port ?? (await freePort());
-  const env: Record<string, string> = { ...(process.env as Record<string, string>), APC_USER_DATA: userData, APC_SERVER_PORT: String(port) };
-  // With it set, Electron runs as plain Node instead of opening the app.
-  delete env.ELECTRON_RUN_AS_NODE;
-  delete env.APC_API_URL;
-  const app = reduceMotion(await electron.launch({ args: [APP_DIR, ...(options.args ?? [])], env }));
-  return { app, userData, server: `http://127.0.0.1:${port}` };
-}
 
 /**
  * Tells whether a server answers.
@@ -50,17 +28,6 @@ function healthOf(server: string): Promise<"up" | "down"> {
   );
 }
 
-/**
- * Finds a port no one listens on.
- * @returns The port.
- */
-async function freePort(): Promise<number> {
-  const server = createServer();
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const { port } = server.address() as { port: number };
-  await new Promise((resolve) => server.close(resolve));
-  return port;
-}
 
 /**
  * Keeps the SQLite key's recovery copy that a fresh install shows on opening: reads it and says it is kept.
@@ -114,8 +81,8 @@ async function signUp(page: Page): Promise<void> {
 // Opens the app with no server named, and checks it starts its own: the login shows, a sign-up goes on to the empty
 // Inventory, and the database, the photos' folder and the server's log are in userData. Closing the app waits for the
 // server to stop, which its log and the app's log record.
-test("Desktop: the app runs the server it ships, with its data in userData", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const { app, userData, server } = await launch();
+test("Desktop: the app runs the server it ships, with its data in userData", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const { app, userData, server } = await launchApp();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(page);
@@ -138,8 +105,8 @@ test("Desktop: the app runs the server it ships, with its data in userData", { t
 // Signs up on a fresh install and opens "Sobre esta versão" from the user menu, and checks it shows the app's own
 // version and the first heading of that version's notes in Portuguese, which came with the web build. The window
 // reports reduced motion, as every smoke test starts the app, so the menu and the dialog open at once.
-test("Desktop: Sobre esta versão shows the app's version and its notes", { tag: [TEST_TAGS.dashboard, TEST_TAGS.bundled] }, async () => {
-  const { app } = await launch();
+test("Desktop: Sobre esta versão shows the app's version and its notes", { tag: [TEST_TAGS.dashboard, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const { app } = await launchApp();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await expect.poll(() => page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
@@ -155,14 +122,13 @@ test("Desktop: Sobre esta versão shows the app's version and its notes", { tag:
   const dialog = page.getByRole("dialog", { name: "Sobre esta versão" });
   await expect(dialog.getByText(`APC Universal Repair ${version}`)).toBeVisible();
   await expect(dialog.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();
-  await app.close();
 });
 
 // Opens a fresh install and checks it offers to import an old server once the recovery copy is kept, and "Importar de
 // um servidor antigo" opens the Servidor dialog on its import. The offer shows again on the next start, while the
 // database is empty; once someone signs up, the start after offers nothing, and config.json keeps it over.
-test("Desktop: a fresh install offers to import an old server until someone signs up", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const first = await launch();
+test("Desktop: a fresh install offers to import an old server until someone signs up", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const first = await launchApp();
   let page = await first.app.firstWindow();
   await keepRecoveryKey(page);
   await page.getByRole("dialog", { name: "Começar o APC" }).getByRole("button", { name: "Importar de um servidor antigo" }).click();
@@ -170,7 +136,7 @@ test("Desktop: a fresh install offers to import an old server until someone sign
   await expect(dialog.getByRole("heading", { name: "Importar dados de outro servidor" })).toBeInViewport();
   await first.app.close();
 
-  const second = await launch({ userData: first.userData });
+  const second = await launchApp({ userData: first.userData });
   page = await second.app.firstWindow();
   const choice = page.getByRole("dialog", { name: "Começar o APC" });
   await expect(choice).toBeVisible({ timeout: 60_000 });
@@ -180,18 +146,17 @@ test("Desktop: a fresh install offers to import an old server until someone sign
   expect(readConfig(first.userData).firstStartDone).toBeUndefined();
   await second.app.close();
 
-  const third = await launch({ userData: first.userData });
+  const third = await launchApp({ userData: first.userData });
   page = await third.app.firstWindow();
   await expect(page.getByRole("tab", { name: "Estoque" })).toBeVisible({ timeout: 60_000 });
   await expect.poll(() => readConfig(first.userData).firstStartDone, { timeout: 30_000 }).toBe(true);
   await expect(page.getByRole("dialog", { name: "Começar o APC" })).toHaveCount(0);
-  await third.app.close();
 });
 
 // Closes the window, and checks it is hidden, not closed, with the server still answering; opening the app again
 // shows the same window, and quitting, as "Sair" in the tray does, turns the server off.
-test("Desktop: closing the window keeps the server on in the tray, until the app quits", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const { app, server } = await launch();
+test("Desktop: closing the window keeps the server on in the tray, until the app quits", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const { app, server } = await launchApp();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const visible = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((window) => window.isVisible()));
@@ -209,8 +174,8 @@ test("Desktop: closing the window keeps the server on in the tray, until the app
 
 // Opens the Servidor dialog as the tray does, picks PostgreSQL with an address no server listens on, and checks the
 // dialog says it didn't connect, SQLite stays in use, config.json keeps no address, and the server still answers.
-test("Desktop: a PostgreSQL address that doesn't connect says so and keeps SQLite", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const { app, userData, server } = await launch();
+test("Desktop: a PostgreSQL address that doesn't connect says so and keeps SQLite", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const { app, userData, server } = await launchApp();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(page);
@@ -225,14 +190,13 @@ test("Desktop: a PostgreSQL address that doesn't connect says so and keeps SQLit
   await expect(dialog.getByText(/^SQLite criptografado, em /)).toBeVisible();
   expect(readConfig(userData)).not.toHaveProperty("databaseUrl");
   expect(await healthOf(server)).toBe("up");
-  await app.close();
 });
 
 // Signs up on one install, then imports its encrypted SQLite file into a fresh one through the Servidor dialog, opened
 // from the login screen, with the file dialog answered as the user would and the old install's recovery copy typed,
 // and checks every table's rows show and the account logs in on the new install.
-test("Desktop: an old server's SQLite file imports into a fresh install", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const old = await launch();
+test("Desktop: an old server's SQLite file imports into a fresh install", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const old = await launchApp();
   const oldPage = await old.app.firstWindow();
   await expect(oldPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const oldKey = await keepRecoveryKey(oldPage);
@@ -240,7 +204,7 @@ test("Desktop: an old server's SQLite file imports into a fresh install", { tag:
   await signUp(oldPage);
   await old.app.close();
 
-  const { app } = await launch();
+  const { app } = await launchApp();
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(page);
@@ -264,17 +228,13 @@ test("Desktop: an old server's SQLite file imports into a fresh install", { tag:
 
   await dialog.getByRole("button", { name: "Fechar" }).first().click();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/);
-  await page.getByLabel("Usuário", { exact: true }).fill("ana.souza");
-  await page.getByLabel("Senha", { exact: true }).fill("freio1234");
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
-  await app.close();
+  await logIn(page, { username: "ana.souza", password: "freio1234" });
 });
 
 // Starts the app after the installer's PostgreSQL choice, and checks the server waits while the dialog asks for the
 // address, and "Usar SQLite" starts it on SQLite, saved in config.json, and goes on to the login.
-test("Desktop: with PostgreSQL chosen at install, the app asks for its address before starting the server", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const { app, userData, server } = await launch({ files: { "installer-database.txt": "postgresql" } });
+test("Desktop: with PostgreSQL chosen at install, the app asks for its address before starting the server", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const { app, userData, server } = await launchApp({ files: { "installer-database.txt": "postgresql" } });
   const page = await app.firstWindow();
   const dialog = page.getByRole("dialog", { name: "Banco de dados do servidor" });
   await expect(dialog).toBeVisible({ timeout: 60_000 });
@@ -285,14 +245,13 @@ test("Desktop: with PostgreSQL chosen at install, the app asks for its address b
   await keepRecoveryKey(page);
   await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
   expect(readConfig(userData).database).toBe("sqlite");
-  await app.close();
 });
 
 // Signs up on a fresh install and quits, and checks the SQLite file isn't plain SQLite and holds no text of the account,
 // config.json holds the key only sealed, and on the next start the same key opens the file: the account logs in, and
 // the recovery copy, already kept, doesn't show again.
-test("Desktop: the SQLite file is encrypted with a key kept for the next start", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const first = await launch();
+test("Desktop: the SQLite file is encrypted with a key kept for the next start", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const first = await launchApp();
   const firstPage = await first.app.firstWindow();
   await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const key = (await keepRecoveryKey(firstPage)).replaceAll("-", "").toLowerCase();
@@ -308,18 +267,17 @@ test("Desktop: the SQLite file is encrypted with a key kept for the next start",
   expect(readFileSync(path.join(first.userData, "config.json"), "utf8").includes(key)).toBe(false);
   expect(readConfig(first.userData).sqliteKeySaved).toBe(true);
 
-  const { app } = await launch({ userData: first.userData });
+  const { app } = await launchApp({ userData: first.userData });
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\//, { timeout: 60_000 });
   await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("dialog", { name: "Chave de recuperação do banco" })).toHaveCount(0);
-  await app.close();
 });
 
 // Starts the app on a database from before its migrations, as an update that brings new ones finds it, and checks the
 // server copies it to data/backups first, named after the app's version, then migrates it and answers.
-test("Desktop: the database is copied before the server applies new migrations", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const { app, userData } = await launch({ files: { [path.join("data", "apc.db")]: "" } });
+test("Desktop: the database is copied before the server applies new migrations", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const { app, userData } = await launchApp({ files: { [path.join("data", "apc.db")]: "" } });
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const version = await app.evaluate(({ app: electronApp }) => electronApp.getVersion());
@@ -327,35 +285,33 @@ test("Desktop: the database is copied before the server applies new migrations",
   await keepRecoveryKey(page);
   await startFromScratch(page);
   await signUp(page);
-  await app.close();
 });
 
 // Starts the app on PostgreSQL at an address no server answers, as when its server is off, which the server fails to
 // migrate each time it starts, and checks that once the server gave up starting, the window says it didn't start, with
 // the last error of its log and where that log is, instead of the login, and the app's log says so too.
-test("Desktop: a server that can't start is said so, with why", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
+test("Desktop: a server that can't start is said so, with why", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   test.setTimeout(150_000);
-  const first = await launch();
+  const first = await launchApp();
   const address = await first.app.evaluate(({ safeStorage }) =>
     safeStorage.encryptString("postgresql://apc:segredo@127.0.0.1:1/apc").toString("base64"),
   );
   await first.app.close();
   writeConfig(first.userData, { ...readConfig(first.userData), database: "postgresql", databaseUrl: address });
-  const { app, userData } = await launch({ userData: first.userData });
+  const { app, userData } = await launchApp({ userData: first.userData });
   const page = await app.firstWindow();
   const failure = page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
   await expect(failure).toBeVisible({ timeout: 90_000 });
   await expect(failure).toContainText("O servidor parou ao ligar, várias vezes seguidas. Último erro:");
   await expect(failure).toContainText(path.join(userData, "logs", "api.log"));
   expect(readFileSync(path.join(userData, "logs", "app.log"), "utf8")).toContain("The bundled server isn't on");
-  await app.close();
 });
 
 // Closes the window of a fresh install to the tray, in the same session that made the SQLite key, and checks
 // config.json still holds the key next to the tray's notice, and the next start opens the data with it: the account
 // signed up logs in.
-test("Desktop: closing the window to the tray keeps the SQLite key", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const first = await launch();
+test("Desktop: closing the window to the tray keeps the SQLite key", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const first = await launchApp();
   const page = await first.app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(page);
@@ -367,20 +323,19 @@ test("Desktop: closing the window to the tray keeps the SQLite key", { tag: [TES
   await first.app.evaluate(({ app: electronApp }) => electronApp.quit());
   await first.app.waitForEvent("close");
 
-  const { app } = await launch({ userData: first.userData });
+  const { app } = await launchApp({ userData: first.userData });
   const next = await app.firstWindow();
   await expect(next.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
   await expect(next.getByRole("alert").filter({ hasText: "O servidor não ligou" })).toHaveCount(0);
-  await app.close();
 });
 
 // Signs up on a fresh install, keeping the recovery copy, then opens it again with no key in config.json, and then
 // with another key sealed there, as a config.json written from a stale copy left it: each start says the key doesn't
 // open the data, makes no key of its own and shows no recovery copy to keep. A copy that isn't the file's is refused;
 // the one kept opens the data again, where the account's session still is.
-test("Desktop: a missing or wrong SQLite key is asked for, never replaced", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
+test("Desktop: a missing or wrong SQLite key is asked for, never replaced", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   test.setTimeout(150_000);
-  const first = await launch();
+  const first = await launchApp();
   const firstPage = await first.app.firstWindow();
   await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const copy = await keepRecoveryKey(firstPage);
@@ -393,7 +348,7 @@ test("Desktop: a missing or wrong SQLite key is asked for, never replaced", { ta
   const failure = (page: Page) => page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
 
   writeConfig(userData, { ...kept, sqliteKey: undefined, sqliteKeySaved: undefined });
-  const missing = await launch({ userData });
+  const missing = await launchApp({ userData });
   const missingPage = await missing.app.firstWindow();
   await expect(failure(missingPage)).toContainText("A chave do banco SQLite não está mais neste computador.", { timeout: 60_000 });
   expect(readConfig(userData).sqliteKey).toBeUndefined();
@@ -401,7 +356,7 @@ test("Desktop: a missing or wrong SQLite key is asked for, never replaced", { ta
   await missing.app.close();
 
   writeConfig(userData, { ...kept, sqliteKey: wrongKey, sqliteKeySaved: false });
-  const { app } = await launch({ userData });
+  const { app } = await launchApp({ userData });
   const page = await app.firstWindow();
   await expect(failure(page)).toContainText("A chave do banco SQLite guardada neste computador não abre o arquivo dele.", { timeout: 60_000 });
   expect(readConfig(userData).sqliteKey).toBe(wrongKey);
@@ -419,7 +374,6 @@ test("Desktop: a missing or wrong SQLite key is asked for, never replaced", { ta
   await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
   await expect(failure(page)).toHaveCount(0);
   await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
-  await app.close();
 });
 
 /**
@@ -440,9 +394,9 @@ async function changeKey(app: ElectronApplication, page: Page): Promise<string> 
 // Signs up, then changes the SQLite key from the Servidor dialog, and checks the new recovery copy shows, config.json
 // keeps no key apart, and the next start opens the data with the new key. Then, with the key taken out of
 // config.json, the old recovery copy no longer opens the data, and the new one does.
-test("Desktop: the SQLite key changes, and the old recovery copy no longer opens the data", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
+test("Desktop: the SQLite key changes, and the old recovery copy no longer opens the data", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   test.setTimeout(180_000);
-  const first = await launch();
+  const first = await launchApp();
   const firstPage = await first.app.firstWindow();
   await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   const oldCopy = await keepRecoveryKey(firstPage);
@@ -458,14 +412,14 @@ test("Desktop: the SQLite key changes, and the old recovery copy no longer opens
   await first.app.close();
   const { userData } = first;
 
-  const again = await launch({ userData });
+  const again = await launchApp({ userData });
   const againPage = await again.app.firstWindow();
   await expect(againPage.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
   await expect(againPage.getByText("Nenhum item cadastrado")).toBeVisible();
   await again.app.close();
 
   writeConfig(userData, { ...readConfig(userData), sqliteKey: undefined, sqliteKeySaved: undefined });
-  const { app } = await launch({ userData });
+  const { app } = await launchApp({ userData });
   const page = await app.firstWindow();
   await expect(page.getByRole("alert").filter({ hasText: "O servidor não ligou" })).toBeVisible({ timeout: 60_000 });
   await page.getByLabel("Chave de recuperação", { exact: true }).fill(oldCopy);
@@ -475,15 +429,14 @@ test("Desktop: the SQLite key changes, and the old recovery copy no longer opens
   await page.getByRole("button", { name: "Usar a chave de recuperação" }).click();
   await expect.poll(() => readConfig(userData).sqliteKeySaved, { timeout: 60_000 }).toBe(true);
   await expect(page.getByText("Nenhum item cadastrado")).toBeVisible({ timeout: 60_000 });
-  await app.close();
 });
 
 // Leaves config.json as a change of the SQLite key cut short leaves it, and checks the next start ends it with the key
 // that opens the file: cut short after the file changed, the new key, apart as sqliteKeyNext, becomes the key in use;
 // cut short before, a new key that opens nothing is dropped and the key in use stays. Each start opens the data.
-test("Desktop: a change of the SQLite key cut short is ended on the next start", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
+test("Desktop: a change of the SQLite key cut short is ended on the next start", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   test.setTimeout(180_000);
-  const first = await launch();
+  const first = await launchApp();
   const firstPage = await first.app.firstWindow();
   await expect(firstPage).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(firstPage);
@@ -496,7 +449,7 @@ test("Desktop: a change of the SQLite key cut short is ended on the next start",
   await first.app.close();
   const { userData } = first;
   const opensTheData = async () => {
-    const { app } = await launch({ userData });
+    const { app } = await launchApp({ userData });
     const page = await app.firstWindow();
     await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
     await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
@@ -518,12 +471,12 @@ test("Desktop: a change of the SQLite key cut short is ended on the next start",
 // by that program, naming its process, and the server was never started; then "Usar outra porta" moves the server to a
 // free port, kept in config.json, where it answers and the login shows, with the SQLite key's recovery copy the first
 // start makes.
-test("Desktop: a taken port is said so, and the server moves to another port", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
+test("Desktop: a taken port is said so, and the server moves to another port", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   const holder = createServer();
   const port = await freePort();
   await new Promise<void>((resolve) => holder.listen(port, "127.0.0.1", resolve));
   try {
-    const { app, userData } = await launch({ port });
+    const { app, userData } = await launchApp({ port });
     const page = await app.firstWindow();
     const failure = page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
     await expect(failure).toContainText(`A porta ${port} já está em uso pelo programa node.exe (processo ${process.pid}).`);
@@ -544,7 +497,6 @@ test("Desktop: a taken port is said so, and the server moves to another port", {
     await keepRecoveryKey(page);
     await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
     await expect(failure).toHaveCount(0);
-    await app.close();
   } finally {
     holder.close();
   }
@@ -553,10 +505,10 @@ test("Desktop: a taken port is said so, and the server moves to another port", {
 // Opens the app and checks its server answers on 127.0.0.1 but not on the computer's network address, as the phone's
 // access is off on a fresh install; turning it on in the Servidor dialog restarts the server, which then answers on
 // both, kept in config.json, and turning it off takes it off the network again.
-test("Desktop: the server reaches the network only with the phone's access on", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
+test("Desktop: the server reaches the network only with the phone's access on", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   const address = phoneAddress(networkInterfaces());
   test.skip(!address, "This computer has no network address to try.");
-  const { app, userData, server } = await launch();
+  const { app, userData, server } = await launchApp();
   const page = await app.firstWindow();
   await keepRecoveryKey(page);
   const onNetwork = `http://${address}:${new URL(server).port}`;
@@ -578,13 +530,11 @@ test("Desktop: the server reaches the network only with the phone's access on", 
   expect(readConfig(userData).phoneAccess).toBe(false);
   expect(await healthOf(onNetwork)).toBe("down");
   expect(await healthOf(server)).toBe("up");
-  await app.close();
 });
 
 // Starts the app as Windows does at sign-in, with --hidden, and checks the window stays hidden while the server answers.
-test("Desktop: started hidden, the app shows no window and its server answers", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async () => {
-  const { app, server } = await launch({ args: ["--hidden"] });
+test("Desktop: started hidden, the app shows no window and its server answers", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const { app, server } = await launchApp({ args: ["--hidden"] });
   await expect.poll(() => healthOf(server), { timeout: 60_000 }).toBe("up");
   expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((window) => window.isVisible()))).toEqual([false]);
-  await app.evaluate(({ app: electronApp }) => electronApp.quit());
 });
