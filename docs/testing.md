@@ -17,7 +17,7 @@ flowchart LR
     end
 
     e2e -- "vite :5173 → /api proxy" --> api["API dev :3333<br/>(health only)"]
-    e2e -. "page.route stand-ins<br/>items.ts · users.ts · session.ts" .-> e2e
+    e2e -. "page.route stand-ins<br/>stubs/: items.ts · users.ts · session.ts" .-> e2e
     demo -- "serve-pages.mjs :4174" --> site[("site/demo<br/>demo build, API in the browser")]
     electron -- "_electron.launch" --> app["dist/main.js + web build"]
     app --> stub["stubApi.ts<br/>(smoke, window, notifications)"]
@@ -66,11 +66,17 @@ apps/web/
 ├── playwright.demo.config.ts   # demo E2E
 ├── tsconfig.e2e.json           # typechecks e2e/, e2e-demo/ and both configs
 ├── e2e/
-│   ├── support/fixtures.ts     # test and expect for every spec: session, stock, users, API guard
+│   ├── support/
+│   │   ├── fixtures.ts         # test and expect for every spec: session, stock, users, API guard
+│   │   ├── expect.ts           # expect with not.toScrollSideways(); rgb() for computed colors
+│   │   └── sizes.ts            # atNotebookSizes(): a check at 1360×768 and 1360×689
+│   ├── stubs/
+│   │   ├── session.ts          # signIn(): a saved session before the page loads
+│   │   ├── users.ts            # serveUsers(): stand-in for sign-up, login, logout, tutorial
+│   │   └── items.ts            # serveItems(), savedItem(): stand-in for /items and the item lists
+│   ├── data/
+│   │   └── items.ts            # item(): a test item from the fields that matter
 │   ├── api-guard.spec.ts       # checks the guard fails a call no stand-in answers
-│   ├── session.ts              # signIn(): a saved session before the page loads
-│   ├── users.ts                # serveUsers(): stand-in for sign-up, login, logout, tutorial
-│   ├── items.ts                # serveItems(), savedItem(): stand-in for /items and the item lists
 │   └── <area>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
 │                               # notifications, register, theme, toast, user-menu
 └── e2e-demo/
@@ -122,10 +128,10 @@ Routes, `localStorage` and the init scripts belong to the test's own browser con
 
 1. Put it in the spec of its area (`inventory.spec.ts` for the Inventory). A new area gets a new `<area>.spec.ts`.
 2. Title it with the prefix, `Web:` or `Desktop:`, and the behavior in English; write what it checks and why in a comment right above it ([AGENTS.md](../AGENTS.md#writing-tests)).
-3. Import `test` and `expect` from `./support/fixtures.ts` and start from the state it needs: the Dashboard with a test user is the default, `test.use({ signedIn: false })` for the screens before the login, `test.use({ stock: { items } })` or `serveItems()` with only the items that matter (each spec has an `item()` filling in the rest with `testItem()`). Answer every API call the test makes: the guard fails any it doesn't.
+3. Import `test` and `expect` from `./support/fixtures.ts` and start from the state it needs: the Dashboard with a test user is the default, `test.use({ signedIn: false })` for the screens before the login, `test.use({ stock: { items } })` or `serveItems()` with only the items that matter (`item()` from `./data/items.ts` fills in the rest). Answer every API call the test makes: the guard fails any it doesn't.
 4. Find elements as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`; then the style id (`getByTestId("inventory.inventory-tab.filters.count")`) for an element with no role or text of its own; CSS only for what has neither (`tbody tr`, `header`, `html`).
-5. Assert with Playwright's web-first assertions (`toBeVisible`, `toHaveText`, `toHaveURL`), `expect.poll` for a value read from the page. Never wait a fixed time.
-6. Check the minimum sizes: the test runs in both projects. When it can only hold on one, skip the other with a reason: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Screens that fill the window are also checked at `NOTEBOOK_WIDTH` × `NOTEBOOK_HEIGHT`/`NOTEBOOK_WINDOW_HEIGHT`.
+5. Assert with Playwright's web-first assertions (`toBeVisible`, `toHaveText`, `toHaveURL`), `expect.poll` for a value read from the page. Never wait a fixed time. A color in `toHaveCSS` comes from the theme through `rgb()`, and a page that must not scroll sideways is checked with `await expect(page).not.toScrollSideways()`, both from `./support/expect.ts`.
+6. Check the minimum sizes: the test runs in both projects. When it can only hold on one, skip the other with a reason: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Screens that fill the window are also checked on a notebook, in full screen and in a window, with `atNotebookSizes(page, async (size) => …)` from `./support/sizes.ts`, naming `size` in each assertion's message.
 7. A test about a motion turns it on for itself: `page.emulateMedia({ reducedMotion: "no-preference" })`.
 
 ### Running the tests
@@ -214,7 +220,7 @@ pnpm --filter @apc/desktop test:e2e
 ### Keeping the tests up
 
 - **UI copy changes:** the E2E find elements by their Portuguese names. Rename the text in the test too, or better, read it from the shared module that already holds it (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), as the login and sign-up specs do.
-- **API changes:** a route added or changed reaches three stand-ins: `apps/web/e2e/items.ts`/`users.ts` (web E2E), `apps/desktop/e2e/stubApi.ts` (desktop E2E) and `apps/web/src/demo/demoApi.ts` (the demo; CI checks this one against `@apc/shared/api-routes`). The first two are not checked: update them in the same pull request.
+- **API changes:** a route added or changed reaches three stand-ins: `apps/web/e2e/stubs/items.ts`/`users.ts` (web E2E), `apps/desktop/e2e/stubApi.ts` (desktop E2E) and `apps/web/src/demo/demoApi.ts` (the demo; CI checks this one against `@apc/shared/api-routes`). The first two are not checked: update them in the same pull request.
 - **Style ids change** with a component's file name or slots. A test that reads one fails with "element not found": search the id in `e2e/` and follow the new one.
 - **A work-in-progress tab** keeps its tests skipped (`catalog.spec.ts` while the Catalog tab has `wip`). They come back by themselves once `wip` is gone.
 - **A flaky test:** run it many times to see it fail (`--repeat-each=20 --workers=4`), record a trace (`--trace on`), and fix the wait, not the timeout: wait for what the user would see (`toBeVisible`, `toHaveURL`, `expect.poll`), never `waitForTimeout`.
@@ -262,11 +268,17 @@ apps/web/
 ├── playwright.demo.config.ts   # E2E da demo
 ├── tsconfig.e2e.json           # checa os tipos de e2e/, e2e-demo/ e das duas configs
 ├── e2e/
-│   ├── support/fixtures.ts     # test e expect de toda spec: sessão, estoque, usuários, guarda da API
+│   ├── support/
+│   │   ├── fixtures.ts         # test e expect de toda spec: sessão, estoque, usuários, guarda da API
+│   │   ├── expect.ts           # expect com not.toScrollSideways(); rgb() para cores calculadas
+│   │   └── sizes.ts            # atNotebookSizes(): uma conferência em 1360×768 e 1360×689
+│   ├── stubs/
+│   │   ├── session.ts          # signIn(): uma sessão salva antes de a página carregar
+│   │   ├── users.ts            # serveUsers(): substituto do cadastro, login, logout e tutorial
+│   │   └── items.ts            # serveItems(), savedItem(): substituto de /items e das listas de itens
+│   ├── data/
+│   │   └── items.ts            # item(): um item de teste a partir dos campos que importam
 │   ├── api-guard.spec.ts       # confere que a guarda reprova uma chamada que nenhum substituto responde
-│   ├── session.ts              # signIn(): uma sessão salva antes de a página carregar
-│   ├── users.ts                # serveUsers(): substituto do cadastro, login, logout e tutorial
-│   ├── items.ts                # serveItems(), savedItem(): substituto de /items e das listas de itens
 │   └── <área>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
 │                               # notifications, register, theme, toast, user-menu
 └── e2e-demo/
@@ -318,10 +330,10 @@ Rotas, `localStorage` e init scripts pertencem ao contexto de navegador do próp
 
 1. Coloque-o na spec da sua área (`inventory.spec.ts` para o Estoque). Uma área nova ganha um `<área>.spec.ts` novo.
 2. Dê o título com o prefixo, `Web:` ou `Desktop:`, e o comportamento em inglês; escreva o que ele confere e por quê num comentário logo acima ([AGENTS.md](../AGENTS.md#writing-tests)).
-3. Importe `test` e `expect` de `./support/fixtures.ts` e comece do estado de que ele precisa: o Dashboard com um usuário de teste é o padrão, `test.use({ signedIn: false })` para as telas antes do login, `test.use({ stock: { items } })` ou `serveItems()` só com os itens que importam (cada spec tem um `item()` que completa o resto com `testItem()`). Responda toda chamada à API que o teste faz: a guarda reprova as que ficarem sem resposta.
+3. Importe `test` e `expect` de `./support/fixtures.ts` e comece do estado de que ele precisa: o Dashboard com um usuário de teste é o padrão, `test.use({ signedIn: false })` para as telas antes do login, `test.use({ stock: { items } })` ou `serveItems()` só com os itens que importam (o `item()` de `./data/items.ts` completa o resto). Responda toda chamada à API que o teste faz: a guarda reprova as que ficarem sem resposta.
 4. Encontre os elementos como um usuário encontra, nesta ordem: `getByRole` com o nome acessível, `getByLabel`, `getByText`; depois o style id (`getByTestId("inventory.inventory-tab.filters.count")`) para um elemento sem papel ou texto próprio; CSS só para o que não tem nenhum dos dois (`tbody tr`, `header`, `html`).
-5. Verifique com as asserções web-first do Playwright (`toBeVisible`, `toHaveText`, `toHaveURL`), e `expect.poll` para um valor lido da página. Nunca espere um tempo fixo.
-6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Quando ele só vale em um, pule o outro com o motivo: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Telas que ocupam a janela também são conferidas em `NOTEBOOK_WIDTH` × `NOTEBOOK_HEIGHT`/`NOTEBOOK_WINDOW_HEIGHT`.
+5. Verifique com as asserções web-first do Playwright (`toBeVisible`, `toHaveText`, `toHaveURL`), e `expect.poll` para um valor lido da página. Nunca espere um tempo fixo. Uma cor no `toHaveCSS` vem do tema pelo `rgb()`, e uma página que não pode rolar para o lado é conferida com `await expect(page).not.toScrollSideways()`, os dois de `./support/expect.ts`.
+6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Quando ele só vale em um, pule o outro com o motivo: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Telas que ocupam a janela também são conferidas num notebook, em tela cheia e numa janela, com `atNotebookSizes(page, async (size) => …)` de `./support/sizes.ts`, citando `size` na mensagem de cada asserção.
 7. Um teste sobre um movimento o liga para si: `page.emulateMedia({ reducedMotion: "no-preference" })`.
 
 ### Rodando os testes
@@ -410,7 +422,7 @@ pnpm --filter @apc/desktop test:e2e
 ### Mantendo os testes
 
 - **Mudou um texto da interface:** o E2E encontra os elementos pelos nomes em português. Troque o texto no teste também, ou melhor, leia-o do módulo compartilhado que já o guarda (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), como as specs de login e cadastro fazem.
-- **Mudou a API:** uma rota nova ou alterada chega a três substitutos: `apps/web/e2e/items.ts`/`users.ts` (E2E da web), `apps/desktop/e2e/stubApi.ts` (E2E do desktop) e `apps/web/src/demo/demoApi.ts` (a demo; o CI confere este contra o `@apc/shared/api-routes`). Os dois primeiros não são conferidos: atualize-os no mesmo pull request.
+- **Mudou a API:** uma rota nova ou alterada chega a três substitutos: `apps/web/e2e/stubs/items.ts`/`users.ts` (E2E da web), `apps/desktop/e2e/stubApi.ts` (E2E do desktop) e `apps/web/src/demo/demoApi.ts` (a demo; o CI confere este contra o `@apc/shared/api-routes`). Os dois primeiros não são conferidos: atualize-os no mesmo pull request.
 - **Style ids mudam** com o nome do arquivo de um componente ou seus slots. Um teste que lê um deles falha com "element not found": procure o id em `e2e/` e siga o novo.
 - **Uma aba em construção** deixa seus testes pulados (`catalog.spec.ts` enquanto a aba Catálogo tem `wip`). Eles voltam sozinhos quando o `wip` sai.
 - **Um teste instável:** rode-o muitas vezes para vê-lo falhar (`--repeat-each=20 --workers=4`), grave um trace (`--trace on`) e corrija a espera, não o timeout: espere pelo que o usuário veria (`toBeVisible`, `toHaveURL`, `expect.poll`), nunca `waitForTimeout`.
