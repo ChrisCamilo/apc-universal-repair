@@ -1,0 +1,395 @@
+# Testing · Testes
+
+[🇺🇸 English](#-english-us) · [🇧🇷 Português](#-português-brasil)
+
+How the project's tests are laid out, how to run them, where to read their reports and how to keep them up. The rules every test follows (titles, the comment above each test, reduced motion, screen sizes) are in [AGENTS.md](../AGENTS.md#testing); this page explains how they are put in place, mostly for the Playwright suites.
+
+Como os testes do projeto estão organizados, como rodá-los, onde ler os relatórios e como mantê-los. As regras que todo teste segue (títulos, o comentário acima de cada teste, movimento reduzido, tamanhos de tela) estão no [AGENTS.md](../AGENTS.md#testing); esta página explica como elas são aplicadas, sobretudo nas suítes do Playwright.
+
+```mermaid
+flowchart LR
+    subgraph web["apps/web"]
+        e2e["e2e/*.spec.ts<br/>playwright.config.ts"]
+        demo["e2e-demo/*.spec.ts<br/>playwright.demo.config.ts"]
+    end
+    subgraph desktop["apps/desktop"]
+        electron["e2e/*.spec.ts<br/>playwright.config.ts"]
+    end
+
+    e2e -- "vite :5173 → /api proxy" --> api["API dev :3333<br/>(health only)"]
+    e2e -. "page.route stand-ins<br/>items.ts · users.ts · session.ts" .-> e2e
+    demo -- "serve-pages.mjs :4174" --> site[("site/demo<br/>demo build, API in the browser")]
+    electron -- "_electron.launch" --> app["dist/main.js + web build"]
+    app --> stub["stubApi.ts<br/>(smoke, window, notifications)"]
+    app --> bundled["server/ it ships<br/>(bundled.spec.ts)"]
+```
+
+---
+
+## 🇺🇸 English (US)
+
+### Kinds of tests
+
+| Kind | Tool | Where | Command |
+|---|---|---|---|
+| Unit (shared, API) | Node test runner (`tsx --test` on the API) | `packages/shared/src/**/*.test.ts`, `apps/api/src/**/*.test.ts` | `pnpm test` |
+| API against a database | Node test runner, one file at a time | `apps/api/src/**/*.db-test.ts` | `pnpm --filter @apc/api test:db` |
+| Component (web) | Vitest Browser Mode, Chromium through the Playwright provider | next to the component, `apps/web/src/**/*.test.tsx` | `pnpm test` |
+| Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` | `pnpm test` |
+| Desktop main process | Node test runner | `apps/desktop/src/*.test.ts` | `pnpm test` |
+| **E2E (web)** | Playwright Test | `apps/web/e2e/*.spec.ts` | `pnpm --filter @apc/web test:e2e` |
+| **E2E (web demo)** | Playwright Test | `apps/web/e2e-demo/*.spec.ts` | `pnpm --filter @apc/web test:e2e:demo` |
+| **E2E (desktop)** | Playwright's Electron support | `apps/desktop/e2e/*.spec.ts` | `pnpm --filter @apc/desktop test:e2e` |
+
+`pnpm test:e2e` at the root runs Turbo's `test:e2e`, which builds first (`dependsOn: ["build"]`) and then runs both the web and the desktop E2E. The demo's E2E is run on its own.
+
+### The three Playwright suites
+
+| | Web (`apps/web/playwright.config.ts`) | Demo (`apps/web/playwright.demo.config.ts`) | Desktop (`apps/desktop/playwright.config.ts`) |
+|---|---|---|---|
+| Runs against | Vite dev server on :5173, which proxies `/api` to the dev API on :3333 | The Pages site in `site/`, served by `scripts/serve-pages.mjs` on :4174 under `/apc-universal-repair/demo/` | The compiled app (`dist/main.js`) with the web build, opened by `_electron.launch` |
+| Servers started | `pnpm --filter @apc/api run dev` and `pnpm dev` (`webServer`), reused locally if already up | `serve-pages.mjs` | None: each spec starts its stand-in API or the app's own server |
+| Projects | `desktop` 1280×720, `mobile` 360×780 (touch, `isMobile`) | the same two | none (one Electron app) |
+| Parallelism | `fullyParallel` | `fullyParallel` | `workers: 1`, 60 s per test |
+| Retries | 2 on CI, 0 locally | 2 on CI, 0 locally | 2 on CI, 0 locally |
+| Reporter | `list` locally; `github` + `html` on CI | same | same |
+| Trace | `on-first-retry` | `on-first-retry` | `on-first-retry` (see [Reports](#reports-and-traces)) |
+| Motion | `reducedMotion: "reduce"` | `reducedMotion: "reduce"` | `reduceMotion(app)` from `e2e/reducedMotion.ts` |
+
+`forbidOnly` is on in CI, so a `test.only` left behind fails the run.
+
+### Files
+
+```
+apps/web/
+├── playwright.config.ts        # web E2E
+├── playwright.demo.config.ts   # demo E2E
+├── tsconfig.e2e.json           # typechecks e2e/, e2e-demo/ and both configs
+├── e2e/
+│   ├── session.ts              # signIn(): a saved session before the page loads
+│   ├── users.ts                # serveUsers(): stand-in for sign-up, login, logout, tutorial
+│   ├── items.ts                # serveItems(), savedItem(): stand-in for /items and the item lists
+│   └── <area>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
+│                               # notifications, register, theme, toast, user-menu
+└── e2e-demo/
+    └── demo.spec.ts
+
+apps/desktop/
+├── playwright.config.ts
+└── e2e/
+    ├── reducedMotion.ts        # reduceMotion(app): every window reports reduced motion
+    ├── stubApi.ts              # startStubApi(items): a stand-in API on a free port
+    ├── smoke.spec.ts           # sign in, restart, bridge without Node, installer's database choice
+    ├── window.spec.ts          # the 1360×689 notebook window
+    ├── notifications.spec.ts   # Windows notifications
+    └── bundled.spec.ts         # the server the app ships: SQLite key, import, ports, tray, PostgreSQL
+```
+
+Test data shared with the other kinds of tests lives in `@apc/shared`: `TEST_USERS` (`@apc/shared/test-users`), `testItem()` (`@apc/shared/test-items`), `itemListsOf()` (`@apc/shared/test-lists`). Screen sizes come from `@apc/shared/screens`, messages from the shared modules (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`…), so a test never repeats a number or a message.
+
+### How the web E2E stand in for the API
+
+The web E2E don't depend on a database. Apart from `health.spec.ts`, which checks the web app reaches the real API through the proxy, every spec answers the API in the page with `page.route`:
+
+- **`signIn(page, tutorialSeen?, user?)`** saves a test user's session in `localStorage` with `addInitScript`, before any script of the app runs, so a test starts on the Dashboard. The token is `token-<id>`, which no stand-in checks. Marking the tutorial seen is answered with a 204.
+- **`serveUsers(page)`** answers sign-up (`POST /api/users`), login (`POST /api/sessions`), the tutorial and logout, from `TEST_USERS` and whoever signs up meanwhile. It returns the users it knows, so a test can check a sign-up.
+- **`serveItems(page, stock, onQuery?)`** answers `GET /api/items` with search, filters, sorting and pages as the API does, and the item lists (create, rename, merge, delete). `stock` is read on every request, so a test may change it as it goes. Methods other than GET on `/api/items` fall through (`route.fallback()`) to the routes the test registered **before** it.
+- **`savedItem(sent, held?)`** builds what the API answers for a create or an edit.
+
+Playwright tries the routes last registered first. So a test that answers a write itself registers its `page.route("**/api/items", …)` before `serveItems`, and a test that must override a GET (an expired session, an API error) registers it after.
+
+Routes, `localStorage` and the init scripts belong to the test's own browser context, which Playwright throws away after each test: no `afterEach` is needed to clean up.
+
+### How the desktop E2E run
+
+- **Stand-in API** (`smoke`, `window`, `notifications`): `startStubApi(items)` in `beforeAll`, closed in `afterAll`. It answers health, the test users' login, the tutorial, logout, `/items` and empty item lists, only for requests that carry a test user's token and are addressed to `127.0.0.1`/`localhost`.
+- **The server the app ships** (`bundled`): no `APC_API_URL`, a free port in `APC_SERVER_PORT`, and the app's own SQLite in a new `userData` folder. A fresh install shows its recovery key first, which `keepRecoveryKey()` keeps.
+- Each launch gets its own `userData` under the system's temporary folder (`apc-desktop-*`), so a test never touches the installed app's data.
+- The specs delete `ELECTRON_RUN_AS_NODE` from the app's environment; with it set, Electron runs as plain Node.
+
+### Writing a test
+
+1. Put it in the spec of its area (`inventory.spec.ts` for the Inventory). A new area gets a new `<area>.spec.ts`.
+2. Title it with the prefix, `Web:` or `Desktop:`, and the behavior in English; write what it checks and why in a comment right above it ([AGENTS.md](../AGENTS.md#writing-tests)).
+3. Start from the state it needs: `signIn()` for the Dashboard, `serveItems()` with only the items that matter (each spec has an `item()` filling in the rest with `testItem()`), `serveUsers()` for logins.
+4. Find elements as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`; then the style id (`getByTestId("inventory.inventory-tab.filters.count")`) for an element with no role or text of its own; CSS only for what has neither (`tbody tr`, `header`, `html`).
+5. Assert with Playwright's web-first assertions (`toBeVisible`, `toHaveText`, `toHaveURL`), `expect.poll` for a value read from the page. Never wait a fixed time.
+6. Check the minimum sizes: the test runs in both projects. When it can only hold on one, skip the other with a reason: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Screens that fill the window are also checked at `NOTEBOOK_WIDTH` × `NOTEBOOK_HEIGHT`/`NOTEBOOK_WINDOW_HEIGHT`.
+7. A test about a motion turns it on for itself: `page.emulateMedia({ reducedMotion: "no-preference" })`.
+
+### Running the tests
+
+Before the first run, download Chromium:
+
+```bash
+pnpm --filter @apc/web exec playwright install chromium
+```
+
+| Command | What it does |
+|---|---|
+| `pnpm --filter @apc/web test:e2e` | Web E2E, both projects |
+| `pnpm --filter @apc/web exec playwright test e2e/login.spec.ts` | One spec |
+| `pnpm --filter @apc/web exec playwright test e2e/login.spec.ts:31` | The test on that line |
+| `pnpm --filter @apc/web exec playwright test -g "user menu"` | Tests whose title matches |
+| `pnpm --filter @apc/web exec playwright test --project=mobile` | Only the 360×780 project |
+| `pnpm --filter @apc/web test:e2e:ui` | UI mode: pick, watch and time-travel the tests |
+| `pnpm --filter @apc/web exec playwright test --headed` | With the browser on screen |
+| `pnpm --filter @apc/web exec playwright test --debug` | Step by step in the Playwright Inspector |
+| `pnpm --filter @apc/web exec playwright codegen localhost:5173` | Records clicks as locators, to start a test from |
+| `pnpm --filter @apc/web test:e2e:demo` | Demo E2E (put `site/` together first, below) |
+| `pnpm --filter @apc/desktop test:e2e` | Desktop E2E (build the web app and the desktop app first) |
+
+**Before a local web run, check who answers on port 3333.** Locally the config reuses a server that already answers, and the installed desktop app may be serving its real data there. The web E2E only send fake tokens, but a test should never reach real data: close the desktop app, or check the port's owner first in PowerShell (nothing printed means nothing listens there):
+
+```powershell
+Get-NetTCPConnection -LocalPort 3333 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" | Select-Object ProcessId, CommandLine }
+```
+
+**Demo:** the suite runs on the site as Pages serves it, so put it together in `site/` as the Pages workflow does:
+
+```bash
+pnpm --filter @apc/web run build:demo
+```
+
+```bash
+mkdir -p site && rm -rf site/demo && cp -r apps/web/dist-demo site/demo && cp docs/site/404.html site/
+```
+
+```bash
+pnpm --filter @apc/web test:e2e:demo
+```
+
+**Desktop:** build both apps, then run the suite:
+
+```bash
+pnpm turbo run build --filter=@apc/web --filter=@apc/desktop
+```
+
+```bash
+pnpm --filter @apc/desktop test:e2e
+```
+
+### Reports and traces
+
+- **Locally** the reporter is `list`: the results print in the terminal and no HTML report is written. For one, pass `--reporter=html` and open it:
+
+  ```bash
+  pnpm --filter @apc/web exec playwright test --reporter=html
+  ```
+
+  ```bash
+  pnpm --filter @apc/web exec playwright show-report
+  ```
+
+  The report lands in `apps/web/playwright-report/` (`apps/desktop/playwright-report/` for the desktop). The web and the demo suites write to the same folder, so the last run wins.
+- **Traces** are recorded on the first retry, and there are no retries locally. To record one on a local run, pass `--trace on` (or `retain-on-failure`); it is saved under `apps/web/test-results/<test>/trace.zip`, and opens in the HTML report or with (`exec` runs in `apps/web`, so the path starts there):
+
+  ```bash
+  pnpm --filter @apc/web exec playwright show-trace test-results/<test>/trace.zip
+  ```
+
+  The desktop specs launch Electron themselves, outside the `page` fixture, so check `test-results/` for a trace before relying on one there.
+- **On CI** the `github` reporter puts each failure on the pull request's lines, and the HTML report is uploaded when the job fails, kept 7 days:
+
+  | Workflow | Suite | Artifact |
+  |---|---|---|
+  | `ci.yml` (every pull request and push to main) | Web E2E | `playwright-report` |
+  | `desktop.yml` (pull requests that touch the desktop, web or shared) | Desktop E2E, on `windows-latest` | `desktop-playwright-report` |
+  | `pages.yml` (pull requests that touch the API, web, shared or the site) | Demo E2E | none: read the job's log |
+
+  Download the artifact from the run's *Summary* page, unzip it and open it with `playwright show-report <folder>`. The traces of the retried tests are inside.
+- `test-results/`, `playwright-report/` and `blob-report/` are in `.gitignore`.
+
+### Keeping the tests up
+
+- **UI copy changes:** the E2E find elements by their Portuguese names. Rename the text in the test too, or better, read it from the shared module that already holds it (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), as the login and sign-up specs do.
+- **API changes:** a route added or changed reaches three stand-ins: `apps/web/e2e/items.ts`/`users.ts` (web E2E), `apps/desktop/e2e/stubApi.ts` (desktop E2E) and `apps/web/src/demo/demoApi.ts` (the demo; CI checks this one against `@apc/shared/api-routes`). The first two are not checked: update them in the same pull request.
+- **Style ids change** with a component's file name or slots. A test that reads one fails with "element not found": search the id in `e2e/` and follow the new one.
+- **A work-in-progress tab** keeps its tests skipped (`catalog.spec.ts` while the Catalog tab has `wip`). They come back by themselves once `wip` is gone.
+- **A flaky test:** run it many times to see it fail (`--repeat-each=20 --workers=4`), record a trace (`--trace on`), and fix the wait, not the timeout: wait for what the user would see (`toBeVisible`, `toHaveURL`, `expect.poll`), never `waitForTimeout`.
+- **Upgrading Playwright:** `@playwright/test` and `playwright` in `apps/web`, `@playwright/test` in `apps/desktop` and `@vitest/browser-playwright` move together. Then download the browser again (`playwright install chromium`); CI installs it on each run.
+
+---
+
+## 🇧🇷 Português (Brasil)
+
+### Tipos de teste
+
+| Tipo | Ferramenta | Onde | Comando |
+|---|---|---|---|
+| Unitário (shared, API) | test runner do Node (`tsx --test` na API) | `packages/shared/src/**/*.test.ts`, `apps/api/src/**/*.test.ts` | `pnpm test` |
+| API contra um banco | test runner do Node, um arquivo por vez | `apps/api/src/**/*.db-test.ts` | `pnpm --filter @apc/api test:db` |
+| Componente (web) | Vitest Browser Mode, Chromium pelo provider do Playwright | ao lado do componente, `apps/web/src/**/*.test.tsx` | `pnpm test` |
+| Celular | Jest com `react-test-renderer` | `apps/mobile/__tests__/` | `pnpm test` |
+| Processo principal do desktop | test runner do Node | `apps/desktop/src/*.test.ts` | `pnpm test` |
+| **E2E (web)** | Playwright Test | `apps/web/e2e/*.spec.ts` | `pnpm --filter @apc/web test:e2e` |
+| **E2E (demo da web)** | Playwright Test | `apps/web/e2e-demo/*.spec.ts` | `pnpm --filter @apc/web test:e2e:demo` |
+| **E2E (desktop)** | suporte a Electron do Playwright | `apps/desktop/e2e/*.spec.ts` | `pnpm --filter @apc/desktop test:e2e` |
+
+`pnpm test:e2e` na raiz roda o `test:e2e` do Turbo, que faz o build antes (`dependsOn: ["build"]`) e depois roda os E2E da web e do desktop. O E2E da demo roda à parte.
+
+### As três suítes do Playwright
+
+| | Web (`apps/web/playwright.config.ts`) | Demo (`apps/web/playwright.demo.config.ts`) | Desktop (`apps/desktop/playwright.config.ts`) |
+|---|---|---|---|
+| Roda contra | O servidor de desenvolvimento do Vite na :5173, que repassa `/api` para a API de desenvolvimento na :3333 | O site do Pages em `site/`, servido pelo `scripts/serve-pages.mjs` na :4174 em `/apc-universal-repair/demo/` | O app compilado (`dist/main.js`) com o build da web, aberto pelo `_electron.launch` |
+| Servidores que sobe | `pnpm --filter @apc/api run dev` e `pnpm dev` (`webServer`), reaproveitados localmente se já estiverem no ar | `serve-pages.mjs` | Nenhum: cada spec sobe sua API substituta ou o servidor do próprio app |
+| Projetos | `desktop` 1280×720, `mobile` 360×780 (toque, `isMobile`) | os mesmos dois | nenhum (um app Electron) |
+| Paralelismo | `fullyParallel` | `fullyParallel` | `workers: 1`, 60 s por teste |
+| Retentativas | 2 no CI, 0 local | 2 no CI, 0 local | 2 no CI, 0 local |
+| Reporter | `list` local; `github` + `html` no CI | igual | igual |
+| Trace | `on-first-retry` | `on-first-retry` | `on-first-retry` (veja [Relatórios](#relatórios-e-traces)) |
+| Movimento | `reducedMotion: "reduce"` | `reducedMotion: "reduce"` | `reduceMotion(app)` de `e2e/reducedMotion.ts` |
+
+O `forbidOnly` fica ligado no CI, então um `test.only` esquecido derruba a execução.
+
+### Arquivos
+
+```
+apps/web/
+├── playwright.config.ts        # E2E da web
+├── playwright.demo.config.ts   # E2E da demo
+├── tsconfig.e2e.json           # checa os tipos de e2e/, e2e-demo/ e das duas configs
+├── e2e/
+│   ├── session.ts              # signIn(): uma sessão salva antes de a página carregar
+│   ├── users.ts                # serveUsers(): substituto do cadastro, login, logout e tutorial
+│   ├── items.ts                # serveItems(), savedItem(): substituto de /items e das listas de itens
+│   └── <área>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
+│                               # notifications, register, theme, toast, user-menu
+└── e2e-demo/
+    └── demo.spec.ts
+
+apps/desktop/
+├── playwright.config.ts
+└── e2e/
+    ├── reducedMotion.ts        # reduceMotion(app): toda janela informa movimento reduzido
+    ├── stubApi.ts              # startStubApi(items): uma API substituta numa porta livre
+    ├── smoke.spec.ts           # login, reinício, ponte sem Node, banco escolhido no instalador
+    ├── window.spec.ts          # a janela de 1360×689 do notebook
+    ├── notifications.spec.ts   # notificações do Windows
+    └── bundled.spec.ts         # o servidor que o app traz: chave do SQLite, importação, portas, bandeja, PostgreSQL
+```
+
+Os dados de teste compartilhados com os outros tipos de teste ficam no `@apc/shared`: `TEST_USERS` (`@apc/shared/test-users`), `testItem()` (`@apc/shared/test-items`), `itemListsOf()` (`@apc/shared/test-lists`). Os tamanhos de tela vêm de `@apc/shared/screens` e as mensagens dos módulos compartilhados (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`…), então um teste nunca repete um número ou uma mensagem.
+
+### Como o E2E da web substitui a API
+
+O E2E da web não depende de banco. Fora o `health.spec.ts`, que confere que o app web alcança a API de verdade pelo proxy, toda spec responde a API dentro da página com `page.route`:
+
+- **`signIn(page, tutorialSeen?, user?)`** salva a sessão de um usuário de teste no `localStorage` com `addInitScript`, antes de qualquer script do app rodar, para o teste começar no Dashboard. O token é `token-<id>`, que nenhum substituto confere. Marcar o tutorial como visto é respondido com 204.
+- **`serveUsers(page)`** responde o cadastro (`POST /api/users`), o login (`POST /api/sessions`), o tutorial e o logout, a partir de `TEST_USERS` e de quem se cadastrar no meio do teste. Devolve os usuários que conhece, para o teste conferir um cadastro.
+- **`serveItems(page, stock, onQuery?)`** responde `GET /api/items` com busca, filtros, ordenação e páginas como a API faz, e as listas de itens (criar, renomear, mesclar, excluir). O `stock` é lido a cada requisição, então o teste pode alterá-lo no caminho. Métodos que não são GET em `/api/items` passam adiante (`route.fallback()`) para as rotas que o teste registrou **antes** dele.
+- **`savedItem(sent, held?)`** monta o que a API responde a uma criação ou edição.
+
+O Playwright tenta primeiro as rotas registradas por último. Então um teste que responde ele mesmo a uma escrita registra o seu `page.route("**/api/items", …)` antes do `serveItems`, e um teste que precisa sobrepor um GET (sessão expirada, erro da API) registra depois.
+
+Rotas, `localStorage` e init scripts pertencem ao contexto de navegador do próprio teste, que o Playwright descarta depois de cada teste: não é preciso `afterEach` para limpar.
+
+### Como o E2E do desktop roda
+
+- **API substituta** (`smoke`, `window`, `notifications`): `startStubApi(items)` no `beforeAll`, fechada no `afterAll`. Responde health, o login dos usuários de teste, o tutorial, o logout, `/items` e listas de itens vazias, só para requisições que levam o token de um usuário de teste e são endereçadas a `127.0.0.1`/`localhost`.
+- **O servidor que o app traz** (`bundled`): sem `APC_API_URL`, uma porta livre em `APC_SERVER_PORT` e o SQLite do próprio app numa pasta `userData` nova. Uma instalação nova mostra primeiro a chave de recuperação, que o `keepRecoveryKey()` guarda.
+- Cada abertura ganha seu próprio `userData` na pasta temporária do sistema (`apc-desktop-*`), então um teste nunca mexe nos dados do app instalado.
+- As specs apagam `ELECTRON_RUN_AS_NODE` do ambiente do app; com ela definida, o Electron roda como Node puro.
+
+### Escrevendo um teste
+
+1. Coloque-o na spec da sua área (`inventory.spec.ts` para o Estoque). Uma área nova ganha um `<área>.spec.ts` novo.
+2. Dê o título com o prefixo, `Web:` ou `Desktop:`, e o comportamento em inglês; escreva o que ele confere e por quê num comentário logo acima ([AGENTS.md](../AGENTS.md#writing-tests)).
+3. Comece do estado de que ele precisa: `signIn()` para o Dashboard, `serveItems()` só com os itens que importam (cada spec tem um `item()` que completa o resto com `testItem()`), `serveUsers()` para logins.
+4. Encontre os elementos como um usuário encontra, nesta ordem: `getByRole` com o nome acessível, `getByLabel`, `getByText`; depois o style id (`getByTestId("inventory.inventory-tab.filters.count")`) para um elemento sem papel ou texto próprio; CSS só para o que não tem nenhum dos dois (`tbody tr`, `header`, `html`).
+5. Verifique com as asserções web-first do Playwright (`toBeVisible`, `toHaveText`, `toHaveURL`), e `expect.poll` para um valor lido da página. Nunca espere um tempo fixo.
+6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Quando ele só vale em um, pule o outro com o motivo: `test.skip(testInfo.project.name !== "desktop", "A desktop screen")`. Telas que ocupam a janela também são conferidas em `NOTEBOOK_WIDTH` × `NOTEBOOK_HEIGHT`/`NOTEBOOK_WINDOW_HEIGHT`.
+7. Um teste sobre um movimento o liga para si: `page.emulateMedia({ reducedMotion: "no-preference" })`.
+
+### Rodando os testes
+
+Antes da primeira execução, baixe o Chromium:
+
+```bash
+pnpm --filter @apc/web exec playwright install chromium
+```
+
+| Comando | O que faz |
+|---|---|
+| `pnpm --filter @apc/web test:e2e` | E2E da web, nos dois projetos |
+| `pnpm --filter @apc/web exec playwright test e2e/login.spec.ts` | Uma spec |
+| `pnpm --filter @apc/web exec playwright test e2e/login.spec.ts:31` | O teste daquela linha |
+| `pnpm --filter @apc/web exec playwright test -g "user menu"` | Os testes cujo título casa |
+| `pnpm --filter @apc/web exec playwright test --project=mobile` | Só o projeto 360×780 |
+| `pnpm --filter @apc/web test:e2e:ui` | Modo UI: escolher, acompanhar e voltar no tempo dos testes |
+| `pnpm --filter @apc/web exec playwright test --headed` | Com o navegador na tela |
+| `pnpm --filter @apc/web exec playwright test --debug` | Passo a passo no Playwright Inspector |
+| `pnpm --filter @apc/web exec playwright codegen localhost:5173` | Grava cliques como locators, para começar um teste |
+| `pnpm --filter @apc/web test:e2e:demo` | E2E da demo (monte o `site/` antes, abaixo) |
+| `pnpm --filter @apc/desktop test:e2e` | E2E do desktop (faça antes o build da web e do desktop) |
+
+**Antes de rodar o E2E da web localmente, confira quem responde na porta 3333.** Localmente a config reaproveita um servidor que já responde, e o app desktop instalado pode estar servindo seus dados reais ali. O E2E da web só manda tokens falsos, mas um teste nunca deve alcançar dados reais: feche o app desktop, ou confira antes o dono da porta no PowerShell (se nada aparecer, ninguém escuta ali):
+
+```powershell
+Get-NetTCPConnection -LocalPort 3333 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" | Select-Object ProcessId, CommandLine }
+```
+
+**Demo:** a suíte roda no site como o Pages o serve, então monte-o em `site/` como o workflow do Pages faz:
+
+```bash
+pnpm --filter @apc/web run build:demo
+```
+
+```bash
+mkdir -p site && rm -rf site/demo && cp -r apps/web/dist-demo site/demo && cp docs/site/404.html site/
+```
+
+```bash
+pnpm --filter @apc/web test:e2e:demo
+```
+
+**Desktop:** faça o build dos dois apps e rode a suíte:
+
+```bash
+pnpm turbo run build --filter=@apc/web --filter=@apc/desktop
+```
+
+```bash
+pnpm --filter @apc/desktop test:e2e
+```
+
+### Relatórios e traces
+
+- **Localmente** o reporter é o `list`: o resultado sai no terminal e nenhum relatório HTML é gerado. Para ter um, passe `--reporter=html` e abra:
+
+  ```bash
+  pnpm --filter @apc/web exec playwright test --reporter=html
+  ```
+
+  ```bash
+  pnpm --filter @apc/web exec playwright show-report
+  ```
+
+  O relatório fica em `apps/web/playwright-report/` (`apps/desktop/playwright-report/` no desktop). As suítes da web e da demo escrevem na mesma pasta, então vale a última execução.
+- **Traces** são gravados na primeira retentativa, e localmente não há retentativas. Para gravar um localmente, passe `--trace on` (ou `retain-on-failure`); ele fica em `apps/web/test-results/<teste>/trace.zip` e abre no relatório HTML ou com (o `exec` roda em `apps/web`, então o caminho começa ali):
+
+  ```bash
+  pnpm --filter @apc/web exec playwright show-trace test-results/<teste>/trace.zip
+  ```
+
+  As specs do desktop abrem o Electron elas mesmas, fora da fixture `page`, então confira se há um trace em `test-results/` antes de contar com ele ali.
+- **No CI** o reporter `github` marca cada falha nas linhas do pull request, e o relatório HTML é enviado quando o job falha, guardado por 7 dias:
+
+  | Workflow | Suíte | Artefato |
+  |---|---|---|
+  | `ci.yml` (todo pull request e push na main) | E2E da web | `playwright-report` |
+  | `desktop.yml` (pull requests que mexem no desktop, na web ou no shared) | E2E do desktop, no `windows-latest` | `desktop-playwright-report` |
+  | `pages.yml` (pull requests que mexem na API, na web, no shared ou no site) | E2E da demo | nenhum: leia o log do job |
+
+  Baixe o artefato na página *Summary* da execução, descompacte e abra com `playwright show-report <pasta>`. Os traces dos testes que tiveram retentativa estão dentro.
+- `test-results/`, `playwright-report/` e `blob-report/` estão no `.gitignore`.
+
+### Mantendo os testes
+
+- **Mudou um texto da interface:** o E2E encontra os elementos pelos nomes em português. Troque o texto no teste também, ou melhor, leia-o do módulo compartilhado que já o guarda (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), como as specs de login e cadastro fazem.
+- **Mudou a API:** uma rota nova ou alterada chega a três substitutos: `apps/web/e2e/items.ts`/`users.ts` (E2E da web), `apps/desktop/e2e/stubApi.ts` (E2E do desktop) e `apps/web/src/demo/demoApi.ts` (a demo; o CI confere este contra o `@apc/shared/api-routes`). Os dois primeiros não são conferidos: atualize-os no mesmo pull request.
+- **Style ids mudam** com o nome do arquivo de um componente ou seus slots. Um teste que lê um deles falha com "element not found": procure o id em `e2e/` e siga o novo.
+- **Uma aba em construção** deixa seus testes pulados (`catalog.spec.ts` enquanto a aba Catálogo tem `wip`). Eles voltam sozinhos quando o `wip` sai.
+- **Um teste instável:** rode-o muitas vezes para vê-lo falhar (`--repeat-each=20 --workers=4`), grave um trace (`--trace on`) e corrija a espera, não o timeout: espere pelo que o usuário veria (`toBeVisible`, `toHaveURL`, `expect.poll`), nunca `waitForTimeout`.
+- **Atualizando o Playwright:** `@playwright/test` e `playwright` no `apps/web`, `@playwright/test` no `apps/desktop` e `@vitest/browser-playwright` andam juntos. Depois baixe o navegador de novo (`playwright install chromium`); o CI o instala a cada execução.
