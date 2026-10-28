@@ -34,7 +34,7 @@ async function openInventory(page: Page) {
 // Lists every item with the counter of the total and the stock alerts, the price in reais, "qualquer
 // modelo" for an item without a vehicle model, N/A muted with its full name as a tooltip, and the low and
 // out-of-stock rows tinted.
-test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page }, testInfo) => {
+test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page, isMobile }) => {
   await openInventory(page);
   const { rows, head } = dataTable(page);
   await expect(inventory(page).count).toHaveText("4 de 4 itens · 1 baixo · 1 esgotado");
@@ -44,7 +44,7 @@ test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_T
   await expect(rows.nth(0)).not.toHaveAttribute("data-status");
   await expect(rows.nth(2)).toContainText("Esgotado:");
 
-  if (testInfo.project.name === "desktop") {
+  if (!isMobile) {
     // The sort arrows are left out, as screen readers leave them out.
     const headers = (await page.getByRole("columnheader").allTextContents()).map((header) => header.replace(/[↕↑↓]/g, ""));
     expect(headers).toEqual(["Expandir", "Foto", "Item", "Categoria", "Marca", "Veículo", "Posição", "Lado", "Cor", "Local", "Valor unit.", "Qtd.", "Ações"]);
@@ -67,7 +67,7 @@ test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_T
 // Checks the toolbar has the search at its left edge and "Novo item", the last of the buttons, at its right edge, the
 // panel's: at the minimum sizes (where the buttons wrap under the search on a phone) and, on desktop, on a wide screen
 // too, where the search stops growing and the gap goes between it and the buttons.
-test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page }, testInfo) => {
+test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page, isMobile }) => {
   await openInventory(page);
   const { toolbar, searchBox, newItem } = inventory(page);
   const edges = async () => {
@@ -76,7 +76,7 @@ test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS
     const button = (await newItem.boundingBox())!;
     return { searchLeft: search.x - bar.x, newItemRight: bar.x + bar.width - (button.x + button.width) };
   };
-  const sizes = testInfo.project.name === "desktop" ? [page.viewportSize()!, { width: 1920, height: 1080 }] : [page.viewportSize()!];
+  const sizes = isMobile ? [page.viewportSize()!] : [page.viewportSize()!, { width: 1920, height: 1080 }];
   for (const size of sizes) {
     await page.setViewportSize(size);
     const { searchLeft, newItemRight } = await edges();
@@ -121,7 +121,7 @@ test("Web: the Inventory panel fills the window and keeps its pagination", { tag
 // Opens the Inventory with 100 items on a page and scrolls the list, and checks only the list scrolls: the page stays
 // put and the pagination stays in view. On desktop the toolbar stays too and the table's header row stays pinned on
 // top; on a phone the toolbar and the filters scroll away with the cards, inside the panel.
-test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page }, testInfo) => {
+test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page, isMobile }) => {
   const inv = inventory(page);
   const table = dataTable(page);
   await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
@@ -130,12 +130,12 @@ test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_T
   await expect(table.rows).toHaveCount(100);
   await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height - 160);
   await page.mouse.wheel(0, 2000);
-  const scroller = testInfo.project.name === "desktop" ? table.scroll : inv.body;
+  const scroller = isMobile ? inv.body : table.scroll;
   await expect.poll(() => scroller.evaluate((box) => box.scrollTop)).toBeGreaterThan(1000);
 
   expect((await layout(page)).pageExtra).toBe(0);
   await expect(inv.pager.pages).toBeInViewport();
-  if (testInfo.project.name === "desktop") {
+  if (!isMobile) {
     await expect(inv.newItem).toBeInViewport();
     const header = (await table.header(/Item/).boundingBox())!;
     const scroll = (await table.scroll.boundingBox())!;
@@ -314,7 +314,7 @@ test("Web: categories, brands and models are created from the item form", { tag:
 // Sorts a list of 30 items through the API: on the second page, sorting by location goes back to the first page with
 // the locations in natural order (A-2 before A-10); the same column again reverses it; and the unit price sorts by
 // value, ties in part code order. The desktop sorts with the column headers, the phone with the "Ordenar" select.
-test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }, async ({ page }, testInfo) => {
+test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   const stock = Array.from({ length: 30 }, (_, index) =>
     item({ code: `P-${index + 1}`, name: `Peça ${index + 1}`, location: `A-${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
   );
@@ -323,7 +323,7 @@ test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }
   await page.goto("/inventory");
   const table = dataTable(page);
   const { rows } = table;
-  const desktop = testInfo.project.name === "desktop";
+  const desktop = !isMobile;
   /** Sorts by a column, with its header on the desktop and with the "Ordenar" select on the phone. */
   const sortBy = async (header: string, option: string) => {
     if (desktop) {
@@ -995,8 +995,7 @@ test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inven
 // On a 1360×768 notebook, in full screen and in a window (1360×689 once the taskbar and the title bar are taken off),
 // opens the Inventory with 100 items and checks the page doesn't scroll: the header at the top, the toolbar and the
 // pagination in view, nothing sideways, and only the table scrolls.
-test("Web: on a 1360×768 notebook only the Inventory's table scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "A desktop screen");
+test("Web: on a 1360×768 notebook only the Inventory's table scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
   await page.goto("/inventory");
   const inv = inventory(page);

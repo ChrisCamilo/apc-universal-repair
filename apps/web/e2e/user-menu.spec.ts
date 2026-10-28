@@ -14,11 +14,11 @@ test.use({ colorScheme: "dark" });
 // Opens the user menu and checks the trigger shows the logged user (the username only on desktop), turns dark mode
 // off and picks GT4 with the menu staying open, and checks both apply at once and are still there after a reload.
 // On the phone, the menu also stays on screen.
-test("Web: the user menu changes and keeps the display preferences", { tag: [TEST_TAGS.dashboard, TEST_TAGS.theme] }, async ({ page }, testInfo) => {
+test("Web: the user menu changes and keeps the display preferences", { tag: [TEST_TAGS.dashboard, TEST_TAGS.theme] }, async ({ page, isMobile }) => {
   const { trigger, menu, checkbox, radio } = userMenu(page);
   await page.goto("/inventory");
   await expect(trigger.getByText("CC")).toBeVisible();
-  if (testInfo.project.name === "desktop") {
+  if (!isMobile) {
     await expect(trigger.getByText("christian.camilo")).toBeVisible();
   } else {
     await expect(trigger.getByText("christian.camilo")).toBeHidden();

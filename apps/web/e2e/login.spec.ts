@@ -14,7 +14,7 @@ test.use({ signedIn: false });
 
 // Opens /login and checks the badge heads the page with both fields and "Entrar" on screen, laid out without
 // sideways scroll, beside the form on desktop and above it on a phone.
-test("Web: the login screen shows the badge and the form", { tag: [TEST_TAGS.auth, TEST_TAGS.layout] }, async ({ page }, testInfo) => {
+test("Web: the login screen shows the badge and the form", { tag: [TEST_TAGS.auth, TEST_TAGS.layout] }, async ({ page, isMobile }) => {
   const form = loginForm(page);
   const { heading, mark } = dashboard(page);
   await page.goto("/login");
@@ -24,7 +24,7 @@ test("Web: the login screen shows the badge and the form", { tag: [TEST_TAGS.aut
   await expect(form.submit).toBeInViewport();
   const markBox = (await mark.boundingBox())!;
   const field = (await form.username.boundingBox())!;
-  if (testInfo.project.name === "desktop") {
+  if (!isMobile) {
     expect(field.x).toBeGreaterThan(markBox.x + markBox.width);
   } else {
     expect(field.y).toBeGreaterThan(markBox.y + markBox.height);
@@ -85,8 +85,7 @@ test("Web: the forgotten-password notice opens from the link and closes", { tag:
 
 // On a 1360×768 notebook, in full screen and in a window (1360×689), checks the login fits with no page scroll, down or
 // sideways, and "Entrar" in view.
-test("Web: on a 1360×768 notebook the login fits without scrolling", { tag: [TEST_TAGS.auth, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "A desktop screen");
+test("Web: on a 1360×768 notebook the login fits without scrolling", { tag: [TEST_TAGS.auth, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   await page.goto("/login");
   await atNotebookSizes(page, async (size) => {
     expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), size).toBe(0);

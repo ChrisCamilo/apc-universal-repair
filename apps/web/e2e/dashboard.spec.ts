@@ -87,8 +87,7 @@ test("Web: a tab still being built opens behind the work-in-progress notice", { 
 
 // On a 1360×768 notebook, in full screen and in a window (1360×689), opens the Catalog tab and checks the page itself
 // doesn't scroll, down or sideways, with the header at the top.
-test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", { tag: [TEST_TAGS.catalog, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "A desktop screen");
+test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", { tag: [TEST_TAGS.catalog, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const shell = dashboard(page);
   await page.goto("/catalog");
   await expect(shell.tab("catalog")).toHaveAttribute("aria-selected", "true");
