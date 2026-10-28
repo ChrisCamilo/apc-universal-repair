@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -126,6 +126,10 @@ export const test = base.extend<Options & Fixtures, WorkerOptions & WorkerFixtur
       } else {
         rmSync(file, { force: true });
       }
+    }
+    // Saving a trace made the test's results folder, which a passing test leaves empty.
+    if (existsSync(testInfo.outputDir) && readdirSync(testInfo.outputDir).length === 0) {
+      rmSync(testInfo.outputDir, { recursive: true });
     }
     // The shipped server may still be letting go of its files for a moment after the app quits.
     for (const folder of made) {
