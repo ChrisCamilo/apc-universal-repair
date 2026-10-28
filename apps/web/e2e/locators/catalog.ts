@@ -11,9 +11,9 @@ import { ENGINE_SHEETS } from "@apc/shared/catalog";
 export function catalog(page: Page) {
   return {
     brands: page.getByRole("radio"),
-    brand: (name: string) => page.getByRole("radio", { name, exact: true }),
+    brand: (name: string, exact?: boolean) => page.getByRole("radio", { name, exact }),
     models: (brand: string) => page.getByRole("tree", { name: `Modelos ${brand}` }),
-    model: (name: string) => page.getByRole("treeitem", { name, exact: true }),
+    model: (name: string, exact?: boolean) => page.getByRole("treeitem", { name, exact }),
     sheet: (key: keyof typeof ENGINE_SHEETS) => page.getByRole("heading", { name: ENGINE_SHEETS[key].title }),
     brandSearch: page.getByRole("searchbox", { name: "Procure marca" }),
     search: page.getByRole("searchbox", { name: "Procure modelo ou código da peça" }),

@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { dataTable } from "./locators/common.ts";
+import { inventory } from "./locators/inventory.ts";
 import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from "@apc/shared/item-csv";
 import type { Item } from "@apc/shared/items";
 import { item } from "./data/items.ts";
@@ -26,7 +28,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
  * @returns The file's name and its lines.
  */
 async function exportList(page: Page, photos: boolean): Promise<{ name: string; lines: string[] }> {
-  await page.getByRole("button", { name: "Exportar CSV" }).click();
+  await inventory(page).exportCsv.click();
   const dialog = page.getByRole("dialog", { name: "Exportar CSV" });
   await expect(dialog).toContainText("30 itens, com a busca e os filtros atuais.");
   if (photos) {
@@ -49,9 +51,10 @@ test.use({ stock: { items: STOCK } });
 test("Web: the CSV export takes every page of the list as it is", async ({ page }) => {
   await page.route("**/api/photos/*", (route) => route.fulfill({ body: PNG, contentType: "image/png" }));
   await page.goto("/inventory");
-  await page.getByLabel("Procure pelo nome ou código da peça").fill("Peça");
-  await page.getByRole("navigation", { name: "Páginas do estoque" }).getByRole("button", { name: "Página 2" }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(5);
+  const inv = inventory(page);
+  await inv.search.fill("Peça");
+  await inv.pager.page(2).click();
+  await expect(dataTable(page).rows).toHaveCount(5);
 
   const plain = await exportList(page, false);
   expect(plain.name).toMatch(/^estoque-\d{4}-\d{2}-\d{2}\.csv$/);
