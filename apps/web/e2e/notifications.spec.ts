@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { rgb } from "./support/expect.ts";
 import { toasts } from "./locators/common.ts";
 import { userMenu } from "./locators/dashboard.ts";
@@ -49,7 +50,7 @@ async function toastLifetime(page: Page): Promise<number> {
 // its menu lists the error and then the success, each in its kind's color, and opening it clears the count. After a
 // reload both are still listed; another user logging in on the same browser has none, and "Limpar notificações"
 // empties the list.
-test("Web: the bell keeps the latest toasts for each user", async ({ page }) => {
+test("Web: the bell keeps the latest toasts for each user", { tag: [TEST_TAGS.notifications] }, async ({ page }) => {
   let deletes = 0;
   await page.route("**/api/items/*", (route) => route.fulfill({ status: ++deletes === 1 ? 204 : 500, body: "" }));
   await page.goto("/inventory");
@@ -98,7 +99,7 @@ test("Web: the bell keeps the latest toasts for each user", async ({ page }) => 
 
 // Measures how long a toast stays: 5 s by default. Sets 3 s with the gear in the bell's menu, and checks the next toast
 // stays 3 s and the time is still 3 s after a reload; − stops at 2 s and + at 15 s.
-test("Web: the gear sets how long a toast stays", async ({ page }) => {
+test("Web: the gear sets how long a toast stays", { tag: [TEST_TAGS.notifications] }, async ({ page }) => {
   await page.goto("/inventory");
   const fade = TOAST_FADE_MS + 300;
   const byDefault = await toastLifetime(page);
@@ -133,7 +134,7 @@ test("Web: the gear sets how long a toast stays", async ({ page }) => {
 // Opens the Inventory with an item already low: the bell gets its warning without a toast. Saving another item at its
 // minimum shows the warning as a toast and adds it to the bell; saving it again while still low adds no other; importing
 // two items below their minimum adds one warning for both.
-test("Web: items reaching their minimum stock are warned about once", async ({ page }) => {
+test("Web: items reaching their minimum stock are warned about once", { tag: [TEST_TAGS.notifications] }, async ({ page }) => {
   const stock: Item[] = [{ ...ITEMS[0], quantity: 6, minQuantity: 2 }, { ...item({ id: "00000000-0000-4000-8000-000000000003", code: "0003", name: "Correia dentada" }), quantity: 0 }];
   await serveItems(page, stock);
   await page.route("**/api/items/*", (route) => {

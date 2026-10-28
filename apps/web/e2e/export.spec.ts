@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { dataTable } from "./locators/common.ts";
 import { inventory } from "./locators/inventory.ts";
 import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from "@apc/shared/item-csv";
@@ -48,7 +49,7 @@ test.use({ stock: { items: STOCK } });
 
 // Searches for the parts, goes to page 2 and exports, and checks the file holds every part the search finds, from
 // both pages, and none it leaves out, with the photos column only when the switch is on.
-test("Web: the CSV export takes every page of the list as it is", async ({ page }) => {
+test("Web: the CSV export takes every page of the list as it is", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   await page.route("**/api/photos/*", (route) => route.fulfill({ body: PNG, contentType: "image/png" }));
   await page.goto("/inventory");
   const inv = inventory(page);

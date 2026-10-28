@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures.ts";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { atNotebookSizes } from "./support/sizes.ts";
 import { dashboard } from "./locators/dashboard.ts";
 import { DASHBOARD_TABS } from "@apc/shared/tabs";
@@ -8,7 +9,7 @@ const WIP_TAB = DASHBOARD_TABS.find((tab) => tab.wip);
 
 // Opens the app at "/" and checks it lands on the Inventory tab at /inventory: the APC mark heads the page,
 // the tab is selected and its content shows, and nothing scrolls sideways.
-test("Web: the Dashboard opens on the Inventory tab", async ({ page }) => {
+test("Web: the Dashboard opens on the Inventory tab", { tag: [TEST_TAGS.dashboard] }, async ({ page }) => {
   const shell = dashboard(page);
   await page.goto("/");
   await expect(page).toHaveURL(/\/inventory$/);
@@ -26,7 +27,7 @@ test("Web: the Dashboard opens on the Inventory tab", async ({ page }) => {
 
 // Opens a tab by its link and another by its tab, an unknown path and "/" with the last tab and with a stale saved
 // tab, and checks each lands on a real tab, and that the open tab is remembered.
-test("Web: tabs have their own routes and the last one is remembered", async ({ page }) => {
+test("Web: tabs have their own routes and the last one is remembered", { tag: [TEST_TAGS.dashboard] }, async ({ page }) => {
   const shell = dashboard(page);
   await page.goto("/inventory");
   await expect(shell.tab("inventory")).toHaveAttribute("aria-selected", "true");
@@ -50,7 +51,7 @@ test("Web: tabs have their own routes and the last one is remembered", async ({ 
 
 // Makes the content far taller than the window and scrolls over it, and checks the page itself never scrolls: the
 // header stays at the top, in view, and the content scrolls inside its frame instead, never sideways.
-test("Web: the page never scrolls and the header stays in view", async ({ page }) => {
+test("Web: the page never scrolls and the header stays in view", { tag: [TEST_TAGS.dashboard, TEST_TAGS.layout] }, async ({ page }) => {
   const { header, main } = dashboard(page);
   await page.goto("/inventory");
   // the Dashboard is drawn once the saved session is read
@@ -72,7 +73,7 @@ test("Web: the page never scrolls and the header stays in view", async ({ page }
 
 // Opens the tab still being built and checks it shows the cone and is read out as "em construção", and that its
 // screen sits blurred and out of reach behind the notice naming it, with nothing scrolling sideways.
-test("Web: a tab still being built opens behind the work-in-progress notice", async ({ page }) => {
+test("Web: a tab still being built opens behind the work-in-progress notice", { tag: [TEST_TAGS.dashboard] }, async ({ page }) => {
   test.skip(!WIP_TAB, "No tab is being built");
   await page.goto("/inventory");
   const tab = dashboard(page).tab(WIP_TAB!.id);
@@ -86,7 +87,7 @@ test("Web: a tab still being built opens behind the work-in-progress notice", as
 
 // On a 1360×768 notebook, in full screen and in a window (1360×689), opens the Catalog tab and checks the page itself
 // doesn't scroll, down or sideways, with the header at the top.
-test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", async ({ page }, testInfo) => {
+test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", { tag: [TEST_TAGS.catalog, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "A desktop screen");
   const shell = dashboard(page);
   await page.goto("/catalog");

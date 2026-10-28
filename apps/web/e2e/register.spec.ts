@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { logIn, loginForm, registerForm } from "./locators/auth.ts";
 import { tour } from "./locators/common.ts";
 import { logOut } from "./locators/dashboard.ts";
@@ -30,7 +31,7 @@ async function fillIn(page: Page, user = NEW_USER) {
 // and checks they land on the Dashboard logged in, where the Inventory tutorial starts on this first login. Logs out
 // and in again with the new user, and checks it doesn't start again; then a test user logging in on the same browser
 // gets it on their own first login. Nothing scrolls sideways at either screen size.
-test("Web: a new user signs up, lands on the Dashboard and logs in again", async ({ page, users }) => {
+test("Web: a new user signs up, lands on the Dashboard and logs in again", { tag: [TEST_TAGS.auth] }, async ({ page, users }) => {
   const form = registerForm(page);
   const { skip } = tour(page);
   const logInAs = async (user: { username: string; password: string }) => {
@@ -70,7 +71,7 @@ test("Web: a new user signs up, lands on the Dashboard and logs in again", async
 });
 
 // Sends the sign-up empty and checks each field shows its message, then goes back to the login with the link.
-test("Web: the sign-up checks its fields and leads back to the login", async ({ page }) => {
+test("Web: the sign-up checks its fields and leads back to the login", { tag: [TEST_TAGS.auth] }, async ({ page }) => {
   const form = registerForm(page);
   await page.goto("/register");
   await form.submit.click();

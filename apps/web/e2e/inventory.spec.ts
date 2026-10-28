@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { rgb } from "./support/expect.ts";
 import { atNotebookSizes } from "./support/sizes.ts";
 import { dataTable, dialog, options, thumbnailImage, tour } from "./locators/common.ts";
@@ -33,7 +34,7 @@ async function openInventory(page: Page) {
 // Lists every item with the counter of the total and the stock alerts, the price in reais, "qualquer
 // modelo" for an item without a vehicle model, N/A muted with its full name as a tooltip, and the low and
 // out-of-stock rows tinted.
-test("Web: the inventory lists every item with its stock alerts", async ({ page }, testInfo) => {
+test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page }, testInfo) => {
   await openInventory(page);
   const { rows, head } = dataTable(page);
   await expect(inventory(page).count).toHaveText("4 de 4 itens · 1 baixo · 1 esgotado");
@@ -66,7 +67,7 @@ test("Web: the inventory lists every item with its stock alerts", async ({ page 
 // Checks the toolbar has the search at its left edge and "Novo item", the last of the buttons, at its right edge, the
 // panel's: at the minimum sizes (where the buttons wrap under the search on a phone) and, on desktop, on a wide screen
 // too, where the search stops growing and the gap goes between it and the buttons.
-test("Web: the toolbar buttons sit at the panel's right edge", async ({ page }, testInfo) => {
+test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page }, testInfo) => {
   await openInventory(page);
   const { toolbar, searchBox, newItem } = inventory(page);
   const edges = async () => {
@@ -101,7 +102,7 @@ async function layout(page: Page) {
 // Opens the Inventory with a few items, with none and with the API failing, and checks each time the panel reaches the
 // bottom of the window (only the frame's margin under it), the pagination shows, and the page doesn't scroll. Each
 // state's routes are tried before the ones of the state before it.
-test("Web: the Inventory panel fills the window and keeps its pagination", async ({ page }) => {
+test("Web: the Inventory panel fills the window and keeps its pagination", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page }) => {
   for (const [state, open] of [
     ["a few items", () => serveItems(page, ITEMS.slice(0, 2))],
     ["no items", () => serveItems(page, [])],
@@ -120,7 +121,7 @@ test("Web: the Inventory panel fills the window and keeps its pagination", async
 // Opens the Inventory with 100 items on a page and scrolls the list, and checks only the list scrolls: the page stays
 // put and the pagination stays in view. On desktop the toolbar stays too and the table's header row stays pinned on
 // top; on a phone the toolbar and the filters scroll away with the cards, inside the panel.
-test("Web: only the Inventory list scrolls", async ({ page }, testInfo) => {
+test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page }, testInfo) => {
   const inv = inventory(page);
   const table = dataTable(page);
   await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
@@ -144,7 +145,7 @@ test("Web: only the Inventory list scrolls", async ({ page }, testInfo) => {
 
 // Searches by part code without separators, by name without accents, and for something that isn't there,
 // checking the rows and the counter follow, and that clearing the search brings every item back.
-test("Web: the search finds items by name or part code", async ({ page }) => {
+test("Web: the search finds items by name or part code", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   await openInventory(page);
   const inv = inventory(page);
   const { rows } = dataTable(page);
@@ -168,7 +169,7 @@ test("Web: the search finds items by name or part code", async ({ page }) => {
 
 // Searches by the second of an item's original codes, written without its separators, and checks the list finds that
 // item alone; its row keeps showing its brand's code.
-test("Web: an item is found by its second original code", async ({ page }) => {
+test("Web: an item is found by its second original code", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const shoe = item({ code: "N-1210", name: "Pastilha dianteira", originalCodes: ["5U0 698 151", "5U0 698 151 A"] });
   await serveItems(page, [shoe, ...ITEMS]);
   await page.goto("/inventory");
@@ -184,7 +185,7 @@ test("Web: an item is found by its second original code", async ({ page }) => {
 // required fields, the filled-in form is posted with the writing rule applied, a toast confirms it and the list
 // shows the new item first without a reload; then the item's pencil opens it filled in and an edit is patched. Save is on
 // screen without scrolling at both screen sizes.
-test("Web: items are added and edited through the item form", async ({ page }) => {
+test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
     const saved = savedItem(route.request().postDataJSON());
@@ -224,7 +225,7 @@ test("Web: items are added and edited through the item form", async ({ page }) =
 // Types a code another item uses in Novo item, key by key, and checks the field names that item at once, before
 // Save, and lets it go once the code is free; written with other separators, it is named again. In Editar item, the
 // item's own code passes. Nothing is sent.
-test("Web: a part code in use is named while it is typed", async ({ page }) => {
+test("Web: a part code in use is named while it is typed", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   await serveItems(page, [...ITEMS]);
   const sent: string[] = [];
   page.on("request", (request) => {
@@ -257,7 +258,7 @@ test("Web: a part code in use is named while it is typed", async ({ page }) => {
 // picking it creates the name, fills it in and says so in a toast, the model under the brand just created. A name
 // typed without picking "+ Criar" is refused on save, pointing to it. Once the item is saved, its new category is in
 // the Filtros menu without a reload.
-test("Web: categories, brands and models are created from the item form", async ({ page }) => {
+test("Web: categories, brands and models are created from the item form", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
     const saved = savedItem(route.request().postDataJSON());
@@ -313,7 +314,7 @@ test("Web: categories, brands and models are created from the item form", async 
 // Sorts a list of 30 items through the API: on the second page, sorting by location goes back to the first page with
 // the locations in natural order (A-2 before A-10); the same column again reverses it; and the unit price sorts by
 // value, ties in part code order. The desktop sorts with the column headers, the phone with the "Ordenar" select.
-test("Web: the inventory list sorts by a column", async ({ page }, testInfo) => {
+test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }, async ({ page }, testInfo) => {
   const stock = Array.from({ length: 30 }, (_, index) =>
     item({ code: `P-${index + 1}`, name: `Peça ${index + 1}`, location: `A-${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
   );
@@ -364,7 +365,7 @@ test("Web: the inventory list sorts by a column", async ({ page }, testInfo) => 
 // the file chosen is previewed with the names to create and the row with an error marked, and importing saves the
 // valid rows only: a new item, and an update of the item whose part code is in use. A toast says so and the list
 // shows them without a reload.
-test("Web: items are imported from a CSV file", async ({ page }) => {
+test("Web: items are imported from a CSV file", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = [...ITEMS];
   const imported: string[] = [];
   await page.route("**/api/items/import", async (route) => {
@@ -422,7 +423,7 @@ test("Web: items are imported from a CSV file", async ({ page }) => {
 // the test item, part 2 finds it with the search and the filters, and part 3 opens its details, edits it to a low and
 // then an out-of-stock row, and deletes it. Closing the form mid-step goes back to the step that opens it. At the end
 // the search and the filters are off and the test item is gone; the user menu replays the tutorial, and Skip ends it.
-test("Web: the Inventory tutorial creates, finds, edits and deletes a test item", async ({ page }) => {
+test("Web: the Inventory tutorial creates, finds, edits and deletes a test item", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   await signIn(page, false);
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
@@ -517,7 +518,7 @@ test("Web: the Inventory tutorial creates, finds, edits and deletes a test item"
 // Tidies the lists through "Gerenciar listas" against an API that keeps what it is sent: once its only item is
 // deleted, a category shows no items and is deleted after confirming; a category is renamed in place and the list
 // shows its items under the new name; and a category items use can't be deleted, but "Ver itens" shows them, filtered.
-test("Web: the lists are renamed and cleaned up in Manage lists", async ({ page }) => {
+test("Web: the lists are renamed and cleaned up in Manage lists", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = [...ITEMS];
   await serveItems(page, stock);
   await page.route("**/api/items/*", async (route) => {
@@ -562,7 +563,7 @@ test("Web: the lists are renamed and cleaned up in Manage lists", async ({ page 
 // With the category filter on "Freios" through "Ver itens", renames "Freios" to the name of "Motor" against an API that
 // keeps what it is sent: the merge is asked and done, and the filter follows it to "Motor", so the list shows the
 // moved item with the one already there.
-test("Web: a name merged into another keeps the filters on its items", async ({ page }) => {
+test("Web: a name merged into another keeps the filters on its items", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   await serveItems(page, [...ITEMS]);
   await page.goto("/inventory");
   const inv = inventory(page);
@@ -591,7 +592,7 @@ test("Web: a name merged into another keeps the filters on its items", async ({ 
 // Deletes an item against an API that keeps what it is sent: the row's trash opens a confirmation naming the item
 // and its code, Cancel and Escape leave the list as it was, and Excluir deletes it by its id, a toast confirms it
 // and the list loses the row without a reload. Excluir is on screen without scrolling at both screen sizes.
-test("Web: an item is deleted after confirming", async ({ page }) => {
+test("Web: an item is deleted after confirming", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = [...ITEMS];
   const deleted: string[] = [];
   await serveItems(page, stock);
@@ -631,7 +632,7 @@ test("Web: an item is deleted after confirming", async ({ page }) => {
 // Opens an item's details from its row against an API that keeps what it is sent: the details show the item as
 // text, Editar unlocks the fields in place and Salvar alterações patches the item. The pencil still opens the edit
 // form and Enter on a focused row opens the details; the user menu has no choice to turn this off.
-test("Web: a row opens the item details, editable after Editar", async ({ page }) => {
+test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = [...ITEMS];
   await serveItems(page, stock);
   await page.route("**/api/items/*", async (route) => {
@@ -674,7 +675,7 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
 // opens a new item's form filled in without the code and with the quantity at 0, and saving it with a code of its own
 // posts the item, then sends the photos as copies of the first item's, which become photos of the copy's own. Deleting
 // the first item leaves the copy's photos; duplicating the copy with Copiar só os dados gives an item without photos.
-test("Web: an item is duplicated from its details, with or without its photos", async ({ page }) => {
+test("Web: an item is duplicated from its details, with or without its photos", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const png = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
     "base64",
@@ -747,7 +748,7 @@ test("Web: an item is duplicated from its details, with or without its photos", 
 
 // Closes Novo item, Editar item, Detalhes do item and Gerenciar listas with the round × at the top right of each,
 // on screen without scrolling at both screen sizes, and checks nothing was sent.
-test("Web: the item form and Manage lists close on the ×", async ({ page }) => {
+test("Web: the item form and Manage lists close on the ×", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   await serveItems(page, [...ITEMS]);
   const sent: string[] = [];
   page.on("request", (request) => {
@@ -777,7 +778,7 @@ test("Web: the item form and Manage lists close on the ×", async ({ page }) => 
 // Works with an item's photos against an API that keeps what it is sent: the row shows the cover's thumbnail, which
 // opens the photos large; "Adicionar foto" sends the kept photo and the new file, in order, and the viewer and the
 // list follow; removing the cover sends what is left. Then a photo added in the edit form is sent after the item.
-test("Web: item photos are added and removed from the list and the form", async ({ page }) => {
+test("Web: item photos are added and removed from the list and the form", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const png = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
     "base64",
@@ -839,7 +840,7 @@ test("Web: item photos are added and removed from the list and the form", async 
 // list query only on Aplicar and leave their rows, with the button counting one filter; the stock status chips go
 // one at a time; a vehicle brand narrows the vehicle models, each named with its brand; the position chips carry
 // their full names; and "Limpar filtros" brings every item back with an empty query.
-test("Web: the filters narrow the list through the API query", async ({ page }) => {
+test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   // The queries of the list's page; the request for every item, with no query, is left out.
   const queries: string[] = [];
   await serveItems(page, ITEMS, (query) => query.has("pageSize") && queries.push(query.toString()));
@@ -890,7 +891,7 @@ test("Web: the filters narrow the list through the API query", async ({ page }) 
 // Follows the list's feedback: skeleton rows while the API takes its time, then the error state when it fails, whose
 // "Tentar de novo" loads the list once the API answers; a search that finds nothing offers "Limpar filtros", which
 // brings every item back; and an empty stock offers "Novo item", which opens the form.
-test("Web: the inventory shows loading, error and empty states", async ({ page }) => {
+test("Web: the inventory shows loading, error and empty states", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   let answer: "slow" | "fail" | "items" = "slow";
   let release = () => {};
   const stock = [...ITEMS];
@@ -936,7 +937,7 @@ test("Web: the inventory shows loading, error and empty states", async ({ page }
 // the range shown; page 2 asks for page 2; 50 per page keeps the first item that was showing on screen; a search goes
 // back to page 1; the user menu's "Itens por página" applies to the list at once; deleting the last item of the last
 // page goes to the page before; and a new item shows first on page 1.
-test("Web: the inventory list shows one page at a time", async ({ page }) => {
+test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = Array.from({ length: 51 }, (_, index) =>
     item({ code: `P-${String(index + 1).padStart(3, "0")}`, name: `Peça ${index + 1}`, quantity: 5 }),
   );
@@ -994,7 +995,7 @@ test("Web: the inventory list shows one page at a time", async ({ page }) => {
 // On a 1360×768 notebook, in full screen and in a window (1360×689 once the taskbar and the title bar are taken off),
 // opens the Inventory with 100 items and checks the page doesn't scroll: the header at the top, the toolbar and the
 // pagination in view, nothing sideways, and only the table scrolls.
-test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({ page }, testInfo) => {
+test("Web: on a 1360×768 notebook only the Inventory's table scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "A desktop screen");
   await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
   await page.goto("/inventory");
@@ -1016,7 +1017,7 @@ test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({
 // in the accent at its left; a click anywhere on it opens a row for each brand under it, with the brand's part brand,
 // code and quantity, no tint and no actions, and a click on the second brand opens the item's details on that brand.
 // A click on the item closes the brands' rows again, and Enter on it opens them.
-test("Web: an item of several brands opens a row for each brand", async ({ page }) => {
+test("Web: an item of several brands opens a row for each brand", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const pads = testItem({
     name: "Pastilha dianteira",
     minQuantity: 4,
@@ -1064,7 +1065,7 @@ test("Web: an item of several brands opens a row for each brand", async ({ page 
 
 // Lists an item that fits two vehicles among the test items, and checks its row shows the first with "+1" and both in
 // its tooltip, and that the vehicle brand filter of each vehicle finds it, the second's alone.
-test("Web: an item fitting two vehicles is found by the filter of each", async ({ page }) => {
+test("Web: an item fitting two vehicles is found by the filter of each", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const bumper = item({
     code: "PC-500",
     name: "Para-choque dianteiro",
