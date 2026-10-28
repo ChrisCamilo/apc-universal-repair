@@ -38,8 +38,6 @@ export function inventory(page: Page) {
     failed: page.getByRole("alert").filter({ hasText: "Não foi possível carregar o estoque" }),
     nothingFound: page.getByRole("heading", { name: "Nenhum item encontrado" }),
     empty: page.getByRole("heading", { name: "Nenhum item cadastrado" }),
-    vehicle: page.getByTestId("inventory.inventory-tab.vehicle"),
-    chevron: page.getByTestId("inventory.inventory-tab.chevron"),
     edit: (name: string) => page.getByRole("button", { name: `Editar ${name}` }),
     remove: (name: string) => page.getByRole("button", { name: `Excluir ${name}` }),
     photos: (name: string) => page.getByRole("button", { name: `Ver fotos de ${name}` }),

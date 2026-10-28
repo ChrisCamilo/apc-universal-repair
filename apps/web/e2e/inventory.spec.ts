@@ -2,6 +2,9 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
 import { rgb } from "./support/expect.ts";
 import { atNotebookSizes } from "./support/sizes.ts";
+import { dataTable, dialog, options, thumbnailImage, tour } from "./locators/common.ts";
+import { dashboard, userMenu } from "./locators/dashboard.ts";
+import { deleteDialog, deleteItem, fillItem, filtersMenu, importDialog, inventory, itemDetails, itemForm, manageLists } from "./locators/inventory.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
 import { savedItem, serveItems } from "./stubs/items.ts";
@@ -24,7 +27,7 @@ const ITEMS: Item[] = [
 async function openInventory(page: Page) {
   await serveItems(page, ITEMS);
   await page.goto("/inventory");
-  await expect(page.getByRole("table", { name: "Itens do estoque" })).toBeVisible();
+  await expect(inventory(page).table).toBeVisible();
 }
 
 // Lists every item with the counter of the total and the stock alerts, the price in reais, "qualquer
@@ -32,8 +35,8 @@ async function openInventory(page: Page) {
 // out-of-stock rows tinted.
 test("Web: the inventory lists every item with its stock alerts", async ({ page }, testInfo) => {
   await openInventory(page);
-  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("4 de 4 itens · 1 baixo · 1 esgotado");
-  const rows = page.locator("tbody tr");
+  const { rows, head } = dataTable(page);
+  await expect(inventory(page).count).toHaveText("4 de 4 itens · 1 baixo · 1 esgotado");
   await expect(rows).toHaveCount(4);
   await expect(rows.nth(1)).toHaveAttribute("data-status", "warn");
   await expect(rows.nth(2)).toHaveAttribute("data-status", "danger");
@@ -51,10 +54,10 @@ test("Web: the inventory lists every item with its stock alerts", async ({ page 
     const sideNotApplicable = rows.nth(1).getByTitle("Lado não se aplica");
     await expect(sideNotApplicable).toHaveText("N/A");
     const muted = await sideNotApplicable.evaluate((el) => getComputedStyle(el).color);
-    const text = await rows.nth(1).getByTitle("Dianteiro").evaluate((el) => getComputedStyle(el).color);
+    const text = await position.evaluate((el) => getComputedStyle(el).color);
     expect(muted).not.toBe(text);
   } else {
-    await expect(page.locator("thead")).toBeHidden();
+    await expect(head).toBeHidden();
     await expect(rows.nth(3)).toContainText("Suspensão · Cofap · Ford Escort · T · LE · Preto · A-10");
   }
   await expect(page).not.toScrollSideways();
@@ -65,12 +68,12 @@ test("Web: the inventory lists every item with its stock alerts", async ({ page 
 // too, where the search stops growing and the gap goes between it and the buttons.
 test("Web: the toolbar buttons sit at the panel's right edge", async ({ page }, testInfo) => {
   await openInventory(page);
-  const toolbar = page.getByTestId("inventory.inventory-tab.toolbar");
+  const { toolbar, searchBox, newItem } = inventory(page);
   const edges = async () => {
     const bar = (await toolbar.boundingBox())!;
-    const search = (await page.getByTestId("inventory.inventory-tab.search").boundingBox())!;
-    const newItem = (await page.getByRole("button", { name: "Novo item" }).boundingBox())!;
-    return { searchLeft: search.x - bar.x, newItemRight: bar.x + bar.width - (newItem.x + newItem.width) };
+    const search = (await searchBox.boundingBox())!;
+    const button = (await newItem.boundingBox())!;
+    return { searchLeft: search.x - bar.x, newItemRight: bar.x + bar.width - (button.x + button.width) };
   };
   const sizes = testInfo.project.name === "desktop" ? [page.viewportSize()!, { width: 1920, height: 1080 }] : [page.viewportSize()!];
   for (const size of sizes) {
@@ -87,7 +90,7 @@ test("Web: the toolbar buttons sit at the panel's right edge", async ({ page }, 
  * @returns The gap under the panel, in px, and the page's extra height (0 when it doesn't scroll).
  */
 async function layout(page: Page) {
-  const panel = (await page.getByTestId("inventory.inventory-tab.body").locator("xpath=..").boundingBox())!;
+  const panel = (await inventory(page).panel.boundingBox())!;
   const { height, pageExtra } = await page.evaluate(() => ({
     height: window.innerHeight,
     pageExtra: document.scrollingElement!.scrollHeight - window.innerHeight,
@@ -106,7 +109,7 @@ test("Web: the Inventory panel fills the window and keeps its pagination", async
   ] as const) {
     await open();
     await page.goto("/inventory");
-    await expect(page.getByRole("navigation", { name: "Páginas do estoque" }), state).toBeVisible();
+    await expect(inventory(page).pager.pages, state).toBeVisible();
     const { gapBelow, pageExtra } = await layout(page);
     expect(gapBelow, state).toBeLessThanOrEqual(16);
     expect(pageExtra, state).toBe(0);
@@ -118,21 +121,23 @@ test("Web: the Inventory panel fills the window and keeps its pagination", async
 // put and the pagination stays in view. On desktop the toolbar stays too and the table's header row stays pinned on
 // top; on a phone the toolbar and the filters scroll away with the cards, inside the panel.
 test("Web: only the Inventory list scrolls", async ({ page }, testInfo) => {
+  const inv = inventory(page);
+  const table = dataTable(page);
   await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
   await page.goto("/inventory");
-  await page.getByRole("radio", { name: "100" }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(100);
+  await inv.pager.size(100).click();
+  await expect(table.rows).toHaveCount(100);
   await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height - 160);
   await page.mouse.wheel(0, 2000);
-  const scroller = testInfo.project.name === "desktop" ? "common.data-table.scroll" : "inventory.inventory-tab.body";
-  await expect.poll(() => page.getByTestId(scroller).evaluate((box) => box.scrollTop)).toBeGreaterThan(1000);
+  const scroller = testInfo.project.name === "desktop" ? table.scroll : inv.body;
+  await expect.poll(() => scroller.evaluate((box) => box.scrollTop)).toBeGreaterThan(1000);
 
   expect((await layout(page)).pageExtra).toBe(0);
-  await expect(page.getByRole("navigation", { name: "Páginas do estoque" })).toBeInViewport();
+  await expect(inv.pager.pages).toBeInViewport();
   if (testInfo.project.name === "desktop") {
-    await expect(page.getByRole("button", { name: "Novo item" })).toBeInViewport();
-    const header = (await page.getByRole("columnheader", { name: /Item/ }).boundingBox())!;
-    const scroll = (await page.getByTestId("common.data-table.scroll").boundingBox())!;
+    await expect(inv.newItem).toBeInViewport();
+    const header = (await table.header(/Item/).boundingBox())!;
+    const scroll = (await table.scroll.boundingBox())!;
     expect(Math.abs(header.y - scroll.y)).toBeLessThanOrEqual(1);
   }
 });
@@ -141,23 +146,23 @@ test("Web: only the Inventory list scrolls", async ({ page }, testInfo) => {
 // checking the rows and the counter follow, and that clearing the search brings every item back.
 test("Web: the search finds items by name or part code", async ({ page }) => {
   await openInventory(page);
-  const search = page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" });
-  const rows = page.locator("tbody tr");
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
 
-  await search.fill("w712");
+  await inv.search.fill("w712");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Filtro de óleo");
-  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("1 de 4 itens · 1 baixo · 1 esgotado");
+  await expect(inv.count).toHaveText("1 de 4 itens · 1 baixo · 1 esgotado");
 
-  await search.fill("AGUA");
+  await inv.search.fill("AGUA");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Bomba d'água");
 
-  await search.fill("parafuso");
-  await expect(page.getByRole("heading", { name: "Nenhum item encontrado" })).toBeVisible();
-  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("0 de 4 itens · 1 baixo · 1 esgotado");
+  await inv.search.fill("parafuso");
+  await expect(inv.nothingFound).toBeVisible();
+  await expect(inv.count).toHaveText("0 de 4 itens · 1 baixo · 1 esgotado");
 
-  await page.getByRole("button", { name: "Limpar busca" }).click();
+  await inv.clearSearch.click();
   await expect(rows).toHaveCount(4);
 });
 
@@ -167,9 +172,9 @@ test("Web: an item is found by its second original code", async ({ page }) => {
   const shoe = item({ code: "N-1210", name: "Pastilha dianteira", originalCodes: ["5U0 698 151", "5U0 698 151 A"] });
   await serveItems(page, [shoe, ...ITEMS]);
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
+  const { rows } = dataTable(page);
   await expect(rows).toHaveCount(5);
-  await page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" }).fill("5u0698151a");
+  await inventory(page).search.fill("5u0698151a");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Pastilha dianteira");
   await expect(rows.first()).toContainText("N-1210");
@@ -193,32 +198,27 @@ test("Web: items are added and edited through the item form", async ({ page }) =
     return route.fulfill({ json: stock[index] });
   });
   await page.goto("/inventory");
-  await page.getByRole("button", { name: "Novo item" }).click();
-  const dialog = page.getByRole("dialog", { name: "Novo item" });
-  const save = dialog.getByRole("button", { name: "Salvar" });
-  await expect(save).toBeInViewport();
-  await save.click();
-  await expect(dialog.getByText("Informe o código da peça.")).toBeVisible();
+  const { rows } = dataTable(page);
+  const form = itemForm(page, "Novo item");
+  await inventory(page).newItem.click();
+  await expect(form.save).toBeInViewport();
+  await form.save.click();
+  await expect(form.root.getByText("Informe o código da peça.")).toBeVisible();
 
-  await dialog.getByLabel("Código da peça").fill("ngk-b7");
-  await dialog.getByLabel("Nome").fill("vela de ignição");
-  await dialog.getByRole("combobox", { name: "Categoria" }).fill("motor");
-  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("Mann");
-  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Chevrolet");
-  await dialog.getByLabel("Valor unitário (R$)").fill("34,9");
-  await save.click();
+  await fillItem(page, "Novo item", { code: "ngk-b7", name: "vela de ignição", category: "motor", partBrand: "Mann", vehicleBrand: "Chevrolet", unitPrice: "34,9" });
+  await form.save.click();
   await expect(page.getByText("Item “Vela de ignição” cadastrado.")).toBeVisible();
-  await expect(dialog).toBeHidden();
-  await expect(page.locator("tbody tr")).toHaveCount(5);
-  await expect(page.locator("tbody tr").first()).toContainText("NGK-B7");
+  await expect(form.root).toBeHidden();
+  await expect(rows).toHaveCount(5);
+  await expect(rows.first()).toContainText("NGK-B7");
 
-  await page.getByRole("button", { name: "Editar Vela de ignição" }).click();
-  const edit = page.getByRole("dialog", { name: "Editar item" });
-  await expect(edit.getByLabel("Valor unitário (R$)")).toHaveValue("R$ 34,90");
-  await edit.getByLabel("Quantidade", { exact: true }).fill("9");
-  await edit.getByRole("button", { name: "Salvar" }).click();
+  await inventory(page).edit("Vela de ignição").click();
+  const edit = itemForm(page, "Editar item");
+  await expect(edit.unitPrice).toHaveValue("R$ 34,90");
+  await edit.quantity.fill("9");
+  await edit.save.click();
   await expect(page.getByText("Item “Vela de ignição” salvo.")).toBeVisible();
-  await expect(page.locator("tbody tr").first()).toContainText("9");
+  await expect(rows.first()).toContainText("9");
 });
 
 // Types a code another item uses in Novo item, key by key, and checks the field names that item at once, before
@@ -233,23 +233,22 @@ test("Web: a part code in use is named while it is typed", async ({ page }) => {
     }
   });
   await page.goto("/inventory");
-  await page.getByRole("button", { name: "Novo item" }).click();
-  const form = page.getByRole("dialog", { name: "Novo item" });
-  const code = form.getByLabel("Código da peça");
-  await code.pressSequentially("bp-1020");
-  await expect(form.getByText("Código já usado em “Pastilha de freio”.")).toBeInViewport();
-  await code.pressSequentially("1");
-  await expect(form.getByText("Código já usado em “Pastilha de freio”.")).toBeHidden();
-  await code.fill("bp1020");
-  await expect(form.getByText("Código já usado em “Pastilha de freio”.")).toBeVisible();
-  await form.getByRole("button", { name: "Fechar" }).first().click();
+  await inventory(page).newItem.click();
+  const form = itemForm(page, "Novo item");
+  await form.code.pressSequentially("bp-1020");
+  await expect(form.root.getByText("Código já usado em “Pastilha de freio”.")).toBeInViewport();
+  await form.code.pressSequentially("1");
+  await expect(form.root.getByText("Código já usado em “Pastilha de freio”.")).toBeHidden();
+  await form.code.fill("bp1020");
+  await expect(form.root.getByText("Código já usado em “Pastilha de freio”.")).toBeVisible();
+  await form.close.click();
 
-  await page.getByRole("button", { name: "Editar Pastilha de freio" }).click();
-  const edit = page.getByRole("dialog", { name: "Editar item" });
-  await edit.getByLabel("Código da peça").fill("w 712/95");
-  await expect(edit.getByText("Código já usado em “Filtro de óleo”.")).toBeVisible();
-  await edit.getByLabel("Código da peça").fill("bp-1020");
-  await expect(edit.getByText(/Código já usado/)).toBeHidden();
+  await inventory(page).edit("Pastilha de freio").click();
+  const edit = itemForm(page, "Editar item");
+  await edit.code.fill("w 712/95");
+  await expect(edit.root.getByText("Código já usado em “Filtro de óleo”.")).toBeVisible();
+  await edit.code.fill("bp-1020");
+  await expect(edit.root.getByText(/Código já usado/)).toBeHidden();
   expect(sent).toEqual([]);
 });
 
@@ -267,39 +266,38 @@ test("Web: categories, brands and models are created from the item form", async 
   });
   await serveItems(page, stock);
   await page.goto("/inventory");
-  await page.getByRole("button", { name: "Novo item" }).click();
-  const dialog = page.getByRole("dialog", { name: "Novo item" });
-  await dialog.getByLabel("Código da peça").fill("t-1");
-  await dialog.getByLabel("Nome").fill("Turbina");
+  const option = options(page).named;
+  await inventory(page).newItem.click();
+  const form = itemForm(page, "Novo item");
+  await form.code.fill("t-1");
+  await form.name.fill("Turbina");
 
-  const category = dialog.getByRole("combobox", { name: "Categoria" });
-  await category.fill("motor diesel");
-  await page.getByRole("option", { name: "+ Criar categoria “Motor diesel”" }).click();
+  await form.category.fill("motor diesel");
+  await option("+ Criar categoria “Motor diesel”").click();
   await expect(page.getByText("Categoria “Motor diesel” criada.")).toBeVisible();
-  await expect(category).toHaveValue("Motor diesel");
-  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("NGK");
-  await page.getByRole("option", { name: "+ Criar marca “NGK”" }).click();
+  await expect(form.category).toHaveValue("Motor diesel");
+  await form.partBrand.fill("NGK");
+  await option("+ Criar marca “NGK”").click();
   await expect(page.getByText("Marca de peça “NGK” criada.")).toBeVisible();
-  const model = dialog.getByRole("combobox", { name: "Modelo do veículo" });
-  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("renault");
-  await expect(model).toBeDisabled();
+  await form.vehicleBrand.fill("renault");
+  await expect(form.vehicleModel).toBeDisabled();
   const brandCreated = page.waitForResponse((response) => response.url().endsWith("/api/vehicle-brands") && response.status() === 201);
-  await page.getByRole("option", { name: "+ Criar marca “Renault”" }).click();
+  await option("+ Criar marca “Renault”").click();
   const renault = await (await brandCreated).json();
   await expect(page.getByText("Marca de veículo “Renault” criada.")).toBeVisible();
-  await expect(model).toBeEnabled();
-  await model.fill("Clio");
+  await expect(form.vehicleModel).toBeEnabled();
+  await form.vehicleModel.fill("Clio");
   const modelCreated = page.waitForRequest((request) => request.url().endsWith("/api/vehicle-models") && request.method() === "POST");
-  await page.getByRole("option", { name: "+ Criar modelo “Clio”" }).click();
+  await option("+ Criar modelo “Clio”").click();
   expect((await modelCreated).postDataJSON()).toEqual({ name: "Clio", vehicleBrandId: renault.id });
   await expect(page.getByText("Modelo “Clio” criado.")).toBeVisible();
-  await dialog.getByLabel("Valor unitário (R$)").fill("10");
+  await form.unitPrice.fill("10");
 
-  await category.fill("Turbo");
-  await dialog.getByRole("button", { name: "Salvar" }).click();
-  await expect(dialog.getByText("Categoria não cadastrada. Escolha “+ Criar categoria” na lista.")).toBeVisible();
-  await category.fill("motor diesel");
-  await dialog.getByRole("button", { name: "Salvar" }).click();
+  await form.category.fill("Turbo");
+  await form.save.click();
+  await expect(form.root.getByText("Categoria não cadastrada. Escolha “+ Criar categoria” na lista.")).toBeVisible();
+  await form.category.fill("motor diesel");
+  await form.save.click();
   await expect(page.getByText("Item “Turbina” cadastrado.")).toBeVisible();
   expect(stock[0]).toMatchObject({
     category: "Motor diesel",
@@ -307,9 +305,9 @@ test("Web: categories, brands and models are created from the item form", async 
     brands: [{ partBrand: "NGK" }],
   });
 
-  await page.getByRole("button", { name: "Filtros" }).click();
-  await page.getByRole("dialog", { name: "Filtros do estoque" }).getByRole("combobox", { name: "Categoria" }).click();
-  await expect(page.getByRole("option", { name: "Motor diesel" })).toBeVisible();
+  await inventory(page).filters.click();
+  await filtersMenu(page).field("Categoria").click();
+  await expect(option("Motor diesel")).toBeVisible();
 });
 
 // Sorts a list of 30 items through the API: on the second page, sorting by location goes back to the first page with
@@ -322,18 +320,19 @@ test("Web: the inventory list sorts by a column", async ({ page }, testInfo) => 
   const queries: string[] = [];
   await serveItems(page, stock, (query) => query.has("pageSize") && queries.push(query.toString()));
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
+  const table = dataTable(page);
+  const { rows } = table;
   const desktop = testInfo.project.name === "desktop";
   /** Sorts by a column, with its header on the desktop and with the "Ordenar" select on the phone. */
   const sortBy = async (header: string, option: string) => {
     if (desktop) {
-      await page.getByRole("columnheader", { name: header }).getByRole("button").click();
+      await table.header(header).getByRole("button").click();
     } else {
-      await page.getByRole("combobox", { name: "Ordenar" }).click();
-      await page.getByRole("option", { name: option }).click();
+      await table.sort.click();
+      await options(page).named(option).click();
     }
   };
-  await page.getByRole("navigation", { name: "Páginas do estoque" }).getByRole("button", { name: "Página 2" }).click();
+  await inventory(page).pager.page(2).click();
   await expect(rows).toHaveCount(5);
 
   await sortBy("Local", "Local (A → Z)");
@@ -342,7 +341,7 @@ test("Web: the inventory list sorts by a column", async ({ page }, testInfo) => 
   await expect(rows.nth(1)).toContainText("A-2");
   expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=location&order=asc");
   if (desktop) {
-    await expect(page.getByRole("columnheader", { name: "Local" })).toHaveAttribute("aria-sort", "ascending");
+    await expect(table.header("Local")).toHaveAttribute("aria-sort", "ascending");
   }
 
   await sortBy("Local", "Local (Z → A)");
@@ -386,13 +385,13 @@ test("Web: items are imported from a CSV file", async ({ page }) => {
   });
   await serveItems(page, stock);
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
+  const { rows } = dataTable(page);
   await expect(rows).toHaveCount(4);
 
-  await page.getByRole("button", { name: "Importar CSV" }).click();
-  const dialog = page.getByRole("dialog", { name: "Importar CSV" });
+  await inventory(page).importCsv.click();
+  const importer = importDialog(page);
   const download = page.waitForEvent("download");
-  await dialog.getByRole("button", { name: "Baixar modelo" }).click();
+  await importer.template.click();
   expect((await download).suggestedFilename()).toBe("modelo-estoque.csv");
 
   const file = [
@@ -401,17 +400,17 @@ test("Web: items are imported from a CSV file", async ({ page }) => {
     "ngk-b7;vela de ignição;Ignição;NGK;Fiat;Uno;10;3;B-1;34.9;;;",
     ";sem código;Freios;Cobreq;Ford;;1;;;0;;;",
   ].join("\n");
-  await dialog.getByLabel("Arquivo CSV").setInputFiles({ name: "estoque.csv", mimeType: "text/csv", buffer: Buffer.from(file) });
-  await expect(dialog.getByText("estoque.csv · 2 itens prontos para importar · 1 linha com erro")).toBeVisible();
-  await expect(dialog.getByText("Categorias: Ignição")).toBeVisible();
-  await expect(dialog.getByText("Marcas de peça: NGK")).toBeVisible();
-  await expect(dialog.locator("li[data-invalid]")).toContainText("Informe o código da peça.");
-  const submit = dialog.getByRole("button", { name: "Importar 2 itens" });
+  await importer.file.setInputFiles({ name: "estoque.csv", mimeType: "text/csv", buffer: Buffer.from(file) });
+  await expect(importer.root.getByText("estoque.csv · 2 itens prontos para importar · 1 linha com erro")).toBeVisible();
+  await expect(importer.root.getByText("Categorias: Ignição")).toBeVisible();
+  await expect(importer.root.getByText("Marcas de peça: NGK")).toBeVisible();
+  await expect(importer.rows.filter({ hasText: "Informe o código da peça." })).toHaveAttribute("data-invalid", "true");
+  const submit = importer.submit(2);
   await expect(submit).toBeInViewport();
   await submit.click();
 
   await expect(page.getByText("Importação concluída: 1 item criado, 1 atualizado.")).toBeVisible();
-  await expect(dialog).toBeHidden();
+  await expect(importer.root).toBeHidden();
   expect(imported).toEqual(["W 712/95", "NGK-B7"]);
   await expect(rows).toHaveCount(5);
   await expect(rows.first()).toContainText("Vela de ignição");
@@ -442,75 +441,77 @@ test("Web: the Inventory tutorial creates, finds, edits and deletes a test item"
     return route.fulfill({ json: stock[index] });
   });
   await page.goto("/inventory");
-  const card = page.getByRole("dialog").filter({ hasText: /\d+ \/ 19/ });
-  const step = (title: string) => expect(card.getByRole("heading", { name: title })).toBeVisible();
-  const doIt = () => card.getByRole("button", { name: "Fazer por mim" }).click();
-  const rows = page.locator("tbody tr");
+  const inv = inventory(page);
+  const guide = tour(page);
+  const step = (title: string) => expect(guide.step(title)).toBeVisible();
+  const doIt = () => guide.doIt.click();
+  const { rows } = dataTable(page);
   const testRow = rows.filter({ hasText: "TUTORIAL-001" });
 
   await step("Abra o cadastro");
-  await expect(card).toContainText("Parte 1 de 3 · Cadastrar um item");
-  await expect(page.getByTestId("common.tour.spotlight")).toBeVisible();
-  await page.getByRole("button", { name: "Novo item" }).first().click();
+  await expect(guide.card).toContainText("Parte 1 de 3 · Cadastrar um item");
+  await expect(guide.spotlight).toBeVisible();
+  await inv.newItem.first().click();
   await step("Diga que peça é");
-  await page.getByRole("dialog", { name: "Novo item" }).getByRole("button", { name: "Cancelar" }).click();
+  await itemForm(page, "Novo item").cancel.click();
   await step("Abra o cadastro");
   await doIt();
   await step("Diga que peça é");
   await doIt();
   await step("Diga onde e quantas");
-  await expect(page.getByRole("dialog", { name: "Novo item" }).getByLabel("Código da peça")).toHaveValue("TUTORIAL-001");
+  await expect(itemForm(page, "Novo item").code).toHaveValue("TUTORIAL-001");
   await doIt();
   await step("Salve o item");
   await doIt();
 
   await step("Procure pelo nome");
   await expect(testRow).toHaveCount(1);
-  await page.getByLabel("Procure pelo nome ou código da peça").fill("tutorial");
+  await inv.search.fill("tutorial");
   await step("Abra os filtros");
-  await page.getByRole("button", { name: "Filtros" }).click();
+  await inv.filters.click();
   await step("Filtre o estoque");
   await doIt();
   await step("Achou");
   await expect(rows).toHaveCount(1);
-  await card.getByRole("button", { name: "Próximo" }).click();
+  await guide.next.click();
 
   await step("Abra o item");
   await testRow.click();
   await step("Libere a edição");
-  await page.getByRole("dialog", { name: "Detalhes do item" }).getByRole("button", { name: "Editar" }).click();
+  await itemDetails(page).edit.click();
   await step("Mude o nome e a quantidade");
   await doIt();
   await step("Salve as alterações");
   await doIt();
   await step("Estoque baixo");
   await expect(testRow).toHaveAttribute("data-status", "warn");
-  await card.getByRole("button", { name: "Próximo" }).click();
+  await guide.next.click();
   await step("Edite pelo lápis");
-  await page.getByRole("button", { name: "Editar Item de teste do tutorial editado" }).click();
+  await inv.edit("Item de teste do tutorial editado").click();
   await step("Zere a quantidade");
   await doIt();
   await step("Esgotado");
   await expect(testRow).toHaveAttribute("data-status", "danger");
-  await card.getByRole("button", { name: "Próximo" }).click();
+  await guide.next.click();
   await step("Exclua o item");
-  await page.getByRole("button", { name: "Excluir Item de teste do tutorial editado" }).click();
+  await inv.remove("Item de teste do tutorial editado").click();
   await step("Confirme");
-  await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
+  await deleteDialog(page).confirm.click();
   await step("Pronto!");
-  await card.getByRole("button", { name: "Concluir" }).click();
+  await guide.done.click();
 
-  await expect(card).toBeHidden();
+  await expect(guide.card).toBeHidden();
   await expect(rows).toHaveCount(4);
-  await expect(page.getByLabel("Procure pelo nome ou código da peça")).toHaveValue("");
-  await expect(page.getByRole("button", { name: "Filtros", exact: true })).toBeVisible();
+  await expect(inv.search).toHaveValue("");
+  await expect(inv.filters).toBeVisible();
+  await expect(inv.filters).toHaveAccessibleName("Filtros");
   expect(stock.some((held) => held.brands.some((brand) => brand.code === "TUTORIAL-001"))).toBe(false);
 
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitem", { name: "Tutorial do estoque" }).click();
+  await userMenu(page).trigger.click();
+  await userMenu(page).item("Tutorial do estoque").click();
   await step("Abra o cadastro");
-  await card.getByRole("button", { name: "Pular tutorial" }).click();
-  await expect(card).toBeHidden();
+  await guide.skip.click();
+  await expect(guide.card).toBeHidden();
 });
 
 // Tidies the lists through "Gerenciar listas" against an API that keeps what it is sent: once its only item is
@@ -524,39 +525,39 @@ test("Web: the lists are renamed and cleaned up in Manage lists", async ({ page 
     return route.fulfill({ status: 204 });
   });
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
-  await page.getByRole("button", { name: "Excluir Bomba d'água" }).click();
-  await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
+  await deleteItem(page, "Bomba d'água");
   await expect(rows).toHaveCount(3);
 
-  await page.getByRole("button", { name: "Gerenciar listas" }).click();
-  const lists = page.getByRole("dialog", { name: "Gerenciar listas" });
-  await expect(lists.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" })).toBeInViewport();
-  const categories = lists.getByRole("region", { name: "Categorias" });
+  await inv.manageLists.click();
+  const lists = manageLists(page);
+  await expect(lists.closeText).toBeInViewport();
+  const categories = lists.section("Categorias");
   await expect(categories.getByRole("listitem").filter({ hasText: "Arrefecimento" })).toContainText("sem itens");
   await categories.getByRole("button", { name: "Excluir Arrefecimento" }).click();
-  const confirm = page.getByRole("dialog", { name: "Excluir “Arrefecimento”?" });
-  await expect(confirm.getByRole("button", { name: "Excluir" })).toBeInViewport();
-  await confirm.getByRole("button", { name: "Excluir" }).click();
+  const confirm = dialog(page, "Excluir “Arrefecimento”?").root.getByRole("button", { name: "Excluir" });
+  await expect(confirm).toBeInViewport();
+  await confirm.click();
   await expect(page.getByText("Categoria “Arrefecimento” excluída.")).toBeVisible();
   await expect(categories.getByRole("button", { name: "Excluir Arrefecimento" })).toBeHidden();
 
   await categories.getByRole("button", { name: "Renomear Suspensão" }).click();
-  await lists.getByLabel("Novo nome de “Suspensão”").fill("suspensão e direção");
+  await lists.newName("Suspensão").fill("suspensão e direção");
   await page.keyboard.press("Enter");
   await expect(page.getByText("Categoria renomeada para “Suspensão e direção”.")).toBeVisible();
-  await lists.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }).click();
+  await lists.closeText.click();
   await expect(rows.filter({ hasText: "Amortecedor" })).toContainText("Suspensão e direção");
 
-  await page.getByRole("button", { name: "Gerenciar listas" }).click();
+  await inv.manageLists.click();
   await categories.getByRole("button", { name: "Excluir Freios" }).click();
-  const blocked = page.getByRole("dialog", { name: "Não é possível excluir" });
+  const blocked = dialog(page, "Não é possível excluir").root;
   await expect(blocked).toContainText("1 item usa “Freios”.");
   await blocked.getByRole("button", { name: "Ver itens" }).click();
-  await expect(lists).toBeHidden();
+  await expect(lists.root).toBeHidden();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Pastilha de freio");
-  await expect(page.getByRole("button", { name: "Filtros, 1 ativo" })).toBeVisible();
+  await expect(inv.filters).toHaveAccessibleName("Filtros, 1 ativo");
 });
 
 // With the category filter on "Freios" through "Ver itens", renames "Freios" to the name of "Motor" against an API that
@@ -565,27 +566,28 @@ test("Web: the lists are renamed and cleaned up in Manage lists", async ({ page 
 test("Web: a name merged into another keeps the filters on its items", async ({ page }) => {
   await serveItems(page, [...ITEMS]);
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
-  await page.getByRole("button", { name: "Gerenciar listas" }).click();
-  const lists = page.getByRole("dialog", { name: "Gerenciar listas" });
-  const categories = lists.getByRole("region", { name: "Categorias" });
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
+  await inv.manageLists.click();
+  const lists = manageLists(page);
+  const categories = lists.section("Categorias");
   await categories.getByRole("button", { name: "Excluir Freios" }).click();
-  await page.getByRole("dialog", { name: "Não é possível excluir" }).getByRole("button", { name: "Ver itens" }).click();
+  await dialog(page, "Não é possível excluir").root.getByRole("button", { name: "Ver itens" }).click();
   await expect(rows).toHaveCount(1);
 
-  await page.getByRole("button", { name: "Gerenciar listas" }).click();
+  await inv.manageLists.click();
   await categories.getByRole("button", { name: "Renomear Freios" }).click();
-  await lists.getByLabel("Novo nome de “Freios”").fill("motor");
+  await lists.newName("Freios").fill("motor");
   await page.keyboard.press("Enter");
-  const confirm = page.getByRole("dialog", { name: "Juntar “Freios” com “Motor”?" });
+  const confirm = dialog(page, "Juntar “Freios” com “Motor”?").root;
   await expect(confirm).toContainText("O item de “Freios” passa para “Motor”");
   await confirm.getByRole("button", { name: "Juntar" }).click();
   await expect(page.getByText("Categoria “Freios” juntada a “Motor”: 1 item mudou.")).toBeVisible();
   await expect(categories.getByRole("button", { name: "Renomear Freios" })).toBeHidden();
-  await lists.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }).click();
+  await lists.closeText.click();
   await expect(rows).toHaveCount(2);
   await expect(rows.filter({ hasText: "Pastilha de freio" })).toContainText("Motor");
-  await expect(page.getByRole("button", { name: "Filtros, 1 ativo" })).toBeVisible();
+  await expect(inv.filters).toHaveAccessibleName("Filtros, 1 ativo");
 });
 
 // Deletes an item against an API that keeps what it is sent: the row's trash opens a confirmation naming the item
@@ -602,29 +604,29 @@ test("Web: an item is deleted after confirming", async ({ page }) => {
     return route.fulfill({ status: 204 });
   });
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
+  const { rows } = dataTable(page);
   await expect(rows).toHaveCount(4);
 
-  const trash = page.getByRole("button", { name: "Excluir Bomba d'água" });
-  const dialog = page.getByRole("dialog", { name: "Excluir item?" });
+  const trash = inventory(page).remove("Bomba d'água");
+  const confirmation = deleteDialog(page);
   await trash.click();
-  await expect(dialog).toContainText("Bomba d'água (BA-77) sai do estoque. Essa ação não pode ser desfeita.");
-  await expect(dialog.getByRole("button", { name: "Excluir" })).toBeInViewport();
-  await dialog.getByRole("button", { name: "Cancelar" }).click();
-  await expect(dialog).toBeHidden();
+  await expect(confirmation.root).toContainText("Bomba d'água (BA-77) sai do estoque. Essa ação não pode ser desfeita.");
+  await expect(confirmation.confirm).toBeInViewport();
+  await confirmation.cancel.click();
+  await expect(confirmation.root).toBeHidden();
   await trash.click();
   await page.keyboard.press("Escape");
-  await expect(dialog).toBeHidden();
+  await expect(confirmation.root).toBeHidden();
   await expect(rows).toHaveCount(4);
   expect(deleted).toEqual([]);
 
   const id = ITEMS[2].id;
   await trash.click();
-  await dialog.getByRole("button", { name: "Excluir" }).click();
+  await confirmation.confirm.click();
   await expect(page.getByText("Item “Bomba d'água” excluído.")).toBeVisible();
-  await expect(dialog).toBeHidden();
+  await expect(confirmation.root).toBeHidden();
   await expect(rows).toHaveCount(3);
-  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("3 de 3 itens · 1 baixo · 0 esgotados");
+  await expect(inventory(page).count).toHaveText("3 de 3 itens · 1 baixo · 0 esgotados");
   expect(deleted).toEqual([`DELETE ${id}`]);
 });
 
@@ -640,33 +642,34 @@ test("Web: a row opens the item details, editable after Editar", async ({ page }
     return route.fulfill({ json: stock[index] });
   });
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
+  const { rows } = dataTable(page);
+  const details = itemDetails(page);
+  const edit = itemForm(page, "Editar item");
 
   await rows.nth(3).getByText("Amortecedor").click();
-  const details = page.getByRole("dialog", { name: "Detalhes do item" });
-  await expect(details.getByRole("group", { name: "Lado", exact: true })).toContainText("Lado esquerdo");
-  await expect(details.getByRole("group", { name: "Local", exact: true })).toContainText("A-10");
-  await expect(details.getByRole("textbox")).toHaveCount(0);
-  await details.getByRole("button", { name: "Editar" }).click();
-  const edit = page.getByRole("dialog", { name: "Editar item" });
-  await expect(edit.getByLabel("Nome")).toBeFocused();
-  await edit.getByLabel("Local").fill("A-11");
-  await expect(edit.getByRole("button", { name: "Salvar alterações" })).toBeInViewport();
-  await edit.getByRole("button", { name: "Salvar alterações" }).click();
+  await expect(details.field("Lado")).toContainText("Lado esquerdo");
+  await expect(details.field("Local")).toContainText("A-10");
+  await expect(details.root.getByRole("textbox")).toHaveCount(0);
+  await details.edit.click();
+  await expect(edit.name).toBeFocused();
+  await edit.location.fill("A-11");
+  await expect(edit.save).toHaveAccessibleName("Salvar alterações");
+  await expect(edit.save).toBeInViewport();
+  await edit.save.click();
   await expect(page.getByText("Item “Amortecedor” salvo.")).toBeVisible();
-  await expect(edit).toBeHidden();
+  await expect(edit.root).toBeHidden();
   expect(stock[3].brands[0].location).toBe("A-11");
 
-  await page.getByRole("button", { name: "Editar Filtro de óleo" }).click();
-  await expect(page.getByRole("dialog", { name: "Editar item" })).toBeVisible();
+  await inventory(page).edit("Filtro de óleo").click();
+  await expect(edit.root).toBeVisible();
   await page.keyboard.press("Escape");
   await rows.first().focus();
   await page.keyboard.press("Enter");
-  await expect(details).toBeVisible();
-  await details.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }).click();
+  await expect(details.root).toBeVisible();
+  await details.closeText.click();
 
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await expect(page.getByRole("menuitemcheckbox", { name: /Abrir item ao clicar na linha/ })).toHaveCount(0);
+  await userMenu(page).trigger.click();
+  await expect(userMenu(page).checkbox(/Abrir item ao clicar na linha/)).toHaveCount(0);
 });
 
 // Duplicates an item of two photos from its details against an API that keeps what it is sent: Copiar dados e fotos
@@ -704,39 +707,40 @@ test("Web: an item is duplicated from its details, with or without its photos", 
     return route.fulfill({ json: stock[index] });
   });
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
-  const details = page.getByRole("dialog", { name: "Detalhes do item" });
-  const question = page.getByRole("dialog", { name: "Duplicar item?" });
-  const form = page.getByRole("dialog", { name: "Novo item" });
+  const { rows } = dataTable(page);
+  const details = itemDetails(page);
+  const question = dialog(page, "Duplicar item?").root;
+  const form = itemForm(page, "Novo item");
 
   await rows.first().getByText("Filtro de óleo").click();
-  await details.getByRole("button", { name: "Duplicar" }).click();
+  await details.duplicate.click();
   await expect(question.getByRole("button", { name: "Copiar dados e fotos" })).toBeInViewport();
   await question.getByRole("button", { name: "Copiar dados e fotos" }).click();
-  await expect(details).toBeHidden();
-  await expect(form.getByLabel("Nome")).toHaveValue("Filtro de óleo");
-  await expect(form.getByLabel("Código da peça")).toHaveValue("");
-  await expect(form.getByLabel("Quantidade", { exact: true })).toHaveValue("0");
-  await expect(form.getByRole("img", { name: /^Foto \d/ })).toHaveCount(2);
-  await form.getByLabel("Código da peça").fill("W 712/96");
-  await form.getByRole("button", { name: "Salvar" }).click();
+  await expect(details.root).toBeHidden();
+  await expect(form.name).toHaveValue("Filtro de óleo");
+  await expect(form.code).toHaveValue("");
+  await expect(form.quantity).toHaveValue("0");
+  await expect(form.photos).toHaveCount(2);
+  await form.code.fill("W 712/96");
+  await form.save.click();
   await expect(page.getByText("Item “Filtro de óleo” cadastrado.")).toBeVisible();
   expect(sent).toEqual([photos.map((photo) => `copy ${photo.id}`)]);
   await expect(rows).toHaveCount(5);
   const copy = stock[0];
   expect([copy.brands[0].code, copy.quantity, copy.brands[0].photos.some((photo) => photos.some((each) => each.id === photo.id))]).toEqual(["W 712/96", 0, false]);
 
+  // Both items are named "Filtro de óleo": the first item's trash is the second row's.
   await rows.nth(1).getByRole("button", { name: "Excluir Filtro de óleo" }).click();
-  await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
+  await deleteDialog(page).confirm.click();
   await expect(rows).toHaveCount(4);
-  await expect(page.getByRole("button", { name: "Ver fotos de Filtro de óleo" }).locator("img")).toHaveAttribute("src", "/api/photos/copy-0-thumb.webp");
+  await expect(thumbnailImage(inventory(page).photos("Filtro de óleo"))).toHaveAttribute("src", "/api/photos/copy-0-thumb.webp");
 
   await rows.first().getByText("Filtro de óleo").click();
-  await details.getByRole("button", { name: "Duplicar" }).click();
+  await details.duplicate.click();
   await question.getByRole("button", { name: "Copiar só os dados" }).click();
-  await expect(form.getByRole("img", { name: /^Foto \d/ })).toHaveCount(0);
-  await form.getByLabel("Código da peça").fill("W 712/97");
-  await form.getByRole("button", { name: "Salvar" }).click();
+  await expect(form.photos).toHaveCount(0);
+  await form.code.fill("W 712/97");
+  await form.save.click();
   await expect(rows).toHaveCount(5);
   expect([stock[0].brands[0].code, stock[0].brands[0].photos]).toEqual(["W 712/97", []]);
   expect(sent).toHaveLength(1);
@@ -753,20 +757,20 @@ test("Web: the item form and Manage lists close on the ×", async ({ page }) => 
     }
   });
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
   const openers = [
-    { open: () => page.getByRole("button", { name: "Novo item" }).click(), name: "Novo item" },
-    { open: () => page.getByRole("button", { name: "Editar Filtro de óleo" }).click(), name: "Editar item" },
+    { open: () => inv.newItem.click(), name: "Novo item" },
+    { open: () => inv.edit("Filtro de óleo").click(), name: "Editar item" },
     { open: () => rows.first().getByText("Filtro de óleo").click(), name: "Detalhes do item" },
-    { open: () => page.getByRole("button", { name: "Gerenciar listas" }).click(), name: "Gerenciar listas" },
+    { open: () => inv.manageLists.click(), name: "Gerenciar listas" },
   ];
   for (const { open, name } of openers) {
     await open();
-    const dialog = page.getByRole("dialog", { name });
-    const close = dialog.getByRole("button", { name: "Fechar" }).first();
+    const { root, close } = dialog(page, name);
     await expect(close).toBeInViewport();
     await close.click();
-    await expect(dialog).toBeHidden();
+    await expect(root).toBeHidden();
   }
   expect(sent).toEqual([]);
 });
@@ -803,33 +807,33 @@ test("Web: item photos are added and removed from the list and the form", async 
     return route.fulfill({ json: stock[index] });
   });
   await page.goto("/inventory");
+  const inv = inventory(page);
 
-  const thumbnail = page.getByRole("button", { name: "Ver fotos de Filtro de óleo" });
-  await expect(thumbnail.locator("img")).toHaveAttribute("src", "/api/photos/cover-thumb.webp");
+  const thumbnail = inv.photos("Filtro de óleo");
+  await expect(thumbnailImage(thumbnail)).toHaveAttribute("src", "/api/photos/cover-thumb.webp");
   await thumbnail.click();
-  const viewer = page.getByRole("dialog", { name: "Filtro de óleo" });
-  await expect(viewer.getByRole("img")).toHaveAttribute("src", "/api/photos/cover.png");
-  await viewer.locator('input[type="file"]').setInputFiles({ name: "lado.png", mimeType: "image/png", buffer: png });
-  await expect(viewer.getByText("Foto adicionada")).toBeVisible();
+  const viewer = dialog(page, "Filtro de óleo");
+  await expect(viewer.root.getByRole("img")).toHaveAttribute("src", "/api/photos/cover.png");
+  await viewer.root.getByTestId("common.image-viewer.body.input").setInputFiles({ name: "lado.png", mimeType: "image/png", buffer: png });
+  await expect(viewer.root.getByText("Foto adicionada")).toBeVisible();
   expect(sent).toEqual([[`keep ${cover.id}`, "photo lado.png"]]);
-  await expect(viewer.getByRole("button", { name: /^Foto \d$/ })).toHaveCount(2);
+  await expect(viewer.root.getByRole("button", { name: /^Foto \d$/ })).toHaveCount(2);
 
-  await viewer.getByRole("button", { name: "Foto 1" }).click();
-  await viewer.getByRole("button", { name: "Remover esta foto" }).click();
-  await page.getByRole("dialog", { name: "Remover esta foto?" }).getByRole("button", { name: "Remover" }).click();
-  await expect(viewer.getByText("Foto removida")).toBeVisible();
+  await viewer.root.getByRole("button", { name: "Foto 1" }).click();
+  await viewer.root.getByRole("button", { name: "Remover esta foto" }).click();
+  await dialog(page, "Remover esta foto?").root.getByRole("button", { name: "Remover" }).click();
+  await expect(viewer.root.getByText("Foto removida")).toBeVisible();
   expect(sent[1]).toEqual([`keep ${stock[0].brands[0].photos[0].id}`]);
-  await viewer.getByRole("button", { name: "Fechar" }).click();
-  await expect(thumbnail.locator("img")).toHaveAttribute("src", "/api/photos/new-1-thumb.webp");
+  await viewer.close.click();
+  await expect(thumbnailImage(thumbnail)).toHaveAttribute("src", "/api/photos/new-1-thumb.webp");
 
-  await page.getByRole("button", { name: "Editar Pastilha de freio" }).click();
-  const edit = page.getByRole("dialog", { name: "Editar item" });
-  await edit.locator('input[type="file"]').setInputFiles({ name: "frente.png", mimeType: "image/png", buffer: png });
-  await edit.getByRole("button", { name: "Salvar alterações" }).click();
+  await inv.edit("Pastilha de freio").click();
+  const edit = itemForm(page, "Editar item");
+  await edit.photoFile.setInputFiles({ name: "frente.png", mimeType: "image/png", buffer: png });
+  await edit.save.click();
   await expect(page.getByText("Item “Pastilha de freio” salvo.")).toBeVisible();
   expect(sent[2]).toEqual(["photo frente.png"]);
-  const padsThumbnail = page.getByRole("button", { name: "Ver fotos de Pastilha de freio" }).locator("img");
-  await expect(padsThumbnail).toHaveAttribute("src", "/api/photos/new-0-thumb.webp");
+  await expect(thumbnailImage(inv.photos("Pastilha de freio"))).toHaveAttribute("src", "/api/photos/new-0-thumb.webp");
 });
 
 // Filters the list against an API that filters what it is asked for: two categories in the Filtros menu go out as the
@@ -841,47 +845,47 @@ test("Web: the filters narrow the list through the API query", async ({ page }) 
   const queries: string[] = [];
   await serveItems(page, ITEMS, (query) => query.has("pageSize") && queries.push(query.toString()));
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
+  const option = options(page);
   await expect(rows).toHaveCount(4);
 
-  await page.getByRole("button", { name: "Filtros" }).click();
-  const menu = page.getByRole("dialog", { name: "Filtros do estoque" });
-  await menu.getByRole("combobox", { name: "Categoria" }).click();
-  await page.getByRole("option", { name: "Motor" }).click();
-  await page.getByRole("option", { name: "Suspensão" }).click();
+  await inv.filters.click();
+  const menu = filtersMenu(page);
+  await menu.field("Categoria").click();
+  await option.named("Motor").click();
+  await option.named("Suspensão").click();
   await page.keyboard.press("Escape");
-  await expect(menu.getByRole("button", { name: "N/A" }).first()).toHaveAttribute("title", "Posição não se aplica");
+  await expect(menu.chip("N/A").first()).toHaveAttribute("title", "Posição não se aplica");
   expect(queries.at(-1)).toBe("page=1&pageSize=25");
-  await menu.getByRole("button", { name: "Aplicar" }).click();
+  await menu.apply.click();
   await expect(rows).toHaveCount(2);
   expect(queries.at(-1)).toBe("category=Motor&category=Suspens%C3%A3o&page=1&pageSize=25");
-  await expect(page.getByRole("button", { name: "Filtros, 1 ativo" })).toBeVisible();
-  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("2 de 4 itens · 1 baixo · 1 esgotado");
+  await expect(inv.filters).toHaveAccessibleName("Filtros, 1 ativo");
+  await expect(inv.count).toHaveText("2 de 4 itens · 1 baixo · 1 esgotado");
 
-  const low = page.getByRole("button", { name: "Estoque baixo" });
-  const out = page.getByRole("button", { name: "Esgotado" });
-  await low.click();
-  await expect(page.getByRole("heading", { name: "Nenhum item encontrado" })).toBeVisible();
+  await inv.lowStock.click();
+  await expect(inv.nothingFound).toBeVisible();
   expect(queries.at(-1)).toContain("status=low");
-  await out.click();
-  await expect(out).toHaveAttribute("aria-pressed", "true");
-  await expect(low).toHaveAttribute("aria-pressed", "false");
-  await out.click();
+  await inv.outOfStock.click();
+  await expect(inv.outOfStock).toHaveAttribute("aria-pressed", "true");
+  await expect(inv.lowStock).toHaveAttribute("aria-pressed", "false");
+  await inv.outOfStock.click();
   await expect(rows).toHaveCount(2);
 
-  await page.getByRole("button", { name: "Filtros, 1 ativo" }).click();
-  await menu.getByRole("combobox", { name: "Marca do veículo" }).click();
-  await page.getByRole("option", { name: "Ford" }).click();
+  await inv.filters.click();
+  await menu.field("Marca do veículo").click();
+  await option.named("Ford").click();
   await page.keyboard.press("Escape");
-  await menu.getByRole("combobox", { name: "Modelo do veículo" }).click();
-  await expect(page.getByRole("option")).toHaveText(["Todos", "Escort · Ford"]);
+  await menu.field("Modelo do veículo").click();
+  await expect(option.all).toHaveText(["Todos", "Escort · Ford"]);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Limpar filtros" }).click();
+  await inv.clearFilters.click();
   await expect(rows).toHaveCount(4);
-  await expect(page.getByRole("button", { name: "Filtros", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Limpar filtros" })).toHaveCount(0);
+  await expect(inv.filters).toHaveAccessibleName("Filtros");
+  await expect(inv.clearFilters).toHaveCount(0);
 });
 
 // Follows the list's feedback: skeleton rows while the API takes its time, then the error state when it fails, whose
@@ -903,29 +907,30 @@ test("Web: the inventory shows loading, error and empty states", async ({ page }
     },
   );
   await page.goto("/inventory");
-  await expect(page.getByTestId("inventory.inventory-tab.loading.row")).toHaveCount(5);
-  await expect(page.getByRole("status", { name: "Carregando o estoque" })).toBeAttached();
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
+  await expect(inv.loadingRows).toHaveCount(5);
+  await expect(inv.loading).toBeAttached();
 
   answer = "fail";
   release();
-  const error = page.getByRole("alert").filter({ hasText: "Não foi possível carregar o estoque" });
-  await expect(error).toBeVisible();
+  await expect(inv.failed).toBeVisible();
   await expect(page.getByRole("table")).toHaveCount(0);
   answer = "items";
-  await error.getByRole("button", { name: "Tentar de novo" }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(4);
+  await inv.failed.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(rows).toHaveCount(4);
 
-  await page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" }).fill("parafuso");
-  await expect(page.getByRole("heading", { name: "Nenhum item encontrado" })).toBeVisible();
-  await page.getByRole("button", { name: "Limpar filtros" }).last().click();
-  await expect(page.locator("tbody tr")).toHaveCount(4);
-  await expect(page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" })).toHaveValue("");
+  await inv.search.fill("parafuso");
+  await expect(inv.nothingFound).toBeVisible();
+  await inv.clearFilters.last().click();
+  await expect(rows).toHaveCount(4);
+  await expect(inv.search).toHaveValue("");
 
   stock.splice(0);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Nenhum item cadastrado" })).toBeVisible();
-  await page.getByRole("button", { name: "Novo item" }).last().click();
-  await expect(page.getByRole("dialog", { name: "Novo item" })).toBeVisible();
+  await expect(inv.empty).toBeVisible();
+  await inv.newItem.last().click();
+  await expect(itemForm(page, "Novo item").root).toBeVisible();
 });
 
 // Pages through 60 items, newest first, against an API that pages what it is asked for: 25 per page by default, with
@@ -948,48 +953,41 @@ test("Web: the inventory list shows one page at a time", async ({ page }) => {
   });
   await serveItems(page, stock, (query) => query.has("pageSize") && queries.push(query.toString()));
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
-  const pager = page.getByRole("navigation", { name: "Páginas do estoque" });
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
   await expect(rows).toHaveCount(25);
   await expect(page.getByText("1–25 de 51")).toBeVisible();
   expect(queries.at(-1)).toBe("page=1&pageSize=25");
 
-  await pager.getByRole("button", { name: "Página 2" }).click();
+  await inv.pager.page(2).click();
   await expect(rows.first()).toContainText("P-026");
   expect(queries.at(-1)).toBe("page=2&pageSize=25");
-  await page.getByRole("radio", { name: "50" }).click();
+  await inv.pager.size(50).click();
   await expect(rows).toHaveCount(50);
   await expect(page.getByText("1–50 de 51")).toBeVisible();
   await expect(rows.nth(25)).toContainText("P-026");
 
-  await pager.getByRole("button", { name: "Página 2" }).click();
+  await inv.pager.page(2).click();
   await expect(rows).toHaveCount(1);
-  await page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" }).fill("Peça 1");
+  await inv.search.fill("Peça 1");
   await expect(page.getByText(/^1–\d+ de \d+$/)).toBeVisible();
   expect(queries.at(-1)).toBe("q=Pe%C3%A7a+1&page=1&pageSize=50");
-  await page.getByRole("button", { name: "Limpar busca" }).click();
+  await inv.clearSearch.click();
 
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitemradio", { name: "100" }).click();
+  await userMenu(page).trigger.click();
+  await userMenu(page).radio("100").click();
   await page.keyboard.press("Escape");
   await expect(rows).toHaveCount(51);
-  await expect(page.getByRole("radio", { name: "100" })).toHaveAttribute("aria-checked", "true");
-  await page.getByRole("radio", { name: "25" }).click();
-  await pager.getByRole("button", { name: "Página 3" }).click();
+  await expect(inv.pager.size(100)).toHaveAttribute("aria-checked", "true");
+  await inv.pager.size(25).click();
+  await inv.pager.page(3).click();
   await expect(rows).toHaveCount(1);
-  await page.getByRole("button", { name: "Excluir Peça 51" }).click();
-  await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
+  await deleteItem(page, "Peça 51");
   await expect(page.getByText("26–50 de 50")).toBeVisible();
 
-  await page.getByRole("button", { name: "Novo item" }).first().click();
-  const dialog = page.getByRole("dialog", { name: "Novo item" });
-  await dialog.getByLabel("Código da peça").fill("nova-1");
-  await dialog.getByLabel("Nome").fill("peça nova");
-  await dialog.getByRole("combobox", { name: "Categoria" }).fill("Motor");
-  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("Bosch");
-  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Volkswagen");
-  await dialog.getByLabel("Valor unitário (R$)").fill("10");
-  await dialog.getByRole("button", { name: "Salvar" }).click();
+  await inv.newItem.first().click();
+  await fillItem(page, "Novo item", { code: "nova-1", name: "peça nova", category: "Motor", partBrand: "Bosch", vehicleBrand: "Volkswagen", unitPrice: "10" });
+  await itemForm(page, "Novo item").save.click();
   await expect(page.getByText("1–25 de 51")).toBeVisible();
   await expect(rows.first()).toContainText("NOVA-1");
 });
@@ -1001,14 +999,16 @@ test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({
   test.skip(testInfo.project.name !== "desktop", "A desktop screen");
   await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
   await page.goto("/inventory");
-  await page.getByRole("radio", { name: "100" }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(100);
+  const inv = inventory(page);
+  const table = dataTable(page);
+  await inv.pager.size(100).click();
+  await expect(table.rows).toHaveCount(100);
   await atNotebookSizes(page, async (size) => {
     expect((await layout(page)).pageExtra, size).toBe(0);
-    expect((await page.locator("header").boundingBox())!.y, size).toBe(0);
-    await expect(page.getByRole("button", { name: "Novo item" }), size).toBeInViewport();
-    await expect(page.getByRole("navigation", { name: "Páginas do estoque" }), size).toBeInViewport();
-    expect(await page.getByTestId("common.data-table.scroll").evaluate((box) => box.scrollHeight > box.clientHeight), size).toBe(true);
+    expect((await dashboard(page).header.boundingBox())!.y, size).toBe(0);
+    await expect(inv.newItem, size).toBeInViewport();
+    await expect(inv.pager.pages, size).toBeInViewport();
+    expect(await table.scroll.evaluate((box) => box.scrollHeight > box.clientHeight), size).toBe(true);
     await expect(page, size).not.toScrollSideways();
   });
 });
@@ -1028,7 +1028,7 @@ test("Web: an item of several brands opens a row for each brand", async ({ page 
   });
   await serveItems(page, [pads]);
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
+  const { rows } = dataTable(page);
   await expect(rows).toHaveCount(1);
   await expect(rows.nth(0)).toContainText("N-1210 +1");
   await expect(rows.nth(0)).toHaveAttribute("data-status", "warn");
@@ -1051,9 +1051,9 @@ test("Web: an item of several brands opens a row for each brand", async ({ page 
   await expect(rows.nth(0).getByRole("button", { name: "Editar Pastilha dianteira" })).toBeVisible();
 
   await rows.nth(2).getByText("PD/1210").click();
-  const details = page.getByRole("dialog", { name: "Detalhes do item" });
-  await expect(details.getByRole("group", { name: "Marca 2", exact: true })).toBeInViewport();
-  await details.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }).click();
+  const details = itemDetails(page);
+  await expect(details.field("Marca 2")).toBeInViewport();
+  await details.closeText.click();
 
   await rows.nth(0).getByText("N-1210 +1").click();
   await expect(rows).toHaveCount(1);
@@ -1076,7 +1076,8 @@ test("Web: an item fitting two vehicles is found by the filter of each", async (
   });
   await serveItems(page, [bumper, ...ITEMS]);
   await page.goto("/inventory");
-  const rows = page.locator("tbody tr");
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
   await expect(rows).toHaveCount(5);
   const vehicle = rows.first().getByTestId("inventory.inventory-tab.vehicle");
   await expect(vehicle).toHaveAttribute("title", "Volkswagen Gol, Renault Clio");
@@ -1084,17 +1085,17 @@ test("Web: an item fitting two vehicles is found by the filter of each", async (
 
   /** Applies the vehicle brand filter of one brand. */
   const filterBy = async (brand: string) => {
-    await page.getByRole("button", { name: /^Filtros/ }).click();
-    const menu = page.getByRole("dialog", { name: "Filtros do estoque" });
-    await menu.getByRole("combobox", { name: "Marca do veículo" }).click();
-    await page.getByRole("option", { name: brand, exact: true }).click();
+    await inv.filters.click();
+    const menu = filtersMenu(page);
+    await menu.field("Marca do veículo").click();
+    await options(page).named(brand, true).click();
     await page.keyboard.press("Escape");
-    await menu.getByRole("button", { name: "Aplicar" }).click();
+    await menu.apply.click();
   };
   await filterBy("Renault");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Para-choque dianteiro");
-  await page.getByRole("button", { name: "Limpar filtros" }).click();
+  await inv.clearFilters.click();
   await expect(rows).toHaveCount(5);
   await filterBy("Volkswagen");
   await expect(rows.filter({ hasText: "Para-choque dianteiro" })).toHaveCount(1);
