@@ -1,45 +1,18 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { rgb } from "./support/expect.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
 import { TOAST_DURATION, TOAST_FADE_MS } from "@apc/shared/toast";
-import { savedItem, serveItems } from "./items.ts";
-import { signIn } from "./session.ts";
-import { testItem } from "@apc/shared/test-items";
+import { savedItem, serveItems } from "./stubs/items.ts";
+import { signIn } from "./stubs/session.ts";
+import { item } from "./data/items.ts";
 
-const ITEMS: Item[] = [item("00000000-0000-4000-8000-000000000001", "Filtro de óleo"), item("00000000-0000-4000-8000-000000000002", "Bomba d'água")];
+const ITEMS: Item[] = [item({ id: "00000000-0000-4000-8000-000000000001", code: "0001", name: "Filtro de óleo" }), item({ id: "00000000-0000-4000-8000-000000000002", code: "0002", name: "Bomba d'água" })];
 
 // The Inventory the tests start on, unless a test serves its own.
 test.use({ stock: { items: ITEMS } });
-
-/**
- * Fills in an item with the fields the bell doesn't look at.
- * @param id Its id.
- * @param name Its name.
- * @returns A complete item.
- */
-function item(id: string, name: string): Item {
-  return testItem({
-    id,
-    code: id.slice(-4),
-    name,
-    category: "Motor",
-    partBrand: "Mann",
-    vehicleBrand: "Volkswagen",
-    vehicleModel: null,
-    position: "N/A",
-    side: "N/A",
-    color: "N/A",
-    location: null,
-    quantity: 1,
-    minQuantity: 0,
-    unitPriceCents: 100,
-    photos: [],
-    createdAt: "2026-10-03T12:00:00.000Z",
-    updatedAt: "2026-10-03T12:00:00.000Z",
-  });
-}
 
 /**
  * Deletes an item from its trash button and confirms, so its toast shows.
@@ -76,16 +49,6 @@ async function toastLifetime(page: Page): Promise<number> {
   );
   await page.getByRole("dialog", { name: "Editar item" }).getByRole("button", { name: "Salvar" }).click();
   return lifetime;
-}
-
-/**
- * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
- * @param hex Color as `#RRGGBB`.
- * @returns The same color as `rgb(r, g, b)`.
- */
-function rgb(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgb(${r}, ${g}, ${b})`;
 }
 
 // Deletes one item, and fails to delete another, and checks the bell, to the left of the user menu, counts 2 unread;
@@ -181,7 +144,7 @@ test("Web: the gear sets how long a toast stays", async ({ page }) => {
 // minimum shows the warning as a toast and adds it to the bell; saving it again while still low adds no other; importing
 // two items below their minimum adds one warning for both.
 test("Web: items reaching their minimum stock are warned about once", async ({ page }) => {
-  const stock: Item[] = [{ ...ITEMS[0], quantity: 6, minQuantity: 2 }, { ...item("00000000-0000-4000-8000-000000000003", "Correia dentada"), quantity: 0 }];
+  const stock: Item[] = [{ ...ITEMS[0], quantity: 6, minQuantity: 2 }, { ...item({ id: "00000000-0000-4000-8000-000000000003", code: "0003", name: "Correia dentada" }), quantity: 0 }];
   await serveItems(page, stock);
   await page.route("**/api/items/*", (route) => {
     const index = stock.findIndex((held) => route.request().url().endsWith(held.id));

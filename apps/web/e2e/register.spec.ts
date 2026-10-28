@@ -41,7 +41,7 @@ test("Web: a new user signs up, lands on the Dashboard and logs in again", async
   await page.goto("/login");
   await page.getByRole("button", { name: "Criar conta" }).click();
   await expect(page).toHaveURL(/\/register$/);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()!.width);
+  await expect(page).not.toScrollSideways();
 
   await fillIn(page, { ...NEW_USER, username: TEST_USERS[0].username });
   await page.getByRole("button", { name: "Criar conta" }).click();

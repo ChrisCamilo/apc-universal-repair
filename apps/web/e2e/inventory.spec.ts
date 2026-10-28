@@ -1,11 +1,13 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { rgb } from "./support/expect.ts";
+import { atNotebookSizes } from "./support/sizes.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
-import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
-import { savedItem, serveItems } from "./items.ts";
-import { signIn } from "./session.ts";
-import { testItem, type FlatItem } from "@apc/shared/test-items";
+import { savedItem, serveItems } from "./stubs/items.ts";
+import { signIn } from "./stubs/session.ts";
+import { testItem } from "@apc/shared/test-items";
+import { item } from "./data/items.ts";
 
 // The API answers GET /items with these items, newest first, so the list is the same on every run without a database.
 const ITEMS: Item[] = [
@@ -14,32 +16,6 @@ const ITEMS: Item[] = [
   item({ code: "BA-77", name: "Bomba d'água", category: "Arrefecimento", partBrand: "Urba", vehicleBrand: "Fiat", vehicleModel: "Uno", quantity: 0, minQuantity: 1, unitPriceCents: 13240, location: "C-1" }),
   item({ code: "AM-501", name: "Amortecedor", category: "Suspensão", partBrand: "Cofap", vehicleBrand: "Ford", vehicleModel: "Escort", position: "T", side: "LE", color: "Preto", quantity: 4, minQuantity: 1, unitPriceCents: 24900, location: "A-10" }),
 ];
-
-/**
- * Fills in an item with the fields the list doesn't look at.
- * @param fields The fields that matter for the test.
- * @returns A complete item.
- */
-function item(fields: FlatItem & Required<Pick<FlatItem, "code" | "name">>): Item {
-  return testItem({
-    id: crypto.randomUUID(),
-    category: "Motor",
-    partBrand: "Bosch",
-    vehicleBrand: "Volkswagen",
-    vehicleModel: null,
-    position: "N/A",
-    side: "N/A",
-    color: "N/A",
-    location: null,
-    quantity: 1,
-    minQuantity: 0,
-    unitPriceCents: 100,
-    photos: [],
-    createdAt: "2026-10-03T12:00:00.000Z",
-    updatedAt: "2026-10-03T12:00:00.000Z",
-    ...fields,
-  });
-}
 
 /**
  * Answers GET /items with the test items and opens the Inventory tab.
@@ -81,7 +57,7 @@ test("Web: the inventory lists every item with its stock alerts", async ({ page 
     await expect(page.locator("thead")).toBeHidden();
     await expect(rows.nth(3)).toContainText("Suspensão · Cofap · Ford Escort · T · LE · Preto · A-10");
   }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()!.width);
+  await expect(page).not.toScrollSideways();
 });
 
 // Checks the toolbar has the search at its left edge and "Novo item", the last of the buttons, at its right edge, the
@@ -117,16 +93,6 @@ async function layout(page: Page) {
     pageExtra: document.scrollingElement!.scrollHeight - window.innerHeight,
   }));
   return { gapBelow: height - (panel.y + panel.height), pageExtra };
-}
-
-/**
- * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
- * @param hex Color as `#RRGGBB`.
- * @returns The same color as `rgb(r, g, b)`.
- */
-function rgb(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgb(${r}, ${g}, ${b})`;
 }
 
 // Opens the Inventory with a few items, with none and with the API failing, and checks each time the panel reaches the
@@ -1037,16 +1003,14 @@ test("Web: on a 1360×768 notebook only the Inventory's table scrolls", async ({
   await page.goto("/inventory");
   await page.getByRole("radio", { name: "100" }).click();
   await expect(page.locator("tbody tr")).toHaveCount(100);
-  for (const height of [NOTEBOOK_HEIGHT, NOTEBOOK_WINDOW_HEIGHT]) {
-    await page.setViewportSize({ width: NOTEBOOK_WIDTH, height });
-    await expect.poll(() => page.evaluate(() => innerHeight)).toBe(height);
-    expect((await layout(page)).pageExtra, `1360×${height}`).toBe(0);
-    expect((await page.locator("header").boundingBox())!.y, `1360×${height}`).toBe(0);
-    await expect(page.getByRole("button", { name: "Novo item" })).toBeInViewport();
-    await expect(page.getByRole("navigation", { name: "Páginas do estoque" })).toBeInViewport();
-    expect(await page.getByTestId("common.data-table.scroll").evaluate((box) => box.scrollHeight > box.clientHeight)).toBe(true);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(NOTEBOOK_WIDTH);
-  }
+  await atNotebookSizes(page, async (size) => {
+    expect((await layout(page)).pageExtra, size).toBe(0);
+    expect((await page.locator("header").boundingBox())!.y, size).toBe(0);
+    await expect(page.getByRole("button", { name: "Novo item" }), size).toBeInViewport();
+    await expect(page.getByRole("navigation", { name: "Páginas do estoque" }), size).toBeInViewport();
+    expect(await page.getByTestId("common.data-table.scroll").evaluate((box) => box.scrollHeight > box.clientHeight), size).toBe(true);
+    await expect(page, size).not.toScrollSideways();
+  });
 });
 
 // Lists an item of two brands and checks its row shows both codes, the quantity added up, "2 marcas" and a chevron
