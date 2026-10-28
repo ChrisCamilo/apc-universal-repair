@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures.ts";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { rgb } from "./support/expect.ts";
 import { dashboard } from "./locators/dashboard.ts";
 import { MODES, STYLES, scales, themes } from "@apc/shared/theme";
@@ -8,7 +9,7 @@ for (const style of STYLES) {
     // Switches style and mode on <html> and checks the Dashboard picks up that combination's canvas and text,
     // and the selected tab its accent, display font and tracking. Runs for every style and mode, at both
     // screen sizes.
-    test(`Web: resolves the ${style}/${mode} tokens`, async ({ page }) => {
+    test(`Web: resolves the ${style}/${mode} tokens`, { tag: [TEST_TAGS.dashboard, TEST_TAGS.theme] }, async ({ page }) => {
       const theme = themes[style][mode];
       await page.goto("/");
       await page.evaluate(

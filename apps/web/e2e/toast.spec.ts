@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { rgb } from "./support/expect.ts";
 import { toasts } from "./locators/common.ts";
 import { fillItem, inventory, itemForm } from "./locators/inventory.ts";
@@ -76,7 +77,7 @@ async function startIn(page: Page, [style, mode]: [Style, Mode]) {
 
 for (const theme of THEMES) {
   // Adds an item through the form against an API that saves it, and checks the success toast in green with the check.
-  test(`Web: a saved item shows a success toast in ${theme.join("/")}`, async ({ page }) => {
+  test(`Web: a saved item shows a success toast in ${theme.join("/")}`, { tag: [TEST_TAGS.notifications, TEST_TAGS.theme] }, async ({ page }) => {
     await startIn(page, theme);
     const stock = [FILTER];
     await page.route("**/api/items", (route) => {
@@ -92,7 +93,7 @@ for (const theme of THEMES) {
 
   // Saves an item while the API fails, and checks the error toast in red with the X, read out at once, and the form
   // stays open.
-  test(`Web: a failed save shows an error toast in ${theme.join("/")}`, async ({ page }) => {
+  test(`Web: a failed save shows an error toast in ${theme.join("/")}`, { tag: [TEST_TAGS.notifications, TEST_TAGS.theme] }, async ({ page }) => {
     await startIn(page, theme);
     await page.route("**/api/items", (route) => route.fulfill({ status: 500, body: "" }));
     await serveItems(page, [FILTER]);
@@ -105,7 +106,7 @@ for (const theme of THEMES) {
 
   // Removes an item's photo in the edit form while the API can't save photos, and checks the warning toast in yellow
   // with the "!", read out at once: the item is saved, its photos aren't.
-  test(`Web: photos that fail to save show a warning toast in ${theme.join("/")}`, async ({ page }) => {
+  test(`Web: photos that fail to save show a warning toast in ${theme.join("/")}`, { tag: [TEST_TAGS.notifications, TEST_TAGS.theme] }, async ({ page }) => {
     await startIn(page, theme);
     const withPhoto = {
       ...FILTER,
@@ -125,7 +126,7 @@ for (const theme of THEMES) {
 
   // Saves an item's edit form without changing anything, and checks nothing is sent and the info toast in blue with the
   // "i" says there is nothing to save.
-  test(`Web: an unchanged edit shows an info toast in ${theme.join("/")}`, async ({ page }) => {
+  test(`Web: an unchanged edit shows an info toast in ${theme.join("/")}`, { tag: [TEST_TAGS.notifications, TEST_TAGS.theme] }, async ({ page }) => {
     await startIn(page, theme);
     const patched: string[] = [];
     await serveItems(page, [FILTER]);
@@ -186,7 +187,7 @@ async function openEdit(page: Page) {
 
 // Samples a toast's opacity every frame, from the save until it leaves the page: it starts transparent and rises to full
 // opacity, and once its time is up it fades back down before it leaves. Motion is on, which the config turns off.
-test("Web: a toast fades in and fades out before it leaves", async ({ page }) => {
+test("Web: a toast fades in and fades out before it leaves", { tag: [TEST_TAGS.notifications, TEST_TAGS.motion] }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   const save = await openEdit(page);
   const sampled = sampleOpacity(page, "gone");
@@ -201,7 +202,7 @@ test("Web: a toast fades in and fades out before it leaves", async ({ page }) =>
 });
 
 // With reduced motion, the toast is at full opacity from its first frame.
-test("Web: with reduced motion a toast shows at once", async ({ page }) => {
+test("Web: with reduced motion a toast shows at once", { tag: [TEST_TAGS.notifications, TEST_TAGS.motion] }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   const save = await openEdit(page);
   const shown = sampleOpacity(page, "shown");

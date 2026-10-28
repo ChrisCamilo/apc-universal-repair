@@ -47,6 +47,10 @@
       "apc-dist": "./dist/tabs/tabs.js",
       "default": "./src/tabs/tabs.ts"
     },
+    "./test-tags": {
+      "apc-dist": "./dist/testing/tags.js",
+      "default": "./src/testing/tags.ts"
+    },
     "./test-users": {
       "apc-dist": "./dist/auth/testUsers.js",
       "default": "./src/auth/testUsers.ts"

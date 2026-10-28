@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from "@apc/shared/screens";
 import { DEV_SERVER_PORT } from "@apc/shared/server";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 
 const isCI = !!process.env.CI;
 
@@ -17,7 +18,7 @@ export default defineConfig({
     reducedMotion: "reduce",
     trace: "on-first-retry",
   },
-  // Minimum supported screen sizes from AGENTS.md.
+  // Minimum supported screen sizes from AGENTS.md. The phone leaves out the tests of a desktop screen.
   projects: [
     {
       name: "desktop",
@@ -25,6 +26,7 @@ export default defineConfig({
     },
     {
       name: "mobile",
+      grepInvert: new RegExp(TEST_TAGS.desktopOnly),
       use: { ...devices["Desktop Chrome"], viewport: { width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, isMobile: true, hasTouch: true },
     },
   ],

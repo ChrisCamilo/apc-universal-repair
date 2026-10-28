@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures.ts";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { logIn, loginForm } from "./locators/auth.ts";
 import { dashboard } from "./locators/dashboard.ts";
 import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
@@ -13,7 +14,7 @@ test.describe(() => {
   // Opens /inventory with nobody logged in, watching the page from its first script for the Dashboard's tab bar, and
   // checks the user lands on /login without the Dashboard ever being drawn, then logs in and lands back on
   // /inventory.
-  test("Web: a logged-out user goes to the login and back to where they were going", async ({ page }) => {
+  test("Web: a logged-out user goes to the login and back to where they were going", { tag: [TEST_TAGS.auth] }, async ({ page }) => {
     await page.addInitScript(() => {
       new MutationObserver(() => {
         if (document.querySelector('[role="tablist"]')) {
@@ -32,7 +33,7 @@ test.describe(() => {
   });
 
   // Opens an unknown path with nobody logged in and checks it also goes to the login, and on to the Dashboard after.
-  test("Web: an unknown path asks for the login too", async ({ page }) => {
+  test("Web: an unknown path asks for the login too", { tag: [TEST_TAGS.auth] }, async ({ page }) => {
     await page.goto("/nao-existe");
     await expect(page).toHaveURL(/\/login$/);
     await logIn(page, USER);
@@ -41,7 +42,7 @@ test.describe(() => {
 });
 
 // Opens /login with a saved session and checks it goes straight to the Dashboard, without showing the form.
-test("Web: a logged user skips the login", async ({ page }) => {
+test("Web: a logged user skips the login", { tag: [TEST_TAGS.auth] }, async ({ page }) => {
   await page.goto("/login");
   await expect(page).toHaveURL(/\/inventory$/);
   await expect(dashboard(page).tab("inventory")).toBeVisible();
@@ -51,7 +52,7 @@ test("Web: a logged user skips the login", async ({ page }) => {
 // Opens the Dashboard with a saved session whose token the API refuses, and checks the items call carried the token,
 // the user lands on the login told the session expired, with the session gone from the device, and that logging in
 // again, once the API takes the token, takes the notice away and goes back to the Dashboard.
-test("Web: an expired session goes back to the login, which says so", async ({ page }) => {
+test("Web: an expired session goes back to the login, which says so", { tag: [TEST_TAGS.auth] }, async ({ page }) => {
   const sent: (string | null)[] = [];
   await page.route("**/api/items*", async (route) => {
     sent.push(await route.request().headerValue("authorization"));

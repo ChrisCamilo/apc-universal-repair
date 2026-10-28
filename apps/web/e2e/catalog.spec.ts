@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures.ts";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { catalog } from "./locators/catalog.ts";
 import { dashboard } from "./locators/dashboard.ts";
 import type { Item } from "@apc/shared/items";
@@ -15,6 +16,8 @@ const ITEMS: Item[] = [
 // While the Catalog tab is a work in progress its screen sits out of reach behind the notice, so these tests wait for
 // it to come back; the notice itself is tested in dashboard.spec.ts.
 test.skip(DASHBOARD_TABS.some((tab) => tab.id === "catalog" && tab.wip), "The Catalog tab is a work in progress (#151)");
+// The issue that brings the Catalog back, shown with each of its tests in the report.
+const CATALOG_ISSUE = { type: "issue", description: "https://github.com/ChrisCamilo/apc-universal-repair/issues/151" };
 
 // Every test here starts on the Dashboard with the test inventory.
 test.use({ stock: { items: ITEMS } });
@@ -22,7 +25,7 @@ test.use({ stock: { items: ITEMS } });
 // Opens the Catalog tab and checks it starts on Chevrolet with its first engine's sheet, then picks the other Opala
 // engine, Fiat and Ford, and checks the sheet follows each choice, Ford saying it has no sheet yet. Nothing scrolls
 // sideways at either screen size.
-test("Web: the Catalog browses brands, models and engine sheets", async ({ page }) => {
+test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_TAGS.catalog], annotation: CATALOG_ISSUE }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/inventory");
   await dashboard(page).tab("catalog").click();
@@ -45,7 +48,7 @@ test("Web: the Catalog browses brands, models and engine sheets", async ({ page 
 // Narrows the brands by name, looks for a model another brand has, then types a part code without its separator and
 // checks the part is listed and reveals its vehicle, and a part for a model without a sheet says so; clearing the
 // search drops the part list.
-test("Web: the Catalog search finds brands, models and inventory parts", async ({ page }) => {
+test("Web: the Catalog search finds brands, models and inventory parts", { tag: [TEST_TAGS.catalog], annotation: CATALOG_ISSUE }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/catalog");
   await tab.brandSearch.fill("fia");

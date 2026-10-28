@@ -1,4 +1,5 @@
 import { test, type Page } from "@playwright/test";
+import { TEST_TAGS } from "@apc/shared/test-tags";
 import { expect } from "../e2e/support/expect.ts";
 import { loginForm } from "../e2e/locators/auth.ts";
 import { dataTable, tour } from "../e2e/locators/common.ts";
@@ -22,7 +23,7 @@ async function openDemo(page: Page, route = "") {
 
 // Opens the demo's page and checks it lands logged in on the Inventory, with the tutorial over it, the notice above
 // the app linking to the repository, and the sample stock; the page scrolls neither way, the notice taking its room.
-test("Web: the demo opens logged in on the Inventory with the notice", async ({ page }) => {
+test("Web: the demo opens logged in on the Inventory with the notice", { tag: [TEST_TAGS.inventory, TEST_TAGS.demo, TEST_TAGS.layout] }, async ({ page }) => {
   const { skip } = tour(page);
   await page.goto("");
   await expect(skip).toBeVisible();
@@ -39,7 +40,7 @@ test("Web: the demo opens logged in on the Inventory with the notice", async ({ 
 
 // Searches the sample stock and filters it to the parts out of stock, then creates an item, edits its quantity and
 // deletes it, all answered by the demo's own API in the browser.
-test("Web: the demo finds, filters, creates, edits and deletes items", async ({ page }) => {
+test("Web: the demo finds, filters, creates, edits and deletes items", { tag: [TEST_TAGS.inventory, TEST_TAGS.demo] }, async ({ page }) => {
   await openDemo(page);
   const inv = inventory(page);
   const { rows } = dataTable(page);
@@ -71,7 +72,7 @@ test("Web: the demo finds, filters, creates, edits and deletes items", async ({ 
 
 // Opens a link to the Catalog, as Pages sends it through the site's 404.html, and checks the Catalog shows at that
 // address, and still does after a reload.
-test("Web: a link to one of the demo's routes opens it", async ({ page }) => {
+test("Web: a link to one of the demo's routes opens it", { tag: [TEST_TAGS.dashboard, TEST_TAGS.demo] }, async ({ page }) => {
   const tab = dashboard(page).tab("catalog");
   await openDemo(page, "catalog");
   await expect(tab).toHaveAttribute("aria-selected", "true");
@@ -83,7 +84,7 @@ test("Web: a link to one of the demo's routes opens it", async ({ page }) => {
 
 // Opens a path of the site that has no page and isn't the demo's, and checks the site's 404.html says so, with the way
 // to the root page, instead of sending it to the demo.
-test("Web: a path outside the demo shows the site's not-found page", async ({ page }) => {
+test("Web: a path outside the demo shows the site's not-found page", { tag: [TEST_TAGS.dashboard, TEST_TAGS.demo] }, async ({ page }) => {
   const response = await page.goto("/apc-universal-repair/nada");
   expect(response!.status()).toBe(404);
   await expect(page.getByText("Esta página não existe.")).toBeVisible();
@@ -92,7 +93,7 @@ test("Web: a path outside the demo shows the site's not-found page", async ({ pa
 });
 
 // Logs out with Sair and checks the login is filled in with the demo's user, so Entrar logs back in.
-test("Web: after Sair, the demo's login is filled in", async ({ page }) => {
+test("Web: after Sair, the demo's login is filled in", { tag: [TEST_TAGS.auth, TEST_TAGS.demo] }, async ({ page }) => {
   await openDemo(page);
   await logOut(page);
   await expect(page).toHaveURL(/\/apc-universal-repair\/demo\/login$/);
