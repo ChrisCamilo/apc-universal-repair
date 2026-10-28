@@ -4,7 +4,7 @@ import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WI
 import { sortRows, type Sort } from '@apc/shared/table'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
-import { page, userEvent } from 'vitest/browser'
+import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { themeCss } from '../theme.ts'
@@ -18,6 +18,8 @@ const ITEMS: Item[] = [
 const root = document.documentElement
 
 type Item = { code: string; name: string; loc: string; qty: number; photo: string | null }
+/** A row of the openable table: an item, or one of its brands under it. */
+type Part = { code: string; name: string; brand: boolean }
 
 /**
  * Lets the browser compute a theme color laid over transparency at an opacity, as it reports it.
@@ -32,6 +34,16 @@ function mixed(hex: string, percent: number): string {
   const color = getComputedStyle(probe).color
   probe.remove()
   return color
+}
+
+/**
+ * Ends the transitions running on an element, as if their time had passed.
+ * @param element The element.
+ */
+function finish(element: Element): void {
+  for (const animation of element.getAnimations()) {
+    animation.finish()
+  }
 }
 
 /**
@@ -224,6 +236,52 @@ test('Web: the rows status far down a filling table does not make the page scrol
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
+// Opens an item of two brands with motion on, slowed so nothing ends on its own, and checks its brands fade in from
+// transparent; closing it keeps them in place, inert and fading out, until their fade ends, and opening it again
+// meanwhile brings them back.
+test('Web: a row opening and closing fades its nested rows in and out', async () => {
+  const root = document.documentElement
+  await commands.reduceMotion(false)
+  root.style.setProperty('--motion-duration', '60s')
+  try {
+    const screen = await render(<Openable />)
+    const brands = () => [...screen.container.querySelectorAll<HTMLElement>('tbody tr')].slice(1, -1)
+    await screen.getByText('Cabo de embreagem').click()
+    await expect.poll(() => brands().map((row) => row.textContent)).toEqual(['Cofap', 'Bosch'])
+    expect(Number(getComputedStyle(brands()[0]).opacity)).toBeLessThan(0.1)
+    brands().forEach(finish)
+    expect(getComputedStyle(brands()[0]).opacity).toBe('1')
+
+    await screen.getByText('Cabo de embreagem').click()
+    await expect.poll(() => brands().every((row) => row.inert)).toBe(true)
+    expect(brands()).toHaveLength(2)
+    expect(brands()[0].getAttribute('aria-expanded')).toBeNull()
+    await screen.getByText('Cabo de embreagem').click()
+    await expect.poll(() => brands().some((row) => row.inert)).toBe(false)
+    brands().forEach(finish)
+
+    await screen.getByText('Cabo de embreagem').click()
+    await expect.poll(() => brands().every((row) => row.inert)).toBe(true)
+    brands().forEach(finish)
+    await expect.poll(() => brands()).toHaveLength(0)
+    expect(screen.container.querySelector('tbody tr:last-child')!.textContent).toBe('Pastilha de freio')
+  } finally {
+    root.style.removeProperty('--motion-duration')
+    await commands.reduceMotion(true)
+  }
+})
+
+// Opens and closes the item with reduced motion, as every test starts, and checks its brands show with no transition
+// and go at once.
+test('Web: with reduced motion nested rows show and go at once', async () => {
+  const screen = await render(<Openable />)
+  await screen.getByText('Cabo de embreagem').click()
+  const brand = screen.getByText('Cofap').element().closest('tr')!
+  expect(getComputedStyle(brand).transitionProperty).toBe('none')
+  await screen.getByText('Cabo de embreagem').click()
+  expect(screen.container.querySelectorAll('tbody tr')).toHaveLength(2)
+})
+
 // At phone width, checks the header hides, rows become cards with only the card cells, and the "Ordenar"
 // select sorts the same way the headers do.
 test('Web: at phone width rows become cards sorted by a select', async () => {
@@ -359,6 +417,29 @@ function Inventory({
         cell: (item) => onEdit && <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => onEdit(item)} />,
       },
     ],
+  }
+  return <DataTable {...props} />
+}
+
+function Openable() {
+  const [open, setOpen] = useState(false)
+  const item = { code: 'CB-4500', name: 'Cabo de embreagem', brand: false }
+  const brands = [
+    { code: 'CB-4500/cofap', name: 'Cofap', brand: true },
+    { code: 'CB-4500/bosch', name: 'Bosch', brand: true },
+  ]
+  const props: ComponentProps<typeof DataTable<Part>> = {
+    label: 'Itens do estoque',
+    rows: [item, ...(open ? brands : []), { code: 'FR-0142', name: 'Pastilha de freio', brand: false }],
+    rowKey: (part) => part.code,
+    rowNested: (part) => part.brand,
+    rowExpanded: (part) => (part === item ? open : undefined),
+    onRowOpen: (part) => part === item && setOpen(!open),
+    sort: null,
+    onSortChange: () => {},
+    unsortedLabel: 'Ordem de cadastro',
+    empty: null,
+    columns: [{ key: 'name', header: 'Item', card: 'main', cell: (part) => part.name }],
   }
   return <DataTable {...props} />
 }

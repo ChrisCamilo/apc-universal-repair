@@ -7,7 +7,8 @@ import { recipe, tv } from '../styles/tv.ts'
 // (thumbnail | main | end and actions), the header hides and the "Ordenar" select takes its place. A row that opens on
 // a click gets the pointer and an accent outline inside its edges while focused by keyboard. A nested row, such as a
 // brand under its item, is indented on its first cell (after the lead column, when there is one), or on the card at
-// phone width. A lead column, such as an item's chevron, is a narrow first column, and on the card a column at its
+// phone width; it fades in as it comes and out while it leaves, inert, in the motion's duration, at once with reduced
+// motion. A lead column, such as an item's chevron, is a narrow first column, and on the card a column at its
 // left. A table that fills its column (fill) takes the room left and scrolls inside it, both ways, with the header row
 // pinned on the panel's fill;
 // with no rows, the empty state is centered in that room. Below the card breakpoint it doesn't scroll on its own: the
@@ -68,7 +69,14 @@ export const dataTable = recipe(
       openable: {
         true: { row: 'cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-accent' },
       },
-      nested: { true: { row: '[&>td:first-child]:pl-8 max-card:pl-8' } },
+      nested: {
+        true: {
+          row: [
+            '[&>td:first-child]:pl-8 max-card:pl-8',
+            'transition-[background-color,opacity] starting:opacity-0 inert:opacity-0 motion-reduce:transition-none',
+          ],
+        },
+      },
       area: {
         none: { cell: 'max-card:hidden' },
         thumb: { cell: 'max-card:[grid-area:thumb]' },
