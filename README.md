@@ -92,7 +92,7 @@ The [architecture overview](docs/architecture.md) shows how these parts fit toge
 
 Each component keeps its look in a style recipe beside it (`<Component>.styles.ts`), built from the theme tokens, which also gives every element its style id. Lint fails when a component writes a style or an id by hand.
 
-Web tests are written in TypeScript: component tests with **Vitest Browser Mode**, which runs them in Chromium, and end-to-end tests with **Playwright**, at 1280×720 and 360×780. The mobile app is tested with **Jest** and `react-test-renderer`. See [AGENTS.md](AGENTS.md#testing) for details.
+Web tests are written in TypeScript: component tests with **Vitest Browser Mode**, which runs them in Chromium, and end-to-end tests with **Playwright**, at 1280×720 and 360×780. The mobile app is tested with **Jest** and `react-test-renderer`. See [AGENTS.md](AGENTS.md#testing) for the rules every test follows, and [docs/testing.md](docs/testing.md) for how to run the tests, read their reports and keep them up.
 
 CI (GitHub Actions) runs lint, typecheck, build, the unit and component tests and the Playwright E2E tests on every pull request, and builds an empty database from the migrations.
 
@@ -295,7 +295,7 @@ A [visão geral da arquitetura](docs/architecture.md#-português-brasil) mostra 
 
 Cada componente guarda a aparência numa receita de estilo ao lado dele (`<Componente>.styles.ts`), feita com os tokens do tema, que também dá o id de estilo de cada elemento. O lint falha quando um componente escreve um estilo ou um id à mão.
 
-Os testes da web são escritos em TypeScript: testes de componente com o **Vitest Browser Mode**, que os roda no Chromium, e testes de ponta a ponta com o **Playwright**, em 1280×720 e 360×780. O app do celular é testado com **Jest** e `react-test-renderer`. Os detalhes estão no [AGENTS.md](AGENTS.md#testing).
+Os testes da web são escritos em TypeScript: testes de componente com o **Vitest Browser Mode**, que os roda no Chromium, e testes de ponta a ponta com o **Playwright**, em 1280×720 e 360×780. O app do celular é testado com **Jest** e `react-test-renderer`. As regras que todo teste segue estão no [AGENTS.md](AGENTS.md#testing), e como rodar os testes, ler os relatórios e mantê-los está em [docs/testing.md](docs/testing.md).
 
 O CI (GitHub Actions) roda lint, checagem de tipos, build, os testes unitários e de componente e os testes E2E do Playwright em todo pull request, e monta um banco vazio a partir das migrações.
 
