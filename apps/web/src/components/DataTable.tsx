@@ -1,6 +1,6 @@
-import { useId, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
-import { nextSort, sortFromValue, sortOptions, sortValue, type Sort } from '@apc/shared/table'
+import { nextSort, shownRows, sortFromValue, sortOptions, sortValue, type ShownRow, type Sort } from '@apc/shared/table'
 import { dataTable, rowAction, tableThumbnail, tableTitle } from './DataTable.styles.ts'
 import { Icon } from './Icon.tsx'
 import { Select } from './Select.tsx'
@@ -19,6 +19,8 @@ import { Label } from './Typography.tsx'
 // in its column and scrolls inside it, with the header pinned and the empty state centered. A nested row (rowNested)
 // belongs to the row above it, such as a brand of an item: it is indented and never tinted. A row that opens into
 // nested rows says whether it is open (rowExpanded), and a lead column, such as its chevron, comes first on the card.
+// Nested rows fade in as their row opens, and fade out in place as it closes (shownRows in @apc/shared/table), inert
+// meanwhile; with reduced motion they show and go at once.
 
 const SORT_ARROWS = { ascending: '↑', descending: '↓', none: '↕' }
 
@@ -119,6 +121,37 @@ export function DataTable<Row>({
   const sortable = columns.filter((column) => column.sortable)
   const { classes, ids } = dataTable({ fill })
   const lead = columns.some((column) => column.card === 'lead')
+  const body = useRef<HTMLTableSectionElement>(null)
+  const [shown, setShown] = useState<ShownRow<Row>[]>(() => rows.map((row) => ({ row, leaving: false })))
+  const [shownFor, setShownFor] = useState(rows)
+  // New rows keep the nested rows of a row that closed, fading out, unless motion is reduced.
+  if (shownFor !== rows) {
+    setShownFor(rows)
+    setShown(
+      rowNested && !matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? shownRows(shown, rows, rowKey, rowNested)
+        : rows.map((row) => ({ row, leaving: false })),
+    )
+  }
+
+  // Let the rows fading out go once their fade ends, read a frame later, when it has started.
+  useEffect(() => {
+    const leaving = new Set(shown.filter((each) => each.leaving).map((each) => rowKey(each.row)))
+    if (leaving.size === 0) {
+      return
+    }
+    let live = true
+    const frame = requestAnimationFrame(() => {
+      const fades = [...(body.current?.querySelectorAll('tr[inert]') ?? [])].flatMap((row) => row.getAnimations())
+      void Promise.allSettled(fades.map((fade) => fade.finished)).then(
+        () => live && setShown((current) => current.filter((each) => !(each.leaving && leaving.has(rowKey(each.row))))),
+      )
+    })
+    return () => {
+      live = false
+      cancelAnimationFrame(frame)
+    }
+  }, [shown, rowKey])
 
   return (
     <div className={classes.base()} data-testid={ids.base}>
@@ -182,15 +215,16 @@ export function DataTable<Row>({
                 })}
               </tr>
             </thead>
-            <tbody className={classes.body()} data-testid={ids.body}>
-              {rows.map((row) => {
+            <tbody ref={body} className={classes.body()} data-testid={ids.body}>
+              {shown.map(({ row, leaving }) => {
                 const nested = rowNested?.(row) ?? false
                 const status = nested ? undefined : rowStatus?.(row)
                 return (
                   <tr
                     key={rowKey(row)}
+                    inert={leaving}
                     data-status={status?.tone}
-                    aria-expanded={rowExpanded?.(row)}
+                    aria-expanded={leaving ? undefined : rowExpanded?.(row)}
                     tabIndex={onRowOpen ? 0 : undefined}
                     className={dataTable({ tint: status?.tone ?? 'none', openable: Boolean(onRowOpen), nested, lead }).classes.row()}
                     data-testid={ids.row}
