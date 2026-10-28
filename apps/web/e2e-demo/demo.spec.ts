@@ -1,4 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
+import { expect } from "../e2e/support/expect.ts";
+import { loginForm } from "../e2e/locators/auth.ts";
+import { dataTable, tour } from "../e2e/locators/common.ts";
+import { dashboard, logOut } from "../e2e/locators/dashboard.ts";
+import { deleteItem, fillItem, inventory, itemForm } from "../e2e/locators/inventory.ts";
 
 // The web app's demo, as GitHub Pages serves it (playwright.demo.config.ts): it opens logged in with its sample stock,
 // works without the API, and a link to one of its routes reaches it. Each test's page starts the demo over.
@@ -11,75 +16,68 @@ import { expect, test, type Page } from "@playwright/test";
 async function openDemo(page: Page, route = "") {
   await page.goto(route);
   if (route === "") {
-    await page.getByRole("button", { name: "Pular tutorial" }).click();
+    await tour(page).skip.click();
   }
 }
 
 // Opens the demo's page and checks it lands logged in on the Inventory, with the tutorial over it, the notice above
 // the app linking to the repository, and the sample stock; the page scrolls neither way, the notice taking its room.
 test("Web: the demo opens logged in on the Inventory with the notice", async ({ page }) => {
+  const { skip } = tour(page);
   await page.goto("");
-  await expect(page.getByRole("button", { name: "Pular tutorial" })).toBeVisible();
-  await page.getByRole("button", { name: "Pular tutorial" }).click();
+  await expect(skip).toBeVisible();
+  await skip.click();
   await expect(page).toHaveURL(/\/apc-universal-repair\/demo\/inventory$/);
   const notice = page.getByRole("note");
   await expect(notice).toContainText("Modo demonstração");
   await expect(notice.getByRole("link", { name: "Ver no GitHub" })).toHaveAttribute("href", "https://github.com/ChrisCamilo/apc-universal-repair");
-  await expect(page.getByRole("table", { name: "Itens do estoque" })).toBeVisible();
-  await expect(page.locator("tbody tr").first()).toBeVisible();
-  const { scrollWidth, scrollHeight } = await page.evaluate(() => {
-    const { scrollWidth, scrollHeight } = document.documentElement;
-    return { scrollWidth, scrollHeight };
-  });
-  expect(scrollWidth).toBe(page.viewportSize()!.width);
-  expect(scrollHeight).toBe(page.viewportSize()!.height);
+  await expect(inventory(page).table).toBeVisible();
+  await expect(dataTable(page).rows.first()).toBeVisible();
+  await expect(page).not.toScrollSideways();
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(page.viewportSize()!.height);
 });
 
 // Searches the sample stock and filters it to the parts out of stock, then creates an item, edits its quantity and
 // deletes it, all answered by the demo's own API in the browser.
 test("Web: the demo finds, filters, creates, edits and deletes items", async ({ page }) => {
   await openDemo(page);
-  await page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" }).fill("bpr6es");
-  await expect(page.locator("tbody tr")).toHaveCount(1);
-  await expect(page.locator("tbody tr")).toContainText("Vela de ignição");
-  await page.getByRole("button", { name: "Limpar busca" }).click();
-  await page.getByRole("button", { name: "Esgotado" }).click();
-  await expect(page.getByTestId("inventory.inventory-tab.filters.count")).toHaveText("4 de 30 itens · 5 baixos · 4 esgotados");
-  await expect(page.locator("tbody tr")).toHaveCount(4);
-  await page.getByRole("button", { name: "Esgotado" }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(25);
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
+  await inv.search.fill("bpr6es");
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText("Vela de ignição");
+  await inv.clearSearch.click();
+  await inv.outOfStock.click();
+  await expect(inv.count).toHaveText("4 de 30 itens · 5 baixos · 4 esgotados");
+  await expect(rows).toHaveCount(4);
+  await inv.outOfStock.click();
+  await expect(rows).toHaveCount(25);
 
-  await page.getByRole("button", { name: "Novo item" }).click();
-  const dialog = page.getByRole("dialog", { name: "Novo item" });
-  await dialog.getByLabel("Código da peça").fill("rc-100");
-  await dialog.getByLabel("Nome").fill("retentor de câmbio");
-  await dialog.getByRole("combobox", { name: "Categoria" }).fill("Motor");
-  await dialog.getByRole("combobox", { name: "Marca da peça" }).fill("Sabó");
-  await dialog.getByRole("combobox", { name: "Marca do veículo" }).fill("Ford");
-  await dialog.getByLabel("Valor unitário (R$)").fill("21,5");
-  await dialog.getByRole("button", { name: "Salvar" }).click();
+  await inv.newItem.click();
+  await fillItem(page, "Novo item", { code: "rc-100", name: "retentor de câmbio", category: "Motor", partBrand: "Sabó", vehicleBrand: "Ford", unitPrice: "21,5" });
+  await itemForm(page, "Novo item").save.click();
   await expect(page.getByText("Item “Retentor de câmbio” cadastrado.")).toBeVisible();
-  await expect(page.locator("tbody tr").first()).toContainText("RC-100");
+  await expect(rows.first()).toContainText("RC-100");
 
-  await page.getByRole("button", { name: "Editar Retentor de câmbio" }).click();
-  const edit = page.getByRole("dialog", { name: "Editar item" });
-  await edit.getByLabel("Quantidade", { exact: true }).fill("7");
-  await edit.getByRole("button", { name: "Salvar" }).click();
+  await inv.edit("Retentor de câmbio").click();
+  const edit = itemForm(page, "Editar item");
+  await edit.quantity.fill("7");
+  await edit.save.click();
   await expect(page.getByText("Item “Retentor de câmbio” salvo.")).toBeVisible();
 
-  await page.getByRole("button", { name: "Excluir Retentor de câmbio" }).click();
-  await page.getByRole("dialog", { name: "Excluir item?" }).getByRole("button", { name: "Excluir" }).click();
-  await expect(page.getByRole("button", { name: "Editar Retentor de câmbio" })).toBeHidden();
+  await deleteItem(page, "Retentor de câmbio");
+  await expect(inv.edit("Retentor de câmbio")).toBeHidden();
 });
 
 // Opens a link to the Catalog, as Pages sends it through the site's 404.html, and checks the Catalog shows at that
 // address, and still does after a reload.
 test("Web: a link to one of the demo's routes opens it", async ({ page }) => {
+  const tab = dashboard(page).tab("catalog");
   await openDemo(page, "catalog");
-  await expect(page.getByRole("tab", { name: "Catálogo", selected: true })).toBeVisible();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
   await expect(page).toHaveURL(/\/apc-universal-repair\/demo\/catalog$/);
   await page.reload();
-  await expect(page.getByRole("tab", { name: "Catálogo", selected: true })).toBeVisible();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
   await expect(page).toHaveURL(/\/apc-universal-repair\/demo\/catalog$/);
 });
 
@@ -96,11 +94,11 @@ test("Web: a path outside the demo shows the site's not-found page", async ({ pa
 // Logs out with Sair and checks the login is filled in with the demo's user, so Entrar logs back in.
 test("Web: after Sair, the demo's login is filled in", async ({ page }) => {
   await openDemo(page);
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitem", { name: "Sair" }).click();
+  await logOut(page);
   await expect(page).toHaveURL(/\/apc-universal-repair\/demo\/login$/);
-  await expect(page.getByLabel("Usuário", { exact: true })).toHaveValue("oficina");
-  await expect(page.getByLabel("Senha", { exact: true })).not.toHaveValue("");
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("table", { name: "Itens do estoque" })).toBeVisible();
+  const form = loginForm(page);
+  await expect(form.username).toHaveValue("oficina");
+  await expect(form.password).not.toHaveValue("");
+  await form.submit.click();
+  await expect(inventory(page).table).toBeVisible();
 });
