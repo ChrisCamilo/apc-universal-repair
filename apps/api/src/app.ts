@@ -1,5 +1,5 @@
 import multipart from "@fastify/multipart";
-import Fastify from "fastify";
+import Fastify, { type RouteOptions } from "fastify";
 import { serializerCompiler, validatorCompiler } from "@fastify/type-provider-zod";
 import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES } from "@apc/shared/photos";
 import { registerAllowedHosts } from "./plugins/allowed-hosts.js";
@@ -15,11 +15,15 @@ import { SESSIONS, type SessionLookup } from "./sessions/sessions.js";
 /**
  * Builds the API, answering only requests addressed to this computer (see registerAllowedHosts), with every route but
  * the public ones behind a session (see registerAuthentication).
- * @param options Where sessions are looked up: the database, or a stand-in, so a test can check routes without one.
+ * @param options Where sessions are looked up: the database, or a stand-in, so a test can check routes without one;
+ * and what to tell of each route as it is registered, for a test that checks the API's routes.
  * @returns The Fastify app.
  */
-export function buildApp({ sessions = SESSIONS }: { sessions?: SessionLookup } = {}) {
+export function buildApp({ sessions = SESSIONS, onRoute }: { sessions?: SessionLookup; onRoute?: (route: RouteOptions) => void } = {}) {
   const app = Fastify({ logger: true });
+  if (onRoute) {
+    app.addHook("onRoute", onRoute);
+  }
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);

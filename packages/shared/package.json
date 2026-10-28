@@ -11,6 +11,10 @@
       "apc-dist": "./dist/index.js",
       "default": "./src/index.ts"
     },
+    "./api-routes": {
+      "apc-dist": "./dist/api/apiRoutes.js",
+      "default": "./src/api/apiRoutes.ts"
+    },
     "./auth": {
       "apc-dist": "./dist/auth/auth.js",
       "default": "./src/auth/auth.ts"

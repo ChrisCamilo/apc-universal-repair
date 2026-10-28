@@ -146,6 +146,7 @@ All web tests are written in TypeScript. Each kind of test has one tool:
 |---|---|---|
 | Component (web) | Vitest Browser Mode, in Chromium through the Playwright provider | Next to the component, `*.test.tsx` |
 | End-to-end (web) | Playwright Test, `desktop` (1280×720) and `mobile` (360×780) projects | `apps/web/e2e/*.spec.ts` |
+| End-to-end (web demo) | Playwright Test, the same projects, on the GitHub Pages site as Pages serves it | `apps/web/e2e-demo/*.spec.ts` |
 | Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` |
 | Desktop | Node test runner for the main process, Playwright's Electron support for the smoke test | `apps/desktop/src/*.test.ts`, `apps/desktop/e2e/*.spec.ts` |
 
@@ -379,3 +380,4 @@ The project is all rights reserved ([LICENSE](LICENSE), `"license": "UNLICENSED"
 - Prefer reusing existing components/utilities over introducing new ones.
 - Do not add features, abstractions, or error handling beyond what the current task requires.
 - **The Storybook is public:** every merge that changes `apps/web` or `packages/shared` publishes it on GitHub Pages, at `https://chriscamilo.github.io/apc-universal-repair/storybook/` (`.github/workflows/pages.yml`), so a new story shows there once merged. Stories show their own sample data only: no API, browser storage or desktop bridge, which `apps/web/src/stories/Stories.test.ts` checks. The site's root page is `docs/site/index.html`.
+- **The web app's demo changes with the API,** in the same pull request. The demo on GitHub Pages (`/demo/`) answers the API in the browser (`apps/web/src/demo/demoApi.ts`), so adding, removing or changing an API route, or what it answers, changes the demo's stand-in too, and the route's entry in `@apc/shared/api-routes`, the list of routes and response schemas both follow. CI checks it: `apps/api/src/routes/apiRoutes.test.ts` fails when the API's routes or their response schemas differ from the list, and `apps/web/src/demo/demoRoutes.test.ts` when the demo's routes differ from it or its answers don't parse with those schemas (a new route needs a call there too). The demo's E2E runs in the Pages workflow on every pull request that touches `apps/api`, `apps/web` or `packages/shared`.
