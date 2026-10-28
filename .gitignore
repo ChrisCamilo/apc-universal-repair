@@ -46,6 +46,8 @@ test-results-demo/
 playwright-report-demo/
 blob-report/
 playwright/.cache/
+# Playwright's MCP in Claude Code (.mcp.json): its page snapshots and screenshots
+.playwright-mcp/
 
 # Prisma
 apps/api/prisma/*.db
