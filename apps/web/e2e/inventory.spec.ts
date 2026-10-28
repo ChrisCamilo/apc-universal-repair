@@ -888,6 +888,28 @@ test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS
   await expect(inv.clearFilters).toHaveCount(0);
 });
 
+// Presses each stock status chip on its own: "Estoque baixo" lists only the item under its minimum and "Esgotado"
+// only the one with none left, the counter saying how many of the stock match; pressing it again lists every item.
+test("Web: each stock status chip lists only its items", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+  await openInventory(page);
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
+
+  await inv.lowStock.click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("Pastilha de freio");
+  await expect(inv.count).toHaveText("1 de 4 itens · 1 baixo · 1 esgotado");
+
+  await inv.outOfStock.click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("Bomba d'água");
+  await expect(inv.count).toHaveText("1 de 4 itens · 1 baixo · 1 esgotado");
+
+  await inv.outOfStock.click();
+  await expect(rows).toHaveCount(4);
+  await expect(inv.clearFilters).toHaveCount(0);
+});
+
 // Follows the list's feedback: skeleton rows while the API takes its time, then the error state when it fails, whose
 // "Tentar de novo" loads the list once the API answers; a search that finds nothing offers "Limpar filtros", which
 // brings every item back; and an empty stock offers "Novo item", which opens the form.
