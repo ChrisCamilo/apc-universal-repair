@@ -1,9 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 import { ENGINE_SHEETS } from "@apc/shared/catalog";
 import type { Item } from "@apc/shared/items";
 import { DASHBOARD_TABS } from "@apc/shared/tabs";
-import { serveItems } from "./items.ts";
-import { signIn } from "./session.ts";
 import { testItem, type FlatItem } from "@apc/shared/test-items";
 
 // The inventory the code search looks in: a part for an engine the catalog has, and one for a model it has no sheet
@@ -41,11 +39,8 @@ function item(fields: Required<Pick<FlatItem, "code" | "name" | "vehicleBrand" |
 // it to come back; the notice itself is tested in dashboard.spec.ts.
 test.skip(DASHBOARD_TABS.some((tab) => tab.id === "catalog" && tab.wip), "The Catalog tab is a work in progress (#151)");
 
-// Every test here starts on the Dashboard, so a test user is logged in first, with the test inventory.
-test.beforeEach(async ({ page }) => {
-  await signIn(page);
-  await serveItems(page, ITEMS);
-});
+// Every test here starts on the Dashboard with the test inventory.
+test.use({ stock: { items: ITEMS } });
 
 // Opens the Catalog tab and checks it starts on Chevrolet with its first engine's sheet, then picks the other Opala
 // engine, Fiat and Ford, and checks the sheet follows each choice, Ford saying it has no sheet yet. Nothing scrolls

@@ -1,9 +1,8 @@
 import { readFile } from "node:fs/promises";
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from "@apc/shared/item-csv";
 import type { Item } from "@apc/shared/items";
-import { serveItems } from "./items.ts";
-import { signIn } from "./session.ts";
 import { testItem, type FlatItem } from "@apc/shared/test-items";
 
 /**
@@ -69,10 +68,7 @@ async function exportList(page: Page, photos: boolean): Promise<{ name: string; 
   return { name: file.suggestedFilename(), lines: text.split("\r\n") };
 }
 
-test.beforeEach(async ({ page }) => {
-  await signIn(page);
-  await serveItems(page, STOCK);
-});
+test.use({ stock: { items: STOCK } });
 
 // Searches for the parts, goes to page 2 and exports, and checks the file holds every part the search finds, from
 // both pages, and none it leaves out, with the photos column only when the switch is on.

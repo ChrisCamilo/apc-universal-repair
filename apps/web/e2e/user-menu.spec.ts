@@ -1,22 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 import { SESSION_STORAGE_KEY } from "@apc/shared/auth";
 import { THEME_STORAGE_KEYS } from "@apc/shared/theme";
 import { TEST_USERS } from "@apc/shared/test-users";
-import { serveItems } from "./items.ts";
-import { signIn } from "./session.ts";
-import { serveUsers } from "./users.ts";
 
 const USER = TEST_USERS[0];
 
 // The page starts at night, following a dark system, so turning dark mode off is a change.
 test.use({ colorScheme: "dark" });
-
-// Every test here starts on the Dashboard, so a test user is logged in first.
-test.beforeEach(async ({ page }) => {
-  await signIn(page);
-  await serveItems(page, []);
-  await serveUsers(page);
-});
 
 // Opens the user menu and checks the trigger shows the logged user (the username only on desktop), turns dark mode
 // off and picks GT4 with the menu staying open, and checks both apply at once and are still there after a reload.

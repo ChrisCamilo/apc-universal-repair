@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./support/fixtures.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
 import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
 import { themes, type Mode, type Style } from "@apc/shared/theme";
@@ -49,11 +50,6 @@ async function openInventory(page: Page) {
   await page.goto("/inventory");
   await expect(page.getByRole("table", { name: "Itens do estoque" })).toBeVisible();
 }
-
-// Every test here starts on the Dashboard, so a test user is logged in first.
-test.beforeEach(async ({ page }) => {
-  await signIn(page);
-});
 
 // Lists every item with the counter of the total and the stock alerts, the price in reais, "qualquer
 // modelo" for an item without a vehicle model, N/A muted with its full name as a tooltip, and the low and
@@ -134,14 +130,14 @@ function rgb(hex: string): string {
 }
 
 // Opens the Inventory with a few items, with none and with the API failing, and checks each time the panel reaches the
-// bottom of the window (only the frame's margin under it), the pagination shows, and the page doesn't scroll.
+// bottom of the window (only the frame's margin under it), the pagination shows, and the page doesn't scroll. Each
+// state's routes are tried before the ones of the state before it.
 test("Web: the Inventory panel fills the window and keeps its pagination", async ({ page }) => {
   for (const [state, open] of [
     ["a few items", () => serveItems(page, ITEMS.slice(0, 2))],
     ["no items", () => serveItems(page, [])],
     ["an API error", () => page.route((url) => url.pathname.startsWith("/api/"), (route) => route.fulfill({ status: 500, body: "" }))],
   ] as const) {
-    await page.unrouteAll();
     await open();
     await page.goto("/inventory");
     await expect(page.getByRole("navigation", { name: "Páginas do estoque" }), state).toBeVisible();
