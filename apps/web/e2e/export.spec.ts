@@ -43,6 +43,8 @@ const STOCK: Item[] = [
   ),
   ...Array.from({ length: 5 }, (_, index) => item({ code: `F-${index + 1}`, name: `Filtro ${index + 1}` })),
 ];
+// A 1×1 PNG, what the API answers for the first part's photo.
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 
 /**
  * Exports the list from the dialog, with or without the photo paths, and reads the file downloaded.
@@ -75,6 +77,7 @@ test.beforeEach(async ({ page }) => {
 // Searches for the parts, goes to page 2 and exports, and checks the file holds every part the search finds, from
 // both pages, and none it leaves out, with the photos column only when the switch is on.
 test("Web: the CSV export takes every page of the list as it is", async ({ page }) => {
+  await page.route("**/api/photos/*", (route) => route.fulfill({ body: PNG, contentType: "image/png" }));
   await page.goto("/inventory");
   await page.getByLabel("Procure pelo nome ou código da peça").fill("Peça");
   await page.getByRole("navigation", { name: "Páginas do estoque" }).getByRole("button", { name: "Página 2" }).click();
