@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
 import { chevronIcon, ICON_SIZES, pencilIcon, trashIcon } from '@apc/shared/icons';
 import {
@@ -24,6 +24,7 @@ import { API_URL } from '../api';
 import { Button } from '../Button';
 import { DataTable, RowAction, TableThumbnail } from '../DataTable';
 import { EmptyState, ErrorState } from '../EmptyState';
+import { FieldScrollView } from '../FieldScrollView';
 import { FilterChipGroup } from '../FilterChip';
 import { ClearFilters, FilterMenu } from '../FilterMenu';
 import { Icon } from '../Icon';
@@ -462,7 +463,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
 
   return (
     <Panel style={styles.panel}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.tab} keyboardShouldPersistTaps="handled" testID={ids.tab}>
+      <FieldScrollView style={styles.scroll} contentContainerStyle={styles.tab} keyboardShouldPersistTaps="handled" testID={ids.tab}>
         <View ref={tourTarget('search')} collapsable={false}>
           <SearchField
             label="Procure pelo nome ou código da peça"
@@ -560,7 +561,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             </>
           )}
         </View>
-      </ScrollView>
+      </FieldScrollView>
       <Pagination
         label="Páginas do estoque"
         page={page}

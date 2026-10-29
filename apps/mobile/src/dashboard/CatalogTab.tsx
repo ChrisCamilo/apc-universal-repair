@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, View, useWindowDimensions } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
 import {
   brandsNamed,
   brandWithModel,
@@ -13,6 +13,7 @@ import {
   type FoundPart,
 } from '@apc/shared/catalog';
 import { EmptyState } from '../EmptyState';
+import { FieldScrollView } from '../FieldScrollView';
 import { ImageFrame } from '../ImageFrame';
 import { Panel } from '../Panel';
 import { SelectableTileGroup } from '../SelectableTile';
@@ -89,7 +90,7 @@ export function CatalogTab() {
   };
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.tab} testID={ids.tab}>
+    <FieldScrollView style={styles.scroll} contentContainerStyle={styles.tab} testID={ids.tab}>
       <Panel style={styles.rail}>
         <SearchField label="Procure marca" value={brandQuery} onValueChange={setBrandQuery} />
         <SelectableTileGroup
@@ -143,6 +144,6 @@ export function CatalogTab() {
           />
         )}
       </Panel>
-    </ScrollView>
+    </FieldScrollView>
   );
 }

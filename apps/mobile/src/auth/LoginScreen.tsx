@@ -1,10 +1,11 @@
 import { useRef, useState, type ComponentRef } from 'react';
-import { Text as RNText, ScrollView, TextInput, View } from 'react-native';
+import { Text as RNText, TextInput, View } from 'react-native';
 import { LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/shared/auth';
 import { lockIcon, userIcon } from '@apc/shared/icons';
 import { BrandMark } from '../BrandMark';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
+import { FieldScrollView } from '../FieldScrollView';
 import { TextField } from '../TextField';
 import { Text } from '../Typography';
 import { useStyles } from './LoginScreen.styles';
@@ -90,7 +91,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScree
   };
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
+    <FieldScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
       <View style={styles.heading} testID={ids.heading}>
         {/* The heading names the mark, so screen readers skip it. */}
         <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -172,6 +173,6 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScree
       >
         <Text>{LOGIN_MESSAGES.forgotPassword}</Text>
       </Dialog>
-    </ScrollView>
+    </FieldScrollView>
   );
 }

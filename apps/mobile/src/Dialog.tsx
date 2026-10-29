@@ -4,6 +4,7 @@ import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import type { DialogSize } from '@apc/shared/dialog';
 import { CloseButton } from './CloseButton';
 import { fillEdges, useStyles, windowBox } from './Dialog.styles';
+import { FieldScrollView } from './FieldScrollView';
 import { useOverlayMotion } from './motion';
 import { ToastLayer } from './Toast';
 import { TourLayer } from './Tour';
@@ -66,7 +67,7 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
           testID={ids.window}
         >
           {fill && header}
-          <ScrollView
+          <FieldScrollView
             ref={scrollRef}
             style={fill && styles.bodyFill}
             contentContainerStyle={[styles.body, fill && styles.bodyContentFill]}
@@ -74,7 +75,7 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
           >
             {!fill && header}
             {children}
-          </ScrollView>
+          </FieldScrollView>
           <View style={[styles.actions, fill && edges.actions]} testID={ids.actions}>
             {actions}
           </View>

@@ -1,10 +1,11 @@
 import { useRef, useState, type ComponentRef } from 'react';
-import { Text as RNText, ScrollView, TextInput, View } from 'react-native';
+import { Text as RNText, TextInput, View } from 'react-native';
 import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/shared/auth';
 import type { FieldKind } from '@apc/shared/field';
 import { lockIcon, userIcon, type IconShape } from '@apc/shared/icons';
 import { BackButton } from '../BackButton';
 import { Button } from '../Button';
+import { FieldScrollView } from '../FieldScrollView';
 import { TextField } from '../TextField';
 import { Text } from '../Typography';
 import { useStyles } from './RegisterScreen.styles';
@@ -77,7 +78,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
   };
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
+    <FieldScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
       <View style={styles.header} testID={ids.header}>
         <BackButton label="Voltar ao login" onPress={onLogin} />
         <RNText accessibilityRole="header" style={styles.headerTitle} testID={ids.headerTitle}>
@@ -123,6 +124,6 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
           </Button>
         </View>
       </View>
-    </ScrollView>
+    </FieldScrollView>
   );
 }

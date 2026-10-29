@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Animated, Modal, PanResponder, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { Animated, Modal, PanResponder, Pressable, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SHEET_CLOSE_DRAG } from '@apc/shared/dialog';
 import { sheetBox, sheetEnd, useStyles } from './BottomSheet.styles';
+import { FieldScrollView } from './FieldScrollView';
 import { useOverlayMotion } from './motion';
 import { Heading } from './Typography';
 
@@ -69,9 +70,9 @@ export function BottomSheet({ open, onClose, title, action, footer, children }: 
             </View>
             {action}
           </View>
-          <ScrollView style={styles.body} contentContainerStyle={footer ? undefined : sheetEnd(insets.bottom)} testID={ids.body}>
+          <FieldScrollView style={styles.body} contentContainerStyle={footer ? undefined : sheetEnd(insets.bottom)} testID={ids.body}>
             {children}
-          </ScrollView>
+          </FieldScrollView>
           {footer && (
             <View style={[styles.footer, sheetEnd(insets.bottom)]} testID={ids.footer}>
               {footer}
