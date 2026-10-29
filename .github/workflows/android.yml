@@ -46,7 +46,8 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - uses: android-actions/setup-android@v3
+      # GitHub's Ubuntu runners come with the Android SDK in ANDROID_HOME, its licenses accepted, so Gradle installs the
+      # NDK and CMake the app asks for itself; the repository allows only GitHub's own actions and pnpm's.
 
       - name: Check the Android libraries' licenses
         run: |
