@@ -145,7 +145,7 @@ The server comes inside the desktop app: installed on a Windows computer at home
 `apps/desktop` packages the web app as a Windows program with Electron. The shop installs it and opens it like any other app, without a browser.
 
 - **Build:** `pnpm --filter @apc/desktop dist` builds the web app and writes `APC-Universal-Repair-Setup-<version>.exe` (installer, with desktop and Start menu shortcuts) and a portable exe to `apps/desktop/release/`. The builds are unsigned.
-- **Publishing a version:** versions are published on demand as [GitHub Releases](https://github.com/ChrisCamilo/apc-universal-repair/releases), never on their own. Raise `version` in `apps/desktop/package.json` and `apps/api/package.json` to the same one (e.g. `0.2.0` → `0.2.1`), and add the notes in `docs/releases/v<version>.md`, in a pull request. Merge it, then run *Actions → Desktop → Run workflow* on `main`. The workflow builds and smoke-tests the app and creates the release `v<version>` on that commit, with those notes, the installer, `latest.yml` and the blockmap (what the updater reads) and the portable exe. A version already released, or different versions in the two apps, are refused. Pull requests only run the desktop smoke test.
+- **Publishing a version:** versions are published on demand as [GitHub Releases](https://github.com/ChrisCamilo/apc-universal-repair/releases), never on their own. Raise `version` in `apps/desktop/package.json`, `apps/api/package.json` and `apps/mobile/package.json` to the same one (e.g. `0.2.0` → `0.2.1`), and add the notes in `docs/releases/v<version>.md`, in a pull request. The phone app's Android build takes its version from `apps/mobile/package.json`. Merge it, then run *Actions → Desktop → Run workflow* on `main`. The workflow builds and smoke-tests the app and creates the release `v<version>` on that commit, with those notes, the installer, `latest.yml` and the blockmap (what the updater reads) and the portable exe. A version already released, or different versions in the three apps, are refused. Pull requests only run the desktop smoke test.
 - **Installing from a release:** download `APC-Universal-Repair-Setup-<version>.exe` from the release. A computer with v0.1.0, which has no updater, needs v0.2.0 installed once by hand, over it; every later version arrives by itself.
 - **Updates:** the installed app updates itself from the GitHub Releases. When it opens, and every 6 hours while it stays open, it looks for a newer version and downloads it in the background, only what changed. Then a notice says *Nova versão X pronta. Ela será instalada quando você fechar o app.*: the new version goes in when the app closes, or right away with *Reiniciar agora*, which shows *Atualizando o APC…*, then the installer's window with its progress, *Atualizando o APC*, and opens the new version by itself, and the session and preferences are kept. A server that doesn't start after an update is said so on screen, with why: see [the home server guide](docs/home-server.md#9-after-an-update-the-server-doesnt-connect). Without internet the app keeps working on its version. The portable exe and development runs don't update: download the new portable exe instead.
 - **About this version:** *Sobre esta versão*, in the user menu, shows the version in use and its release notes in Portuguese, from `docs/releases/v<version>.md`, with a link to every release on GitHub, which opens in the browser. The web build takes the version and the notes in (`virtual:apc-release` in `apps/web/vite.config.ts`), so they show offline.
@@ -161,6 +161,36 @@ The server comes inside the desktop app: installed on a Windows computer at home
   Unblock-File ".\APC-Universal-Repair-Setup-0.1.0.exe"
   ```
 - **A server on another computer:** to use one instead of the app's own, create `config.json` in `%APPDATA%\APC Universal Repair` with `{ "apiUrl": "http://192.168.0.10:3000" }`; `APC_API_URL` also sets it. The app then runs no server, and warns when that one answers another version on `/health`. In development (`pnpm --filter @apc/desktop dev`), the app uses the API that `pnpm dev` runs from the repo.
+
+### Phone App (Android)
+
+`apps/mobile` is the React Native app for Android. In development it talks to the API that `pnpm dev` runs, which the emulator reaches at `10.0.2.2:3333`. A release APK runs without Metro and talks to the server at home ([Running at Home](#running-at-home)) at the address it was built with.
+
+1. **The Android SDK:** install Android Studio, which brings the SDK. Set the user variable `ANDROID_HOME` to it (`%LOCALAPPDATA%\Android\Sdk` on Windows) and add its `platform-tools` and `emulator` folders to the `PATH`. In the SDK Manager (*SDK Tools*, with *Show Package Details*), install NDK `27.1.12297006`, the one React Native asks for. Gradle installs CMake 3.31.6 by itself. It needs a JDK 17 or newer in `JAVA_HOME`.
+2. **The upload key,** made once and kept out of the repository, with a backup: without it, a new version can't update the installed app.
+   ```bash
+   keytool -genkeypair -v -storetype PKCS12 -keystore apc-upload.keystore -alias apc-upload -keyalg RSA -keysize 2048 -validity 10000
+   ```
+   Then point Gradle at it in `%USERPROFILE%\.gradle\gradle.properties` (`~/.gradle/gradle.properties`), or in environment variables of the same names:
+   ```properties
+   APC_UPLOAD_STORE_FILE=C:/Users/<you>/keys/apc-upload.keystore
+   APC_UPLOAD_STORE_PASSWORD=<the keystore's password>
+   APC_UPLOAD_KEY_ALIAS=apc-upload
+   APC_UPLOAD_KEY_PASSWORD=<the key's password>
+   ```
+   Without them, the release is signed with the debug key, and Gradle warns: it installs, but can't update an app signed with the upload key.
+3. **The server's address:** the one the desktop app shows in *Servidor e banco de dados* with *Acesso pelo celular* on, such as `http://192.168.0.10:3000`. Put it in `apc.apiUrl` in the same `gradle.properties`, or in `APC_API_URL` in the environment, which wins. The build writes it into the app, so another address needs another build. With `http://`, the release allows plain HTTP to it; with `https://`, it doesn't. A release built without an address stops and says so.
+4. **Build and install:**
+   ```bash
+   pnpm --filter @apc/mobile android:apk      # apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+   pnpm --filter @apc/mobile android:aab      # app-release.aab, for the Play Store (not published)
+   pnpm --filter @apc/mobile android:install  # installs the APK on the phone or emulator adb sees
+   ```
+
+- **Version:** `apps/mobile/package.json`'s, the same as the desktop app's (see *Publishing a version*). The version code Android compares on an update is `major*10000 + minor*100 + patch`, unless `APC_VERSION_CODE` sets it.
+- **CI:** the *Android* workflow builds the release APK on every push to `main` and on pull requests that touch the phone app, with the address in the repository variable `APC_API_URL`, and uploads it as an artifact. With the secrets `ANDROID_UPLOAD_KEYSTORE_BASE64` (the keystore in base64), `ANDROID_UPLOAD_STORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS` and `ANDROID_UPLOAD_KEY_PASSWORD`, it signs with the upload key; without them, with the debug key, and the artifact's name ends in `-debug-signed`.
+- **Licenses:** `./gradlew :app:writeLicenses`, in `apps/mobile/android`, writes the release's Android libraries and their licenses to `licenses.json`, which the notices and the license check read. Run it, then `pnpm licenses:write`, after adding or upgrading a native module; the workflow fails when the file is out of date.
+- **Icon:** the APC gauge, as an adaptive icon (`res/mipmap-anydpi-v26`). The PNGs for Android 7 come from `apps/mobile/scripts/make-icon.ps1`.
 
 ### Roadmap
 
@@ -348,7 +378,7 @@ O servidor vem dentro do app desktop: instalado num computador Windows em casa, 
 O `apps/desktop` empacota o app web como um programa para Windows com o Electron. A oficina instala e abre como qualquer outro programa, sem navegador.
 
 - **Build:** o `pnpm --filter @apc/desktop dist` gera o build da web e grava em `apps/desktop/release/` o `APC-Universal-Repair-Setup-<versão>.exe` (instalador, com atalhos na área de trabalho e no menu Iniciar) e um exe portátil. Os builds não são assinados.
-- **Publicar uma versão:** as versões são publicadas sob demanda como [GitHub Releases](https://github.com/ChrisCamilo/apc-universal-repair/releases), nunca sozinhas. Suba o `version` em `apps/desktop/package.json` e em `apps/api/package.json` para a mesma versão (ex.: `0.2.0` → `0.2.1`), e escreva as notas em `docs/releases/v<versão>.md`, num pull request. Faça o merge e rode *Actions → Desktop → Run workflow* na `main`. O workflow gera e testa o app e cria a release `v<versão>` nesse commit, com essas notas, o instalador, o `latest.yml` e o blockmap (o que o atualizador lê) e o exe portátil. Uma versão já publicada, ou versões diferentes nos dois apps, são recusadas. Os pull requests rodam só o smoke test do app desktop.
+- **Publicar uma versão:** as versões são publicadas sob demanda como [GitHub Releases](https://github.com/ChrisCamilo/apc-universal-repair/releases), nunca sozinhas. Suba o `version` em `apps/desktop/package.json`, em `apps/api/package.json` e em `apps/mobile/package.json` para a mesma versão (ex.: `0.2.0` → `0.2.1`), e escreva as notas em `docs/releases/v<versão>.md`, num pull request. O build Android do app do celular tira a versão do `apps/mobile/package.json`. Faça o merge e rode *Actions → Desktop → Run workflow* na `main`. O workflow gera e testa o app e cria a release `v<versão>` nesse commit, com essas notas, o instalador, o `latest.yml` e o blockmap (o que o atualizador lê) e o exe portátil. Uma versão já publicada, ou versões diferentes nos três apps, são recusadas. Os pull requests rodam só o smoke test do app desktop.
 - **Instalar de uma release:** baixe o `APC-Universal-Repair-Setup-<versão>.exe` da release. Um computador com a v0.1.0, que não tem atualizador, precisa da v0.2.0 instalada uma vez na mão, por cima dela; as versões seguintes chegam sozinhas.
 - **Atualizações:** o app instalado se atualiza sozinho pelas GitHub Releases. Quando abre, e a cada 6 horas enquanto fica aberto, ele procura uma versão mais nova e a baixa em segundo plano, só o que mudou. Então um aviso diz *Nova versão X pronta. Ela será instalada quando você fechar o app.*: a versão nova entra quando o app fecha, ou na hora com *Reiniciar agora*, que mostra *Atualizando o APC…*, depois a janela do instalador com o andamento, *Atualizando o APC*, e abre a versão nova sozinho, e a sessão e as preferências são mantidas. Um servidor que não liga depois de uma atualização aparece na tela, com o motivo: veja o [guia do servidor em casa](docs/home-server.md#9-depois-de-atualizar-o-servidor-não-conecta). Sem internet o app continua funcionando na versão dele. O exe portátil e o app em desenvolvimento não se atualizam: baixe o exe portátil novo.
 - **Sobre esta versão:** o *Sobre esta versão*, no menu do usuário, mostra a versão em uso e as notas dela em português, do `docs/releases/v<versão>.md`, com um link para todas as versões no GitHub, que abre no navegador. O build da web leva a versão e as notas junto (`virtual:apc-release` no `apps/web/vite.config.ts`), então elas aparecem sem internet.
@@ -364,6 +394,36 @@ O `apps/desktop` empacota o app web como um programa para Windows com o Electron
   Unblock-File ".\APC-Universal-Repair-Setup-0.1.0.exe"
   ```
 - **Um servidor em outro computador:** para usar um no lugar do servidor do app, crie o `config.json` em `%APPDATA%\APC Universal Repair` com `{ "apiUrl": "http://192.168.0.10:3000" }`; o `APC_API_URL` também define o endereço. O app então não roda servidor nenhum, e avisa quando esse responde outra versão no `/health`. Em desenvolvimento (`pnpm --filter @apc/desktop dev`), o app usa a API que o `pnpm dev` roda do repositório.
+
+### App do Celular (Android)
+
+O `apps/mobile` é o app React Native para Android. Em desenvolvimento, ele fala com a API que o `pnpm dev` roda, que o emulador alcança em `10.0.2.2:3333`. Um APK de release roda sem o Metro e fala com o servidor de casa ([Rodando em Casa](#rodando-em-casa)) no endereço com que foi gerado.
+
+1. **O Android SDK:** instale o Android Studio, que traz o SDK. Defina a variável de usuário `ANDROID_HOME` com a pasta dele (`%LOCALAPPDATA%\Android\Sdk` no Windows) e coloque as pastas `platform-tools` e `emulator` dele no `PATH`. No SDK Manager (*SDK Tools*, com *Show Package Details*), instale o NDK `27.1.12297006`, o que o React Native pede. O Gradle instala o CMake 3.31.6 sozinho. Ele precisa de um JDK 17 ou mais novo no `JAVA_HOME`.
+2. **A chave de upload,** criada uma vez e guardada fora do repositório, com uma cópia de segurança: sem ela, uma versão nova não consegue atualizar o app instalado.
+   ```bash
+   keytool -genkeypair -v -storetype PKCS12 -keystore apc-upload.keystore -alias apc-upload -keyalg RSA -keysize 2048 -validity 10000
+   ```
+   Depois, aponte o Gradle para ela no `%USERPROFILE%\.gradle\gradle.properties` (`~/.gradle/gradle.properties`), ou em variáveis de ambiente com os mesmos nomes:
+   ```properties
+   APC_UPLOAD_STORE_FILE=C:/Users/<você>/keys/apc-upload.keystore
+   APC_UPLOAD_STORE_PASSWORD=<a senha do keystore>
+   APC_UPLOAD_KEY_ALIAS=apc-upload
+   APC_UPLOAD_KEY_PASSWORD=<a senha da chave>
+   ```
+   Sem elas, o release é assinado com a chave de debug e o Gradle avisa: ele instala, mas não consegue atualizar um app assinado com a chave de upload.
+3. **O endereço do servidor:** o que o app desktop mostra em *Servidor e banco de dados* com o *Acesso pelo celular* ligado, como `http://192.168.0.10:3000`. Coloque-o no `apc.apiUrl` do mesmo `gradle.properties`, ou no `APC_API_URL` do ambiente, que tem preferência. O build grava o endereço no app, então outro endereço pede outro build. Com `http://`, o release permite HTTP simples para ele; com `https://`, não. Um release gerado sem endereço para e avisa.
+4. **Gerar e instalar:**
+   ```bash
+   pnpm --filter @apc/mobile android:apk      # apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+   pnpm --filter @apc/mobile android:aab      # app-release.aab, para a Play Store (não publicado)
+   pnpm --filter @apc/mobile android:install  # instala o APK no celular ou emulador que o adb vê
+   ```
+
+- **Versão:** a do `apps/mobile/package.json`, a mesma do app desktop (veja *Publicar uma versão*). O código de versão que o Android compara numa atualização é `major*10000 + minor*100 + patch`, a não ser que o `APC_VERSION_CODE` o defina.
+- **CI:** o workflow *Android* gera o APK de release em todo push na `main` e nos pull requests que mexem no app do celular, com o endereço da variável de repositório `APC_API_URL`, e o envia como artefato. Com os secrets `ANDROID_UPLOAD_KEYSTORE_BASE64` (o keystore em base64), `ANDROID_UPLOAD_STORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS` e `ANDROID_UPLOAD_KEY_PASSWORD`, ele assina com a chave de upload; sem eles, com a de debug, e o nome do artefato termina em `-debug-signed`.
+- **Licenças:** o `./gradlew :app:writeLicenses`, em `apps/mobile/android`, grava as bibliotecas Android do release e as licenças delas no `licenses.json`, que os avisos e a checagem de licenças leem. Rode-o, e depois o `pnpm licenses:write`, ao adicionar ou atualizar um módulo nativo; o workflow falha quando o arquivo está desatualizado.
+- **Ícone:** o medidor do APC, como ícone adaptável (`res/mipmap-anydpi-v26`). Os PNGs para o Android 7 vêm do `apps/mobile/scripts/make-icon.ps1`.
 
 ### Roadmap
 
