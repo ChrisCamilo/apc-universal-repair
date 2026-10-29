@@ -22,8 +22,9 @@ async function openDemo(page: Page, route = "") {
 }
 
 // Opens the demo's page and checks it lands logged in on the Inventory, with the tutorial over it, the notice above
-// the app linking to the repository, and the sample stock; the page scrolls neither way, the notice taking its room.
-test("Web: the demo opens logged in on the Inventory with the notice", { tag: [TEST_TAGS.inventory, TEST_TAGS.demo, TEST_TAGS.layout] }, async ({ page }) => {
+// the app linking to the repository, and the sample stock; the page doesn't scroll sideways, nor down on the desktop,
+// the notice taking its room. A phone's page scrolls as a whole, above the bottom bar.
+test("Web: the demo opens logged in on the Inventory with the notice", { tag: [TEST_TAGS.inventory, TEST_TAGS.demo, TEST_TAGS.layout] }, async ({ page, isMobile }) => {
   const { skip } = tour(page);
   await page.goto("");
   await expect(skip).toBeVisible();
@@ -35,7 +36,9 @@ test("Web: the demo opens logged in on the Inventory with the notice", { tag: [T
   await expect(inventory(page).table).toBeVisible();
   await expect(dataTable(page).rows.first()).toBeVisible();
   await expect(page).not.toScrollSideways();
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(page.viewportSize()!.height);
+  if (!isMobile) {
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(page.viewportSize()!.height);
+  }
 });
 
 // Searches the sample stock and filters it to the parts out of stock, then creates an item, edits its quantity and
