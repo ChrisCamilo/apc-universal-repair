@@ -225,6 +225,8 @@ On the web below `card:` (`TABLE_CARD_BREAKPOINT`) and always in the native app,
 - **A list of choices opens as a bottom sheet** (the filters, the sort, a menu of actions), never as a popover anchored to its button.
 - **Every control a finger reaches is at least 44px** tall and wide (`MIN_TOUCH_TARGET` in `@apc/shared/screens`). The phone's heights are in `scales.touch`: 52px for a button, a field and a select, 44px for a small button, an icon button such as the × and a chip, 40px for a segmented choice's option, 56px for a list's or a menu's row. On web they apply below `card:` (`max-card:min-h-13` and the like); a field's end button reaches into its padding, so the field stays 52px.
 - **Text inputs use 16px text,** so the browser doesn't zoom in when one gets focus.
+- **A screen reached from another one has a header** with the back arrow (`BackButton`, 44px, named for where it goes, such as "Voltar ao login") at the left of its title, in place of the desktop's brand.
+- **The keyboard never covers a field for good:** the native app's screens end where the keyboard starts (a `KeyboardAvoidingView` in `App.tsx`, since Android 15 and later no longer resize the app for it), so a form scrolls to every field.
 
 ## Code Conventions
 
