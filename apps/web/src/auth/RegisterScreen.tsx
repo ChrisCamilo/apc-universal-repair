@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/shared/auth'
 import { lockIcon, userIcon } from '@apc/shared/icons'
+import { BackButton } from '../components/BackButton.tsx'
 import { BrandMark } from '../components/BrandMark.tsx'
 import { Button } from '../components/Button.tsx'
 import { Panel } from '../components/Panel.tsx'
@@ -9,12 +10,15 @@ import { Text } from '../components/Typography.tsx'
 import { registerScreen } from './RegisterScreen.styles.ts'
 
 // The sign-up screen (/register), laid out as the login: the APC badge on a panel beside the form, or above it on
-// phones. The form asks for the name, the username, the e-mail (only kept for now) and the password, typed twice.
+// narrow screens. The form asks for the name, the username, the e-mail (only kept for now) and the password, typed twice.
 // "Criar conta", or Enter in a field, sends it once every field keeps its rule (see registerErrors); otherwise each
 // field that breaks one shows its message under it and the cursor goes to the first. A field's message goes away once
 // it is typed into. While it runs, "Criar conta" shows it is busy and is disabled. Refused (the username taken, or
 // the API out of reach), it says why above the form; created, the new user is logged in and handed over.
 // "Já tem conta? Entrar" goes back to the login.
+// On a phone it is one column, as in the native app: in place of the badge, a header with the back arrow to the login
+// and "Criar conta" as the page's heading, then the fields, and "Criar conta" across with the way back to the login at
+// the bottom (see RegisterScreen.styles.ts).
 
 const EMPTY: Registration = { displayName: '', username: '', email: '', password: '', confirm: '' }
 const FIELD_ORDER = ['displayName', 'username', 'email', 'password', 'confirm'] as const
@@ -82,6 +86,12 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
             <BrandMark className={classes.mark()} />
           </h1>
         </Panel>
+        <header className={classes.header()} data-testid={ids.header}>
+          <BackButton label="Voltar ao login" onClick={onLogin} />
+          <h1 className={classes.headerTitle()} data-testid={ids.headerTitle}>
+            Criar conta
+          </h1>
+        </header>
         <form noValidate className={classes.form()} data-testid={ids.form} onSubmit={submit}>
           {refused && (
             <Text role="alert" size="sm" tone="danger">
@@ -94,11 +104,17 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
           <TextField label="Senha" kind="newPassword" icon={lockIcon} {...field('password')} />
           <TextField label="Confirmar senha" kind="newPassword" icon={lockIcon} {...field('confirm')} />
           <div className={classes.actions()} data-testid={ids.actions}>
-            <Button type="submit" loading={sending}>
+            <Button type="submit" loading={sending} className={classes.submit()}>
               Criar conta
             </Button>
-            <Button type="button" variant="link" onClick={onLogin}>
-              Já tem conta? Entrar
+            <Button type="button" variant="link" onClick={onLogin} className={classes.login()}>
+              {/* One piece of text, so "Entrar" sits right after the question, without the button's gap. */}
+              <span>
+                Já tem conta?{' '}
+                <span className={classes.loginAction()} data-testid={ids.loginAction}>
+                  Entrar
+                </span>
+              </span>
             </Button>
           </div>
         </form>
