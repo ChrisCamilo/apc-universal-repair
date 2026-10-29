@@ -10,6 +10,14 @@ def apiUrl = System.getenv('APC_API_URL') ?: findProperty('apc.apiUrl')
 def apiEnvFile = layout.buildDirectory.file('apc/api.env')
 
 /**
+ * The upload key a release is signed with, from ~/.gradle/gradle.properties or the environment. Without all four, a
+ * release is signed with the debug key and Gradle warns: it installs, but can't update an app signed with the real key.
+ */
+def uploadKey = ['APC_UPLOAD_STORE_FILE', 'APC_UPLOAD_STORE_PASSWORD', 'APC_UPLOAD_KEY_ALIAS', 'APC_UPLOAD_KEY_PASSWORD']
+    .collectEntries { [(it): findProperty(it) ?: System.getenv(it)] }
+def hasUploadKey = uploadKey.values().every()
+
+/**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
@@ -111,15 +119,21 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (hasUploadKey) {
+            release {
+                storeFile file(uploadKey.APC_UPLOAD_STORE_FILE)
+                storePassword uploadKey.APC_UPLOAD_STORE_PASSWORD
+                keyAlias uploadKey.APC_UPLOAD_KEY_ALIAS
+                keyPassword uploadKey.APC_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig hasUploadKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
@@ -144,6 +158,16 @@ tasks.matching { it.name == 'createBundleReleaseJsAndAssets' }.configureEach {
             throw new GradleException(
                 "A release needs the API's address, such as http://192.168.0.10:3000: set APC_API_URL in the environment, " +
                 "or apc.apiUrl in ~/.gradle/gradle.properties (now: ${apiUrl ?: 'none'}).")
+        }
+    }
+}
+
+// A release signed with the debug key installs, but can't update, or be updated by, one signed with the upload key.
+tasks.matching { it.name in ['packageRelease', 'signReleaseBundle'] }.configureEach {
+    doFirst {
+        if (!hasUploadKey) {
+            logger.warn('Signing the release with the debug key: set APC_UPLOAD_STORE_FILE, APC_UPLOAD_STORE_PASSWORD, ' +
+                'APC_UPLOAD_KEY_ALIAS and APC_UPLOAD_KEY_PASSWORD to sign it with the upload key.')
         }
     }
 }
