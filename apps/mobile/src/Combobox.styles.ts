@@ -32,6 +32,6 @@ export const useStyles = createStyles(
     // A hairline sets the create row apart from the options above it.
     optionBelow: { borderTopWidth: scales.hairline, borderTopColor: softHairline(theme) },
     optionTextCreate: { fontFamily: fontFamily(scales.bodyFont, 600), color: theme.colors.accent },
-    toggle: {},
+    toggle: fieldStyles(theme).fieldButton,
   }),
 );

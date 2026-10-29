@@ -15,7 +15,7 @@ export const filterChip = recipe(
         'focus-visible:shadow-ring aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent',
       ],
     },
-    variants: { size: { md: 'px-3 py-1', sm: 'px-2.5 py-0.5' } },
+    variants: { size: { md: 'px-3 py-1 max-card:min-h-11', sm: 'px-2.5 py-0.5 max-card:min-h-11' } },
     defaultVariants: { size: 'md' },
   }),
   { base: '' },

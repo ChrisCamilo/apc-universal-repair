@@ -10,7 +10,14 @@ import { softAccent, softHairline } from './theme';
 export const useStyles = createStyles('common.filter-chip', { chip: '', label: 'label' }, (theme) => {
   const { colors } = theme;
   return {
-    chip: { borderWidth: scales.hairline, borderColor: softHairline(theme), borderRadius: scales.radiusPill, backgroundColor: 'transparent' },
+    chip: {
+      minHeight: scales.touch.icon,
+      justifyContent: 'center',
+      borderWidth: scales.hairline,
+      borderColor: softHairline(theme),
+      borderRadius: scales.radiusPill,
+      backgroundColor: 'transparent',
+    },
     chipMd: { paddingHorizontal: scales.space.s3, paddingVertical: scales.space.s1 },
     chipOn: { borderColor: colors.accent, backgroundColor: softAccent(theme) },
     chipPressed: { borderColor: colors.hairline },

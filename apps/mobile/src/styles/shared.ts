@@ -9,8 +9,8 @@ import { fontFamily, softHairline, withAlpha, type ActiveTheme } from '../theme'
 
 /** A field dims to this opacity while disabled, as on the web (disabled:opacity-50). */
 export const FIELD_DISABLED_OPACITY = 0.5;
-/** Height of an option in a list, a comfortable touch target. */
-export const OPTION_HEIGHT = scales.space.s7;
+/** Height of an option in a list, a row a finger reaches. */
+export const OPTION_HEIGHT = scales.touch.row;
 
 /**
  * Styles a label in the display face: semibold, uppercase, with the style's tracking. Buttons, chips and the
@@ -32,7 +32,8 @@ export function displayLabel(theme: ActiveTheme, step: keyof typeof scales.fontS
 
 /**
  * Styles the parts of a text field and of a dropdown list: the field's spacing, the focus ring around the pill frame,
- * the frame by state, the typed text, the error under it, the list and an option with its text.
+ * the frame by state, 52px tall, a 44px button at its end (the password eye, the search's ×, the combobox's chevron)
+ * reaching into the frame's padding, the typed text, the error under it, the list and an option with its text.
  * @param theme Active theme.
  * @returns The field's styles, each key starting with "field" or "option".
  */
@@ -40,11 +41,20 @@ export function fieldStyles(theme: ActiveTheme) {
   const { colors } = theme;
   return {
     field: { gap: scales.space.s1 } satisfies ViewStyle,
+    fieldButton: {
+      width: scales.touch.icon,
+      height: scales.touch.icon,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginVertical: -scales.space.s2,
+      marginRight: -scales.space.s3,
+    } satisfies ViewStyle,
     fieldDisabled: { opacity: FIELD_DISABLED_OPACITY } satisfies ViewStyle,
     fieldError: { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: colors.danger } satisfies TextStyle,
     fieldFrame: {
       flexDirection: 'row',
       alignItems: 'center',
+      minHeight: scales.touch.field,
       gap: scales.space.s2,
       borderRadius: scales.radiusPill,
       borderWidth: scales.hairline,
@@ -85,7 +95,7 @@ export function fieldStyles(theme: ActiveTheme) {
       backgroundColor: 'transparent',
     } satisfies ViewStyle,
     optionPressed: { backgroundColor: colors.panelRaised } satisfies ViewStyle,
-    optionText: { flex: 1, fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: colors.text } satisfies TextStyle,
+    optionText: { flex: 1, fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.base, color: colors.text } satisfies TextStyle,
     optionTextChosen: { color: colors.accent } satisfies TextStyle,
   };
 }
@@ -114,6 +124,7 @@ export function menuItemStyles(theme: ActiveTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      minHeight: scales.touch.row,
       gap: scales.space.s3,
       paddingHorizontal: scales.space.s2,
       paddingVertical: scales.space.s2,

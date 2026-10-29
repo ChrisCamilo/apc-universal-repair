@@ -13,7 +13,7 @@ export const menu = recipe(
     slots: {
       base: 'relative inline-block h-fit',
       trigger: [
-        'inline-flex cursor-pointer items-center gap-2 rounded-pill border border-hairline-soft py-1 pr-2.5 pl-1 text-text outline-none',
+        'inline-flex cursor-pointer items-center gap-2 rounded-pill border border-hairline-soft py-1 pr-2.5 pl-1 text-text outline-none max-card:min-h-11',
         'transition-[background-color,border-color,box-shadow] hover:border-accent hover:bg-accent-soft focus-visible:shadow-ring',
       ],
       chevron: 'text-text-muted transition-transform rotate-90',

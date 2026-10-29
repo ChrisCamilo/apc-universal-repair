@@ -34,6 +34,7 @@ export const useStyles = createStyles(
       button: {
         flexDirection: 'row',
         alignItems: 'center',
+        minHeight: scales.touch.field,
         gap: scales.space.s2,
         borderWidth: scales.hairline,
         borderColor: colors.hairline,

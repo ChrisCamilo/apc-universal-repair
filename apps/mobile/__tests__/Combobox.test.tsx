@@ -122,7 +122,7 @@ test('Mobile: the chevron opens the full list, five options at a time', async ()
   await ReactTestRenderer.act(async () => chevron.props.onPress());
   expect(rows(tree)).toEqual([...CATEGORIES, '+ Criar categoria “Mot”']);
   const list = tree.root.findAllByType(ScrollView)[0];
-  expect(Math.floor(list.props.style.maxHeight / scales.space.s7)).toBe(SELECT_VISIBLE_OPTIONS);
+  expect(Math.floor(list.props.style.maxHeight / scales.touch.row)).toBe(SELECT_VISIBLE_OPTIONS);
 
   const empty = await mount('eighties', 'day', <Category initial="" options={[]} />);
   await ReactTestRenderer.act(async () => empty.root.findByType(TextInput).props.onFocus());

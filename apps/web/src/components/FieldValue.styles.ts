@@ -9,7 +9,8 @@ export const fieldValue = recipe(
   tv({
     slots: {
       base: 'grid content-start gap-1.5',
-      value: 'm-0 min-w-0 truncate rounded-pill border border-hairline-soft px-4 py-2.5 font-body text-base text-text',
+      // On a phone the line is 30px, so the frame is a text field's 52px there too.
+      value: 'm-0 min-w-0 truncate rounded-pill border border-hairline-soft px-4 py-2.5 font-body text-base text-text max-card:leading-7.5',
     },
   }),
   { base: '', value: 'value' },

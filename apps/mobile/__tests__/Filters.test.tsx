@@ -116,7 +116,7 @@ test('Mobile: multiple selects summarize the choice and "All" clears it', async 
   await press(button());
   expect(button().props.accessibilityState).toMatchObject({ expanded: true });
   const list = tree.root.findByType(ScrollView);
-  const optionHeight = scales.space.s7;
+  const optionHeight = scales.touch.row;
   expect(Math.floor(list.props.style.maxHeight / optionHeight)).toBe(SELECT_VISIBLE_OPTIONS);
 
   await press(pressable(tree, 'Motor'));
