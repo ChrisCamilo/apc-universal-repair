@@ -142,6 +142,10 @@ On Windows the window names its id and icon itself (`identity.ts`): the installe
 
 No Windows a janela informa o próprio id e ícone (`identity.ts`): o `com.apc.universalrepair` do instalador e o ícone do exe quando empacotada, ou o `com.apc.universalrepair.dev` e o `build/icon.ico` rodando do clone. O Electron dá a um app rodando do clone um atalho no menu Iniciar com o ícone de átomo dele, na primeira notificação que mostra, e o Windows tira do atalho o ícone na barra de tarefas de toda janela com aquele id; com um id próprio, esse atalho nunca representa o app instalado.
 
+The main process's code is in `apps/desktop/src`, by what it deals with: `main.ts` and the preload (`preload.cts`) at its root, beside `config.ts` and `logs.ts`, which every part uses; `window/`, the window and what it loads (`window.ts`, `protocol.ts`, `files.ts`); `server/`, the server the app ships and its settings (`bundledServer.ts`, `serverSettings.ts`, `database.ts`, `ports.ts`, …); and `system/`, what ties the app to Windows (`identity.ts`, `notify.ts`, `tray.ts`, `startup.ts`, `update.ts`). Each module's tests sit beside it.
+
+O código do processo principal fica em `apps/desktop/src`, pelo que cada parte trata: o `main.ts` e o preload (`preload.cts`) na raiz, ao lado do `config.ts` e do `logs.ts`, que todas as partes usam; `window/`, a janela e o que ela carrega (`window.ts`, `protocol.ts`, `files.ts`); `server/`, o servidor que o app traz e as configurações dele (`bundledServer.ts`, `serverSettings.ts`, `database.ts`, `ports.ts`, …); e `system/`, o que liga o app ao Windows (`identity.ts`, `notify.ts`, `tray.ts`, `startup.ts`, `update.ts`). Os testes de cada módulo ficam ao lado dele.
+
 ### Updates · Atualizações
 
 ```mermaid
