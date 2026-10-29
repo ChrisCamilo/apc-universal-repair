@@ -8,7 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Circle, Path } from 'react-native-svg';
 import ReactTestRenderer from 'react-test-renderer';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
 import { Button } from '../src/Button';
 import { Dialog } from '../src/Dialog';
@@ -109,26 +109,52 @@ for (const style of STYLES) {
   }
 }
 
-// Checks a form dialog fits a 360×780 screen with its content scrolling and the actions outside the scroll,
-// and that the back button asks the owner to close it.
-test('Mobile: long dialogs scroll inside, keep the actions and close on back', async () => {
+// Checks a form fills the screen with no frame or rounded corners, its title row on top and its actions at the bottom,
+// both outside the scrolling content and clear of the status bar and the home indicator, and that the back button asks
+// the owner to close it.
+test('Mobile: a form fills the screen, its title on top and its actions at the bottom, and closes on back', async () => {
   const onClose = jest.fn();
+  // A phone with a status bar and a home indicator.
+  const insets = { top: 24, left: 0, right: 0, bottom: 16 };
   const tree = await mount(
     'eighties',
     'night',
-    <Dialog open onClose={onClose} title="Novo item" actions={<Button>Salvar item</Button>}>
-      <Text>Campos</Text>
-    </Dialog>,
+    <SafeAreaProvider initialMetrics={{ ...SAFE_AREA, insets }}>
+      <Dialog open onClose={onClose} title="Novo item" actions={<Button>Salvar item</Button>}>
+        <Text>Campos</Text>
+      </Dialog>
+    </SafeAreaProvider>,
   );
-  const window = styleOf(tree, 'common.dialog');
-  expect(window.width).toBeLessThanOrEqual(560);
-  expect(window.maxHeight).toBeGreaterThan(0);
+  expect(styleOf(tree, 'common.dialog')).toMatchObject({ flex: 1, alignSelf: 'stretch', borderWidth: 0, borderRadius: 0 });
+  expect(styleOf(tree, 'common.dialog').width).toBeUndefined();
   const scroll = tree.root.findByType(ScrollView);
+  expect(scroll.findAll((n) => n.props.children === 'Novo item')).toHaveLength(0);
   expect(scroll.findAll((n) => n.props.children === 'Salvar item')).toHaveLength(0);
   expect(scroll.findAll((n) => n.props.children === 'Campos').length).toBeGreaterThan(0);
+  expect(StyleSheet.flatten(scroll.props.contentContainerStyle)).toMatchObject({ padding: scales.space.s4 });
+  expect(styleOf(tree, 'common.dialog.body.header')).toMatchObject({ paddingTop: scales.space.s2 + insets.top });
+  expect(styleOf(tree, 'common.dialog.actions')).toMatchObject({ paddingBottom: scales.space.s4 + insets.bottom });
 
   await ReactTestRenderer.act(async () => tree.root.findByType(Modal).props.onRequestClose());
   expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+// Checks a confirmation stays a window centered on the backdrop, as wide as its size allows on a 360px screen, its title
+// scrolling with its content.
+test('Mobile: a confirmation stays a centered window', async () => {
+  const tree = await mount(
+    'eighties',
+    'night',
+    <Dialog open onClose={() => {}} title="Excluir item?" size="confirm" actions={<Button>Excluir</Button>}>
+      <Text>Sai do estoque.</Text>
+    </Dialog>,
+  );
+  expect(styleOf(tree, 'common.dialog.backdrop')).toMatchObject({ alignItems: 'center', justifyContent: 'center' });
+  const window = styleOf(tree, 'common.dialog');
+  expect(window.width).toBeLessThanOrEqual(420);
+  expect(window.maxHeight).toBeGreaterThan(0);
+  expect(window.flex).toBeUndefined();
+  expect(tree.root.findByType(ScrollView).findAll((n) => n.props.children === 'Excluir item?').length).toBeGreaterThan(0);
 });
 
 // Opens a regular dialog and a dismissible one, and checks only the dismissible one has a tap target on the backdrop,
@@ -154,8 +180,8 @@ test('Mobile: only a dismissible dialog closes on a tap outside', async () => {
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
-// Opens a closable dialog and a regular one, and checks only the closable one has the × named "Fechar", in a row
-// after its title, which asks the owner to close it.
+// Opens a closable form and a regular confirmation, and checks only the closable one has the × named "Fechar", in a
+// row with its title, at its left as the form fills the screen, which asks the owner to close it.
 test('Mobile: a closable dialog closes on the × beside its title', async () => {
   const onClose = jest.fn();
   const tree = await mount(
@@ -175,7 +201,7 @@ test('Mobile: a closable dialog closes on the × beside its title', async () => 
   );
   expect(close).toHaveLength(1);
   const head = close[0].parent!.parent!;
-  expect(Object.assign({}, ...[head.props.style].flat()).flexDirection).toBe('row');
+  expect(StyleSheet.flatten(head.props.style).flexDirection).toBe('row-reverse');
   expect(head.findAll((n) => n.type === Text && n.props.children === 'Novo item')).not.toHaveLength(0);
   await ReactTestRenderer.act(async () => close[0].props.onPress());
   expect(onClose).toHaveBeenCalledTimes(1);

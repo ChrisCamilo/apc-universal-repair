@@ -115,6 +115,19 @@ const CASES: Case[] = [
     moved: 'common.select.list',
     move: 'translate',
   },
+  {
+    name: 'a form, which fills the screen',
+    render: (open) => (
+      <Dialog open={open} onClose={() => {}} title="Novo item" actions={null}>
+        <Text>Campos</Text>
+      </Dialog>
+    ),
+    toggle: reopen((open) => CASES[7].render(open)),
+    shown: visible,
+    faded: 'common.dialog.backdrop',
+    moved: 'common.dialog',
+    move: 'rise',
+  },
 ];
 
 /** A movement Animated.timing was asked for: its settings and how to end it. */

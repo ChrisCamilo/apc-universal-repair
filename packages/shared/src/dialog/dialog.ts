@@ -1,5 +1,7 @@
 // Sizes shared by the web and mobile Dialog and BottomSheet, so both platforms open the same windows.
 
+/** Height of the title row a form keeps on top when it fills a phone's screen, in px (min-h-14 on the web). */
+export const DIALOG_HEADER_HEIGHT = 56;
 /** Room a dialog leaves to the top and bottom edges of the screen, in px. */
 export const DIALOG_HEIGHT_INSET = 48;
 /** Room a dialog leaves to the side edges of the screen, in px, so it fits at 360px wide. */

@@ -1,14 +1,19 @@
 import type { ViewStyle } from 'react-native';
-import { DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog';
+import { DIALOG_HEADER_HEIGHT, DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog';
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
 import { softHairline, withAlpha } from './theme';
 
 // The look of a modal window, the same as the web: the panel with its sheen and hairline frame over a dimmed backdrop,
 // its content scrolling inside while the action bar stays pinned at the bottom under a soft hairline. A closable
-// dialog has the × at the right of its title, which wraps beside it.
+// dialog has the × at the right of its title, which wraps beside it. A form fills the screen, with no frame or rounded
+// corners: its title row sits on top under a soft hairline, the × at its left, and the content scrolls between it and
+// the actions, as on the web's phone layout.
 
-/** A dialog: the backdrop and the tap target around the window, the window, its body, the title row and the actions. */
+/**
+ * A dialog: the backdrop and the tap target around the window, the window, its body, the title row and the actions, and
+ * how a form that fills the screen changes the window, the title row and the body.
+ */
 export const useStyles = createStyles(
   'common.dialog',
   { backdrop: 'backdrop', outside: 'outside', window: '', body: 'body', header: 'body.header', title: 'body.header.title', actions: 'actions' },
@@ -31,7 +36,20 @@ export const useStyles = createStyles(
       backgroundColor: withAlpha(theme.colors.canvas, scales.backdrop.opacity),
     },
     body: { gap: scales.space.s4, padding: scales.space.s5 },
+    // The content's own padding, 16px to the screen's sides as on the web's phone layout; `body` styles its scroll.
+    bodyContentFill: { padding: scales.space.s4 },
+    bodyFill: { flex: 1 },
     header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: scales.space.s3 },
+    headerFill: {
+      flexDirection: 'row-reverse',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: scales.space.s1,
+      minHeight: DIALOG_HEADER_HEIGHT,
+      borderBottomWidth: scales.hairline,
+      borderBottomColor: softHairline(theme),
+      paddingHorizontal: scales.space.s2,
+    },
     outside: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
     title: { flexShrink: 1 },
     window: {
@@ -43,8 +61,22 @@ export const useStyles = createStyles(
       backgroundImage: sheenGradient(theme.sheen, theme.mode),
       boxShadow: popShadow(),
     },
+    windowFill: { flex: 1, alignSelf: 'stretch', borderWidth: 0, borderRadius: 0 },
   }),
 );
+
+/**
+ * Keeps a form that fills the screen clear of the phone's status bar and home indicator: its title row below the one,
+ * its actions above the other.
+ * @param insets The screen's top and bottom insets, in px.
+ * @returns The title row's and the actions' padding.
+ */
+export function fillEdges(insets: { top: number; bottom: number }): { header: ViewStyle; actions: ViewStyle } {
+  return {
+    header: { paddingTop: scales.space.s2 + insets.top, paddingBottom: scales.space.s2 },
+    actions: { paddingHorizontal: scales.space.s4, paddingBottom: scales.space.s4 + insets.bottom },
+  };
+}
 
 /**
  * Sizes a dialog's window: as wide as its size allows on the screen, and no taller than the screen less its inset.

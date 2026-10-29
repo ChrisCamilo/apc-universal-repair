@@ -13,6 +13,8 @@ import { usePresence } from './usePresence.ts'
 // also closes on a click outside it, on the backdrop. A `closable` dialog has the round × at the right of its title,
 // the same as the photo viewer's, which closes it like Escape; the focus still starts past it, on a control.
 // It grows and fades in, and back out, its content kept while it leaves and the window inert (see usePresence).
+// On a phone a form fills the screen, its title row pinned on top and its actions at the bottom, and slides up from the
+// bottom edge; a confirmation stays a centered box (see Dialog.styles.ts).
 
 // The elements the focus can start on: the scrolling body is focusable too, but the focus belongs on a control.
 const CONTROLS = 'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
@@ -37,7 +39,7 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
   const titleId = useId()
   const dialog = useRef<HTMLDialogElement>(null)
   const close = useRef<HTMLButtonElement>(null)
-  const { classes, ids } = dialogRecipe()
+  const { classes, ids } = dialogRecipe({ fill: size === 'form' })
   const { present, leaving } = usePresence(open, dialog)
 
   // Open and close the native dialog as `open` changes.
@@ -79,18 +81,12 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
       {present && (
         <div className={classes.layout()} data-testid={ids.layout}>
           <div className={classes.body()} data-testid={ids.body}>
-            {closable ? (
-              <div className={classes.header()} data-testid={ids.header}>
-                <Heading id={titleId} level={3}>
-                  {title}
-                </Heading>
-                <CloseButton ref={close} onClick={onClose} />
-              </div>
-            ) : (
+            <div className={classes.header()} data-testid={ids.header}>
               <Heading id={titleId} level={3}>
                 {title}
               </Heading>
-            )}
+              {closable && <CloseButton ref={close} onClick={onClose} />}
+            </div>
             {children}
           </div>
           <div className={classes.actions()} data-testid={ids.actions}>
