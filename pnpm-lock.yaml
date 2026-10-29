@@ -361,6 +361,9 @@ importers:
       eslint:
         specifier: ^8.19.0
         version: 8.57.1(supports-color@8.1.1)
+      hermes-compiler:
+        specifier: 260318099.0.5
+        version: 260318099.0.5
       jest:
         specifier: ^29.6.3
         version: 29.7.0(@types/node@22.20.2)(supports-color@8.1.1)
