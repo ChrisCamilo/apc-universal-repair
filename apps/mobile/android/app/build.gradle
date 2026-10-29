@@ -106,7 +106,7 @@ android {
 
     // The native code builds with CMake 3.31, whose ninja (1.12) handles paths over 260 characters on Windows, with
     // long paths turned on: the object files of a library's C++ code repeat the monorepo's full path. The default
-    // 3.22's ninja stops there. Gradle installs it when it's missing.
+    // 3.22's ninja stops there. Gradle doesn't install it: add CMake 3.31.6 in the SDK Manager (SDK Tools).
     externalNativeBuild {
         cmake {
             version "3.31.6"

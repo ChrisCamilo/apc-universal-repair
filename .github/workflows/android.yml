@@ -46,8 +46,11 @@ jobs:
           java-version: 17
           cache: gradle
 
-      # GitHub's Ubuntu runners come with the Android SDK in ANDROID_HOME, its licenses accepted, so Gradle installs the
-      # NDK and CMake the app asks for itself; the repository allows only GitHub's own actions and pnpm's.
+      # GitHub's Ubuntu runners come with the Android SDK in ANDROID_HOME, its licenses accepted; the repository allows
+      # only GitHub's own actions and pnpm's. Gradle doesn't install CMake, so the versions app/build.gradle asks for are
+      # installed here.
+      - name: Install the NDK and CMake
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;27.1.12297006" "cmake;3.31.6"
 
       - name: Check the Android libraries' licenses
         run: |

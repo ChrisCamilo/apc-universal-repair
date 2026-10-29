@@ -166,7 +166,7 @@ The server comes inside the desktop app: installed on a Windows computer at home
 
 `apps/mobile` is the React Native app for Android. In development it talks to the API that `pnpm dev` runs, which the emulator reaches at `10.0.2.2:3333`. A release APK runs without Metro and talks to the server at home ([Running at Home](#running-at-home)) at the address it was built with.
 
-1. **The Android SDK:** install Android Studio, which brings the SDK. Set the user variable `ANDROID_HOME` to it (`%LOCALAPPDATA%\Android\Sdk` on Windows) and add its `platform-tools` and `emulator` folders to the `PATH`. In the SDK Manager (*SDK Tools*, with *Show Package Details*), install NDK `27.1.12297006`, the one React Native asks for. Gradle installs CMake 3.31.6 by itself. It needs a JDK 17 or newer in `JAVA_HOME`.
+1. **The Android SDK:** install Android Studio, which brings the SDK. Set the user variable `ANDROID_HOME` to it (`%LOCALAPPDATA%\Android\Sdk` on Windows) and add its `platform-tools` and `emulator` folders to the `PATH`. In the SDK Manager (*SDK Tools*, with *Show Package Details*), install NDK `27.1.12297006`, the one React Native asks for, and CMake `3.31.6`, whose ninja handles the long paths of the monorepo on Windows. It needs a JDK 17 or newer in `JAVA_HOME`.
 2. **The upload key,** made once and kept out of the repository, with a backup: without it, a new version can't update the installed app.
    ```bash
    keytool -genkeypair -v -storetype PKCS12 -keystore apc-upload.keystore -alias apc-upload -keyalg RSA -keysize 2048 -validity 10000
@@ -399,7 +399,7 @@ O `apps/desktop` empacota o app web como um programa para Windows com o Electron
 
 O `apps/mobile` é o app React Native para Android. Em desenvolvimento, ele fala com a API que o `pnpm dev` roda, que o emulador alcança em `10.0.2.2:3333`. Um APK de release roda sem o Metro e fala com o servidor de casa ([Rodando em Casa](#rodando-em-casa)) no endereço com que foi gerado.
 
-1. **O Android SDK:** instale o Android Studio, que traz o SDK. Defina a variável de usuário `ANDROID_HOME` com a pasta dele (`%LOCALAPPDATA%\Android\Sdk` no Windows) e coloque as pastas `platform-tools` e `emulator` dele no `PATH`. No SDK Manager (*SDK Tools*, com *Show Package Details*), instale o NDK `27.1.12297006`, o que o React Native pede. O Gradle instala o CMake 3.31.6 sozinho. Ele precisa de um JDK 17 ou mais novo no `JAVA_HOME`.
+1. **O Android SDK:** instale o Android Studio, que traz o SDK. Defina a variável de usuário `ANDROID_HOME` com a pasta dele (`%LOCALAPPDATA%\Android\Sdk` no Windows) e coloque as pastas `platform-tools` e `emulator` dele no `PATH`. No SDK Manager (*SDK Tools*, com *Show Package Details*), instale o NDK `27.1.12297006`, o que o React Native pede, e o CMake `3.31.6`, cujo ninja aceita os caminhos longos do monorepo no Windows. Ele precisa de um JDK 17 ou mais novo no `JAVA_HOME`.
 2. **A chave de upload,** criada uma vez e guardada fora do repositório, com uma cópia de segurança: sem ela, uma versão nova não consegue atualizar o app instalado.
    ```bash
    keytool -genkeypair -v -storetype PKCS12 -keystore apc-upload.keystore -alias apc-upload -keyalg RSA -keysize 2048 -validity 10000
