@@ -1,5 +1,14 @@
 import { useRef, useState, type FormEvent } from 'react'
-import { LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/shared/auth'
+import {
+  LOGIN_BRAND,
+  LOGIN_INTRO,
+  LOGIN_MESSAGES,
+  loginErrors,
+  type AuthService,
+  type Credentials,
+  type LoginErrors,
+  type SessionUser,
+} from '@apc/shared/auth'
 import { lockIcon, userIcon } from '@apc/shared/icons'
 import { BrandMark } from '../components/BrandMark.tsx'
 import { Button } from '../components/Button.tsx'
@@ -23,6 +32,9 @@ import { loginScreen } from './LoginScreen.styles.ts'
 // session, so an old server can be imported while the database is still empty. A notice, such as the session having
 // expired, shows above the form until a login is sent. The fields may open filled in, as the web app's demo fills in
 // its user.
+// On a phone it is one column, as in the native app: the mark with the name and the tagline as the page's heading in
+// place of the badge, what the login asks for, "Esqueceu a senha?" under the password, "Entrar" across, and the
+// question with "Criar conta" at the bottom (see LoginScreen.styles.ts).
 
 const FIELD_ORDER = ['username', 'password'] as const
 
@@ -101,6 +113,22 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
             <BrandMark className={classes.mark()} />
           </h1>
         </Panel>
+        {/* The phone's brand, in place of the badge's panel: the mark, which the heading names, and the name as the
+            page's heading, read "APC Universal Repair". */}
+        <div className={classes.heading()} data-testid={ids.heading}>
+          <BrandMark variant="compact" size={LOGIN_BRAND.mark} aria-hidden />
+          <h1 className={classes.headingTitle()} data-testid={ids.headingTitle}>
+            <span className={classes.name()} data-testid={ids.name}>
+              APC
+            </span>{' '}
+            <span className={classes.tagline()} data-testid={ids.tagline}>
+              Universal Repair
+            </span>
+          </h1>
+          <Text tone="muted" className={classes.intro()}>
+            {LOGIN_INTRO}
+          </Text>
+        </div>
         <form noValidate className={classes.form()} data-testid={ids.form} onSubmit={submit}>
           {notice && !sent && (
             <Text role="status" size="sm">
@@ -131,13 +159,13 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
             error={errors.password}
           />
           <div className={classes.actions()} data-testid={ids.actions}>
-            <Button type="submit" loading={sending}>
+            <Button type="submit" loading={sending} className={classes.submit()}>
               Entrar
             </Button>
-            <Button type="button" variant="link" onClick={() => setForgot(true)}>
+            <Button type="button" variant="link" onClick={() => setForgot(true)} className={classes.forgot()}>
               Esqueceu a senha?
             </Button>
-            <Button type="button" variant="link" onClick={onRegister}>
+            <Button type="button" variant="link" onClick={onRegister} className={classes.registerLink()}>
               Criar conta
             </Button>
             {onServerSettings && (
@@ -147,6 +175,12 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
             )}
           </div>
         </form>
+        <div className={classes.account()} data-testid={ids.account}>
+          <Text tone="muted">Ainda não tem conta?</Text>
+          <Button type="button" variant="secondary" onClick={onRegister} className={classes.accountButton()}>
+            Criar conta
+          </Button>
+        </div>
       </div>
       <Dialog
         open={forgot}

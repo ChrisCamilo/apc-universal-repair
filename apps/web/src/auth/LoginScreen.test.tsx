@@ -1,5 +1,5 @@
-import { createMockAuth, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth'
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
+import { createMockAuth, LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens'
 import { isStyleId } from '@apc/shared/style-ids'
 import { TEST_USERS } from '@apc/shared/test-users'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
@@ -262,18 +262,58 @@ test('Web: the forgotten-password notice says whom to ask and closes three ways'
   login.mockRestore()
 })
 
-// Lays the login out at 1280×720 and on a 360×780 phone, and checks the badge sits beside the form on desktop
-// and above it, smaller, on the phone, with "Entrar" on screen and nothing scrolling sideways.
-test('Web: the badge sits beside the form on desktop and above it on a phone', async () => {
+// Lays the login out at 1280×720 and checks the desktop as it was: the badge, which names the page, beside the form,
+// "Criar conta" a link under "Entrar", and none of the phone's brand, intro or bottom button.
+test('Web: on the desktop the badge sits beside the form', async () => {
   const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
-  const mark = () => screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
-  const field = () => screen.getByLabelText('Usuário').element().getBoundingClientRect()
-  expect(field().left).toBeGreaterThan(mark().right)
-  const desktopWidth = mark().width
+  const mark = screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
+  expect(screen.getByLabelText('Usuário').element().getBoundingClientRect().left).toBeGreaterThan(mark.right)
+  await expect.element(screen.getByRole('heading', { level: 1 })).toContainElement(screen.getByRole('img', { name: 'APC Universal Repair' }).element() as HTMLElement)
+  await expect.element(screen.getByText(LOGIN_INTRO)).not.toBeVisible()
+  await expect.element(screen.getByText('Ainda não tem conta?')).not.toBeVisible()
+  const register = screen.getByRole('button', { name: 'Criar conta' })
+  await expect.element(register).toBeVisible()
+  expect(register.element().getBoundingClientRect().top).toBeGreaterThan(screen.getByRole('button', { name: 'Entrar' }).element().getBoundingClientRect().bottom)
+})
 
+// Lays the login out on a 360×780 phone and checks the mockup's one column: the 72px mark over the name and the
+// tagline, which head the page as "APC Universal Repair", what the login asks for, the fields, "Esqueceu a senha?" at
+// the right under the password, 44px tall, "Entrar" across, and the question with an outline "Criar conta" across the
+// bottom of the screen, with nothing scrolling sideways.
+test('Web: on a phone the login is one column, the brand on top and Criar conta at the bottom', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
-  expect(field().top).toBeGreaterThan(mark().bottom)
-  expect(mark().width).toBeLessThan(desktopWidth)
-  expect(screen.getByRole('button', { name: 'Entrar' }).element().getBoundingClientRect().bottom).toBeLessThanOrEqual(MIN_MOBILE_HEIGHT)
+  const onRegister = vi.fn()
+  const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={onRegister} />)
+  const box = (element: Element) => element.getBoundingClientRect()
+  const heading = screen.getByRole('heading', { level: 1, name: 'APC Universal Repair' })
+  await expect.element(heading).toBeVisible()
+  await expect.element(screen.getByRole('img', { name: 'APC Universal Repair' })).not.toBeInTheDocument()
+  const mark = box(screen.getByTestId('auth.login-screen.heading').element().querySelector('svg')!)
+  expect([mark.width, mark.height]).toEqual([LOGIN_BRAND.mark, LOGIN_BRAND.mark])
+  expect(mark.left + mark.width / 2).toBeCloseTo(MIN_MOBILE_WIDTH / 2, 0)
+  expect(getComputedStyle(screen.getByTestId('auth.login-screen.heading.title.name').element()).fontSize).toBe(`${LOGIN_BRAND.name}px`)
+  expect(getComputedStyle(screen.getByTestId('auth.login-screen.heading.title.tagline').element()).fontSize).toBe(`${LOGIN_BRAND.tagline}px`)
+
+  const intro = box(screen.getByText(LOGIN_INTRO).element())
+  const username = box(screen.getByLabelText('Usuário').element().parentElement!)
+  const password = box(screen.getByLabelText('Senha', { exact: true }).element().parentElement!)
+  const forgot = box(screen.getByRole('button', { name: 'Esqueceu a senha?' }).element())
+  const submit = box(screen.getByRole('button', { name: 'Entrar' }).element())
+  expect(intro.top).toBeGreaterThan(box(heading.element()).bottom)
+  expect(username.top).toBeGreaterThan(intro.bottom)
+  expect(forgot.top).toBeGreaterThan(password.bottom)
+  expect(forgot.right).toBeCloseTo(password.right, 0)
+  expect(forgot.height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET)
+  expect(submit.top).toBeGreaterThan(forgot.bottom)
+  expect(submit.width).toBeCloseTo(password.width, 0)
+  expect(submit.bottom).toBeLessThanOrEqual(MIN_MOBILE_HEIGHT)
+
+  await expect.element(screen.getByText('Ainda não tem conta?')).toBeVisible()
+  const register = screen.getByRole('button', { name: 'Criar conta' })
+  expect(box(register.element()).width).toBeCloseTo(password.width, 0)
+  expect(box(register.element()).bottom).toBeGreaterThan(MIN_MOBILE_HEIGHT - 64)
+  expect(box(register.element()).bottom).toBeLessThanOrEqual(MIN_MOBILE_HEIGHT)
+  await register.click()
+  expect(onRegister).toHaveBeenCalledOnce()
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
 })

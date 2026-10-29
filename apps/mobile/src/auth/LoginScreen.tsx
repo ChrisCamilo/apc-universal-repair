@@ -1,16 +1,17 @@
 import { useRef, useState, type ComponentRef } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
-import { LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/shared/auth';
+import { Text as RNText, ScrollView, TextInput, View } from 'react-native';
+import { LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/shared/auth';
 import { lockIcon, userIcon } from '@apc/shared/icons';
 import { BrandMark } from '../BrandMark';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
-import { Panel } from '../Panel';
 import { TextField } from '../TextField';
 import { Text } from '../Typography';
-import { BADGE_WIDTH, useStyles } from './LoginScreen.styles';
+import { useStyles } from './LoginScreen.styles';
 
-// The first screen of the app, the same as the web's /login on a phone: the APC badge on a panel above the form.
+// The first screen of the app, the same as the web's /login on a phone: one column with the APC mark over the name
+// and the tagline, which head the screen as "APC Universal Repair", and what the login asks for, then the form, with
+// "Esqueceu a senha?" at the right under the password and "Entrar" across, and "Criar conta" at the bottom.
 // "Entrar", or the keyboard's "go" key in the password, sends the login, and "next" in the user moves on to the
 // password. An empty field isn't sent but shows its message under it, and the cursor goes to the first empty
 // one. A field's message goes away once it is typed into. While the login runs, "Entrar" shows it is busy and
@@ -90,11 +91,25 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScree
 
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
-      <Panel style={styles.brand}>
-        <View accessibilityRole="header" style={styles.title} testID={ids.title}>
-          <BrandMark size={BADGE_WIDTH} />
+      <View style={styles.heading} testID={ids.heading}>
+        {/* The heading names the mark, so screen readers skip it. */}
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <BrandMark variant="compact" size={LOGIN_BRAND.mark} />
         </View>
-      </Panel>
+        <View accessible accessibilityRole="header" accessibilityLabel="APC Universal Repair" style={styles.headingTitle} testID={ids.headingTitle}>
+          <RNText style={styles.name} testID={ids.name}>
+            APC
+          </RNText>
+          <RNText style={styles.tagline} testID={ids.tagline}>
+            Universal Repair
+          </RNText>
+        </View>
+        <View style={styles.intro} testID={ids.intro}>
+          <Text tone="muted" align="center">
+            {LOGIN_INTRO}
+          </Text>
+        </View>
+      </View>
       <View style={styles.form} testID={ids.form}>
         {notice && !sent && (
           <View accessibilityLiveRegion="polite" style={styles.notice} testID={ids.notice}>
@@ -131,16 +146,21 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScree
           onSubmitEditing={submit}
         />
         <View style={styles.actions} testID={ids.actions}>
-          <Button onPress={submit} loading={sending}>
-            Entrar
-          </Button>
-          <Button variant="link" onPress={() => setForgot(true)}>
+          <Button variant="link" align="end" onPress={() => setForgot(true)}>
             Esqueceu a senha?
           </Button>
-          <Button variant="link" onPress={onRegister}>
-            Criar conta
+          <Button align="stretch" onPress={submit} loading={sending}>
+            Entrar
           </Button>
         </View>
+      </View>
+      <View style={styles.account} testID={ids.account}>
+        <Text tone="muted" align="center">
+          Ainda não tem conta?
+        </Text>
+        <Button variant="secondary" align="stretch" onPress={onRegister}>
+          Criar conta
+        </Button>
       </View>
       <Dialog
         open={forgot}

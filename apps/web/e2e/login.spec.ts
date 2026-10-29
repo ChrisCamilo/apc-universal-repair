@@ -12,9 +12,10 @@ const USER = TEST_USERS[0];
 // Nobody is logged in when these start.
 test.use({ signedIn: false });
 
-// Opens /login and checks the badge heads the page with both fields and "Entrar" on screen, laid out without
-// sideways scroll, beside the form on desktop and above it on a phone.
-test("Web: the login screen shows the badge and the form", { tag: [TEST_TAGS.auth, TEST_TAGS.layout] }, async ({ page, isMobile }) => {
+// Opens /login and checks "APC Universal Repair" heads the page with both fields and "Entrar" on screen, laid out
+// without sideways scroll: the badge beside the form on desktop; on a phone the brand above it, and "Criar conta" on
+// screen at the bottom without scrolling.
+test("Web: the login screen shows the brand and the form", { tag: [TEST_TAGS.auth, TEST_TAGS.layout] }, async ({ page, isMobile }) => {
   const form = loginForm(page);
   const { heading, mark } = dashboard(page);
   await page.goto("/login");
@@ -22,12 +23,14 @@ test("Web: the login screen shows the badge and the form", { tag: [TEST_TAGS.aut
   await expect(form.username).toBeVisible();
   await expect(form.password).toBeVisible();
   await expect(form.submit).toBeInViewport();
-  const markBox = (await mark.boundingBox())!;
   const field = (await form.username.boundingBox())!;
   if (!isMobile) {
+    const markBox = (await mark.boundingBox())!;
     expect(field.x).toBeGreaterThan(markBox.x + markBox.width);
   } else {
-    expect(field.y).toBeGreaterThan(markBox.y + markBox.height);
+    const headingBox = (await heading.boundingBox())!;
+    expect(field.y).toBeGreaterThan(headingBox.y + headingBox.height);
+    await expect(form.signUp).toBeInViewport();
   }
   await expect(page).not.toScrollSideways();
 });
