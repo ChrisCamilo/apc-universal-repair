@@ -216,6 +216,16 @@ Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical reso
 - The sizes are constants in `@apc/shared/screens` (`MIN_DESKTOP_WIDTH`, `MIN_DESKTOP_HEIGHT`, `MIN_MOBILE_WIDTH`, `MIN_MOBILE_HEIGHT`, `MIN_WINDOW_HEIGHT`, `MOBILE_DESIGN_WIDTH`, `MOBILE_DESIGN_HEIGHT`, and the notebook's `NOTEBOOK_WIDTH`, `NOTEBOOK_HEIGHT`, `NOTEBOOK_WINDOW_HEIGHT`): code, configs, stories and tests import them instead of writing the numbers.
 - Every UI task is checked at the minimum sizes before it is done: on web with the Playwright `desktop` (1280×720) and `mobile` (360×780) projects, on mobile with a 360×780 emulator. Screens that fill the window (the Inventory, the Catalog, the login) are also checked at 1360×768 and 1360×689, a notebook in full screen and in a window.
 
+### Phone layout
+
+On the web below `card:` (`TABLE_CARD_BREAKPOINT`) and always in the native app, a screen follows the phone layout of the Mobile Redesign (EP-16), drawn at 390×844 in its [mockups](https://claude.ai/artifact/7dUiBj7qZbiDF5ZY4MMbaJ) (a design canvas only the project's owner can open). The desktop layout does not change.
+
+- **The page scrolls as a whole,** never inside a box of fixed height, and never sideways.
+- **A form or an item's details opens as a full screen,** with its actions in a footer fixed to the bottom. A dialog that only confirms, such as deleting an item, stays a centered box.
+- **A list of choices opens as a bottom sheet** (the filters, the sort, a menu of actions), never as a popover anchored to its button.
+- **Every control a finger reaches is at least 44px** tall and wide.
+- **Text inputs use 16px text,** so the browser doesn't zoom in when one gets focus.
+
 ## Code Conventions
 
 Applies to every TypeScript/JavaScript file, tests included.
