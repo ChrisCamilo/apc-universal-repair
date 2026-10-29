@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type TextStyle } from 'react-native';
 import type { ButtonSize, ButtonVariant } from '@apc/shared/button';
 import { ICON_SIZES, type IconShape } from '@apc/shared/icons';
@@ -23,7 +23,8 @@ type ButtonProps = {
   label?: string;
   /** Where it sits across its container: at the start (the default), at the end, or stretched across, like "Entrar". */
   align?: 'start' | 'end' | 'stretch';
-  children: string;
+  /** The label; a nested Text may set one word apart, as "Entrar" in "Já tem conta? Entrar". */
+  children: ReactNode;
 };
 
 export function Button({
