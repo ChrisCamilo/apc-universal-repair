@@ -5,6 +5,8 @@ import { commands } from 'vitest/browser'
 // minute, so a transition is still running when a test reads it, and a test ends it when it says so, never on the
 // clock: test-setup.ts turns motion off before each test, and these helpers put it back after.
 
+/** Where each move starts: the motion token's enterScale, enterShift px above, or a full height below. */
+const ENTRIES = { scale: /^0\.98$/, translate: /-4px$/, rise: /100%$/ } as const
 /** How long transitions take while a test reads them: long enough that none ends on its own. */
 const SLOW = '60s'
 
@@ -16,8 +18,11 @@ type Overlay = {
   find: () => Element
   /** Whether it has gone: the element itself, or a dialog's content, which leaves while the window stays. */
   gone: () => boolean
-  /** How it moves besides fading: a dialog grows ("scale"), a popover or a list slides ("translate"). */
-  move: 'scale' | 'translate'
+  /**
+   * How it moves besides fading: a dialog grows ("scale"), a popover or a list slides from its trigger ("translate"),
+   * a bottom sheet rises from the bottom edge ("rise").
+   */
+  move: 'scale' | 'translate' | 'rise'
   /** Whether it has a backdrop, as a modal dialog does, which fades in and out with it. */
   backdrop?: boolean
 }
@@ -53,7 +58,9 @@ export async function expectOverlayMotion(overlay: Overlay): Promise<void> {
     const element = overlay.find()
     const entering = running(element)
     expect(entering).toContainEqual({ property: 'opacity', from: '0', to: '1' })
-    expect(entering.find(({ property }) => property === overlay.move)?.from).toMatch(overlay.move === 'scale' ? /^0\.98$/ : /-4px$/)
+    expect(entering.find(({ property }) => property === (overlay.move === 'scale' ? 'scale' : 'translate'))?.from).toMatch(
+      ENTRIES[overlay.move],
+    )
     if (overlay.backdrop) {
       expect(entering).toContainEqual({ property: '::backdrop opacity', from: '0', to: '1' })
     }
