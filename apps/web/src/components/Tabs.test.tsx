@@ -1,4 +1,5 @@
-import { cubeIcon, documentIcon, searchIcon } from '@apc/shared/icons'
+import { cubeIcon, documentIcon, ICON_SIZES, searchIcon } from '@apc/shared/icons'
+import { MIN_TOUCH_TARGET } from '@apc/shared/screens'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { useState } from 'react'
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest'
@@ -208,7 +209,33 @@ test('Web: Alt + Left/Right moves the focused tab', async () => {
   await expect.element(screen.getByRole('tab', { name: 'Estoque' })).toHaveAttribute('aria-selected', 'true')
 })
 
-function DashboardTabs() {
+// Draws the tabs as a phone's bottom bar in the eighties/night theme and checks each one stands at least 44px tall, its
+// 20px icon in a pill over its label, with no underline; the selected one takes the accent with its pill filled, the
+// others stay muted on a clear pill. The arrows still move between them.
+test('Web: the bar variant draws each icon in a pill over its label', async () => {
+  const { colors } = themes.eighties.night
+  root.dataset.style = 'eighties'
+  root.dataset.mode = 'night'
+  const screen = await render(<DashboardTabs variant="bar" />)
+  const selected = screen.getByRole('tab', { name: /Estoque/ })
+  const other = screen.getByRole('tab', { name: /Catálogo/ })
+  const pill = (tab: typeof selected) => tab.getByTestId('common.tabs.tab.pill').element()
+  for (const tab of screen.getByRole('tab').elements()) {
+    expect(tab.getBoundingClientRect().height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET)
+  }
+  expect(pill(selected).getBoundingClientRect().bottom).toBeLessThanOrEqual(selected.getByTestId('common.tabs.tab.label').element().getBoundingClientRect().top)
+  expect(pill(selected).querySelector('svg')?.getAttribute('width')).toBe(String(ICON_SIZES.thumbnail))
+  expect(getComputedStyle(selected.element()).color).toBe(rgb(colors.accent))
+  expect(getComputedStyle(pill(selected)).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+  expect(getComputedStyle(selected.element(), '::after').display).toBe('none')
+  expect(getComputedStyle(other.element()).color).toBe(rgb(colors.textMuted))
+  expect(getComputedStyle(pill(other)).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+  await selected.click()
+  await userEvent.keyboard('{ArrowRight}')
+  await expect.element(other).toHaveAttribute('aria-selected', 'true')
+})
+
+function DashboardTabs({ variant }: { variant?: 'line' | 'bar' }) {
   const [tab, setTab] = useStoredTab(STORAGE_KEY, IDS)
   return (
     <>
@@ -221,6 +248,7 @@ function DashboardTabs() {
         ]}
         selected={tab}
         onSelect={setTab}
+        variant={variant}
       />
       <TabPanel id="stock" selected={tab}>Itens no estoque</TabPanel>
       <TabPanel id="catalog" selected={tab}>Modelos do catálogo</TabPanel>

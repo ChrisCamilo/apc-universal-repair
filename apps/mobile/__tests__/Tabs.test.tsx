@@ -5,11 +5,12 @@
 import React from 'react';
 import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { coneIcon, cubeIcon, documentIcon, gripIcon, searchIcon } from '@apc/shared/icons';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { coneIcon, cubeIcon, documentIcon, gripIcon, ICON_SIZES, searchIcon } from '@apc/shared/icons';
+import { MIN_TOUCH_TARGET } from '@apc/shared/screens';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Icon } from '../src/Icon';
 import { Tabs, useStoredTab } from '../src/Tabs';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
 
 const IDS = ['stock', 'catalog'] as const;
 const STORAGE_KEY = 'apc-tab-test';
@@ -240,7 +241,30 @@ test('Mobile: screen reader actions move a tab', async () => {
   announce.mockRestore();
 });
 
-function DashboardTabs() {
+// Draws the tabs as a phone's bottom bar in the eighties/night theme and checks each one stands at least 44px tall,
+// with its 20px icon in a pill over its label, on one line in the 12px display face, and no underline; the selected
+// one takes the accent with its pill filled with the soft accent, the other stays muted on a clear pill.
+test('Mobile: the bar variant draws each icon in a pill over its label', async () => {
+  const theme = themes.eighties.night;
+  const tree = await mount('eighties', 'night', <DashboardTabs variant="bar" />);
+  const stock = tabNamed(tree, 'Estoque');
+  const catalog = tabNamed(tree, 'Catálogo');
+  const pill = (tab: ReactTestRenderer.ReactTestInstance) =>
+    StyleSheet.flatten(tab.find((node) => node.props.testID === 'common.tabs.tab.pill' && typeof node.type !== 'string').props.style);
+  for (const tab of [stock, catalog]) {
+    expect(StyleSheet.flatten(tab.props.style).minHeight).toBe(MIN_TOUCH_TARGET);
+    expect(tab.findAll((node) => node.props.testID === 'common.tabs.tab.underline')).toHaveLength(0);
+    expect(tab.findAllByType(Icon)[0].props.size).toBe(ICON_SIZES.thumbnail);
+  }
+  const label = stock.find((node) => node.type === Text && node.props.children === 'Estoque');
+  expect(label.props.numberOfLines).toBe(1);
+  expect(StyleSheet.flatten(label.props.style)).toMatchObject({ color: theme.colors.accent, fontSize: 12, textTransform: 'uppercase' });
+  expect(pill(stock).backgroundColor).toBe(withAlpha(theme.colors.accent, scales.accentSoft.night));
+  expect(textStyle(catalog, 0).color).toBe(theme.colors.textMuted);
+  expect(pill(catalog).backgroundColor).toBeUndefined();
+});
+
+function DashboardTabs({ variant }: { variant?: 'line' | 'bar' }) {
   const [tab, setTab] = useStoredTab(STORAGE_KEY, IDS);
   if (!tab) {
     return null;
@@ -254,6 +278,7 @@ function DashboardTabs() {
       ]}
       selected={tab}
       onSelect={setTab}
+      variant={variant}
     />
   );
 }
