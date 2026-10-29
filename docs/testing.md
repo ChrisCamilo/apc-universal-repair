@@ -299,7 +299,7 @@ pnpm --filter @apc/desktop test:e2e
 
   | Workflow | Suite | Artifact |
   |---|---|---|
-  | `ci.yml` (every pull request and push to main) | Web E2E | `playwright-report` |
+  | `ci.yml` (every pull request) | Web E2E | `playwright-report` |
   | `desktop.yml` (pull requests that touch the desktop, web or shared) | Desktop E2E, on `windows-latest` | `desktop-playwright-report` |
   | `pages.yml` (pull requests that touch the API, web, shared or the site) | Demo E2E | `demo-playwright-report` |
 
@@ -590,7 +590,7 @@ pnpm --filter @apc/desktop test:e2e
 
   | Workflow | Suíte | Artefato |
   |---|---|---|
-  | `ci.yml` (todo pull request e push na main) | E2E da web | `playwright-report` |
+  | `ci.yml` (todo pull request) | E2E da web | `playwright-report` |
   | `desktop.yml` (pull requests que mexem no desktop, na web ou no shared) | E2E do desktop, no `windows-latest` | `desktop-playwright-report` |
   | `pages.yml` (pull requests que mexem na API, na web, no shared ou no site) | E2E da demo | `demo-playwright-report` |
 
