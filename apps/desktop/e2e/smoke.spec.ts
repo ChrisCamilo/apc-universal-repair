@@ -4,7 +4,7 @@ import { expect, logIn, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/shared/test-tags";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { INSTALLER_CHOICE_FILE } from "../src/server/database.ts";
-import { MIN_WINDOW_SIZE, openingContentSize } from "../src/window.ts";
+import { MIN_WINDOW_SIZE, openingContentSize } from "../src/window/window.ts";
 
 // The desktop app's smoke test: the compiled app on the stand-in API, with its own userData folder (support/fixtures.ts).
 

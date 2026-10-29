@@ -9,7 +9,7 @@ import { windowsIdentity } from "./identity.js";
 import { keepAppLog } from "./logs.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
 import { configuredPort } from "./server/ports.js";
-import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
+import { APP_ORIGIN, registerAppScheme, serveApp } from "./window/protocol.js";
 import { readHealth } from "./server/server.js";
 import {
   handleServerElsewhere,
@@ -35,7 +35,7 @@ import {
   writeInstallMarker,
   type InstallMarker,
 } from "./update.js";
-import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
+import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window/window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
 // Vite dev server when APC_DEV_URL is set. On opening, it starts the server it ships (see bundledServer.ts) and shows
