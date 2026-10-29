@@ -90,6 +90,7 @@ Epics group work by product area and are referenced by their slug in branch name
 | EP-03 | `auth` | Login screen only — mock/static, no real auth backend yet |
 | EP-04 | `dashboard` | Dashboard shell: header, top-level tabs and the user menu. In the MVP the only tab is Inventory; the Catalog tab comes in phase 2 |
 | EP-12 | `inventory` | Inventory tab: item list with search by name or part code and filters, add/edit/delete items persisted through the API, up to 3 photos per item (max 3 MB each) and CSV batch import |
+| EP-16 | `mobile` | Phone layout of the screens already built, on the web and in the native app: login and register, a bottom bar for the tabs, the Inventory as cards, filters, sorting and actions in bottom sheets, and full-screen forms and details. The desktop does not change |
 
 ### Phase 2 epics (right after the MVP)
 
@@ -127,7 +128,7 @@ Epics group work by product area and are referenced by their slug in branch name
 | EP-13 | `optimizations` | Refactors that change no behavior: organized, consistent and generic code, such as style recipes beside each component, style ids and shared constants instead of hardcoded values |
 | EP-15 | `qa` | Test quality: shared fixtures, locators and tags for the Playwright suites, reports and traces that explain a failure, and the tooling to write and fix tests, such as Playwright's MCP in Claude Code |
 
-The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard → Inventory. Login was mocked/static for the MVP; it now goes through the API, which checks a session token on every call (EP-10), and inventory items, photos included, are persisted through the API. Phase 2 adds the Catalog tab (EP-04), on mocked/static vehicle data, and phase 3 the notifications and toasts (EP-14). Car Specs (EP-05) is TBD: an epic with no phase yet. 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to later epics.
+The MVP is scoped to: Setup → Design System → Auth (login) → Dashboard → Inventory, then the Mobile Redesign (EP-16) lays those screens out for phones. Login was mocked/static for the MVP; it now goes through the API, which checks a session token on every call (EP-10), and inventory items, photos included, are persisted through the API. Phase 2 adds the Catalog tab (EP-04), on mocked/static vehicle data, and phase 3 the notifications and toasts (EP-14). Car Specs (EP-05) is TBD: an epic with no phase yet. 3D viewing, maintenance/repair specs, diagnostics, reference pricing, and a real backend are deferred to later epics.
 
 Tasks that belong to phase 2 end their title with `(phase 2)` and state it in the body: `**Phase:** 2 — together with ...`. Phase 3 tasks do the same with `(phase 3)` and `**Phase:** 3 — ...`.
 
@@ -214,6 +215,16 @@ Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical reso
 - Below the minimum, the app keeps working with its responsive layout, but the layout is not guaranteed.
 - The sizes are constants in `@apc/shared/screens` (`MIN_DESKTOP_WIDTH`, `MIN_DESKTOP_HEIGHT`, `MIN_MOBILE_WIDTH`, `MIN_MOBILE_HEIGHT`, `MIN_WINDOW_HEIGHT`, `MOBILE_DESIGN_WIDTH`, `MOBILE_DESIGN_HEIGHT`, and the notebook's `NOTEBOOK_WIDTH`, `NOTEBOOK_HEIGHT`, `NOTEBOOK_WINDOW_HEIGHT`): code, configs, stories and tests import them instead of writing the numbers.
 - Every UI task is checked at the minimum sizes before it is done: on web with the Playwright `desktop` (1280×720) and `mobile` (360×780) projects, on mobile with a 360×780 emulator. Screens that fill the window (the Inventory, the Catalog, the login) are also checked at 1360×768 and 1360×689, a notebook in full screen and in a window.
+
+### Phone layout
+
+On the web below `card:` (`TABLE_CARD_BREAKPOINT`) and always in the native app, a screen follows the phone layout of the Mobile Redesign (EP-16), drawn at 390×844 in its [mockups](https://claude.ai/artifact/7dUiBj7qZbiDF5ZY4MMbaJ) (a design canvas only the project's owner can open). The desktop layout does not change.
+
+- **The page scrolls as a whole,** never inside a box of fixed height, and never sideways.
+- **A form or an item's details opens as a full screen,** with its actions in a footer fixed to the bottom. A dialog that only confirms, such as deleting an item, stays a centered box.
+- **A list of choices opens as a bottom sheet** (the filters, the sort, a menu of actions), never as a popover anchored to its button.
+- **Every control a finger reaches is at least 44px** tall and wide.
+- **Text inputs use 16px text,** so the browser doesn't zoom in when one gets focus.
 
 ## Code Conventions
 
