@@ -213,7 +213,7 @@ Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical reso
 - **The desktop app's window, 1280×640 and up:** on a 1366×768 or 1360×768 notebook, the taskbar and the title bar leave about 1360×689 of content, less than 720. So the window opens at 1280×720 only when the screen's work area holds it, otherwise at what the work area holds, and can be made as small as 1280×640 (`MIN_WINDOW_HEIGHT`). Down to that height the page never scrolls; only the content that is meant to, such as the Inventory's table, does.
 - **Mobile, 360×780:** covers mid-range and premium phones from 2020 on. The 360 width comes from Samsung Galaxy S20–S23 at their default setting; the 780 height from the S22 and S23. Screens are designed at 390×844 (iPhone 12–14) and adapt up and down from there.
 - Below the minimum, the app keeps working with its responsive layout, but the layout is not guaranteed.
-- The sizes are constants in `@apc/shared/screens` (`MIN_DESKTOP_WIDTH`, `MIN_DESKTOP_HEIGHT`, `MIN_MOBILE_WIDTH`, `MIN_MOBILE_HEIGHT`, `MIN_WINDOW_HEIGHT`, `MOBILE_DESIGN_WIDTH`, `MOBILE_DESIGN_HEIGHT`, and the notebook's `NOTEBOOK_WIDTH`, `NOTEBOOK_HEIGHT`, `NOTEBOOK_WINDOW_HEIGHT`): code, configs, stories and tests import them instead of writing the numbers.
+- The sizes are constants in `@apc/shared/screens` (`MIN_DESKTOP_WIDTH`, `MIN_DESKTOP_HEIGHT`, `MIN_MOBILE_WIDTH`, `MIN_MOBILE_HEIGHT`, `MIN_TOUCH_TARGET`, `MIN_WINDOW_HEIGHT`, `MOBILE_DESIGN_WIDTH`, `MOBILE_DESIGN_HEIGHT`, and the notebook's `NOTEBOOK_WIDTH`, `NOTEBOOK_HEIGHT`, `NOTEBOOK_WINDOW_HEIGHT`): code, configs, stories and tests import them instead of writing the numbers.
 - Every UI task is checked at the minimum sizes before it is done: on web with the Playwright `desktop` (1280×720) and `mobile` (360×780) projects, on mobile with a 360×780 emulator. Screens that fill the window (the Inventory, the Catalog, the login) are also checked at 1360×768 and 1360×689, a notebook in full screen and in a window.
 
 ### Phone layout
@@ -223,7 +223,7 @@ On the web below `card:` (`TABLE_CARD_BREAKPOINT`) and always in the native app,
 - **The page scrolls as a whole,** never inside a box of fixed height, and never sideways.
 - **A form or an item's details opens as a full screen,** with its actions in a footer fixed to the bottom. A dialog that only confirms, such as deleting an item, stays a centered box.
 - **A list of choices opens as a bottom sheet** (the filters, the sort, a menu of actions), never as a popover anchored to its button.
-- **Every control a finger reaches is at least 44px** tall and wide.
+- **Every control a finger reaches is at least 44px** tall and wide (`MIN_TOUCH_TARGET` in `@apc/shared/screens`). The phone's heights are in `scales.touch`: 52px for a button, a field and a select, 44px for a small button, an icon button such as the × and a chip, 40px for a segmented choice's option, 56px for a list's or a menu's row. On web they apply below `card:` (`max-card:min-h-13` and the like); a field's end button reaches into its padding, so the field stays 52px.
 - **Text inputs use 16px text,** so the browser doesn't zoom in when one gets focus.
 
 ## Code Conventions
