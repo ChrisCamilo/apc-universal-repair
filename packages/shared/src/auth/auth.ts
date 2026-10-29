@@ -16,6 +16,8 @@ export { apiFetch, onSessionExpired } from "./apiFetch.ts";
  * spaced this many em.
  */
 export const LOGIN_BRAND = { mark: 72, name: 44, tagline: 17, taglineTracking: 0.24 } as const;
+/** The sign-up's title on a phone, beside the back arrow, in px, in the display face. */
+export const REGISTER_TITLE = 22;
 /** What the login asks for, under the brand on a phone. */
 export const LOGIN_INTRO = "Use o usuário e a senha da sua oficina.";
 /**

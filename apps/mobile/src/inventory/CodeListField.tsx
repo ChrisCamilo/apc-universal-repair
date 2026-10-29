@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Pressable, Text as NativeText, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, Text as NativeText, TextInput, View, type HostInstance } from 'react-native';
 import { closeIcon, ICON_SIZES } from '@apc/shared/icons';
 import { addCodes, codesInput } from '@apc/shared/item-form';
+import { useRevealField } from '../FieldScrollView';
 import { Icon } from '../Icon';
 import { useTheme } from '../theme';
 import { Label, Text } from '../Typography';
@@ -11,7 +12,8 @@ import { REMOVE_HIT_SLOP, useStyles } from './CodeListField.styles';
 // as a chip with the keyboard's return key, a comma or a semicolon, or on leaving the field, and several pasted at once
 // all join it; a code the list already has is left out (see addCodes). Each chip's × takes its code out, and so does
 // Backspace in the empty field, the last one. A code with a message, such as one another item uses, is shown in the
-// danger color, its message under the field, which is read out when it appears.
+// danger color, its message under the field, which is read out when it appears. Inside a FieldScrollView, the field
+// scrolls into sight above the keyboard on focus.
 
 type CodeListFieldProps = {
   label: string;
@@ -28,6 +30,8 @@ export function CodeListField({ label, codes, onCodesChange, messages = [], help
   const { styles, ids } = useStyles();
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
+  const root = useRef<HostInstance>(null);
+  const revealField = useRevealField();
   const notes = codes.flatMap((code, index) => (messages[index] ? [{ code, message: messages[index] }] : []));
 
   /** Adds what is typed as a code, and empties the field. */
@@ -42,7 +46,7 @@ export function CodeListField({ label, codes, onCodesChange, messages = [], help
   const remove = (index: number) => onCodesChange(codes.filter((_, at) => at !== index));
 
   return (
-    <View style={styles.field} testID={ids.field}>
+    <View ref={root} style={styles.field} testID={ids.field}>
       <Label>{label}</Label>
       <View style={[styles.fieldRing, focused && (notes.length > 0 ? styles.fieldRingError : styles.fieldRingFocused)]} testID={ids.fieldRing}>
         <View style={[styles.fieldFrame, focused && styles.fieldFrameFocused]} testID={ids.fieldFrame}>
@@ -83,7 +87,10 @@ export function CodeListField({ label, codes, onCodesChange, messages = [], help
             autoCorrect={false}
             accessibilityLabel={label}
             accessibilityHint={notes.length > 0 ? notes.map((note) => `${note.code}: ${note.message}`).join(' ') : helper}
-            onFocus={() => setFocused(true)}
+            onFocus={() => {
+              setFocused(true);
+              revealField(root.current);
+            }}
             onBlur={() => {
               setFocused(false);
               commit();

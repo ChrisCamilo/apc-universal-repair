@@ -5,6 +5,7 @@ import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { themeCss } from '../theme.ts'
+import { BackButton } from './BackButton.tsx'
 import { Button } from './Button.tsx'
 import { CloseButton } from './CloseButton.tsx'
 import { Combobox } from './Combobox.tsx'
@@ -18,6 +19,7 @@ import { TextField } from './TextField.tsx'
 const DESKTOP = {
   buttonMd: 46,
   buttonSm: 34,
+  back: 44,
   close: 36,
   chip: 26,
   segmentedOption: 24,
@@ -37,6 +39,7 @@ const OPTIONS = [
 const PHONE = {
   buttonMd: scales.touch.button,
   buttonSm: scales.touch.buttonSm,
+  back: scales.touch.icon,
   close: scales.touch.icon,
   chip: scales.touch.icon,
   segmentedOption: scales.touch.segment,
@@ -66,6 +69,7 @@ async function heights() {
   const found = {
     buttonMd: screen.getByRole('button', { name: 'Salvar' }).element().getBoundingClientRect().height,
     buttonSm: screen.getByRole('button', { name: 'Cancelar' }).element().getBoundingClientRect().height,
+    back: height('common.back-button'),
     close: height('common.close-button'),
     chip: height('common.filter-chip'),
     segmentedOption: height('common.segmented.option'),
@@ -93,8 +97,8 @@ afterAll(async () => {
 })
 
 // Renders every control a finger reaches at 360×780 and checks each is as tall as a phone asks: 52px for a button, a
-// field and a select, 44px for a small button, the ×, a chip and the menu's trigger, 56px for a list's or a menu's row.
-// The password field's eye is a 44px button, and the field stays 52px around it.
+// field and a select, 44px for a small button, the back arrow, the ×, a chip and the menu's trigger, 56px for a list's
+// or a menu's row. The password field's eye is a 44px button, and the field stays 52px around it.
 test('Web: on a phone every control is tall enough for a finger', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   const { found, eye, password } = await heights()
@@ -128,6 +132,7 @@ function Controls() {
       <Button size="sm" variant="secondary">
         Cancelar
       </Button>
+      <BackButton label="Voltar" onClick={() => {}} />
       <CloseButton onClick={() => {}} />
       <FilterChip pressed={false} onPressedChange={() => {}}>
         Esgotado

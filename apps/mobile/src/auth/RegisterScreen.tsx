@@ -1,23 +1,24 @@
 import { useRef, useState, type ComponentRef } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
+import { Text as RNText, TextInput, View } from 'react-native';
 import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/shared/auth';
 import type { FieldKind } from '@apc/shared/field';
 import { lockIcon, userIcon, type IconShape } from '@apc/shared/icons';
-import { BrandMark } from '../BrandMark';
+import { BackButton } from '../BackButton';
 import { Button } from '../Button';
-import { Panel } from '../Panel';
+import { FieldScrollView } from '../FieldScrollView';
 import { TextField } from '../TextField';
 import { Text } from '../Typography';
-import { BADGE_WIDTH } from './LoginScreen.styles';
 import { useStyles } from './RegisterScreen.styles';
 
-// The sign-up screen, the same as the web's /register on a phone: the APC badge on a panel above the form, which asks
-// for the name, the username, the e-mail (only kept for now) and the password, typed twice. "next" on the keyboard
-// moves on to the next field and "go" in the last one sends it, as "Criar conta" does, once every field keeps its rule
-// (see registerErrors); otherwise each field that breaks one shows its message under it and the cursor goes to the
-// first. A field's message goes away once it is typed into. While it runs, "Criar conta" shows it is busy and isn't
-// sent again. Refused (the username taken, or the API out of reach), it says why above the form; created, the new user
-// is logged in and handed over. "Já tem conta? Entrar" goes back to the login.
+// The sign-up screen, the same as the web's /register on a phone: a header with the back arrow to the login and
+// "Criar conta" as the screen's heading, then the form, which asks for the name, the username, the e-mail (only kept
+// for now) and the password, typed twice, with "Criar conta" across and "Já tem conta? Entrar" at the bottom of the
+// screen. "next" on the keyboard moves on to the next field and "go" in the last one sends it, as "Criar conta" does,
+// once every field keeps its rule (see registerErrors); otherwise each field that breaks one shows its message under it
+// and the cursor goes to the first. A field's message goes away once it is typed into. While it runs, "Criar conta"
+// shows it is busy and isn't sent again. Refused (the username taken, or the API out of reach), it says why above the
+// form; created, the new user is logged in and handed over. The back arrow and "Já tem conta? Entrar" go back to the
+// login. With the keyboard up, the screen scrolls to reach every field.
 
 const EMPTY: Registration = { displayName: '', username: '', email: '', password: '', confirm: '' };
 /** The fields in form order, with their label, kind and icon. */
@@ -77,12 +78,13 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
   };
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
-      <Panel style={styles.brand}>
-        <View accessibilityRole="header" style={styles.title} testID={ids.title}>
-          <BrandMark size={BADGE_WIDTH} />
-        </View>
-      </Panel>
+    <FieldScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
+      <View style={styles.header} testID={ids.header}>
+        <BackButton label="Voltar ao login" onPress={onLogin} />
+        <RNText accessibilityRole="header" style={styles.headerTitle} testID={ids.headerTitle}>
+          Criar conta
+        </RNText>
+      </View>
       <View style={styles.form} testID={ids.form}>
         {refused && (
           <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.alert} testID={ids.alert}>
@@ -112,14 +114,16 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
           );
         })}
         <View style={styles.actions} testID={ids.actions}>
-          <Button onPress={submit} loading={sending}>
+          <Button align="stretch" onPress={submit} loading={sending}>
             Criar conta
           </Button>
-          <Button variant="link" onPress={onLogin}>
-            Já tem conta? Entrar
+          <Button variant="link" align="stretch" label="Já tem conta? Entrar" onPress={onLogin}>
+            Já tem conta? <RNText style={styles.loginAction} testID={ids.loginAction}>
+              Entrar
+            </RNText>
           </Button>
         </View>
       </View>
-    </ScrollView>
+    </FieldScrollView>
   );
 }
