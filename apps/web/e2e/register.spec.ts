@@ -70,8 +70,9 @@ test("Web: a new user signs up, lands on the Dashboard and logs in again", { tag
   await expect(skip).toBeVisible();
 });
 
-// Sends the sign-up empty and checks each field shows its message, then goes back to the login with the link.
-test("Web: the sign-up checks its fields and leads back to the login", { tag: [TEST_TAGS.auth] }, async ({ page }) => {
+// Sends the sign-up empty and checks each field shows its message, then goes back to the login with the link; on a
+// phone, opens the sign-up again and goes back with the arrow beside its title.
+test("Web: the sign-up checks its fields and leads back to the login", { tag: [TEST_TAGS.auth] }, async ({ page, isMobile }) => {
   const form = registerForm(page);
   await page.goto("/register");
   await form.submit.click();
@@ -81,4 +82,10 @@ test("Web: the sign-up checks its fields and leads back to the login", { tag: [T
   await expect(form.displayName).toBeFocused();
   await form.logIn.click();
   await expect(page).toHaveURL(/\/login$/);
+  if (isMobile) {
+    await loginForm(page).signUp.click();
+    await expect(form.heading).toBeVisible();
+    await form.back.click();
+    await expect(page).toHaveURL(/\/login$/);
+  }
 });

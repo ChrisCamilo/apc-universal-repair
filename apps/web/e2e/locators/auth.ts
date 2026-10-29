@@ -31,7 +31,8 @@ export async function logIn(page: Page, user: { username: string; password: stri
 }
 
 /**
- * The sign-up's form, the error it shows above it, and its link back to the login.
+ * The sign-up's form, the error it shows above it, and its link back to the login; on a phone, the title and the
+ * back arrow to the login too.
  * @param page The test's page.
  * @returns The sign-up's elements.
  */
@@ -45,5 +46,7 @@ export function registerForm(page: Page) {
     submit: page.getByRole("button", { name: "Criar conta" }),
     error: page.getByRole("alert"),
     logIn: page.getByRole("button", { name: "Já tem conta? Entrar" }),
+    heading: page.getByRole("heading", { level: 1, name: "Criar conta" }),
+    back: page.getByRole("button", { name: "Voltar ao login" }),
   };
 }

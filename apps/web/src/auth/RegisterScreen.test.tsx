@@ -2,7 +2,7 @@ import { createMockAuth, REGISTER_MESSAGES, type AuthService, type RegisterResul
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { isStyleId } from '@apc/shared/style-ids'
 import { TEST_USERS } from '@apc/shared/test-users'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { MODES, scales, STYLES, themes } from '@apc/shared/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render, type RenderResult } from 'vitest-browser-react'
@@ -160,17 +160,56 @@ test('Web: the sign-up screen carries its style ids', async () => {
   const tag = (id: string) => screen.getByTestId(id).element().tagName
   expect(tag('auth.register-screen')).toBe('MAIN')
   expect(tag('auth.register-screen.brand.title')).toBe('H1')
+  expect(tag('auth.register-screen.header')).toBe('HEADER')
+  expect(tag('auth.register-screen.header.title')).toBe('H1')
   expect(tag('auth.register-screen.form')).toBe('FORM')
   await expect.element(screen.getByTestId('auth.register-screen.form.actions').getByRole('button', { name: 'Criar conta' })).toBeVisible()
   const ids = [...screen.container.querySelectorAll('[data-testid]')].map((element) => element.getAttribute('data-testid')!)
   expect(ids.filter((id) => id.startsWith('auth.') && !isStyleId(id))).toEqual([])
 })
 
-// Lays the sign-up out on a 360×780 phone and checks the badge sits above the form and nothing scrolls sideways.
-test('Web: the sign-up fits a phone with the badge above the form', async () => {
+// Lays the sign-up out on a 360×780 phone and checks it follows the mockup: no badge, but "Criar conta" heading the page
+// beside a 44px back arrow at the left edge, which goes to the login; the five fields under it, 52px tall, with 44px eyes on the
+// passwords; "Criar conta" across the form at the bottom, with "Já tem conta? Entrar" 44px tall under it; and nothing
+// scrolls sideways.
+test('Web: on a phone the sign-up has a header with the way back and Criar conta across', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
-  const screen = await render(<RegisterScreen auth={mockAuth()} onRegistered={() => {}} onLogin={() => {}} />)
-  const mark = screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
-  expect(screen.getByLabelText('Nome').element().getBoundingClientRect().top).toBeGreaterThan(mark.bottom)
+  const onLogin = vi.fn()
+  const screen = await render(<RegisterScreen auth={mockAuth()} onRegistered={() => {}} onLogin={onLogin} />)
+  const box = (element: Element) => element.getBoundingClientRect()
+  await expect.element(screen.getByRole('img', { name: 'APC Universal Repair' })).not.toBeInTheDocument()
+  const title = box(screen.getByRole('heading', { level: 1, name: 'Criar conta' }).element())
+  const back = screen.getByRole('button', { name: 'Voltar ao login' })
+  expect([box(back.element()).width, box(back.element()).height]).toEqual([scales.touch.icon, scales.touch.icon])
+  expect(box(back.element()).left).toBe(scales.space.s1)
+  expect(box(back.element()).right).toBeLessThanOrEqual(title.left)
+  expect(box(screen.getByLabelText('Nome').element()).top).toBeGreaterThan(title.bottom)
+  for (const frame of screen.getByTestId('common.text-field.frame').elements()) {
+    expect(box(frame).height).toBe(scales.touch.field)
+  }
+  for (const eye of screen.getByRole('button', { name: 'Mostrar senha' }).elements()) {
+    expect([box(eye).width, box(eye).height]).toEqual([scales.touch.icon, scales.touch.icon])
+  }
+  const form = box(screen.getByLabelText('Nome').element().closest('form')!)
+  const submit = box(screen.getByRole('button', { name: 'Criar conta' }).element())
+  const logIn = box(screen.getByRole('button', { name: 'Já tem conta? Entrar' }).element())
+  expect(submit.width).toBe(form.width - 2 * scales.space.s5)
+  expect(submit.top).toBeGreaterThan(box(screen.getByLabelText('Confirmar senha').element()).bottom)
+  expect(logIn.height).toBe(scales.touch.icon)
+  expect(logIn.top).toBeGreaterThanOrEqual(submit.bottom)
+  const accent = getComputedStyle(screen.getByRole('button', { name: 'Criar conta' }).element()).backgroundColor
+  expect(getComputedStyle(screen.getByText('Entrar', { exact: true }).element()).color).toBe(accent)
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+  await back.click()
+  expect(onLogin).toHaveBeenCalledTimes(1)
+})
+
+// Lays the sign-up out at 1280×720 and checks it stays as it was before the phone layout: the badge heads the page
+// beside the form, with no header or back arrow.
+test('Web: on the desktop the sign-up keeps the badge beside the form', async () => {
+  const screen = await render(<RegisterScreen auth={mockAuth()} onRegistered={() => {}} onLogin={() => {}} />)
+  const mark = screen.getByRole('heading', { level: 1 }).getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
+  expect(screen.getByLabelText('Nome').element().getBoundingClientRect().left).toBeGreaterThan(mark.right)
+  await expect.element(screen.getByRole('button', { name: 'Voltar ao login' })).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('heading', { name: 'Criar conta' })).not.toBeInTheDocument()
 })
