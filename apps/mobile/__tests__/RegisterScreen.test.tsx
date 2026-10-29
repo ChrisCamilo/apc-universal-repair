@@ -5,10 +5,10 @@
 import React from 'react';
 import { StyleSheet, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { createMockAuth, REGISTER_MESSAGES, type AuthService, type RegisterResult } from '@apc/shared/auth';
+import { createMockAuth, REGISTER_MESSAGES, REGISTER_TITLE, type AuthService, type RegisterResult } from '@apc/shared/auth';
 import { isStyleId } from '@apc/shared/style-ids';
 import { TEST_USERS } from '@apc/shared/test-users';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { RegisterScreen } from '../src/auth/RegisterScreen';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
@@ -34,14 +34,16 @@ function byId(tree: ReactTestRenderer.ReactTestRenderer, id: string): ReactTestR
 }
 
 /**
- * Finds a button by the label it shows.
+ * Finds a button by the label it shows, or by its accessible name when it shows the label in parts.
  * @param tree Rendered tree.
  * @param label The button's label.
  * @returns The button's Pressable.
  */
 function button(tree: ReactTestRenderer.ReactTestRenderer, label: string): ReactTestRenderer.ReactTestInstance {
   return tree.root.findAll(
-    (n) => typeof n.props.style === 'function' && n.findAll((t) => typeof t.type === 'string' && t.props.children === label).length > 0,
+    (n) =>
+      typeof n.props.style === 'function' &&
+      (n.props.accessibilityLabel === label || n.findAll((t) => typeof t.type === 'string' && t.props.children === label).length > 0),
   )[0];
 }
 
@@ -107,12 +109,12 @@ beforeEach(async () => {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    // Renders the sign-up in one style and mode and checks the badge heads it, the five fields are labeled, the
-    // passwords are hidden and offer to make one up, and "Criar conta" is filled with the accent.
+    // Renders the sign-up in one style and mode and checks "Criar conta" heads it, the five fields are labeled, the
+    // passwords are hidden and offer to make one up, and the "Criar conta" button is filled with the accent.
     test(`Mobile: the sign-up follows the ${style}/${mode} theme`, async () => {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode, <RegisterScreen auth={mockAuth()} onRegistered={() => {}} onLogin={() => {}} />);
-      expect(byId(tree, 'auth.register-screen.brand.title').props.accessibilityRole).toBe('header');
+      expect(byId(tree, 'auth.register-screen.header.title').props.accessibilityRole).toBe('header');
       for (const label of Object.keys(NEW_USER)) {
         expect(field(tree, label)).toBeDefined();
       }
@@ -210,11 +212,38 @@ test('Mobile: Já tem conta? Entrar goes back to the login', async () => {
   expect(onLogin).toHaveBeenCalledTimes(1);
 });
 
+// Checks the mockup's one column: no badge, but a header with the 44px back arrow, which goes back to the login, beside
+// "Criar conta" at 22px; the fields, with "Criar conta" across at the bottom of the screen and "Já tem conta? Entrar"
+// under it, "Entrar" in the accent.
+test('Mobile: the sign-up has a header with the way back and Criar conta across at the bottom', async () => {
+  const { colors } = themes.eighties.night;
+  const onLogin = jest.fn();
+  const tree = await mount('eighties', 'night', <RegisterScreen auth={mockAuth()} onRegistered={() => {}} onLogin={onLogin} />);
+  expect(tree.root.findAll((n) => n.props.testID === 'common.brand-mark')).toHaveLength(0);
+  const header = byId(tree, 'auth.register-screen.header');
+  const back = header.find((n) => n.props.testID === 'common.back-button' && typeof n.type === 'string');
+  expect(back.props.accessibilityLabel).toBe('Voltar ao login');
+  expect(StyleSheet.flatten(back.props.style)).toMatchObject({ width: scales.touch.icon, height: scales.touch.icon });
+  const title = byId(tree, 'auth.register-screen.header.title');
+  expect(title.props.children).toBe('Criar conta');
+  expect(StyleSheet.flatten(title.props.style).fontSize).toBe(REGISTER_TITLE);
+
+  const actions = byId(tree, 'auth.register-screen.form.actions');
+  expect(StyleSheet.flatten(actions.props.style).marginTop).toBe('auto');
+  const rings = actions.findAll((n) => n.props.testID === 'common.button.ring' && typeof n.type === 'string');
+  expect(rings.map((ring) => StyleSheet.flatten(ring.props.style).alignSelf)).toEqual(['stretch', 'stretch']);
+  const entrar = rings[1].find((n) => typeof n.type === 'string' && n.props.children === 'Entrar');
+  expect(StyleSheet.flatten(entrar.props.style).color).toBe(colors.accent);
+
+  await ReactTestRenderer.act(async () => button(tree, 'Voltar ao login').props.onPress());
+  expect(onLogin).toHaveBeenCalledTimes(1);
+});
+
 // Checks the parts of the screen carry their style ids, the same as on the web, and that every id on the screen is
 // written as the convention asks.
 test('Mobile: the sign-up screen carries its style ids', async () => {
   const tree = await mount('gt4', 'night', <RegisterScreen auth={mockAuth()} onRegistered={() => {}} onLogin={() => {}} />);
-  for (const id of ['auth.register-screen', 'auth.register-screen.brand.title', 'auth.register-screen.form', 'auth.register-screen.form.actions']) {
+  for (const id of ['auth.register-screen', 'auth.register-screen.header', 'auth.register-screen.header.title', 'auth.register-screen.form', 'auth.register-screen.form.actions']) {
     expect(byId(tree, id)).toBeDefined();
   }
   const ids = tree.root.findAll((n) => typeof n.type === 'string' && typeof n.props.testID === 'string').map((n) => n.props.testID);

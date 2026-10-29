@@ -116,7 +116,11 @@ test('Mobile: the login leads to the sign-up, which goes on to the Dashboard', a
   const tree = await mountApp();
   const input = (label: string) => tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);
   const pressable = (label: string) =>
-    tree.root.findAll((n) => typeof n.props.style === 'function' && n.findAll((t) => typeof t.type === 'string' && t.props.children === label).length > 0)[0];
+    tree.root.findAll(
+      (n) =>
+        typeof n.props.style === 'function' &&
+        (n.props.accessibilityLabel === label || n.findAll((t) => typeof t.type === 'string' && t.props.children === label).length > 0),
+    )[0];
   const showsSignUp = () => tree.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Confirmar senha').length > 0;
   await ReactTestRenderer.act(async () => pressable('Criar conta').props.onPress());
   expect(showsSignUp()).toBe(true);
