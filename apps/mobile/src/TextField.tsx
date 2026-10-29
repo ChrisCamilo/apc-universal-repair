@@ -1,14 +1,16 @@
 import { useRef, useState, type ComponentRef, type Ref } from 'react';
-import { Pressable, Text as NativeText, TextInput, View, type ReturnKeyTypeOptions } from 'react-native';
+import { Pressable, Text as NativeText, TextInput, View, type HostInstance, type ReturnKeyTypeOptions } from 'react-native';
 import { FIELD_KINDS, type FieldKind } from '@apc/shared/field';
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons';
+import { useRevealField } from './FieldScrollView';
 import { Icon } from './Icon';
 import { TRAILING_HIT_SLOP, useSearchStyles, useStyles } from './TextField.styles';
 import { useTheme } from './theme';
 import { Label, Text } from './Typography';
 
 // The pill-shaped inputs, the same as the web (see TextField.styles.ts). Each field kind sets the keyboard, autofill
-// hint and capitalization (see @apc/shared/field).
+// hint and capitalization (see @apc/shared/field). Inside a FieldScrollView, a field that gets focus scrolls into sight
+// above the keyboard, its label and message included.
 
 type SearchFieldProps = {
   /** Accessible name; the search shows no visible label, so it is also the placeholder. */
@@ -60,11 +62,13 @@ export function TextField({
   const { styles, ids } = useStyles();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const root = useRef<HostInstance>(null);
+  const revealField = useRevealField();
   const spec = FIELD_KINDS[kind];
   const isPassword = spec.type === 'password';
 
   return (
-    <View style={[styles.field, disabled && styles.fieldDisabled]} testID={ids.field}>
+    <View ref={root} style={[styles.field, disabled && styles.fieldDisabled]} testID={ids.field}>
       <Label>{label}</Label>
       <View style={[styles.fieldRing, focused && (error ? styles.fieldRingError : styles.fieldRingFocused)]} testID={ids.fieldRing}>
         <View style={[styles.fieldFrame, focused && styles.fieldFrameFocused, !!error && styles.fieldFrameError]} testID={ids.fieldFrame}>
@@ -86,7 +90,10 @@ export function TextField({
             autoCorrect={kind === 'text'}
             accessibilityLabel={label}
             accessibilityHint={error ?? helper}
-            onFocus={() => setFocused(true)}
+            onFocus={() => {
+              setFocused(true);
+              revealField(root.current);
+            }}
             onBlur={() => {
               setFocused(false);
               onBlur?.();
@@ -129,11 +136,13 @@ export function SearchField({ label, value, onValueChange, disabled = false }: S
   const { colors } = useTheme();
   const { styles, ids } = useSearchStyles();
   const input = useRef<ComponentRef<typeof TextInput>>(null);
+  const root = useRef<HostInstance>(null);
+  const revealField = useRevealField();
   const [focused, setFocused] = useState(false);
   const spec = FIELD_KINDS.search;
 
   return (
-    <View style={[styles.fieldRing, focused && styles.fieldRingFocused, disabled && styles.fieldDisabled]} testID={ids.fieldRing}>
+    <View ref={root} style={[styles.fieldRing, focused && styles.fieldRingFocused, disabled && styles.fieldDisabled]} testID={ids.fieldRing}>
       <View style={[styles.fieldFrame, focused && styles.fieldFrameFocused]} testID={ids.fieldFrame}>
         <Icon icon={searchIcon} color={colors.textMuted} />
         <TextInput
@@ -150,7 +159,10 @@ export function SearchField({ label, value, onValueChange, disabled = false }: S
           autoCorrect={false}
           returnKeyType="search"
           accessibilityLabel={label}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            revealField(root.current);
+          }}
           onBlur={() => setFocused(false)}
           style={styles.fieldInput}
           testID={ids.fieldInput}
