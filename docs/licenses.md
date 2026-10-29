@@ -13,7 +13,7 @@ APC Universal Repair is all rights reserved ([LICENSE](../LICENSE), `UNLICENSED`
 - **Permissive** (MIT, ISC, BSD, Apache-2.0, 0BSD, BlueOak, Unlicense, CC0, WTFPL, Python-2.0, CC-BY-4.0, and OFL-1.1 for the fonts): fine in a closed, sold product. They ask to keep their notice, which [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) does, shipped with the installer and the APK. OFL fonts can't be sold on their own, only inside the product.
 - **Weak copyleft** (LGPL, MPL, EPL): only as reviewed below, unchanged and as separate libraries, or in tools that don't ship.
 - **Strong copyleft** (GPL, AGPL, SSPL): none is installed. One in what ships would ask to open the project's code, so CI refuses any new one.
-- **Shipped:** 364 npm packages, plus the Android libraries the phone app declares and Electron with Chromium, which ship their own notices.
+- **Shipped:** 364 npm packages, the 134 Android libraries of the phone app's release, and Electron with Chromium, which ship their own notices.
 
 ### Every installed package, by license
 
@@ -58,21 +58,13 @@ APC Universal Repair is all rights reserved ([LICENSE](../LICENSE), `UNLICENSED`
 
 ### Android libraries
 
-Declared by the phone app's native modules (`android/build.gradle` of each). Resolving their full tree takes the Android SDK, so they are listed by hand; check them with `gradlew :app:dependencies` when the release APK is built ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
+Every library in the phone app's release, 134 of them, from its Gradle tree: `gradlew :app:writeLicenses` writes them, with the licenses their POMs name, to `apps/mobile/android/licenses.json`, and the Android workflow fails when the file is out of date. THIRD_PARTY_NOTICES.md lists each one.
 
-| Library | License |
+| License | Libraries |
 |---|---|
-| androidx.* (AndroidX: appcompat, core, room, datastore, biometric, fragment, lifecycle…) | Apache-2.0 |
-| com.facebook.react:react-android, com.facebook.react:hermes-android | MIT |
-| com.facebook.fresco:* | MIT |
-| com.facebook.fbjni:fbjni | Apache-2.0 |
-| com.facebook.soloader:soloader | Apache-2.0 |
-| com.facebook.yoga:* | MIT |
-| com.facebook.infer.annotation:infer-annotation | MIT |
-| com.google.code.findbugs:jsr305 | BSD-3-Clause |
-| com.squareup.okhttp3:*, com.squareup.okio:okio | Apache-2.0 |
-| io.github.react-native-async-storage:shared-storage-android | MIT |
-| org.jetbrains.kotlin:kotlin-stdlib, org.jetbrains.kotlinx:kotlinx-coroutines-android | Apache-2.0 |
+| Apache-2.0 | 110 |
+| MIT | 23 |
+| BSD-3-Clause | 1 |
 
 ### Contributions
 
@@ -89,7 +81,7 @@ O APC Universal Repair tem todos os direitos reservados ([LICENSE](../LICENSE), 
 - **Permissivas** (MIT, ISC, BSD, Apache-2.0, 0BSD, BlueOak, Unlicense, CC0, WTFPL, Python-2.0, CC-BY-4.0, e a OFL-1.1 das fontes): servem num produto fechado e vendido. Elas pedem que o aviso delas seja mantido, o que o [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) faz, levado com o instalador e o APK. As fontes OFL não podem ser vendidas sozinhas, só dentro do produto.
 - **Copyleft fraco** (LGPL, MPL, EPL): só como revisado abaixo, sem mudanças e como bibliotecas separadas, ou em ferramentas que não vão junto.
 - **Copyleft forte** (GPL, AGPL, SSPL): nenhuma está instalada. Uma no que vai junto pediria para abrir o código do projeto, então o CI recusa qualquer nova.
-- **O que vai junto:** 364 pacotes npm, mais as bibliotecas Android que o app do celular declara e o Electron com o Chromium, que levam os próprios avisos.
+- **O que vai junto:** 364 pacotes npm, as 134 bibliotecas Android do release do app do celular, e o Electron com o Chromium, que levam os próprios avisos.
 
 ### Todos os pacotes instalados, por licença
 
@@ -134,21 +126,13 @@ O APC Universal Repair tem todos os direitos reservados ([LICENSE](../LICENSE), 
 
 ### Bibliotecas Android
 
-Declaradas pelos módulos nativos do app do celular (o `android/build.gradle` de cada um). Resolver a árvore completa delas pede o Android SDK, então elas são listadas à mão; confira com o `gradlew :app:dependencies` quando o APK de release for gerado ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
+Todas as bibliotecas do release do app do celular, 134 delas, da árvore do Gradle: o `gradlew :app:writeLicenses` as grava, com as licenças que os POMs delas indicam, no `apps/mobile/android/licenses.json`, e o workflow Android falha quando o arquivo está desatualizado. O THIRD_PARTY_NOTICES.md lista cada uma.
 
-| Biblioteca | Licença |
+| Licença | Bibliotecas |
 |---|---|
-| androidx.* (AndroidX: appcompat, core, room, datastore, biometric, fragment, lifecycle…) | Apache-2.0 |
-| com.facebook.react:react-android, com.facebook.react:hermes-android | MIT |
-| com.facebook.fresco:* | MIT |
-| com.facebook.fbjni:fbjni | Apache-2.0 |
-| com.facebook.soloader:soloader | Apache-2.0 |
-| com.facebook.yoga:* | MIT |
-| com.facebook.infer.annotation:infer-annotation | MIT |
-| com.google.code.findbugs:jsr305 | BSD-3-Clause |
-| com.squareup.okhttp3:*, com.squareup.okio:okio | Apache-2.0 |
-| io.github.react-native-async-storage:shared-storage-android | MIT |
-| org.jetbrains.kotlin:kotlin-stdlib, org.jetbrains.kotlinx:kotlinx-coroutines-android | Apache-2.0 |
+| Apache-2.0 | 110 |
+| MIT | 23 |
+| BSD-3-Clause | 1 |
 
 ### Contribuições
 

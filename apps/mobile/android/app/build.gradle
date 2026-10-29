@@ -190,6 +190,50 @@ androidComponents {
     }
 }
 
+// Writes android/licenses.json: every library in the release's runtime classpath, with the licenses its POM names,
+// or its parent POM's when it names none. scripts/licenses.mjs reads it for the notices and the license check, and the
+// android CI job runs this task and fails when the file it writes differs from the committed one.
+tasks.register('writeLicenses') {
+    def output = rootProject.file('licenses.json')
+    outputs.file(output)
+    outputs.upToDateWhen { false }
+    doLast {
+        def pomOf = { String coordinates ->
+            def pom = configurations.detachedConfiguration(dependencies.create("${coordinates}@pom")).singleFile
+            new groovy.xml.XmlSlurper().parse(pom)
+        }
+        def licensesOf
+        licensesOf = { pom ->
+            def found = pom.licenses.license.collect { [name: it.name.text().trim(), url: it.url.text().trim()] }
+            if (found || pom.parent.isEmpty()) {
+                return found
+            }
+            licensesOf(pomOf("${pom.parent.groupId.text()}:${pom.parent.artifactId.text()}:${pom.parent.version.text()}"))
+        }
+        // Libraries from Maven only: the native modules are projects of the build, whose npm packages the npm notices list.
+        def components = configurations.releaseRuntimeClasspath.incoming.resolutionResult.allComponents
+            .findAll { it.id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+        def modules = components
+            .collect { it.moduleVersion }
+            .unique { "${it.group}:${it.name}:${it.version}" }
+            .sort { "${it.group}:${it.name}" }
+        // Each library's own POM, asked for by its resolved id: a detached configuration of its coordinates could be
+        // matched against the build's projects again.
+        def poms = dependencies.createArtifactResolutionQuery()
+            .forComponents(components*.id)
+            .withArtifacts(org.gradle.maven.MavenModule, org.gradle.maven.MavenPomArtifact)
+            .execute().resolvedComponents
+            .collectEntries { component ->
+                [(component.id.displayName): component.getArtifacts(org.gradle.maven.MavenPomArtifact).first().file]
+            }
+        def libraries = modules.collect { module ->
+            def pom = new groovy.xml.XmlSlurper().parse(poms["${module.group}:${module.name}:${module.version}"])
+            [module: "${module.group}:${module.name}", version: module.version, licenses: licensesOf(pom)]
+        }
+        output.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(libraries)) + '\n'
+    }
+}
+
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
