@@ -1,7 +1,8 @@
 import type { Page } from "@playwright/test";
 import { DASHBOARD_TABS } from "@apc/shared/tabs";
 
-// The shell around the tabs: the header, the tab bar and the user menu.
+// The shell around the tabs: the header, the tab bar and the user menu; on a phone, the open tab's title and the bottom
+// bar.
 
 /**
  * The Dashboard's header, tab bar and content; a tab and its panel are named by the tab's id, so the label is the
@@ -19,18 +20,23 @@ export function dashboard(page: Page) {
     tabs: page.getByRole("tablist", { name: "Seções do Dashboard" }),
     tab: (id: string) => page.getByRole("tab", { name: label(id) }),
     panel: (id: string) => page.getByRole("tabpanel", { name: label(id) }),
+    title: (id: string) => page.getByRole("heading", { level: 1, name: label(id) }),
+    bar: page.getByTestId("dashboard.bottom-bar"),
   };
 }
 
 /**
- * The user menu: its trigger, the menu, and its choices by name.
+ * The user menu: its trigger, the menu, and its choices by name. On a phone the trigger is Conta in the bottom bar, and
+ * the menu opens in a bottom sheet.
  * @param page The test's page.
  * @returns The menu's elements.
  */
 export function userMenu(page: Page) {
   return {
-    trigger: page.getByRole("button", { name: "Menu do usuário" }),
+    trigger: page.getByRole("button", { name: /^(Menu do usuário|Conta)$/ }),
     menu: page.getByRole("menu", { name: "Menu do usuário" }),
+    // The bottom sheet the menu opens in on a phone.
+    sheet: page.getByRole("dialog", { name: "Conta" }),
     item: (name: string) => page.getByRole("menuitem", { name }),
     checkbox: (name: string | RegExp) => page.getByRole("menuitemcheckbox", { name }),
     radio: (name: string) => page.getByRole("menuitemradio", { name }),

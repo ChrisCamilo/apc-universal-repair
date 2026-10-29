@@ -49,8 +49,8 @@ async function toastLifetime(page: Page): Promise<number> {
 // Deletes one item, and fails to delete another, and checks the bell, to the left of the user menu, counts 2 unread;
 // its menu lists the error and then the success, each in its kind's color, and opening it clears the count. After a
 // reload both are still listed; another user logging in on the same browser has none, and "Limpar notificações"
-// empties the list.
-test("Web: the bell keeps the latest toasts for each user", { tag: [TEST_TAGS.notifications] }, async ({ page }) => {
+// empties the list. A phone has Alertas in the bottom bar instead (see the test after this one).
+test("Web: the bell keeps the latest toasts for each user", { tag: [TEST_TAGS.notifications, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   let deletes = 0;
   await page.route("**/api/items/*", (route) => route.fulfill({ status: ++deletes === 1 ? 204 : 500, body: "" }));
   await page.goto("/inventory");
@@ -97,9 +97,41 @@ test("Web: the bell keeps the latest toasts for each user", { tag: [TEST_TAGS.no
   await expect(bell.entries).toHaveCount(0);
 });
 
+// On a phone, deletes one item and fails to delete another, and checks Alertas, in the bottom bar, counts 2 unread on its
+// name and badge. It opens the notifications as a full screen, the error first, then the success, and "Tempo do aviso"
+// on top; opening clears the count. The × closes it, and "Limpar notificações" empties the list.
+test("Web: on a phone Alertas opens the notifications as a full screen", { tag: [TEST_TAGS.notifications, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  let deletes = 0;
+  await page.route("**/api/items/*", (route) => route.fulfill({ status: ++deletes === 1 ? 204 : 500, body: "" }));
+  await page.goto("/inventory");
+  const bell = bellOf(page);
+  await expect(bell.button).toHaveAccessibleName("Alertas");
+  await deleteItem(page, "Filtro de óleo");
+  await expect(page.getByText("Item “Filtro de óleo” excluído.")).toBeVisible();
+  await deleteItem(page, "Bomba d'água");
+  await expect(toasts(page).urgent.getByText("Não foi possível excluir o item. Tente de novo.")).toBeVisible();
+  await deleteDialog(page).cancel.click();
+  await expect(bell.button).toHaveAccessibleName("Alertas, 2 não lidas");
+  await expect(bell.badge).toHaveText("2");
+
+  await bell.button.click();
+  await expect(bell.screen).toBeInViewport({ ratio: 1 });
+  await expect(bell.entries).toHaveText([/Não foi possível excluir o item\. Tente de novo\.\s*agora/, /Item “Filtro de óleo” excluído\.\s*agora/]);
+  await expect(bell.duration.value).toHaveText("5 s");
+  await bell.screen.getByRole("button", { name: "Fechar" }).click();
+  await expect(bell.screen).toBeHidden();
+  await expect(bell.button).toHaveAccessibleName("Alertas");
+
+  await bell.button.click();
+  await bell.screen.getByRole("button", { name: "Limpar notificações" }).click();
+  await expect(bell.empty).toBeVisible();
+  await expect(bell.entries).toHaveCount(0);
+});
+
 // Measures how long a toast stays: 5 s by default. Sets 3 s with the gear in the bell's menu, and checks the next toast
-// stays 3 s and the time is still 3 s after a reload; − stops at 2 s and + at 15 s.
-test("Web: the gear sets how long a toast stays", { tag: [TEST_TAGS.notifications] }, async ({ page }) => {
+// stays 3 s and the time is still 3 s after a reload; − stops at 2 s and + at 15 s. On a phone the time sits on top of
+// the notifications' full screen, with no gear.
+test("Web: the gear sets how long a toast stays", { tag: [TEST_TAGS.notifications, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   await page.goto("/inventory");
   const fade = TOAST_FADE_MS + 300;
   const byDefault = await toastLifetime(page);
@@ -150,7 +182,8 @@ test("Web: items reaching their minimum stock are warned about once", { tag: [TE
   });
   await page.goto("/inventory");
   const bell = bellOf(page);
-  await expect(bell.button).toHaveAccessibleName("Notificações, 1 não lidas");
+  // The bell on the desktop, Alertas on a phone.
+  await expect(bell.button).toHaveAccessibleName(/^(Notificações|Alertas), 1 não lidas$/);
   await expect(toasts(page).messages).toHaveCount(0);
 
   const saveQuantity = async (quantity: string) => {
