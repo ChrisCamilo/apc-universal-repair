@@ -6,6 +6,8 @@
 export const MIN_DESKTOP_HEIGHT = 720;
 /** The smallest desktop screen width, in px, for the same screens as MIN_DESKTOP_HEIGHT. */
 export const MIN_DESKTOP_WIDTH = 1280;
+/** The smallest height and width a control a finger reaches has on a phone, in px. */
+export const MIN_TOUCH_TARGET = 44;
 /** The smallest phone screen height, in px: the Galaxy S22 and S23. */
 export const MIN_MOBILE_HEIGHT = 780;
 /** The smallest phone screen width, in px: the Galaxy S20–S23 at their default setting. */

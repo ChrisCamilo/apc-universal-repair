@@ -50,6 +50,12 @@ export const scales = {
   statusTint: { warn: 0.15, danger: 0.13, warnHover: 0.24, dangerHover: 0.22 },
   radiusPill: 999,
   /**
+   * The heights of the controls on a phone, in px, at least MIN_TOUCH_TARGET (@apc/shared/screens): a button and a
+   * small one, a text field or a select, an icon button such as the × or a chip, a segmented choice's option, and a
+   * row of a menu or a list. The web uses them below `card:` (min-h-13, min-h-11, size-11, min-h-10, min-h-14).
+   */
+  touch: { button: 52, buttonSm: 44, field: 52, icon: 44, segment: 40, row: 56 },
+  /**
    * Motion: every transition's duration and easing, and where an opening overlay comes in from: a dialog grows from
    * this scale, and a menu or a list slides this many px from its trigger. Closing goes back the same way.
    */
