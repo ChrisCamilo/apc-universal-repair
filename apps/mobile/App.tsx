@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { StatusBar } from 'react-native';
+import { KeyboardAvoidingView, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LOGIN_MESSAGES, onSessionExpired, type SessionUser } from '@apc/shared/auth';
 import { auth } from './src/auth/auth';
@@ -24,7 +24,8 @@ const SCREEN_STYLE = { flex: 1 };
 // Dashboard once the AuthService accepts the login or a sign-up, and back to the login after "Sair". The login and
 // the sign-up lead to each other. Nothing but the canvas shows while the saved session is read, so neither screen
 // flashes before the right one. When the API refuses the session's token, the session is cleared and the login says
-// it expired, until someone logs in again.
+// it expired, until someone logs in again. The screen ends where the keyboard starts, so a form under it scrolls to
+// every field: Android 15 and later draw the app edge to edge, under the keyboard, and no longer resize it.
 function Screen() {
   const theme = useTheme();
   // The logged user: undefined while the saved session is read, null when nobody is logged in.
@@ -79,28 +80,30 @@ function Screen() {
   return (
     <SafeAreaView style={[SCREEN_STYLE, { backgroundColor: theme.colors.canvas }]}>
       <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
-      {user === undefined ? null : user ? (
-        <Dashboard
-          userMenu={
-            <>
-              <NotificationsMenu key={user.id} userId={user.id} />
-              <UserMenu user={user} onLogout={logout} />
-            </>
-          }
-          tutorialSeen={user.inventoryTutorialSeen}
-          userId={user.id}
-          onTutorialSeen={markTutorialSeen}
-        />
-      ) : registering ? (
-        <RegisterScreen auth={auth} onRegistered={logIn} onLogin={() => setRegistering(false)} />
-      ) : (
-        <LoginScreen
-          auth={auth}
-          notice={expired ? LOGIN_MESSAGES.expired : undefined}
-          onLoggedIn={logIn}
-          onRegister={() => setRegistering(true)}
-        />
-      )}
+      <KeyboardAvoidingView behavior="padding" style={SCREEN_STYLE}>
+        {user === undefined ? null : user ? (
+          <Dashboard
+            userMenu={
+              <>
+                <NotificationsMenu key={user.id} userId={user.id} />
+                <UserMenu user={user} onLogout={logout} />
+              </>
+            }
+            tutorialSeen={user.inventoryTutorialSeen}
+            userId={user.id}
+            onTutorialSeen={markTutorialSeen}
+          />
+        ) : registering ? (
+          <RegisterScreen auth={auth} onRegistered={logIn} onLogin={() => setRegistering(false)} />
+        ) : (
+          <LoginScreen
+            auth={auth}
+            notice={expired ? LOGIN_MESSAGES.expired : undefined}
+            onLoggedIn={logIn}
+            onRegister={() => setRegistering(true)}
+          />
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
