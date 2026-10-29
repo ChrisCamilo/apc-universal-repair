@@ -1,12 +1,15 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
-import { displayLabel, glow } from './styles/shared';
+import { barItemStyles, displayLabel, glow } from './styles/shared';
 import { fontFamily, withAlpha } from './theme';
 
 // The look of the tabs, the same as the web: labels in the muted display face, the selected one in the accent over an
 // accent underline that glows where the style has a glow; pressing shows what hover shows on the web; a count in a pill
 // that turns to the accent on the selected tab. While a tab is dragged it shows through, and an accent line marks the
 // side of the tab under the finger where it will land.
+// The bar variant is the phone's bottom bar (see barItemStyles): each tab an equal share of the bar, its icon in a pill
+// over its label, the selected one in the accent with its pill filled, and no underline; the grip and the cone sit on
+// the pill's corners.
 
 /** The count's frame on the selected tab: the accent at this opacity, as on the web. */
 export const COUNT_BORDER_OPACITY = 0.45;
@@ -15,13 +18,20 @@ export const DRAGGING_OPACITY = 0.45;
 /** The underline's height, and the drop line's width, in px. */
 export const UNDERLINE_HEIGHT = 2 * scales.hairline;
 
-/** The tab list, a tab with its label, work-in-progress cone, count and underline, and the drop line, by state. */
+/** The tab list, a tab with its pill, label, work-in-progress cone, count and underline, and the drop line, by variant and state. */
 export const useStyles = createStyles(
   'common.tabs',
-  { list: '', tab: 'tab', label: 'tab.label', wip: 'tab.wip', count: 'tab.count', underline: 'tab.underline', drop: 'tab.drop' },
+  { list: '', tab: 'tab', pill: 'tab.pill', grip: 'tab.grip', label: 'tab.label', wip: 'tab.wip', count: 'tab.count', underline: 'tab.underline', drop: 'tab.drop' },
   (theme) => {
     const { colors } = theme;
+    const { barPill, barPillSelected, ...bar } = barItemStyles(theme);
     return {
+      ...bar,
+      pill: barPill,
+      pillSelected: barPillSelected,
+      // Only the bar wraps the grip, to sit it on the pill's corner.
+      grip: { position: 'absolute', top: 0, left: -scales.space.s1 },
+      barWip: { position: 'absolute', top: -scales.space.s1, right: -scales.space.s1 },
       count: {
         fontFamily: fontFamily(scales.monoFont, 500),
         fontSize: scales.fontSize.xs,
@@ -41,6 +51,7 @@ export const useStyles = createStyles(
       labelPressed: { color: colors.text },
       labelSelected: { color: colors.accent },
       list: { flexDirection: 'row', gap: scales.space.s1 },
+      listBar: { flexDirection: 'row', minWidth: 0 },
       tab: {
         flexDirection: 'row',
         alignItems: 'center',

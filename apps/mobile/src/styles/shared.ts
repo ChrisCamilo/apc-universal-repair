@@ -1,16 +1,45 @@
 import type { TextStyle, ViewStyle } from 'react-native';
 import { SELECT_VISIBLE_OPTIONS } from '@apc/shared/filters';
 import { scales } from '@apc/shared/theme';
-import { fontFamily, softHairline, withAlpha, type ActiveTheme } from '../theme';
+import { fontFamily, softAccent, softHairline, withAlpha, type ActiveTheme } from '../theme';
 
 // The style recipes three or more components share, the same patterns as the web's styles/shared.ts. Each gives
 // styles a component's createStyles() spreads into its own, so the shared keys sit beside the component's keys
-// under the same names everywhere: field*, menuItem*, round*.
+// under the same names everywhere: bar*, field*, menuItem*, round*.
 
 /** A field dims to this opacity while disabled, as on the web (disabled:opacity-50). */
 export const FIELD_DISABLED_OPACITY = 0.5;
 /** Height of an option in a list, a row a finger reaches. */
 export const OPTION_HEIGHT = scales.touch.row;
+
+/** The pill an entry of a bottom bar draws its icon in, in px (w-14 by h-7.5 on the web). */
+export const BAR_PILL = { width: scales.space.s1 * 14, height: scales.space.s1 * 7.5 };
+
+/**
+ * Styles an entry of a phone's bottom bar, the same as the web's BAR_ITEM: an equal share of the bar, at least 44px
+ * tall, its icon in a 56×30 pill over its label in the muted 12px display face, on one line. The open tab takes the
+ * accent, its pill filled with the soft accent. The tabs' bar variant and the Dashboard's bar entries (Alertas, Conta)
+ * spread them.
+ * @param theme Active theme.
+ * @returns The entry's styles, each key starting with "bar".
+ */
+export function barItemStyles(theme: ActiveTheme) {
+  return {
+    barItem: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: scales.touch.icon,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: scales.space.s1,
+    } satisfies ViewStyle,
+    barLabel: { ...displayLabel(theme, 'xs'), color: theme.colors.textMuted, paddingHorizontal: scales.space.s1 } satisfies TextStyle,
+    barLabelPressed: { color: theme.colors.text } satisfies TextStyle,
+    barLabelSelected: { color: theme.colors.accent } satisfies TextStyle,
+    barPill: { ...BAR_PILL, alignItems: 'center', justifyContent: 'center', borderRadius: scales.radiusPill } satisfies ViewStyle,
+    barPillSelected: { backgroundColor: softAccent(theme) } satisfies ViewStyle,
+  };
+}
 
 /**
  * Styles a label in the display face: semibold, uppercase, with the style's tracking. Buttons, chips and the

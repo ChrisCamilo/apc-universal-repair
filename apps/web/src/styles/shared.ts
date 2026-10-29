@@ -7,6 +7,22 @@ import { tv } from './tv.ts'
 export const DISPLAY_LABEL = 'font-display font-semibold uppercase tracking-display'
 
 /**
+ * An entry of a phone's bottom bar, such as the Dashboard's: an equal share of the bar's width, at least 44px tall,
+ * with its icon in a 56×30 pill over its label in the muted 12px display face. The open tab takes the accent, its pill
+ * filled with the soft accent. The tabs' bar variant and the bar's own entries (Alertas, Conta) put them in their
+ * recipes.
+ */
+export const BAR_ITEM = {
+  item: [
+    `relative flex min-h-11 min-w-0 flex-1 basis-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-tile border-0 bg-transparent p-0 text-xs ${DISPLAY_LABEL}`,
+    'text-text-muted outline-none transition-colors focus-visible:shadow-ring',
+  ],
+  pill: 'relative grid h-7.5 w-14 place-items-center rounded-pill transition-colors',
+  // One line, cut with an ellipsis when it doesn't fit its share.
+  label: 'block max-w-full truncate px-1',
+}
+
+/**
  * The parts of a text field and of a dropdown list: an icon button at the frame's end (the password eye, the Combobox
  * chevron), the pill frame and its border at rest or with an error, the typed text, the list and an option. TextField,
  * Combobox and Select put them in their recipes. The list holds SELECT_VISIBLE_OPTIONS options of h-9 plus its p-1

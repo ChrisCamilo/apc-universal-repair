@@ -77,7 +77,7 @@ export const ICON_SIZES = {
   body: 16,
   /** An icon that leads its line: a menu item's, the photo viewer's arrows. */
   prominent: 18,
-  /** The picture of a list row's empty thumbnail. */
+  /** The picture of a list row's empty thumbnail, and the icon of a phone's bottom bar entry. */
   thumbnail: 20,
   /** The picture of an upload area. */
   dropZone: 22,
