@@ -145,7 +145,7 @@ test('Mobile: the login leads to the sign-up, which goes on to the Dashboard', a
 });
 
 // Saves a test user's session in the keychain, as a previous login would, and checks the app starts straight on the
-// Dashboard, with the user menu in its header, and asks the API for the items with the session's token.
+// Dashboard, with Conta in its bottom bar, and asks the API for the items with the session's token.
 test('Mobile: with a saved session the app opens on the Dashboard', async () => {
   await Keychain.setGenericPassword('session', JSON.stringify(SESSION), { service: SESSION_STORAGE_KEY });
   const tree = await mountApp();
@@ -153,7 +153,7 @@ test('Mobile: with a saved session the app opens on the Dashboard', async () => 
   expect(new Headers(items[1].headers).get('Authorization')).toBe('Bearer t1');
   expect(showsDashboard(tree)).toBe(true);
   expect(showsLogin(tree)).toBe(false);
-  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Menu do usuário' && typeof n.type === 'string')).toHaveLength(1);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Conta' && typeof n.type === 'string')).toHaveLength(1);
 });
 
 // Holds the read of the saved session and checks neither the login nor the Dashboard shows meanwhile, so the wrong
@@ -177,7 +177,7 @@ test('Mobile: Sair goes back to the login and keeps the preferences', async () =
   const tree = await mountApp();
   const pressable = (name: string) =>
     tree.root.find((n) => typeof n.type !== 'string' && typeof n.props.onPress === 'function' && n.props.accessibilityLabel === name);
-  await ReactTestRenderer.act(async () => pressable('Menu do usuário').props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Conta').props.onPress());
   await ReactTestRenderer.act(async () => pressable('Sair').props.onPress());
   expect(showsLogin(tree)).toBe(true);
   expect(showsDashboard(tree)).toBe(false);

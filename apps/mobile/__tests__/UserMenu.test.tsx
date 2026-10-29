@@ -4,11 +4,13 @@
 
 import React from 'react';
 import { Text } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { SessionUser } from '@apc/shared/auth';
 import { playIcon } from '@apc/shared/icons';
 import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
+import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
 import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
@@ -16,6 +18,8 @@ import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorder
 import { UserMenu } from '../src/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/theme';
 
+// A phone's screen with no notch, for the bottom sheet.
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true };
 
 /**
@@ -35,24 +39,45 @@ function byName(tree: ReactTestRenderer.ReactTestRenderer, name: string): ReactT
 }
 
 /**
- * Renders the user menu inside a ThemeProvider, with a readout of the active theme, and opens it.
+ * Renders the user menu inside a ThemeProvider, with a readout of the active theme.
+ * @param onLogout Called when "Sair" is picked.
+ * @returns The rendered tree.
+ */
+async function mount(onLogout: () => void = () => {}) {
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>
+          <Preferences>
+            <UserMenu user={USER} onLogout={onLogout} />
+          </Preferences>
+          <ActiveTheme />
+        </ThemeProvider>
+      </SafeAreaProvider>,
+    );
+  });
+  return tree!;
+}
+
+/**
+ * Renders the user menu and opens it from Conta.
  * @param onLogout Called when "Sair" is picked.
  * @returns The rendered tree.
  */
 async function openMenu(onLogout: () => void = () => {}) {
-  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
-  await ReactTestRenderer.act(async () => {
-    tree = ReactTestRenderer.create(
-      <ThemeProvider>
-        <Preferences>
-          <UserMenu user={USER} onLogout={onLogout} />
-        </Preferences>
-        <ActiveTheme />
-      </ThemeProvider>,
-    );
-  });
-  await press(tree!, 'Menu do usuário');
-  return tree!;
+  const tree = await mount(onLogout);
+  await press(tree, 'Conta');
+  return tree;
+}
+
+/**
+ * Tells whether the bottom sheet titled "Conta" is open.
+ * @param tree Rendered tree.
+ * @returns True while it shows.
+ */
+function sheetOpen(tree: ReactTestRenderer.ReactTestRenderer): boolean {
+  return tree.root.findAll((n) => n.props.testID === 'common.bottom-sheet' && typeof n.type === 'string').length > 0;
 }
 
 /**
@@ -77,6 +102,30 @@ function readout(tree: ReactTestRenderer.ReactTestRenderer): string {
 beforeEach(async () => {
   await themeStorage.clear();
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
+});
+
+// Checks the user menu is Conta, at least 44px tall, with the user's initials in its pill, hidden from screen readers,
+// which hear "Conta". It opens the bottom sheet titled "Conta", holding the menu, named "Menu do usuário"; an action,
+// such as "Tutorial do estoque", closes it, as it closes a menu.
+test('Mobile: Conta opens the user menu in a bottom sheet', async () => {
+  const tree = await mount();
+  const conta = byName(tree, 'Conta');
+  expect(conta.props.accessibilityState).toMatchObject({ expanded: false });
+  const flat = (style: unknown) => Object.assign({}, ...[style].flat(Infinity).filter(Boolean));
+  expect(flat(tree.root.find((n) => n.props.testID === 'dashboard.bottom-bar.item' && typeof n.type === 'string').props.style).minHeight).toBe(MIN_TOUCH_TARGET);
+  const initials = tree.root.find((n) => n.props.testID === 'dashboard.bottom-bar.item.pill.initials' && typeof n.type === 'string');
+  expect(initials.props.importantForAccessibility).toBe('no-hide-descendants');
+  expect(initials.findAll((n) => n.type === Text && n.props.children === 'CC')).toHaveLength(1);
+  expect(sheetOpen(tree)).toBe(false);
+
+  await press(tree, 'Conta');
+  expect(sheetOpen(tree)).toBe(true);
+  expect(byName(tree, 'Conta').props.accessibilityState).toMatchObject({ expanded: true });
+  expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Conta').length).toBeGreaterThan(1);
+  const menu = tree.root.find((n) => n.props.accessibilityRole === 'menu' && typeof n.type === 'string');
+  expect(menu.props.accessibilityLabel).toBe('Menu do usuário');
+  await press(tree, 'Tutorial do estoque');
+  expect(byName(tree, 'Conta').props.accessibilityState).toMatchObject({ expanded: false });
 });
 
 // Opens the menu and checks the header shows the logged user, dark mode is on at night, the theme sits on the
