@@ -175,7 +175,8 @@ test('Web: a canceled file picker leaves the dialog open', async () => {
   expect(onClose).toHaveBeenCalledTimes(1)
 })
 
-// while Save stays visible without scrolling, and that each size keeps its width.
+// while Save stays visible without scrolling: a window as wide as its size allows on the desktop, the whole screen on
+// a phone.
 test('Web: long dialogs scroll inside with the actions pinned', async () => {
   for (const [width, height] of [
     [MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT],
@@ -185,7 +186,7 @@ test('Web: long dialogs scroll inside with the actions pinned', async () => {
     const screen = await render(<LongForm />)
     const dialog = screen.getByRole('dialog', { name: 'Novo item' }).element().getBoundingClientRect()
     const save = screen.getByRole('button', { name: 'Salvar item' }).element().getBoundingClientRect()
-    expect(dialog.width).toBeCloseTo(Math.min(560, window.innerWidth - 32), 0)
+    expect(dialog.width).toBeCloseTo(width === MIN_MOBILE_WIDTH ? window.innerWidth : 560, 0)
     expect(dialog.bottom).toBeLessThanOrEqual(window.innerHeight)
     expect(save.bottom).toBeLessThan(dialog.bottom)
     const body = screen.getByLabelText('Nome').element().closest('.overflow-y-auto')!
@@ -195,9 +196,97 @@ test('Web: long dialogs scroll inside with the actions pinned', async () => {
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
-function LongForm() {
+// Opens a closable form at 360×780 in every style and mode, and checks it fills the screen with no rounded corners,
+// its title row pinned on top with the × at its left while the fields scroll, and its actions at the bottom; the focus
+// starts on the first field and Escape asks the owner to close it.
+test('Web: on a phone a form fills the screen, its title on top and its actions at the bottom', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  for (const style of STYLES) {
+    for (const mode of MODES) {
+      root.dataset.style = style
+      root.dataset.mode = mode
+      const onClose = vi.fn()
+      const screen = await render(<LongForm closable onClose={onClose} />)
+      const dialog = screen.getByRole('dialog', { name: 'Novo item' })
+      const window_ = dialog.element().getBoundingClientRect()
+      expect([window_.left, window_.top, window_.width, window_.height]).toEqual([0, 0, innerWidth, innerHeight])
+      expect(getComputedStyle(dialog.element()).borderTopLeftRadius).toBe('0px')
+      expect(getComputedStyle(dialog.element()).backgroundColor).toBe(rgb(themes[style][mode].colors.panel))
+      await expect.element(screen.getByLabelText('Nome')).toHaveFocus()
+
+      const body = screen.getByTestId('common.dialog.body').element()
+      body.scrollTop = body.scrollHeight
+      const header = screen.getByTestId('common.dialog.body.header').element().getBoundingClientRect()
+      expect(header.top).toBeCloseTo(0, 0)
+      const close = screen.getByRole('button', { name: 'Fechar' }).element().getBoundingClientRect()
+      const title = screen.getByRole('heading', { name: 'Novo item' }).element().getBoundingClientRect()
+      expect(close.right).toBeLessThanOrEqual(title.left)
+      const save = screen.getByRole('button', { name: 'Salvar item' }).element().getBoundingClientRect()
+      expect(save.bottom).toBeGreaterThan(innerHeight - 40)
+      expect(save.bottom).toBeLessThanOrEqual(innerHeight)
+      // The home indicator's inset, or 16px on a screen with none, as here.
+      expect(getComputedStyle(screen.getByTestId('common.dialog.actions').element()).paddingBottom).toBe('16px')
+
+      await userEvent.keyboard('{Escape}')
+      expect(onClose).toHaveBeenCalledOnce()
+      await screen.unmount()
+    }
+  }
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+})
+
+// Opens a confirmation at 360×780 and checks it stays a centered box, 16px from the screen's sides, with its rounded
+// corners and the page dimmed around it.
+test('Web: on a phone a confirmation stays a centered box', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(<Opener initiallyOpen />)
+  const dialog = screen.getByRole('dialog', { name: 'Excluir item?' }).element()
+  const box = dialog.getBoundingClientRect()
+  expect(box.left).toBeCloseTo(16, 0)
+  expect(box.width).toBeCloseTo(innerWidth - 32, 0)
+  expect(box.height).toBeLessThan(innerHeight / 2)
+  expect(box.top + box.height / 2).toBeCloseTo(innerHeight / 2, 0)
+  expect(getComputedStyle(dialog).borderTopLeftRadius).not.toBe('0px')
+  await screen.unmount()
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+})
+
+// Opens and closes a form at 360×780 with motion on, and checks it slides up from the bottom edge and fades in, with
+// its backdrop, in the motion token, and goes back down the same way; with reduced motion, at once.
+test('Web: on a phone a form slides up and back down, at once with reduced motion', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(<FormOpener />)
+  const opener = screen.getByRole('button', { name: 'Novo item' })
+  const overlay = {
+    open: () => opener.click(),
+    close: async () => {
+      await userEvent.keyboard('{Escape}')
+      await expect.element(opener).toHaveFocus()
+    },
+    find: () => document.querySelector('dialog')!,
+    gone: () => !document.querySelector('[data-testid="common.dialog.layout"]'),
+  }
+  try {
+    await expectOverlayMotion({ ...overlay, move: 'rise', backdrop: true })
+    await expectOverlayAtOnce(overlay)
+  } finally {
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+  }
+})
+
+function FormOpener() {
+  const [open, setOpen] = useState(false)
   return (
-    <Dialog open onClose={() => {}} title="Novo item" actions={<Button size="sm">Salvar item</Button>}>
+    <>
+      <Button onClick={() => setOpen(true)}>Novo item</Button>
+      <LongForm open={open} closable onClose={() => setOpen(false)} />
+    </>
+  )
+}
+
+function LongForm({ open = true, closable = false, onClose = () => {} }: { open?: boolean; closable?: boolean; onClose?: () => void }) {
+  return (
+    <Dialog open={open} onClose={onClose} title="Novo item" closable={closable} actions={<Button size="sm">Salvar item</Button>}>
       {['Nome', 'Código', 'Categoria', 'Marca', 'Veículo', 'Modelo', 'Cor', 'Local', 'Valor', 'Quantidade', 'Mínimo'].map((label) => (
         <TextField key={label} label={label} value="" onValueChange={() => {}} />
       ))}
