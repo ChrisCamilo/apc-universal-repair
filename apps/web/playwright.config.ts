@@ -24,10 +24,11 @@ export default defineConfig({
     trace: isCI ? "on-first-retry" : "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  // Minimum supported screen sizes from AGENTS.md. The phone leaves out the tests of a desktop screen.
+  // Minimum supported screen sizes from AGENTS.md. Each leaves out the tests of the other's screen.
   projects: [
     {
       name: "desktop",
+      grepInvert: new RegExp(TEST_TAGS.mobileOnly),
       use: { ...devices["Desktop Chrome"], viewport: { width: MIN_DESKTOP_WIDTH, height: MIN_DESKTOP_HEIGHT } },
     },
     {
