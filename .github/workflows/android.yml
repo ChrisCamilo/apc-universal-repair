@@ -1,20 +1,23 @@
 name: Android
 
-# Builds the phone app's release APK, as a phone at the shop installs it, and uploads it as an artifact.
-# - It signs with the upload key when the ANDROID_UPLOAD_* secrets are set, and with the debug key otherwise, naming the
-#   artifact -debug-signed then: that APK installs, but can't update one signed with the upload key.
-# - The address the app talks to comes from the repository variable APC_API_URL (Settings → Secrets and variables →
-#   Actions → Variables), such as http://192.168.0.10:3000; the build fails without it.
-# - It writes the Android libraries' licenses from the release's Gradle tree (`:app:writeLicenses`) and fails when they
-#   differ from the committed apps/mobile/android/licenses.json, or when one isn't allowed (scripts/licenses.mjs).
+# The phone app's release APK (apps/mobile), as a phone at the shop installs it.
+# - Pull requests that change the phone app, the shared package or the lockfile: check the Android libraries' licenses
+#   and build the APK, uploading nothing.
+# - Run by hand (Actions → Android → Run workflow): the same, then upload the APK as an artifact, kept 14 days.
+# Both write the Android libraries' licenses from the release's Gradle tree (`:app:writeLicenses`) and fail when they
+# differ from the committed apps/mobile/android/licenses.json, or when one isn't allowed (scripts/licenses.mjs). The
+# address the app talks to comes from the repository variable APC_API_URL (Settings → Secrets and variables → Actions →
+# Variables), such as http://192.168.0.10:3000; the build fails without it. It signs with the upload key when the
+# ANDROID_UPLOAD_* secrets are set, and with the debug key otherwise, naming the artifact -debug-signed then: that APK
+# installs, but can't update one signed with the upload key.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
   pull_request:
     paths:
       - "apps/mobile/**"
       - "packages/shared/**"
       - "scripts/licenses.mjs"
+      - "pnpm-lock.yaml"
       - ".github/workflows/android.yml"
 
 jobs:
@@ -85,7 +88,9 @@ jobs:
       - name: Check the APK carries the notices
         run: unzip -l app/build/outputs/apk/release/app-release.apk | grep -q "assets/THIRD_PARTY_NOTICES.md"
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload the APK, when run by hand
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
           path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
