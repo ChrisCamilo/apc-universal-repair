@@ -3,6 +3,13 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 /**
+ * The API's address a release talks to, written into its bundle: APC_API_URL from the environment, else the Gradle
+ * property apc.apiUrl (e.g. in ~/.gradle/gradle.properties). Development builds use the computer's (src/api.ts).
+ */
+def apiUrl = System.getenv('APC_API_URL') ?: findProperty('apc.apiUrl')
+def apiEnvFile = layout.buildDirectory.file('apc/api.env')
+
+/**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
@@ -26,6 +33,9 @@ react {
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
     // nodeExecutableAndArgs = ["node"]
+    //   Node loads APC_API_URL from writeApiEnv's file, given relative to the project's root, where it runs, so
+    //   babel.config.js writes it into the bundle. An address already in the environment wins over the file's.
+    nodeExecutableAndArgs = ["node", "--env-file-if-exists=${rootProject.projectDir.parentFile.toPath().relativize(apiEnvFile.get().asFile.toPath())}"]
     //
     //   The command to run when bundling. By default is 'bundle'
     // bundleCommand = "ram-bundle"
@@ -112,6 +122,28 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+}
+
+// Writes the release's API address for Node to load when it bundles (react.nodeExecutableAndArgs).
+def writeApiEnv = tasks.register('writeApiEnv') {
+    inputs.property('apiUrl', apiUrl ?: '')
+    outputs.file(apiEnvFile)
+    doLast {
+        apiEnvFile.get().asFile.text = apiUrl ? "APC_API_URL=${apiUrl}\n" : ''
+    }
+}
+
+// A release bundle can't be built without an address to write into it: the app would have no server to talk to.
+tasks.matching { it.name == 'createBundleReleaseJsAndAssets' }.configureEach {
+    dependsOn writeApiEnv
+    inputs.property('apiUrl', apiUrl ?: '')
+    doFirst {
+        if (!(apiUrl ==~ /https?:\/\/\S+/)) {
+            throw new GradleException(
+                "A release needs the API's address, such as http://192.168.0.10:3000: set APC_API_URL in the environment, " +
+                "or apc.apiUrl in ~/.gradle/gradle.properties (now: ${apiUrl ?: 'none'}).")
         }
     }
 }
