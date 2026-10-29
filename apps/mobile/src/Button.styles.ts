@@ -11,10 +11,12 @@ import { fontFamily, withAlpha } from './theme';
 
 /** A disabled or loading button is drawn at this opacity, as on the web (disabled:opacity-50). */
 export const DISABLED_OPACITY = 0.5;
+/** How far past a link's text a press still lands, in px: its 20px line reaches the 44px a finger needs. */
+export const LINK_HIT_SLOP = scales.space.s3;
 /** A pressed filled button (primary, danger) is drawn at this opacity, as the web mixes 86% of its fill on hover. */
 export const PRESSED_FILLED_OPACITY = 0.86;
 
-/** A button: the focus ring around it, its frame and its label, by variant, size and state. */
+/** A button: the focus ring around it, where it sits, its frame and its label, by variant, size and state. */
 export const useStyles = createStyles('common.button', { frame: '', ring: 'ring', label: 'label' }, (theme) => {
   const { colors } = theme;
   return {
@@ -52,6 +54,8 @@ export const useStyles = createStyles('common.button', { frame: '', ring: 'ring'
       borderWidth: scales.focusRing.width,
       borderColor: 'transparent',
     },
+    ringEnd: { alignSelf: 'flex-end' },
     ringFocused: { borderColor: withAlpha(colors.accent, scales.focusRing.opacity) },
+    ringStretch: { alignSelf: 'stretch' },
   };
 });

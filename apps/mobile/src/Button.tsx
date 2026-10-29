@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type TextStyle } from 'react-native';
 import type { ButtonSize, ButtonVariant } from '@apc/shared/button';
 import { ICON_SIZES, type IconShape } from '@apc/shared/icons';
-import { useStyles } from './Button.styles';
+import { LINK_HIT_SLOP, useStyles } from './Button.styles';
 import { Icon } from './Icon';
 import { Spinner } from './Spinner';
 
@@ -21,6 +21,8 @@ type ButtonProps = {
   onPress?: () => void;
   /** Accessible name when the text alone doesn't say what the button acts on, e.g. "Remover marca 2". */
   label?: string;
+  /** Where it sits across its container: at the start (the default), at the end, or stretched across, like "Entrar". */
+  align?: 'start' | 'end' | 'stretch';
   children: string;
 };
 
@@ -32,6 +34,7 @@ export function Button({
   disabled = false,
   onPress,
   label: accessibleName,
+  align = 'start',
   children,
 }: ButtonProps) {
   const { styles, ids } = useStyles();
@@ -65,9 +68,10 @@ export function Button({
   ];
 
   return (
-    <View style={[styles.ring, focused && styles.ringFocused]} testID={ids.ring}>
+    <View style={[styles.ring, align === 'end' && styles.ringEnd, align === 'stretch' && styles.ringStretch, focused && styles.ringFocused]} testID={ids.ring}>
       <Pressable
         accessibilityRole="button"
+        hitSlop={isLink ? LINK_HIT_SLOP : undefined}
         accessibilityLabel={accessibleName}
         accessibilityState={{ disabled: inactive, busy: loading }}
         disabled={inactive}
