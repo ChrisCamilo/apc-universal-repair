@@ -18,6 +18,15 @@ def uploadKey = ['APC_UPLOAD_STORE_FILE', 'APC_UPLOAD_STORE_PASSWORD', 'APC_UPLO
 def hasUploadKey = uploadKey.values().every()
 
 /**
+ * The app's version, apps/mobile/package.json's, which a release keeps equal to the desktop app's and the API's
+ * (apps/desktop/scripts/release-version.ts). The version code, which Android compares on an update, is
+ * major * 10000 + minor * 100 + patch, unless APC_VERSION_CODE sets it.
+ */
+def appVersion = new groovy.json.JsonSlurper().parse(file('../../package.json')).version
+def appVersionCode = System.getenv('APC_VERSION_CODE')?.toInteger() ?:
+    appVersion.tokenize('.').take(3).inject(0) { code, part -> code * 100 + part.toInteger() }
+
+/**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
@@ -109,8 +118,8 @@ android {
         applicationId "com.apc.universalrepair"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersion
     }
     signingConfigs {
         debug {
