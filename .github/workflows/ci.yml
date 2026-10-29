@@ -1,8 +1,7 @@
 name: CI
 
+# Runs on pull requests only: a merge to main brings code each pull request already checked, so it isn't run again.
 on:
-  push:
-    branches: [main]
   pull_request:
 
 jobs:
