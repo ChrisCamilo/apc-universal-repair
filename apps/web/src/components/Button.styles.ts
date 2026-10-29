@@ -23,9 +23,11 @@ export const button = recipe(
         link: 'border-transparent font-body text-text-muted underline underline-offset-4 enabled:hover:text-accent',
         danger: `${DISPLAY_LABEL} border-transparent bg-danger text-on-danger enabled:hover:bg-[color-mix(in_srgb,var(--danger)_86%,var(--text))]`,
       },
-      size: { md: 'px-6 py-3 text-sm', sm: 'px-4 py-2 text-xs' },
+      // On a phone a button is at least as tall as a finger needs: 52px, or 44px for a small one.
+      size: { md: 'px-6 py-3 text-sm max-card:min-h-13', sm: 'px-4 py-2 text-xs max-card:min-h-11' },
     },
-    compoundVariants: [{ variant: 'link', class: 'px-0 py-0' }],
+    // A link sits in its text, at the text's height.
+    compoundVariants: [{ variant: 'link', class: 'px-0 py-0 max-card:min-h-0' }],
     defaultVariants: { variant: 'primary', size: 'md' },
   }),
   { base: '' },

@@ -10,18 +10,24 @@ export const DISPLAY_LABEL = 'font-display font-semibold uppercase tracking-disp
  * The parts of a text field and of a dropdown list: an icon button at the frame's end (the password eye, the Combobox
  * chevron), the pill frame and its border at rest or with an error, the typed text, the list and an option. TextField,
  * Combobox and Select put them in their recipes. The list holds SELECT_VISIBLE_OPTIONS options of h-9 plus its p-1
- * padding, 5 × 9 + 2 = 47 spacing units; the rest scroll.
+ * padding, 5 × 9 + 2 = 47 spacing units; the rest scroll. On a phone (below `card:`) the frame is 52px tall and an
+ * option 56px, as a finger needs, so the list holds 5 × 14 + 2 = 72 units.
  */
 export const FIELD = {
-  button:
+  // On a phone the end button is 44px, reaching into the frame's padding so the frame stays 52px.
+  button: [
     'grid shrink-0 place-items-center rounded-pill text-text-muted outline-none transition-colors enabled:cursor-pointer enabled:hover:text-text focus-visible:shadow-ring disabled:cursor-not-allowed',
-  frame: 'flex min-w-0 items-center gap-2 rounded-pill border bg-panel px-4 py-2.5 transition-[border-color,box-shadow] focus-within:shadow-ring',
+    'max-card:-my-2.5 max-card:-mr-3 max-card:size-11',
+  ].join(' '),
+  frame:
+    'flex min-w-0 items-center gap-2 rounded-pill border bg-panel px-4 py-2.5 transition-[border-color,box-shadow] focus-within:shadow-ring max-card:min-h-13',
   frameError: 'border-danger',
   frameIdle: 'border-hairline focus-within:border-accent',
   input:
     'min-w-0 flex-1 bg-transparent font-body text-base text-text outline-none placeholder:text-text-muted text-ellipsis disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none',
-  list: 'absolute inset-x-0 top-full z-10 mt-1 max-h-47 overflow-y-auto overscroll-contain rounded-tile border border-hairline-soft bg-panel p-1 shadow-pop',
-  option: 'relative flex h-9 cursor-pointer items-center gap-2 truncate rounded-tile px-2.5 font-body text-sm text-text aria-selected:text-accent data-active:bg-panel-raised',
+  list: 'absolute inset-x-0 top-full z-10 mt-1 max-h-47 overflow-y-auto overscroll-contain rounded-tile border border-hairline-soft bg-panel p-1 shadow-pop max-card:max-h-72',
+  option:
+    'relative flex h-9 cursor-pointer items-center gap-2 truncate rounded-tile px-2.5 font-body text-sm text-text aria-selected:text-accent data-active:bg-panel-raised max-card:h-14 max-card:text-base',
 }
 
 /**
@@ -33,10 +39,13 @@ export const FIELD = {
 export const POPOVER_MOTION =
   'transition-[opacity,translate] starting:-translate-y-1 starting:opacity-0 inert:-translate-y-1 inert:opacity-0 motion-reduce:transition-none'
 
-/** A full-width menu item: Switch, Segmented and MenuItem rows, with the raised fill on hover and focus. */
+/**
+ * A full-width menu item: Switch, Segmented and MenuItem rows, with the raised fill on hover and focus; 56px tall on a
+ * phone.
+ */
 export const menuItem = tv({
   base: [
-    'flex w-full cursor-pointer items-center justify-between gap-3 rounded-tile px-2 py-2 text-left font-body text-sm',
+    'flex w-full cursor-pointer items-center justify-between gap-3 rounded-tile px-2 py-2 text-left font-body text-sm max-card:min-h-14',
     'text-text outline-none transition-colors hover:bg-panel-raised focus-visible:bg-panel-raised',
   ],
 })

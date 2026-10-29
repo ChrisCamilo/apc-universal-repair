@@ -12,8 +12,8 @@ export const select = recipe(
     slots: {
       base: 'relative min-w-0',
       button: [
-        'flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-pill border border-hairline bg-panel px-3 py-1.5 text-left font-body',
-        'text-sm text-text outline-none transition-[border-color,box-shadow] focus-visible:shadow-ring disabled:cursor-not-allowed disabled:opacity-50',
+        'flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-pill border border-hairline bg-panel px-3 py-1.5 text-left font-body max-card:min-h-13',
+        'text-sm text-text outline-none transition-[border-color,box-shadow] focus-visible:shadow-ring disabled:cursor-not-allowed disabled:opacity-50 max-card:text-base',
       ],
       shown: 'min-w-0 flex-1 truncate',
       chevron: 'shrink-0 text-text-muted transition-transform rotate-90',

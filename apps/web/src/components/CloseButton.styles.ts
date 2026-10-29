@@ -8,7 +8,7 @@ export const closeButton = recipe(
   tv({
     slots: {
       base: [
-        'grid size-9 shrink-0 cursor-pointer place-items-center rounded-pill border border-hairline-soft text-text outline-none',
+        'grid size-9 shrink-0 cursor-pointer place-items-center rounded-pill border border-hairline-soft text-text outline-none max-card:size-11',
         'transition-colors hover:border-accent hover:text-accent focus-visible:shadow-ring',
       ],
     },

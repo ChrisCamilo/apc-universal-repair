@@ -10,8 +10,8 @@ export const segmented = recipe(
   'common.segmented',
   tv({
     slots: {
-      base: 'inline-flex gap-0.5 rounded-pill border border-hairline bg-panel p-0.5',
-      option: `cursor-pointer rounded-pill py-1 text-xs ${DISPLAY_LABEL} outline-none transition-[background-color,color,box-shadow] focus-visible:shadow-ring`,
+      base: 'inline-flex gap-0.5 rounded-pill border border-hairline bg-panel p-0.5 max-card:p-1',
+      option: `cursor-pointer rounded-pill py-1 text-xs ${DISPLAY_LABEL} outline-none transition-[background-color,color,box-shadow] focus-visible:shadow-ring max-card:min-h-10`,
       row: 'flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-2 py-2 font-body text-sm text-text',
       text: 'grid',
       description: 'text-xs leading-snug text-text-muted',
