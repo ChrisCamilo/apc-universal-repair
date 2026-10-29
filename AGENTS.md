@@ -162,7 +162,7 @@ All web tests are written in TypeScript. Each kind of test has one tool:
 | End-to-end (web) | Playwright Test, `desktop` (1280×720) and `mobile` (360×780) projects | `apps/web/e2e/*.spec.ts` |
 | End-to-end (web demo) | Playwright Test, the same projects, on the GitHub Pages site as Pages serves it | `apps/web/e2e-demo/*.spec.ts` |
 | Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` |
-| Desktop | Node test runner for the main process, Playwright's Electron support for the smoke test | `apps/desktop/src/*.test.ts`, `apps/desktop/e2e/*.spec.ts` |
+| Desktop | Node test runner for the main process, Playwright's Electron support for the smoke test | `apps/desktop/src/**/*.test.ts`, `apps/desktop/e2e/*.spec.ts` |
 
 How the suites are laid out, how to run them, where their reports and traces are and how to keep them up is in [docs/testing.md](docs/testing.md).
 

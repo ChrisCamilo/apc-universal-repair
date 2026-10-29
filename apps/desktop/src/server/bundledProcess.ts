@@ -2,7 +2,7 @@ import { appendFileSync } from "node:fs";
 import path from "node:path";
 import { utilityProcess } from "electron";
 import { PORT_IN_USE_EXIT_CODE, serverEnvironment, WRONG_KEY_EXIT_CODE, type ServerSetup } from "./bundledServer.js";
-import { openLog } from "./logs.js";
+import { openLog } from "../logs.js";
 import { superviseServer } from "./supervisor.js";
 
 // Runs the bundled server (see bundledServer.ts) in an Electron utility process: a Node process of its own, so a busy

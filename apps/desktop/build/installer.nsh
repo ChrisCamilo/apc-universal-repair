@@ -1,16 +1,17 @@
 ﻿; The installer's own pages, after the folder page:
 ; - "Banco de dados": which database the server on this computer uses, SQLite (the default) or PostgreSQL, each with
 ;   why to pick it. The installer can't edit config.json, so it leaves the choice in installer-database.txt in the
-;   app's userData folder, which the app moves into config.json on its next start (see src/database.ts). An update, an
-;   install over the app or a userData whose config.json names a database already keeps that choice and skips it.
+;   app's userData folder, which the app moves into config.json on its next start (see src/server/database.ts).
+;   An update, an install over the app or a userData whose config.json names a database already keeps that choice
+;   and skips it.
 ; - "Iniciar com o Windows": whether the app starts at sign-in, hidden in the tray with its server on (yes, the
 ;   default) or only when opened, each saying what it means. It leaves "yes" or "no" in installer-startup.txt, which
-;   the app applies on its next start (see src/startup.ts). An update or an install over the app keeps the setting and
-;   skips it.
+;   the app applies on its next start (see src/system/startup.ts). An update or an install over the app keeps the
+;   setting and skips it.
 ; A silent install shows neither page and leaves no answers.
-; *Reiniciar agora* runs the installer of the new version with its window (see src/update.ts), so its progress bar
-; shows. On such an update, electron-builder's own pages ask nothing more: the install mode page keeps the mode found
-; (customInstallMode), the progress page says it is updating (instFilesShow), and the finish page starts the new
+; *Reiniciar agora* runs the installer of the new version with its window (see src/system/update.ts), so its progress
+; bar shows. On such an update, electron-builder's own pages ask nothing more: the install mode page keeps the mode
+; found (customInstallMode), the progress page says it is updating (instFilesShow), and the finish page starts the new
 ; version and closes the installer (customFinishPage); a fresh install, or one over the app run by hand, shows them as
 ; before. The progress bar ends full once the files are in (customInstall).
 ; The uninstaller's own page, after its welcome page: "Dados do APC", whether to keep the app's userData folder (the

@@ -2,15 +2,15 @@ import os from "node:os";
 import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, screen, session, shell, Tray } from "electron";
 import electronUpdater from "electron-updater";
-import { usesBundledServer } from "./bundledServer.js";
+import { usesBundledServer } from "./server/bundledServer.js";
 import { resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
-import { adoptInstallerChoice } from "./database.js";
-import { windowsIdentity } from "./identity.js";
+import { adoptInstallerChoice } from "./server/database.js";
+import { windowsIdentity } from "./system/identity.js";
 import { keepAppLog } from "./logs.js";
-import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
-import { configuredPort } from "./ports.js";
-import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
-import { readHealth } from "./server.js";
+import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./system/notify.js";
+import { configuredPort } from "./server/ports.js";
+import { APP_ORIGIN, registerAppScheme, serveApp } from "./window/protocol.js";
+import { readHealth } from "./server/server.js";
 import {
   handleServerElsewhere,
   handleServerSettings,
@@ -19,9 +19,9 @@ import {
   startOwnServer,
   stopOwnServer,
   type ServerHost,
-} from "./serverSettings.js";
-import { HIDDEN_ARG, takeInstallerStartup } from "./startup.js";
-import { phoneAddress, trayMenu, type TrayItem } from "./tray.js";
+} from "./server/serverSettings.js";
+import { HIDDEN_ARG, takeInstallerStartup } from "./system/startup.js";
+import { phoneAddress, trayMenu, type TrayItem } from "./system/tray.js";
 import {
   CHECK_INTERVAL_MS,
   checksForUpdates,
@@ -34,8 +34,8 @@ import {
   UPDATE_READY_CHANNEL,
   writeInstallMarker,
   type InstallMarker,
-} from "./update.js";
-import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.js";
+} from "./system/update.js";
+import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window/window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
 // Vite dev server when APC_DEV_URL is set. On opening, it starts the server it ships (see bundledServer.ts) and shows

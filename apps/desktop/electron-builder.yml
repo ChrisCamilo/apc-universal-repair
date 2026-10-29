@@ -14,7 +14,7 @@ files:
   - build/icon.ico
   - package.json
 # The web build, served by the app:// protocol from resources/web, and the server the app runs, bundled into server/ by
-# scripts/bundle-server.mjs with its native modules (see src/bundledServer.ts).
+# scripts/bundle-server.mjs with its native modules (see src/server/bundledServer.ts).
 extraResources:
   - from: ../web/dist
     to: web

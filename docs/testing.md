@@ -36,7 +36,7 @@ flowchart LR
 | API against a database | Node test runner, one file at a time | `apps/api/src/**/*.db-test.ts` | `pnpm --filter @apc/api test:db` |
 | Component (web) | Vitest Browser Mode, Chromium through the Playwright provider | next to the component, `apps/web/src/**/*.test.tsx` | `pnpm test` |
 | Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` | `pnpm test` |
-| Desktop main process | Node test runner | `apps/desktop/src/*.test.ts` | `pnpm test` |
+| Desktop main process | Node test runner | `apps/desktop/src/**/*.test.ts` | `pnpm test` |
 | **E2E (web)** | Playwright Test | `apps/web/e2e/*.spec.ts` | `pnpm --filter @apc/web test:e2e` |
 | **E2E (web demo)** | Playwright Test | `apps/web/e2e-demo/*.spec.ts` | `pnpm --filter @apc/web test:e2e:demo` |
 | **E2E (desktop)** | Playwright's Electron support | `apps/desktop/e2e/*.spec.ts` | `pnpm --filter @apc/desktop test:e2e` |
@@ -327,7 +327,7 @@ pnpm --filter @apc/desktop test:e2e
 | API contra um banco | test runner do Node, um arquivo por vez | `apps/api/src/**/*.db-test.ts` | `pnpm --filter @apc/api test:db` |
 | Componente (web) | Vitest Browser Mode, Chromium pelo provider do Playwright | ao lado do componente, `apps/web/src/**/*.test.tsx` | `pnpm test` |
 | Celular | Jest com `react-test-renderer` | `apps/mobile/__tests__/` | `pnpm test` |
-| Processo principal do desktop | test runner do Node | `apps/desktop/src/*.test.ts` | `pnpm test` |
+| Processo principal do desktop | test runner do Node | `apps/desktop/src/**/*.test.ts` | `pnpm test` |
 | **E2E (web)** | Playwright Test | `apps/web/e2e/*.spec.ts` | `pnpm --filter @apc/web test:e2e` |
 | **E2E (demo da web)** | Playwright Test | `apps/web/e2e-demo/*.spec.ts` | `pnpm --filter @apc/web test:e2e:demo` |
 | **E2E (desktop)** | suporte a Electron do Playwright | `apps/desktop/e2e/*.spec.ts` | `pnpm --filter @apc/desktop test:e2e` |

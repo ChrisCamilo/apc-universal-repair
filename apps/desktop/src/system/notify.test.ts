@@ -16,7 +16,7 @@ test("Desktop: the bridge only takes a title and a message, both text", () => {
 
 // The sandboxed preload can't import notify.ts, so it writes the channels itself; checks they are the same.
 test("Desktop: the preload uses the same channels as the main process", () => {
-  const preload = readFileSync(path.join(import.meta.dirname, "preload.cts"), "utf8");
+  const preload = readFileSync(path.join(import.meta.dirname, "..", "preload.cts"), "utf8");
   assert.ok(preload.includes(`"${NOTIFY_CHANNEL}"`));
   assert.ok(preload.includes(`"${OPEN_NOTIFICATIONS_CHANNEL}"`));
 });

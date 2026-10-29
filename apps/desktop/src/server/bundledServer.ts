@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { DesktopConfig } from "./config.js";
+import type { DesktopConfig } from "../config.js";
 
 // The server the app ships: the API bundled into resources/server by scripts/bundle-server.mjs, which the app runs
 // itself (see bundledProcess.ts) unless it is told to use a server elsewhere. It listens on this computer only

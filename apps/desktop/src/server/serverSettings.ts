@@ -4,7 +4,7 @@ import path from "node:path";
 import { dialog, ipcMain, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import { startBundledServer } from "./bundledProcess.js";
 import { NETWORK_HOST, PORT_IN_USE_EXIT_CODE, serverData, serverEnvironment, WRONG_KEY_EXIT_CODE, type ServerSetup } from "./bundledServer.js";
-import { readConfig, updateConfig } from "./config.js";
+import { readConfig, updateConfig } from "../config.js";
 import {
   beginKeyChange,
   databaseCheckMessage,
@@ -31,7 +31,7 @@ import { MAX_PORT, MIN_PORT, portFree, portOwner, serverHosts, validPort, type P
 import { apiAnswers, waitForApi, watchServer } from "./server.js";
 import { serverFailure, type FailureKind, type ServerFailure } from "./serverFailure.js";
 import { runServerTask, type ServerTask } from "./serverTasks.js";
-import { phoneAddress } from "./tray.js";
+import { phoneAddress } from "../system/tray.js";
 
 // The server the app runs (see bundledServer.ts) and its settings, which the page shows in its Servidor dialog through
 // the preload's bridge (see preload.cts): the database in use, SQLite with its folder or PostgreSQL with its server,

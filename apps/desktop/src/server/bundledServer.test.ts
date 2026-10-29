@@ -11,7 +11,7 @@ import {
   usesBundledServer,
   WRONG_KEY_EXIT_CODE,
 } from "./bundledServer.ts";
-import { DEFAULT_API_URL } from "./config.ts";
+import { DEFAULT_API_URL } from "../config.ts";
 
 // Builds the bundled server's environment and checks its data goes in userData's data folder, it applies the
 // migrations it ships, and it answers on the port and the version given, on this computer only; the SQLite file gets

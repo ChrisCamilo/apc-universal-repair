@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { closeSync, openSync, readFileSync, readSync, rmSync } from "node:fs";
 import path from "node:path";
 import { serverData } from "./bundledServer.ts";
-import { readConfig, updateConfig, type DatabaseChoice, type DesktopConfig } from "./config.ts";
+import { readConfig, updateConfig, type DatabaseChoice, type DesktopConfig } from "../config.ts";
 
 // The database the server the app ships runs on (see bundledServer.ts): SQLite, a file in userData, or PostgreSQL, at
 // an address given in the app's server settings (see serverSettings.ts). The installer asks which

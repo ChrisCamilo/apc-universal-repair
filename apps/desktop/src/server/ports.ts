@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { createServer } from "node:net";
 import { promisify } from "node:util";
 import { LOCAL_HOST, NETWORK_HOST, SERVER_PORT } from "./bundledServer.ts";
-import type { DesktopConfig } from "./config.ts";
+import type { DesktopConfig } from "../config.ts";
 
 // The port the server the app runs listens on: SERVER_PORT, or the one config.json keeps once the user changed it in
 // the Servidor dialog; whether it is free on the addresses the server needs (see serverHosts); and, when it isn't,

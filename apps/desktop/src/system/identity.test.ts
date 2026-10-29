@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { APP_USER_MODEL_ID, DEV_APP_USER_MODEL_ID, windowsIdentity } from "./identity.ts";
 
 /** The desktop app's folder. */
-const APP_DIR = path.join(import.meta.dirname, "..");
+const APP_DIR = path.join(import.meta.dirname, "..", "..");
 
 // Checks the packaged app uses the installer's id and its own exe's icon, and a run from the clone an id of its own and
 // build/icon.ico, so the shortcut Electron makes for a run from the clone never takes the installed app's taskbar icon.

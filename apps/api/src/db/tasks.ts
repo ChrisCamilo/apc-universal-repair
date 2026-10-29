@@ -3,10 +3,10 @@ import { holdsAnyData, importProblem, importServer, type ImportSetup } from "./i
 import { checkDatabase, migrate } from "./migrate.js";
 
 // The database tasks the desktop app runs beside its server, each in an Electron utility process of its own (see
-// apps/desktop/src/serverTasks.ts), bundled as server/tasks.mjs: checking a database before the server moves onto it,
-// migrating it, importing an old server (see import.ts), telling whether a database holds any data, whether a key,
-// such as a recovery copy typed back, opens a SQLite file, and changing the key of the server's own file. The app
-// sends one task and gets one answer back: what the task gave, or the message of what failed, such as a PostgreSQL address that doesn't connect. The app's own SQLite
+// apps/desktop/src/server/serverTasks.ts), bundled as server/tasks.mjs: checking a database before the server
+// moves onto it, migrating it, importing an old server (see import.ts), telling whether a database holds any data,
+// whether a key, such as a recovery copy typed back, opens a SQLite file, and changing the key of the server's own
+// file. The app sends one task and gets one answer back: what the task gave, or the message of what failed, such as a PostgreSQL address that doesn't connect. The app's own SQLite
 // file takes its key from APC_SQLITE_KEY; a task may bring the keys of other files, such as an encrypted one being
 // imported (see cipher.ts).
 

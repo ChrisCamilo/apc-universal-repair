@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 import { mkdirSync } from "node:fs";
-import { readConfig, writeConfig } from "./config.ts";
+import { readConfig, writeConfig } from "../config.ts";
 import {
   adoptInstallerChoice,
   beginKeyChange,

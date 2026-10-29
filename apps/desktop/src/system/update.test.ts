@@ -18,7 +18,7 @@ import {
 } from "./update.ts";
 
 /** The installer's own script, with the pages and macros electron-builder inserts into its installer and uninstaller. */
-const INSTALLER_SCRIPT = readFileSync(path.join(import.meta.dirname, "..", "build", "installer.nsh"), "utf8");
+const INSTALLER_SCRIPT = readFileSync(path.join(import.meta.dirname, "..", "..", "build", "installer.nsh"), "utf8");
 
 /**
  * Reads one macro of the installer's script, matched by its exact name.
@@ -41,7 +41,7 @@ test("Desktop: only the installed app checks for updates", () => {
 
 // The sandboxed preload can't import update.ts, so it writes the channels itself; checks they are the same.
 test("Desktop: the preload uses the same update channels as the main process", () => {
-  const preload = readFileSync(path.join(import.meta.dirname, "preload.cts"), "utf8");
+  const preload = readFileSync(path.join(import.meta.dirname, "..", "preload.cts"), "utf8");
   assert.ok(preload.includes(`"${RESTART_TO_UPDATE_CHANNEL}"`));
   assert.ok(preload.includes(`"${UPDATE_READY_CHANNEL}"`));
 });
