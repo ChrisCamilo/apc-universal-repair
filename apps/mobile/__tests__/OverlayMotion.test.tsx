@@ -1,9 +1,10 @@
 import React from 'react';
-import { AccessibilityInfo, Animated, Modal, StyleSheet, Text } from 'react-native';
+import { AccessibilityInfo, Animated, Dimensions, Modal, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { scales, THEME_STORAGE_KEYS } from '@apc/shared/theme';
+import { BottomSheet } from '../src/BottomSheet';
 import { Combobox } from '../src/Combobox';
 import { Dialog } from '../src/Dialog';
 import { FilterMenu } from '../src/FilterMenu';
@@ -60,9 +61,22 @@ const CASES: Case[] = [
     move: 'scale',
   },
   {
+    name: 'a bottom sheet',
+    render: (open) => (
+      <BottomSheet open={open} onClose={() => {}} title="Mais ações">
+        <Text>Importar CSV</Text>
+      </BottomSheet>
+    ),
+    toggle: reopen((open) => CASES[2].render(open)),
+    shown: visible,
+    faded: 'common.bottom-sheet.backdrop',
+    moved: 'common.bottom-sheet',
+    move: 'rise',
+  },
+  {
     name: 'the filter panel',
     render: (open) => <FilterMenu label="Filtros" title="Filtrar" rows={[]} values={{}} onApply={() => {}} open={open} onOpenChange={() => {}} />,
-    toggle: reopen((open) => CASES[2].render(open)),
+    toggle: reopen((open) => CASES[3].render(open)),
     shown: visible,
     faded: 'common.filter-menu.panel',
     moved: 'common.filter-menu.panel',
@@ -257,7 +271,11 @@ for (const overlay of CASES) {
     await overlay.toggle(tree, true);
     expect(overlay.shown(tree)).toBe(true);
     expect(styleOf(tree, overlay.faded)).toMatchObject({ opacity: 0 });
-    const entry = overlay.move === 'scale' ? { scale: scales.motion.enterScale } : { translateY: -scales.motion.enterShift };
+    const entry = {
+      scale: { scale: scales.motion.enterScale },
+      translate: { translateY: -scales.motion.enterShift },
+      rise: { translateY: Dimensions.get('window').height },
+    }[overlay.move];
     expect(styleOf(tree, overlay.moved).transform).toEqual([entry]);
     await ReactTestRenderer.act(async () => started.at(-1)!.end());
     expect(styleOf(tree, overlay.faded)).toMatchObject({ opacity: 1 });
