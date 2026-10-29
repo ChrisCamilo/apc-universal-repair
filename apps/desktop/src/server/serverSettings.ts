@@ -31,7 +31,7 @@ import { MAX_PORT, MIN_PORT, portFree, portOwner, serverHosts, validPort, type P
 import { apiAnswers, waitForApi, watchServer } from "./server.js";
 import { serverFailure, type FailureKind, type ServerFailure } from "./serverFailure.js";
 import { runServerTask, type ServerTask } from "./serverTasks.js";
-import { phoneAddress } from "../tray.js";
+import { phoneAddress } from "../system/tray.js";
 
 // The server the app runs (see bundledServer.ts) and its settings, which the page shows in its Servidor dialog through
 // the preload's bridge (see preload.cts): the database in use, SQLite with its folder or PostgreSQL with its server,

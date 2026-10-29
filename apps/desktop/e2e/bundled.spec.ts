@@ -6,7 +6,7 @@ import type { ElectronApplication, Page } from "@playwright/test";
 import { APP_DIR, expect, freePort, logIn, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/shared/test-tags";
 import { readConfig, writeConfig } from "../src/config.ts";
-import { phoneAddress } from "../src/tray.ts";
+import { phoneAddress } from "../src/system/tray.ts";
 
 // The desktop app with the server it ships (server/, from scripts/bundle-server.mjs), as an installed app runs: no
 // APC_API_URL and no clone, its own userData folder, and a free port in place of 3000 (support/fixtures.ts). Run

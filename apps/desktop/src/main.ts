@@ -5,9 +5,9 @@ import electronUpdater from "electron-updater";
 import { usesBundledServer } from "./server/bundledServer.js";
 import { resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./server/database.js";
-import { windowsIdentity } from "./identity.js";
+import { windowsIdentity } from "./system/identity.js";
 import { keepAppLog } from "./logs.js";
-import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
+import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./system/notify.js";
 import { configuredPort } from "./server/ports.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./window/protocol.js";
 import { readHealth } from "./server/server.js";
@@ -20,8 +20,8 @@ import {
   stopOwnServer,
   type ServerHost,
 } from "./server/serverSettings.js";
-import { HIDDEN_ARG, takeInstallerStartup } from "./startup.js";
-import { phoneAddress, trayMenu, type TrayItem } from "./tray.js";
+import { HIDDEN_ARG, takeInstallerStartup } from "./system/startup.js";
+import { phoneAddress, trayMenu, type TrayItem } from "./system/tray.js";
 import {
   CHECK_INTERVAL_MS,
   checksForUpdates,
@@ -34,7 +34,7 @@ import {
   UPDATE_READY_CHANNEL,
   writeInstallMarker,
   type InstallMarker,
-} from "./update.js";
+} from "./system/update.js";
 import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window/window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the

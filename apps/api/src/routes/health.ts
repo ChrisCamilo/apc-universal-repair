@@ -4,7 +4,7 @@ import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { healthResponseSchema } from "@apc/shared";
 
 // GET /health, open without a session: whether the API is up, and its version, which the desktop app compares with its
-// own to warn about a server on another computer at another release (see apps/desktop/src/update.ts).
+// own to warn about a server on another computer at another release (see apps/desktop/src/system/update.ts).
 
 /**
  * The API's version: APC_API_VERSION, as the desktop app sets it for the server it ships, or apps/api/package.json's,
