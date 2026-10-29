@@ -5,7 +5,7 @@
 import React from 'react';
 import { Modal, StyleSheet, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { createMockAuth, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth';
+import { createMockAuth, LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth';
 import { isStyleId } from '@apc/shared/style-ids';
 import { TEST_USERS } from '@apc/shared/test-users';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
@@ -99,17 +99,18 @@ beforeEach(async () => {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    // Renders the login in one style and mode and checks the badge heads it with its needle in the accent, on a
-    // panel in the panel color, and "Entrar" is filled with the accent.
+    // Renders the login in one style and mode and checks the compact mark's needle in the accent, the name in the text
+    // color over the tagline in the muted one, both in the style's display face, and "Entrar" filled with the accent.
     test(`Mobile: the login follows the ${style}/${mode} theme`, async () => {
-      const { colors } = themes[style][mode];
+      const theme = themes[style][mode];
       const tree = await mount(style, mode, <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />);
-      const header = tree.root.find((n) => n.props.accessibilityRole === 'header' && typeof n.type === 'string');
-      expect(header.find((n) => n.props.accessibilityLabel === 'APC Universal Repair' && n.props.viewBox === '0 0 220 180')).toBeDefined();
-      expect(tree.root.find((n) => n.props.testID === 'common.brand-mark.needle').props.stroke).toBe(colors.accent);
-      const panels = tree.root.findAll((n) => typeof n.type === 'string' && [n.props.style].flat().some((s) => s?.backgroundColor === colors.panel));
-      expect(panels.some((panel) => panel.findAll((n) => n === header).length > 0)).toBe(true);
-      expect(StyleSheet.flatten(button(tree, 'Entrar').props.style({ pressed: false })).backgroundColor).toBe(colors.accent);
+      expect(tree.root.find((n) => n.props.testID === 'common.brand-mark.needle').props.stroke).toBe(theme.colors.accent);
+      const name = StyleSheet.flatten(byId(tree, 'auth.login-screen.heading.title.name').props.style);
+      const tagline = StyleSheet.flatten(byId(tree, 'auth.login-screen.heading.title.tagline').props.style);
+      expect(name.color).toBe(theme.colors.text);
+      expect(tagline.color).toBe(theme.colors.textMuted);
+      expect(name.fontFamily).toContain(theme.displayFont.replace(/\s+/g, ''));
+      expect(StyleSheet.flatten(button(tree, 'Entrar').props.style({ pressed: false })).backgroundColor).toBe(theme.colors.accent);
     });
   }
 }
@@ -188,18 +189,50 @@ test('Mobile: the login says the session expired until a login is sent', async (
   expect(byId(tree, 'auth.login-screen.form.alert')).toBeDefined();
 });
 
-// Checks the parts of the screen carry their style ids, the same as on the web: the page, the badge's heading, the
-// form and its actions, each on its own view; and that every id on the screen is written as the convention asks.
+// Checks the parts of the screen carry their style ids, the same as on the web's phone layout: the page, the brand with
+// its heading, name, tagline and intro, the form and its actions, and the sign-up at the bottom, each on its own view;
+// and that every id on the screen is written as the convention asks.
 test('Mobile: the login screen carries its style ids', async () => {
   const tree = await mount('gt4', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />);
-  for (const id of ['auth.login-screen', 'auth.login-screen.brand.title', 'auth.login-screen.form', 'auth.login-screen.form.actions']) {
-    expect(byId(tree, id)).toBeDefined();
+  const parts = ['', '.heading', '.heading.title', '.heading.title.name', '.heading.title.tagline', '.heading.intro', '.form', '.form.actions', '.account'];
+  for (const part of parts) {
+    expect(byId(tree, `auth.login-screen${part}`)).toBeDefined();
   }
-  expect(byId(tree, 'auth.login-screen.brand.title').props.accessibilityRole).toBe('header');
+  expect(byId(tree, 'auth.login-screen.heading.title').props).toMatchObject({ accessibilityRole: 'header', accessibilityLabel: 'APC Universal Repair' });
   const actions = byId(tree, 'auth.login-screen.form.actions');
   expect(actions.findAll((n) => typeof n.type === 'string' && n.props.children === 'Entrar')).not.toHaveLength(0);
   const ids = tree.root.findAll((n) => typeof n.type === 'string' && typeof n.props.testID === 'string').map((n) => n.props.testID);
   expect(ids.filter((id) => id.startsWith('auth.') && !isStyleId(id))).toEqual([]);
+});
+
+// Checks the mockup's one column: the 72px mark, hidden from screen readers since the heading names it, over the name
+// at 44px and the tagline at 17px; "Esqueceu a senha?" at the right before "Entrar", which stretches across; and the
+// question with an outline "Criar conta" across at the bottom of the screen, which opens the sign-up.
+test('Mobile: the login is one column, the brand on top and Criar conta at the bottom', async () => {
+  const onRegister = jest.fn();
+  const tree = await mount('eighties', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={onRegister} />);
+  const mark = tree.root.find((n) => n.props.testID === 'common.brand-mark' && typeof n.type === 'string');
+  expect(mark.props).toMatchObject({ width: LOGIN_BRAND.mark, height: LOGIN_BRAND.mark });
+  const hidden = tree.root.findAll((n) => n.props.importantForAccessibility === 'no-hide-descendants');
+  expect(hidden.some((view) => view.findAll((n) => n === mark).length > 0)).toBe(true);
+  expect(StyleSheet.flatten(byId(tree, 'auth.login-screen.heading.title.name').props.style).fontSize).toBe(LOGIN_BRAND.name);
+  expect(StyleSheet.flatten(byId(tree, 'auth.login-screen.heading.title.tagline').props.style).fontSize).toBe(LOGIN_BRAND.tagline);
+  expect(shows(tree, LOGIN_INTRO)).toBe(true);
+
+  const actions = byId(tree, 'auth.login-screen.form.actions');
+  const rings = actions.findAll((n) => n.props.testID === 'common.button.ring' && typeof n.type === 'string');
+  const labelOf = (ring: ReactTestRenderer.ReactTestInstance) => ring.find((n) => n.props.testID === 'common.button.label').props.children;
+  expect(rings.map(labelOf)).toEqual(['Esqueceu a senha?', 'Entrar']);
+  expect(StyleSheet.flatten(rings[0].props.style).alignSelf).toBe('flex-end');
+  expect(StyleSheet.flatten(rings[1].props.style).alignSelf).toBe('stretch');
+
+  const account = byId(tree, 'auth.login-screen.account');
+  expect(StyleSheet.flatten(account.props.style).marginTop).toBe('auto');
+  expect(account.findAll((n) => n.props.children === 'Ainda não tem conta?').length).toBeGreaterThan(0);
+  const register = account.find((n) => n.props.testID === 'common.button.ring' && typeof n.type === 'string');
+  expect(StyleSheet.flatten(register.props.style).alignSelf).toBe('stretch');
+  await press(tree, 'Criar conta');
+  expect(onRegister).toHaveBeenCalledTimes(1);
 });
 
 // Holds the login's answer, presses "Entrar" and the "go" key again meanwhile, and checks "Entrar" says it is busy
