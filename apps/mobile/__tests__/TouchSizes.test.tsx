@@ -5,6 +5,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { scales, THEME_STORAGE_KEYS } from '@apc/shared/theme';
 import { Button } from '../src/Button';
+import { BackButton } from '../src/BackButton';
 import { CloseButton } from '../src/CloseButton';
 import { Combobox } from '../src/Combobox';
 import { FilterChip } from '../src/FilterChip';
@@ -46,6 +47,7 @@ async function mount() {
           <Button variant="link" onPress={() => {}}>
             Esqueceu a senha?
           </Button>
+          <BackButton label="Voltar" onPress={() => {}} />
           <CloseButton onPress={() => {}} />
           <FilterChip pressed={false} onPressedChange={() => {}}>
             Esgotado
@@ -97,13 +99,14 @@ function styleOf(tree: ReactTestRenderer.ReactTestRenderer, id: string, index = 
 }
 
 // Renders every control a finger reaches and checks each is as tall as a phone asks: 52px for a button, a field and a
-// select, 44px for a small button, the ×, a chip, a field's end button and the menu's trigger, 40px for a segmented
-// option in its 48px track, and 56px for a list's or a menu's row. A link stays at its text's height.
+// select, 44px for a small button, the back arrow, the ×, a chip, a field's end button and the menu's trigger, 40px
+// for a segmented option in its 48px track, and 56px for a list's or a menu's row. A link stays at its text's height.
 test('Mobile: every control is tall enough for a finger', async () => {
   const tree = await mount();
   expect(styleOf(tree, 'common.button', 0).minHeight).toBe(scales.touch.button);
   expect(styleOf(tree, 'common.button', 1).minHeight).toBe(scales.touch.buttonSm);
   expect(styleOf(tree, 'common.button', 2).minHeight).toBe(0);
+  expect(styleOf(tree, 'common.back-button')).toMatchObject({ width: scales.touch.icon, height: scales.touch.icon });
   expect(styleOf(tree, 'common.close-button')).toMatchObject({ width: scales.touch.icon, height: scales.touch.icon });
   expect(styleOf(tree, 'common.filter-chip').minHeight).toBe(scales.touch.icon);
   expect(styleOf(tree, 'common.segmented.option').minHeight).toBe(scales.touch.segment);
