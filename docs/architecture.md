@@ -12,7 +12,7 @@ O APC Universal Repair é um monorepo **pnpm + Turborepo**: um app web e um app 
 flowchart LR
     subgraph clients["Clients · Clientes"]
         web["<b>apps/web</b><br/>React 19 · Vite 8<br/>Tailwind CSS 4 · React Router 8"]
-        mobile["<b>apps/mobile</b><br/>React Native 0.87<br/>AsyncStorage · Keychain · SVG"]
+        mobile["<b>apps/mobile</b><br/>React Native 0.88<br/>AsyncStorage · Keychain · SVG"]
         desktop["<b>apps/desktop</b><br/>Electron 44<br/>web build · app://apc<br/>bundled server · servidor embutido"]
     end
 
@@ -247,7 +247,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 |---|---|---|
 | `packages/shared` | The contract and the rules: Zod schemas of every request and response, the writing rule, search and sort, form checks, CSV reading and writing, design tokens of the 4 styles and 2 modes. No UI, so web and mobile behave the same. | TypeScript, Zod 4 |
 | `apps/web` | The web app: login and sign-up, Dashboard with the Inventory and Catalog tabs, design system components. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
-| `apps/mobile` | The phone app, the same screens with React Native components. | React Native 0.87, AsyncStorage, react-native-keychain, react-native-svg, image and document pickers |
+| `apps/mobile` | The phone app, the same screens with React Native components. | React Native 0.88, AsyncStorage, react-native-keychain, react-native-svg, image and document pickers |
 | `apps/desktop` | The Windows desktop app: the web build in an Electron window, the API forwarded through `app://apc`, and the local API started when it doesn't answer. | Electron 44, electron-builder (NSIS and portable) |
 | `apps/api` | The REST API: users (sign-up and login), items, item lists, photos, CSV import. Validates every request with the shared schemas. | Fastify 5, Prisma 7 (PostgreSQL with adapter-pg, or SQLite with adapter-better-sqlite3), sharp, @fastify/multipart |
 | Database | Users, sessions, items, lists and photo records, on PostgreSQL or SQLite, the same models in both. Photo files stay on disk under `PHOTOS_DIR`. | PostgreSQL or SQLite, Prisma migrations for each |
@@ -291,7 +291,7 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 |---|---|---|
 | `packages/shared` | O contrato e as regras: schemas Zod de cada requisição e resposta, a regra de escrita, busca e ordenação, as validações do formulário, a leitura e a escrita do CSV e os tokens de design dos 4 estilos e 2 modos. Sem interface, para web e celular funcionarem igual. | TypeScript, Zod 4 |
 | `apps/web` | O app web: login e cadastro, Dashboard com as abas Estoque e Catálogo, componentes do design system. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
-| `apps/mobile` | O app para celular, com as mesmas telas em componentes React Native. | React Native 0.87, AsyncStorage, react-native-keychain, react-native-svg, seletores de imagem e de documentos |
+| `apps/mobile` | O app para celular, com as mesmas telas em componentes React Native. | React Native 0.88, AsyncStorage, react-native-keychain, react-native-svg, seletores de imagem e de documentos |
 | `apps/desktop` | O app desktop para Windows: o build da web numa janela do Electron, a API encaminhada pelo `app://apc` e a API local ligada quando não responde. | Electron 44, electron-builder (NSIS e portátil) |
 | `apps/api` | A API REST: usuários (cadastro e login), itens, listas, fotos e importação de CSV. Valida cada requisição com os schemas compartilhados. | Fastify 5, Prisma 7 (PostgreSQL com adapter-pg, ou SQLite com adapter-better-sqlite3), sharp, @fastify/multipart |
 | Banco | Usuários, sessões, itens, listas e os registros das fotos, em PostgreSQL ou SQLite, com os mesmos modelos nos dois. Os arquivos das fotos ficam em disco, em `PHOTOS_DIR`. | PostgreSQL ou SQLite, migrações do Prisma para cada um |
