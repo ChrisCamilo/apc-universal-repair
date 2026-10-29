@@ -13,12 +13,12 @@ export const TRAILING_HIT_SLOP = scales.space.s2;
 export const useStyles = createStyles(
   'common.text-field',
   { field: '', fieldRing: 'ring', fieldFrame: 'frame', fieldInput: 'frame.input', toggle: 'frame.toggle', fieldError: 'error' },
-  (theme) => ({ ...fieldStyles(theme), toggle: {} }),
+  (theme) => ({ ...fieldStyles(theme), toggle: fieldStyles(theme).fieldButton }),
 );
 
 /** The search field: its ring and frame, the input and the clear button. */
 export const useSearchStyles = createStyles(
   'common.search-field',
   { fieldRing: 'ring', fieldFrame: '', fieldInput: 'input', clear: 'clear' },
-  (theme) => ({ ...fieldStyles(theme), clear: {} }),
+  (theme) => ({ ...fieldStyles(theme), clear: fieldStyles(theme).fieldButton }),
 );

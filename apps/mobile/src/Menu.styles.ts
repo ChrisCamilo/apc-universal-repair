@@ -1,3 +1,4 @@
+import { MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
 import { createStyles } from './styles/createStyles';
 import { displayLabel, menuItemStyles } from './styles/shared';
@@ -43,6 +44,7 @@ export const useStyles = createStyles(
         flexDirection: 'row',
         alignItems: 'center',
         alignSelf: 'flex-start',
+        minHeight: MIN_TOUCH_TARGET,
         gap: scales.space.s2,
         borderWidth: scales.hairline,
         borderColor: softHairline(theme),
