@@ -148,6 +148,15 @@ tasks.matching { it.name == 'createBundleReleaseJsAndAssets' }.configureEach {
     }
 }
 
+// The React Native plugin turns cleartext (http://) traffic off in a release. The app talks to the server at home on
+// the shop's Wi-Fi, which answers http://, so a release built with an http:// address allows it, and one with an
+// https:// address doesn't.
+androidComponents {
+    onVariants(selector().withBuildType('release')) { variant ->
+        variant.manifestPlaceholders.put('usesCleartextTraffic', String.valueOf(apiUrl?.startsWith('http://') ?: false))
+    }
+}
+
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
