@@ -83,7 +83,7 @@ A **pnpm** + **Turborepo** monorepo:
 | Package | What it is |
 |---|---|
 | `apps/web` | Web app — React 19, Vite 8, Tailwind CSS 4, React Router 8 and Storybook 10 |
-| `apps/mobile` | Mobile app — React Native 0.87 |
+| `apps/mobile` | Mobile app — React Native 0.88 |
 | `apps/desktop` | Windows desktop app — Electron 44 with the web build, packaged by electron-builder |
 | `apps/api` | API — Fastify 5, Zod, Prisma 7 on SQLite or PostgreSQL, with sharp to reduce the photos and make their thumbnails |
 | `packages/shared` | Zod schemas, rules, types and design tokens shared by web, mobile and API |
@@ -286,7 +286,7 @@ Monorepo com **pnpm** + **Turborepo**:
 | Pacote | O que é |
 |---|---|
 | `apps/web` | App web — React 19, Vite 8, Tailwind CSS 4, React Router 8 e Storybook 10 |
-| `apps/mobile` | App para celular — React Native 0.87 |
+| `apps/mobile` | App para celular — React Native 0.88 |
 | `apps/desktop` | App desktop para Windows — Electron 44 com o build da web, empacotado pelo electron-builder |
 | `apps/api` | API — Fastify 5, Zod, Prisma 7 com SQLite ou PostgreSQL, e sharp para reduzir as fotos e fazer as miniaturas |
 | `packages/shared` | Schemas Zod, regras, tipos e tokens do design system compartilhados entre web, celular e API |
