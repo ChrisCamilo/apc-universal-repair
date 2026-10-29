@@ -106,17 +106,16 @@ for (const style of STYLES) {
 }
 
 for (const size of SIZES) {
-  // Lays the Login out at one minimum size, and checks it fits without sideways scroll: the mark beside the form
-  // on desktop and above it on the phone.
+  // Lays the Login out at one minimum size, and checks it fits without sideways scroll: the badge beside the form
+  // on desktop, and the brand heading above it on the phone.
   test(`Web: the Login fits the ${size.name} size`, async () => {
     await page.viewport(size.width, size.height)
     const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
-    const mark = screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
     const field = screen.getByLabelText('Usuário').element().getBoundingClientRect()
     if (size.name === 'desktop') {
-      expect(field.left).toBeGreaterThan(mark.right)
+      expect(field.left).toBeGreaterThan(screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect().right)
     } else {
-      expect(field.top).toBeGreaterThan(mark.bottom)
+      expect(field.top).toBeGreaterThan(screen.getByRole('heading', { level: 1, name: 'APC Universal Repair' }).element().getBoundingClientRect().bottom)
     }
     expect(screen.getByRole('button', { name: 'Entrar' }).element().getBoundingClientRect().bottom).toBeLessThanOrEqual(size.height)
     expect(scrollsSideways()).toBe(false)
