@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The APC gauge of apps/web/public/favicon.svg, in its 48-unit grid, drawn 1.6 times as large around the middle of
+     the adaptive icon's 108dp, well inside the 66dp the launcher's masks never cut. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.6"
+        android:scaleY="1.6"
+        android:translateX="15.6"
+        android:translateY="14.8">
+        <path
+            android:pathData="M10,30 A14,14 0 0,1 38,30"
+            android:strokeColor="#E8E6E1"
+            android:strokeAlpha="0.6"
+            android:strokeWidth="3" />
+        <path
+            android:pathData="M10,30 L14,30 M24,16 L24,20 M34,30 L38,30"
+            android:strokeColor="#E8E6E1"
+            android:strokeWidth="2.5" />
+        <path
+            android:pathData="M24,30 L32,21"
+            android:strokeColor="#FFA31A"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M21,30 A3,3 0 1,0 27,30 A3,3 0 1,0 21,30 Z"
+            android:fillColor="#FFA31A" />
+    </group>
+</vector>

@@ -8,9 +8,10 @@
 //   report. Run it after adding or upgrading a dependency.
 // What ships: the production dependencies of the apps (the web build, the desktop app with the server it bundles, and
 // the phone app) and of the shared package, the native modules the desktop server installs on its own, and the
-// Android libraries the phone app's native modules declare, listed by hand in ANDROID_LIBRARIES since resolving them
-// takes the Android SDK. Electron and Chromium ship their own notices beside the app (LICENSE.electron.txt and
-// LICENSES.chromium.html). The lists come from `pnpm licenses list`.
+// Android libraries in the phone app's release, which `gradlew :app:writeLicenses` writes to
+// apps/mobile/android/licenses.json with the licenses their POMs name, since resolving them takes the Android SDK (the
+// Android workflow checks the file is up to date). Electron and Chromium ship their own notices beside the app
+// (LICENSE.electron.txt and LICENSES.chromium.html). The npm lists come from `pnpm licenses list`.
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -32,26 +33,24 @@ export const ALLOWED = new Set([
   "Unlicense",
   "WTFPL",
 ]);
-/** The Android libraries the phone app's native modules declare, by group, with their licenses. */
-const ANDROID_LIBRARIES = [
-  { group: "androidx.* (AndroidX: appcompat, core, room, datastore, biometric, fragment, lifecycle…)", license: "Apache-2.0", source: "https://developer.android.com/jetpack/androidx" },
-  { group: "com.facebook.react:react-android, com.facebook.react:hermes-android", license: "MIT", source: "https://github.com/facebook/react-native" },
-  { group: "com.facebook.fresco:*", license: "MIT", source: "https://github.com/facebook/fresco" },
-  { group: "com.facebook.fbjni:fbjni", license: "Apache-2.0", source: "https://github.com/facebookincubator/fbjni" },
-  { group: "com.facebook.soloader:soloader", license: "Apache-2.0", source: "https://github.com/facebook/SoLoader" },
-  { group: "com.facebook.yoga:*", license: "MIT", source: "https://github.com/facebook/yoga" },
-  { group: "com.facebook.infer.annotation:infer-annotation", license: "MIT", source: "https://github.com/facebook/infer" },
-  { group: "com.google.code.findbugs:jsr305", license: "BSD-3-Clause", source: "https://github.com/findbugsproject/findbugs" },
-  { group: "com.squareup.okhttp3:*, com.squareup.okio:okio", license: "Apache-2.0", source: "https://github.com/square/okhttp" },
-  { group: "io.github.react-native-async-storage:shared-storage-android", license: "MIT", source: "https://github.com/react-native-async-storage/async-storage" },
-  { group: "org.jetbrains.kotlin:kotlin-stdlib, org.jetbrains.kotlinx:kotlinx-coroutines-android", license: "Apache-2.0", source: "https://github.com/JetBrains/kotlin" },
-];
 /** The repository's folder. */
 const ROOT = path.join(import.meta.dirname, "..");
+/** The phone app's release libraries and the licenses their POMs name, as `gradlew :app:writeLicenses` writes them. */
+const ANDROID_LICENSES_FILE = path.join(ROOT, "apps", "mobile", "android", "licenses.json");
 /** The notices' copy in the phone app, which Android packs into the APK. */
 const NOTICES_ANDROID = path.join(ROOT, "apps", "mobile", "android", "app", "src", "main", "assets", "THIRD_PARTY_NOTICES.md");
 /** The notices shipped with the installer and the APK. */
 export const NOTICES_FILE = path.join(ROOT, "THIRD_PARTY_NOTICES.md");
+/**
+ * The SPDX id of each license name the Android libraries' POMs use, which they spell their own way. A name none of
+ * them matches is kept as it is, so the check fails on it until it's added here or reviewed.
+ */
+const POM_LICENSES = [
+  { name: /^(the )?apache( software)? license,? version 2\.0$|^apache-2(\.0)?$/i, spdx: "Apache-2.0" },
+  // Bolts-Android's: the BSD license with three clauses (https://github.com/BoltsFramework/Bolts-Android).
+  { name: /^bsd license$/i, spdx: "BSD-3-Clause" },
+  { name: /^mit( license)?$/i, spdx: "MIT" },
+];
 /** The audit's report. */
 const REPORT_FILE = path.join(ROOT, "docs", "licenses.md");
 /**
@@ -103,6 +102,20 @@ export function allowed(expression) {
 }
 
 /**
+ * Reads the phone app's release Android libraries, as `gradlew :app:writeLicenses` wrote them.
+ * @returns Each library by name ("group:artifact") and version, with its license as an SPDX expression ("NONE" when
+ *   its POM names none) and the link its POM gives for the license's text.
+ */
+export function androidLibraries() {
+  return JSON.parse(readFileSync(ANDROID_LICENSES_FILE, "utf8")).map(({ module, version, licenses }) => ({
+    name: module,
+    version,
+    license: licenses.map(({ name }) => pomLicense(name)).join(" AND ") || "NONE",
+    source: licenses[0]?.url ?? "",
+  }));
+}
+
+/**
  * Lists the installed packages, as `pnpm licenses list` does.
  * @param options Whether to list only production dependencies, and of which workspace package.
  * @returns Each package once per version: its name, version, license, folder, author and home page.
@@ -137,9 +150,10 @@ function licenseText(folder) {
 /**
  * Writes THIRD_PARTY_NOTICES.md: every package that ships, with its license text.
  * @param shipped The packages that ship, sorted.
+ * @param android The phone app's release Android libraries.
  * @returns The file's text.
  */
-function noticesText(shipped) {
+function noticesText(shipped, android) {
   const fence = "~~~~";
   const packages = shipped.map(({ name, version, license, folder, author, homepage }) => {
     const text =
@@ -151,7 +165,6 @@ function noticesText(shipped) {
       ].join("\n");
     return `### ${name} ${version}\n\n${license}\n\n${fence}text\n${text}\n${fence}`;
   });
-  const android = ANDROID_LIBRARIES.map(({ group, license, source }) => `| ${group} | ${license} | ${source} |`);
   return [
     "# Third-party notices",
     "",
@@ -167,13 +180,22 @@ function noticesText(shipped) {
     "",
     "## Android libraries",
     "",
-    "Declared by the phone app's native modules; each one's license text is in its source.",
+    "Every library in the phone app's release, from its Gradle tree; each one's license text is at its link.",
     "",
-    "| Library | License | Source |",
+    "| Library | License | License text |",
     "|---|---|---|",
-    ...android,
+    ...android.map(({ name, version, license, source }) => `| ${name} ${version} | ${license} | ${source} |`),
     "",
   ].join("\n");
+}
+
+/**
+ * Turns the license name a POM gives into its SPDX id, through POM_LICENSES.
+ * @param name The name, e.g. "The Apache Software License, Version 2.0".
+ * @returns The SPDX id, e.g. "Apache-2.0", or the name as it is when POM_LICENSES doesn't know it.
+ */
+export function pomLicense(name) {
+  return POM_LICENSES.find((each) => each.name.test(name.trim()))?.spdx ?? name;
 }
 
 /**
@@ -191,9 +213,10 @@ export function problems(packages) {
  * Writes docs/licenses.md: the audit, in English and Portuguese.
  * @param all Every installed package, development ones included.
  * @param shipped The packages that ship.
+ * @param android The phone app's release Android libraries.
  * @returns The file's text.
  */
-function reportText(all, shipped) {
+function reportText(all, shipped, android) {
   const counts = (packages) =>
     Object.entries(Object.groupBy(packages, ({ license }) => license))
       .map(([license, group]) => [license, group.length])
@@ -222,7 +245,7 @@ function reportText(all, shipped) {
     "- **Permissive** (MIT, ISC, BSD, Apache-2.0, 0BSD, BlueOak, Unlicense, CC0, WTFPL, Python-2.0, CC-BY-4.0, and OFL-1.1 for the fonts): fine in a closed, sold product. They ask to keep their notice, which [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) does, shipped with the installer and the APK. OFL fonts can't be sold on their own, only inside the product.",
     "- **Weak copyleft** (LGPL, MPL, EPL): only as reviewed below, unchanged and as separate libraries, or in tools that don't ship.",
     "- **Strong copyleft** (GPL, AGPL, SSPL): none is installed. One in what ships would ask to open the project's code, so CI refuses any new one.",
-    `- **Shipped:** ${shipped.length} npm packages, plus the Android libraries the phone app declares and Electron with Chromium, which ship their own notices.`,
+    `- **Shipped:** ${shipped.length} npm packages, the ${android.length} Android libraries of the phone app's release, and Electron with Chromium, which ship their own notices.`,
     "",
     "### Every installed package, by license",
     "",
@@ -240,11 +263,11 @@ function reportText(all, shipped) {
     "",
     "### Android libraries",
     "",
-    "Declared by the phone app's native modules (`android/build.gradle` of each). Resolving their full tree takes the Android SDK, so they are listed by hand; check them with `gradlew :app:dependencies` when the release APK is built ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).",
+    `Every library in the phone app's release, ${android.length} of them, from its Gradle tree: \`gradlew :app:writeLicenses\` writes them, with the licenses their POMs name, to \`apps/mobile/android/licenses.json\`, and the Android workflow fails when the file is out of date. THIRD_PARTY_NOTICES.md lists each one.`,
     "",
-    "| Library | License |",
+    "| License | Libraries |",
     "|---|---|",
-    ...ANDROID_LIBRARIES.map(({ group, license }) => `| ${group} | ${license} |`),
+    ...counts(android),
     "",
     "### Contributions",
     "",
@@ -261,7 +284,7 @@ function reportText(all, shipped) {
     "- **Permissivas** (MIT, ISC, BSD, Apache-2.0, 0BSD, BlueOak, Unlicense, CC0, WTFPL, Python-2.0, CC-BY-4.0, e a OFL-1.1 das fontes): servem num produto fechado e vendido. Elas pedem que o aviso delas seja mantido, o que o [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) faz, levado com o instalador e o APK. As fontes OFL não podem ser vendidas sozinhas, só dentro do produto.",
     "- **Copyleft fraco** (LGPL, MPL, EPL): só como revisado abaixo, sem mudanças e como bibliotecas separadas, ou em ferramentas que não vão junto.",
     "- **Copyleft forte** (GPL, AGPL, SSPL): nenhuma está instalada. Uma no que vai junto pediria para abrir o código do projeto, então o CI recusa qualquer nova.",
-    `- **O que vai junto:** ${shipped.length} pacotes npm, mais as bibliotecas Android que o app do celular declara e o Electron com o Chromium, que levam os próprios avisos.`,
+    `- **O que vai junto:** ${shipped.length} pacotes npm, as ${android.length} bibliotecas Android do release do app do celular, e o Electron com o Chromium, que levam os próprios avisos.`,
     "",
     "### Todos os pacotes instalados, por licença",
     "",
@@ -279,11 +302,11 @@ function reportText(all, shipped) {
     "",
     "### Bibliotecas Android",
     "",
-    "Declaradas pelos módulos nativos do app do celular (o `android/build.gradle` de cada um). Resolver a árvore completa delas pede o Android SDK, então elas são listadas à mão; confira com o `gradlew :app:dependencies` quando o APK de release for gerado ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).",
+    `Todas as bibliotecas do release do app do celular, ${android.length} delas, da árvore do Gradle: o \`gradlew :app:writeLicenses\` as grava, com as licenças que os POMs delas indicam, no \`apps/mobile/android/licenses.json\`, e o workflow Android falha quando o arquivo está desatualizado. O THIRD_PARTY_NOTICES.md lista cada uma.`,
     "",
-    "| Biblioteca | Licença |",
+    "| Licença | Bibliotecas |",
     "|---|---|",
-    ...ANDROID_LIBRARIES.map(({ group, license }) => `| ${group} | ${license} |`),
+    ...counts(android),
     "",
     "### Contribuições",
     "",
@@ -315,8 +338,9 @@ function shippedPackages(all) {
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const command = process.argv[2];
   const all = installed();
+  const android = androidLibraries();
   if (command === "check") {
-    const found = problems(all);
+    const found = [...problems(all), ...problems(android)];
     // Git may check the file out with CRLF line ends, on Windows.
     const notices = existsSync(NOTICES_FILE) ? readFileSync(NOTICES_FILE, "utf8").replace(/\r\n/g, "\n") : "";
     // The notices are written on Windows, whose optional native packages differ from Linux's: only what every
@@ -326,20 +350,28 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
       .filter(({ name, version }) => !notices.includes(`### ${name} ${version}\n`))
       .map(({ name, version }) => `${name} ${version}`);
     for (const line of found) {
-      console.error(`License not allowed: ${line}. Replace the package, or review it in scripts/licenses.mjs (REVIEWED).`);
+      console.error(
+        `License not allowed: ${line}. Replace the package, or review it in scripts/licenses.mjs (REVIEWED); for an ` +
+          "Android library whose POM spells a permissive license its own way, add the name to POM_LICENSES.",
+      );
     }
     for (const line of missing) {
       console.error(`Not in THIRD_PARTY_NOTICES.md: ${line}. Run \`node scripts/licenses.mjs write\` on Windows.`);
     }
-    console.log(`${all.length} packages checked, ${found.length} with a license not allowed, ${missing.length} missing from the notices.`);
+    console.log(
+      `${all.length} packages and ${android.length} Android libraries checked, ${found.length} with a license not allowed, ` +
+        `${missing.length} missing from the notices.`,
+    );
     process.exitCode = found.length + missing.length > 0 ? 1 : 0;
   } else if (command === "write") {
     const shipped = shippedPackages(all);
-    const notices = noticesText(shipped);
+    const notices = noticesText(shipped, android);
     writeFileSync(NOTICES_FILE, notices);
     writeFileSync(NOTICES_ANDROID, notices);
-    writeFileSync(REPORT_FILE, reportText(all, shipped));
-    console.log(`Wrote the notices of ${shipped.length} shipped packages and the report of ${all.length}.`);
+    writeFileSync(REPORT_FILE, reportText(all, shipped, android));
+    console.log(
+      `Wrote the notices of ${shipped.length} shipped packages and ${android.length} Android libraries, and the report of ${all.length}.`,
+    );
   } else {
     console.error("Usage: node scripts/licenses.mjs <check | write>");
     process.exitCode = 1;

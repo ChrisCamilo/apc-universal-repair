@@ -92,7 +92,7 @@ First turn on **Acesso pelo celular** in *Servidor e banco de dados* (in the use
 
 With the access on, the tray's menu shows the address the phone reaches the server at, such as *Servidor ligado em http://192.168.0.10:3000*; a click copies it. The same address is in *Servidor e banco de dados*. To check it, open `http://<that address>/health` in the phone's browser, on the same Wi-Fi: it should answer `{"status":"ok",...}`.
 
-The phone app needs a release APK built with that address. The steps to build and install it come with the Android release build ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
+The phone app needs a release APK built with that address: the README's [Phone App (Android)](../README.md#phone-app-android) has the steps to build and install it.
 
 If the phone gets no answer:
 
@@ -166,7 +166,7 @@ The server listens on port 3000. When another program already holds it, the app 
 
 With another port:
 - **The firewall** needs nothing new: the rule of step 3 is for the app, whatever its port.
-- **The phone** must use the new address, which the tray's menu shows. The phone app takes its server's address when it is built ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)), so it needs a build with the new port until it can change it by itself.
+- **The phone** must use the new address, which the tray's menu shows. The phone app takes its server's address when it is built ([Phone App (Android)](../README.md#phone-app-android)), so it needs a build with the new port until it can change it by itself.
 
 ### 11. The data's key doesn't open it
 
@@ -265,7 +265,7 @@ Primeiro ligue o **Acesso pelo celular** no *Servidor e banco de dados* (no menu
 
 Com o acesso ligado, o menu da bandeja mostra o endereço em que o celular chega ao servidor, como *Servidor ligado em http://192.168.0.10:3000*; um clique o copia. O mesmo endereço está no *Servidor e banco de dados*. Para conferir, abra `http://<esse endereço>/health` no navegador do celular, no mesmo Wi-Fi: ele deve responder `{"status":"ok",...}`.
 
-O app do celular precisa de um APK de release gerado com esse endereço. Os passos para gerar e instalar vêm com o build de release do Android ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)).
+O app do celular precisa de um APK de release gerado com esse endereço: o [App do Celular (Android)](../README.md#app-do-celular-android) do README tem os passos para gerar e instalar.
 
 Se o celular não tiver resposta:
 
@@ -339,7 +339,7 @@ O servidor escuta na porta 3000. Quando outro programa já a ocupa, o app não l
 
 Com outra porta:
 - **O firewall** não precisa de nada novo: a regra do passo 3 é para o app, qualquer que seja a porta.
-- **O celular** precisa usar o endereço novo, que aparece no menu da bandeja. O app do celular recebe o endereço do servidor quando é gerado ([#97](https://github.com/ChrisCamilo/apc-universal-repair/issues/97)), então precisa de uma versão gerada com a porta nova até poder trocá-lo sozinho.
+- **O celular** precisa usar o endereço novo, que aparece no menu da bandeja. O app do celular recebe o endereço do servidor quando é gerado ([App do Celular (Android)](../README.md#app-do-celular-android)), então precisa de uma versão gerada com a porta nova até poder trocá-lo sozinho.
 
 ### 11. A chave dos dados não os abre
 

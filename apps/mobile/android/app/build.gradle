@@ -3,6 +3,30 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 /**
+ * The API's address a release talks to, written into its bundle: APC_API_URL from the environment, else the Gradle
+ * property apc.apiUrl (e.g. in ~/.gradle/gradle.properties). Development builds use the computer's (src/api.ts).
+ */
+def apiUrl = System.getenv('APC_API_URL') ?: findProperty('apc.apiUrl')
+def apiEnvFile = layout.buildDirectory.file('apc/api.env')
+
+/**
+ * The upload key a release is signed with, from ~/.gradle/gradle.properties or the environment. Without all four, a
+ * release is signed with the debug key and Gradle warns: it installs, but can't update an app signed with the real key.
+ */
+def uploadKey = ['APC_UPLOAD_STORE_FILE', 'APC_UPLOAD_STORE_PASSWORD', 'APC_UPLOAD_KEY_ALIAS', 'APC_UPLOAD_KEY_PASSWORD']
+    .collectEntries { [(it): findProperty(it) ?: System.getenv(it)] }
+def hasUploadKey = uploadKey.values().every()
+
+/**
+ * The app's version, apps/mobile/package.json's, which a release keeps equal to the desktop app's and the API's
+ * (apps/desktop/scripts/release-version.ts). The version code, which Android compares on an update, is
+ * major * 10000 + minor * 100 + patch, unless APC_VERSION_CODE sets it.
+ */
+def appVersion = new groovy.json.JsonSlurper().parse(file('../../package.json')).version
+def appVersionCode = System.getenv('APC_VERSION_CODE')?.toInteger() ?:
+    appVersion.tokenize('.').take(3).inject(0) { code, part -> code * 100 + part.toInteger() }
+
+/**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
@@ -26,6 +50,9 @@ react {
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
     // nodeExecutableAndArgs = ["node"]
+    //   Node loads APC_API_URL from writeApiEnv's file, given relative to the project's root, where it runs, so
+    //   babel.config.js writes it into the bundle. An address already in the environment wins over the file's.
+    nodeExecutableAndArgs = ["node", "--env-file-if-exists=${rootProject.projectDir.parentFile.toPath().relativize(apiEnvFile.get().asFile.toPath())}"]
     //
     //   The command to run when bundling. By default is 'bundle'
     // bundleCommand = "ram-bundle"
@@ -77,13 +104,22 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+    // The native code builds with CMake 3.31, whose ninja (1.12) handles paths over 260 characters on Windows, with
+    // long paths turned on: the object files of a library's C++ code repeat the monorepo's full path. The default
+    // 3.22's ninja stops there. Gradle doesn't install it: add CMake 3.31.6 in the SDK Manager (SDK Tools).
+    externalNativeBuild {
+        cmake {
+            version "3.31.6"
+        }
+    }
+
     namespace "com.apc.universalrepair"
     defaultConfig {
         applicationId "com.apc.universalrepair"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersion
     }
     signingConfigs {
         debug {
@@ -92,18 +128,109 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (hasUploadKey) {
+            release {
+                storeFile file(uploadKey.APC_UPLOAD_STORE_FILE)
+                storePassword uploadKey.APC_UPLOAD_STORE_PASSWORD
+                keyAlias uploadKey.APC_UPLOAD_KEY_ALIAS
+                keyPassword uploadKey.APC_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig hasUploadKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
+    }
+}
+
+// Writes the release's API address for Node to load when it bundles (react.nodeExecutableAndArgs).
+def writeApiEnv = tasks.register('writeApiEnv') {
+    inputs.property('apiUrl', apiUrl ?: '')
+    outputs.file(apiEnvFile)
+    doLast {
+        apiEnvFile.get().asFile.text = apiUrl ? "APC_API_URL=${apiUrl}\n" : ''
+    }
+}
+
+// A release bundle can't be built without an address to write into it: the app would have no server to talk to.
+tasks.matching { it.name == 'createBundleReleaseJsAndAssets' }.configureEach {
+    dependsOn writeApiEnv
+    inputs.property('apiUrl', apiUrl ?: '')
+    doFirst {
+        if (!(apiUrl ==~ /https?:\/\/\S+/)) {
+            throw new GradleException(
+                "A release needs the API's address, such as http://192.168.0.10:3000: set APC_API_URL in the environment, " +
+                "or apc.apiUrl in ~/.gradle/gradle.properties (now: ${apiUrl ?: 'none'}).")
+        }
+    }
+}
+
+// A release signed with the debug key installs, but can't update, or be updated by, one signed with the upload key.
+tasks.matching { it.name in ['packageRelease', 'signReleaseBundle'] }.configureEach {
+    doFirst {
+        if (!hasUploadKey) {
+            logger.warn('Signing the release with the debug key: set APC_UPLOAD_STORE_FILE, APC_UPLOAD_STORE_PASSWORD, ' +
+                'APC_UPLOAD_KEY_ALIAS and APC_UPLOAD_KEY_PASSWORD to sign it with the upload key.')
+        }
+    }
+}
+
+// The React Native plugin turns cleartext (http://) traffic off in a release. The app talks to the server at home on
+// the shop's Wi-Fi, which answers http://, so a release built with an http:// address allows it, and one with an
+// https:// address doesn't.
+androidComponents {
+    onVariants(selector().withBuildType('release')) { variant ->
+        variant.manifestPlaceholders.put('usesCleartextTraffic', String.valueOf(apiUrl?.startsWith('http://') ?: false))
+    }
+}
+
+// Writes android/licenses.json: every library in the release's runtime classpath, with the licenses its POM names,
+// or its parent POM's when it names none. scripts/licenses.mjs reads it for the notices and the license check, and the
+// android CI job runs this task and fails when the file it writes differs from the committed one.
+tasks.register('writeLicenses') {
+    def output = rootProject.file('licenses.json')
+    outputs.file(output)
+    outputs.upToDateWhen { false }
+    doLast {
+        def pomOf = { String coordinates ->
+            def pom = configurations.detachedConfiguration(dependencies.create("${coordinates}@pom")).singleFile
+            new groovy.xml.XmlSlurper().parse(pom)
+        }
+        def licensesOf
+        licensesOf = { pom ->
+            def found = pom.licenses.license.collect { [name: it.name.text().trim(), url: it.url.text().trim()] }
+            if (found || pom.parent.isEmpty()) {
+                return found
+            }
+            licensesOf(pomOf("${pom.parent.groupId.text()}:${pom.parent.artifactId.text()}:${pom.parent.version.text()}"))
+        }
+        // Libraries from Maven only: the native modules are projects of the build, whose npm packages the npm notices list.
+        def components = configurations.releaseRuntimeClasspath.incoming.resolutionResult.allComponents
+            .findAll { it.id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+        def modules = components
+            .collect { it.moduleVersion }
+            .unique { "${it.group}:${it.name}:${it.version}" }
+            .sort { "${it.group}:${it.name}" }
+        // Each library's own POM, asked for by its resolved id: a detached configuration of its coordinates could be
+        // matched against the build's projects again.
+        def poms = dependencies.createArtifactResolutionQuery()
+            .forComponents(components*.id)
+            .withArtifacts(org.gradle.maven.MavenModule, org.gradle.maven.MavenPomArtifact)
+            .execute().resolvedComponents
+            .collectEntries { component ->
+                [(component.id.displayName): component.getArtifacts(org.gradle.maven.MavenPomArtifact).first().file]
+            }
+        def libraries = modules.collect { module ->
+            def pom = new groovy.xml.XmlSlurper().parse(poms["${module.group}:${module.name}:${module.version}"])
+            [module: "${module.group}:${module.name}", version: module.version, licenses: licensesOf(pom)]
+        }
+        output.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(libraries)) + '\n'
     }
 }
 

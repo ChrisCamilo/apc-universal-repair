@@ -4,8 +4,8 @@ name: Desktop
 # - Pull requests that change it, the web app it packages or the shared package: build and smoke-test it with
 #   Playwright's Electron support.
 # - Run by hand (Actions → Desktop → Run workflow): publish a version. The version comes from apps/desktop/package.json
-#   and must equal apps/api/package.json's, since the app brings the server at home to its own version; one already
-#   released is refused. It builds, smoke-tests and packages the app, then creates the GitHub Release v<version> on the
+#   and must equal apps/api/package.json's, since the app brings the server at home to its own version, and
+#   apps/mobile/package.json's, since the phone app talks to that server; one already released is refused. It builds, smoke-tests and packages the app, then creates the GitHub Release v<version> on the
 #   commit it built, with the installer, latest.yml and the blockmap (which the updater reads) and the portable exe.
 #   The notes come from docs/releases/v<version>.md when there is one. Nothing is uploaded as an artifact.
 on:
@@ -67,12 +67,12 @@ jobs:
         with:
           node-version: 22
 
-      - name: Read the version and refuse one already released, or different from the API's
+      - name: Read the version and refuse one already released, or different from the API's or the phone app's
         shell: bash
         run: |
           version=$(node --experimental-strip-types --no-warnings apps/desktop/scripts/release-version.ts) || { echo "$version"; exit 1; }
           if gh release view "v$version" >/dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
-            echo "::error::v$version is already released. Raise the version in apps/desktop/package.json and apps/api/package.json first."
+            echo "::error::v$version is already released. Raise the version in apps/desktop/package.json, apps/api/package.json and apps/mobile/package.json first."
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"

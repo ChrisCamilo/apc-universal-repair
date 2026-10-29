@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { allowed, NOTICES_FILE, problems } from "./licenses.mjs";
+import { allowed, androidLibraries, NOTICES_FILE, pomLicense, problems } from "./licenses.mjs";
 
 // The license audit's rules (scripts/licenses.mjs): which licenses pass without review, that a copyleft one in a new
 // dependency fails the check, and that the notices cover what the installer ships.
@@ -46,4 +46,33 @@ test("Repo: the notices cover every module the installer's server ships", { skip
     const real = JSON.parse(readFileSync(path.join(SERVER_MODULES, name, "package.json"), "utf8")).name;
     assert.ok(notices.includes(`### ${real} `), real);
   }
+});
+
+// Android libraries' POMs spell the same license many ways: each spelling found in the release's tree maps to its SPDX
+// id, and a name the table doesn't know stays as it is, so the check fails on it.
+test("Repo: the Android libraries' license names map to SPDX ids, and an unknown one fails the check", () => {
+  const names = {
+    "The Apache Software License, Version 2.0": "Apache-2.0",
+    "The Apache License, Version 2.0": "Apache-2.0",
+    "APACHE-2": "Apache-2.0",
+    "Apache-2": "Apache-2.0",
+    "Apache-2.0": "Apache-2.0",
+    "MIT License": "MIT",
+    "MIT license": "MIT",
+    MIT: "MIT",
+    "BSD License": "BSD-3-Clause",
+  };
+  for (const [name, spdx] of Object.entries(names)) {
+    assert.equal(pomLicense(name), spdx, name);
+  }
+  assert.deepEqual(problems([{ name: "org.example:copyleft", version: "1.0", license: pomLicense("GNU General Public License v3") }]), [
+    "org.example:copyleft 1.0: GNU General Public License v3",
+  ]);
+});
+
+// Reads the committed list of the release's Android libraries and checks every one has a license that passes.
+test("Repo: every Android library in the phone app's release has an allowed license", () => {
+  const libraries = androidLibraries();
+  assert.ok(libraries.length > 0);
+  assert.deepEqual(problems(libraries), []);
 });
