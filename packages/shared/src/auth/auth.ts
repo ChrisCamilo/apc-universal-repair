@@ -12,6 +12,13 @@ export { apiFetch, onSessionExpired } from "./apiFetch.ts";
 // from before the API checked tokens, counts as nobody logged in. The screens only see AuthService.
 
 /**
+ * The login's brand on a phone, in px: the APC mark, then the name over the tagline in the display face, the tagline
+ * spaced this many em.
+ */
+export const LOGIN_BRAND = { mark: 72, name: 44, tagline: 17, taglineTracking: 0.24 } as const;
+/** What the login asks for, under the brand on a phone. */
+export const LOGIN_INTRO = "Use o usuário e a senha da sua oficina.";
+/**
  * Messages of the login form: under each field left empty, above the form when the login is refused or the session
  * expired, and in the dialog "Esqueceu a senha?" opens while there is no password reset (EP-10).
  */
