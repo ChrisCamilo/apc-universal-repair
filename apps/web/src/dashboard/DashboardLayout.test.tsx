@@ -1,15 +1,16 @@
 import { initials } from '@apc/shared/auth'
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/shared/screens'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens'
 import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs'
 import { TEST_USERS } from '@apc/shared/test-users'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
-import { beforeAll, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { SessionContext } from '../auth/sessionContext.ts'
 import '../index.css'
 import { themeCss } from '../theme.ts'
 import { DashboardLayout } from './DashboardLayout.tsx'
+import { BOTTOM_BAR_HEIGHT } from './DashboardLayout.styles.ts'
 import { useTabReorder } from './tabReorderContext.ts'
 
 // The first test user, as the session keeps them.
@@ -42,6 +43,10 @@ beforeAll(async () => {
 
 beforeEach(() => {
   localStorage.clear()
+})
+
+afterEach(async () => {
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 // Checks the tabs can't be moved while "Arrastar para reordenar" is off, then turns it on and moves the open tab
@@ -85,6 +90,48 @@ test('Web: a tab still being built opens behind the work-in-progress notice', as
   await expect.element(screen.getByRole('heading', { name: 'A aba Ficha técnica ainda não está pronta' })).toBeVisible()
   expect(screen.getByTestId('common.work-in-progress.content').element().textContent).toBe('Rota: /specs')
   expect((screen.getByTestId('common.work-in-progress.content').element() as HTMLElement).inert).toBe(true)
+})
+
+// At 1280×720, checks the Dashboard keeps its header, with the tabs and the user menu slot in it, and no bottom bar.
+test('Web: on the desktop the tabs stay in the header', async () => {
+  const screen = await render(<Dashboard />)
+  const header = screen.getByTestId('common.app-frame.header')
+  await expect.element(header.getByRole('tab', { name: 'Estoque' })).toBeVisible()
+  await expect.element(header.getByRole('button', { name: 'Reordenar' })).toBeVisible()
+  await expect.element(screen.getByTestId('dashboard.bottom-bar')).not.toBeInTheDocument()
+})
+
+// At 360×780, with an order saved, checks the Dashboard follows the phone layout: no header with the tabs, but the open
+// tab's name heading the page, and a bar fixed at the bottom of the screen, 80px tall, with the tabs in the saved order,
+// each at least 44px and the open one in the accent, then the user menu slot. A tab chosen in the bar opens its route
+// and heads the page, and the bar's tabs still move while reordering is on.
+test('Web: on a phone the tabs move to a bar at the bottom of the screen', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  localStorage.setItem(TAB_ORDER_STORAGE_KEY, JSON.stringify(['catalog', 'inventory', 'specs']))
+  const screen = await render(<Dashboard />)
+  await expect.element(screen.getByTestId('common.app-frame')).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('heading', { level: 1, name: 'Estoque' })).toBeVisible()
+  const bar = screen.getByTestId('dashboard.bottom-bar')
+  const box = bar.element().getBoundingClientRect()
+  expect([box.bottom, box.height]).toEqual([MIN_MOBILE_HEIGHT, BOTTOM_BAR_HEIGHT])
+  expect(tabOrder()).toEqual(['Catálogo', 'Estoque', 'Ficha técnica'])
+  const tabs = bar.getByRole('tab')
+  for (const tab of tabs.elements()) {
+    expect(tab.getBoundingClientRect().height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET)
+  }
+  const estoque = bar.getByRole('tab', { name: 'Estoque' })
+  const catalogo = bar.getByRole('tab', { name: 'Catálogo' })
+  expect(getComputedStyle(estoque.element()).color).not.toBe(getComputedStyle(catalogo.element()).color)
+  await expect.element(bar.getByRole('button', { name: 'Reordenar' })).toBeVisible()
+
+  await catalogo.click()
+  await expect.element(screen.getByText('Rota: /catalog')).toBeVisible()
+  await expect.element(screen.getByRole('heading', { level: 1, name: 'Catálogo' })).toBeVisible()
+  await screen.getByRole('button', { name: 'Reordenar' }).click()
+  await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}')
+  await catalogo.click()
+  await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}')
+  expect(tabOrder()).toEqual(['Estoque', 'Catálogo', 'Ficha técnica'])
 })
 
 function Dashboard() {

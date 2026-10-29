@@ -1,7 +1,7 @@
 import { SESSION_STORAGE_KEY, type SessionUser } from '@apc/shared/auth'
 import { playIcon } from '@apc/shared/icons'
 import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination'
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/shared/screens'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme'
 import { useState, type ReactNode } from 'react'
@@ -40,8 +40,9 @@ beforeAll(async () => {
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
-afterEach(() => {
+afterEach(async () => {
   delete window.apcDesktop
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 beforeEach(() => {
@@ -154,6 +155,28 @@ test('Web: Sobre esta versão opens the version in use and its notes', async () 
   await expect.element(dialog.getByRole('heading', { level: 4 }).first()).toBeVisible()
   await dialog.getByRole('button', { name: 'Fechar' }).last().click()
   await expect.element(dialog).not.toBeInTheDocument()
+})
+
+// At 360×780, checks the user menu is Conta, with the user's initials, and opens as a bottom sheet holding the same
+// items as a menu: the user, dark mode on at night, the theme. Picking "Sobre esta versão" closes the sheet, as it
+// closes the menu, and opens the version.
+test('Web: on a phone the user menu opens from Conta as a bottom sheet', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(<Sample />)
+  await expect.element(screen.getByRole('button', { name: 'Menu do usuário' })).not.toBeInTheDocument()
+  const conta = screen.getByRole('button', { name: 'Conta' })
+  await expect.element(conta).toHaveTextContent('CCConta')
+  await expect.element(conta).toHaveAttribute('aria-expanded', 'false')
+  await conta.click()
+  const sheet = screen.getByRole('dialog', { name: 'Conta' })
+  const menu = sheet.getByRole('menu', { name: 'Menu do usuário' })
+  await expect.element(menu.getByText('Christian Camilo')).toBeVisible()
+  await expect.element(menu.getByRole('menuitemcheckbox', { name: 'Modo escuro' })).toHaveAttribute('aria-checked', 'true')
+  await expect.element(menu.getByRole('menuitemradio', { name: 'Anos 80' })).toHaveAttribute('aria-checked', 'true')
+  await expect.element(conta).toHaveAttribute('aria-expanded', 'true')
+  await menu.getByRole('menuitem', { name: 'Sobre esta versão' }).click()
+  await expect.element(sheet).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('dialog', { name: 'Sobre esta versão' })).toBeVisible()
 })
 
 // In a browser the menu has no Servidor item; in the desktop app it has "Servidor e banco de dados", which opens the
