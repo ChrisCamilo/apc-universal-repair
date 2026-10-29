@@ -1,8 +1,9 @@
 ﻿; The installer's own pages, after the folder page:
 ; - "Banco de dados": which database the server on this computer uses, SQLite (the default) or PostgreSQL, each with
 ;   why to pick it. The installer can't edit config.json, so it leaves the choice in installer-database.txt in the
-;   app's userData folder, which the app moves into config.json on its next start (see src/database.ts). An update, an
-;   install over the app or a userData whose config.json names a database already keeps that choice and skips it.
+;   app's userData folder, which the app moves into config.json on its next start (see src/server/database.ts).
+;   An update, an install over the app or a userData whose config.json names a database already keeps that choice
+;   and skips it.
 ; - "Iniciar com o Windows": whether the app starts at sign-in, hidden in the tray with its server on (yes, the
 ;   default) or only when opened, each saying what it means. It leaves "yes" or "no" in installer-startup.txt, which
 ;   the app applies on its next start (see src/startup.ts). An update or an install over the app keeps the setting and

@@ -7,7 +7,7 @@ import { test } from "node:test";
 // channels itself; checks every channel serverSettings.ts names is in the preload, the failure and retry ones included.
 test("Desktop: the preload uses the same server channels as the main process", () => {
   const read = (file: string) => readFileSync(path.join(import.meta.dirname, file), "utf8");
-  const channels = new Set(read("serverSettings.ts").match(/"apc:[a-z-]+"/g));
+  const channels = new Set(read("server/serverSettings.ts").match(/"apc:[a-z-]+"/g));
   const preload = read("preload.cts");
   assert.ok(channels.has('"apc:server-failed"') && channels.has('"apc:server-retry"'));
   assert.deepEqual([...channels].filter((channel) => !preload.includes(channel)), []);

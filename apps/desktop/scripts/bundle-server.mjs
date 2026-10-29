@@ -1,5 +1,5 @@
-// Bundles the API into server/ for the desktop app to run (see src/bundledServer.ts), and electron-builder ships the
-// folder as resources/server:
+// Bundles the API into server/ for the desktop app to run (see src/server/bundledServer.ts), and electron-builder
+// ships the folder as resources/server:
 // - server.mjs: the API with its JavaScript dependencies, built by esbuild from apps/api/src, and tasks.mjs, the
 //   database tasks the app runs beside it (apps/api/src/db/tasks.ts), sharing their code through chunks/;
 // - migrations/: its SQL files, one folder per database, which the API applies on start (APC_MIGRATIONS_DIR);

@@ -7,14 +7,14 @@ import { desktopBridge, type ServerFailure as Failure } from './desktopBridge.ts
 import { serverFailure } from './ServerFailure.styles.ts'
 import { useOpenServerSettings } from './serverSettingsContext.ts'
 
-// The screen the desktop app shows when the server it runs isn't on (see apps/desktop/src/serverFailure.ts), in place
-// of a login that would only fail: "O servidor não ligou", why, the log to look at, and "Tentar de novo", which starts
-// the server again and opens the app once it answers, or shows why it still isn't on. When another program holds the
-// port, it also offers "Usar outra porta", which opens the Servidor dialog on its port field, and the guide's section
-// on it. When the SQLite key isn't on this computer, or doesn't open the data, it asks for the recovery copy the app
-// showed the first time: "Usar a chave de recuperação" checks it opens the data, keeps it and opens the app, or says
-// why not. It asks on opening, in case the server failed before the page loaded, and hears when it fails later. In a
-// browser, or while the server is on, nothing is drawn.
+// The screen the desktop app shows when the server it runs isn't on (see apps/desktop/src/server/serverFailure.ts),
+// in place of a login that would only fail: "O servidor não ligou", why, the log to look at, and "Tentar de novo",
+// which starts the server again and opens the app once it answers, or shows why it still isn't on. When another program
+// holds the port, it also offers "Usar outra porta", which opens the Servidor dialog on its port field, and the guide's
+// section on it. When the SQLite key isn't on this computer, or doesn't open the data, it asks for the recovery copy
+// the app showed the first time: "Usar a chave de recuperação" checks it opens the data, keeps it and opens the app, or
+// says why not. It asks on opening, in case the server failed before the page loaded, and hears when it fails later. In
+// a browser, or while the server is on, nothing is drawn.
 
 /** The failures a recovery copy of the SQLite key mends. */
 const KEY_FAILURES: readonly Failure['kind'][] = ['key', 'keyMissing', 'keyWrong']

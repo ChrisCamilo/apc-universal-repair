@@ -2,15 +2,15 @@ import os from "node:os";
 import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, screen, session, shell, Tray } from "electron";
 import electronUpdater from "electron-updater";
-import { usesBundledServer } from "./bundledServer.js";
+import { usesBundledServer } from "./server/bundledServer.js";
 import { resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
-import { adoptInstallerChoice } from "./database.js";
+import { adoptInstallerChoice } from "./server/database.js";
 import { windowsIdentity } from "./identity.js";
 import { keepAppLog } from "./logs.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./notify.js";
-import { configuredPort } from "./ports.js";
+import { configuredPort } from "./server/ports.js";
 import { APP_ORIGIN, registerAppScheme, serveApp } from "./protocol.js";
-import { readHealth } from "./server.js";
+import { readHealth } from "./server/server.js";
 import {
   handleServerElsewhere,
   handleServerSettings,
@@ -19,7 +19,7 @@ import {
   startOwnServer,
   stopOwnServer,
   type ServerHost,
-} from "./serverSettings.js";
+} from "./server/serverSettings.js";
 import { HIDDEN_ARG, takeInstallerStartup } from "./startup.js";
 import { phoneAddress, trayMenu, type TrayItem } from "./tray.js";
 import {
