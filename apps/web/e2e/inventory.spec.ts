@@ -342,7 +342,7 @@ test("Web: categories, brands and models are created from the item form", { tag:
 // Sorts a list of 30 items through the API: on the second page (on a phone, with the whole list loaded), sorting by
 // location goes back to the first 25 with the locations in natural order (A-2 before A-10); the same column again
 // reverses it; and the unit price sorts by value, ties in part code order. The desktop sorts with the column headers,
-// the phone with the "Ordenar" select.
+// the phone with its round Ordenar, which names the sort on.
 test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   const stock = Array.from({ length: 30 }, (_, index) =>
     item({ code: `P-${index + 1}`, name: `Peça ${index + 1}`, location: `A-${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
@@ -353,13 +353,14 @@ test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }
   const table = dataTable(page);
   const { rows } = table;
   const desktop = !isMobile;
-  /** Sorts by a column, with its header on the desktop and with the "Ordenar" select on the phone. */
+  /** Sorts by a column, with its header on the desktop and with the round Ordenar's sheet on the phone. */
   const sortBy = async (header: string, option: string) => {
     if (desktop) {
       await table.header(header).getByRole("button").click();
     } else {
-      await table.sort.click();
+      await inventory(page).sort.click();
       await options(page).named(option).click();
+      await expect(inventory(page).sort).toHaveAccessibleName(`Ordenar, ${option}`);
     }
   };
   if (desktop) {
@@ -874,8 +875,9 @@ test("Web: item photos are added and removed from the list and the form", { tag:
 // Filters the list against an API that filters what it is asked for: two categories in the Filtros menu go out as the
 // list query only on Aplicar and leave their rows, with the button counting one filter; the stock status chips go
 // one at a time; a vehicle brand narrows the vehicle models, each named with its brand; the position chips carry
-// their full names; and "Limpar filtros" brings every item back with an empty query.
-test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// their full names (on the desktop); and "Limpar filtros" brings every item back with an empty query. On a phone the
+// same steps go through the filter sheet, where Escape leaves a field's options, then the sheet.
+test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   // The queries of the list's page; the request for every item, with no query, is left out.
   const queries: string[] = [];
   await serveItems(page, ITEMS, (query) => query.has("pageSize") && queries.push(query.toString()));
@@ -891,7 +893,9 @@ test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS
   await option.named("Motor").click();
   await option.named("Suspensão").click();
   await page.keyboard.press("Escape");
-  await expect(menu.chip("N/A").first()).toHaveAttribute("title", "Posição não se aplica");
+  if (!isMobile) {
+    await expect(menu.chip("N/A").first()).toHaveAttribute("title", "Posição não se aplica");
+  }
   expect(queries.at(-1)).toBe("page=1&pageSize=25");
   await menu.apply.click();
   await expect(rows).toHaveCount(2);
@@ -921,6 +925,64 @@ test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS
   await expect(rows).toHaveCount(4);
   await expect(inv.filters).toHaveAccessibleName("Filtros");
   await expect(inv.clearFilters).toHaveCount(0);
+});
+
+// On a phone, filters and sorts the list from its round buttons, with no "Ordenar" select: the filter sheet starts
+// with "Ordenar por" and each filter's choice. Two categories picked in their options, then the rear position, count
+// the items they would show in "Ver n itens" before anything is sent; with a sort chosen in the sheet, applying sends
+// them together and names them on the buttons. "Limpar" turns the filters and the sort off in the sheet, sent on
+// "Ver 4 itens". The round Ordenar sorts at once, and the sheet's "Ordenar por" shows that sort.
+test("Web: on a phone the filters and the sort open in bottom sheets", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  const queries: string[] = [];
+  await serveItems(page, ITEMS, (query) => query.has("pageSize") && queries.push(query.toString()));
+  await page.goto("/inventory");
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
+  const menu = filtersMenu(page);
+  const option = options(page);
+  await expect(rows).toHaveCount(4);
+  await expect(dataTable(page).sort).toHaveCount(0);
+
+  await inv.filters.click();
+  await expect(menu.sort).toHaveAccessibleName("Ordenar por Ordem de cadastro");
+  await expect(menu.field("Categoria")).toHaveAccessibleName("Categoria Todas");
+  await expect(menu.apply).toHaveText("Ver 4 itens");
+  await menu.field("Categoria").click();
+  await option.named("Motor").click();
+  await option.named("Suspensão").click();
+  await expect(menu.apply).toHaveText("Ver 2 itens");
+  await page.keyboard.press("Escape");
+  await expect(menu.field("Categoria")).toHaveAccessibleName("Categoria Motor +1");
+  await menu.segment("Posição", "Traseira").click();
+  await expect(menu.apply).toHaveText("Ver 1 item");
+  await menu.sort.click();
+  await option.named("Local (A → Z)").click();
+  await expect(menu.sort).toHaveAccessibleName("Ordenar por Local (A → Z)");
+  expect(queries.at(-1)).toBe("page=1&pageSize=25");
+  await menu.apply.click();
+  await expect(menu.root).toBeHidden();
+  expect(queries.at(-1)).toBe("category=Motor&category=Suspens%C3%A3o&position=T&page=1&pageSize=25&sort=location&order=asc");
+  await expect(rows.first()).toContainText("A-2");
+  await expect(inv.filters).toHaveAccessibleName("Filtros, 2 ativos");
+  await expect(inv.sort).toHaveAccessibleName("Ordenar, Local (A → Z)");
+
+  await inv.filters.click();
+  await menu.clear.click();
+  await expect(menu.sort).toHaveAccessibleName("Ordenar por Ordem de cadastro");
+  await expect(menu.segment("Posição", "Todas")).toHaveAttribute("aria-checked", "true");
+  await menu.apply.click();
+  await expect(rows).toHaveCount(4);
+  expect(queries.at(-1)).toBe("page=1&pageSize=25");
+  await expect(inv.filters).toHaveAccessibleName("Filtros");
+  await expect(inv.sort).toHaveAccessibleName("Ordenar");
+
+  await inv.sort.click();
+  await option.named("Valor unitário (maior → menor)").click();
+  await expect(rows.first()).toContainText("Pastilha de freio");
+  expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=price&order=desc");
+  await expect(inv.sort).toHaveAccessibleName("Ordenar, Valor unitário (maior → menor)");
+  await inv.filters.click();
+  await expect(menu.sort).toHaveAccessibleName("Ordenar por Valor unitário (maior → menor)");
 });
 
 // Presses each stock status chip on its own: "Estoque baixo" lists only the item under its minimum and "Esgotado"

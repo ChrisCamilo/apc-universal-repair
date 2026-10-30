@@ -25,6 +25,8 @@ export function inventory(page: Page) {
     newItem: page.getByRole("button", { name: "Novo item" }),
     // Named "Filtros", then with the count of active filters, e.g. "Filtros, 1 ativo".
     filters: page.getByRole("button", { name: /^Filtros/ }),
+    // A phone's round Ordenar, named with the sort on, e.g. "Ordenar, Local (A → Z)".
+    sort: page.getByRole("button", { name: /^Ordenar(, .+)?$/ }),
     // The toolbar's, and the empty search's when there is one.
     clearFilters: page.getByRole("button", { name: "Limpar filtros" }),
     // On a phone the chips name their counts in short: "Baixo · 5", "Esgotado · 4".
@@ -162,17 +164,22 @@ export function manageLists(page: Page) {
 }
 
 /**
- * The Filtros menu: its fields by name and "Aplicar".
+ * The Filtros menu, or on a phone the "Filtrar e ordenar" sheet: a field by name (the desktop's select, or the sheet's
+ * row that opens its options, named with its choice), the desktop's chips, the sheet's segments, "Ordenar por",
+ * "Limpar" and the button that applies ("Aplicar", or "Ver n itens").
  * @param page The test's page.
  * @returns The menu's elements.
  */
 export function filtersMenu(page: Page) {
-  const root = page.getByRole("dialog", { name: "Filtros do estoque" });
+  const root = page.getByRole("dialog", { name: /^(Filtros do estoque|Filtrar e ordenar)$/ });
   return {
     root,
-    field: (name: string) => root.getByRole("combobox", { name }),
+    field: (name: string) => root.getByRole("combobox", { name }).or(root.getByRole("button", { name: new RegExp(`^${name} `) })),
     chip: (name: string) => root.getByRole("button", { name }),
-    apply: root.getByRole("button", { name: "Aplicar" }),
+    segment: (group: string, name: string) => root.getByRole("radiogroup", { name: group }).getByRole("radio", { name }),
+    sort: root.getByRole("button", { name: /^Ordenar por / }),
+    clear: root.getByRole("button", { name: "Limpar", exact: true }),
+    apply: root.getByRole("button", { name: /^(Aplicar|Ver \d+ ite(m|ns))$/ }),
   };
 }
 
