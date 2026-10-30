@@ -47,15 +47,22 @@ async function exportList(page: Page, photos: boolean): Promise<{ name: string; 
 
 test.use({ stock: { items: STOCK } });
 
-// Searches for the parts, goes to page 2 and exports, and checks the file holds every part the search finds, from
-// both pages, and none it leaves out, with the photos column only when the switch is on.
-test("Web: the CSV export takes every page of the list as it is", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// Searches for the parts, goes to page 2 (on a phone, scrolls the list to its end) and exports, and checks the file holds
+// every part the search finds, from both pages, and none it leaves out, with the photos column only when the switch is
+// on.
+test("Web: the CSV export takes every page of the list as it is", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   await page.route("**/api/photos/*", (route) => route.fulfill({ body: PNG, contentType: "image/png" }));
   await page.goto("/inventory");
   const inv = inventory(page);
   await inv.search.fill("Peça");
-  await inv.pager.page(2).click();
-  await expect(dataTable(page).rows).toHaveCount(5);
+  if (isMobile) {
+    await expect(dataTable(page).rows).toHaveCount(25);
+    await dataTable(page).rows.last().scrollIntoViewIfNeeded();
+    await expect(dataTable(page).rows).toHaveCount(30);
+  } else {
+    await inv.pager.page(2).click();
+    await expect(dataTable(page).rows).toHaveCount(5);
+  }
 
   const plain = await exportList(page, false);
   expect(plain.name).toMatch(/^estoque-\d{4}-\d{2}-\d{2}\.csv$/);

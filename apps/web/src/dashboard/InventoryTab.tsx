@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { apiFetch } from '@apc/shared/auth'
 import { chevronIcon, ICON_SIZES, pencilIcon, plusIcon, trashIcon } from '@apc/shared/icons'
 import {
@@ -28,7 +28,7 @@ import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
 import { EMPTY_ITEM_FILTERS, followEntryChange, itemFilterRows, itemListQuery } from '@apc/shared/item-filters'
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form'
 import { TUTORIAL_CODE, type TutorialScreen } from '@apc/shared/inventory-tutorial'
-import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination'
+import { PAGE_SIZES, pageForSize, SCROLL_PAGE_SIZE } from '@apc/shared/pagination'
 import type { Sort } from '@apc/shared/table'
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos'
 import { API_BASE } from '../api.ts'
@@ -54,6 +54,7 @@ import { ItemFormDialog } from '../inventory/ItemFormDialog.tsx'
 import { ManageListsDialog } from '../inventory/ManageListsDialog.tsx'
 import { savePhotos } from '../inventory/savePhotos.ts'
 import { useItemLists } from '../inventory/useItemLists.ts'
+import { useItemPages } from '../inventory/useItemPages.ts'
 import { useItems } from '../inventory/useItems.ts'
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
@@ -95,7 +96,10 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // Each card shows the item's name, its first code with its part brand or how many brands make it, and where it fits,
 // where it is and its price; its quantity has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
 // tap on a card opens the item's details, an item of several brands too. The stock status chips name their counts
-// ("Baixo · 5"), and "Novo item" is a round "+" at the bottom right, above the bottom bar. Gerenciar listas, Importar
+// ("Baixo · 5"), and "Novo item" is a round "+" at the bottom right, above the bottom bar. In place of the pagination
+// and "Itens por página", the list loads its next SCROLL_PAGE_SIZE items once it scrolls within a screen of its end,
+// skeleton cards showing while they come, and says "Fim da lista" once every item is in; a search, a filter or a sort
+// starts it over, and a save or a delete loads what it shows again, so it stays where it was. Gerenciar listas, Importar
 // CSV and Exportar CSV, the Filtros menu, the Ordenar select and each card's pencil and trash stay until their phone
 // forms come (#358, #359, #360).
 
@@ -195,7 +199,6 @@ function rowStatus({ item }: InventoryRow): { tone: 'warn' | 'danger'; label: st
 
 export function InventoryTab() {
   const { classes, ids } = inventoryTab()
-  const phone = usePhone()
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS)
   const [status, setStatus] = useState<ItemStatus | null>(null)
   const [search, setSearch] = useState('')
@@ -212,10 +215,15 @@ export function InventoryTab() {
     setPage(pageForSize(page, pageSize, defaultSize))
   }
   const narrowed = search.trim() !== '' || itemListQuery(filters, status) !== ''
-  // Every item, for the counter, the filter options and the form; and the page of the items the search and the
-  // filters let through.
+  const phone = usePhone()
+  // On a phone, how many pages the list shows, loading the next as it scrolls to its end.
+  const [pages, setPages] = useState(1)
+  // Every item, for the counter, the filter options and the form; and the items the search and the filters let
+  // through: a page of them on the desktop, the pages loaded so far on a phone.
   const state = useItems()
-  const listed = useItems(itemListQuery(filters, status, { search, page, pageSize, sort }))
+  const paged = useItems(itemListQuery(filters, status, { search, page, pageSize, sort }), !phone)
+  const scrolled = useItemPages(itemListQuery(filters, status, { search, pageSize: SCROLL_PAGE_SIZE, sort }), pages, phone)
+  const listed = phone ? scrolled : paged
   const { user } = useSession()
   // Each time the stock loads, warn about the items newly at or below their minimum.
   useLowStockAlerts(state.status === 'ready' ? state.items : null, user?.id ?? '')
@@ -274,6 +282,7 @@ export function InventoryTab() {
   const narrow = (change: () => void) => {
     change()
     setPage(1)
+    setPages(1)
   }
 
   /** Turns off the search, the filters and the stock status, to show every item again. */
@@ -606,17 +615,22 @@ export function InventoryTab() {
               }
             />
           )}
+          {!failed && listed.status === 'ready' && phone && listed.items.length > 0 && (
+            <ListEnd count={listed.items.length} total={listed.total} loading={scrolled.status === 'ready' && scrolled.more} onNear={() => setPages((count) => count + 1)} />
+          )}
         </div>
       </div>
-      <Pagination
-        label="Páginas do estoque"
-        page={page}
-        pageSize={pageSize}
-        total={failed ? 0 : loadedTotal}
-        pageSizes={PAGE_SIZES}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
-      />
+      {!phone && (
+        <Pagination
+          label="Páginas do estoque"
+          page={page}
+          pageSize={pageSize}
+          total={failed ? 0 : loadedTotal}
+          pageSizes={PAGE_SIZES}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
       {phone && (
         <button
           type="button"
@@ -729,6 +743,53 @@ export function InventoryTab() {
         }}
       />
     </Panel>
+  )
+}
+
+type ListEndProps = {
+  /** How many items the list shows. */
+  count: number
+  /** How many match in all. */
+  total: number
+  /** Whether the next items are on their way. */
+  loading: boolean
+  /** Asks for the next items. */
+  onNear: () => void
+}
+
+/**
+ * The end of a phone's list as it loads more: skeleton cards while the next items come, a mark that asks for them once
+ * it is within a screen of the window's bottom, or "Fim da lista" once every item is in.
+ */
+function ListEnd({ count, total, loading, onNear }: ListEndProps) {
+  const { classes, ids } = inventoryTab()
+  const mark = useRef<HTMLDivElement>(null)
+  const near = useEffectEvent(onNear)
+  const done = count >= total
+
+  // Watch the mark again after each load: one still within a screen of the bottom asks for more at once.
+  useEffect(() => {
+    const element = mark.current
+    if (!element || done || loading) {
+      return
+    }
+    const watch = new IntersectionObserver((entries) => entries.some((entry) => entry.isIntersecting) && near(), { rootMargin: '0px 0px 100% 0px' })
+    watch.observe(element)
+    return () => watch.disconnect()
+  }, [count, done, loading])
+
+  if (done) {
+    return (
+      <p className={classes.end()} data-testid={ids.end}>
+        Fim da lista
+      </p>
+    )
+  }
+  return (
+    <>
+      {loading && <LoadingRows />}
+      <div ref={mark} className={classes.more()} data-testid={ids.more} />
+    </>
   )
 }
 

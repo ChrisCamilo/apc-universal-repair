@@ -8,12 +8,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { SessionUser } from '@apc/shared/auth';
 import { playIcon } from '@apc/shared/icons';
-import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
-import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
 import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorderContext';
 import { UserMenu } from '../src/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/theme';
@@ -173,15 +171,12 @@ test('Mobile: the tab reorder choice is saved and comes back', async () => {
   expect(byName(again, 'Arrastar para reordenar').props.accessibilityState).toMatchObject({ checked: true });
 });
 
-// Picks 50 items per page and checks it is saved on the device and comes back chosen when the menu is drawn again,
-// with 25 chosen until then.
-test('Mobile: the items per page default is saved and comes back', async () => {
+// Opens the menu and checks the Inventory's section has its tutorial and no "Itens por página", since the list loads
+// more as it scrolls.
+test('Mobile: the user menu has no items per page choice', async () => {
   const tree = await openMenu();
-  expect(byName(tree, '25').props.accessibilityState).toMatchObject({ checked: true });
-  await press(tree, '50');
-  expect(await themeStorage.getItem(PAGE_SIZE_STORAGE_KEY)).toBe('50');
-  const again = await openMenu();
-  expect(byName(again, '50').props.accessibilityState).toMatchObject({ checked: true });
+  expect(byName(tree, 'Tutorial do estoque')).toBeDefined();
+  expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Itens por página')).toHaveLength(0);
 });
 
 // Picks "Sair" and checks it is the last item, set apart from the preferences by a divider, and hands the logout
@@ -205,9 +200,7 @@ function ActiveTheme() {
 function Preferences({ children }: { children: React.ReactNode }) {
   return (
     <TabReorderContext.Provider value={useReorderChoice()}>
-      <PageSizeContext.Provider value={usePageSizeChoice()}>
-        <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
-      </PageSizeContext.Provider>
+      <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
     </TabReorderContext.Provider>
   );
 }

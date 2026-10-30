@@ -5,6 +5,8 @@
 export const MAX_PAGE_SLOTS = 7;
 /** Page sizes the inventory offers; the first is the default. */
 export const PAGE_SIZES = [25, 50, 100] as const;
+/** How many items a phone's list loads at a time as it scrolls, in place of pages. */
+export const SCROLL_PAGE_SIZE = PAGE_SIZES[0];
 /** localStorage (web) and AsyncStorage (mobile) key of the default page size, "Itens por página" in the user menu. */
 export const PAGE_SIZE_STORAGE_KEY = "apc-page-size";
 

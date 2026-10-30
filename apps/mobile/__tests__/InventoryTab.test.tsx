@@ -20,7 +20,6 @@ import { itemListsOf } from '@apc/shared/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
-import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 
@@ -269,9 +268,7 @@ test('Mobile: a card of one brand opens the item details', async () => {
 
 function Preferences({ children }: { children: React.ReactNode }) {
   return (
-    <PageSizeContext.Provider value={usePageSizeChoice()}>
-      <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
-    </PageSizeContext.Provider>
+    <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
   );
 }
 
@@ -343,8 +340,7 @@ test('Mobile: the filters narrow the list through the API query', async () => {
 });
 
 // Holds the items request and checks the skeleton cards show with a loading announcement, then fails it and checks
-// the error state, whose "Tentar de novo" loads the list once the API answers; the pagination shows all along, at the
-// end of the scrolling column.
+// the error state, whose "Tentar de novo" loads the list once the API answers.
 test('Mobile: the inventory shows loading, then the error state with a retry', async () => {
   // Every items request waits until the test fails them all.
   const pending: (() => void)[] = [];
@@ -365,11 +361,9 @@ test('Mobile: the inventory shows loading, then the error state with a retry', a
   mounted.push(tree!);
   expect(tree!.root.findAll((n) => n.props.testID === 'inventory.inventory-tab.loading.row' && typeof n.type === 'string')).toHaveLength(5);
   expect(tree!.root.findAll((n) => n.props.accessibilityLabel === 'Carregando o estoque' && typeof n.type === 'string')).not.toHaveLength(0);
-  expect(paginationAtEnd(tree!)).toBe(true);
 
   await ReactTestRenderer.act(async () => fail());
   expect(texts(tree!)).toContain('Não foi possível carregar o estoque');
-  expect(paginationAtEnd(tree!)).toBe(true);
   answerItems(ITEMS);
   const retry = tree!.root.find(
     (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Tentar de novo').length > 0,
@@ -403,30 +397,20 @@ test('Mobile: the empty states offer to clear the filters or add an item', async
   expect(empty.root.findAllByType(Modal).some((modal) => modal.props.visible)).toBe(true);
 });
 
-/**
- * Tells whether the list's pagination shows at the end of the tab's scrolling column, after the list.
- * @param tree Rendered tree.
- * @returns True when the pages' row is the column's last part.
- */
-function paginationAtEnd(tree: ReactTestRenderer.ReactTestRenderer): boolean {
-  const scroll = tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
-  const parts = scroll.findAll((n) => n.props.testID === 'inventory.inventory-tab.list' || n.props.accessibilityLabel === 'Páginas do estoque');
-  return parts.length > 0 && parts[parts.length - 1].props.accessibilityLabel === 'Páginas do estoque';
-}
-
 // Opens the Inventory with items and with none, and checks each time the tab sits on the canvas with no panel around
-// it, filling the screen, and scrolls as a whole, the pagination at the end after the list, "0 de 0" with no items.
-// (The loading and error states are checked in their own test.)
-test('Mobile: the tab scrolls as a whole, with the pagination at its end', async () => {
+// it, filling the screen, and scrolls as a whole with no pagination; with every item in, the list ends with "Fim da
+// lista", and with none it doesn't. (The loading and error states are checked in their own test.)
+test('Mobile: the tab scrolls as a whole, with no pagination', async () => {
   const listed = await mount();
   expect(listed.root.findAll((n) => n.props.testID === 'common.panel')).toHaveLength(0);
   const tab = listed.root.find((n) => n.props.testID === 'inventory.inventory-tab' && typeof n.type === 'string');
   expect(StyleSheet.flatten(tab.props.style).flex).toBe(1);
-  expect(paginationAtEnd(listed)).toBe(true);
+  expect(listed.root.findAll((n) => n.props.accessibilityLabel === 'Páginas do estoque')).toHaveLength(0);
+  expect(texts(listed)).toContain('Fim da lista');
 
   const empty = await mount([]);
-  expect(paginationAtEnd(empty)).toBe(true);
-  expect(texts(empty)).toContain('0 de 0');
+  expect(texts(empty)).toContain('Nenhum item cadastrado');
+  expect(texts(empty)).not.toContain('Fim da lista');
 });
 
 // Checks "Novo item" is a round 56px "+" at the bottom right of the tab, in the accent, over the scrolling column,
@@ -449,29 +433,54 @@ test('Mobile: the round + at the bottom right opens a new item', async () => {
   expect(tree.root.findAllByType(Modal).some((modal) => modal.props.visible)).toBe(true);
 });
 
-// Lists 30 items and checks the first page shows 25 with the pagination asking the API for page 1, the second page
-// asks for page 2 and shows the other 5, and a search goes back to page 1.
-test('Mobile: the inventory list shows one page at a time', async () => {
+// Lists 30 items and checks the first 25 show. Scrolling far from the end asks for nothing; within a screen of it, the
+// API is asked for the next 25, skeleton cards showing until they come, then the other 5 join the list and "Fim da
+// lista" ends it, and scrolling on asks for nothing more. A search starts over from the first 25.
+test('Mobile: the list loads the next items as it scrolls near its end', async () => {
   const stock = Array.from({ length: 30 }, (_, index) =>
     item(index + 10, { code: `P-${String(index + 1).padStart(3, '0')}`, name: `Peça ${index + 1}`, quantity: 5 }),
   );
   const tree = await mount(stock);
   const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
+  const skeletons = () => tree.root.findAll((n) => n.props.testID === 'inventory.inventory-tab.loading.row' && typeof n.type === 'string');
+  const scroll = () => tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
+  // The list as a 600px screen sees it, 3000px tall, scrolled to y.
+  const scrollTo = (y: number) =>
+    ReactTestRenderer.act(async () =>
+      scroll().props.onScroll({
+        nativeEvent: { contentOffset: { x: 0, y }, layoutMeasurement: { width: 360, height: 600 }, contentSize: { width: 360, height: 3000 } },
+      }),
+    );
   expect(cards()).toHaveLength(25);
-  expect(texts(tree)).toContain('1–25 de 30');
-  const pageTwo = tree.root.find((n) => n.props.accessibilityLabel === 'Página 2' && typeof n.props.onPress === 'function');
-  (fetch as jest.Mock).mockClear();
-  await ReactTestRenderer.act(async () => pageTwo.props.onPress());
-  expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toMatch(/\/items\?page=2&pageSize=25$/);
-  expect(cards()).toHaveLength(5);
-  expect(texts(tree)).toContain('26–30 de 30');
+  expect((fetch as jest.Mock).mock.calls.some(([url]) => /\/items\?page=1&pageSize=25$/.test(url))).toBe(true);
+  expect(texts(tree)).not.toContain('Fim da lista');
+
+  const fetchMock = fetch as jest.Mock;
+  fetchMock.mockClear();
+  await scrollTo(1000);
+  expect(fetchMock).not.toHaveBeenCalled();
+
+  const answer = fetchMock.getMockImplementation()!;
+  let release = () => {};
+  fetchMock.mockImplementationOnce((url: string) => new Promise((resolve) => (release = () => resolve(answer(url)))));
+  await scrollTo(1900);
+  expect(fetchMock.mock.calls[0][0]).toMatch(/\/items\?page=2&pageSize=25$/);
+  expect(skeletons()).toHaveLength(5);
+  await ReactTestRenderer.act(async () => release());
+  expect(cards()).toHaveLength(30);
+  expect(skeletons()).toHaveLength(0);
+  expect(texts(tree)).toContain('Fim da lista');
+
+  fetchMock.mockClear();
+  await scrollTo(2400);
+  expect(fetchMock).not.toHaveBeenCalled();
 
   await ReactTestRenderer.act(async () => tree.root.findByType(TextInput).props.onChangeText('Peça 3'));
-  expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toMatch(/\/items\?q=Pe%C3%A7a\+3&page=1&pageSize=25$/);
+  expect(fetchMock.mock.calls.at(-1)[0]).toMatch(/\/items\?q=Pe%C3%A7a\+3&page=1&pageSize=25$/);
 });
 
-// On the second page, sorts by unit price with the "Ordenar" select and checks the sort goes to the API, the list goes
-// back to the first page and the cards follow the price, highest first, ties in part code order.
+// Sorts by unit price with the "Ordenar" select and checks the sort goes to the API, the list starts over from its
+// first items and the cards follow the price, highest first, ties in part code order.
 test('Mobile: the "Ordenar" select sorts the list through the API', async () => {
   const stock = Array.from({ length: 30 }, (_, index) =>
     item(index + 10, { code: `P-${index + 1}`, name: `Peça ${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
@@ -485,7 +494,6 @@ test('Mobile: the "Ordenar" select sorts the list through the API', async () => 
     )[0];
     await ReactTestRenderer.act(async () => node.props.onPress());
   };
-  await press('Página 2');
   (fetch as jest.Mock).mockClear();
   await press('Ordenar');
   expect(texts(tree)).toEqual(expect.arrayContaining(['Veículo (A → Z)', 'Local (Z → A)', 'Quantidade (maior → menor)']));

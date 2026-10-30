@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
-import { Pressable, Text as RNText, View } from 'react-native';
+import { Pressable, Text as RNText, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
 import { ICON_SIZES, pencilIcon, plusIcon, trashIcon } from '@apc/shared/icons';
 import {
@@ -20,7 +20,7 @@ import { activeFilterCount, type FilterValues } from '@apc/shared/filters';
 import { EMPTY_ITEM_FILTERS, followEntryChange, itemFilterRows, itemListQuery } from '@apc/shared/item-filters';
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form';
 import { isTestItem, TUTORIAL_CODE } from '@apc/shared/inventory-tutorial';
-import { PAGE_SIZES, pageForSize } from '@apc/shared/pagination';
+import { SCROLL_PAGE_SIZE } from '@apc/shared/pagination';
 import type { Sort } from '@apc/shared/table';
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos';
 import { API_URL } from '../api';
@@ -40,9 +40,9 @@ import { ItemFormDialog } from '../inventory/ItemFormDialog';
 import { ManageListsDialog } from '../inventory/ManageListsDialog';
 import { pickPhotos, savePhotos } from '../inventory/photos';
 import { useItemLists } from '../inventory/useItemLists';
+import { useItemPages } from '../inventory/useItemPages';
 import { useItems } from '../inventory/useItems';
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts';
-import { Pagination } from '../Pagination';
 import { Skeleton } from '../Skeleton';
 import { Spinner } from '../Spinner';
 import { SearchField } from '../TextField';
@@ -52,7 +52,6 @@ import { NumericReadout, Text } from '../Typography';
 import { useInventoryTutorial } from './inventoryTutorialContext';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './InventoryTutorial';
-import { usePageSize } from './pageSizeContext';
 
 // The Inventory tab, the same as the web's on a phone (the Estoque mockup): on the canvas, with no panel around it, a
 // search by name or part code, the filters, the stock status chips with how many items each finds ("Baixo · 5"), a
@@ -69,9 +68,11 @@ import { usePageSize } from './pageSizeContext';
 // "Exportar CSV" hands every item of the list as it is, on every page, to the share sheet in the same format.
 // The details' Duplicar opens a new item's form filled in as a copy of it, with copies of its photos or without them. The
 // Filtros menu, the stock status chips (one at a time) and "Limpar filtros" narrow the list the same as the web, sent
-// to the API as the list query with the search, and the list shows one page of what matches, newest first, the size
-// set in the user menu, moving pages as the web does. The "Ordenar" select sorts the list in the API by any of the
-// web's columns, going back to the first page. While the items load, skeleton cards hold their place; when nothing is
+// to the API as the list query with the search, and the list shows what matches, newest first, loading its next
+// SCROLL_PAGE_SIZE items once it scrolls within a screen of its end, skeleton cards showing while they come, and saying
+// "Fim da lista" once every item is in, as the web does on a phone. The "Ordenar" select sorts the list in the API by
+// any of the web's columns. A search, a filter or a sort starts the list over, and a save or a delete loads what it
+// shows again, so it stays where it was. While the items load, skeleton cards hold their place; when nothing is
 // in stock, the empty state offers "Novo item", and when the search or the filters leave nothing, it offers to clear
 // them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and
 // opens its photos in the ImageViewer (a brand's card, that brand's photos), where each photo removed, changed or added is saved at once and the list
@@ -219,21 +220,13 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const [search, setSearch] = useState('');
   // The column the list is sorted by, or null for the newest first.
   const [sort, setSort] = useState<Sort | null>(null);
-  const [page, setPage] = useState(1);
-  const { pageSize: defaultSize } = usePageSize();
-  const [pageSize, setPageSize] = useState(defaultSize);
-  // A new default from the user menu also applies to the list on screen, keeping its first item in view.
-  const [appliedDefault, setAppliedDefault] = useState(defaultSize);
-  if (appliedDefault !== defaultSize) {
-    setAppliedDefault(defaultSize);
-    setPageSize(defaultSize);
-    setPage(pageForSize(page, pageSize, defaultSize));
-  }
+  // How many pages the list shows, loading the next as it scrolls to its end.
+  const [pages, setPages] = useState(1);
   const narrowed = search.trim() !== '' || itemListQuery(filters, status) !== '';
-  // Every item, for the counter, the filter options and the form; and the page of the items the search and the
-  // filters let through.
+  // Every item, for the counter, the filter options and the form; and the pages loaded so far of the items the search
+  // and the filters let through.
   const state = useItems();
-  const listed = useItems(itemListQuery(filters, status, { search, page, pageSize, sort }));
+  const listed = useItemPages(itemListQuery(filters, status, { search, pageSize: SCROLL_PAGE_SIZE, sort }), pages);
   // Each time the stock loads, warn about the items newly at or below their minimum.
   useLowStockAlerts(state.status === 'ready' ? state.items : null, userId);
   // The lists the item form picks from and creates names in.
@@ -276,18 +269,25 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const shown = listed.status === 'ready' ? listed.items : [];
   const rows = shown.map((item): InventoryRow => ({ item }));
   const failed = state.status === 'error' || listed.status === 'error';
-  // The list's total as last loaded, so the pagination keeps its pages while the next page loads; none on an error.
-  const [loadedTotal, setLoadedTotal] = useState(0);
-  if (listed.status === 'ready' && listed.total !== loadedTotal) {
-    setLoadedTotal(listed.total);
-  }
   // The error and the empty states sit centered in the list's room.
   const centered = failed || (listed.status === 'ready' && shown.length === 0);
 
-  /** Changes the search, the filters, the stock status or the sort, going back to the first page. */
+  /** Changes the search, the filters, the stock status or the sort, starting the list over. */
   const narrow = (change: () => void) => {
     change();
-    setPage(1);
+    setPages(1);
+  };
+
+  /**
+   * Loads the next items once the list scrolls within a screen of its end, unless they are on their way or all in.
+   * @param event The scroll.
+   */
+  const scrolled = ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement, contentSize } = nativeEvent;
+    const near = contentOffset.y + layoutMeasurement.height * 2 >= contentSize.height;
+    if (near && listed.status === 'ready' && !listed.more && listed.items.length < listed.total) {
+      setPages((count) => count + 1);
+    }
   };
 
   /** Turns off the search, the filters and the stock status, to show every item again. */
@@ -298,7 +298,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       setStatus(null);
     });
 
-  /** Loads every item and the page on screen again, after one was saved or deleted. */
+  /** Loads every item and the pages on screen again, after one was saved or deleted. */
   const reload = () => {
     state.reload();
     listed.reload();
@@ -398,7 +398,13 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
 
   return (
     <View style={styles.panel} testID={ids.panel}>
-      <FieldScrollView style={styles.scroll} contentContainerStyle={styles.tab} keyboardShouldPersistTaps="handled" testID={ids.tab}>
+      <FieldScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.tab}
+        keyboardShouldPersistTaps="handled"
+        onScroll={scrolled}
+        testID={ids.tab}
+      >
         <View ref={tourTarget('search')} collapsable={false}>
           <SearchField
             label="Procure pelo nome ou código da peça"
@@ -489,16 +495,10 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
               />
             </>
           )}
+          {!failed && listed.status === 'ready' && shown.length > 0 && (
+            <ListEnd done={shown.length >= listed.total} loading={listed.more} />
+          )}
         </View>
-        <Pagination
-          label="Páginas do estoque"
-          page={page}
-          pageSize={pageSize}
-          total={failed ? 0 : loadedTotal}
-          pageSizes={PAGE_SIZES}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
       </FieldScrollView>
       <View ref={tourTarget('new-item')} collapsable={false} style={styles.fab} testID={ids.fab}>
         <Pressable
@@ -526,10 +526,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         onFormChange={followForm}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
-          // A new item is the newest, first on the first page.
-          if (!form.item) {
-            setPage(1);
-          }
           setForm((current) => ({ ...current, open: false }));
           setSentWith(items);
           reload();
@@ -542,7 +538,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         onClose={() => setImporter((current) => ({ ...current, open: false }))}
         onImported={() => {
           setImporter((current) => ({ ...current, open: false }));
-          setPage(1);
           reload();
           reloadLists();
         }}
@@ -632,10 +627,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         item={removing}
         onClose={() => setRemoving(undefined)}
         onDeleted={() => {
-          // The last item of a page leaves it empty: the page before takes its place.
-          if (shown.length === 1 && page > 1) {
-            setPage(page - 1);
-          }
           setRemoving(undefined);
           setSentWith(items);
           reload();
@@ -660,6 +651,22 @@ function Quantity({ item }: { item: Item }) {
       </RNText>
     </View>
   );
+}
+
+/**
+ * The end of the list as it loads more: skeleton cards while the next items come, or "Fim da lista" once every item is
+ * in.
+ */
+function ListEnd({ done, loading }: { done: boolean; loading: boolean }) {
+  const { styles, ids } = useStyles();
+  if (done) {
+    return (
+      <RNText style={styles.end} testID={ids.end}>
+        Fim da lista
+      </RNText>
+    );
+  }
+  return loading ? <LoadingRows /> : null;
 }
 
 function LoadingRows() {

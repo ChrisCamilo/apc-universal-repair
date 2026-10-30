@@ -45,6 +45,8 @@ export function inventory(page: Page) {
     remove: (name: string) => page.getByRole("button", { name: `Excluir ${name}` }),
     photos: (name: string) => page.getByRole("button", { name: `Ver fotos de ${name}` }),
     pager: pagination(page, "Páginas do estoque"),
+    // A phone's list end once every item is in, in place of the pagination.
+    listEnd: page.getByText("Fim da lista", { exact: true }),
   };
 }
 

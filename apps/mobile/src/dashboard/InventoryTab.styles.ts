@@ -4,8 +4,8 @@ import { displayLabel, glow } from '../styles/shared';
 import { fontFamily } from '../theme';
 
 // The look of the Inventory tab, the same as the web on a phone (the Estoque mockup): on the canvas, with no panel
-// around it, one column that scrolls as a whole (the toolbar, the filters, the cards and the pagination), ending clear
-// of the round "+" at the bottom right; the filters in a wrapping row; each card's pencil and trash side by side, and
+// around it, one column that scrolls as a whole (the toolbar, the filters and the cards), ending clear
+// of the round "+" at the bottom right, with "Fim da lista" once every item is in; the filters in a wrapping row; each card's pencil and trash side by side, and
 // its quantity at 20px with its stock status under it in the 11px display face, muted for "un.", in the warn or danger
 // color for Baixo or Esgotado; and, while the list loads, skeleton rows in the cards' shape. The list takes the room
 // left, with the error and the empty states centered in it. The skeletons keep their own ids.
@@ -31,6 +31,7 @@ export const useStyles = createStyles(
     tab: 'scroll',
     filters: 'filters',
     list: 'list',
+    end: 'list.end',
     actions: 'actions',
     name: 'name',
     quantity: 'quantity',
@@ -55,6 +56,14 @@ export const useStyles = createStyles(
       ...glow(theme),
     },
     fabButtonPressed: { transform: [{ translateY: 1 }] },
+    // "Fim da lista", as on the web.
+    end: {
+      paddingVertical: scales.space.s4,
+      textAlign: 'center',
+      fontFamily: fontFamily(scales.monoFont),
+      fontSize: scales.fontSize.xs,
+      color: theme.colors.textMuted,
+    },
     filters: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: scales.space.s2 },
     list: { flexGrow: 1, gap: scales.space.s3 },
     listCentered: { justifyContent: 'center' },
