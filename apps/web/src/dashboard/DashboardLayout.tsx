@@ -3,9 +3,13 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import { ICONS } from '@apc/shared/icons'
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, initialTab, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs'
 import { AppFrame } from '../components/AppFrame.tsx'
+import { HEADER_MARK_SIZE } from '../components/AppFrame.styles.ts'
+import { BrandMark } from '../components/BrandMark.tsx'
 import { TabPanel, Tabs } from '../components/Tabs.tsx'
+import { usePhone } from '../components/usePhone.ts'
 import { WorkInProgress } from '../components/WorkInProgress.tsx'
 import { readStored, writeStored } from '../storage.ts'
+import { bottomBar, phoneDashboard } from './DashboardLayout.styles.ts'
 import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext.ts'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
 import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
@@ -18,13 +22,17 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 // and the Inventory tab follows, and the Inventory tutorial's state, which the
 // Inventory tab runs (by itself the first time) and the user menu replays. A tab still being built (`wip` in
 // DASHBOARD_TABS) opens blurred behind a notice saying it isn't ready yet.
+// On a phone (below `card:`) the header gives way to the phone layout (see DashboardLayout.styles.ts): the open tab's
+// header, with the APC mark and the tab's name as the page's heading, over its content, and a bar fixed at the bottom
+// of the screen with the tabs in their saved order, then the user menu slot, whose menus show there as Alertas and
+// Conta (see NotificationsMenu and UserMenu).
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id)
 // Each tab as the tab bar draws it, by id.
 const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon, wip }) => [id, { id, label, icon: ICONS[icon], wip }]))
 
 type DashboardLayoutProps = {
-  /** The user menu, at the right of the header. */
+  /** The user menu, at the right of the header, or at the end of the bottom bar on a phone. */
   userMenu?: ReactNode
 }
 
@@ -46,6 +54,7 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   const pageSize = usePageSizeChoice()
   const tutorial = useInventoryTutorialChoice()
   const [order, setOrder] = useState(() => orderTabs(TAB_IDS, readStored(TAB_ORDER_STORAGE_KEY)))
+  const phone = usePhone()
 
   // Remember the open tab, so "/" reopens it next time.
   useEffect(() => {
@@ -58,39 +67,81 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
     return <Navigate to={`/${initialTab(TAB_IDS, readStored(DASHBOARD_TAB_STORAGE_KEY))}`} replace />
   }
 
+  const tabs = (
+    <Tabs
+      label="Seções do Dashboard"
+      tabs={order.map((id) => TABS[id])}
+      selected={tab}
+      onSelect={(id) => navigate(`/${id}`)}
+      reorderable={reorder.reorderable}
+      onReorder={(ids) => {
+        setOrder(ids)
+        writeStored(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids))
+      }}
+      variant={phone ? 'bar' : 'line'}
+    />
+  )
+  const panel = (
+    <TabPanel id={tab} selected={tab}>
+      {TABS[tab].wip ? (
+        <WorkInProgress label={TABS[tab].label}>
+          <Outlet />
+        </WorkInProgress>
+      ) : (
+        <Outlet />
+      )}
+    </TabPanel>
+  )
+
   return (
     <TabReorderContext.Provider value={reorder}>
       <PageSizeContext.Provider value={pageSize}>
         <InventoryTutorialContext.Provider value={tutorial}>
-          <AppFrame
-            navLabel="Seções do Dashboard"
-            nav={
-              <Tabs
-                label="Seções do Dashboard"
-                tabs={order.map((id) => TABS[id])}
-                selected={tab}
-                onSelect={(id) => navigate(`/${id}`)}
-                reorderable={reorder.reorderable}
-                onReorder={(ids) => {
-                  setOrder(ids)
-                  writeStored(TAB_ORDER_STORAGE_KEY, JSON.stringify(ids))
-                }}
-              />
-            }
-            end={userMenu}
-          >
-            <TabPanel id={tab} selected={tab}>
-              {TABS[tab].wip ? (
-                <WorkInProgress label={TABS[tab].label}>
-                  <Outlet />
-                </WorkInProgress>
-              ) : (
-                <Outlet />
-              )}
-            </TabPanel>
-          </AppFrame>
+          {phone ? (
+            <PhoneDashboard title={TABS[tab].label} tabs={tabs} end={userMenu}>
+              {panel}
+            </PhoneDashboard>
+          ) : (
+            <AppFrame navLabel="Seções do Dashboard" nav={tabs} end={userMenu}>
+              {panel}
+            </AppFrame>
+          )}
         </InventoryTutorialContext.Provider>
       </PageSizeContext.Provider>
     </TabReorderContext.Provider>
+  )
+}
+
+type PhoneDashboardProps = {
+  /** The open tab's name, the page's heading. */
+  title: string
+  /** The tabs, drawn as the bar. */
+  tabs: ReactNode
+  /** At the end of the bar, e.g. Alertas and Conta. */
+  end?: ReactNode
+  /** The open tab's panel. */
+  children: ReactNode
+}
+
+/** The Dashboard on a phone: the open tab's header and content, and the bottom bar. */
+function PhoneDashboard({ title, tabs, end, children }: PhoneDashboardProps) {
+  const { classes, ids } = phoneDashboard()
+  const bar = bottomBar()
+  return (
+    <div className={classes.base()} data-testid={ids.base}>
+      <header className={classes.header()} data-testid={ids.header}>
+        <BrandMark variant="compact" size={HEADER_MARK_SIZE} aria-hidden />
+        <h1 className={classes.title()} data-testid={ids.title}>
+          {title}
+        </h1>
+      </header>
+      <main className={classes.main()} data-testid={ids.main}>
+        {children}
+      </main>
+      <nav aria-label="Seções do Dashboard" className={bar.classes.base()} data-testid={bar.ids.base}>
+        {tabs}
+        {end}
+      </nav>
+    </div>
   )
 }

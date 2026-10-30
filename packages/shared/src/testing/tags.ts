@@ -25,6 +25,8 @@ export const TEST_TAGS = {
   bundled: "@bundled",
   /** A desktop screen only: the web's mobile project leaves it out. */
   desktopOnly: "@desktop-only",
+  /** A phone screen only, such as the Dashboard's bottom bar: the web's desktop project leaves it out. */
+  mobileOnly: "@mobile-only",
 } as const;
 
 /** One of the tests' tags. */

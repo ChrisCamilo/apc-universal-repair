@@ -3,10 +3,15 @@ import { bellIcon, gearIcon, ICON_SIZES, minusIcon, plusIcon } from '@apc/shared
 import { timeAgo, unreadBadge, type Notification } from '@apc/shared/notifications'
 import { stepToastDuration, TOAST_DURATION, TOAST_KIND_LOOKS, toastDurationLabel } from '@apc/shared/toast'
 import { useSession } from '../auth/sessionContext.ts'
+import { Button } from '../components/Button.tsx'
+import { Dialog } from '../components/Dialog.tsx'
 import { Icon } from '../components/Icon.tsx'
 import { Menu, MenuHeader, MenuItem } from '../components/Menu.tsx'
 import { Divider } from '../components/Panel.tsx'
 import { useToastDuration, useToastFeed } from '../components/toastContext.ts'
+import { usePhone } from '../components/usePhone.ts'
+import { BottomBarItem } from '../dashboard/BottomBarItem.tsx'
+import { bottomBar } from '../dashboard/DashboardLayout.styles.ts'
 import { desktopBridge } from '../desktop/desktopBridge.ts'
 import { bellBadge, notificationsMenu, notificationsSettings } from './NotificationsMenu.styles.ts'
 import { useNotifications } from './useNotifications.ts'
@@ -19,6 +24,8 @@ import { useNotifications } from './useNotifications.ts'
 // press applies at once and keeps the menu open, like the user menu's choices. In the desktop app, each error and warning,
 // low-stock warnings included, also asks for a Windows notification, shown while the window isn't focused; clicking it
 // brings the window up with this menu open.
+// On a phone it is Alertas in the Dashboard's bottom bar, the bell and its badge in its pill, and the notifications open
+// as a full screen: "Tempo do aviso" on top, the list under it, and "Limpar notificações" at the bottom.
 
 /** What the menu shows since it opened: the notifications that were unread then, and the time to count from. */
 type Opened = { fresh: readonly number[]; now: Date }
@@ -34,6 +41,7 @@ function UserNotifications({ userId }: { userId: string }) {
   const [opened, setOpened] = useState<Opened>({ fresh: [], now: new Date() })
   const [settings, setSettings] = useState(false)
   const [open, setOpen] = useState(false)
+  const phone = usePhone()
   const badge = unreadBadge(list)
   const { classes, ids } = bellBadge()
   const menu = notificationsMenu()
@@ -59,6 +67,50 @@ function UserNotifications({ userId }: { userId: string }) {
   const openFromDesktop = useEffectEvent(() => openChange(true))
   useEffect(() => desktopBridge()?.onOpenNotifications(() => openFromDesktop()), [])
 
+  const entries =
+    list.length === 0 ? (
+      <p className={menu.classes.empty()} data-testid={menu.ids.empty}>
+        <Icon icon={bellIcon} size={ICON_SIZES.thumbnail} />
+        Nenhuma notificação
+      </p>
+    ) : (
+      <ol aria-label="Últimas notificações" className={menu.classes.list({ phone })} data-testid={menu.ids.list}>
+        {list.map((notification) => (
+          <NotificationEntry key={notification.id} notification={notification} fresh={opened.fresh.includes(notification.id)} now={opened.now} />
+        ))}
+      </ol>
+    )
+
+  if (phone) {
+    const bar = bottomBar()
+    return (
+      <>
+        <BottomBarItem label="Alertas" name={badge ? `Alertas, ${badge} não lidas` : undefined} expanded={open} onClick={() => openChange(true)}>
+          <Icon icon={bellIcon} size={ICON_SIZES.thumbnail} />
+          {badge && (
+            <span aria-hidden="true" className={bar.classes.badge()} data-testid={bar.ids.badge}>
+              {badge}
+            </span>
+          )}
+        </BottomBarItem>
+        <Dialog
+          open={open}
+          onClose={() => setOpen(false)}
+          title="Notificações"
+          closable
+          actions={
+            <Button variant="secondary" disabled={list.length === 0} onClick={clear}>
+              Limpar notificações
+            </Button>
+          }
+        >
+          <DurationSetting />
+          {entries}
+        </Dialog>
+      </>
+    )
+  }
+
   return (
     <Menu
       label={badge ? `Notificações, ${badge} não lidas` : 'Notificações'}
@@ -81,18 +133,9 @@ function UserNotifications({ userId }: { userId: string }) {
         action={<SettingsButton open={settings} onPress={() => setSettings((shown) => !shown)} />}
       />
       {settings && <DurationSetting />}
-      {list.length === 0 ? (
-        <p className={menu.classes.empty()} data-testid={menu.ids.empty}>
-          <Icon icon={bellIcon} size={ICON_SIZES.thumbnail} />
-          Nenhuma notificação
-        </p>
-      ) : (
+      {entries}
+      {list.length > 0 && (
         <>
-          <ol aria-label="Últimas notificações" className={menu.classes.list()} data-testid={menu.ids.list}>
-            {list.map((notification) => (
-              <NotificationEntry key={notification.id} notification={notification} fresh={opened.fresh.includes(notification.id)} now={opened.now} />
-            ))}
-          </ol>
           <Divider />
           <MenuItem onSelect={clear}>Limpar notificações</MenuItem>
         </>

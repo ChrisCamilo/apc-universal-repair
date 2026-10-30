@@ -1,27 +1,33 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/shared/test-tags";
 import { atNotebookSizes } from "./support/sizes.ts";
-import { dashboard } from "./locators/dashboard.ts";
-import { DASHBOARD_TABS } from "@apc/shared/tabs";
+import { dashboard, userMenu } from "./locators/dashboard.ts";
+import { DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from "@apc/shared/tabs";
 
 // The first tab still being built, if any.
 const WIP_TAB = DASHBOARD_TABS.find((tab) => tab.wip);
 
-// Opens the app at "/" and checks it lands on the Inventory tab at /inventory: the APC mark heads the page,
-// the tab is selected and its content shows, and nothing scrolls sideways.
-test("Web: the Dashboard opens on the Inventory tab", { tag: [TEST_TAGS.dashboard] }, async ({ page }) => {
+// Opens the app at "/" and checks it lands on the Inventory tab at /inventory: the tab is selected and its content
+// shows, and nothing scrolls sideways. On the desktop the APC mark heads the page, in the header, and there is no
+// bottom bar; on a phone the tab's name heads it and the tabs sit in the bottom bar.
+test("Web: the Dashboard opens on the Inventory tab", { tag: [TEST_TAGS.dashboard] }, async ({ page, isMobile }) => {
   const shell = dashboard(page);
   await page.goto("/");
   await expect(page).toHaveURL(/\/inventory$/);
-  await expect(shell.heading).toBeVisible();
   await expect(shell.tabs).toBeVisible();
   await expect(shell.tab("inventory")).toHaveAttribute("aria-selected", "true");
   await expect(shell.panel("inventory")).toBeVisible();
-
-  const mark = (await shell.mark.boundingBox())!;
-  const viewport = page.viewportSize()!;
-  expect(mark.x).toBeGreaterThanOrEqual(0);
-  expect(mark.x + mark.width).toBeLessThanOrEqual(viewport.width);
+  if (isMobile) {
+    await expect(shell.title("inventory")).toBeVisible();
+    await expect(shell.bar.getByRole("tablist")).toBeVisible();
+  } else {
+    await expect(shell.heading).toBeVisible();
+    await expect(shell.bar).toHaveCount(0);
+    const mark = (await shell.mark.boundingBox())!;
+    const viewport = page.viewportSize()!;
+    expect(mark.x).toBeGreaterThanOrEqual(0);
+    expect(mark.x + mark.width).toBeLessThanOrEqual(viewport.width);
+  }
   await expect(page).not.toScrollSideways();
 });
 
@@ -50,8 +56,9 @@ test("Web: tabs have their own routes and the last one is remembered", { tag: [T
 });
 
 // Makes the content far taller than the window and scrolls over it, and checks the page itself never scrolls: the
-// header stays at the top, in view, and the content scrolls inside its frame instead, never sideways.
-test("Web: the page never scrolls and the header stays in view", { tag: [TEST_TAGS.dashboard, TEST_TAGS.layout] }, async ({ page }) => {
+// header stays at the top, in view, and the content scrolls inside its frame instead, never sideways. A phone's page
+// scrolls as a whole instead (see the bottom bar's test).
+test("Web: the page never scrolls and the header stays in view", { tag: [TEST_TAGS.dashboard, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const { header, main } = dashboard(page);
   await page.goto("/inventory");
   // the Dashboard is drawn once the saved session is read
@@ -69,6 +76,49 @@ test("Web: the page never scrolls and the header stays in view", { tag: [TEST_TA
   expect(await page.evaluate(() => [window.scrollY, document.scrollingElement!.scrollHeight - window.innerHeight])).toEqual([0, 0]);
   expect((await header.boundingBox())!.y).toBe(0);
   await expect(main).toHaveCSS("overflow-x", "hidden");
+});
+
+// On a phone, with the Catalog saved first in the tab order, checks the tabs sit in the bar at the bottom of the screen
+// in that order, then Alertas and Conta, and a tab chosen there opens its route and heads the page. With the content
+// far taller than the screen, the page scrolls as a whole while the bar stays at the bottom, never sideways. Conta opens
+// the user menu in a bottom sheet, which Escape closes.
+test("Web: on a phone the tabs sit in a bar at the bottom of the screen", { tag: [TEST_TAGS.dashboard, TEST_TAGS.layout, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  const shell = dashboard(page);
+  await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify(["catalog", "inventory"])), TAB_ORDER_STORAGE_KEY);
+  await page.goto("/inventory");
+  await expect(shell.title("inventory")).toBeVisible();
+  const { height } = page.viewportSize()!;
+  const barBottom = async () => {
+    const box = (await shell.bar.boundingBox())!;
+    return box.y + box.height;
+  };
+  expect(await barBottom()).toBe(height);
+  await expect(shell.bar.getByRole("tab")).toHaveText(["Catálogo", "Estoque"]);
+  await expect(shell.bar.getByRole("button")).toHaveText([/Alertas$/, /Conta$/]);
+
+  await shell.tab("catalog").click();
+  await expect(page).toHaveURL(/\/catalog$/);
+  await expect(shell.title("catalog")).toBeVisible();
+  await shell.tab("inventory").click();
+  await expect(shell.title("inventory")).toBeVisible();
+
+  await page.evaluate(() => {
+    const filler = document.createElement("div");
+    filler.style.height = "3000px";
+    filler.style.flexShrink = "0";
+    document.querySelector("main")!.append(filler);
+  });
+  await page.mouse.move(100, 400);
+  await page.mouse.wheel(0, 600);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+  expect(await barBottom()).toBe(height);
+  await expect(page).not.toScrollSideways();
+
+  const menu = userMenu(page);
+  await menu.trigger.click();
+  await expect(menu.sheet.getByRole("menu", { name: "Menu do usuário" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu.sheet).toBeHidden();
 });
 
 // Opens the tab still being built and checks it shows the cone and is read out as "em construção", and that its

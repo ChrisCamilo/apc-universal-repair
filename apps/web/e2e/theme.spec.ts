@@ -8,8 +8,8 @@ for (const style of STYLES) {
   for (const mode of MODES) {
     // Switches style and mode on <html> and checks the Dashboard picks up that combination's canvas and text,
     // and the selected tab its accent, display font and tracking. Runs for every style and mode, at both
-    // screen sizes.
-    test(`Web: resolves the ${style}/${mode} tokens`, { tag: [TEST_TAGS.dashboard, TEST_TAGS.theme] }, async ({ page }) => {
+    // screen sizes; the phone's bottom bar draws the tabs at 12px, the header at 14px.
+    test(`Web: resolves the ${style}/${mode} tokens`, { tag: [TEST_TAGS.dashboard, TEST_TAGS.theme] }, async ({ page, isMobile }) => {
       const theme = themes[style][mode];
       await page.goto("/");
       await page.evaluate(
@@ -26,7 +26,7 @@ for (const style of STYLES) {
       const tab = dashboard(page).tab("inventory");
       await expect(tab).toHaveCSS("color", rgb(theme.colors.accent));
       await expect(tab).toHaveCSS("font-family", new RegExp(`^"?${theme.displayFont}`));
-      const tracking = +(theme.displayTracking * scales.fontSize.sm).toFixed(2);
+      const tracking = +(theme.displayTracking * scales.fontSize[isMobile ? "xs" : "sm"]).toFixed(2);
       await expect(tab).toHaveCSS("letter-spacing", `${tracking}px`);
     });
   }

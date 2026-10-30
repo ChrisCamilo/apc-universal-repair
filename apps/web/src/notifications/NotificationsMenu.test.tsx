@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { SessionUser } from '@apc/shared/auth'
 import { addNotification, notificationsKey, type Notification } from '@apc/shared/notifications'
-import { themes } from '@apc/shared/theme'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
+import { scales, themes } from '@apc/shared/theme'
 import { TOAST_DURATION, TOAST_DURATION_STORAGE_KEY } from '@apc/shared/toast'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
+import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { SessionContext } from '../auth/sessionContext.ts'
@@ -40,7 +42,8 @@ function saveUnread(user: SessionUser, count: number): void {
   localStorage.setItem(notificationsKey(user.id), JSON.stringify(list))
 }
 
-beforeAll(() => {
+beforeAll(async () => {
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
@@ -52,8 +55,9 @@ beforeEach(() => {
   localStorage.clear()
 })
 
-afterEach(() => {
+afterEach(async () => {
   delete window.apcDesktop
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 // Shows a success and an error toast and checks the bell counts 2 unread on its badge; its menu lists the error first,
@@ -200,6 +204,40 @@ test('Web: in the desktop app, errors and warnings ask for a Windows notificatio
   await expect.element(screen.getByRole('menu', { name: /^Notificações/ })).toBeVisible()
   await expect.element(screen.getByRole('button', { name: /^Notificações/ })).toHaveAttribute('aria-expanded', 'true')
   await expect.element(screen.getByRole('button', { name: /^Notificações/ })).toHaveAccessibleName('Notificações')
+})
+
+// At 360×780, shows two toasts and checks the bell is Alertas, its name and badge counting 2 unread. It opens the
+// notifications as a full screen, newest first, with "Tempo do aviso" on top, its − and + 44px for a finger; opening
+// marks them read. "Limpar notificações" empties the list, and the × closes the screen, leaving Alertas with no count.
+test('Web: on a phone the notifications open from Alertas as a full screen', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(<Sample />)
+  await expect.element(screen.getByRole('button', { name: /^Notificações/ })).not.toBeInTheDocument()
+  await screen.getByRole('button', { name: 'Sucesso' }).click()
+  await screen.getByRole('button', { name: 'Erro' }).click()
+  await expect.element(screen.getByTestId('dashboard.bottom-bar.item.pill.badge')).toHaveTextContent('2')
+  await screen.getByRole('button', { name: 'Alertas, 2 não lidas' }).click()
+
+  const dialog = screen.getByRole('dialog', { name: 'Notificações' })
+  await expect.element(dialog).toBeVisible()
+  const box = dialog.element().getBoundingClientRect()
+  expect([box.width, box.height]).toEqual([MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT])
+  const entries = dialog.getByRole('list', { name: 'Últimas notificações' }).getByRole('listitem')
+  expect(entries.elements().map((entry) => [entry.dataset.kind, entry.dataset.fresh])).toEqual([
+    ['error', 'true'],
+    ['success', 'true'],
+  ])
+  for (const name of ['Diminuir o tempo do aviso', 'Aumentar o tempo do aviso']) {
+    const button = dialog.getByRole('button', { name }).element().getBoundingClientRect()
+    expect([button.width, button.height]).toEqual([scales.touch.icon, scales.touch.icon])
+  }
+  await dialog.getByRole('button', { name: 'Limpar notificações' }).click()
+  await expect.element(dialog.getByText('Nenhuma notificação')).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Limpar notificações' })).toBeDisabled()
+  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Alertas', exact: true })).toBeVisible()
+  await expect.element(screen.getByTestId('dashboard.bottom-bar.item.pill.badge')).not.toBeInTheDocument()
 })
 
 function Sample() {

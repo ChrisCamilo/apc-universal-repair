@@ -19,6 +19,8 @@ import { save, themeStorage, useTheme } from './theme';
 // finger over the others shows an accent line on the side where it will land. Screen readers get "move left"
 // and "move right" actions instead, and the new position is announced. The new order goes to onReorder; the
 // owner keeps it.
+// The `bar` variant draws the tabs as a phone's bottom bar, each one's icon in a pill over its label (see
+// Tabs.styles.ts); it behaves the same.
 
 const ACTIONS = [
   { name: 'moveLeft', label: 'Mover para a esquerda' },
@@ -44,6 +46,8 @@ type TabsProps<T extends string> = {
   reorderable?: boolean;
   /** Called with the tab ids in their new order; the owner keeps it and passes the tabs back in that order. */
   onReorder?: (ids: T[]) => void;
+  /** How the tabs are drawn: in a row over an underline (default), or as a phone's bottom bar. */
+  variant?: 'line' | 'bar';
 };
 
 /**
@@ -72,7 +76,7 @@ export function useStoredTab<T extends string>(storageKey: string, ids: readonly
   return [tab, select];
 }
 
-export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorderable = false, onReorder }: TabsProps<T>) {
+export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorderable = false, onReorder, variant = 'line' }: TabsProps<T>) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   // Where each tab sits in the list, and where the list starts on screen while a tab is being dragged.
@@ -81,6 +85,9 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
   const [dragging, setDragging] = useState<T | null>(null);
   const [drop, setDrop] = useState<{ id: T; side: DropSide } | null>(null);
   const order = tabs.map((tab) => tab.id);
+  const bar = variant === 'bar';
+  // In the bar, the list takes one share of the bar per tab, beside the bar's other entries.
+  const shares = { flex: tabs.length };
 
   /** Hands the new order to the owner and says where the tab went. */
   const reorder = (next: T[] | null, id: T) => {
@@ -123,7 +130,7 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
     <View
       accessibilityRole="tablist"
       accessibilityLabel={label}
-      style={styles.list}
+      style={bar ? [styles.listBar, shares] : styles.list}
       testID={ids.list}
       // Once a tab is picked up, the list follows the finger, and the tab doesn't take the touch back.
       onMoveShouldSetResponderCapture={() => dragging !== null}
@@ -153,32 +160,58 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
               }
             }}
             onLayout={(event) => layouts.current.set(tab.id, event.nativeEvent.layout)}
-            style={[styles.tab, dragging === tab.id && styles.tabDragging]}
+            style={[bar ? styles.barItem : styles.tab, dragging === tab.id && styles.tabDragging]}
             testID={ids.tab}
           >
-            {({ pressed }) => (
-              <>
-                {reorderable && <Icon icon={gripIcon} size={ICON_SIZES.inline} color={colors.textMuted} />}
-                {tab.icon && <Icon icon={tab.icon} size={ICON_SIZES.label} color={isSelected ? colors.accent : pressed ? colors.text : colors.textMuted} />}
-                <Text style={[styles.label, pressed && styles.labelPressed, isSelected && styles.labelSelected]} testID={ids.label}>
-                  {tab.label}
-                </Text>
-                {tab.wip && (
-                  <View style={styles.wip} testID={ids.wip}>
-                    <Icon icon={coneIcon} size={ICON_SIZES.compact} color={colors.textMuted} />
-                  </View>
-                )}
-                {tab.count !== undefined && (
-                  <Text style={[styles.count, isSelected && styles.countSelected]} testID={ids.count}>
-                    {tab.count}
+            {({ pressed }) => {
+              const iconColor = isSelected ? colors.accent : pressed ? colors.text : colors.textMuted;
+              const cone = tab.wip && (
+                <View style={[styles.wip, bar && styles.barWip]} testID={ids.wip}>
+                  <Icon icon={coneIcon} size={ICON_SIZES.compact} color={colors.textMuted} />
+                </View>
+              );
+              return (
+                <>
+                  {bar ? (
+                    <View style={[styles.pill, isSelected && styles.pillSelected]} testID={ids.pill}>
+                      {reorderable && (
+                        <View style={styles.grip} testID={ids.grip}>
+                          <Icon icon={gripIcon} size={ICON_SIZES.inline} color={colors.textMuted} />
+                        </View>
+                      )}
+                      {tab.icon && <Icon icon={tab.icon} size={ICON_SIZES.thumbnail} color={iconColor} />}
+                      {cone}
+                    </View>
+                  ) : (
+                    <>
+                      {reorderable && <Icon icon={gripIcon} size={ICON_SIZES.inline} color={colors.textMuted} />}
+                      {tab.icon && <Icon icon={tab.icon} size={ICON_SIZES.label} color={iconColor} />}
+                    </>
+                  )}
+                  <Text
+                    numberOfLines={bar ? 1 : undefined}
+                    style={
+                      bar
+                        ? [styles.barLabel, pressed && styles.barLabelPressed, isSelected && styles.barLabelSelected]
+                        : [styles.label, pressed && styles.labelPressed, isSelected && styles.labelSelected]
+                    }
+                    testID={ids.label}
+                  >
+                    {tab.label}
                   </Text>
-                )}
-                <View style={[styles.underline, isSelected && styles.underlineSelected]} testID={ids.underline} />
-                {drop?.id === tab.id && (
-                  <View style={[styles.drop, drop.side === 'before' ? styles.dropBefore : styles.dropAfter]} testID={ids.drop} />
-                )}
-              </>
-            )}
+                  {!bar && cone}
+                  {tab.count !== undefined && (
+                    <Text style={[styles.count, isSelected && styles.countSelected]} testID={ids.count}>
+                      {tab.count}
+                    </Text>
+                  )}
+                  {!bar && <View style={[styles.underline, isSelected && styles.underlineSelected]} testID={ids.underline} />}
+                  {drop?.id === tab.id && (
+                    <View style={[styles.drop, drop.side === 'before' ? styles.dropBefore : styles.dropAfter]} testID={ids.drop} />
+                  )}
+                </>
+              );
+            }}
           </Pressable>
         );
       })}

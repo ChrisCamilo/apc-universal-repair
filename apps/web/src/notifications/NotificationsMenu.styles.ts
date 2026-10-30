@@ -20,7 +20,10 @@ export const bellBadge = recipe(
   { base: '', badge: 'badge' },
 )
 
-/** The menu's list of notifications, each one by kind and whether it was unread, and the notice when there are none. */
+/**
+ * The menu's list of notifications, each one by kind and whether it was unread, and the notice when there are none; on
+ * a phone, the full screen's.
+ */
 export const notificationsMenu = recipe(
   'notifications.menu',
   tv({
@@ -41,6 +44,8 @@ export const notificationsMenu = recipe(
         warning: { icon: 'text-warn' },
       },
       fresh: { true: { item: 'bg-accent-soft' } },
+      // On a phone's full screen the list grows and the screen scrolls.
+      phone: { true: { list: 'max-h-none overflow-visible' } },
     },
   }),
   {
@@ -66,7 +71,7 @@ export const notificationsSettings = recipe(
       stepper: 'flex items-center gap-1',
       value: 'min-w-10 text-center font-mono text-sm',
       button: [
-        'grid size-8 cursor-pointer place-items-center rounded-pill text-text-muted outline-none transition-[background-color,color,box-shadow]',
+        'grid size-8 cursor-pointer place-items-center rounded-pill max-card:size-11 text-text-muted outline-none transition-[background-color,color,box-shadow]',
         'enabled:hover:bg-accent-soft enabled:hover:text-accent focus-visible:shadow-ring disabled:cursor-not-allowed disabled:opacity-50',
       ],
     },

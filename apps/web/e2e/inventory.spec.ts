@@ -101,8 +101,9 @@ async function layout(page: Page) {
 
 // Opens the Inventory with a few items, with none and with the API failing, and checks each time the panel reaches the
 // bottom of the window (only the frame's margin under it), the pagination shows, and the page doesn't scroll. Each
-// state's routes are tried before the ones of the state before it.
-test("Web: the Inventory panel fills the window and keeps its pagination", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page }) => {
+// state's routes are tried before the ones of the state before it. A phone's page scrolls as a whole instead, above the
+// bottom bar.
+test("Web: the Inventory panel fills the window and keeps its pagination", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   for (const [state, open] of [
     ["a few items", () => serveItems(page, ITEMS.slice(0, 2))],
     ["no items", () => serveItems(page, [])],
@@ -119,9 +120,9 @@ test("Web: the Inventory panel fills the window and keeps its pagination", { tag
 });
 
 // Opens the Inventory with 100 items on a page and scrolls the list, and checks only the list scrolls: the page stays
-// put and the pagination stays in view. On desktop the toolbar stays too and the table's header row stays pinned on
-// top; on a phone the toolbar and the filters scroll away with the cards, inside the panel.
-test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page, isMobile }) => {
+// put, the pagination and the toolbar stay in view, and the table's header row stays pinned on top. A phone's page
+// scrolls as a whole instead, above the bottom bar.
+test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const inv = inventory(page);
   const table = dataTable(page);
   await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
@@ -130,17 +131,14 @@ test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_T
   await expect(table.rows).toHaveCount(100);
   await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height - 160);
   await page.mouse.wheel(0, 2000);
-  const scroller = isMobile ? inv.body : table.scroll;
-  await expect.poll(() => scroller.evaluate((box) => box.scrollTop)).toBeGreaterThan(1000);
+  await expect.poll(() => table.scroll.evaluate((box) => box.scrollTop)).toBeGreaterThan(1000);
 
   expect((await layout(page)).pageExtra).toBe(0);
   await expect(inv.pager.pages).toBeInViewport();
-  if (!isMobile) {
-    await expect(inv.newItem).toBeInViewport();
-    const header = (await table.header(/Item/).boundingBox())!;
-    const scroll = (await table.scroll.boundingBox())!;
-    expect(Math.abs(header.y - scroll.y)).toBeLessThanOrEqual(1);
-  }
+  await expect(inv.newItem).toBeInViewport();
+  const header = (await table.header(/Item/).boundingBox())!;
+  const scroll = (await table.scroll.boundingBox())!;
+  expect(Math.abs(header.y - scroll.y)).toBeLessThanOrEqual(1);
 });
 
 // Searches by part code without separators, by name without accents, and for something that isn't there,

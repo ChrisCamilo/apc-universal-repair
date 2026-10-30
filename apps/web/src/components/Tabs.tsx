@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { coneIcon, gripIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
 import { dropTab, moveTab, type DropSide } from '@apc/shared/tabs'
 import { Icon } from './Icon.tsx'
@@ -13,6 +13,8 @@ import { tabPanel, tabs as tabsRecipe } from './Tabs.styles.ts'
 // marks the side of the tab under the pointer where it will land. Alt + Left/Right moves the focused tab one
 // place, and the new position is announced. The new order goes to onReorder; the owner keeps it.
 // A tab still being built (`wip`) shows a cone after its label and is read out as "em construção"; it opens as any other.
+// The `bar` variant draws the tabs as a phone's bottom bar, each one's icon in a pill over its label (see
+// Tabs.styles.ts); it behaves the same.
 
 type TabItem<T extends string> = {
   id: T
@@ -35,6 +37,8 @@ type TabsProps<T extends string> = {
   reorderable?: boolean
   /** Called with the tab ids in their new order; the owner keeps it and passes the tabs back in that order. */
   onReorder?: (ids: T[]) => void
+  /** How the tabs are drawn: in a row over an underline (default), or as a phone's bottom bar. */
+  variant?: 'line' | 'bar'
 }
 
 /**
@@ -77,12 +81,13 @@ function tabElementId(id: string): string {
   return `tab-${id}`
 }
 
-export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorderable = false, onReorder }: TabsProps<T>) {
+export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorderable = false, onReorder, variant = 'line' }: TabsProps<T>) {
   const buttons = useRef(new Map<T, HTMLButtonElement>())
   // The tab moved with the keyboard, to focus again once it is drawn in its new place.
   const moved = useRef<T | null>(null)
   const [dragging, setDragging] = useState<T | null>(null)
-  const list = tabsRecipe()
+  const list = tabsRecipe({ variant })
+  const bar = variant === 'bar'
   const [drop, setDrop] = useState<{ id: T; side: DropSide } | null>(null)
   const [announcement, setAnnouncement] = useState('')
   const ids = tabs.map((tab) => tab.id)
@@ -151,10 +156,17 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
 
   return (
     <>
-      <div role="tablist" aria-label={label} className={list.classes.base()} data-testid={list.ids.base}>
+      <div
+        role="tablist"
+        aria-label={label}
+        className={list.classes.base()}
+        data-testid={list.ids.base}
+        style={bar ? ({ '--tab-count': tabs.length } as CSSProperties) : undefined}
+      >
         {tabs.map((tab, index) => {
           const isSelected = tab.id === selected
           const { classes, ids } = tabsRecipe({
+            variant,
             reorderable,
             dragging: dragging === tab.id,
             drop: drop?.id === tab.id ? drop.side : 'none',
@@ -194,18 +206,19 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
                 setDrop(null)
               }}
             >
-              {reorderable && (
-                <span aria-hidden="true" className={classes.grip()} data-testid={ids.grip}>
-                  <Icon icon={gripIcon} size={ICON_SIZES.inline} />
-                </span>
-              )}
-              {tab.icon && <Icon icon={tab.icon} size={ICON_SIZES.label} />}
-              {tab.label}
-              {tab.wip && (
-                <span aria-hidden="true" className={classes.wip()} data-testid={ids.wip}>
-                  <Icon icon={coneIcon} size={ICON_SIZES.compact} />
-                </span>
-              )}
+              <span className={classes.pill()} data-testid={ids.pill}>
+                {reorderable && (
+                  <span aria-hidden="true" className={classes.grip()} data-testid={ids.grip}>
+                    <Icon icon={gripIcon} size={ICON_SIZES.inline} />
+                  </span>
+                )}
+                {tab.icon && <Icon icon={tab.icon} size={bar ? ICON_SIZES.thumbnail : ICON_SIZES.label} />}
+                {bar && tab.wip && <WipMark className={classes.wip()} testId={ids.wip} />}
+              </span>
+              <span className={classes.label()} data-testid={ids.label}>
+                {tab.label}
+              </span>
+              {!bar && tab.wip && <WipMark className={classes.wip()} testId={ids.wip} />}
               {tab.count !== undefined && (
                 <span className={classes.count()} data-testid={ids.count}>
                   {tab.count}
@@ -219,6 +232,15 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
         {announcement}
       </span>
     </>
+  )
+}
+
+/** The cone of a tab still being built, hidden from screen readers, which hear "em construção" in the tab's name. */
+function WipMark({ className, testId }: { className: string; testId: string }) {
+  return (
+    <span aria-hidden="true" className={className} data-testid={testId}>
+      <Icon icon={coneIcon} size={ICON_SIZES.compact} />
+    </span>
   )
 }
 
