@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react'
 import { apiFetch } from '@apc/shared/auth'
-import { chevronIcon, ICON_SIZES, pencilIcon, trashIcon } from '@apc/shared/icons'
+import { chevronIcon, ICON_SIZES, pencilIcon, plusIcon, trashIcon } from '@apc/shared/icons'
 import {
   brandsValue,
   formatPriceRange,
+  itemCardCode,
+  itemCardDetails,
   itemCodes,
   itemDetails,
   itemVehiclesText,
   NOT_APPLICABLE,
   partBrandsLabel,
   POSITION_NAMES,
+  QUANTITY_UNIT,
   resultSummary,
   SIDE_NAMES,
   ITEM_STATUSES,
   STOCK_STATUS_LABELS,
+  STOCK_STATUS_SHORT,
+  stockCounts,
   stockStatus,
   type Item,
   type ItemBrand,
@@ -41,6 +46,7 @@ import { Panel } from '../components/Panel.tsx'
 import { Skeleton } from '../components/Skeleton.tsx'
 import { Spinner } from '../components/Spinner.tsx'
 import { SearchField } from '../components/TextField.tsx'
+import { usePhone } from '../components/usePhone.ts'
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
 import { ExportItemsDialog } from '../inventory/ExportItemsDialog.tsx'
 import { ImportItemsDialog } from '../inventory/ImportItemsDialog.tsx'
@@ -85,6 +91,13 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // while it stays there (a toast too when a save or an import brought it there). At phone width the row becomes a card and the columns that leave it
 // show as one line under the name. The Inventory tutorial runs over the tab by itself the first time, and again from
 // the user menu: it starts and ends with the test item deleted and the search, filters and sort off.
+// On a phone (below `card:`) the tab follows the Estoque mockup: no panel around it, and the page scrolls as a whole.
+// Each card shows the item's name, its first code with its part brand or how many brands make it, and where it fits,
+// where it is and its price; its quantity has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
+// tap on a card opens the item's details, an item of several brands too. The stock status chips name their counts
+// ("Baixo · 5"), and "Novo item" is a round "+" at the bottom right, above the bottom bar. Gerenciar listas, Importar
+// CSV and Exportar CSV, the Filtros menu, the Ordenar select and each card's pencil and trash stay until their phone
+// forms come (#358, #359, #360).
 
 // The table's cells, styled once: the recipe has no variants they change.
 const CELLS = inventoryTab()
@@ -143,10 +156,20 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
       </span>
     ),
   },
-  { key: 'quantity', header: 'Qtd.', sortLabel: 'Quantidade', sortable: true, numeric: true, card: 'end', cell: (row) => rowItem(row).quantity },
+  { key: 'quantity', header: 'Qtd.', sortLabel: 'Quantidade', sortable: true, numeric: true, card: 'end', cell: (row) => <Quantity row={row} /> },
 ]
 // The stock status chips, outside the menu: one at a time, none for every item.
 const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }))
+
+/**
+ * Names the stock status chips on a phone in short, each with how many items it finds.
+ * @param items Every item in stock.
+ * @returns The chips' options, e.g. "Baixo · 5" and "Esgotado · 4".
+ */
+function phoneStatusOptions(items: readonly Item[]) {
+  const counts = stockCounts(items)
+  return ITEM_STATUSES.map((value) => ({ value, label: `${STOCK_STATUS_SHORT[value]} · ${counts[value]}` }))
+}
 
 /** A row of the list: an item, or one of its brands, under it once the item is opened. */
 type InventoryRow = { item: Item; brand?: ItemBrand }
@@ -172,6 +195,7 @@ function rowStatus({ item }: InventoryRow): { tone: 'warn' | 'danger'; label: st
 
 export function InventoryTab() {
   const { classes, ids } = inventoryTab()
+  const phone = usePhone()
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS)
   const [status, setStatus] = useState<ItemStatus | null>(null)
   const [search, setSearch] = useState('')
@@ -309,7 +333,7 @@ export function InventoryTab() {
   const openRow = ({ item, brand }: InventoryRow) => {
     if (brand) {
       openForm(item, true, undefined, undefined, brand.id)
-    } else if (item.brands.length > 1) {
+    } else if (item.brands.length > 1 && !phone) {
       toggleBrands(item.id)
     } else {
       openForm(item, true)
@@ -430,9 +454,11 @@ export function InventoryTab() {
             <Button variant="secondary" onClick={() => setExporter((current) => ({ open: true, session: current.session + 1 }))}>
               Exportar CSV
             </Button>
-            <Button data-tour="new-item" onClick={() => openForm()}>
-              Novo item
-            </Button>
+            {!phone && (
+              <Button data-tour="new-item" onClick={() => openForm()}>
+                Novo item
+              </Button>
+            )}
           </div>
         </div>
         <div className={classes.filters()} data-testid={ids.filters}>
@@ -447,7 +473,7 @@ export function InventoryTab() {
           />
           <FilterChipGroup
             label="Situação do estoque"
-            options={STATUS_OPTIONS}
+            options={phone ? phoneStatusOptions(state.status === 'ready' ? state.items : []) : STATUS_OPTIONS}
             value={status}
             onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
           />
@@ -487,6 +513,7 @@ export function InventoryTab() {
                   card: 'lead',
                   // An item of several brands: a chevron that turns down while its brands' rows are open.
                   cell: (row) =>
+                    !phone &&
                     !row.brand &&
                     row.item.brands.length > 1 && (
                       <span aria-hidden="true" className={inventoryTab({ open: opened.has(row.item.id) }).classes.chevron()} data-testid={ids.chevron}>
@@ -518,6 +545,8 @@ export function InventoryTab() {
                   cell: (row) =>
                     row.brand ? (
                       <TableTitle title={row.brand.partBrand} code={row.brand.code} details={itemDetails(rowItem(row))} />
+                    ) : phone ? (
+                      <TableTitle title={row.item.name} code={itemCardCode(row.item)} details={itemCardDetails(row.item)} />
                     ) : (
                       <span className={classes.title()} data-testid={ids.title}>
                         <TableTitle title={row.item.name} code={itemCodes(row.item)} details={itemDetails(row.item)} />
@@ -555,7 +584,7 @@ export function InventoryTab() {
               rowKey={(row) => (row.brand ? `${row.item.id}:${row.brand.id}` : row.item.id)}
               rowStatus={rowStatus}
               rowNested={(row) => row.brand !== undefined}
-              rowExpanded={(row) => (!row.brand && row.item.brands.length > 1 ? opened.has(row.item.id) : undefined)}
+              rowExpanded={(row) => (!phone && !row.brand && row.item.brands.length > 1 ? opened.has(row.item.id) : undefined)}
               onRowOpen={openRow}
               sort={sort}
               onSortChange={(next) => narrow(() => setSort(next))}
@@ -588,6 +617,18 @@ export function InventoryTab() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
       />
+      {phone && (
+        <button
+          type="button"
+          aria-label="Novo item"
+          data-tour="new-item"
+          className={classes.fab()}
+          data-testid={ids.fab}
+          onClick={() => openForm()}
+        >
+          <Icon icon={plusIcon} size={ICON_SIZES.fab} />
+        </button>
+      )}
       <ItemFormDialog
         key={`form-${form.session}`}
         open={form.open}
@@ -708,6 +749,31 @@ function LoadingRows() {
         </div>
       ))}
     </div>
+  )
+}
+
+/**
+ * Shows a row's quantity; on a phone's card, with its stock status under it, in its tone: "un.", "Baixo" or
+ * "Esgotado".
+ */
+function Quantity({ row }: { row: InventoryRow }) {
+  const phone = usePhone()
+  const { quantity, minQuantity } = rowItem(row)
+  // A brand's row is never tinted, since the stock status is the item's.
+  const status = row.brand ? null : stockStatus(quantity, minQuantity)
+  const { classes, ids } = inventoryTab({ stock: status ?? 'ok' })
+  if (!phone) {
+    return quantity
+  }
+  return (
+    <span className={classes.quantity()} data-testid={ids.quantity}>
+      <span className={classes.quantityValue()} data-testid={ids.quantityValue}>
+        {quantity}
+      </span>
+      <span className={classes.quantityTag()} data-testid={ids.quantityTag}>
+        {status ? STOCK_STATUS_SHORT[status] : QUANTITY_UNIT}
+      </span>
+    </span>
   )
 }
 
