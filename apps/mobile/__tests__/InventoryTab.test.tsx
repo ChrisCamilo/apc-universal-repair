@@ -21,8 +21,6 @@ import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
 import { PageSizeContext, usePageSizeChoice } from '../src/dashboard/pageSizeContext';
-import { Icon } from '../src/Icon';
-import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 
@@ -142,21 +140,34 @@ beforeEach(async () => {
   // The Inventory tutorial counts as seen, so it doesn't start by itself over what the test looks at.
 });
 
-// Loads the items from the API and checks every card shows with its details, the counter of the total and
-// the stock alerts, and the low and out-of-stock cards tinted.
+// Loads the items from the API and checks every card shows its name, its code with its part brand and where it fits
+// with its price, the counter of the total and the stock alerts, and the stock status chips with their counts. The
+// low and out-of-stock cards are tinted, and each card's quantity has its status under it, in its tone: "un.",
+// "Baixo", "Esgotado".
 test('Mobile: the inventory lists every item with its stock alerts', async () => {
   const tree = await mount();
   expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/items$/), expect.anything());
   const shown = texts(tree);
   expect(shown).toContain('3 de 3 itens · 1 baixo · 1 esgotado');
-  expect(shown).toContain('Pastilha de freio');
-  expect(shown.some((t) => t.replace(/\s/g, ' ').startsWith('Freios · Cobreq · Volkswagen · D · R$ 1.234,56'))).toBe(true);
+  expect(shown).toEqual(expect.arrayContaining(['Pastilha de freio', 'BP-1020 · Cobreq', 'Baixo · 1', 'Esgotado · 1']));
+  expect(shown.some((t) => t.replace(/\s/g, ' ') === 'Volkswagen · R$ 1.234,56')).toBe(true);
 
   const cards = tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
   const { colors } = themes.eighties.night;
   expect(cards).toHaveLength(3);
   expect(StyleSheet.flatten(cards[1].props.style).borderLeftColor).toBe(colors.warn);
   expect(StyleSheet.flatten(cards[2].props.style).borderLeftColor).toBe(colors.danger);
+  const tag = (card: ReactTestRenderer.ReactTestInstance) => {
+    const node = card.find((n) => n.props.testID === 'inventory.inventory-tab.quantity.tag' && typeof n.type === 'string');
+    return [node.props.children, StyleSheet.flatten(node.props.style).color];
+  };
+  expect(cards.map(tag)).toEqual([
+    ['un.', colors.textMuted],
+    ['Baixo', colors.warn],
+    ['Esgotado', colors.danger],
+  ]);
+  const value = cards[2].find((n) => n.props.testID === 'inventory.inventory-tab.quantity.value' && typeof n.type === 'string');
+  expect(StyleSheet.flatten(value.props.style)).toMatchObject({ fontSize: 20, color: colors.danger });
 });
 
 // Searches by part code without separators and by name without accents, and for something that isn't there,
@@ -250,10 +261,10 @@ test('Mobile: a card of one brand opens the item details', async () => {
         typeof n.props.onPress === 'function' &&
         n.findAll((c) => c.type === Text && c.props.children === code).length > 0,
     )[0];
-  await ReactTestRenderer.act(async () => card('BP-1020').props.onPress());
+  await ReactTestRenderer.act(async () => card('BP-1020 · Cobreq').props.onPress());
   expect(texts(tree)).toContain('Detalhes do item');
   expect(tree.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')).toHaveLength(0);
-  expect(card('BP-1020').props.accessibilityState).toEqual({ expanded: undefined });
+  expect(card('BP-1020 · Cobreq').props.accessibilityState).toEqual({ expanded: undefined });
 });
 
 function Preferences({ children }: { children: React.ReactNode }) {
@@ -314,7 +325,7 @@ test('Mobile: the filters narrow the list through the API query', async () => {
   expect(cards()).toHaveLength(1);
   expect(texts(tree)).toContain('1 de 3 itens · 1 baixo · 1 esgotado');
 
-  await ReactTestRenderer.act(async () => pressable('Esgotado').props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Esgotado · 1').props.onPress());
   expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items\?category=Freios&status=out&page=1&pageSize=25$/);
   expect(texts(tree)).toContain('Nenhum item encontrado');
 
@@ -332,7 +343,8 @@ test('Mobile: the filters narrow the list through the API query', async () => {
 });
 
 // Holds the items request and checks the skeleton cards show with a loading announcement, then fails it and checks
-// the error state, whose "Tentar de novo" loads the list once the API answers; the pagination shows all along.
+// the error state, whose "Tentar de novo" loads the list once the API answers; the pagination shows all along, at the
+// end of the scrolling column.
 test('Mobile: the inventory shows loading, then the error state with a retry', async () => {
   // Every items request waits until the test fails them all.
   const pending: (() => void)[] = [];
@@ -353,11 +365,11 @@ test('Mobile: the inventory shows loading, then the error state with a retry', a
   mounted.push(tree!);
   expect(tree!.root.findAll((n) => n.props.testID === 'inventory.inventory-tab.loading.row' && typeof n.type === 'string')).toHaveLength(5);
   expect(tree!.root.findAll((n) => n.props.accessibilityLabel === 'Carregando o estoque' && typeof n.type === 'string')).not.toHaveLength(0);
-  expect(paginationPinned(tree!)).toBe(true);
+  expect(paginationAtEnd(tree!)).toBe(true);
 
   await ReactTestRenderer.act(async () => fail());
   expect(texts(tree!)).toContain('Não foi possível carregar o estoque');
-  expect(paginationPinned(tree!)).toBe(true);
+  expect(paginationAtEnd(tree!)).toBe(true);
   answerItems(ITEMS);
   const retry = tree!.root.find(
     (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Tentar de novo').length > 0,
@@ -392,28 +404,49 @@ test('Mobile: the empty states offer to clear the filters or add an item', async
 });
 
 /**
- * Tells whether the list's pagination shows, below the panel's scroll view and not inside it.
+ * Tells whether the list's pagination shows at the end of the tab's scrolling column, after the list.
  * @param tree Rendered tree.
- * @returns True when the pages' row is there, outside the scrolling column.
+ * @returns True when the pages' row is the column's last part.
  */
-function paginationPinned(tree: ReactTestRenderer.ReactTestRenderer): boolean {
-  const pages = tree.root.findAll((n) => n.props.accessibilityLabel === 'Páginas do estoque' && typeof n.type === 'string');
-  const scroll = tree.root.find((n) => n.props.testID === 'inventory.inventory-tab' && n.type === ScrollView);
-  return pages.length > 0 && scroll.findAll((n) => n.props.accessibilityLabel === 'Páginas do estoque').length === 0;
+function paginationAtEnd(tree: ReactTestRenderer.ReactTestRenderer): boolean {
+  const scroll = tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
+  const parts = scroll.findAll((n) => n.props.testID === 'inventory.inventory-tab.list' || n.props.accessibilityLabel === 'Páginas do estoque');
+  return parts.length > 0 && parts[parts.length - 1].props.accessibilityLabel === 'Páginas do estoque';
 }
 
-// Opens the Inventory with items and with none, and checks each time the panel fills the screen, the list scrolls
-// inside it, and the pagination shows below that scrolling column, "0 de 0" with no items. (The loading and error
-// states are checked in their own test.)
-test('Mobile: the panel fills the screen and keeps its pagination', async () => {
+// Opens the Inventory with items and with none, and checks each time the tab sits on the canvas with no panel around
+// it, filling the screen, and scrolls as a whole, the pagination at the end after the list, "0 de 0" with no items.
+// (The loading and error states are checked in their own test.)
+test('Mobile: the tab scrolls as a whole, with the pagination at its end', async () => {
   const listed = await mount();
-  const panel = listed.root.find((n) => n.props.testID === 'common.panel' && typeof n.type === 'string');
-  expect(StyleSheet.flatten(panel.props.style).flex).toBe(1);
-  expect(paginationPinned(listed)).toBe(true);
+  expect(listed.root.findAll((n) => n.props.testID === 'common.panel')).toHaveLength(0);
+  const tab = listed.root.find((n) => n.props.testID === 'inventory.inventory-tab' && typeof n.type === 'string');
+  expect(StyleSheet.flatten(tab.props.style).flex).toBe(1);
+  expect(paginationAtEnd(listed)).toBe(true);
 
   const empty = await mount([]);
-  expect(paginationPinned(empty)).toBe(true);
+  expect(paginationAtEnd(empty)).toBe(true);
   expect(texts(empty)).toContain('0 de 0');
+});
+
+// Checks "Novo item" is a round 56px "+" at the bottom right of the tab, in the accent, over the scrolling column,
+// which ends clear of it, and that it opens the empty form.
+test('Mobile: the round + at the bottom right opens a new item', async () => {
+  const tree = await mount();
+  const fab = tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.new-item' && typeof n.type === 'string');
+  expect(StyleSheet.flatten(fab.props.style)).toMatchObject({ position: 'absolute', right: 16, bottom: 16 });
+  const button = tree.root.find((n) => typeof n.type !== 'string' && n.props.accessibilityLabel === 'Novo item' && typeof n.props.onPress === 'function');
+  expect(StyleSheet.flatten(button.props.style({ pressed: false }))).toMatchObject({
+    width: 56,
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: themes.eighties.night.colors.accent,
+  });
+  const scroll = tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
+  expect(StyleSheet.flatten(scroll.props.contentContainerStyle).paddingBottom).toBeGreaterThanOrEqual(56 + 16);
+  await ReactTestRenderer.act(async () => button.props.onPress());
+  expect(texts(tree)).toContain('Novo item');
+  expect(tree.root.findAllByType(Modal).some((modal) => modal.props.visible)).toBe(true);
 });
 
 // Lists 30 items and checks the first page shows 25 with the pagination asking the API for page 1, the second page
@@ -462,10 +495,9 @@ test('Mobile: the "Ordenar" select sorts the list through the API', async () => 
   expect(names.slice(0, 3)).toEqual(['Peça 7', 'Peça 14', 'Peça 21']);
 });
 
-// Lists an item of two brands and checks its card shows both codes, "2 marcas" and a chevron in the accent; a tap on
-// the card opens a card for each brand under it, with the brand's part brand and code, no tint and no actions, and a
-// tap on the second brand's card opens the item's details on that brand. A tap on the item closes them again.
-test('Mobile: an item of several brands opens a card for each brand', async () => {
+// Lists an item of two brands and checks its card shows its first code with "2 marcas", the quantity added up with
+// its stock status, and no chevron; a tap on it opens the item's details, not a card for each brand.
+test('Mobile: an item of several brands opens its details', async () => {
   const pads = item(4, {
     name: 'Pastilha dianteira',
     code: 'N-1210',
@@ -478,29 +510,13 @@ test('Mobile: an item of several brands opens a card for each brand', async () =
   });
   const tree = await mount([pads]);
   const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
-  const pressables = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.props.onPress === 'function');
-  const toggle = () => pressables()[0];
+  const card = tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.props.onPress === 'function')[0];
   expect(cards()).toHaveLength(1);
-  expect(texts(tree)).toEqual(expect.arrayContaining(['N-1210 +1', '2 marcas', '3']));
-  expect(toggle().props.accessibilityState).toEqual({ expanded: false });
-  const chevron = toggle().findByProps({ testID: 'inventory.inventory-tab.chevron' });
-  expect(chevron.findByType(Icon).props.color).toBe(themes.eighties.night.colors.accent);
+  expect(texts(tree)).toEqual(expect.arrayContaining(['N-1210 · 2 marcas', '3', 'Baixo']));
+  expect(tree.root.findAll((n) => n.props.testID === 'inventory.inventory-tab.chevron')).toHaveLength(0);
+  expect(card.props.accessibilityState).toEqual({ expanded: undefined });
 
-  await ReactTestRenderer.act(async () => toggle().props.onPress());
-  expect(cards()).toHaveLength(3);
-  expect(toggle().props.accessibilityState).toEqual({ expanded: true });
-  const [own, cobreq, frasle] = cards().map((card) => card.findAll((n) => n.type === Text).map((n) => String(n.props.children)));
-  expect(own).toContain('Estoque baixo: ');
-  expect(cobreq).toEqual(expect.arrayContaining(['Cobreq', 'N-1210', '1']));
-  expect(frasle).toEqual(expect.arrayContaining(['Fras-le', 'PD/1210', '2']));
-  expect([...cobreq, ...frasle]).not.toContain('Estoque baixo: ');
-  expect(cards().map((card) => card.findAll((n) => n.props.testID === 'inventory.inventory-tab.actions').length > 0)).toEqual([true, false, false]);
-  expect(cards().map((card) => card.findAll((n) => n.props.testID === 'inventory.inventory-tab.chevron' && typeof n.type === 'string').length)).toEqual([1, 0, 0]);
-
-  await ReactTestRenderer.act(async () => pressables()[2].props.onPress());
+  await ReactTestRenderer.act(async () => card.props.onPress());
   expect(texts(tree)).toContain('Detalhes do item');
-  expect(tree.root.findByType(ItemFormDialog).props.scrollToBrand).toBe(pads.brands[1].id);
-
-  await ReactTestRenderer.act(async () => toggle().props.onPress());
   expect(cards()).toHaveLength(1);
 });
