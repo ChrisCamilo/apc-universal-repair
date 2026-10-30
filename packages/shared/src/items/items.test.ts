@@ -11,6 +11,8 @@ import {
   includeBoth,
   itemCodes,
   itemCreateSchema,
+  itemCardCode,
+  itemCardDetails,
   itemDetails,
   itemListQuerySchema,
   itemUpdateSchema,
@@ -22,6 +24,7 @@ import {
   optionKey,
   partBrandsLabel,
   resultSummary,
+  stockCounts,
   searchKey,
   sortableOf,
   sortItems,
@@ -178,6 +181,7 @@ test("Shared: the result counter shows totals and stock alerts", () => {
   ];
   assert.equal(resultSummary(3, items), "3 de 4 itens · 2 baixos · 1 esgotado");
   assert.equal(resultSummary(1, [{ quantity: 5, minQuantity: 1 }]), "1 de 1 item · 0 baixos · 0 esgotados");
+  assert.deepEqual(stockCounts(items), { low: 2, out: 1 });
 });
 
 // Writes an item's details in one line, leaving out N/A values and a missing vehicle model or location, and an item of
@@ -196,6 +200,19 @@ test("Shared: item details fit in one line without what doesn't apply", () => {
   assert.equal(itemVehiclesLabel(both), "Volkswagen Gol G5 +1");
   assert.equal(itemVehiclesText(both), "Volkswagen Gol G5, Volkswagen");
   assert.equal(itemVehiclesLabel(PADS), "Volkswagen Gol");
+});
+
+// Writes a phone card's lines under the name: the first code with the part brand, or how many brands make the item,
+// then where it fits, where it is and its price, leaving out a missing location.
+test("Shared: a phone card's code and details fit in one line each", () => {
+  const item = {
+    vehicles: [{ vehicleBrand: "Chevrolet", vehicleModel: null }],
+    brands: [{ code: "PD-120", partBrand: "Cobreq", color: "N/A", location: null, unitPriceCents: 8990 }],
+  };
+  assert.equal(itemCardCode(item), "PD-120 · Cobreq");
+  assert.equal(itemCardDetails(item).replace(/\s/g, " "), "Chevrolet · R$ 89,90");
+  assert.equal(itemCardCode(PADS), `${PADS.brands[0].code} · 3 marcas`);
+  assert.equal(itemCardDetails(PADS).replace(/\s/g, " "), "Volkswagen Gol · Várias · R$ 79,90 – R$ 112,90");
 });
 
 // Reads an item of three brands for its row: the first code and part brand with how many more, a value the brands
