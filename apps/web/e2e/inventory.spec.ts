@@ -33,7 +33,8 @@ async function openInventory(page: Page) {
 
 // Lists every item with the counter of the total and the stock alerts, the price in reais, "qualquer
 // modelo" for an item without a vehicle model, N/A muted with its full name as a tooltip, and the low and
-// out-of-stock rows tinted.
+// out-of-stock rows tinted. On a phone, each card shows its code with its part brand, then where it fits, where it is
+// and its price, and its stock status under its quantity.
 test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page, isMobile }) => {
   await openInventory(page);
   const { rows, head } = dataTable(page);
@@ -59,15 +60,20 @@ test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_T
     expect(muted).not.toBe(text);
   } else {
     await expect(head).toBeHidden();
-    await expect(rows.nth(3)).toContainText("Suspensão · Cofap · Ford Escort · T · LE · Preto · A-10");
+    await expect(rows.nth(3)).toContainText("AM-501 · Cofap");
+    await expect(rows.nth(3)).toContainText(/Ford Escort · A-10 · R\$\s249,00/);
+    const { status } = inventory(page);
+    await expect(status(rows.nth(0))).toHaveText("un.");
+    await expect(status(rows.nth(1))).toHaveText("Baixo");
+    await expect(status(rows.nth(2))).toHaveText("Esgotado");
   }
   await expect(page).not.toScrollSideways();
 });
 
 // Checks the toolbar has the search at its left edge and "Novo item", the last of the buttons, at its right edge, the
-// panel's: at the minimum sizes (where the buttons wrap under the search on a phone) and, on desktop, on a wide screen
-// too, where the search stops growing and the gap goes between it and the buttons.
-test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout] }, async ({ page, isMobile }) => {
+// panel's: at the minimum size and on a wide screen, where the search stops growing and the gap goes between it and
+// the buttons. A phone has a round "+" in place of "Novo item" (see the test after this one).
+test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   await openInventory(page);
   const { toolbar, searchBox, newItem } = inventory(page);
   const edges = async () => {
@@ -76,13 +82,37 @@ test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS
     const button = (await newItem.boundingBox())!;
     return { searchLeft: search.x - bar.x, newItemRight: bar.x + bar.width - (button.x + button.width) };
   };
-  const sizes = isMobile ? [page.viewportSize()!] : [page.viewportSize()!, { width: 1920, height: 1080 }];
-  for (const size of sizes) {
+  for (const size of [page.viewportSize()!, { width: 1920, height: 1080 }]) {
     await page.setViewportSize(size);
     const { searchLeft, newItemRight } = await edges();
     expect(Math.abs(searchLeft), `search at ${size.width}px`).toBeLessThanOrEqual(1);
     expect(Math.abs(newItemRight), `"Novo item" at ${size.width}px`).toBeLessThanOrEqual(1);
   }
+});
+
+// On a phone, with more items than fit the screen, checks the Inventory scrolls as a whole, the bottom bar staying at
+// the bottom, and "Novo item" is a round 56px "+" at the bottom right, 16px above the bar, which stays put while the page
+// scrolls and opens a new item's form; nothing scrolls sideways.
+test("Web: on a phone the Inventory scrolls as a whole under a round + for a new item", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  await serveItems(page, Array.from({ length: 12 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
+  await page.goto("/inventory");
+  const { rows } = dataTable(page);
+  await expect(rows).toHaveCount(12);
+  const { newItem } = inventory(page);
+  const { width, height } = page.viewportSize()!;
+  const plus = async () => (await newItem.boundingBox())!;
+  const bar = (await dashboard(page).bar.boundingBox())!;
+  const before = await plus();
+  expect([before.width, before.height]).toEqual([56, 56]);
+  expect(width - (before.x + before.width)).toBe(16);
+  expect(bar.y - (before.y + before.height)).toBe(16);
+  await page.mouse.move(width / 2, height / 2);
+  await page.mouse.wheel(0, 1200);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(600);
+  expect((await plus()).y).toBe(before.y);
+  await expect(page).not.toScrollSideways();
+  await newItem.click();
+  await expect(itemForm(page, "Novo item").root).toBeVisible();
 });
 
 /**
@@ -1035,8 +1065,9 @@ test("Web: on a 1360×768 notebook only the Inventory's table scrolls", { tag: [
 // Lists an item of two brands and checks its row shows both codes, the quantity added up, "2 marcas" and a chevron
 // in the accent at its left; a click anywhere on it opens a row for each brand under it, with the brand's part brand,
 // code and quantity, no tint and no actions, and a click on the second brand opens the item's details on that brand.
-// A click on the item closes the brands' rows again, and Enter on it opens them.
-test("Web: an item of several brands opens a row for each brand", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// A click on the item closes the brands' rows again, and Enter on it opens them. A phone's card opens the details
+// instead (see the test after this one).
+test("Web: an item of several brands opens a row for each brand", { tag: [TEST_TAGS.inventory, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const pads = testItem({
     name: "Pastilha dianteira",
     minQuantity: 4,
@@ -1080,6 +1111,28 @@ test("Web: an item of several brands opens a row for each brand", { tag: [TEST_T
   await rows.nth(0).focus();
   await page.keyboard.press("Enter");
   await expect(rows).toHaveCount(3);
+});
+
+// On a phone, lists an item of two brands and checks its card shows its first code with "2 marcas", the quantity
+// added up with "Baixo" under it, and opens nothing under it: a tap opens the item's details.
+test("Web: on a phone a card of several brands opens the item's details", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  const pads = testItem({
+    name: "Pastilha dianteira",
+    minQuantity: 4,
+    brands: [
+      { ...item({ code: "N-1210", name: "" }).brands[0], partBrand: "Cobreq", quantity: 1 },
+      { ...item({ code: "PD/1210", name: "" }).brands[0], partBrand: "Fras-le", quantity: 2 },
+    ],
+  });
+  await serveItems(page, [pads]);
+  await page.goto("/inventory");
+  const { rows } = dataTable(page);
+  await expect(rows.nth(0)).toContainText("N-1210 · 2 marcas");
+  await expect(inventory(page).status(rows.nth(0))).toHaveText("Baixo");
+  await expect(rows.nth(0)).not.toHaveAttribute("aria-expanded");
+  await rows.nth(0).getByText("Pastilha dianteira").click();
+  await expect(itemDetails(page).root).toBeVisible();
+  await expect(rows).toHaveCount(1);
 });
 
 // Lists an item that fits two vehicles among the test items, and checks its row shows the first with "+1" and both in

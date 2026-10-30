@@ -151,9 +151,10 @@ export const tableTitle = recipe(
   tv({
     slots: {
       base: 'grid min-w-0',
-      title: 'font-semibold',
-      code: 'font-mono text-xs text-text-muted',
-      details: 'hidden text-xs text-text-muted max-card:block',
+      // On a phone's card, each line stays one line, cut with an ellipsis, as in the Estoque mockup.
+      title: 'font-semibold max-card:truncate max-card:text-base/5',
+      code: 'font-mono text-xs text-text-muted max-card:truncate max-card:text-[13px]/4.5',
+      details: 'hidden text-xs text-text-muted max-card:block max-card:truncate max-card:text-[13px]/4.5',
     },
   }),
   { base: '', title: 'title', code: 'code', details: 'details' },

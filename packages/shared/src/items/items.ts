@@ -62,6 +62,10 @@ export const SIDES = ["N/A", "LD", "LE", "Ambos"] as const;
 export const UNIVERSAL_BRAND = "Universal";
 /** What each stock status is called on screen and read out. */
 export const STOCK_STATUS_LABELS: Record<(typeof ITEM_STATUSES)[number], string> = { low: "Estoque baixo", out: "Esgotado" };
+/** The stock statuses in short, as a phone's card and quick filters show them: "Baixo · 5". */
+export const STOCK_STATUS_SHORT: Record<(typeof ITEM_STATUSES)[number], string> = { low: "Baixo", out: "Esgotado" };
+/** What a phone's card shows under the quantity of an item in stock. */
+export const QUANTITY_UNIT = "un.";
 /** A brand of an item as it is sent: on an edit, with the id of the brand it keeps; without one, a new brand. */
 export const itemBrandCreateSchema = z.object({
   id: z.uuid().optional(),
@@ -360,7 +364,7 @@ export function itemVehiclesText(item: { vehicles: readonly ItemVehicle[] }): st
 }
 
 /**
- * Writes an item's details in one line, for the phone card under the name, leaving out what doesn't apply.
+ * Writes an item's details in one line, such as an import's preview, leaving out what doesn't apply.
  * @param item Inventory item.
  * @returns E.g. "Freios · Cobreq · Volkswagen Gol · D · A-2 · R$ 89,90", or "… · Volkswagen Gol +1 · …".
  */
@@ -382,6 +386,32 @@ export function itemDetails(
   ]
     .filter((value) => value && value !== NOT_APPLICABLE)
     .join(" · ");
+}
+
+/**
+ * Writes an item's details for the phone card under its code: where it fits, where it is and its price, leaving out
+ * what doesn't apply.
+ * @param item Inventory item.
+ * @returns E.g. "Volkswagen Gol · A-2 · R$ 89,90", or "Volkswagen Gol +1 · Várias · R$ 79,90 – R$ 112,90".
+ */
+export function itemCardDetails(item: {
+  vehicles: readonly ItemVehicle[];
+  brands: readonly Pick<ItemBrand, "color" | "location" | "unitPriceCents">[];
+}): string {
+  return [itemVehiclesLabel(item), brandsValue(item, "location"), formatPriceRange(item)]
+    .filter((value) => value && value !== NOT_APPLICABLE)
+    .join(" · ");
+}
+
+/**
+ * Writes an item's code for the phone card under its name: the first brand's code, then its part brand, or how many
+ * brands make it.
+ * @param item Inventory item.
+ * @returns E.g. "JH-1260 · Albarus", or "620 3001 00 · 2 marcas".
+ */
+export function itemCardCode(item: { brands: readonly Pick<ItemBrand, "code" | "partBrand">[] }): string {
+  const [first] = item.brands;
+  return `${first.code} · ${item.brands.length > 1 ? `${item.brands.length} marcas` : first.partBrand}`;
 }
 
 /**
@@ -448,6 +478,16 @@ export function priceRange(item: { brands: readonly Pick<ItemBrand, "unitPriceCe
 }
 
 /**
+ * Counts the items low and out of stock, as the result counter and a phone's quick filters show them.
+ * @param items Every item in stock.
+ * @returns How many are low and how many are out.
+ */
+export function stockCounts(items: readonly Pick<Item, "quantity" | "minQuantity">[]): Record<ItemStatus, number> {
+  const count = (status: ItemStatus) => items.filter((item) => stockStatus(item.quantity, item.minQuantity) === status).length;
+  return { low: count("low"), out: count("out") };
+}
+
+/**
  * Writes the result counter of the inventory: how many items show of the total, and how many of all items
  * are low and out of stock.
  * @param shown How many items the search and filters leave.
@@ -455,8 +495,7 @@ export function priceRange(item: { brands: readonly Pick<ItemBrand, "unitPriceCe
  * @returns E.g. "3 de 12 itens · 2 baixos · 1 esgotado".
  */
 export function resultSummary(shown: number, items: readonly Pick<Item, "quantity" | "minQuantity">[]): string {
-  const low = items.filter((item) => stockStatus(item.quantity, item.minQuantity) === "low").length;
-  const out = items.filter((item) => stockStatus(item.quantity, item.minQuantity) === "out").length;
+  const { low, out } = stockCounts(items);
   const total = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
   return `${shown} de ${total} · ${low} ${low === 1 ? "baixo" : "baixos"} · ${out} ${out === 1 ? "esgotado" : "esgotados"}`;
 }

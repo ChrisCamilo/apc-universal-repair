@@ -81,6 +81,8 @@ export const ICON_SIZES = {
   thumbnail: 20,
   /** The picture of an upload area. */
   dropZone: 22,
+  /** The icon of a round floating button, such as the Inventory's "+" on a phone. */
+  fab: 24,
   /** The picture of an empty image frame. */
   frame: 28,
   /** The picture of an empty state. */

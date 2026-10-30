@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { dialog, pagination } from "./common.ts";
 
 // The Inventory tab: its toolbar and search, the list's states, and its dialogs (the item form and details, Manage
@@ -27,8 +27,11 @@ export function inventory(page: Page) {
     filters: page.getByRole("button", { name: /^Filtros/ }),
     // The toolbar's, and the empty search's when there is one.
     clearFilters: page.getByRole("button", { name: "Limpar filtros" }),
-    lowStock: page.getByRole("button", { name: "Estoque baixo" }),
-    outOfStock: page.getByRole("button", { name: "Esgotado" }),
+    // On a phone the chips name their counts in short: "Baixo · 5", "Esgotado · 4".
+    lowStock: page.getByRole("button", { name: /^(Estoque baixo|Baixo · \d+)$/ }),
+    outOfStock: page.getByRole("button", { name: /^Esgotado( · \d+)?$/ }),
+    // A phone's card: the stock status under its quantity ("un.", "Baixo", "Esgotado").
+    status: (row: Locator) => row.getByTestId("inventory.inventory-tab.quantity.tag"),
     manageLists: page.getByRole("button", { name: "Gerenciar listas" }),
     importCsv: page.getByRole("button", { name: "Importar CSV" }),
     exportCsv: page.getByRole("button", { name: "Exportar CSV" }),
