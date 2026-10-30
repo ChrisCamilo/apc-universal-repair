@@ -11,8 +11,8 @@ import { useTheme } from './theme';
 import { Label } from './Typography';
 
 // The list of rows on a phone, the same as the web table below 720px: each row is a card (thumbnail |
-// main | end and actions) and a "Sort by" select takes the place of the header. The owner sorts the rows
-// (sortRows in @apc/shared/table). A row's status tints the card with a stripe at its start and is also
+// main | end and actions) and a "Sort by" select takes the place of the header, unless the owner sorts in its own
+// way. The owner sorts the rows (sortRows in @apc/shared/table). A row's status tints the card with a stripe at its start and is also
 // read out, since color alone doesn't reach screen readers; the text keeps the text color on every tint. With
 // onRowOpen, a tap on a card opens it, shown by the raised fill while pressed, except on its own buttons
 // (thumbnail, actions), which keep their tap. A nested row (rowNested) belongs to the row above it, such as a brand
@@ -55,6 +55,8 @@ type DataTableProps<Row> = {
   rowNested?: (row: Row) => boolean;
   /** Whether a row that opens into nested rows is open; undefined for a row that doesn't. */
   rowExpanded?: (row: Row) => boolean | undefined;
+  /** Shows the "Sort by" select; off where the owner sorts in its own way, e.g. in a bottom sheet. */
+  sortSelect?: boolean;
 };
 type RowActionProps = {
   icon: IconShape[];
@@ -97,6 +99,7 @@ export function DataTable<Row>({
   onRowOpen,
   rowNested,
   rowExpanded,
+  sortSelect = true,
 }: DataTableProps<Row>) {
   const { styles, ids } = useStyles();
   const sortable = columns.filter((column) => column.sortable);
@@ -131,7 +134,7 @@ export function DataTable<Row>({
 
   return (
     <View style={styles.base} testID={ids.base}>
-      {sortable.length > 0 && (
+      {sortSelect && sortable.length > 0 && (
         <View style={styles.sortBar} testID={ids.sortBar}>
           <Label>Ordenar</Label>
           <View style={styles.sortSelect} testID={ids.sortSelect}>

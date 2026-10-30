@@ -4,14 +4,20 @@
 
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { SELECT_VISIBLE_OPTIONS, type FilterValues } from '@apc/shared/filters';
+import { filterIcon, sortIcon } from '@apc/shared/icons';
+import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
+import { sortValue, type Sort } from '@apc/shared/table';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { FilterChip, FilterChipGroup } from '../src/FilterChip';
 import { ClearFilters, FilterMenu } from '../src/FilterMenu';
+import { FilterSheet, SortSheet } from '../src/FilterSheet';
 import { Select } from '../src/Select';
 import { withAlpha } from '../src/theme';
 import { themeStorage, ThemeProvider } from '../src/theme';
+import { ToolButton } from '../src/ToolButton';
 
 const CATEGORIES = ['Arrefecimento', 'Elétrica', 'Freios', 'Ignição', 'Motor', 'Suspensão', 'Transmissão'].map(
   (label) => ({ value: label, label }),
@@ -26,6 +32,62 @@ const ROWS = [
     groups: [{ key: 'pos', label: 'Posição', options: [{ value: 'D', label: 'D' }, { value: 'T', label: 'T' }] }],
   },
 ];
+const SHEET_FILTERS: FilterValues = { cat: [], brand: [], model: [], pos: [] };
+const SORTS = [
+  { value: '', label: 'Ordem de cadastro' },
+  { value: 'location:asc', label: 'Local (A → Z)' },
+  { value: 'location:desc', label: 'Local (Z → A)' },
+];
+// A phone's screen with no notch, for the sheets' footers.
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
+
+/**
+ * Lays out the filter sheet's rows for what is chosen: a category, the vehicle brands, their models, and the position
+ * as segments.
+ * @param draft Values chosen so far.
+ * @returns The rows.
+ */
+function sheetRows(draft: FilterValues) {
+  const options = (values: string[]) => values.map((value) => ({ value, label: value }));
+  const brands = draft.brand?.length ? draft.brand : Object.keys(MODELS);
+  return [
+    { key: 'cat', label: 'Categoria', allLabel: 'Todas', options: CATEGORIES.slice(2, 5) },
+    { key: 'brand', label: 'Marca do veículo', allLabel: 'Todas', options: options(Object.keys(MODELS)) },
+    { key: 'model', label: 'Modelo do veículo', allLabel: 'Todos', options: options(brands.flatMap((brand) => MODELS[brand])) },
+    {
+      label: 'Posição',
+      groups: [
+        {
+          key: 'pos',
+          label: 'Posição',
+          segments: [
+            { value: '', label: 'Todas' },
+            { value: 'D', label: 'Dianteira' },
+            { value: 'T', label: 'Traseira' },
+          ],
+        },
+      ],
+    },
+  ];
+}
+
+/**
+ * Renders a bottom sheet's owner on a phone's screen in the eighties night theme.
+ * @param element Element to render.
+ * @returns The rendered tree.
+ */
+async function mountSheet(element: React.ReactElement) {
+  await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>{element}</ThemeProvider>
+      </SafeAreaProvider>,
+    );
+  });
+  return tree!;
+}
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.
@@ -231,6 +293,86 @@ test('Mobile: rows that depend on the choice drop what they stop offering', asyn
   expect(onApply).toHaveBeenCalledWith({ brand: ['Chevrolet'], model: ['Opala'] });
 });
 
+// Opens the filter sheet and checks its rows name what each has chosen, "Ordenar por" first; a row opens its options
+// inside the sheet, "Todas" first and checked, and picks add up while "Ver n itens" counts them. The back button goes
+// back to the rows, where the row names its choice in the accent, then closes the sheet without applying; "Ver n
+// itens" applies the filters, a segment and a sort chosen in the sheet together.
+test('Mobile: the filter sheet opens each filter as a list and applies on "Ver n itens"', async () => {
+  const onApply = jest.fn();
+  const tree = await mountSheet(<Sheet onApplied={onApply} />);
+  const modal = () => tree.root.findAllByType(Modal).find((each) => each.props.visible);
+  const back = async () => ReactTestRenderer.act(async () => modal()!.props.onRequestClose());
+  await press(pressable(tree, 'Filtros'));
+  expect(pressable(tree, 'Ordenar por, Ordem de cadastro')).toBeTruthy();
+  await press(pressable(tree, 'Categoria, Todas'));
+  expect(pressable(tree, 'Todas').props.accessibilityState).toEqual({ checked: true });
+  await press(pressable(tree, 'Freios'));
+  await press(pressable(tree, 'Motor'));
+  expect(pressable(tree, 'Todas').props.accessibilityState).toEqual({ checked: false });
+  expect(pressable(tree, 'Ver 5 itens')).toBeTruthy();
+  await back();
+  const category = pressable(tree, 'Categoria, Freios +1');
+  const value = category.findAll((node) => node.props.testID === 'common.filter-sheet.row.value' && typeof node.type === 'string')[0];
+  expect(StyleSheet.flatten(value.props.style).color).toBe(themes.eighties.night.colors.accent);
+
+  await press(pressable(tree, 'Dianteira'));
+  await press(pressable(tree, 'Ordenar por, Ordem de cadastro'));
+  await press(pressable(tree, 'Local (Z → A)'));
+  expect(pressable(tree, 'Ordenar por, Local (Z → A)')).toBeTruthy();
+  expect(onApply).not.toHaveBeenCalled();
+  await press(pressable(tree, 'Ver 3 itens'));
+  expect(onApply).toHaveBeenCalledWith({ ...SHEET_FILTERS, cat: ['Freios', 'Motor'], pos: ['D'] }, { key: 'location', dir: 'desc' });
+  expect(modal()).toBeUndefined();
+  expect(pressable(tree, 'Filtros, 2 ativos')).toBeTruthy();
+
+  await press(pressable(tree, 'Filtros, 2 ativos'));
+  await press(pressable(tree, 'Limpar'));
+  expect(pressable(tree, 'Ordenar por, Ordem de cadastro')).toBeTruthy();
+  expect(pressable(tree, 'Ver 9 itens')).toBeTruthy();
+  await back();
+  expect(modal()).toBeUndefined();
+  expect(onApply).toHaveBeenCalledTimes(1);
+});
+
+// Chooses two vehicle brands and a model of each, then takes one brand off: its model leaves the choice, and the
+// models' list offers only the brand left.
+test('Mobile: filter sheet rows that depend on the choice drop what they stop offering', async () => {
+  const onApply = jest.fn();
+  const tree = await mountSheet(<Sheet onApplied={onApply} />);
+  const back = async () => ReactTestRenderer.act(async () => tree.root.findAllByType(Modal).find((each) => each.props.visible)!.props.onRequestClose());
+  const pick = async (row: string, options: string[]) => {
+    await press(pressable(tree, row));
+    for (const option of options) {
+      await press(pressable(tree, option));
+    }
+    await back();
+  };
+  await press(pressable(tree, 'Filtros'));
+  await pick('Marca do veículo, Todas', ['Chevrolet', 'Fiat']);
+  await pick('Modelo do veículo, Todos', ['Opala', 'Uno']);
+  await pick('Marca do veículo, Chevrolet +1', ['Fiat']);
+  await press(pressable(tree, 'Modelo do veículo, Opala'));
+  expect(tree.root.findAll((node) => node.type === Text && node.props.children === 'Uno')).toHaveLength(0);
+  await press(pressable(tree, 'Ver 5 itens'));
+  expect(onApply).toHaveBeenCalledWith({ ...SHEET_FILTERS, brand: ['Chevrolet'], model: ['Opala'] }, null);
+});
+
+// Picks a sort in the sort sheet, which sorts at once and closes; the round Ordenar then names the sort in the accent,
+// with its dot, and the sheet opens on it.
+test('Mobile: the sort sheet sorts on a pick and closes', async () => {
+  const { colors } = themes.eighties.night;
+  const tree = await mountSheet(<Sorter />);
+  await press(pressable(tree, 'Ordenar'));
+  expect(pressable(tree, 'Ordem de cadastro').props.accessibilityState).toEqual({ checked: true });
+  await press(pressable(tree, 'Local (A → Z)'));
+  expect(tree.root.findAllByType(Modal).some((each) => each.props.visible)).toBe(false);
+  const sorted = pressable(tree, 'Ordenar, Local (A → Z)');
+  expect(styleOf(sorted)).toMatchObject({ borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft.night) });
+  expect(sorted.findAll((node) => node.props.testID === 'common.tool-button.dot' && typeof node.type === 'string')).toHaveLength(1);
+  await press(sorted);
+  expect(pressable(tree, 'Local (A → Z)').props.accessibilityState).toEqual({ checked: true });
+});
+
 // Checks "Limpar filtros" shows only while a filter is on.
 test('Mobile: the clear filters link shows only with a filter on', async () => {
   const off = await mount('eighties', 'night', <ClearFilters active={false} onClear={() => {}} />);
@@ -283,6 +425,51 @@ function Menu({ initial = NO_FILTERS, onApplied }: { initial?: FilterValues; onA
         onApplied(next);
       }}
     />
+  );
+}
+
+function Sheet({ onApplied }: { onApplied: (values: FilterValues, sort: Sort | null) => void }) {
+  const [values, setValues] = useState(SHEET_FILTERS);
+  const [sort, setSort] = useState<Sort | null>(null);
+  const [open, setOpen] = useState(false);
+  const on = Object.values(values).filter((chosen) => chosen.length > 0).length;
+  return (
+    <>
+      <ToolButton
+        icon={filterIcon}
+        label={on ? `Filtros, ${on} ${on === 1 ? 'ativo' : 'ativos'}` : 'Filtros'}
+        active={on > 0}
+        onPress={() => setOpen(true)}
+      />
+      <FilterSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        rows={sheetRows}
+        values={values}
+        sort={sort}
+        sortOptions={SORTS}
+        // 9 items, 2 fewer for each value chosen.
+        count={(draft) => 9 - 2 * Object.values(draft).reduce((sum, chosen) => sum + chosen.length, 0)}
+        onApply={(next, nextSort) => {
+          setValues(next);
+          setSort(nextSort);
+          setOpen(false);
+          onApplied(next, nextSort);
+        }}
+      />
+    </>
+  );
+}
+
+function Sorter() {
+  const [sort, setSort] = useState<Sort | null>(null);
+  const [open, setOpen] = useState(false);
+  const label = SORTS.find((option) => option.value === sortValue(sort))?.label;
+  return (
+    <>
+      <ToolButton icon={sortIcon} label={sort ? `Ordenar, ${label}` : 'Ordenar'} active={sort !== null} onPress={() => setOpen(true)} />
+      <SortSheet open={open} onClose={() => setOpen(false)} sort={sort} options={SORTS} onSortChange={setSort} />
+    </>
   );
 }
 
