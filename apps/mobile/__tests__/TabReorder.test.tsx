@@ -4,7 +4,9 @@
 
 import React from 'react';
 import { Pressable } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs';
 import { Dashboard } from '../src/dashboard/Dashboard';
 import { useTabReorder } from '../src/dashboard/tabReorderContext';
@@ -19,6 +21,8 @@ jest.mock('@apc/shared/tabs', () => ({
     { id: 'specs', label: 'Ficha técnica', icon: 'document' },
   ],
 }));
+// The Inventory tab holds bottom sheets, which pad their end for the screen's insets.
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 
 /**
  * Renders the Dashboard, with a switch for the reorder choice in its user menu slot, and waits for it to load.
@@ -28,9 +32,11 @@ async function mount() {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
-      <ThemeProvider>
-        <Dashboard userMenu={<ReorderSwitch />} />
-      </ThemeProvider>,
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>
+          <Dashboard userMenu={<ReorderSwitch />} />
+        </ThemeProvider>
+      </SafeAreaProvider>,
     );
   });
   return tree!;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
 import { Pressable, Text as RNText, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
-import { ICON_SIZES, pencilIcon, plusIcon, trashIcon } from '@apc/shared/icons';
+import { filterIcon, ICON_SIZES, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/shared/icons';
 import {
   itemCardCode,
   itemCardDetails,
@@ -17,11 +17,18 @@ import {
   type ItemStatus,
 } from '@apc/shared/items';
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters';
-import { EMPTY_ITEM_FILTERS, followEntryChange, itemFilterRows, itemListQuery } from '@apc/shared/item-filters';
+import {
+  EMPTY_ITEM_FILTERS,
+  followEntryChange,
+  ITEM_SORT_OPTIONS,
+  itemFilterRows,
+  itemListQuery,
+  matchingCount,
+} from '@apc/shared/item-filters';
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form';
 import { isTestItem, TUTORIAL_CODE } from '@apc/shared/inventory-tutorial';
 import { SCROLL_PAGE_SIZE } from '@apc/shared/pagination';
-import type { Sort } from '@apc/shared/table';
+import { sortValue, type Sort } from '@apc/shared/table';
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos';
 import { API_URL } from '../api';
 import { Button } from '../Button';
@@ -29,7 +36,8 @@ import { DataTable, RowAction, TableThumbnail } from '../DataTable';
 import { EmptyState, ErrorState } from '../EmptyState';
 import { FieldScrollView } from '../FieldScrollView';
 import { FilterChipGroup } from '../FilterChip';
-import { ClearFilters, FilterMenu } from '../FilterMenu';
+import { ClearFilters } from '../FilterMenu';
+import { FilterSheet, SortSheet } from '../FilterSheet';
 import { Icon } from '../Icon';
 import type { UploadPhoto } from '../ImageUpload';
 import { ImageViewer } from '../ImageViewer';
@@ -47,6 +55,7 @@ import { Skeleton } from '../Skeleton';
 import { Spinner } from '../Spinner';
 import { SearchField } from '../TextField';
 import { useTheme } from '../theme';
+import { ToolButton } from '../ToolButton';
 import { tourTarget } from '../tourTargets';
 import { NumericReadout, Text } from '../Typography';
 import { useInventoryTutorial } from './inventoryTutorialContext';
@@ -67,42 +76,22 @@ import { InventoryTutorial } from './InventoryTutorial';
 // name renamed or merged, and a name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list and the lists load again;
 // "Exportar CSV" hands every item of the list as it is, on every page, to the share sheet in the same format.
 // The details' Duplicar opens a new item's form filled in as a copy of it, with copies of its photos or without them. The
-// Filtros menu, the stock status chips (one at a time) and "Limpar filtros" narrow the list the same as the web, sent
-// to the API as the list query with the search, and the list shows what matches, newest first, loading its next
-// SCROLL_PAGE_SIZE items once it scrolls within a screen of its end, skeleton cards showing while they come, and saying
-// "Fim da lista" once every item is in, as the web does on a phone. The "Ordenar" select sorts the list in the API by
-// any of the web's columns. A search, a filter or a sort starts the list over, and a save or a delete loads what it
-// shows again, so it stays where it was. While the items load, skeleton cards hold their place; when nothing is
+// round Filtros opens "Filtrar e ordenar" in a bottom sheet (the filters and the sort, applied together on "Ver n
+// itens", which counts the items they would show), and the round Ordenar the sorts alone, by any of the web's columns,
+// each in the accent while a filter or a sort is on, as the web does on a phone. They, the stock status chips (one at a
+// time) and "Limpar filtros" narrow the list the same as the web, sent to the API as the list query with the search,
+// and the list shows what matches, newest first, loading its next SCROLL_PAGE_SIZE items once it scrolls within a
+// screen of its end, skeleton cards showing while they come, and saying "Fim da lista" once every item is in. A search,
+// a filter or a sort starts the list over, and a save or a delete loads what it shows again, so it stays where it was. While the items load, skeleton cards hold their place; when nothing is
 // in stock, the empty state offers "Novo item", and when the search or the filters leave nothing, it offers to clear
 // them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and
 // opens its photos in the ImageViewer (a brand's card, that brand's photos), where each photo removed, changed or added is saved at once and the list
 // follows. The Inventory tutorial runs over the tab by itself the first time, and again from the user menu: it starts
 // and ends with the test item deleted and the search, filters and sort off.
 
-// The columns after the item's name, each reading the card as one item (see rowItem).
+// The column after the item's name: its quantity, at the card's end.
 const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
-  // The card shows these in the line under the name; they are here so "Ordenar" sorts by them, as the web's columns do.
-  ...(
-    [
-      ['category', 'Categoria'],
-      ['partBrand', 'Marca'],
-      ['vehicle', 'Veículo'],
-      ['position', 'Posição'],
-      ['side', 'Lado'],
-      ['color', 'Cor'],
-      ['location', 'Local'],
-    ] as const
-  ).map(([key, header]) => ({ key, header, sortable: true, cell: () => null })),
-  { key: 'price', header: 'Valor unit.', sortLabel: 'Valor unitário', sortable: true, numeric: true, cell: () => null },
-  {
-    key: 'quantity',
-    header: 'Qtd.',
-    sortLabel: 'Quantidade',
-    sortable: true,
-    numeric: true,
-    card: 'end',
-    cell: (row) => <Quantity item={row.item} />,
-  },
+  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (row) => <Quantity item={row.item} /> },
 ];
 /**
  * Names the stock status chips, outside the menu (one at a time, none for every item), in short, each with how many
@@ -157,7 +146,6 @@ function nameColumn({ styles, ids }: ReturnType<typeof useStyles>): ComponentPro
   return {
     key: 'name',
     header: 'Item',
-    sortable: true,
     card: 'main',
     cell: ({ item }) => (
       <View ref={isTestItem(item) ? tourTarget('tutorial-row') : undefined} collapsable={false}>
@@ -223,6 +211,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // How many pages the list shows, loading the next as it scrolls to its end.
   const [pages, setPages] = useState(1);
   const narrowed = search.trim() !== '' || itemListQuery(filters, status) !== '';
+  const filterCount = activeFilterCount(filters);
+  const sortLabel = ITEM_SORT_OPTIONS.find((option) => option.value === sortValue(sort))?.label;
   // Every item, for the counter, the filter options and the form; and the pages loaded so far of the items the search
   // and the filters let through.
   const state = useItems();
@@ -254,8 +244,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // The form as typed, and whether it shows the details, which the tutorial's steps read.
   const [typed, setTyped] = useState<{ values: ItemForm; viewing: boolean }>();
   const followForm = useCallback((values: ItemForm, viewing: boolean) => setTyped({ values, viewing }), []);
-  // Whether the Filtros menu is open.
+  // Whether the filter sheet is open, and the sort sheet.
   const [filtering, setFiltering] = useState(false);
+  const [sorting, setSorting] = useState(false);
   const tutorial = useInventoryTutorial();
   // Whether the tutorial runs, and the items on screen when it, or a save or delete of the user, last sent a change:
   // until the list loads again, the change is still on its way, and the tutorial doesn't take it as left undone.
@@ -423,17 +414,21 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         </Button>
         <View style={styles.filters} testID={ids.filters}>
           <View ref={tourTarget('filters')} collapsable={false}>
-            <FilterMenu
-              label="Filtros do estoque"
-              title="Filtrar estoque"
-              rows={(draft) => itemFilterRows(items, draft)}
-              values={filters}
-              onApply={(values) => narrow(() => setFilters(values))}
-              open={filtering}
-              onOpenChange={setFiltering}
-              panelRef={tourTarget('filter-panel')}
+            <ToolButton
+              icon={filterIcon}
+              label={filterCount ? `Filtros, ${filterCount} ${filterCount === 1 ? 'ativo' : 'ativos'}` : 'Filtros'}
+              active={filterCount > 0}
+              expanded={filtering}
+              onPress={() => setFiltering(true)}
             />
           </View>
+          <ToolButton
+            icon={sortIcon}
+            label={sort ? `Ordenar, ${sortLabel}` : 'Ordenar'}
+            active={sort !== null}
+            expanded={sorting}
+            onPress={() => setSorting(true)}
+          />
           <FilterChipGroup
             label="Situação do estoque"
             options={statusOptions(items)}
@@ -441,7 +436,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
           />
           <ClearFilters
-            active={activeFilterCount(filters) > 0 || status !== null}
+            active={filterCount > 0 || status !== null}
             onClear={() =>
               narrow(() => {
                 setFilters(EMPTY_ITEM_FILTERS);
@@ -477,6 +472,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
                 sort={sort}
                 onSortChange={(next) => narrow(() => setSort(next))}
                 unsortedLabel="Ordem de cadastro"
+                sortSelect={false}
                 empty={
                   narrowed ? (
                     <EmptyState
@@ -511,6 +507,30 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           <Icon icon={plusIcon} size={ICON_SIZES.fab} color={colors.onAccent} />
         </Pressable>
       </View>
+      <FilterSheet
+        open={filtering}
+        onClose={() => setFiltering(false)}
+        rows={(draft) => itemFilterRows(items, draft)}
+        values={filters}
+        sort={sort}
+        sortOptions={ITEM_SORT_OPTIONS}
+        count={(draft) => matchingCount(items, draft, status, search)}
+        onApply={(values, next) => {
+          setFiltering(false);
+          narrow(() => {
+            setFilters(values);
+            setSort(next);
+          });
+        }}
+        panelRef={tourTarget('filter-panel')}
+      />
+      <SortSheet
+        open={sorting}
+        onClose={() => setSorting(false)}
+        sort={sort}
+        options={ITEM_SORT_OPTIONS}
+        onSortChange={(next) => narrow(() => setSort(next))}
+      />
       <ItemFormDialog
         key={`form-${form.session}`}
         open={form.open}

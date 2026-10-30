@@ -300,8 +300,9 @@ test('Mobile: the thumbnail opens the item photos, saved as they change', async 
   expect(texts(tree)).toContain('Foto removida');
 });
 
-// Picks a category in the Filtros menu and applies it, then turns on Esgotado, and checks each goes to the API as the
-// list query and the cards follow; "Limpar filtros" brings every item back.
+// Picks a category in the filter sheet and applies it, then turns on Esgotado, and checks each goes to the API as the
+// list query and the cards follow, the round Filtros counting the filter in the accent; "Limpar filtros" brings every
+// item back.
 test('Mobile: the filters narrow the list through the API query', async () => {
   const tree = await mount();
   const pressable = (name: string) =>
@@ -314,13 +315,16 @@ test('Mobile: the filters narrow the list through the API query', async () => {
     );
   const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
   await ReactTestRenderer.act(async () => pressable('Filtros').props.onPress());
-  await ReactTestRenderer.act(async () => pressable('Categoria').props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Categoria, Todas').props.onPress());
   await ReactTestRenderer.act(async () => pressable('Freios').props.onPress());
   (fetch as jest.Mock).mockClear();
-  await ReactTestRenderer.act(async () => pressable('Aplicar').props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Ver 1 item').props.onPress());
   expect((fetch as jest.Mock).mock.calls[0][0]).toMatch(/\/items\?category=Freios&page=1&pageSize=25$/);
   expect(cards()).toHaveLength(1);
   expect(texts(tree)).toContain('1 de 3 itens · 1 baixo · 1 esgotado');
+  const filters = tree.root.find((n) => n.props.accessibilityLabel === 'Filtros, 1 ativo' && typeof n.type === 'string');
+  expect(StyleSheet.flatten(filters.props.style).borderColor).toBe(themes.eighties.night.colors.accent);
+  expect(filters.findAll((n) => n.props.testID === 'common.tool-button.dot' && typeof n.type === 'string')).toHaveLength(1);
 
   await ReactTestRenderer.act(async () => pressable('Esgotado · 1').props.onPress());
   expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items\?category=Freios&status=out&page=1&pageSize=25$/);
@@ -479,9 +483,10 @@ test('Mobile: the list loads the next items as it scrolls near its end', async (
   expect(fetchMock.mock.calls.at(-1)[0]).toMatch(/\/items\?q=Pe%C3%A7a\+3&page=1&pageSize=25$/);
 });
 
-// Sorts by unit price with the "Ordenar" select and checks the sort goes to the API, the list starts over from its
-// first items and the cards follow the price, highest first, ties in part code order.
-test('Mobile: the "Ordenar" select sorts the list through the API', async () => {
+// Sorts by unit price from the round Ordenar, with no "Ordenar" select on the list, and checks the sort goes to the
+// API, the list starts over from its first items and the cards follow the price, highest first, ties in part code
+// order; the button names the sort, and the filter sheet's "Ordenar por" shows it.
+test('Mobile: the round Ordenar sorts the list through the API', async () => {
   const stock = Array.from({ length: 30 }, (_, index) =>
     item(index + 10, { code: `P-${index + 1}`, name: `Peça ${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
   );
@@ -495,12 +500,65 @@ test('Mobile: the "Ordenar" select sorts the list through the API', async () => 
     await ReactTestRenderer.act(async () => node.props.onPress());
   };
   (fetch as jest.Mock).mockClear();
+  expect(tree.root.findAll((n) => n.props.testID === 'common.data-table.sort-bar')).toHaveLength(0);
   await press('Ordenar');
   expect(texts(tree)).toEqual(expect.arrayContaining(['Veículo (A → Z)', 'Local (Z → A)', 'Quantidade (maior → menor)']));
   await press('Valor unitário (maior → menor)');
   expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toMatch(/\/items\?page=1&pageSize=25&sort=price&order=desc$/);
   const names = texts(tree).filter((text) => /^Peça \d+$/.test(text));
   expect(names.slice(0, 3)).toEqual(['Peça 7', 'Peça 14', 'Peça 21']);
+  expect(tree.root.findAllByType(Modal).some((modal) => modal.props.visible)).toBe(false);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Ordenar, Valor unitário (maior → menor)')).not.toHaveLength(0);
+  await press('Filtros');
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Ordenar por, Valor unitário (maior → menor)')).not.toHaveLength(0);
+});
+
+// Opens the filter sheet and checks its rows, then counts the items a choice would show in "Ver n itens" before it is
+// applied: a category picked in its options, then the front position. The back button goes from the options back to
+// the rows, then closes the sheet, dropping the choice; "Limpar" turns the filters and the sort off in the sheet.
+test('Mobile: the filter sheet counts what its choice would show before applying it', async () => {
+  const tree = await mount();
+  const press = async (name: string) => {
+    const node = tree.root.find(
+      (n) =>
+        typeof n.type !== 'string' &&
+        typeof n.props.onPress === 'function' &&
+        (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+    );
+    await ReactTestRenderer.act(async () => node.props.onPress());
+  };
+  const sheet = () => tree.root.findAllByType(Modal).find((modal) => modal.props.visible);
+  const back = async () => ReactTestRenderer.act(async () => sheet()!.props.onRequestClose());
+  const labels = () => tree.root.findAll((n) => n.props.testID === 'common.filter-sheet.row' && typeof n.type === 'string').map((n) => n.props.accessibilityLabel);
+  (fetch as jest.Mock).mockClear();
+  await press('Filtros');
+  expect(labels()).toEqual([
+    'Ordenar por, Ordem de cadastro',
+    'Categoria, Todas',
+    'Marca da peça, Todas',
+    'Marca do veículo, Todas',
+    'Modelo do veículo, Todos',
+    'Cor, Todas',
+    'Local, Todos',
+  ]);
+  expect(tree.root.findAll((n) => n.props.accessibilityRole === 'radiogroup' && typeof n.type === 'string').map((n) => n.props.accessibilityLabel)).toEqual(['Posição', 'Lado']);
+  expect(texts(tree)).toContain('Ver 3 itens');
+
+  await press('Categoria, Todas');
+  expect(tree.root.findAll((n) => n.props.accessibilityRole === 'checkbox' && typeof n.type === 'string').map((n) => n.props.accessibilityLabel)).toEqual(['Todas', 'Freios', 'Motor']);
+  await press('Motor');
+  expect(texts(tree)).toContain('Ver 2 itens');
+  await back();
+  expect(sheet()).toBeDefined();
+  expect(labels()).toContain('Categoria, Motor');
+  await press('Dianteira');
+  expect(texts(tree)).toContain('Ver 0 itens');
+  await press('Limpar');
+  expect(labels()).toContain('Categoria, Todas');
+  expect(texts(tree)).toContain('Ver 3 itens');
+  await back();
+  expect(sheet()).toBeUndefined();
+  expect((fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes('pageSize'))).toHaveLength(0);
 });
 
 // Lists an item of two brands and checks its card shows its first code with "2 marcas", the quantity added up with

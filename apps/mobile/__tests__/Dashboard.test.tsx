@@ -4,14 +4,17 @@
 
 import React from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { MIN_TOUCH_TARGET } from '@apc/shared/screens';
+import { MIN_TOUCH_TARGET, MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Dashboard } from '../src/dashboard/Dashboard';
 import { BOTTOM_BAR_HEIGHT } from '../src/dashboard/Dashboard.styles';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
+// The Inventory tab holds bottom sheets, which pad their end for the screen's insets.
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 // The first tab still being built, if any.
 const WIP_TAB = DASHBOARD_TABS.find((tab) => tab.wip);
 
@@ -26,7 +29,11 @@ async function mount(style: Style, mode: Mode, element: React.ReactElement) {
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
-    tree = ReactTestRenderer.create(<ThemeProvider>{element}</ThemeProvider>);
+    tree = ReactTestRenderer.create(
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>{element}</ThemeProvider>
+      </SafeAreaProvider>,
+    );
   });
   return tree!;
 }
