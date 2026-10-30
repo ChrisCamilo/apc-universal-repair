@@ -339,9 +339,10 @@ test("Web: categories, brands and models are created from the item form", { tag:
   await expect(option("Motor diesel")).toBeVisible();
 });
 
-// Sorts a list of 30 items through the API: on the second page, sorting by location goes back to the first page with
-// the locations in natural order (A-2 before A-10); the same column again reverses it; and the unit price sorts by
-// value, ties in part code order. The desktop sorts with the column headers, the phone with the "Ordenar" select.
+// Sorts a list of 30 items through the API: on the second page (on a phone, with the whole list loaded), sorting by
+// location goes back to the first 25 with the locations in natural order (A-2 before A-10); the same column again
+// reverses it; and the unit price sorts by value, ties in part code order. The desktop sorts with the column headers,
+// the phone with the "Ordenar" select.
 test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   const stock = Array.from({ length: 30 }, (_, index) =>
     item({ code: `P-${index + 1}`, name: `Peça ${index + 1}`, location: `A-${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
@@ -361,8 +362,14 @@ test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }
       await options(page).named(option).click();
     }
   };
-  await inventory(page).pager.page(2).click();
-  await expect(rows).toHaveCount(5);
+  if (desktop) {
+    await inventory(page).pager.page(2).click();
+    await expect(rows).toHaveCount(5);
+  } else {
+    await expect(rows).toHaveCount(25);
+    await rows.last().scrollIntoViewIfNeeded();
+    await expect(rows).toHaveCount(30);
+  }
 
   await sortBy("Local", "Local (A → Z)");
   await expect(rows).toHaveCount(25);
@@ -986,8 +993,9 @@ test("Web: the inventory shows loading, error and empty states", { tag: [TEST_TA
 // Pages through 60 items, newest first, against an API that pages what it is asked for: 25 per page by default, with
 // the range shown; page 2 asks for page 2; 50 per page keeps the first item that was showing on screen; a search goes
 // back to page 1; the user menu's "Itens por página" applies to the list at once; deleting the last item of the last
-// page goes to the page before; and a new item shows first on page 1.
-test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// page goes to the page before; and a new item shows first on page 1. A phone loads more as it scrolls instead (see
+// the test after this one).
+test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inventory, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const stock = Array.from({ length: 51 }, (_, index) =>
     item({ code: `P-${String(index + 1).padStart(3, "0")}`, name: `Peça ${index + 1}`, quantity: 5 }),
   );
@@ -1040,6 +1048,46 @@ test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inven
   await itemForm(page, "Novo item").save.click();
   await expect(page.getByText("1–25 de 51")).toBeVisible();
   await expect(rows.first()).toContainText("NOVA-1");
+});
+
+// On a phone, lists 51 items and checks the first 25 show with no pagination; scrolling to the end asks the API for the
+// next 25, then the last one, and "Fim da lista" ends the list. Opening an item near the end and closing it leaves the
+// list where it was; a search starts it over from the first 25.
+test("Web: on a phone the list loads more as it scrolls and keeps its place", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  const stock = Array.from({ length: 51 }, (_, index) =>
+    item({ code: `P-${String(index + 1).padStart(3, "0")}`, name: `Peça ${index + 1}`, quantity: 5 }),
+  );
+  const queries: string[] = [];
+  await serveItems(page, stock, (query) => query.has("pageSize") && queries.push(query.toString()));
+  await page.goto("/inventory");
+  const inv = inventory(page);
+  const { rows } = dataTable(page);
+  await expect(rows).toHaveCount(25);
+  await expect(inv.pager.pages).toHaveCount(0);
+  await expect(inv.listEnd).toBeHidden();
+  expect(queries.at(-1)).toBe("page=1&pageSize=25");
+
+  await rows.last().scrollIntoViewIfNeeded();
+  await expect(rows).toHaveCount(50);
+  expect(queries.at(-1)).toBe("page=2&pageSize=25");
+  await expect(inv.listEnd).toBeHidden();
+  await rows.last().scrollIntoViewIfNeeded();
+  await expect(rows).toHaveCount(51);
+  expect(queries.at(-1)).toBe("page=3&pageSize=25");
+  await expect(inv.listEnd).toBeVisible();
+  await expect(rows.last()).toContainText("P-051");
+
+  const before = await page.evaluate(() => window.scrollY);
+  await rows.last().getByText("Peça 51").click();
+  await expect(itemDetails(page).root).toBeVisible();
+  await itemDetails(page).closeText.click();
+  await expect(itemDetails(page).root).toBeHidden();
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+  await expect(rows).toHaveCount(51);
+
+  await inv.search.fill("Peça");
+  await expect(rows).toHaveCount(25);
+  expect(queries.at(-1)).toBe("q=Pe%C3%A7a&page=1&pageSize=25");
 });
 
 // On a 1360×768 notebook, in full screen and in a window (1360×689 once the taskbar and the title bar are taken off),
