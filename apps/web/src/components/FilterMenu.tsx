@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { activeFilterCount, clearedFilters, type FilterValues } from '@apc/shared/filters'
+import { activeFilterCount, clearedFilters, offeredValues, type FilterValues } from '@apc/shared/filters'
 import { filterIcon, ICON_SIZES } from '@apc/shared/icons'
 import { Button } from './Button.tsx'
 import { FilterChipGroup } from './FilterChip.tsx'
@@ -48,22 +48,6 @@ type SelectRow = {
 }
 
 /**
- * Drops from each Select row the values it no longer offers, once the rest of the choice changed what it lists.
- * @param draft Values chosen in the panel.
- * @param rows The rows for those values.
- * @returns The values each row still offers.
- */
-function offered(draft: FilterValues, rows: Row[]): FilterValues {
-  const kept = { ...draft }
-  for (const row of rows) {
-    if (!('groups' in row) && kept[row.key]) {
-      kept[row.key] = kept[row.key].filter((value) => row.options.some((option) => option.value === value))
-    }
-  }
-  return kept
-}
-
-/**
  * Lists the filter keys a row sets: its own key, or one per chip group.
  * @param row A Select or chips row.
  * @returns The row's filter keys.
@@ -109,7 +93,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
   const change = (key: string, chosen: string[]) =>
     setDraft((prev) => {
       const next = { ...prev, [key]: chosen }
-      return typeof rowsFor === 'function' ? offered(next, rowsFor(next)) : next
+      return typeof rowsFor === 'function' ? offeredValues(next, rowsFor(next)) : next
     })
 
   /** Closes the panel without applying on Escape (a Select closes only its own list first). */

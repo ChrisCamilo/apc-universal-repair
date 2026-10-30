@@ -8,13 +8,16 @@ import { usePresence } from './usePresence.ts'
 // the screen. Like the Dialog it is a native <dialog> opened with showModal(): it sits on top of the page behind the
 // dimmed, blurred backdrop, moves the focus inside and keeps it there, and gives it back to where it was when it
 // closes. Escape, a click on the backdrop and a drag down from the handle, past SHEET_CLOSE_DRAG, ask the owner to
-// close it (the owner holds `open`). It grows with its content, and its body scrolls once it is as tall as it gets.
+// close it (the owner holds `open`); an owner with a list open inside the sheet may take Escape to go back from it.
+// It grows with its content, and its body scrolls once it is as tall as it gets.
 // It slides up and fades in, and back down, its content kept while it leaves and the window inert (see usePresence).
 
 type BottomSheetProps = {
   open: boolean
   /** Called on Escape, a click on the backdrop or a drag down; the owner closes the sheet by setting `open` to false. */
   onClose: () => void
+  /** Called on Escape in place of onClose, e.g. to go back from a list opened inside the sheet. */
+  onBack?: () => void
   title: string
   /** A control at the right of the title, such as "Limpar". */
   action?: ReactNode
@@ -23,7 +26,7 @@ type BottomSheetProps = {
   children: ReactNode
 }
 
-export function BottomSheet({ open, onClose, title, action, footer, children }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, onBack, title, action, footer, children }: BottomSheetProps) {
   const titleId = useId()
   const sheet = useRef<HTMLDialogElement>(null)
   const dragStart = useRef<number | null>(null)
@@ -54,7 +57,8 @@ export function BottomSheet({ open, onClose, title, action, footer, children }: 
         // Only the sheet's own Escape closes it, not a file picker's "cancel" bubbling up from inside.
         if (event.target === sheet.current) {
           event.preventDefault()
-          onClose()
+          const leave = onBack ?? onClose
+          leave()
         }
       }}
       // A click on the dialog itself, not on its content, landed on the backdrop.

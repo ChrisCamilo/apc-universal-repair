@@ -5,18 +5,22 @@ import { SHEET_CLOSE_DRAG } from '@apc/shared/dialog';
 import { sheetBox, sheetEnd, useStyles } from './BottomSheet.styles';
 import { FieldScrollView } from './FieldScrollView';
 import { useOverlayMotion } from './motion';
+import { TourLayer } from './Tour';
 import { Heading } from './Typography';
 
 // A list of choices, such as the filters or a menu of actions, in a sheet that rises from the bottom of the screen,
 // the same as the web. It sits on top of the screen behind the dimmed backdrop; the back button, a tap on the backdrop
-// and a drag down from the handle, past SHEET_CLOSE_DRAG, ask the owner to close it (the owner holds `open`). It grows
-// with its content, and its body scrolls once it is as tall as it gets. It rises and fades in with its backdrop, and
-// goes back down, as on the web (see motion.ts).
+// and a drag down from the handle, past SHEET_CLOSE_DRAG, ask the owner to close it (the owner holds `open`); an owner
+// with a list open inside the sheet may take the back button to go back from it. It grows with its content, and its
+// body scrolls once it is as tall as it gets. It rises and fades in with its backdrop, and goes back down, as on the
+// web (see motion.ts). A guided tour draws over it, as over a Dialog.
 
 type BottomSheetProps = {
   open: boolean;
   /** Called on the back button, a tap on the backdrop or a drag down; the owner closes the sheet by setting `open` to false. */
   onClose: () => void;
+  /** Called on the back button in place of onClose, e.g. to go back from a list opened inside the sheet. */
+  onBack?: () => void;
   title: string;
   /** A control at the right of the title, such as "Limpar". */
   action?: ReactNode;
@@ -25,7 +29,7 @@ type BottomSheetProps = {
   children: ReactNode;
 };
 
-export function BottomSheet({ open, onClose, title, action, footer, children }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, onBack, title, action, footer, children }: BottomSheetProps) {
   const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -57,7 +61,7 @@ export function BottomSheet({ open, onClose, title, action, footer, children }: 
   }, [open, drag]);
 
   return (
-    <Modal visible={motion.shown} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={motion.shown} transparent animationType="none" onRequestClose={onBack ?? onClose}>
       <Animated.View style={[styles.backdrop, motion.fade]} testID={ids.backdrop}>
         <Pressable accessibilityLabel="Fechar" onPress={onClose} style={styles.outside} testID={ids.outside} />
         <Animated.View accessibilityViewIsModal accessibilityLabel={title} style={[styles.window, sheetBox(screen), motion.moved]} testID={ids.window}>
@@ -80,6 +84,8 @@ export function BottomSheet({ open, onClose, title, action, footer, children }: 
           )}
         </Animated.View>
       </Animated.View>
+      {/* A guided tour draws here while the sheet is open, the only place above the Modal. */}
+      <TourLayer />
     </Modal>
   );
 }

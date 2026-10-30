@@ -4,6 +4,7 @@ import { useStyles } from './Segmented.styles';
 
 // A compact single choice, the same as the web (see Segmented.styles.ts), e.g. the theme. On its own it is a radio
 // group; inside a Menu it becomes a labeled row whose options pack tighter, and choosing one keeps the menu open.
+// Filling, its options share the width it is given, e.g. the position in a phone's filter sheet.
 
 type SegmentedProps = {
   /** Accessible name of the group; inside a menu it is also the row's visible label. */
@@ -13,13 +14,15 @@ type SegmentedProps = {
   onValueChange: (value: string) => void;
   /** Short explanation under the label, inside a menu. */
   description?: string;
+  /** Shares the width it is given among its options, outside a menu. */
+  fill?: boolean;
 };
 
-export function Segmented({ label, options, value, onValueChange, description }: SegmentedProps) {
+export function Segmented({ label, options, value, onValueChange, description, fill = false }: SegmentedProps) {
   const { styles, ids } = useStyles();
   const menu = useMenu();
   const group = (
-    <View accessibilityRole="radiogroup" accessibilityLabel={label} accessibilityHint={description} style={styles.group} testID={ids.group}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={label} accessibilityHint={description} style={[styles.group, fill && styles.groupFill]} testID={ids.group}>
       {options.map((option) => {
         const on = option.value === value;
         return (
@@ -29,11 +32,15 @@ export function Segmented({ label, options, value, onValueChange, description }:
             accessibilityLabel={option.label}
             accessibilityState={{ checked: on }}
             onPress={() => onValueChange(option.value)}
-            style={[styles.option, menu !== null && styles.optionInMenu, on && styles.optionOn]}
+            style={[styles.option, fill && styles.optionFill, menu !== null && styles.optionInMenu, on && styles.optionOn]}
             testID={ids.option}
           >
             {({ pressed }) => (
-              <Text style={[styles.optionLabel, pressed && styles.optionLabelPressed, on && styles.optionLabelOn]} testID={ids.optionLabel}>
+              <Text
+                numberOfLines={1}
+                style={[styles.optionLabel, pressed && styles.optionLabelPressed, on && styles.optionLabelOn]}
+                testID={ids.optionLabel}
+              >
                 {option.label}
               </Text>
             )}

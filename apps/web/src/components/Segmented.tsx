@@ -16,13 +16,15 @@ type SegmentedProps = {
   onValueChange: (value: string) => void
   /** Short explanation under the label, inside a menu. */
   description?: string
+  /** Shares the width it is given among its options, outside a menu. */
+  fill?: boolean
 }
 
-export function Segmented({ label, options, value, onValueChange, description }: SegmentedProps) {
+export function Segmented({ label, options, value, onValueChange, description, fill = false }: SegmentedProps) {
   const menu = useMenu()
   const id = useId()
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
-  const { classes, ids } = segmented({ inMenu: menu !== null })
+  const { classes, ids } = segmented({ inMenu: menu !== null, fill })
 
   /** Moves the choice with the arrows and follows it with the focus, outside a menu. */
   const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -56,7 +58,7 @@ export function Segmented({ label, options, value, onValueChange, description }:
             role={menu ? 'menuitemradio' : 'radio'}
             aria-checked={on}
             tabIndex={menu ? -1 : on ? 0 : -1}
-            className={classes.option({ on })}
+            className={classes.option({ on, fill })}
             data-testid={ids.option}
             onClick={() => onValueChange(option.value)}
             onKeyDown={(event) => onKeyDown(event, index)}

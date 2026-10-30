@@ -7,6 +7,8 @@ import {
   itemFilterRows,
   itemListQuery,
   itemMatchesQuery,
+  ITEM_SORT_OPTIONS,
+  matchingCount,
   POSITION_FILTERS,
   SIDE_FILTERS,
   splitVehicleModel,
@@ -140,6 +142,42 @@ test("Shared: the filter menu has seven rows, models following the brands", () =
   const chips = rows[4];
   assert.ok("groups" in chips);
   assert.deepEqual(chips.groups.map((group) => group.key), ["position", "side"]);
+  assert.deepEqual(
+    chips.groups.map((group) => group.segments.map((segment) => segment.label)),
+    [
+      ["Todas", "Dianteira", "Traseira", "Ambas"],
+      ["Todos", "Esquerdo", "Direito", "Ambos"],
+    ],
+  );
+});
+
+// Counts the items of the list for some filters as a phone's sheet does before applying them: every item with none;
+// a category, ignoring the others; with a stock status and a search on top; and "Ambas" as the position chosen, which
+// takes only the items made for both.
+test("Shared: the filter sheet counts the items its filters would show", () => {
+  assert.equal(matchingCount(ITEMS, EMPTY_ITEM_FILTERS, null, ""), 7);
+  assert.equal(matchingCount(ITEMS, { ...EMPTY_ITEM_FILTERS, category: ["Motor"] }, null, ""), 4);
+  const stock = [
+    item({ name: "Vela", category: "Motor", position: "D", quantity: 0 }),
+    item({ name: "Bobina", category: "Motor", position: "Ambos", quantity: 5 }),
+    item({ name: "Pastilha", category: "Freios", position: "Ambos", quantity: 0 }),
+  ];
+  assert.equal(matchingCount(stock, { category: ["Motor"] }, "out", ""), 1);
+  assert.equal(matchingCount(stock, EMPTY_ITEM_FILTERS, null, " bobina "), 1);
+  assert.equal(matchingCount(stock, { ...EMPTY_ITEM_FILTERS, position: ["Ambos"] }, null, ""), 2);
+  assert.equal(matchingCount(stock, { ...EMPTY_ITEM_FILTERS, position: ["D"] }, null, ""), 3);
+});
+
+// Lists the sorts a phone offers: "Ordem de cadastro" first, then each column ascending and descending, by text or by
+// number.
+test("Shared: the inventory's sorts list every column both ways", () => {
+  assert.equal(ITEM_SORT_OPTIONS.length, 21);
+  assert.deepEqual(ITEM_SORT_OPTIONS.slice(0, 3), [
+    { value: "", label: "Ordem de cadastro" },
+    { value: "name:asc", label: "Item (A → Z)" },
+    { value: "name:desc", label: "Item (Z → A)" },
+  ]);
+  assert.deepEqual(ITEM_SORT_OPTIONS.at(-1), { value: "quantity:desc", label: "Quantidade (maior → menor)" });
 });
 
 // Renames and merges entries the filters name, in another spelling, and checks each value follows, a vehicle brand
