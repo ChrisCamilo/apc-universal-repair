@@ -1,5 +1,5 @@
 import type { FilterValues } from "../filters/filters.ts";
-import type { Sort } from "../table/table.ts";
+import { sortOptions, type Sort, type SortColumn } from "../table/table.ts";
 import {
   ITEM_LIST_FIELDS,
   type ItemListKind,
@@ -27,7 +27,8 @@ import {
 // it offers only their models. An entry of the item lists also leads to the filters that show the items using it, and
 // the filters follow an entry renamed or merged, so they keep showing its items. itemMatchesQuery reads a list query
 // on an item in memory with the rules the API's query applies in the database (itemWhere), for the web app's demo,
-// which has no server.
+// which has no server, and for a phone's filter sheet, which counts the items its filters would show before they are
+// applied. The sheet chooses the position and the side as segments, one at a time, and lists the list's sorts.
 
 /** Every filter of the Filtros menu, none chosen. */
 export const EMPTY_ITEM_FILTERS: ItemFilters = {
@@ -52,6 +53,38 @@ export const SIDE_FILTERS = (["LD", "LE", NOT_APPLICABLE] as const).map((value) 
   label: value,
   title: SIDE_NAMES[value],
 }));
+/**
+ * The position as a phone's filter sheet chooses it, one at a time: every position (""), front, rear or both; front
+ * and rear also match "Ambos" items, as the chips do.
+ */
+export const POSITION_SEGMENTS = [
+  { value: "", label: "Todas" },
+  { value: "D", label: "Dianteira" },
+  { value: "T", label: "Traseira" },
+  { value: "Ambos", label: "Ambas" },
+];
+/** The side as a phone's filter sheet chooses it, one at a time: every side (""), left, right or both. */
+export const SIDE_SEGMENTS = [
+  { value: "", label: "Todos" },
+  { value: "LE", label: "Esquerdo" },
+  { value: "LD", label: "Direito" },
+  { value: "Ambos", label: "Ambos" },
+];
+/** The columns the inventory list sorts by, in the desktop table's order, with the names its sort lists them by. */
+const ITEM_SORT_COLUMNS: SortColumn[] = [
+  { key: "name", label: "Item" },
+  { key: "category", label: "Categoria" },
+  { key: "partBrand", label: "Marca" },
+  { key: "vehicle", label: "Veículo" },
+  { key: "position", label: "Posição" },
+  { key: "side", label: "Lado" },
+  { key: "color", label: "Cor" },
+  { key: "location", label: "Local" },
+  { key: "price", label: "Valor unitário", numeric: true },
+  { key: "quantity", label: "Quantidade", numeric: true },
+];
+/** The inventory's sorts, as a phone lists them: "Ordem de cadastro", then each column both ways. */
+export const ITEM_SORT_OPTIONS = sortOptions(ITEM_SORT_COLUMNS, "Ordem de cadastro");
 // Between the brand and the model in a vehicle model filter value; no brand or model name holds it.
 const VEHICLE_MODEL_SEPARATOR = "|";
 
@@ -67,10 +100,13 @@ export type ItemFilterOptions = {
   locations: string[];
 };
 
-/** A row of the Filtros menu: a multiple-choice list, or chip groups sharing the row. */
+/**
+ * A row of the Filtros menu: a multiple-choice list, or chip groups sharing the row, each with the segments a phone's
+ * sheet shows in place of its chips.
+ */
 export type ItemFilterRow =
   | { key: keyof ItemFilters; label: string; allLabel: string; options: { value: string; label: string }[] }
-  | { label: string; groups: { key: keyof ItemFilters; label: string; options: ChipOption[] }[] };
+  | { label: string; groups: { key: keyof ItemFilters; label: string; options: ChipOption[]; segments: { value: string; label: string }[] }[] };
 /** The values chosen in each filter of the Filtros menu. */
 export type ItemFilters = Record<
   "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "position" | "side" | "color" | "location",
@@ -159,8 +195,8 @@ export function itemFilterRows(items: readonly Item[], draft: FilterValues): Ite
     {
       label: "Posição · Lado",
       groups: [
-        { key: "position", label: "Posição", options: POSITION_FILTERS },
-        { key: "side", label: "Lado", options: SIDE_FILTERS },
+        { key: "position", label: "Posição", options: POSITION_FILTERS, segments: POSITION_SEGMENTS },
+        { key: "side", label: "Lado", options: SIDE_FILTERS, segments: SIDE_SEGMENTS },
       ],
     },
     { key: "color", label: "Cor", allLabel: "Todas", options: plain(options.colors) },
@@ -236,6 +272,20 @@ export function itemMatchesQuery(item: Item, query: ItemListQuery): boolean {
       )) &&
     status
   );
+}
+
+/**
+ * Counts the items in stock the list would show with some filters, the stock status and the search, as a phone's
+ * filter sheet tells ("Ver 3 itens") while its filters change, before they are applied.
+ * @param items Every item in stock.
+ * @param filters Values chosen in the sheet.
+ * @param status Stock status chip on, or null.
+ * @param search The search typed.
+ * @returns How many match, by the API's rules (itemMatchesQuery).
+ */
+export function matchingCount(items: readonly Item[], filters: FilterValues, status: ItemStatus | null, search: string): number {
+  const query: ItemListQuery = { ...EMPTY_ITEM_FILTERS, ...filters, status: status ?? undefined, q: search.trim() || undefined };
+  return items.filter((item) => itemMatchesQuery(item, query)).length;
 }
 
 /**

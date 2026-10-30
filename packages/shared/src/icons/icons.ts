@@ -77,7 +77,7 @@ export const ICON_SIZES = {
   body: 16,
   /** An icon that leads its line: a menu item's, the photo viewer's arrows. */
   prominent: 18,
-  /** The picture of a list row's empty thumbnail, and the icon of a phone's bottom bar entry. */
+  /** The picture of a list row's empty thumbnail, and the icon of a phone's bottom bar entry or round toolbar button. */
   thumbnail: 20,
   /** The picture of an upload area. */
   dropZone: 22,
@@ -124,6 +124,8 @@ export const searchIcon: IconShape[] = [
   { kind: "circle", cx: 7, cy: 7, r: 4.6 },
   { kind: "path", d: "M10.4 10.4L14 14" },
 ];
+// An arrow up beside an arrow down: the order of a list, such as the Inventory's Ordenar on a phone.
+export const sortIcon: IconShape[] = [{ kind: "path", d: "M4.7 13.3V2.7M2 5.3l2.7-2.6 2.6 2.6M11.3 2.7v10.6M8.7 10.7l2.6 2.6 2.7-2.6" }];
 export const trashIcon: IconShape[] = [{ kind: "path", d: "M2.8 4.4h10.4M6.4 4.4V2.9h3.2v1.5M4.2 4.4l.7 8.7h6.2l.7-8.7" }];
 export const userIcon: IconShape[] = [
   { kind: "circle", cx: 8, cy: 5.2, r: 2.8 },
@@ -155,6 +157,7 @@ export const ICONS = {
   play: playIcon,
   plus: plusIcon,
   search: searchIcon,
+  sort: sortIcon,
   trash: trashIcon,
   user: userIcon,
 };
