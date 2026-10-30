@@ -1,16 +1,18 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
-import { ICONS } from '@apc/shared/icons'
+import { ICON_SIZES, ICONS, moreIcon } from '@apc/shared/icons'
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, initialTab, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs'
 import { AppFrame } from '../components/AppFrame.tsx'
 import { HEADER_MARK_SIZE } from '../components/AppFrame.styles.ts'
 import { BrandMark } from '../components/BrandMark.tsx'
+import { Icon } from '../components/Icon.tsx'
 import { TabPanel, Tabs } from '../components/Tabs.tsx'
 import { usePhone } from '../components/usePhone.ts'
 import { WorkInProgress } from '../components/WorkInProgress.tsx'
 import { readStored, writeStored } from '../storage.ts'
 import { bottomBar, phoneDashboard } from './DashboardLayout.styles.ts'
 import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext.ts'
+import { MoreActionsContext } from './moreActionsContext.ts'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
 import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 
@@ -25,7 +27,8 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 // On a phone (below `card:`) the header gives way to the phone layout (see DashboardLayout.styles.ts): the open tab's
 // header, with the APC mark and the tab's name as the page's heading, over its content, and a bar fixed at the bottom
 // of the screen with the tabs in their saved order, then the user menu slot, whose menus show there as Alertas and
-// Conta (see NotificationsMenu and UserMenu).
+// Conta (see NotificationsMenu and UserMenu). The open tab may put a "⋯" at the right of its name, which opens what the
+// tab hands over (see moreActionsContext.ts), such as the Inventory's other actions.
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id)
 // Each tab as the tab bar draws it, by id.
@@ -55,6 +58,9 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   const tutorial = useInventoryTutorialChoice()
   const [order, setOrder] = useState(() => orderTabs(TAB_IDS, readStored(TAB_ORDER_STORAGE_KEY)))
   const phone = usePhone()
+  // What the header's "⋯" opens, as the open tab hands it over; none without a "⋯".
+  const [more, setMore] = useState<(() => void) | null>(null)
+  const handMore = useCallback((open: (() => void) | null) => setMore(() => open), [])
 
   // Remember the open tab, so "/" reopens it next time.
   useEffect(() => {
@@ -97,15 +103,17 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
     <TabReorderContext.Provider value={reorder}>
       <PageSizeContext.Provider value={pageSize}>
         <InventoryTutorialContext.Provider value={tutorial}>
-          {phone ? (
-            <PhoneDashboard title={TABS[tab].label} tabs={tabs} end={userMenu}>
-              {panel}
-            </PhoneDashboard>
-          ) : (
-            <AppFrame navLabel="Seções do Dashboard" nav={tabs} end={userMenu}>
-              {panel}
-            </AppFrame>
-          )}
+          <MoreActionsContext.Provider value={handMore}>
+            {phone ? (
+              <PhoneDashboard title={TABS[tab].label} tabs={tabs} end={userMenu} more={more}>
+                {panel}
+              </PhoneDashboard>
+            ) : (
+              <AppFrame navLabel="Seções do Dashboard" nav={tabs} end={userMenu}>
+                {panel}
+              </AppFrame>
+            )}
+          </MoreActionsContext.Provider>
         </InventoryTutorialContext.Provider>
       </PageSizeContext.Provider>
     </TabReorderContext.Provider>
@@ -119,12 +127,14 @@ type PhoneDashboardProps = {
   tabs: ReactNode
   /** At the end of the bar, e.g. Alertas and Conta. */
   end?: ReactNode
+  /** What the "⋯" at the right of the header opens; no "⋯" without it. */
+  more: (() => void) | null
   /** The open tab's panel. */
   children: ReactNode
 }
 
 /** The Dashboard on a phone: the open tab's header and content, and the bottom bar. */
-function PhoneDashboard({ title, tabs, end, children }: PhoneDashboardProps) {
+function PhoneDashboard({ title, tabs, end, more, children }: PhoneDashboardProps) {
   const { classes, ids } = phoneDashboard()
   const bar = bottomBar()
   return (
@@ -134,6 +144,11 @@ function PhoneDashboard({ title, tabs, end, children }: PhoneDashboardProps) {
         <h1 className={classes.title()} data-testid={ids.title}>
           {title}
         </h1>
+        {more && (
+          <button type="button" aria-label="Mais ações" aria-haspopup="dialog" className={classes.more()} data-testid={ids.more} onClick={more}>
+            <Icon icon={moreIcon} size={ICON_SIZES.fab} />
+          </button>
+        )}
       </header>
       <main className={classes.main()} data-testid={ids.main}>
         {children}
