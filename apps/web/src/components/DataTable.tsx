@@ -12,7 +12,8 @@ import { Label } from './Typography.tsx'
 // A row's status (low stock, out of stock) tints the whole row with a stripe at its start, and is also
 // written out for screen readers, since color alone doesn't reach them; the cell text keeps the text color,
 // so it stays readable on every tint. Below TABLE_CARD_BREAKPOINT (720px) each row becomes a card
-// (thumbnail | main | end and actions), the header hides and a "Sort by" select takes its place. TableTitle is
+// (thumbnail | main | end and actions), the header hides and a "Sort by" select takes its place, unless the owner sorts in
+// its own way. TableTitle is
 // the main cell: the name, the code under it and, on a card, a line with what the hidden columns said. With
 // onRowOpen, a click on a row opens it, except on its own buttons (thumbnail, actions), which keep their click; the
 // rows join the Tab order with a focus outline and open with Enter or Space. With fill, the table takes the room left
@@ -62,6 +63,8 @@ type DataTableProps<Row> = {
   rowNested?: (row: Row) => boolean
   /** Whether a row that opens into nested rows is open; undefined for a row that doesn't. */
   rowExpanded?: (row: Row) => boolean | undefined
+  /** Shows the "Sort by" select on a phone's cards; off where the owner sorts in its own way, e.g. in a bottom sheet. */
+  sortSelect?: boolean
 }
 type RowActionProps = {
   icon: IconShape[]
@@ -116,6 +119,7 @@ export function DataTable<Row>({
   onRowOpen,
   rowNested,
   rowExpanded,
+  sortSelect = true,
 }: DataTableProps<Row>) {
   const sortId = useId()
   const sortable = columns.filter((column) => column.sortable)
@@ -155,7 +159,7 @@ export function DataTable<Row>({
 
   return (
     <div className={classes.base()} data-testid={ids.base}>
-      {sortable.length > 0 && (
+      {sortSelect && sortable.length > 0 && (
         <div className={classes.sortBar()} data-testid={ids.sortBar}>
           <Label htmlFor={sortId}>Ordenar</Label>
           <div className={classes.sortSelect()} data-testid={ids.sortSelect}>
