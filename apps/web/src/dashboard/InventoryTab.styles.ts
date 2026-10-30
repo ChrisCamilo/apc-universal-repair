@@ -45,6 +45,9 @@ export const inventoryTab = recipe(
       price: 'whitespace-nowrap',
       actions: 'inline-flex gap-0.5',
       quantity: 'grid justify-items-end gap-0.5',
+      // A phone's list end: the mark that asks for more once near, and "Fim da lista".
+      more: 'h-px',
+      end: 'm-0 py-4 text-center font-mono text-xs text-text-muted',
       quantityValue: 'font-body text-xl/6 font-semibold',
       quantityTag: `text-[11px]/3.5 ${DISPLAY_LABEL}`,
       fab: [
@@ -90,6 +93,8 @@ export const inventoryTab = recipe(
     price: 'price',
     actions: 'actions',
     quantity: 'quantity',
+    more: 'list.more',
+    end: 'list.end',
     quantityValue: 'quantity.value',
     quantityTag: 'quantity.tag',
     fab: 'new-item',

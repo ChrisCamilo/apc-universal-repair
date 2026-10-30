@@ -34,7 +34,8 @@ import { useTabReorder } from './tabReorderContext.ts'
 // release notes (see AboutDialog.tsx), and "Sair" ends the session and goes back to /login; the preferences stay on the
 // device for the next login.
 // On a phone it is Conta in the Dashboard's bottom bar, the initials in its pill, and the same items open in a bottom
-// sheet, as a menu; an action closes it, as it closes the menu.
+// sheet, as a menu, without "Itens por página", since the Inventory loads more as it scrolls there; an action closes
+// it, as it closes the menu.
 
 const PAGE_SIZE_OPTIONS = PAGE_SIZES.map((size) => ({ value: String(size), label: String(size) }))
 const STYLE_OPTIONS = STYLES.map((style) => ({ value: style, label: STYLE_LABELS[style] }))
@@ -72,13 +73,16 @@ export function UserMenu() {
         Arrastar para reordenar
       </Switch>
       <MenuLabel>Estoque</MenuLabel>
-      <Segmented
-        label="Itens por página"
-        description="Padrão ao abrir o estoque"
-        options={PAGE_SIZE_OPTIONS}
-        value={String(pageSize)}
-        onValueChange={(size) => setPageSize(Number(size))}
-      />
+      {/* A phone's list loads more as it scrolls, with no pages. */}
+      {!phone && (
+        <Segmented
+          label="Itens por página"
+          description="Padrão ao abrir o estoque"
+          options={PAGE_SIZE_OPTIONS}
+          value={String(pageSize)}
+          onValueChange={(size) => setPageSize(Number(size))}
+        />
+      )}
       <MenuItem
         icon={playIcon}
         onSelect={() => {
