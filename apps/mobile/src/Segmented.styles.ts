@@ -4,7 +4,7 @@ import { displayLabel, glow, menuItemStyles } from './styles/shared';
 
 // The look of the compact single choice, the same as the web: options in a hairline pill on the panel, the chosen
 // one filled with the accent and glowing where the style has a glow. Inside a Menu it sits in a labeled row, and its
-// options pack tighter.
+// options pack tighter. Filling, its options share the width it is given.
 
 /** A segmented choice: the menu row with its label and description, the group, and an option with its label. */
 export const useStyles = createStyles(
@@ -34,6 +34,8 @@ export const useStyles = createStyles(
         borderRadius: scales.radiusPill,
         backgroundColor: 'transparent',
       },
+      groupFill: { alignSelf: 'stretch' },
+      optionFill: { flex: 1, alignItems: 'center', paddingHorizontal: scales.space.s1 },
       optionInMenu: { paddingHorizontal: scales.space.s2 },
       optionLabel: { ...displayLabel(theme, 'xs'), color: colors.textMuted },
       optionLabelOn: { color: colors.onAccent },
