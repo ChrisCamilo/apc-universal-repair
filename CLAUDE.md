@@ -35,6 +35,10 @@ Playwright's MCP (`playwright`) and its test agents (`playwright-test-planner`, 
 - **A new file for each test the generator writes:** `generator_write_test` replaces the whole file, so it writes to a new `e2e/<scope>-<behavior>.spec.ts`, never to a spec that exists.
 - **Keep a test only if it adds coverage** no other test has, after running it in both projects and the whole suite. A plan in `apps/web/specs/` is kept only with the tests made from it.
 
+## Skills
+
+`.claude/skills/` holds this repo's workflows as Claude Code skills, loaded when a task matches them or called as `/<name>`: `apc-pr`, `apc-task`, `apc-test`, `apc-component`, `apc-api-route`, `apc-dependency`, `apc-release`, `apc-installer` and `apc-readme-progress`. They point to AGENTS.md rather than repeat it: a convention changes in AGENTS.md, and a skill only when its steps change.
+
 ## Build / Lint / Test
 
 Tech stack not chosen yet. This section will be filled in once the project is scaffolded (EP-01 `setup`).
