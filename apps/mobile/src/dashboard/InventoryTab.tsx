@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
-import { View } from 'react-native';
+import { Pressable, Text as RNText, View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
-import { chevronIcon, ICON_SIZES, pencilIcon, trashIcon } from '@apc/shared/icons';
+import { ICON_SIZES, pencilIcon, plusIcon, trashIcon } from '@apc/shared/icons';
 import {
-  itemCodes,
+  itemCardCode,
+  itemCardDetails,
   ITEM_STATUSES,
-  itemDetails,
+  QUANTITY_UNIT,
   resultSummary,
   STOCK_STATUS_LABELS,
+  STOCK_STATUS_SHORT,
+  stockCounts,
   stockStatus,
   type Item,
   type ItemBrand,
@@ -40,7 +43,6 @@ import { useItemLists } from '../inventory/useItemLists';
 import { useItems } from '../inventory/useItems';
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts';
 import { Pagination } from '../Pagination';
-import { Panel } from '../Panel';
 import { Skeleton } from '../Skeleton';
 import { Spinner } from '../Spinner';
 import { SearchField } from '../TextField';
@@ -52,16 +54,16 @@ import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './Inv
 import { InventoryTutorial } from './InventoryTutorial';
 import { usePageSize } from './pageSizeContext';
 
-// The Inventory tab, the same as the web: every item as a card, a search by name or part code, and a counter
-// of the items shown, the total and the stock alerts. Low and out-of-stock cards are tinted by the table, and an item
-// that reaches its minimum raises a warning in the bell, once while it stays there (a toast too when a save or an
-// import brought it there).
-// "Novo item" and each card's pencil open the item form, each card's trash asks to confirm deleting the item, and
-// the list loads again once an item is saved or deleted. A card is an item; one made by several brands shows their
-// codes, the quantity added up and "N marcas", with a chevron at its left in the accent: a tap anywhere on it opens a
-// card for each brand under it, indented, with the brand's own part brand, code, quantity and photos, no tint (the
-// stock status is the item's) and no actions, and closes them again. A tap on a brand's card opens the item's details
-// scrolled to that brand, and one on an item of one brand opens its details. "Gerenciar listas" renames, merges and deletes the
+// The Inventory tab, the same as the web's on a phone (the Estoque mockup): on the canvas, with no panel around it, a
+// search by name or part code, the filters, the stock status chips with how many items each finds ("Baixo · 5"), a
+// counter of the items shown, the total and the stock alerts, and every item as a card, all scrolling together. Low
+// and out-of-stock cards are tinted by the table, and an item that reaches its minimum raises a warning in Alertas,
+// once while it stays there (a toast too when a save or an import brought it there).
+// The round "+" at the bottom right, above the bottom bar, and each card's pencil open the item form, each card's trash
+// asks to confirm deleting the item, and the list loads again once an item is saved or deleted. A card is an item: its
+// name, its first code with its part brand or how many brands make it, and where it fits, where it is and its price;
+// its quantity, added up over its brands, has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
+// tap on a card opens the item's details. "Gerenciar listas" renames, merges and deletes the
 // categories, brands and models the form picks from; the list loads again after each change, the filters following a
 // name renamed or merged, and a name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list and the lists load again;
 // "Exportar CSV" hands every item of the list as it is, on every page, to the share sheet in the same format.
@@ -98,18 +100,25 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
     sortable: true,
     numeric: true,
     card: 'end',
-    cell: (row) => <NumericReadout>{rowItem(row).quantity}</NumericReadout>,
+    cell: (row) => <Quantity item={row.item} />,
   },
 ];
-// The stock status chips, outside the menu: one at a time, none for every item.
-const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }));
+/**
+ * Names the stock status chips, outside the menu (one at a time, none for every item), in short, each with how many
+ * items it finds.
+ * @param items Every item in stock.
+ * @returns The chips' options, e.g. "Baixo · 5" and "Esgotado · 4".
+ */
+function statusOptions(items: readonly Item[]) {
+  const counts = stockCounts(items);
+  return ITEM_STATUSES.map((value) => ({ value, label: `${STOCK_STATUS_SHORT[value]} · ${counts[value]}` }));
+}
 
-/** A card of the list: an item, or one of its brands, under it once the item is opened. */
-type InventoryRow = { item: Item; brand?: ItemBrand };
+/** A card of the list: an item. */
+type InventoryRow = { item: Item };
 
 /**
- * Builds the column of each card's actions: the pencil that opens the item to edit and the trash that deletes it; a
- * brand's card has none, since the item's card edits and deletes the item with its brands.
+ * Builds the column of each card's actions: the pencil that opens the item to edit and the trash that deletes it.
  * @param onEdit Opens an item in the item form.
  * @param onDelete Asks to confirm deleting an item.
  * @param ui The tab's styles and ids.
@@ -124,50 +133,22 @@ function actionsColumn(
     key: 'actions',
     header: 'Ações',
     card: 'actions',
-    cell: ({ item, brand }) =>
-      !brand && (
-        <View style={styles.actions} testID={ids.actions}>
-          <View ref={isTestItem(item) ? tourTarget('tutorial-pencil') : undefined} collapsable={false}>
-            <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onPress={() => onEdit(item)} />
-          </View>
-          <View ref={isTestItem(item) ? tourTarget('tutorial-trash') : undefined} collapsable={false}>
-            <RowAction icon={trashIcon} label={`Excluir ${item.name}`} tone="danger" onPress={() => onDelete(item)} />
-          </View>
+    cell: ({ item }) => (
+      <View style={styles.actions} testID={ids.actions}>
+        <View ref={isTestItem(item) ? tourTarget('tutorial-pencil') : undefined} collapsable={false}>
+          <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onPress={() => onEdit(item)} />
         </View>
-      ),
+        <View ref={isTestItem(item) ? tourTarget('tutorial-trash') : undefined} collapsable={false}>
+          <RowAction icon={trashIcon} label={`Excluir ${item.name}`} tone="danger" onPress={() => onDelete(item)} />
+        </View>
+      </View>
+    ),
   };
 }
 
 /**
- * Builds the column of each card's chevron, at its left: on an item of several brands, in the accent, turned down
- * while its brands' cards are open.
- * @param opened The items opened into their brands' cards, by id.
- * @param accent The accent color.
- * @param ui The tab's styles and ids.
- * @returns The chevron column.
- */
-function chevronColumn(
-  opened: ReadonlySet<string>,
-  accent: string,
-  { styles, ids }: ReturnType<typeof useStyles>,
-): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
-  return {
-    key: 'expand',
-    header: 'Expandir',
-    card: 'lead',
-    cell: (row) =>
-      !row.brand &&
-      row.item.brands.length > 1 && (
-        <View style={[styles.chevron, opened.has(row.item.id) && styles.chevronOpen]} testID={ids.chevron}>
-          <Icon icon={chevronIcon} size={ICON_SIZES.label} color={accent} />
-        </View>
-      ),
-  };
-}
-
-/**
- * Builds the column of each card's name: an item's name, codes and details, with "N marcas" when it has several; or
- * a brand's part brand, code and details.
+ * Builds the column of each card's name: the item's name, its first code with its part brand or how many brands make
+ * it, and where it fits, where it is and its price, each on one line.
  * @param ui The tab's styles and ids.
  * @returns The name column.
  */
@@ -177,35 +158,22 @@ function nameColumn({ styles, ids }: ReturnType<typeof useStyles>): ComponentPro
     header: 'Item',
     sortable: true,
     card: 'main',
-    cell: (row) =>
-      row.brand ? (
-        <View>
-          <Text>{row.brand.partBrand}</Text>
-          <NumericReadout tone="muted">{row.brand.code}</NumericReadout>
-          <Text size="sm" tone="muted">
-            {itemDetails(rowItem(row))}
-          </Text>
-        </View>
-      ) : (
-        <View ref={isTestItem(row.item) ? tourTarget('tutorial-row') : undefined} collapsable={false}>
-          <Text>{row.item.name}</Text>
-          <NumericReadout tone="muted">{itemCodes(row.item)}</NumericReadout>
-          <Text size="sm" tone="muted">
-            {itemDetails(row.item)}
-          </Text>
-          {row.item.brands.length > 1 && (
-            <View style={styles.brands} testID={ids.brands}>
-              <NumericReadout tone="accent">{`${row.item.brands.length} marcas`}</NumericReadout>
-            </View>
-          )}
-        </View>
-      ),
+    cell: ({ item }) => (
+      <View ref={isTestItem(item) ? tourTarget('tutorial-row') : undefined} collapsable={false}>
+        <RNText numberOfLines={1} style={styles.name} testID={ids.name}>
+          {item.name}
+        </RNText>
+        <NumericReadout tone="muted">{itemCardCode(item)}</NumericReadout>
+        <Text size="sm" tone="muted" lines={1}>
+          {itemCardDetails(item)}
+        </Text>
+      </View>
+    ),
   };
 }
 
 /**
- * Builds the column of each card's thumbnail: the cover of the item's first brand, or of the card's brand, which
- * opens that brand's photos.
+ * Builds the column of each card's thumbnail: the cover of the item's first brand, which opens that brand's photos.
  * @param onOpen Opens the photos of an item's brand in the viewer.
  * @returns The photo column.
  */
@@ -214,13 +182,13 @@ function photoColumn(onOpen: (item: Item, brand: ItemBrand) => void): ComponentP
     key: 'photo',
     header: 'Foto',
     card: 'thumb',
-    cell: (row) => {
-      const [brand] = rowItem(row).brands;
+    cell: ({ item }) => {
+      const [brand] = item.brands;
       return (
         <TableThumbnail
           src={brand.photos[0] && photoAddress(brand.photos[0].thumbUrl, API_URL)}
-          label={row.brand ? `Ver fotos de ${row.item.name} ${brand.partBrand}` : `Ver fotos de ${row.item.name}`}
-          onOpen={() => onOpen(row.item, brand)}
+          label={`Ver fotos de ${item.name}`}
+          onOpen={() => onOpen(item, brand)}
         />
       );
     },
@@ -228,17 +196,8 @@ function photoColumn(onOpen: (item: Item, brand: ItemBrand) => void): ComponentP
 }
 
 /**
- * Reads a card as one item: the item itself, or for a brand's card an item of that brand alone, with its quantity.
- * @param row A card of the list.
- * @returns What the card's cells show.
- */
-function rowItem(row: InventoryRow): Item {
-  return row.brand ? { ...row.item, brands: [row.brand], quantity: row.brand.quantity } : row.item;
-}
-
-/**
  * Tells a card's status for the table's tint, from the item's quantity and minimum.
- * @param row A card of the list; a brand's card is never tinted (see DataTable's rowNested).
+ * @param row A card of the list.
  * @returns The tint and the label read out, or undefined when stock is fine.
  */
 function rowStatus({ item }: InventoryRow): { tone: 'warn' | 'danger'; label: string } | undefined {
@@ -313,14 +272,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const [removing, setRemoving] = useState<Item>();
   // The brand of an item whose photos the viewer shows, while it is open, with the photos on screen.
   const [viewer, setViewer] = useState<{ item: Item; brand: ItemBrand; photos: UploadPhoto[] }>();
-  // The items opened into their brands' cards, by id.
-  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   const items = state.status === 'ready' ? state.items : [];
   const shown = listed.status === 'ready' ? listed.items : [];
-  const rows = shown.flatMap((item): InventoryRow[] => [
-    { item },
-    ...(opened.has(item.id) && item.brands.length > 1 ? item.brands.map((brand) => ({ item, brand })) : []),
-  ]);
+  const rows = shown.map((item): InventoryRow => ({ item }));
   const failed = state.status === 'error' || listed.status === 'error';
   // The list's total as last loaded, so the pagination keeps its pages while the next page loads; none on an error.
   const [loadedTotal, setLoadedTotal] = useState(0);
@@ -371,34 +325,15 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     return true;
   };
 
-  /** Opens an item into its brands' cards, or closes it. */
-  const toggleBrands = (id: string) =>
-    setOpened((held) => {
-      const next = new Set(held);
-      if (!next.delete(id)) {
-        next.add(id);
-      }
-      return next;
-    });
-
   /** Opens the item form on a new item, an item to edit, or an item's details, maybe with values and photos filled in. */
   const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][], brand?: string) =>
     setForm((current) => ({ open: true, item, details, brand, initial, photos, session: current.session + 1 }));
 
   /**
-   * Opens a card: an item of several brands into its brands' cards, or closes it; an item of one brand into its
-   * details; a brand's card into the item's details, scrolled to that brand.
+   * Opens a card into the item's details.
    * @param row The card tapped.
    */
-  const openRow = ({ item, brand }: InventoryRow) => {
-    if (brand) {
-      openForm(item, true, undefined, undefined, brand.id);
-    } else if (item.brands.length > 1) {
-      toggleBrands(item.id);
-    } else {
-      openForm(item, true);
-    }
-  };
+  const openRow = ({ item }: InventoryRow) => openForm(item, true);
 
   /**
    * Opens a new item's form filled in as a copy of an item, in place of its details.
@@ -462,7 +397,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   }, [touring]);
 
   return (
-    <Panel style={styles.panel}>
+    <View style={styles.panel} testID={ids.panel}>
       <FieldScrollView style={styles.scroll} contentContainerStyle={styles.tab} keyboardShouldPersistTaps="handled" testID={ids.tab}>
         <View ref={tourTarget('search')} collapsable={false}>
           <SearchField
@@ -470,9 +405,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             value={search}
             onValueChange={(value) => narrow(() => setSearch(value))}
           />
-        </View>
-        <View ref={tourTarget('new-item')} collapsable={false}>
-          <Button onPress={() => openForm()}>Novo item</Button>
         </View>
         <Button variant="secondary" onPress={() => setManaging(true)}>
           Gerenciar listas
@@ -498,7 +430,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           </View>
           <FilterChipGroup
             label="Situação do estoque"
-            options={STATUS_OPTIONS}
+            options={statusOptions(items)}
             value={status}
             onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
           />
@@ -527,17 +459,14 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
               <DataTable
                 label="Itens do estoque"
                 columns={[
-                  chevronColumn(opened, colors.accent, ui),
                   photoColumn((item, brand) => setViewer({ item, brand, photos: heldPhotos(brand.photos, API_URL) })),
                   nameColumn(ui),
                   ...COLUMNS,
                   actionsColumn((item) => openForm(item), setRemoving, ui),
                 ]}
                 rows={rows}
-                rowKey={(row) => (row.brand ? `${row.item.id}:${row.brand.id}` : row.item.id)}
+                rowKey={(row) => row.item.id}
                 rowStatus={rowStatus}
-                rowNested={(row) => row.brand !== undefined}
-                rowExpanded={(row) => (!row.brand && row.item.brands.length > 1 ? opened.has(row.item.id) : undefined)}
                 onRowOpen={openRow}
                 sort={sort}
                 onSortChange={(next) => narrow(() => setSort(next))}
@@ -561,16 +490,27 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             </>
           )}
         </View>
+        <Pagination
+          label="Páginas do estoque"
+          page={page}
+          pageSize={pageSize}
+          total={failed ? 0 : loadedTotal}
+          pageSizes={PAGE_SIZES}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </FieldScrollView>
-      <Pagination
-        label="Páginas do estoque"
-        page={page}
-        pageSize={pageSize}
-        total={failed ? 0 : loadedTotal}
-        pageSizes={PAGE_SIZES}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
-      />
+      <View ref={tourTarget('new-item')} collapsable={false} style={styles.fab} testID={ids.fab}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Novo item"
+          onPress={() => openForm()}
+          style={({ pressed }) => [styles.fabButton, pressed && styles.fabButtonPressed]}
+          testID={ids.fabButton}
+        >
+          <Icon icon={plusIcon} size={ICON_SIZES.fab} color={colors.onAccent} />
+        </Pressable>
+      </View>
       <ItemFormDialog
         key={`form-${form.session}`}
         open={form.open}
@@ -701,7 +641,24 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           reload();
         }}
       />
-    </Panel>
+    </View>
+  );
+}
+
+/** A card's quantity, with its stock status under it in its tone: "un.", "Baixo" or "Esgotado". */
+function Quantity({ item }: { item: Item }) {
+  const { styles, ids } = useStyles();
+  const status = stockStatus(item.quantity, item.minQuantity);
+  const tone = status === 'out' ? styles.quantityOut : status === 'low' ? styles.quantityLow : undefined;
+  return (
+    <View style={styles.quantity} testID={ids.quantity}>
+      <RNText style={[styles.quantityValue, tone]} testID={ids.quantityValue}>
+        {item.quantity}
+      </RNText>
+      <RNText style={[styles.quantityTag, tone]} testID={ids.quantityTag}>
+        {status ? STOCK_STATUS_SHORT[status] : QUANTITY_UNIT}
+      </RNText>
+    </View>
   );
 }
 
