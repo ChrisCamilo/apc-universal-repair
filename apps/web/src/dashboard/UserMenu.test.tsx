@@ -158,7 +158,7 @@ test('Web: Sobre esta versão opens the version in use and its notes', async () 
 })
 
 // At 360×780, checks the user menu is Conta, with the user's initials, and opens as a bottom sheet holding the same
-// items as a menu: the user, dark mode on at night, the theme. Picking "Sobre esta versão" closes the sheet, as it
+// items as a menu: the user, dark mode on at night, the theme, but no "Itens por página". Picking "Sobre esta versão" closes the sheet, as it
 // closes the menu, and opens the version.
 test('Web: on a phone the user menu opens from Conta as a bottom sheet', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
@@ -173,6 +173,8 @@ test('Web: on a phone the user menu opens from Conta as a bottom sheet', async (
   await expect.element(menu.getByText('Christian Camilo')).toBeVisible()
   await expect.element(menu.getByRole('menuitemcheckbox', { name: 'Modo escuro' })).toHaveAttribute('aria-checked', 'true')
   await expect.element(menu.getByRole('menuitemradio', { name: 'Anos 80' })).toHaveAttribute('aria-checked', 'true')
+  // The Inventory loads more as it scrolls on a phone, with no pages to size.
+  await expect.element(menu.getByRole('radiogroup', { name: 'Itens por página' })).not.toBeInTheDocument()
   await expect.element(conta).toHaveAttribute('aria-expanded', 'true')
   await menu.getByRole('menuitem', { name: 'Sobre esta versão' }).click()
   await expect.element(sheet).not.toBeInTheDocument()
