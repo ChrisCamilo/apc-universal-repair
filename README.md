@@ -31,6 +31,14 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
 - 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes; by day each one is tinted in its own hue (sand, steel blue, warm grey-red and sage), with no white panels
 
+**Mobile Redesign (in progress)**
+
+- 📱 A phone layout, on the web and in the native app, with the tabs in a bottom bar, followed by Alertas and Conta ✅
+- 🔑 Login and sign-up laid out for phones ✅
+- 🃏 The Inventory as a list of cards that loads more as it scrolls ✅
+- 🧾 Filters, sorting and the other actions in bottom sheets, dialogs opening full screen, and buttons, fields and chips sized for touch ✅
+- 🚧 Still to lay out for phones: an item's details and form as full screens, the lists, CSV and About dialogs, the Inventory tutorial and the Catalog tab
+
 **Phase 2 (in progress)**
 
 - 📚 Vehicle catalog organized by brand, model, generation, version, year and engine, on sample data ✅
@@ -53,7 +61,11 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🖥️ Windows desktop app, which turns the server on by itself when it isn't running ✅
 - 🔄 The desktop app updating itself from GitHub Releases ✅
 - 🔁 The server at home following the desktop app's version ✅
-- 📱 Android release build
+- 📱 Android release build, signed with the upload key, built by CI ✅
+- 🔐 Sessions checked on every call, login and sign-up attempts limited, and the SQLite file encrypted at rest ✅
+- 🔗 The phone paired with the server at home over HTTPS, by QR code, and each new device authorized on the server's computer
+- 📲 The phone app saying when a new version is out
+- 🏷️ A new stock starting with the usual categories and part brands
 
 **Later**
 
@@ -264,6 +276,14 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
 - 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro; de dia cada um é tingido no seu próprio tom (areia, azul-aço, cinza-avermelhado e sálvia), sem painéis brancos
 
+**Redesign para celular (em andamento)**
+
+- 📱 Um layout de celular, na web e no app nativo, com as abas numa barra inferior, seguidas de Alertas e Conta ✅
+- 🔑 Login e cadastro diagramados para o celular ✅
+- 🃏 O Estoque como uma lista de cards que carrega mais itens ao rolar ✅
+- 🧾 Filtros, ordenação e as outras ações em bottom sheets, diálogos abrindo em tela cheia, e botões, campos e chips do tamanho do toque ✅
+- 🚧 Ainda falta diagramar para o celular: os detalhes e o formulário de um item em tela cheia, os diálogos das listas, do CSV e do Sobre, o tutorial do Estoque e a aba Catálogo
+
 **Fase 2 (em andamento)**
 
 - 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor, com dados de exemplo ✅
@@ -286,7 +306,11 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🖥️ App desktop para Windows, que liga o servidor sozinho quando ele não está rodando ✅
 - 🔄 O app desktop se atualizando sozinho pelas GitHub Releases ✅
 - 🔁 O servidor em casa acompanhando a versão do app desktop ✅
-- 📱 Build de release para Android
+- 📱 Build de release para Android, assinado com a chave de upload, gerado pelo CI ✅
+- 🔐 Sessões conferidas em toda chamada, tentativas de login e cadastro limitadas, e o arquivo SQLite criptografado em disco ✅
+- 🔗 O celular pareado com o servidor de casa por HTTPS, com um QR code, e cada aparelho novo autorizado no computador do servidor
+- 📲 O app do celular avisando quando sai uma versão nova
+- 🏷️ Um estoque novo começando com as categorias e marcas de peça de costume
 
 **Depois**
 
