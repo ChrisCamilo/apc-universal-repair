@@ -5,6 +5,27 @@ import { dialog, pagination } from "./common.ts";
 // lists, the filters, the import and the delete confirmation).
 
 /**
+ * One of the Inventory's other actions: a button of the desktop's toolbar, or on a phone a row of the sheet the
+ * header's "⋯" opens. Its click opens the sheet first when the "⋯" is there.
+ * @param page The test's page.
+ * @param name The action, e.g. "Importar CSV".
+ * @returns The action, to click.
+ */
+function otherAction(page: Page, name: string) {
+  const button = page.getByRole("button", { name, exact: true });
+  const more = page.getByRole("button", { name: "Mais ações" });
+  return {
+    async click() {
+      await button.or(more).first().waitFor();
+      if (await more.isVisible()) {
+        await more.click();
+      }
+      await button.click();
+    },
+  };
+}
+
+/**
  * The Inventory tab: its panel, toolbar, search, filters, counter, list states and pagination, and an item's row
  * buttons by the item's name.
  * @param page The test's page.
@@ -34,9 +55,13 @@ export function inventory(page: Page) {
     outOfStock: page.getByRole("button", { name: /^Esgotado( · \d+)?$/ }),
     // A phone's card: the stock status under its quantity ("un.", "Baixo", "Esgotado").
     status: (row: Locator) => row.getByTestId("inventory.inventory-tab.quantity.tag"),
-    manageLists: page.getByRole("button", { name: "Gerenciar listas" }),
-    importCsv: page.getByRole("button", { name: "Importar CSV" }),
-    exportCsv: page.getByRole("button", { name: "Exportar CSV" }),
+    // The toolbar's, or on a phone the "⋯" sheet's, which opens first.
+    manageLists: otherAction(page, "Gerenciar listas"),
+    importCsv: otherAction(page, "Importar CSV"),
+    exportCsv: otherAction(page, "Exportar CSV"),
+    // A phone's "⋯" in the header and the sheet it opens.
+    more: page.getByRole("button", { name: "Mais ações" }),
+    moreSheet: dialog(page, "Mais ações").root,
     count: page.getByTestId("inventory.inventory-tab.filters.count"),
     loadingRows: page.getByTestId("inventory.inventory-tab.loading.row"),
     loading: page.getByRole("status", { name: "Carregando o estoque" }),
