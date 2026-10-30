@@ -63,7 +63,14 @@ export function BottomSheet({ open, onClose, onBack, title, action, footer, chil
   return (
     <Modal visible={motion.shown} transparent animationType="none" onRequestClose={onBack ?? onClose}>
       <Animated.View style={[styles.backdrop, motion.fade]} testID={ids.backdrop}>
-        <Pressable accessibilityLabel="Fechar" onPress={onClose} style={styles.outside} testID={ids.outside} />
+        {/* Out of a screen reader's reach, which closes the sheet with the back gesture: it starts on the sheet itself. */}
+        <Pressable
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onPress={onClose}
+          style={styles.outside}
+          testID={ids.outside}
+        />
         <Animated.View accessibilityViewIsModal accessibilityLabel={title} style={[styles.window, sheetBox(screen), motion.moved]} testID={ids.window}>
           <View {...handle.panHandlers} style={styles.handle} testID={ids.handle}>
             <View style={styles.bar} testID={ids.bar} />
