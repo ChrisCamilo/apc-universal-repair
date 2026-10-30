@@ -1,7 +1,7 @@
 import type { TutorialTarget } from '@apc/shared/inventory-tutorial'
 
 // Where each part of the Inventory tab the tutorial points at is on the page: the marked buttons and fields
-// (data-tour), the Filtros menu, and the test item's row and its buttons.
+// (data-tour), the Filtros menu (a phone's filter sheet), and the test item's row and its buttons.
 
 /**
  * Finds a part of the Inventory tab on the page, for the tutorial to point at.
@@ -20,9 +20,9 @@ export function tutorialTarget(name: TutorialTarget, code: string, itemName?: st
     case 'search':
       return document.querySelector('[data-tour="search"]')?.parentElement ?? null
     case 'filters':
-      return document.querySelector('button[aria-haspopup="dialog"][aria-controls]')
+      return document.querySelector('[data-tour="filters"], button[aria-haspopup="dialog"][aria-controls]')
     case 'filter-panel':
-      return document.querySelector('[role="dialog"][aria-label="Filtros do estoque"]')
+      return document.querySelector('[role="dialog"][aria-label="Filtros do estoque"], [data-tour="filter-panel"]')
     case 'form-identity':
       return field('form-code')
     case 'form-name':

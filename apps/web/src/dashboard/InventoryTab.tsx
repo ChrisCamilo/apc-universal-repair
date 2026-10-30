@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { apiFetch } from '@apc/shared/auth'
-import { chevronIcon, ICON_SIZES, pencilIcon, plusIcon, trashIcon } from '@apc/shared/icons'
+import { chevronIcon, filterIcon, ICON_SIZES, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/shared/icons'
 import {
   brandsValue,
   formatPriceRange,
@@ -25,11 +25,18 @@ import {
   type ItemStatus,
 } from '@apc/shared/items'
 import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
-import { EMPTY_ITEM_FILTERS, followEntryChange, itemFilterRows, itemListQuery } from '@apc/shared/item-filters'
+import {
+  EMPTY_ITEM_FILTERS,
+  followEntryChange,
+  ITEM_SORT_OPTIONS,
+  itemFilterRows,
+  itemListQuery,
+  matchingCount,
+} from '@apc/shared/item-filters'
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form'
 import { TUTORIAL_CODE, type TutorialScreen } from '@apc/shared/inventory-tutorial'
 import { PAGE_SIZES, pageForSize, SCROLL_PAGE_SIZE } from '@apc/shared/pagination'
-import type { Sort } from '@apc/shared/table'
+import { sortValue, type Sort } from '@apc/shared/table'
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos'
 import { API_BASE } from '../api.ts'
 import { useSession } from '../auth/sessionContext.ts'
@@ -39,6 +46,7 @@ import { EmptyState, ErrorState } from '../components/EmptyState.tsx'
 import { FilterChipGroup } from '../components/FilterChip.tsx'
 import { Icon } from '../components/Icon.tsx'
 import { ClearFilters, FilterMenu } from '../components/FilterMenu.tsx'
+import { FilterSheet, SortSheet } from '../components/FilterSheet.tsx'
 import type { UploadPhoto } from '../components/ImageUpload.tsx'
 import { ImageViewer } from '../components/ImageViewer.tsx'
 import { Pagination } from '../components/Pagination.tsx'
@@ -46,6 +54,7 @@ import { Panel } from '../components/Panel.tsx'
 import { Skeleton } from '../components/Skeleton.tsx'
 import { Spinner } from '../components/Spinner.tsx'
 import { SearchField } from '../components/TextField.tsx'
+import { ToolButton } from '../components/ToolButton.tsx'
 import { usePhone } from '../components/usePhone.ts'
 import { DeleteItemDialog } from '../inventory/DeleteItemDialog.tsx'
 import { ExportItemsDialog } from '../inventory/ExportItemsDialog.tsx'
@@ -99,9 +108,11 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // ("Baixo · 5"), and "Novo item" is a round "+" at the bottom right, above the bottom bar. In place of the pagination
 // and "Itens por página", the list loads its next SCROLL_PAGE_SIZE items once it scrolls within a screen of its end,
 // skeleton cards showing while they come, and says "Fim da lista" once every item is in; a search, a filter or a sort
-// starts it over, and a save or a delete loads what it shows again, so it stays where it was. Gerenciar listas, Importar
-// CSV and Exportar CSV, the Filtros menu, the Ordenar select and each card's pencil and trash stay until their phone
-// forms come (#358, #359, #360).
+// starts it over, and a save or a delete loads what it shows again, so it stays where it was. Two round buttons take the
+// place of the Filtros menu and the "Ordenar" select: Filtros opens "Filtrar e ordenar" in a bottom sheet (the filters
+// and the sort, applied together on "Ver n itens", which counts the items they would show), and Ordenar the sorts
+// alone, each in the accent while a filter or a sort is on. Gerenciar listas, Importar CSV and Exportar CSV and each
+// card's pencil and trash stay until their phone forms come (#359, #360).
 
 // The table's cells, styled once: the recipe has no variants they change.
 const CELLS = inventoryTab()
@@ -215,6 +226,8 @@ export function InventoryTab() {
     setPage(pageForSize(page, pageSize, defaultSize))
   }
   const narrowed = search.trim() !== '' || itemListQuery(filters, status) !== ''
+  const filterCount = activeFilterCount(filters)
+  const sortLabel = ITEM_SORT_OPTIONS.find((option) => option.value === sortValue(sort))?.label
   const phone = usePhone()
   // On a phone, how many pages the list shows, loading the next as it scrolls to its end.
   const [pages, setPages] = useState(1)
@@ -252,8 +265,9 @@ export function InventoryTab() {
   // The form as typed, and whether it shows the details, which the tutorial's steps read.
   const [typed, setTyped] = useState<{ values: ItemForm; viewing: boolean }>()
   const followForm = useCallback((values: ItemForm, viewing: boolean) => setTyped({ values, viewing }), [])
-  // Whether the Filtros menu is open.
+  // Whether the Filtros menu (a phone's filter sheet) is open, and a phone's sort sheet.
   const [filtering, setFiltering] = useState(false)
+  const [sorting, setSorting] = useState(false)
   const tutorial = useInventoryTutorial()
   // Whether the tutorial runs, and the items on screen when it, or a save or delete of the user, last sent a change:
   // until the list loads again, the change is still on its way, and the tutorial doesn't take it as left undone.
@@ -471,15 +485,35 @@ export function InventoryTab() {
           </div>
         </div>
         <div className={classes.filters()} data-testid={ids.filters}>
-          <FilterMenu
-            label="Filtros do estoque"
-            title="Filtrar estoque"
-            rows={(draft) => itemFilterRows(items, draft)}
-            values={filters}
-            onApply={(values) => narrow(() => setFilters(values))}
-            open={filtering}
-            onOpenChange={setFiltering}
-          />
+          {phone ? (
+            <>
+              <ToolButton
+                icon={filterIcon}
+                label={filterCount ? `Filtros, ${filterCount} ${filterCount === 1 ? 'ativo' : 'ativos'}` : 'Filtros'}
+                active={filterCount > 0}
+                aria-expanded={filtering}
+                data-tour="filters"
+                onClick={() => setFiltering(true)}
+              />
+              <ToolButton
+                icon={sortIcon}
+                label={sort ? `Ordenar, ${sortLabel}` : 'Ordenar'}
+                active={sort !== null}
+                aria-expanded={sorting}
+                onClick={() => setSorting(true)}
+              />
+            </>
+          ) : (
+            <FilterMenu
+              label="Filtros do estoque"
+              title="Filtrar estoque"
+              rows={(draft) => itemFilterRows(items, draft)}
+              values={filters}
+              onApply={(values) => narrow(() => setFilters(values))}
+              open={filtering}
+              onOpenChange={setFiltering}
+            />
+          )}
           <FilterChipGroup
             label="Situação do estoque"
             options={phone ? phoneStatusOptions(state.status === 'ready' ? state.items : []) : STATUS_OPTIONS}
@@ -487,7 +521,7 @@ export function InventoryTab() {
             onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
           />
           <ClearFilters
-            active={activeFilterCount(filters) > 0 || status !== null}
+            active={filterCount > 0 || status !== null}
             onClear={() =>
               narrow(() => {
                 setFilters(EMPTY_ITEM_FILTERS)
@@ -598,6 +632,7 @@ export function InventoryTab() {
               sort={sort}
               onSortChange={(next) => narrow(() => setSort(next))}
               unsortedLabel="Ordem de cadastro"
+              sortSelect={!phone}
               empty={
                 narrowed ? (
                   <EmptyState
@@ -642,6 +677,33 @@ export function InventoryTab() {
         >
           <Icon icon={plusIcon} size={ICON_SIZES.fab} />
         </button>
+      )}
+      {phone && (
+        <>
+          <FilterSheet
+            open={filtering}
+            onClose={() => setFiltering(false)}
+            rows={(draft) => itemFilterRows(items, draft)}
+            values={filters}
+            sort={sort}
+            sortOptions={ITEM_SORT_OPTIONS}
+            count={(draft) => matchingCount(items, draft, status, search)}
+            onApply={(values, next) => {
+              setFiltering(false)
+              narrow(() => {
+                setFilters(values)
+                setSort(next)
+              })
+            }}
+          />
+          <SortSheet
+            open={sorting}
+            onClose={() => setSorting(false)}
+            sort={sort}
+            options={ITEM_SORT_OPTIONS}
+            onSortChange={(next) => narrow(() => setSort(next))}
+          />
+        </>
       )}
       <ItemFormDialog
         key={`form-${form.session}`}
