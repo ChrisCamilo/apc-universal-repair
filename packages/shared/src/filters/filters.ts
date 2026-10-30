@@ -31,6 +31,26 @@ export function clearedFilters(values: FilterValues): FilterValues {
 }
 
 /**
+ * Drops from each list row of a filter menu or sheet the values it no longer offers, once the rest of the choice
+ * changed what it lists, e.g. the vehicle models of brands no longer chosen; chip rows offer the same values always.
+ * @param draft Values chosen so far.
+ * @param rows The rows for those values: a list of options under a filter key, or groups of chips.
+ * @returns The values each row still offers.
+ */
+export function offeredValues(
+  draft: FilterValues,
+  rows: readonly ({ key: string; options: readonly { value: string }[] } | { groups: readonly unknown[] })[],
+): FilterValues {
+  const kept = { ...draft };
+  for (const row of rows) {
+    if (!("groups" in row) && kept[row.key]) {
+      kept[row.key] = kept[row.key].filter((value) => row.options.some((option) => option.value === value));
+    }
+  }
+  return kept;
+}
+
+/**
  * Summarizes a multiple choice in one short line: the first choice plus how many more.
  * @param labels Labels of the chosen options, in list order.
  * @param allLabel Label shown when nothing is chosen, e.g. "Todas".

@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { activeFilterCount, clearedFilters, selectionSummary, toggleExclusive, toggleValue } from "./filters.ts";
+import { activeFilterCount, clearedFilters, offeredValues, selectionSummary, toggleExclusive, toggleValue } from "./filters.ts";
+
+// Keeps of each list row only the values it still offers, leaving the chip rows and the keys no row lists alone.
+test("Shared: a choice keeps only what its rows still offer", () => {
+  const rows = [
+    { key: "model", options: [{ value: "Uno" }] },
+    { groups: [{ key: "pos" }] },
+  ];
+  assert.deepEqual(offeredValues({ model: ["Opala", "Uno"], pos: ["D"], brand: ["Fiat"] }, rows), {
+    model: ["Uno"],
+    pos: ["D"],
+    brand: ["Fiat"],
+  });
+});
 
 // Counts only the filters with a value chosen, and clearing turns every filter off but keeps the keys.
 test("Shared: filters count only when on and clear to empty", () => {
