@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { apiFetch } from '@apc/shared/auth'
-import { chevronIcon, filterIcon, ICON_SIZES, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/shared/icons'
+import {
+  chevronIcon,
+  exportIcon,
+  filterIcon,
+  ICON_SIZES,
+  importIcon,
+  listIcon,
+  pencilIcon,
+  playIcon,
+  plusIcon,
+  sortIcon,
+  trashIcon,
+} from '@apc/shared/icons'
 import {
   brandsValue,
   formatPriceRange,
@@ -40,6 +52,7 @@ import { sortValue, type Sort } from '@apc/shared/table'
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos'
 import { API_BASE } from '../api.ts'
 import { useSession } from '../auth/sessionContext.ts'
+import { ActionSheet } from '../components/ActionSheet.tsx'
 import { Button } from '../components/Button.tsx'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/DataTable.tsx'
 import { EmptyState, ErrorState } from '../components/EmptyState.tsx'
@@ -69,6 +82,7 @@ import { useLowStockAlerts } from '../notifications/useLowStockAlerts.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
 import { inventoryTab, LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB } from './InventoryTab.styles.ts'
 import { InventoryTutorial } from './InventoryTutorial.tsx'
+import { useMoreActions } from './moreActionsContext.ts'
 import { usePageSize } from './pageSizeContext.ts'
 import { tutorialTarget } from './tutorialTarget.ts'
 
@@ -111,8 +125,9 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // starts it over, and a save or a delete loads what it shows again, so it stays where it was. Two round buttons take the
 // place of the Filtros menu and the "Ordenar" select: Filtros opens "Filtrar e ordenar" in a bottom sheet (the filters
 // and the sort, applied together on "Ver n itens", which counts the items they would show), and Ordenar the sorts
-// alone, each in the accent while a filter or a sort is on. Gerenciar listas, Importar CSV and Exportar CSV and each
-// card's pencil and trash stay until their phone forms come (#359, #360).
+// alone, each in the accent while a filter or a sort is on. Gerenciar listas, Importar CSV, Exportar CSV and Tutorial
+// do estoque leave the toolbar for the header's "⋯", which opens them in a bottom sheet (the Mais ações mockup). Each
+// card's pencil and trash stay until the full-screen details come (#360).
 
 // The table's cells, styled once: the recipe has no variants they change.
 const CELLS = inventoryTab()
@@ -244,6 +259,9 @@ export function InventoryTab() {
   const { lists, create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists()
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false)
+  // Whether a phone's sheet of the other actions, which the header's "⋯" opens, is open.
+  const [moreOpen, setMoreOpen] = useState(false)
+  const handMore = useMoreActions()
   // Whether "Importar CSV" is open; each opening starts with no file.
   const [importer, setImporter] = useState({ open: false, session: 0 })
   // Whether "Exportar CSV" is open; each opening starts without the photo paths.
@@ -334,6 +352,12 @@ export function InventoryTab() {
     return true
   }
 
+  /** Opens "Importar CSV", with no file. */
+  const openImporter = () => setImporter((current) => ({ open: true, session: current.session + 1 }))
+
+  /** Opens "Exportar CSV", without the photo paths. */
+  const openExporter = () => setExporter((current) => ({ open: true, session: current.session + 1 }))
+
   /** Opens an item into its brands' rows, or closes it. */
   const toggleBrands = (id: string) =>
     setOpened((held) => {
@@ -406,6 +430,15 @@ export function InventoryTab() {
     })
   }
 
+  // On a phone, the header's "⋯" opens the other actions; it goes with the tab.
+  useEffect(() => {
+    if (!phone) {
+      return
+    }
+    handMore(() => setMoreOpen(true))
+    return () => handMore(null)
+  }, [phone, handMore])
+
   // Run the tutorial by itself the first time, once the items are in, and again when the user menu asks.
   if (!touring && ((!tutorial.seen && state.status === 'ready') || tutorial.replayAsked)) {
     setTouring(true)
@@ -467,22 +500,22 @@ export function InventoryTab() {
               onValueChange={(value) => narrow(() => setSearch(value))}
             />
           </div>
-          <div className={classes.buttons()} data-testid={ids.buttons}>
-            <Button variant="secondary" onClick={() => setManaging(true)}>
-              Gerenciar listas
-            </Button>
-            <Button variant="secondary" onClick={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
-              Importar CSV
-            </Button>
-            <Button variant="secondary" onClick={() => setExporter((current) => ({ open: true, session: current.session + 1 }))}>
-              Exportar CSV
-            </Button>
-            {!phone && (
+          {!phone && (
+            <div className={classes.buttons()} data-testid={ids.buttons}>
+              <Button variant="secondary" onClick={() => setManaging(true)}>
+                Gerenciar listas
+              </Button>
+              <Button variant="secondary" onClick={openImporter}>
+                Importar CSV
+              </Button>
+              <Button variant="secondary" onClick={openExporter}>
+                Exportar CSV
+              </Button>
               <Button data-tour="new-item" onClick={() => openForm()}>
                 Novo item
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         <div className={classes.filters()} data-testid={ids.filters}>
           {phone ? (
@@ -702,6 +735,17 @@ export function InventoryTab() {
             sort={sort}
             options={ITEM_SORT_OPTIONS}
             onSortChange={(next) => narrow(() => setSort(next))}
+          />
+          <ActionSheet
+            open={moreOpen}
+            onClose={() => setMoreOpen(false)}
+            title="Mais ações"
+            actions={[
+              { icon: listIcon, label: 'Gerenciar listas', onSelect: () => setManaging(true) },
+              { icon: importIcon, label: 'Importar CSV', onSelect: openImporter },
+              { icon: exportIcon, label: 'Exportar CSV', onSelect: openExporter },
+              { icon: playIcon, label: 'Tutorial do estoque', onSelect: tutorial.replay },
+            ]}
           />
         </>
       )}

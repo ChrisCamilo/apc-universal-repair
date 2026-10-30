@@ -4,7 +4,8 @@ import { barItemStyles } from '../styles/shared';
 import { fontFamily, softHairline } from '../theme';
 
 // The look of the Dashboard, the same as the web's on a phone (the Estoque mockup): the page on the canvas; on top, the
-// open tab's header, with the compact APC mark and the tab's name; the tab's content under it, filling the screen down
+// open tab's header, with the compact APC mark, the tab's name and the tab's "⋯", a bare 44px circle that fills in while
+// pressed; the tab's content under it, filling the screen down
 // to the bottom bar; and the bar on the panel's fill over a soft hairline, 80px tall, with the tabs, then Alertas and
 // Conta, each an equal share (see barItemStyles). Alertas shows the unread count in a badge on its pill's corner; Conta
 // shows the user's initials on the accent in its pill.
@@ -20,10 +21,10 @@ const INITIALS_SIZE = scales.space.s1 * 6.5;
 /** The badge's and the initials' text, in px (11px on the web). */
 const BADGE_TEXT_SIZE = 11;
 
-/** The Dashboard: the page, the header with the mark and the tab's name, the content and the bottom bar. */
+/** The Dashboard: the page, the header with the mark, the tab's name and its "⋯", the content and the bottom bar. */
 export const useStyles = createStyles(
   'dashboard.dashboard',
-  { page: '', header: 'header', mark: 'header.brand', title: 'header.title', content: 'main' },
+  { page: '', header: 'header', mark: 'header.brand', title: 'header.title', more: 'header.more', content: 'main' },
   (theme) => ({
     content: { flex: 1, paddingHorizontal: scales.space.s4, paddingTop: scales.space.s1 },
     header: {
@@ -37,6 +38,8 @@ export const useStyles = createStyles(
       paddingRight: scales.space.s2,
     },
     mark: {},
+    more: { width: scales.touch.icon, height: scales.touch.icon, alignItems: 'center', justifyContent: 'center', borderRadius: scales.radiusPill },
+    morePressed: { backgroundColor: theme.colors.panelRaised },
     page: { flex: 1, backgroundColor: theme.colors.canvas },
     title: {
       flex: 1,

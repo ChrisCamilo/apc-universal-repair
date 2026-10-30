@@ -81,12 +81,15 @@ for (const style of STYLES) {
   }
 }
 
-// Opens a sheet and checks it is labelled by its title for screen readers and stops SHEET_TOP_INSET below the top of
-// the screen, with the footer padded above the home indicator.
-test('Mobile: a bottom sheet is named by its title, stops below the top and keeps clear of the home indicator', async () => {
+// Opens a sheet and checks it is labelled by its title for screen readers, which skip its backdrop, and stops
+// SHEET_TOP_INSET below the top of the screen, with the footer padded above the home indicator.
+test('Mobile: a bottom sheet is named by its title, hides its backdrop from screen readers, stops below the top and keeps clear of the home indicator', async () => {
   const tree = await mount(<Sheet open />);
   const sheet = tree.root.findAll((node) => node.props.testID === 'common.bottom-sheet' && typeof node.type === 'string')[0];
   expect(sheet.props).toMatchObject({ accessibilityViewIsModal: true, accessibilityLabel: 'Mais ações' });
+  // The backdrop is out of a screen reader's reach, so it starts on the sheet.
+  const outside = tree.root.find((node) => node.props.testID === 'common.bottom-sheet.outside' && typeof node.type === 'string');
+  expect(outside.props).toMatchObject({ accessibilityElementsHidden: true, importantForAccessibility: 'no-hide-descendants' });
   expect(styleOf(tree, 'common.bottom-sheet').maxHeight).toBe(Dimensions.get('window').height - SHEET_TOP_INSET);
   expect(styleOf(tree, 'common.bottom-sheet.footer').paddingBottom).toBe(scales.space.s4 + HOME_INDICATOR);
 });

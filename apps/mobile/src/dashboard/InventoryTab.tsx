@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
 import { Pressable, Text as RNText, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
-import { filterIcon, ICON_SIZES, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/shared/icons';
+import {
+  exportIcon,
+  filterIcon,
+  ICON_SIZES,
+  importIcon,
+  listIcon,
+  pencilIcon,
+  playIcon,
+  plusIcon,
+  sortIcon,
+  trashIcon,
+} from '@apc/shared/icons';
 import {
   itemCardCode,
   itemCardDetails,
@@ -30,8 +41,8 @@ import { isTestItem, TUTORIAL_CODE } from '@apc/shared/inventory-tutorial';
 import { SCROLL_PAGE_SIZE } from '@apc/shared/pagination';
 import { sortValue, type Sort } from '@apc/shared/table';
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos';
+import { ActionSheet } from '../ActionSheet';
 import { API_URL } from '../api';
-import { Button } from '../Button';
 import { DataTable, RowAction, TableThumbnail } from '../DataTable';
 import { EmptyState, ErrorState } from '../EmptyState';
 import { FieldScrollView } from '../FieldScrollView';
@@ -61,6 +72,7 @@ import { NumericReadout, Text } from '../Typography';
 import { useInventoryTutorial } from './inventoryTutorialContext';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './InventoryTutorial';
+import { useMoreActions } from './moreActionsContext';
 
 // The Inventory tab, the same as the web's on a phone (the Estoque mockup): on the canvas, with no panel around it, a
 // search by name or part code, the filters, the stock status chips with how many items each finds ("Baixo · 5"), a
@@ -87,7 +99,9 @@ import { InventoryTutorial } from './InventoryTutorial';
 // them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and
 // opens its photos in the ImageViewer (a brand's card, that brand's photos), where each photo removed, changed or added is saved at once and the list
 // follows. The Inventory tutorial runs over the tab by itself the first time, and again from the user menu: it starts
-// and ends with the test item deleted and the search, filters and sort off.
+// and ends with the test item deleted and the search, filters and sort off. Gerenciar listas, Importar CSV, Exportar CSV
+// and Tutorial do estoque sit in a bottom sheet the header's "⋯" opens (the Mais ações mockup), as the web does on a
+// phone.
 
 // The column after the item's name: its quantity, at the card's end.
 const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
@@ -223,6 +237,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const { lists, create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists();
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false);
+  // Whether the sheet of the other actions, which the header's "⋯" opens, is open.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const handMore = useMoreActions();
   // Whether "Importar CSV" is open; each opening starts with no file.
   const [importer, setImporter] = useState({ open: false, session: 0 });
   // Whether "Exportar CSV" is open; each opening starts without the photo paths.
@@ -369,6 +386,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     });
   };
 
+  // The header's "⋯" opens the other actions; it goes with the tab.
+  useEffect(() => {
+    handMore(() => setMoreOpen(true));
+    return () => handMore(null);
+  }, [handMore]);
+
   // Run the tutorial by itself the first time, once the items are in, and again when the user menu asks.
   if (!touring && ((tutorial.seen === false && state.status === 'ready') || tutorial.replayAsked)) {
     setTouring(true);
@@ -403,15 +426,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             onValueChange={(value) => narrow(() => setSearch(value))}
           />
         </View>
-        <Button variant="secondary" onPress={() => setManaging(true)}>
-          Gerenciar listas
-        </Button>
-        <Button variant="secondary" onPress={() => setImporter((current) => ({ open: true, session: current.session + 1 }))}>
-          Importar CSV
-        </Button>
-        <Button variant="secondary" onPress={() => setExporter((current) => ({ open: true, session: current.session + 1 }))}>
-          Exportar CSV
-        </Button>
         <View style={styles.filters} testID={ids.filters}>
           <View ref={tourTarget('filters')} collapsable={false}>
             <ToolButton
@@ -530,6 +544,17 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         sort={sort}
         options={ITEM_SORT_OPTIONS}
         onSortChange={(next) => narrow(() => setSort(next))}
+      />
+      <ActionSheet
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        title="Mais ações"
+        actions={[
+          { icon: listIcon, label: 'Gerenciar listas', onSelect: () => setManaging(true) },
+          { icon: importIcon, label: 'Importar CSV', onSelect: () => setImporter((current) => ({ open: true, session: current.session + 1 })) },
+          { icon: exportIcon, label: 'Exportar CSV', onSelect: () => setExporter((current) => ({ open: true, session: current.session + 1 })) },
+          { icon: playIcon, label: 'Tutorial do estoque', onSelect: tutorial.replay },
+        ]}
       />
       <ItemFormDialog
         key={`form-${form.session}`}

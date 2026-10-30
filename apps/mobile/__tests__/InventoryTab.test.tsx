@@ -20,6 +20,7 @@ import { itemListsOf } from '@apc/shared/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
+import { MoreActionsContext } from '../src/dashboard/moreActionsContext';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 
@@ -415,6 +416,44 @@ test('Mobile: the tab scrolls as a whole, with no pagination', async () => {
   const empty = await mount([]);
   expect(texts(empty)).toContain('Nenhum item cadastrado');
   expect(texts(empty)).not.toContain('Fim da lista');
+});
+
+// Checks the tab has no Gerenciar listas, Importar CSV or Exportar CSV of its own, and hands the header a "⋯" that opens
+// them, with Tutorial do estoque, in the "Mais ações" sheet; Exportar CSV closes the sheet and opens its dialog. The
+// "⋯" goes when the tab does.
+test('Mobile: the other actions open from the "⋯" the tab hands the header', async () => {
+  const handMore = jest.fn();
+  answerItems(ITEMS);
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>
+          <Preferences>
+            <MoreActionsContext.Provider value={handMore}>
+              <InventoryTab />
+            </MoreActionsContext.Provider>
+          </Preferences>
+        </ThemeProvider>
+      </SafeAreaProvider>,
+    );
+  });
+  mounted.push(tree!);
+  const visible = () => tree!.root.findAllByType(Modal).filter((modal) => modal.props.visible);
+  expect(visible()).toHaveLength(0);
+  expect(texts(tree!)).not.toContain('Gerenciar listas');
+  const open = handMore.mock.calls.at(-1)[0];
+  await ReactTestRenderer.act(async () => open());
+  expect(texts(tree!)).toEqual(expect.arrayContaining(['Mais ações', 'Gerenciar listas', 'Importar CSV', 'Exportar CSV', 'Tutorial do estoque']));
+  const exporter = tree!.root.findAll(
+    (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Exportar CSV').length > 0,
+  )[0];
+  await ReactTestRenderer.act(async () => exporter.props.onPress());
+  expect(visible().some((modal) => modal.findAll((n) => n.props.accessibilityLabel === 'Exportar CSV').length > 0)).toBe(true);
+  expect(visible().some((modal) => modal.findAll((n) => n.props.testID === 'common.action-sheet.action').length > 0)).toBe(false);
+  await ReactTestRenderer.act(async () => tree!.unmount());
+  mounted.splice(mounted.indexOf(tree!), 1);
+  expect(handMore).toHaveBeenLastCalledWith(null);
 });
 
 // Checks "Novo item" is a round 56px "+" at the bottom right of the tab, in the accent, over the scrolling column,

@@ -43,6 +43,8 @@ export const eyeIcon: IconShape[] = [
   { kind: "path", d: "M1.5 8S4 3.6 8 3.6 14.5 8 14.5 8 12 12.4 8 12.4 1.5 8 1.5 8z" },
   { kind: "circle", cx: 8, cy: 8, r: 2.1 },
 ];
+// An arrow up out of a tray: something sent out, such as a CSV file exported.
+export const exportIcon: IconShape[] = [{ kind: "path", d: "M8 10V2M4.7 5.3L8 2l3.3 3.3M2.7 11.3v2h10.6v-2" }];
 export const filterIcon: IconShape[] = [{ kind: "path", d: "M2 3h12l-4.6 5.4v4.4l-2.8 1.4V8.4L2 3z" }];
 // A gear: the settings.
 export const gearIcon: IconShape[] = [
@@ -61,6 +63,8 @@ export const imageIcon: IconShape[] = [
   { kind: "circle", cx: 5.8, cy: 6.4, r: 1.2 },
   { kind: "path", d: "M2.5 11.6l3.6-3.4 2.6 2.4 2-1.8 2.8 2.6" },
 ];
+// An arrow down into a tray: something brought in, such as a CSV file imported.
+export const importIcon: IconShape[] = [{ kind: "path", d: "M8 2v8M4.7 6.7L8 10l3.3-3.3M2.7 11.3v2h10.6v-2" }];
 /** The sizes icons are drawn at, in px, by what the icon does; `body` is the size when none is given. */
 export const ICON_SIZES = {
   /** A mark inside a small control: a thumbnail's remove ×, a checkbox's check. */
@@ -79,9 +83,9 @@ export const ICON_SIZES = {
   prominent: 18,
   /** The picture of a list row's empty thumbnail, and the icon of a phone's bottom bar entry or round toolbar button. */
   thumbnail: 20,
-  /** The picture of an upload area. */
+  /** The picture of an upload area, and the icon of a row in a phone's sheet of actions. */
   dropZone: 22,
-  /** The icon of a round floating button, such as the Inventory's "+" on a phone. */
+  /** The icon of a round floating button, such as the Inventory's "+" on a phone, and of a phone header's "⋯". */
   fab: 24,
   /** The picture of an empty image frame. */
   frame: 28,
@@ -99,6 +103,8 @@ export const infoIcon: IconShape[] = [
   { kind: "circle", cx: 8, cy: 8, r: 6.2 },
   { kind: "path", d: "M8 7.4v3.6M8 5.1v.1" },
 ];
+// Three lines, each with a dot: lists, such as the item lists Gerenciar listas edits.
+export const listIcon: IconShape[] = [{ kind: "path", d: "M6 4h7.3M6 8h7.3M6 12h7.3M2.7 4h.3M2.7 8h.3M2.7 12h.3" }];
 export const lockIcon: IconShape[] = [
   { kind: "rect", x: 3, y: 7, width: 10, height: 7, rx: 1.6 },
   { kind: "path", d: "M5.4 7V5.2a2.6 2.6 0 015.2 0V7" },
@@ -113,6 +119,8 @@ export const mechanicIcon: IconShape[] = [
   { kind: "path", d: "M13 4.8c.6 1 1.3 2.2 1.6 3.5M14.6 8.3l-.9 4.5M14.6 8.3l.9 4.5M13.4 6l-1.6 1.6-1 1.6M10.4 8.6l.8.5" },
 ];
 export const minusIcon: IconShape[] = [{ kind: "path", d: "M3.5 8h9" }];
+// Three dots, one over the other: more actions, such as the Inventory's "⋯" on a phone.
+export const moreIcon: IconShape[] = [3.5, 8, 12.5].map((cy) => ({ kind: "circle" as const, cx: 8, cy, r: 0.7 }));
 export const pencilIcon: IconShape[] = [{ kind: "path", d: "M10.6 2.8l2.6 2.6-7.7 7.7-3.2.6.6-3.2 7.7-7.7z" }];
 // A triangle pointing right inside a ring: something that starts, such as a guided tour.
 export const playIcon: IconShape[] = [
@@ -145,14 +153,18 @@ export const ICONS = {
   cube: cubeIcon,
   document: documentIcon,
   eye: eyeIcon,
+  export: exportIcon,
   filter: filterIcon,
   gear: gearIcon,
   grip: gripIcon,
   image: imageIcon,
+  import: importIcon,
   info: infoIcon,
+  list: listIcon,
   lock: lockIcon,
   mechanic: mechanicIcon,
   minus: minusIcon,
+  more: moreIcon,
   pencil: pencilIcon,
   play: playIcon,
   plus: plusIcon,

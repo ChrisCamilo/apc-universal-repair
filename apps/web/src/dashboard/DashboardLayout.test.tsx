@@ -2,6 +2,7 @@ import { initials } from '@apc/shared/auth'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens'
 import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs'
 import { TEST_USERS } from '@apc/shared/test-users'
+import { useEffect, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -11,6 +12,7 @@ import '../index.css'
 import { themeCss } from '../theme.ts'
 import { DashboardLayout } from './DashboardLayout.tsx'
 import { BOTTOM_BAR_HEIGHT } from './DashboardLayout.styles.ts'
+import { useMoreActions } from './moreActionsContext.ts'
 import { useTabReorder } from './tabReorderContext.ts'
 
 // The first test user, as the session keeps them.
@@ -134,6 +136,31 @@ test('Web: on a phone the tabs move to a bar at the bottom of the screen', async
   expect(tabOrder()).toEqual(['Estoque', 'Catálogo', 'Ficha técnica'])
 })
 
+// At 360×780, opens the Inventory, whose route hands the header a "⋯", and checks it sits at the right of the tab's
+// name, 44px round, and opens what the tab handed over; on the Catalog, which hands nothing over, there is no "⋯". On
+// the desktop there is none either.
+test('Web: on a phone the open tab may put a "⋯" in its header', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(<Dashboard />)
+  const header = screen.getByTestId('dashboard.phone.header')
+  const more = header.getByRole('button', { name: 'Mais ações' })
+  await expect.element(more).toBeVisible()
+  const box = more.element().getBoundingClientRect()
+  expect([box.width, box.height]).toEqual([MIN_TOUCH_TARGET, MIN_TOUCH_TARGET])
+  expect(box.left).toBeGreaterThan(screen.getByRole('heading', { level: 1, name: 'Estoque' }).element().getBoundingClientRect().right - 1)
+  await more.click()
+  await expect.element(screen.getByText('Ações abertas: 1')).toBeVisible()
+
+  await screen.getByRole('tab', { name: 'Catálogo' }).click()
+  await expect.element(screen.getByText('Rota: /catalog')).toBeVisible()
+  await expect.element(more).not.toBeInTheDocument()
+
+  await screen.getByRole('tab', { name: 'Estoque' }).click()
+  await expect.element(more).toBeVisible()
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+  await expect.element(screen.getByRole('button', { name: 'Mais ações' })).not.toBeInTheDocument()
+})
+
 function Dashboard() {
   // A logged user who has seen the Inventory tutorial.
   const session = { user: { ...SESSION_USER, inventoryTutorialSeen: true }, expired: false, setUser: () => {}, markInventoryTutorialSeen: () => {} }
@@ -142,7 +169,8 @@ function Dashboard() {
       <MemoryRouter initialEntries={['/inventory']}>
         <Routes>
           <Route path="/" element={<DashboardLayout userMenu={<ReorderSwitch />} />}>
-            {['inventory', 'catalog', 'specs'].map((id) => (
+            <Route path="inventory" element={<WithMore />} />
+            {['catalog', 'specs'].map((id) => (
               <Route key={id} path={id} element={<Where />} />
             ))}
           </Route>
@@ -163,4 +191,20 @@ function ReorderSwitch() {
 
 function Where() {
   return <p>Rota: {useLocation().pathname}</p>
+}
+
+/** The Inventory's stand-in: it hands the header a "⋯" while it is open, and counts how often it was pressed. */
+function WithMore() {
+  const handMore = useMoreActions()
+  const [opened, setOpened] = useState(0)
+  useEffect(() => {
+    handMore(() => setOpened((count) => count + 1))
+    return () => handMore(null)
+  }, [handMore])
+  return (
+    <>
+      <Where />
+      <p>Ações abertas: {opened}</p>
+    </>
+  )
 }

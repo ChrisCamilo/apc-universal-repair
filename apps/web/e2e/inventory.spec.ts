@@ -811,6 +811,32 @@ test("Web: the item form and Manage lists close on the ×", { tag: [TEST_TAGS.in
   expect(sent).toEqual([]);
 });
 
+// On a phone, checks the toolbar has no Gerenciar listas, Importar CSV or Exportar CSV, and the header's "⋯" opens
+// them, with Tutorial do estoque, in a "Mais ações" sheet, a 56px row each; Escape closes it, and the tutorial's row
+// closes it and starts the tutorial over the tab. (Each action's own test opens it from the sheet.)
+test("Web: on a phone the other actions open from the header's ⋯", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  await openInventory(page);
+  const inv = inventory(page);
+  for (const name of ["Gerenciar listas", "Importar CSV", "Exportar CSV"]) {
+    await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
+  }
+  await inv.more.click();
+  const actions = inv.moreSheet.getByRole("button");
+  await expect(actions).toHaveText(["Gerenciar listas", "Importar CSV", "Exportar CSV", "Tutorial do estoque"]);
+  for (const height of await actions.evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height))) {
+    expect(height).toBe(56);
+  }
+  await page.keyboard.press("Escape");
+  await expect(inv.moreSheet).toBeHidden();
+
+  await inv.more.click();
+  await inv.moreSheet.getByRole("button", { name: "Tutorial do estoque" }).click();
+  await expect(inv.moreSheet).toBeHidden();
+  await expect(tour(page).step("Abra o cadastro")).toBeVisible();
+  await tour(page).skip.click();
+  await expect(tour(page).card).toBeHidden();
+});
+
 // Works with an item's photos against an API that keeps what it is sent: the row shows the cover's thumbnail, which
 // opens the photos large; "Adicionar foto" sends the kept photo and the new file, in order, and the viewer and the
 // list follow; removing the cover sends what is left. Then a photo added in the edit form is sent after the item.
