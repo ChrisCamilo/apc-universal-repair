@@ -10,7 +10,6 @@ import { CatalogTab } from './CatalogTab';
 import { MARK_SIZE, useBarStyles, useStyles } from './Dashboard.styles';
 import { InventoryTab } from './InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext';
-import { PageSizeContext, usePageSizeChoice } from './pageSizeContext';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 
 // The frame of the Dashboard, the same as the web's on a phone: the open tab's header, with the APC mark and the tab's
@@ -19,8 +18,7 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 // NotificationsMenu and UserMenu). The app reopens on the last tab used. While "Arrastar para reordenar" is on in the
 // user menu, the bar's tabs can be picked up with a long press (or moved with the screen reader's actions) into a new
 // order, which is saved and comes back, with tabs added later at its end;
-// the open tab stays open. The Dashboard also holds "Itens por página", which the user menu sets and the Inventory
-// tab follows, and the Inventory tutorial's state, which the Inventory tab runs (by
+// the open tab stays open. The Dashboard also holds the Inventory tutorial's state, which the Inventory tab runs (by
 // itself on the user's first login, whatever the device) and the user menu replays, on the Inventory tab. A tab still being built (`wip` in
 // DASHBOARD_TABS) opens behind a notice saying it isn't ready yet.
 
@@ -45,7 +43,6 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
   const bar = useBarStyles();
   const [tab, setTab] = useStoredTab(DASHBOARD_TAB_STORAGE_KEY, TAB_IDS);
   const reorder = useReorderChoice();
-  const pageSize = usePageSizeChoice();
   const tutorial = useInventoryTutorialChoice(tutorialSeen, onTutorialSeen);
   const [order, setOrder] = useState<string[] | null>(null);
 
@@ -68,48 +65,46 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
 
   return (
     <TabReorderContext.Provider value={reorder}>
-      <PageSizeContext.Provider value={pageSize}>
-        <InventoryTutorialContext.Provider
-          value={{
-            ...tutorial,
-            // A replay from the user menu happens on the Inventory tab.
-            replay: () => {
-              setTab('inventory');
-              tutorial.replay();
-            },
-          }}
-        >
-          <View style={styles.page} testID={ids.page}>
-            <View style={styles.header} testID={ids.header}>
-              {/* The heading names the screen, so screen readers skip the mark. */}
-              <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.mark} testID={ids.mark}>
-                <BrandMark variant="compact" size={MARK_SIZE} />
-              </View>
-              <Text accessibilityRole="header" numberOfLines={1} style={styles.title} testID={ids.title}>
-                {TABS[tab].label}
-              </Text>
+      <InventoryTutorialContext.Provider
+        value={{
+          ...tutorial,
+          // A replay from the user menu happens on the Inventory tab.
+          replay: () => {
+            setTab('inventory');
+            tutorial.replay();
+          },
+        }}
+      >
+        <View style={styles.page} testID={ids.page}>
+          <View style={styles.header} testID={ids.header}>
+            {/* The heading names the screen, so screen readers skip the mark. */}
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.mark} testID={ids.mark}>
+              <BrandMark variant="compact" size={MARK_SIZE} />
             </View>
-            <View style={styles.content} testID={ids.content}>
-              {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{screens[tab]}</WorkInProgress> : screens[tab]}
-            </View>
-            <View style={bar.styles.bar} testID={bar.ids.bar}>
-              <Tabs
-                label="Seções do Dashboard"
-                tabs={order.map((id) => TABS[id])}
-                selected={tab}
-                onSelect={setTab}
-                reorderable={reorder.reorderable}
-                onReorder={(next) => {
-                  setOrder(next);
-                  save(TAB_ORDER_STORAGE_KEY, JSON.stringify(next));
-                }}
-                variant="bar"
-              />
-              {userMenu}
-            </View>
+            <Text accessibilityRole="header" numberOfLines={1} style={styles.title} testID={ids.title}>
+              {TABS[tab].label}
+            </Text>
           </View>
-        </InventoryTutorialContext.Provider>
-      </PageSizeContext.Provider>
+          <View style={styles.content} testID={ids.content}>
+            {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{screens[tab]}</WorkInProgress> : screens[tab]}
+          </View>
+          <View style={bar.styles.bar} testID={bar.ids.bar}>
+            <Tabs
+              label="Seções do Dashboard"
+              tabs={order.map((id) => TABS[id])}
+              selected={tab}
+              onSelect={setTab}
+              reorderable={reorder.reorderable}
+              onReorder={(next) => {
+                setOrder(next);
+                save(TAB_ORDER_STORAGE_KEY, JSON.stringify(next));
+              }}
+              variant="bar"
+            />
+            {userMenu}
+          </View>
+        </View>
+      </InventoryTutorialContext.Provider>
     </TabReorderContext.Provider>
   );
 }
