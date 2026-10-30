@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { MIN_TOUCH_TARGET, MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
@@ -11,6 +11,7 @@ import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Dashboard } from '../src/dashboard/Dashboard';
 import { BOTTOM_BAR_HEIGHT } from '../src/dashboard/Dashboard.styles';
+import { InventoryTutorial } from '../src/dashboard/InventoryTutorial';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 // The Inventory tab holds bottom sheets, which pad their end for the screen's insets.
@@ -115,4 +116,50 @@ test('Mobile: the tabs sit in the bottom bar in their saved order, then the user
   expect(shows(tree, `A aba ${WIP_TAB!.label} ainda não está pronta`)).toBe(true);
   const content = tree.root.find((n) => n.props.testID === 'common.work-in-progress.content' && typeof n.type === 'string');
   expect(content.props.pointerEvents).toBe('none');
+});
+
+// Opens the Inventory and checks its "⋯" sits at the right of the tab's name, 44px round, and opens the "Mais ações"
+// sheet with the tab's other actions in order; Importar CSV closes it and opens its dialog, and Tutorial do estoque
+// starts the tutorial. The Catalog has no "⋯".
+test('Mobile: the Inventory puts its other actions in a sheet behind the header\'s "⋯"', async () => {
+  const tree = await mount('eighties', 'night', <Dashboard userMenu={<Text>christian.camilo</Text>} />);
+  const header = tree.root.find((n) => n.props.testID === 'dashboard.dashboard.header' && typeof n.type === 'string');
+  const more = () => header.findAll((n) => n.props.accessibilityLabel === 'Mais ações' && typeof n.props.onPress === 'function');
+  expect(more()).toHaveLength(1);
+  const round = header.find((n) => n.props.testID === 'dashboard.dashboard.header.more' && typeof n.type === 'string');
+  expect(StyleSheet.flatten(round.props.style)).toMatchObject({ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET });
+  expect(header.props.children.at(-1).props.accessibilityLabel).toBe('Mais ações');
+  const visible = () => tree.root.findAllByType(Modal).filter((modal) => modal.props.visible);
+  const press = async (label: string) => {
+    const node = tree.root.findAll(
+      (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === label).length > 0,
+    )[0];
+    await ReactTestRenderer.act(async () => node.props.onPress());
+  };
+
+  await ReactTestRenderer.act(async () => more()[0].props.onPress());
+  const sheet = visible()[0];
+  expect(sheet.findAll((n) => n.props.testID === 'common.action-sheet.action.label' && typeof n.type === 'string').map((n) => n.props.children)).toEqual([
+    'Gerenciar listas',
+    'Importar CSV',
+    'Exportar CSV',
+    'Tutorial do estoque',
+  ]);
+  await press('Importar CSV');
+  expect(visible().some((modal) => modal.findAll((n) => n.props.accessibilityLabel === 'Importar CSV').length > 0)).toBe(true);
+  expect(sheet.props.visible).toBe(false);
+
+  await ReactTestRenderer.act(async () => visible()[0].props.onRequestClose());
+  await ReactTestRenderer.act(async () => more()[0].props.onPress());
+  await press('Tutorial do estoque');
+  expect(tree.root.findByType(InventoryTutorial).props.open).toBe(true);
+  // The tutorial's timers stop with it.
+  await ReactTestRenderer.act(async () => tree.unmount());
+});
+
+// Opens the Catalog, which hands the header nothing, and checks it has no "⋯".
+test('Mobile: a tab with no other actions has no "⋯"', async () => {
+  await themeStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, 'catalog');
+  const tree = await mount('eighties', 'night', <Dashboard userMenu={<Text>christian.camilo</Text>} />);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Mais ações')).toHaveLength(0);
 });
