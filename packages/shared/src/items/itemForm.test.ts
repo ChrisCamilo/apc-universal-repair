@@ -4,6 +4,7 @@ import {
   addCodes,
   BRAND_FIELD_LABELS,
   brandDetailTexts,
+  brandPlaceText,
   codesInput,
   codeTakenError,
   codeTakenMessage,
@@ -25,6 +26,7 @@ import {
   originalCodeMessages,
   originalCodesText,
   parsePrice,
+  positionSideText,
   priceInput,
   priceMask,
   priceText,
@@ -455,6 +457,17 @@ test("Shared: an item's details are written out field by field", () => {
   const plain = brandDetailTexts(FILTER.brands[0]);
   assert.equal(plain.color, "Não se aplica");
   assert.equal(plain.location, "Não informado");
+});
+
+// Words the position and side on one line and where a brand is kept, as a phone's details show them: both, one alone,
+// or neither; the location with the color, without a color that doesn't apply, and with no location.
+test("Shared: a phone's details write the position, the side and a brand's place in short", () => {
+  assert.equal(positionSideText({ position: "D", side: "LE" }), "Dianteiro · Lado esquerdo");
+  assert.equal(positionSideText({ position: "N/A", side: "Ambos" }), "Os dois lados");
+  assert.equal(positionSideText({ position: "N/A", side: "N/A" }), "Não se aplica");
+  assert.equal(brandPlaceText({ location: "E-1", color: "Preto" }), "Local E-1 · Preto");
+  assert.equal(brandPlaceText({ location: "E-1", color: "N/A" }), "Local E-1");
+  assert.equal(brandPlaceText({ location: null, color: "N/A" }), "Sem local");
 });
 
 // Reads and writes the form's fields flat, the item's, its first brand's and its first vehicle's, as the tutorial names
