@@ -9,6 +9,9 @@ import { fontFamily, softHairline } from './theme';
 // label. A list of options, opened from a row, has the ← and the row's name on top and its options as rows, the chosen
 // ones in the accent with a check. "Limpar" is an accent text button.
 
+/** A row's inset from the sheet's sides, in px (px-5 on the web). */
+const ROW_INSET = scales.space.s4 + scales.space.s1;
+
 /**
  * A filter sheet: Limpar, a row with its label and value, the strip after the sort, a segmented field with its label,
  * a list's header and title, and an option with its label.
@@ -63,7 +66,7 @@ export const useStyles = createStyles(
         alignItems: 'center',
         gap: scales.space.s3,
         minHeight: scales.touch.row,
-        paddingHorizontal: scales.space.s5,
+        paddingHorizontal: ROW_INSET,
       },
       optionFirst: { borderTopWidth: 0 },
       optionLabel: { ...body(scales.fontSize.base), flexGrow: 1, flexShrink: 1 },
@@ -75,14 +78,14 @@ export const useStyles = createStyles(
         alignItems: 'center',
         gap: scales.space.s3,
         minHeight: scales.touch.row,
-        paddingLeft: scales.space.s5,
+        paddingLeft: ROW_INSET,
         paddingRight: scales.space.s4,
       },
       rowLabel: { ...body(scales.fontSize.base, 500), flexGrow: 1, flexShrink: 1 },
       rowPressed: { backgroundColor: colors.panelRaised },
       rowValue: { ...body(15), maxWidth: '45%', color: colors.textMuted },
       rowValueChosen: { fontFamily: fontFamily(scales.bodyFont, 600), color: colors.accent },
-      segments: { gap: scales.space.s2, paddingHorizontal: scales.space.s5, paddingTop: scales.space.s3, paddingBottom: scales.space.s4 },
+      segments: { gap: scales.space.s2, paddingHorizontal: ROW_INSET, paddingTop: scales.space.s3, paddingBottom: scales.space.s4 },
       segmentsFirst: { ...hairline, paddingBottom: scales.space.s1 },
       segmentsLabel: { ...displayLabel(theme, 'xs'), color: colors.textMuted },
       strip: { height: scales.space.s2, backgroundColor: colors.canvas },
