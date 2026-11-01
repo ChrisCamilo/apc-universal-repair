@@ -142,7 +142,7 @@ test('Web: at phone width the card is pinned to the bottom', async () => {
 // Asks for reduced motion and checks the tour brings the target into view without the smooth scroll.
 test('Web: the tour respects prefers-reduced-motion', async () => {
   const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
-  vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+  vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true, addEventListener: () => {}, removeEventListener: () => {} } as unknown as MediaQueryList)
   await render(<Sample />)
   expect(scroll).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' })
 })

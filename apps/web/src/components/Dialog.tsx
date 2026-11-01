@@ -4,6 +4,7 @@ import { BackButton } from './BackButton.tsx'
 import { CloseButton } from './CloseButton.tsx'
 import { dialog as dialogRecipe, dialogBox } from './Dialog.styles.ts'
 import { Heading } from './Typography.tsx'
+import { usePhone } from './usePhone.ts'
 import { usePresence } from './usePresence.ts'
 
 // A modal window for forms and confirmations, built on the native <dialog> opened with showModal(): it sits
@@ -15,7 +16,8 @@ import { usePresence } from './usePresence.ts'
 // the same as the photo viewer's, which closes it like Escape; the focus still starts past it, on a control.
 // It grows and fades in, and back out, its content kept while it leaves and the window inert (see usePresence).
 // On a phone a form fills the screen, its title row pinned on top and its actions at the bottom, and slides up from the
-// bottom edge; a confirmation stays a centered box (see Dialog.styles.ts). A dialog whose content heads itself, such as
+// bottom edge, the focus starting on its title row's button so the keyboard doesn't cover the form as it opens; a
+// confirmation stays a centered box (see Dialog.styles.ts). A dialog whose content heads itself, such as
 // an item's details on a phone, may have a ← in place of the × and its title for screen readers only, and a control
 // at the right of its title row.
 
@@ -62,19 +64,22 @@ export function Dialog({
   const close = useRef<HTMLButtonElement>(null)
   const { classes, ids } = dialogRecipe({ fill: size === 'form', back: back !== undefined })
   const { present, leaving } = usePresence(open, dialog)
+  const phone = usePhone()
 
   // Open and close the native dialog as `open` changes.
   useEffect(() => {
     const element = dialog.current
     if (open && element && !element.open) {
       element.showModal()
-      // Start on the first control past the ×: the first field of a form, or Cancel in a confirmation.
+      // Start on the first control past the ×: the first field of a form, or Cancel in a confirmation; a form on a
+      // phone starts on its title row, the × or the ←, so no keyboard rises over it.
       const controls = [...element.querySelectorAll<HTMLElement>(CONTROLS)]
-      controls.find((control) => control !== close.current)?.focus()
+      const start = phone && size === 'form' ? controls[0] : controls.find((control) => control !== close.current)
+      start?.focus()
     } else if (!open && element?.open) {
       element.close()
     }
-  }, [open])
+  }, [open, phone, size])
 
   return (
     <dialog
