@@ -610,6 +610,71 @@ test('Web: the details open scrolled to the brand they were opened on', async ()
   expect(screen.getByRole('group', { name: 'Marca 1' }).element().getBoundingClientRect().top).toBeLessThan(body.top)
 })
 
+// At 360×780, opens an item's details and checks they follow the Detalhes mockup: the ← in place of the × and Fechar,
+// the red round Excluir at the top right, the title for screen readers only; "Sem fotos", the category over the name,
+// the stock and the minimum, the list of details and a card per brand; Duplicar and Editar sharing the bottom, each
+// with its icon. Excluir and Duplicar call the owner, Editar unlocks the fields, and the ← closes the details.
+test('Web: on a phone the details fill the screen, as in the Detalhes mockup', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  root.dataset.style = 'eighties'
+  root.dataset.mode = 'night'
+  const { colors } = themes.eighties.night
+  const onDelete = vi.fn()
+  const onDuplicate = vi.fn()
+  const both = {
+    ...FILTER,
+    quantity: 7,
+    minQuantity: 2,
+    position: 'D' as const,
+    originalCodes: ['5U0 698 151'],
+    brands: [FILTER.brands[0], { ...FILTER.brands[0], id: '00000000-0000-4000-8000-0000000000b2', partBrand: 'Mann', code: 'W-2', color: 'N/A', location: null }],
+  }
+  const screen = await render(<Sample item={both} details onDelete={onDelete} onDuplicate={onDuplicate} />)
+  const dialog = screen.getByRole('dialog', { name: 'Detalhes do item' })
+  const box = dialog.element().getBoundingClientRect()
+  expect([box.left, box.top, box.width, box.height]).toEqual([0, 0, MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT])
+  await expect.element(dialog.getByRole('button', { name: 'Fechar' })).not.toBeInTheDocument()
+  // The title names the dialog for screen readers only.
+  expect(dialog.getByRole('heading', { name: 'Detalhes do item' }).element().getBoundingClientRect().width).toBeLessThanOrEqual(1)
+  const remove = dialog.getByRole('button', { name: 'Excluir item' })
+  const look = getComputedStyle(remove.element())
+  expect([remove.element().getBoundingClientRect().width, look.backgroundColor]).toEqual([44, rgb(colors.danger)])
+  expect(remove.element().getBoundingClientRect().right).toBeGreaterThan(MIN_MOBILE_WIDTH - 20)
+
+  await expect.element(dialog.getByText('Sem fotos')).toBeVisible()
+  await expect.element(dialog.getByRole('heading', { name: 'Filtro de óleo' })).toBeVisible()
+  await expect.element(dialog.getByText('Motor', { exact: true })).toBeVisible()
+  const text = dialog.element().textContent ?? ''
+  expect(text).toMatch(/Em estoque\s*7\s*un\./)
+  expect(text).toMatch(/Mínimo\s*2\s*un\./)
+  expect(text).toMatch(/Posição · Lado\s*Dianteiro/)
+  expect(text).toMatch(/Códigos originais\s*5U0 698 151/)
+  expect(text).toContain('Marcas · 2')
+  expect(dialog.getByRole('group', { name: 'Bosch' }).element().textContent).toMatch(/W 712\/95.*Sem local · Preto$/)
+  expect(dialog.getByRole('group', { name: 'Mann' }).element().textContent).toMatch(/W-2.*Sem local$/)
+
+  const duplicate = dialog.getByRole('button', { name: 'Duplicar' })
+  const edit = dialog.getByRole('button', { name: 'Editar' })
+  const [left, right] = [duplicate, edit].map((button) => button.element().getBoundingClientRect())
+  expect(Math.abs(left.width - right.width)).toBeLessThanOrEqual(1)
+  expect(right.bottom).toBeLessThanOrEqual(MIN_MOBILE_HEIGHT)
+  expect([duplicate, edit].map((button) => button.element().querySelector('svg') !== null)).toEqual([true, true])
+
+  await remove.click()
+  expect(onDelete).toHaveBeenCalledWith(both)
+  await edit.click()
+  await expect.element(screen.getByRole('dialog', { name: 'Editar item' })).toBeVisible()
+  await expect.element(screen.getByLabelText('Nome')).toHaveFocus()
+})
+
+// At 360×780, closes an item's details with the ← at the top left.
+test('Web: on a phone the ← closes the details', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(<Sample item={FILTER} details />)
+  await screen.getByRole('button', { name: 'Voltar ao estoque' }).click()
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+})
+
 // Types an item's original codes as chips, one with Enter and two pasted at once, and checks they are sent with the
 // item in uppercase, in order.
 test('Web: original codes are typed as chips and sent with the item', async () => {
@@ -759,6 +824,7 @@ function Sample({
   initialForm,
   initialPhotos,
   onDuplicate,
+  onDelete,
 }: {
   item?: Item
   details?: boolean
@@ -767,6 +833,7 @@ function Sample({
   initialForm?: ItemForm
   initialPhotos?: UploadPhoto[][]
   onDuplicate?: (item: Item, withPhotos: boolean) => void
+  onDelete?: (item: Item) => void
   /** Called with each name to create; the name is created as asked unless it returns null. */
   onCreateEntry?: CreateListEntry
 }) {
@@ -798,6 +865,7 @@ function Sample({
         initialForm={initialForm}
         initialPhotos={initialPhotos}
         onDuplicate={onDuplicate}
+        onDelete={onDelete}
       />
     </ToastProvider>
   )
