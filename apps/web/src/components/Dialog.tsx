@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import type { DialogSize } from '@apc/shared/dialog'
+import { BackButton } from './BackButton.tsx'
 import { CloseButton } from './CloseButton.tsx'
 import { dialog as dialogRecipe, dialogBox } from './Dialog.styles.ts'
 import { Heading } from './Typography.tsx'
@@ -14,7 +15,9 @@ import { usePresence } from './usePresence.ts'
 // the same as the photo viewer's, which closes it like Escape; the focus still starts past it, on a control.
 // It grows and fades in, and back out, its content kept while it leaves and the window inert (see usePresence).
 // On a phone a form fills the screen, its title row pinned on top and its actions at the bottom, and slides up from the
-// bottom edge; a confirmation stays a centered box (see Dialog.styles.ts).
+// bottom edge; a confirmation stays a centered box (see Dialog.styles.ts). A dialog whose content heads itself, such as
+// an item's details on a phone, may have a ← in place of the × and its title for screen readers only, and a control
+// at the right of its title row.
 
 // The elements the focus can start on: the scrolling body is focusable too, but the focus belongs on a control.
 const CONTROLS = 'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
@@ -32,14 +35,32 @@ type DialogProps = {
   closable?: boolean
   /** Also closes on a click outside, for dialogs with nothing to lose, such as a notice; off for forms. */
   dismissible?: boolean
+  /**
+   * A ← at the left of the title row in place of the ×, named for where it goes, e.g. "Voltar ao estoque"; it closes
+   * the dialog like Escape. The title then names the dialog for screen readers only, its content heading it.
+   */
+  back?: string
+  /** A control at the right of the title row, e.g. an item's Excluir. */
+  headerAction?: ReactNode
   children: ReactNode
 }
 
-export function Dialog({ open, onClose, title, size = 'form', actions, closable = false, dismissible = false, children }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  size = 'form',
+  actions,
+  closable = false,
+  dismissible = false,
+  back,
+  headerAction,
+  children,
+}: DialogProps) {
   const titleId = useId()
   const dialog = useRef<HTMLDialogElement>(null)
   const close = useRef<HTMLButtonElement>(null)
-  const { classes, ids } = dialogRecipe({ fill: size === 'form' })
+  const { classes, ids } = dialogRecipe({ fill: size === 'form', back: back !== undefined })
   const { present, leaving } = usePresence(open, dialog)
 
   // Open and close the native dialog as `open` changes.
@@ -82,9 +103,11 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
         <div className={classes.layout()} data-testid={ids.layout}>
           <div className={classes.body()} data-testid={ids.body}>
             <div className={classes.header()} data-testid={ids.header}>
-              <Heading id={titleId} level={3}>
+              {back !== undefined && <BackButton label={back} onClick={onClose} />}
+              <Heading id={titleId} level={3} className={classes.title()}>
                 {title}
               </Heading>
+              {headerAction}
               {closable && <CloseButton ref={close} onClick={onClose} />}
             </div>
             {children}

@@ -2,6 +2,7 @@ import { useContext, type ComponentRef, type ReactNode, type RefObject } from 'r
 import { Animated, Modal, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import type { DialogSize } from '@apc/shared/dialog';
+import { BackButton } from './BackButton';
 import { CloseButton } from './CloseButton';
 import { fillEdges, useStyles, windowBox } from './Dialog.styles';
 import { FieldScrollView } from './FieldScrollView';
@@ -20,7 +21,9 @@ const NO_INSETS = { top: 0, bottom: 0 };
 // grows in. A `dismissible` dialog, one with nothing to lose such as a notice, also closes on a tap outside it, on the
 // backdrop. A `closable` dialog has the round ×, the same as the photo viewer's, which closes it like the back button.
 // The owner may hold the content's scroll (scrollRef), to open it further down. It fades in with its backdrop, and back
-// out, as on the web (see motion.ts).
+// out, as on the web (see motion.ts). A form whose content heads itself, such as an item's details, may have a ← in
+// place of the × and no title on screen, its title naming it for screen readers, and a control at the right of its
+// title row, as on the web.
 
 type DialogProps = {
   open: boolean;
@@ -37,10 +40,29 @@ type DialogProps = {
   dismissible?: boolean;
   /** The content's scroll, for the owner to move it, e.g. to a section. */
   scrollRef?: RefObject<ComponentRef<typeof ScrollView> | null>;
+  /**
+   * A ← at the left of the title row in place of the ×, named for where it goes, e.g. "Voltar ao estoque"; it closes
+   * the dialog like the back button. The title then names the dialog for screen readers only, its content heading it.
+   */
+  back?: string;
+  /** A control at the right of the title row, e.g. an item's Excluir. */
+  headerAction?: ReactNode;
   children: ReactNode;
 };
 
-export function Dialog({ open, onClose, title, size = 'form', actions, closable = false, dismissible = false, scrollRef, children }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  size = 'form',
+  actions,
+  closable = false,
+  dismissible = false,
+  scrollRef,
+  back,
+  headerAction,
+  children,
+}: DialogProps) {
   const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
   // The app's SafeAreaProvider gives the insets; a screen rendered without one, as in a test, has none.
@@ -49,10 +71,14 @@ export function Dialog({ open, onClose, title, size = 'form', actions, closable 
   const motion = useOverlayMotion(open, fill ? 'rise' : 'scale');
   const edges = fillEdges(insets);
   const header = (
-    <View style={[styles.header, fill && styles.headerFill, fill && edges.header]} testID={ids.header}>
-      <View style={styles.title} testID={ids.title}>
-        <Heading level={3}>{title}</Heading>
-      </View>
+    <View style={[styles.header, fill && styles.headerFill, back !== undefined && styles.headerBack, fill && edges.header]} testID={ids.header}>
+      {back !== undefined && <BackButton label={back} onPress={onClose} />}
+      {back === undefined && (
+        <View style={styles.title} testID={ids.title}>
+          <Heading level={3}>{title}</Heading>
+        </View>
+      )}
+      {headerAction}
       {closable && <CloseButton onPress={onClose} />}
     </View>
   );
