@@ -22,7 +22,10 @@ jest.mock('react-native-keychain', () => {
 global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ items: [], total: 0 }) }));
 
 // The photo library is a native screen; tests pick nothing unless they set their own result.
-jest.mock('react-native-image-picker', () => ({ launchImageLibrary: jest.fn(() => Promise.resolve({ didCancel: true })) }));
+jest.mock('react-native-image-picker', () => ({
+  launchCamera: jest.fn(() => Promise.resolve({ didCancel: true })),
+  launchImageLibrary: jest.fn(() => Promise.resolve({ didCancel: true })),
+}));
 
 // The phone's files are a native screen; picking is canceled unless a test answers it.
 jest.mock('@react-native-documents/picker', () => ({

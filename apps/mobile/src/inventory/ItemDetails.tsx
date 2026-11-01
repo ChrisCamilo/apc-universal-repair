@@ -7,7 +7,7 @@ import { Icon } from '../Icon';
 import { ImageUpload, type UploadPhoto } from '../ImageUpload';
 import { useTheme } from '../theme';
 import { useStyles } from './ItemDetails.styles';
-import { pickPhotos } from './photos';
+import { pickPhotos, takePhoto } from './photos';
 
 // An item's details, the same as the web on a phone (the Detalhes mockup), inside the item dialog that fills the
 // screen: the photos of every brand, or "Sem fotos"; the category as a chip over the item's name; the stock and the
@@ -41,6 +41,7 @@ export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemD
           onPhotosChange={() => {}}
           limit={ITEM_PHOTO_LIMIT * item.brands.length}
           onPick={pickPhotos}
+          onTake={takePhoto}
           readOnly
         />
       ) : (

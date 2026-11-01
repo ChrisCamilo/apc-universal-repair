@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { Image, Pressable, Text as NativeText, View } from 'react-native';
-import { closeIcon, ICON_SIZES, imageIcon } from '@apc/shared/icons';
-import { photoCount, takePhotos, type PhotoFile } from '@apc/shared/photos';
+import { cameraIcon, closeIcon, ICON_SIZES, imageIcon, type IconShape } from '@apc/shared/icons';
+import { takePhotos, type PhotoFile } from '@apc/shared/photos';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
 import { useStyles } from './ImageUpload.styles';
 import { useTheme } from './theme';
 import { Label, Text } from './Typography';
 
-// The photo field of the item form, the same as the web. Photos show as thumbnails, the first one marked as
-// the cover, each with an × to remove it. Under them, an area to tap opens the owner's photo picker, which
-// may return several photos at once, and says how many more fit; it disappears once the limit is reached.
-// Only JPG, PNG and WebP up to 3 MB are taken: photos that break the rule or go past the limit are left out,
-// and a message names each one and says why. Read-only, as in the item details, it only shows the photos, or says
-// there are none: no ×, no area to tap.
+// The photo field of the item form, the same as the web on a phone. Photos show as thumbnails, the first one marked
+// as the cover, each with an × to remove it. The label says how many fit, and under the photos Tirar foto opens the
+// owner's camera and Galeria the owner's photo picker, which may return several photos at once; both disappear once
+// the limit is reached. Only JPG, PNG and WebP up to 3 MB are taken: photos that break the rule or go past the limit
+// are left out, and a message names each one and says why. Read-only, as in the item details, it only shows the
+// photos, or says there are none: no ×, no buttons.
 
 export type PickedPhoto = PhotoFile & { url: string };
 /**
@@ -29,19 +29,24 @@ type ImageUploadProps = {
   limit: number;
   /** Opens the phone's photo picker and resolves with the photos chosen, none when the user cancels. */
   onPick: () => Promise<PickedPhoto[]>;
+  /** Opens the phone's camera and resolves with the photo taken, none when the user cancels. */
+  onTake: () => Promise<PickedPhoto[]>;
   /** Only shows the photos; nothing can be added or removed. */
   readOnly?: boolean;
 };
 
-export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, readOnly = false }: ImageUploadProps) {
+export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTake, readOnly = false }: ImageUploadProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   const [problems, setProblems] = useState<string[]>([]);
   const left = limit - photos.length;
 
-  /** Opens the picker, takes the photos that pass the rules and fit, and says which were left out and why. */
-  const pick = async () => {
-    const picked = await onPick();
+  /**
+   * Opens the picker or the camera, takes the photos that pass the rules and fit, and says which were left out and why.
+   * @param open Opens the picker or the camera.
+   */
+  const add = async (open: () => Promise<PickedPhoto[]>) => {
+    const picked = await open();
     if (picked.length === 0) {
       return;
     }
@@ -52,6 +57,30 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, read
     }
   };
 
+  /**
+   * A button that opens the camera or the picker.
+   * @param text What it says, its name too.
+   * @param icon Its icon.
+   * @param open Opens the camera or the picker.
+   */
+  const picker = (text: string, icon: IconShape[], open: () => Promise<PickedPhoto[]>) => (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => add(open)}
+      style={({ pressed }) => [styles.picker, pressed && styles.pickerPressed]}
+      testID={ids.picker}
+    >
+      {({ pressed }) => (
+        <>
+          <Icon icon={icon} size={ICON_SIZES.thumbnail} color={pressed ? colors.accent : colors.text} />
+          <NativeText style={[styles.pickerText, pressed && styles.pickerTextPressed]} testID={ids.pickerText}>
+            {text}
+          </NativeText>
+        </>
+      )}
+    </Pressable>
+  );
+
   /** Removes a photo and clears the message. */
   const remove = (index: number) => {
     setProblems([]);
@@ -60,7 +89,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, read
 
   return (
     <View accessibilityLabel={label} style={styles.field} testID={ids.field}>
-      <Label>{label}</Label>
+      <Label>{readOnly ? label : `${label} · até ${limit}`}</Label>
       <View style={styles.body} testID={ids.body}>
         {photos.length > 0 && (
           <View style={styles.photos} testID={ids.photos}>
@@ -98,19 +127,10 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, read
         )}
         {readOnly && photos.length === 0 && <Text tone="muted">Sem fotos</Text>}
         {!readOnly && left > 0 && (
-          <Pressable accessibilityRole="button" onPress={pick} style={({ pressed }) => [styles.drop, pressed && styles.dropPressed]} testID={ids.drop}>
-            <View style={styles.picture} testID={ids.picture}>
-              <Icon icon={imageIcon} size={ICON_SIZES.dropZone} color={colors.textMuted} />
-            </View>
-            <View style={styles.text} testID={ids.text}>
-              <Text size="sm">
-                {photos.length > 0 ? `Toque para escolher mais ${photoCount(left)}` : `Toque para escolher até ${photoCount(limit)}`}
-              </Text>
-              <Text size="sm" tone="muted">
-                JPG, PNG ou WebP, até 3 MB cada. A primeira vira a capa na lista.
-              </Text>
-            </View>
-          </Pressable>
+          <View style={styles.pickers} testID={ids.pickers}>
+            {picker('Tirar foto', cameraIcon, onTake)}
+            {picker('Galeria', imageIcon, onPick)}
+          </View>
         )}
         {problems.length > 0 && (
           <View accessibilityLiveRegion="polite" style={styles.problems} testID={ids.problems}>
