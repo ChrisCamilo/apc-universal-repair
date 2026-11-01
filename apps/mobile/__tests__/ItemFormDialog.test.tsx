@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { codeTakenMessage, duplicateForm, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE, type ItemForm } from '@apc/shared/item-form';
@@ -13,7 +13,7 @@ import { withEntry, type ItemLists } from '@apc/shared/lists';
 import { copiedPhotos, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/shared/photos';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
-import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
+import { STYLES, MODES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import type { UploadPhoto } from '../src/ImageUpload';
 import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
 import type { CreateListEntry } from '../src/inventory/useItemLists';
@@ -56,6 +56,30 @@ function answerSave(status = 201, body?: unknown) {
     const saved = body ?? savedOf(JSON.parse(String(init.body)));
     return { ok: status < 400, status, json: () => Promise.resolve(saved) };
   });
+}
+
+/**
+ * Adds a vehicle as a chip: presses "Adicionar veículo", types its brand and model, and presses Adicionar.
+ * @param tree Rendered tree.
+ * @param brand The vehicle's brand.
+ * @param model Its model; none for any model.
+ */
+async function addVehicle(tree: ReactTestRenderer.ReactTestRenderer, brand: string, model = '') {
+  await press(tree, 'Adicionar veículo');
+  await type(tree, 'Marca do veículo', brand);
+  if (model) {
+    await type(tree, 'Modelo do veículo', model);
+  }
+  await press(tree, 'Adicionar');
+}
+
+/**
+ * Reads the vehicles' chips.
+ * @param tree Rendered tree.
+ * @returns Each chip's text, e.g. ["Volkswagen Gol"].
+ */
+function chips(tree: ReactTestRenderer.ReactTestRenderer): string[] {
+  return tree.root.findAll((n) => n.props.testID === 'inventory.vehicles-field.chips.chip.text' && typeof n.type === 'string').map((n) => n.props.children);
 }
 
 /**
@@ -280,7 +304,7 @@ afterEach(async () => {
 test('Mobile: the required fields say what is missing and nothing is sent', async () => {
   const tree = await mount();
   (fetch as jest.Mock).mockClear();
-  await press(tree, 'Salvar');
+  await press(tree, 'Salvar item');
   const required = [
     ITEM_FORM_MESSAGES.code,
     ITEM_FORM_MESSAGES.name,
@@ -302,7 +326,7 @@ test('Mobile: the code turns uppercase and a code in use names its item', async 
   const tree = await mount();
   await type(tree, 'Código da peça', 'fra-1000');
   expect(value(tree, 'Código da peça')).toBe('FRA-1000');
-  await press(tree, 'Salvar');
+  await press(tree, 'Salvar item');
   expect(shows(tree, codeTakenMessage('Pastilha de freio'))).toBe(true);
 });
 
@@ -330,10 +354,11 @@ test('Mobile: a code in use is named while it is typed', async () => {
   expect(shows(editing, codeTakenMessage('Filtro de óleo'))).toBe(true);
 });
 
-// Checks the vehicle model is locked until a vehicle brand is chosen, and clears when the brand changes to one
-// without the chosen model.
+// Opens a new vehicle and checks its model is locked until a vehicle brand is chosen, and clears when the brand changes
+// to one without the chosen model.
 test('Mobile: the vehicle model follows the vehicle brand', async () => {
   const tree = await mount();
+  await press(tree, 'Adicionar veículo');
   expect(field(tree, 'Modelo do veículo').props.editable).toBe(false);
   await type(tree, 'Marca do veículo', 'Volkswagen');
   expect(field(tree, 'Modelo do veículo').props.editable).toBe(true);
@@ -354,6 +379,7 @@ test('Mobile: "+ Criar" creates the name in its list and picks it', async () => 
   expect(value(tree, 'Categoria')).toBe('Motor diesel');
   expect(shows(tree, 'Categoria “Motor diesel” criada.')).toBe(true);
 
+  await press(tree, 'Adicionar veículo');
   await type(tree, 'Marca do veículo', 'Volkswagen');
   await type(tree, 'Modelo do veículo', 'xR3');
   await press(tree, '+ Criar modelo “XR3”');
@@ -371,29 +397,33 @@ test("Mobile: a name that couldn't be created is reported and not saved", async 
   expect(shows(tree, 'Não foi possível criar a marca de peça. Tente de novo.')).toBe(true);
   expect(value(tree, 'Marca da peça')).toBe('Cofap');
   (fetch as jest.Mock).mockClear();
-  await press(tree, 'Salvar');
+  await press(tree, 'Salvar item');
   expect(shows(tree, ITEM_FORM_MESSAGES.partBrandNotListed)).toBe(true);
   expect(fetch).not.toHaveBeenCalled();
 });
 
-// Types a category, brands and a model the lists don't hold, without pressing "+ Criar", and checks saving shows each
-// field's error pointing to it and sends nothing; the model stays locked while its brand isn't one of the list.
+// Types a category, brands and a model the lists don't hold, without pressing "+ Criar", and checks a new vehicle's
+// brand and model are refused on Adicionar, before they join the chips, and saving shows each other field's error
+// pointing to it and sends nothing; the model stays locked while its brand isn't one of the list.
 test('Mobile: names not in their lists are refused on save', async () => {
   const tree = await mount();
   await type(tree, 'Categoria', 'Suspensão');
   await type(tree, 'Marca da peça', 'Cofap');
+  await press(tree, 'Adicionar veículo');
   await type(tree, 'Marca do veículo', 'Renault');
   expect(field(tree, 'Modelo do veículo').props.editable).toBe(false);
-  (fetch as jest.Mock).mockClear();
-  await press(tree, 'Salvar');
-  expect(shows(tree, ITEM_FORM_MESSAGES.categoryNotListed)).toBe(true);
-  expect(shows(tree, ITEM_FORM_MESSAGES.partBrandNotListed)).toBe(true);
+  await press(tree, 'Adicionar');
   expect(shows(tree, ITEM_FORM_MESSAGES.vehicleBrandNotListed)).toBe(true);
-
   await type(tree, 'Marca do veículo', 'Fiat');
   await type(tree, 'Modelo do veículo', 'Uno');
-  await press(tree, 'Salvar');
+  await press(tree, 'Adicionar');
   expect(shows(tree, ITEM_FORM_MESSAGES.vehicleModelNotListed)).toBe(true);
+  expect(chips(tree)).toEqual([]);
+
+  (fetch as jest.Mock).mockClear();
+  await press(tree, 'Salvar item');
+  expect(shows(tree, ITEM_FORM_MESSAGES.categoryNotListed)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES.partBrandNotListed)).toBe(true);
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -423,9 +453,9 @@ test('Mobile: a new item is posted, announced and handed over', async () => {
   await type(tree, 'Nome', 'vela');
   await type(tree, 'Categoria', 'ignição');
   await type(tree, 'Marca da peça', 'NGK');
-  await type(tree, 'Marca do veículo', 'chevrolet');
+  await addVehicle(tree, 'chevrolet');
   await type(tree, 'Valor unitário (R$)', '34,9');
-  await press(tree, 'Salvar');
+  await press(tree, 'Salvar item');
   const [url, init] = (fetch as jest.Mock).mock.calls[0];
   expect(url).toMatch(/\/items$/);
   expect(init.method).toBe('POST');
@@ -439,13 +469,14 @@ test('Mobile: a new item is posted, announced and handed over', async () => {
   expect(shows(tree, 'Item “Vela” cadastrado.')).toBe(true);
 });
 
-// Opens the form on an item and checks its fields are filled in, then changes the quantity and saves, and checks the
-// item is patched by its id and the toast says it was saved.
+// Opens the form on an item and checks it is titled with the item's name and its fields are filled in, its vehicle a
+// chip; then changes the quantity and saves, and checks the item is patched by its id and the toast says it was saved.
 test('Mobile: an item opens filled in and is patched on save', async () => {
   const tree = await mount(FILTER);
-  expect(shows(tree, 'Editar item')).toBe(true);
+  expect(shows(tree, 'Filtro de óleo')).toBe(true);
+  expect(shows(tree, 'Editar item')).toBe(false);
   expect(value(tree, 'Código da peça')).toBe('W 712/95');
-  expect(value(tree, 'Modelo do veículo')).toBe('Gol');
+  expect(chips(tree)).toEqual(['Volkswagen Gol']);
   expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 39,90');
   (fetch as jest.Mock).mockClear();
   answerSave(200, { ...FILTER, quantity: 7 });
@@ -543,15 +574,15 @@ test('Mobile: Excluir in the details asks to confirm and deletes the item', asyn
   expect(shows(tree, 'Excluir item?')).toBe(false);
 });
 
-// Opens the details, presses Editar and checks the fields unlock filled in, with Cancelar and Salvar alterações, then
-// changes the quantity and checks it is patched like an edit.
+// Opens the details, presses Editar and checks the fields unlock filled in, under the × and the item's name, with only
+// Salvar alterações at the bottom, then changes the quantity and checks it is patched like an edit.
 test('Mobile: Editar unlocks the details and saves like an edit', async () => {
   const onSaved = jest.fn();
   const tree = await mount(FILTER, { onSaved, details: true });
   await press(tree, 'Editar');
-  expect(shows(tree, 'Editar item')).toBe(true);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Fechar' && typeof n.props.onPress === 'function')).not.toHaveLength(0);
   expect(value(tree, 'Código da peça')).toBe('W 712/95');
-  expect(shows(tree, 'Cancelar')).toBe(true);
+  expect(shows(tree, 'Cancelar')).toBe(false);
   (fetch as jest.Mock).mockClear();
   answerSave(200, { ...FILTER, quantity: 7 });
   await type(tree, 'Quantidade', '7');
@@ -607,7 +638,7 @@ test("Mobile: a duplicated item opens without codes or stock and saves copies of
     })
     .mockImplementationOnce(async () => ({ ok: true, status: 200, json: () => Promise.resolve(savedOf(posted!, [SAVED_PHOTO])) }));
   await type(tree, 'Código da peça', 'w 712/96');
-  await press(tree, 'Salvar');
+  await press(tree, 'Salvar item');
   expect(posted!.brands.map((brand) => [brand.code, brand.quantity])).toEqual([['W 712/96', 0]]);
   const [, [, photosInit]] = (fetch as jest.Mock).mock.calls;
   expect(photosInit.body.getParts().map((part: { fieldName: string; string: string }) => [part.fieldName, part.string])).toEqual([
@@ -616,20 +647,21 @@ test("Mobile: a duplicated item opens without codes or stock and saves copies of
   expect(onSaved).toHaveBeenCalledTimes(1);
 });
 
-// Picks two photos for a new item and saves it, and checks the library is asked for photos reduced to the stored
-// size and quality, the item is posted first, then its brand's photos are sent to the brand in order as files from the
-// phone, and the item handed over carries the photos the API saved.
+// Takes a photo with the camera and picks one from the gallery for a new item and saves it, and checks the camera and
+// the gallery are asked for photos reduced to the stored size and quality, the camera's kept out of the phone's
+// gallery; the item is posted first, then its brand's photos are sent to the brand in order as files from the phone,
+// and the item handed over carries the photos the API saved.
 test('Mobile: a new item is saved with its photos', async () => {
   const onSaved = jest.fn();
   const tree = await mount(undefined, { onSaved });
-  (launchImageLibrary as jest.Mock).mockResolvedValueOnce({
-    assets: ['frente', 'lado'].map((name) => ({ uri: `file:///fotos/${name}.jpg`, fileName: `${name}.jpg`, type: 'image/jpeg', fileSize: 1024 })),
-  });
-  const drop = tree.root.find((n) => n.props.testID === 'common.image-upload.drop' && typeof n.props.onPress === 'function');
-  await ReactTestRenderer.act(async () => drop.props.onPress());
-  expect(launchImageLibrary).toHaveBeenLastCalledWith(
-    expect.objectContaining({ maxWidth: PHOTO_MAX_DIMENSION, maxHeight: PHOTO_MAX_DIMENSION, quality: PHOTO_QUALITY / 100 }),
-  );
+  const asset = (name: string) => ({ uri: `file:///fotos/${name}.jpg`, fileName: `${name}.jpg`, type: 'image/jpeg', fileSize: 1024 });
+  const reduced = { maxWidth: PHOTO_MAX_DIMENSION, maxHeight: PHOTO_MAX_DIMENSION, quality: PHOTO_QUALITY / 100 };
+  (launchCamera as jest.Mock).mockResolvedValueOnce({ assets: [asset('frente')] });
+  (launchImageLibrary as jest.Mock).mockResolvedValueOnce({ assets: [asset('lado')] });
+  await press(tree, 'Tirar foto');
+  expect(launchCamera).toHaveBeenLastCalledWith(expect.objectContaining({ ...reduced, saveToPhotos: false }));
+  await press(tree, 'Galeria');
+  expect(launchImageLibrary).toHaveBeenLastCalledWith(expect.objectContaining(reduced));
   expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual(['file:///fotos/frente.jpg', 'file:///fotos/lado.jpg']);
   (fetch as jest.Mock).mockClear();
   let posted: ItemCreate | undefined;
@@ -643,9 +675,9 @@ test('Mobile: a new item is saved with its photos', async () => {
   await type(tree, 'Nome', 'vela');
   await type(tree, 'Categoria', 'Ignição');
   await type(tree, 'Marca da peça', 'NGK');
-  await type(tree, 'Marca do veículo', 'Fiat');
+  await addVehicle(tree, 'Fiat');
   await type(tree, 'Valor unitário (R$)', '10');
-  await press(tree, 'Salvar');
+  await press(tree, 'Salvar item');
   const [[postUrl], [photosUrl, photosInit]] = (fetch as jest.Mock).mock.calls;
   expect(postUrl).toMatch(/\/items$/);
   expect(photosUrl).toMatch(/\/items\/00000000-0000-4000-8000-000000000009\/brands\/00000000-0000-4000-8000-000000000101\/photos$/);
@@ -811,24 +843,23 @@ test("Mobile: the details list an item's original codes", async () => {
   expect(shows(tree, '030 115 561 AN, 030 115 561 AP')).toBe(true);
 });
 
-// Adds a second vehicle to an item and a third that repeats the first written otherwise, and checks the repeated one
-// is refused on its line and nothing is sent; then removes it and checks the item is sent with its two vehicles in
-// order, and that Remover leaves the last line without one.
-test('Mobile: vehicles are added, refused when repeated, and removed', async () => {
+// Adds a second vehicle to an item as a chip, then one that repeats the first written otherwise, and checks the
+// repeated one is refused in the new vehicle before it joins, and Cancelar leaves the chips as they were; saves and
+// checks the item is sent with its two vehicles in order; then removes both chips and checks saving says a vehicle is
+// missing and sends nothing.
+test('Mobile: vehicles are added as chips, refused when repeated, and removed', async () => {
   const tree = await mount(FILTER);
-  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Remover veículo 1' && typeof n.props.onPress === 'function')).toHaveLength(0);
-  await press(tree, 'Adicionar veículo');
-  await typeIn(section(tree, 'Veículo 2'), 'Marca do veículo', 'Volkswagen');
-  await typeIn(section(tree, 'Veículo 2'), 'Modelo do veículo', 'Santana');
-  await press(tree, 'Adicionar veículo');
-  await typeIn(section(tree, 'Veículo 3'), 'Marca do veículo', 'VOLKSWAGEN');
-  await typeIn(section(tree, 'Veículo 3'), 'Modelo do veículo', ' gol ');
-  (fetch as jest.Mock).mockClear();
-  await press(tree, 'Salvar alterações');
-  expect(section(tree, 'Veículo 3').findAll((n) => typeof n.type === 'string' && n.props.children === ITEM_FORM_MESSAGES.vehicleRepeated).length).toBeGreaterThan(0);
-  expect(fetch).not.toHaveBeenCalled();
+  expect(chips(tree)).toEqual(['Volkswagen Gol']);
+  await addVehicle(tree, 'Volkswagen', 'Santana');
+  expect(chips(tree)).toEqual(['Volkswagen Gol', 'Volkswagen Santana']);
+  await addVehicle(tree, 'VOLKSWAGEN', ' gol ');
+  const draft = section(tree, 'Novo veículo');
+  expect(draft.findAll((n) => typeof n.type === 'string' && n.props.children === ITEM_FORM_MESSAGES.vehicleRepeated).length).toBeGreaterThan(0);
+  await press(tree, 'Cancelar');
+  expect(section(tree, 'Novo veículo')).toBeUndefined();
+  expect(chips(tree)).toEqual(['Volkswagen Gol', 'Volkswagen Santana']);
 
-  await press(tree, 'Remover veículo 3');
+  (fetch as jest.Mock).mockClear();
   answerSave(200);
   await press(tree, 'Salvar alterações');
   const [, init] = (fetch as jest.Mock).mock.calls[0];
@@ -836,8 +867,63 @@ test('Mobile: vehicles are added, refused when repeated, and removed', async () 
     { vehicleBrand: 'Volkswagen', vehicleModel: 'Gol' },
     { vehicleBrand: 'Volkswagen', vehicleModel: 'Santana' },
   ]);
+
   const again = await mount(FILTER);
-  await press(again, 'Adicionar veículo');
-  await press(again, 'Remover veículo 1');
-  expect(again.root.findAll((n) => n.props.accessibilityLabel === 'Remover veículo 1' && typeof n.props.onPress === 'function')).toHaveLength(0);
+  await press(again, 'Remover Volkswagen Gol');
+  expect(chips(again)).toEqual([]);
+  (fetch as jest.Mock).mockClear();
+  await press(again, 'Salvar alterações');
+  expect(shows(again, ITEM_FORM_MESSAGES.vehicleBrand)).toBe(true);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+// Opens a new item's form in every style and mode and checks it follows the Novo item mockup: the × and "Novo item" on
+// top; Posição and Lado in full words with N/A, sharing the width; the minimum as a 48px − and + around the number,
+// which they step; the brand a raised card with Tirar foto and Galeria, its quantity and price side by side and its
+// color and location too; "Adicionar veículo" and "Adicionar marca" dashed across the width; and only "Salvar item"
+// across the bottom.
+test('Mobile: a new item\'s form follows the Novo item mockup', async () => {
+  for (const style of STYLES) {
+    for (const mode of MODES) {
+      await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
+      const { colors } = themes[style][mode];
+      const tree = await mount();
+      expect(shows(tree, 'Novo item')).toBe(true);
+      expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Fechar' && typeof n.props.onPress === 'function')).not.toHaveLength(0);
+      const radios = (group: string) =>
+        tree.root
+          .find((n) => n.props.accessibilityRole === 'radiogroup' && n.props.accessibilityLabel === group && typeof n.type === 'string')
+          .findAll((n) => n.props.accessibilityRole === 'radio' && typeof n.type === 'string');
+      expect(radios('Posição').map((n) => n.props.accessibilityLabel)).toEqual(['N/A', 'Dianteira', 'Traseira', 'Ambas']);
+      expect(radios('Lado').map((n) => n.props.accessibilityLabel)).toEqual(['N/A', 'Esquerdo', 'Direito', 'Ambos']);
+      expect(radios('Lado').map((n) => StyleSheet.flatten(n.props.style).flex)).toEqual([1, 1, 1, 1]);
+
+      const steps = tree.root.findAll((n) => n.props.testID === 'common.stepper.row.button' && typeof n.type === 'string');
+      expect(steps.map((n) => [n.props.accessibilityLabel, StyleSheet.flatten(n.props.style).width])).toEqual([
+        ['Diminuir', 48],
+        ['Aumentar', 48],
+      ]);
+      await press(tree, 'Aumentar');
+      await press(tree, 'Aumentar');
+      await press(tree, 'Diminuir');
+      expect(value(tree, 'Quantidade mínima')).toBe('1');
+
+      const card = section(tree, 'Marca 1');
+      expect(StyleSheet.flatten(card.props.style).backgroundColor).toBe(colors.panelRaised);
+      expect(card.findAll((n) => n.props.testID === 'common.image-upload.pickers.picker' && typeof n.type === 'string')).toHaveLength(2);
+      const pairs = card.findAll((n) => n.props.testID === 'inventory.item-form-dialog.fields.brands.brand.pair' && typeof n.type === 'string');
+      expect(pairs.map((pair) => pair.findAll((n) => n.type === TextInput).map((input) => input.props.accessibilityLabel))).toEqual([
+        ['Quantidade', 'Valor unitário (R$)'],
+        ['Cor', 'Local'],
+      ]);
+      expect(StyleSheet.flatten(pairs[0].props.style).flexDirection).toBe('row');
+
+      const dashed = tree.root.findAll((n) => n.props.testID === 'common.button' && typeof n.type === 'string' && StyleSheet.flatten(n.props.style).borderStyle === 'dashed');
+      expect(dashed).toHaveLength(2);
+      expect(shows(tree, 'Cancelar')).toBe(false);
+      const save = tree.root.find((n) => n.props.testID === 'inventory.item-form-dialog.action' && typeof n.type === 'string');
+      expect(StyleSheet.flatten(save.props.style).flex).toBe(1);
+      expect(save.findAll((n) => n.type === Text && n.props.children === 'Salvar item')).not.toHaveLength(0);
+    }
+  }
 });
