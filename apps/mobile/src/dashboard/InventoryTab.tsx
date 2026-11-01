@@ -7,11 +7,9 @@ import {
   ICON_SIZES,
   importIcon,
   listIcon,
-  pencilIcon,
   playIcon,
   plusIcon,
   sortIcon,
-  trashIcon,
 } from '@apc/shared/icons';
 import {
   itemCardCode,
@@ -43,7 +41,7 @@ import { sortValue, type Sort } from '@apc/shared/table';
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos';
 import { ActionSheet } from '../ActionSheet';
 import { API_URL } from '../api';
-import { DataTable, RowAction, TableThumbnail } from '../DataTable';
+import { DataTable, TableThumbnail } from '../DataTable';
 import { EmptyState, ErrorState } from '../EmptyState';
 import { FieldScrollView } from '../FieldScrollView';
 import { FilterChipGroup } from '../FilterChip';
@@ -79,8 +77,10 @@ import { useMoreActions } from './moreActionsContext';
 // counter of the items shown, the total and the stock alerts, and every item as a card, all scrolling together. Low
 // and out-of-stock cards are tinted by the table, and an item that reaches its minimum raises a warning in Alertas,
 // once while it stays there (a toast too when a save or an import brought it there).
-// The round "+" at the bottom right, above the bottom bar, and each card's pencil open the item form, each card's trash
-// asks to confirm deleting the item, and the list loads again once an item is saved or deleted. A card is an item: its
+// The round "+" at the bottom right, above the bottom bar, opens the item form, and the list loads again once an item
+// is saved or deleted. A card has no pencil or trash: its details fill the screen (the Detalhes mockup), with Editar
+// and Duplicar at the bottom and Excluir at the top right, which asks to confirm over them and, once the item is gone,
+// closes them too. A card is an item: its
 // name, its first code with its part brand or how many brands make it, and where it fits, where it is and its price;
 // its quantity, added up over its brands, has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
 // tap on a card opens the item's details. "Gerenciar listas" renames, merges and deletes the
@@ -120,35 +120,6 @@ function statusOptions(items: readonly Item[]) {
 
 /** A card of the list: an item. */
 type InventoryRow = { item: Item };
-
-/**
- * Builds the column of each card's actions: the pencil that opens the item to edit and the trash that deletes it.
- * @param onEdit Opens an item in the item form.
- * @param onDelete Asks to confirm deleting an item.
- * @param ui The tab's styles and ids.
- * @returns The actions column.
- */
-function actionsColumn(
-  onEdit: (item: Item) => void,
-  onDelete: (item: Item) => void,
-  { styles, ids }: ReturnType<typeof useStyles>,
-): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
-  return {
-    key: 'actions',
-    header: 'Ações',
-    card: 'actions',
-    cell: ({ item }) => (
-      <View style={styles.actions} testID={ids.actions}>
-        <View ref={isTestItem(item) ? tourTarget('tutorial-pencil') : undefined} collapsable={false}>
-          <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onPress={() => onEdit(item)} />
-        </View>
-        <View ref={isTestItem(item) ? tourTarget('tutorial-trash') : undefined} collapsable={false}>
-          <RowAction icon={trashIcon} label={`Excluir ${item.name}`} tone="danger" onPress={() => onDelete(item)} />
-        </View>
-      </View>
-    ),
-  };
-}
 
 /**
  * Builds the column of each card's name: the item's name, its first code with its part brand or how many brands make
@@ -477,7 +448,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
                   photoColumn((item, brand) => setViewer({ item, brand, photos: heldPhotos(brand.photos, API_URL) })),
                   nameColumn(ui),
                   ...COLUMNS,
-                  actionsColumn((item) => openForm(item), setRemoving, ui),
                 ]}
                 rows={rows}
                 rowKey={(row) => row.item.id}
@@ -571,6 +541,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         onFormChange={followForm}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
+          setForm((current) => ({ ...current, open: false }));
+          setSentWith(items);
+          reload();
+        }}
+        onDeleted={() => {
           setForm((current) => ({ ...current, open: false }));
           setSentWith(items);
           reload();
