@@ -61,10 +61,12 @@ async function grainyPng(name: string, width: number, height: number): Promise<F
   return new File([blob], name, { type: 'image/png' })
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   const tag = document.createElement('style')
   tag.textContent = themeCss()
   document.head.append(tag)
+  // The drop area is the desktop's; a phone's buttons have their own test.
+  await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
 for (const style of STYLES) {
@@ -172,6 +174,39 @@ test('Web: a read-only photo field only shows the photos', async () => {
   expect(screen.getByRole('button').elements()).toHaveLength(0)
   expect(screen.container.querySelector('input[type="file"]')).toBeNull()
   await expect.element(screen.getByRole('group', { name: 'Fotos vazias' }).getByText('Sem fotos')).toBeVisible()
+})
+
+// At 360×780 checks the label says how many photos fit and Tirar foto and Galeria take the drop area's place, sharing
+// a row, each 48px tall with its icon: Tirar foto opens the camera for one photo, Galeria picks several, which become
+// thumbnails as the drop area's do; once the field is full, both go away.
+test('Web: on a phone the photo field offers Tirar foto and Galeria', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  try {
+    const screen = await render(<Sample initial={SAVED.slice(0, 1)} />)
+    await expect.element(screen.getByText('Fotos do item · até 3')).toBeVisible()
+    await expect.element(screen.getByRole('group', { name: 'Fotos do item' })).toBeVisible()
+    expect(screen.getByText(/Arraste/).query()).toBeNull()
+    const camera = screen.getByLabelText('Tirar foto')
+    const gallery = screen.getByLabelText('Galeria')
+    expect(camera.element()).toHaveAttribute('capture', 'environment')
+    expect(camera.element()).not.toHaveAttribute('multiple')
+    expect(gallery.element()).toHaveAttribute('multiple')
+    expect(gallery.element()).not.toHaveAttribute('capture')
+    const [left, right] = screen.getByTestId('common.image-upload.pickers.picker').elements().map((picker) => picker.getBoundingClientRect())
+    expect([left.height, right.height]).toEqual([48, 48])
+    expect(left.top).toBe(right.top)
+    expect(left.right).toBeLessThan(right.left)
+    expect(screen.getByTestId('common.image-upload.pickers.picker').elements().map((picker) => picker.querySelector('svg'))).not.toContain(null)
+
+    await userEvent.upload(camera, [file('frente.jpg', 'image/jpeg')])
+    await expect.poll(() => screen.getByRole('img').elements()).toHaveLength(2)
+    await userEvent.upload(gallery, [file('lado.png', 'image/png')])
+    await expect.poll(() => screen.getByRole('img').elements()).toHaveLength(3)
+    expect(screen.getByLabelText('Tirar foto').query()).toBeNull()
+    expect(screen.getByLabelText('Galeria').query()).toBeNull()
+  } finally {
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+  }
 })
 
 // Fits the field in the width a 360px phone leaves inside a dialog and checks nothing overflows.

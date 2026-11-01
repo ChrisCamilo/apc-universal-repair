@@ -13,6 +13,11 @@ export const bellIcon: IconShape[] = [
   { kind: "path", d: "M4.2 11.2V7.4a3.8 3.8 0 0 1 7.6 0v3.8l1.3 1.4H2.9z" },
   { kind: "path", d: "M6.6 14a1.5 1.5 0 0 0 2.8 0" },
 ];
+// A camera: a photo taken now, such as a brand's Tirar foto on a phone.
+export const cameraIcon: IconShape[] = [
+  { kind: "path", d: "M2.7 5.3h2l1.3-2h4l1.3 2h2v7.4H2.7z" },
+  { kind: "circle", cx: 8, cy: 8.7, r: 2.7 },
+];
 export const checkIcon: IconShape[] = [{ kind: "path", d: "M3.5 8.4l3 3 6-6.4" }];
 // A check inside a ring: something done, such as a success toast.
 export const checkRingIcon: IconShape[] = [
@@ -149,6 +154,7 @@ export const ICONS = {
   alert: alertIcon,
   back: backIcon,
   bell: bellIcon,
+  camera: cameraIcon,
   check: checkIcon,
   checkRing: checkRingIcon,
   chevron: chevronIcon,

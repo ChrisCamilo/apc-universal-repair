@@ -198,7 +198,7 @@ test('Web: long dialogs scroll inside with the actions pinned', async () => {
 
 // Opens a closable form at 360×780 in every style and mode, and checks it fills the screen with no rounded corners,
 // its title row pinned on top with the × at its left while the fields scroll, and its actions at the bottom; the focus
-// starts on the first field and Escape asks the owner to close it.
+// starts on the ×, so no keyboard rises over the form, and Escape asks the owner to close it.
 test('Web: on a phone a form fills the screen, its title on top and its actions at the bottom', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   for (const style of STYLES) {
@@ -212,7 +212,7 @@ test('Web: on a phone a form fills the screen, its title on top and its actions 
       expect([window_.left, window_.top, window_.width, window_.height]).toEqual([0, 0, innerWidth, innerHeight])
       expect(getComputedStyle(dialog.element()).borderTopLeftRadius).toBe('0px')
       expect(getComputedStyle(dialog.element()).backgroundColor).toBe(rgb(themes[style][mode].colors.panel))
-      await expect.element(screen.getByLabelText('Nome')).toHaveFocus()
+      await expect.element(screen.getByRole('button', { name: 'Fechar' })).toHaveFocus()
 
       const body = screen.getByTestId('common.dialog.body').element()
       body.scrollTop = body.scrollHeight

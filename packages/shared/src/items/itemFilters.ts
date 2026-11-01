@@ -8,7 +8,7 @@ import {
   type ListEntryChange,
   type VehicleModel,
 } from "../lists/lists.ts";
-import { distinct } from "./itemForm.ts";
+import { distinct, POSITION_CHOICES, SIDE_CHOICES } from "./itemForm.ts";
 import {
   includeBoth,
   matchesSearch,
@@ -57,19 +57,9 @@ export const SIDE_FILTERS = (["LD", "LE", NOT_APPLICABLE] as const).map((value) 
  * The position as a phone's filter sheet chooses it, one at a time: every position (""), front, rear or both; front
  * and rear also match "Ambos" items, as the chips do.
  */
-export const POSITION_SEGMENTS = [
-  { value: "", label: "Todas" },
-  { value: "D", label: "Dianteira" },
-  { value: "T", label: "Traseira" },
-  { value: "Ambos", label: "Ambas" },
-];
+export const POSITION_SEGMENTS = [{ value: "", label: "Todas" }, ...POSITION_CHOICES.slice(1)];
 /** The side as a phone's filter sheet chooses it, one at a time: every side (""), left, right or both. */
-export const SIDE_SEGMENTS = [
-  { value: "", label: "Todos" },
-  { value: "LE", label: "Esquerdo" },
-  { value: "LD", label: "Direito" },
-  { value: "Ambos", label: "Ambos" },
-];
+export const SIDE_SEGMENTS = [{ value: "", label: "Todos" }, ...SIDE_CHOICES.slice(1)];
 /** The columns the inventory list sorts by, in the desktop table's order, with the names its sort lists them by. */
 const ITEM_SORT_COLUMNS: SortColumn[] = [
   { key: "name", label: "Item" },

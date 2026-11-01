@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
-import { copyIcon, pencilIcon } from '@apc/shared/icons';
-import { capitalizeFirst, codeKey, findOption, itemSchema, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/shared/items';
+import { copyIcon, pencilIcon, plusIcon } from '@apc/shared/icons';
+import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, type Item, type ItemBrand } from '@apc/shared/items';
 import {
   BRAND_FIELD_LABELS,
   codeTakenError,
   codeTakenMessage,
   EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
-  EMPTY_VEHICLE_FORM,
   hasFormErrors,
   ITEM_FIELD_LABELS,
   ITEM_UNCHANGED_MESSAGE,
@@ -18,22 +17,20 @@ import {
   itemFormErrors,
   itemFormOf,
   itemFormOptions,
-  modelsOfBrand,
   ORIGINAL_CODES_LABEL,
   originalCodeMessages,
+  POSITION_CHOICES,
   PRICE_PLACEHOLDER,
   priceMask,
   quantityInput,
-  VEHICLE_FIELD_LABELS,
-  VEHICLES_LABEL,
+  SIDE_CHOICES,
   type BrandField,
   type ItemBrandFormErrors,
   type ItemField,
   type ItemForm,
   type ItemFormErrors,
-  type VehicleField,
 } from '@apc/shared/item-form';
-import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists';
+import { ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists';
 import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/shared/photos';
 import { API_URL } from '../api';
 import { Button } from '../Button';
@@ -41,30 +38,33 @@ import { Combobox } from '../Combobox';
 import { Dialog } from '../Dialog';
 import { ImageUpload, type UploadPhoto } from '../ImageUpload';
 import { Segmented } from '../Segmented';
+import { Stepper } from '../Stepper';
 import { TextField } from '../TextField';
 import { useToast } from '../Toast';
-import { Heading, Label, Text } from '../Typography';
+import { Heading, Label } from '../Typography';
 import { tourTarget } from '../tourTargets';
 import { CodeListField } from './CodeListField';
 import { DeleteItemDialog } from './DeleteItemDialog';
 import { ItemDetails, RemoveItemButton } from './ItemDetails';
 import { useStyles } from './ItemFormDialog.styles';
-import { pickPhotos, savePhotos } from './photos';
+import { pickPhotos, savePhotos, takePhoto } from './photos';
 import { DuplicateItemDialog } from './DuplicateItemDialog';
 import type { CreateListEntry } from './useItemLists';
+import { VehiclesField } from './VehiclesField';
 
-// The form that creates a new item or edits one, the same as the web, in one column: the content scrolls inside the
-// dialog while Cancel and Save stay at the bottom. First what the item's brands share (name, category, the vehicles it
-// fits, position, side, the minimum stock and the vehicle maker's original codes, typed as chips, each shown with its
-// message when a brand of the item or another item has it; see CodeListField), then a section for each brand that
-// makes the part, with its photos, part brand, code, quantity, unit price, color and location. Each vehicle is a line
-// of its brand and model; "Adicionar veículo" adds a blank line and "Adicionar marca" a blank brand, and each line's
-// or brand's "Remover" takes it out while another is left. Category, part brands and the vehicles' brands and models
-// are comboboxes of the lists the API keeps, where "+ Criar" adds a new name to its list, picks it and says so in a
-// toast; a line's model only lists its brand's models, is created under that brand, stays locked until a brand of the
-// list is chosen and clears when the brand changes to one without it. A vehicle twice in the item, or Universal with
-// others, is refused on its line. A name not in its list can't be saved: the field points to
-// "+ Criar". A code turns uppercase while typing and says at once when another item uses it; the texts start with a
+// The form that creates a new item or edits one, the same as the web on a phone, as in the Novo item mockup: the × and
+// "Novo item", or the item's name, on top, the content scrolling under it in one column, and "Salvar item", or "Salvar
+// alterações", across the bottom. First what the item's brands share (name, category, the vehicles it fits, position
+// and side in full words with N/A, the minimum stock as a stepper (see Stepper) and the vehicle maker's original codes,
+// typed as chips, each shown with its message when a brand of the item or another item has it; see CodeListField),
+// then a raised card for each brand that makes the part, with its photos, taken with the camera or picked from the
+// gallery, its part brand and code, then its quantity and price side by side, and its color and location. The
+// vehicles are chips, and "Adicionar veículo" opens a new one's brand and model, checked before it joins them (see
+// VehiclesField); a dashed "Adicionar marca" adds a blank brand, and each brand's "Remover" takes it out while another
+// is left. Category, part brands and the vehicles' brands and models are comboboxes of the lists the API keeps, where
+// "+ Criar" adds a new name to its list, picks it and says so in a toast; a vehicle's model only lists its brand's
+// models, is created under that brand, stays locked until a brand of the list is chosen and clears when the brand
+// changes to one without it. A name not in its list can't be saved: the field points to "+ Criar". A code turns uppercase while typing and says at once when another item uses it; the texts start with a
 // capital letter when leaving the field and again on save; the quantities take whole numbers only, up to a million,
 // and a pasted fraction or text is refused, saying so; and the price always shows in reais, digits filling from the
 // cents, a pasted price read with a dot or a comma alike, up to a million (see priceMask). Saving checks the required
@@ -72,9 +72,10 @@ import type { CreateListEntry } from './useItemLists';
 // to the API, shows a toast and hands the saved item over, then sends each brand's photos when they changed: up to 3
 // a brand, the first the cover, picked from the phone's library. When the item is saved but its photos aren't, a
 // warning toast says so; an edit that changes nothing isn't sent, and an info toast says so. Opened on an item's
-// details, the same dialog shows each field as text in the form's layout, a section for each brand (scrolled to one
-// when opened on it, as a brand's card in the list does), with Fechar and Editar: nothing can be changed or saved until Editar unlocks the fields in place, on the first one, and the buttons
-// turn into Cancelar and Salvar alterações, which save like the edit form. The details may also offer Duplicar, which
+// details, the same dialog shows the item (scrolled to a brand's card when opened on it, as a brand's card in the list
+// does), with Editar: nothing can be changed or saved until Editar unlocks the fields in place, no field started on so
+// the keyboard doesn't rise, and the bottom turns into Salvar alterações, which saves like the edit form. The details
+// may also offer Duplicar, which
 // asks whether the copy takes the photos too (see DuplicateItemDialog), over the details since a modal opens over
 // another only from inside it, and hands the answer over. The owner may open it with values and photos filled in, as a
 // duplicated item's are, and follow what is typed, as the Inventory tutorial does, whose tour points at the name, at the first brand's
@@ -84,8 +85,6 @@ import type { CreateListEntry } from './useItemLists';
 // the item and hands it over.
 
 const PHOTOS_LABEL = 'Fotos do item';
-const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }));
-const SIDE_OPTIONS = SIDES.map((value) => ({ value, label: value }));
 
 type ItemFormDialogProps = {
   open: boolean;
@@ -145,7 +144,6 @@ export function ItemFormDialog({
   const toast = useToast();
   const { styles, ids } = useStyles();
   const [viewing, setViewing] = useState(details && item !== undefined);
-  const name = useRef<ComponentRef<typeof TextInput>>(null);
   // The content's scroll, and where the brand the details open on sits in it: the fields' top, the brands' top in
   // them and the brand's top in those, each from its own layout.
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -163,19 +161,11 @@ export function ItemFormDialog({
   // How many names are being created; saving waits for them.
   const [creating, setCreating] = useState(0);
   const options = itemFormOptions(items, lists);
-  const unlocked = details && !viewing;
 
   // Tell the owner what the form holds as it changes.
   useEffect(() => {
     onFormChange?.(form, viewing);
   }, [form, viewing, onFormChange]);
-
-  // Once Editar unlocks the fields, start on the first one.
-  useEffect(() => {
-    if (unlocked) {
-      name.current?.focus();
-    }
-  }, [unlocked]);
 
   /**
    * Takes a layout on the way to the brand the details open on and, once all three are in, scrolls to it, once.
@@ -238,30 +228,6 @@ export function ItemFormDialog({
     const read = priceMask(form.brands[index].price, value);
     changeBrand(index, 'price', read.value);
     brandError(index, 'price', read.message);
-  };
-
-  /** Takes a field of a vehicle's line's new value and drops its line's messages. */
-  const changeVehicle = (index: number, field: VehicleField, value: string) => {
-    setForm((typed) => ({ ...typed, vehicles: typed.vehicles.map((vehicle, at) => (at === index ? { ...vehicle, [field]: value } : vehicle)) }));
-    setErrors((shown) => ({ ...shown, vehicles: shown.vehicles?.map((line, at) => (at === index ? {} : line)) }));
-  };
-
-  /** Takes a new brand on a vehicle's line, clearing a model the new brand doesn't have. */
-  const changeVehicleBrand = (index: number, value: string) => {
-    changeVehicle(index, 'vehicleBrand', value);
-    const model = form.vehicles[index].vehicleModel;
-    if (model && !findOption(modelsOfBrand(lists, value), model)) {
-      changeVehicle(index, 'vehicleModel', '');
-    }
-  };
-
-  /** Adds a blank vehicle's line at the end. */
-  const addVehicle = () => setForm((typed) => ({ ...typed, vehicles: [...typed.vehicles, EMPTY_VEHICLE_FORM] }));
-
-  /** Takes a vehicle's line out of the form, with its messages. */
-  const removeVehicle = (index: number) => {
-    setForm((typed) => ({ ...typed, vehicles: typed.vehicles.filter((_, at) => at !== index) }));
-    setErrors((shown) => ({ ...shown, vehicles: shown.vehicles?.filter((_, at) => at !== index) }));
   };
 
   /** Adds a blank brand at the end, with no photos. */
@@ -374,7 +340,7 @@ export function ItemFormDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title={viewing ? 'Detalhes do item' : item ? 'Editar item' : 'Novo item'}
+      title={viewing ? 'Detalhes do item' : item ? item.name : 'Novo item'}
       closable={!viewing}
       back={viewing ? 'Voltar ao estoque' : undefined}
       headerAction={viewing && onDeleted ? <RemoveItemButton onPress={() => setRemoving(true)} /> : undefined}
@@ -396,16 +362,11 @@ export function ItemFormDialog({
             </View>
           </>
         ) : (
-          <>
-            <Button variant="secondary" size="sm" onPress={onClose}>
-              Cancelar
+          <View ref={tourTarget('form-save')} collapsable={false} style={styles.action} testID={ids.action}>
+            <Button align="stretch" loading={saving || creating > 0} onPress={save}>
+              {item ? 'Salvar alterações' : 'Salvar item'}
             </Button>
-            <View ref={tourTarget('form-save')} collapsable={false}>
-              <Button size="sm" loading={saving || creating > 0} onPress={save}>
-                {item ? 'Salvar alterações' : 'Salvar'}
-              </Button>
-            </View>
-          </>
+          </View>
         )
       }
     >
@@ -415,8 +376,8 @@ export function ItemFormDialog({
         <View style={styles.fields} testID={ids.fields}>
           <View ref={tourTarget('form-name')} collapsable={false}>
             <TextField
-              ref={name}
               label={ITEM_FIELD_LABELS.name}
+              placeholder="Ex.: Pastilha de freio"
               value={form.name}
               onValueChange={(value) => change('name', value)}
               onBlur={() => change('name', form.name.trim() ? capitalizeFirst(form.name) : form.name)}
@@ -434,59 +395,23 @@ export function ItemFormDialog({
             emptyLabel="Nenhuma categoria cadastrada"
             error={errors.category}
           />
-          <View role="group" accessibilityLabel={VEHICLES_LABEL} style={styles.vehicles} testID={ids.vehicles}>
-            <Text size="sm" tone="muted">
-              Os veículos em que a peça serve. Deixe o modelo vazio se serve em qualquer modelo da marca.
-            </Text>
-            {form.vehicles.map((vehicle, index) => {
-              const brand = findEntry(lists.vehicleBrands, vehicle.vehicleBrand);
-              const shown = errors.vehicles?.[index] ?? {};
-              const line = `Veículo ${index + 1}`;
-              return (
-                <View key={index} role="group" accessibilityLabel={line} style={styles.vehicle} testID={ids.vehicle}>
-                  <Combobox
-                    label={VEHICLE_FIELD_LABELS.vehicleBrand}
-                    value={vehicle.vehicleBrand}
-                    onValueChange={(value) => changeVehicleBrand(index, value)}
-                    options={options.vehicleBrands}
-                    onCreate={create('vehicleBrands', (created) => changeVehicle(index, 'vehicleBrand', created))}
-                    noun="marca"
-                    toggleLabel="Mostrar marcas de veículo"
-                    emptyLabel="Nenhuma marca cadastrada"
-                    error={shown.vehicleBrand}
-                  />
-                  <Combobox
-                    label={VEHICLE_FIELD_LABELS.vehicleModel}
-                    value={vehicle.vehicleModel}
-                    onValueChange={(value) => changeVehicle(index, 'vehicleModel', value)}
-                    options={modelsOfBrand(lists, vehicle.vehicleBrand)}
-                    onCreate={create('vehicleModels', (created) => changeVehicle(index, 'vehicleModel', created), brand?.id)}
-                    noun="modelo"
-                    toggleLabel="Mostrar modelos"
-                    emptyLabel="Nenhum modelo cadastrado para essa marca"
-                    placeholder={brand ? 'Qualquer modelo' : 'Escolha a marca do veículo primeiro'}
-                    error={shown.vehicleModel}
-                    disabled={!brand}
-                  />
-                  {form.vehicles.length > 1 && (
-                    <Button variant="secondary" size="sm" label={`Remover ${line.toLowerCase()}`} onPress={() => removeVehicle(index)}>
-                      Remover
-                    </Button>
-                  )}
-                </View>
-              );
-            })}
-            <View style={styles.addVehicle} testID={ids.addVehicle}>
-              <Button variant="secondary" size="sm" onPress={addVehicle}>
-                Adicionar veículo
-              </Button>
-            </View>
-          </View>
+          <VehiclesField
+            vehicles={form.vehicles}
+            errors={errors.vehicles}
+            lists={lists}
+            brands={options.vehicleBrands}
+            onVehiclesChange={(vehicles) => {
+              setForm((typed) => ({ ...typed, vehicles }));
+              setErrors((shown) => ({ ...shown, vehicles: undefined }));
+            }}
+            onCreate={create}
+          />
           <View style={styles.choice} testID={ids.choice}>
             <Label>{ITEM_FIELD_LABELS.position}</Label>
             <Segmented
               label={ITEM_FIELD_LABELS.position}
-              options={POSITION_OPTIONS}
+              options={POSITION_CHOICES}
+              fill
               value={form.position}
               onValueChange={(value) => change('position', value)}
             />
@@ -495,30 +420,28 @@ export function ItemFormDialog({
             <Label>{ITEM_FIELD_LABELS.side}</Label>
             <Segmented
               label={ITEM_FIELD_LABELS.side}
-              options={SIDE_OPTIONS}
+              options={SIDE_CHOICES}
+              fill
               value={form.side}
               onValueChange={(value) => change('side', value)}
             />
           </View>
-          <TextField
+          <Stepper
             label={ITEM_FIELD_LABELS.minQuantity}
-            kind="number"
             value={form.minQuantity}
             onValueChange={changeMinimum}
+            max={MAX_QUANTITY}
             error={errors.minQuantity}
-            helper="Abaixo disso, somando todas as marcas, o item aparece como estoque baixo."
+            helper="Abaixo disso, somando as marcas, o item fica com estoque baixo."
           />
           <CodeListField
             label={ORIGINAL_CODES_LABEL}
             codes={form.originalCodes}
             onCodesChange={(codes) => setForm((typed) => ({ ...typed, originalCodes: codes }))}
             messages={originalCodeMessages(form, items, item?.id)}
-            helper="Os códigos da montadora, iguais em todas as marcas. Vírgula, ponto e vírgula ou a tecla de enviar separa um do outro."
+            helper="Os da montadora. Separe com vírgula."
           />
           <View style={styles.brands} testID={ids.brands}>
-            <Text size="sm" tone="muted">
-              As marcas que fazem esta peça, cada uma com seu código, estoque e valor.
-            </Text>
             {form.brands.map((brand, index) => {
               const names = brandNames(index, form.brands.length);
               const shown = errors.brands?.[index] ?? {};
@@ -540,6 +463,7 @@ export function ItemFormDialog({
                     onPhotosChange={(next) => setPhotos((held) => held.map((each, at) => (at === index ? next : each)))}
                     limit={ITEM_PHOTO_LIMIT}
                     onPick={pickPhotos}
+                    onTake={takePhoto}
                   />
                   <Combobox
                     label={BRAND_FIELD_LABELS.partBrand}
@@ -560,46 +484,55 @@ export function ItemFormDialog({
                       error={shown.code}
                     />
                   </View>
-                  <View ref={tour('form-quantity')} collapsable={false}>
-                    <TextField
-                      label={BRAND_FIELD_LABELS.quantity}
-                      kind="number"
-                      value={brand.quantity}
-                      onValueChange={(value) => changeQuantity(index, value)}
-                      error={shown.quantity}
-                    />
+                  <View style={styles.pair} testID={ids.pair}>
+                    <View ref={tour('form-quantity')} collapsable={false} style={styles.half} testID={ids.half}>
+                      <TextField
+                        label={BRAND_FIELD_LABELS.quantity}
+                        kind="number"
+                        value={brand.quantity}
+                        onValueChange={(value) => changeQuantity(index, value)}
+                        error={shown.quantity}
+                      />
+                    </View>
+                    <View style={styles.half} testID={ids.half}>
+                      <TextField
+                        label={BRAND_FIELD_LABELS.price}
+                        kind="number"
+                        value={brand.price}
+                        onValueChange={(value) => changePrice(index, value)}
+                        placeholder={PRICE_PLACEHOLDER}
+                        error={shown.price}
+                      />
+                    </View>
                   </View>
-                  <TextField
-                    label={BRAND_FIELD_LABELS.price}
-                    kind="number"
-                    value={brand.price}
-                    onValueChange={(value) => changePrice(index, value)}
-                    placeholder={PRICE_PLACEHOLDER}
-                    error={shown.price}
-                  />
-                  <TextField
-                    label={BRAND_FIELD_LABELS.color}
-                    value={brand.color}
-                    onValueChange={(value) => changeBrand(index, 'color', value)}
-                    onBlur={() =>
-                      changeBrand(index, 'color', brand.color.trim() ? (findOption(options.colors, brand.color) ?? capitalizeFirst(brand.color)) : '')
-                    }
-                    helper="Deixe vazio se a cor não se aplica."
-                  />
-                  <TextField
-                    label={BRAND_FIELD_LABELS.location}
-                    value={brand.location}
-                    onValueChange={(value) => changeBrand(index, 'location', value)}
-                    onBlur={() => changeBrand(index, 'location', brand.location.trim() ? capitalizeFirst(brand.location) : brand.location)}
-                  />
+                  <View style={styles.pair} testID={ids.pair}>
+                    <View style={styles.half} testID={ids.half}>
+                      <TextField
+                        label={BRAND_FIELD_LABELS.color}
+                        placeholder="Se houver"
+                        value={brand.color}
+                        onValueChange={(value) => changeBrand(index, 'color', value)}
+                        onBlur={() =>
+                          changeBrand(index, 'color', brand.color.trim() ? (findOption(options.colors, brand.color) ?? capitalizeFirst(brand.color)) : '')
+                        }
+                      />
+                    </View>
+                    <View style={styles.half} testID={ids.half}>
+                      <TextField
+                        label={BRAND_FIELD_LABELS.location}
+                        placeholder="Ex.: E-1"
+                        value={brand.location}
+                        onValueChange={(value) => changeBrand(index, 'location', value)}
+                        onBlur={() => changeBrand(index, 'location', brand.location.trim() ? capitalizeFirst(brand.location) : brand.location)}
+                      />
+                    </View>
+                  </View>
                 </View>
               );
             })}
-            <View style={styles.add} testID={ids.add}>
-              <Button variant="secondary" size="sm" onPress={addBrand}>
-                Adicionar marca
-              </Button>
-            </View>
+            <Button variant="dashed" icon={plusIcon} align="stretch" onPress={addBrand}>
+              Adicionar marca
+            </Button>
           </View>
         </View>
       )}

@@ -2,7 +2,8 @@ import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the photo field: the photos as square tiles, the first one marked as the cover, each with a remove ×
 // on a dark chip that turns to the danger color on hover; the dashed drop area that lights up in the accent on hover
-// and while a file is dragged over it; and the problems in the danger color.
+// and while a file is dragged over it; and the problems in the danger color. A phone's Tirar foto and Galeria share a
+// row, each a 48px framed button with its icon, lit in the accent when pressed.
 
 // A small chip over a photo: the cover mark and the remove ×.
 const CHIP = 'absolute rounded-pill bg-backdrop text-text'
@@ -27,6 +28,12 @@ export const imageUpload = recipe(
       text: 'grid gap-0.5',
       hint: 'text-xs text-text-muted',
       input: 'sr-only',
+      pickers: 'grid grid-cols-2 gap-2',
+      pickerInput: 'sr-only',
+      picker: [
+        'flex h-12 cursor-pointer items-center justify-center gap-2 rounded-tile border border-hairline bg-panel font-body text-[15px] font-medium text-text',
+        'transition-colors active:border-accent active:text-accent has-[input:focus-visible]:shadow-ring',
+      ],
       problems: 'm-0 grid list-none gap-0.5 p-0 font-body text-sm text-danger',
     },
   }),
@@ -42,6 +49,9 @@ export const imageUpload = recipe(
     text: 'drop.text',
     hint: 'drop.text.hint',
     input: 'drop.input',
+    pickers: 'pickers',
+    picker: 'pickers.picker',
+    pickerInput: 'pickers.picker.input',
     problems: 'problems',
   },
 )

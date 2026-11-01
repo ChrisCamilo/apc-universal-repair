@@ -217,7 +217,7 @@ test('Mobile: "Novo item" and the details\' Editar open the item form, and a sav
   expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Editar Filtro de óleo')).toHaveLength(0);
   await ReactTestRenderer.act(async () => card('Filtro de óleo').props.onPress());
   await ReactTestRenderer.act(async () => pressable('Editar').props.onPress());
-  expect(texts(tree)).toContain('Editar item');
+  expect(texts(tree)).toContain('Salvar alterações');
   expect(dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')[0].props.value).toBe('W 712/95');
   const quantity = dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Quantidade')[0];
   await ReactTestRenderer.act(async () => quantity.props.onChangeText('7'));

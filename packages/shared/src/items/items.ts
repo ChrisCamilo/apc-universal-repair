@@ -575,6 +575,6 @@ export function vehicleKey(vehicle: { vehicleBrand: string; vehicleModel?: strin
  * @param vehicle The vehicle.
  * @returns E.g. "Volkswagen Gol G5", or "Volkswagen" for any model of the brand.
  */
-export function vehicleLabel(vehicle: ItemVehicle): string {
+export function vehicleLabel(vehicle: Pick<ItemVehicle, "vehicleBrand" | "vehicleModel">): string {
   return [vehicle.vehicleBrand, vehicle.vehicleModel].filter(Boolean).join(" ");
 }

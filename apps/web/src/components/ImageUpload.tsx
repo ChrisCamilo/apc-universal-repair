@@ -1,18 +1,20 @@
 import { useId, useState, type DragEvent } from 'react'
-import { closeIcon, ICON_SIZES, imageIcon } from '@apc/shared/icons'
+import { cameraIcon, closeIcon, ICON_SIZES, imageIcon, type IconShape } from '@apc/shared/icons'
 import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/shared/photos'
 import { Icon } from './Icon.tsx'
 import { imageUpload } from './ImageUpload.styles.ts'
 import { shrinkPhoto } from './shrinkPhoto.ts'
 import { Label, Text } from './Typography.tsx'
+import { usePhone } from './usePhone.ts'
 
 // The photo field of the item form. Photos show as thumbnails, the first one marked as the cover, each with
 // an × to remove it. Under them, a drop area that is also clickable takes several files at once and says how
 // many more fit; it disappears once the limit is reached. Each photo is reduced first (see shrinkPhoto), so a large
 // one is sent smaller. Only JPG, PNG and WebP up to 3 MB once reduced are taken: files that break the rule or go past
 // the limit are left out, and a message names each one and says why. Read-only,
-// as in the item details, it only shows the photos, or says there are none: no ×, no drop area.
-
+// as in the item details, it only shows the photos, or says there are none: no ×, no drop area. On a phone (below
+// `card:`), as in the Novo item mockup, the label says how many fit and two buttons take the drop area's place: Tirar
+// foto, which opens the camera, and Galeria, which picks several photos at once.
 
 /**
  * A photo the field holds: one already saved has only its URL; one just chosen also has its file; one of another item,
@@ -34,6 +36,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
   const inputId = useId()
   const [problems, setProblems] = useState<string[]>([])
   const [dragging, setDragging] = useState(false)
+  const phone = usePhone()
   const { classes, ids } = imageUpload()
   const left = limit - photos.length
 
@@ -57,6 +60,34 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
     onPhotosChange(photos.filter((_, i) => i !== index))
   }
 
+  /** Takes the files chosen in a file input, and lets the same file be chosen again after it is removed. */
+  const choose = (input: HTMLInputElement) => {
+    void add([...(input.files ?? [])])
+    input.value = ''
+  }
+
+  /**
+   * A phone's button that opens the camera or the gallery.
+   * @param text What it says, its name too.
+   * @param icon Its icon.
+   * @param camera Opens the camera, taking one photo; otherwise the gallery, taking several.
+   */
+  const picker = (text: string, icon: IconShape[], camera: boolean) => (
+    <label className={classes.picker()} data-testid={ids.picker}>
+      <Icon icon={icon} size={ICON_SIZES.thumbnail} />
+      {text}
+      <input
+        type="file"
+        accept={PHOTO_TYPES.join(',')}
+        capture={camera ? 'environment' : undefined}
+        multiple={!camera}
+        className={classes.pickerInput()}
+        data-testid={ids.pickerInput}
+        onChange={(event) => choose(event.target)}
+      />
+    </label>
+  )
+
   /** Takes the files dropped on the area. */
   const onDrop = (event: DragEvent) => {
     event.preventDefault()
@@ -66,7 +97,10 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
 
   return (
     <div role="group" aria-labelledby={labelId} className={classes.base()} data-testid={ids.base}>
-      <Label id={labelId}>{label}</Label>
+      <Label id={labelId}>
+        {label}
+        {phone && !readOnly && <span aria-hidden="true">{` · até ${limit}`}</span>}
+      </Label>
       {photos.length > 0 && (
         <ul className={classes.photos()} data-testid={ids.photos}>
           {photos.map((photo, index) => (
@@ -98,7 +132,13 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
         </ul>
       )}
       {readOnly && photos.length === 0 && <Text tone="muted">Sem fotos</Text>}
-      {!readOnly && left > 0 && (
+      {!readOnly && left > 0 && phone && (
+        <div className={classes.pickers()} data-testid={ids.pickers}>
+          {picker('Tirar foto', cameraIcon, true)}
+          {picker('Galeria', imageIcon, false)}
+        </div>
+      )}
+      {!readOnly && left > 0 && !phone && (
         <label
           htmlFor={inputId}
           data-dragging={dragging || undefined}
@@ -131,11 +171,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
             multiple
             className={classes.input()}
             data-testid={ids.input}
-            onChange={(event) => {
-              void add([...(event.target.files ?? [])])
-              // Let the same file be chosen again after it is removed.
-              event.target.value = ''
-            }}
+            onChange={(event) => choose(event.target)}
           />
         </label>
       )}
