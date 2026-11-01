@@ -285,8 +285,8 @@ test("Web: a part code in use is named while it is typed", { tag: [TEST_TAGS.inv
 // vehicle brand and model the lists don't hold each offer "+ Criar" with the name already written by the rule, and
 // picking it creates the name, fills it in and says so in a toast, the model under the brand just created. A name
 // typed without picking "+ Criar" is refused on save, pointing to it. Once the item is saved, its new category is in
-// the Filtros menu without a reload.
-test("Web: categories, brands and models are created from the item form", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// the Filtros menu without a reload. On a phone the vehicle is created in a new vehicle, made a chip with Adicionar.
+test("Web: categories, brands and models are created from the item form", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
     const saved = savedItem(route.request().postDataJSON());
@@ -308,6 +308,9 @@ test("Web: categories, brands and models are created from the item form", { tag:
   await form.partBrand.fill("NGK");
   await option("+ Criar marca “NGK”").click();
   await expect(page.getByText("Marca de peça “NGK” criada.")).toBeVisible();
+  if (isMobile) {
+    await form.addVehicle.click();
+  }
   await form.vehicleBrand.fill("renault");
   await expect(form.vehicleModel).toBeDisabled();
   const brandCreated = page.waitForResponse((response) => response.url().endsWith("/api/vehicle-brands") && response.status() === 201);
@@ -320,6 +323,10 @@ test("Web: categories, brands and models are created from the item form", { tag:
   await option("+ Criar modelo “Clio”").click();
   expect((await modelCreated).postDataJSON()).toEqual({ name: "Clio", vehicleBrandId: renault.id });
   await expect(page.getByText("Modelo “Clio” criado.")).toBeVisible();
+  if (isMobile) {
+    await form.confirmVehicle.click();
+    await expect(form.vehicle("Renault Clio")).toBeVisible();
+  }
   await form.unitPrice.fill("10");
 
   await form.category.fill("Turbo");
@@ -492,7 +499,12 @@ test("Web: the Inventory tutorial creates, finds, edits and deletes a test item"
   await expect(guide.spotlight).toBeVisible();
   await inv.newItem.first().click();
   await step("Diga que peça é");
-  await itemForm(page, "Novo item").cancel.click();
+  if (isMobile) {
+    // On a phone the step's card covers the form's ×, until the tutorial follows the phone's layout (#363).
+    await itemForm(page, "Novo item").close.press("Escape");
+  } else {
+    await itemForm(page, "Novo item").cancel.click();
+  }
   await step("Abra o cadastro");
   await doIt();
   await step("Diga que peça é");
@@ -722,8 +734,8 @@ test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TA
 // pencil or trash: the details fill the screen, as in the Detalhes mockup, with the ← in place of the × and Fechar and
 // the red round "Excluir item" at the top right; the category over the name, the stock and the minimum, the vehicles,
 // the position and side and the original codes, and a card for the brand with its code, price and place; Duplicar and
-// Editar share the bottom. The ← closes them; Duplicar asks about the photos; Editar unlocks the fields; and Excluir
-// asks to confirm, then deletes the item and closes its details.
+// Editar share the bottom. The ← closes them; Duplicar asks about the photos; Editar unlocks the fields, with no field
+// started on, so the keyboard doesn't rise; and Excluir asks to confirm, then deletes the item and closes its details.
 test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   const stock = [...ITEMS];
   await serveItems(page, stock);
@@ -769,7 +781,8 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await page.keyboard.press("Escape");
   await expect(question).toBeHidden();
   await details.edit.click();
-  await expect(itemForm(page, "Editar item").name).toBeFocused();
+  await expect(itemForm(page, "Editar item").name).toHaveValue("Amortecedor");
+  await expect(itemForm(page, "Editar item").name).not.toBeFocused();
   await page.keyboard.press("Escape");
   await expect(itemForm(page, "Editar item").root).toBeHidden();
 
@@ -779,6 +792,99 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await expect(page.getByText("Item “Amortecedor” excluído.")).toBeVisible();
   await expect(details.root).toBeHidden();
   await expect(rows).toHaveCount(3);
+});
+
+// At 360×780, creates an item of two brands through "Novo item" against an API that keeps what it is sent, then edits
+// it: the form fills the screen, as in the Novo item mockup, with the × and "Novo item" on top, where the focus starts
+// so no keyboard rises, and "Salvar item" across the bottom; the vehicle is added as a chip, the position and side are
+// chosen in full words, the minimum with its +, and a second brand from the dashed "Adicionar marca". The item is
+// posted with both brands. Its edit, from the card's details, is titled with its name, keeps its chip and its choices,
+// and patches a new side.
+test("Web: on a phone the item form fills the screen, as in the Novo item mockup", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  const stock = [...ITEMS];
+  await page.route("**/api/items", async (route) => {
+    const saved = savedItem(route.request().postDataJSON());
+    stock.unshift(saved);
+    return route.fulfill({ status: 201, json: saved });
+  });
+  await serveItems(page, stock);
+  await page.route("**/api/items/*", async (route) => {
+    const index = stock.findIndex((it) => route.request().url().endsWith(it.id));
+    stock[index] = savedItem(route.request().postDataJSON(), stock[index]);
+    return route.fulfill({ json: stock[index] });
+  });
+  await page.goto("/inventory");
+  const form = itemForm(page, "Novo item");
+  await inventory(page).newItem.click();
+  const { width, height } = page.viewportSize()!;
+  await expect.poll(async () => form.root.boundingBox()).toEqual({ x: 0, y: 0, width, height });
+  await expect(form.close).toBeFocused();
+  await expect(form.root.getByRole("button", { name: "Cancelar" })).toHaveCount(0);
+  await expect(form.save).toHaveAccessibleName("Salvar item");
+  await expect(form.save).toBeInViewport();
+  const save = (await form.save.boundingBox())!;
+  expect(save.width).toBe(width - 32);
+
+  await form.name.fill("pastilha de freio");
+  await form.category.fill("Freios");
+  await form.category.press("Escape");
+  await form.addVehicle.click();
+  await expect(form.vehicleBrand).toBeFocused();
+  await form.vehicleBrand.fill("Volkswagen");
+  await form.vehicleBrand.press("Escape");
+  await form.vehicleModel.fill("Gol");
+  await form.vehicleModel.press("Escape");
+  await form.confirmVehicle.click();
+  await expect(form.vehicle("Volkswagen Gol")).toBeVisible();
+  await expect(form.addVehicle).toBeFocused();
+  await form.position("Dianteira").click();
+  await form.side("Esquerdo").click();
+  await form.raiseMinimum.click();
+  await expect(form.minimum).toHaveValue("1");
+
+  const first = form.brand(1);
+  await expect(first.getByLabel("Tirar foto")).toBeAttached();
+  await expect(first.getByLabel("Galeria")).toBeAttached();
+  await first.getByRole("combobox", { name: "Marca da peça" }).fill("Cobreq");
+  await first.getByRole("combobox", { name: "Marca da peça" }).press("Escape");
+  await first.getByLabel("Código da peça").fill("n-1210");
+  await first.getByLabel("Quantidade", { exact: true }).fill("4");
+  await first.getByLabel("Valor unitário (R$)").fill("79,9");
+  const [quantity, price] = await Promise.all(
+    [first.getByLabel("Quantidade", { exact: true }), first.getByLabel("Valor unitário (R$)")].map(async (field) => (await field.boundingBox())!),
+  );
+  expect(quantity.y).toBe(price.y);
+  await form.addBrand.click();
+  const second = form.brand(2);
+  await second.getByRole("combobox", { name: "Marca da peça" }).fill("Mann");
+  await second.getByRole("combobox", { name: "Marca da peça" }).press("Escape");
+  await second.getByLabel("Código da peça").fill("w-2");
+  await second.getByLabel("Valor unitário (R$)").fill("10");
+  await form.save.click();
+  await expect(page.getByText("Item “Pastilha de freio” cadastrado.")).toBeVisible();
+  await expect(form.root).toBeHidden();
+  expect(stock[0]).toMatchObject({
+    name: "Pastilha de freio",
+    vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Gol" }],
+    position: "D",
+    side: "LE",
+    minQuantity: 1,
+    brands: [
+      { partBrand: "Cobreq", code: "N-1210", quantity: 4, unitPriceCents: 7990 },
+      { partBrand: "Mann", code: "W-2", unitPriceCents: 1000 },
+    ],
+  });
+
+  await dataTable(page).rows.filter({ hasText: "N-1210" }).first().click();
+  await itemDetails(page).edit.click();
+  const edit = itemForm(page, "Editar item");
+  await expect(edit.root.getByRole("heading", { name: "Pastilha de freio" })).toBeVisible();
+  await expect(edit.vehicle("Volkswagen Gol")).toBeVisible();
+  await expect(edit.position("Dianteira")).toBeChecked();
+  await edit.side("Ambos").click();
+  await edit.save.click();
+  await expect(page.getByText("Item “Pastilha de freio” salvo.")).toBeVisible();
+  expect(stock[0]).toMatchObject({ side: "Ambos", brands: [{ code: "N-1210" }, { code: "W-2" }] });
 });
 
 // Duplicates an item of two photos from its details against an API that keeps what it is sent: Copiar dados e fotos
@@ -862,8 +968,8 @@ test("Web: an item is duplicated from its details, with or without its photos", 
 });
 
 // Closes Novo item, Editar item, Detalhes do item and Gerenciar listas with the round × at the top right of each (on a
-// phone, the details with their ← in its place), on screen without scrolling at both screen sizes, and checks nothing
-// was sent.
+// phone, the details with their ← in its place, and Editar item titled with the item's name), on screen without
+// scrolling at both screen sizes, and checks nothing was sent.
 test("Web: the item form and Manage lists close on the ×", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   await serveItems(page, [...ITEMS]);
   const sent: string[] = [];
@@ -877,7 +983,7 @@ test("Web: the item form and Manage lists close on the ×", { tag: [TEST_TAGS.in
   const { rows } = dataTable(page);
   const openers = [
     { open: () => inv.newItem.click(), name: "Novo item" },
-    { open: () => inv.edit("Filtro de óleo").click(), name: "Editar item" },
+    { open: () => inv.edit("Filtro de óleo").click(), name: isMobile ? "Filtro de óleo" : "Editar item" },
     { open: () => rows.first().getByText("Filtro de óleo").click(), name: "Detalhes do item" },
     { open: () => inv.manageLists.click(), name: "Gerenciar listas" },
   ];

@@ -104,13 +104,20 @@ export function inventory(page: Page) {
 }
 
 /**
- * The item form, "Novo item" or "Editar item": its fields, its photos and its buttons.
+ * The item form, "Novo item" or "Editar item": its fields, its photos and its buttons. On a phone an item's edit is
+ * titled with the item's name, so it is found by its Salvar alterações; its × stands for Cancelar, and its vehicles
+ * are chips, a new one added from "Adicionar veículo" and its Adicionar.
  * @param page The test's page.
  * @param title The form's title.
  * @returns The form's elements.
  */
 export function itemForm(page: Page, title: "Novo item" | "Editar item") {
-  const { root, close } = dialog(page, title);
+  const phone = (page.viewportSize()?.width ?? 0) < TABLE_CARD_BREAKPOINT;
+  const root =
+    phone && title === "Editar item"
+      ? page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Salvar alterações" }) })
+      : dialog(page, title).root;
+  const close = root.getByRole("button", { name: "Fechar" }).first();
   return {
     root,
     close,
@@ -120,15 +127,28 @@ export function itemForm(page: Page, title: "Novo item" | "Editar item") {
     partBrand: root.getByRole("combobox", { name: "Marca da peça" }),
     vehicleBrand: root.getByRole("combobox", { name: "Marca do veículo" }),
     vehicleModel: root.getByRole("combobox", { name: "Modelo do veículo" }),
+    addVehicle: root.getByRole("button", { name: "Adicionar veículo" }),
+    // A phone's Adicionar, which makes the new vehicle a chip.
+    confirmVehicle: root.getByRole("group", { name: "Novo veículo" }).getByRole("button", { name: "Adicionar", exact: true }),
+    // A phone's chip of a vehicle, e.g. "Volkswagen Gol".
+    vehicle: (name: string) => root.getByRole("group", { name: "Veículos", exact: true }).getByRole("listitem").filter({ hasText: name }),
+    position: (name: string) => root.getByRole("radiogroup", { name: "Posição" }).getByRole("radio", { name, exact: true }),
+    side: (name: string) => root.getByRole("radiogroup", { name: "Lado" }).getByRole("radio", { name, exact: true }),
+    // A phone's minimum: the number between the − and the +.
+    minimum: root.getByRole("textbox", { name: "Quantidade mínima" }),
+    raiseMinimum: root.getByRole("button", { name: "Aumentar" }),
+    addBrand: root.getByRole("button", { name: "Adicionar marca" }),
+    brand: (number: number) => root.getByRole("group", { name: `Marca ${number}`, exact: true }),
     unitPrice: root.getByLabel("Valor unitário (R$)"),
     quantity: root.getByLabel("Quantidade", { exact: true }),
     location: root.getByLabel("Local"),
     photos: root.getByRole("img", { name: /^Foto \d/ }),
     removePhoto: (number: number) => root.getByRole("button", { name: `Remover foto ${number}` }),
-    photoFile: root.getByTestId("common.image-upload.drop.input"),
-    // "Salvar", or "Salvar alterações" when the form was opened from the item's details.
+    // The drop area's file input, or a phone's Galeria.
+    photoFile: root.getByTestId("common.image-upload.drop.input").or(root.getByLabel("Galeria", { exact: true })),
+    // "Salvar", "Salvar item" on a phone, or "Salvar alterações" for an item's edit.
     save: root.getByRole("button", { name: "Salvar" }),
-    cancel: root.getByRole("button", { name: "Cancelar" }),
+    cancel: phone ? close : root.getByRole("button", { name: "Cancelar" }),
   };
 }
 
@@ -136,7 +156,8 @@ export function itemForm(page: Page, title: "Novo item" | "Editar item") {
 type NewItem = { code: string; name: string; category: string; partBrand: string; vehicleBrand: string; unitPrice: string };
 
 /**
- * Types an item's required fields in the item form, as the user writes them; the names are typed, not picked.
+ * Types an item's required fields in the item form, as the user writes them; the names are typed, not picked. On a
+ * phone the vehicle's brand is typed in a new vehicle, made a chip with Adicionar once its list is closed.
  * @param page The test's page, with the form open.
  * @param title The form's title.
  * @param item The fields to type.
@@ -147,7 +168,14 @@ export async function fillItem(page: Page, title: "Novo item" | "Editar item", i
   await form.name.fill(item.name);
   await form.category.fill(item.category);
   await form.partBrand.fill(item.partBrand);
-  await form.vehicleBrand.fill(item.vehicleBrand);
+  if ((page.viewportSize()?.width ?? 0) < TABLE_CARD_BREAKPOINT) {
+    await form.addVehicle.click();
+    await form.vehicleBrand.fill(item.vehicleBrand);
+    await form.vehicleBrand.press("Escape");
+    await form.confirmVehicle.click();
+  } else {
+    await form.vehicleBrand.fill(item.vehicleBrand);
+  }
   await form.unitPrice.fill(item.unitPrice);
 }
 
