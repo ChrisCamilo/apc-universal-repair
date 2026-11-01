@@ -17,6 +17,7 @@ import {
   type Item,
   type ItemBrand,
   type ItemCreate,
+  type ItemVehicle,
   type POSITIONS,
   type SIDES,
 } from "./items.ts";
@@ -67,6 +68,20 @@ export const ITEM_FIELD_LABELS: Record<ItemField, string> = {
   side: "Lado",
   minQuantity: "Quantidade mínima",
 };
+/** The positions as a phone's form chooses them, in full words: not applicable, front, rear or both. */
+export const POSITION_CHOICES: { value: (typeof POSITIONS)[number]; label: string }[] = [
+  { value: NOT_APPLICABLE, label: NOT_APPLICABLE },
+  { value: "D", label: "Dianteira" },
+  { value: "T", label: "Traseira" },
+  { value: "Ambos", label: "Ambas" },
+];
+/** The sides as a phone's form chooses them, in full words: not applicable, left, right or both. */
+export const SIDE_CHOICES: { value: (typeof SIDES)[number]; label: string }[] = [
+  { value: NOT_APPLICABLE, label: NOT_APPLICABLE },
+  { value: "LE", label: "Esquerdo" },
+  { value: "LD", label: "Direito" },
+  { value: "Ambos", label: "Ambos" },
+];
 /** Label of each field of a vehicle's line. */
 export const VEHICLE_FIELD_LABELS: Record<VehicleField, string> = {
   vehicleBrand: "Marca do veículo",
@@ -390,25 +405,8 @@ export function itemFormChanged(form: ItemForm, item: Item, colors: readonly str
  * @returns The message of each field that can't be saved, in form order; without any when the item can be saved.
  */
 export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: ItemLists, editingId?: string): ItemFormErrors {
-  /** The message of a list field: required when empty, or not listed when its list doesn't hold it. */
-  const listed = (text: string, entries: ItemLists["categories"], required: string | undefined, notListed: string) =>
-    !text.trim() ? required : findEntry(entries, text) ? undefined : notListed;
-  const category = listed(form.category, lists.categories, ITEM_FORM_MESSAGES.category, ITEM_FORM_MESSAGES.categoryNotListed);
-  const vehicles = form.vehicles.map((each, index): ItemVehicleFormErrors => {
-    const brand = findEntry(lists.vehicleBrands, each.vehicleBrand);
-    const universal = form.vehicles.length > 1 && optionKey(each.vehicleBrand) === optionKey(UNIVERSAL_BRAND);
-    const vehicleBrand = universal
-      ? ITEM_FORM_MESSAGES.universalAlone
-      : listed(each.vehicleBrand, lists.vehicleBrands, ITEM_FORM_MESSAGES.vehicleBrand, ITEM_FORM_MESSAGES.vehicleBrandNotListed);
-    // A model is checked within a listed brand; without one, the brand's message says what to do first.
-    const brandModels = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
-    const repeated =
-      each.vehicleBrand.trim() !== "" && form.vehicles.slice(0, index).some((other) => vehicleKey(other) === vehicleKey(each));
-    const vehicleModel = repeated
-      ? ITEM_FORM_MESSAGES.vehicleRepeated
-      : brand && listed(each.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES.vehicleModelNotListed);
-    return { ...(vehicleBrand && { vehicleBrand }), ...(vehicleModel && { vehicleModel }) };
-  });
+  const category = listedMessage(form.category, lists.categories, ITEM_FORM_MESSAGES.category, ITEM_FORM_MESSAGES.categoryNotListed);
+  const vehicles = vehicleFormErrors(form.vehicles, lists);
   /** Whether an earlier brand of the form has the same value, compared by a key. */
   const repeated = (index: number, key: (brand: ItemBrandForm) => string) =>
     key(form.brands[index]) !== "" && form.brands.slice(0, index).some((other) => key(other) === key(form.brands[index]));
@@ -417,7 +415,7 @@ export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: It
     const codeTaken = codeTakenError(each.code, items, editingId);
     const partBrand = repeated(index, (other) => optionKey(other.partBrand))
       ? ITEM_FORM_MESSAGES.partBrandRepeated
-      : listed(each.partBrand, lists.partBrands, ITEM_FORM_MESSAGES.partBrand, ITEM_FORM_MESSAGES.partBrandNotListed);
+      : listedMessage(each.partBrand, lists.partBrands, ITEM_FORM_MESSAGES.partBrand, ITEM_FORM_MESSAGES.partBrandNotListed);
     return {
       ...(partBrand && { partBrand }),
       ...(!each.code.trim()
@@ -488,6 +486,18 @@ export function itemFormOptions(items: readonly Item[], lists: ItemLists): ItemF
     vehicleBrands: names(lists.vehicleBrands),
     colors: distinct(items.flatMap((item) => item.brands.map((brand) => brand.color)).filter((color) => color !== NOT_APPLICABLE)),
   };
+}
+
+/**
+ * The message of a field whose name must be in a list.
+ * @param text The name typed.
+ * @param entries The list.
+ * @param required The message when nothing is typed; none when the field may be empty.
+ * @param notListed The message when the list doesn't hold the name.
+ * @returns The message, or undefined when the name is fine.
+ */
+function listedMessage(text: string, entries: ItemLists["categories"], required: string | undefined, notListed: string): string | undefined {
+  return !text.trim() ? required : findEntry(entries, text) ? undefined : notListed;
 }
 
 /**
@@ -621,12 +631,45 @@ export function splitCodes(text: string): string[] {
 }
 
 /**
+ * Checks each vehicle's line: its brand is required and must be in the list, and so must its model, under that brand,
+ * when it has one; a vehicle appears once, and Universal alone.
+ * @param vehicles The vehicles as typed.
+ * @param lists The lists the API keeps.
+ * @returns The message of each line's fields that can't be saved, in the lines' order.
+ */
+export function vehicleFormErrors(vehicles: readonly ItemVehicleForm[], lists: ItemLists): ItemVehicleFormErrors[] {
+  return vehicles.map((each, index) => {
+    const brand = findEntry(lists.vehicleBrands, each.vehicleBrand);
+    const universal = vehicles.length > 1 && optionKey(each.vehicleBrand) === optionKey(UNIVERSAL_BRAND);
+    const vehicleBrand = universal
+      ? ITEM_FORM_MESSAGES.universalAlone
+      : listedMessage(each.vehicleBrand, lists.vehicleBrands, ITEM_FORM_MESSAGES.vehicleBrand, ITEM_FORM_MESSAGES.vehicleBrandNotListed);
+    // A model is checked within a listed brand; without one, the brand's message says what to do first.
+    const brandModels = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
+    const repeated = each.vehicleBrand.trim() !== "" && vehicles.slice(0, index).some((other) => vehicleKey(other) === vehicleKey(each));
+    const vehicleModel = repeated
+      ? ITEM_FORM_MESSAGES.vehicleRepeated
+      : brand && listedMessage(each.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES.vehicleModelNotListed);
+    return { ...(vehicleBrand && { vehicleBrand }), ...(vehicleModel && { vehicleModel }) };
+  });
+}
+
+/**
+ * Writes out a vehicle an item fits, as its details list it and the form's chip names it on a phone.
+ * @param vehicle The vehicle.
+ * @returns E.g. "Volkswagen Gol G5", or "Volkswagen (qualquer modelo)".
+ */
+export function vehicleText(vehicle: Pick<ItemVehicle, "vehicleBrand" | "vehicleModel">): string {
+  return vehicle.vehicleModel ? vehicleLabel(vehicle) : `${vehicle.vehicleBrand} (qualquer modelo)`;
+}
+
+/**
  * Writes out each vehicle an item fits for its details.
  * @param item The item.
  * @returns E.g. "Volkswagen Gol G5, Volkswagen (qualquer modelo)".
  */
 export function vehiclesText(item: Pick<Item, "vehicles">): string {
-  return item.vehicles.map((vehicle) => (vehicle.vehicleModel ? vehicleLabel(vehicle) : `${vehicle.vehicleBrand} (qualquer modelo)`)).join(", ");
+  return item.vehicles.map(vehicleText).join(", ");
 }
 
 /**

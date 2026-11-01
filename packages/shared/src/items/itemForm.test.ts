@@ -31,11 +31,16 @@ import {
   priceMask,
   priceText,
   quantityInput,
+  POSITION_CHOICES,
+  SIDE_CHOICES,
   splitCodes,
+  vehicleFormErrors,
   vehiclesText,
+  vehicleText,
   withFormValues,
   type ItemForm,
 } from "./itemForm.ts";
+import { POSITION_SEGMENTS, SIDE_SEGMENTS } from "./itemFilters.ts";
 import type { Item } from "./items.ts";
 import type { ItemLists } from "../lists/lists.ts";
 import { testItem, type FlatItem } from "./testItems.ts";
@@ -241,6 +246,37 @@ test("Shared: a vehicle appears once in an item, and Universal alone", () => {
   const universal = { ...two, vehicles: [{ vehicleBrand: "Universal", vehicleModel: "" }, EMPTY_VEHICLE_FORM] };
   assert.equal(itemFormErrors(universal, ITEMS, LISTS).vehicles?.[0].vehicleBrand, ITEM_FORM_MESSAGES.universalAlone);
   assert.equal(hasFormErrors({ vehicles: [{}] }), false);
+});
+
+// Checks the vehicles alone, as a phone's form does before a new vehicle joins the chips: a listed one passes, one
+// the item already has, one not in the list and a blank one are refused, and each chip is named by its vehicle.
+test("Shared: a phone's new vehicle is checked against the item's before it joins them", () => {
+  const held = [{ vehicleBrand: "Chevrolet", vehicleModel: "Opala" }];
+  assert.deepEqual(vehicleFormErrors([...held, { vehicleBrand: "volkswagen", vehicleModel: "" }], LISTS).at(-1), {});
+  assert.deepEqual(vehicleFormErrors([...held, { vehicleBrand: "Chevrolet", vehicleModel: "opala" }], LISTS).at(-1), {
+    vehicleModel: ITEM_FORM_MESSAGES.vehicleRepeated,
+  });
+  assert.deepEqual(vehicleFormErrors([...held, { vehicleBrand: "Fiat", vehicleModel: "" }], LISTS).at(-1), {
+    vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrandNotListed,
+  });
+  assert.deepEqual(vehicleFormErrors([EMPTY_VEHICLE_FORM], LISTS), [{ vehicleBrand: ITEM_FORM_MESSAGES.vehicleBrand }]);
+  assert.equal(vehicleText({ vehicleBrand: "Volkswagen", vehicleModel: "Gol" }), "Volkswagen Gol");
+  assert.equal(vehicleText({ vehicleBrand: "Volkswagen", vehicleModel: "" }), "Volkswagen (qualquer modelo)");
+});
+
+// Checks a phone's form names every position and side in full words, N/A first, as the filter sheet does after its
+// "every" choice.
+test("Shared: a phone's form chooses the position and the side in full words", () => {
+  assert.deepEqual(
+    POSITION_CHOICES.map((choice) => choice.label),
+    ["N/A", "Dianteira", "Traseira", "Ambas"],
+  );
+  assert.deepEqual(
+    SIDE_CHOICES.map((choice) => choice.value),
+    ["N/A", "LE", "LD", "Ambos"],
+  );
+  assert.deepEqual(POSITION_SEGMENTS.slice(1), POSITION_CHOICES.slice(1));
+  assert.deepEqual(SIDE_SEGMENTS.slice(1), SIDE_CHOICES.slice(1));
 });
 
 // Types a code another item uses, in another case, and checks it is refused naming that item, while the item being
