@@ -126,8 +126,9 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // place of the Filtros menu and the "Ordenar" select: Filtros opens "Filtrar e ordenar" in a bottom sheet (the filters
 // and the sort, applied together on "Ver n itens", which counts the items they would show), and Ordenar the sorts
 // alone, each in the accent while a filter or a sort is on. Gerenciar listas, Importar CSV, Exportar CSV and Tutorial
-// do estoque leave the toolbar for the header's "⋯", which opens them in a bottom sheet (the Mais ações mockup). Each
-// card's pencil and trash stay until the full-screen details come (#360).
+// do estoque leave the toolbar for the header's "⋯", which opens them in a bottom sheet (the Mais ações mockup). A
+// card has no pencil or trash: its details fill the screen (the Detalhes mockup), with Editar and Duplicar at the
+// bottom and Excluir at the top right, which asks to confirm and, once the item is gone, closes the details too.
 
 // The table's cells, styled once: the recipe has no variants they change.
 const CELLS = inventoryTab()
@@ -643,7 +644,8 @@ export function InventoryTab() {
                   card: 'actions',
                   // A brand's row has none: the item's row edits and deletes the item with its brands.
                   cell: ({ item, brand }) =>
-                    !brand && (
+                    !brand &&
+                    !phone && (
                       <span className={classes.actions()} data-testid={ids.actions}>
                         <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => openForm(item)} />
                         <RowAction
@@ -761,6 +763,7 @@ export function InventoryTab() {
         initialForm={form.initial}
         initialPhotos={form.photos}
         onDuplicate={duplicate}
+        onDelete={setRemoving}
         onFormChange={followForm}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
@@ -844,6 +847,8 @@ export function InventoryTab() {
             setPage(page - 1)
           }
           setRemoving(undefined)
+          // Deleted from its details, on a phone: they go with it.
+          setForm((current) => ({ ...current, open: false }))
           setSentWith(items)
           reload()
         }}
