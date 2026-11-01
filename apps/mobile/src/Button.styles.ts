@@ -31,6 +31,8 @@ export const useStyles = createStyles('common.button', { frame: '', ring: 'ring'
       backgroundColor: 'transparent',
     },
     frameDanger: { backgroundColor: colors.danger },
+    frameDashed: { borderColor: colors.hairline, borderStyle: 'dashed' },
+    frameDashedPressed: { borderColor: colors.accent, borderStyle: 'dashed' },
     frameDisabled: { opacity: DISABLED_OPACITY },
     frameGhostPressed: { backgroundColor: colors.panelRaised },
     frameLink: { minHeight: 0, paddingHorizontal: 0, paddingVertical: 0 },

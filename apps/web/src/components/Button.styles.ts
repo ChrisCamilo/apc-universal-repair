@@ -21,6 +21,7 @@ export const button = recipe(
         secondary: `${DISPLAY_LABEL} border-hairline text-text enabled:hover:border-accent enabled:hover:text-accent`,
         ghost: `${DISPLAY_LABEL} border-transparent text-text enabled:hover:bg-panel-raised`,
         link: 'border-transparent font-body text-text-muted underline underline-offset-4 enabled:hover:text-accent',
+        dashed: `${DISPLAY_LABEL} border-dashed border-hairline text-text enabled:hover:border-accent enabled:hover:text-accent`,
         danger: `${DISPLAY_LABEL} border-transparent bg-danger text-on-danger enabled:hover:bg-[color-mix(in_srgb,var(--danger)_86%,var(--text))]`,
       },
       // On a phone a button is at least as tall as a finger needs: 52px, or 44px for a small one.
