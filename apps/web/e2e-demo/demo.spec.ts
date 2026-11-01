@@ -70,7 +70,7 @@ test("Web: the demo finds, filters, creates, edits and deletes items", { tag: [T
   await expect(page.getByText("Item “Retentor de câmbio” salvo.")).toBeVisible();
 
   await deleteItem(page, "Retentor de câmbio");
-  await expect(inv.edit("Retentor de câmbio")).toBeHidden();
+  await expect(dataTable(page).rows.filter({ hasText: "Retentor de câmbio" })).toHaveCount(0);
 });
 
 // Opens a link to the Catalog, as Pages sends it through the site's 404.html, and checks the Catalog shows at that

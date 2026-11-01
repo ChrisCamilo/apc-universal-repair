@@ -8,7 +8,8 @@ import { softHairline, withAlpha } from './theme';
 // its content scrolling inside while the action bar stays pinned at the bottom under a soft hairline. A closable
 // dialog has the × at the right of its title, which wraps beside it. A form fills the screen, with no frame or rounded
 // corners: its title row sits on top under a soft hairline, the × at its left, and the content scrolls between it and
-// the actions, as on the web's phone layout.
+// the actions, as on the web's phone layout. A form with a ← has it at the left of its title row, with no title on
+// screen, and its control at the right.
 
 /**
  * A dialog: the backdrop and the tap target around the window, the window, its body, the title row and the actions, and
@@ -40,6 +41,8 @@ export const useStyles = createStyles(
     bodyContentFill: { padding: scales.space.s4 },
     bodyFill: { flex: 1 },
     header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: scales.space.s3 },
+    // The ← first and the row's control pushed to the right.
+    headerBack: { flexDirection: 'row', justifyContent: 'space-between' },
     headerFill: {
       flexDirection: 'row-reverse',
       alignItems: 'center',

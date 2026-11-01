@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
-import { dialog, pagination } from "./common.ts";
+import { TABLE_CARD_BREAKPOINT } from "@apc/shared/table";
+import { dataTable, dialog, pagination } from "./common.ts";
 
 // The Inventory tab: its toolbar and search, the list's states, and its dialogs (the item form and details, Manage
 // lists, the filters, the import and the delete confirmation).
@@ -21,6 +22,30 @@ function otherAction(page: Page, name: string) {
         await more.click();
       }
       await button.click();
+    },
+  };
+}
+
+/**
+ * An item's Editar or Excluir: its row's pencil or trash on the desktop, or on a phone the button of its details, which
+ * open from its card first unless they already show.
+ * @param page The test's page.
+ * @param action "Editar" or "Excluir".
+ * @param name The item's name.
+ * @returns The action, to click.
+ */
+function itemAction(page: Page, action: "Editar" | "Excluir", name: string) {
+  return {
+    async click() {
+      if ((page.viewportSize()?.width ?? 0) >= TABLE_CARD_BREAKPOINT) {
+        await page.getByRole("button", { name: `${action} ${name}` }).click();
+        return;
+      }
+      const details = itemDetails(page);
+      if (!(await details.root.isVisible())) {
+        await dataTable(page).rows.getByText(name, { exact: true }).click();
+      }
+      await (action === "Editar" ? details.edit : details.remove).click();
     },
   };
 }
@@ -68,8 +93,9 @@ export function inventory(page: Page) {
     failed: page.getByRole("alert").filter({ hasText: "Não foi possível carregar o estoque" }),
     nothingFound: page.getByRole("heading", { name: "Nenhum item encontrado" }),
     empty: page.getByRole("heading", { name: "Nenhum item cadastrado" }),
-    edit: (name: string) => page.getByRole("button", { name: `Editar ${name}` }),
-    remove: (name: string) => page.getByRole("button", { name: `Excluir ${name}` }),
+    // The row's pencil and trash, or on a phone the item's details' Editar and Excluir.
+    edit: (name: string) => itemAction(page, "Editar", name),
+    remove: (name: string) => itemAction(page, "Excluir", name),
     photos: (name: string) => page.getByRole("button", { name: `Ver fotos de ${name}` }),
     pager: pagination(page, "Páginas do estoque"),
     // A phone's list end once every item is in, in place of the pagination.
@@ -138,6 +164,10 @@ export function itemDetails(page: Page) {
     field: (name: string) => root.getByRole("group", { name, exact: true }),
     edit: root.getByRole("button", { name: "Editar" }),
     duplicate: root.getByRole("button", { name: "Duplicar" }),
+    // A phone's red round Excluir, at the top right.
+    remove: root.getByRole("button", { name: "Excluir item" }),
+    // A phone's ←, in place of the × and Fechar.
+    back: root.getByRole("button", { name: "Voltar ao estoque" }),
   };
 }
 

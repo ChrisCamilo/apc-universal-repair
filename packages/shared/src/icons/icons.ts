@@ -31,6 +31,11 @@ export const coneIcon: IconShape[] = [
   { kind: "path", d: "M6.6 2.5h2.8l2.6 9.5H4z" },
   { kind: "path", d: "M5.6 6.2h4.8M4.8 9h6.4M2.5 12h11" },
 ];
+// A sheet over another: a copy, such as an item's Duplicar.
+export const copyIcon: IconShape[] = [
+  { kind: "rect", x: 5.3, y: 5.3, width: 8, height: 8, rx: 1.3 },
+  { kind: "path", d: "M10.7 5.3V2.7H2.7v8h2.6" },
+];
 export const cubeIcon: IconShape[] = [
   { kind: "path", d: "M2.5 5L8 2.4 13.5 5v6L8 13.6 2.5 11V5z" },
   { kind: "path", d: "M2.5 5L8 7.6 13.5 5M8 7.6v6" },
@@ -150,6 +155,7 @@ export const ICONS = {
   close: closeIcon,
   closeRing: closeRingIcon,
   cone: coneIcon,
+  copy: copyIcon,
   cube: cubeIcon,
   document: documentIcon,
   eye: eyeIcon,

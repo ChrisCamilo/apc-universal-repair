@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@apc/shared/auth'
-import { trashIcon } from '@apc/shared/icons'
+import { copyIcon, pencilIcon, trashIcon } from '@apc/shared/icons'
 import { capitalizeFirst, codeKey, findOption, itemSchema, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/shared/items'
 import {
   BRAND_FIELD_LABELS,
@@ -48,9 +48,11 @@ import { ImageUpload, type UploadPhoto } from '../components/ImageUpload.tsx'
 import { Segmented } from '../components/Segmented.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { useToast } from '../components/toastContext.ts'
+import { usePhone } from '../components/usePhone.ts'
 import { Heading, Label, Text } from '../components/Typography.tsx'
 import { CodeListField } from './CodeListField.tsx'
 import { DuplicateItemDialog } from './DuplicateItemDialog.tsx'
+import { ItemDetails, RemoveItemButton } from './ItemDetails.tsx'
 import { itemFormDialog } from './ItemFormDialog.styles.ts'
 import { savePhotos } from './savePhotos.ts'
 import type { CreateListEntry } from './useItemLists.ts'
@@ -82,7 +84,9 @@ import type { CreateListEntry } from './useItemLists.ts'
 // photos too (see DuplicateItemDialog) and hands the answer over. The owner may open it with values and photos filled
 // in, as a duplicated item's are, and follow what is typed, as
 // the Inventory tutorial does, whose tour points at the name and at the first brand's code and quantity; the details
-// list the vehicles apart, under Veículos.
+// list the vehicles apart, under Veículos. On a phone (below `card:`) the details follow the Detalhes mockup (see
+// ItemDetails): a ← back to the list in place of the × and Fechar, the red round Excluir at the right, which asks the
+// owner to delete the item, and Duplicar and Editar sharing the bottom, each with its icon.
 
 const PHOTOS_LABEL = 'Fotos do item'
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }))
@@ -113,6 +117,8 @@ type ItemFormDialogProps = {
   onDuplicate?: (item: Item, withPhotos: boolean) => void
   /** Called with the form as typed and whether it shows the details, on each change, e.g. for the tutorial. */
   onFormChange?: (form: ItemForm, viewing: boolean) => void
+  /** Offers Excluir in a phone's details, called with the item; the owner asks to confirm. */
+  onDelete?: (item: Item) => void
 }
 
 /**
@@ -139,8 +145,10 @@ export function ItemFormDialog({
   initialPhotos,
   onDuplicate,
   onFormChange,
+  onDelete,
 }: ItemFormDialogProps) {
   const toast = useToast()
+  const phone = usePhone()
   const { classes, ids } = itemFormDialog()
   const [viewing, setViewing] = useState(details && item !== undefined)
   const name = useRef<HTMLInputElement>(null)
@@ -159,6 +167,8 @@ export function ItemFormDialog({
   const [creating, setCreating] = useState(0)
   const options = itemFormOptions(items, lists)
   const unlocked = details && !viewing
+  // A phone's details: the Detalhes mockup in place of the fields as text.
+  const screen = phone && viewing && item !== undefined
 
   // Tell the owner what the form holds as it changes.
   useEffect(() => {
@@ -364,9 +374,22 @@ export function ItemFormDialog({
         open={open}
         onClose={onClose}
         title={viewing ? 'Detalhes do item' : item ? 'Editar item' : 'Novo item'}
-        closable
+        closable={!screen}
+        back={screen ? 'Voltar ao estoque' : undefined}
+        headerAction={screen && item && onDelete ? <RemoveItemButton onClick={() => onDelete(item)} /> : undefined}
         actions={
-          viewing ? (
+          screen ? (
+            <>
+              {onDuplicate && (
+                <Button variant="secondary" icon={copyIcon} className={classes.action()} onClick={() => setAsking(true)}>
+                  Duplicar
+                </Button>
+              )}
+              <Button icon={pencilIcon} className={classes.action()} data-tour="form-edit" onClick={() => setViewing(false)}>
+                Editar
+              </Button>
+            </>
+          ) : viewing ? (
             <>
               <Button variant="secondary" size="sm" onClick={onClose}>
                 Fechar
@@ -392,7 +415,9 @@ export function ItemFormDialog({
           )
         }
       >
-        {viewing && item ? (
+        {screen && item ? (
+          <ItemDetails item={item} photos={photos} scrollToBrand={scrollToBrand} brandRef={scrolledBrand} />
+        ) : viewing && item ? (
           <div className={classes.fields()} data-testid={ids.fields}>
             {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
               <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />

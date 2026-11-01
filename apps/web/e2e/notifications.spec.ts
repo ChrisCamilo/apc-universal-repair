@@ -4,7 +4,7 @@ import { TEST_TAGS } from "@apc/shared/test-tags";
 import { rgb } from "./support/expect.ts";
 import { toasts } from "./locators/common.ts";
 import { userMenu } from "./locators/dashboard.ts";
-import { deleteDialog, deleteItem, importDialog, inventory, itemForm } from "./locators/inventory.ts";
+import { deleteDialog, deleteItem, importDialog, inventory, itemDetails, itemForm } from "./locators/inventory.ts";
 import { bell as bellOf } from "./locators/notifications.ts";
 import type { Item, ItemCreate } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
@@ -97,8 +97,8 @@ test("Web: the bell keeps the latest toasts for each user", { tag: [TEST_TAGS.no
   await expect(bell.entries).toHaveCount(0);
 });
 
-// On a phone, deletes one item and fails to delete another, and checks Alertas, in the bottom bar, counts 2 unread on its
-// name and badge. It opens the notifications as a full screen, the error first, then the success, and "Tempo do aviso"
+// On a phone, deletes one item and fails to delete another, whose details stay open until the ← closes them, and checks
+// Alertas, in the bottom bar, counts 2 unread on its name and badge. It opens the notifications as a full screen, the error first, then the success, and "Tempo do aviso"
 // on top; opening clears the count. The × closes it, and "Limpar notificações" empties the list.
 test("Web: on a phone Alertas opens the notifications as a full screen", { tag: [TEST_TAGS.notifications, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   let deletes = 0;
@@ -111,6 +111,7 @@ test("Web: on a phone Alertas opens the notifications as a full screen", { tag: 
   await deleteItem(page, "Bomba d'água");
   await expect(toasts(page).urgent.getByText("Não foi possível excluir o item. Tente de novo.")).toBeVisible();
   await deleteDialog(page).cancel.click();
+  await itemDetails(page).back.click();
   await expect(bell.button).toHaveAccessibleName("Alertas, 2 não lidas");
   await expect(bell.badge).toHaveText("2");
 

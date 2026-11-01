@@ -192,6 +192,16 @@ export function brandDetailTexts(brand: ItemBrand): Record<BrandField, string> {
 }
 
 /**
+ * Words where a brand is kept, for its card in a phone's details.
+ * @param brand The brand.
+ * @returns E.g. "Local E-1 · Preto", the color left out when it doesn't apply, or "Sem local" when it has none.
+ */
+export function brandPlaceText(brand: Pick<ItemBrand, "location" | "color">): string {
+  const place = brand.location ? `Local ${brand.location}` : "Sem local";
+  return brand.color === NOT_APPLICABLE ? place : `${place} · ${brand.color}`;
+}
+
+/**
  * Checks a part code against the other items' codes, their brands' and their original ones, as it is typed: the
  * message when another item uses it, compared as the search compares codes (see codeKey), so "cb4500" is "CB-4500";
  * nothing when it is free or still empty.
@@ -308,6 +318,19 @@ export function itemDetailTexts(item: Item): Record<ItemField, string> {
     side: item.side === NOT_APPLICABLE ? notApplicable : SIDE_NAMES[item.side],
     minQuantity: String(item.minQuantity),
   };
+}
+
+/**
+ * Words an item's position and side on one line, for a phone's details.
+ * @param item The item.
+ * @returns E.g. "Dianteiro · Lado direito", one of them alone when the other doesn't apply, or "Não se aplica".
+ */
+export function positionSideText(item: Pick<Item, "position" | "side">): string {
+  const parts = [
+    ...(item.position === NOT_APPLICABLE ? [] : [POSITION_NAMES[item.position]]),
+    ...(item.side === NOT_APPLICABLE ? [] : [SIDE_NAMES[item.side]]),
+  ];
+  return parts.length > 0 ? parts.join(" · ") : "Não se aplica";
 }
 
 /**

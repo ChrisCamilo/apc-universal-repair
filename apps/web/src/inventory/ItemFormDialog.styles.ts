@@ -7,7 +7,8 @@ import { recipe, tv } from '../styles/tv.ts'
 // after them. The details use the same layout, with the values as text. The Dialog draws the window, so the base has
 // no classes; the photos' cell only places the ImageUpload, which keeps its own id. The vehicles' columns start at no
 // width, so a line's brand and model share the dialog's width and shrink in it instead of scrolling it sideways; a
-// line's trash sits in a cell as tall as a field's frame, centered on it.
+// line's trash sits in a cell as tall as a field's frame, centered on it. A phone's details share the bottom between
+// Duplicar and Editar.
 
 /** The item form: its fields grid, the labeled choices, the brands' sections and their photos' cells. */
 export const itemFormDialog = recipe(
@@ -27,6 +28,7 @@ export const itemFormDialog = recipe(
       brandHead: 'flex items-center justify-between gap-2 sm:col-span-2',
       photos: 'sm:col-span-2',
       add: 'flex',
+      action: 'flex-1',
     },
   }),
   {
@@ -43,5 +45,6 @@ export const itemFormDialog = recipe(
     brandHead: 'fields.brands.brand.head',
     photos: 'fields.brands.brand.photos',
     add: 'fields.brands.add',
+    action: 'action',
   },
 )

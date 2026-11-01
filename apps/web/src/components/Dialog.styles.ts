@@ -8,9 +8,10 @@ import { recipe, tv } from '../styles/tv.ts'
 // backdrop fading in, and closes back the same way, staying on top until it is gone; with reduced motion, at once.
 // On a phone (below `card:`), a form fills the screen: the title row stays on top, the × at its left, the content
 // scrolls under it, and the actions sit at the bottom, clear of the home indicator; it slides up from the bottom edge
-// instead of growing. A confirmation stays a centered box, 16px from the screen's edges.
+// instead of growing. A confirmation stays a centered box, 16px from the screen's edges. A dialog with a ← has it at
+// the left of its title row, the title kept for screen readers, and its control at the right.
 
-/** A dialog: the window, its layout, the scrolling body, the title row and the action bar. */
+/** A dialog: the window, its layout, the scrolling body, the title row with its title, and the action bar. */
 export const dialog = recipe(
   'common.dialog',
   tv({
@@ -25,6 +26,7 @@ export const dialog = recipe(
       layout: 'flex max-h-[inherit] flex-col',
       body: 'grid min-h-0 gap-4 overflow-y-auto p-6',
       header: 'flex items-start justify-between gap-3',
+      title: '',
       actions: 'flex flex-wrap justify-end gap-2 border-t border-hairline-soft px-6 pt-3 pb-6',
     },
     variants: {
@@ -44,10 +46,12 @@ export const dialog = recipe(
           actions: 'max-card:px-4 max-card:pb-[max(--spacing(4),env(safe-area-inset-bottom))]',
         },
       },
+      // The ← first, the title for screen readers only, and the row's control pushed to the right.
+      back: { true: { header: 'max-card:flex-row max-card:justify-between', title: 'sr-only' } },
     },
-    defaultVariants: { fill: false },
+    defaultVariants: { fill: false, back: false },
   }),
-  { base: '', layout: 'layout', body: 'body', header: 'body.header', actions: 'actions' },
+  { base: '', layout: 'layout', body: 'body', header: 'body.header', title: 'body.header.title', actions: 'actions' },
 )
 
 /**

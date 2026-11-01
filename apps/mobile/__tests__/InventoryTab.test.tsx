@@ -188,10 +188,19 @@ test('Mobile: the search finds items by name or part code', async () => {
   expect(texts(tree)).toContain('Nenhum item encontrado');
 });
 
-// Presses "Novo item" and checks the empty form opens, then closes it and presses a card's pencil, and checks the form
-// opens on that item; saving it with a quantity changed loads the list again.
-test('Mobile: "Novo item" and the pencil open the item form, and a save reloads the list', async () => {
+// Presses "Novo item" and checks the empty form opens, then closes it, opens a card's details, which the card has no
+// pencil for, and presses Editar there, and checks the form opens on that item; saving it with a quantity changed loads
+// the list again.
+test('Mobile: "Novo item" and the details\' Editar open the item form, and a save reloads the list', async () => {
   const tree = await mount();
+  const card = (name: string) =>
+    tree.root.findAll(
+      (n) =>
+        typeof n.type !== 'string' &&
+        n.props.testID === 'common.data-table.table.row' &&
+        typeof n.props.onPress === 'function' &&
+        n.findAll((c) => c.type === Text && c.props.children === name).length > 0,
+    )[0];
   const dialog = () => tree.root.findAllByType(Modal).find((modal) => modal.props.visible);
   const pressable = (name: string) =>
     tree.root.findAll(
@@ -205,7 +214,9 @@ test('Mobile: "Novo item" and the pencil open the item form, and a save reloads 
   expect(dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')[0].props.value).toBe('');
   await ReactTestRenderer.act(async () => dialog()!.props.onRequestClose());
 
-  await ReactTestRenderer.act(async () => pressable('Editar Filtro de óleo').props.onPress());
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Editar Filtro de óleo')).toHaveLength(0);
+  await ReactTestRenderer.act(async () => card('Filtro de óleo').props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Editar').props.onPress());
   expect(texts(tree)).toContain('Editar item');
   expect(dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')[0].props.value).toBe('W 712/95');
   const quantity = dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Quantidade')[0];
@@ -221,11 +232,20 @@ test('Mobile: "Novo item" and the pencil open the item form, and a save reloads 
   expect(dialog()).toBeUndefined();
 });
 
-// Presses a card's trash and checks the confirmation names the item and its code, then confirms and checks the item
-// is deleted by its id, the list loads again without it and the confirmation closes.
-test('Mobile: the trash asks to confirm, and a delete reloads the list', async () => {
+// Opens a card's details, which the card has no trash for, and presses Excluir there, and checks the confirmation names
+// the item and its code, then confirms and checks the item is deleted by its id, the list loads again without it, and
+// the confirmation and the details close.
+test('Mobile: Excluir in the details asks to confirm, and a delete reloads the list', async () => {
   const stock = [...ITEMS];
   const tree = await mount(stock);
+  const card = (name: string) =>
+    tree.root.findAll(
+      (n) =>
+        typeof n.type !== 'string' &&
+        n.props.testID === 'common.data-table.table.row' &&
+        typeof n.props.onPress === 'function' &&
+        n.findAll((c) => c.type === Text && c.props.children === name).length > 0,
+    )[0];
   const dialog = () => tree.root.findAllByType(Modal).find((modal) => modal.props.visible);
   const pressable = (name: string) =>
     tree.root.findAll(
@@ -233,7 +253,9 @@ test('Mobile: the trash asks to confirm, and a delete reloads the list', async (
         typeof n.props.onPress === 'function' &&
         (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
     )[0];
-  await ReactTestRenderer.act(async () => pressable("Excluir Bomba d'água").props.onPress());
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === "Excluir Bomba d'água")).toHaveLength(0);
+  await ReactTestRenderer.act(async () => card("Bomba d'água").props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Excluir item').props.onPress());
   expect(texts(tree)).toContain('Excluir item?');
   expect(texts(tree)).toContain("Bomba d'água (BA-77) sai do estoque. Essa ação não pode ser desfeita.");
   (fetch as jest.Mock).mockClear();
@@ -262,7 +284,8 @@ test('Mobile: a card of one brand opens the item details', async () => {
         n.findAll((c) => c.type === Text && c.props.children === code).length > 0,
     )[0];
   await ReactTestRenderer.act(async () => card('BP-1020 · Cobreq').props.onPress());
-  expect(texts(tree)).toContain('Detalhes do item');
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Detalhes do item' && n.props.accessibilityViewIsModal)).not.toHaveLength(0);
+  expect(texts(tree)).toContain('Pastilha de freio');
   expect(tree.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça')).toHaveLength(0);
   expect(card('BP-1020 · Cobreq').props.accessibilityState).toEqual({ expanded: undefined });
 });
@@ -622,6 +645,6 @@ test('Mobile: an item of several brands opens its details', async () => {
   expect(card.props.accessibilityState).toEqual({ expanded: undefined });
 
   await ReactTestRenderer.act(async () => card.props.onPress());
-  expect(texts(tree)).toContain('Detalhes do item');
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Marcas · 2', 'Cobreq', 'Fras-le']));
   expect(cards()).toHaveLength(1);
 });

@@ -5,8 +5,8 @@ import { fontFamily } from '../theme';
 
 // The look of the Inventory tab, the same as the web on a phone (the Estoque mockup): on the canvas, with no panel
 // around it, one column that scrolls as a whole (the toolbar, the filters and the cards), ending clear
-// of the round "+" at the bottom right, with "Fim da lista" once every item is in; the filters in a wrapping row; each card's pencil and trash side by side, and
-// its quantity at 20px with its stock status under it in the 11px display face, muted for "un.", in the warn or danger
+// of the round "+" at the bottom right, with "Fim da lista" once every item is in; the filters in a wrapping row; each card's
+// quantity at 20px with its stock status under it in the 11px display face, muted for "un.", in the warn or danger
 // color for Baixo or Esgotado; and, while the list loads, skeleton rows in the cards' shape. The list takes the room
 // left, with the error and the empty states centered in it. The skeletons keep their own ids.
 
@@ -23,7 +23,7 @@ const QUANTITY_SIZE = scales.fontSize.xl;
 /** A card's stock status under its quantity, in px (11px on the web). */
 const TAG_SIZE = 11;
 
-/** The Inventory tab: its column, the filters, each card's actions and quantity, the "+" and the loading rows. */
+/** The Inventory tab: its column, the filters, each card's quantity, the "+" and the loading rows. */
 export const useStyles = createStyles(
   'inventory.inventory-tab',
   {
@@ -32,7 +32,6 @@ export const useStyles = createStyles(
     filters: 'filters',
     list: 'list',
     end: 'list.end',
-    actions: 'actions',
     name: 'name',
     quantity: 'quantity',
     quantityValue: 'quantity.value',
@@ -44,7 +43,6 @@ export const useStyles = createStyles(
     loadingLines: 'loading.row.lines',
   },
   (theme) => ({
-    actions: { flexDirection: 'row', gap: scales.space.s1 },
     fab: { position: 'absolute', right: scales.space.s4, bottom: scales.space.s4 },
     fabButton: {
       width: FAB_SIZE,

@@ -94,10 +94,10 @@ test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS
 // the bottom, and "Novo item" is a round 56px "+" at the bottom right, 16px above the bar, which stays put while the page
 // scrolls and opens a new item's form; nothing scrolls sideways.
 test("Web: on a phone the Inventory scrolls as a whole under a round + for a new item", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.mobileOnly] }, async ({ page }) => {
-  await serveItems(page, Array.from({ length: 12 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
+  await serveItems(page, Array.from({ length: 16 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
   await page.goto("/inventory");
   const { rows } = dataTable(page);
-  await expect(rows).toHaveCount(12);
+  await expect(rows).toHaveCount(16);
   const { newItem } = inventory(page);
   const { width, height } = page.viewportSize()!;
   const plus = async () => (await newItem.boundingBox())!;
@@ -459,7 +459,9 @@ test("Web: items are imported from a CSV file", { tag: [TEST_TAGS.inventory] }, 
 // the test item, part 2 finds it with the search and the filters, and part 3 opens its details, edits it to a low and
 // then an out-of-stock row, and deletes it. Closing the form mid-step goes back to the step that opens it. At the end
 // the search and the filters are off and the test item is gone; the user menu replays the tutorial, and Skip ends it.
-test("Web: the Inventory tutorial creates, finds, edits and deletes a test item", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// On a phone, whose cards have no pencil or trash, "Fazer por mim" does those two steps (#363 points them at the
+// details' Editar and Excluir).
+test("Web: the Inventory tutorial creates, finds, edits and deletes a test item", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   await signIn(page, false);
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
@@ -524,14 +526,22 @@ test("Web: the Inventory tutorial creates, finds, edits and deletes a test item"
   await expect(testRow).toHaveAttribute("data-status", "warn");
   await guide.next.click();
   await step("Edite pelo lápis");
-  await inv.edit("Item de teste do tutorial editado").click();
+  if (isMobile) {
+    await doIt();
+  } else {
+    await inv.edit("Item de teste do tutorial editado").click();
+  }
   await step("Zere a quantidade");
   await doIt();
   await step("Esgotado");
   await expect(testRow).toHaveAttribute("data-status", "danger");
   await guide.next.click();
   await step("Exclua o item");
-  await inv.remove("Item de teste do tutorial editado").click();
+  if (isMobile) {
+    await doIt();
+  } else {
+    await inv.remove("Item de teste do tutorial editado").click();
+  }
   await step("Confirme");
   await deleteDialog(page).confirm.click();
   await step("Pronto!");
@@ -667,8 +677,9 @@ test("Web: an item is deleted after confirming", { tag: [TEST_TAGS.inventory] },
 
 // Opens an item's details from its row against an API that keeps what it is sent: the details show the item as
 // text, Editar unlocks the fields in place and Salvar alterações patches the item. The pencil still opens the edit
-// form and Enter on a focused row opens the details; the user menu has no choice to turn this off.
-test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// form and Enter on a focused row opens the details; the user menu has no choice to turn this off. A phone's details
+// have a test of their own.
+test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TAGS.inventory, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const stock = [...ITEMS];
   await serveItems(page, stock);
   await page.route("**/api/items/*", async (route) => {
@@ -707,11 +718,74 @@ test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TA
   await expect(userMenu(page).checkbox(/Abrir item ao clicar na linha/)).toHaveCount(0);
 });
 
+// On a phone, opens an item's details from its card against an API that keeps what it is sent, the cards having no
+// pencil or trash: the details fill the screen, as in the Detalhes mockup, with the ← in place of the × and Fechar and
+// the red round "Excluir item" at the top right; the category over the name, the stock and the minimum, the vehicles,
+// the position and side and the original codes, and a card for the brand with its code, price and place; Duplicar and
+// Editar share the bottom. The ← closes them; Duplicar asks about the photos; Editar unlocks the fields; and Excluir
+// asks to confirm, then deletes the item and closes its details.
+test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  const stock = [...ITEMS];
+  await serveItems(page, stock);
+  await page.route("**/api/items/*", (route) => {
+    stock.splice(stock.findIndex((it) => route.request().url().endsWith(it.id)), 1);
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/inventory");
+  const { rows } = dataTable(page);
+  const details = itemDetails(page);
+  await expect(rows).toHaveCount(4);
+  await expect(page.getByRole("button", { name: /^(Editar|Excluir) / })).toHaveCount(0);
+
+  await rows.nth(3).getByText("Amortecedor").click();
+  await expect(details.root).toBeVisible();
+  const { width, height } = page.viewportSize()!;
+  await expect.poll(async () => details.root.boundingBox()).toEqual({ x: 0, y: 0, width, height });
+  await expect(details.back).toBeInViewport();
+  await expect(details.remove).toBeInViewport();
+  await expect(details.root.getByRole("button", { name: "Fechar" })).toHaveCount(0);
+  await expect(details.root.getByRole("heading", { name: "Amortecedor" })).toBeVisible();
+  await expect(details.root).toContainText("Suspensão");
+  await expect(details.root).toContainText(/Em estoque\s*4\s*un\./);
+  await expect(details.root).toContainText(/Mínimo\s*1\s*un\./);
+  await expect(details.root).toContainText(/Veículos\s*Ford Escort/);
+  await expect(details.root).toContainText(/Posição · Lado\s*Traseiro · Lado esquerdo/);
+  await expect(details.root).toContainText(/Códigos originais\s*Nenhum/);
+  await expect(details.root).toContainText("Marcas · 1");
+  const brand = details.root.getByRole("group", { name: "Cofap" });
+  await expect(brand).toContainText("AM-501");
+  await expect(brand).toContainText(/R\$\s249,00/);
+  await expect(brand).toContainText("Local A-10 · Preto");
+  const halves = await Promise.all([details.duplicate, details.edit].map(async (button) => (await button.boundingBox())!));
+  expect(Math.abs(halves[0].width - halves[1].width)).toBeLessThanOrEqual(1);
+  expect(halves[0].y + halves[0].height).toBeLessThanOrEqual(height);
+  await details.back.click();
+  await expect(details.root).toBeHidden();
+
+  await rows.nth(3).getByText("Amortecedor").click();
+  await details.duplicate.click();
+  const question = dialog(page, "Duplicar item?").root;
+  await expect(question).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(question).toBeHidden();
+  await details.edit.click();
+  await expect(itemForm(page, "Editar item").name).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(itemForm(page, "Editar item").root).toBeHidden();
+
+  await rows.nth(3).getByText("Amortecedor").click();
+  await details.remove.click();
+  await deleteDialog(page).confirm.click();
+  await expect(page.getByText("Item “Amortecedor” excluído.")).toBeVisible();
+  await expect(details.root).toBeHidden();
+  await expect(rows).toHaveCount(3);
+});
+
 // Duplicates an item of two photos from its details against an API that keeps what it is sent: Copiar dados e fotos
 // opens a new item's form filled in without the code and with the quantity at 0, and saving it with a code of its own
 // posts the item, then sends the photos as copies of the first item's, which become photos of the copy's own. Deleting
 // the first item leaves the copy's photos; duplicating the copy with Copiar só os dados gives an item without photos.
-test("Web: an item is duplicated from its details, with or without its photos", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+test("Web: an item is duplicated from its details, with or without its photos", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   const png = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
     "base64",
@@ -765,8 +839,13 @@ test("Web: an item is duplicated from its details, with or without its photos", 
   const copy = stock[0];
   expect([copy.brands[0].code, copy.quantity, copy.brands[0].photos.some((photo) => photos.some((each) => each.id === photo.id))]).toEqual(["W 712/96", 0, false]);
 
-  // Both items are named "Filtro de óleo": the first item's trash is the second row's.
-  await rows.nth(1).getByRole("button", { name: "Excluir Filtro de óleo" }).click();
+  // Both items are named "Filtro de óleo": the first item's trash is the second row's; on a phone, in its details.
+  if (isMobile) {
+    await rows.nth(1).getByText("Filtro de óleo").click();
+    await itemDetails(page).remove.click();
+  } else {
+    await rows.nth(1).getByRole("button", { name: "Excluir Filtro de óleo" }).click();
+  }
   await deleteDialog(page).confirm.click();
   await expect(rows).toHaveCount(4);
   await expect(thumbnailImage(inventory(page).photos("Filtro de óleo"))).toHaveAttribute("src", "/api/photos/copy-0-thumb.webp");
@@ -782,9 +861,10 @@ test("Web: an item is duplicated from its details, with or without its photos", 
   expect(sent).toHaveLength(1);
 });
 
-// Closes Novo item, Editar item, Detalhes do item and Gerenciar listas with the round × at the top right of each,
-// on screen without scrolling at both screen sizes, and checks nothing was sent.
-test("Web: the item form and Manage lists close on the ×", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// Closes Novo item, Editar item, Detalhes do item and Gerenciar listas with the round × at the top right of each (on a
+// phone, the details with their ← in its place), on screen without scrolling at both screen sizes, and checks nothing
+// was sent.
+test("Web: the item form and Manage lists close on the ×", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   await serveItems(page, [...ITEMS]);
   const sent: string[] = [];
   page.on("request", (request) => {
@@ -803,7 +883,8 @@ test("Web: the item form and Manage lists close on the ×", { tag: [TEST_TAGS.in
   ];
   for (const { open, name } of openers) {
     await open();
-    const { root, close } = dialog(page, name);
+    const { root } = dialog(page, name);
+    const close = isMobile && name === "Detalhes do item" ? itemDetails(page).back : dialog(page, name).close;
     await expect(close).toBeInViewport();
     await close.click();
     await expect(root).toBeHidden();
@@ -1168,7 +1249,7 @@ test("Web: on a phone the list loads more as it scrolls and keeps its place", { 
   const before = await page.evaluate(() => window.scrollY);
   await rows.last().getByText("Peça 51").click();
   await expect(itemDetails(page).root).toBeVisible();
-  await itemDetails(page).closeText.click();
+  await itemDetails(page).back.click();
   await expect(itemDetails(page).root).toBeHidden();
   expect(await page.evaluate(() => window.scrollY)).toBe(before);
   await expect(rows).toHaveCount(51);
