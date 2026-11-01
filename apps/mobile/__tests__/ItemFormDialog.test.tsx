@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Image, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
@@ -13,6 +13,7 @@ import { withEntry, type ItemLists } from '@apc/shared/lists';
 import { copiedPhotos, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/shared/photos';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
+import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import type { UploadPhoto } from '../src/ImageUpload';
 import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
 import type { CreateListEntry } from '../src/inventory/useItemLists';
@@ -120,6 +121,7 @@ async function mount(
     initialPhotos,
     onDuplicate,
     scrollToBrand,
+    onDeleted,
   }: {
     onSaved?: (saved: Item) => void;
     details?: boolean;
@@ -129,6 +131,7 @@ async function mount(
     initialPhotos?: UploadPhoto[][];
     onDuplicate?: (item: Item, withPhotos: boolean) => void;
     scrollToBrand?: string;
+    onDeleted?: (item: Item) => void;
   } = {},
 ) {
   /** Holds the lists as the inventory does, adding each name created unless onCreateEntry says it failed. */
@@ -156,6 +159,7 @@ async function mount(
         initialForm={initialForm}
         initialPhotos={initialPhotos}
         onDuplicate={onDuplicate}
+        onDeleted={onDeleted}
       />
     );
   }
@@ -495,29 +499,48 @@ test('Mobile: the quantities take whole numbers only, up to a million', async ()
   expect(fetch).not.toHaveBeenCalled();
 });
 
-// Opens an item's details and checks every field shows as text with its label, what doesn't apply said in words and
-// the price in reais, nothing can be typed in, and Fechar closes it.
-test('Mobile: the details show the item as text and change nothing', async () => {
+// Opens an item's details and checks they follow the Detalhes mockup: the ← in place of the × and Fechar, the title
+// naming the window for screen readers only and the red round Excluir only when offered; "Sem fotos", the category
+// over the name, the stock and the minimum, the details in words and a card for the brand with its price in reais.
+// Nothing can be typed in, Duplicar and Editar share the bottom, and the ← closes the details.
+test('Mobile: the details follow the Detalhes mockup and change nothing', async () => {
   const onClose = jest.fn();
-  const tree = await mount(FILTER, { details: true, onClose });
-  expect(shows(tree, 'Detalhes do item')).toBe(true);
-  const values = tree.root.findAll((n) => n.type === View && typeof n.props.accessibilityLabel === 'string' && n.props.accessible);
-  const labels = values.map((n) => n.props.accessibilityLabel.replace(/\s/g, ' '));
-  expect(labels).toEqual(
-    expect.arrayContaining([
-      'Código da peça: W 712/95',
-      'Veículos: Volkswagen Gol',
-      'Posição: Não se aplica',
-      'Cor: Preto',
-      'Local: Não informado',
-      'Valor unitário (R$): R$ 39,90',
-    ]),
+  const tree = await mount({ ...FILTER, quantity: 7, minQuantity: 2 }, { details: true, onClose, onDuplicate: () => {} });
+  expect(shows(tree, 'Detalhes do item')).toBe(false);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Detalhes do item' && n.props.accessibilityViewIsModal)).not.toHaveLength(0);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Fechar')).toHaveLength(0);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Excluir item')).toHaveLength(0);
+  const texts = tree.root.findAll((n) => typeof n.type === 'string' && n.props.children !== undefined).flatMap((n) => [n.props.children].flat());
+  expect(texts).toEqual(
+    expect.arrayContaining(['Sem fotos', 'Motor', 'Filtro de óleo', 'Em estoque', 7, 'Mínimo', 2, 'Volkswagen Gol', 'Não se aplica', 'Nenhum', 'Marcas · 1']),
   );
+  const card = section(tree, 'Bosch');
+  const shown = card.findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string').map((n) => n.props.children.replace(/\s/g, ' '));
+  expect(shown).toEqual(expect.arrayContaining(['Bosch', 'W 712/95', 'R$ 39,90', 'Sem local · Preto']));
   expect(tree.root.findAllByType(TextInput)).toHaveLength(0);
+  const halves = tree.root.findAll((n) => n.props.testID === 'inventory.item-form-dialog.action' && typeof n.type === 'string');
+  expect(halves.map((n) => StyleSheet.flatten(n.props.style).flex)).toEqual([1, 1]);
   (fetch as jest.Mock).mockClear();
-  await press(tree, 'Fechar');
+  await press(tree, 'Voltar ao estoque');
   expect(onClose).toHaveBeenCalledTimes(1);
   expect(fetch).not.toHaveBeenCalled();
+});
+
+// Opens the details with Excluir offered and checks the red round Excluir at the top right asks to confirm over the
+// details, deletes the item and hands it over.
+test('Mobile: Excluir in the details asks to confirm and deletes the item', async () => {
+  const onDeleted = jest.fn();
+  await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
+  const tree = await mount(FILTER, { details: true, onDeleted });
+  const remove = tree.root.find((n) => n.props.accessibilityLabel === 'Excluir item' && typeof n.type === 'string');
+  expect(StyleSheet.flatten(remove.props.style)).toMatchObject({ width: 44, height: 44, backgroundColor: themes.eighties.night.colors.danger });
+  await press(tree, 'Excluir item');
+  expect(shows(tree, 'Excluir item?')).toBe(true);
+  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 204 });
+  await press(tree, 'Excluir');
+  expect(fetch).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`/items/${FILTER.id}$`)), { method: 'DELETE' });
+  expect(onDeleted).toHaveBeenCalledWith(FILTER);
+  expect(shows(tree, 'Excluir item?')).toBe(false);
 });
 
 // Opens the details, presses Editar and checks the fields unlock filled in, with Cancelar and Salvar alterações, then
@@ -558,7 +581,7 @@ test('Mobile: Duplicar asks whether the copy takes the photos', async () => {
   await press(tree, 'Cancelar');
   expect(shows(tree, 'Duplicar item?')).toBe(false);
   expect(onDuplicate).toHaveBeenCalledTimes(2);
-  expect(shows(tree, 'Detalhes do item')).toBe(true);
+  expect(shows(tree, 'Em estoque')).toBe(true);
 });
 
 // Opens a new item's form as a copy of an item with a photo, and checks it opens filled in without the code and with
@@ -717,8 +740,8 @@ test('Mobile: a part brand and a code appear once in an item', async () => {
   expect(fetch).not.toHaveBeenCalled();
 });
 
-// Opens the details of an item of two brands and checks each brand shows in its own section, with its code, price
-// and quantity, and its own photos.
+// Opens the details of an item of two brands and checks "Marcas · 2" and a card for each brand, with its code, price
+// and quantity.
 test('Mobile: the details show each brand of an item', async () => {
   const both = {
     ...FILTER,
@@ -729,28 +752,31 @@ test('Mobile: the details show each brand of an item', async () => {
     ],
   };
   const tree = await mount(both, { details: true });
-  const second = section(tree, 'Marca 2');
+  expect(shows(tree, 'Marcas · 2')).toBe(true);
+  const second = section(tree, 'Cobreq');
   const shown = second.findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string').map((n) => n.props.children.replace(/\s/g, ' '));
-  expect(shown).toEqual(expect.arrayContaining(['Cobreq', 'N-1210', '4', 'R$ 79,90']));
-  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Fotos da marca 2').length).toBeGreaterThan(0);
+  expect(shown).toEqual(expect.arrayContaining(['Cobreq', 'N-1210', 'R$ 79,90']));
+  const quantity = second.find((n) => n.props.testID === 'inventory.item-details.brands.brand.quantity' && typeof n.type === 'string');
+  expect([quantity.props.children].flat()[0]).toBe(4);
 });
 
-// Opens the details of an item of two brands on its second, as a brand's card in the list does, lays the sections out
-// and checks the details scroll once to that brand's top: the fields', the brands' and the brand's own tops added up.
+// Opens the details of an item of two brands on its second, as a brand's row in the desktop list does, lays the cards
+// out and checks the details scroll once to that brand's card: the details', the cards' and the card's own tops added
+// up.
 test('Mobile: the details open scrolled to the brand they were opened on', async () => {
   const second = { ...FILTER.brands[0], id: '00000000-0000-4000-8000-0000000000b2', partBrand: 'Cobreq', code: 'N-1210' };
   const tree = await mount({ ...FILTER, brands: [FILTER.brands[0], second] }, { details: true, scrollToBrand: second.id });
   const scrollTo = tree.root.findByType(ScrollView).instance.scrollTo as jest.Mock;
   const layOut = (node: ReactTestRenderer.ReactTestInstance, y: number) =>
     ReactTestRenderer.act(() => node.props.onLayout({ nativeEvent: { layout: { x: 0, y, width: 300, height: 100 } } }));
-  await layOut(section(tree, 'Marca 2'), 400);
-  await layOut(tree.root.findByProps({ testID: 'inventory.item-form-dialog.fields.brands' }), 600);
+  await layOut(section(tree, 'Cobreq'), 400);
+  await layOut(tree.root.findByProps({ testID: 'inventory.item-details.brands.list' }), 600);
   expect(scrollTo).not.toHaveBeenCalled();
-  await layOut(tree.root.findByProps({ testID: 'inventory.item-form-dialog.fields' }), 50);
+  await layOut(tree.root.findByProps({ testID: 'inventory.item-details' }), 50);
   expect(scrollTo).toHaveBeenCalledWith({ y: 1050, animated: false });
-  await layOut(section(tree, 'Marca 2'), 420);
+  await layOut(section(tree, 'Cobreq'), 420);
   expect(scrollTo).toHaveBeenCalledTimes(1);
-  expect(section(tree, 'Marca 1').props.onLayout).toBeUndefined();
+  expect(section(tree, 'Bosch').props.onLayout).toBeUndefined();
 });
 
 // Types an item's original codes as chips, one with the return key and two pasted at once, and checks they are sent

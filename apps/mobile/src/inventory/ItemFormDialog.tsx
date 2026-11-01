@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
+import { copyIcon, pencilIcon } from '@apc/shared/icons';
 import { capitalizeFirst, codeKey, findOption, itemSchema, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/shared/items';
 import {
   BRAND_FIELD_LABELS,
-  brandDetailTexts,
   codeTakenError,
   codeTakenMessage,
   EMPTY_BRAND_FORM,
@@ -13,7 +13,6 @@ import {
   hasFormErrors,
   ITEM_FIELD_LABELS,
   ITEM_UNCHANGED_MESSAGE,
-  itemDetailTexts,
   itemFormBody,
   itemFormChanged,
   itemFormErrors,
@@ -22,13 +21,11 @@ import {
   modelsOfBrand,
   ORIGINAL_CODES_LABEL,
   originalCodeMessages,
-  originalCodesText,
   PRICE_PLACEHOLDER,
   priceMask,
   quantityInput,
   VEHICLE_FIELD_LABELS,
   VEHICLES_LABEL,
-  vehiclesText,
   type BrandField,
   type ItemBrandFormErrors,
   type ItemField,
@@ -42,7 +39,6 @@ import { API_URL } from '../api';
 import { Button } from '../Button';
 import { Combobox } from '../Combobox';
 import { Dialog } from '../Dialog';
-import { FieldValue } from '../FieldValue';
 import { ImageUpload, type UploadPhoto } from '../ImageUpload';
 import { Segmented } from '../Segmented';
 import { TextField } from '../TextField';
@@ -50,6 +46,8 @@ import { useToast } from '../Toast';
 import { Heading, Label, Text } from '../Typography';
 import { tourTarget } from '../tourTargets';
 import { CodeListField } from './CodeListField';
+import { DeleteItemDialog } from './DeleteItemDialog';
+import { ItemDetails, RemoveItemButton } from './ItemDetails';
 import { useStyles } from './ItemFormDialog.styles';
 import { pickPhotos, savePhotos } from './photos';
 import { DuplicateItemDialog } from './DuplicateItemDialog';
@@ -80,7 +78,10 @@ import type { CreateListEntry } from './useItemLists';
 // asks whether the copy takes the photos too (see DuplicateItemDialog), over the details since a modal opens over
 // another only from inside it, and hands the answer over. The owner may open it with values and photos filled in, as a
 // duplicated item's are, and follow what is typed, as the Inventory tutorial does, whose tour points at the name, at the first brand's
-// code and quantity, and at the buttons.
+// code and quantity, and at the buttons. The details follow the Detalhes mockup, as the web does on a phone (see
+// ItemDetails): a ← back to the list in place of the × and Fechar, Duplicar and Editar sharing the bottom, each with its
+// icon, and the red round Excluir at the right, which asks to confirm over the details (see DeleteItemDialog), deletes
+// the item and hands it over.
 
 const PHOTOS_LABEL = 'Fotos do item';
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }));
@@ -111,6 +112,8 @@ type ItemFormDialogProps = {
   onDuplicate?: (item: Item, withPhotos: boolean) => void;
   /** Called with the form as typed and whether it shows the details, on each change, e.g. for the tutorial. */
   onFormChange?: (form: ItemForm, viewing: boolean) => void;
+  /** Offers Excluir in the details, which asks to confirm and deletes the item; called with it once it is gone. */
+  onDeleted?: (item: Item) => void;
 };
 
 /**
@@ -137,6 +140,7 @@ export function ItemFormDialog({
   initialPhotos,
   onDuplicate,
   onFormChange,
+  onDeleted,
 }: ItemFormDialogProps) {
   const toast = useToast();
   const { styles, ids } = useStyles();
@@ -153,8 +157,9 @@ export function ItemFormDialog({
   );
   const [errors, setErrors] = useState<ItemFormErrors>({});
   const [saving, setSaving] = useState(false);
-  // Whether Duplicar's question is open.
+  // Whether Duplicar's question is open, and Excluir's.
   const [asking, setAsking] = useState(false);
+  const [removing, setRemoving] = useState(false);
   // How many names are being created; saving waits for them.
   const [creating, setCreating] = useState(0);
   const options = itemFormOptions(items, lists);
@@ -370,21 +375,22 @@ export function ItemFormDialog({
       open={open}
       onClose={onClose}
       title={viewing ? 'Detalhes do item' : item ? 'Editar item' : 'Novo item'}
-      closable
+      closable={!viewing}
+      back={viewing ? 'Voltar ao estoque' : undefined}
+      headerAction={viewing && onDeleted ? <RemoveItemButton onPress={() => setRemoving(true)} /> : undefined}
       scrollRef={scroll}
       actions={
         viewing ? (
           <>
-            <Button variant="secondary" size="sm" onPress={onClose}>
-              Fechar
-            </Button>
             {onDuplicate && (
-              <Button variant="secondary" size="sm" onPress={() => setAsking(true)}>
-                Duplicar
-              </Button>
+              <View style={styles.action} testID={ids.action}>
+                <Button variant="secondary" icon={copyIcon} align="stretch" onPress={() => setAsking(true)}>
+                  Duplicar
+                </Button>
+              </View>
             )}
-            <View ref={tourTarget('form-edit')} collapsable={false}>
-              <Button size="sm" onPress={() => setViewing(false)}>
+            <View ref={tourTarget('form-edit')} collapsable={false} style={styles.action} testID={ids.action}>
+              <Button icon={pencilIcon} align="stretch" onPress={() => setViewing(false)}>
                 Editar
               </Button>
             </View>
@@ -404,40 +410,7 @@ export function ItemFormDialog({
       }
     >
       {viewing && item ? (
-        <View style={styles.fields} testID={ids.fields} onLayout={scrollToBrand ? (event) => placeBrand('fields', event.nativeEvent.layout.y) : undefined}>
-          {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
-            <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />
-          ))}
-          <FieldValue label={VEHICLES_LABEL} value={vehiclesText(item)} />
-          <FieldValue label={ORIGINAL_CODES_LABEL} value={originalCodesText(item)} />
-          <View style={styles.brands} testID={ids.brands} onLayout={scrollToBrand ? (event) => placeBrand('brands', event.nativeEvent.layout.y) : undefined}>
-            {item.brands.map((brand, index) => (
-              <View
-                key={brand.id}
-                onLayout={brand.id === scrollToBrand ? (event) => placeBrand('brand', event.nativeEvent.layout.y) : undefined}
-                role="group"
-                accessibilityLabel={brandNames(index, item.brands.length).section}
-                style={styles.brand}
-                testID={ids.brand}
-              >
-                <View style={styles.brandHead} testID={ids.brandHead}>
-                  <Heading level={4}>{brandNames(index, item.brands.length).section}</Heading>
-                </View>
-                <ImageUpload
-                  label={brandNames(index, item.brands.length).photos}
-                  photos={photos[index] ?? []}
-                  onPhotosChange={() => {}}
-                  limit={ITEM_PHOTO_LIMIT}
-                  onPick={pickPhotos}
-                  readOnly
-                />
-                {Object.entries(brandDetailTexts(brand)).map(([field, text]) => (
-                  <FieldValue key={field} label={BRAND_FIELD_LABELS[field as BrandField]} value={text} />
-                ))}
-              </View>
-            ))}
-          </View>
-        </View>
+        <ItemDetails item={item} photos={photos} scrollToBrand={scrollToBrand} onPlaceBrand={placeBrand} />
       ) : (
         <View style={styles.fields} testID={ids.fields}>
           <View ref={tourTarget('form-name')} collapsable={false}>
@@ -629,6 +602,17 @@ export function ItemFormDialog({
             </View>
           </View>
         </View>
+      )}
+      {item && onDeleted && (
+        <DeleteItemDialog
+          open={open && removing}
+          item={item}
+          onClose={() => setRemoving(false)}
+          onDeleted={(gone) => {
+            setRemoving(false);
+            onDeleted(gone);
+          }}
+        />
       )}
       {item && onDuplicate && (
         <DuplicateItemDialog
