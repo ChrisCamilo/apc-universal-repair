@@ -397,8 +397,8 @@ test('Web: the price always shows in reais, a dot and a comma alike', async () =
   await vi.waitFor(() => expect(sent(fetch)).toMatchObject({ method: 'PATCH', body: { brands: [{ unitPriceCents: 750 }] } }))
 })
 
-// Opens the form at 1280×720 and on a 360×780 phone and checks Save is on screen without scrolling and the form
-// scrolls inside the dialog.
+// Opens the form at 1280×720 and on a 360×780 phone and checks Save, "Salvar item" on the phone, is on screen without
+// scrolling and the form scrolls inside the dialog.
 test('Web: Save is on screen without scrolling at both minimum sizes', async () => {
   for (const [width, height] of [
     [MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT],
@@ -406,11 +406,11 @@ test('Web: Save is on screen without scrolling at both minimum sizes', async () 
   ]) {
     await page.viewport(width, height)
     const screen = await render(<Sample />)
-    const save = screen.getByRole('button', { name: 'Salvar' }).element().getBoundingClientRect()
+    const save = screen.getByRole('button', { name: /^Salvar/ }).element().getBoundingClientRect()
     expect(save.bottom).toBeLessThanOrEqual(height)
     expect(save.right).toBeLessThanOrEqual(width)
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
-    await screen.getByRole('button', { name: 'Cancelar' }).click()
+    await screen.unmount()
   }
 })
 
@@ -613,7 +613,8 @@ test('Web: the details open scrolled to the brand they were opened on', async ()
 // At 360×780, opens an item's details and checks they follow the Detalhes mockup: the ← in place of the × and Fechar,
 // the red round Excluir at the top right, the title for screen readers only; "Sem fotos", the category over the name,
 // the stock and the minimum, the list of details and a card per brand; Duplicar and Editar sharing the bottom, each
-// with its icon. Excluir and Duplicar call the owner, Editar unlocks the fields, and the ← closes the details.
+// with its icon. Excluir and Duplicar call the owner, and Editar unlocks the fields, under the item's name and with no
+// field started on, so the keyboard doesn't rise.
 test('Web: on a phone the details fill the screen, as in the Detalhes mockup', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   root.dataset.style = 'eighties'
@@ -663,8 +664,168 @@ test('Web: on a phone the details fill the screen, as in the Detalhes mockup', a
   await remove.click()
   expect(onDelete).toHaveBeenCalledWith(both)
   await edit.click()
-  await expect.element(screen.getByRole('dialog', { name: 'Editar item' })).toBeVisible()
-  await expect.element(screen.getByLabelText('Nome')).toHaveFocus()
+  await expect.element(screen.getByRole('dialog', { name: 'Filtro de óleo' })).toBeVisible()
+  await expect.element(screen.getByLabelText('Nome')).toHaveValue('Filtro de óleo')
+  await expect.element(screen.getByLabelText('Nome')).not.toHaveFocus()
+})
+
+// At 360×780, in every style and mode, opens a new item's form and checks it follows the Novo item mockup: the × and
+// "Novo item" on top, where the focus starts, so no keyboard rises; the fields in one column; a dashed "Adicionar
+// veículo" across the width with its hint; Posição and Lado in full words with N/A, sharing the width; the minimum as a
+// 48px − and + around the number; the brand a raised card with Tirar foto and Galeria, its part brand and code across
+// it, then its quantity and price side by side, and its color and location; a dashed "Adicionar marca"; and only
+// "Salvar item" across the bottom.
+test('Web: on a phone the form fills the screen, as in the Novo item mockup', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  for (const style of STYLES) {
+    for (const mode of MODES) {
+      root.dataset.style = style
+      root.dataset.mode = mode
+      const { colors } = themes[style][mode]
+      const screen = await render(<Sample />)
+      const dialog = screen.getByRole('dialog', { name: 'Novo item' })
+      const box = dialog.element().getBoundingClientRect()
+      expect([box.left, box.top, box.width, box.height]).toEqual([0, 0, MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT])
+      await expect.element(dialog.getByRole('button', { name: 'Fechar' })).toHaveFocus()
+      await expect.element(dialog.getByLabelText('Nome')).toHaveAttribute('placeholder', 'Ex.: Pastilha de freio')
+      const name = dialog.getByLabelText('Nome').element().getBoundingClientRect()
+      const category = dialog.getByRole('combobox', { name: 'Categoria' }).element().getBoundingClientRect()
+      expect(category.top).toBeGreaterThan(name.bottom)
+
+      const addVehicle = dialog.getByRole('button', { name: 'Adicionar veículo' }).element()
+      expect(getComputedStyle(addVehicle).borderStyle).toBe('dashed')
+      expect(addVehicle.getBoundingClientRect().width).toBe(MIN_MOBILE_WIDTH - 32)
+      await expect.element(dialog.getByText('Sem modelo, a peça serve em qualquer modelo da marca.')).toBeVisible()
+      expect(dialog.getByRole('combobox', { name: 'Marca do veículo' }).query()).toBeNull()
+
+      for (const [group, labels] of [
+        ['Posição', ['N/A', 'Dianteira', 'Traseira', 'Ambas']],
+        ['Lado', ['N/A', 'Esquerdo', 'Direito', 'Ambos']],
+      ] as const) {
+        const radios = dialog.getByRole('radiogroup', { name: group }).getByRole('radio')
+        expect(radios.elements().map((radio) => radio.textContent)).toEqual(labels)
+        const widths = radios.elements().map((radio) => radio.getBoundingClientRect().width)
+        expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1)
+        await expect.element(dialog.getByRole('radiogroup', { name: group }).getByRole('radio', { name: 'N/A' })).toBeChecked()
+      }
+
+      for (const button of ['Diminuir', 'Aumentar']) {
+        const rect = dialog.getByRole('button', { name: button }).element().getBoundingClientRect()
+        expect([rect.width, rect.height]).toEqual([48, 48])
+      }
+      await expect.element(dialog.getByText('Abaixo disso, somando as marcas, o item fica com estoque baixo.')).toBeVisible()
+      await expect.element(dialog.getByText('Os da montadora. Separe com vírgula.')).toBeVisible()
+
+      const brand = dialog.getByRole('group', { name: 'Marca 1' })
+      expect(getComputedStyle(brand.element()).backgroundColor).toBe(rgb(colors.panelRaised))
+      await expect.element(brand.getByLabelText('Tirar foto')).toBeInTheDocument()
+      await expect.element(brand.getByLabelText('Galeria')).toBeInTheDocument()
+      const rect = (label: string) => brand.getByLabelText(label, { exact: true }).element().getBoundingClientRect()
+      const card = brand.element().getBoundingClientRect()
+      expect(rect('Código da peça').width).toBeGreaterThan(card.width / 2)
+      expect(rect('Quantidade').top).toBe(rect('Valor unitário (R$)').top)
+      expect(rect('Quantidade').right).toBeLessThan(rect('Valor unitário (R$)').left)
+      expect(rect('Cor').top).toBe(rect('Local').top)
+      await expect.element(brand.getByLabelText('Cor')).toHaveAttribute('placeholder', 'Se houver')
+      await expect.element(brand.getByLabelText('Local')).toHaveAttribute('placeholder', 'Ex.: E-1')
+
+      expect(getComputedStyle(dialog.getByRole('button', { name: 'Adicionar marca' }).element()).borderStyle).toBe('dashed')
+      expect(dialog.getByRole('button', { name: 'Cancelar' }).query()).toBeNull()
+      const save = dialog.getByRole('button', { name: 'Salvar item' }).element().getBoundingClientRect()
+      expect([save.width, save.bottom <= MIN_MOBILE_HEIGHT]).toEqual([MIN_MOBILE_WIDTH - 32, true])
+      expect(screen.getByTestId('common.dialog.body').element().scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+      await screen.unmount()
+    }
+  }
+})
+
+// At 360×780, adds a vehicle as a chip from "Adicionar veículo", the focus going to its brand and back; checks a vehicle
+// the item has and one not in the list are refused before they join, and Cancelar leaves the chips as they were; then
+// removes the only chip and checks saving says a vehicle is missing, and adds two, which are sent in order.
+test('Web: on a phone vehicles are chips, checked before they join', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const fetch = answerSave(200)
+  const screen = await render(<Sample item={FILTER} />)
+  const vehicles = screen.getByRole('group', { name: 'Veículos', exact: true })
+  const chips = () => vehicles.getByRole('listitem').elements().map((chip) => chip.textContent)
+  expect(chips()).toEqual(['Volkswagen Gol'])
+  const add = vehicles.getByRole('button', { name: 'Adicionar veículo' })
+  const draft = vehicles.getByRole('group', { name: 'Novo veículo' })
+
+  await add.click()
+  await expect.element(draft.getByRole('combobox', { name: 'Marca do veículo' })).toHaveFocus()
+  await draft.getByRole('combobox', { name: 'Marca do veículo' }).fill('volkswagen')
+  await draft.getByRole('combobox', { name: 'Modelo do veículo' }).fill(' gol ')
+  await userEvent.keyboard('{Escape}')
+  await draft.getByRole('button', { name: 'Adicionar', exact: true }).click()
+  await expect.element(draft.getByText(ITEM_FORM_MESSAGES.vehicleRepeated)).toBeVisible()
+  await draft.getByRole('combobox', { name: 'Marca do veículo' }).fill('Renault')
+  await userEvent.keyboard('{Escape}')
+  await draft.getByRole('button', { name: 'Adicionar', exact: true }).click()
+  await expect.element(draft.getByText(ITEM_FORM_MESSAGES.vehicleBrandNotListed)).toBeVisible()
+  await draft.getByRole('button', { name: 'Cancelar' }).click()
+  await expect.element(add).toHaveFocus()
+  expect(chips()).toEqual(['Volkswagen Gol'])
+
+  await vehicles.getByRole('button', { name: 'Remover Volkswagen Gol' }).click()
+  expect(chips()).toEqual([])
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await expect.element(vehicles.getByText(ITEM_FORM_MESSAGES.vehicleBrand)).toBeVisible()
+  expect(fetch).not.toHaveBeenCalled()
+
+  for (const [brand, model] of [
+    ['chevrolet', 'opala 4.1'],
+    ['Fiat', ''],
+  ]) {
+    await add.click()
+    await draft.getByRole('combobox', { name: 'Marca do veículo' }).fill(brand)
+    if (model) {
+      await draft.getByRole('combobox', { name: 'Modelo do veículo' }).fill(model)
+    }
+    await userEvent.keyboard('{Escape}')
+    await draft.getByRole('button', { name: 'Adicionar', exact: true }).click()
+  }
+  expect(chips()).toEqual(['Chevrolet Opala 4.1', 'Fiat (qualquer modelo)'])
+  await expect.element(vehicles.getByText(ITEM_FORM_MESSAGES.vehicleBrand)).not.toBeInTheDocument()
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+  expect(sent(fetch).body.vehicles).toEqual([
+    { vehicleBrand: 'Chevrolet', vehicleModel: 'Opala 4.1' },
+    { vehicleBrand: 'Fiat', vehicleModel: '' },
+  ])
+})
+
+// At 360×780, fills a new item, chooses the position and side by their full words and the minimum with the stepper,
+// and checks "Salvar item" posts them as the desktop's form does; and an item's edit is titled with its name.
+test('Web: on a phone the position, side and minimum are chosen in full words and with the stepper', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const fetch = answerSave()
+  const onSaved = vi.fn()
+  const screen = await render(<Sample onSaved={onSaved} />)
+  await screen.getByLabelText('Código da peça').fill('ngk-b7')
+  await screen.getByLabelText('Nome').fill('vela')
+  await screen.getByRole('combobox', { name: 'Categoria' }).fill('Ignição')
+  await screen.getByRole('combobox', { name: 'Marca da peça' }).fill('NGK')
+  await screen.getByRole('button', { name: 'Adicionar veículo' }).click()
+  await screen.getByRole('combobox', { name: 'Marca do veículo' }).fill('Fiat')
+  await screen.getByRole('option', { name: 'Fiat' }).click()
+  await screen.getByRole('button', { name: 'Adicionar', exact: true }).click()
+  await screen.getByLabelText('Valor unitário (R$)').fill('10')
+  await screen.getByRole('radio', { name: 'Dianteira' }).click()
+  await screen.getByRole('radio', { name: 'Esquerdo' }).click()
+  await screen.getByRole('button', { name: 'Aumentar' }).click()
+  await screen.getByRole('button', { name: 'Aumentar' }).click()
+  await screen.getByRole('button', { name: 'Diminuir' }).click()
+  await screen.getByRole('button', { name: 'Aumentar' }).click()
+  await expect.element(screen.getByRole('textbox', { name: 'Quantidade mínima' })).toHaveValue('2')
+  await screen.getByRole('button', { name: 'Salvar item' }).click()
+  await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(sent(fetch).body).toMatchObject({ name: 'Vela', position: 'D', side: 'LE', minQuantity: 2, vehicles: [{ vehicleBrand: 'Fiat' }] })
+  await screen.unmount()
+
+  const edit = await render(<Sample item={FILTER} />)
+  await expect.element(edit.getByRole('dialog', { name: 'Filtro de óleo' })).toBeVisible()
+  await expect.element(edit.getByRole('button', { name: 'Salvar alterações' })).toBeVisible()
 })
 
 // At 360×780, closes an item's details with the ← at the top left.

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@apc/shared/auth'
-import { copyIcon, pencilIcon, trashIcon } from '@apc/shared/icons'
-import { capitalizeFirst, codeKey, findOption, itemSchema, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/shared/items'
+import { copyIcon, pencilIcon, plusIcon, trashIcon } from '@apc/shared/icons'
+import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/shared/items'
 import {
   BRAND_FIELD_LABELS,
   brandDetailTexts,
@@ -23,9 +23,11 @@ import {
   ORIGINAL_CODES_LABEL,
   originalCodeMessages,
   originalCodesText,
+  POSITION_CHOICES,
   PRICE_PLACEHOLDER,
   priceMask,
   quantityInput,
+  SIDE_CHOICES,
   VEHICLE_FIELD_LABELS,
   VEHICLES_LABEL,
   vehiclesText,
@@ -46,6 +48,7 @@ import { FieldValue } from '../components/FieldValue.tsx'
 import { API_BASE } from '../api.ts'
 import { ImageUpload, type UploadPhoto } from '../components/ImageUpload.tsx'
 import { Segmented } from '../components/Segmented.tsx'
+import { Stepper } from '../components/Stepper.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { usePhone } from '../components/usePhone.ts'
@@ -56,6 +59,7 @@ import { ItemDetails, RemoveItemButton } from './ItemDetails.tsx'
 import { itemFormDialog } from './ItemFormDialog.styles.ts'
 import { savePhotos } from './savePhotos.ts'
 import type { CreateListEntry } from './useItemLists.ts'
+import { VehiclesField } from './VehiclesField.tsx'
 
 // The form that creates a new item or edits one, in a dialog whose content scrolls while Cancel and Save stay at the
 // bottom: first what the item's brands share (name, category, the vehicles it fits, position, side, the minimum stock
@@ -86,7 +90,12 @@ import type { CreateListEntry } from './useItemLists.ts'
 // the Inventory tutorial does, whose tour points at the name and at the first brand's code and quantity; the details
 // list the vehicles apart, under Veículos. On a phone (below `card:`) the details follow the Detalhes mockup (see
 // ItemDetails): a ← back to the list in place of the × and Fechar, the red round Excluir at the right, which asks the
-// owner to delete the item, and Duplicar and Editar sharing the bottom, each with its icon.
+// owner to delete the item, and Duplicar and Editar sharing the bottom, each with its icon. The form itself follows the
+// Novo item mockup there: the × and "Novo item", or the item's name, on top, and the fields in one column, the name not
+// started on (see Dialog); the vehicles as chips (see VehiclesField), the position and side in full words with N/A, the
+// minimum as a stepper (see Stepper), a raised card for each brand with Tirar foto and Galeria (see ImageUpload), its
+// part brand and code, then its quantity and price side by side, and its color and location; "Adicionar marca" dashed
+// after them, and only "Salvar item", or "Salvar alterações", across the bottom.
 
 const PHOTOS_LABEL = 'Fotos do item'
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }))
@@ -149,7 +158,6 @@ export function ItemFormDialog({
 }: ItemFormDialogProps) {
   const toast = useToast()
   const phone = usePhone()
-  const { classes, ids } = itemFormDialog()
   const [viewing, setViewing] = useState(details && item !== undefined)
   const name = useRef<HTMLInputElement>(null)
   // The section of the brand the details open scrolled to.
@@ -169,6 +177,7 @@ export function ItemFormDialog({
   const unlocked = details && !viewing
   // A phone's details: the Detalhes mockup in place of the fields as text.
   const screen = phone && viewing && item !== undefined
+  const { classes, ids } = itemFormDialog({ phone: phone && !viewing })
 
   // Tell the owner what the form holds as it changes.
   useEffect(() => {
@@ -182,12 +191,12 @@ export function ItemFormDialog({
     }
   }, [open])
 
-  // Once Editar unlocks the fields, start on the first one.
+  // Once Editar unlocks the fields, start on the first one; not on a phone, where the keyboard would cover the form.
   useEffect(() => {
-    if (unlocked) {
+    if (unlocked && !phone) {
       name.current?.focus()
     }
-  }, [unlocked])
+  }, [unlocked, phone])
 
   /** Takes a field's new value and drops its message. */
   const change = (field: ItemField, value: string) => {
@@ -373,7 +382,7 @@ export function ItemFormDialog({
       <Dialog
         open={open}
         onClose={onClose}
-        title={viewing ? 'Detalhes do item' : item ? 'Editar item' : 'Novo item'}
+        title={viewing ? 'Detalhes do item' : item ? (phone ? item.name : 'Editar item') : 'Novo item'}
         closable={!screen}
         back={screen ? 'Voltar ao estoque' : undefined}
         headerAction={screen && item && onDelete ? <RemoveItemButton onClick={() => onDelete(item)} /> : undefined}
@@ -389,6 +398,10 @@ export function ItemFormDialog({
                 Editar
               </Button>
             </>
+          ) : phone && !viewing ? (
+            <Button className={classes.action()} data-tour="form-save" loading={saving || creating > 0} onClick={save}>
+              {item ? 'Salvar alterações' : 'Salvar item'}
+            </Button>
           ) : viewing ? (
             <>
               <Button variant="secondary" size="sm" onClick={onClose}>
@@ -463,6 +476,7 @@ export function ItemFormDialog({
               ref={name}
               data-tour="form-name"
               label={ITEM_FIELD_LABELS.name}
+              placeholder={phone ? 'Ex.: Pastilha de freio' : undefined}
               value={form.name}
               onValueChange={(value) => change('name', value)}
               onBlur={() => change('name', form.name.trim() ? capitalizeFirst(form.name) : form.name)}
@@ -479,6 +493,19 @@ export function ItemFormDialog({
               emptyLabel="Nenhuma categoria cadastrada"
               error={errors.category}
             />
+            {phone ? (
+              <VehiclesField
+                vehicles={form.vehicles}
+                errors={errors.vehicles}
+                lists={lists}
+                brands={options.vehicleBrands}
+                onVehiclesChange={(vehicles) => {
+                  setForm((typed) => ({ ...typed, vehicles }))
+                  setErrors((shown) => ({ ...shown, vehicles: undefined }))
+                }}
+                onCreate={create}
+              />
+            ) : (
             <div role="group" aria-label={VEHICLES_LABEL} className={classes.vehicles()} data-testid={ids.vehicles}>
               <Text size="sm" tone="muted">
                 Os veículos em que a peça serve. Deixe o modelo vazio se serve em qualquer modelo da marca.
@@ -527,11 +554,13 @@ export function ItemFormDialog({
                 </Button>
               </div>
             </div>
+            )}
             <div className={classes.choice()} data-testid={ids.choice}>
               <Label>{ITEM_FIELD_LABELS.position}</Label>
               <Segmented
                 label={ITEM_FIELD_LABELS.position}
-                options={POSITION_OPTIONS}
+                options={phone ? POSITION_CHOICES : POSITION_OPTIONS}
+                fill={phone}
                 value={form.position}
                 onValueChange={(value) => change('position', value)}
               />
@@ -540,32 +569,50 @@ export function ItemFormDialog({
               <Label>{ITEM_FIELD_LABELS.side}</Label>
               <Segmented
                 label={ITEM_FIELD_LABELS.side}
-                options={SIDE_OPTIONS}
+                options={phone ? SIDE_CHOICES : SIDE_OPTIONS}
+                fill={phone}
                 value={form.side}
                 onValueChange={(value) => change('side', value)}
               />
             </div>
-            <TextField
-              label={ITEM_FIELD_LABELS.minQuantity}
-              kind="number"
-              value={form.minQuantity}
-              onValueChange={changeMinimum}
-              error={errors.minQuantity}
-              helper="Abaixo disso, somando todas as marcas, o item aparece como estoque baixo."
-            />
+            {phone ? (
+              <Stepper
+                label={ITEM_FIELD_LABELS.minQuantity}
+                value={form.minQuantity}
+                onValueChange={changeMinimum}
+                max={MAX_QUANTITY}
+                error={errors.minQuantity}
+                helper="Abaixo disso, somando as marcas, o item fica com estoque baixo."
+              />
+            ) : (
+              <TextField
+                label={ITEM_FIELD_LABELS.minQuantity}
+                kind="number"
+                value={form.minQuantity}
+                onValueChange={changeMinimum}
+                error={errors.minQuantity}
+                helper="Abaixo disso, somando todas as marcas, o item aparece como estoque baixo."
+              />
+            )}
             <div className={classes.codes()} data-testid={ids.codes}>
               <CodeListField
                 label={ORIGINAL_CODES_LABEL}
                 codes={form.originalCodes}
                 onCodesChange={(codes) => setForm((typed) => ({ ...typed, originalCodes: codes }))}
                 messages={originalCodeMessages(form, items, item?.id)}
-                helper="Os códigos da montadora, iguais em todas as marcas. Enter, vírgula ou ponto e vírgula separa um do outro."
+                helper={
+                  phone
+                    ? 'Os da montadora. Separe com vírgula.'
+                    : 'Os códigos da montadora, iguais em todas as marcas. Enter, vírgula ou ponto e vírgula separa um do outro.'
+                }
               />
             </div>
             <div className={classes.brands()} data-testid={ids.brands}>
-              <Text size="sm" tone="muted">
-                As marcas que fazem esta peça, cada uma com seu código, estoque e valor.
-              </Text>
+              {!phone && (
+                <Text size="sm" tone="muted">
+                  As marcas que fazem esta peça, cada uma com seu código, estoque e valor.
+                </Text>
+              )}
               {form.brands.map((brand, index) => {
                 const names = brandNames(index, form.brands.length)
                 const shown = errors.brands?.[index] ?? {}
@@ -587,24 +634,28 @@ export function ItemFormDialog({
                         limit={ITEM_PHOTO_LIMIT}
                       />
                     </div>
-                    <Combobox
-                      label={BRAND_FIELD_LABELS.partBrand}
-                      value={brand.partBrand}
-                      onValueChange={(value) => changeBrand(index, 'partBrand', value)}
-                      options={options.partBrands}
-                      onCreate={create('partBrands', (created) => changeBrand(index, 'partBrand', created))}
-                      noun="marca"
-                      toggleLabel="Mostrar marcas de peça"
-                      emptyLabel="Nenhuma marca cadastrada"
-                      error={shown.partBrand}
-                    />
-                    <TextField
-                      data-tour={tour('form-code')}
-                      label={BRAND_FIELD_LABELS.code}
-                      value={brand.code}
-                      onValueChange={(value) => changeCode(index, value)}
-                      error={shown.code}
-                    />
+                    <div className={classes.wide()} data-testid={ids.wide}>
+                      <Combobox
+                        label={BRAND_FIELD_LABELS.partBrand}
+                        value={brand.partBrand}
+                        onValueChange={(value) => changeBrand(index, 'partBrand', value)}
+                        options={options.partBrands}
+                        onCreate={create('partBrands', (created) => changeBrand(index, 'partBrand', created))}
+                        noun="marca"
+                        toggleLabel="Mostrar marcas de peça"
+                        emptyLabel="Nenhuma marca cadastrada"
+                        error={shown.partBrand}
+                      />
+                    </div>
+                    <div className={classes.wide()} data-testid={ids.wide}>
+                      <TextField
+                        data-tour={tour('form-code')}
+                        label={BRAND_FIELD_LABELS.code}
+                        value={brand.code}
+                        onValueChange={(value) => changeCode(index, value)}
+                        error={shown.code}
+                      />
+                    </div>
                     <TextField
                       data-tour={tour('form-quantity')}
                       label={BRAND_FIELD_LABELS.quantity}
@@ -628,10 +679,12 @@ export function ItemFormDialog({
                       onBlur={() =>
                         changeBrand(index, 'color', brand.color.trim() ? (findOption(options.colors, brand.color) ?? capitalizeFirst(brand.color)) : '')
                       }
-                      helper="Deixe vazio se a cor não se aplica."
+                      placeholder={phone ? 'Se houver' : undefined}
+                      helper={phone ? undefined : 'Deixe vazio se a cor não se aplica.'}
                     />
                     <TextField
                       label={BRAND_FIELD_LABELS.location}
+                      placeholder={phone ? 'Ex.: E-1' : undefined}
                       value={brand.location}
                       onValueChange={(value) => changeBrand(index, 'location', value)}
                       onBlur={() => changeBrand(index, 'location', brand.location.trim() ? capitalizeFirst(brand.location) : brand.location)}
@@ -640,9 +693,15 @@ export function ItemFormDialog({
                 )
               })}
               <div className={classes.add()} data-testid={ids.add}>
-                <Button variant="secondary" size="sm" onClick={addBrand}>
-                  Adicionar marca
-                </Button>
+                {phone ? (
+                  <Button variant="dashed" icon={plusIcon} onClick={addBrand}>
+                    Adicionar marca
+                  </Button>
+                ) : (
+                  <Button variant="secondary" size="sm" onClick={addBrand}>
+                    Adicionar marca
+                  </Button>
+                )}
               </div>
             </div>
           </div>
