@@ -96,7 +96,14 @@ export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetai
 export function RemoveItemButton({ onClick }: { onClick: () => void }) {
   const { classes, ids } = itemDetails()
   return (
-    <button type="button" aria-label="Excluir item" className={classes.remove()} data-testid={ids.remove} onClick={onClick}>
+    <button
+      type="button"
+      aria-label="Excluir item"
+      className={classes.remove()}
+      data-testid={ids.remove}
+      data-tour="form-delete"
+      onClick={onClick}
+    >
       <Icon icon={trashIcon} size={ICON_SIZES.thumbnail} />
     </button>
   )

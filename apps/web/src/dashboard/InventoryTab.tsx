@@ -370,8 +370,11 @@ export function InventoryTab() {
     })
 
   /** Opens the item form on a new item, an item to edit, or an item's details, maybe with values and photos filled in. */
-  const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][], brand?: string) =>
+  const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][], brand?: string) => {
+    // What the last form held goes with it, so the tutorial reads the new one as opened until it says otherwise.
+    setTyped(undefined)
     setForm((current) => ({ open: true, item, details, brand, initial, photos, session: current.session + 1 }))
+  }
 
   /**
    * Opens a row: an item of several brands into its brands' rows, or closes it; an item of one brand into its
@@ -470,6 +473,7 @@ export function InventoryTab() {
     filtersOpen: filtering,
     removing,
     busy: sentWith === items,
+    phone,
     target: (name) => tutorialTarget(name, TUTORIAL_CODE, testItem?.name),
     openForm,
     setSearch: (value) => narrow(() => setSearch(value)),
@@ -485,6 +489,8 @@ export function InventoryTab() {
     askDelete: setRemoving,
     deleteItem: (item) => {
       setRemoving(undefined)
+      // Asked from its details, on a phone: they go with it.
+      setForm((current) => ({ ...current, open: false }))
       void send(`${API_BASE}/items/${item.id}`, 'DELETE')
     },
   }
