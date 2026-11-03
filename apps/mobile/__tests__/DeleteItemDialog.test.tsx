@@ -3,11 +3,12 @@
  */
 
 import React from 'react';
-import { Modal, StyleSheet, Text } from 'react-native';
+import { Dimensions, Modal, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
+import { DIALOG_SCREEN_INSET } from '@apc/shared/dialog';
 import type { Item } from '@apc/shared/items';
-import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
+import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { DeleteItemDialog } from '../src/inventory/DeleteItemDialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -130,6 +131,24 @@ test('Mobile: Cancel and the back button close the confirmation without deleting
   await ReactTestRenderer.act(async () => tree.root.findByType(Modal).props.onRequestClose());
   expect(onClose).toHaveBeenCalledTimes(2);
   expect(fetch).not.toHaveBeenCalled();
+});
+
+// Opens the confirmation on a 360×780 phone and checks it stays a framed window centered on the backdrop, not a full
+// screen, as wide as the phone less its inset.
+test('Mobile: the confirmation stays a centered window sized to the phone', async () => {
+  const before = Dimensions.get('window');
+  const screen = (width: number, height: number) =>
+    ReactTestRenderer.act(() => Dimensions.set({ window: { width, height, scale: 2, fontScale: 1 }, screen: { width, height, scale: 2, fontScale: 1 } }));
+  await screen(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT);
+  try {
+    const tree = await mount();
+    const styleOf = (id: string) => StyleSheet.flatten(tree.root.findAll((n) => n.props.testID === id && typeof n.type === 'string')[0].props.style);
+    expect(styleOf('common.dialog.backdrop')).toMatchObject({ alignItems: 'center', justifyContent: 'center' });
+    expect(styleOf('common.dialog')).toMatchObject({ width: MIN_MOBILE_WIDTH - DIALOG_SCREEN_INSET, borderRadius: themes.eighties.night.radiusPanel });
+    expect(styleOf('common.dialog').flex).toBeUndefined();
+  } finally {
+    await screen(before.width, before.height);
+  }
 });
 
 // Confirms and checks the item is deleted by its id, a toast names it and the removal is handed over.

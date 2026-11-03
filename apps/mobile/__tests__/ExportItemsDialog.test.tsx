@@ -147,6 +147,16 @@ for (const style of STYLES) {
   }
 }
 
+// Opens the export and checks it fills the screen, as the web's does on a phone, and its × asks to close it.
+test('Mobile: the export fills the screen, and its × closes it', async () => {
+  const onClose = jest.fn();
+  const tree = await mount({ onClose });
+  const window = tree.root.findAll((n) => n.props.testID === 'common.dialog' && typeof n.type === 'string')[0];
+  expect(StyleSheet.flatten(window.props.style)).toMatchObject({ flex: 1, alignSelf: 'stretch', borderRadius: 0 });
+  await press(tree, 'Fechar');
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
 // Turns the photo paths on and exports, and checks every item of the list is fetched with the list query and no page,
 // the share sheet gets the file with the photos column, a toast confirms it and the dialog closes.
 test('Mobile: Exportar fetches the whole list and shares it with the photo paths', async () => {
