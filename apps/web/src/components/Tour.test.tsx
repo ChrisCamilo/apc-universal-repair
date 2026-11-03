@@ -139,6 +139,34 @@ test('Web: at phone width the card is pinned to the bottom', async () => {
   expect(card.getBoundingClientRect().width).toBe(MIN_MOBILE_WIDTH - 2 * TOUR_CARD_GAP)
 })
 
+// Starts the tour on a 360×780 phone with room kept for an 80px bottom bar and checks the card ends above the bar.
+test('Web: at phone width the card keeps clear of a bottom bar', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(<Sample bottomInset={80} />)
+  const card = screen.getByRole('dialog', { name: 'Abra o cadastro' }).element()
+  await expect.poll(() => card.getBoundingClientRect().bottom).toBeCloseTo(MIN_MOBILE_HEIGHT - 80 - TOUR_CARD_GAP, 0)
+})
+
+// Opens a confirmation over the dialog, as a phone's item details ask before deleting, and checks the tour renders in
+// the confirmation its target is in, the dialog on top, not in the one under it.
+test('Web: with two dialogs open the tour renders in the one its target is in', async () => {
+  const steps: TourStep<Element>[] = [{ id: 'confirm', title: 'Confirme', text: 'Clique em Excluir.', target: () => document.getElementById('sample-confirm') }]
+  const screen = await render(
+    <>
+      <Dialog open onClose={() => {}} title="Detalhes do item" actions={null}>
+        <Dialog open onClose={() => {}} title="Excluir item?" size="confirm" actions={<Button id="sample-confirm">Excluir</Button>}>
+          Sai do estoque.
+        </Dialog>
+      </Dialog>
+      <Tour open onClose={() => {}} steps={steps} />
+    </>,
+  )
+  const card = screen.getByRole('dialog', { name: 'Confirme' }).element()
+  await expect.poll(() => card.closest('dialog')?.getAttribute('aria-labelledby')).toBe(
+    screen.getByRole('dialog', { name: 'Excluir item?' }).element().getAttribute('aria-labelledby'),
+  )
+})
+
 // Asks for reduced motion and checks the tour brings the target into view without the smooth scroll.
 test('Web: the tour respects prefers-reduced-motion', async () => {
   const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
@@ -147,7 +175,7 @@ test('Web: the tour respects prefers-reduced-motion', async () => {
   expect(scroll).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' })
 })
 
-function Sample({ from = 0, onClose = () => {} }: { from?: number; onClose?: () => void }) {
+function Sample({ from = 0, onClose = () => {}, bottomInset }: { from?: number; onClose?: () => void; bottomInset?: number }) {
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const steps: TourStep<Element>[] = [
@@ -193,7 +221,7 @@ function Sample({ from = 0, onClose = () => {} }: { from?: number; onClose?: () 
           <input id="sample-name" value={name} onChange={(event) => setName(event.target.value)} />
         </label>
       </Dialog>
-      <Tour open onClose={onClose} steps={steps.slice(from)} parts={['Criar um item', 'Procurar']} />
+      <Tour open onClose={onClose} steps={steps.slice(from)} parts={['Criar um item', 'Procurar']} bottomInset={bottomInset} />
     </div>
   )
 }

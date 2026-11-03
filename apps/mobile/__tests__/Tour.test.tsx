@@ -8,7 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, spotlightDim, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { cardPlacement, spotlightRect, TOUR_ADVANCE_DELAY_MS, TOUR_CHECK_MS, type TourStep } from '@apc/shared/tour';
+import { cardPlacement, spotlightRect, TOUR_ADVANCE_DELAY_MS, TOUR_CARD_GAP, TOUR_CHECK_MS, type TourStep } from '@apc/shared/tour';
 import { Button } from '../src/Button';
 import { Dialog } from '../src/Dialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -26,14 +26,15 @@ const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MO
  * @param style Style to start on.
  * @param mode Mode to start on.
  * @param element Element to render.
+ * @param top The status bar's height, in px; none by default.
  * @returns The rendered tree.
  */
-async function mount(style: Style, mode: Mode, element: React.ReactElement) {
+async function mount(style: Style, mode: Mode, element: React.ReactElement, top = 0) {
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
-      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+      <SafeAreaProvider initialMetrics={{ ...SAFE_AREA, insets: { ...SAFE_AREA.insets, top } }}>
         <ThemeProvider>
           <TourProvider>{element}</TourProvider>
         </ThemeProvider>
@@ -137,6 +138,43 @@ test('Mobile: the ring wraps the target and the card sits next to it', async () 
   expect(texts).toEqual(expect.arrayContaining(['Parte 1 de 2 · Criar um item', '1 / 4', 'Abra o cadastro']));
 });
 
+// Starts the tour on a 360×780 phone with room kept for an 80px bottom bar and checks the card sits where the shared
+// placement puts it on the screen less the bar, ending above it.
+test('Mobile: the card keeps clear of a bottom bar', async () => {
+  const before = Dimensions.get('window');
+  const screen = (width: number, height: number) =>
+    ReactTestRenderer.act(() => Dimensions.set({ window: { width, height, scale: 2, fontScale: 1 }, screen: { width, height, scale: 2, fontScale: 1 } }));
+  await screen(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT);
+  try {
+    const tree = await mount('eighties', 'night', <Sample bottomInset={80} />);
+    const [x, y, width, height] = RECTS['sample-new'];
+    const place = cardPlacement({ x, y, width, height }, 0, { width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT - 80 });
+    const card = styleOf(views(tree.root, 'common.tour.card')[0]);
+    expect(card).toMatchObject({ left: place.x, top: place.y, width: place.width });
+    expect(card.top).toBeLessThan(MIN_MOBILE_HEIGHT - 80);
+  } finally {
+    await screen(before.width, before.height);
+  }
+});
+
+// Moves the target to the bottom of a 360×780 phone with a 24px status bar and checks the card, which would cover the
+// target at the bottom, goes to the top below the status bar.
+test('Mobile: a card at the top stays below the status bar', async () => {
+  const before = Dimensions.get('window');
+  const screen = (width: number, height: number) =>
+    ReactTestRenderer.act(() => Dimensions.set({ window: { width, height, scale: 2, fontScale: 1 }, screen: { width, height, scale: 2, fontScale: 1 } }));
+  const [x, , width, height] = RECTS['sample-new'];
+  RECTS['sample-new'] = [x, MIN_MOBILE_HEIGHT - 50, width, height];
+  await screen(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT);
+  try {
+    const tree = await mount('eighties', 'night', <Sample />, 24);
+    expect(styleOf(views(tree.root, 'common.tour.card')[0]).top).toBe(24 + TOUR_CARD_GAP);
+  } finally {
+    RECTS['sample-new'] = [x, 100, width, height];
+    await screen(before.width, before.height);
+  }
+});
+
 // Uses "Fazer por mim" to open the dialog and checks the step moves on by itself after a moment, and the tour
 // now draws in the dialog's layer, above the Modal, where its buttons still work.
 test('Mobile: steps move on by themselves and the tour draws inside an open dialog', async () => {
@@ -184,7 +222,7 @@ test('Mobile: info steps use Next and the last step finishes the tour', async ()
   expect(onClose).toHaveBeenCalledTimes(2);
 });
 
-function Sample({ from = 0, onClose = () => {} }: { from?: number; onClose?: () => void }) {
+function Sample({ from = 0, onClose = () => {}, bottomInset }: { from?: number; onClose?: () => void; bottomInset?: number }) {
   const [creating, setCreating] = useState(from === 1);
   const [name, setName] = useState('');
   const newRef = useRef<HostInstance>(null);
@@ -231,7 +269,7 @@ function Sample({ from = 0, onClose = () => {} }: { from?: number; onClose?: () 
           <TextInput value={name} onChangeText={setName} />
         </View>
       </Dialog>
-      <Tour open onClose={onClose} steps={steps.slice(from)} parts={['Criar um item', 'Procurar']} />
+      <Tour open onClose={onClose} steps={steps.slice(from)} parts={['Criar um item', 'Procurar']} bottomInset={bottomInset} />
     </>
   );
 }

@@ -21,8 +21,10 @@ import { Heading, Label, NumericReadout, Text } from './Typography.tsx'
 // bottom at phone width) shows the part and the step count, the title, the text and the actions: Skip, "Fazer por
 // mim" when the step can do itself, and Next on info-only steps. A step moves on by itself once its check passes,
 // and goes back to the step it names when the user leaves it. With a modal dialog open, the tour renders inside the
-// dialog, the only part of the page that stays clickable, so it stays on top. It follows the target on scroll and
-// resize, and its scrolling and sliding respect prefers-reduced-motion.
+// dialog, the only part of the page that stays clickable, so it stays on top: the one the target is in, as a
+// confirmation over a phone's item details, or else the last one opened. The card keeps clear of a bottom bar the
+// owner names (bottomInset). It follows the target on scroll and resize, and its scrolling and sliding respect
+// prefers-reduced-motion.
 
 type TourProps = {
   open: boolean
@@ -32,6 +34,8 @@ type TourProps = {
   steps: readonly TourStep<Element>[]
   /** Names of the tour's parts, for the card header, e.g. ["Criar um item", "Procurar e filtrar"]. */
   parts?: readonly string[]
+  /** Room at the bottom of the screen the card keeps clear of, such as a phone's bottom bar, in px. */
+  bottomInset?: number
 }
 type Layout = {
   /** Where the tour renders: the open modal dialog, or the body. */
@@ -45,19 +49,22 @@ type Layout = {
  * around the target if it is on the page, and the card next to it.
  * @param step Current step.
  * @param cardHeight Height of the card as last drawn, in px.
+ * @param bottomInset Room the card keeps clear of at the bottom, in px.
  * @returns The layout.
  */
-function measure(step: TourStep<Element>, cardHeight: number): Layout {
+function measure(step: TourStep<Element>, cardHeight: number, bottomInset: number): Layout {
   const target = step.target?.()
   const box = target && target.getClientRects().length ? target.getBoundingClientRect() : null
   const rect = box && { x: box.x, y: box.y, width: box.width, height: box.height }
   const { clientWidth, clientHeight } = document.documentElement
-  const dialog = document.querySelector('dialog[open]')
-  const dialogBox = dialog && target && dialog.contains(target) ? dialog.getBoundingClientRect() : null
+  const dialogs = [...document.querySelectorAll('dialog[open]')]
+  // The innermost: a confirmation may open inside the dialog that asks it.
+  const holder = target ? dialogs.findLast((dialog) => dialog.contains(target)) : undefined
+  const dialog = holder ?? dialogs.at(-1)
   return {
     host: dialog ?? document.body,
     spot: rect && spotlightRect(rect),
-    card: cardPlacement(rect, cardHeight, { width: clientWidth, height: clientHeight }, dialogBox),
+    card: cardPlacement(rect, cardHeight, { width: clientWidth, height: clientHeight - bottomInset }, holder?.getBoundingClientRect()),
   }
 }
 
@@ -76,12 +83,12 @@ export function Tour({ open, ...rest }: TourProps) {
   return open ? <TourRun {...rest} /> : null
 }
 
-function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
+function TourRun({ onClose, steps, parts = [], bottomInset = 0 }: Omit<TourProps, 'open'>) {
   const titleId = useId()
   const textId = useId()
   const [index, setIndex] = useState(0)
   const card = useRef<HTMLDivElement>(null)
-  const [layout, setLayout] = useState<Layout>(() => measure(steps[0], 0))
+  const [layout, setLayout] = useState<Layout>(() => measure(steps[0], 0, bottomInset))
   const step = steps[index]
   const last = index === steps.length - 1
   const header = stepHeader(steps, index, parts)
@@ -112,7 +119,7 @@ function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
     step.target?.()?.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' })
   })
   const place = useEffectEvent(() => {
-    const measured = measure(step, card.current?.offsetHeight ?? 0)
+    const measured = measure(step, card.current?.offsetHeight ?? 0, bottomInset)
     setLayout((prev) => (sameLayout(prev, measured) ? prev : measured))
   })
 
