@@ -54,15 +54,20 @@ test("Shared: the tour card goes beside a dialog when there is room", () => {
 });
 
 // Places the card on a 360×780 phone and checks it spans the width inside the gaps, pinned to the bottom, and to the
-// top when the target is in a dialog, whose action bar is at the bottom, or where the card would cover it.
-test("Shared: at phone width the tour card is pinned to the bottom, or the top in a dialog or over a low target", () => {
+// top where the card would cover the target; a field in a full-screen form, or one still below the screen, keeps the
+// card at the bottom, clear of the form's title row and ×; and a bottom bar left out of the screen keeps the card above
+// it.
+test("Shared: at phone width the tour card is pinned to the bottom, or the top over a low target", () => {
   const phone = { width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT };
   const expected = { x: TOUR_CARD_GAP, y: MIN_MOBILE_HEIGHT - 220 - TOUR_CARD_GAP, width: MIN_MOBILE_WIDTH - 2 * TOUR_CARD_GAP };
   assert.deepEqual(cardPlacement({ x: 20, y: 40, width: 100, height: 40 }, 220, phone), expected);
   assert.deepEqual(cardPlacement(null, 220, phone), expected);
   assert.deepEqual(cardPlacement({ x: 240, y: 700, width: 100, height: 40 }, 220, phone), { ...expected, y: TOUR_CARD_GAP });
-  const dialog = { x: 16, y: 24, width: 328, height: 732 };
-  assert.deepEqual(cardPlacement({ x: 20, y: 300, width: 100, height: 40 }, 220, phone, dialog), { ...expected, y: TOUR_CARD_GAP });
+  const form = { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT };
+  assert.deepEqual(cardPlacement({ x: 16, y: 300, width: 328, height: 76 }, 220, phone, form), expected);
+  assert.deepEqual(cardPlacement({ x: 16, y: 900, width: 328, height: 76 }, 220, phone, form), expected);
+  const aboveBar = { ...phone, height: MIN_MOBILE_HEIGHT - 80 };
+  assert.deepEqual(cardPlacement({ x: 20, y: 40, width: 100, height: 40 }, 220, aboveBar), { ...expected, y: MIN_MOBILE_HEIGHT - 80 - 220 - TOUR_CARD_GAP });
 });
 
 // Grows a target's box and checks the spotlight reaches the same distance past every side.

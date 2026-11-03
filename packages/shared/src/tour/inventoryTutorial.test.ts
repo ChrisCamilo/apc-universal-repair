@@ -12,6 +12,7 @@ import {
   TUTORIAL_EDIT,
   TUTORIAL_FILTERS,
   TUTORIAL_ITEM,
+  TUTORIAL_PHONE_FILTERS,
   type TutorialScreen,
 } from "./inventoryTutorial.ts";
 import { stepHeader } from "./tour.ts";
@@ -58,6 +59,7 @@ function fakeScreen() {
     filters: EMPTY_ITEM_FILTERS,
     filtersOpen: false,
     busy: false,
+    phone: false,
     target: (name) => name,
     openForm: (item, details, values) => {
       calls.push(`open ${codeOf(item)} ${details ? "details" : "edit"}`);
@@ -179,4 +181,34 @@ test("Shared: part 3 edits the test item twice, then deletes it", () => {
   assert.equal(step("confirm").lost?.(), "delete");
   screen.items = [];
   assert.equal(step("confirm").done?.(), true);
+});
+
+// Lists the steps on a phone and checks they name the + and the full-word choices, while a desktop keeps its words,
+// and the filters leave the category out; then checks the second edit and the delete point at the test item's card,
+// and at Editar and Excluir item once its details are open, not at a row's pencil and trash.
+test("Shared: on a phone the tutorial names the phone layout and goes through the details", () => {
+  const { screen } = fakeScreen();
+  screen.items = [SAVED];
+  const desktop = inventoryTutorialSteps(() => screen);
+  screen.phone = true;
+  const steps = inventoryTutorialSteps(() => screen);
+  const step = (id: string) => steps.find((each) => each.id === id)!;
+  assert.equal(desktop[0].text, "Clique em Novo item para cadastrar uma peça de teste.");
+  assert.equal(step("new").text, "Toque no + para cadastrar uma peça de teste.");
+  assert.match(step("stock").text, /posição Dianteira, lado Direito/);
+  step("filter").auto?.();
+  assert.deepEqual(screen.filters, TUTORIAL_PHONE_FILTERS);
+  assert.equal(step("filter").done?.(), true);
+  assert.equal(filtersHave(screen.filters, TUTORIAL_FILTERS), false);
+  assert.equal(step("pencil").title, "Edite de novo");
+  assert.equal(step("pencil").target?.(), "row");
+  assert.equal(step("delete").target?.(), "row");
+  screen.form = { item: SAVED, viewing: true, values: itemFormOf(SAVED) };
+  assert.equal(step("pencil").target?.(), "form-edit");
+  assert.equal(step("delete").target?.(), "form-delete");
+  step("pencil").auto?.();
+  assert.equal(step("pencil").done?.(), true);
+  screen.phone = false;
+  assert.equal(step("pencil").target?.(), "pencil");
+  assert.equal(step("delete").target?.(), "trash");
 });

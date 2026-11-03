@@ -113,6 +113,8 @@ type ItemFormDialogProps = {
   onFormChange?: (form: ItemForm, viewing: boolean) => void;
   /** Offers Excluir in the details, which asks to confirm and deletes the item; called with it once it is gone. */
   onDeleted?: (item: Item) => void;
+  /** Called as Excluir's confirmation opens and closes, e.g. for the tutorial. */
+  onRemovingChange?: (removing: boolean) => void;
 };
 
 /**
@@ -140,6 +142,7 @@ export function ItemFormDialog({
   onDuplicate,
   onFormChange,
   onDeleted,
+  onRemovingChange,
 }: ItemFormDialogProps) {
   const toast = useToast();
   const { styles, ids } = useStyles();
@@ -166,6 +169,11 @@ export function ItemFormDialog({
   useEffect(() => {
     onFormChange?.(form, viewing);
   }, [form, viewing, onFormChange]);
+
+  // Tell the owner whether Excluir's confirmation is open.
+  useEffect(() => {
+    onRemovingChange?.(open && removing);
+  }, [open, removing, onRemovingChange]);
 
   /**
    * Takes a layout on the way to the brand the details open on and, once all three are in, scrolls to it, once.
@@ -343,7 +351,13 @@ export function ItemFormDialog({
       title={viewing ? 'Detalhes do item' : item ? item.name : 'Novo item'}
       closable={!viewing}
       back={viewing ? 'Voltar ao estoque' : undefined}
-      headerAction={viewing && onDeleted ? <RemoveItemButton onPress={() => setRemoving(true)} /> : undefined}
+      headerAction={
+        viewing && onDeleted ? (
+          <View ref={tourTarget('form-delete')} collapsable={false}>
+            <RemoveItemButton onPress={() => setRemoving(true)} />
+          </View>
+        ) : undefined
+      }
       scrollRef={scroll}
       actions={
         viewing ? (

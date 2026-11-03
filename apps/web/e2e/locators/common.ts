@@ -89,7 +89,8 @@ export function toasts(page: Page) {
  * @returns The tour's elements; step(title) is the card's heading for a step.
  */
 export function tour(page: Page) {
-  const card = page.getByRole("dialog").filter({ hasText: /\d+ \/ \d+/ });
+  // By its id: a role would also find the dialog the card renders in.
+  const card = page.getByTestId("common.tour.card");
   return {
     card,
     step: (title: string) => card.getByRole("heading", { name: title }),

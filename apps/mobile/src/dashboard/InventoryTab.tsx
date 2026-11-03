@@ -240,8 +240,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // until the list loads again, the change is still on its way, and the tutorial doesn't take it as left undone.
   const [touring, setTouring] = useState(false);
   const [sentWith, setSentWith] = useState<Item[]>();
-  // The item the delete confirmation asks about, while it is open.
+  // The item the delete confirmation asks about, while it is open; and whether the details' own one is open.
   const [removing, setRemoving] = useState<Item>();
+  const [removingShown, setRemovingShown] = useState(false);
   // The brand of an item whose photos the viewer shows, while it is open, with the photos on screen.
   const [viewer, setViewer] = useState<{ item: Item; brand: ItemBrand; photos: UploadPhoto[] }>();
   const items = state.status === 'ready' ? state.items : [];
@@ -305,8 +306,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   };
 
   /** Opens the item form on a new item, an item to edit, or an item's details, maybe with values and photos filled in. */
-  const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][], brand?: string) =>
+  const openForm = (item?: Item, details = false, initial?: ItemForm, photos?: UploadPhoto[][], brand?: string) => {
+    // What the last form held goes with it, so the tutorial reads the new one as opened until it says otherwise.
+    setTyped(undefined);
     setForm((current) => ({ open: true, item, details, brand, initial, photos, session: current.session + 1 }));
+  };
 
   /**
    * Opens a card into the item's details.
@@ -506,7 +510,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             setSort(next);
           });
         }}
-        panelRef={tourTarget('filter-panel')}
+        applyRef={tourTarget('filter-panel')}
       />
       <SortSheet
         open={sorting}
@@ -539,6 +543,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         initialPhotos={form.photos}
         onDuplicate={duplicate}
         onFormChange={followForm}
+        onRemovingChange={setRemovingShown}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
         onSaved={() => {
           setForm((current) => ({ ...current, open: false }));
@@ -604,8 +609,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           search,
           filters,
           filtersOpen: filtering,
-          removing,
+          removing: removing ?? (form.open && removingShown ? form.item : undefined),
           busy: sentWith === items,
+          phone: true,
           openForm,
           setSearch: (value) => narrow(() => setSearch(value)),
           applyFilters: (values) => {
@@ -617,9 +623,14 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             const body = itemFormBody(values, itemFormOptions(items, lists).colors);
             void send(item ? `${API_URL}/items/${item.id}` : `${API_URL}/items`, item ? 'PATCH' : 'POST', body);
           },
-          askDelete: setRemoving,
+          // The details close first: a confirmation opened here would sit under their Modal.
+          askDelete: (item) => {
+            setForm((current) => ({ ...current, open: false }));
+            setRemoving(item);
+          },
           deleteItem: (item) => {
             setRemoving(undefined);
+            setForm((current) => ({ ...current, open: false }));
             void send(`${API_URL}/items/${item.id}`, 'DELETE');
           },
         }}

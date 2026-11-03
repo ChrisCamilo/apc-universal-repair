@@ -19,7 +19,8 @@ import { Heading, Label, NumericReadout, Text } from './Typography';
 
 // A step-by-step guide that points at parts of the screen, the same as the web. A ring marks the step's
 // target and the rest of the screen dims around it; touches pass through, so the user does the step on the
-// target itself. A card next to the target (pinned to the bottom on a phone) shows the part and the step
+// target itself. A card next to the target (pinned to the bottom on a phone, above a bottom bar the owner names, or
+// to the top, below the status bar, where it would cover the target) shows the part and the step
 // count, the title, the text and the actions: Skip, "Fazer por mim" when the step can do itself, and Next on
 // info-only steps. A step moves on by itself once its check passes, and goes back to the step it names when
 // the user leaves it. The tour draws in the topmost TourLayer, so it stays above an open Dialog and usable.
@@ -33,6 +34,8 @@ type TourProps = {
   steps: readonly TourStep<HostInstance>[];
   /** Names of the tour's parts, for the card header, e.g. ["Criar um item", "Procurar e filtrar"]. */
   parts?: readonly string[];
+  /** Room at the bottom of the screen the card keeps clear of, such as the bottom bar, in px. */
+  bottomInset?: number;
 };
 
 export function TourProvider({ children }: { children: ReactNode }) {
@@ -81,7 +84,7 @@ export function Tour({ open, ...rest }: TourProps) {
   return open ? <TourRun {...rest} /> : null;
 }
 
-function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
+function TourRun({ onClose, steps, parts = [], bottomInset = 0 }: Omit<TourProps, 'open'>) {
   const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -93,7 +96,12 @@ function TourRun({ onClose, steps, parts = [] }: Omit<TourProps, 'open'>) {
   const last = index === steps.length - 1;
   const header = stepHeader(steps, index, parts);
   const spot = target && spotlightRect(target);
-  const card = cardPlacement(target, cardHeight, { width: screen.width, height: screen.height - insets.bottom });
+  // Placed below the status bar: the shared placement counts from the top of the room it is given.
+  const placed = cardPlacement(target && { ...target, y: target.y - insets.top }, cardHeight, {
+    width: screen.width,
+    height: screen.height - insets.top - insets.bottom - bottomInset,
+  });
+  const card = { ...placed, y: placed.y + insets.top };
 
   /** Moves on to the next step, or finishes after the last one. */
   const next = () => {

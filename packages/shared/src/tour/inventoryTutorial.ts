@@ -11,6 +11,10 @@ import type { TourStep } from "./tour.ts";
 // one, and what to do for them. The test item is opened from its row, into its details (a click on an item of one
 // brand opens them), and edited from there. The tutorial runs by itself the first time, and again from the user menu.
 // The test item has one brand and one vehicle, so its fields are named flat: the item's, its brand's or its vehicle's.
+// On a phone (the web below `card:`, and the app) the steps name what the phone layout shows: the round +, the funnel,
+// the choices in full words and "Ver itens", the filters leaving out the category, whose row the card covers; and as
+// its cards have no pencil or trash, the second edit and the delete point at the test item's card, then at Editar or
+// Excluir item in its details.
 
 /** The fields of each filling step of part 1. */
 const FILL_FIELDS: Record<"identity" | "stock", FormField[]> = {
@@ -66,6 +70,29 @@ const STEP_TEXTS: Record<TutorialStepId, { part?: number; title: string; text: s
   },
 };
 
+/** What a step says on a phone, where the desktop's words name something the phone layout shows another way. */
+const PHONE_TEXTS: Partial<Record<TutorialStepId, { title?: string; text: string }>> = {
+  new: { text: "Toque no + para cadastrar uma peça de teste." },
+  identity: {
+    text: "Preencha o nome “Item de teste do tutorial”, a categoria Motor, o veículo Volkswagen Gol em Adicionar veículo, a marca Bosch e o código TUTORIAL-001. Use “+ Criar” para um nome que ainda não existe.",
+  },
+  stock: {
+    text: "Quantidade 5, mínima 2, posição Dianteira, lado Direito, cor Preto, local T-1 e valor 49,90. A foto é opcional.",
+  },
+  save: { text: "Toque em Salvar item. O item novo aparece no topo da lista." },
+  filters: { text: "Toque no funil para filtrar por mais de um campo de uma vez." },
+  filter: { text: "Escolha a marca da peça Bosch, a posição Dianteira e a cor Preto, e toque em Ver itens." },
+  details: { text: "Toque no item de teste para ver os detalhes dele." },
+  unlock: { text: "Os detalhes só mostram o item. Toque em Editar para liberar os campos." },
+  "save-low": { text: "Toque em Salvar alterações." },
+  low: { text: "Na quantidade mínima ou abaixo, o item fica marcado como estoque baixo." },
+  pencil: { title: "Edite de novo", text: "Toque no item de teste e, nos detalhes, em Editar." },
+  zero: { text: "Mude a quantidade para 0 e toque em Salvar alterações." },
+  out: { text: "Sem nenhuma unidade, o item fica marcado como esgotado." },
+  delete: { text: "Toque no item de teste e, nos detalhes, em Excluir item." },
+  confirm: { text: "Toque em Excluir. O item sai do estoque." },
+  end: { text: "Você cadastrou, encontrou, editou e excluiu um item. Para rever este tutorial, toque no ⋯ do Estoque." },
+};
 /** The edits of part 3: a new name, and a quantity under the minimum, for the low-stock row. */
 export const TUTORIAL_EDIT = { name: "Item de teste do tutorial editado", quantity: "1" } satisfies Partial<Record<FormField, string>>;
 /** The filters part 2 applies, which the test item matches. */
@@ -76,6 +103,11 @@ export const TUTORIAL_FILTERS: FilterValues = {
   position: ["D"],
   color: ["Preto"],
 };
+/**
+ * The filters part 2 applies on a phone: the same but the category, whose row the step's card covers at the top of the
+ * filter sheet, the card going there to leave "Ver itens" in view.
+ */
+export const TUTORIAL_PHONE_FILTERS: FilterValues = { ...TUTORIAL_FILTERS, category: [] };
 /** The test item, as typed in the form. */
 export const TUTORIAL_ITEM: ItemForm = {
   name: "Item de teste do tutorial",
@@ -106,6 +138,8 @@ export type TutorialScreen<Target> = {
   removing?: Item;
   /** Whether a change "Fazer por mim" or the user made is still on its way to the list; no step goes back meanwhile. */
   busy: boolean;
+  /** Whether the tab has the phone layout, whose cards open the details, with Editar and Excluir item, but have no pencil or trash. */
+  phone: boolean;
   /** Finds a part of the screen; the item ones are the test item's. */
   target: (name: TutorialTarget) => Target | null;
   /** Opens the item form on a new item or on an item, its details or the edit, with the values given. */
@@ -151,6 +185,7 @@ export type TutorialTarget =
   | "form-quantity"
   | "form-save"
   | "form-edit"
+  | "form-delete"
   | "search"
   | "filters"
   | "filter-panel"
@@ -183,7 +218,7 @@ export function formHas(form: ItemForm, values: Partial<Record<FormField, string
 
 /**
  * Lists the tutorial's steps for a screen: each with its texts, target, check, the step to go back to and what
- * "Fazer por mim" does.
+ * "Fazer por mim" does. The texts follow the screen's layout as it is when they are listed.
  * @param screen Reads the screen as it is now.
  * @returns The steps in order.
  */
@@ -201,6 +236,14 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
   const typed = () => screen().form?.values ?? TUTORIAL_ITEM;
   const edited = () => testItem()?.name === TUTORIAL_EDIT.name && testItem()?.quantity === Number(TUTORIAL_EDIT.quantity);
   const pick = (fields: FormField[]) => Object.fromEntries(fields.map((field) => [field, formValue(TUTORIAL_ITEM, field)]));
+  /**
+   * Finds what a step of a row's button points at: on a phone, the test item's card, then the details' button once
+   * they are open on it; on a wider screen, the row's own button.
+   */
+  const onPhone = (details: TutorialTarget, row: TutorialTarget) =>
+    screen().phone ? screen().target(onTestItem(true) ? details : "row") : screen().target(row);
+  /** The filters part 2 asks for. */
+  const wanted = () => (screen().phone ? TUTORIAL_PHONE_FILTERS : TUTORIAL_FILTERS);
   /** Opens the edit of the test item with some values changed. */
   const editWith = (values: Partial<Record<FormField, string>>) => {
     const item = testItem();
@@ -239,13 +282,13 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
     },
     filters: {
       target: () => screen().target("filters"),
-      done: () => screen().filtersOpen || filtersHave(screen().filters, TUTORIAL_FILTERS),
-      auto: () => screen().applyFilters(TUTORIAL_FILTERS),
+      done: () => screen().filtersOpen || filtersHave(screen().filters, wanted()),
+      auto: () => screen().applyFilters(wanted()),
     },
     filter: {
       target: () => screen().target("filter-panel"),
-      done: () => filtersHave(screen().filters, TUTORIAL_FILTERS),
-      auto: () => screen().applyFilters(TUTORIAL_FILTERS),
+      done: () => filtersHave(screen().filters, wanted()),
+      auto: () => screen().applyFilters(wanted()),
       lost: () => (screen().filtersOpen ? null : "filters"),
     },
     found: { target: () => screen().target("row") },
@@ -283,7 +326,7 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
       lost: () => (screen().form || edited() ? null : "details"),
     },
     low: { target: () => screen().target("row") },
-    pencil: { target: () => screen().target("pencil"), done: () => onTestItem(false), auto: () => editWith({}) },
+    pencil: { target: () => onPhone("form-edit", "pencil"), done: () => onTestItem(false), auto: () => editWith({}) },
     zero: {
       target: () => screen().target("form-quantity"),
       done: () => testItem()?.quantity === 0 && screen().form === null,
@@ -297,7 +340,7 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
     },
     out: { target: () => screen().target("row") },
     delete: {
-      target: () => screen().target("trash"),
+      target: () => onPhone("form-delete", "trash"),
       done: () => isTestItem(screen().removing),
       auto: () => {
         const item = testItem();
@@ -341,9 +384,11 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
     "confirm",
     "end",
   ];
+  const phone = screen().phone;
   return order.map((id) => {
     const { lost, ...binding } = bindings[id];
-    return { id, ...STEP_TEXTS[id], ...binding, ...(lost && { lost: () => (screen().busy ? null : lost()) }) };
+    const texts = { ...STEP_TEXTS[id], ...(phone && PHONE_TEXTS[id]) };
+    return { id, ...texts, ...binding, ...(lost && { lost: () => (screen().busy ? null : lost()) }) };
   });
 }
 

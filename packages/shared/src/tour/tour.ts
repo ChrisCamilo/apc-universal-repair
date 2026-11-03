@@ -39,12 +39,12 @@ export type TourStep<Target> = {
 /**
  * Places the step card: below the target when it fits, above it otherwise, or at the bottom of the screen
  * when neither fits; in the middle of the screen without a target; and across the bottom at phone width, or across
- * the top when the target is in a dialog (whose action bar is at the bottom) or where the card would cover it. When the
- * target is in a dialog, the card goes beside the dialog if there is room, level with the target, so it covers none
- * of the dialog's fields. The card never leaves the screen edges.
+ * the top where the card would cover the target, as a phone's full-screen form keeps its title row and × on top. When
+ * the target is in a dialog on a wider screen, the card goes beside the dialog if there is room, level with the target,
+ * so it covers none of the dialog's fields. The card never leaves the screen edges.
  * @param target Box of the target, or null.
  * @param cardHeight Height of the card, in px.
- * @param screen Size of the screen, in px.
+ * @param screen Size of the screen the card may use, in px: less a bottom bar the card keeps clear of.
  * @param dialog Box of the dialog the target is in, if any.
  * @returns Left and top corner of the card and its width, in px.
  */
@@ -57,7 +57,8 @@ export function cardPlacement(
   const gap = TOUR_CARD_GAP;
   const bottom = screen.height - cardHeight - gap;
   if (screen.width <= TOUR_PHONE_WIDTH) {
-    const covered = target !== null && (Boolean(dialog) || target.y + target.height > bottom - gap);
+    // A target still below the screen, before the form scrolls to it, isn't covered.
+    const covered = target !== null && target.y < screen.height && target.y + target.height > bottom - gap;
     return { x: gap, y: covered ? gap : bottom, width: screen.width - 2 * gap };
   }
   const width = Math.min(TOUR_CARD_WIDTH, screen.width - 2 * gap);
