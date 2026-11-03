@@ -3,14 +3,14 @@
  */
 
 import React, { useState } from 'react';
-import { Text, TextInput } from 'react-native';
+import { StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Item } from '@apc/shared/items';
 import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/shared/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { ManageListsDialog } from '../src/inventory/ManageListsDialog';
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/theme';
@@ -190,6 +190,19 @@ test('Mobile: Manage lists shows each list with the items using each name', asyn
   expect(row('Turbo')).toEqual(['Turbo', 'sem itens']);
   const volkswagen = tree.root.find((n) => n.props.accessibilityLabel === 'Modelos de Volkswagen' && typeof n.type === 'string');
   expect(texts(volkswagen).filter((text) => !text.includes('ite'))).toEqual(['Volkswagen', 'Gol', 'Santana']);
+});
+
+// Opens the dialog and checks it fills the screen, as the web's does on a phone, and every name's pencil and trash are
+// 44px, as big as a finger needs.
+test('Mobile: Manage lists fills the screen, with 44px pencils and trashes', async () => {
+  const tree = await mount();
+  const window = tree.root.findAll((n) => n.props.testID === 'common.dialog' && typeof n.type === 'string')[0];
+  expect(StyleSheet.flatten(window.props.style)).toMatchObject({ flex: 1, alignSelf: 'stretch', borderRadius: 0 });
+  const actions = tree.root.findAll((n) => n.props.testID === 'common.row-action' && typeof n.type === 'string');
+  expect(actions.length).toBe(2 * tree.root.findAll((n) => n.props.testID === 'inventory.manage-lists-dialog.section.entry' && typeof n.type === 'string').length);
+  for (const action of actions) {
+    expect(StyleSheet.flatten(action.props.style)).toMatchObject({ width: scales.touch.icon, height: scales.touch.icon });
+  }
 });
 
 // Renames a category in place and checks the rename is sent, the list shows the new name, a toast confirms it and

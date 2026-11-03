@@ -114,12 +114,15 @@ export const dataTable = recipe(
   },
 )
 
-/** A row's icon action, in the accent, or in the danger color for one that deletes, with the panel's fill on hover. */
+/**
+ * A row's icon action, in the accent, or in the danger color for one that deletes, with the panel's fill on hover; on a
+ * phone, as big as a finger needs.
+ */
 export const rowAction = recipe(
   'common.row-action',
   tv({
     slots: {
-      base: 'grid size-8 cursor-pointer place-items-center rounded-tile outline-none transition-colors hover:bg-panel focus-visible:shadow-ring',
+      base: 'grid size-8 max-card:size-11 cursor-pointer place-items-center rounded-tile outline-none transition-colors hover:bg-panel focus-visible:shadow-ring',
     },
     variants: { tone: { default: 'text-accent', danger: 'text-danger' } },
     defaultVariants: { tone: 'default' },

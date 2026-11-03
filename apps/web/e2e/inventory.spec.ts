@@ -1024,6 +1024,56 @@ test("Web: on a phone the other actions open from the header's ⋯", { tag: [TES
   await expect(tour(page).card).toBeHidden();
 });
 
+// On a phone, opens Gerenciar listas, Importar CSV and Exportar CSV from the "Mais ações" sheet, and Sobre esta versão
+// from Conta: each fills the screen, its × on top and its actions at the bottom in view, and the × closes it; the
+// lists' pencils and trashes are 44px. Excluir item, a confirmation, stays a window centered on the screen, 16px from
+// its sides.
+test("Web: on a phone the lists, CSV and About dialogs fill the screen", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  await openInventory(page);
+  const inv = inventory(page);
+  const menu = userMenu(page);
+  const { width, height } = page.viewportSize()!;
+  const openers = [
+    { name: "Gerenciar listas", open: () => inv.manageLists.click(), action: "Fechar" },
+    { name: "Importar CSV", open: () => inv.importCsv.click(), action: "Importar 0 itens" },
+    { name: "Exportar CSV", open: () => inv.exportCsv.click(), action: "Exportar" },
+    {
+      name: "Sobre esta versão",
+      open: async () => {
+        await menu.trigger.click();
+        await menu.item("Sobre esta versão").click();
+      },
+      action: "Fechar",
+    },
+  ];
+  for (const { name, open, action } of openers) {
+    await open();
+    const { root, close } = dialog(page, name);
+    await expect.poll(async () => root.boundingBox()).toEqual({ x: 0, y: 0, width, height });
+    await expect(close).toBeInViewport();
+    await expect(root.getByRole("button", { name: action }).last()).toBeInViewport();
+    if (name === "Gerenciar listas") {
+      const lists = manageLists(page);
+      for (const button of [lists.rename("Categorias", "Motor"), lists.remove("Categorias", "Motor")]) {
+        expect(await button.boundingBox()).toMatchObject({ width: 44, height: 44 });
+      }
+    }
+    await close.click();
+    await expect(root).toBeHidden();
+  }
+
+  await inv.remove("Filtro de óleo").click();
+  const confirm = deleteDialog(page);
+  await expect
+    .poll(async () => {
+      const box = (await confirm.root.boundingBox())!;
+      return [box.x, box.width, Math.round(box.y + box.height / 2)];
+    })
+    .toEqual([16, width - 32, height / 2]);
+  await confirm.cancel.click();
+  await expect(confirm.root).toBeHidden();
+});
+
 // Works with an item's photos against an API that keeps what it is sent: the row shows the cover's thumbnail, which
 // opens the photos large; "Adicionar foto" sends the kept photo and the new file, in order, and the viewer and the
 // list follow; removing the cover sends what is left. Then a photo added in the edit form is sent after the item.

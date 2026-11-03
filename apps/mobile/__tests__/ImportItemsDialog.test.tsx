@@ -52,16 +52,17 @@ function answerPick(text: string) {
 /**
  * Renders the dialog inside the theme and toast providers.
  * @param onImported Called once the items are imported.
+ * @param onClose Called when the dialog asks to close.
  * @returns The rendered tree.
  */
-async function mount(onImported = () => {}) {
+async function mount(onImported = () => {}, onClose = () => {}) {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
           <ToastProvider>
-            <ImportItemsDialog open lists={LISTS} onClose={() => {}} onImported={onImported} />
+            <ImportItemsDialog open lists={LISTS} onClose={onClose} onImported={onImported} />
           </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>,
@@ -116,6 +117,16 @@ for (const style of STYLES) {
     });
   }
 }
+
+// Opens the import and checks it fills the screen, as the web's does on a phone, and its × asks to close it.
+test('Mobile: the import fills the screen, and its × closes it', async () => {
+  const onClose = jest.fn();
+  const tree = await mount(undefined, onClose);
+  const window = tree.root.findAll((n) => n.props.testID === 'common.dialog' && typeof n.type === 'string')[0];
+  expect(StyleSheet.flatten(window.props.style)).toMatchObject({ flex: 1, alignSelf: 'stretch', borderRadius: 0 });
+  await press(tree, 'Fechar');
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
 
 // Picks a file and checks the preview: the count of rows, the names to create, each row written by the rule with the
 // lists' spelling, and the row with errors marked with its reasons.

@@ -6,12 +6,14 @@ import { Dialog } from '../components/Dialog.tsx'
 import { Switch } from '../components/Switch.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { Text } from '../components/Typography.tsx'
+import { usePhone } from '../components/usePhone.ts'
 
 // The "Exportar CSV" dialog of the Inventory tab: it says which items go into the file, the whole list as it is (the
 // search, the filters, the stock status and the sort) across all its pages, and offers to add each item's photo
 // paths, off by default. "Exportar" fetches every item of the list, downloads them as a CSV in the import's format,
 // closes the dialog and says how many items went into the file; when they can't be fetched, a toast says so and the
-// dialog stays open. With nothing in the list there is nothing to export.
+// dialog stays open. With nothing in the list there is nothing to export. On a phone it fills the screen, with the × at
+// the left of its title, as the other dialogs of the "Mais ações" menu do.
 
 type ExportItemsDialogProps = {
   open: boolean
@@ -28,6 +30,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
   const toast = useToast()
   const [photos, setPhotos] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const phone = usePhone()
 
   /** Fetches every item of the list, downloads the file and says how many items it holds, or that it failed. */
   const submit = async () => {
@@ -53,7 +56,8 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
       open={open}
       onClose={onClose}
       title="Exportar CSV"
-      size="confirm"
+      size={phone ? 'form' : 'confirm'}
+      closable={phone}
       actions={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>

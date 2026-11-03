@@ -1,3 +1,4 @@
+import { pencilIcon } from '@apc/shared/icons'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens'
 import { scales } from '@apc/shared/theme'
 import { afterAll, beforeAll, expect, test } from 'vitest'
@@ -9,6 +10,7 @@ import { BackButton } from './BackButton.tsx'
 import { Button } from './Button.tsx'
 import { CloseButton } from './CloseButton.tsx'
 import { Combobox } from './Combobox.tsx'
+import { RowAction } from './DataTable.tsx'
 import { FilterChip } from './FilterChip.tsx'
 import { Menu, MenuItem } from './Menu.tsx'
 import { Segmented } from './Segmented.tsx'
@@ -21,6 +23,7 @@ const DESKTOP = {
   buttonSm: 34,
   back: 44,
   close: 36,
+  rowAction: 32,
   chip: 26,
   segmentedOption: 24,
   segmented: 30,
@@ -41,6 +44,7 @@ const PHONE = {
   buttonSm: scales.touch.buttonSm,
   back: scales.touch.icon,
   close: scales.touch.icon,
+  rowAction: scales.touch.icon,
   chip: scales.touch.icon,
   segmentedOption: scales.touch.segment,
   // The options and the track's 4px padding on each side.
@@ -71,6 +75,7 @@ async function heights() {
     buttonSm: screen.getByRole('button', { name: 'Cancelar' }).element().getBoundingClientRect().height,
     back: height('common.back-button'),
     close: height('common.close-button'),
+    rowAction: height('common.row-action'),
     chip: height('common.filter-chip'),
     segmentedOption: height('common.segmented.option'),
     segmented: height('common.segmented'),
@@ -97,8 +102,9 @@ afterAll(async () => {
 })
 
 // Renders every control a finger reaches at 360×780 and checks each is as tall as a phone asks: 52px for a button, a
-// field and a select, 44px for a small button, the back arrow, the ×, a chip and the menu's trigger, 56px for a list's
-// or a menu's row. The password field's eye is a 44px button, and the field stays 52px around it.
+// field and a select, 44px for a small button, the back arrow, the ×, a row's icon action, a chip and the menu's
+// trigger, 56px for a list's or a menu's row. The password field's eye is a 44px button, and the field stays 52px
+// around it.
 test('Web: on a phone every control is tall enough for a finger', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
   const { found, eye, password } = await heights()
@@ -134,6 +140,7 @@ function Controls() {
       </Button>
       <BackButton label="Voltar" onClick={() => {}} />
       <CloseButton onClick={() => {}} />
+      <RowAction icon={pencilIcon} label="Renomear Freios" onClick={() => {}} />
       <FilterChip pressed={false} onPressedChange={() => {}}>
         Esgotado
       </FilterChip>
