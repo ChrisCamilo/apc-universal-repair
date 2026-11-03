@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Animated, Image, Pressable, Text, View } from 'react-native';
 import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
 import { shownRows, sortFromValue, sortOptions, sortValue, type ShownRow, type Sort } from '@apc/shared/table';
-import { scales } from '@apc/shared/theme';
 import { useRowActionStyles, useStyles, useThumbnailStyles } from './DataTable.styles';
 import { Icon } from './Icon';
 import { useOverlayMotion, useReducedMotion } from './motion';
@@ -235,7 +234,6 @@ export function RowAction({ icon, label, onPress, tone = 'default' }: RowActionP
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      hitSlop={scales.space.s2}
       onPress={onPress}
       style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
       testID={ids.action}

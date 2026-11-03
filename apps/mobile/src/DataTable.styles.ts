@@ -68,11 +68,14 @@ export const useStyles = createStyles(
   },
 );
 
-/** A row's icon action, its icon in the accent or the danger color: the panel fill while pressed. */
+/**
+ * A row's icon action, as big as a finger needs, its icon in the accent or the danger color: the panel fill while
+ * pressed.
+ */
 export const useRowActionStyles = createStyles('common.row-action', { action: '' }, (theme) => ({
   action: {
-    width: scales.space.s6,
-    height: scales.space.s6,
+    width: scales.touch.icon,
+    height: scales.touch.icon,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.radiusTile,

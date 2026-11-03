@@ -2,12 +2,14 @@ import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
+import { pencilIcon } from '@apc/shared/icons';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { scales, THEME_STORAGE_KEYS } from '@apc/shared/theme';
 import { Button } from '../src/Button';
 import { BackButton } from '../src/BackButton';
 import { CloseButton } from '../src/CloseButton';
 import { Combobox } from '../src/Combobox';
+import { RowAction } from '../src/DataTable';
 import { FilterChip } from '../src/FilterChip';
 import { Menu, MenuItem } from '../src/Menu';
 import { Segmented } from '../src/Segmented';
@@ -49,6 +51,7 @@ async function mount() {
           </Button>
           <BackButton label="Voltar" onPress={() => {}} />
           <CloseButton onPress={() => {}} />
+          <RowAction icon={pencilIcon} label="Renomear Freios" onPress={() => {}} />
           <FilterChip pressed={false} onPressedChange={() => {}}>
             Esgotado
           </FilterChip>
@@ -99,8 +102,9 @@ function styleOf(tree: ReactTestRenderer.ReactTestRenderer, id: string, index = 
 }
 
 // Renders every control a finger reaches and checks each is as tall as a phone asks: 52px for a button, a field and a
-// select, 44px for a small button, the back arrow, the ×, a chip, a field's end button and the menu's trigger, 40px
-// for a segmented option in its 48px track, and 56px for a list's or a menu's row. A link stays at its text's height.
+// select, 44px for a small button, the back arrow, the ×, a row's icon action, a chip, a field's end button and the
+// menu's trigger, 40px for a segmented option in its 48px track, and 56px for a list's or a menu's row. A link stays
+// at its text's height.
 test('Mobile: every control is tall enough for a finger', async () => {
   const tree = await mount();
   expect(styleOf(tree, 'common.button', 0).minHeight).toBe(scales.touch.button);
@@ -108,6 +112,7 @@ test('Mobile: every control is tall enough for a finger', async () => {
   expect(styleOf(tree, 'common.button', 2).minHeight).toBe(0);
   expect(styleOf(tree, 'common.back-button')).toMatchObject({ width: scales.touch.icon, height: scales.touch.icon });
   expect(styleOf(tree, 'common.close-button')).toMatchObject({ width: scales.touch.icon, height: scales.touch.icon });
+  expect(styleOf(tree, 'common.row-action')).toMatchObject({ width: scales.touch.icon, height: scales.touch.icon });
   expect(styleOf(tree, 'common.filter-chip').minHeight).toBe(scales.touch.icon);
   expect(styleOf(tree, 'common.segmented.option').minHeight).toBe(scales.touch.segment);
   expect(styleOf(tree, 'common.segmented').padding).toBe(scales.space.s1);
