@@ -23,7 +23,7 @@ const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 
 /**
  * Answers the API as it would, keeping what is sent: the items (narrowed by the search), empty lists, and new,
- * changed and deleted items.
+ * changed (taking the item's place) and deleted items.
  * @param stock The items in stock, changed as requests come.
  * @returns The requests that changed the stock, e.g. "POST /items".
  */
@@ -41,9 +41,11 @@ function answerApi(stock: Item[]): string[] {
       return reply({ items: matching, total: matching.length });
     }
     changes.push(`${method} ${pathname.replace(/[0-9a-f-]{36}$/, ':id')}`);
-    if (method === 'POST') {
+    if (method === 'POST' || method === 'PATCH') {
       const sent = JSON.parse(String(init?.body));
+      const held = stock.find((each) => pathname.endsWith(each.id));
       const saved = {
+        ...held,
         ...sent,
         id: '00000000-0000-4000-8000-0000000000aa',
         vehicleModel: sent.vehicleModel || null,
@@ -57,8 +59,8 @@ function answerApi(stock: Item[]): string[] {
         createdAt: '2026-10-08T12:00:00.000Z',
         updatedAt: '2026-10-08T12:00:00.000Z',
       };
-      stock.unshift(saved);
-      return reply(saved, 201);
+      stock.splice(0, stock.length, saved, ...stock.filter((each) => each !== held));
+      return reply(saved, held ? 200 : 201);
     }
     stock.splice(0, stock.length, ...stock.filter((held) => !pathname.endsWith(held.id)));
     return reply(null, 204);
@@ -127,6 +129,19 @@ async function wait(ms: number) {
   }
 }
 
+/**
+ * Moves the tutorial on with "Fazer por mim", or Próximo on a step that only shows, until a step's title is on screen.
+ * @param tree Rendered tree.
+ * @param title The step's title.
+ */
+async function skipTo(tree: ReactTestRenderer.ReactTestRenderer, title: string) {
+  for (let step = 0; step < 20 && !texts(tree).includes(title); step += 1) {
+    await press(tree, texts(tree).includes('Fazer por mim') ? 'Fazer por mim' : 'Próximo');
+    await wait(1000);
+  }
+  expect(texts(tree)).toContain(title);
+}
+
 beforeEach(async () => {
   jest.useFakeTimers();
   await themeStorage.clear();
@@ -159,6 +174,36 @@ test('Mobile: the Inventory tutorial starts by itself and creates the test item'
   expect(changes).toEqual(['POST /items']);
   expect(stock.map((held) => held.brands.map((brand) => brand.code))).toEqual([[TUTORIAL_CODE]]);
   expect(texts(tree)).toContain('Procure pelo nome');
+});
+
+// Runs the tutorial to part 3 and checks the steps name the phone's layout; then, as the cards have no pencil or
+// trash, the second edit opens the test item's details from its card and Editar there, and the delete opens them again
+// and asks with Excluir item, whose confirmation deletes the test item and ends the tutorial.
+test('Mobile: the Inventory tutorial edits and deletes the test item through its details', async () => {
+  const stock: Item[] = [];
+  const changes = answerApi(stock);
+  const tree = await mount();
+  expect(texts(tree)).toContain('Toque no + para cadastrar uma peça de teste.');
+  await skipTo(tree, 'Edite de novo');
+  expect(texts(tree)).toContain('Toque no item de teste e, nos detalhes, em Editar.');
+  await press(tree, 'Item de teste do tutorial editado');
+  await wait(1000);
+  expect(texts(tree)).toContain('Edite de novo');
+  await press(tree, 'Editar');
+  await wait(1000);
+  expect(texts(tree)).toContain('Zere a quantidade');
+
+  await skipTo(tree, 'Exclua o item');
+  await press(tree, 'Item de teste do tutorial editado');
+  await wait(1000);
+  await press(tree, 'Excluir item');
+  await wait(1000);
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Confirme', 'Excluir item?']));
+  await press(tree, 'Excluir');
+  await wait(1000);
+  expect(texts(tree)).toContain('Pronto!');
+  expect(changes).toEqual(['POST /items', 'PATCH /items/:id', 'PATCH /items/:id', 'DELETE /items/:id']);
+  expect(stock).toEqual([]);
 });
 
 // Skips the tutorial once the test item exists and checks the test item is deleted and the tutorial closes; a replay

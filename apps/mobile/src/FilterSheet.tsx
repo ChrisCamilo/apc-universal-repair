@@ -18,7 +18,7 @@ import { useTheme } from './theme';
 // chosen, e.g. the vehicle models of the chosen brands: a value a row stops offering leaves the choice. Nothing changes
 // until "Ver n itens", which counts the items the choice would show as it changes; "Limpar" turns every filter and the
 // sort off in the sheet, and the back button goes back from a list, then closes the sheet without applying, as a tap
-// above it or a drag down does. An owner may point a tour at the sheet's content. SortSheet is the sort alone, for the
+// above it or a drag down does. An owner may point a tour at "Ver n itens". SortSheet is the sort alone, for the
 // toolbar's Ordenar: a pick sorts the list at once and closes it.
 
 type Option = { value: string; label: string };
@@ -38,8 +38,8 @@ type FilterSheetProps = {
   count: (draft: FilterValues) => number;
   /** Applies the values and the sort chosen; the owner closes the sheet. */
   onApply: (values: FilterValues, sort: Sort | null) => void;
-  /** The sheet's content, e.g. for a tour to point at. */
-  panelRef?: Ref<HostInstance>;
+  /** The sheet's "Ver n itens", e.g. for a tour to point at, as the sheet itself fills the screen. */
+  applyRef?: Ref<HostInstance>;
 };
 /** A row of the sheet: a multiple choice opened as a list, or segmented choices sharing a heading, e.g. position and side. */
 type Row =
@@ -57,7 +57,7 @@ type SortSheetProps = {
 /** What the sheet shows: its rows, or the options of the sort or of a filter. */
 type Shown = { list: 'rows' } | { list: 'sort' } | { list: 'filter'; key: string };
 
-export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOptions, count, onApply, panelRef }: FilterSheetProps) {
+export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOptions, count, onApply, applyRef }: FilterSheetProps) {
   const { styles, ids } = useStyles();
   const [draft, setDraft] = useState(values);
   const [sorted, setSorted] = useState(sortValue(sort));
@@ -107,9 +107,13 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
           </Text>
         </Pressable>
       }
-      footer={<Button align="stretch" onPress={() => onApply(draft, sortFromValue(sorted))}>{`Ver ${shown} ${shown === 1 ? 'item' : 'itens'}`}</Button>}
+      footer={
+        <View ref={applyRef} collapsable={false}>
+          <Button align="stretch" onPress={() => onApply(draft, sortFromValue(sorted))}>{`Ver ${shown} ${shown === 1 ? 'item' : 'itens'}`}</Button>
+        </View>
+      }
     >
-      <View ref={panelRef} collapsable={false}>
+      <>
         {view.list === 'sort' && (
           <OptionList
             label="Ordenar por"
@@ -183,7 +187,7 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
             })}
           </>
         )}
-      </View>
+      </>
     </BottomSheet>
   );
 }
