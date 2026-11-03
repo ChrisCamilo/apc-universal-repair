@@ -17,6 +17,7 @@ import { Button } from '../components/Button.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { useToast } from '../components/toastContext.ts'
 import { Heading, Text } from '../components/Typography.tsx'
+import { usePhone } from '../components/usePhone.ts'
 import { importItemsDialog } from './ImportItemsDialog.styles.ts'
 
 // The "Importar CSV" dialog of the Inventory tab: it explains the file, downloads the template and reads the file
@@ -24,7 +25,8 @@ import { importItemsDialog } from './ImportItemsDialog.styles.ts'
 // categories, brands and models the import creates, and shows each row as it will be saved, the rows with errors
 // marked with their reasons; rows with the same "item" are the brands of one item. "Importar" sends the valid items
 // only, and a toast says how many items were created and updated (a part code in use updates its item); a file that
-// can't be read says why, and another can be chosen.
+// can't be read says why, and another can be chosen. On a phone it fills the screen, as every form does, with the × at
+// the left of its title.
 
 /** How each list's new names are worded in the preview, e.g. "Categorias: Ignição, Turbo". */
 const NEW_NAMES = [
@@ -49,6 +51,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
   // The file read, with its name.
   const [read, setRead] = useState<{ name: string; result: CsvItems }>()
   const [importing, setImporting] = useState(false)
+  const phone = usePhone()
   const rows = read && 'rows' in read.result ? read.result.rows : []
   // The items the import sends: the rows of one item count once.
   const valid = importedItems(rows).length
@@ -95,6 +98,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
       open={open}
       onClose={onClose}
       title="Importar CSV"
+      closable={phone}
       actions={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>

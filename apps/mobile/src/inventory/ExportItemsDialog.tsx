@@ -13,7 +13,8 @@ import { shareCsv } from './csv';
 // item's photo paths, off by default. "Exportar" fetches every item of the list and hands the CSV, in the import's
 // format, to the phone's share sheet, to save it or send it to a computer; once shared, the dialog closes and a toast
 // says how many items went into the file. When the items can't be fetched, a toast says so and the dialog stays open,
-// as it does when the share sheet is closed without sharing. With nothing in the list there is nothing to export.
+// as it does when the share sheet is closed without sharing. With nothing in the list there is nothing to export. It
+// fills the screen, with the × at the left of its title, as the web's does on a phone.
 
 type ExportItemsDialogProps = {
   open: boolean;
@@ -53,7 +54,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
       open={open}
       onClose={onClose}
       title="Exportar CSV"
-      size="confirm"
+      closable
       actions={
         <>
           <Button variant="secondary" size="sm" onPress={onClose}>

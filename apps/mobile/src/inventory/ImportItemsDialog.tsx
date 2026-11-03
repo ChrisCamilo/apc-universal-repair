@@ -23,8 +23,9 @@ import { useStyles } from './ImportItemsDialog.styles';
 // (to save it or send it to a computer) and reads the file picked from the phone's files. The preview counts the items
 // ready and the rows with errors, lists the categories, brands and models the import creates, and shows each row as it
 // will be saved, the rows with errors marked with their reasons; rows with the same "item" are the brands of one item.
-// "Importar" sends the valid items only, and a toast
-// says how many items were created and updated; a file that can't be read says why, and another can be picked.
+// "Importar" sends the valid items only, and a toast says how many items were created and updated; a file that can't
+// be read says why, and another can be picked. It fills the screen, as every form does, with the × at the left of its
+// title.
 
 /** How each list's new names are worded in the preview, e.g. "Categorias: Ignição, Turbo". */
 const NEW_NAMES = [
@@ -88,6 +89,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
       open={open}
       onClose={onClose}
       title="Importar CSV"
+      closable
       actions={
         <>
           <Button variant="secondary" size="sm" onPress={onClose}>
