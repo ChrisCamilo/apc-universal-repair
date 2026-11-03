@@ -9,6 +9,10 @@ import type { TreeNode } from "../tree/tree.ts";
 // in the catalog (of a part that fits several, the first the catalog has a sheet for): the same brand, the model by
 // the start of the part's model name ("Opala 4.1" → Opala) and the engine by the displacement ("4.1" → "4.1 L 6
 // cilindros").
+// On a phone the Catalog is a stack of screens, as in its mockup: the brands, each on a line with how many models and
+// sheets it has; a brand's models, as a tree; and an engine's sheet, under the path to it. ← goes back one screen. A
+// part found by code opens its engine's sheet, or else its brand's models with its model pointed out, saying when the
+// catalog has no sheet for its vehicle.
 
 /** The brands of the catalog, in the order of the rail, each with its model tree. */
 export const CATALOG: readonly CatalogBrand[] = [
@@ -162,6 +166,10 @@ export const ENGINE_SHEETS: Readonly<Record<string, EngineSheet>> = {
   },
 };
 
+/** The screen the Catalog opens on, on a phone: the brands. */
+export const CATALOG_HOME: CatalogScreen = { view: "brands" };
+/** What a part's vehicle says when the catalog has no sheet for it. */
+export const NO_SHEET_MESSAGE = "Este veículo ainda não tem ficha técnica no catálogo. A peça continua cadastrada no estoque.";
 /** Least letters and digits of a part code before the search looks for parts. */
 export const PART_CODE_MIN_LENGTH = 3;
 /** Most parts the code search lists at once. */
@@ -169,6 +177,14 @@ export const PART_RESULTS_LIMIT = 5;
 
 /** A brand of the catalog: its id, the name on its tile and its model tree. */
 export type CatalogBrand = { id: string; name: string; models: TreeNode[] };
+/**
+ * A screen of the Catalog on a phone: the brands; a brand's models, with a model pointed out and an engine open in the
+ * tree, and the vehicle a part fits that the catalog has no sheet for; or an engine's sheet.
+ */
+export type CatalogScreen =
+  | { view: "brands" }
+  | { view: "models"; brandId: string; modelId?: string; engineId?: string; missing?: string }
+  | { view: "sheet"; brandId: string; engineId: string };
 /** An engine's sheet: its title, the readouts under it and a short summary. */
 export type EngineSheet = { title: string; specs: string[]; summary: string };
 /** Where a part's vehicle is in the catalog: its brand, and its model and engine when the catalog has them. */
@@ -191,6 +207,19 @@ export function brandsNamed(query: string): CatalogBrand[] {
 }
 
 /**
+ * Says how many models and sheets a brand has, on its line of a phone's brand screen.
+ * @param brand A brand of the catalog.
+ * @returns E.g. "3 modelos · 2 fichas técnicas", or "3 modelos · sem ficha técnica ainda".
+ */
+export function brandSummary(brand: CatalogBrand): string {
+  const models = brand.models.length;
+  const sheets = brand.models.flatMap(leaves).filter((leaf) => ENGINE_SHEETS[leaf.id]).length;
+  const modelText = models === 1 ? "1 modelo" : `${models} modelos`;
+  const sheetText = sheets === 0 ? "sem ficha técnica ainda" : sheets === 1 ? "1 ficha técnica" : `${sheets} fichas técnicas`;
+  return `${modelText} · ${sheetText}`;
+}
+
+/**
  * Finds the brand to show for a model search: the chosen brand while it has a model with that name, otherwise the
  * first brand that has one.
  * @param brandId The chosen brand.
@@ -204,6 +233,19 @@ export function brandWithModel(brandId: string, query: string): string | null {
     return brandId;
   }
   return CATALOG.find(has)?.id ?? null;
+}
+
+/**
+ * Writes the path to an engine above its sheet on a phone: its model and the branches down to it.
+ * @param brandId The engine's brand.
+ * @param engineId The engine.
+ * @returns E.g. "Opala › Terceira geração › Diplomata › 1986"; empty when the brand has no such engine.
+ */
+export function enginePath(brandId: string, engineId: string): string {
+  return treePath(brandId, engineId)
+    .slice(0, -1)
+    .map((node) => node.label)
+    .join(" › ");
 }
 
 /**
@@ -322,6 +364,25 @@ export function partFit(part: ItemVehicle): string {
 }
 
 /**
+ * Finds the screen a part found by code opens on a phone: its vehicle's sheet when the catalog has the engine, or else
+ * its brand's models with its model pointed out, and its vehicle named when the catalog has no sheet for it.
+ * @param item The part's item.
+ * @returns The screen, or null when the catalog lacks its vehicle's brand.
+ */
+export function partScreen(item: Pick<Item, "vehicles">): CatalogScreen | null {
+  const vehicle = revealedVehicle(item);
+  const location = vehicle && locatePart(vehicle);
+  if (!location) {
+    return null;
+  }
+  if (location.engineId) {
+    return { view: "sheet", brandId: location.brandId, engineId: location.engineId };
+  }
+  const missing = vehicle.vehicleModel ? `${vehicle.vehicleBrand} ${vehicle.vehicleModel}` : undefined;
+  return { view: "models", brandId: location.brandId, modelId: location.modelId, missing };
+}
+
+/**
  * Picks the vehicle a part shows in the catalog: the first of its vehicles whose engine has a sheet, or else the first
  * the catalog has, or else its first.
  * @param item The part's item.
@@ -331,4 +392,60 @@ export function revealedVehicle(item: Pick<Item, "vehicles">): ItemVehicle {
   return (
     item.vehicles.find((vehicle) => locatePart(vehicle)?.engineId) ?? item.vehicles.find((vehicle) => locatePart(vehicle)) ?? item.vehicles[0]
   );
+}
+
+/**
+ * Finds the screen ← goes back to on a phone: from a sheet, its brand's models open on its engine; from the models,
+ * the brands.
+ * @param screen The screen on show.
+ * @returns The screen before it, or null on the brands, the first.
+ */
+export function screenBack(screen: CatalogScreen): CatalogScreen | null {
+  switch (screen.view) {
+    case "sheet":
+      return { view: "models", brandId: screen.brandId, engineId: screen.engineId };
+    case "models":
+      return CATALOG_HOME;
+    case "brands":
+      return null;
+  }
+}
+
+/**
+ * Names a phone screen's title row: the tab on the brands, the brand on the others, and where its ← goes.
+ * @param screen The screen on show.
+ * @returns Its title and its ←'s name, none on the brands.
+ */
+export function screenHeader(screen: CatalogScreen): { title: string; back?: string } {
+  switch (screen.view) {
+    case "brands":
+      return { title: "Catálogo" };
+    case "models":
+      return { title: CATALOG.find((brand) => brand.id === screen.brandId)?.name ?? "Catálogo", back: "Voltar às marcas" };
+    case "sheet":
+      return { title: CATALOG.find((brand) => brand.id === screen.brandId)?.name ?? "Catálogo", back: "Voltar aos modelos" };
+  }
+}
+
+/**
+ * Lists the nodes from a brand's model down to a node of its tree, e.g. to open the tree on an engine.
+ * @param brandId The node's brand.
+ * @param nodeId The node.
+ * @returns The nodes, the model first and the node last; empty when the brand has no such node.
+ */
+export function treePath(brandId: string, nodeId: string): TreeNode[] {
+  /** The path to the node from one of some nodes, or empty when none leads to it. */
+  const find = (nodes: readonly TreeNode[]): TreeNode[] => {
+    for (const node of nodes) {
+      if (node.id === nodeId) {
+        return [node];
+      }
+      const below = find(node.children ?? []);
+      if (below.length > 0) {
+        return [node, ...below];
+      }
+    }
+    return [];
+  };
+  return find(CATALOG.find((brand) => brand.id === brandId)?.models ?? []);
 }
