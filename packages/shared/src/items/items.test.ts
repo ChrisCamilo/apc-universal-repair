@@ -29,6 +29,7 @@ import {
   sortableOf,
   sortItems,
   stockStatus,
+  stockTint,
   type SortableItem,
 } from "./items.ts";
 import { testItem } from "./testItems.ts";
@@ -78,6 +79,13 @@ test("Shared: stock status follows the quantity and the minimum", () => {
   assert.equal(stockStatus(2, 2), "low");
   assert.equal(stockStatus(3, 2), null);
   assert.equal(stockStatus(0, 0), "out");
+});
+
+// Tints an item out of stock as danger and a low one as a warning, each with its status's name, and a stocked one not.
+test("Shared: the stock tint follows the stock status", () => {
+  assert.deepEqual(stockTint({ quantity: 0, minQuantity: 2 }), { tone: "danger", label: "Esgotado" });
+  assert.deepEqual(stockTint({ quantity: 2, minQuantity: 2 }), { tone: "warn", label: "Estoque baixo" });
+  assert.equal(stockTint({ quantity: 3, minQuantity: 2 }), undefined);
 });
 
 // Reads a filter given once or repeated as a list, and leaves missing filters empty.

@@ -17,10 +17,10 @@ import {
   ITEM_STATUSES,
   QUANTITY_UNIT,
   resultSummary,
-  STOCK_STATUS_LABELS,
   STOCK_STATUS_SHORT,
   stockCounts,
   stockStatus,
+  stockTint,
   type Item,
   type ItemBrand,
   type ItemStatus,
@@ -167,16 +167,6 @@ function photoColumn(onOpen: (item: Item, brand: ItemBrand) => void): ComponentP
       );
     },
   };
-}
-
-/**
- * Tells a card's status for the table's tint, from the item's quantity and minimum.
- * @param row A card of the list.
- * @returns The tint and the label read out, or undefined when stock is fine.
- */
-function rowStatus({ item }: InventoryRow): { tone: 'warn' | 'danger'; label: string } | undefined {
-  const status = stockStatus(item.quantity, item.minQuantity);
-  return status ? { tone: status === 'out' ? 'danger' : 'warn', label: STOCK_STATUS_LABELS[status] } : undefined;
 }
 
 type InventoryTabProps = {
@@ -455,7 +445,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
                 ]}
                 rows={rows}
                 rowKey={(row) => row.item.id}
-                rowStatus={rowStatus}
+                rowStatus={({ item }) => stockTint(item)}
                 onRowOpen={openRow}
                 sort={sort}
                 onSortChange={(next) => narrow(() => setSort(next))}

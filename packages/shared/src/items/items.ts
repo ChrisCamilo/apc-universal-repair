@@ -561,6 +561,16 @@ export function stockStatus(quantity: number, minQuantity: number): ItemStatus |
 }
 
 /**
+ * Tells how a list tints an item's row or card by its stock status, and the status read out with it.
+ * @param item The item's quantity and minimum.
+ * @returns "danger" when out of stock and "warn" when low, with the status's name; undefined when stock is fine.
+ */
+export function stockTint(item: { quantity: number; minQuantity: number }): { tone: "warn" | "danger"; label: string } | undefined {
+  const status = stockStatus(item.quantity, item.minQuantity);
+  return status ? { tone: status === "out" ? "danger" : "warn", label: STOCK_STATUS_LABELS[status] } : undefined;
+}
+
+/**
  * Reduces a vehicle to what tells vehicles apart: its brand and model ignoring case, accents and extra spaces, so an
  * item fits each vehicle once.
  * @param vehicle The vehicle, its model empty or missing for any model.
