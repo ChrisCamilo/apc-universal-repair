@@ -13,6 +13,9 @@ import { treeView } from './TreeView.styles.ts'
 // The tree scrolls inside its own height, set through className, and long labels are cut short instead of
 // widening it. A row can also be pointed out, such as the model of a part found by its code: it takes the accent
 // like the selected leaf, and is marked aria-current for screen readers.
+// On a phone (below `card:`) the rows are 48px tall, a finger's height, and each level is indented without the guides;
+// a tag at the right of each leaf, such as "Ver ficha", can say what choosing it does, filled in the accent on the
+// selected one.
 
 type TreeItemProps = { node: TreeNode; level: number; first: boolean; tree: TreeState }
 // What every item needs from the tree around it.
@@ -20,6 +23,7 @@ type TreeState = {
   expanded: ReadonlySet<string>
   selected?: string
   highlighted?: string
+  leafTag?: string
   /** The one item Tab lands on. */
   tabbable?: string
   register: (id: string, item: HTMLLIElement | null) => void
@@ -38,11 +42,13 @@ type TreeViewProps = {
   highlighted?: string
   /** Branches open at first; defaults to the ones above the selected leaf. */
   defaultExpanded?: string[]
+  /** A tag at the right of each leaf that says what choosing it does, e.g. "Ver ficha". */
+  leafTag?: string
   /** Height of the tree, which scrolls inside it, e.g. "max-h-96". */
   className?: string
 }
 
-export function TreeView({ label, nodes, selected, onSelect, highlighted, defaultExpanded, className }: TreeViewProps) {
+export function TreeView({ label, nodes, selected, onSelect, highlighted, defaultExpanded, leafTag, className }: TreeViewProps) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(defaultExpanded ?? (selected ? ancestors(nodes, selected) : [])),
   )
@@ -93,6 +99,7 @@ export function TreeView({ label, nodes, selected, onSelect, highlighted, defaul
     expanded,
     selected,
     highlighted,
+    leafTag,
     tabbable,
     register: (id, item) => {
       if (item) {
@@ -166,6 +173,11 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
         {node.detail && (
           <span className={classes.detail()} data-testid={ids.detail}>
             {node.detail}
+          </span>
+        )}
+        {leaf && tree.leafTag && (
+          <span aria-hidden="true" className={classes.tag()} data-testid={ids.tag}>
+            {tree.leafTag}
           </span>
         )}
       </div>

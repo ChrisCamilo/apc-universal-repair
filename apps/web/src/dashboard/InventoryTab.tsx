@@ -24,14 +24,13 @@ import {
   NOT_APPLICABLE,
   partBrandsLabel,
   POSITION_NAMES,
-  QUANTITY_UNIT,
   resultSummary,
   SIDE_NAMES,
   ITEM_STATUSES,
   STOCK_STATUS_LABELS,
   STOCK_STATUS_SHORT,
   stockCounts,
-  stockStatus,
+  stockTint,
   type Item,
   type ItemBrand,
   type ItemStatus,
@@ -82,6 +81,7 @@ import { useLowStockAlerts } from '../notifications/useLowStockAlerts.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
 import { inventoryTab, LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB } from './InventoryTab.styles.ts'
 import { InventoryTutorial } from './InventoryTutorial.tsx'
+import { StockQuantity } from './StockQuantity.tsx'
 import { useMoreActions } from './moreActionsContext.ts'
 import { usePageSize } from './pageSizeContext.ts'
 import { tutorialTarget } from './tutorialTarget.ts'
@@ -187,7 +187,16 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
       </span>
     ),
   },
-  { key: 'quantity', header: 'Qtd.', sortLabel: 'Quantidade', sortable: true, numeric: true, card: 'end', cell: (row) => <Quantity row={row} /> },
+  {
+    key: 'quantity',
+    header: 'Qtd.',
+    sortLabel: 'Quantidade',
+    sortable: true,
+    numeric: true,
+    card: 'end',
+    // A brand's row is never tinted, since the stock status is the item's.
+    cell: (row) => <StockQuantity {...rowItem(row)} tinted={!row.brand} />,
+  },
 ]
 // The stock status chips, outside the menu: one at a time, none for every item.
 const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }))
@@ -212,16 +221,6 @@ type InventoryRow = { item: Item; brand?: ItemBrand }
  */
 function rowItem(row: InventoryRow): Item {
   return row.brand ? { ...row.item, brands: [row.brand], quantity: row.brand.quantity } : row.item
-}
-
-/**
- * Tells a row's status for the table's tint, from the item's quantity and minimum.
- * @param row A row of the list; a brand's row is never tinted (see DataTable's rowNested).
- * @returns The tint and the label read out, or undefined when stock is fine.
- */
-function rowStatus({ item }: InventoryRow): { tone: 'warn' | 'danger'; label: string } | undefined {
-  const status = stockStatus(item.quantity, item.minQuantity)
-  return status ? { tone: status === 'out' ? 'danger' : 'warn', label: STOCK_STATUS_LABELS[status] } : undefined
 }
 
 export function InventoryTab() {
@@ -666,7 +665,8 @@ export function InventoryTab() {
               ]}
               rows={rows}
               rowKey={(row) => (row.brand ? `${row.item.id}:${row.brand.id}` : row.item.id)}
-              rowStatus={rowStatus}
+              // A brand's row is never tinted (see DataTable's rowNested).
+              rowStatus={({ item }) => stockTint(item)}
               rowNested={(row) => row.brand !== undefined}
               rowExpanded={(row) => (!phone && !row.brand && row.item.brands.length > 1 ? opened.has(row.item.id) : undefined)}
               onRowOpen={openRow}
@@ -927,31 +927,6 @@ function LoadingRows() {
         </div>
       ))}
     </div>
-  )
-}
-
-/**
- * Shows a row's quantity; on a phone's card, with its stock status under it, in its tone: "un.", "Baixo" or
- * "Esgotado".
- */
-function Quantity({ row }: { row: InventoryRow }) {
-  const phone = usePhone()
-  const { quantity, minQuantity } = rowItem(row)
-  // A brand's row is never tinted, since the stock status is the item's.
-  const status = row.brand ? null : stockStatus(quantity, minQuantity)
-  const { classes, ids } = inventoryTab({ stock: status ?? 'ok' })
-  if (!phone) {
-    return quantity
-  }
-  return (
-    <span className={classes.quantity()} data-testid={ids.quantity}>
-      <span className={classes.quantityValue()} data-testid={ids.quantityValue}>
-        {quantity}
-      </span>
-      <span className={classes.quantityTag()} data-testid={ids.quantityTag}>
-        {status ? STOCK_STATUS_SHORT[status] : QUANTITY_UNIT}
-      </span>
-    </span>
   )
 }
 

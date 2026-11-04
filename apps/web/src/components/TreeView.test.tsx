@@ -239,6 +239,33 @@ test('Web: the tree scrolls inside its own height on a phone', async () => {
   }
 })
 
+// Opens the tree on the selected engine with a "Ver ficha" tag on a 360px phone, and checks every row is 48px tall,
+// each level sits 16px in from the one above it with no guide, only the engines carry the tag, read out with their
+// names, and the selected engine's tag is filled in the accent while the other's is outlined.
+test('Web: on a phone the rows are a finger tall, indented by level, and the engines say what a tap does', async () => {
+  root.dataset.style = 'gt4'
+  root.dataset.mode = 'day'
+  const { colors } = themes.gt4.day
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  try {
+    const screen = await render(<TreeView label="Modelos" nodes={MODELS} selected={LEAF} onSelect={() => {}} leafTag="Ver ficha" />)
+    const rows = [...screen.getByRole('tree').element().querySelectorAll<HTMLElement>('[data-row]')]
+    expect(rows.every((each) => each.getBoundingClientRect().height === 48)).toBe(true)
+    const left = (name: string) => row(name).getBoundingClientRect().left
+    expect(left('Terceira geração 1980–1992') - left('Opala')).toBe(16)
+    expect(left('1986') - left('Diplomata')).toBe(16)
+    expect(getComputedStyle(row('Diplomata').closest('[role=group]')!).borderLeftWidth).toBe('0px')
+    const tagged = screen.getByTestId('common.tree-view.item.row.tag').elements().map((tag) => tag.closest('[role=treeitem]'))
+    expect(tagged).toEqual([...screen.getByRole('tree').element().querySelectorAll('[role=treeitem][aria-selected]')])
+    await expect.element(screen.getByRole('treeitem', { name: '4.1 L 6 cilindros', exact: true })).toBeInTheDocument()
+    const tag = (name: string) => getComputedStyle(row(name).querySelector('[data-testid="common.tree-view.item.row.tag"]')!)
+    expect(tag('4.1 L 6 cilindros').backgroundColor).toBe(rgb(colors.accent))
+    expect(tag('2.5 L 4 cilindros').backgroundColor).toBe('rgba(0, 0, 0, 0)')
+  } finally {
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+  }
+})
+
 // Points out a model and checks its row takes the accent like the selected leaf and is marked aria-current, while the
 // rows around it keep the text color.
 test('Web: a pointed-out row takes the accent and is marked current', async () => {

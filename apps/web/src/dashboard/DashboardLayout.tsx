@@ -4,6 +4,7 @@ import { ICON_SIZES, ICONS, moreIcon } from '@apc/shared/icons'
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, initialTab, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs'
 import { AppFrame } from '../components/AppFrame.tsx'
 import { HEADER_MARK_SIZE } from '../components/AppFrame.styles.ts'
+import { BackButton } from '../components/BackButton.tsx'
 import { BrandMark } from '../components/BrandMark.tsx'
 import { Icon } from '../components/Icon.tsx'
 import { TabPanel, Tabs } from '../components/Tabs.tsx'
@@ -14,6 +15,7 @@ import { bottomBar, phoneDashboard } from './DashboardLayout.styles.ts'
 import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext.ts'
 import { MoreActionsContext } from './moreActionsContext.ts'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
+import { PhoneHeaderContext, type PhoneHeader } from './phoneHeaderContext.ts'
 import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 
 // The Dashboard in the app frame: the tab bar in the header, the user menu slot at its end, and the open tab's
@@ -28,7 +30,9 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 // header, with the APC mark and the tab's name as the page's heading, over its content, and a bar fixed at the bottom
 // of the screen with the tabs in their saved order, then the user menu slot, whose menus show there as Alertas and
 // Conta (see NotificationsMenu and UserMenu). The open tab may put a "⋯" at the right of its name, which opens what the
-// tab hands over (see moreActionsContext.ts), such as the Inventory's other actions.
+// tab hands over (see moreActionsContext.ts), such as the Inventory's other actions. A tab gone a screen deeper, such
+// as the Catalog's models of a brand, puts that screen's title there, with a ← in place of the mark (see
+// phoneHeaderContext.ts).
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id)
 // Each tab as the tab bar draws it, by id.
@@ -61,6 +65,8 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   // What the header's "⋯" opens, as the open tab hands it over; none without a "⋯".
   const [more, setMore] = useState<(() => void) | null>(null)
   const handMore = useCallback((open: (() => void) | null) => setMore(() => open), [])
+  // The title row of the open tab's deeper screen; the tab's name under the mark without it.
+  const [header, setHeader] = useState<PhoneHeader | null>(null)
 
   // Remember the open tab, so "/" reopens it next time.
   useEffect(() => {
@@ -104,15 +110,17 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
       <PageSizeContext.Provider value={pageSize}>
         <InventoryTutorialContext.Provider value={tutorial}>
           <MoreActionsContext.Provider value={handMore}>
-            {phone ? (
-              <PhoneDashboard title={TABS[tab].label} tabs={tabs} end={userMenu} more={more}>
-                {panel}
-              </PhoneDashboard>
-            ) : (
-              <AppFrame navLabel="Seções do Dashboard" nav={tabs} end={userMenu}>
-                {panel}
-              </AppFrame>
-            )}
+            <PhoneHeaderContext.Provider value={setHeader}>
+              {phone ? (
+                <PhoneDashboard title={header?.title ?? TABS[tab].label} back={header?.back} tabs={tabs} end={userMenu} more={more}>
+                  {panel}
+                </PhoneDashboard>
+              ) : (
+                <AppFrame navLabel="Seções do Dashboard" nav={tabs} end={userMenu}>
+                  {panel}
+                </AppFrame>
+              )}
+            </PhoneHeaderContext.Provider>
           </MoreActionsContext.Provider>
         </InventoryTutorialContext.Provider>
       </PageSizeContext.Provider>
@@ -121,8 +129,10 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
 }
 
 type PhoneDashboardProps = {
-  /** The open tab's name, the page's heading. */
+  /** The open tab's name, or its deeper screen's title: the page's heading. */
   title: string
+  /** The ← of a deeper screen, in place of the mark. */
+  back?: PhoneHeader['back']
   /** The tabs, drawn as the bar. */
   tabs: ReactNode
   /** At the end of the bar, e.g. Alertas and Conta. */
@@ -134,13 +144,13 @@ type PhoneDashboardProps = {
 }
 
 /** The Dashboard on a phone: the open tab's header and content, and the bottom bar. */
-function PhoneDashboard({ title, tabs, end, more, children }: PhoneDashboardProps) {
-  const { classes, ids } = phoneDashboard()
+function PhoneDashboard({ title, back, tabs, end, more, children }: PhoneDashboardProps) {
+  const { classes, ids } = phoneDashboard({ back: Boolean(back) })
   const bar = bottomBar()
   return (
     <div className={classes.base()} data-testid={ids.base}>
       <header className={classes.header()} data-testid={ids.header}>
-        <BrandMark variant="compact" size={HEADER_MARK_SIZE} aria-hidden />
+        {back ? <BackButton label={back.label} onClick={back.onClick} /> : <BrandMark variant="compact" size={HEADER_MARK_SIZE} aria-hidden />}
         <h1 className={classes.title()} data-testid={ids.title}>
           {title}
         </h1>

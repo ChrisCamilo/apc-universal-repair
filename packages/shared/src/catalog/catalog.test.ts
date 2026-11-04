@@ -203,7 +203,7 @@ test("Shared: the brand lines and an engine's path read as in the mockup", () =>
     CATALOG.map(brandSummary),
     ["3 modelos · 2 fichas técnicas", "3 modelos · 1 ficha técnica", "3 modelos · 1 ficha técnica", "3 modelos · sem ficha técnica ainda"],
   );
-  assert.equal(brandSummary({ id: "x", name: "X", models: [{ id: "x-1", label: "Um", children: [] }] }), "1 modelo · sem ficha técnica ainda");
+  assert.equal(brandSummary({ id: "x", name: "X", mark: "X", models: [{ id: "x-1", label: "Um", children: [] }] }), "1 modelo · sem ficha técnica ainda");
   assert.equal(enginePath("chevrolet", "chevrolet-opala-diplomata-1986-4.1"), "Opala › Terceira geração › Diplomata › 1986");
   assert.deepEqual(
     treePath("volkswagen", "volkswagen-gol-1-gts").map((node) => node.id),
