@@ -95,7 +95,7 @@ A **pnpm** + **Turborepo** monorepo:
 | Package | What it is |
 |---|---|
 | `apps/web` | Web app — React 19, Vite 8, Tailwind CSS 4, React Router 8 and Storybook 10 |
-| `apps/mobile` | Mobile app — React Native 0.88 |
+| `apps/mobile` | Mobile app — React Native 0.88, with VisionCamera to read the server's QR code |
 | `apps/desktop` | Windows desktop app — Electron 44 with the web build, packaged by electron-builder |
 | `apps/api` | API — Fastify 5, Zod, Prisma 7 on SQLite or PostgreSQL, with sharp to reduce the photos and make their thumbnails |
 | `packages/shared` | Zod schemas, rules, types and design tokens shared by web, mobile and API |
@@ -176,7 +176,7 @@ The server comes inside the desktop app: installed on a Windows computer at home
 
 ### Phone App (Android)
 
-`apps/mobile` is the React Native app for Android. In development it talks to the API that `pnpm dev` runs, which the emulator reaches at `10.0.2.2:3333`. A release APK runs without Metro and talks to the server at home ([Running at Home](#running-at-home)) at the address it was built with.
+`apps/mobile` is the React Native app for Android. In development it talks to the API that `pnpm dev` runs, which the emulator reaches at `10.0.2.2:3333`. A release APK runs without Metro and pairs with the server at home ([Running at Home](#running-at-home)) on its first start, by the QR code in *Servidor e banco de dados*, then talks to it over HTTPS.
 
 1. **The Android SDK:** install Android Studio, which brings the SDK. Set the user variable `ANDROID_HOME` to it (`%LOCALAPPDATA%\Android\Sdk` on Windows) and add its `platform-tools` and `emulator` folders to the `PATH`. In the SDK Manager (*SDK Tools*, with *Show Package Details*), install NDK `27.1.12297006`, the one React Native asks for, and CMake `3.31.6`, whose ninja handles the long paths of the monorepo on Windows. It needs a JDK 17 or newer in `JAVA_HOME`.
 2. **The upload key,** made once and kept out of the repository, with a backup: without it, a new version can't update the installed app.
@@ -191,17 +191,17 @@ The server comes inside the desktop app: installed on a Windows computer at home
    APC_UPLOAD_KEY_PASSWORD=<the key's password>
    ```
    Without them, the release is signed with the debug key, and Gradle warns: it installs, but can't update an app signed with the upload key.
-3. **The server's address:** the one the desktop app shows in *Servidor e banco de dados* with *Acesso pelo celular* on, such as `http://192.168.0.10:3000`. Put it in `apc.apiUrl` in the same `gradle.properties`, or in `APC_API_URL` in the environment, which wins. The build writes it into the app, so another address needs another build. With `http://`, the release allows plain HTTP to it; with `https://`, it doesn't. A release built without an address stops and says so.
-4. **Build and install:**
+3. **Build and install:**
    ```bash
    pnpm --filter @apc/mobile android:apk      # apps/mobile/android/app/build/outputs/apk/release/app-release.apk
    pnpm --filter @apc/mobile android:aab      # app-release.aab, for the Play Store (not published)
    pnpm --filter @apc/mobile android:install  # installs the APK on the phone or emulator adb sees
    ```
 
+- **Pairing:** a release with no server opens on *Conectar ao servidor*. The camera reads the QR code the desktop app shows in *Servidor e banco de dados* with *Acesso pelo celular* on, or the address and the code beside it are typed in. The phone keeps that server and talks to it over HTTPS, trusting only its certificate, by the fingerprint the code carries. After the computer's address changes, *Conectar a outro servidor* on the login, or *Conectar ao servidor* in the user menu, pairs it again. Release builds allow no plain HTTP; development builds talk to the computer's development API until they pair.
 - **Updates:** the app is installed from an APK, outside the Play Store, so Android doesn't update it by itself. A release build asks GitHub for the latest release when it opens, and again when it comes back to the screen on a later day. When that release is newer and carries its APK, a dialog says *Nova versão X disponível*: *Atualizar* opens the APK in the phone's browser, which downloads it (Chrome warns that the file might be harmful, as it does for any APK: choose *Download anyway*); open the downloaded file, from the browser's notice or its *Downloads*, and Android asks to install it over the app, keeping the session and the preferences; *Agora não* puts that version off until the next day. The first time, Android asks to allow the browser to install unknown apps (*Instalar apps desconhecidos*): allow it once, for the browser only. Without internet nothing shows, and the app keeps working on its version. An app signed with the debug key can't take an APK signed with the upload key: uninstall it once and install the release's APK.
 - **Version:** `apps/mobile/package.json`'s, the same as the desktop app's (see *Publishing a version*). The version code Android compares on an update is `major*10000 + minor*100 + patch`, unless `APC_VERSION_CODE` sets it.
-- **CI:** the *Android* workflow builds the release APK, with the address in the repository variable `APC_API_URL`. On pull requests that touch the phone app it only checks the APK builds; run by hand (*Actions → Android → Run workflow*), it also uploads it as an artifact, kept 14 days; and the *Desktop* workflow's release calls it for the APK the release carries. With the secrets `ANDROID_UPLOAD_KEYSTORE_BASE64` (the keystore in base64), `ANDROID_UPLOAD_STORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS` and `ANDROID_UPLOAD_KEY_PASSWORD`, it signs with the upload key; without them, with the debug key, and the artifact's name ends in `-debug-signed`.
+- **CI:** the *Android* workflow builds the release APK. On pull requests that touch the phone app it only checks the APK builds; run by hand (*Actions → Android → Run workflow*), it also uploads it as an artifact, kept 14 days; and the *Desktop* workflow's release calls it for the APK the release carries. With the secrets `ANDROID_UPLOAD_KEYSTORE_BASE64` (the keystore in base64), `ANDROID_UPLOAD_STORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS` and `ANDROID_UPLOAD_KEY_PASSWORD`, it signs with the upload key; without them, with the debug key, and the artifact's name ends in `-debug-signed`.
 - **Licenses:** `./gradlew :app:writeLicenses`, in `apps/mobile/android`, writes the release's Android libraries and their licenses to `licenses.json`, which the notices and the license check read. Run it, then `pnpm licenses:write`, after adding or upgrading a native module; the workflow fails when the file is out of date.
 - **Icon:** the APC gauge, as an adaptive icon (`res/mipmap-anydpi-v26`). The PNGs for Android 7 come from `apps/mobile/scripts/make-icon.ps1`.
 
@@ -344,7 +344,7 @@ Monorepo com **pnpm** + **Turborepo**:
 | Pacote | O que é |
 |---|---|
 | `apps/web` | App web — React 19, Vite 8, Tailwind CSS 4, React Router 8 e Storybook 10 |
-| `apps/mobile` | App para celular — React Native 0.88 |
+| `apps/mobile` | App para celular — React Native 0.88, com o VisionCamera para ler o QR code do servidor |
 | `apps/desktop` | App desktop para Windows — Electron 44 com o build da web, empacotado pelo electron-builder |
 | `apps/api` | API — Fastify 5, Zod, Prisma 7 com SQLite ou PostgreSQL, e sharp para reduzir as fotos e fazer as miniaturas |
 | `packages/shared` | Schemas Zod, regras, tipos e tokens do design system compartilhados entre web, celular e API |
@@ -425,7 +425,7 @@ O `apps/desktop` empacota o app web como um programa para Windows com o Electron
 
 ### App do Celular (Android)
 
-O `apps/mobile` é o app React Native para Android. Em desenvolvimento, ele fala com a API que o `pnpm dev` roda, que o emulador alcança em `10.0.2.2:3333`. Um APK de release roda sem o Metro e fala com o servidor de casa ([Rodando em Casa](#rodando-em-casa)) no endereço com que foi gerado.
+O `apps/mobile` é o app React Native para Android. Em desenvolvimento, ele fala com a API que o `pnpm dev` roda, que o emulador alcança em `10.0.2.2:3333`. Um APK de release roda sem o Metro e pareia com o servidor de casa ([Rodando em Casa](#rodando-em-casa)) na primeira vez que abre, pelo QR code do *Servidor e banco de dados*, e depois fala com ele por HTTPS.
 
 1. **O Android SDK:** instale o Android Studio, que traz o SDK. Defina a variável de usuário `ANDROID_HOME` com a pasta dele (`%LOCALAPPDATA%\Android\Sdk` no Windows) e coloque as pastas `platform-tools` e `emulator` dele no `PATH`. No SDK Manager (*SDK Tools*, com *Show Package Details*), instale o NDK `27.1.12297006`, o que o React Native pede, e o CMake `3.31.6`, cujo ninja aceita os caminhos longos do monorepo no Windows. Ele precisa de um JDK 17 ou mais novo no `JAVA_HOME`.
 2. **A chave de upload,** criada uma vez e guardada fora do repositório, com uma cópia de segurança: sem ela, uma versão nova não consegue atualizar o app instalado.
@@ -440,17 +440,17 @@ O `apps/mobile` é o app React Native para Android. Em desenvolvimento, ele fala
    APC_UPLOAD_KEY_PASSWORD=<a senha da chave>
    ```
    Sem elas, o release é assinado com a chave de debug e o Gradle avisa: ele instala, mas não consegue atualizar um app assinado com a chave de upload.
-3. **O endereço do servidor:** o que o app desktop mostra em *Servidor e banco de dados* com o *Acesso pelo celular* ligado, como `http://192.168.0.10:3000`. Coloque-o no `apc.apiUrl` do mesmo `gradle.properties`, ou no `APC_API_URL` do ambiente, que tem preferência. O build grava o endereço no app, então outro endereço pede outro build. Com `http://`, o release permite HTTP simples para ele; com `https://`, não. Um release gerado sem endereço para e avisa.
-4. **Gerar e instalar:**
+3. **Gerar e instalar:**
    ```bash
    pnpm --filter @apc/mobile android:apk      # apps/mobile/android/app/build/outputs/apk/release/app-release.apk
    pnpm --filter @apc/mobile android:aab      # app-release.aab, para a Play Store (não publicado)
    pnpm --filter @apc/mobile android:install  # instala o APK no celular ou emulador que o adb vê
    ```
 
+- **Pareamento:** um release sem servidor abre em *Conectar ao servidor*. A câmera lê o QR code que o app desktop mostra em *Servidor e banco de dados* com o *Acesso pelo celular* ligado, ou o endereço e o código ao lado são digitados. O celular guarda esse servidor e fala com ele por HTTPS, confiando só no certificado dele, pela impressão que o código traz. Depois que o endereço do computador muda, o *Conectar a outro servidor* no login, ou o *Conectar ao servidor* no menu do usuário, pareia de novo. Os builds de release não permitem HTTP simples; os de desenvolvimento falam com a API de desenvolvimento do computador até parear.
 - **Atualizações:** o app é instalado por um APK, fora da Play Store, então o Android não o atualiza sozinho. Um build de release pergunta ao GitHub pela última release quando abre, e de novo quando volta para a tela num dia seguinte. Quando essa release é mais nova e traz o APK dela, um diálogo diz *Nova versão X disponível*: o *Atualizar* abre o APK no navegador do celular, que o baixa (o Chrome avisa que o arquivo pode ser perigoso, como faz com qualquer APK: escolha baixar mesmo assim); abra o arquivo baixado, pelo aviso do navegador ou pelos *Downloads* dele, e o Android pergunta se quer instalá-lo por cima do app, mantendo a sessão e as preferências; o *Agora não* deixa essa versão para o dia seguinte. Na primeira vez, o Android pede para permitir que o navegador instale apps desconhecidos (*Instalar apps desconhecidos*): permita uma vez, só para o navegador. Sem internet nada aparece, e o app continua funcionando na versão dele. Um app assinado com a chave de debug não aceita um APK assinado com a chave de upload: desinstale-o uma vez e instale o APK da release.
 - **Versão:** a do `apps/mobile/package.json`, a mesma do app desktop (veja *Publicar uma versão*). O código de versão que o Android compara numa atualização é `major*10000 + minor*100 + patch`, a não ser que o `APC_VERSION_CODE` o defina.
-- **CI:** o workflow *Android* gera o APK de release, com o endereço da variável de repositório `APC_API_URL`. Nos pull requests que mexem no app do celular, ele só confere que o APK é gerado; rodado à mão (*Actions → Android → Run workflow*), ele também o envia como artefato, guardado por 14 dias; e a release do workflow *Desktop* o chama para o APK que a release leva. Com os secrets `ANDROID_UPLOAD_KEYSTORE_BASE64` (o keystore em base64), `ANDROID_UPLOAD_STORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS` e `ANDROID_UPLOAD_KEY_PASSWORD`, ele assina com a chave de upload; sem eles, com a de debug, e o nome do artefato termina em `-debug-signed`.
+- **CI:** o workflow *Android* gera o APK de release. Nos pull requests que mexem no app do celular, ele só confere que o APK é gerado; rodado à mão (*Actions → Android → Run workflow*), ele também o envia como artefato, guardado por 14 dias; e a release do workflow *Desktop* o chama para o APK que a release leva. Com os secrets `ANDROID_UPLOAD_KEYSTORE_BASE64` (o keystore em base64), `ANDROID_UPLOAD_STORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS` e `ANDROID_UPLOAD_KEY_PASSWORD`, ele assina com a chave de upload; sem eles, com a de debug, e o nome do artefato termina em `-debug-signed`.
 - **Licenças:** o `./gradlew :app:writeLicenses`, em `apps/mobile/android`, grava as bibliotecas Android do release e as licenças delas no `licenses.json`, que os avisos e a checagem de licenças leem. Rode-o, e depois o `pnpm licenses:write`, ao adicionar ou atualizar um módulo nativo; o workflow falha quando o arquivo está desatualizado.
 - **Ícone:** o medidor do APC, como ícone adaptável (`res/mipmap-anydpi-v26`). Os PNGs para o Android 7 vêm do `apps/mobile/scripts/make-icon.ps1`.
 
