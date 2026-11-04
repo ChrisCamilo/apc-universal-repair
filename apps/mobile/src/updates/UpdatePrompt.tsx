@@ -18,7 +18,8 @@ import {
 // Says when a newer version of the phone app is out (see appUpdate.ts). The app asks GitHub when it opens, and again
 // when it comes back to the foreground on a later day; a failed check, such as one without internet, shows nothing.
 // "Nova versão X disponível" offers "Atualizar", which opens the version's APK in the phone's browser, which downloads
-// it, and Android asks to install it over the app, keeping the session and the preferences; and "Agora não", which
+// it (Chrome first warns that the file might be harmful, as it does for any APK); opening the downloaded file, Android
+// asks to install it over the app, keeping the session and the preferences; and "Agora não", which
 // puts that version off until the next day, as the back button does.
 
 type UpdatePromptProps = {
@@ -115,7 +116,7 @@ export function UpdatePrompt({ enabled, installed = app.version }: UpdatePromptP
         </>
       }
     >
-      <Text>Atualizar baixa a versão nova pelo navegador, e o Android pergunta se você quer instalá-la por cima deste app.</Text>
+      <Text>Atualizar baixa a versão nova pelo navegador. Abra o arquivo baixado para instalá-la por cima deste app.</Text>
       <Text size="sm" tone="muted">
         Na primeira vez, o Android pede para permitir que o navegador instale apps desconhecidos.
       </Text>
