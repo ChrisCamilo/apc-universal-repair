@@ -4,6 +4,9 @@ name: Android
 # - Pull requests that change the phone app, the shared package or the lockfile: check the Android libraries' licenses
 #   and build the APK, uploading nothing.
 # - Run by hand (Actions → Android → Run workflow): the same, then upload the APK as an artifact, kept 14 days.
+# - Called by the Desktop workflow's release (`release: true`): the same, then, when it is signed with the upload key,
+#   upload it as apc-universal-repair-<version>.apk in the artifact `release-apk`, for the release to carry, and say so
+#   in the output `signed`. A debug-signed APK can't update the phones' app, so the release goes out without it.
 # Both write the Android libraries' licenses from the release's Gradle tree (`:app:writeLicenses`) and fail when they
 # differ from the committed apps/mobile/android/licenses.json, or when one isn't allowed (scripts/licenses.mjs). The
 # address the app talks to comes from the repository variable APC_API_URL (Settings → Secrets and variables → Actions →
@@ -12,6 +15,16 @@ name: Android
 # installs, but can't update one signed with the upload key.
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release:
+        description: Upload the APK for a release to carry.
+        type: boolean
+        default: true
+    outputs:
+      signed:
+        description: Whether the APK is signed with the upload key and was uploaded as `release-apk`.
+        value: ${{ jobs.android.outputs.signed }}
   pull_request:
     paths:
       - "apps/mobile/**"
@@ -23,6 +36,8 @@ on:
 jobs:
   android:
     runs-on: ubuntu-latest
+    outputs:
+      signed: ${{ steps.release.outputs.signed }}
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     defaults:
@@ -89,9 +104,32 @@ jobs:
         run: unzip -l app/build/outputs/apk/release/app-release.apk | grep -q "assets/THIRD_PARTY_NOTICES.md"
 
       - name: Upload the APK, when run by hand
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && !inputs.release
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
           path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
+
+      # The phone app finds its update by this name (apps/mobile/src/updates/appUpdate.ts).
+      - name: Name the APK for the release, when signed with the upload key
+        id: release
+        if: inputs.release
+        run: |
+          if [ "$ARTIFACT" != "app-release" ]; then
+            echo "::warning::No upload key in the secrets: the release goes out without the APK, since a debug-signed one can't update the phones' app."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          version=$(node -p "require('../package.json').version")
+          mkdir -p "$RUNNER_TEMP/release-apk"
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/release-apk/apc-universal-repair-$version.apk"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the APK for the release
+        if: inputs.release && steps.release.outputs.signed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: ${{ runner.temp }}/release-apk/
+          retention-days: 1

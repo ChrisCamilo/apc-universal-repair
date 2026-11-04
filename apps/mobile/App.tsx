@@ -17,6 +17,7 @@ import { NotificationsMenu } from './src/notifications/NotificationsMenu';
 import { ThemeProvider, useTheme } from './src/theme';
 import { ToastProvider } from './src/Toast';
 import { TourProvider } from './src/Tour';
+import { UpdatePrompt } from './src/updates/UpdatePrompt';
 
 const SCREEN_STYLE = { flex: 1 };
 
@@ -25,7 +26,8 @@ const SCREEN_STYLE = { flex: 1 };
 // the sign-up lead to each other. Nothing but the canvas shows while the saved session is read, so neither screen
 // flashes before the right one. When the API refuses the session's token, the session is cleared and the login says
 // it expired, until someone logs in again. The screen ends where the keyboard starts, so a form under it scrolls to
-// every field: Android 15 and later draw the app edge to edge, under the keyboard, and no longer resize it.
+// every field: Android 15 and later draw the app edge to edge, under the keyboard, and no longer resize it. A release
+// says, over any screen, when a newer version is out (see UpdatePrompt).
 function Screen() {
   const theme = useTheme();
   // The logged user: undefined while the saved session is read, null when nobody is logged in.
@@ -104,6 +106,7 @@ function Screen() {
           />
         )}
       </KeyboardAvoidingView>
+      <UpdatePrompt enabled={!__DEV__} />
     </SafeAreaView>
   );
 }
