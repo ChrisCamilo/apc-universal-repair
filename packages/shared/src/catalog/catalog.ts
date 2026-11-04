@@ -19,6 +19,7 @@ export const CATALOG: readonly CatalogBrand[] = [
   {
     id: "chevrolet",
     name: "Chevrolet",
+    mark: "CH",
     models: [
       {
         id: "chevrolet-chevette",
@@ -63,6 +64,7 @@ export const CATALOG: readonly CatalogBrand[] = [
   {
     id: "volkswagen",
     name: "Volkswagen",
+    mark: "VW",
     models: [
       { id: "volkswagen-fusca", label: "Fusca", children: [] },
       {
@@ -95,6 +97,7 @@ export const CATALOG: readonly CatalogBrand[] = [
   {
     id: "fiat",
     name: "Fiat",
+    mark: "FI",
     models: [
       { id: "fiat-147", label: "147", children: [] },
       {
@@ -127,6 +130,7 @@ export const CATALOG: readonly CatalogBrand[] = [
   {
     id: "ford",
     name: "Ford",
+    mark: "FO",
     models: [
       { id: "ford-corcel", label: "Corcel", children: [] },
       { id: "ford-del-rey", label: "Del Rey", children: [] },
@@ -168,6 +172,8 @@ export const ENGINE_SHEETS: Readonly<Record<string, EngineSheet>> = {
 
 /** The screen the Catalog opens on, on a phone: the brands. */
 export const CATALOG_HOME: CatalogScreen = { view: "brands" };
+/** What each of an engine sheet's readouts is, in their order, named above them on a phone. */
+export const ENGINE_SPEC_LABELS = ["Ano", "Motor", "Cilindros", "Tração"] as const;
 /** What a part's vehicle says when the catalog has no sheet for it. */
 export const NO_SHEET_MESSAGE = "Este veículo ainda não tem ficha técnica no catálogo. A peça continua cadastrada no estoque.";
 /** Least letters and digits of a part code before the search looks for parts. */
@@ -175,8 +181,8 @@ export const PART_CODE_MIN_LENGTH = 3;
 /** Most parts the code search lists at once. */
 export const PART_RESULTS_LIMIT = 5;
 
-/** A brand of the catalog: its id, the name on its tile and its model tree. */
-export type CatalogBrand = { id: string; name: string; models: TreeNode[] };
+/** A brand of the catalog: its id, the name on its tile, the letters on its line on a phone and its model tree. */
+export type CatalogBrand = { id: string; name: string; mark: string; models: TreeNode[] };
 /**
  * A screen of the Catalog on a phone: the brands; a brand's models, with a model pointed out and an engine open in the
  * tree, and the vehicle a part fits that the catalog has no sheet for; or an engine's sheet.
