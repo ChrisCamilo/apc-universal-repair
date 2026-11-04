@@ -41,7 +41,7 @@ test("Desktop: the phone's address is the Wi-Fi's IPv4, never a loopback or a vi
 test("Desktop: the tray's menu opens the app, shows the phone's address, opens the server's settings and quits", () => {
   assert.deepEqual(trayMenu({ address: "192.168.0.202", port: 3000, serverOn: true, phoneAccess: true, startsWithWindows: true, canStartWithWindows: true }), [
     { id: "open", label: "Abrir o APC" },
-    { id: "address", label: "Servidor ligado em http://192.168.0.202:3000 (clique para copiar)", enabled: true },
+    { id: "address", label: "Servidor ligado em https://192.168.0.202:3000 (clique para copiar)", enabled: true },
     { id: "settings", label: "Servidor e banco de dados…" },
     { id: "startup", label: "Iniciar com o Windows", checked: true },
     { id: "separator" },

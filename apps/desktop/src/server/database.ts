@@ -295,7 +295,7 @@ export function sqliteFileState(file: string): "new" | "plain" | "encrypted" {
  * @param sealer safeStorage.
  * @returns The secret, or undefined when this Windows user can't open it.
  */
-function unseal(sealed: string, sealer: Sealer): string | undefined {
+export function unseal(sealed: string, sealer: Sealer): string | undefined {
   try {
     return sealer.decryptString(Buffer.from(sealed, "base64"));
   } catch {

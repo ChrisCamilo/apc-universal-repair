@@ -1,7 +1,11 @@
 // Asks a server whether it is up, through GET /health: before the app starts the server it ships (see
 // serverSettings.ts), so one already on the port is used as it is, while it starts, until it answers, and while the
 // app uses one it didn't start, until it is gone. /health also gives the server's version, which a server on another
-// computer is warned about (see update.ts).
+// computer is warned about (see update.ts). The server the app ships is asked through Electron's net.fetch, which trusts
+// only its own certificate while it answers HTTPS (see certificate.ts); Node's fetch would refuse it.
+
+/** How a server is asked: fetch, or Electron's net.fetch. */
+type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
 /** How often to ask a starting API whether it is up. */
 const POLL_MS = 1_000;
@@ -16,20 +20,22 @@ export type ApiHealth = { version?: string };
 /**
  * Tells whether the API answers GET /health.
  * @param apiUrl The API address.
+ * @param fetcher How to ask it.
  * @returns True when it answers with a success.
  */
-export async function apiAnswers(apiUrl: string): Promise<boolean> {
-  return (await readHealth(apiUrl)) !== null;
+export async function apiAnswers(apiUrl: string, fetcher: Fetcher = fetch): Promise<boolean> {
+  return (await readHealth(apiUrl, fetcher)) !== null;
 }
 
 /**
  * Asks the API's GET /health.
  * @param apiUrl The API address.
+ * @param fetcher How to ask it.
  * @returns What it answers, or null when it doesn't answer with a success.
  */
-export async function readHealth(apiUrl: string): Promise<ApiHealth | null> {
+export async function readHealth(apiUrl: string, fetcher: Fetcher = fetch): Promise<ApiHealth | null> {
   try {
-    const response = await fetch(`${apiUrl}/health`, { signal: AbortSignal.timeout(3_000) });
+    const response = await fetcher(`${apiUrl}/health`, { signal: AbortSignal.timeout(3_000) });
     if (!response.ok) {
       return null;
     }
@@ -44,12 +50,13 @@ export async function readHealth(apiUrl: string): Promise<ApiHealth | null> {
  * Waits for a starting API to answer.
  * @param apiUrl The API address.
  * @param signal Ends the wait early, as when the server gave up starting.
+ * @param fetcher How to ask it.
  * @returns True once it answers, false after START_TIMEOUT_MS or once the signal aborts.
  */
-export async function waitForApi(apiUrl: string, signal?: AbortSignal): Promise<boolean> {
+export async function waitForApi(apiUrl: string, signal?: AbortSignal, fetcher: Fetcher = fetch): Promise<boolean> {
   const deadline = Date.now() + START_TIMEOUT_MS;
   while (Date.now() < deadline && !signal?.aborted) {
-    if (await apiAnswers(apiUrl)) {
+    if (await apiAnswers(apiUrl, fetcher)) {
       return true;
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
