@@ -7,7 +7,9 @@ name: Desktop
 #   and must equal apps/api/package.json's, since the app brings the server at home to its own version, and
 #   apps/mobile/package.json's, since the phone app talks to that server; one already released is refused. It builds, smoke-tests and packages the app, then creates the GitHub Release v<version> on the
 #   commit it built, with the installer, latest.yml and the blockmap (which the updater reads) and the portable exe.
-#   The notes come from docs/releases/v<version>.md when there is one. Nothing is uploaded as an artifact.
+#   It also carries the phone app's APK of that version, apc-universal-repair-<version>.apk, which the Android workflow
+#   builds first (the job `apk`) and which the phone app looks for to offer the update; without the upload key in the
+#   secrets the APK is debug-signed and left out. The notes come from docs/releases/v<version>.md when there is one.
 on:
   workflow_dispatch:
   pull_request:
@@ -52,8 +54,18 @@ jobs:
           path: apps/desktop/playwright-report/
           retention-days: 7
 
+  apk:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/android.yml
+    with:
+      release: true
+    secrets: inherit
+    permissions:
+      contents: read
+
   release:
     if: github.event_name == 'workflow_dispatch'
+    needs: apk
     runs-on: windows-latest
     # Creates the release and its tag.
     permissions:
@@ -96,19 +108,34 @@ jobs:
           # Unsigned: no certificate to look for.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
+      - name: Download the phone app's APK
+        if: needs.apk.outputs.signed == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: release-apk
+          path: apps/desktop/release
+
       - name: Publish the release
         shell: bash
         working-directory: apps/desktop/release
         run: |
+          # The phone app's APK, when the job apk built one signed with the upload key.
+          apk=()
+          if [ -f "apc-universal-repair-$VERSION.apk" ]; then
+            apk=("apc-universal-repair-$VERSION.apk")
+          fi
           # From apps/desktop/release, the notes are at the repository's docs/releases.
           notes="../../../docs/releases/v$VERSION.md"
           if [ ! -f "$notes" ]; then
             notes="$RUNNER_TEMP/notes.md"
             echo "Windows: download APC-Universal-Repair-Setup-$VERSION.exe to install, or the portable exe to run without installing. Installed apps update themselves." > "$notes"
+            if [ ${#apk[@]} -gt 0 ]; then
+              echo "Android: open apc-universal-repair-$VERSION.apk on the phone to install it; the installed app says when a new version is out." >> "$notes"
+            fi
           fi
           gh release create "v$VERSION" --target "$GITHUB_SHA" --title "APC Universal Repair $VERSION" --notes-file "$notes" \
             "APC-Universal-Repair-Setup-$VERSION.exe" "APC-Universal-Repair-Setup-$VERSION.exe.blockmap" latest.yml \
-            "APC-Universal-Repair-$VERSION-portable.exe"
+            "APC-Universal-Repair-$VERSION-portable.exe" "${apk[@]}"
 
       - name: Upload Playwright report
         if: failure()
