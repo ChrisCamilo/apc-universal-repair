@@ -1,11 +1,14 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { request } from "node:https";
 import { createServer } from "node:net";
 import { networkInterfaces } from "node:os";
 import path from "node:path";
 import type { ElectronApplication, Page } from "@playwright/test";
 import { APP_DIR, expect, freePort, logIn, test } from "./support/fixtures.ts";
+import { fingerprintGroups } from "@apc/shared/pairing";
 import { TEST_TAGS } from "@apc/shared/test-tags";
 import { readConfig, writeConfig } from "../src/config.ts";
+import { certificateFingerprint } from "../src/server/certificate.ts";
 import { phoneAddress } from "../src/system/tray.ts";
 
 // The desktop app with the server it ships (server/, from scripts/bundle-server.mjs), as an installed app runs: no
@@ -26,6 +29,23 @@ function healthOf(server: string): Promise<"up" | "down"> {
     (response) => (response.ok ? "up" : "down"),
     () => "down",
   );
+}
+
+/**
+ * Asks a server's /health over HTTPS, trusting one certificate alone, whatever address it names, as the phone does.
+ * @param server The server's address, e.g. "https://192.168.0.10:3000".
+ * @param cert The certificate to trust, PEM.
+ * @returns "up" when it answers with a success, "down" otherwise.
+ */
+function pinnedHealthOf(server: string, cert: string): Promise<"up" | "down"> {
+  return new Promise((resolve) => {
+    const asked = request(`${server}/health`, { ca: cert, checkServerIdentity: () => undefined }, (response) => {
+      response.resume();
+      resolve(response.statusCode === 200 ? "up" : "down");
+    });
+    asked.on("error", () => resolve("down"));
+    asked.end();
+  });
 }
 
 
@@ -503,8 +523,10 @@ test("Desktop: a taken port is said so, and the server moves to another port", {
 });
 
 // Opens the app and checks its server answers on 127.0.0.1 but not on the computer's network address, as the phone's
-// access is off on a fresh install; turning it on in the Servidor dialog restarts the server, which then answers on
-// both, kept in config.json, and turning it off takes it off the network again.
+// access is off on a fresh install; turning it on in the Servidor dialog restarts the server over HTTPS, with a
+// certificate the app made, kept in config.json with the access: it then answers on both addresses to a client that
+// trusts that certificate, and no longer over plain HTTP, and the dialog shows the QR code and the code of that
+// certificate. Turning it off takes it off the network and back to plain HTTP.
 test("Desktop: the server reaches the network only with the phone's access on", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   const address = phoneAddress(networkInterfaces());
   test.skip(!address, "This computer has no network address to try.");
@@ -521,9 +543,16 @@ test("Desktop: the server reaches the network only with the phone's access on", 
   await expect(access).toHaveAttribute("aria-checked", "false");
   await access.click();
   await expect(dialog.getByRole("status")).toHaveText("Pronto: o celular já pode acessar o servidor.", { timeout: 60_000 });
-  expect(readConfig(userData).phoneAccess).toBe(true);
-  expect(await healthOf(onNetwork)).toBe("up");
-  expect(await healthOf(server)).toBe("up");
+  const config = readConfig(userData);
+  expect(config.phoneAccess).toBe(true);
+  const cert = config.httpsCertificate!;
+  const port = new URL(server).port;
+  expect(await pinnedHealthOf(`https://${address}:${port}`, cert)).toBe("up");
+  expect(await pinnedHealthOf(`https://127.0.0.1:${port}`, cert)).toBe("up");
+  expect(await healthOf(onNetwork)).toBe("down");
+  expect(await healthOf(server)).toBe("down");
+  await expect(dialog.getByRole("img", { name: "QR code para conectar o celular" })).toBeVisible();
+  await expect(dialog.getByText(fingerprintGroups(certificateFingerprint(cert)))).toBeVisible();
 
   await access.click();
   await expect(dialog.getByRole("status")).toHaveText("Pronto: o servidor responde só a este computador.", { timeout: 60_000 });

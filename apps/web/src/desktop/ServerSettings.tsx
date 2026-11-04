@@ -6,14 +6,16 @@ import { Switch } from '../components/Switch.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { Heading, Text } from '../components/Typography.tsx'
 import { desktopBridge, type ImportOutcome, type ImportSource, type ServerSettings } from './desktopBridge.ts'
+import { PairingCode } from './PairingCode.tsx'
 import { serverSettings as serverSettingsRecipe } from './ServerSettings.styles.ts'
 import { EntryScreenContext, ServerSettingsContext, type ServerSettingsFocus } from './serverSettingsContext.ts'
 
 // The desktop app's Servidor dialog, over any screen, opened from the user menu or the tray's "Servidor e banco de
 // dados…": the database the server runs on, SQLite with its folder or PostgreSQL with its server, its port and, while
 // the phone's access is on, the address the phone reaches it at. "Acesso pelo celular" puts the server on the network
-// for the phone, or keeps it answering this computer only, as it starts; Windows may ask about its firewall then, and
-// the dialog says to allow private networks only. While it is on, the dialog warns when the network is set to Public or
+// for the phone, over HTTPS, or keeps it answering this computer only, as it starts; Windows may ask about its
+// firewall then, and the dialog says to allow private networks only. While it is on, the dialog shows the QR code the
+// phone pairs with, and its address and code to type in (see PairingCode.tsx). While it is on, the dialog warns when the network is set to Public or
 // a firewall rule lets the app in on public networks, checked each time it opens or the access turns on. "Banco de
 // dados" moves it to PostgreSQL, at an address the app checks, migrates and keeps sealed, or back to SQLite; switching
 // doesn't move the data, which "Importar dados de outro servidor" brings from an old server's PostgreSQL or SQLite
@@ -65,7 +67,7 @@ type Note = { tone: 'danger' | 'done'; text: string }
  * @returns e.g. "http://192.168.0.10:3000", or that there is no network.
  */
 function phoneLine(settings: Extract<ServerSettings, { kind: 'own' }>): string {
-  return settings.phoneAddress ? `http://${settings.phoneAddress}:${settings.port}` : 'Sem rede para o celular'
+  return settings.phoneAddress ? `https://${settings.phoneAddress}:${settings.port}` : 'Sem rede para o celular'
 }
 
 /**
@@ -643,6 +645,15 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
                 ? `Na rede de casa, o celular acessa ${phoneLine(own)}. Se o Windows perguntar sobre o firewall, marque só Redes privadas.`
                 : 'Desligado, o servidor só responde a este computador, e nada na rede o alcança. Ligue quando for usar o app do celular.'}
             </Text>
+            {own.phoneAccess && own.pairing && (
+              <>
+                <Text size="sm" tone="muted">
+                  No celular, toque em Conectar ao servidor e aponte a câmera para o código, ou digite o endereço e o
+                  código. Se o endereço deste computador mudar, conecte o celular de novo.
+                </Text>
+                <PairingCode pairing={own.pairing} />
+              </>
+            )}
             {own.phoneAccess &&
               networkWarnings.map((warning) => (
                 <p key={warning} role="alert" className={classes.note({ tone: 'warn' })} data-testid={ids.note}>
@@ -669,14 +680,14 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
             />
             {confirming && own.phoneAccess && own.phoneAddress && (
               <Text size="sm" tone="muted">
-                O endereço do celular muda para http://{own.phoneAddress}:{port}. Depois de trocar, configure o celular
-                com esse endereço.
+                O endereço do celular muda para https://{own.phoneAddress}:{port}. Depois de trocar, conecte o celular
+                de novo pelo código que aparece aqui.
               </Text>
             )}
             {confirming && own.phoneAccess && !own.phoneAddress && (
               <Text size="sm" tone="muted">
-                O endereço do celular muda para a porta {port}. Depois de trocar, configure o celular com o endereço que
-                aparece no menu do APC perto do relógio.
+                O endereço do celular muda para a porta {port}. Depois de trocar, conecte o celular de novo pelo código
+                que aparece aqui.
               </Text>
             )}
             <div className={classes.buttons()} data-testid={ids.buttons}>

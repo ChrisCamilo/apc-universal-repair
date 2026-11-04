@@ -115,6 +115,10 @@
       "apc-dist": "./dist/server/ports.js",
       "default": "./src/server/ports.ts"
     },
+    "./pairing": {
+      "apc-dist": "./dist/server/pairing.js",
+      "default": "./src/server/pairing.ts"
+    },
     "./style-ids": {
       "apc-dist": "./dist/styles/styleIds.js",
       "default": "./src/styles/styleIds.ts"

@@ -1,9 +1,18 @@
 import { copyFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { dialog, ipcMain, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
+import { dialog, ipcMain, net, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import { startBundledServer } from "./bundledProcess.js";
-import { NETWORK_HOST, PORT_IN_USE_EXIT_CODE, serverData, serverEnvironment, WRONG_KEY_EXIT_CODE, type ServerSetup } from "./bundledServer.js";
+import {
+  localApiUrl,
+  NETWORK_HOST,
+  PORT_IN_USE_EXIT_CODE,
+  serverData,
+  serverEnvironment,
+  WRONG_KEY_EXIT_CODE,
+  type ServerSetup,
+} from "./bundledServer.js";
+import { ensureCertificate, type ServerCertificate } from "./certificate.js";
 import { readConfig, updateConfig } from "../config.js";
 import {
   beginKeyChange,
@@ -98,8 +107,13 @@ export type ServerHost = {
   window: BrowserWindow;
   /** The address the app is served from, which the requests must come from. */
   appUrl: string;
-  /** The server's address on this computer, e.g. "http://127.0.0.1:3000", which follows a change of port. */
+  /**
+   * The server's address on this computer, e.g. "http://127.0.0.1:3000", which follows a change of port, and is
+   * https:// while the phone's access is on.
+   */
   apiUrl: string;
+  /** The certificate the server answers HTTPS with while the phone's access is on, the only one the app trusts there. */
+  certificate?: ServerCertificate;
   /** The "Ligando o servidor" page, static/starting.html. */
   startingPage: string;
   /** How it runs, but for the database; its port and the phone's access follow a change in the Servidor dialog. */
@@ -232,6 +246,17 @@ async function firstStart(host: ServerHost): Promise<boolean> {
     updateConfig(host.setup.userData, { firstStartDone: true });
   }
   return firstStartPending(config, holdsData);
+}
+
+/**
+ * Sets how the app reaches its server for the phone's access: over HTTPS with its certificate, made the first time,
+ * while it is on, and plain HTTP while it is off.
+ * @param host The server.
+ */
+async function followPhoneAccess(host: ServerHost): Promise<void> {
+  const on = host.setup.phoneAccess === true;
+  host.certificate = on ? await ensureCertificate(host.setup.userData, safeStorage) : undefined;
+  host.apiUrl = localApiUrl(host.setup.port, on);
 }
 
 /**
@@ -428,6 +453,7 @@ function reportFailure(host: ServerHost, kind: FailureKind, owner?: PortOwner): 
 async function runServer(host: ServerHost, databaseUrl: string | undefined): Promise<boolean> {
   await stopServer?.();
   failure = undefined;
+  await followPhoneAccess(host);
   if (!databaseUrl) {
     await settleKeyChange(host);
   }
@@ -451,7 +477,7 @@ async function runServer(host: ServerHost, databaseUrl: string | undefined): Pro
   const sqliteKey = sqlite?.key;
   console.log(`Starting the bundled server from ${host.setup.serverDir}`);
   const gaveUp = new AbortController();
-  stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey }, (code) => {
+  stopServer = startBundledServer({ ...host.setup, databaseUrl, sqliteKey, https: host.certificate }, (code) => {
     if (code !== PORT_IN_USE_EXIT_CODE) {
       setTimeout(() => {
         reportFailure(host, code === WRONG_KEY_EXIT_CODE ? "keyWrong" : "stopped");
@@ -465,7 +491,7 @@ async function runServer(host: ServerHost, databaseUrl: string | undefined): Pro
       gaveUp.abort();
     });
   });
-  const answers = await waitForApi(host.apiUrl, gaveUp.signal);
+  const answers = await waitForApi(host.apiUrl, gaveUp.signal, net.fetch);
   if (!answers && !gaveUp.signal.aborted) {
     console.warn(`The bundled server didn't answer in time. See logs/api.log in ${host.setup.userData}.`);
     reportFailure(host, "timeout");
@@ -515,9 +541,10 @@ async function settleKeyChange(host: ServerHost): Promise<void> {
 /**
  * Builds the settings the page shows.
  * @param host The server.
- * @returns The database in use and where, the photos' folder, the port, whether the phone's access is on and the
- * phone's address, whether PostgreSQL's address is still missing, and whether the SQLite key's recovery copy is still
- * to be kept; or that another server took the port.
+ * @returns The database in use and where, the photos' folder, the port, whether the phone's access is on, the phone's
+ * address and, while the access is on, the server's address and certificate's fingerprint the phone pairs with,
+ * whether PostgreSQL's address is still missing, and whether the SQLite key's recovery copy is still to be kept; or
+ * that another server took the port.
  */
 function settings(host: ServerHost): object {
   if (portTaken) {
@@ -527,6 +554,7 @@ function settings(host: ServerHost): object {
   const data = serverData(host.setup.userData);
   const onPostgresql = config.database === "postgresql";
   const postgresql = onPostgresql ? openDatabaseUrl(config, safeStorage) : undefined;
+  const address = phoneAddress(os.networkInterfaces());
   return {
     kind: "own",
     database: onPostgresql ? "postgresql" : "sqlite",
@@ -534,7 +562,11 @@ function settings(host: ServerHost): object {
     photos: data.photos,
     port: host.setup.port,
     phoneAccess: host.setup.phoneAccess === true,
-    phoneAddress: phoneAddress(os.networkInterfaces()),
+    phoneAddress: address,
+    pairing:
+      host.setup.phoneAccess && host.certificate && address
+        ? { url: `https://${address}:${host.setup.port}`, fingerprint: host.certificate.fingerprint }
+        : undefined,
     needsAddress: needsDatabaseAddress(config, safeStorage),
     recoveryKeyPending: !onPostgresql && recoveryKeyPending(config),
   };
@@ -569,10 +601,11 @@ function sourceUrl(source: Source): string {
  * @returns "waiting" when the server waits for PostgreSQL's address, otherwise "started".
  */
 export async function startOwnServer(host: ServerHost): Promise<"started" | "waiting"> {
-  if (await apiAnswers(host.apiUrl)) {
+  await followPhoneAccess(host);
+  if (await apiAnswers(host.apiUrl, net.fetch)) {
     console.log(`A server already answers at ${host.apiUrl}; using it.`);
     portTaken = true;
-    stopWatching = watchServer(() => apiAnswers(host.apiUrl), () => void takeOverPort(host));
+    stopWatching = watchServer(() => apiAnswers(host.apiUrl, net.fetch), () => void takeOverPort(host));
     return "started";
   }
   const config = readConfig(host.setup.userData);
@@ -661,7 +694,6 @@ async function usePort(host: ServerHost, port: number): Promise<Outcome> {
   portTaken = false;
   updateConfig(host.setup.userData, { port });
   host.setup.port = port;
-  host.apiUrl = `http://127.0.0.1:${port}`;
   return (await runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)))
     ? { ok: true }
     : { ok: false, message: failure?.reason ?? `O servidor não ligou na porta ${port}. Veja logs\\api.log em ${host.setup.userData}.` };

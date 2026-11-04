@@ -54,7 +54,7 @@ export function trayMenu(state: {
     : !state.phoneAccess
       ? { id: "address", label: "Servidor ligado só neste computador", enabled: false }
       : state.address
-        ? { id: "address", label: `Servidor ligado em http://${state.address}:${state.port} (clique para copiar)`, enabled: true }
+        ? { id: "address", label: `Servidor ligado em https://${state.address}:${state.port} (clique para copiar)`, enabled: true }
         : { id: "address", label: "Servidor ligado, sem rede para o celular", enabled: false };
   return [
     { id: "open", label: "Abrir o APC" },

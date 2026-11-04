@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { type FoundPart, type PartResults as Results } from '@apc/shared/catalog';
 import { itemCardDetails, stockTint } from '@apc/shared/items';
 import { photoAddress } from '@apc/shared/photos';
-import { API_URL } from '../api';
+import { apiUrl } from '../api';
 import { DataTable, TableThumbnail } from '../DataTable';
 import { Text } from '../Typography';
 import { CardTitle, StockQuantity } from './ItemCard';
@@ -23,7 +23,7 @@ const CARD_COLUMNS: ComponentProps<typeof DataTable<FoundPart>>['columns'] = [
     card: 'thumb',
     cell: (part) => {
       const photo = partBrand(part).photos[0];
-      return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, API_URL)} label={`Foto de ${part.item.name}`} />;
+      return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, apiUrl())} label={`Foto de ${part.item.name}`} />;
     },
   },
   {

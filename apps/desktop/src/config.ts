@@ -21,6 +21,10 @@ export type DesktopConfig = {
   databaseUrl?: string;
   /** Whether the first start's offer to import an old server is over (see database.ts). */
   firstStartDone?: boolean;
+  /** The certificate the server answers HTTPS with while the phone's access is on, PEM (see certificate.ts). */
+  httpsCertificate?: string;
+  /** That certificate's private key, sealed by safeStorage, never in plain text (see certificate.ts). */
+  httpsKey?: string;
   /** Whether the server the app runs listens on the network, for the phone, as the Servidor dialog turned it on. */
   phoneAccess?: boolean;
   /** The port the server the app runs listens on, once the user changed it (see ports.ts). */

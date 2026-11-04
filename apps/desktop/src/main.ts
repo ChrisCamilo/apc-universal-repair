@@ -2,7 +2,8 @@ import os from "node:os";
 import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, screen, session, shell, Tray } from "electron";
 import electronUpdater from "electron-updater";
-import { usesBundledServer } from "./server/bundledServer.js";
+import { localApiUrl, usesBundledServer } from "./server/bundledServer.js";
+import { certificateVerdict } from "./server/certificate.js";
 import { resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./server/database.js";
 import { windowsIdentity } from "./system/identity.js";
@@ -163,7 +164,7 @@ function keepInTray(window: BrowserWindow, server: () => { port: number; phoneAc
   const address = () => phoneAddress(os.networkInterfaces());
   const actions: Record<Exclude<TrayItem["id"], "separator">, (item: Electron.MenuItem) => void> = {
     open: () => showWindow(window),
-    address: () => clipboard.writeText(`http://${address()}:${server().port}`),
+    address: () => clipboard.writeText(`https://${address()}:${server().port}`),
     settings: () => {
       showWindow(window);
       window.webContents.send(OPEN_SERVER_SETTINGS_CHANNEL);
@@ -387,14 +388,17 @@ void app.whenReady().then(async () => {
   const bundled = usesBundledServer({ envApiUrl: process.env.APC_API_URL, devUrl }, config);
   // APC_SERVER_PORT moves the bundled server off its port, for the smoke test; otherwise config.json's port, or 3000.
   const port = Number(process.env.APC_SERVER_PORT) || configuredPort(config);
-  // 127.0.0.1, not localhost, which Node may resolve to ::1 while the server listens on IPv4.
-  const apiUrl = bundled ? `http://127.0.0.1:${port}` : resolveApiUrl(process.env.APC_API_URL, config);
+  const apiUrl = bundled ? localApiUrl(port, config.phoneAccess === true) : resolveApiUrl(process.env.APC_API_URL, config);
   console.log(`API: ${apiUrl}`);
 
   Menu.setApplicationMenu(null);
   app.setAppUserModelId(windowsIdentity({ isPackaged: app.isPackaged, execPath: process.execPath, appPath: app.getAppPath() }).appId);
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
+  // While the server answers HTTPS for the phone, the app trusts only its own certificate on 127.0.0.1.
+  session.defaultSession.setCertificateVerifyProc((request, callback) =>
+    callback(certificateVerdict(request.hostname, request.certificate.fingerprint, host?.certificate?.fingerprint)),
+  );
 
   const appUrl = devUrl ?? `${APP_ORIGIN}/`;
   // The server the app runs, once it has one: its address follows a change of port in the Servidor dialog.

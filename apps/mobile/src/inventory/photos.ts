@@ -9,7 +9,7 @@ import {
   photoParts,
   photosChanged,
 } from '@apc/shared/photos';
-import { API_URL } from '../api';
+import { apiUrl } from '../api';
 import type { PickedPhoto, UploadPhoto } from '../ImageUpload';
 
 // The item photos on the phone: the photo library to pick them from, and the camera to take one with, which hand them
@@ -63,7 +63,7 @@ export async function takePhoto(): Promise<PickedPhoto[]> {
  * photos couldn't be saved.
  */
 export async function savePhotos(item: Item, brand: ItemBrand, photos: readonly UploadPhoto[]): Promise<Item | null> {
-  const parts = photoParts(photos, brand.photos, API_URL);
+  const parts = photoParts(photos, brand.photos, apiUrl());
   if (!photosChanged(parts, brand.photos)) {
     return item;
   }
@@ -78,6 +78,6 @@ export async function savePhotos(item: Item, brand: ItemBrand, photos: readonly 
       body.append(PHOTO_PARTS.file, { uri: part.file.url, name: part.file.name, type: part.file.type } as unknown as Blob);
     }
   }
-  const response = await apiFetch(`${API_URL}/items/${item.id}/brands/${brand.id}/photos`, { method: 'PUT', body }).catch(() => null);
+  const response = await apiFetch(`${apiUrl()}/items/${item.id}/brands/${brand.id}/photos`, { method: 'PUT', body }).catch(() => null);
   return response?.ok ? itemSchema.parse(await response.json()) : null;
 }

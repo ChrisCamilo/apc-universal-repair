@@ -11,7 +11,7 @@ import {
   type CsvItems,
 } from '@apc/shared/item-csv';
 import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/shared/lists';
-import { API_URL } from '../api';
+import { apiUrl } from '../api';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
 import { useToast } from '../Toast';
@@ -74,7 +74,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
   /** Sends the valid rows, then says how many items were created and updated. */
   const submit = async () => {
     setImporting(true);
-    const result = await importItems(API_URL, rows);
+    const result = await importItems(apiUrl(), rows);
     setImporting(false);
     if (!result) {
       toast.error('Não foi possível importar os itens. Tente de novo.');

@@ -9,10 +9,9 @@ name: Android
 #   in the output `signed`. A debug-signed APK can't update the phones' app, so the release goes out without it.
 # Both write the Android libraries' licenses from the release's Gradle tree (`:app:writeLicenses`) and fail when they
 # differ from the committed apps/mobile/android/licenses.json, or when one isn't allowed (scripts/licenses.mjs). The
-# address the app talks to comes from the repository variable APC_API_URL (Settings → Secrets and variables → Actions →
-# Variables), such as http://192.168.0.10:3000; the build fails without it. It signs with the upload key when the
-# ANDROID_UPLOAD_* secrets are set, and with the debug key otherwise, naming the artifact -debug-signed then: that APK
-# installs, but can't update one signed with the upload key.
+# APK carries no server address: the app pairs with the server at home on its first start. It signs with the upload
+# key when the ANDROID_UPLOAD_* secrets are set, and with the debug key otherwise, naming the artifact -debug-signed
+# then: that APK installs, but can't update one signed with the upload key.
 on:
   workflow_dispatch:
   workflow_call:
@@ -94,7 +93,6 @@ jobs:
 
       - name: Build the release APK
         env:
-          APC_API_URL: ${{ vars.APC_API_URL }}
           APC_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
           APC_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
           APC_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}

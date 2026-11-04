@@ -32,7 +32,7 @@ import {
 } from '@apc/shared/item-form';
 import { ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists';
 import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/shared/photos';
-import { API_URL } from '../api';
+import { apiUrl } from '../api';
 import { Button } from '../Button';
 import { Combobox } from '../Combobox';
 import { Dialog } from '../Dialog';
@@ -154,7 +154,7 @@ export function ItemFormDialog({
   const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM));
   // Each brand's photos, in the order of the form's brands; a brand the form fills in for the item keeps its own.
   const [photos, setPhotos] = useState<UploadPhoto[][]>(
-    () => initialPhotos ?? form.brands.map((brand) => heldPhotos(item?.brands.find((held) => held.id === brand.id)?.photos ?? [], API_URL)),
+    () => initialPhotos ?? form.brands.map((brand) => heldPhotos(item?.brands.find((held) => held.id === brand.id)?.photos ?? [], apiUrl())),
   );
   const [errors, setErrors] = useState<ItemFormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -275,7 +275,7 @@ export function ItemFormDialog({
   const photosEdited = () =>
     form.brands.some((brand, index) => {
       const held = item?.brands.find((each) => each.id === brand.id)?.photos ?? [];
-      return photosChanged(photoParts(photos[index], held, API_URL), held);
+      return photosChanged(photoParts(photos[index], held, apiUrl()), held);
     });
 
   /**
@@ -312,7 +312,7 @@ export function ItemFormDialog({
       return;
     }
     setSaving(true);
-    const response = await apiFetch(item ? `${API_URL}/items/${item.id}` : `${API_URL}/items`, {
+    const response = await apiFetch(item ? `${apiUrl()}/items/${item.id}` : `${apiUrl()}/items`, {
       method: item ? 'PATCH' : 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(itemFormBody(form, options.colors)),

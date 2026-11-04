@@ -126,7 +126,7 @@ test('Web: the Servidor dialog shows the database in use, the port and the phone
   const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
   await expect.element(dialog.getByText('SQLite criptografado, em C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data')).toBeVisible()
   await expect.element(dialog.getByText('3000')).toBeVisible()
-  await expect.element(dialog.getByText('http://192.168.0.10:3000')).toBeVisible()
+  await expect.element(dialog.getByText('https://192.168.0.10:3000')).toBeVisible()
   await expect.element(dialog.getByRole('button', { name: 'Usar PostgreSQL' })).not.toBeInTheDocument()
   await expect.element(dialog.getByRole('button', { name: 'Fechar' }).first()).toBeVisible()
 })
@@ -151,6 +151,39 @@ test('Web: the dialog warns of a public network while the phone\'s access is on'
   }
 })
 
+// Opens the dialog with the phone's access on and checks it shows the QR code the phone pairs with, and its address
+// and code, in groups of four, to type in; the code's modules are dark on a light ground in both modes. With the access
+// off there is no code.
+test('Web: the dialog shows the QR code and the code the phone pairs with', async () => {
+  const pairing = { url: 'https://192.168.0.10:3000', fingerprint: 'q1Wn7ZbX-0_aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV' }
+  giveServer({ ...ON_SQLITE, pairing })
+  const screen = await renderSettings()
+  await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
+  const code = dialog.getByRole('img', { name: 'QR code para conectar o celular' })
+  await expect.element(code).toBeVisible()
+  await expect.element(dialog.getByText('q1Wn 7ZbX -0_a B3cD 4eF5 gH6i J7kL 8mN9 oP0q R1sT 2uV')).toBeVisible()
+  expect(dialog.getByText('https://192.168.0.10:3000').elements()).toHaveLength(2)
+
+  const modules = code.element().querySelector('path')!
+  for (const mode of MODES) {
+    root.dataset.mode = mode
+    const { colors } = themes.eighties[mode]
+    const [ground, ink] = mode === 'day' ? [colors.canvas, colors.text] : [colors.text, colors.canvas]
+    expect([getComputedStyle(code.element()).backgroundColor, getComputedStyle(modules).fill]).toEqual([rgb(ground), rgb(ink)])
+  }
+  root.dataset.mode = 'night'
+})
+
+// Opens the dialog with the phone's access off and checks there is no code to pair with.
+test('Web: the dialog shows no pairing code while the phone\'s access is off', async () => {
+  giveServer({ ...ON_SQLITE, phoneAccess: false })
+  const screen = await renderSettings()
+  await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
+  await expect.element(screen.getByText('Desligado: só este computador acessa o servidor')).toBeVisible()
+  await expect.element(screen.getByRole('img', { name: 'QR code para conectar o celular' })).not.toBeInTheDocument()
+})
+
 // Opens the dialog with the phone's access off and checks the app isn't asked about the network.
 test('Web: the dialog doesn\'t check the network while the phone\'s access is off', async () => {
   const { calls } = giveServer({ ...ON_SQLITE, phoneAccess: false })
@@ -172,7 +205,7 @@ test('Web: the phone\'s access turns on from the dialog, off by default', async 
   await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
   const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
   await expect.element(dialog.getByText('Desligado: só este computador acessa o servidor')).toBeVisible()
-  await expect.element(dialog.getByText('http://192.168.0.10:3000')).not.toBeInTheDocument()
+  await expect.element(dialog.getByText('https://192.168.0.10:3000')).not.toBeInTheDocument()
   const access = dialog.getByRole('switch', { name: 'Deixar o celular acessar o servidor' })
   await expect.element(access).toHaveAttribute('aria-checked', 'false')
 
@@ -182,7 +215,7 @@ test('Web: the phone\'s access turns on from the dialog, off by default', async 
   await access.click()
   await expect.element(dialog.getByRole('status')).toHaveTextContent('Pronto: o celular já pode acessar o servidor.')
   await expect.element(access).toHaveAttribute('aria-checked', 'true')
-  await expect.element(dialog.getByText(/o celular acessa http:\/\/192\.168\.0\.10:3000\. Se o Windows perguntar sobre o firewall, marque só Redes privadas\./)).toBeVisible()
+  await expect.element(dialog.getByText(/o celular acessa https:\/\/192\.168\.0\.10:3000\. Se o Windows perguntar sobre o firewall, marque só Redes privadas\./)).toBeVisible()
   expect(calls.usePhoneAccess.mock.calls).toEqual([[true], [true]])
   await dialog.getByRole('button', { name: 'Fechar' }).first().click()
   expect(reload).toHaveBeenCalledOnce()
@@ -246,7 +279,7 @@ test('Web: the port moves once the phone\'s new address is confirmed', async () 
 
   await field.fill('3100')
   await dialog.getByRole('button', { name: 'Trocar a porta' }).click()
-  await expect.element(dialog.getByText('O endereço do celular muda para http://192.168.0.10:3100. Depois de trocar, configure o celular com esse endereço.')).toBeVisible()
+  await expect.element(dialog.getByText('O endereço do celular muda para https://192.168.0.10:3100. Depois de trocar, conecte o celular de novo pelo código que aparece aqui.')).toBeVisible()
   await dialog.getByRole('button', { name: 'Trocar mesmo assim' }).click()
   await expect.element(dialog.getByRole('alert')).toHaveTextContent(taken)
 

@@ -66,6 +66,22 @@ test("Shared: the style guard passes a mobile component written by the conventio
   assert.deepEqual(lines(source, "mobile"), []);
 });
 
+// Checks a camera view, which takes no testID, passes with a style inside its frame, which carries the id.
+test("Shared: the style guard lets the camera's views go without a testID", () => {
+  const source = `
+    import { View } from 'react-native';
+    import { CodeScanner } from 'react-native-vision-camera-barcode-scanner';
+    export function Scan() {
+      const { styles, ids } = useStyles();
+      return (
+        <View style={styles.camera} testID={ids.camera}>
+          <CodeScanner style={styles.scanner} isActive />
+        </View>
+      );
+    }`;
+  assert.deepEqual(lines(source, "mobile"), []);
+});
+
 // Checks the guard finds, on mobile, a style object, a React Native element (even under another name) with a style but
 // no testID, and a testID written by hand.
 test("Shared: the style guard finds hand-written styles and ids on mobile", () => {

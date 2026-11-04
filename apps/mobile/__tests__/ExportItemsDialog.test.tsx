@@ -10,7 +10,7 @@ import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from '@apc/shared/item-csv';
 import type { Item } from '@apc/shared/items';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
-import { API_URL } from '../src/api';
+import { apiUrl } from '../src/api';
 import { ExportItemsDialog } from '../src/inventory/ExportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { ToastProvider } from '../src/Toast';
@@ -166,7 +166,7 @@ test('Mobile: Exportar fetches the whole list and shares it with the photo paths
   const tree = await mount({ count: 1, onClose });
   await press(tree, 'Incluir o caminho das fotos');
   await press(tree, 'Exportar');
-  expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toBe(`${API_URL}/items?status=low&sort=price&order=desc`);
+  expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toBe(`${apiUrl()}/items?status=low&sort=price&order=desc`);
   const { title, message } = share.mock.calls[0][0] as { title: string; message: string };
   expect(title).toMatch(/^estoque-\d{4}-\d{2}-\d{2}\.csv$/);
   const [header, row] = message.replace(/^﻿/, '').split('\r\n');

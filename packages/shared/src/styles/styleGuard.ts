@@ -16,6 +16,11 @@ export type StyleProblem = { line: number; message: string };
 
 // What each platform names the style id prop.
 const ID_PROPS: Record<StylePlatform, string> = { mobile: "testID", web: "data-testid" };
+/**
+ * React Native packages whose views take no testID, such as the camera's: the view around one, its frame, carries the
+ * id instead.
+ */
+const NO_TEST_ID = /^react-native-vision-camera/;
 
 /**
  * Reads the names a file imports from React Native's packages, the elements whose style must carry a testID.
@@ -29,7 +34,8 @@ function nativeNames(file: ts.SourceFile): Set<string> {
       continue;
     }
     const bindings = statement.importClause?.namedBindings;
-    if (statement.moduleSpecifier.text.startsWith("react-native") && bindings && ts.isNamedImports(bindings)) {
+    const from = statement.moduleSpecifier.text;
+    if (from.startsWith("react-native") && !NO_TEST_ID.test(from) && bindings && ts.isNamedImports(bindings)) {
       for (const element of bindings.elements) {
         if (!element.isTypeOnly) {
           names.add(element.name.text);

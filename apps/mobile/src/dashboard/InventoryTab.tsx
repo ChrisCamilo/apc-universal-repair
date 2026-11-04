@@ -38,7 +38,7 @@ import { SCROLL_PAGE_SIZE } from '@apc/shared/pagination';
 import { sortValue, type Sort } from '@apc/shared/table';
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos';
 import { ActionSheet } from '../ActionSheet';
-import { API_URL } from '../api';
+import { apiUrl } from '../api';
 import { DataTable, TableThumbnail } from '../DataTable';
 import { EmptyState, ErrorState } from '../EmptyState';
 import { FieldScrollView } from '../FieldScrollView';
@@ -152,7 +152,7 @@ function photoColumn(onOpen: (item: Item, brand: ItemBrand) => void): ComponentP
       const [brand] = item.brands;
       return (
         <TableThumbnail
-          src={brand.photos[0] && photoAddress(brand.photos[0].thumbUrl, API_URL)}
+          src={brand.photos[0] && photoAddress(brand.photos[0].thumbUrl, apiUrl())}
           label={`Ver fotos de ${item.name}`}
           onOpen={() => onOpen(item, brand)}
         />
@@ -281,7 +281,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       return false;
     }
     const brand = saved.brands.find((each) => each.id === viewer.brand.id) ?? viewer.brand;
-    setViewer((current) => current && { item: saved, brand, photos: heldPhotos(brand.photos, API_URL) });
+    setViewer((current) => current && { item: saved, brand, photos: heldPhotos(brand.photos, apiUrl()) });
     reload();
     return true;
   };
@@ -305,7 +305,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
    * @param withPhotos Whether each brand of the copy takes copies of its brand's photos.
    */
   const duplicate = (item: Item, withPhotos: boolean) =>
-    openForm(undefined, false, duplicateForm(item), withPhotos ? item.brands.map((brand) => copiedPhotos(brand.photos, API_URL)) : undefined);
+    openForm(undefined, false, duplicateForm(item), withPhotos ? item.brands.map((brand) => copiedPhotos(brand.photos, apiUrl())) : undefined);
 
   /** Sends an item request for the tutorial, then loads the list and the lists again. */
   const send = async (url: string, method: string, body?: unknown) => {
@@ -318,12 +318,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
 
   /** Deletes the tutorial's test item, if one is left from a run that didn't end, and loads the list again. */
   const deleteTestItem = async () => {
-    const found = await apiFetch(`${API_URL}/items?${new URLSearchParams({ q: TUTORIAL_CODE })}`)
+    const found = await apiFetch(`${apiUrl()}/items?${new URLSearchParams({ q: TUTORIAL_CODE })}`)
       .then((response) => (response.ok ? response.json() : null))
       .catch(() => null);
     for (const item of (found?.items ?? []) as Item[]) {
       if (isTestItem(item)) {
-        await apiFetch(`${API_URL}/items/${item.id}`, { method: 'DELETE' }).catch(() => null);
+        await apiFetch(`${apiUrl()}/items/${item.id}`, { method: 'DELETE' }).catch(() => null);
       }
     }
     reload();
@@ -430,7 +430,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
               <DataTable
                 label="Itens do estoque"
                 columns={[
-                  photoColumn((item, brand) => setViewer({ item, brand, photos: heldPhotos(brand.photos, API_URL) })),
+                  photoColumn((item, brand) => setViewer({ item, brand, photos: heldPhotos(brand.photos, apiUrl()) })),
                   nameColumn(),
                   ...COLUMNS,
                 ]}
@@ -602,7 +602,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           saveItem: (item, values) => {
             setForm((current) => ({ ...current, open: false }));
             const body = itemFormBody(values, itemFormOptions(items, lists).colors);
-            void send(item ? `${API_URL}/items/${item.id}` : `${API_URL}/items`, item ? 'PATCH' : 'POST', body);
+            void send(item ? `${apiUrl()}/items/${item.id}` : `${apiUrl()}/items`, item ? 'PATCH' : 'POST', body);
           },
           // The details close first: a confirmation opened here would sit under their Modal.
           askDelete: (item) => {
@@ -612,7 +612,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           deleteItem: (item) => {
             setRemoving(undefined);
             setForm((current) => ({ ...current, open: false }));
-            void send(`${API_URL}/items/${item.id}`, 'DELETE');
+            void send(`${apiUrl()}/items/${item.id}`, 'DELETE');
           },
         }}
       />

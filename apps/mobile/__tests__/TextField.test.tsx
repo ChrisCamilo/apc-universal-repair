@@ -70,7 +70,7 @@ for (const style of STYLES) {
 
 // Checks each kind opens the right keyboard with the right autofill hint and capitalization.
 test('Mobile: field kinds set the keyboard and autofill', async () => {
-  const kinds = ['username', 'password', 'email', 'number', 'decimal'] as const;
+  const kinds = ['username', 'password', 'email', 'number', 'decimal', 'code'] as const;
   const tree = await mount(
     'eighties',
     'night',

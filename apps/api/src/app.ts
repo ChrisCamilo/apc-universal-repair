@@ -12,15 +12,23 @@ import { registerPhotoRoutes } from "./routes/photos.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { SESSIONS, type SessionLookup } from "./sessions/sessions.js";
 
+/** The certificate and its private key the API answers HTTPS with, both PEM. */
+export type HttpsOptions = { cert: string; key: string };
+
 /**
  * Builds the API, answering only requests addressed to this computer (see registerAllowedHosts), with every route but
  * the public ones behind a session (see registerAuthentication).
  * @param options Where sessions are looked up: the database, or a stand-in, so a test can check routes without one;
- * and what to tell of each route as it is registered, for a test that checks the API's routes.
+ * what to tell of each route as it is registered, for a test that checks the API's routes; and the certificate to
+ * answer HTTPS with, as the desktop app hands it while the phone's access is on, or none for plain HTTP.
  * @returns The Fastify app.
  */
-export function buildApp({ sessions = SESSIONS, onRoute }: { sessions?: SessionLookup; onRoute?: (route: RouteOptions) => void } = {}) {
-  const app = Fastify({ logger: true });
+export function buildApp({
+  sessions = SESSIONS,
+  onRoute,
+  https,
+}: { sessions?: SessionLookup; onRoute?: (route: RouteOptions) => void; https?: HttpsOptions } = {}) {
+  const app = Fastify({ logger: true, https: https ?? null });
   if (onRoute) {
     app.addHook("onRoute", onRoute);
   }

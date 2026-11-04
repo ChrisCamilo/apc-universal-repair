@@ -3,7 +3,8 @@ import type { DesktopConfig } from "../config.js";
 
 // The server the app ships: the API bundled into resources/server by scripts/bundle-server.mjs, which the app runs
 // itself (see bundledProcess.ts) unless it is told to use a server elsewhere. It listens on this computer only
-// (LOCAL_HOST) until the phone's access is turned on, then on every address (NETWORK_HOST). Its data lives in
+// (LOCAL_HOST) until the phone's access is turned on, then on every address (NETWORK_HOST), over HTTPS with the app's
+// own certificate (see certificate.ts). Its data lives in
 // userData: the SQLite file, encrypted with its key, and the photos in data/, kept on uninstall; on PostgreSQL (see
 // database.ts), only the photos. It migrates its database on start, so an update of the app updates the server and its
 // database together, with no clone, script or tag to move.
@@ -28,7 +29,8 @@ export const SERVER_PORT = 3000;
 
 /**
  * How the bundled server runs: where its files are, the app's userData folder, its port, whether the phone reaches it,
- * the app's version, and PostgreSQL's address when it runs on PostgreSQL, or the SQLite file's key.
+ * the app's version, PostgreSQL's address when it runs on PostgreSQL, or the SQLite file's key, and the certificate it
+ * answers HTTPS with while the phone reaches it (see certificate.ts).
  */
 export type ServerSetup = {
   serverDir: string;
@@ -38,9 +40,21 @@ export type ServerSetup = {
   version: string;
   databaseUrl?: string;
   sqliteKey?: string;
+  https?: { cert: string; key: string };
 };
 /** Where the app finds a server elsewhere, and whether it runs from the Vite dev server. */
 export type ServerSources = { envApiUrl?: string; devUrl?: string };
+
+/**
+ * Gives the address the app reaches the bundled server at, on this computer.
+ * @param port The server's port.
+ * @param https Whether it answers HTTPS, as while the phone's access is on.
+ * @returns E.g. "http://127.0.0.1:3000", or "https://127.0.0.1:3000"; 127.0.0.1, not localhost, which Node may resolve
+ * to ::1 while the server listens on IPv4.
+ */
+export function localApiUrl(port: number, https: boolean): string {
+  return `${https ? "https" : "http"}://${LOCAL_HOST}:${port}`;
+}
 
 /**
  * Finds where the bundled server keeps its data.
@@ -56,8 +70,8 @@ export function serverData(userData: string): { folder: string; sqliteFile: stri
  * Builds the environment the bundled server runs with.
  * @param setup How it runs.
  * @returns The variables: the database, PostgreSQL's address or the SQLite file in userData with its key, the photos
- * in userData, the port and the address, this computer's or every one for the phone, the migrations it ships, which it
- * applies on start, and its version.
+ * in userData, the port and the address, this computer's or every one for the phone, with the certificate it answers
+ * HTTPS with then, the migrations it ships, which it applies on start, and its version.
  */
 export function serverEnvironment(setup: ServerSetup): Record<string, string> {
   const data = serverData(setup.userData);
@@ -70,6 +84,7 @@ export function serverEnvironment(setup: ServerSetup): Record<string, string> {
     APC_API_VERSION: setup.version,
     APC_MIGRATE_ON_START: "1",
     ...(!setup.databaseUrl && setup.sqliteKey ? { APC_SQLITE_KEY: setup.sqliteKey } : {}),
+    ...(setup.phoneAccess && setup.https ? { HTTPS_CERT: setup.https.cert, HTTPS_KEY: setup.https.key } : {}),
   };
 }
 

@@ -1,3 +1,5 @@
+import type { Pairing } from '@apc/shared/pairing'
+
 // What the desktop app's preload hands the page (see apps/desktop/src/preload.cts): asking for a Windows notification
 // and hearing when one was clicked, hearing when a new version is ready and asking to restart into it, and the
 // settings of the server the app runs (see apps/desktop/src/server/serverSettings.ts), and why that server isn't on,
@@ -62,7 +64,7 @@ export type ServerFailure = { kind: 'key' | 'keyMissing' | 'keyWrong' | 'portInU
 export type ServerOutcome = { ok: true } | { ok: false; message: string }
 /**
  * The server's settings: the app's own server, on SQLite with its folder or PostgreSQL with its server, its photos'
- * folder, port, whether the phone's access is on and the phone's address, whether PostgreSQL's address is still missing and whether the SQLite key's
+ * folder, port, whether the phone's access is on and the phone's address, what the phone pairs with while it is on, whether PostgreSQL's address is still missing and whether the SQLite key's
  * recovery copy is still to be kept; a server on another computer; or another server that took the port when the app
  * opened.
  */
@@ -75,6 +77,7 @@ export type ServerSettings =
       port: number
       phoneAccess: boolean
       phoneAddress?: string
+      pairing?: Pairing
       needsAddress: boolean
       recoveryKeyPending: boolean
     }

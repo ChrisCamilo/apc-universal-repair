@@ -39,16 +39,17 @@ function byName(tree: ReactTestRenderer.ReactTestRenderer, name: string): ReactT
 /**
  * Renders the user menu inside a ThemeProvider, with a readout of the active theme.
  * @param onLogout Called when "Sair" is picked.
+ * @param onConnect Called when "Conectar ao servidor" is picked.
  * @returns The rendered tree.
  */
-async function mount(onLogout: () => void = () => {}) {
+async function mount(onLogout: () => void = () => {}, onConnect: () => void = () => {}) {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
           <Preferences>
-            <UserMenu user={USER} onLogout={onLogout} />
+            <UserMenu user={USER} onLogout={onLogout} onConnect={onConnect} />
           </Preferences>
           <ActiveTheme />
         </ThemeProvider>
@@ -61,10 +62,11 @@ async function mount(onLogout: () => void = () => {}) {
 /**
  * Renders the user menu and opens it from Conta.
  * @param onLogout Called when "Sair" is picked.
+ * @param onConnect Called when "Conectar ao servidor" is picked.
  * @returns The rendered tree.
  */
-async function openMenu(onLogout: () => void = () => {}) {
-  const tree = await mount(onLogout);
+async function openMenu(onLogout: () => void = () => {}, onConnect: () => void = () => {}) {
+  const tree = await mount(onLogout, onConnect);
   await press(tree, 'Conta');
   return tree;
 }
@@ -177,6 +179,16 @@ test('Mobile: the user menu has no items per page choice', async () => {
   const tree = await openMenu();
   expect(byName(tree, 'Tutorial do estoque')).toBeDefined();
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Itens por página')).toHaveLength(0);
+});
+
+// Picks "Conectar ao servidor", under Servidor, and checks it opens the pairing and closes the menu.
+test('Mobile: Conectar ao servidor opens the pairing from the user menu', async () => {
+  const onConnect = jest.fn();
+  const tree = await openMenu(undefined, onConnect);
+  expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Servidor')).not.toHaveLength(0);
+  await press(tree, 'Conectar ao servidor');
+  expect(onConnect).toHaveBeenCalledTimes(1);
+  expect(sheetOpen(tree)).toBe(false);
 });
 
 // Picks "Sair" and checks it is the last item, set apart from the preferences by a divider, and hands the logout

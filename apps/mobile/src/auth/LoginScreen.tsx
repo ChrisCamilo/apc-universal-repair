@@ -21,7 +21,8 @@ import { useStyles } from './LoginScreen.styles';
 // workshop's admin for a new password, as there is no reset until the real backend (EP-10); it closes on
 // "Entendi", the back button or a tap outside. When the login can't be made (the API out of reach), it says so
 // instead, keeping the password, as it does after too many attempts, saying how many minutes to wait. "Criar conta"
-// opens the sign-up. A notice, such as the session having expired, shows above the form until a login is sent.
+// opens the sign-up, and "Conectar a outro servidor", under it, pairs the phone again, as after the computer's address
+// changes. A notice, such as the session having expired, shows above the form until a login is sent.
 
 const FIELD_ORDER = ['username', 'password'] as const;
 
@@ -34,9 +35,11 @@ type LoginScreenProps = {
   onLoggedIn: (user: SessionUser) => void;
   /** Opens the sign-up. */
   onRegister: () => void;
+  /** Opens Conectar ao servidor, to pair with the server again. */
+  onConnect: () => void;
 };
 
-export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScreenProps) {
+export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }: LoginScreenProps) {
   const [credentials, setCredentials] = useState<Credentials>({ username: '', password: '' });
   const [errors, setErrors] = useState<LoginErrors>({});
   const [sending, setSending] = useState(false);
@@ -161,6 +164,9 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister }: LoginScree
         </Text>
         <Button variant="secondary" align="stretch" onPress={onRegister}>
           Criar conta
+        </Button>
+        <Button variant="link" align="stretch" onPress={onConnect}>
+          Conectar a outro servidor
         </Button>
       </View>
       <Dialog
