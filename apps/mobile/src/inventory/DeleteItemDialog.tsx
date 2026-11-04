@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
 import { itemCodes, type Item } from '@apc/shared/items';
-import { API_URL } from '../api';
+import { apiUrl } from '../api';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
 import { useToast } from '../Toast';
@@ -32,7 +32,7 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
       return;
     }
     setDeleting(true);
-    const response = await apiFetch(`${API_URL}/items/${item.id}`, { method: 'DELETE' }).catch(() => null);
+    const response = await apiFetch(`${apiUrl()}/items/${item.id}`, { method: 'DELETE' }).catch(() => null);
     setDeleting(false);
     if (!response?.ok) {
       toast.error('Não foi possível excluir o item. Tente de novo.');

@@ -256,6 +256,21 @@ test("Shared: the API marks the Inventory tutorial seen for the caller, and on t
   assert.equal(JSON.parse(offline.saved.get(SESSION_STORAGE_KEY)!).inventoryTutorialSeen, true);
 });
 
+// Builds the AuthService with the address as a function, as the phone does, then moves the server, as a new pairing
+// does, and checks each request goes to the address of its moment.
+test("Shared: an address given as a function is read at each request", async () => {
+  const api = answering(200, LOGGED_IN);
+  let server = "https://192.168.0.10:3000";
+  const auth = createApiAuth(memoryStore().store, () => server, api.send);
+  await auth.login({ username: USER.username, password: USER.password });
+  server = "https://192.168.0.11:3000";
+  await auth.logout();
+  assert.deepEqual(
+    api.sent.map(({ url }) => url),
+    ["https://192.168.0.10:3000/sessions", "https://192.168.0.11:3000/sessions/current"],
+  );
+});
+
 // Saves sessions from older versions, one without the tutorial and one without a token, and checks the first counts
 // as not having seen it and the one without a token as nobody logged in, so the user logs in again once.
 test("Shared: a session saved without a token counts as logged out", async () => {

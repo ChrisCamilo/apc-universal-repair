@@ -36,6 +36,19 @@ jest.mock('@react-native-documents/picker', () => ({
   types: { csv: ['text/csv'], plainText: 'text/plain' },
 }));
 
+// The native side that pins the paired server's certificate (ServerPinModule.kt); tests check what it is handed.
+require('react-native').NativeModules.ServerPin = { pin: jest.fn() };
+
+// The camera is native: the scanner draws nothing and reads no code unless a test calls its onBarcodeScanned, and
+// the camera's permission is granted.
+jest.mock('react-native-vision-camera', () => ({
+  useCameraDevice: jest.fn(() => ({ id: 'back' })),
+  useCameraPermission: jest.fn(() => ({ status: 'authorized', hasPermission: true, canRequestPermission: false, requestPermission: jest.fn(async () => true) })),
+}));
+jest.mock('react-native-vision-camera-barcode-scanner', () => ({
+  CodeScanner: jest.fn(() => null),
+}));
+
 // Requests carry React Native's FormData, which takes a file by where it is on the phone, as the app does; Node's
 // own FormData would turn it into text.
 global.FormData = jest.requireActual('react-native/Libraries/Network/FormData').default;

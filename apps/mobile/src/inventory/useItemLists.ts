@@ -12,7 +12,7 @@ import {
   type ItemLists,
   type ListEntry,
 } from '@apc/shared/lists';
-import { API_URL } from '../api';
+import { apiUrl } from '../api';
 
 // Loads the lists the item form picks from (categories, part brands, vehicle brands and vehicle models), creates
 // new names in them, renames, merges and deletes, keeping each change in the lists at once, and loads them again on
@@ -46,7 +46,7 @@ export function useItemLists(): {
 
   useEffect(() => {
     const request = new AbortController();
-    loadItemLists(API_URL, request.signal)
+    loadItemLists(apiUrl(), request.signal)
       .then(setLists)
       .catch(() => {});
     return () => request.abort();
@@ -55,14 +55,14 @@ export function useItemLists(): {
   return {
     lists,
     create: async (kind, name, vehicleBrandId) => {
-      const entry = await createListEntry(API_URL, kind, name, vehicleBrandId);
+      const entry = await createListEntry(apiUrl(), kind, name, vehicleBrandId);
       if (entry) {
         setLists((held) => withEntry(held, kind, entry));
       }
       return entry;
     },
     merge: async (kind, id, into) => {
-      const moved = await mergeListEntries(API_URL, kind, id, into);
+      const moved = await mergeListEntries(apiUrl(), kind, id, into);
       // The entry leaves its list, and a vehicle brand's models go to the other brand: the lists load again.
       if (moved !== null) {
         setVersion((count) => count + 1);
@@ -70,14 +70,14 @@ export function useItemLists(): {
       return moved;
     },
     rename: async (kind, id, name) => {
-      const renamed = await renameListEntry(API_URL, kind, id, name);
+      const renamed = await renameListEntry(apiUrl(), kind, id, name);
       if (renamed && renamed !== 'taken') {
         setLists((held) => withEntry(held, kind, renamed));
       }
       return renamed;
     },
     remove: async (kind, id) => {
-      const removed = await deleteListEntry(API_URL, kind, id);
+      const removed = await deleteListEntry(apiUrl(), kind, id);
       if (removed) {
         setLists((held) => withoutEntry(held, kind, id));
       }

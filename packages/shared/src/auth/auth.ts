@@ -130,13 +130,19 @@ export type UserCreate = z.input<typeof userCreateSchema>;
  * which apiFetch then sends. Too many attempts (429) are refused saying when to try again. DELETE /sessions/current ends the session on logout, and PUT
  * /users/me/inventory-tutorial marks the Inventory tutorial as seen.
  * @param store Where the session is saved on the device.
- * @param apiBase Where the API answers, e.g. "/api" on the web.
+ * @param apiBase Where the API answers, e.g. "/api" on the web; or a function giving it at each request, as the phone
+ * does, whose server is the one it paired with.
  * @param send How requests are sent: the global fetch as it is when each one is sent, or a stand-in in tests.
  * @returns The AuthService on the API.
  */
-export function createApiAuth(store: SessionStore, apiBase: string, send: typeof fetch = (input, init) => fetch(input, init)): AuthService {
+export function createApiAuth(
+  store: SessionStore,
+  apiBase: string | (() => string),
+  send: typeof fetch = (input, init) => fetch(input, init),
+): AuthService {
+  const base = typeof apiBase === "string" ? () => apiBase : apiBase;
   const post = (path: string, body: unknown) =>
-    send(`${apiBase}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    send(`${base()}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const call = withSession(send);
   /** Saves a session the API started and hands its token to apiFetch. */
   const start = async (loggedIn: LoggedIn) => {
@@ -173,7 +179,7 @@ export function createApiAuth(store: SessionStore, apiBase: string, send: typeof
       return { user: await start(loggedInSchema.parse(await response.json())) };
     },
     logout: async () => {
-      await call(`${apiBase}/sessions/current`, { method: "DELETE" }).catch(() => null);
+      await call(`${base()}/sessions/current`, { method: "DELETE" }).catch(() => null);
       setSessionToken(null);
       await store.removeItem(SESSION_STORAGE_KEY);
     },
@@ -181,7 +187,7 @@ export function createApiAuth(store: SessionStore, apiBase: string, send: typeof
       const saved = readSession(await store.getItem(SESSION_STORAGE_KEY), loggedInSchema);
       await Promise.all([
         saved && store.setItem(SESSION_STORAGE_KEY, JSON.stringify({ ...saved, inventoryTutorialSeen: true })),
-        call(`${apiBase}/users/me/inventory-tutorial`, { method: "PUT" }).catch(() => null),
+        call(`${base()}/users/me/inventory-tutorial`, { method: "PUT" }).catch(() => null),
       ]);
       return { ...user, inventoryTutorialSeen: true };
     },

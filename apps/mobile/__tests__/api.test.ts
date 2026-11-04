@@ -1,72 +1,65 @@
+import { NativeModules } from 'react-native';
+import { createAsyncStorage } from '@react-native-async-storage/async-storage';
 import { DEV_SERVER_PORT } from '@apc/shared/server';
+import { apiUrl, applyServer, loadServer, saveServer, SERVER_STORAGE_KEY } from '../src/api';
 
-/** Babel's transform, typed only as far as these tests use it: the app has no types for @babel/core. */
-const { transformSync } = require('@babel/core') as {
-  transformSync(code: string, options: object): { code: string } | null;
-};
+const STORAGE = createAsyncStorage('apc-universal-repair');
+const PAIRING = { url: 'https://192.168.0.10:3000', fingerprint: 'q1Wn7ZbX-0_aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV' };
 
 /**
- * Loads src/api.ts afresh on Android, as a development or a release build sees it.
+ * Runs a check as a development build or a release sees it.
  * @param dev Whether `__DEV__` is on, as in development.
- * @param url The address a release is built with, or undefined for none.
- * @returns The API's address the app uses.
+ * @param check What to run.
  */
-function apiUrl(dev: boolean, url?: string): string {
-  const devBefore = (globalThis as { __DEV__?: boolean }).__DEV__;
+function as(dev: boolean, check: () => void) {
   (globalThis as { __DEV__?: boolean }).__DEV__ = dev;
-  if (url === undefined) {
-    delete process.env.APC_API_URL;
-  } else {
-    process.env.APC_API_URL = url;
-  }
   try {
-    let found = '';
-    jest.isolateModules(() => {
-      // The module registry is fresh here, so the app reads this copy of React Native, set to Android.
-      jest.replaceProperty(require('react-native').Platform, 'OS', 'android');
-      found = require('../src/api').API_URL;
-    });
-    return found;
+    check();
   } finally {
-    (globalThis as { __DEV__?: boolean }).__DEV__ = devBefore;
-    delete process.env.APC_API_URL;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
   }
 }
 
-/**
- * Runs babel.config.js over a line that reads the release's address.
- * @param url The address in the environment while it runs, or undefined for none.
- * @returns The code Babel gives back.
- */
-function bundled(url?: string): string {
-  if (url !== undefined) {
-    process.env.APC_API_URL = url;
-  }
-  try {
-    return transformSync('export const url = process.env.APC_API_URL;', {
-      configFile: './babel.config.js',
-      filename: 'api.ts',
-      babelrc: false,
-    })!.code;
-  } finally {
-    delete process.env.APC_API_URL;
-  }
-}
-
-// In development the app talks to the API on the computer's development port, which the Android emulator reaches at
-// 10.0.2.2, even when a release address is in the environment.
-test('Mobile: uses the computer’s development API in development', () => {
-  expect(apiUrl(true, 'http://192.168.0.10:3000')).toBe(`http://10.0.2.2:${DEV_SERVER_PORT}`);
+beforeEach(async () => {
+  await STORAGE.clear();
+  applyServer(null);
+  (NativeModules.ServerPin.pin as jest.Mock).mockClear();
 });
 
-// A release build uses the address it was built with, such as the home server's on the shop's Wi-Fi.
-test('Mobile: uses the address the release was built with', () => {
-  expect(apiUrl(false, 'http://192.168.0.10:3000')).toBe('http://192.168.0.10:3000');
+// Before pairing, a development build talks to the computer's development API, which the Android emulator reaches at
+// 10.0.2.2, and a release has no API at all; neither pins a certificate.
+test('Mobile: with no server paired, development uses the computer’s API and a release none', async () => {
+  let devUrl = '';
+  jest.isolateModules(() => {
+    // The module registry is fresh here, so the app reads this copy of React Native, set to Android.
+    jest.replaceProperty(require('react-native').Platform, 'OS', 'android');
+    devUrl = require('../src/api').apiUrl();
+  });
+  expect(devUrl).toBe(`http://10.0.2.2:${DEV_SERVER_PORT}`);
+
+  expect(await loadServer()).toBeNull();
+  as(false, () => expect(apiUrl()).toBe(''));
+  expect(NativeModules.ServerPin.pin).toHaveBeenLastCalledWith(null, null);
 });
 
-// Babel writes the release's address into the bundle, since the phone has no environment to read it from at run
-// time, and leaves the code as it is when none is set, as in development.
-test('Mobile: writes the release’s API address into the bundle', () => {
-  expect(bundled('https://apc.example.com')).toContain('"https://apc.example.com"');
-  expect(bundled()).toContain('process.env.APC_API_URL');
+// Keeps a server as the pairing does, reads it back as the app does when it starts, and checks its address is the
+// API's, in a release and in development, and its host and fingerprint go to the native side, which pins the
+// certificate; an IPv6 address goes without its brackets.
+test('Mobile: the paired server is kept, and the API and the pinning use it', async () => {
+  await saveServer(PAIRING);
+  expect(await loadServer()).toEqual(PAIRING);
+  as(false, () => expect(apiUrl()).toBe(PAIRING.url));
+  expect(apiUrl()).toBe(PAIRING.url);
+  expect(NativeModules.ServerPin.pin).toHaveBeenLastCalledWith('192.168.0.10', PAIRING.fingerprint);
+
+  applyServer({ ...PAIRING, url: 'https://[fe80::1]:3000' });
+  expect(NativeModules.ServerPin.pin).toHaveBeenLastCalledWith('fe80::1', PAIRING.fingerprint);
+  expect(apiUrl()).toBe('https://[fe80::1]:3000');
+});
+
+// Finds something kept that isn't a pairing, and checks the phone pairs again rather than failing to start.
+test('Mobile: a kept server that can’t be read counts as none', async () => {
+  await STORAGE.setItem(SERVER_STORAGE_KEY, '{not json');
+  expect(await loadServer()).toBeNull();
+  as(false, () => expect(apiUrl()).toBe(''));
 });

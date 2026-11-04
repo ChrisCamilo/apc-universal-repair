@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { csvExportName, exportedSummary, exportItems, exportScope } from '@apc/shared/item-csv';
-import { API_URL } from '../api';
+import { apiUrl } from '../api';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
 import { Switch } from '../Switch';
@@ -35,7 +35,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
   /** Fetches every item of the list, shares the file and says how many items it holds, or that it failed. */
   const submit = async () => {
     setExporting(true);
-    const exported = await exportItems(API_URL, query, { photos });
+    const exported = await exportItems(apiUrl(), query, { photos });
     if (!exported) {
       setExporting(false);
       toast.error('Não foi possível exportar os itens. Tente de novo.');
