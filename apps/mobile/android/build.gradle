@@ -19,3 +19,12 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// The libraries with C++ code (the camera's and Nitro's) build it with the CMake the app uses, 3.31 (see
+// app/build.gradle): with the default 3.22, ninja can't read their object files' long paths on Windows, and loops
+// re-running CMake.
+subprojects {
+    plugins.withId("com.android.library") {
+        android.externalNativeBuild.cmake.version = "3.31.6"
+    }
+}
