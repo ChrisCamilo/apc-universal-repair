@@ -1,9 +1,14 @@
 import { recipe, tv } from '../styles/tv.ts'
+import { SECTION_HEADING } from './CatalogTab.styles.ts'
 
 // The look of the parts a Catalog search by code found: a box in the soft accent, its parts clear at rest, the panel
-// fill on hover, and the chosen one (aria-checked) with the accent frame on the panel fill.
+// fill on hover, and the chosen one (aria-checked) with the accent frame on the panel fill. On a phone, no box: a heading
+// over the Inventory's cards, which keep their own look.
 
-/** The found parts: the box, the radio group and each part with its code, name and the vehicle it fits. */
+/**
+ * The found parts: the box, the radio group and each part with its code, name and the vehicle it fits; on a phone, the
+ * heading over the cards.
+ */
 export const partResults = recipe(
   'catalog.part-results',
   tv({
@@ -19,6 +24,10 @@ export const partResults = recipe(
       code: 'font-mono text-xs text-accent',
       name: 'min-w-0',
       fit: 'text-xs text-text-muted',
+      heading: SECTION_HEADING,
+    },
+    variants: {
+      phone: { true: { base: 'gap-2 rounded-none border-0 bg-transparent p-0 pt-2' } },
     },
   }),
   {
@@ -29,5 +38,6 @@ export const partResults = recipe(
     code: 'list.part.line.code',
     name: 'list.part.line.name',
     fit: 'list.part.fit',
+    heading: 'heading',
   },
 )

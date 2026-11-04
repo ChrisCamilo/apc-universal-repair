@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { ENGINE_SHEETS } from '@apc/shared/catalog'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
+import { TABLE_CARD_BREAKPOINT } from '@apc/shared/table'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import type { Item } from '@apc/shared/items'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
@@ -10,6 +12,7 @@ import '../fonts.ts'
 import '../index.css'
 import { themeCss } from '../theme.ts'
 import { CatalogTab } from './CatalogTab.tsx'
+import { PhoneHeaderContext, type PhoneHeader } from './phoneHeaderContext.ts'
 import { testItem, type FlatItem } from '@apc/shared/test-items'
 
 const OPALA_25 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-2.5']
@@ -61,11 +64,12 @@ function part(fields: Required<Pick<FlatItem, 'code' | 'name' | 'vehicleBrand' |
 
 /**
  * Answers the inventory request with the test parts and renders the Catalog once they are in.
+ * @param phone Whether to render it as a phone's Dashboard would, under its header.
  * @returns The rendered screen.
  */
-async function renderWithParts() {
+async function renderWithParts(phone = false) {
   vi.mocked(globalThis.fetch).mockResolvedValue(new Response(JSON.stringify({ items: PARTS, total: PARTS.length })))
-  const screen = await render(<CatalogTab />)
+  const screen = await render(phone ? <PhoneDashboard /> : <CatalogTab />)
   await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
   await new Promise((resolve) => setTimeout(resolve, 0))
   return screen
@@ -128,10 +132,10 @@ test('Web: brands and engines drive the tree and the sheet', async () => {
   await expect.element(screen.getByText(/Os veículos da Ford ainda não têm ficha técnica/)).toBeVisible()
 })
 
-// Lays the Catalog out in the app frame at 1280×720 and on a 360×780 phone, and checks the rail, the tree and the
-// sheet sit side by side on desktop, and on the phone the tiles sit above the tree two to a row with the sheet below,
-// nothing wider than the screen and the deepest engine name shown whole.
-test('Web: the Catalog lays out in columns on desktop and stacks on a phone', async () => {
+// Lays the Catalog out in the app frame at 1280×720 and at 720px, the narrowest width before a phone's, and checks the
+// rail, the tree and the sheet sit side by side on desktop, and at 720px the tiles sit above the tree in a row of four
+// with the sheet below, nothing wider than the screen and the deepest engine name shown whole.
+test('Web: the Catalog lays out in columns on desktop and stacks on a narrow screen', async () => {
   const screen = await render(
     <AppFrame navLabel="Seções do Dashboard" nav={null}>
       <CatalogTab />
@@ -144,13 +148,12 @@ test('Web: the Catalog lays out in columns on desktop and stacks on a phone', as
   expect(tree().left).toBeGreaterThan(rail().right)
   expect(sheet().left).toBeGreaterThan(tree().right)
 
-  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  await page.viewport(TABLE_CARD_BREAKPOINT, MIN_MOBILE_HEIGHT)
   expect(tree().top).toBeGreaterThan(rail().bottom)
   expect(sheet().top).toBeGreaterThan(tree().bottom)
   const tiles = screen.getByRole('radio').elements().map(box)
-  expect(tiles[0].top).toBe(tiles[1].top)
-  expect(tiles[2].top).toBeGreaterThan(tiles[0].top)
-  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+  expect(tiles[3].top).toBe(tiles[0].top)
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(TABLE_CARD_BREAKPOINT)
   const engine = screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' }).element().querySelector('.truncate')!
   expect(engine.scrollWidth).toBeLessThanOrEqual(engine.clientWidth)
 })
@@ -226,3 +229,89 @@ test('Web: the arrow keys move between the listed parts', async () => {
   await expect.element(parts.last()).toHaveFocus()
   await expect.element(screen.getByText('Chevrolet Opala 3.8', { exact: true })).toBeVisible()
 })
+
+// On a 360×780 phone, checks the Catalog opens on the brand lines, each with its letters and its models and sheets,
+// with no brand search, then taps Chevrolet and checks the header turns to the brand with a ← and the models' tree,
+// opens the tree down to the 4.1 engine and taps it, and checks its sheet shows under the path to it with each readout
+// named. ← goes back to the models, open on the engine just seen, and ← again to the brands, the header back to the
+// tab's name. Nothing gets wider than the screen.
+test('Web: on a phone the Catalog goes from a brand to an engine sheet and back', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(<PhoneDashboard />)
+  const lines = screen.getByTestId('catalog.catalog-tab.screen.brands.brand')
+  expect(lines.elements().map((line) => line.textContent)).toEqual([
+    'CHChevrolet3 modelos · 2 fichas técnicas',
+    'VWVolkswagen3 modelos · 1 ficha técnica',
+    'FIFiat3 modelos · 1 ficha técnica',
+    'FOFord3 modelos · sem ficha técnica ainda',
+  ])
+  await expect.element(screen.getByRole('heading', { name: 'Marcas · 4' })).toBeVisible()
+  await expect.element(screen.getByRole('searchbox', { name: 'Procure marca' })).not.toBeInTheDocument()
+
+  await screen.getByRole('button', { name: /^Chevrolet/ }).click()
+  await expect.element(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Chevrolet')
+  await expect.element(screen.getByRole('heading', { name: 'Modelos · 3' })).toBeVisible()
+  for (const name of ['Opala', 'Terceira geração', 'Diplomata', '1986']) {
+    await screen.getByRole('treeitem', { name, exact: name === 'Opala' }).getByText(name, { exact: true }).click()
+  }
+  await screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' }).click()
+  await expect.element(screen.getByRole('heading', { name: OPALA_41.title })).toBeVisible()
+  await expect.element(screen.getByText('Opala › Terceira geração › Diplomata › 1986')).toBeVisible()
+  const readouts = screen.getByTestId('catalog.catalog-tab.screen.readouts.readout')
+  expect(readouts.elements().map((readout) => readout.textContent)).toEqual(['Ano1986', 'Motor4.1 L', 'Cilindros6 CIL', 'TraçãoTRASEIRA'])
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+
+  await screen.getByRole('button', { name: 'Voltar aos modelos' }).click()
+  await expect.element(screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' })).toHaveAttribute('aria-selected', 'true')
+  await screen.getByRole('button', { name: 'Voltar às marcas' }).click()
+  await expect.element(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Catálogo')
+  await expect.element(screen.getByRole('button', { name: /^Voltar/ })).not.toBeInTheDocument()
+  expect(lines.elements()).toHaveLength(4)
+})
+
+// On a phone, searches a model only Fiat has and checks the brands narrow to Fiat and its tree to the model, then types
+// part codes and checks the parts show as the Inventory's cards under a heading, and a tap on one clears the search and
+// opens its engine's sheet, or, for a model without a sheet, its brand's models with the model pointed out and the
+// note.
+test('Web: on a phone the Catalog search narrows the brands and opens a part found by code', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await renderWithParts(true)
+  const search = screen.getByRole('searchbox', { name: 'Procure modelo ou código da peça' })
+  await search.fill('uno')
+  await expect.element(screen.getByRole('heading', { name: 'Marcas · 1' })).toBeVisible()
+  await screen.getByRole('button', { name: /^Fiat/ }).click()
+  await expect.element(screen.getByRole('heading', { name: 'Modelos · 1' })).toBeVisible()
+  await screen.getByRole('button', { name: 'Voltar às marcas' }).click()
+
+  await search.fill('fra1000')
+  await expect.element(screen.getByRole('heading', { name: 'Peças do estoque com esse código' })).toBeVisible()
+  const cards = screen.getByRole('table', { name: 'Peças do estoque com esse código' }).getByRole('row')
+  expect(cards.elements().map((card) => card.querySelector('code')!.textContent)).toEqual(['FRA-1000 · Cobreq', 'FRA-10002 · Cobreq'])
+  await cards.first().click()
+  await expect.element(screen.getByRole('heading', { name: OPALA_41.title })).toBeVisible()
+  await screen.getByRole('button', { name: 'Voltar aos modelos' }).click()
+  await expect.element(search).toHaveValue('')
+
+  await search.fill('esc-200')
+  await screen.getByRole('table', { name: 'Peças do estoque com esse código' }).getByRole('row').click()
+  await expect.element(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Ford')
+  await expect.element(screen.getByRole('treeitem', { name: 'Escort' })).toHaveAttribute('aria-current', 'true')
+  await expect.element(screen.getByText('Ford Escort', { exact: true })).toBeVisible()
+  await expect.element(screen.getByText(/ainda não tem ficha técnica no catálogo/)).toBeVisible()
+})
+
+/** The Catalog under a phone Dashboard's header: the tab's name, or a deeper screen's title with its ←. */
+function PhoneDashboard() {
+  const [header, setHeader] = useState<PhoneHeader | null>(null)
+  return (
+    <PhoneHeaderContext.Provider value={setHeader}>
+      {header && (
+        <button type="button" onClick={header.back.onClick}>
+          {header.back.label}
+        </button>
+      )}
+      <h1>{header?.title ?? 'Catálogo'}</h1>
+      <CatalogTab />
+    </PhoneHeaderContext.Provider>
+  )
+}
