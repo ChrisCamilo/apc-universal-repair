@@ -3,7 +3,8 @@ import { recipe, tv } from '../styles/tv.ts'
 
 // The look of the Dashboard on a phone (below `card:`), as in the Estoque mockup: the page scrolls as a whole, the open
 // tab's header on top, with the compact APC mark, the tab's name and the tab's "⋯", a bare 44px circle, and its
-// content under it, kept clear of the bottom bar. The bar stays fixed at the bottom of the screen, on the panel's fill
+// content under it, kept clear of the bottom bar. A deeper screen's header has its ← in place of the mark, closer to the
+// screen's edge and to the title. The bar stays fixed at the bottom of the screen, on the panel's fill
 // over a soft hairline, 80px tall and clear of the home indicator: the tabs, then Alertas and Conta, each an equal share (see BAR_ITEM). Alertas shows the
 // unread count in a badge on its pill's corner; Conta shows the user's initials on the accent in its pill.
 
@@ -24,6 +25,9 @@ export const phoneDashboard = recipe(
         'transition-colors hover:bg-panel-raised hover:text-accent focus-visible:shadow-ring',
       ],
       main: 'flex flex-1 flex-col px-4 pt-1 pb-4',
+    },
+    variants: {
+      back: { true: { header: 'gap-1 pl-1' } },
     },
   }),
   { base: '', header: 'header', title: 'header.title', more: 'header.more', main: 'main' },
