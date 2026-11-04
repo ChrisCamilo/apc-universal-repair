@@ -3,17 +3,19 @@
  */
 
 import React from 'react';
-import { Dimensions, StyleSheet, Text, TextInput } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { ENGINE_SHEETS } from '@apc/shared/catalog';
+import { ENGINE_SHEETS, NO_SHEET_MESSAGE } from '@apc/shared/catalog';
 import type { Item } from '@apc/shared/items';
-import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { CatalogTab } from '../src/dashboard/CatalogTab';
+import { PhoneHeaderContext, type PhoneHeader } from '../src/dashboard/phoneHeaderContext';
 import { themeStorage, ThemeProvider } from '../src/theme';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 
-const OPALA_25 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-2.5'];
+const OPALA_41 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1'];
+// What Android's back button calls.
+type BackListener = Parameters<typeof BackHandler.addEventListener>[1];
 // Parts in the inventory, for the code search: an engine the catalog has and one it lacks.
 const PARTS: Item[] = [
   part({
@@ -33,7 +35,7 @@ const PARTS: Item[] = [
 ];
 
 /**
- * Saves a style and mode, renders the Catalog inside a ThemeProvider and waits for it to load.
+ * Saves a style and mode, renders the Catalog under a header inside a ThemeProvider and waits for it to load.
  * @param style Style to start on.
  * @param mode Mode to start on.
  * @returns The rendered tree.
@@ -44,7 +46,7 @@ async function mount(style: Style, mode: Mode) {
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <ThemeProvider>
-        <CatalogTab />
+        <Harness />
       </ThemeProvider>,
     );
   });
@@ -122,102 +124,176 @@ beforeEach(async () => {
   await themeStorage.clear();
 });
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 for (const style of STYLES) {
   for (const mode of MODES) {
-    // Opens the Catalog in one style and mode and checks the chosen brand tile and the sheet's readouts take that
-    // combination's accent.
+    // Opens the Catalog in one style and mode and checks the brands' letters take that combination's accent, then
+    // opens the Opala's 4.1 engine and checks the "Ver ficha" of the chosen engine and the sheet's readouts take it too.
     test(`Mobile: the Catalog follows the ${style}/${mode} theme`, async () => {
       const { colors } = themes[style][mode];
       const tree = await mount(style, mode);
-      const chevrolet = tree.root.findAll((n) => typeof n.props.style === 'function' && n.props.accessibilityLabel === 'Chevrolet')[0];
-      expect(StyleSheet.flatten(chevrolet.props.style({ pressed: false })).borderColor).toBe(colors.accent);
-      const readout = tree.root.findAll((n) => n.type === Text && n.props.children === OPALA_25.specs[1])[0];
-      expect(StyleSheet.flatten(readout.props.style).color).toBe(colors.accent);
+      expect(StyleSheet.flatten(textNode(tree, 'CH').props.style).color).toBe(colors.accent);
+      await openOpala41(tree);
+      expect(StyleSheet.flatten(textNode(tree, OPALA_41.specs[1]).props.style).color).toBe(colors.accent);
+      await press(tree, 'Voltar aos modelos');
+      expect(StyleSheet.flatten(textNode(tree, 'Ver ficha', 1).props.style).backgroundColor).toBe(colors.accent);
     });
   }
 }
 
-// Opens the Catalog and checks it starts on Chevrolet with its first engine chosen and its sheet shown, then picks the
-// other Opala engine, Volkswagen and Ford, and checks the tree and the sheet follow, Ford saying it has no sheet yet.
-test('Mobile: brands and engines drive the tree and the sheet', async () => {
+// Checks the Catalog opens on the brand lines, each with its letters and its models and sheets, with no brand search,
+// then presses Chevrolet and checks the header turns to the brand with a ← and the tree's engines say "Ver ficha",
+// opens the 4.1 engine and checks its sheet shows under the path to it with each readout named. The ← goes back to
+// the models, open on the engine just seen, and Android's back button to the brands, where it no longer stays in the
+// tab.
+test('Mobile: the Catalog goes from a brand to an engine sheet and back', async () => {
+  const backs = backButton();
   const tree = await mount('eighties', 'night');
-  expect(byRole(tree, 'radio', 'Chevrolet').props.accessibilityState).toMatchObject({ checked: true });
-  expect(byRole(tree, 'treeitem', '2.5 L 4 cilindros').props.accessibilityState).toMatchObject({ selected: true });
-  expect(shows(tree, OPALA_25.title)).toBe(true);
-  expect(shows(tree, OPALA_25.summary)).toBe(true);
+  const lines = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'catalog.catalog-tab.screen.brands.brand');
+  expect(lines().map((n) => n.props.accessibilityLabel)).toEqual([
+    'Chevrolet, 3 modelos · 2 fichas técnicas',
+    'Volkswagen, 3 modelos · 1 ficha técnica',
+    'Fiat, 3 modelos · 1 ficha técnica',
+    'Ford, 3 modelos · sem ficha técnica ainda',
+  ]);
+  expect(['CH', 'VW', 'FI', 'FO'].every((mark) => shows(tree, mark))).toBe(true);
+  expect(shows(tree, 'Marcas · 4')).toBe(true);
+  expect(tree.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Procure marca')).toHaveLength(0);
+  expect(backs.pressed()).toBeNull();
 
-  await press(tree, '4.1 L 6 cilindros');
-  expect(shows(tree, ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1'].title)).toBe(true);
+  await openOpala41(tree);
+  expect(shows(tree, OPALA_41.title)).toBe(true);
+  expect(shows(tree, 'Opala › Terceira geração › Diplomata › 1986')).toBe(true);
+  expect(['Ano', 'Motor', 'Cilindros', 'Tração'].every((label) => shows(tree, label))).toBe(true);
+  expect(title(tree)).toBe('Chevrolet');
 
-  await press(tree, 'Volkswagen');
-  expect(byRole(tree, 'tree', 'Modelos Volkswagen')).toBeDefined();
-  expect(byRole(tree, 'treeitem', '1.8 L 4 cilindros').props.accessibilityState).toMatchObject({ selected: true });
-  expect(shows(tree, ENGINE_SHEETS['volkswagen-gol-gts-1989-1.8'].title)).toBe(true);
-
-  await press(tree, 'Ford');
-  expect(byRole(tree, 'tree', 'Modelos Ford')).toBeDefined();
-  expect(shows(tree, 'Nenhuma ficha cadastrada')).toBe(true);
+  await press(tree, 'Voltar aos modelos');
+  expect(byRole(tree, 'treeitem', '4.1 L 6 cilindros').props.accessibilityState).toMatchObject({ selected: true });
+  expect(shows(tree, 'Modelos · 3')).toBe(true);
+  expect(textNodes(tree, 'Ver ficha')).toHaveLength(2);
+  await ReactTestRenderer.act(async () => expect(backs.pressed()).toBe(true));
+  expect(lines()).toHaveLength(4);
+  expect(title(tree)).toBe('Catálogo');
+  expect(backs.pressed()).toBeNull();
 });
 
-// Lays the brand tiles out on a 390dp phone and on a 768dp tablet, and checks they sit two to a row on the phone and
-// four on the tablet, and the tree scrolls inside its own height.
-test('Mobile: brand tiles sit two to a row on a phone and four on a tablet', async () => {
-  const before = Dimensions.get('window');
-  const screen = (width: number, height: number) =>
-    ReactTestRenderer.act(() => Dimensions.set({ window: { width, height, scale: 2, fontScale: 1 }, screen: { width, height, scale: 2, fontScale: 1 } }));
-  /** Counts the tiles in each row of the brand group. */
-  const rows = (tree: ReactTestRenderer.ReactTestRenderer) =>
-    tree.root
-      .find((n) => typeof n.type === 'string' && n.props.accessibilityRole === 'radiogroup')
-      .findAll((n) => typeof n.type === 'string' && StyleSheet.flatten(n.props.style)?.flexDirection === 'row')
-      .map((row) => row.findAll((n) => typeof n.type === 'string' && n.props.accessibilityRole === 'radio').length);
-
-  await screen(MOBILE_DESIGN_WIDTH, MOBILE_DESIGN_HEIGHT);
-  const tree = await mount('gt4', 'day');
-  expect(rows(tree)).toEqual([2, 2]);
-  expect(StyleSheet.flatten(byRole(tree, 'tree', 'Modelos Chevrolet').props.style)).toMatchObject({ maxHeight: 384 });
-  await screen(768, 1024);
-  expect(rows(tree)).toEqual([4]);
-  await screen(before.width, before.height);
-});
-
-// Narrows the brands by name, looks for a model only another brand has and one no brand has, and checks the tiles,
-// the brand and the tree follow, the tree saying when no brand has the model.
-test('Mobile: the brand and model searches narrow the tiles and the tree', async () => {
-  const tree = await mount('eighties', 'night');
-  await search(tree, 'Procure marca', 'VOLKS');
-  const tiles = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.accessibilityRole === 'radio').map((n) => n.props.accessibilityLabel);
-  expect(tiles()).toEqual(['Volkswagen']);
-  await search(tree, 'Procure marca', '');
-  expect(tiles()).toHaveLength(4);
-
-  await search(tree, 'Procure modelo ou código da peça', 'uno');
-  expect(byRole(tree, 'radio', 'Fiat').props.accessibilityState).toMatchObject({ checked: true });
-  expect(shows(tree, ENGINE_SHEETS['fiat-uno-mille-1991-1.0'].title)).toBe(true);
-  await search(tree, 'Procure modelo ou código da peça', 'kombi');
-  expect(shows(tree, 'Nenhum modelo com esse nome')).toBe(true);
-});
-
-// Types a part code without its separator and checks the matching parts are listed with the exact code first, the
-// first part's vehicle is revealed with its model pointed out and its engine's sheet, a part for an engine the catalog
-// lacks says so, and clearing the search drops the list.
-test('Mobile: a part code search lists the parts and reveals their vehicles', async () => {
+// Searches a model only Fiat has and checks the brands narrow to Fiat and its tree to the model, then types part codes
+// and checks the parts show as the Inventory's cards under a heading, and a press on one clears the search and opens
+// its engine's sheet, or, for a model without a sheet, its brand's models with the model pointed out and the note.
+test('Mobile: the Catalog search narrows the brands and opens a part found by code', async () => {
   (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: PARTS, total: PARTS.length }) });
   const tree = await mount('fiat90', 'day');
-  await search(tree, 'Procure modelo ou código da peça', 'fra1000');
-  const parts = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'catalog.part-results.list.part');
-  expect(parts().map((n) => n.props.accessibilityLabel)).toEqual([
-    'FRA-1000 Pastilha de freio dianteira, Serve no Chevrolet Opala 4.1',
-    'FRA-10002 Pastilha de freio traseira, Chevrolet Opala 3.8 (motor ainda sem ficha no catálogo)',
-  ]);
-  expect(parts()[0].props.accessibilityState).toMatchObject({ checked: true });
-  expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityValue).toEqual({ text: 'em destaque' });
-  expect(byRole(tree, 'treeitem', '4.1 L 6 cilindros').props.accessibilityState).toMatchObject({ selected: true });
-  expect(shows(tree, ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1'].title)).toBe(true);
+  await search(tree, 'Procure modelo ou código da peça', 'uno');
+  expect(shows(tree, 'Marcas · 1')).toBe(true);
+  await press(tree, 'Fiat, 3 modelos · 1 ficha técnica');
+  expect(shows(tree, 'Modelos · 1')).toBe(true);
+  await press(tree, 'Voltar às marcas');
 
-  await press(tree, parts()[1].props.accessibilityLabel);
+  await search(tree, 'Procure modelo ou código da peça', 'fra1000');
+  expect(shows(tree, 'Peças do estoque com esse código')).toBe(true);
+  const cards = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'common.data-table.table.row');
+  expect(cards()).toHaveLength(2);
+  expect(shows(tree, 'FRA-1000 · Cobreq')).toBe(true);
+  expect(shows(tree, 'FRA-10002 · Cobreq')).toBe(true);
+  await ReactTestRenderer.act(async () => pressable(cards()[0]).props.onPress());
+  expect(shows(tree, OPALA_41.title)).toBe(true);
+  await press(tree, 'Voltar aos modelos');
+  expect(tree.root.find((n) => n.type === TextInput).props.value).toBe('');
+
+  await search(tree, 'Procure modelo ou código da peça', 'fra10002');
+  await ReactTestRenderer.act(async () => pressable(cards()[0]).props.onPress());
+  expect(title(tree)).toBe('Chevrolet');
+  expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityValue).toEqual({ text: 'em destaque' });
   expect(shows(tree, 'Chevrolet Opala 3.8')).toBe(true);
-  await search(tree, 'Procure modelo ou código da peça', '');
-  expect(parts()).toHaveLength(0);
-  expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityValue?.text).toBeUndefined();
+  expect(shows(tree, NO_SHEET_MESSAGE)).toBe(true);
 });
+
+/**
+ * Stands in for Android's back button: keeps the listener the Catalog adds, while it is added.
+ * @returns Presses the button, giving what the listener answered, or null when none listens.
+ */
+function backButton() {
+  let listener: BackListener | null = null;
+  jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_event, handler) => {
+    listener = handler;
+    return {
+      remove: () => {
+        if (listener === handler) {
+          listener = null;
+        }
+      },
+    };
+  });
+  return { pressed: () => (listener ? listener({} as Parameters<BackListener>[0]) : null) };
+}
+
+/**
+ * Opens Chevrolet, the Opala's tree down to its 1986 engines, and the 4.1's sheet.
+ * @param tree Rendered tree.
+ */
+async function openOpala41(tree: ReactTestRenderer.ReactTestRenderer) {
+  await press(tree, 'Chevrolet, 3 modelos · 2 fichas técnicas');
+  for (const name of ['Opala', 'Terceira geração 1980–1992', 'Diplomata', '1986', '4.1 L 6 cilindros']) {
+    await press(tree, name);
+  }
+}
+
+/**
+ * Finds the Pressable that holds a host element.
+ * @param node A host element.
+ * @returns The closest Pressable above it, or the node itself when it is pressable.
+ */
+function pressable(node: ReactTestRenderer.ReactTestInstance): ReactTestRenderer.ReactTestInstance {
+  let current: ReactTestRenderer.ReactTestInstance | null = node;
+  while (current && typeof current.props.onPress !== 'function') {
+    current = current.parent;
+  }
+  return current!;
+}
+
+/**
+ * Finds the Texts showing a text.
+ * @param tree Rendered tree.
+ * @param text Exact text.
+ * @returns The Text elements.
+ */
+function textNodes(tree: ReactTestRenderer.ReactTestRenderer, text: string): ReactTestRenderer.ReactTestInstance[] {
+  return tree.root.findAll((n) => n.type === Text && n.props.children === text);
+}
+
+/**
+ * Finds a Text showing a text.
+ * @param tree Rendered tree.
+ * @param text Exact text.
+ * @param index Which of the Texts showing it, in order.
+ * @returns The Text element.
+ */
+function textNode(tree: ReactTestRenderer.ReactTestRenderer, text: string, index = 0): ReactTestRenderer.ReactTestInstance {
+  return textNodes(tree, text)[index];
+}
+
+/**
+ * Reads the header's title.
+ * @param tree Rendered tree.
+ * @returns The title the harness shows.
+ */
+function title(tree: ReactTestRenderer.ReactTestRenderer): string {
+  return tree.root.find((n) => n.type === Text && n.props.accessibilityRole === 'header' && n.props.testID === 'harness.title').props.children;
+}
+
+/** The Catalog under the Dashboard's header: the tab's name, or a deeper screen's title with its ←. */
+function Harness() {
+  const [header, setHeader] = React.useState<PhoneHeader | null>(null);
+  return (
+    <PhoneHeaderContext.Provider value={setHeader}>
+      {header && <Pressable accessibilityLabel={header.back.label} onPress={header.back.onPress} />}
+      <Text accessibilityRole="header" testID="harness.title">
+        {header?.title ?? 'Catálogo'}
+      </Text>
+      <CatalogTab />
+    </PhoneHeaderContext.Provider>
+  );
+}
