@@ -24,8 +24,8 @@ test.use({ stock: { items: ITEMS } });
 
 // Opens the Catalog tab and checks it starts on Chevrolet with its first engine's sheet, then picks the other Opala
 // engine, Fiat and Ford, and checks the sheet follows each choice, Ford saying it has no sheet yet. Nothing scrolls
-// sideways at either screen size.
-test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_TAGS.catalog], annotation: CATALOG_ISSUE }, async ({ page }) => {
+// sideways.
+test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/inventory");
   await dashboard(page).tab("catalog").click();
@@ -48,7 +48,7 @@ test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_T
 // Narrows the brands by name, looks for a model another brand has, then types a part code without its separator and
 // checks the part is listed and reveals its vehicle, and a part for a model without a sheet says so; clearing the
 // search drops the part list.
-test("Web: the Catalog search finds brands, models and inventory parts", { tag: [TEST_TAGS.catalog], annotation: CATALOG_ISSUE }, async ({ page }) => {
+test("Web: the Catalog search finds brands, models and inventory parts", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/catalog");
   await tab.brandSearch.fill("fia");
@@ -70,5 +70,54 @@ test("Web: the Catalog search finds brands, models and inventory parts", { tag: 
   await expect(page.getByText("Ford Escort", { exact: true })).toBeVisible();
   await tab.search.fill("");
   await expect(tab.parts).toBeHidden();
+  await expect(page).not.toScrollSideways();
+});
+
+// On a phone, opens the Catalog on its brand lines, taps Chevrolet and checks the header turns to the brand with a ←,
+// opens the Opala down to its 1986 engines and taps the 4.1, and checks its sheet shows under the path to it. ← goes
+// back to the models, open on the engine just seen, and ← again to the brands under the tab's name. The bottom bar
+// stays, and nothing scrolls sideways.
+test("Web: on a phone the Catalog goes from a brand to an engine sheet and back", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
+  const tab = catalog(page);
+  const shell = dashboard(page);
+  await page.goto("/catalog");
+  await expect(tab.brandLines).toHaveCount(4);
+  await expect(tab.brandSearch).toBeHidden();
+
+  await tab.brandLine("Chevrolet").click();
+  await expect(tab.title).toHaveText("Chevrolet");
+  for (const name of ["Opala", "Terceira geração", "Diplomata", "1986"]) {
+    await tab.model(name).click();
+  }
+  await tab.model("4.1 L 6 cilindros").click();
+  await expect(tab.sheet("chevrolet-opala-diplomata-1986-4.1")).toBeVisible();
+  await expect(page.getByText("Opala › Terceira geração › Diplomata › 1986")).toBeVisible();
+  await expect(shell.bar).toBeVisible();
+  await expect(page).not.toScrollSideways();
+
+  await tab.back("Voltar aos modelos").click();
+  await expect(tab.model("4.1 L 6 cilindros")).toHaveAttribute("aria-selected", "true");
+  await tab.back("Voltar às marcas").click();
+  await expect(shell.title("catalog")).toBeVisible();
+  await expect(tab.brandLines).toHaveCount(4);
+});
+
+// On a phone, types a part code without its separator and checks the part shows as an Inventory card, and a tap on it
+// opens its engine's sheet; then a part for a model without a sheet opens its brand's models with the note.
+test("Web: on a phone the Catalog search opens a part found by code", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
+  const tab = catalog(page);
+  await page.goto("/catalog");
+  await tab.search.fill("fra1000");
+  await expect(tab.partCards).toHaveCount(1);
+  await expect(tab.partCards).toContainText("Pastilha de freio dianteira");
+  await tab.partCards.click();
+  await expect(tab.sheet("chevrolet-opala-diplomata-1986-4.1")).toBeVisible();
+
+  await tab.back("Voltar aos modelos").click();
+  await tab.search.fill("esc200");
+  await tab.partCards.click();
+  await expect(tab.title).toHaveText("Ford");
+  await expect(tab.model("Escort")).toHaveAttribute("aria-current", "true");
+  await expect(page.getByText("Ford Escort", { exact: true })).toBeVisible();
   await expect(page).not.toScrollSideways();
 });
