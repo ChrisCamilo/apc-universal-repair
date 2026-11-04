@@ -16,14 +16,17 @@ const OPEN_ANIMATION = LayoutAnimation.create(scales.motion.durationMs, 'easeInE
 // press opens or closes a branch, its chevron turning and its children sliding in; an empty branch (data still
 // to come) shows no chevron. A press on a leaf selects it and hands it to onSelect, and the selected leaf takes
 // the accent with a rule on its left, glowing where the style has a glow; pressing a row shows what hover shows
-// on the web. Each level hangs from a hairline guide, and a divider stands between the top-level models. With
+// on the web. A divider stands between the top-level models. With
 // reduced motion, branches open and the chevron turns at once. The tree scrolls inside its own height, set
 // through style, and long labels are cut short on one line. A row can also be pointed out, such as the model of a
 // part found by its code: it takes the accent like the selected leaf, and screen readers say it is "em destaque".
+// As on the web's phone layout, the rows are 48px tall, a finger's height, and each level is indented 16px with no
+// guide; a tag at the right of each leaf, such as "Ver ficha", can say what pressing it does, filled in the accent on
+// the selected one.
 
 type TreeItemProps = { node: TreeNode; level: number; tree: TreeState };
 // What every item needs from the tree around it.
-type TreeState = { expanded: ReadonlySet<string>; selected?: string; highlighted?: string; activate: (node: TreeNode) => void };
+type TreeState = { expanded: ReadonlySet<string>; selected?: string; highlighted?: string; leafTag?: string; activate: (node: TreeNode) => void };
 type TreeViewProps = {
   /** Accessible name of the tree, e.g. "Modelos Chevrolet". */
   label: string;
@@ -36,11 +39,13 @@ type TreeViewProps = {
   highlighted?: string;
   /** Branches open at first; defaults to the ones above the selected leaf. */
   defaultExpanded?: string[];
+  /** A tag at the right of each leaf that says what pressing it does, e.g. "Ver ficha". */
+  leafTag?: string;
   /** Height of the tree, which scrolls inside it, e.g. { maxHeight: 380 }. */
   style?: ViewStyle;
 };
 
-export function TreeView({ label, nodes, selected, onSelect, highlighted, defaultExpanded, style }: TreeViewProps) {
+export function TreeView({ label, nodes, selected, onSelect, highlighted, defaultExpanded, leafTag, style }: TreeViewProps) {
   const reduced = useReducedMotion();
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(defaultExpanded ?? (selected ? ancestors(nodes, selected) : [])),
@@ -67,7 +72,7 @@ export function TreeView({ label, nodes, selected, onSelect, highlighted, defaul
     });
   };
 
-  const tree: TreeState = { expanded, selected, highlighted, activate };
+  const tree: TreeState = { expanded, selected, highlighted, leafTag, activate };
   const { styles, ids } = useStyles();
   return (
     <ScrollView role="tree" accessibilityLabel={label} nestedScrollEnabled style={[styles.tree, style]} testID={ids.tree}>
@@ -117,6 +122,11 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
         {node.detail && (
           <Text style={styles.detail} testID={ids.detail}>
             {node.detail}
+          </Text>
+        )}
+        {leaf && tree.leafTag && (
+          <Text style={[styles.tag, selected && styles.tagActive]} testID={ids.tag}>
+            {tree.leafTag}
           </Text>
         )}
       </Pressable>

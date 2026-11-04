@@ -82,6 +82,19 @@ function rows(tree: ReactTestRenderer.ReactTestRenderer): string[] {
 }
 
 /**
+ * Finds the row an element sits in.
+ * @param node An element inside a row.
+ * @returns The row's Pressable.
+ */
+function pressableOf(node: ReactTestRenderer.ReactTestInstance): ReactTestRenderer.ReactTestInstance {
+  let current: ReactTestRenderer.ReactTestInstance | null = node;
+  while (current && !(typeof current.props.style === 'function' && current.props.role === 'treeitem')) {
+    current = current.parent;
+  }
+  return current!;
+}
+
+/**
  * Reads a row's style at rest and the color of its label.
  * @param tree Rendered tree.
  * @param name The row's accessible name.
@@ -197,6 +210,24 @@ test('Mobile: long labels stay on one line and the tree scrolls in its own heigh
   const root = tree.root.find((n) => n.props.role === 'tree' && typeof n.type === 'string');
   expect(StyleSheet.flatten(root.props.style)).toMatchObject(OWNER_STYLE);
   expect(root.props.nestedScrollEnabled).toBe(true);
+});
+
+// Opens the tree on the selected engine with a "Ver ficha" tag, and checks every row is 48px tall, each level is
+// indented 16px with no guide, only the engines carry the tag, which their names leave out, and the selected engine's
+// tag is filled in the accent while the other's is outlined.
+test('Mobile: the rows are a finger tall, indented by level, and the engines say what a press does', async () => {
+  const { colors } = themes.gt4.day;
+  const tree = await mount('gt4', 'day', <TreeView label="Modelos" nodes={MODELS} selected={LEAF} onSelect={() => {}} leafTag="Ver ficha" />);
+  const rowNodes = tree.root.findAll((n) => typeof n.props.style === 'function' && n.props.role === 'treeitem');
+  expect(rowNodes.every((node) => StyleSheet.flatten(node.props.style({ pressed: false })).minHeight === 48)).toBe(true);
+  const groups = tree.root.findAll((n) => typeof n.type === 'string' && n.props.role === 'group');
+  expect(groups.map((group) => StyleSheet.flatten(group.props.style))).toEqual(groups.map(() => ({ paddingLeft: 16 })));
+  const tags = tree.root.findAll((n) => n.type === Text && n.props.children === 'Ver ficha');
+  expect(tags.map((tag) => pressableOf(tag).props.accessibilityLabel)).toEqual(['2.5 L 4 cilindros', '4.1 L 6 cilindros']);
+  const [outlined, filled] = tags.map((tag) => StyleSheet.flatten(tag.props.style));
+  expect(filled).toMatchObject({ backgroundColor: colors.accent, color: colors.onAccent });
+  expect(outlined.backgroundColor).toBeUndefined();
+  expect(outlined.borderColor).toBe(colors.hairline);
 });
 
 // Points out a model and checks its row takes the accent like the selected leaf and is read out as "em destaque",
