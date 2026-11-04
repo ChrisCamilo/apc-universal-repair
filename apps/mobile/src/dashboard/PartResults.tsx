@@ -1,50 +1,82 @@
-import { Pressable, View, Text as NativeText } from 'react-native';
-import { itemFit, type FoundPart, type PartResults as Results } from '@apc/shared/catalog';
+import { Text as RNText, View } from 'react-native';
+import type { ComponentProps } from 'react';
+import { type FoundPart, type PartResults as Results } from '@apc/shared/catalog';
+import { itemCardDetails, stockTint } from '@apc/shared/items';
+import { photoAddress } from '@apc/shared/photos';
+import { API_URL } from '../api';
+import { DataTable, TableThumbnail } from '../DataTable';
 import { Text } from '../Typography';
+import { CardTitle, StockQuantity } from './ItemCard';
 import { useStyles } from './PartResults.styles';
 
-// The inventory parts a Catalog search by code found, the same as the web: a tinted box above the tree with each
-// brand of an item whose code matched, or its original code, with the code, the item's name and the vehicle it fits
-// (of several, the one the catalog knows best and how many more). Choosing one reveals that vehicle in the tree; the
-// chosen part has the accent frame. The parts are a radio group with one always chosen; when more parts matched than
+// The inventory parts a Catalog search by code found, the same as the web on a phone (the "Catálogo no celular"
+// mockup): the Inventory's cards under a heading, each brand of an item whose code matched, or its original code, with
+// its photo, its name, the code found with its part brand, where it fits, where it is and its price, and its quantity
+// with its stock status, tinted by it. A press on one opens its vehicle (see CatalogTab). When more parts matched than
 // fit, a line says how many more.
+
+// A found part's card, the columns of the Inventory's card: its photo, its name, code and details, and its quantity.
+const CARD_COLUMNS: ComponentProps<typeof DataTable<FoundPart>>['columns'] = [
+  {
+    key: 'photo',
+    header: 'Foto',
+    card: 'thumb',
+    cell: (part) => {
+      const photo = partBrand(part).photos[0];
+      return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, API_URL)} label={`Foto de ${part.item.name}`} />;
+    },
+  },
+  {
+    key: 'name',
+    header: 'Item',
+    card: 'main',
+    cell: (part) => (
+      <View>
+        <CardTitle name={part.item.name} code={`${part.code} · ${partBrand(part).partBrand}`} details={itemCardDetails(part.item)} />
+      </View>
+    ),
+  },
+  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (part) => <StockQuantity {...part.item} /> },
+];
 
 type PartResultsProps = {
   results: Results;
-  /** The chosen part's id, its brand's. */
-  chosen?: string;
   onChoose: (part: FoundPart) => void;
 };
 
-export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
+/**
+ * Finds the brand of a found part's item whose code matched, or its first brand when an original code matched.
+ * @param part A found part.
+ * @returns The item's brand.
+ */
+function partBrand({ id, item }: FoundPart) {
+  return item.brands.find((brand) => brand.id === id) ?? item.brands[0];
+}
+
+export function PartResults({ results, onChoose }: PartResultsProps) {
   const { styles, ids } = useStyles();
   const { parts, more } = results;
   return (
     <View style={styles.box} testID={ids.box}>
+      <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
+        {parts.length === 1 ? 'Peça do estoque com esse código' : 'Peças do estoque com esse código'}
+      </RNText>
       <Text size="sm" tone="muted">
-        {parts.length === 1 ? 'Peça do estoque com esse código:' : 'Peças do estoque com esse código:'}
+        Toque na peça para abrir o veículo dela no catálogo.
       </Text>
-      <View accessibilityRole="radiogroup" accessibilityLabel="Peças do estoque com esse código" style={styles.list} testID={ids.list}>
-        {parts.map((part) => (
-          <Pressable
-            key={part.id}
-            accessibilityRole="radio"
-            accessibilityLabel={`${part.code} ${part.item.name}, ${itemFit(part.item)}`}
-            accessibilityState={{ checked: part.id === chosen }}
-            onPress={() => onChoose(part)}
-            style={({ pressed }) => [styles.part, pressed && styles.partPressed, part.id === chosen && styles.partChosen]}
-            testID={ids.part}
-          >
-            <View style={styles.line} testID={ids.line}>
-              <NativeText style={styles.code} testID={ids.code}>{part.code}</NativeText>
-              <Text size="sm">{part.item.name}</Text>
-            </View>
-            <Text size="sm" tone="muted">
-              {itemFit(part.item)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <DataTable
+        label="Peças do estoque com esse código"
+        columns={CARD_COLUMNS}
+        rows={parts}
+        rowKey={(part) => part.id}
+        rowStatus={(part) => stockTint(part.item)}
+        onRowOpen={onChoose}
+        sort={null}
+        onSortChange={() => {}}
+        unsortedLabel=""
+        empty={null}
+        sortSelect={false}
+      />
       {more > 0 && (
         <Text size="sm" tone="muted">
           {`Mais ${more}. Digite mais do código para afinar.`}

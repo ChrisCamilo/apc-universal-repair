@@ -1,148 +1,207 @@
-import { useState } from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { BackHandler, Pressable, ScrollView, Text as RNText, View } from 'react-native';
 import {
-  brandsNamed,
-  brandWithModel,
+  brandSummary,
   CATALOG,
+  CATALOG_HOME,
   ENGINE_SHEETS,
+  ENGINE_SPEC_LABELS,
+  enginePath,
   findParts,
-  firstSheet,
-  locatePart,
   modelsNamed,
   NO_SHEET_MESSAGE,
-  revealedVehicle,
+  partScreen,
+  screenBack,
+  screenHeader,
+  type CatalogScreen,
   type FoundPart,
 } from '@apc/shared/catalog';
+import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
 import { EmptyState } from '../EmptyState';
 import { FieldScrollView } from '../FieldScrollView';
+import { Icon } from '../Icon';
 import { ImageFrame } from '../ImageFrame';
 import { Panel } from '../Panel';
-import { SelectableTileGroup } from '../SelectableTile';
 import { SearchField } from '../TextField';
+import { useTheme } from '../theme';
 import { TreeView } from '../TreeView';
 import { Heading, NumericReadout, Text } from '../Typography';
 import { useItems } from '../inventory/useItems';
-import { TILE_COLUMNS, useStyles, WIDE_SCREEN } from './CatalogTab.styles';
+import { useStyles } from './CatalogTab.styles';
 import { PartResults } from './PartResults';
+import { usePhoneHeader } from './phoneHeaderContext';
 
-// The Catalog tab, the same as the web on a narrow screen: the brand tiles in rows (two on a phone, four from the
-// web's sm width), the chosen brand's model tree, which scrolls inside its own height, and below it the chosen
-// engine's sheet. A brand opens on its first engine; one with no engine yet says so where the sheet goes. The data
-// is the mocked catalog of @apc/shared/catalog. The searches work as on the web: the one above the tiles narrows the
-// brands by name; the one above the tree lists the inventory parts with that code (3+ letters or digits) and
-// reveals the chosen part's vehicle, or a note when the catalog has no sheet for it, and otherwise narrows the tree by
-// model name, moving to the first brand that has the model. The tab scrolls inside itself, since the screen doesn't.
+// The Catalog tab, the same as the web's on a phone: a stack of screens, as in the "Catálogo no celular" mockup (see
+// CatalogScreen in @apc/shared/catalog). The brands, each on a line with how many models and sheets it has; a brand's
+// models, as a tree whose engines say "Ver ficha"; and an engine's sheet under the path to it, with its photo and its
+// readouts. A screen past the brands puts its brand's name and a ← in the header, opens at its top, and Android's back
+// button goes back a screen too, before it leaves the tab. The search above the brands and the models looks for the
+// inventory parts with that code (3+ letters or digits), listed as the Inventory's cards, and a press on one clears it
+// and opens the part's engine sheet, or its brand's models with its model pointed out and a note when the catalog has
+// no sheet for it. Otherwise it narrows the brands to the ones with a model of that name, and the tree to those models.
+// The data is the mocked catalog of @apc/shared/catalog.
 
 export function CatalogTab() {
-  const { width } = useWindowDimensions();
+  const { colors } = useTheme();
   const { styles, ids } = useStyles();
   const state = useItems();
+  const setHeader = usePhoneHeader();
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const items = state.status === 'ready' ? state.items : [];
-  const [brandQuery, setBrandQuery] = useState('');
+  const [screen, setScreen] = useState<CatalogScreen>(CATALOG_HOME);
   const [query, setQuery] = useState('');
-  const [brandId, setBrandId] = useState(CATALOG[0].id);
-  const [engine, setEngine] = useState(() => firstSheet(CATALOG[0].models));
-  const [part, setPart] = useState<FoundPart | null>(null);
-  // Bumped to draw the tree again, open on the engine of a part just chosen.
-  const [revealed, setRevealed] = useState(0);
-  const brand = CATALOG.find((b) => b.id === brandId)!;
   const results = findParts(items, query);
   const searchingParts = results.parts.length > 0;
-  // The vehicle of the chosen part the catalog shows: the one it knows best, of a part of several.
-  const vehicle = part && revealedVehicle(part.item);
-  const location = searchingParts && vehicle ? locatePart(vehicle) : null;
-  const models = modelsNamed(brand.models, searchingParts ? '' : query);
-  const sheet = engine ? ENGINE_SHEETS[engine] : undefined;
-  // A part for a model the catalog has no sheet for says so, instead of showing another vehicle.
-  const missingVehicle = location && vehicle?.vehicleModel && !location.engineId ? `${vehicle.vehicleBrand} ${vehicle.vehicleModel}` : null;
+  const modelQuery = searchingParts ? '' : query;
 
-  /** Opens a brand on its first engine. */
-  const openBrand = (id: string) => {
-    setBrandId(id);
-    setEngine(firstSheet(CATALOG.find((b) => b.id === id)!.models));
-  };
-
-  /** Reveals a part's vehicle: its brand, its engine, and the tree open on them. */
-  const choosePart = (chosen: FoundPart) => {
-    setPart(chosen);
-    const found = locatePart(revealedVehicle(chosen.item));
-    if (found) {
-      setBrandId(found.brandId);
-      setEngine(found.engineId ?? (found.modelId ? undefined : firstSheet(CATALOG.find((b) => b.id === found.brandId)!.models)));
-      setRevealed((count) => count + 1);
-    }
-  };
-
-  /** Looks for parts by code first, otherwise narrows the tree by model name. */
-  const search = (text: string) => {
-    setQuery(text);
-    const found = findParts(items, text);
-    if (found.parts.length > 0) {
-      choosePart(found.parts[0]);
+  // Each screen opens at its top, with its title and ← in the header, and the back button goes back a screen; the
+  // brands keep the tab's name and let the back button leave.
+  useEffect(() => {
+    scroll.current?.scrollTo({ y: 0, animated: false });
+    const { title, back } = screenHeader(screen);
+    const before = screenBack(screen);
+    if (!back || !before) {
+      setHeader(null);
       return;
     }
-    setPart(null);
-    const withModel = text.trim() ? brandWithModel(brandId, text) : null;
-    if (withModel && withModel !== brandId) {
-      openBrand(withModel);
+    setHeader({ title, back: { label: back, onPress: () => setScreen(before) } });
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setScreen(before);
+      return true;
+    });
+    return () => {
+      subscription.remove();
+      setHeader(null);
+    };
+  }, [screen, setHeader]);
+
+  /** Opens the screen a part leads to, its engine's sheet or its brand's models, done with the search. */
+  const choosePart = (part: FoundPart) => {
+    const next = partScreen(part.item);
+    if (next) {
+      setQuery('');
+      setScreen(next);
     }
+  };
+
+  const search = (
+    <>
+      <SearchField label="Procure modelo ou código da peça" value={query} onValueChange={setQuery} />
+      {searchingParts && <PartResults results={results} onChoose={choosePart} />}
+    </>
+  );
+
+  /** The screen on show. */
+  const content = () => {
+    if (screen.view === 'sheet') {
+      const sheet = ENGINE_SHEETS[screen.engineId];
+      return (
+        <>
+          <RNText style={styles.path} testID={ids.path}>
+            {enginePath(screen.brandId, screen.engineId)}
+          </RNText>
+          <ImageFrame alt={`Foto do ${sheet.title}`} emptyLabel="Sem foto do modelo" />
+          <Heading level={2}>{sheet.title}</Heading>
+          <View style={styles.readouts} testID={ids.readouts}>
+            {sheet.specs.map((spec, index) => (
+              <View key={ENGINE_SPEC_LABELS[index]} style={styles.readout} testID={ids.readout}>
+                <RNText style={styles.readoutLabel} testID={ids.readoutLabel}>
+                  {ENGINE_SPEC_LABELS[index]}
+                </RNText>
+                <NumericReadout tone="accent">{spec}</NumericReadout>
+              </View>
+            ))}
+          </View>
+          <Text tone="muted">{sheet.summary}</Text>
+        </>
+      );
+    }
+
+    if (screen.view === 'models') {
+      const { brandId, modelId, engineId, missing } = screen;
+      const brand = CATALOG.find((b) => b.id === brandId)!;
+      const models = modelsNamed(brand.models, modelQuery);
+      return (
+        <>
+          {search}
+          {missing && (
+            <Panel>
+              <EmptyState title={missing} message={NO_SHEET_MESSAGE} />
+            </Panel>
+          )}
+          <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
+            {`Modelos · ${models.length}`}
+          </RNText>
+          {models.length > 0 ? (
+            <TreeView
+              key={`${brandId}-${modelId}-${engineId}`}
+              label={`Modelos ${brand.name}`}
+              nodes={models}
+              selected={engineId}
+              onSelect={(id) => setScreen({ view: 'sheet', brandId, engineId: id })}
+              highlighted={modelId}
+              defaultExpanded={modelId && !engineId ? [modelId] : undefined}
+              leafTag="Ver ficha"
+              style={styles.tree}
+            />
+          ) : (
+            <NoModel />
+          )}
+        </>
+      );
+    }
+
+    // The brands that have a model with the name searched, every brand without a search.
+    const brands = CATALOG.filter((brand) => modelsNamed(brand.models, modelQuery).length > 0);
+    return (
+      <>
+        {search}
+        <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
+          {`Marcas · ${brands.length}`}
+        </RNText>
+        {brands.length > 0 ? (
+          <View style={styles.brandList} testID={ids.brandList}>
+            {brands.map((brand) => (
+              <Pressable
+                key={brand.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${brand.name}, ${brandSummary(brand)}`}
+                onPress={() => setScreen({ view: 'models', brandId: brand.id })}
+                style={({ pressed }) => [styles.brand, pressed && styles.brandPressed]}
+                testID={ids.brand}
+              >
+                <View style={styles.mark} testID={ids.mark}>
+                  <RNText style={styles.markText}>{brand.mark}</RNText>
+                </View>
+                <View style={styles.brandText} testID={ids.brandText}>
+                  <RNText numberOfLines={1} style={styles.brandName} testID={ids.brandName}>
+                    {brand.name}
+                  </RNText>
+                  <RNText style={styles.brandMeta} testID={ids.brandMeta}>
+                    {brandSummary(brand)}
+                  </RNText>
+                </View>
+                <View style={styles.chevron} testID={ids.chevron}>
+                  <Icon icon={chevronIcon} size={ICON_SIZES.prominent} color={colors.textMuted} />
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <NoModel />
+        )}
+      </>
+    );
   };
 
   return (
-    <FieldScrollView style={styles.scroll} contentContainerStyle={styles.tab} testID={ids.tab}>
-      <Panel style={styles.rail}>
-        <SearchField label="Procure marca" value={brandQuery} onValueChange={setBrandQuery} />
-        <SelectableTileGroup
-          label="Marcas"
-          options={brandsNamed(brandQuery).map((b) => ({ value: b.id, label: b.name }))}
-          value={brandId}
-          onValueChange={openBrand}
-          columns={width >= WIDE_SCREEN ? TILE_COLUMNS.wide : TILE_COLUMNS.narrow}
-        />
-      </Panel>
-      <SearchField label="Procure modelo ou código da peça" value={query} onValueChange={search} />
-      {searchingParts && <PartResults results={results} chosen={part?.id} onChoose={choosePart} />}
-      <Panel>
-        {models.length > 0 ? (
-          <TreeView
-            key={`${brandId}-${revealed}`}
-            label={`Modelos ${brand.name}`}
-            nodes={models}
-            selected={engine}
-            onSelect={setEngine}
-            highlighted={location?.modelId}
-            defaultExpanded={location?.modelId && !location.engineId ? [location.modelId] : undefined}
-            style={styles.tree}
-          />
-        ) : (
-          <EmptyState title="Nenhum modelo com esse nome" message="Procure por outro nome ou pelo código de uma peça do estoque." />
-        )}
-      </Panel>
-      <ImageFrame alt={sheet ? `Foto do ${sheet.title}` : 'Foto do modelo'} emptyLabel="Sem foto do modelo" />
-      <Panel>
-        {missingVehicle ? (
-          <EmptyState title={missingVehicle} message={NO_SHEET_MESSAGE} />
-        ) : sheet ? (
-          <View style={styles.sheet} testID={ids.sheet}>
-            <Heading level={3}>{sheet.title}</Heading>
-            <View style={styles.specs} testID={ids.specs}>
-              {sheet.specs.map((spec) => (
-                <NumericReadout key={spec} tone="accent">
-                  {spec}
-                </NumericReadout>
-              ))}
-            </View>
-            <Text size="sm" tone="muted" lines={5}>
-              {sheet.summary}
-            </Text>
-          </View>
-        ) : (
-          <EmptyState
-            title="Nenhuma ficha cadastrada"
-            message={`Os veículos da ${brand.name} ainda não têm ficha técnica. Escolha outra marca.`}
-          />
-        )}
-      </Panel>
+    <FieldScrollView ref={scroll} style={styles.scroll} contentContainerStyle={styles.tab} testID={ids.tab}>
+      {content()}
     </FieldScrollView>
   );
+}
+
+/** Says no model has the name searched. */
+function NoModel() {
+  return <EmptyState title="Nenhum modelo com esse nome" message="Procure por outro nome ou pelo código de uma peça do estoque." />;
 }
