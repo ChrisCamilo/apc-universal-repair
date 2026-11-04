@@ -22,6 +22,7 @@ import { useTabReorder } from './tabReorderContext';
 // (TabReorderContext), which saves it and makes the tabs reorderable while it is on. There is no "Itens por página", as
 // the Inventory loads more as it scrolls. Every choice keeps the menu open, so several can be changed in a row; an
 // action closes the sheet. "Tutorial do estoque", with a play icon, goes to the Inventory tab and runs its tutorial again.
+// "Conectar ao servidor" opens the pairing with the home server, to pair again, as after the computer's address changes.
 // "Sair", at the end and set apart from the preferences, hands the logout to the owner, which ends the session and
 // goes back to the login; the preferences stay on the device for the next login.
 
@@ -31,9 +32,11 @@ type UserMenuProps = {
   user: SessionUser;
   /** Ends the session and goes back to the login. */
   onLogout: () => void;
+  /** Opens Conectar ao servidor, to pair with the server again. */
+  onConnect: () => void;
 };
 
-export function UserMenu({ user, onLogout }: UserMenuProps) {
+export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
   const { style, mode, setStyle, setMode } = useTheme();
   const { reorderable, setReorderable } = useTabReorder();
   const tutorial = useInventoryTutorial();
@@ -71,6 +74,8 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
             <MenuItem icon={playIcon} onSelect={tutorial.replay}>
               Tutorial do estoque
             </MenuItem>
+            <MenuLabel>Servidor</MenuLabel>
+            <MenuItem onSelect={onConnect}>Conectar ao servidor</MenuItem>
             <Divider />
             <MenuItem onSelect={onLogout}>Sair</MenuItem>
           </MenuContext.Provider>

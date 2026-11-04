@@ -88,6 +88,17 @@ export const FIELD_KINDS = {
     textContentType: "none",
     autoCapitalize: "none",
   },
+  // An address or a code typed exactly as it shows, such as the home server's on the phone's Conectar ao servidor: no
+  // capitals added, no corrections, and the keyboard with ":" and "/" at hand.
+  code: {
+    type: "text",
+    autoComplete: "off",
+    inputMode: "url",
+    keyboardType: "url",
+    nativeAutoComplete: "off",
+    textContentType: "none",
+    autoCapitalize: "none",
+  },
 } as const;
 
 export type FieldKind = keyof typeof FIELD_KINDS;
