@@ -6,6 +6,8 @@
 // `db:migrate` does. Then it turns WAL on for SQLite and listens on PORT, or else on DEV_SERVER_PORT when started for
 // development (`pnpm dev`, which passes --dev) and on SERVER_PORT otherwise, as the desktop app and `pnpm start` run it,
 // on the address APC_HOST names, or on every one (NETWORK_HOST), as development, the emulator and a phone need.
+// With HTTPS_CERT and HTTPS_KEY, a certificate and its private key in PEM, as the desktop app sets them while the
+// phone's access is on, it answers HTTPS on that port; without them, plain HTTP, as in development.
 // A port another program holds exits with PORT_IN_USE_EXIT_CODE, a SQLite key that doesn't open the file with
 // WRONG_KEY_EXIT_CODE, any other failure with 1.
 import "dotenv/config";
@@ -18,7 +20,8 @@ import { migrate } from "./db/migrate.js";
 import { databaseUrl } from "./db/provider.js";
 import { API_VERSION } from "./routes/health.js";
 
-const app = buildApp();
+const { HTTPS_CERT: cert, HTTPS_KEY: key } = process.env;
+const app = buildApp({ https: cert && key ? { cert, key } : undefined });
 const port = Number(process.env.PORT ?? (process.argv.includes("--dev") ? DEV_SERVER_PORT : SERVER_PORT));
 const host = process.env.APC_HOST || NETWORK_HOST;
 
