@@ -15,6 +15,7 @@ README "Desktop App → Publishing a version" is the source of truth. Publishing
 4. **Bump** `version` to the same value in `apps/desktop/package.json`, `apps/api/package.json` and `apps/mobile/package.json`. The workflow refuses different versions or one already released. Commit: `chore: Bump the desktop app, the API and the phone app to <x.y.z>`.
 5. **Write** `docs/releases/v<x.y.z>.md`, English first, then `---`, then Portuguese with the same content (the app's *Sobre esta versão* shows the Portuguese half). Copy the shape of the latest file there:
    - `**Windows:** installed apps update themselves to this version. To install from scratch, download \`APC-Universal-Repair-Setup-<x.y.z>.exe\`, or the portable exe to run without installing.`
+   - `**Android:** the installed app says when this version is out and opens its APK, \`apc-universal-repair-<x.y.z>.apk\`. To install from scratch, open that file on the phone.` The release carries the APK only when the upload key is in the secrets; leave this line out otherwise.
    - `### What's new` / `### Novidades` and `### Fixes` / `### Correções`, each bullet a bold one-line summary with its issue number, then what the user sees, in plain words.
    Commit: `docs: Add the release notes of <x.y.z>`.
 6. **Push and open the PR,** titled `Release <x.y.z>`, ending with the Claude Code attribution line.
