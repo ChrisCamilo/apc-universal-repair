@@ -46,10 +46,10 @@ export const NOTICES_FILE = path.join(ROOT, "THIRD_PARTY_NOTICES.md");
  * them matches is kept as it is, so the check fails on it until it's added here or reviewed.
  */
 const POM_LICENSES = [
-  { name: /^(the )?apache( software)? license,? version 2\.0$|^apache-2(\.0)?$/i, spdx: "Apache-2.0" },
+  { name: /^(the )?apache( software)? license,? version 2\.0$|^apache[- ]2(\.0)?$/i, spdx: "Apache-2.0" },
   // Bolts-Android's: the BSD license with three clauses (https://github.com/BoltsFramework/Bolts-Android).
   { name: /^bsd license$/i, spdx: "BSD-3-Clause" },
-  { name: /^mit( license)?$/i, spdx: "MIT" },
+  { name: /^(the )?mit( license)?$/i, spdx: "MIT" },
 ];
 /** The audit's report. */
 const REPORT_FILE = path.join(ROOT, "docs", "licenses.md");
@@ -81,6 +81,18 @@ export const REVIEWED = [
     license: "EPL-2.0",
     en: "The graph layout of Prisma Studio, in the Prisma CLI, a development tool: it doesn't ship.",
     pt: "O layout de grafos do Prisma Studio, no CLI do Prisma, uma ferramenta de desenvolvimento: ele não vai junto.",
+  },
+  {
+    name: /^com\.google\.(mlkit:|android\.gms:play-services-mlkit-)/,
+    license: "ML Kit Terms of Service",
+    en: "Google's ML Kit barcode scanner, which the phone app's camera uses to read the server's QR code on Conectar ao servidor, free under the ML Kit Terms of Service (https://developers.google.com/ml-kit/terms), part of the Google APIs Terms of Service. It reads the codes on the phone and sends Google no image; it does send usage and performance metrics, which the app's privacy notice must mention. Its code and models may not be reverse engineered.",
+    pt: "O leitor de códigos do ML Kit do Google, que a câmera do app do celular usa para ler o QR code do servidor em Conectar ao servidor, gratuito sob os Termos de Serviço do ML Kit (https://developers.google.com/ml-kit/terms), parte dos Termos de Serviço das APIs do Google. Ele lê os códigos no celular e não envia imagem nenhuma ao Google; envia métricas de uso e de desempenho, que o aviso de privacidade do app precisa citar. O código e os modelos dele não podem passar por engenharia reversa.",
+  },
+  {
+    name: /^com\.google\.android\.(gms:play-services-(base|basement|tasks)|odml:image)$/,
+    license: "Android Software Development Kit License",
+    en: "The Google Play services pieces ML Kit runs on (base, basement, tasks) and its image class, under the Android Software Development Kit License (https://developer.android.com/studio/terms.html), which lets apps ship them, closed and sold ones included.",
+    pt: "As partes do Google Play services sobre as quais o ML Kit roda (base, basement, tasks) e a classe de imagem dele, sob a Licença do Android Software Development Kit (https://developer.android.com/studio/terms.html), que deixa os apps levá-las, fechados e vendidos inclusive.",
   },
 ];
 /** The workspace packages whose production dependencies ship. */
