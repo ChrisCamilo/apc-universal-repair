@@ -8,6 +8,7 @@ import {
   firstSheet,
   locatePart,
   modelsNamed,
+  NO_SHEET_MESSAGE,
   revealedVehicle,
   type FoundPart,
 } from '@apc/shared/catalog'
@@ -32,8 +33,6 @@ import { PartResults } from './PartResults.tsx'
 // catalog has no sheet for that vehicle, a note saying so instead of another vehicle's sheet. Otherwise it narrows
 // the tree by model name, moving to the first brand that has the model, or says no brand has it. Clearing it drops
 // the part list and the pointed-out model.
-
-const NO_SHEET = 'Este veículo ainda não tem ficha técnica no catálogo. A peça continua cadastrada no estoque.'
 
 export function CatalogTab() {
   const state = useItems()
@@ -125,7 +124,7 @@ export function CatalogTab() {
             <ImageFrame alt={sheet ? `Foto do ${sheet.title}` : 'Foto do modelo'} emptyLabel="Sem foto do modelo" />
             <Panel className={classes.sheet()}>
               {missingVehicle ? (
-                <EmptyState title={missingVehicle} message={NO_SHEET} />
+                <EmptyState title={missingVehicle} message={NO_SHEET_MESSAGE} />
               ) : sheet ? (
                 <>
                   <Heading level={3}>{sheet.title}</Heading>

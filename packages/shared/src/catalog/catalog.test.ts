@@ -4,8 +4,11 @@ import type { Item } from "../items/items.ts";
 import type { TreeNode } from "../tree/tree.ts";
 import {
   brandsNamed,
+  brandSummary,
   brandWithModel,
   CATALOG,
+  CATALOG_HOME,
+  enginePath,
   ENGINE_SHEETS,
   findParts,
   firstSheet,
@@ -13,7 +16,11 @@ import {
   locatePart,
   modelsNamed,
   partFit,
+  partScreen,
   revealedVehicle,
+  screenBack,
+  screenHeader,
+  treePath,
 } from "./catalog.ts";
 import { testItem, type FlatItem } from "../items/testItems.ts";
 
@@ -158,4 +165,50 @@ test("Shared: a part of several vehicles shows the one the catalog knows best", 
   assert.deepEqual(revealedVehicle({ vehicles: [toyota] }), toyota);
   assert.equal(itemFit({ vehicles: [toyota, escort, opala] }), "Serve no Chevrolet Opala 4.1 +2");
   assert.equal(itemFit({ vehicles: [opala] }), "Serve no Chevrolet Opala 4.1");
+});
+
+// Walks a phone's screens from an engine's sheet back to the brands and checks ← opens the brand's models on the
+// engine, then the brands, where there is nowhere to go back to; each screen's title row names the tab or the brand,
+// and where its ← goes.
+test("Shared: on a phone ← goes back from the sheet to the models, then the brands", () => {
+  const sheet = { view: "sheet", brandId: "chevrolet", engineId: "chevrolet-opala-diplomata-1986-4.1" } as const;
+  const models = screenBack(sheet)!;
+  assert.deepEqual(models, { view: "models", brandId: "chevrolet", engineId: "chevrolet-opala-diplomata-1986-4.1" });
+  assert.deepEqual(screenBack(models), CATALOG_HOME);
+  assert.equal(screenBack(CATALOG_HOME), null);
+  assert.deepEqual(screenHeader(CATALOG_HOME), { title: "Catálogo" });
+  assert.deepEqual(screenHeader(models), { title: "Chevrolet", back: "Voltar às marcas" });
+  assert.deepEqual(screenHeader(sheet), { title: "Chevrolet", back: "Voltar aos modelos" });
+});
+
+// Opens the screens of parts found by code: an engine with a sheet opens it; a model without one, its brand's models
+// with the model pointed out and the vehicle named for the note; a part for any model of a brand, the brand's models
+// with no note; and a brand the catalog lacks, no screen.
+test("Shared: a part found by code opens its sheet, or else its brand's models", () => {
+  const fits = (vehicleBrand: string, vehicleModel: string | null) => ({ vehicles: [{ vehicleBrand, vehicleModel }] });
+  assert.deepEqual(partScreen(fits("Chevrolet", "Opala 4.1")), {
+    view: "sheet",
+    brandId: "chevrolet",
+    engineId: "chevrolet-opala-diplomata-1986-4.1",
+  });
+  assert.deepEqual(partScreen(fits("Ford", "Escort")), { view: "models", brandId: "ford", modelId: "ford-escort", missing: "Ford Escort" });
+  assert.deepEqual(partScreen(fits("Fiat", null)), { view: "models", brandId: "fiat", modelId: undefined, missing: undefined });
+  assert.equal(partScreen(fits("Toyota", "Corolla")), null);
+});
+
+// Writes each brand's line on the brands screen, in plural and singular and with no sheet yet, and the path above an
+// engine's sheet; the path to a node goes from its model down to it, and to a node the brand lacks, nowhere.
+test("Shared: the brand lines and an engine's path read as in the mockup", () => {
+  assert.deepEqual(
+    CATALOG.map(brandSummary),
+    ["3 modelos · 2 fichas técnicas", "3 modelos · 1 ficha técnica", "3 modelos · 1 ficha técnica", "3 modelos · sem ficha técnica ainda"],
+  );
+  assert.equal(brandSummary({ id: "x", name: "X", models: [{ id: "x-1", label: "Um", children: [] }] }), "1 modelo · sem ficha técnica ainda");
+  assert.equal(enginePath("chevrolet", "chevrolet-opala-diplomata-1986-4.1"), "Opala › Terceira geração › Diplomata › 1986");
+  assert.deepEqual(
+    treePath("volkswagen", "volkswagen-gol-1-gts").map((node) => node.id),
+    ["volkswagen-gol", "volkswagen-gol-1", "volkswagen-gol-1-gts"],
+  );
+  assert.deepEqual(treePath("ford", "chevrolet-opala"), []);
+  assert.equal(enginePath("ford", "chevrolet-opala-diplomata-1986-4.1"), "");
 });
