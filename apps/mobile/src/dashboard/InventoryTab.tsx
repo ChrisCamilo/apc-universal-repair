@@ -15,11 +15,9 @@ import {
   itemCardCode,
   itemCardDetails,
   ITEM_STATUSES,
-  QUANTITY_UNIT,
   resultSummary,
   STOCK_STATUS_SHORT,
   stockCounts,
-  stockStatus,
   stockTint,
   type Item,
   type ItemBrand,
@@ -66,8 +64,9 @@ import { SearchField } from '../TextField';
 import { useTheme } from '../theme';
 import { ToolButton } from '../ToolButton';
 import { tourTarget } from '../tourTargets';
-import { NumericReadout, Text } from '../Typography';
+import { NumericReadout } from '../Typography';
 import { useInventoryTutorial } from './inventoryTutorialContext';
+import { CardTitle, StockQuantity } from './ItemCard';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './InventoryTutorial';
 import { useMoreActions } from './moreActionsContext';
@@ -105,7 +104,7 @@ import { useMoreActions } from './moreActionsContext';
 
 // The column after the item's name: its quantity, at the card's end.
 const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
-  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (row) => <Quantity item={row.item} /> },
+  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (row) => <StockQuantity {...row.item} /> },
 ];
 /**
  * Names the stock status chips, outside the menu (one at a time, none for every item), in short, each with how many
@@ -124,23 +123,16 @@ type InventoryRow = { item: Item };
 /**
  * Builds the column of each card's name: the item's name, its first code with its part brand or how many brands make
  * it, and where it fits, where it is and its price, each on one line.
- * @param ui The tab's styles and ids.
  * @returns The name column.
  */
-function nameColumn({ styles, ids }: ReturnType<typeof useStyles>): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
+function nameColumn(): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
   return {
     key: 'name',
     header: 'Item',
     card: 'main',
     cell: ({ item }) => (
       <View ref={isTestItem(item) ? tourTarget('tutorial-row') : undefined} collapsable={false}>
-        <RNText numberOfLines={1} style={styles.name} testID={ids.name}>
-          {item.name}
-        </RNText>
-        <NumericReadout tone="muted">{itemCardCode(item)}</NumericReadout>
-        <Text size="sm" tone="muted" lines={1}>
-          {itemCardDetails(item)}
-        </Text>
+        <CardTitle name={item.name} code={itemCardCode(item)} details={itemCardDetails(item)} />
       </View>
     ),
   };
@@ -175,8 +167,7 @@ type InventoryTabProps = {
 };
 
 export function InventoryTab({ userId = '' }: InventoryTabProps) {
-  const ui = useStyles();
-  const { styles, ids } = ui;
+  const { styles, ids } = useStyles();
   const { colors } = useTheme();
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS);
   const [status, setStatus] = useState<ItemStatus | null>(null);
@@ -440,7 +431,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
                 label="Itens do estoque"
                 columns={[
                   photoColumn((item, brand) => setViewer({ item, brand, photos: heldPhotos(brand.photos, API_URL) })),
-                  nameColumn(ui),
+                  nameColumn(),
                   ...COLUMNS,
                 ]}
                 rows={rows}
@@ -653,23 +644,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           reload();
         }}
       />
-    </View>
-  );
-}
-
-/** A card's quantity, with its stock status under it in its tone: "un.", "Baixo" or "Esgotado". */
-function Quantity({ item }: { item: Item }) {
-  const { styles, ids } = useStyles();
-  const status = stockStatus(item.quantity, item.minQuantity);
-  const tone = status === 'out' ? styles.quantityOut : status === 'low' ? styles.quantityLow : undefined;
-  return (
-    <View style={styles.quantity} testID={ids.quantity}>
-      <RNText style={[styles.quantityValue, tone]} testID={ids.quantityValue}>
-        {item.quantity}
-      </RNText>
-      <RNText style={[styles.quantityTag, tone]} testID={ids.quantityTag}>
-        {status ? STOCK_STATUS_SHORT[status] : QUANTITY_UNIT}
-      </RNText>
     </View>
   );
 }
