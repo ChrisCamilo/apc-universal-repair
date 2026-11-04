@@ -171,7 +171,9 @@ export function CatalogTab() {
                 testID={ids.brand}
               >
                 <View style={styles.mark} testID={ids.mark}>
-                  <RNText style={styles.markText}>{brand.mark}</RNText>
+                  <RNText style={styles.markText} testID={ids.markText}>
+                    {brand.mark}
+                  </RNText>
                 </View>
                 <View style={styles.brandText} testID={ids.brandText}>
                   <RNText numberOfLines={1} style={styles.brandName} testID={ids.brandName}>

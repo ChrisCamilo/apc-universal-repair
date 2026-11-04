@@ -28,6 +28,7 @@ export const useStyles = createStyles(
     brandList: 'screen.brands',
     brand: 'screen.brands.brand',
     mark: 'screen.brands.brand.mark',
+    markText: 'screen.brands.brand.mark.text',
     brandText: 'screen.brands.brand.text',
     brandName: 'screen.brands.brand.text.name',
     brandMeta: 'screen.brands.brand.text.meta',
