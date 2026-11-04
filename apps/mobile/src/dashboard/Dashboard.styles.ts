@@ -8,7 +8,8 @@ import { fontFamily, softHairline } from '../theme';
 // pressed; the tab's content under it, filling the screen down
 // to the bottom bar; and the bar on the panel's fill over a soft hairline, 80px tall, with the tabs, then Alertas and
 // Conta, each an equal share (see barItemStyles). Alertas shows the unread count in a badge on its pill's corner; Conta
-// shows the user's initials on the accent in its pill.
+// shows the user's initials on the accent in its pill. A deeper screen's header has its ← in place of the mark, closer
+// to the screen's edge and to the title.
 
 /** The compact APC mark's width in the header, in px (HEADER_MARK_SIZE on the web). */
 export const MARK_SIZE = 32;
@@ -37,6 +38,7 @@ export const useStyles = createStyles(
       paddingLeft: scales.space.s4,
       paddingRight: scales.space.s2,
     },
+    headerBack: { gap: scales.space.s1, paddingLeft: scales.space.s1 },
     mark: {},
     more: { width: scales.touch.icon, height: scales.touch.icon, alignItems: 'center', justifyContent: 'center', borderRadius: scales.radiusPill },
     morePressed: { backgroundColor: theme.colors.panelRaised },
