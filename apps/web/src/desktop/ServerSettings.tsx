@@ -47,6 +47,7 @@ const SOURCES = [
 /** Each table an import copies, by its server name, as the result lists it. */
 const TABLE_LABELS: Record<string, string> = {
   user: 'Usuários',
+  device: 'Dispositivos',
   category: 'Categorias',
   partBrand: 'Marcas de peça',
   brand: 'Marcas de veículo',
