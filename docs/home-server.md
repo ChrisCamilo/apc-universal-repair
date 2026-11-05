@@ -92,6 +92,8 @@ First turn on **Acesso pelo celular** in *Servidor e banco de dados* (in the use
 
 Install the phone app: each [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) carries its APK, and the README's [Phone App (Android)](../README.md#phone-app-android) has the steps. On its first start it opens on **Conectar ao servidor**: point the camera at the QR code in *Servidor e banco de dados*, or type the address and the code shown beside it. The phone checks the server answers, keeps it, and asks for the login. It trusts only this computer's certificate, which the app made the first time the access was turned on, so nothing else on the Wi-Fi can read the data or pass for the server.
 
+**The first login of each phone waits for authorization:** it shows a 6-character code, and the desktop app on this computer, logged in, asks *Autorizar este dispositivo?* with the same code. Check they match and choose *Autorizar*; the phone then logs in by itself. *Dispositivos*, in the user menu, lists the authorized devices, to rename or remove one, such as a lost phone.
+
 **When the computer's address changes,** such as when the router gives it another one, the phone stops reaching the server. On the phone, choose *Conectar a outro servidor* on the login, or *Conectar ao servidor* in the user menu, and scan the code again. The tray's menu shows the current address, such as *Servidor ligado em https://192.168.0.10:3000*; reserving it on the router (step 4) keeps it from changing.
 
 If the phone gets no answer:
@@ -265,6 +267,8 @@ Descubra o endereço do computador com o `ipconfig` num PowerShell (o *Endereço
 Primeiro ligue o **Acesso pelo celular** no *Servidor e banco de dados* (no menu do usuário ou no menu da bandeja): o servidor religa na rede, com HTTPS, e o diálogo mostra um QR code com o endereço e o código com que o celular pareia. Libere no firewall quando o Windows perguntar (passo 3). Com o acesso desligado, a bandeja diz *Servidor ligado só neste computador*.
 
 Instale o app do celular: cada [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) traz o APK dele, e o [App do Celular (Android)](../README.md#app-do-celular-android) do README tem os passos. Na primeira vez que abre, ele mostra **Conectar ao servidor**: aponte a câmera para o QR code do *Servidor e banco de dados*, ou digite o endereço e o código que aparecem ao lado. O celular confere se o servidor responde, o guarda e pede o login. Ele só confia no certificado deste computador, que o app criou na primeira vez que o acesso foi ligado, então nada mais no Wi-Fi consegue ler os dados ou se passar pelo servidor.
+
+**O primeiro login de cada celular espera autorização:** ele mostra um código de 6 caracteres, e o app desktop neste computador, com alguém logado, pergunta *Autorizar este dispositivo?* com o mesmo código. Confira se são iguais e escolha *Autorizar*; o celular então entra sozinho. *Dispositivos*, no menu do usuário, lista os dispositivos autorizados, para renomear ou remover um, como um celular perdido.
 
 **Quando o endereço do computador muda,** como quando o roteador dá outro a ele, o celular deixa de chegar ao servidor. No celular, escolha *Conectar a outro servidor* no login, ou *Conectar ao servidor* no menu do usuário, e escaneie o código de novo. O menu da bandeja mostra o endereço atual, como *Servidor ligado em https://192.168.0.10:3000*; reservá-lo no roteador (passo 4) evita que ele mude.
 
