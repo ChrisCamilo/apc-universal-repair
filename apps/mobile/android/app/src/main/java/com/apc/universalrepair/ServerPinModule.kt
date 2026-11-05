@@ -27,9 +27,10 @@ class ServerPinModule(context: ReactApplicationContext) : ReactContextBaseJavaMo
   }
 }
 
-/** Registers [ServerPinModule], which autolinking doesn't find, being the app's own. */
+/** Registers the app's own modules, which autolinking doesn't find: [ServerPinModule] and [DeviceKeyModule]. */
 class ServerPinPackage : ReactPackage {
-  override fun createNativeModules(context: ReactApplicationContext): List<NativeModule> = listOf(ServerPinModule(context))
+  override fun createNativeModules(context: ReactApplicationContext): List<NativeModule> =
+    listOf(ServerPinModule(context), DeviceKeyModule(context))
 
   override fun createViewManagers(context: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
 }

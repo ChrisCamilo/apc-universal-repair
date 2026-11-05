@@ -34,15 +34,18 @@ async function savedSession() {
 }
 
 /**
- * Answers the API's login and sign-up with a user and the token t1, and anything else as the setup's fetch does.
+ * Answers the API's login and sign-up with a user and the token t1, its challenge with a nonce, and anything else as
+ * the setup's fetch does.
  * @param user The user the API answers with.
  * @returns The stand-in, to check what was sent.
  */
 function serveUser(user: SessionUser) {
   const stand = jest.fn((url: RequestInfo, init?: RequestInit) =>
-    /\/(sessions|users)$/.test(String(url))
-      ? Promise.resolve({ ok: true, status: String(url).endsWith('/users') ? 201 : 200, json: () => Promise.resolve({ ...user, token: 't1' }) } as Response)
-      : SETUP_FETCH(url, init),
+    String(url).endsWith('/devices/challenge')
+      ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ nonce: 'n1' }) } as Response)
+      : /\/(sessions|users)$/.test(String(url))
+        ? Promise.resolve({ ok: true, status: String(url).endsWith('/users') ? 201 : 200, json: () => Promise.resolve({ ...user, token: 't1' }) } as Response)
+        : SETUP_FETCH(url, init),
   );
   globalThis.fetch = stand as typeof fetch;
   return stand;
