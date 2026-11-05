@@ -7,7 +7,8 @@ import { BackHandler, NativeModules, StyleSheet, TextInput } from 'react-native'
 import ReactTestRenderer from 'react-test-renderer';
 import { useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { CodeScanner } from 'react-native-vision-camera-barcode-scanner';
-import { createMockAuth, PAIRING_REFUSED } from '@apc/shared/auth';
+import { createMockAuth, PAIRING_REFUSED, type AuthService } from '@apc/shared/auth';
+import { DEVICE_POLL_MS, type DeviceStatus } from '@apc/shared/devices';
 import { fingerprintGroups, pairingLink } from '@apc/shared/pairing';
 import { TEST_USERS } from '@apc/shared/test-users';
 import { isStyleId } from '@apc/shared/style-ids';
@@ -193,6 +194,57 @@ test('Mobile: a refused entry code says so, and the camera doesn’t send it aga
   await scan(pairingLink({ ...SERVER, entry: 'H4XW8RTC' }));
   expect(pair).toHaveBeenLastCalledWith('H4XW8RTC');
   expect(onConnected).not.toHaveBeenCalled();
+});
+
+// Reads a QR code from a phone the server's computer hasn't authorized, and checks the screen shows "Aguardando
+// autorização" with the phone's code in place of the camera, keeping the server in use while it waits; once the phone is
+// authorized, it logs in with the same entry code and keeps the server. Then a phone refused meanwhile says so and goes
+// back to the server of before, and "Cancelar" stops a wait, bringing the camera back.
+test('Mobile: a phone the computer hasn’t authorized waits, then logs in with the same code', async () => {
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+  try {
+    applyServer(BEFORE);
+    const statuses: DeviceStatus[] = ['pending', 'authorized'];
+    const pair = jest.fn<ReturnType<AuthService['pair']>, Parameters<AuthService['pair']>>();
+    pair.mockResolvedValueOnce({ pending: 'K7Q2ZD' }).mockResolvedValueOnce(LOGGED_IN);
+    const onConnected = jest.fn();
+    const tree = await mount({ auth: { ...AUTH, pair, deviceStatus: async () => statuses.shift()! }, onConnected });
+    const camera = (screen: ReactTestRenderer.ReactTestRenderer) => screen.root.findAll((n) => n.props.testID === 'auth.connect-screen.camera');
+    answer(true);
+    await scan(pairingLink({ ...SERVER, entry: 'K7Q2ZD9M' }));
+    expect(shows(tree, 'Aguardando autorização')).toBe(true);
+    expect(byId(tree, 'auth.device-pending.code').props.children).toBe('K7Q2ZD');
+    expect(camera(tree)).toHaveLength(0);
+    expect(apiUrl()).toBe(SERVER.url);
+    await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
+    expect(onConnected).not.toHaveBeenCalled();
+    await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
+    expect(pair.mock.calls).toEqual([['K7Q2ZD9M'], ['K7Q2ZD9M']]);
+    expect(JSON.parse((await themeStorage.getItem(SERVER_STORAGE_KEY))!)).toEqual(SERVER);
+    expect(onConnected).toHaveBeenCalledWith(SERVER, LOGGED_IN);
+
+    await themeStorage.clear();
+    applyServer(BEFORE);
+    const waiting = { ...AUTH, pair: async () => ({ pending: 'K7Q2ZD' }), deviceStatus: async () => 'unknown' as const };
+    const refused = await mount({ auth: waiting });
+    answer(true);
+    await scan(pairingLink({ ...SERVER, entry: 'K7Q2ZD9M' }));
+    await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
+    expect(shows(refused, 'Este celular não foi autorizado no computador. Leia o código de novo para pedir outra vez.')).toBe(true);
+    expect(apiUrl()).toBe(BEFORE.url);
+    expect(await themeStorage.getItem(SERVER_STORAGE_KEY)).toBeNull();
+
+    const cancelled = await mount({ auth: { ...waiting, deviceStatus: async () => 'pending' as const } });
+    answer(true);
+    await scan(pairingLink({ ...SERVER, entry: 'H4XW8RTC' }));
+    expect(shows(cancelled, 'Aguardando autorização')).toBe(true);
+    await press(cancelled, 'Cancelar');
+    expect(shows(cancelled, 'Aguardando autorização')).toBe(false);
+    expect(camera(cancelled)).not.toHaveLength(0);
+    expect(apiUrl()).toBe(BEFORE.url);
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 // Given the AuthService, types the address and the code with an entry code too short, and checks it says what it

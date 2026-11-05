@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { BackHandler, Text as RNText, TextInput, View } from 'react-native';
 import { useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { CodeScanner, type Barcode, type TargetBarcodeFormat } from 'react-native-vision-camera-barcode-scanner';
-import type { AuthService, SessionUser } from '@apc/shared/auth';
+import { waitForDevice, type AuthService, type SessionUser } from '@apc/shared/auth';
 import { pencilIcon, qrIcon } from '@apc/shared/icons';
 import { readEntryCode, readFingerprint, readPairingLink, readServerAddress, type Pairing, type PairingInvite } from '@apc/shared/pairing';
 import { applyServer, currentServer, saveServer } from '../api';
@@ -10,8 +10,9 @@ import { BackButton } from '../BackButton';
 import { Button } from '../Button';
 import { FieldScrollView } from '../FieldScrollView';
 import { TextField } from '../TextField';
-import { Text } from '../Typography';
+import { Heading, Text } from '../Typography';
 import { useStyles } from './ConnectScreen.styles';
+import { DevicePending } from './DevicePending';
 
 // Conectar ao servidor: how the phone pairs with the home server (see @apc/shared/pairing), before the login of a
 // phone with no server yet, and from the login or the user menu to pair again, as after the computer's address
@@ -25,9 +26,12 @@ import { useStyles } from './ConnectScreen.styles';
 // paired.
 // Given the AuthService, as while the phone's password login is set aside (PASSWORD_LOGIN), pairing is also the login:
 // the QR code carries an entry code for the account open on the computer, typed in as a third field otherwise, and
-// once the server answers the phone logs in with it (POST /sessions/pairing), keeping the server only then. A code
-// the server refused, used or ended, says so, and the camera doesn't send that same QR code again, which the
-// computer replaces with a new one.
+// once the server answers the phone logs in with it (POST /sessions/pairing), keeping the server only then. A phone
+// the server's computer hasn't authorized shows "Aguardando autorização" with its short code (see DevicePending.tsx),
+// in place of the camera or the fields, and waits as a login does (waitForDevice), logging in with the same code once
+// authorized, or saying it was refused; "Cancelar", or the back button, stops waiting. A code the server refused,
+// used or ended, says so, and the camera doesn't send that same QR code again, which the computer replaces with a new
+// one.
 
 /** The codes the camera reads: the QR code alone. */
 const QR_CODE: TargetBarcodeFormat[] = ['qr-code'];
@@ -48,6 +52,7 @@ const MESSAGES = {
   blocked: 'A câmera está bloqueada para o APC. Libere-a nas configurações do Android, ou toque em Digitar manualmente.',
   cameraFailed: 'A câmera não abriu. Toque em Digitar manualmente para digitar o endereço e o código.',
   code: 'O código tem 43 letras, números, - e _, como aparece no computador.',
+  deviceRefused: 'Este celular não foi autorizado no computador. Leia o código de novo para pedir outra vez.',
   entry: 'O código de entrada tem 8 letras e números, como aparece no computador.',
   noEntry: 'Esse código não traz o código de entrada. Atualize o APC no computador e leia o código de novo.',
   notApc: 'Esse código não é o do APC. Use o que aparece em Servidor e banco de dados, no computador.',
@@ -67,6 +72,11 @@ type ConnectScreenProps = {
 };
 /** What the fields hold that isn't right, by field. */
 type FieldErrors = { address?: string; code?: string; entry?: string };
+/**
+ * An entry the server's computer hasn't authorized yet: the phone's short code, the entry code to send again, the
+ * server, and the one in use before, to go back to.
+ */
+type Waiting = { code: string; entry: string; pairing: Pairing; before: Pairing | null };
 
 /**
  * Asks a server's /health, as the pinning trusts it.
@@ -97,6 +107,13 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
   const [tried, setTried] = useState(false);
   const [cameraFailed, setCameraFailed] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  // The entry the server's computer hasn't authorized yet, which the screen waits on.
+  const [waiting, setWaiting] = useState<Waiting>();
+  // The latest owner's callback, so a new one doesn't start the wait over.
+  const connected = useRef(onConnected);
+  useEffect(() => {
+    connected.current = onConnected;
+  });
   // Whether the address and the code are typed in, in place of the camera; always, on a phone without one.
   const [typing, setTyping] = useState(false);
   const manual = typing || !device;
@@ -108,17 +125,57 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
   const entryInput = useRef<ComponentRef<typeof TextInput>>(null);
   const { styles, ids } = useStyles();
 
-  // Android's back button goes back with the server as it was, when there is one to go back to.
+  // Wait for the server's computer to authorize the phone, then log in with the same entry code; or say it was refused,
+  // going back to the server in use before.
   useEffect(() => {
-    if (!onCancel) {
+    if (!waiting || !auth) {
+      return;
+    }
+    const stop = new AbortController();
+    waitForDevice(auth, () => auth.pair(waiting.entry), stop.signal).then(async (user) => {
+      if (user) {
+        await saveServer(waiting.pairing);
+        connected.current(waiting.pairing, user);
+      } else if (user === null) {
+        applyServer(waiting.before);
+        setWaiting(undefined);
+        setRefused(MESSAGES.deviceRefused);
+      }
+    });
+    return () => stop.abort();
+  }, [auth, waiting]);
+
+  /** Stops waiting for the authorization, going back to the server in use before. */
+  const stopWaiting = () => {
+    if (waiting) {
+      applyServer(waiting.before);
+      setWaiting(undefined);
+    }
+  };
+
+  /** Leaves the screen with the server as it was. */
+  const leave = () => {
+    stopWaiting();
+    onCancel?.();
+  };
+
+  // Android's back button stops a wait for the authorization, or goes back with the server as it was, when there is
+  // one to go back to.
+  useEffect(() => {
+    if (!waiting && !onCancel) {
       return;
     }
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      onCancel();
+      if (waiting) {
+        applyServer(waiting.before);
+        setWaiting(undefined);
+      } else {
+        onCancel?.();
+      }
       return true;
     });
     return () => subscription.remove();
-  }, [onCancel]);
+  }, [onCancel, waiting]);
 
   /**
    * Uses a server once it answers, and logs in with the entry code when the screen logs in; or goes back to the server
@@ -141,7 +198,9 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
       : auth && entryCode
         ? await auth.pair(entryCode).catch(() => undefined)
         : null;
-    if (user === undefined || (user && 'refused' in user)) {
+    if (user && 'pending' in user) {
+      setWaiting({ code: user.pending, entry: entryCode!, pairing, before });
+    } else if (user === undefined || (user && 'refused' in user)) {
       applyServer(before);
       setRefused(user?.refused ?? MESSAGES.unreachable);
       refusedLink.current = user ? link : undefined;
@@ -230,19 +289,24 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
     <FieldScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
       <View style={styles.heading} testID={ids.heading}>
         <View style={[styles.title, onCancel && styles.titleWithBack]} testID={ids.title}>
-          {onCancel && <BackButton label="Voltar" onPress={onCancel} />}
+          {onCancel && <BackButton label="Voltar" onPress={leave} />}
           <RNText accessibilityRole="header" style={styles.titleText} testID={ids.titleText}>
             Conectar ao servidor
           </RNText>
         </View>
-        <Text tone="muted">{manual ? (auth ? INTRO.typeLogin : INTRO.type) : auth ? INTRO.scanLogin : INTRO.scan}</Text>
+        {!waiting && <Text tone="muted">{manual ? (auth ? INTRO.typeLogin : INTRO.type) : auth ? INTRO.scanLogin : INTRO.scan}</Text>}
       </View>
       {notice && !tried && (
         <View accessibilityLiveRegion="polite" style={styles.notice} testID={ids.notice}>
           <Text size="sm">{notice}</Text>
         </View>
       )}
-      {manual ? (
+      {waiting ? (
+        <View style={styles.waiting} testID={ids.waiting}>
+          <Heading level={3}>Aguardando autorização</Heading>
+          <DevicePending code={waiting.code} />
+        </View>
+      ) : manual ? (
         <View style={styles.form} testID={ids.form}>
           <TextField
             label="Endereço"
@@ -298,17 +362,22 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
         </View>
       )}
       <View style={styles.actions} testID={ids.actions}>
-        {manual && (
+        {waiting && (
+          <Button variant="secondary" align="stretch" onPress={stopWaiting}>
+            Cancelar
+          </Button>
+        )}
+        {!waiting && manual && (
           <Button align="stretch" onPress={submit} loading={connecting}>
             Conectar
           </Button>
         )}
-        {!manual && (
+        {!waiting && !manual && (
           <Button variant="secondary" align="stretch" icon={pencilIcon} onPress={() => showTyping(true)}>
             Digitar manualmente
           </Button>
         )}
-        {manual && device && (
+        {!waiting && manual && device && (
           <Button variant="secondary" align="stretch" icon={qrIcon} onPress={() => showTyping(false)}>
             Ler QR Code
           </Button>
