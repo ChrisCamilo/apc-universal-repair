@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { loggedInSchema } from "../auth/auth.ts";
+import { deviceChallengeSchema, deviceListSchema, deviceSchema, deviceStatusSchema } from "../devices/devices.ts";
 import { itemImportResultSchema } from "../items/itemCsv.ts";
 import { itemListResponseSchema, itemSchema } from "../items/items.ts";
 import { ITEM_LIST_PATHS, listEntriesSchema, listEntryMergedSchema, listEntrySchema, vehicleModelSchema, vehicleModelsSchema } from "../lists/lists.ts";
@@ -21,6 +22,12 @@ export const API_ROUTES: readonly ApiRoute[] = [
   { method: "POST", path: "/sessions", responses: { 200: loggedInSchema } },
   { method: "DELETE", path: "/sessions/current", responses: {} },
   { method: "PUT", path: "/users/me/inventory-tutorial", responses: {} },
+  { method: "GET", path: "/devices/challenge", responses: { 200: deviceChallengeSchema } },
+  { method: "POST", path: "/devices/status", responses: { 200: deviceStatusSchema } },
+  { method: "GET", path: "/devices", responses: { 200: deviceListSchema } },
+  { method: "POST", path: "/devices/:id/authorize", responses: { 200: deviceSchema } },
+  { method: "PATCH", path: "/devices/:id", responses: { 200: deviceSchema } },
+  { method: "DELETE", path: "/devices/:id", responses: {} },
   { method: "GET", path: "/items", responses: { 200: itemListResponseSchema } },
   { method: "POST", path: "/items", responses: { 201: itemSchema } },
   { method: "POST", path: "/items/import", responses: { 200: itemImportResultSchema } },

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { after, afterEach, beforeEach, mock, test } from "node:test";
+import { after, afterEach, before, beforeEach, mock, test } from "node:test";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
+import { testDevice, testProof } from "../devices/testDevices.js";
 import { hashToken } from "../sessions/sessions.js";
 import { ATTEMPT_WINDOW_MS } from "../users/attempts.js";
 
@@ -12,6 +13,16 @@ import { ATTEMPT_WINDOW_MS } from "../users/attempts.js";
 const [USER, OTHER] = TEST_USERS;
 /** The tokens of the sessions the tests start, ended at the end. */
 const tokens: string[] = [];
+/** The device the tests log in from, authorized for both users before they start. */
+const DEVICE = await testDevice();
+
+before(async () => {
+  const publicKey = await DEVICE.publicKey();
+  for (const { username } of [USER, OTHER]) {
+    const { id } = (await prisma.user.findUnique({ where: { username } }))!;
+    await prisma.device.create({ data: { userId: id, publicKey, status: "AUTHORIZED", approvedAt: new Date() } });
+  }
+});
 
 beforeEach(() => {
   mock.timers.enable({ apis: ["Date"], now: new Date() });
@@ -23,6 +34,7 @@ afterEach(() => {
 
 after(async () => {
   await prisma.session.deleteMany({ where: { tokenHash: { in: tokens.map(hashToken) } } });
+  await prisma.device.deleteMany({ where: { publicKey: await DEVICE.publicKey() } });
   await prisma.$disconnect();
 });
 
@@ -35,7 +47,8 @@ after(async () => {
  * @returns The answer.
  */
 async function login(app: ReturnType<typeof buildApp>, username: string, password: string, remoteAddress = "10.0.0.2") {
-  const response = await app.inject({ method: "POST", url: "/sessions", payload: { username, password }, remoteAddress });
+  const device = await testProof(app, DEVICE);
+  const response = await app.inject({ method: "POST", url: "/sessions", payload: { username, password, device }, remoteAddress });
   if (response.statusCode === 200) {
     tokens.push(response.json().token);
   }

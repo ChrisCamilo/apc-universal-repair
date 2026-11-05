@@ -4,6 +4,7 @@ import { after, test } from "node:test";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
+import { testDevice, testProof } from "../devices/testDevices.js";
 import { hashToken } from "./sessions.js";
 
 // Sessions against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded with the test users, as
@@ -13,9 +14,12 @@ const app = buildApp();
 const USER = TEST_USERS[0];
 /** The users the tests sign up, removed at the end with their sessions. */
 const signedUp: string[] = [];
+/** The device the tests log in from, authorized as it logs in from the server's computer. */
+const DEVICE = await testDevice();
 
 after(async () => {
   await prisma.user.deleteMany({ where: { id: { in: signedUp } } });
+  await prisma.device.deleteMany({ where: { publicKey: await DEVICE.publicKey() } });
   await app.close();
   await prisma.$disconnect();
 });
@@ -25,7 +29,11 @@ after(async () => {
  * @returns The token the login answered.
  */
 async function login(): Promise<string> {
-  const response = await app.inject({ method: "POST", url: "/sessions", payload: { username: USER.username, password: USER.password } });
+  const response = await app.inject({
+    method: "POST",
+    url: "/sessions",
+    payload: { username: USER.username, password: USER.password, device: await testProof(app, DEVICE) },
+  });
   assert.equal(response.statusCode, 200);
   return response.json().token;
 }
@@ -58,7 +66,7 @@ test("API: a sign-up answers a token, and the tutorial is marked for the caller"
   const created = await app.inject({
     method: "POST",
     url: "/users",
-    payload: { displayName: "Teste Sessão", username, email: `${username}@apc.test`, password: "freio1234" },
+    payload: { displayName: "Teste Sessão", username, email: `${username}@apc.test`, password: "freio1234", device: await testProof(app, DEVICE) },
   });
   assert.equal(created.statusCode, 201);
   const { id, token, inventoryTutorialSeen } = created.json();

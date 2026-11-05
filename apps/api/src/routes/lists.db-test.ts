@@ -4,7 +4,7 @@ import { after, before, test } from "node:test";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
-import { hashToken } from "../sessions/sessions.js";
+import { testDevice, testProof } from "../devices/testDevices.js";
 
 // Renaming and merging list entries against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded,
 // on PostgreSQL or SQLite: a rename to a held name is refused naming the entry that has it, and a merge moves every
@@ -16,9 +16,15 @@ const RUN = randomBytes(3).toString("hex").toUpperCase();
 const USER = TEST_USERS[0];
 /** The token of this file's session. */
 let token = "";
+/** The device the tests log in from, authorized as it logs in from the server's computer. */
+const DEVICE = await testDevice();
 
 before(async () => {
-  const login = await app.inject({ method: "POST", url: "/sessions", payload: { username: USER.username, password: USER.password } });
+  const login = await app.inject({
+    method: "POST",
+    url: "/sessions",
+    payload: { username: USER.username, password: USER.password, device: await testProof(app, DEVICE) },
+  });
   token = login.json().token;
 });
 
@@ -28,7 +34,7 @@ after(async () => {
   await prisma.brand.deleteMany({ where: { name: { contains: RUN } } });
   await prisma.category.deleteMany({ where: { name: { contains: RUN } } });
   await prisma.partBrand.deleteMany({ where: { name: { contains: RUN } } });
-  await prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } });
+  await prisma.device.deleteMany({ where: { publicKey: await DEVICE.publicKey() } });
   await app.close();
   await prisma.$disconnect();
 });

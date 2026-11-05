@@ -5,6 +5,7 @@ import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES } from "@apc/shared/photos";
 import { registerAllowedHosts } from "./plugins/allowed-hosts.js";
 import { registerAuthentication } from "./plugins/authenticate.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
+import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerItemRoutes } from "./routes/items.js";
 import { registerListRoutes } from "./routes/lists.js";
@@ -45,6 +46,7 @@ export function buildApp({
   registerErrorHandler(app);
   registerAllowedHosts(app);
   registerAuthentication(app, sessions);
+  registerDeviceRoutes(app);
   registerHealthRoute(app);
   registerItemRoutes(app);
   registerListRoutes(app);

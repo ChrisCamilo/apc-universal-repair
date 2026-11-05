@@ -1,9 +1,9 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "../db/client.js";
 
-// Sessions: a login or sign-up starts one, with a random token the device sends on every request as
-// "Authorization: Bearer <token>". Only the token's SHA-256 hash is kept, so the Session table alone can't be used to
-// log in. A session lasts 7 days from its last use, which a request writes once an hour at most, so it isn't a write
+// Sessions: a login or sign-up from an authorized device (see devices.ts) starts one, with a random token the device
+// sends on every request as "Authorization: Bearer <token>". Only the token's SHA-256 hash is kept, so the Session
+// table alone can't be used to log in. Removing the device ends its sessions. A session lasts 7 days from its last use, which a request writes once an hour at most, so it isn't a write
 // per request; an expired one is deleted when it is next looked up, and logging out deletes it at once.
 // Photos are loaded by <img> and <Image>, which can't send a header, so each photo path the API answers is signed for
 // the caller's session: "?session=<id>&signature=<HMAC-SHA256 of the file name, keyed by the token's hash>". Only the
@@ -21,8 +21,8 @@ const TOKEN_BYTES = 32;
 /** How long a session's last use may be behind before a request writes it again: an hour, in milliseconds. */
 const TOUCH_MS = 60 * 60 * 1000;
 
-/** A session that hasn't expired: whose it is, and the hash its photo paths are signed with. */
-export type ActiveSession = { id: string; userId: string; tokenHash: string };
+/** A session that hasn't expired: whose it is, the device it was started from, and the hash its photo paths are signed with. */
+export type ActiveSession = { id: string; userId: string; deviceId: string; tokenHash: string };
 /** How the API finds a caller's session: by the token a request sends, or by the id a signed photo path names. */
 export type SessionLookup = {
   byId: (id: string) => Promise<ActiveSession | null>;
@@ -35,7 +35,7 @@ export type SessionLookup = {
  * @returns The session, or null when there is none or it expired.
  */
 async function alive(
-  row: { id: string; userId: string; tokenHash: string; lastUsedAt: Date; expiresAt: Date } | null,
+  row: { id: string; userId: string; deviceId: string; tokenHash: string; lastUsedAt: Date; expiresAt: Date } | null,
 ): Promise<ActiveSession | null> {
   if (!row) {
     return null;
@@ -48,7 +48,7 @@ async function alive(
   if (now.getTime() - row.lastUsedAt.getTime() >= TOUCH_MS) {
     await prisma.session.update({ where: { id: row.id }, data: { lastUsedAt: now, expiresAt: new Date(now.getTime() + SESSION_MS) } });
   }
-  return { id: row.id, userId: row.userId, tokenHash: row.tokenHash };
+  return { id: row.id, userId: row.userId, deviceId: row.deviceId, tokenHash: row.tokenHash };
 }
 
 /**
@@ -62,16 +62,19 @@ export function bearerToken(header: string | undefined): string | undefined {
 }
 
 /**
- * Starts a session for a user who just logged in or signed up, deleting their expired ones.
+ * Starts a session for a user who just logged in or signed up, from an authorized device, deleting their expired ones
+ * and writing the device's last use.
  * @param userId The user.
+ * @param deviceId The device.
  * @returns The token to hand the device, which is never kept.
  */
-export async function createSession(userId: string): Promise<string> {
+export async function createSession(userId: string, deviceId: string): Promise<string> {
   const token = randomBytes(TOKEN_BYTES).toString("base64url");
   const now = new Date();
   await prisma.$transaction([
     prisma.session.deleteMany({ where: { userId, expiresAt: { lte: now } } }),
-    prisma.session.create({ data: { userId, tokenHash: hashToken(token), expiresAt: new Date(now.getTime() + SESSION_MS) } }),
+    prisma.session.create({ data: { userId, deviceId, tokenHash: hashToken(token), expiresAt: new Date(now.getTime() + SESSION_MS) } }),
+    prisma.device.update({ where: { id: deviceId }, data: { lastUsedAt: now } }),
   ]);
   return token;
 }

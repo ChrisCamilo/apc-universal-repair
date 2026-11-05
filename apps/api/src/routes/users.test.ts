@@ -7,8 +7,14 @@ import { sessionOf } from "./users.js";
 // These requests are rejected by validation before any database call, so they run without a database.
 
 const app = buildApp();
-// A sign-up with every field fine.
-const NEW_USER = { displayName: "Ana Souza", username: "ana.souza", email: "ana@oficina.com", password: "freio1234" };
+// A sign-up with every field fine, the device's proof well formed (validation runs before it is checked).
+const NEW_USER = {
+  displayName: "Ana Souza",
+  username: "ana.souza",
+  email: "ana@oficina.com",
+  password: "freio1234",
+  device: { publicKey: "cGs", nonce: "bm9uY2U", signature: "c2ln" },
+};
 
 after(() => app.close());
 
