@@ -1,8 +1,10 @@
 import { randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { credentialsSchema, initials, loggedInSchema, userCreateSchema, type SessionUser } from "@apc/shared/auth";
+import { initials, loggedInSchema, loginRequestSchema, userCreateRequestSchema, type SessionUser } from "@apc/shared/auth";
+import { DEVICE_MESSAGES } from "@apc/shared/devices";
 import { prisma } from "../db/client.js";
+import { checkProof, deviceForLogin, isLoopback } from "../devices/devices.js";
 import { createSession, endSession } from "../sessions/sessions.js";
 import { createLimiter, type Limiter } from "../users/attempts.js";
 import { hashPassword, verifyPassword } from "../users/passwords.js";
@@ -15,6 +17,10 @@ import { hashPassword, verifyPassword } from "../users/passwords.js";
 // password nor its hash is ever sent back. DELETE /sessions/current ends the caller's session (204). Both answers say
 // whether the user has seen the Inventory tutorial, which PUT /users/me/inventory-tutorial marks for the caller (204;
 // the first time is kept).
+// Both also take the device's proof that it holds its key (see devices.ts): a proof that doesn't hold, its nonce
+// unknown, used or expired, or its signature not the key's, is answered 401. A device the server's computer hasn't
+// authorized is answered 403 with its short code, and starts no session; the sign-up's user is created all the same.
+// Only a right password records a device, so a stranger can't fill the list of devices to authorize.
 // Attempts are limited within 15-minute windows (see attempts.ts), answering 429 with Retry-After until the window
 // ends, never saying whether the username exists: 5 wrong logins for one username from one address block it there,
 // without checking the password, until a right one clears the count; and an address gets 30 logins and 10 sign-ups in
@@ -30,6 +36,25 @@ const SIGN_UP_LIMIT = 10;
 const USER = { id: true, username: true, displayName: true, inventoryTutorialSeenAt: true } as const;
 /** A hash no password matches, checked when the username is unknown. */
 const UNKNOWN_USER_HASH = hashPassword(randomBytes(32).toString("hex"));
+
+/**
+ * Answers 401 for a device whose proof doesn't hold.
+ * @param reply Reply to send.
+ * @returns The sent reply.
+ */
+function deviceRefused(reply: FastifyReply) {
+  return reply.status(401).send({ statusCode: 401, error: "Unauthorized", message: "The device's signature doesn't hold. Ask for a new challenge." });
+}
+
+/**
+ * Answers 403 for a device the server's computer hasn't authorized, with its short code.
+ * @param reply Reply to send.
+ * @param code The device's short code.
+ * @returns The sent reply.
+ */
+function devicePending(reply: FastifyReply, code: string) {
+  return reply.status(403).send({ statusCode: 403, error: "device_pending", message: DEVICE_MESSAGES.pending, code });
+}
 
 /**
  * Answers 401 for a username and password that don't match, without saying which was wrong.
@@ -111,9 +136,12 @@ export function registerUserRoutes(app: FastifyInstance) {
 
   routes.post(
     "/users",
-    { config: { public: true }, onRequest: limitByAddress(signUps), schema: { body: userCreateSchema, response: { 201: loggedInSchema } } },
+    { config: { public: true }, onRequest: limitByAddress(signUps), schema: { body: userCreateRequestSchema, response: { 201: loggedInSchema } } },
     async (request, reply) => {
-      const { displayName, username, email, password } = request.body;
+      const { displayName, username, email, password, device } = request.body;
+      if (!(await checkProof(device))) {
+        return deviceRefused(reply);
+      }
       if (await prisma.user.findUnique({ where: { username }, select: { id: true } })) {
         return usernameTaken(reply, username);
       }
@@ -121,15 +149,19 @@ export function registerUserRoutes(app: FastifyInstance) {
         data: { displayName, username, email, passwordHash: await hashPassword(password) },
         select: USER,
       });
-      return reply.status(201).send({ ...sessionOf(user), token: await createSession(user.id) });
+      const found = await deviceForLogin(user.id, device.publicKey, isLoopback(request.ip));
+      if ("pending" in found) {
+        return devicePending(reply, found.pending);
+      }
+      return reply.status(201).send({ ...sessionOf(user), token: await createSession(user.id, found.id) });
     },
   );
 
   routes.post(
     "/sessions",
-    { config: { public: true }, onRequest: limitByAddress(logins), schema: { body: credentialsSchema, response: { 200: loggedInSchema } } },
+    { config: { public: true }, onRequest: limitByAddress(logins), schema: { body: loginRequestSchema, response: { 200: loggedInSchema } } },
     async (request, reply) => {
-      const { username, password } = request.body;
+      const { username, password, device } = request.body;
       const key = `${request.ip} ${username}`;
       const wait = failedLogins.wait(key);
       if (wait > 0) {
@@ -142,7 +174,14 @@ export function registerUserRoutes(app: FastifyInstance) {
         return loginRefused(reply);
       }
       failedLogins.clear(key);
-      return { ...sessionOf(user), token: await createSession(user.id) };
+      if (!(await checkProof(device))) {
+        return deviceRefused(reply);
+      }
+      const found = await deviceForLogin(user.id, device.publicKey, isLoopback(request.ip));
+      if ("pending" in found) {
+        return devicePending(reply, found.pending);
+      }
+      return { ...sessionOf(user), token: await createSession(user.id, found.id) };
     },
   );
 

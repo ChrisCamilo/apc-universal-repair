@@ -39,6 +39,9 @@ jest.mock('@react-native-documents/picker', () => ({
 // The native side that pins the paired server's certificate (ServerPinModule.kt); tests check what it is handed.
 require('react-native').NativeModules.ServerPin = { pin: jest.fn() };
 
+// The device key is the Android Keystore's; tests get a fixed public key, and a "signature" that names the nonce.
+require('react-native').NativeModules.DeviceKey = { publicKey: jest.fn(async () => 'pk-test'), sign: jest.fn(async (nonce) => `sig-${nonce}`) };
+
 // The camera is native: the scanner draws nothing and reads no code unless a test calls its onBarcodeScanned, and
 // the camera's permission is granted.
 jest.mock('react-native-vision-camera', () => ({

@@ -5,7 +5,7 @@ import { databaseProvider } from "./provider.js";
 // Copies the data from one database to another, PostgreSQL or SQLite in either direction (`pnpm --filter @apc/api
 // db:copy`), to move the server from one to the other. Every table is copied as it is, ids, dates and keys included, in
 // an order where each row's references are already there; sessions are left out, so everyone logs in again after the
-// move. Photo files stay in PHOTOS_DIR; only their rows are copied. The copy refuses to start unless both databases
+// move, from devices still authorized. Photo files stay in PHOTOS_DIR; only their rows are copied. The copy refuses to start unless both databases
 // have every migration of this version applied and the target is empty, and it runs in one transaction on the target,
 // so a failure keeps nothing there.
 
@@ -14,7 +14,7 @@ const COPY_TIMEOUT_MS = 10 * 60 * 1000;
 /** How many rows go in each insert, under SQLite's limit of variables per statement. */
 const ROWS_PER_INSERT = 500;
 /** The tables copied, by their client's name, each after the ones it references. */
-export const TABLES = ["user", "category", "partBrand", "brand", "vehicleModel", "item", "itemVehicle", "itemOriginalCode", "itemBrand", "itemPhoto"] as const;
+export const TABLES = ["user", "device", "category", "partBrand", "brand", "vehicleModel", "item", "itemVehicle", "itemOriginalCode", "itemBrand", "itemPhoto"] as const;
 
 /** A table of a client, as the copy uses it. */
 type Table = {

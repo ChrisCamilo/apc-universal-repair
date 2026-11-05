@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test as base, type ElectronApplication, type Page, type TraceMode } from "@playwright/test";
+import type { Device } from "@apc/shared/devices";
 import type { Item } from "@apc/shared/items";
 import type { TEST_USERS } from "@apc/shared/test-users";
 import { reduceMotion } from "../reducedMotion.ts";
@@ -54,6 +55,8 @@ type WorkerOptions = {
    * reads an array given to test.use() as a fixture's value and its options.
    */
   stubStock: { items: Item[] };
+  /** The devices the stand-in API lists to authorize, none by default; in an object, as stubStock's items. */
+  stubDevices: { devices: Device[] };
 };
 
 type WorkerFixtures = {
@@ -64,9 +67,10 @@ type WorkerFixtures = {
 export const test = base.extend<Options & Fixtures, WorkerOptions & WorkerFixtures>({
   server: ["stub", { option: true }],
   stubStock: [{ items: [] }, { option: true, scope: "worker" }],
+  stubDevices: [{ devices: [] }, { option: true, scope: "worker" }],
   stubApi: [
-    async ({ stubStock }, provide) => {
-      const { server, url } = await startStubApi(stubStock.items);
+    async ({ stubStock, stubDevices }, provide) => {
+      const { server, url } = await startStubApi(stubStock.items, stubDevices.devices.map((device) => ({ ...device })));
       await provide({ url });
       await new Promise((resolve) => server.close(resolve));
     },

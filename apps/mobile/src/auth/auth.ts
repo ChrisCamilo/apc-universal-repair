@@ -1,10 +1,11 @@
 import { getGenericPassword, resetGenericPassword, setGenericPassword } from 'react-native-keychain';
 import { createApiAuth, type SessionStore } from '@apc/shared/auth';
 import { apiUrl } from '../api';
+import { device } from './deviceKey';
 
 // The mobile app's login and sign-up: the AuthService on the API (see @apc/shared/auth), with the session, its token
 // included, in the phone's keychain (the Android Keystore, the iOS Keychain), out of reach of other apps and backups,
-// unlike AsyncStorage, where the preferences stay.
+// unlike AsyncStorage, where the preferences stay. Logins sign with the device's key (see deviceKey.ts).
 
 /** The session in the keychain: each key a keychain service holding one value. */
 const KEYCHAIN: SessionStore = {
@@ -20,4 +21,4 @@ const KEYCHAIN: SessionStore = {
   },
 };
 
-export const auth = createApiAuth(KEYCHAIN, apiUrl);
+export const auth = createApiAuth(KEYCHAIN, apiUrl, device);

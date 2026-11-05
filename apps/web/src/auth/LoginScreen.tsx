@@ -9,6 +9,7 @@ import {
   type LoginErrors,
   type SessionUser,
 } from '@apc/shared/auth'
+import { DEVICE_MESSAGES } from '@apc/shared/devices'
 import { lockIcon, userIcon } from '@apc/shared/icons'
 import { BrandMark } from '../components/BrandMark.tsx'
 import { Button } from '../components/Button.tsx'
@@ -16,7 +17,9 @@ import { Dialog } from '../components/Dialog.tsx'
 import { Panel } from '../components/Panel.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { Text } from '../components/Typography.tsx'
+import { DevicePending } from './DevicePending.tsx'
 import { loginScreen } from './LoginScreen.styles.ts'
+import { useDeviceWait } from './useDeviceWait.ts'
 
 // The first screen of the app (/login): the APC badge on a panel beside the form, or above it, smaller, on
 // phones and narrow screens. "Entrar", or Enter in either field, sends the login; an empty field isn't sent but
@@ -25,7 +28,8 @@ import { loginScreen } from './LoginScreen.styles.ts'
 // Enter (the browser only sends a form through an enabled submit button) sends it twice. A refused login shows
 // one message above the form, without saying which field was wrong, and empties and focuses the password.
 // When the login can't be made (the API out of reach), it says so instead, keeping the password, as it does after
-// too many attempts, saying how many minutes to wait.
+// too many attempts, saying how many minutes to wait. A device the server's computer hasn't authorized shows its code
+// and waits (see DevicePending.tsx), logging in by itself once it is authorized, or saying it was refused.
 // "Esqueceu a senha?" opens a notice to ask the workshop's admin for a new password, as there is no reset until
 // the real backend (EP-10); it closes on "Entendi", Escape or a click outside, and the focus goes back to the link.
 // "Criar conta" opens the sign-up. In the desktop app, "Servidor e banco de dados" opens the Servidor dialog with no
@@ -65,6 +69,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
   const usernameInput = useRef<HTMLInputElement>(null)
   const passwordInput = useRef<HTMLInputElement>(null)
   const { classes, ids } = loginScreen()
+  const device = useDeviceWait(auth, onLoggedIn, () => setRefused(DEVICE_MESSAGES.refused))
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Credentials, value: string) => {
@@ -84,6 +89,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
       return
     }
     setRefused(undefined)
+    device.stop()
     setSent(true)
     setSending(true)
     const user = await auth.login(credentials).catch(() => undefined)
@@ -100,6 +106,10 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
     }
     if ('refused' in user) {
       setRefused(user.refused)
+      return
+    }
+    if ('pending' in user) {
+      device.wait({ code: user.pending, credentials })
       return
     }
     onLoggedIn(user)
@@ -140,6 +150,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
               {refused}
             </Text>
           )}
+          {device.waiting && <DevicePending code={device.waiting.code} />}
           <TextField
             ref={usernameInput}
             label="Usuário"

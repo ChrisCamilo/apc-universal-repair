@@ -13,10 +13,14 @@ import {
   SESSION_STORAGE_KEY,
   tooManyAttempts,
   userCreateSchema,
+  waitForDevice,
+  type AuthService,
+  type Credentials,
   type SessionStore,
   type SessionUser,
 } from "./auth.ts";
 import { TEST_USERS } from "./testUsers.ts";
+import type { DeviceSigner } from "../devices/devices.ts";
 
 const USER = TEST_USERS[0];
 
@@ -28,20 +32,27 @@ const GLOBAL_FETCH = globalThis.fetch;
 const SESSION_USER = { id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC", inventoryTutorialSeen: false };
 // The same user as the API answers a login with, and the session it saves: the user and the token of their session.
 const LOGGED_IN = { ...SESSION_USER, token: "t1" };
+// The nonce the API stand-ins hand out on GET /devices/challenge.
+const NONCE = "n1";
+// A device's key, standing in for the apps': a fixed public key, and a "signature" that names the nonce.
+const DEVICE: DeviceSigner = { publicKey: async () => "pk1", sign: async (nonce) => `sig-${nonce}` };
+// What the device sends with a login or sign-up for NONCE.
+const PROOF = { publicKey: "pk1", nonce: NONCE, signature: `sig-${NONCE}` };
 
 /** A request a stand-in for fetch got. */
 type Sent = { url: string; method?: string; body: unknown; authorization?: string };
 
 /**
  * Builds a stand-in for fetch that answers every request with one status and body, and keeps what was sent: the
- * address, the method unless it is a POST, the body, and the token when one was sent.
+ * address, the method unless it is a POST, the body, and the token when one was sent. GET /devices/challenge is
+ * answered with NONCE, and not kept.
  * @param status The status to answer with.
  * @param body The JSON body to answer with.
  * @returns The stand-in and the requests it got.
  */
 function answering(status: number, body: unknown = {}): { send: typeof fetch; sent: Sent[] } {
   const sent: Sent[] = [];
-  const send = (async (url: string, init?: RequestInit) => {
+  const send = withChallenge(async (url: string, init?: RequestInit) => {
     const authorization = new Headers(init?.headers).get("Authorization");
     sent.push({
       url,
@@ -50,8 +61,18 @@ function answering(status: number, body: unknown = {}): { send: typeof fetch; se
       ...(authorization && { authorization }),
     });
     return new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
-  }) as typeof fetch;
+  });
   return { send, sent };
+}
+
+/**
+ * Wraps a stand-in for fetch so it answers GET /devices/challenge with NONCE, as the API does.
+ * @param send The stand-in for every other request.
+ * @returns The stand-in with the challenge.
+ */
+function withChallenge(send: (url: string, init?: RequestInit) => Promise<Response>): typeof fetch {
+  return (async (url: string, init?: RequestInit) =>
+    url.endsWith("/devices/challenge") ? new Response(JSON.stringify({ nonce: NONCE }), { status: 200 }) : send(url, init)) as typeof fetch;
 }
 
 /**
@@ -205,15 +226,15 @@ test("Shared: the mocked sign-up logs the new user in and refuses a taken userna
 test("Shared: the API login saves the user and the token, refuses a 401 and rejects otherwise", async () => {
   const accepted = answering(200, LOGGED_IN);
   const { store, saved } = memoryStore();
-  assert.deepEqual(await createApiAuth(store, "/api", accepted.send).login({ username: USER.username, password: USER.password }), SESSION_USER);
-  assert.deepEqual(accepted.sent, [{ url: "/api/sessions", body: { username: USER.username, password: USER.password } }]);
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, accepted.send).login({ username: USER.username, password: USER.password }), SESSION_USER);
+  assert.deepEqual(accepted.sent, [{ url: "/api/sessions", body: { username: USER.username, password: USER.password, device: PROOF } }]);
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), LOGGED_IN);
 
   const refused = memoryStore();
-  assert.equal(await createApiAuth(refused.store, "/api", answering(401).send).login({ username: "x", password: "y" }), null);
+  assert.equal(await createApiAuth(refused.store, "/api", DEVICE, answering(401).send).login({ username: "x", password: "y" }), null);
   assert.equal(refused.saved.size, 0);
-  await assert.rejects(createApiAuth(refused.store, "/api", answering(500).send).login({ username: "x", password: "y" }));
-  await assert.rejects(createApiAuth(refused.store, "/api", answering(200, SESSION_USER).send).login({ username: "x", password: "y" }));
+  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).login({ username: "x", password: "y" }));
+  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(200, SESSION_USER).send).login({ username: "x", password: "y" }));
 });
 
 // Signs up through the API stand-in: a 201 saves the user and the token, a 409 says the username is taken, and a
@@ -223,15 +244,15 @@ test("Shared: the API sign-up saves the user and the token, or says why it was r
   const { store, saved } = memoryStore();
   const sent = { displayName: NEW_USER.displayName, username: NEW_USER.username, email: NEW_USER.email, password: NEW_USER.password };
   const user = { id: "u1", username: "ana.souza", displayName: "Ana Souza", initials: "AS", inventoryTutorialSeen: false };
-  assert.deepEqual(await createApiAuth(store, "/api", created.send).register(sent), { user });
-  assert.deepEqual(created.sent, [{ url: "/api/users", body: sent }]);
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, created.send).register(sent), { user });
+  assert.deepEqual(created.sent, [{ url: "/api/users", body: { ...sent, device: PROOF } }]);
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), { ...user, token: "t2" });
-  assert.deepEqual(await createApiAuth(store, "/api", answering(409).send).register(sent), { refused: REGISTER_MESSAGES.taken });
-  assert.deepEqual(await createApiAuth(store, "/api", answering(400).send).register(sent), { refused: REGISTER_MESSAGES.failed });
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, answering(409).send).register(sent), { refused: REGISTER_MESSAGES.taken });
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, answering(400).send).register(sent), { refused: REGISTER_MESSAGES.failed });
   const offline = (async () => {
     throw new TypeError("fetch failed");
   }) as typeof fetch;
-  assert.deepEqual(await createApiAuth(store, "/api", offline).register(sent), { refused: REGISTER_MESSAGES.failed });
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, offline).register(sent), { refused: REGISTER_MESSAGES.failed });
 });
 
 // Reads a saved session back and marks the tutorial seen through the API stand-in: the saved session says so, keeping
@@ -241,7 +262,7 @@ test("Shared: the API marks the Inventory tutorial seen for the caller, and on t
   const api = answering(204);
   const { store, saved } = memoryStore();
   saved.set(SESSION_STORAGE_KEY, JSON.stringify(LOGGED_IN));
-  const auth = createApiAuth(store, "/api", api.send);
+  const auth = createApiAuth(store, "/api", DEVICE, api.send);
   const user = (await auth.currentUser())!;
   assert.deepEqual(await auth.markInventoryTutorialSeen(user), { ...user, inventoryTutorialSeen: true });
   assert.deepEqual(api.sent, [{ url: "/api/users/me/inventory-tutorial", method: "PUT", body: undefined, authorization: "Bearer t1" }]);
@@ -252,7 +273,7 @@ test("Shared: the API marks the Inventory tutorial seen for the caller, and on t
   const unreachable = (async () => {
     throw new TypeError("fetch failed");
   }) as typeof fetch;
-  assert.equal((await createApiAuth(offline.store, "/api", unreachable).markInventoryTutorialSeen(user)).inventoryTutorialSeen, true);
+  assert.equal((await createApiAuth(offline.store, "/api", DEVICE, unreachable).markInventoryTutorialSeen(user)).inventoryTutorialSeen, true);
   assert.equal(JSON.parse(offline.saved.get(SESSION_STORAGE_KEY)!).inventoryTutorialSeen, true);
 });
 
@@ -261,7 +282,7 @@ test("Shared: the API marks the Inventory tutorial seen for the caller, and on t
 test("Shared: an address given as a function is read at each request", async () => {
   const api = answering(200, LOGGED_IN);
   let server = "https://192.168.0.10:3000";
-  const auth = createApiAuth(memoryStore().store, () => server, api.send);
+  const auth = createApiAuth(memoryStore().store, () => server, DEVICE, api.send);
   await auth.login({ username: USER.username, password: USER.password });
   server = "https://192.168.0.11:3000";
   await auth.logout();
@@ -277,9 +298,9 @@ test("Shared: a session saved without a token counts as logged out", async () =>
   const { store, saved } = memoryStore();
   const older = { id: "u1", username: USER.username, displayName: USER.displayName, initials: "CC" };
   saved.set(SESSION_STORAGE_KEY, JSON.stringify({ ...older, token: "t1" }));
-  assert.equal((await createApiAuth(store, "/api").currentUser())!.inventoryTutorialSeen, false);
+  assert.equal((await createApiAuth(store, "/api", DEVICE).currentUser())!.inventoryTutorialSeen, false);
   saved.set(SESSION_STORAGE_KEY, JSON.stringify({ ...older, inventoryTutorialSeen: true }));
-  assert.equal(await createApiAuth(store, "/api").currentUser(), null);
+  assert.equal(await createApiAuth(store, "/api", DEVICE).currentUser(), null);
 });
 
 // Logs in, then logs out through the API stand-in, and checks the logout ends the session on the API with its token,
@@ -288,7 +309,7 @@ test("Shared: a session saved without a token counts as logged out", async () =>
 test("Shared: the API logout ends the session on the API and on the device", async () => {
   const { store, saved } = memoryStore();
   const api = answering(200, LOGGED_IN);
-  const auth = createApiAuth(store, "/api", api.send);
+  const auth = createApiAuth(store, "/api", DEVICE, api.send);
   await auth.login({ username: USER.username, password: USER.password });
   await auth.logout();
   assert.deepEqual(api.sent.at(-1), { url: "/api/sessions/current", method: "DELETE", body: undefined, authorization: "Bearer t1" });
@@ -307,7 +328,7 @@ test("Shared: the API logout ends the session on the API and on the device", asy
   const unreachable = (async () => {
     throw new TypeError("fetch failed");
   }) as typeof fetch;
-  const offlineAuth = createApiAuth(offline.store, "/api", unreachable);
+  const offlineAuth = createApiAuth(offline.store, "/api", DEVICE, unreachable);
   await offlineAuth.currentUser();
   await offlineAuth.logout();
   assert.equal(offline.saved.size, 0);
@@ -319,7 +340,7 @@ test("Shared: the API logout ends the session on the API and on the device", asy
 test("Shared: API calls carry the token, and a 401 to one ends the session", async () => {
   const { store, saved } = memoryStore();
   saved.set(SESSION_STORAGE_KEY, JSON.stringify(LOGGED_IN));
-  await createApiAuth(store, "/api").currentUser();
+  await createApiAuth(store, "/api", DEVICE).currentUser();
   let expired = 0;
   const stop = onSessionExpired(() => expired++);
   try {
@@ -365,13 +386,60 @@ test("Shared: too many attempts say how many minutes to wait", () => {
 // Has the API answer a login and a sign-up with 429, and checks both are refused saying when to try again, with
 // nothing saved.
 test("Shared: the API login and sign-up say when to try again after too many attempts", async () => {
-  const limited = (async () =>
-    new Response(JSON.stringify({ statusCode: 429 }), { status: 429, headers: { "Retry-After": "840" } })) as typeof fetch;
+  const limited = withChallenge(async () => new Response(JSON.stringify({ statusCode: 429 }), { status: 429, headers: { "Retry-After": "840" } }));
   const { store, saved } = memoryStore();
-  const auth = createApiAuth(store, "/api", limited);
+  const auth = createApiAuth(store, "/api", DEVICE, limited);
   const refused = { refused: "Muitas tentativas. Tente de novo em 14 min." };
   assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }), refused);
   const sent = { displayName: NEW_USER.displayName, username: NEW_USER.username, email: NEW_USER.email, password: NEW_USER.password };
   assert.deepEqual(await auth.register(sent), refused);
   assert.equal(saved.size, 0);
+});
+
+// Logs in and signs up from a device the server's computer hasn't authorized, which the API answers 403 with its short
+// code, and checks each says so with the code and saves nothing; then asks whether it was authorized, with the
+// device's proof, and checks the answer, and that a failed answer rejects.
+test("Shared: a device waiting for authorization is told so with its code, and asks when it has it", async () => {
+  const waiting = answering(403, { statusCode: 403, error: "device_pending", message: "Device not authorized yet.", code: "K7Q2ZD" });
+  const { store, saved } = memoryStore();
+  const auth = createApiAuth(store, "/api", DEVICE, waiting.send);
+  assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }), { pending: "K7Q2ZD" });
+  const sent = { displayName: NEW_USER.displayName, username: NEW_USER.username, email: NEW_USER.email, password: NEW_USER.password };
+  assert.deepEqual(await auth.register(sent), { pending: "K7Q2ZD" });
+  assert.equal(saved.size, 0);
+
+  const status = answering(200, { status: "authorized" });
+  assert.equal(await createApiAuth(store, "/api", DEVICE, status.send).deviceStatus(), "authorized");
+  assert.deepEqual(status.sent, [{ url: "/api/devices/status", body: PROOF }]);
+  await assert.rejects(createApiAuth(store, "/api", DEVICE, answering(500).send).deviceStatus());
+  assert.equal(await createMockAuth(store, TEST_USERS, 0).deviceStatus(), "authorized");
+});
+
+// Waits for a device the server's computer authorizes on the third ask, the first failing, and checks the login then
+// goes through with the credentials typed; then for one that is refused, and one whose wait is stopped.
+test("Shared: a waiting device logs in once it is authorized, and stops when refused", async () => {
+  const statuses = ["fail", "pending", "authorized"];
+  const logins: Credentials[] = [];
+  const auth = {
+    deviceStatus: async () => {
+      const status = statuses.shift();
+      if (status === "fail") {
+        throw new TypeError("fetch failed");
+      }
+      return status;
+    },
+    login: async (credentials: Credentials) => {
+      logins.push(credentials);
+      return SESSION_USER;
+    },
+  } as unknown as AuthService;
+  const credentials = { username: USER.username, password: USER.password };
+  assert.deepEqual(await waitForDevice(auth, credentials, new AbortController().signal, 0), SESSION_USER);
+  assert.deepEqual(logins, [credentials]);
+
+  const refused = { deviceStatus: async () => "unknown" } as unknown as AuthService;
+  assert.equal(await waitForDevice(refused, credentials, new AbortController().signal, 0), null);
+  const stopped = new AbortController();
+  stopped.abort();
+  assert.equal(await waitForDevice(refused, credentials, stopped.signal, 0), undefined);
 });

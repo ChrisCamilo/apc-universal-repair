@@ -34,13 +34,15 @@ before(async () => {
   await prisma.user.update({ where: { id: user.id }, data: { inventoryTutorialSeenAt: new Date("2026-10-01T12:34:56.789Z") } });
   const brand = (await prisma.itemBrand.findFirst({ where: { photos: { none: {} } }, orderBy: { code: "asc" } }))!;
   await prisma.itemPhoto.create({ data: { id: PHOTO_ID, brandId: brand.id, position: 0, file: `${PHOTO_ID}.webp`, thumbFile: `${PHOTO_ID}-thumb.webp` } });
-  await createSession(user.id);
+  const device = await prisma.device.create({ data: { userId: user.id, publicKey: "copy-test-device", status: "AUTHORIZED", approvedAt: new Date() } });
+  await createSession(user.id, device.id);
 });
 
 after(async () => {
   await prisma.itemPhoto.deleteMany({ where: { id: PHOTO_ID } });
   await prisma.user.update({ where: { username: USER.username }, data: { inventoryTutorialSeenAt: seenBefore } });
   await prisma.session.deleteMany({ where: { user: { username: USER.username } } });
+  await prisma.device.deleteMany({ where: { publicKey: "copy-test-device" } });
   await Promise.all([prisma, ...opened].map((client) => client.$disconnect()));
   rmSync(FOLDER, { recursive: true, force: true });
 });

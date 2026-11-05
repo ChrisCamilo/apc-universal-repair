@@ -1,6 +1,7 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { Text as RNText, TextInput, View } from 'react-native';
 import { LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/shared/auth';
+import { DEVICE_MESSAGES } from '@apc/shared/devices';
 import { lockIcon, userIcon } from '@apc/shared/icons';
 import { BrandMark } from '../BrandMark';
 import { Button } from '../Button';
@@ -8,7 +9,9 @@ import { Dialog } from '../Dialog';
 import { FieldScrollView } from '../FieldScrollView';
 import { TextField } from '../TextField';
 import { Text } from '../Typography';
+import { DevicePending } from './DevicePending';
 import { useStyles } from './LoginScreen.styles';
+import { useDeviceWait } from './useDeviceWait';
 
 // The first screen of the app, the same as the web's /login on a phone: one column with the APC mark over the name
 // and the tagline, which head the screen as "APC Universal Repair", and what the login asks for, then the form, with
@@ -20,7 +23,9 @@ import { useStyles } from './LoginScreen.styles';
 // which field was wrong, and empties and focuses the password. "Esqueceu a senha?" opens a notice to ask the
 // workshop's admin for a new password, as there is no reset until the real backend (EP-10); it closes on
 // "Entendi", the back button or a tap outside. When the login can't be made (the API out of reach), it says so
-// instead, keeping the password, as it does after too many attempts, saying how many minutes to wait. "Criar conta"
+// instead, keeping the password, as it does after too many attempts, saying how many minutes to wait. A phone the
+// server's computer hasn't authorized shows its code and waits (see DevicePending.tsx), logging in by itself once it is
+// authorized, or saying it was refused. "Criar conta"
 // opens the sign-up, and "Conectar a outro servidor", under it, pairs the phone again, as after the computer's address
 // changes. A notice, such as the session having expired, shows above the form until a login is sent.
 
@@ -51,6 +56,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
   const usernameInput = useRef<ComponentRef<typeof TextInput>>(null);
   const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
   const { styles, ids } = useStyles();
+  const device = useDeviceWait(auth, onLoggedIn, () => setRefused(DEVICE_MESSAGES.refused));
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Credentials, value: string) => {
@@ -72,6 +78,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
       return;
     }
     setRefused(undefined);
+    device.stop();
     setSent(true);
     setSending(true);
     const user = await auth.login(credentials).catch(() => undefined);
@@ -88,6 +95,10 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
     }
     if ('refused' in user) {
       setRefused(user.refused);
+      return;
+    }
+    if ('pending' in user) {
+      device.wait({ code: user.pending, credentials });
       return;
     }
     onLoggedIn(user);
@@ -127,6 +138,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
             </Text>
           </View>
         )}
+        {device.waiting && <DevicePending code={device.waiting.code} />}
         <TextField
           ref={usernameInput}
           label="Usuário"

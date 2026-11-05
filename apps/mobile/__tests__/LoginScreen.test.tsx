@@ -6,6 +6,7 @@ import React from 'react';
 import { Modal, StyleSheet, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { createMockAuth, LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth';
+import { DEVICE_MESSAGES, DEVICE_POLL_MS, type DeviceStatus } from '@apc/shared/devices';
 import { isStyleId } from '@apc/shared/style-ids';
 import { TEST_USERS } from '@apc/shared/test-users';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
@@ -257,6 +258,43 @@ test('Mobile: Entrar shows it is busy and the login is sent only once', async ()
   expect(slow.login).toHaveBeenCalledTimes(1);
   await ReactTestRenderer.act(async () => answer(null));
   expect(button(tree, 'Entrar').props.accessibilityState).toMatchObject({ busy: false });
+});
+
+// Logs in from a phone the server's computer hasn't authorized, and checks the screen shows its code and waits,
+// handing nothing over; once the phone is authorized, the login goes through by itself with what was typed. Then a phone
+// refused meanwhile says so.
+test('Mobile: a phone waiting for authorization shows its code and logs in once authorized', async () => {
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+  try {
+    const onLoggedIn = jest.fn();
+    const statuses: DeviceStatus[] = ['pending', 'authorized'];
+    const sessionUser = { id: USER.id, username: USER.username, displayName: USER.displayName, initials: 'CC', inventoryTutorialSeen: false };
+    const login = jest.fn<ReturnType<AuthService['login']>, Parameters<AuthService['login']>>();
+    login.mockResolvedValueOnce({ pending: 'K7Q2ZD' }).mockResolvedValueOnce(sessionUser);
+    const waiting: AuthService = { ...AUTH, login, deviceStatus: async () => statuses.shift()! };
+    const tree = await mount('eighties', 'night', <LoginScreen auth={waiting} onLoggedIn={onLoggedIn} onRegister={() => {}} onConnect={() => {}} />);
+    await type(tree, 'Usuário', USER.username);
+    await type(tree, 'Senha', USER.password);
+    await press(tree, 'Entrar');
+    expect(shows(tree, DEVICE_MESSAGES.pending)).toBe(true);
+    expect(byId(tree, 'auth.device-pending.code').props.children).toBe('K7Q2ZD');
+    await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
+    expect(onLoggedIn).not.toHaveBeenCalled();
+    await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
+    expect(onLoggedIn).toHaveBeenCalledWith(sessionUser);
+    expect(login).toHaveBeenLastCalledWith({ username: USER.username, password: USER.password });
+    expect(shows(tree, DEVICE_MESSAGES.pending)).toBe(false);
+
+    const refused: AuthService = { ...AUTH, login: async () => ({ pending: 'K7Q2ZD' }), deviceStatus: async () => 'unknown' };
+    const again = await mount('gt4', 'day', <LoginScreen auth={refused} onLoggedIn={() => {}} onRegister={() => {}} onConnect={() => {}} />);
+    await type(again, 'Usuário', USER.username);
+    await type(again, 'Senha', USER.password);
+    await press(again, 'Entrar');
+    await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
+    expect(shows(again, DEVICE_MESSAGES.refused)).toBe(true);
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 // Makes the login fail to be checked, as when the API is out of reach, and checks the screen says so instead of

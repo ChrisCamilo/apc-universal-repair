@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { RELEASE_NOTES, RELEASE_VERSION } from 'virtual:apc-release'
-import { gearIcon, infoIcon, playIcon } from '@apc/shared/icons'
+import { gearIcon, infoIcon, lockIcon, playIcon } from '@apc/shared/icons'
 import { PAGE_SIZES } from '@apc/shared/pagination'
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme'
 import { auth } from '../auth/auth.ts'
@@ -14,6 +14,7 @@ import { Segmented } from '../components/Segmented.tsx'
 import { Switch } from '../components/Switch.tsx'
 import { usePhone } from '../components/usePhone.ts'
 import { desktopBridge } from '../desktop/desktopBridge.ts'
+import { DevicesDialog } from '../desktop/DevicesDialog.tsx'
 import { useOpenServerSettings } from '../desktop/serverSettingsContext.ts'
 import { useTheme } from '../useTheme.ts'
 import { AboutDialog } from './AboutDialog.tsx'
@@ -29,7 +30,8 @@ import { useTabReorder } from './tabReorderContext.ts'
 // which saves it and makes the tabs reorderable while it is on; "Itens por página" sets how many items the Inventory
 // list shows, now and each time it opens. Every choice keeps the menu open, so several can be changed in a row. "Tutorial do estoque",
 // with a play icon, goes to the Inventory tab and runs its tutorial again. In the desktop app, "Servidor e banco de
-// dados", with a gear, opens the Servidor dialog (see ServerSettings.tsx).
+// dados", with a gear, opens the Servidor dialog (see ServerSettings.tsx), and "Dispositivos", with a lock, the devices
+// authorized to log in (see DevicesDialog.tsx); the web app's demo shows "Dispositivos" too, which says it isn't there.
 // Set apart from the preferences, at the end: "Sobre esta versão", with an info icon, opens the version in use and its
 // release notes (see AboutDialog.tsx), and "Sair" ends the session and goes back to /login; the preferences stay on the
 // device for the next login.
@@ -49,6 +51,7 @@ export function UserMenu() {
   const tutorial = useInventoryTutorial()
   const openServerSettings = useOpenServerSettings()
   const [about, setAbout] = useState(false)
+  const [devices, setDevices] = useState(false)
   const [sheet, setSheet] = useState(false)
   const phone = usePhone()
   const bar = bottomBar()
@@ -92,11 +95,16 @@ export function UserMenu() {
       >
         Tutorial do estoque
       </MenuItem>
-      {desktopBridge()?.server && (
+      {(desktopBridge()?.server || import.meta.env.VITE_DEMO) && (
         <>
           <MenuLabel>Servidor</MenuLabel>
-          <MenuItem icon={gearIcon} onSelect={openServerSettings}>
-            Servidor e banco de dados
+          {desktopBridge()?.server && (
+            <MenuItem icon={gearIcon} onSelect={openServerSettings}>
+              Servidor e banco de dados
+            </MenuItem>
+          )}
+          <MenuItem icon={lockIcon} onSelect={() => setDevices(true)}>
+            Dispositivos
           </MenuItem>
         </>
       )}
@@ -136,6 +144,7 @@ export function UserMenu() {
         </Menu>
       )}
       <AboutDialog open={about} onClose={() => setAbout(false)} version={RELEASE_VERSION} notes={RELEASE_NOTES} />
+      <DevicesDialog open={devices} onClose={() => setDevices(false)} />
     </>
   )
 }

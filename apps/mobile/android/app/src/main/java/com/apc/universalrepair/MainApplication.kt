@@ -14,7 +14,7 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // The app's own module, which pins the paired server's certificate (see ServerPin).
+          // The app's own modules: pinning the paired server's certificate (see ServerPin) and the device key.
           add(ServerPinPackage())
         },
     )

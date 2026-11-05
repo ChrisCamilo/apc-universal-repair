@@ -25,6 +25,33 @@ model Category {
   items   Item[]
 }
 
+/// A device a user logs in from (see @apc/shared/devices): only its public key, the name the approver gave it and its
+/// dates, nothing else about the device or its owner. Pending until the server's computer authorizes it; deleting it
+/// ends its sessions.
+model Device {
+  id         String       @id @default(uuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The device's ECDSA P-256 public key, SPKI in base64url; its private key never leaves the device.
+  publicKey  String
+  status     DeviceStatus @default(PENDING)
+  /// The name the approver gave it; empty until then, when the apps show "Dispositivo <code>".
+  name       String       @default("")
+  createdAt  DateTime     @default(now())
+  approvedAt DateTime?
+  /// When it last logged in.
+  lastUsedAt DateTime?
+  sessions   Session[]
+
+  @@unique([userId, publicKey])
+}
+
+/// Whether the server's computer has authorized a device yet.
+enum DeviceStatus {
+  PENDING
+  AUTHORIZED
+}
+
 /// An inventory item: a part, made by one brand or more (see ItemBrand), which replace each other. nameKey holds the
 /// name without accents in lowercase, so searches ignore accents (see @apc/shared/items). It fits one vehicle or more
 /// (see ItemVehicle). Its category and its vehicles' brands and models are entries of their lists, which can't be
@@ -155,6 +182,9 @@ model Session {
   id         String   @id @default(uuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The device it was started from; removing the device ends it.
+  deviceId   String
+  device     Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   /// SHA-256 of the token, in hex.
   tokenHash  String   @unique
   createdAt  DateTime @default(now())
@@ -163,6 +193,7 @@ model Session {
   expiresAt  DateTime
 
   @@index([userId])
+  @@index([deviceId])
 }
 
 /// Where a part fits, side to side: not applicable (the API's "N/A"), right ("LD"), left ("LE") or both ("Ambos").
@@ -187,6 +218,7 @@ model User {
   /// When the user first saw the Inventory tutorial; null until then, so it runs by itself on their first login only.
   inventoryTutorialSeenAt DateTime?
   sessions                Session[]
+  devices                 Device[]
 }
 
 /// A vehicle model of a vehicle brand, unique within it; nameKey as in Brand.

@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/shared/auth'
+import { DEVICE_MESSAGES } from '@apc/shared/devices'
 import { lockIcon, userIcon } from '@apc/shared/icons'
 import { BackButton } from '../components/BackButton.tsx'
 import { BrandMark } from '../components/BrandMark.tsx'
@@ -7,14 +8,18 @@ import { Button } from '../components/Button.tsx'
 import { Panel } from '../components/Panel.tsx'
 import { TextField } from '../components/TextField.tsx'
 import { Text } from '../components/Typography.tsx'
+import { DevicePending } from './DevicePending.tsx'
 import { registerScreen } from './RegisterScreen.styles.ts'
+import { useDeviceWait } from './useDeviceWait.ts'
 
 // The sign-up screen (/register), laid out as the login: the APC badge on a panel beside the form, or above it on
 // narrow screens. The form asks for the name, the username, the e-mail (only kept for now) and the password, typed twice.
 // "Criar conta", or Enter in a field, sends it once every field keeps its rule (see registerErrors); otherwise each
 // field that breaks one shows its message under it and the cursor goes to the first. A field's message goes away once
 // it is typed into. While it runs, "Criar conta" shows it is busy and is disabled. Refused (the username taken, or
-// the API out of reach), it says why above the form; created, the new user is logged in and handed over.
+// the API out of reach), it says why above the form; created, the new user is logged in and handed over. From a device
+// the server's computer hasn't authorized, the user is created and the screen shows the device's code and waits (see
+// DevicePending.tsx), logging in by itself once it is authorized.
 // "Já tem conta? Entrar" goes back to the login.
 // On a phone it is one column, as in the native app: in place of the badge, a header with the back arrow to the login
 // and "Criar conta" as the page's heading, then the fields, and "Criar conta" across with the way back to the login at
@@ -39,6 +44,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
   const [refused, setRefused] = useState<string>()
   const inputs = useRef<Partial<Record<keyof Registration, HTMLInputElement | null>>>({})
   const { classes, ids } = registerScreen()
+  const device = useDeviceWait(auth, onRegistered, () => setRefused(DEVICE_MESSAGES.refused))
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Registration, value: string) => {
@@ -63,6 +69,10 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
     setSending(false)
     if ('refused' in result) {
       setRefused(result.refused)
+      return
+    }
+    if ('pending' in result) {
+      device.wait({ code: result.pending, credentials: { username, password } })
       return
     }
     onRegistered(result.user)
@@ -98,6 +108,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
               {refused}
             </Text>
           )}
+          {device.waiting && <DevicePending code={device.waiting.code} />}
           <TextField label="Nome" kind="name" {...field('displayName')} />
           <TextField label="Usuário" kind="username" icon={userIcon} helper="Letras minúsculas, números, pontos ou hífens." {...field('username')} />
           <TextField label="E-mail" kind="email" {...field('email')} />

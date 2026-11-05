@@ -10,6 +10,7 @@ import { itemListQuerySchema, type Item } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
+import { testDevice, testProof } from "../devices/testDevices.js";
 import { hashToken } from "../sessions/sessions.js";
 
 // The inventory against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded, on PostgreSQL or
@@ -23,10 +24,16 @@ const RUN = randomBytes(3).toString("hex").toUpperCase();
 const USER = TEST_USERS[0];
 /** The token of this file's session. */
 let token = "";
+/** The device the tests log in from, authorized by the first login, from the server's computer. */
+const DEVICE = await testDevice();
 
 before(async () => {
   process.env.PHOTOS_DIR = await mkdtemp(path.join(tmpdir(), "apc-items-db-"));
-  const login = await app.inject({ method: "POST", url: "/sessions", payload: { username: USER.username, password: USER.password } });
+  const login = await app.inject({
+    method: "POST",
+    url: "/sessions",
+    payload: { username: USER.username, password: USER.password, device: await testProof(app, DEVICE) },
+  });
   token = login.json().token;
 });
 
@@ -36,7 +43,7 @@ after(async () => {
   await prisma.brand.deleteMany({ where: { name: { contains: RUN } } });
   await prisma.category.deleteMany({ where: { name: { contains: RUN } } });
   await prisma.partBrand.deleteMany({ where: { name: { contains: RUN } } });
-  await prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } });
+  await prisma.device.deleteMany({ where: { publicKey: await DEVICE.publicKey() } });
   await rm(process.env.PHOTOS_DIR!, { recursive: true, force: true });
   await app.close();
   await prisma.$disconnect();
@@ -417,8 +424,9 @@ test("API: an item is deleted with its brands and their photos", async () => {
 test("API: concurrent edits and logins all go through", async () => {
   const found = await find("bp3");
   const edits = Array.from({ length: 20 }, (_, index) => call("PATCH", `/items/${found.id}`, { minQuantity: index }));
-  const logins = Array.from({ length: 10 }, () =>
-    app.inject({ method: "POST", url: "/sessions", payload: { username: USER.username, password: USER.password }, remoteAddress: "10.0.0.9" }),
+  const proofs = await Promise.all(Array.from({ length: 10 }, () => testProof(app, DEVICE)));
+  const logins = proofs.map((device) =>
+    app.inject({ method: "POST", url: "/sessions", payload: { username: USER.username, password: USER.password, device }, remoteAddress: "10.0.0.9" }),
   );
   const answers = await Promise.all([...edits, ...logins]);
   assert.deepEqual(

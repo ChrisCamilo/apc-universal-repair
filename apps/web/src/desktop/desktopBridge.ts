@@ -1,3 +1,4 @@
+import type { DeviceSigner } from '@apc/shared/devices'
 import type { Pairing } from '@apc/shared/pairing'
 
 // What the desktop app's preload hands the page (see apps/desktop/src/preload.cts): asking for a Windows notification
@@ -86,6 +87,8 @@ export type ServerSettings =
 
 /** The desktop app's bridge. */
 export type DesktopBridge = {
+  /** The app's device key, which the main process keeps: the page gets its public key and signatures, never the key. */
+  device?: DeviceSigner
   /** Asks for a Windows notification, which the app shows only while its window isn't focused. */
   notify: (title: string, message: string) => void
   /** Calls a listener each time a notification is clicked, and gives the way to stop. */

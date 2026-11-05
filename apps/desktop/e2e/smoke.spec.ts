@@ -71,8 +71,9 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
 });
 
 // With the preload, the page still has no Node: no require and no process. The bridge gives it only its calls, for
-// the notifications, the update, the server's settings and its failure. Run unpackaged, the app doesn't check for updates, so the
-// update notice's live region is there and empty.
+// the notifications, the update, the server's settings and its failure, and the device key, whose public half (SPKI of
+// a P-256 key) and signatures it gets, never the private key. Run unpackaged, the app doesn't check for updates, so
+// the update notice's live region is there and empty.
 test("Desktop: the page gets only the bridge's calls, with no Node access", { tag: [TEST_TAGS.setup] }, async ({ launchApp }) => {
   const { app } = await launchApp();
   const page = await app.firstWindow();
@@ -82,11 +83,13 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", { ta
     process: typeof process,
     bridge: Object.keys((window as unknown as { apcDesktop: object }).apcDesktop).sort(),
     server: Object.keys((window as unknown as { apcDesktop: { server: object } }).apcDesktop.server).sort(),
+    device: Object.keys((window as unknown as { apcDesktop: { device: object } }).apcDesktop.device).sort(),
   }));
   expect(exposed).toEqual({
     require: "undefined",
     process: "undefined",
-    bridge: ["notify", "onOpenNotifications", "onUpdateReady", "restartToUpdate", "server"],
+    bridge: ["device", "notify", "onOpenNotifications", "onUpdateReady", "restartToUpdate", "server"],
+    device: ["publicKey", "sign"],
     server: [
       "changeKey",
       "checkImport",
@@ -112,6 +115,13 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", { ta
     ],
   });
   await expect(page.getByTestId("setup.update-notice")).toBeEmpty();
+  // The device key gives the page its public half and signatures only: SPKI, never the private key.
+  const device = await page.evaluate(async () => {
+    const bridge = (window as unknown as { apcDesktop: { device: { publicKey: () => Promise<string>; sign: (nonce: string) => Promise<string> } } }).apcDesktop.device;
+    return { publicKey: await bridge.publicKey(), signature: await bridge.sign("n0nce") };
+  });
+  expect(Buffer.from(device.publicKey, "base64url").toString("hex")).toMatch(/^3059301306072a8648ce3d020106082a8648ce3d030107034200/);
+  expect(Buffer.from(device.signature, "base64url")).toHaveLength(64);
 });
 
 // Leaves the installer's PostgreSQL choice next to a config.json that sets the API address, opens the app, and checks

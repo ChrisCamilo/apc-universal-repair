@@ -19,7 +19,9 @@ erDiagram
     Item ||--|{ ItemBrand : "made by · feito por (1+)"
     Item ||--o{ ItemOriginalCode : "has · tem (0+)"
     ItemBrand ||--o{ ItemPhoto : "shows · mostra (0-3)"
+    User ||--o{ Device : "logs in from · entra por"
     User ||--o{ Session : "logs in · entra"
+    Device ||--o{ Session : "holds · tem"
 
     Item {
         string id PK "uuid"
@@ -98,9 +100,20 @@ erDiagram
         datetime createdAt
         datetime inventoryTutorialSeenAt "first seen; null: tutorial runs on next login"
     }
+    Device {
+        string id PK "uuid"
+        string userId FK "User.id, cascade"
+        string publicKey "P-256 public key, SPKI; the private key stays on the device"
+        DeviceStatus status "PENDING AUTHORIZED, default PENDING"
+        string name "the approver's; empty until authorized"
+        datetime createdAt
+        datetime approvedAt "null while pending"
+        datetime lastUsedAt "last login"
+    }
     Session {
         string id PK "uuid, names it in signed photo paths"
         string userId FK "User.id, cascade"
+        string deviceId FK "Device.id, cascade"
         string tokenHash UK "SHA-256 of the token, never the token"
         datetime createdAt
         datetime lastUsedAt "written once an hour at most"
@@ -126,7 +139,8 @@ erDiagram
 | `Brand` | The vehicle brands (Chevrolet, Volkswagen…), shared with the catalog. |
 | `VehicleModel` | The models of each vehicle brand (Opala, Gol…). |
 | `User` | Who logs in: their username, name, e-mail (kept only, nothing is sent to it yet), the hash of their password, and when they first saw the Inventory tutorial, which runs by itself only until then, on any device. It has no relation to the inventory tables. |
-| `Session` | A user logged in on one device, from a login or sign-up until "Sair" or 7 days without use: the hash of the token the device sends, and when it was last used and expires. |
+| `Device` | A device a user logs in from: its public key, unique per user, whether the server's computer authorized it, the name the approver gave it, and when it was recorded, authorized and last used. Nothing else about the device or its owner: no model, system, address or browser. |
+| `Session` | A user logged in on one device, from a login or sign-up until "Sair" or 7 days without use: the device, the hash of the token the device sends, and when it was last used and expires. |
 
 ### Relationships
 
@@ -134,6 +148,7 @@ erDiagram
 - A vehicle model belongs to **one** vehicle brand; a vehicle brand has **many** models.
 - An item's brand has **0 to 3** photos (the limit is checked by the API).
 - An item has **any number** of original codes, none at first.
+- A user logs in from **any number** of devices; every session belongs to **one** device and **one** user.
 - The item, its vehicles and its brands store **references** (`categoryId`, `vehicleBrandId`, `partBrandId`, …), not names: renaming a list entry renames it on every item at once, and merging an entry into another moves its items there in one transaction (a vehicle brand moving its models along) before deleting it; an item that ends up with a vehicle twice keeps it once.
 
 ### Rules
@@ -152,6 +167,7 @@ erDiagram
 | A username is kept in lowercase and is unique, so names that differ only in case are the same user. It takes 3 to 32 lowercase letters, digits, dots or hyphens. | `User.username`, API |
 | A password is never kept as typed: `passwordHash` holds `scrypt$<salt>$<hash>` with a random salt per user, and the API never sends it. | `User.passwordHash` |
 | A token is never kept: `tokenHash` holds its SHA-256, so the table alone can't be used to log in. An expired session is deleted when it is next looked up; deleting a user deletes their sessions (`CASCADE`). | `Session` |
+| Only public keys are kept: the private key never leaves its device, so the table holds nothing secret. A key is recorded `PENDING` on its first login with the right password, or `AUTHORIZED` at once from the server's computer; removing a device deletes its sessions (`CASCADE`), and so does deleting its user. | `Device` |
 
 ### Migrations
 
@@ -212,7 +228,8 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | `Brand` | As marcas de veículo (Chevrolet, Volkswagen…), as mesmas do catálogo. |
 | `VehicleModel` | Os modelos de cada marca de veículo (Opala, Gol…). |
 | `User` | Quem entra no app: o usuário, o nome, o e-mail (só guardado, nada é enviado a ele ainda), o hash da senha e quando viu o tutorial do Estoque pela primeira vez, que só roda sozinho até então, em qualquer aparelho. Não se relaciona com as tabelas do estoque. |
-| `Session` | Um usuário logado num aparelho, de um login ou cadastro até o "Sair" ou 7 dias sem uso: o hash do token que o aparelho envia, e quando foi usada pela última vez e quando expira. |
+| `Device` | Um dispositivo pelo qual um usuário entra: a chave pública dele, única por usuário, se o computador do servidor o autorizou, o nome que quem autorizou deu, e quando foi registrado, autorizado e usado pela última vez. Nada mais sobre o dispositivo ou o dono: nem modelo, sistema, endereço ou navegador. |
+| `Session` | Um usuário logado num aparelho, de um login ou cadastro até o "Sair" ou 7 dias sem uso: o dispositivo, o hash do token que o aparelho envia, e quando foi usada pela última vez e quando expira. |
 
 ### Relacionamentos
 
@@ -220,6 +237,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 - Um modelo pertence a **uma** marca de veículo; uma marca tem **vários** modelos.
 - Uma marca do item tem de **0 a 3** fotos (o limite é conferido pela API).
 - Um item tem **quantos** códigos originais precisar, nenhum no começo.
+- Um usuário entra por **quantos** dispositivos precisar; toda sessão é de **um** dispositivo e de **um** usuário.
 - O item, os veículos e as marcas dele guardam **referências** (`categoryId`, `vehicleBrandId`, `partBrandId`, …), não nomes: renomear uma entrada de lista renomeia em todos os itens de uma vez, e juntar uma entrada a outra passa os itens dela para a outra numa só transação (uma marca de veículo levando os modelos junto) antes de excluí-la; um item que fica com um veículo duas vezes o mantém uma vez.
 
 ### Regras
@@ -238,6 +256,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | O usuário é guardado em minúsculas e é único, então nomes que só mudam em maiúsculas são o mesmo usuário. Ele aceita de 3 a 32 letras minúsculas, números, pontos ou hífens. | `User.username`, API |
 | A senha nunca é guardada como foi digitada: `passwordHash` guarda `scrypt$<sal>$<hash>` com um sal aleatório por usuário, e a API nunca o envia. | `User.passwordHash` |
 | O token nunca é guardado: `tokenHash` guarda o SHA-256 dele, então a tabela sozinha não serve para entrar. Uma sessão expirada é apagada na próxima vez que é procurada; apagar um usuário apaga as sessões dele (`CASCADE`). | `Session` |
+| Só chaves públicas são guardadas: a chave privada nunca sai do dispositivo, então a tabela não guarda nada secreto. Uma chave é registrada `PENDING` no primeiro login com a senha certa, ou `AUTHORIZED` na hora pelo computador do servidor; remover um dispositivo apaga as sessões dele (`CASCADE`), e apagar o usuário também. | `Device` |
 
 ### Migrações
 

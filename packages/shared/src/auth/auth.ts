@@ -1,4 +1,14 @@
 import { z } from "zod";
+import {
+  DEVICE_POLL_MS,
+  deviceChallengeSchema,
+  devicePendingSchema,
+  deviceProofSchema,
+  deviceStatusSchema,
+  proveDevice,
+  type DeviceSigner,
+  type DeviceStatus,
+} from "../devices/devices.ts";
 import { setSessionToken, withSession } from "./apiFetch.ts";
 
 export { apiFetch, onSessionExpired } from "./apiFetch.ts";
@@ -9,7 +19,9 @@ export { apiFetch, onSessionExpired } from "./apiFetch.ts";
 // (createMockAuth) checks the test users kept in the repo, for tests and stories. Both save the session on the device
 // through the store each app hands over (localStorage on the web, the phone's keychain on mobile). The API's also
 // keeps the token of the session the API started, which apiFetch sends on every call; a session saved without one,
-// from before the API checked tokens, counts as nobody logged in. The screens only see AuthService.
+// from before the API checked tokens, counts as nobody logged in. The API's logs in and signs up with the device's
+// proof that it holds its key (see @apc/shared/devices): a device the server's computer hasn't authorized yet is told
+// so with its short code, and asks deviceStatus until it is. The screens only see AuthService.
 
 /**
  * The login's brand on a phone, in px: the APC mark, then the name over the tagline in the display face, the tagline
@@ -70,6 +82,8 @@ export const sessionUserSchema = z.object({
 });
 /** What POST /sessions and POST /users answer: the user, and the token of the session they just started. */
 export const loggedInSchema = sessionUserSchema.extend({ token: z.string().min(1) });
+/** A login as the apps send it: the user and password, and the device's proof that it holds its key (see devices.ts). */
+export const loginRequestSchema = credentialsSchema.extend({ device: deviceProofSchema });
 /** What POST /users takes: the sign-up fields, under the same rules as the form. The e-mail is only kept for now. */
 export const userCreateSchema = z.object({
   displayName: z.string().trim().min(1, REGISTER_MESSAGES.displayName),
@@ -77,17 +91,24 @@ export const userCreateSchema = z.object({
   email: z.string().trim().pipe(z.email(REGISTER_MESSAGES.emailFormat)),
   password: z.string().min(PASSWORD_MIN_LENGTH, REGISTER_MESSAGES.passwordShort),
 });
+/** A sign-up as the apps send it: the user to create, and the device's proof that it holds its key. */
+export const userCreateRequestSchema = userCreateSchema.extend({ device: deviceProofSchema });
 
 /** Logs in and out and tells who is logged in: on the API in the apps, the mock in tests and stories. */
 export type AuthService = {
   /**
-   * Checks the user and password; resolves with the logged user, null when they don't match, or the message saying
-   * why else it was refused (too many attempts), and rejects when the check can't be made (e.g. the API is out of
-   * reach).
+   * Checks the user and password; resolves with the logged user, null when they don't match, the message saying
+   * why else it was refused (too many attempts), or the device's short code while the server's computer hasn't
+   * authorized it, and rejects when the check can't be made (e.g. the API is out of reach).
    */
-  login: (credentials: Credentials) => Promise<SessionUser | null | { refused: string }>;
-  /** Creates a user and logs them in; resolves with the user, or the message saying why it was refused. */
+  login: (credentials: Credentials) => Promise<SessionUser | null | { refused: string } | { pending: string }>;
+  /**
+   * Creates a user and logs them in; resolves with the user, the message saying why it was refused, or the device's
+   * short code while it waits to be authorized, the user created meanwhile.
+   */
   register: (user: UserCreate) => Promise<RegisterResult>;
+  /** Asks whether this device was authorized, while it waits; rejects when the API can't be asked. */
+  deviceStatus: () => Promise<DeviceStatus>;
   /** Ends the session, on the device and on the API; a failed request is ignored. */
   logout: () => Promise<void>;
   /**
@@ -109,8 +130,11 @@ export type LoginErrors = Partial<Record<"username" | "password", string>>;
 export type Registration = UserCreate & { confirm: string };
 /** The message of each sign-up field that breaks a rule; a field without one is fine. */
 export type RegisterErrors = Partial<Record<keyof Registration, string>>;
-/** How a sign-up ends: the user created and logged in, or the message saying why it was refused. */
-export type RegisterResult = { user: SessionUser } | { refused: string };
+/**
+ * How a sign-up ends: the user created and logged in, the message saying why it was refused, or the device's short
+ * code while it waits to be authorized.
+ */
+export type RegisterResult = { user: SessionUser } | { refused: string } | { pending: string };
 /** Where the session is saved: the device storage, with the shape of AsyncStorage. */
 export type SessionStore = {
   getItem: (key: string) => Promise<string | null>;
@@ -128,21 +152,35 @@ export type UserCreate = z.input<typeof userCreateSchema>;
  * Builds the login and sign-up of the apps, through the API: POST /sessions checks the user and password, POST /users
  * creates a user; either way the user the API answers with is saved in the store as the session, with its token,
  * which apiFetch then sends. Too many attempts (429) are refused saying when to try again. DELETE /sessions/current ends the session on logout, and PUT
- * /users/me/inventory-tutorial marks the Inventory tutorial as seen.
+ * /users/me/inventory-tutorial marks the Inventory tutorial as seen. Logins and sign-ups carry the device's signature
+ * of a nonce from GET /devices/challenge; a 403 says the device waits for authorization, with its short code, and POST
+ * /devices/status says when it has it.
  * @param store Where the session is saved on the device.
  * @param apiBase Where the API answers, e.g. "/api" on the web; or a function giving it at each request, as the phone
  * does, whose server is the one it paired with.
+ * @param device This device's key, which signs the nonces.
  * @param send How requests are sent: the global fetch as it is when each one is sent, or a stand-in in tests.
  * @returns The AuthService on the API.
  */
 export function createApiAuth(
   store: SessionStore,
   apiBase: string | (() => string),
+  device: DeviceSigner,
   send: typeof fetch = (input, init) => fetch(input, init),
 ): AuthService {
   const base = typeof apiBase === "string" ? () => apiBase : apiBase;
   const post = (path: string, body: unknown) =>
     send(`${base()}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  /** Asks the API for a nonce and signs it with the device's key. */
+  const prove = async () => {
+    const response = await send(`${base()}/devices/challenge`);
+    if (!response.ok) {
+      throw new Error(`The challenge answered ${response.status}.`);
+    }
+    return proveDevice(device, deviceChallengeSchema.parse(await response.json()).nonce);
+  };
+  /** Reads the short code of a device the API says isn't authorized yet. */
+  const pending = async (response: Response) => ({ pending: devicePendingSchema.parse(await response.json()).code });
   const call = withSession(send);
   /** Saves a session the API started and hands its token to apiFetch. */
   const start = async (loggedIn: LoggedIn) => {
@@ -153,9 +191,12 @@ export function createApiAuth(
   };
   return {
     login: async (credentials) => {
-      const response = await post("/sessions", credentials);
+      const response = await post("/sessions", { ...credentials, device: await prove() });
       if (response.status === 401) {
         return null;
+      }
+      if (response.status === 403) {
+        return pending(response);
       }
       if (response.status === 429) {
         return { refused: tooManyAttempts(response.headers.get("Retry-After")) };
@@ -166,9 +207,14 @@ export function createApiAuth(
       return start(loggedInSchema.parse(await response.json()));
     },
     register: async (user) => {
-      const response = await post("/users", user).catch(() => null);
+      const response = await prove()
+        .then((proof) => post("/users", { ...user, device: proof }))
+        .catch(() => null);
       if (response?.status === 409) {
         return { refused: REGISTER_MESSAGES.taken };
+      }
+      if (response?.status === 403) {
+        return pending(response);
       }
       if (response?.status === 429) {
         return { refused: tooManyAttempts(response.headers.get("Retry-After")) };
@@ -177,6 +223,13 @@ export function createApiAuth(
         return { refused: REGISTER_MESSAGES.failed };
       }
       return { user: await start(loggedInSchema.parse(await response.json())) };
+    },
+    deviceStatus: async () => {
+      const response = await post("/devices/status", await prove());
+      if (!response.ok) {
+        throw new Error(`The device's status answered ${response.status}.`);
+      }
+      return deviceStatusSchema.parse(await response.json()).status;
     },
     logout: async () => {
       await call(`${base()}/sessions/current`, { method: "DELETE" }).catch(() => null);
@@ -229,6 +282,8 @@ export function createMockAuth(store: SessionStore, users: readonly TestUser[], 
       known.push(user);
       return { user: await keepSession(store, sessionOf(user, false)) };
     },
+    // The mock has no server's computer to authorize devices on: every device is authorized.
+    deviceStatus: async () => "authorized",
     logout: () => store.removeItem(SESSION_STORAGE_KEY),
     markInventoryTutorialSeen: async (user) => {
       seen.add(user.id);
@@ -247,6 +302,38 @@ export function initials(displayName: string): string {
   const words = displayName.trim().split(/\s+/);
   const letters = words.length > 1 ? [words[0], words[words.length - 1]] : words;
   return letters.map((word) => word.charAt(0)).join("").toUpperCase();
+}
+
+/**
+ * Waits for this device to be authorized on the server's computer, asking every pollMs, then logs in with the
+ * credentials typed. A failed ask is tried again at the next one.
+ * @param auth The AuthService.
+ * @param credentials What the login that was told to wait sent.
+ * @param signal Stops the wait, as when the screen closes or another login is sent.
+ * @param pollMs How long between asks.
+ * @returns The logged user; null once the device was refused or removed, or the login then failed; undefined when
+ * stopped.
+ */
+export async function waitForDevice(
+  auth: AuthService,
+  credentials: Credentials,
+  signal: AbortSignal,
+  pollMs: number = DEVICE_POLL_MS,
+): Promise<SessionUser | null | undefined> {
+  while (!signal.aborted) {
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), pollMs));
+    const status = signal.aborted ? undefined : await auth.deviceStatus().catch(() => "pending" as const);
+    if (status === "unknown") {
+      return null;
+    }
+    if (status === "authorized") {
+      const user = await auth.login(credentials).catch(() => null);
+      if (!user || !("pending" in user)) {
+        return user && "id" in user ? user : null;
+      }
+    }
+  }
+  return undefined;
 }
 
 /**
