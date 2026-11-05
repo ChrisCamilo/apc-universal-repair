@@ -1,4 +1,5 @@
 import { createMockAuth, LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth'
+import { DEVICE_MESSAGES } from '@apc/shared/devices'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens'
 import { isStyleId } from '@apc/shared/style-ids'
 import { TEST_USERS } from '@apc/shared/test-users'
@@ -14,6 +15,8 @@ import { LoginScreen } from './LoginScreen.tsx'
 const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}, removeItem: async () => {} }, TEST_USERS, 0)
 const root = document.documentElement
 const USER = TEST_USERS[0]
+/** The test user as a login hands them over. */
+const SESSION_USER: SessionUser = { id: USER.id, username: USER.username, displayName: USER.displayName, initials: 'CC', inventoryTutorialSeen: false }
 
 /**
  * Converts a hex color to the `rgb(r, g, b)` form the browser reports for computed styles.
@@ -181,6 +184,33 @@ test('Web: a login that can\'t be checked says the API is out of reach', async (
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
   await expect.element(screen.getByRole('alert')).toHaveTextContent(LOGIN_MESSAGES.unreachable)
   await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveValue(USER.password)
+})
+
+// Logs in from a device the server's computer hasn't authorized, and checks the screen shows its code and waits,
+// handing nothing over; once the device is authorized, the login goes through by itself with what was typed. Then a
+// device that is refused meanwhile says so.
+test('Web: a device waiting for authorization shows its code and logs in once authorized', async () => {
+  const onLoggedIn = vi.fn()
+  const statuses = ['pending', 'authorized']
+  const login = vi.fn<AuthService['login']>().mockResolvedValueOnce({ pending: 'K7Q2ZD' }).mockResolvedValueOnce(SESSION_USER)
+  const waiting: AuthService = { ...AUTH, login, deviceStatus: async () => statuses.shift() as 'pending' }
+  const screen = await render(<LoginScreen auth={waiting} onLoggedIn={onLoggedIn} onRegister={() => {}} />)
+  await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
+  await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
+  await expect.element(screen.getByText(DEVICE_MESSAGES.pending)).toBeVisible()
+  await expect.element(screen.getByText('K7Q2ZD', { exact: true })).toBeVisible()
+  expect(screen.getByText('K7Q2ZD', { exact: true }).element().closest('[role=status]')).not.toBeNull()
+  expect(onLoggedIn).not.toHaveBeenCalled()
+  await expect.poll(() => onLoggedIn.mock.calls.length, { timeout: 10_000 }).toBe(1)
+  expect(onLoggedIn).toHaveBeenCalledWith(SESSION_USER)
+  expect(login).toHaveBeenLastCalledWith({ username: USER.username, password: USER.password })
+
+  await screen.unmount()
+  const refused: AuthService = { ...AUTH, login: async () => ({ pending: 'K7Q2ZD' }), deviceStatus: async () => 'unknown' }
+  const again = await render(<LoginScreen auth={refused} onLoggedIn={() => {}} onRegister={() => {}} />)
+  await userEvent.type(again.getByLabelText('Usuário'), USER.username)
+  await userEvent.type(again.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
+  await expect.element(again.getByRole('alert'), { timeout: 10_000 }).toHaveTextContent(DEVICE_MESSAGES.refused)
 })
 
 // Has the login refused after too many attempts, and checks the screen says how many minutes to wait, keeping the
