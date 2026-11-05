@@ -168,11 +168,36 @@ test('Mobile: a server that doesn’t answer leaves the one of before', async ()
   expect(onConnected).not.toHaveBeenCalled();
 });
 
+// Checks the screen opens on the camera alone, with no field; "Digitar manualmente" puts the camera away for the
+// address and the code, saying to type them, and "Ler QR Code" brings the camera back without the fields.
+test('Mobile: Digitar manualmente swaps the camera for the fields, and Ler QR Code swaps them back', async () => {
+  const tree = await mount();
+  const fields = () => tree.root.findAll((n) => n.type === TextInput);
+  const camera = () => tree.root.findAll((n) => n.props.testID === 'auth.connect-screen.camera');
+  expect(camera()).not.toHaveLength(0);
+  expect(fields()).toHaveLength(0);
+  expect(button(tree, 'Conectar')).toBeUndefined();
+  expect(button(tree, 'Ler QR Code')).toBeUndefined();
+
+  await press(tree, 'Digitar manualmente');
+  expect(camera()).toHaveLength(0);
+  expect(fields().map((field) => field.props.accessibilityLabel)).toEqual(['Endereço', 'Código']);
+  expect(shows(tree, 'No computador, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, digite o endereço e o código que aparecem lá.')).toBe(true);
+  expect(button(tree, 'Conectar')).toBeDefined();
+  expect(button(tree, 'Digitar manualmente')).toBeUndefined();
+
+  await press(tree, 'Ler QR Code');
+  expect(camera()).not.toHaveLength(0);
+  expect(fields()).toHaveLength(0);
+  expect((CodeScanner as unknown as jest.Mock).mock.calls.at(-1)[0]).toMatchObject({ isActive: true });
+});
+
 // Types an http:// address and a short code, and checks each field says what it expects; then types the address and
 // the code as the dialog shows them, the code in groups, and checks the phone pairs.
 test('Mobile: the address and the code typed in pair the same way', async () => {
   const onConnected = jest.fn();
   const tree = await mount({ onConnected });
+  await press(tree, 'Digitar manualmente');
   await type(tree, 'Endereço', 'http://192.168.0.10:3000');
   await type(tree, 'Código', 'q1Wn 7ZbX');
   await press(tree, 'Conectar');
@@ -188,7 +213,8 @@ test('Mobile: the address and the code typed in pair the same way', async () => 
 });
 
 // Starts with the camera not allowed yet, and checks a tap asks for it; then refused for good, and checks the screen
-// says to allow it in Android's settings; then on a phone without a camera, where it only types.
+// says to allow it in Android's settings; then on a phone without a camera, which opens on the fields, with nothing
+// to bring a camera back.
 test('Mobile: the camera asks for its permission, or says why it can’t read', async () => {
   const requestPermission = jest.fn(async () => true);
   const permission = useCameraPermission as jest.Mock;
@@ -200,11 +226,15 @@ test('Mobile: the camera asks for its permission, or says why it can’t read', 
 
   permission.mockReturnValueOnce({ status: 'denied', hasPermission: false, canRequestPermission: false, requestPermission });
   const blocked = await mount();
-  expect(shows(blocked, 'A câmera está bloqueada para o APC. Libere-a nas configurações do Android, ou digite abaixo.')).toBe(true);
+  expect(shows(blocked, 'A câmera está bloqueada para o APC. Libere-a nas configurações do Android, ou toque em Digitar manualmente.')).toBe(true);
 
-  (useCameraDevice as jest.Mock).mockReturnValueOnce(undefined);
+  (useCameraDevice as jest.Mock).mockReturnValue(undefined);
   const none = await mount();
-  expect(shows(none, 'Este celular não tem câmera: digite o endereço e o código abaixo.')).toBe(true);
+  (useCameraDevice as jest.Mock).mockReturnValue({ id: 'back' });
+  expect(none.root.findAll((n) => n.props.testID === 'auth.connect-screen.camera')).toHaveLength(0);
+  expect(none.root.findAll((n) => n.type === TextInput)).toHaveLength(2);
+  expect(button(none, 'Ler QR Code')).toBeUndefined();
+  expect(button(none, 'Digitar manualmente')).toBeUndefined();
 });
 
 // Opens the screen to pair again and checks "Voltar" and Android's back button go back; opened with no server
@@ -226,9 +256,11 @@ test('Mobile: Voltar and the back button go back when a server is paired', async
 // Checks the parts of the screen carry their style ids, and every id on the screen is written as the convention asks.
 test('Mobile: Conectar ao servidor carries its style ids', async () => {
   const tree = await mount({ onCancel: () => {} });
-  for (const part of ['', '.heading', '.camera', '.form', '.form.actions']) {
+  for (const part of ['', '.heading', '.camera', '.actions']) {
     expect(byId(tree, `auth.connect-screen${part}`)).toBeDefined();
   }
+  await press(tree, 'Digitar manualmente');
+  expect(byId(tree, 'auth.connect-screen.form')).toBeDefined();
   const ids = tree.root.findAll((n) => typeof n.type === 'string' && typeof n.props.testID === 'string').map((n) => n.props.testID);
   expect(ids.filter((id) => id.startsWith('auth.') && !isStyleId(id))).toEqual([]);
 });

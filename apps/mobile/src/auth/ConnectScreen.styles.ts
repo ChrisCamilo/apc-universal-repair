@@ -4,9 +4,10 @@ import { authScreenStyles } from './LoginScreen.styles';
 
 // The look of Conectar ao servidor, like the login's: one column, centered, no wider than the web's form, the heading
 // over what to do on the computer, then the camera's square, framed and rounded like a tile, or what lets the camera
-// on, and the address and the code to type in under it, with "Conectar" across and "Voltar" under it.
+// on, or in its place the address and the code to type in; and the buttons across under them, "Conectar" first while
+// typing, then the one that swaps the camera and the fields, and "Voltar".
 
-/** Conectar ao servidor: the page and its content, the heading, the camera's square, the alert and the form. */
+/** Conectar ao servidor: the page, the heading, the camera's square or the form, the alert and the buttons. */
 export const useStyles = createStyles(
   'auth.connect-screen',
   {
@@ -16,7 +17,7 @@ export const useStyles = createStyles(
     scanner: 'camera.scanner',
     alert: 'alert',
     form: 'form',
-    actions: 'form.actions',
+    actions: 'actions',
   },
   (theme) => {
     const auth = authScreenStyles();
