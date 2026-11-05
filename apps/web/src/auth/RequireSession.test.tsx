@@ -28,6 +28,7 @@ function heldSession(): { auth: AuthService; answer: (user: SessionUser | null) 
   const auth: AuthService = {
     login: async () => null,
     register: async () => ({ refused: '' }),
+    deviceStatus: async () => 'authorized',
     logout: async () => {},
     markInventoryTutorialSeen: async (user) => user,
     currentUser: () => read,
@@ -84,7 +85,7 @@ test('Web: a refused token sends the user back to the login, told the session ex
   }
   const refuse = vi.fn<typeof fetch>(async () => new Response(null, { status: 401 }))
   vi.stubGlobal('fetch', refuse)
-  const screen = await render(<App auth={createApiAuth(store, '/api', refuse)} />)
+  const screen = await render(<App auth={createApiAuth(store, '/api', { publicKey: async () => 'pk1', sign: async () => 'sig' }, refuse)} />)
   await expect.element(screen.getByText('Sessão expirada')).toBeVisible()
   expect(new Headers(refuse.mock.calls[0][1]?.headers).get('Authorization')).toBe('Bearer t1')
   expect(saved.size).toBe(0)

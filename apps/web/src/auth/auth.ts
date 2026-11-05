@@ -1,9 +1,10 @@
 import { createApiAuth } from '@apc/shared/auth'
 import { API_BASE } from '../api.ts'
 import { readStored, removeStored, writeStored } from '../storage.ts'
+import { device } from './deviceKey.ts'
 
 // The web app's login and sign-up: the AuthService on the API (see @apc/shared/auth), with the session in
-// localStorage.
+// localStorage, signing with the device's key (see deviceKey.ts).
 
 export const auth = createApiAuth(
   {
@@ -12,4 +13,5 @@ export const auth = createApiAuth(
     removeItem: async (key) => removeStored(key),
   },
   API_BASE,
+  device,
 )
