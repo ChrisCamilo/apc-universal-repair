@@ -1,15 +1,17 @@
-import { apiFetch } from '@apc/shared/auth'
+import { apiFetch, entryCodeSchema, type EntryCode } from '@apc/shared/auth'
 import { deviceListSchema, deviceSchema, type Device } from '@apc/shared/devices'
 import { API_BASE } from '../api.ts'
 
 // The calls of the devices' screens on the server's computer (see DeviceApprovals.tsx and DevicesDialog.tsx): the
-// list, authorizing, renaming and removing a device. Each answers what went wrong in Portuguese: the API's 403 when the
-// app isn't on the server's computer, and the message of a 501, as the web app's demo says it doesn't do it.
+// list, authorizing, renaming and removing a device, and the entry code that logs a phone in (see PairingCode.tsx).
+// Each answers what went wrong in Portuguese: the API's 401 when nobody is logged in here, its 403 when the app isn't
+// on the server's computer, and the message of a 501, as the web app's demo says it doesn't do it.
 
 /** What the screens say when a call to the devices fails, in Portuguese. */
 export const DEVICES_FAILED = {
   elsewhere: 'Os dispositivos só são autorizados no computador do servidor.',
   failed: 'Não foi possível falar com o servidor. Tente de novo.',
+  signedOut: 'Entre neste computador para o celular entrar na mesma conta.',
 } as const
 
 /** How a call ended: what it answered, or what to say. */
@@ -43,7 +45,17 @@ async function call<T>(path: string, request: { method: string; body?: unknown }
   if (response?.status === 501) {
     return { ok: false, message: ((await response.json()) as { message: string }).message }
   }
-  return { ok: false, message: response?.status === 403 ? DEVICES_FAILED.elsewhere : DEVICES_FAILED.failed }
+  const status = response?.status
+  return { ok: false, message: status === 401 ? DEVICES_FAILED.signedOut : status === 403 ? DEVICES_FAILED.elsewhere : DEVICES_FAILED.failed }
+}
+
+/**
+ * Asks for an entry code, which logs a phone into the account open here (see PairingCode.tsx), replacing the one
+ * before.
+ * @returns The code and when it ends, or what to say.
+ */
+export function issueEntryCode(): Promise<DevicesOutcome<EntryCode>> {
+  return call('/pairings', { method: 'POST' }, (body) => entryCodeSchema.parse(body))
 }
 
 /**

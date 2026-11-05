@@ -3,9 +3,10 @@ import { recipe, tv } from '../styles/tv.ts'
 // The look of the phone's pairing in the Servidor dialog: the QR code beside the address and the code to type, which
 // stack on a narrow window. The QR code keeps dark modules on a light ground in either mode, as cameras read it best:
 // by day the text color on the canvas, by night the canvas color on the text's, both tinted in the style's hue, never
-// white, as the mode on <html> says. The address and the code are in the mono face, picked whole at a click.
+// white, as the mode on <html> says. The address and the codes are in the mono face, picked whole at a click, and what
+// the entry code does, or why there is none, is in the muted body text.
 
-/** The pairing: its QR code, with its ground and modules, and the address and code under their terms. */
+/** The pairing: its QR code, with its ground and modules, the address and codes under their terms, and the note. */
 export const pairingCode = recipe(
   'setup.server-settings.pairing',
   tv({
@@ -16,6 +17,7 @@ export const pairingCode = recipe(
       facts: 'm-0 grid min-w-0 flex-1 basis-48 gap-1',
       term: 'font-body text-sm text-text-muted',
       value: 'm-0 font-mono text-base break-all text-text select-all',
+      note: 'm-0 font-body text-sm text-text-muted',
     },
   }),
   {
@@ -25,5 +27,6 @@ export const pairingCode = recipe(
     facts: 'facts',
     term: 'facts.term',
     value: 'facts.value',
+    note: 'facts.note',
   },
 )
