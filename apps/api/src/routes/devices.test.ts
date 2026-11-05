@@ -3,7 +3,7 @@ import { after, afterEach, test, mock } from "node:test";
 import { proveDevice } from "@apc/shared/devices";
 import { buildApp } from "../app.js";
 import { checkProof, isLoopback, issueChallenge } from "../devices/devices.js";
-import { issueEntryCode, useEntryCode } from "../devices/entryCodes.js";
+import { entryCodeUser, HELD_MS, holdEntryCode, issueEntryCode, useEntryCode } from "../devices/entryCodes.js";
 import { testDevice } from "../devices/testDevices.js";
 import { AUTHORIZED, TEST_SESSIONS } from "../sessions/testSessions.js";
 
@@ -98,15 +98,31 @@ test("API: the server's computer hands out entry codes that work once, for 5 min
   assert.equal(issued.json().expiresAt, "2026-11-05T12:05:00.000Z");
 
   const once = issueEntryCode("u1").code;
-  assert.equal(useEntryCode(once), "u1");
-  assert.equal(useEntryCode(once), null);
+  assert.equal(entryCodeUser(once, "pk1"), "u1");
+  useEntryCode(once);
+  assert.equal(entryCodeUser(once, "pk1"), null);
   const late = issueEntryCode("u1").code;
   mock.timers.tick(5 * 60 * 1000);
-  assert.equal(useEntryCode(late), null);
+  assert.equal(entryCodeUser(late, "pk1"), null);
   const replaced = issueEntryCode("u1").code;
   const latest = issueEntryCode("u1").code;
-  assert.equal(useEntryCode(replaced), null);
-  assert.equal(useEntryCode(latest), "u1");
+  assert.equal(entryCodeUser(replaced, "pk1"), null);
+  assert.equal(entryCodeUser(latest, "pk1"), "u1");
+});
+
+// Holds a code for a waiting phone, and checks only that phone's key uses it from then on, a new code for the user
+// leaves it be, and it lasts 30 minutes from when it was held, past its first 5.
+test("API: a code held by a waiting phone is that phone's, for 30 minutes", async () => {
+  mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-05T12:00:00Z") });
+  const held = issueEntryCode("u2").code;
+  holdEntryCode(held, "phone");
+  assert.equal(entryCodeUser(held, "other"), null);
+  assert.equal(entryCodeUser(held, "phone"), "u2");
+  issueEntryCode("u2");
+  mock.timers.tick(HELD_MS - 1);
+  assert.equal(entryCodeUser(held, "phone"), "u2");
+  mock.timers.tick(1);
+  assert.equal(entryCodeUser(held, "phone"), null);
 });
 
 // Logs in with an entry code without the device's proof, then with a code never handed out, and checks each is

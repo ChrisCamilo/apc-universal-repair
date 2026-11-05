@@ -4,8 +4,8 @@ import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { initials, loggedInSchema, loginRequestSchema, pairingLoginRequestSchema, userCreateRequestSchema, type SessionUser } from "@apc/shared/auth";
 import { DEVICE_MESSAGES } from "@apc/shared/devices";
 import { prisma } from "../db/client.js";
-import { authorizeDevice, checkProof, deviceForLogin, isLoopback } from "../devices/devices.js";
-import { useEntryCode } from "../devices/entryCodes.js";
+import { checkProof, deviceForLogin, isLoopback } from "../devices/devices.js";
+import { entryCodeUser, holdEntryCode, useEntryCode } from "../devices/entryCodes.js";
 import { createSession, endSession } from "../sessions/sessions.js";
 import { createLimiter, type Limiter } from "../users/attempts.js";
 import { hashPassword, verifyPassword } from "../users/passwords.js";
@@ -23,8 +23,10 @@ import { hashPassword, verifyPassword } from "../users/passwords.js";
 // authorized is answered 403 with its short code, and starts no session; the sign-up's user is created all the same.
 // Only a right password records a device, so a stranger can't fill the list of devices to authorize.
 // POST /sessions/pairing logs a phone in with an entry code from the server's computer (see entryCodes.ts) instead of a
-// password: into the account the code was handed out for, authorizing the device at once, since showing the code there
-// is the authorization. A code never handed out, used or ended is answered 401; an address gets 10 tries in a window.
+// password, into the account the code was handed out for. Its device waits for authorization on the server's computer
+// as a login's does, answered 403 with its short code, and the phone holds the code meanwhile, sending it again once
+// authorized. A code never handed out, used, ended or held by another phone is answered 401; an address gets 10 tries
+// in a window.
 // Attempts are limited within 15-minute windows (see attempts.ts), answering 429 with Retry-After until the window
 // ends, never saying whether the username exists: 5 wrong logins for one username from one address block it there,
 // without checking the password, until a right one clears the count; and an address gets 30 logins and 10 sign-ups in
@@ -209,12 +211,17 @@ export function registerUserRoutes(app: FastifyInstance) {
       if (!(await checkProof(device))) {
         return deviceRefused(reply);
       }
-      const userId = useEntryCode(code);
+      const userId = entryCodeUser(code, device.publicKey);
       const user = userId && (await prisma.user.findUnique({ where: { id: userId }, select: USER }));
       if (!user) {
         return entryRefused(reply);
       }
-      const found = await authorizeDevice(user.id, device.publicKey);
+      const found = await deviceForLogin(user.id, device.publicKey, isLoopback(request.ip));
+      if ("pending" in found) {
+        holdEntryCode(code, device.publicKey);
+        return devicePending(reply, found.pending);
+      }
+      useEntryCode(code);
       return { ...sessionOf(user), token: await createSession(user.id, found.id) };
     },
   );

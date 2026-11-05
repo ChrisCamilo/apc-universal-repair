@@ -28,7 +28,7 @@ export function useDeviceWait(auth: AuthService, onLoggedIn: (user: SessionUser)
       return;
     }
     const stop = new AbortController();
-    waitForDevice(auth, waiting.credentials, stop.signal).then((user) => {
+    waitForDevice(auth, () => auth.login(waiting.credentials), stop.signal).then((user) => {
       if (user === undefined) {
         return;
       }

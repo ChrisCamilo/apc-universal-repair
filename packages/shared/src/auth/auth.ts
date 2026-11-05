@@ -114,10 +114,11 @@ export type AuthService = {
    */
   login: (credentials: Credentials) => Promise<SessionUser | null | { refused: string } | { pending: string }>;
   /**
-   * Logs in with an entry code from the server's computer, into the account open there, authorizing this device;
-   * resolves with the logged user or the message saying why it was refused, and rejects when the API is out of reach.
+   * Logs in with an entry code from the server's computer, into the account open there; resolves with the logged user,
+   * the message saying why it was refused, or the device's short code while the server's computer hasn't authorized
+   * it, and rejects when the API is out of reach.
    */
-  pair: (code: string) => Promise<SessionUser | { refused: string }>;
+  pair: (code: string) => Promise<SessionUser | { refused: string } | { pending: string }>;
   /**
    * Creates a user and logs them in; resolves with the user, the message saying why it was refused, or the device's
    * short code while it waits to be authorized, the user created meanwhile.
@@ -229,6 +230,9 @@ export function createApiAuth(
       const response = await post("/sessions/pairing", { code, device: await prove() });
       if (response.status === 401) {
         return { refused: PAIRING_REFUSED };
+      }
+      if (response.status === 403) {
+        return pending(response);
       }
       if (response.status === 429) {
         return { refused: tooManyAttempts(response.headers.get("Retry-After")) };
@@ -342,10 +346,10 @@ export function initials(displayName: string): string {
 }
 
 /**
- * Waits for this device to be authorized on the server's computer, asking every pollMs, then logs in with the
- * credentials typed. A failed ask is tried again at the next one.
+ * Waits for this device to be authorized on the server's computer, asking every pollMs, then logs in again as the
+ * login that was told to wait did. A failed ask is tried again at the next one.
  * @param auth The AuthService.
- * @param credentials What the login that was told to wait sent.
+ * @param logIn Logs in again: with the credentials typed, or the entry code sent.
  * @param signal Stops the wait, as when the screen closes or another login is sent.
  * @param pollMs How long between asks.
  * @returns The logged user; null once the device was refused or removed, or the login then failed; undefined when
@@ -353,7 +357,7 @@ export function initials(displayName: string): string {
  */
 export async function waitForDevice(
   auth: AuthService,
-  credentials: Credentials,
+  logIn: () => ReturnType<AuthService["login"]> | ReturnType<AuthService["pair"]>,
   signal: AbortSignal,
   pollMs: number = DEVICE_POLL_MS,
 ): Promise<SessionUser | null | undefined> {
@@ -364,7 +368,7 @@ export async function waitForDevice(
       return null;
     }
     if (status === "authorized") {
-      const user = await auth.login(credentials).catch(() => null);
+      const user = await logIn().catch(() => null);
       if (!user || !("pending" in user)) {
         return user && "id" in user ? user : null;
       }
