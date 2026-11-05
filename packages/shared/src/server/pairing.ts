@@ -3,18 +3,38 @@
 // SHA-256 fingerprint, whatever address it was made for. The Servidor dialog hands both over in a QR code holding
 // apc://pair?url=<the server's address>&fp=<the fingerprint>, and shows them to type in as well. The phone keeps them
 // and reaches its API there (apps/mobile/src/server). Only an https:// address pairs: a phone never sends the password
-// in clear text. The link is read by hand, since React Native's URL and URLSearchParams can't read one.
+// in clear text. The link also carries an entry code (&code=), which logs the phone into the account open on the
+// computer (see POST /sessions/pairing): one use, a few minutes, ENTRY_CODE_LENGTH letters and digits that don't read
+// alike, shown in two groups to type in. The link is read by hand, since React Native's URL and URLSearchParams can't
+// read one.
 
+/** The letters and digits an entry code is made of: none of 0, 1, I and O, which read alike. */
+export const ENTRY_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+/** How many characters an entry code has: 40 bits, out of reach of guessing within its few minutes and its limits. */
+export const ENTRY_CODE_LENGTH = 8;
 /** The start of the pairing link, before its query. */
 export const PAIRING_LINK = "apc://pair";
 
 /** A home server the phone pairs with: its address, e.g. "https://192.168.0.10:3000", and its certificate's fingerprint. */
 export type Pairing = { url: string; fingerprint: string };
+/** A pairing link as the phone reads it: the server, and the entry code when the link carries one. */
+export type PairingInvite = Pairing & { entry?: string };
 
+/** An entry code: ENTRY_CODE_LENGTH characters of ENTRY_CODE_ALPHABET. */
+const ENTRY_CODE = new RegExp(`^[${ENTRY_CODE_ALPHABET}]{${ENTRY_CODE_LENGTH}}$`);
 /** A certificate's fingerprint: its SHA-256, 32 bytes, in base64url without padding. */
 const FINGERPRINT = /^[A-Za-z0-9_-]{43}$/;
-/** How many characters the fingerprint shows in each group, to type it in. */
+/** How many characters the fingerprint and the entry code show in each group, to type them in. */
 const GROUP = 4;
+
+/**
+ * Shows an entry code in groups, to read and type in.
+ * @param code The entry code.
+ * @returns E.g. "K7Q2 ZD9M".
+ */
+export function entryCodeGroups(code: string): string {
+  return fingerprintGroups(code);
+}
 /** A server's address: https:// (or nothing), a name, an IPv4 or a bracketed IPv6, an optional port and slash. */
 const SERVER_ADDRESS = /^(?:https:\/\/)?([A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])(?::(\d{1,5}))?\/?$/;
 
@@ -29,11 +49,22 @@ export function fingerprintGroups(fingerprint: string): string {
 
 /**
  * Builds the link the Servidor dialog's QR code holds.
- * @param pairing The server's address and its certificate's fingerprint.
- * @returns E.g. "apc://pair?url=https%3A%2F%2F192.168.0.10%3A3000&fp=q1Wn…".
+ * @param pairing The server's address and its certificate's fingerprint, and the entry code when there is one.
+ * @returns E.g. "apc://pair?url=https%3A%2F%2F192.168.0.10%3A3000&fp=q1Wn…&code=K7Q2ZD9M".
  */
-export function pairingLink(pairing: Pairing): string {
-  return `${PAIRING_LINK}?url=${encodeURIComponent(pairing.url)}&fp=${encodeURIComponent(pairing.fingerprint)}`;
+export function pairingLink({ url, fingerprint, entry }: PairingInvite): string {
+  const link = `${PAIRING_LINK}?url=${encodeURIComponent(url)}&fp=${encodeURIComponent(fingerprint)}`;
+  return entry === undefined ? link : `${link}&code=${encodeURIComponent(entry)}`;
+}
+
+/**
+ * Reads an entry code, as typed in.
+ * @param typed The code, in any case, with or without spaces and hyphens.
+ * @returns The code in uppercase without them, or null when it isn't one.
+ */
+export function readEntryCode(typed: string): string | null {
+  const code = typed.replace(/[\s-]/g, "").toUpperCase();
+  return ENTRY_CODE.test(code) ? code : null;
 }
 
 /**
@@ -61,9 +92,10 @@ export function readPairing(address: string, code: string): Pairing | null {
 /**
  * Reads the link of a QR code.
  * @param text What the code holds.
- * @returns The pairing, or null when it isn't a pairing link, or its address or fingerprint isn't one.
+ * @returns The pairing, with the entry code when the link carries one; or null when it isn't a pairing link, or its
+ * address, fingerprint or entry code isn't one.
  */
-export function readPairingLink(text: string): Pairing | null {
+export function readPairingLink(text: string): PairingInvite | null {
   const link = text.trim();
   if (!link.startsWith(`${PAIRING_LINK}?`)) {
     return null;
@@ -77,7 +109,13 @@ export function readPairingLink(text: string): Pairing | null {
       return null;
     }
   }
-  return readPairing(params.get("url") ?? "", params.get("fp") ?? "");
+  const pairing = readPairing(params.get("url") ?? "", params.get("fp") ?? "");
+  const code = params.get("code");
+  if (!pairing || code === undefined) {
+    return pairing;
+  }
+  const entry = readEntryCode(code);
+  return entry ? { ...pairing, entry } : null;
 }
 
 /**
