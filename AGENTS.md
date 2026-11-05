@@ -114,6 +114,7 @@ Epics group work by product area and are referenced by their slug in branch name
 | EP-09 | `pricing` | Reference price data & display |
 | EP-10 | `backend` | Real authentication + real data persistence, replacing MVP mocks |
 | EP-11 | `i18n` | EN/PT-BR parity across the app UI (beyond the README) |
+| EP-17 | `offline` | The phone keeps a copy of the paired server's inventory, works on it away from the server, and syncs both ways when it is back; its password login comes back to open the copy offline |
 
 ### TBD epics (not scheduled yet)
 

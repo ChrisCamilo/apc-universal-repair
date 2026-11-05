@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { loggedInSchema } from "../auth/auth.ts";
+import { entryCodeSchema, loggedInSchema } from "../auth/auth.ts";
 import { deviceChallengeSchema, deviceListSchema, deviceSchema, deviceStatusSchema } from "../devices/devices.ts";
 import { itemImportResultSchema } from "../items/itemCsv.ts";
 import { itemListResponseSchema, itemSchema } from "../items/items.ts";
@@ -20,7 +20,9 @@ export const API_ROUTES: readonly ApiRoute[] = [
   { method: "GET", path: "/health", responses: { 200: healthResponseSchema } },
   { method: "POST", path: "/users", responses: { 201: loggedInSchema } },
   { method: "POST", path: "/sessions", responses: { 200: loggedInSchema } },
+  { method: "POST", path: "/sessions/pairing", responses: { 200: loggedInSchema } },
   { method: "DELETE", path: "/sessions/current", responses: {} },
+  { method: "POST", path: "/pairings", responses: { 201: entryCodeSchema } },
   { method: "PUT", path: "/users/me/inventory-tutorial", responses: {} },
   { method: "GET", path: "/devices/challenge", responses: { 200: deviceChallengeSchema } },
   { method: "POST", path: "/devices/status", responses: { 200: deviceStatusSchema } },

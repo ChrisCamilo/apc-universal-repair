@@ -525,14 +525,16 @@ test("Desktop: a taken port is said so, and the server moves to another port", {
 // Opens the app and checks its server answers on 127.0.0.1 but not on the computer's network address, as the phone's
 // access is off on a fresh install; turning it on in the Servidor dialog restarts the server over HTTPS, with a
 // certificate the app made, kept in config.json with the access: it then answers on both addresses to a client that
-// trusts that certificate, and no longer over plain HTTP, and the dialog shows the QR code and the code of that
-// certificate. Turning it off takes it off the network and back to plain HTTP.
+// trusts that certificate, and no longer over plain HTTP, and the dialog shows the QR code, the code of that
+// certificate and an entry code for the account logged in. Turning it off takes it off the network and back to plain
+// HTTP.
 test("Desktop: the server reaches the network only with the phone's access on", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   const address = phoneAddress(networkInterfaces());
   test.skip(!address, "This computer has no network address to try.");
   const { app, userData, server } = await launchApp();
   const page = await app.firstWindow();
   await keepRecoveryKey(page);
+  await signUp(page);
   const onNetwork = `http://${address}:${new URL(server).port}`;
   expect(await healthOf(server)).toBe("up");
   expect(await healthOf(onNetwork)).toBe("down");
@@ -553,6 +555,7 @@ test("Desktop: the server reaches the network only with the phone's access on", 
   expect(await healthOf(server)).toBe("down");
   await expect(dialog.getByRole("img", { name: "QR code para conectar o celular" })).toBeVisible();
   await expect(dialog.getByText(fingerprintGroups(certificateFingerprint(cert)))).toBeVisible();
+  await expect(dialog.getByText(/^[2-9A-HJ-NP-Z]{4} [2-9A-HJ-NP-Z]{4}$/)).toBeVisible();
 
   await access.click();
   await expect(dialog.getByRole("status")).toHaveText("Pronto: o servidor responde só a este computador.", { timeout: 60_000 });

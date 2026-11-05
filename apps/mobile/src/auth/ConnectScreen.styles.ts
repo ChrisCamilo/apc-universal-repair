@@ -20,6 +20,8 @@ export const useStyles = createStyles(
     titleText: 'heading.title.text',
     camera: 'camera',
     scanner: 'camera.scanner',
+    notice: 'notice',
+    waiting: 'waiting',
     alert: 'alert',
     form: 'form',
     actions: 'actions',
@@ -45,6 +47,7 @@ export const useStyles = createStyles(
       },
       scanner: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
       title: { flexDirection: 'row', alignItems: 'center', gap: scales.space.s1 },
+      waiting: { gap: scales.space.s3 },
       // The ←'s 44px circle reaches past the gutter, so its arrow lines up with the sign-up's.
       titleWithBack: { marginLeft: -scales.space.s3 },
       titleText: {

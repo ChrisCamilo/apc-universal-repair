@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { initials, loggedInSchema, loginRequestSchema, userCreateRequestSchema, type SessionUser } from "@apc/shared/auth";
+import { initials, loggedInSchema, loginRequestSchema, pairingLoginRequestSchema, userCreateRequestSchema, type SessionUser } from "@apc/shared/auth";
 import { DEVICE_MESSAGES } from "@apc/shared/devices";
 import { prisma } from "../db/client.js";
 import { checkProof, deviceForLogin, isLoopback } from "../devices/devices.js";
+import { entryCodeUser, holdEntryCode, useEntryCode } from "../devices/entryCodes.js";
 import { createSession, endSession } from "../sessions/sessions.js";
 import { createLimiter, type Limiter } from "../users/attempts.js";
 import { hashPassword, verifyPassword } from "../users/passwords.js";
@@ -21,6 +22,11 @@ import { hashPassword, verifyPassword } from "../users/passwords.js";
 // unknown, used or expired, or its signature not the key's, is answered 401. A device the server's computer hasn't
 // authorized is answered 403 with its short code, and starts no session; the sign-up's user is created all the same.
 // Only a right password records a device, so a stranger can't fill the list of devices to authorize.
+// POST /sessions/pairing logs a phone in with an entry code from the server's computer (see entryCodes.ts) instead of a
+// password, into the account the code was handed out for. Its device waits for authorization on the server's computer
+// as a login's does, answered 403 with its short code, and the phone holds the code meanwhile, sending it again once
+// authorized. A code never handed out, used, ended or held by another phone is answered 401; an address gets 10 tries
+// in a window.
 // Attempts are limited within 15-minute windows (see attempts.ts), answering 429 with Retry-After until the window
 // ends, never saying whether the username exists: 5 wrong logins for one username from one address block it there,
 // without checking the password, until a right one clears the count; and an address gets 30 logins and 10 sign-ups in
@@ -30,6 +36,8 @@ import { hashPassword, verifyPassword } from "../users/passwords.js";
 const FAILED_LOGIN_LIMIT = 5;
 /** How many logins an address gets in a window, whatever the username. */
 const LOGIN_LIMIT = 30;
+/** How many entries with an entry code an address gets in a window, valid or not. */
+const PAIRING_LIMIT = 10;
 /** How many sign-ups an address gets in a window. */
 const SIGN_UP_LIMIT = 10;
 /** The columns a user is answered with. */
@@ -54,6 +62,15 @@ function deviceRefused(reply: FastifyReply) {
  */
 function devicePending(reply: FastifyReply, code: string) {
   return reply.status(403).send({ statusCode: 403, error: "device_pending", message: DEVICE_MESSAGES.pending, code });
+}
+
+/**
+ * Answers 401 for an entry code never handed out, used or ended.
+ * @param reply Reply to send.
+ * @returns The sent reply.
+ */
+function entryRefused(reply: FastifyReply) {
+  return reply.status(401).send({ statusCode: 401, error: "Unauthorized", message: "The entry code isn't valid. Read the one the computer shows now." });
 }
 
 /**
@@ -133,6 +150,7 @@ export function registerUserRoutes(app: FastifyInstance) {
   const failedLogins = createLimiter(FAILED_LOGIN_LIMIT);
   const logins = createLimiter(LOGIN_LIMIT);
   const signUps = createLimiter(SIGN_UP_LIMIT);
+  const pairings = createLimiter(PAIRING_LIMIT);
 
   routes.post(
     "/users",
@@ -181,6 +199,29 @@ export function registerUserRoutes(app: FastifyInstance) {
       if ("pending" in found) {
         return devicePending(reply, found.pending);
       }
+      return { ...sessionOf(user), token: await createSession(user.id, found.id) };
+    },
+  );
+
+  routes.post(
+    "/sessions/pairing",
+    { config: { public: true }, onRequest: limitByAddress(pairings), schema: { body: pairingLoginRequestSchema, response: { 200: loggedInSchema } } },
+    async (request, reply) => {
+      const { code, device } = request.body;
+      if (!(await checkProof(device))) {
+        return deviceRefused(reply);
+      }
+      const userId = entryCodeUser(code, device.publicKey);
+      const user = userId && (await prisma.user.findUnique({ where: { id: userId }, select: USER }));
+      if (!user) {
+        return entryRefused(reply);
+      }
+      const found = await deviceForLogin(user.id, device.publicKey, isLoopback(request.ip));
+      if ("pending" in found) {
+        holdEntryCode(code, device.publicKey);
+        return devicePending(reply, found.pending);
+      }
+      useEntryCode(code);
       return { ...sessionOf(user), token: await createSession(user.id, found.id) };
     },
   );

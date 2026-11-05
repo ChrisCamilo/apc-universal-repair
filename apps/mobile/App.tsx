@@ -13,6 +13,7 @@ import { loadServer } from './src/api';
 import { auth } from './src/auth/auth';
 import { ConnectScreen } from './src/auth/ConnectScreen';
 import { LoginScreen } from './src/auth/LoginScreen';
+import { PASSWORD_LOGIN } from './src/auth/passwordLogin';
 import { RegisterScreen } from './src/auth/RegisterScreen';
 import { Dashboard } from './src/dashboard/Dashboard';
 import { UserMenu } from './src/dashboard/UserMenu';
@@ -22,8 +23,14 @@ import { ToastProvider } from './src/Toast';
 import { TourProvider } from './src/Tour';
 import { UpdatePrompt } from './src/updates/UpdatePrompt';
 
+/** What Conectar ao servidor says when the API refused the session's token, while pairing is the login. */
+const PAIR_AGAIN = 'Sua sessão expirou. Leia o código do computador de novo.';
 const SCREEN_STYLE = { flex: 1 };
 
+// While pairing is the login (PASSWORD_LOGIN off, see passwordLogin.ts), starts on the Dashboard when a session is
+// saved on the device and on Conectar ao servidor otherwise, whose QR code from the computer pairs the phone and logs it
+// into the account open there; "Sair" and an expired session, which it says, go back to it, and the user menu opens it
+// to pair again, as the account open on the computer. The rest of this comment is the flow with PASSWORD_LOGIN on:
 // Starts on the Dashboard when a session is saved on the device and on the login otherwise, going on to the
 // Dashboard once the AuthService accepts the login or a sign-up, and back to the login after "Sair". The login and
 // the sign-up lead to each other. Nothing but the canvas shows while the saved session is read, so neither screen
@@ -91,12 +98,17 @@ function Screen() {
   };
 
   /**
-   * Takes the server the phone just paired with, and goes back to the screen it was on.
+   * Takes the server the phone just paired with, and the user when pairing logged in, and goes back to the screen it
+   * was on, or to the Dashboard.
    * @param paired The server.
+   * @param loggedIn The user, when pairing logged in.
    */
-  const connected = (paired: Pairing) => {
+  const connected = (paired: Pairing, loggedIn?: SessionUser) => {
     setServer(paired);
     setPairing(false);
+    if (loggedIn) {
+      logIn(loggedIn);
+    }
   };
 
   /** Ends the session and goes back to the login. */
@@ -110,7 +122,14 @@ function Screen() {
     <SafeAreaView style={[SCREEN_STYLE, { backgroundColor: theme.colors.canvas }]}>
       <StatusBar barStyle={theme.mode === 'night' ? 'light-content' : 'dark-content'} />
       <KeyboardAvoidingView behavior="padding" style={SCREEN_STYLE}>
-        {user === undefined || server === undefined ? null : pairing || (!server && !__DEV__) ? (
+        {user === undefined || server === undefined ? null : !PASSWORD_LOGIN && (!user || pairing) ? (
+          <ConnectScreen
+            auth={auth}
+            notice={!user && expired ? PAIR_AGAIN : undefined}
+            onConnected={connected}
+            onCancel={user ? () => setPairing(false) : undefined}
+          />
+        ) : pairing || (!server && !__DEV__) ? (
           <ConnectScreen onConnected={connected} onCancel={server || __DEV__ ? () => setPairing(false) : undefined} />
         ) : user ? (
           <Dashboard

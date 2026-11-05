@@ -1,10 +1,12 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { z } from "zod";
+import { entryCodeSchema } from "@apc/shared/auth";
 import { deviceCode } from "@apc/shared/device-crypto";
 import { deviceChallengeSchema, deviceListSchema, deviceNameSchema, deviceProofSchema, deviceSchema, deviceStatusSchema } from "@apc/shared/devices";
 import { prisma } from "../db/client.js";
 import { checkProof, deviceOf, isLoopback, issueChallenge } from "../devices/devices.js";
+import { issueEntryCode } from "../devices/entryCodes.js";
 import { createLimiter } from "../users/attempts.js";
 
 // The devices users log in from (see devices.ts). Open without a session: GET /devices/challenge hands out a nonce to
@@ -13,7 +15,9 @@ import { createLimiter } from "../users/attempts.js";
 // gets CHALLENGE_LIMIT nonces and STATUS_LIMIT asks in a window. Behind a session, and only from the server's computer
 // itself: GET /devices lists every user's devices, pending first; POST /devices/:id/authorize authorizes one, naming
 // it; PATCH /devices/:id renames one; and DELETE /devices/:id removes one, ending its sessions. A blank name keeps
-// "Dispositivo <code>". From any other address these answer 403, so a device on the Wi-Fi can't authorize itself.
+// "Dispositivo <code>". POST /pairings hands out an entry code that logs a phone into the caller's account (see
+// entryCodes.ts and POST /sessions/pairing), replacing the one they had. From any other address these answer 403, so
+// a device on the Wi-Fi can't authorize itself or hand itself a code.
 
 /** How many nonces an address gets in a window. */
 const CHALLENGE_LIMIT = 300;
@@ -98,6 +102,11 @@ export function registerDeviceRoutes(app: FastifyInstance) {
       return { status: statuses.includes("AUTHORIZED") ? ("authorized" as const) : statuses.length ? ("pending" as const) : ("unknown" as const) };
     },
   );
+
+  routes.post("/pairings", { onRequest: onlyHere, schema: { response: { 201: entryCodeSchema } } }, async (request, reply) => {
+    const { code, expiresAt } = issueEntryCode(request.session.userId);
+    return reply.status(201).send({ code, expiresAt: expiresAt.toISOString() });
+  });
 
   routes.get("/devices", { onRequest: onlyHere, schema: { response: { 200: deviceListSchema } } }, async (request) => {
     const rows = await prisma.device.findMany({ ...ROW, orderBy: [{ status: "asc" }, { createdAt: "desc" }] });

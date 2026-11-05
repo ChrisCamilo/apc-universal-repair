@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fingerprintGroups, PAIRING_LINK, pairingLink, readPairing, readPairingLink } from "./pairing.ts";
+import { entryCodeGroups, fingerprintGroups, PAIRING_LINK, pairingLink, readEntryCode, readPairing, readPairingLink } from "./pairing.ts";
 
 /** A fingerprint as the desktop app writes it: a SHA-256 in base64url. */
 const FINGERPRINT = "q1Wn7ZbX-0_aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV";
@@ -41,4 +41,21 @@ test("Shared: a typed address and code pair the same way as the link", () => {
   assert.equal(readPairing("192.168.0.10:70000", FINGERPRINT), null);
   assert.equal(readPairing("192.168.0.10:3000", `${FINGERPRINT}A`), null);
   assert.equal(fingerprintGroups(FINGERPRINT).split(" ").length, 11);
+});
+
+// Builds a link with an entry code and reads it back; then reads an entry code as typed in, in groups, in lowercase or
+// with a hyphen, and refuses one too short or with a letter that reads alike another (0, 1, I, O); a link whose
+// entry code isn't one is refused too.
+test("Shared: the pairing link carries the entry code, typed in groups as well", () => {
+  const link = pairingLink({ ...SERVER, entry: "K7Q2ZD9M" });
+  assert.equal(link, `${PAIRING_LINK}?url=https%3A%2F%2F192.168.0.10%3A3000&fp=${FINGERPRINT}&code=K7Q2ZD9M`);
+  assert.deepEqual(readPairingLink(link), { ...SERVER, entry: "K7Q2ZD9M" });
+  assert.equal(entryCodeGroups("K7Q2ZD9M"), "K7Q2 ZD9M");
+  for (const typed of ["K7Q2 ZD9M", "k7q2-zd9m", " K7Q2ZD9M "]) {
+    assert.equal(readEntryCode(typed), "K7Q2ZD9M", typed);
+  }
+  for (const typed of ["K7Q2ZD9", "K7Q2ZD9M2", "K7Q2ZD0M", "K7Q2ZDIM", ""]) {
+    assert.equal(readEntryCode(typed), null, typed);
+  }
+  assert.equal(readPairingLink(`${pairingLink(SERVER)}&code=K7Q2`), null);
 });

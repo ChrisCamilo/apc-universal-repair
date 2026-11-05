@@ -7,8 +7,9 @@ import { prisma } from "../db/client.js";
 // signing a nonce from GET /devices/challenge, which lives CHALLENGE_MS and works once; the nonces live in memory, as
 // there is one server, and a restart only means asking for another. A key the user hasn't logged in with is recorded
 // as pending, unless it calls from the server's computer itself (the loopback address), which is authorized at once:
-// the desktop app, the only one that calls from there, holds the database anyway. The server's computer is also the
-// only place devices are authorized, renamed and removed.
+// the desktop app, the only one that calls from there, holds the database anyway. A login with an entry code from the
+// server's computer (see entryCodes.ts) records its device the same way. The server's computer is also the only place
+// devices are authorized, renamed and removed.
 
 /** How long a nonce lives: 2 minutes, in milliseconds. */
 const CHALLENGE_MS = 2 * 60 * 1000;

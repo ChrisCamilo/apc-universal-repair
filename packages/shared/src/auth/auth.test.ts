@@ -8,6 +8,7 @@ import {
   LOGIN_MESSAGES,
   loginErrors,
   onSessionExpired,
+  PAIRING_REFUSED,
   REGISTER_MESSAGES,
   registerErrors,
   SESSION_STORAGE_KEY,
@@ -237,6 +238,29 @@ test("Shared: the API login saves the user and the token, refuses a 401 and reje
   await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(200, SESSION_USER).send).login({ username: "x", password: "y" }));
 });
 
+// Logs in with an entry code through the API stand-in: an accepted code saves the user and the token, sent with the
+// device's proof; a 401 says the code no longer works, a 403 that the device waits with its code, a 429 when to try
+// again, all with nothing saved, and any other answer rejects. The mock logs the first test user in.
+test("Shared: an entry code logs in through the API, or says why it was refused", async () => {
+  const accepted = answering(200, LOGGED_IN);
+  const { store, saved } = memoryStore();
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, accepted.send).pair("K7Q2ZD9M"), SESSION_USER);
+  assert.deepEqual(accepted.sent, [{ url: "/api/sessions/pairing", body: { code: "K7Q2ZD9M", device: PROOF } }]);
+  assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), LOGGED_IN);
+
+  const refused = memoryStore();
+  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, answering(401).send).pair("K7Q2ZD9M"), { refused: PAIRING_REFUSED });
+  const waiting = answering(403, { statusCode: 403, error: "device_pending", message: "Device not authorized yet.", code: "K7Q2ZD" });
+  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, waiting.send).pair("K7Q2ZD9M"), { pending: "K7Q2ZD" });
+  const limited = withChallenge(async () => new Response("{}", { status: 429, headers: { "Retry-After": "840" } }));
+  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, limited).pair("K7Q2ZD9M"), { refused: "Muitas tentativas. Tente de novo em 14 min." });
+  assert.equal(refused.saved.size, 0);
+  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).pair("K7Q2ZD9M"));
+
+  const mock = await createMockAuth(memoryStore().store, TEST_USERS, 0).pair("K7Q2ZD9M");
+  assert.equal("id" in mock && mock.username, USER.username);
+});
+
 // Signs up through the API stand-in: a 201 saves the user and the token, a 409 says the username is taken, and a
 // failed request or any other answer says the account couldn't be created.
 test("Shared: the API sign-up saves the user and the token, or says why it was refused", async () => {
@@ -434,12 +458,12 @@ test("Shared: a waiting device logs in once it is authorized, and stops when ref
     },
   } as unknown as AuthService;
   const credentials = { username: USER.username, password: USER.password };
-  assert.deepEqual(await waitForDevice(auth, credentials, new AbortController().signal, 0), SESSION_USER);
+  assert.deepEqual(await waitForDevice(auth, () => auth.login(credentials), new AbortController().signal, 0), SESSION_USER);
   assert.deepEqual(logins, [credentials]);
 
   const refused = { deviceStatus: async () => "unknown" } as unknown as AuthService;
-  assert.equal(await waitForDevice(refused, credentials, new AbortController().signal, 0), null);
+  assert.equal(await waitForDevice(refused, () => refused.login(credentials), new AbortController().signal, 0), null);
   const stopped = new AbortController();
   stopped.abort();
-  assert.equal(await waitForDevice(refused, credentials, stopped.signal, 0), undefined);
+  assert.equal(await waitForDevice(refused, () => refused.login(credentials), stopped.signal, 0), undefined);
 });

@@ -15,6 +15,9 @@ import { auth } from '../src/auth/auth';
 
 // The safe area waits for the native insets before drawing anything; the package's mock hands them over at once.
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
+// The flow with the password login, set aside while pairing is the login (see passwordLogin.ts), kept tested for when
+// it comes back; AppPairing.test.tsx covers the flow in use.
+jest.mock('../src/auth/passwordLogin', () => ({ PASSWORD_LOGIN: true }));
 
 const STORAGE = createAsyncStorage('apc-universal-repair');
 const USER = TEST_USERS[0];

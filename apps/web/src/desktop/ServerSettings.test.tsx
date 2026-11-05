@@ -108,7 +108,24 @@ beforeAll(async () => {
 
 afterEach(() => {
   delete window.apcDesktop
+  vi.unstubAllGlobals()
 })
+
+/**
+ * Stands in for the API's POST /pairings, handing out the codes given in turn, or answering a status.
+ * @param answers Each ask's code, or the status to refuse it with.
+ * @returns The stand-in, to count the asks.
+ */
+function serveEntryCodes(...answers: (string | number)[]) {
+  const api = vi.fn<typeof fetch>(async () => {
+    const answer = answers.shift()
+    return typeof answer === 'string'
+      ? Response.json({ code: answer, expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() }, { status: 201 })
+      : Response.json({ statusCode: answer }, { status: answer })
+  })
+  vi.stubGlobal('fetch', api)
+  return api
+}
 
 // In a browser there is no desktop bridge: the provider draws only what it holds, and opening does nothing.
 test('Web: in a browser the Servidor dialog is never drawn', async () => {
@@ -151,18 +168,24 @@ test('Web: the dialog warns of a public network while the phone\'s access is on'
   }
 })
 
-// Opens the dialog with the phone's access on and checks it shows the QR code the phone pairs with, and its address
-// and code, in groups of four, to type in; the code's modules are dark on a light ground in both modes. With the access
-// off there is no code.
-test('Web: the dialog shows the QR code and the code the phone pairs with', async () => {
+// Opens the dialog with the phone's access on and checks it shows the QR code the phone pairs with, and its address,
+// code and entry code, in groups of four, to type in; the code's modules are dark on a light ground in both modes.
+// "Gerar outro" asks for a new entry code. With the access off there is no code.
+test('Web: the dialog shows the QR code and the codes the phone pairs and logs in with', async () => {
   const pairing = { url: 'https://192.168.0.10:3000', fingerprint: 'q1Wn7ZbX-0_aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV' }
   giveServer({ ...ON_SQLITE, pairing })
+  const api = serveEntryCodes('K7Q2ZD9M', 'H4XW8RTC')
   const screen = await renderSettings()
   await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
   const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
   const code = dialog.getByRole('img', { name: 'QR code para conectar o celular' })
   await expect.element(code).toBeVisible()
   await expect.element(dialog.getByText('q1Wn 7ZbX -0_a B3cD 4eF5 gH6i J7kL 8mN9 oP0q R1sT 2uV')).toBeVisible()
+  await expect.element(dialog.getByText('K7Q2 ZD9M')).toBeVisible()
+  expect(String(api.mock.calls[0][0])).toMatch(/\/pairings$/)
+  expect(api.mock.calls[0][1]?.method).toBe('POST')
+  await dialog.getByRole('button', { name: 'Gerar outro' }).click()
+  await expect.element(dialog.getByText('H4XW 8RTC')).toBeVisible()
   expect(dialog.getByText('https://192.168.0.10:3000').elements()).toHaveLength(2)
 
   const modules = code.element().querySelector('path')!
@@ -173,6 +196,20 @@ test('Web: the dialog shows the QR code and the code the phone pairs with', asyn
     expect([getComputedStyle(code.element()).backgroundColor, getComputedStyle(modules).fill]).toEqual([rgb(ground), rgb(ink)])
   }
   root.dataset.mode = 'night'
+})
+
+// Opens the dialog with nobody logged in on this computer, which the API answers 401, and checks there is no QR code,
+// the dialog says to log in here, and "Tentar de novo" asks again, the QR code showing once a code comes.
+test('Web: the dialog says to log in here when the phone can\'t get an entry code', async () => {
+  giveServer({ ...ON_SQLITE, pairing: { url: 'https://192.168.0.10:3000', fingerprint: 'q1Wn7ZbX-0_aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV' } })
+  serveEntryCodes(401, 'K7Q2ZD9M')
+  const screen = await renderSettings()
+  await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Servidor e banco de dados' })
+  await expect.element(dialog.getByText('Entre neste computador para o celular entrar na mesma conta.')).toBeVisible()
+  await expect.element(dialog.getByRole('img', { name: 'QR code para conectar o celular' })).not.toBeInTheDocument()
+  await dialog.getByRole('button', { name: 'Tentar de novo' }).click()
+  await expect.element(dialog.getByRole('img', { name: 'QR code para conectar o celular' })).toBeVisible()
 })
 
 // Opens the dialog with the phone's access off and checks there is no code to pair with.

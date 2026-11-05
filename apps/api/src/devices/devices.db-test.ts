@@ -135,3 +135,34 @@ test("API: removing a device ends its sessions", async () => {
   assert.equal(await statusOf(phone), "unknown");
   assert.equal((await app.inject({ method: "DELETE", url: `/devices/${row.id}`, headers: bearer(token) })).statusCode, 404);
 });
+
+// Logs in on the server's computer and asks for an entry code there; a new phone sends it from the Wi-Fi and checks it
+// waits for authorization with its short code, no session started, while another phone can't use the code it holds;
+// the computer asks for a new code, as its dialog does every 5 minutes, and authorizes the phone, which then logs in
+// with the same code into the same user, with a session that works; then that the code doesn't work again.
+test("API: an entry code logs a phone in once the server's computer authorizes it", async () => {
+  const token = (await login(await newDevice())).json().token;
+  const issued = await app.inject({ method: "POST", url: "/pairings", headers: bearer(token) });
+  assert.equal(issued.statusCode, 201);
+  const { code } = issued.json();
+
+  const phone = await newDevice();
+  const pair = async (entry: string, device: DeviceSigner) =>
+    app.inject({ method: "POST", url: "/sessions/pairing", payload: { code: entry, device: await testProof(app, device) }, remoteAddress: PHONE_ADDRESS });
+  const waiting = await pair(code, phone);
+  assert.equal(waiting.statusCode, 403);
+  assert.deepEqual([waiting.json().error, waiting.json().code], ["device_pending", await deviceCode(await phone.publicKey())]);
+  const row = (await prisma.device.findFirst({ where: { publicKey: await phone.publicKey() } }))!;
+  assert.equal(row.status, "PENDING");
+  assert.equal(await prisma.session.count({ where: { deviceId: row.id } }), 0);
+  assert.equal((await pair(code, await newDevice())).statusCode, 401);
+
+  assert.equal((await app.inject({ method: "POST", url: "/pairings", headers: bearer(token) })).statusCode, 201);
+  await app.inject({ method: "POST", url: `/devices/${row.id}/authorize`, headers: bearer(token), payload: {} });
+  assert.equal(await statusOf(phone), "authorized");
+  const paired = await pair(code, phone);
+  assert.equal(paired.statusCode, 200);
+  assert.deepEqual([paired.json().username, paired.json().displayName], [USER.username, USER.displayName]);
+  assert.equal((await app.inject({ method: "GET", url: "/categories", headers: bearer(paired.json().token) })).statusCode, 200);
+  assert.equal((await pair(code, phone)).statusCode, 401);
+});
