@@ -20,6 +20,7 @@ export const useStyles = createStyles(
     titleText: 'heading.title.text',
     camera: 'camera',
     scanner: 'camera.scanner',
+    notice: 'notice',
     alert: 'alert',
     form: 'form',
     actions: 'actions',

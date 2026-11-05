@@ -7,7 +7,9 @@ import { BackHandler, NativeModules, StyleSheet, TextInput } from 'react-native'
 import ReactTestRenderer from 'react-test-renderer';
 import { useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { CodeScanner } from 'react-native-vision-camera-barcode-scanner';
+import { createMockAuth, PAIRING_REFUSED } from '@apc/shared/auth';
 import { fingerprintGroups, pairingLink } from '@apc/shared/pairing';
+import { TEST_USERS } from '@apc/shared/test-users';
 import { isStyleId } from '@apc/shared/style-ids';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { apiUrl, applyServer, SERVER_STORAGE_KEY } from '../src/api';
@@ -18,6 +20,10 @@ import { themeStorage, ThemeProvider } from '../src/theme';
 const SERVER = { url: 'https://192.168.0.10:3000', fingerprint: 'q1Wn7ZbX-0_aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV' };
 /** The server the phone was paired with before. */
 const BEFORE = { url: 'https://192.168.0.20:3000', fingerprint: 'Zz9y8X7w6V5u4T3s2R1q0P9o8N7m6L5k4J3i2H1g0Fe' };
+/** A login that answers at once, standing in for the API's; each test sets its own pair. */
+const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}, removeItem: async () => {} }, TEST_USERS, 0);
+/** The user the computer's entry code logs in. */
+const LOGGED_IN = { id: 'u1', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true };
 const UNREACHABLE =
   'O servidor não respondeu. Confira se o celular está no Wi-Fi de casa, se o Acesso pelo celular está ligado no computador e se o código é o que aparece lá agora.';
 
@@ -143,6 +149,71 @@ test('Mobile: the camera reads the QR code and the phone pairs with the server',
   expect(JSON.parse((await themeStorage.getItem(SERVER_STORAGE_KEY))!)).toEqual(SERVER);
   expect(onConnected).toHaveBeenCalledWith(SERVER);
   expect(shows(tree, UNREACHABLE)).toBe(false);
+});
+
+// Given the AuthService, as while pairing is the login: shows a notice until a code is read, and asks to log in on the
+// computer first; reads a QR code with no entry code, from an older computer, and checks it says so and asks no
+// server; then reads one with it, and checks the phone logs in with it once the server answers, keeps the server, and
+// hands the server and the user to the owner.
+test('Mobile: given the AuthService, the QR code logs the phone in with its entry code', async () => {
+  const pair = jest.fn(async () => LOGGED_IN);
+  const onConnected = jest.fn();
+  const tree = await mount({ auth: { ...AUTH, pair }, onConnected, notice: 'Sua sessão expirou.' });
+  expect(shows(tree, 'Sua sessão expirou.')).toBe(true);
+  expect(shows(tree, 'No computador, entre na sua conta, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, aponte a câmera para o código que aparece lá.')).toBe(true);
+  await scan(pairingLink(SERVER));
+  expect(shows(tree, 'Esse código não traz o código de entrada. Atualize o APC no computador e leia o código de novo.')).toBe(true);
+  expect(shows(tree, 'Sua sessão expirou.')).toBe(false);
+  expect(fetch).not.toHaveBeenCalled();
+
+  answer(true);
+  await scan(pairingLink({ ...SERVER, entry: 'K7Q2ZD9M' }));
+  expect(pair).toHaveBeenCalledWith('K7Q2ZD9M');
+  expect(JSON.parse((await themeStorage.getItem(SERVER_STORAGE_KEY))!)).toEqual(SERVER);
+  expect(onConnected).toHaveBeenCalledWith(SERVER, LOGGED_IN);
+});
+
+// Reads a QR code whose entry code the server refuses, with another server paired before, and checks the screen says
+// why, the server of before stays, nothing is kept, and the camera doesn't send that same code again; a new code is
+// sent.
+test('Mobile: a refused entry code says so, and the camera doesn’t send it again', async () => {
+  applyServer(BEFORE);
+  const pair = jest.fn(async () => ({ refused: PAIRING_REFUSED }));
+  const onConnected = jest.fn();
+  const tree = await mount({ auth: { ...AUTH, pair }, onConnected });
+  const used = pairingLink({ ...SERVER, entry: 'K7Q2ZD9M' });
+  answer(true);
+  await scan(used);
+  expect(shows(tree, PAIRING_REFUSED)).toBe(true);
+  expect(apiUrl()).toBe(BEFORE.url);
+  expect(await themeStorage.getItem(SERVER_STORAGE_KEY)).toBeNull();
+  await scan(used);
+  expect(pair).toHaveBeenCalledTimes(1);
+  answer(true);
+  await scan(pairingLink({ ...SERVER, entry: 'H4XW8RTC' }));
+  expect(pair).toHaveBeenLastCalledWith('H4XW8RTC');
+  expect(onConnected).not.toHaveBeenCalled();
+});
+
+// Given the AuthService, types the address and the code with an entry code too short, and checks it says what it
+// expects; then types it in lowercase in groups, and checks the phone logs in with it.
+test('Mobile: typed in, the entry code is a third field', async () => {
+  const pair = jest.fn(async () => LOGGED_IN);
+  const onConnected = jest.fn();
+  const tree = await mount({ auth: { ...AUTH, pair }, onConnected });
+  await press(tree, 'Digitar manualmente');
+  await type(tree, 'Endereço', '192.168.0.10:3000');
+  await type(tree, 'Código', fingerprintGroups(SERVER.fingerprint));
+  await type(tree, 'Código de entrada', 'K7Q2');
+  await press(tree, 'Conectar');
+  expect(shows(tree, 'O código de entrada tem 8 letras e números, como aparece no computador.')).toBe(true);
+  expect(fetch).not.toHaveBeenCalled();
+
+  await type(tree, 'Código de entrada', 'k7q2 zd9m');
+  answer(true);
+  await press(tree, 'Conectar');
+  expect(pair).toHaveBeenCalledWith('K7Q2ZD9M');
+  expect(onConnected).toHaveBeenCalledWith(SERVER, LOGGED_IN);
 });
 
 // Reads a QR code that isn't the APC's, and checks the screen says so and asks no server.

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { BackHandler, Text as RNText, TextInput, View } from 'react-native';
 import { useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { CodeScanner, type Barcode, type TargetBarcodeFormat } from 'react-native-vision-camera-barcode-scanner';
+import type { AuthService, SessionUser } from '@apc/shared/auth';
 import { pencilIcon, qrIcon } from '@apc/shared/icons';
-import { readFingerprint, readPairingLink, readServerAddress, type Pairing } from '@apc/shared/pairing';
+import { readEntryCode, readFingerprint, readPairingLink, readServerAddress, type Pairing, type PairingInvite } from '@apc/shared/pairing';
 import { applyServer, currentServer, saveServer } from '../api';
 import { BackButton } from '../BackButton';
 import { Button } from '../Button';
@@ -22,15 +23,24 @@ import { useStyles } from './ConnectScreen.styles';
 // a tap; once refused for good, the screen says to allow it in Android's settings, and a phone without a camera opens
 // on the fields alone. The ← beside the title, or Android's back button, leaves the server as it was, when one is
 // paired.
+// Given the AuthService, as while the phone's password login is set aside (PASSWORD_LOGIN), pairing is also the login:
+// the QR code carries an entry code for the account open on the computer, typed in as a third field otherwise, and
+// once the server answers the phone logs in with it (POST /sessions/pairing), keeping the server only then. A code
+// the server refused, used or ended, says so, and the camera doesn't send that same QR code again, which the
+// computer replaces with a new one.
 
 /** The codes the camera reads: the QR code alone. */
 const QR_CODE: TargetBarcodeFormat[] = ['qr-code'];
 /** How long the server has to answer before the phone gives up, in ms. */
 const ANSWER_TIMEOUT_MS = 8_000;
-/** What the screen says under its title, reading the QR code or typing. */
+/** What the screen says under its title, reading the QR code or typing, when pairing also logs in or not. */
 const INTRO = {
   scan: 'No computador, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, aponte a câmera para o código que aparece lá.',
+  scanLogin:
+    'No computador, entre na sua conta, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, aponte a câmera para o código que aparece lá.',
   type: 'No computador, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, digite o endereço e o código que aparecem lá.',
+  typeLogin:
+    'No computador, entre na sua conta, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, digite o endereço e os códigos que aparecem lá.',
 } as const;
 /** What the screen says, in Portuguese. */
 const MESSAGES = {
@@ -38,17 +48,25 @@ const MESSAGES = {
   blocked: 'A câmera está bloqueada para o APC. Libere-a nas configurações do Android, ou toque em Digitar manualmente.',
   cameraFailed: 'A câmera não abriu. Toque em Digitar manualmente para digitar o endereço e o código.',
   code: 'O código tem 43 letras, números, - e _, como aparece no computador.',
+  entry: 'O código de entrada tem 8 letras e números, como aparece no computador.',
+  noEntry: 'Esse código não traz o código de entrada. Atualize o APC no computador e leia o código de novo.',
   notApc: 'Esse código não é o do APC. Use o que aparece em Servidor e banco de dados, no computador.',
   unreachable:
     'O servidor não respondeu. Confira se o celular está no Wi-Fi de casa, se o Acesso pelo celular está ligado no computador e se o código é o que aparece lá agora.',
 } as const;
 
 type ConnectScreenProps = {
-  /** Called with the server once it answered, kept on the phone and in use. */
-  onConnected: (pairing: Pairing) => void;
+  /** Called with the server once it answered, kept on the phone and in use, and the user when pairing logged in. */
+  onConnected: (pairing: Pairing, user?: SessionUser) => void;
   /** Goes back with the server as it was, when one is paired already. */
   onCancel?: () => void;
+  /** Logs in with the computer's entry code once the server answers; without it, the screen only pairs. */
+  auth?: AuthService;
+  /** Said above the camera or the fields until a code is read, e.g. that the session expired. */
+  notice?: string;
 };
+/** What the fields hold that isn't right, by field. */
+type FieldErrors = { address?: string; code?: string; entry?: string };
 
 /**
  * Asks a server's /health, as the pinning trusts it.
@@ -67,13 +85,16 @@ async function answers(url: string): Promise<boolean> {
   }
 }
 
-export function ConnectScreen({ onConnected, onCancel }: ConnectScreenProps) {
+export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectScreenProps) {
   const camera = useCameraPermission();
   const device = useCameraDevice('back');
   const [address, setAddress] = useState('');
   const [code, setCode] = useState('');
-  const [errors, setErrors] = useState<{ address?: string; code?: string }>({});
+  const [entry, setEntry] = useState('');
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [refused, setRefused] = useState<string>();
+  // Whether a code was read or sent, which puts the notice away.
+  const [tried, setTried] = useState(false);
   const [cameraFailed, setCameraFailed] = useState(false);
   const [connecting, setConnecting] = useState(false);
   // Whether the address and the code are typed in, in place of the camera; always, on a phone without one.
@@ -81,7 +102,10 @@ export function ConnectScreen({ onConnected, onCancel }: ConnectScreenProps) {
   const manual = typing || !device;
   // Whether a server is being asked, so the camera, which reads the code on every frame, asks it once.
   const asking = useRef(false);
+  // The QR code the server refused, or that isn't the APC's, which the camera doesn't send again.
+  const refusedLink = useRef<string>(undefined);
   const codeInput = useRef<ComponentRef<typeof TextInput>>(null);
+  const entryInput = useRef<ComponentRef<typeof TextInput>>(null);
   const { styles, ids } = useStyles();
 
   // Android's back button goes back with the server as it was, when there is one to go back to.
@@ -97,53 +121,73 @@ export function ConnectScreen({ onConnected, onCancel }: ConnectScreenProps) {
   }, [onCancel]);
 
   /**
-   * Uses a server once it answers, or goes back to the one in use before.
-   * @param pairing The server read from the code or typed in.
+   * Uses a server once it answers, and logs in with the entry code when the screen logs in; or goes back to the server
+   * in use before, saying why.
+   * @param invite The server read from the code or typed in, and its entry code.
+   * @param link The QR code read, which the camera doesn't send again once refused.
    */
-  const connect = async (pairing: Pairing) => {
+  const connect = async ({ entry: entryCode, ...pairing }: PairingInvite, link?: string) => {
     if (asking.current) {
       return;
     }
     asking.current = true;
     setConnecting(true);
     setRefused(undefined);
+    setTried(true);
     const before = currentServer();
     applyServer(pairing);
-    if (await answers(pairing.url)) {
-      await saveServer(pairing);
-      onConnected(pairing);
-    } else {
+    const user = !(await answers(pairing.url))
+      ? undefined
+      : auth && entryCode
+        ? await auth.pair(entryCode).catch(() => undefined)
+        : null;
+    if (user === undefined || (user && 'refused' in user)) {
       applyServer(before);
-      setRefused(MESSAGES.unreachable);
+      setRefused(user?.refused ?? MESSAGES.unreachable);
+      refusedLink.current = user ? link : undefined;
+    } else {
+      await saveServer(pairing);
+      if (user) {
+        onConnected(pairing, user);
+      } else {
+        onConnected(pairing);
+      }
     }
     asking.current = false;
     setConnecting(false);
   };
 
   /**
-   * Takes the codes the camera read.
+   * Takes the codes the camera read, leaving out the one refused last.
    * @param barcodes The codes in the frame.
    */
   const scanned = (barcodes: Barcode[]) => {
     const text = barcodes[0]?.rawValue;
-    if (text === undefined || asking.current) {
+    if (text === undefined || asking.current || text === refusedLink.current) {
       return;
     }
-    const pairing = readPairingLink(text);
-    if (pairing) {
-      void connect(pairing);
+    const invite = readPairingLink(text);
+    if (invite && (!auth || invite.entry)) {
+      void connect(invite, text);
     } else {
-      setRefused(MESSAGES.notApc);
+      refusedLink.current = text;
+      setTried(true);
+      setRefused(invite ? MESSAGES.noEntry : MESSAGES.notApc);
     }
   };
 
-  /** Connects to the address and code typed in, or says which one isn't right. */
+  /** Connects to the address and codes typed in, or says which one isn't right. */
   const submit = () => {
     const url = readServerAddress(address);
     const fingerprint = readFingerprint(code);
-    setErrors({ address: url ? undefined : MESSAGES.address, code: fingerprint ? undefined : MESSAGES.code });
-    if (url && fingerprint) {
-      void connect({ url, fingerprint });
+    const entryCode = auth ? readEntryCode(entry) : undefined;
+    setErrors({
+      address: url ? undefined : MESSAGES.address,
+      code: fingerprint ? undefined : MESSAGES.code,
+      entry: entryCode === null ? MESSAGES.entry : undefined,
+    });
+    if (url && fingerprint && entryCode !== null) {
+      void connect({ url, fingerprint, entry: entryCode });
     }
   };
 
@@ -191,8 +235,13 @@ export function ConnectScreen({ onConnected, onCancel }: ConnectScreenProps) {
             Conectar ao servidor
           </RNText>
         </View>
-        <Text tone="muted">{manual ? INTRO.type : INTRO.scan}</Text>
+        <Text tone="muted">{manual ? (auth ? INTRO.typeLogin : INTRO.type) : auth ? INTRO.scanLogin : INTRO.scan}</Text>
       </View>
+      {notice && !tried && (
+        <View accessibilityLiveRegion="polite" style={styles.notice} testID={ids.notice}>
+          <Text size="sm">{notice}</Text>
+        </View>
+      )}
       {manual ? (
         <View style={styles.form} testID={ids.form}>
           <TextField
@@ -217,9 +266,24 @@ export function ConnectScreen({ onConnected, onCancel }: ConnectScreenProps) {
               setErrors((shown) => ({ ...shown, code: undefined }));
             }}
             error={errors.code}
-            returnKeyType="go"
-            onSubmitEditing={submit}
+            returnKeyType={auth ? 'next' : 'go'}
+            onSubmitEditing={auth ? () => entryInput.current?.focus() : submit}
           />
+          {auth && (
+            <TextField
+              ref={entryInput}
+              label="Código de entrada"
+              kind="code"
+              value={entry}
+              onValueChange={(typed) => {
+                setEntry(typed);
+                setErrors((shown) => ({ ...shown, entry: undefined }));
+              }}
+              error={errors.entry}
+              returnKeyType="go"
+              onSubmitEditing={submit}
+            />
+          )}
         </View>
       ) : (
         <View style={styles.camera} testID={ids.camera}>
