@@ -19,6 +19,14 @@
       "apc-dist": "./dist/auth/auth.js",
       "default": "./src/auth/auth.ts"
     },
+    "./devices": {
+      "apc-dist": "./dist/devices/devices.js",
+      "default": "./src/devices/devices.ts"
+    },
+    "./device-crypto": {
+      "apc-dist": "./dist/devices/deviceCrypto.js",
+      "default": "./src/devices/deviceCrypto.ts"
+    },
     "./theme": {
       "apc-dist": "./dist/theme/tokens.js",
       "default": "./src/theme/tokens.ts"
