@@ -22,9 +22,13 @@ apply plugin: "com.facebook.react.rootproject"
 
 // The libraries with C++ code (the camera's and Nitro's) build it with the CMake the app uses, 3.31 (see
 // app/build.gradle): with the default 3.22, ninja can't read their object files' long paths on Windows, and loops
-// re-running CMake.
+// re-running CMake. CMake 3.31 warns about every cmake_minimum_required below 3.10, which the NDK's toolchain files and
+// the libraries' own CMakeLists.txt have, about 250 lines a build that no one here can fix: -Wno-deprecated and
+// -Wno-dev keep CMake's own notices out, and the compilers' warnings stay. The libraries add their arguments after
+// these. The app's own native build (React Native's) gets the same in app/build.gradle, as it is read before this.
 subprojects {
     plugins.withId("com.android.library") {
         android.externalNativeBuild.cmake.version = "3.31.6"
+        android.defaultConfig.externalNativeBuild.cmake.arguments("-Wno-deprecated", "-Wno-dev")
     }
 }
