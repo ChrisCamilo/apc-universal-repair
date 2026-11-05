@@ -90,7 +90,7 @@ def enableProguardInReleaseBuilds = false
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
-    ndkVersion rootProject.ext.ndkVersion
+    ndkVersion = rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
@@ -99,11 +99,11 @@ android {
     // 3.22's ninja stops there. Gradle doesn't install it: add CMake 3.31.6 in the SDK Manager (SDK Tools).
     externalNativeBuild {
         cmake {
-            version "3.31.6"
+            version = "3.31.6"
         }
     }
 
-    namespace "com.apc.universalrepair"
+    namespace = "com.apc.universalrepair"
     defaultConfig {
         applicationId "com.apc.universalrepair"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -129,10 +129,10 @@ android {
     }
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            signingConfig = signingConfigs.debug
         }
         release {
-            signingConfig hasUploadKey ? signingConfigs.release : signingConfigs.debug
+            signingConfig = hasUploadKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
