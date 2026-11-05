@@ -7,6 +7,7 @@ import { listEntriesSchema, listEntrySchema, vehicleModelsSchema, type ListEntry
 import { ITEM_PHOTO_LIMIT, PHOTO_PARTS } from '@apc/shared/photos'
 import { createDemoApi } from './demoApi.ts'
 import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
+import { DEMO_DEVICE_STAND_IN } from './demoDevice.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 import { installDemoApi } from './installDemoApi.ts'
 
@@ -14,6 +15,8 @@ import { installDemoApi } from './installDemoApi.ts'
 const BRAND = { partBrand: 'cobreq', code: 'nv-1', quantity: 3, unitPriceCents: 4990 }
 /** The page's own fetch, put back after a test replaces it. */
 const FETCH = window.fetch
+/** What the demo's logins send in place of a device's proof (see demoDevice.ts). */
+const DEVICE = { publicKey: DEMO_DEVICE_STAND_IN, nonce: DEMO_DEVICE_STAND_IN, signature: DEMO_DEVICE_STAND_IN }
 
 /** An item to send, valid unless the test changes it. */
 const ITEM = { name: 'tensor da correia', category: 'motor', vehicles: [{ vehicleBrand: 'volkswagen', vehicleModel: 'gol' }], brands: [BRAND] }
@@ -36,7 +39,7 @@ async function demo() {
         headers: { 'content-type': 'application/json', ...(token && { authorization: `Bearer ${token}` }) },
       }),
     )
-  const token = (await (await call('POST', '/sessions', { username: DEMO_USER.username, password: DEMO_USER.password })).json()).token as string
+  const token = (await (await call('POST', '/sessions', { username: DEMO_USER.username, password: DEMO_USER.password, device: DEVICE })).json()).token as string
   /** Calls the demo with the session. */
   const as = (method: string, path: string, body?: unknown) => call(method, path, body, token)
   /** Reads the whole stock. */
@@ -78,12 +81,12 @@ test('Web: the demo signs up, logs in and out as the API does', async () => {
   const { call, as, token } = await demo()
   const health = await call('GET', '/health')
   expect([health.status, (await health.json()).status, health.headers.get(DEMO_HEADER)]).toEqual([200, 'ok', DEMO_MARKER])
-  const wrong = await call('POST', '/sessions', { username: DEMO_USER.username, password: 'errada123' })
+  const wrong = await call('POST', '/sessions', { username: DEMO_USER.username, password: 'errada123', device: DEVICE })
   expect([wrong.status, (await wrong.json()).message]).toEqual([401, 'Wrong username or password.'])
   expect((await call('GET', '/items')).status).toBe(401)
   expect((await call('GET', '/items', undefined, 'not-a-session')).status).toBe(401)
 
-  const signUp = { displayName: 'Ana Souza', username: 'Ana.Souza', email: 'ana@oficina.com', password: 'freio1234' }
+  const signUp = { displayName: 'Ana Souza', username: 'Ana.Souza', email: 'ana@oficina.com', password: 'freio1234', device: DEVICE }
   const created = await call('POST', '/users', signUp)
   expect(created.status).toBe(201)
   expect(loggedInSchema.parse(await created.json())).toMatchObject({ username: 'ana.souza', initials: 'AS', inventoryTutorialSeen: false })
@@ -93,9 +96,9 @@ test('Web: the demo signs up, logs in and out as the API does', async () => {
   expect(invalid.status).toBe(400)
   expect((await invalid.json()).details.map((detail: { field: string }) => detail.field)).toEqual(['username', 'password'])
 
-  const ana = (await (await call('POST', '/sessions', { username: 'ana.souza', password: 'freio1234' })).json()).token
+  const ana = (await (await call('POST', '/sessions', { username: 'ana.souza', password: 'freio1234', device: DEVICE })).json()).token
   expect((await call('PUT', '/users/me/inventory-tutorial', undefined, ana)).status).toBe(204)
-  expect((await (await call('POST', '/sessions', { username: 'ana.souza', password: 'freio1234' })).json()).inventoryTutorialSeen).toBe(true)
+  expect((await (await call('POST', '/sessions', { username: 'ana.souza', password: 'freio1234', device: DEVICE })).json()).inventoryTutorialSeen).toBe(true)
   expect((await call('DELETE', '/sessions/current', undefined, ana)).status).toBe(204)
   expect((await call('GET', '/items', undefined, ana)).status).toBe(401)
   expect((await as('GET', '/items')).status).toBe(200)

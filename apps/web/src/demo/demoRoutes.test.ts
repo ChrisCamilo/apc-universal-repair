@@ -3,21 +3,32 @@ import { API_ROUTES } from '@apc/shared/api-routes'
 import type { Item } from '@apc/shared/items'
 import { ITEM_LIST_PATHS, type ListEntry } from '@apc/shared/lists'
 import { PHOTO_PARTS } from '@apc/shared/photos'
-import { createDemoApi } from './demoApi.ts'
+import { createDemoApi, DEMO_UNAVAILABLE, DEMO_UNAVAILABLE_ROUTES } from './demoApi.ts'
 import { DEMO_USER } from './demoData.ts'
+import { DEMO_DEVICE_STAND_IN } from './demoDevice.ts'
 
 // The demo's routes against @apc/shared/api-routes, the list the API's server is checked against too (see
 // apps/api/src/routes/apiRoutes.test.ts): a route the API has and the demo doesn't, or the other way around, fails,
 // and so does an answer of the demo that the API's schema for it doesn't read, as when the API gains a field. Each
-// route of the list has a call here that it answers with success, so a new route needs one too.
+// route of the list has a call here that it answers with success, so a new route needs one too; the device routes
+// the demo doesn't do answer 501 saying so (DEMO_UNAVAILABLE_ROUTES).
 
+/** What the demo's logins send in place of a device's proof (see demoDevice.ts). */
+const DEVICE = { publicKey: DEMO_DEVICE_STAND_IN, nonce: DEMO_DEVICE_STAND_IN, signature: DEMO_DEVICE_STAND_IN }
 /** A call that each route answers with success, on a fresh demo, logged in, by "METHOD path". */
 const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
   'GET /health': ({ call }) => call('GET', '/health'),
-  'POST /users': ({ call }) => call('POST', '/users', { displayName: 'Nova Oficina', username: 'nova', email: 'nova@oficina.test', password: 'senha-da-nova' }),
-  'POST /sessions': ({ call }) => call('POST', '/sessions', { username: DEMO_USER.username, password: DEMO_USER.password }),
+  'POST /users': ({ call }) =>
+    call('POST', '/users', { displayName: 'Nova Oficina', username: 'nova', email: 'nova@oficina.test', password: 'senha-da-nova', device: DEVICE }),
+  'POST /sessions': ({ call }) => call('POST', '/sessions', { username: DEMO_USER.username, password: DEMO_USER.password, device: DEVICE }),
   'DELETE /sessions/current': ({ call }) => call('DELETE', '/sessions/current'),
   'PUT /users/me/inventory-tutorial': ({ call }) => call('PUT', '/users/me/inventory-tutorial'),
+  'GET /devices/challenge': ({ call }) => call('GET', '/devices/challenge'),
+  'POST /devices/status': ({ call }) => call('POST', '/devices/status', DEVICE),
+  'GET /devices': ({ call }) => call('GET', '/devices'),
+  'POST /devices/:id/authorize': ({ call }) => call('POST', '/devices/d1/authorize', {}),
+  'PATCH /devices/:id': ({ call }) => call('PATCH', '/devices/d1', { name: 'Celular' }),
+  'DELETE /devices/:id': ({ call }) => call('DELETE', '/devices/d1'),
   'GET /items': ({ call }) => call('GET', '/items'),
   'POST /items': ({ call }) => call('POST', '/items', ITEM),
   'POST /items/import': ({ call }) => call('POST', '/items/import', { items: [ITEM] }),
@@ -77,7 +88,7 @@ async function startDemo() {
   const api = createDemoApi()
   const send = (method: string, path: string, body?: BodyInit, headers: Record<string, string> = {}) =>
     api.handle(new Request(`http://demo.test/api${path}`, { method, body, headers }))
-  const login = { username: DEMO_USER.username, password: DEMO_USER.password }
+  const login = { username: DEMO_USER.username, password: DEMO_USER.password, device: DEVICE }
   const { token } = (await (await send('POST', '/sessions', JSON.stringify(login), { 'content-type': 'application/json' })).json()) as { token: string }
   const authorization = `Bearer ${token}`
   /** Calls the demo with the session, sending a body as JSON. */
@@ -110,10 +121,14 @@ test('Web: the demo answers the routes of the shared list, as the API does', () 
 })
 
 // Makes each route's call on a fresh demo and checks it succeeds, and that the body, for a status the shared list
-// gives a schema to, is read by the API's own schema.
+// gives a schema to, is read by the API's own schema; the device routes the demo doesn't do answer 501, saying so.
 test("Web: the demo answers each route with the API's bodies", async () => {
   for (const route of API_ROUTES) {
     const answer = await CALLS[named(route)](await startDemo())
+    if (DEMO_UNAVAILABLE_ROUTES.includes(named(route))) {
+      expect([answer.status, ((await answer.json()) as { message: string }).message], named(route)).toEqual([501, DEMO_UNAVAILABLE])
+      continue
+    }
     expect(answer.ok, `${named(route)} answered ${answer.status}`).toBe(true)
     const schema = route.responses[answer.status]
     if (schema) {

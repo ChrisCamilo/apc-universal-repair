@@ -1,5 +1,5 @@
 import { RELEASE_VERSION } from 'virtual:apc-release'
-import { credentialsSchema, initials, userCreateSchema } from '@apc/shared/auth'
+import { initials, loginRequestSchema, userCreateRequestSchema } from '@apc/shared/auth'
 import { IMPORT_CONFLICTS, itemImportSchema } from '@apc/shared/item-csv'
 import { itemMatchesQuery } from '@apc/shared/item-filters'
 import {
@@ -44,9 +44,16 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // the item carries as its whole address (see photoAddress in @apc/shared/photos), and is let go once the photo is
 // removed; a few sample items carry drawings of the demo's own. Everything is held in memory and starts over from
 // demoData.ts when the page loads again. Each answer carries the demo's marker (demoMarker.ts).
+// The demo authorizes no devices: its logins and sign-ups go through without checking the device's proof, which the
+// demo doesn't make (see demoDevice.ts), and the routes that list, authorize, rename and remove devices answer 501
+// with DEMO_UNAVAILABLE (DEMO_UNAVAILABLE_ROUTES), which the screens show.
 
 /** One day, in milliseconds, between the demo's items' creation. */
 const DAY_MS = 86_400_000
+/** What the demo says of what it doesn't do, such as authorizing devices. */
+export const DEMO_UNAVAILABLE = 'Funcionalidade não disponível na demo.'
+/** The routes the demo answers 501 with DEMO_UNAVAILABLE, by "METHOD path". */
+export const DEMO_UNAVAILABLE_ROUTES = ['GET /devices', 'POST /devices/:id/authorize', 'PATCH /devices/:id', 'DELETE /devices/:id']
 /** The items using an entry of each list. */
 const ITEMS_USING: Record<ItemListKind, (item: StoredItem, id: string) => boolean> = {
   categories: (item, id) => item.categoryId === id,
@@ -178,7 +185,7 @@ export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; han
   const start = Date.now() - DEMO_ITEMS.length * DAY_MS
   DEMO_ITEMS.forEach((input, index) => createItem(db, input, new Date(start + index * DAY_MS).toISOString()))
   addSamplePhotos(db)
-  const routes = [...sessionRoutes(db), ...itemRoutes(db), ...photoRoutes(db), ...listRoutes(db)]
+  const routes = [...sessionRoutes(db), ...deviceRoutes(), ...itemRoutes(db), ...photoRoutes(db), ...listRoutes(db)]
 
   return {
     routes: routes.map(({ method, path }) => ({ method, path })),
@@ -941,6 +948,23 @@ function read<Value>(schema: Schema<Value>, value: unknown): { ok: true; value: 
 }
 
 /**
+ * Lists the devices' routes: a nonce to sign, which nothing checks, every device authorized, and the rest answered 501
+ * with DEMO_UNAVAILABLE, as the demo authorizes no devices.
+ * @returns The routes.
+ */
+function deviceRoutes(): Route[] {
+  const unavailable = () => json(501, { statusCode: 501, error: 'Not Implemented', message: DEMO_UNAVAILABLE })
+  return [
+    { method: 'GET', path: '/devices/challenge', open: true, answer: () => json(200, { nonce: crypto.randomUUID() }) },
+    { method: 'POST', path: '/devices/status', open: true, answer: () => json(200, { status: 'authorized' }) },
+    ...DEMO_UNAVAILABLE_ROUTES.map((route) => {
+      const [method, path] = route.split(' ')
+      return { method, path, answer: unavailable }
+    }),
+  ]
+}
+
+/**
  * Lists the routes of signing up, logging in and out, the tutorial and the health check.
  * @param db The demo's data.
  * @returns The routes.
@@ -965,7 +989,7 @@ function sessionRoutes(db: Db): Route[] {
       path: '/users',
       open: true,
       answer: ({ body }) => {
-        const sent = read(userCreateSchema, body)
+        const sent = read(userCreateRequestSchema, body)
         if (!sent.ok) {
           return sent.answer
         }
@@ -984,7 +1008,7 @@ function sessionRoutes(db: Db): Route[] {
       path: '/sessions',
       open: true,
       answer: ({ body }) => {
-        const sent = read(credentialsSchema, body)
+        const sent = read(loginRequestSchema, body)
         if (!sent.ok) {
           return sent.answer
         }
