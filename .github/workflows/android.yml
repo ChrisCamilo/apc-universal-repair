@@ -103,7 +103,7 @@ jobs:
 
       - name: Upload the APK, when run by hand
         if: github.event_name == 'workflow_dispatch' && !inputs.release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ARTIFACT }}
           path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
@@ -126,7 +126,7 @@ jobs:
 
       - name: Upload the APK for the release
         if: inputs.release && steps.release.outputs.signed == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-apk
           path: ${{ runner.temp }}/release-apk/

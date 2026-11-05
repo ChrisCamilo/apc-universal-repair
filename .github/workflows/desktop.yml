@@ -48,7 +48,7 @@ jobs:
 
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-playwright-report
           path: apps/desktop/playwright-report/
@@ -110,7 +110,7 @@ jobs:
 
       - name: Download the phone app's APK
         if: needs.apk.outputs.signed == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-apk
           path: apps/desktop/release
@@ -139,7 +139,7 @@ jobs:
 
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-playwright-report
           path: apps/desktop/playwright-report/
