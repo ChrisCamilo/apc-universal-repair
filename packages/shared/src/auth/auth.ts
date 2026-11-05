@@ -23,6 +23,8 @@ export { apiFetch, onSessionExpired } from "./apiFetch.ts";
 // proof that it holds its key (see @apc/shared/devices): a device the server's computer hasn't authorized yet is told
 // so with its short code, and asks deviceStatus until it is. The screens only see AuthService.
 
+/** How long an entry code logs a phone in, from when the computer made it: 5 minutes, in milliseconds. */
+export const ENTRY_CODE_MS = 5 * 60 * 1000;
 /**
  * The login's brand on a phone, in px: the APC mark, then the name over the tagline in the display face, the tagline
  * spaced this many em.
@@ -46,6 +48,8 @@ export const LOGIN_MESSAGES = {
 } as const;
 /** How long the mocked login takes to answer, so the screens show their loading state as with a real server. */
 export const MOCK_LOGIN_DELAY_MS = 400;
+/** Why a phone's entry through the computer's code was refused: the code used, ended or never handed out. */
+export const PAIRING_REFUSED = "Esse código de entrada não vale mais. Leia o código que aparece no computador agora.";
 /** The fewest characters a new password takes. */
 export const PASSWORD_MIN_LENGTH = 8;
 /** Messages of the sign-up form: under each field that breaks a rule, and above the form when the API refuses it. */
@@ -80,10 +84,17 @@ export const sessionUserSchema = z.object({
   initials: z.string(),
   inventoryTutorialSeen: z.boolean().default(false),
 });
-/** What POST /sessions and POST /users answer: the user, and the token of the session they just started. */
+/** What POST /pairings answers: the entry code, for the account of the caller's session, and when it ends. */
+export const entryCodeSchema = z.object({ code: z.string(), expiresAt: z.iso.datetime() });
+/**
+ * What POST /sessions, POST /sessions/pairing and POST /users answer: the user, and the token of the session they just
+ * started.
+ */
 export const loggedInSchema = sessionUserSchema.extend({ token: z.string().min(1) });
 /** A login as the apps send it: the user and password, and the device's proof that it holds its key (see devices.ts). */
 export const loginRequestSchema = credentialsSchema.extend({ device: deviceProofSchema });
+/** What POST /sessions/pairing takes: the entry code the computer handed out, and the device's proof. */
+export const pairingLoginRequestSchema = z.object({ code: z.string(), device: deviceProofSchema });
 /** What POST /users takes: the sign-up fields, under the same rules as the form. The e-mail is only kept for now. */
 export const userCreateSchema = z.object({
   displayName: z.string().trim().min(1, REGISTER_MESSAGES.displayName),
@@ -102,6 +113,11 @@ export type AuthService = {
    * authorized it, and rejects when the check can't be made (e.g. the API is out of reach).
    */
   login: (credentials: Credentials) => Promise<SessionUser | null | { refused: string } | { pending: string }>;
+  /**
+   * Logs in with an entry code from the server's computer, into the account open there, authorizing this device;
+   * resolves with the logged user or the message saying why it was refused, and rejects when the API is out of reach.
+   */
+  pair: (code: string) => Promise<SessionUser | { refused: string }>;
   /**
    * Creates a user and logs them in; resolves with the user, the message saying why it was refused, or the device's
    * short code while it waits to be authorized, the user created meanwhile.
@@ -122,6 +138,8 @@ export type AuthService = {
 };
 /** What the login form sends. */
 export type Credentials = { username: string; password: string };
+/** An entry code the server's computer handed out, and when it ends (ISO 8601). */
+export type EntryCode = z.infer<typeof entryCodeSchema>;
 /** What the API answers a login or sign-up with, and the API's AuthService saves: the user and the token. */
 export type LoggedIn = z.infer<typeof loggedInSchema>;
 /** The message of each field that can't be sent as it is; a field without one is fine. */
@@ -151,10 +169,11 @@ export type UserCreate = z.input<typeof userCreateSchema>;
 /**
  * Builds the login and sign-up of the apps, through the API: POST /sessions checks the user and password, POST /users
  * creates a user; either way the user the API answers with is saved in the store as the session, with its token,
- * which apiFetch then sends. Too many attempts (429) are refused saying when to try again. DELETE /sessions/current ends the session on logout, and PUT
- * /users/me/inventory-tutorial marks the Inventory tutorial as seen. Logins and sign-ups carry the device's signature
- * of a nonce from GET /devices/challenge; a 403 says the device waits for authorization, with its short code, and POST
- * /devices/status says when it has it.
+ * which apiFetch then sends. POST /sessions/pairing logs in with an entry code from the server's computer instead, a
+ * 401 saying the code no longer works. Too many attempts (429) are refused saying when to try again. DELETE
+ * /sessions/current ends the session on logout, and PUT /users/me/inventory-tutorial marks the Inventory tutorial as
+ * seen. Logins and sign-ups carry the device's signature of a nonce from GET /devices/challenge; a 403 says the device
+ * waits for authorization, with its short code, and POST /devices/status says when it has it.
  * @param store Where the session is saved on the device.
  * @param apiBase Where the API answers, e.g. "/api" on the web; or a function giving it at each request, as the phone
  * does, whose server is the one it paired with.
@@ -203,6 +222,19 @@ export function createApiAuth(
       }
       if (!response.ok) {
         throw new Error(`The login answered ${response.status}.`);
+      }
+      return start(loggedInSchema.parse(await response.json()));
+    },
+    pair: async (code) => {
+      const response = await post("/sessions/pairing", { code, device: await prove() });
+      if (response.status === 401) {
+        return { refused: PAIRING_REFUSED };
+      }
+      if (response.status === 429) {
+        return { refused: tooManyAttempts(response.headers.get("Retry-After")) };
+      }
+      if (!response.ok) {
+        throw new Error(`The entry answered ${response.status}.`);
       }
       return start(loggedInSchema.parse(await response.json()));
     },
@@ -271,6 +303,11 @@ export function createMockAuth(store: SessionStore, users: readonly TestUser[], 
       await wait();
       const user = known.find((test) => test.username === username.trim().toLowerCase() && test.password === password);
       return user ? keepSession(store, sessionOf(user, seen.has(user.id))) : null;
+    },
+    // The mock has no server's computer to hand out codes: any code logs the first user in.
+    pair: async () => {
+      await wait();
+      return keepSession(store, sessionOf(known[0], seen.has(known[0].id)));
     },
     register: async (create) => {
       await wait();

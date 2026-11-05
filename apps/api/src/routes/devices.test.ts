@@ -3,6 +3,7 @@ import { after, afterEach, test, mock } from "node:test";
 import { proveDevice } from "@apc/shared/devices";
 import { buildApp } from "../app.js";
 import { checkProof, isLoopback, issueChallenge } from "../devices/devices.js";
+import { issueEntryCode, useEntryCode } from "../devices/entryCodes.js";
 import { testDevice } from "../devices/testDevices.js";
 import { AUTHORIZED, TEST_SESSIONS } from "../sessions/testSessions.js";
 
@@ -52,14 +53,16 @@ test("API: the demo's stand-in for a device is refused", async () => {
   assert.equal(status.statusCode, 401);
 });
 
-// Calls each device route with a session, from an address on the Wi-Fi, and checks every one is refused with 403,
-// so a device can't authorize itself or another; and that the loopback addresses count as the server's computer.
+// Calls each device route with a session, and asks for an entry code, from an address on the Wi-Fi, and checks every
+// one is refused with 403, so a device can't authorize itself or another, or hand itself a code; and that the
+// loopback addresses count as the server's computer.
 test("API: devices are managed only from the server's computer", async () => {
   const calls = [
     { method: "GET", url: "/devices" },
     { method: "POST", url: "/devices/d1/authorize", payload: {} },
     { method: "PATCH", url: "/devices/d1", payload: { name: "Celular" } },
     { method: "DELETE", url: "/devices/d1" },
+    { method: "POST", url: "/pairings" },
   ] as const;
   for (const call of calls) {
     const response = await app.inject({ ...call, headers: AUTHORIZED, remoteAddress: "192.168.0.15" });
@@ -83,4 +86,42 @@ test("API: a login and a sign-up need the device's proof", async () => {
     payload: { displayName: "Ana Souza", username: "ana.souza", email: "ana@oficina.com", password: "freio1234" },
   });
   assert.equal(signUp.statusCode, 400);
+});
+
+// Asks for an entry code on the server's computer, and checks it is 8 characters that don't read alike, ending in 5
+// minutes; then that a code works once, ends after its 5 minutes, and is replaced by the next one for the same user.
+test("API: the server's computer hands out entry codes that work once, for 5 minutes", async () => {
+  mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-05T12:00:00Z") });
+  const issued = await app.inject({ method: "POST", url: "/pairings", headers: AUTHORIZED, remoteAddress: "127.0.0.1" });
+  assert.equal(issued.statusCode, 201);
+  assert.match(issued.json().code, /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/);
+  assert.equal(issued.json().expiresAt, "2026-11-05T12:05:00.000Z");
+
+  const once = issueEntryCode("u1").code;
+  assert.equal(useEntryCode(once), "u1");
+  assert.equal(useEntryCode(once), null);
+  const late = issueEntryCode("u1").code;
+  mock.timers.tick(5 * 60 * 1000);
+  assert.equal(useEntryCode(late), null);
+  const replaced = issueEntryCode("u1").code;
+  const latest = issueEntryCode("u1").code;
+  assert.equal(useEntryCode(replaced), null);
+  assert.equal(useEntryCode(latest), "u1");
+});
+
+// Logs in with an entry code without the device's proof, then with a code never handed out, and checks each is
+// refused; then that an address gets 10 tries in 15 minutes.
+test("API: an entry with a code needs the device's proof and a code handed out, 10 tries per address", async () => {
+  const device = await testDevice();
+  const pair = async (remoteAddress: string, code = "K7Q2ZD9M") =>
+    app.inject({ method: "POST", url: "/sessions/pairing", payload: { code, device: await proveDevice(device, issueChallenge()) }, remoteAddress });
+  const unproved = await app.inject({ method: "POST", url: "/sessions/pairing", payload: { code: "K7Q2ZD9M" }, remoteAddress: "10.0.0.6" });
+  assert.equal(unproved.statusCode, 400);
+  const unknown = await pair("10.0.0.7");
+  assert.equal(unknown.statusCode, 401);
+  for (let i = 2; i <= 10; i++) {
+    assert.equal((await pair("10.0.0.7")).statusCode, 401);
+  }
+  assert.equal((await pair("10.0.0.7")).statusCode, 429);
+  assert.equal((await pair("10.0.0.8")).statusCode, 401);
 });

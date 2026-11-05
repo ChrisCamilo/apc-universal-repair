@@ -135,3 +135,30 @@ test("API: removing a device ends its sessions", async () => {
   assert.equal(await statusOf(phone), "unknown");
   assert.equal((await app.inject({ method: "DELETE", url: `/devices/${row.id}`, headers: bearer(token) })).statusCode, 404);
 });
+
+// Logs in on the server's computer and asks for an entry code there; a new phone logs in with it from the Wi-Fi, and
+// checks it gets the same user and a session that works, its device authorized at once with no name; then that the
+// code doesn't work twice, and a new code for the same user replaces the one before.
+test("API: an entry code from the server's computer logs a phone in, authorized, once", async () => {
+  const token = (await login(await newDevice())).json().token;
+  const issued = await app.inject({ method: "POST", url: "/pairings", headers: bearer(token) });
+  assert.equal(issued.statusCode, 201);
+  const { code } = issued.json();
+
+  const phone = await newDevice();
+  const pair = async (entry: string, device: DeviceSigner) =>
+    app.inject({ method: "POST", url: "/sessions/pairing", payload: { code: entry, device: await testProof(app, device) }, remoteAddress: PHONE_ADDRESS });
+  const paired = await pair(code, phone);
+  assert.equal(paired.statusCode, 200);
+  assert.deepEqual([paired.json().username, paired.json().displayName], [USER.username, USER.displayName]);
+  assert.equal((await app.inject({ method: "GET", url: "/categories", headers: bearer(paired.json().token) })).statusCode, 200);
+  const row = (await prisma.device.findFirst({ where: { publicKey: await phone.publicKey() } }))!;
+  assert.deepEqual([row.status, row.name, row.approvedAt !== null], ["AUTHORIZED", "", true]);
+  assert.equal(await statusOf(phone), "authorized");
+
+  assert.equal((await pair(code, await newDevice())).statusCode, 401);
+  const first = (await app.inject({ method: "POST", url: "/pairings", headers: bearer(token) })).json().code;
+  const second = (await app.inject({ method: "POST", url: "/pairings", headers: bearer(token) })).json().code;
+  assert.equal((await pair(first, await newDevice())).statusCode, 401);
+  assert.equal((await pair(second, phone)).statusCode, 200);
+});

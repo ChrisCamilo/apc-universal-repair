@@ -7,8 +7,9 @@ import { prisma } from "../db/client.js";
 // signing a nonce from GET /devices/challenge, which lives CHALLENGE_MS and works once; the nonces live in memory, as
 // there is one server, and a restart only means asking for another. A key the user hasn't logged in with is recorded
 // as pending, unless it calls from the server's computer itself (the loopback address), which is authorized at once:
-// the desktop app, the only one that calls from there, holds the database anyway. The server's computer is also the
-// only place devices are authorized, renamed and removed.
+// the desktop app, the only one that calls from there, holds the database anyway. A key that logs in with an entry
+// code from the server's computer (see entryCodes.ts) is authorized at once as well, since showing the code there is
+// the authorization. The server's computer is also the only place devices are authorized, renamed and removed.
 
 /** How long a nonce lives: 2 minutes, in milliseconds. */
 const CHALLENGE_MS = 2 * 60 * 1000;
@@ -29,6 +30,26 @@ type DeviceRow = {
   lastUsedAt: Date | null;
   user: { username: string; displayName: string };
 };
+
+/**
+ * Authorizes the device a user logs in from with an entry code from the server's computer: showing the code there is
+ * the authorization. A device authorized before keeps its name and when it was authorized.
+ * @param userId The user the code logs in.
+ * @param publicKey The device's public key.
+ * @returns The device.
+ */
+export async function authorizeDevice(userId: string, publicKey: string): Promise<{ id: string }> {
+  const now = new Date();
+  const device = await prisma.device.upsert({
+    where: { userId_publicKey: { userId, publicKey } },
+    create: { userId, publicKey, status: "AUTHORIZED", approvedAt: now },
+    update: { status: "AUTHORIZED" },
+  });
+  if (!device.approvedAt) {
+    await prisma.device.update({ where: { id: device.id }, data: { approvedAt: now } });
+  }
+  return { id: device.id };
+}
 
 /**
  * Checks a device's proof: its nonce was handed out, hasn't been used and is still alive, which uses it up, and its

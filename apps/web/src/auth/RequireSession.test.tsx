@@ -27,6 +27,7 @@ function heldSession(): { auth: AuthService; answer: (user: SessionUser | null) 
   const read = new Promise<SessionUser | null>((resolve) => (answer = resolve))
   const auth: AuthService = {
     login: async () => null,
+    pair: async () => ({ refused: '' }),
     register: async () => ({ refused: '' }),
     deviceStatus: async () => 'authorized',
     logout: async () => {},

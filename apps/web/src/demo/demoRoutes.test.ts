@@ -21,7 +21,9 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
   'POST /users': ({ call }) =>
     call('POST', '/users', { displayName: 'Nova Oficina', username: 'nova', email: 'nova@oficina.test', password: 'senha-da-nova', device: DEVICE }),
   'POST /sessions': ({ call }) => call('POST', '/sessions', { username: DEMO_USER.username, password: DEMO_USER.password, device: DEVICE }),
+  'POST /sessions/pairing': ({ call }) => call('POST', '/sessions/pairing', { code: 'K7Q2ZD9M', device: DEVICE }),
   'DELETE /sessions/current': ({ call }) => call('DELETE', '/sessions/current'),
+  'POST /pairings': ({ call }) => call('POST', '/pairings'),
   'PUT /users/me/inventory-tutorial': ({ call }) => call('PUT', '/users/me/inventory-tutorial'),
   'GET /devices/challenge': ({ call }) => call('GET', '/devices/challenge'),
   'POST /devices/status': ({ call }) => call('POST', '/devices/status', DEVICE),

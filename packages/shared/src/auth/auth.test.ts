@@ -8,6 +8,7 @@ import {
   LOGIN_MESSAGES,
   loginErrors,
   onSessionExpired,
+  PAIRING_REFUSED,
   REGISTER_MESSAGES,
   registerErrors,
   SESSION_STORAGE_KEY,
@@ -235,6 +236,27 @@ test("Shared: the API login saves the user and the token, refuses a 401 and reje
   assert.equal(refused.saved.size, 0);
   await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).login({ username: "x", password: "y" }));
   await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(200, SESSION_USER).send).login({ username: "x", password: "y" }));
+});
+
+// Logs in with an entry code through the API stand-in: an accepted code saves the user and the token, sent with the
+// device's proof; a 401 says the code no longer works, a 429 when to try again, both with nothing saved, and any other
+// answer rejects. The mock logs the first test user in.
+test("Shared: an entry code logs in through the API, or says why it was refused", async () => {
+  const accepted = answering(200, LOGGED_IN);
+  const { store, saved } = memoryStore();
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, accepted.send).pair("K7Q2ZD9M"), SESSION_USER);
+  assert.deepEqual(accepted.sent, [{ url: "/api/sessions/pairing", body: { code: "K7Q2ZD9M", device: PROOF } }]);
+  assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), LOGGED_IN);
+
+  const refused = memoryStore();
+  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, answering(401).send).pair("K7Q2ZD9M"), { refused: PAIRING_REFUSED });
+  const limited = withChallenge(async () => new Response("{}", { status: 429, headers: { "Retry-After": "840" } }));
+  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, limited).pair("K7Q2ZD9M"), { refused: "Muitas tentativas. Tente de novo em 14 min." });
+  assert.equal(refused.saved.size, 0);
+  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).pair("K7Q2ZD9M"));
+
+  const mock = await createMockAuth(memoryStore().store, TEST_USERS, 0).pair("K7Q2ZD9M");
+  assert.equal("id" in mock && mock.username, USER.username);
 });
 
 // Signs up through the API stand-in: a 201 saves the user and the token, a 409 says the username is taken, and a

@@ -45,15 +45,23 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // removed; a few sample items carry drawings of the demo's own. Everything is held in memory and starts over from
 // demoData.ts when the page loads again. Each answer carries the demo's marker (demoMarker.ts).
 // The demo authorizes no devices: its logins and sign-ups go through without checking the device's proof, which the
-// demo doesn't make (see demoDevice.ts), and the routes that list, authorize, rename and remove devices answer 501
-// with DEMO_UNAVAILABLE (DEMO_UNAVAILABLE_ROUTES), which the screens show.
+// demo doesn't make (see demoDevice.ts), and the routes that list, authorize, rename and remove devices, hand out an
+// entry code for a phone and log one in with it answer 501 with DEMO_UNAVAILABLE (DEMO_UNAVAILABLE_ROUTES), which the
+// screens show.
 
 /** One day, in milliseconds, between the demo's items' creation. */
 const DAY_MS = 86_400_000
 /** What the demo says of what it doesn't do, such as authorizing devices. */
 export const DEMO_UNAVAILABLE = 'Funcionalidade não disponível na demo.'
 /** The routes the demo answers 501 with DEMO_UNAVAILABLE, by "METHOD path". */
-export const DEMO_UNAVAILABLE_ROUTES = ['GET /devices', 'POST /devices/:id/authorize', 'PATCH /devices/:id', 'DELETE /devices/:id']
+export const DEMO_UNAVAILABLE_ROUTES = [
+  'GET /devices',
+  'POST /devices/:id/authorize',
+  'PATCH /devices/:id',
+  'DELETE /devices/:id',
+  'POST /pairings',
+  'POST /sessions/pairing',
+]
 /** The items using an entry of each list. */
 const ITEMS_USING: Record<ItemListKind, (item: StoredItem, id: string) => boolean> = {
   categories: (item, id) => item.categoryId === id,
@@ -959,7 +967,8 @@ function deviceRoutes(): Route[] {
     { method: 'POST', path: '/devices/status', open: true, answer: () => json(200, { status: 'authorized' }) },
     ...DEMO_UNAVAILABLE_ROUTES.map((route) => {
       const [method, path] = route.split(' ')
-      return { method, path, answer: unavailable }
+      // A phone logs in with an entry code before it has a session, as on the API.
+      return { method, path, open: path === '/sessions/pairing', answer: unavailable }
     }),
   ]
 }
