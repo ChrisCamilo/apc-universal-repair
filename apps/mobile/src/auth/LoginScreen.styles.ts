@@ -65,8 +65,8 @@ export const useStyles = createStyles(
     const { colors } = theme;
     return {
       ...auth,
-      account: { marginTop: 'auto', gap: scales.space.s2 + scales.space.s1 / 2 },
-      actions: { gap: scales.space.s4 },
+      account: { marginTop: 'auto', gap: scales.space.s2 },
+      actions: { gap: scales.space.s2 },
       connect: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -93,14 +93,15 @@ export const useStyles = createStyles(
       content: {
         ...auth.content,
         justifyContent: 'flex-start',
-        gap: scales.space.s5,
+        gap: scales.space.s4,
         paddingHorizontal: scales.space.s5,
-        paddingTop: scales.space.s7 + scales.space.s2,
-        paddingBottom: scales.space.s6,
+        paddingTop: scales.space.s5,
+        paddingBottom: scales.space.s4,
       },
-      heading: { alignItems: 'center', gap: scales.space.s2 + scales.space.s1 / 2 },
+      form: { gap: scales.space.s3 },
+      heading: { alignItems: 'center', gap: scales.space.s2 },
       headingTitle: { alignItems: 'center', gap: scales.space.s1 },
-      intro: { marginTop: scales.space.s6 - scales.space.s1 / 2 },
+      intro: { marginTop: scales.space.s3 },
       name: {
         fontFamily: fontFamily(theme.displayFont, 700),
         fontSize: LOGIN_BRAND.name,
