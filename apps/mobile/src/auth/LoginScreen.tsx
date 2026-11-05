@@ -1,13 +1,15 @@
 import { useRef, useState, type ComponentRef } from 'react';
-import { Text as RNText, TextInput, View } from 'react-native';
+import { Pressable, Text as RNText, TextInput, View } from 'react-native';
 import { LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/shared/auth';
 import { DEVICE_MESSAGES } from '@apc/shared/devices';
-import { lockIcon, userIcon } from '@apc/shared/icons';
+import { chevronIcon, ICON_SIZES, lockIcon, qrIcon, userIcon } from '@apc/shared/icons';
 import { BrandMark } from '../BrandMark';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
 import { FieldScrollView } from '../FieldScrollView';
+import { Icon } from '../Icon';
 import { TextField } from '../TextField';
+import { useTheme } from '../theme';
 import { Text } from '../Typography';
 import { DevicePending } from './DevicePending';
 import { useStyles } from './LoginScreen.styles';
@@ -26,9 +28,12 @@ import { useDeviceWait } from './useDeviceWait';
 // instead, keeping the password, as it does after too many attempts, saying how many minutes to wait. A phone the
 // server's computer hasn't authorized shows its code and waits (see DevicePending.tsx), logging in by itself once it is
 // authorized, or saying it was refused. "Criar conta"
-// opens the sign-up, and "Conectar a outro servidor", under it, pairs the phone again, as after the computer's address
-// changes. A notice, such as the session having expired, shows above the form until a login is sent.
+// opens the sign-up, and the card under it, "Conectar a outro servidor" with a QR code, pairs the phone again, as after
+// the computer's address changes. A notice, such as the session having expired, shows above the form until a login is
+// sent.
 
+/** How Conectar a outro servidor pairs the phone, said under its name and to screen readers. */
+const CONNECT_HINT = 'Leia o QR Code do computador';
 const FIELD_ORDER = ['username', 'password'] as const;
 
 type LoginScreenProps = {
@@ -56,6 +61,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
   const usernameInput = useRef<ComponentRef<typeof TextInput>>(null);
   const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
   const { styles, ids } = useStyles();
+  const theme = useTheme();
   const device = useDeviceWait(auth, onLoggedIn, () => setRefused(DEVICE_MESSAGES.refused));
 
   /** Takes a field's new value and drops its message. */
@@ -177,9 +183,27 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
         <Button variant="secondary" align="stretch" onPress={onRegister}>
           Criar conta
         </Button>
-        <Button variant="link" align="stretch" onPress={onConnect}>
-          Conectar a outro servidor
-        </Button>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Conectar a outro servidor"
+          accessibilityHint={CONNECT_HINT}
+          onPress={onConnect}
+          style={({ pressed }) => [styles.connect, pressed && styles.connectPressed]}
+          testID={ids.connect}
+        >
+          <View style={styles.connectIcon} testID={ids.connectIcon}>
+            <Icon icon={qrIcon} size={ICON_SIZES.dropZone} color={theme.colors.accent} />
+          </View>
+          <View style={styles.connectText} testID={ids.connectText}>
+            <RNText style={styles.connectTitle} testID={ids.connectTitle}>
+              Conectar a outro servidor
+            </RNText>
+            <Text size="sm" tone="muted">
+              {CONNECT_HINT}
+            </Text>
+          </View>
+          <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={theme.colors.textMuted} />
+        </Pressable>
       </View>
       <Dialog
         open={forgot}

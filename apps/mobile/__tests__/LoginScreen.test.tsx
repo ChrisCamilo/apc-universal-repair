@@ -7,10 +7,12 @@ import { Modal, StyleSheet, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { createMockAuth, LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth';
 import { DEVICE_MESSAGES, DEVICE_POLL_MS, type DeviceStatus } from '@apc/shared/devices';
+import { qrIcon } from '@apc/shared/icons';
 import { isStyleId } from '@apc/shared/style-ids';
 import { TEST_USERS } from '@apc/shared/test-users';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { LoginScreen } from '../src/auth/LoginScreen';
+import { Icon } from '../src/Icon';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 // A login that keeps no session and answers at once.
@@ -208,8 +210,8 @@ test('Mobile: the login screen carries its style ids', async () => {
 
 // Checks the mockup's one column: the 72px mark, hidden from screen readers since the heading names it, over the name
 // at 44px and the tagline at 17px; "Esqueceu a senha?" at the right before "Entrar", which stretches across; and the
-// question with an outline "Criar conta" across at the bottom of the screen, which opens the sign-up, over the link
-// "Conectar a outro servidor", which opens Conectar ao servidor.
+// question with an outline "Criar conta" across at the bottom of the screen, which opens the sign-up, over the card
+// "Conectar a outro servidor", with the QR code in the accent and how it pairs, which opens Conectar ao servidor.
 test('Mobile: the login is one column, the brand on top and Criar conta at the bottom', async () => {
   const onRegister = jest.fn();
   const onConnect = jest.fn();
@@ -233,8 +235,14 @@ test('Mobile: the login is one column, the brand on top and Criar conta at the b
   expect(StyleSheet.flatten(account.props.style).marginTop).toBe('auto');
   expect(account.findAll((n) => n.props.children === 'Ainda não tem conta?').length).toBeGreaterThan(0);
   const accountRings = account.findAll((n) => n.props.testID === 'common.button.ring' && typeof n.type === 'string');
-  expect(accountRings.map(labelOf)).toEqual(['Criar conta', 'Conectar a outro servidor']);
+  expect(accountRings.map(labelOf)).toEqual(['Criar conta']);
   expect(StyleSheet.flatten(accountRings[0].props.style).alignSelf).toBe('stretch');
+  const connect = byId(tree, 'auth.login-screen.account.connect');
+  expect(connect.props).toMatchObject({ accessibilityRole: 'button', accessibilityLabel: 'Conectar a outro servidor' });
+  expect(connect.props.accessibilityHint).toBe('Leia o QR Code do computador');
+  const tile = byId(tree, 'auth.login-screen.account.connect.icon');
+  expect(tile.findByType(Icon).props).toMatchObject({ icon: qrIcon, color: themes.eighties.night.colors.accent });
+  expect(connect.findAll((n) => n.props.children === 'Leia o QR Code do computador').length).toBeGreaterThan(0);
   await press(tree, 'Criar conta');
   expect(onRegister).toHaveBeenCalledTimes(1);
   await press(tree, 'Conectar a outro servidor');
