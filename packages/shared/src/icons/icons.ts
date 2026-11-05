@@ -138,6 +138,14 @@ export const playIcon: IconShape[] = [
   { kind: "path", d: "M6.7 5.5l3.9 2.5-3.9 2.5z" },
 ];
 export const plusIcon: IconShape[] = [{ kind: "path", d: "M8 3.5v9M3.5 8h9" }];
+// A QR code: three corner squares, each with its dot, and a few squares in the fourth corner, such as the phone's
+// Conectar a outro servidor, which reads the computer's code.
+export const qrIcon: IconShape[] = [
+  { kind: "rect", x: 2.2, y: 2.2, width: 4.4, height: 4.4, rx: 0.8 },
+  { kind: "rect", x: 9.4, y: 2.2, width: 4.4, height: 4.4, rx: 0.8 },
+  { kind: "rect", x: 2.2, y: 9.4, width: 4.4, height: 4.4, rx: 0.8 },
+  { kind: "path", d: "M4.4 4.3v.2M11.6 4.3v.2M4.4 11.5v.2M9.6 9.6h1.6v1.6M13.8 9.6v.1M9.6 13.8h.1M12.4 12.4h1.4v1.4" },
+];
 export const searchIcon: IconShape[] = [
   { kind: "circle", cx: 7, cy: 7, r: 4.6 },
   { kind: "path", d: "M10.4 10.4L14 14" },
@@ -180,6 +188,7 @@ export const ICONS = {
   pencil: pencilIcon,
   play: playIcon,
   plus: plusIcon,
+  qr: qrIcon,
   search: searchIcon,
   sort: sortIcon,
   trash: trashIcon,
