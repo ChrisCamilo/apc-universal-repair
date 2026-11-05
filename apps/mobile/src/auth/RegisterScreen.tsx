@@ -1,6 +1,7 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { Text as RNText, TextInput, View } from 'react-native';
 import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/shared/auth';
+import { DEVICE_MESSAGES } from '@apc/shared/devices';
 import type { FieldKind } from '@apc/shared/field';
 import { lockIcon, userIcon, type IconShape } from '@apc/shared/icons';
 import { BackButton } from '../BackButton';
@@ -8,7 +9,9 @@ import { Button } from '../Button';
 import { FieldScrollView } from '../FieldScrollView';
 import { TextField } from '../TextField';
 import { Text } from '../Typography';
+import { DevicePending } from './DevicePending';
 import { useStyles } from './RegisterScreen.styles';
+import { useDeviceWait } from './useDeviceWait';
 
 // The sign-up screen, the same as the web's /register on a phone: a header with the back arrow to the login and
 // "Criar conta" as the screen's heading, then the form, which asks for the name, the username, the e-mail (only kept
@@ -17,7 +20,9 @@ import { useStyles } from './RegisterScreen.styles';
 // once every field keeps its rule (see registerErrors); otherwise each field that breaks one shows its message under it
 // and the cursor goes to the first. A field's message goes away once it is typed into. While it runs, "Criar conta"
 // shows it is busy and isn't sent again. Refused (the username taken, or the API out of reach), it says why above the
-// form; created, the new user is logged in and handed over. The back arrow and "Já tem conta? Entrar" go back to the
+// form; created, the new user is logged in and handed over. From a phone the server's computer hasn't authorized, the
+// user is created and the screen shows the phone's code and waits (see DevicePending.tsx), logging in by itself once it
+// is authorized. The back arrow and "Já tem conta? Entrar" go back to the
 // login. With the keyboard up, the screen scrolls to reach every field.
 
 const EMPTY: Registration = { displayName: '', username: '', email: '', password: '', confirm: '' };
@@ -46,6 +51,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
   const [refused, setRefused] = useState<string>();
   const inputs = useRef<Partial<Record<keyof Registration, ComponentRef<typeof TextInput> | null>>>({});
   const { styles, ids } = useStyles();
+  const device = useDeviceWait(auth, onRegistered, () => setRefused(DEVICE_MESSAGES.refused));
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Registration, value: string) => {
@@ -74,6 +80,10 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
       setRefused(result.refused);
       return;
     }
+    if ('pending' in result) {
+      device.wait({ code: result.pending, credentials: { username, password } });
+      return;
+    }
     onRegistered(result.user);
   };
 
@@ -93,6 +103,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
             </Text>
           </View>
         )}
+        {device.waiting && <DevicePending code={device.waiting.code} />}
         {FIELDS.map(({ name, label, kind, icon, helper }, index) => {
           const next = FIELDS[index + 1];
           return (
