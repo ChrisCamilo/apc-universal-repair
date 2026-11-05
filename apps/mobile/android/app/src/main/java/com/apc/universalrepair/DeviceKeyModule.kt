@@ -22,7 +22,7 @@ import java.security.spec.ECGenParameterSpec
  * authorized again after a new install.
  */
 class DeviceKeyModule(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
-  override fun getName() = "DeviceKey"
+  override fun getName() = NAME
 
   /**
    * Gives the device's public key, making the key pair the first time.
@@ -56,17 +56,20 @@ class DeviceKeyModule(context: ReactApplicationContext) : ReactContextBaseJavaMo
     }
   }
 
-  private companion object {
+  companion object {
+    /** The name JavaScript reaches the module by, as NativeModules.DeviceKey. */
+    const val NAME = "DeviceKey"
+
     /** The key pair's name in the Keystore. */
-    const val ALIAS = "apc-device"
+    private const val ALIAS = "apc-device"
     /** The size of r and of s on P-256, in bytes. */
-    const val PART = 32
+    private const val PART = 32
 
     /** Opens the Android Keystore. */
-    fun keyStore(): KeyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+    private fun keyStore(): KeyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
     /** Gives the device's private key, making the key pair in the Keystore the first time. */
-    fun privateKey(): PrivateKey {
+    private fun privateKey(): PrivateKey {
       (keyStore().getKey(ALIAS, null) as? PrivateKey)?.let {
         return it
       }
@@ -79,14 +82,14 @@ class DeviceKeyModule(context: ReactApplicationContext) : ReactContextBaseJavaMo
     }
 
     /** Writes bytes as base64url without padding. */
-    fun base64url(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+    private fun base64url(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
 
     /**
      * Turns a DER ECDSA signature, SEQUENCE { INTEGER r, INTEGER s }, into r and s, 32 bytes each.
      * @param der The Keystore's signature.
      * @return The 64 bytes the API checks.
      */
-    fun rawSignature(der: ByteArray): ByteArray {
+    private fun rawSignature(der: ByteArray): ByteArray {
       var at = 2 + (if (der[1].toInt() and 0x80 != 0) der[1].toInt() and 0x7f else 0)
       val parts = (0 until 2).map {
         val length = der[at + 1].toInt()
