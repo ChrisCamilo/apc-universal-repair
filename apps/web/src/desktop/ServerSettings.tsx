@@ -650,8 +650,8 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
               <>
                 <Text size="sm" tone="muted">
                   No celular, aponte a câmera para o QR code, ou toque em Digitar manualmente e digite o endereço e os
-                  códigos. O celular entra na conta aberta neste computador. Se o endereço deste computador mudar,
-                  conecte o celular de novo.
+                  códigos. Autorize o celular quando este computador perguntar, e ele entra na conta aberta aqui. Se o
+                  endereço deste computador mudar, conecte o celular de novo.
                 </Text>
                 <PairingCode pairing={own.pairing} />
               </>

@@ -10,8 +10,9 @@ import { pairingCode } from './PairingCode.styles.ts'
 // link (see @apc/shared/pairing), which the phone's camera reads on its Conectar ao servidor screen, and the same
 // address and codes to type in, in groups of four. The code is the fingerprint of the certificate the server answers
 // HTTPS with: the phone trusts that certificate alone. The entry code logs the phone into the account open on this
-// computer, and authorizes it: the dialog asks the API for one when it opens and again as each one ends, and "Gerar
-// outro" asks for a new one at once, as after a phone used it. Until there is one, the QR code doesn't show, and
+// computer once this computer authorizes the phone, which it asks about as for any device (see DeviceApprovals.tsx):
+// the dialog asks the API for one when it opens and again as each one ends, and "Gerar outro" asks for a new one at
+// once, as after a phone used it. Until there is one, the QR code doesn't show, and
 // when it can't be had, as when nobody is logged in here, the dialog says why.
 
 /** The modules of quiet zone around the QR code, as the standard asks. */
@@ -92,7 +93,7 @@ export function PairingCode({ pairing }: { pairing: Pairing }) {
               </dd>
             )}
             <dd className={classes.note()} data-testid={ids.note}>
-              <span>{entry.ok ? 'Vale uma vez, por 5 minutos, e entra na conta aberta neste computador.' : entry.message}</span>{' '}
+              <span>{entry.ok ? 'Vale por 5 minutos, para a conta aberta neste computador. Depois, autorize o celular aqui.' : entry.message}</span>{' '}
               <Button variant="link" onClick={() => setAsk((asked) => asked + 1)}>
                 {entry.ok ? 'Gerar outro' : 'Tentar de novo'}
               </Button>
