@@ -237,9 +237,9 @@ test('Mobile: the camera asks for its permission, or says why it can’t read', 
   expect(button(none, 'Digitar manualmente')).toBeUndefined();
 });
 
-// Opens the screen to pair again and checks "Voltar" and Android's back button go back; opened with no server
-// paired, there is nothing to go back to.
-test('Mobile: Voltar and the back button go back when a server is paired', async () => {
+// Opens the screen to pair again and checks the ← before the title, named "Voltar", and Android's back button go back,
+// with no "Voltar" button under the screen; opened with no server paired, there is nothing to go back to.
+test('Mobile: the ← and the back button go back when a server is paired', async () => {
   const onCancel = jest.fn();
   const listeners: (() => boolean)[] = [];
   jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_event, listener) => {
@@ -247,16 +247,20 @@ test('Mobile: Voltar and the back button go back when a server is paired', async
     return { remove: () => {} };
   });
   const tree = await mount({ onCancel });
-  await press(tree, 'Voltar');
+  const back = (screen: ReactTestRenderer.ReactTestRenderer) => screen.root.findAll((n) => n.props.testID === 'common.back-button' && n.props.accessibilityLabel === 'Voltar');
+  const title = byId(tree, 'auth.connect-screen.heading.title');
+  expect(title.findAll((n) => n.props.testID === 'common.back-button')).not.toHaveLength(0);
+  expect(button(tree, 'Voltar')).toBeUndefined();
+  await ReactTestRenderer.act(async () => back(tree)[0].props.onPress());
   expect(listeners.at(-1)!()).toBe(true);
   expect(onCancel).toHaveBeenCalledTimes(2);
-  expect(button(await mount(), 'Voltar')).toBeUndefined();
+  expect(back(await mount())).toHaveLength(0);
 });
 
 // Checks the parts of the screen carry their style ids, and every id on the screen is written as the convention asks.
 test('Mobile: Conectar ao servidor carries its style ids', async () => {
   const tree = await mount({ onCancel: () => {} });
-  for (const part of ['', '.heading', '.camera', '.actions']) {
+  for (const part of ['', '.heading', '.heading.title', '.heading.title.text', '.camera', '.actions']) {
     expect(byId(tree, `auth.connect-screen${part}`)).toBeDefined();
   }
   await press(tree, 'Digitar manualmente');

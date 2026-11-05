@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { BackHandler, TextInput, View } from 'react-native';
+import { BackHandler, Text as RNText, TextInput, View } from 'react-native';
 import { useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { CodeScanner, type Barcode, type TargetBarcodeFormat } from 'react-native-vision-camera-barcode-scanner';
 import { pencilIcon, qrIcon } from '@apc/shared/icons';
 import { readFingerprint, readPairingLink, readServerAddress, type Pairing } from '@apc/shared/pairing';
 import { applyServer, currentServer, saveServer } from '../api';
+import { BackButton } from '../BackButton';
 import { Button } from '../Button';
 import { FieldScrollView } from '../FieldScrollView';
 import { TextField } from '../TextField';
-import { Heading, Text } from '../Typography';
+import { Text } from '../Typography';
 import { useStyles } from './ConnectScreen.styles';
 
 // Conectar ao servidor: how the phone pairs with the home server (see @apc/shared/pairing), before the login of a
@@ -19,7 +20,8 @@ import { useStyles } from './ConnectScreen.styles';
 // that fingerprint (see ServerPin.kt), and keeps the server once it answers; when it doesn't, the server in use before
 // stays, and the screen says what to check. A code that isn't the APC's says so. The camera asks for its permission at
 // a tap; once refused for good, the screen says to allow it in Android's settings, and a phone without a camera opens
-// on the fields alone. "Voltar", or the back button, leaves the server as it was, when one is paired.
+// on the fields alone. The ← beside the title, or Android's back button, leaves the server as it was, when one is
+// paired.
 
 /** The codes the camera reads: the QR code alone. */
 const QR_CODE: TargetBarcodeFormat[] = ['qr-code'];
@@ -183,7 +185,12 @@ export function ConnectScreen({ onConnected, onCancel }: ConnectScreenProps) {
   return (
     <FieldScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
       <View style={styles.heading} testID={ids.heading}>
-        <Heading level={1}>Conectar ao servidor</Heading>
+        <View style={[styles.title, onCancel && styles.titleWithBack]} testID={ids.title}>
+          {onCancel && <BackButton label="Voltar" onPress={onCancel} />}
+          <RNText accessibilityRole="header" style={styles.titleText} testID={ids.titleText}>
+            Conectar ao servidor
+          </RNText>
+        </View>
         <Text tone="muted">{manual ? INTRO.type : INTRO.scan}</Text>
       </View>
       {manual ? (
@@ -240,11 +247,6 @@ export function ConnectScreen({ onConnected, onCancel }: ConnectScreenProps) {
         {manual && device && (
           <Button variant="secondary" align="stretch" icon={qrIcon} onPress={() => showTyping(false)}>
             Ler QR Code
-          </Button>
-        )}
-        {onCancel && (
-          <Button variant="ghost" align="stretch" onPress={onCancel}>
-            Voltar
           </Button>
         )}
       </View>
