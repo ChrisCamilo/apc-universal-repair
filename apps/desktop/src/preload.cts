@@ -3,9 +3,9 @@ import { contextBridge, ipcRenderer } from "electron";
 // The bridge between the web app and the desktop app's main process, the only thing the page gets from Electron: it
 // asks for a Windows notification, and hears when one was clicked so it opens the bell's menu; it hears when a new
 // version is ready, and asks to restart into it; it reads and changes the settings of the server the app runs, and
-// hears when that server isn't on, with why, and asks to try again. The
-// window is sandboxed, so this preload can only load Electron's renderer modules; the channels are written here as in
-// notify.ts, update.ts and serverSettings.ts.
+// hears when that server isn't on, with why, and asks to try again; and it has the main process sign the API's nonces
+// with the app's device key. The window is sandboxed, so this preload can only load Electron's renderer modules; the
+// channels are written here as in notify.ts, update.ts, serverSettings.ts and deviceKey.ts.
 
 /** The new version that is ready, kept for a listener that comes after the main process said so. */
 let readyVersion: string | undefined;
@@ -14,6 +14,23 @@ ipcRenderer.on("apc:update-ready", (_event, version: string) => {
 });
 
 contextBridge.exposeInMainWorld("apcDesktop", {
+  /**
+   * The app's device key for logging in, kept by the main process (see deviceKey.ts): the page gets the public key and
+   * signatures of the API's nonces, never the private key.
+   */
+  device: {
+    /**
+     * Gives the device's public key.
+     * @returns SPKI in base64url.
+     */
+    publicKey: () => ipcRenderer.invoke("apc:device-public-key"),
+    /**
+     * Signs a nonce the API handed out.
+     * @param nonce The nonce.
+     * @returns The signature, in base64url.
+     */
+    sign: (nonce: string) => ipcRenderer.invoke("apc:device-sign", nonce),
+  },
   /**
    * Asks for a Windows notification, which the main process shows only while the window isn't focused.
    * @param title The notification's title, e.g. "Aviso".

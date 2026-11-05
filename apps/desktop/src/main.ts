@@ -1,11 +1,13 @@
+import type { KeyObject } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, screen, session, shell, Tray } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, safeStorage, screen, session, shell, Tray, type IpcMainInvokeEvent } from "electron";
 import electronUpdater from "electron-updater";
 import { localApiUrl, usesBundledServer } from "./server/bundledServer.js";
 import { certificateVerdict } from "./server/certificate.js";
 import { resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./server/database.js";
+import { DEVICE_CHANNELS, devicePublicKey, ensureDeviceKey, signNonce } from "./system/deviceKey.js";
 import { windowsIdentity } from "./system/identity.js";
 import { keepAppLog } from "./logs.js";
 import { NOTIFY_CHANNEL, OPEN_NOTIFICATIONS_CHANNEL, parseNotifyRequest } from "./system/notify.js";
@@ -404,6 +406,23 @@ void app.whenReady().then(async () => {
   // The server the app runs, once it has one: its address follows a change of port in the Servidor dialog.
   let host: ServerHost | undefined;
   ipcMain.on(NOTIFY_CHANNEL, (event, payload) => notify(appUrl, event.sender, event.senderFrame?.url ?? "", payload));
+  // The device key's public half and its signatures of the API's nonces, for the app's own page only; the private key
+  // stays here (see deviceKey.ts).
+  let deviceKey: KeyObject | undefined;
+  const ownDeviceKey = (event: IpcMainInvokeEvent) => {
+    if (!(event.senderFrame?.url ?? "").startsWith(appUrl)) {
+      throw new Error("Only the app's page uses its device key.");
+    }
+    deviceKey ??= ensureDeviceKey(userData, safeStorage);
+    return deviceKey;
+  };
+  ipcMain.handle(DEVICE_CHANNELS.publicKey, (event) => devicePublicKey(ownDeviceKey(event)));
+  ipcMain.handle(DEVICE_CHANNELS.sign, (event, nonce: unknown) => {
+    if (typeof nonce !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(nonce)) {
+      throw new Error("Not a nonce.");
+    }
+    return signNonce(ownDeviceKey(event), nonce);
+  });
   if (!devUrl) {
     const webRoot = app.isPackaged
       ? path.join(process.resourcesPath, "web")

@@ -19,6 +19,8 @@ export type DesktopConfig = {
   database?: DatabaseChoice;
   /** PostgreSQL's address, sealed by safeStorage, never in plain text (see database.ts). */
   databaseUrl?: string;
+  /** The app's device key for logging in, PKCS#8, sealed by safeStorage, never in plain text (see deviceKey.ts). */
+  deviceKey?: string;
   /** Whether the first start's offer to import an old server is over (see database.ts). */
   firstStartDone?: boolean;
   /** The certificate the server answers HTTPS with while the phone's access is on, PEM (see certificate.ts). */
