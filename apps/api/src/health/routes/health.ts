@@ -8,11 +8,11 @@ import { healthResponseSchema } from "@apc/shared";
 
 /**
  * The API's version: APC_API_VERSION, as the desktop app sets it for the server it ships, or apps/api/package.json's,
- * two folders up from src/routes, or dist/routes once built.
+ * three folders up from src/health/routes, or dist/health/routes once built.
  */
 export const API_VERSION =
   process.env.APC_API_VERSION ||
-  (JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { version: string }).version;
+  (JSON.parse(readFileSync(new URL("../../../package.json", import.meta.url), "utf8")) as { version: string }).version;
 
 /**
  * Registers GET /health.

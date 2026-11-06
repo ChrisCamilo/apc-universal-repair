@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { after, before, test } from "node:test";
 import { TEST_USERS } from "@apc/shared/test-users";
-import { buildApp } from "../app.js";
-import { prisma } from "../db/client.js";
-import { testDevice, testProof } from "../devices/testDevices.js";
+import { buildApp } from "../../app.js";
+import { prisma } from "../../db/client.js";
+import { testDevice, testProof } from "../../devices/testDevices.js";
 
 // Renaming and merging list entries against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded,
 // on PostgreSQL or SQLite: a rename to a held name is refused naming the entry that has it, and a merge moves every

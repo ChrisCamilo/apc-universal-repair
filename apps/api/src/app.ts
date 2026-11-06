@@ -5,12 +5,12 @@ import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES } from "@apc/shared/photos";
 import { registerAllowedHosts } from "./plugins/allowed-hosts.js";
 import { registerAuthentication } from "./plugins/authenticate.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
-import { registerDeviceRoutes } from "./devices/deviceRoutes.js";
-import { registerHealthRoute } from "./health/healthRoutes.js";
-import { registerItemRoutes } from "./inventory/itemRoutes.js";
-import { registerListRoutes } from "./inventory/listRoutes.js";
-import { registerPhotoRoutes } from "./inventory/photoRoutes.js";
-import { registerUserRoutes } from "./auth/userRoutes.js";
+import { registerDeviceRoutes } from "./devices/routes/devices.js";
+import { registerHealthRoute } from "./health/routes/health.js";
+import { registerItemRoutes } from "./inventory/routes/items.js";
+import { registerListRoutes } from "./inventory/routes/lists.js";
+import { registerPhotoRoutes } from "./inventory/routes/photos.js";
+import { registerUserRoutes } from "./auth/routes/users.js";
 import { SESSIONS, type SessionLookup } from "./auth/sessions.js";
 
 /** The certificate and its private key the API answers HTTPS with, both PEM. */

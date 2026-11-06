@@ -8,10 +8,10 @@ import sharp from "sharp";
 import { itemMatchesQuery } from "@apc/shared/item-filters";
 import { itemListQuerySchema, type Item } from "@apc/shared/items";
 import { TEST_USERS } from "@apc/shared/test-users";
-import { buildApp } from "../app.js";
-import { prisma } from "../db/client.js";
-import { testDevice, testProof } from "../devices/testDevices.js";
-import { hashToken } from "../auth/sessions.js";
+import { buildApp } from "../../app.js";
+import { prisma } from "../../db/client.js";
+import { testDevice, testProof } from "../../devices/testDevices.js";
+import { hashToken } from "../../auth/sessions.js";
 
 // The inventory against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded, on PostgreSQL or
 // SQLite: creating items with their brands and original codes, searching, filtering, sorting, editing them and their brands, photos, the

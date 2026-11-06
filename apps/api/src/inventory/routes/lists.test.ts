@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
-import { buildApp } from "../app.js";
-import { AUTHORIZED, TEST_SESSIONS } from "../auth/testSessions.js";
+import { buildApp } from "../../app.js";
+import { AUTHORIZED, TEST_SESSIONS } from "../../auth/testSessions.js";
 
 // These requests are rejected by validation before any database call, so they run without a database, from the
 // stand-in session.

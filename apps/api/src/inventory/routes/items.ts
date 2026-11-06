@@ -12,9 +12,9 @@ import {
   type ItemBrandCreate,
 } from "@apc/shared/items";
 import { itemImportResultSchema, itemImportSchema } from "@apc/shared/item-csv";
-import type { Prisma } from "../generated/prisma/client.js";
-import { prisma } from "../db/client.js";
-import { importItems, ImportConflict } from "./import.js";
+import type { Prisma } from "../../generated/prisma/client.js";
+import { prisma } from "../../db/client.js";
+import { importItems, ImportConflict } from "../import.js";
 import {
   brandData,
   createData,
@@ -28,9 +28,9 @@ import {
   updateData,
   vehiclesData,
   type ListIds,
-} from "./items.js";
-import { listIds } from "./listIds.js";
-import { removePhotoFiles } from "./photos.js";
+} from "../items.js";
+import { listIds } from "../listIds.js";
+import { removePhotoFiles } from "../photos.js";
 
 // CRUD of inventory items, each with the brands that make its part. The list shows the newest items first, or sorted
 // by a column when asked, one page of them when a page size is asked, with how many items match in all. A sort

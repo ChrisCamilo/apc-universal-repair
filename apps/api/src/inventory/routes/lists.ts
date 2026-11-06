@@ -17,8 +17,8 @@ import {
   type ItemListKind,
   type ListEntry,
 } from "@apc/shared/lists";
-import type { Prisma } from "../generated/prisma/client.js";
-import { prisma } from "../db/client.js";
+import type { Prisma } from "../../generated/prisma/client.js";
+import { prisma } from "../../db/client.js";
 
 // The lists the item form picks from: categories, part brands, vehicle brands and vehicle models. GET sends a list
 // sorted by name; POST creates a name with the writing rule applied, unless the list already holds it ignoring

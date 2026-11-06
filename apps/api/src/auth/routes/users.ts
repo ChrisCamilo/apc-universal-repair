@@ -3,12 +3,12 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { initials, loggedInSchema, loginRequestSchema, pairingLoginRequestSchema, userCreateRequestSchema, type SessionUser } from "@apc/shared/auth";
 import { DEVICE_MESSAGES } from "@apc/shared/devices";
-import { prisma } from "../db/client.js";
-import { checkProof, deviceForLogin, isLoopback } from "../devices/devices.js";
-import { entryCodeUser, holdEntryCode, useEntryCode } from "../devices/entryCodes.js";
-import { createSession, endSession } from "./sessions.js";
-import { createLimiter, type Limiter } from "./attempts.js";
-import { hashPassword, verifyPassword } from "./passwords.js";
+import { prisma } from "../../db/client.js";
+import { checkProof, deviceForLogin, isLoopback } from "../../devices/devices.js";
+import { entryCodeUser, holdEntryCode, useEntryCode } from "../../devices/entryCodes.js";
+import { createSession, endSession } from "../sessions.js";
+import { createLimiter, type Limiter } from "../attempts.js";
+import { hashPassword, verifyPassword } from "../passwords.js";
 
 // Sign-up, login and logout. POST /users creates a user under the rules of the sign-up form (see @apc/shared/auth), with
 // the password hashed and the e-mail only kept for now; a username in use, in any case, is refused with 409. POST
