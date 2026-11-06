@@ -14,7 +14,7 @@ import { Button } from '../src/components/Button';
 import { Dialog } from '../src/components/Dialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider, useToast } from '../src/components/Toast';
-import { TOAST_RISE } from '../src/components/Toast.styles';
+import { TOAST_RISE } from '../src/components/Toast';
 
 // Trees the test rendered, unmounted after it so a toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
