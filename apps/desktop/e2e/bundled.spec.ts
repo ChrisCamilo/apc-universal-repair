@@ -174,7 +174,7 @@ test("Desktop: a fresh install offers to import an old server until someone sign
 });
 
 // Closes the window, and checks it is hidden, not closed, with the server still answering; opening the app again
-// shows the same window, and quitting, as "Sair" in the tray does, turns the server off.
+// shows the same window, and quitting, as "Sair" in the tray does, turns the server off and closes the app.
 test("Desktop: closing the window keeps the server on in the tray, until the app quits", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   const { app, server } = await launchApp();
   const page = await app.firstWindow();
@@ -188,8 +188,10 @@ test("Desktop: closing the window keeps the server on in the tray, until the app
   await app.evaluate(({ app: electronApp }) => electronApp.emit("second-instance"));
   await expect.poll(visible).toEqual([true]);
 
+  const closed = app.waitForEvent("close");
   await app.evaluate(({ app: electronApp }) => electronApp.quit());
   await expect.poll(() => healthOf(server)).toBe("down");
+  await closed;
 });
 
 // Opens the Servidor dialog as the tray does, picks PostgreSQL with an address no server listens on, and checks the
