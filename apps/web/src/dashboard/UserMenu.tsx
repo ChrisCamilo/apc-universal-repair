@@ -20,7 +20,7 @@ import { useTheme } from '../app/useTheme.ts'
 import { AboutDialog } from './AboutDialog.tsx'
 import { BottomBarItem } from './BottomBarItem.tsx'
 import { bottomBar } from './DashboardLayout.styles.ts'
-import { useInventoryTutorial } from './inventoryTutorialContext.ts'
+import { useInventoryTutorial } from '../inventory/inventoryTutorialContext.ts'
 import { usePageSize } from './pageSizeContext.ts'
 import { useTabReorder } from './tabReorderContext.ts'
 

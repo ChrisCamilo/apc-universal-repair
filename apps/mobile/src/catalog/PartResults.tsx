@@ -6,7 +6,7 @@ import { photoAddress } from '@apc/shared/photos';
 import { apiUrl } from '../app/api';
 import { DataTable, TableThumbnail } from '../components/DataTable';
 import { Text } from '../components/Typography';
-import { CardTitle, StockQuantity } from './ItemCard';
+import { CardTitle, StockQuantity } from '../inventory/ItemCard';
 import { useStyles } from './PartResults.styles';
 
 // The inventory parts a Catalog search by code found, the same as the web on a phone (the "Catálogo no celular"

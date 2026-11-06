@@ -8,7 +8,7 @@ import { arrowTarget } from '../components/radioKeys.ts'
 import { Text } from '../components/Typography.tsx'
 import { usePhone } from '../components/usePhone.ts'
 import { partResults } from './PartResults.styles.ts'
-import { StockQuantity } from './StockQuantity.tsx'
+import { StockQuantity } from '../inventory/StockQuantity.tsx'
 
 // The inventory parts a Catalog search by code found, in a tinted box above the tree: each brand of an item whose code
 // matched, or its original code, with the code, the item's name and which vehicle it fits (of several, the one the

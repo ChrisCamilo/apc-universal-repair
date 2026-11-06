@@ -48,15 +48,15 @@ import { FilterSheet, SortSheet } from '../components/FilterSheet';
 import { Icon } from '../components/Icon';
 import type { UploadPhoto } from '../components/ImageUpload';
 import { ImageViewer } from '../components/ImageViewer';
-import { DeleteItemDialog } from '../inventory/DeleteItemDialog';
-import { ExportItemsDialog } from '../inventory/ExportItemsDialog';
-import { ImportItemsDialog } from '../inventory/ImportItemsDialog';
-import { ItemFormDialog } from '../inventory/ItemFormDialog';
-import { ManageListsDialog } from '../inventory/ManageListsDialog';
-import { pickPhotos, savePhotos } from '../inventory/photos';
-import { useItemLists } from '../inventory/useItemLists';
-import { useItemPages } from '../inventory/useItemPages';
-import { useItems } from '../inventory/useItems';
+import { DeleteItemDialog } from './DeleteItemDialog';
+import { ExportItemsDialog } from './ExportItemsDialog';
+import { ImportItemsDialog } from './ImportItemsDialog';
+import { ItemFormDialog } from './ItemFormDialog';
+import { ManageListsDialog } from './ManageListsDialog';
+import { pickPhotos, savePhotos } from './photos';
+import { useItemLists } from './useItemLists';
+import { useItemPages } from './useItemPages';
+import { useItems } from './useItems';
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts';
 import { Skeleton } from '../components/Skeleton';
 import { Spinner } from '../components/Spinner';
@@ -69,7 +69,7 @@ import { useInventoryTutorial } from './inventoryTutorialContext';
 import { CardTitle, StockQuantity } from './ItemCard';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './InventoryTutorial';
-import { useMoreActions } from './moreActionsContext';
+import { useMoreActions } from '../dashboard/moreActionsContext';
 
 // The Inventory tab, the same as the web's on a phone (the Estoque mockup): on the canvas, with no panel around it, a
 // search by name or part code, the filters, the stock status chips with how many items each finds ("Baixo · 5"), a

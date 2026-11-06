@@ -33,7 +33,7 @@ import { usePhone } from '../components/usePhone.ts'
 import { useItems } from '../inventory/useItems.ts'
 import { catalogTab } from './CatalogTab.styles.ts'
 import { PartResults } from './PartResults.tsx'
-import { usePhoneHeader } from './phoneHeaderContext.ts'
+import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 
 // The Catalog tab (/catalog): the brand tiles in a rail, the chosen brand's model tree, and the detail column with
 // the chosen engine's sheet. A brand opens on its first engine; one with no engine yet says so in the detail

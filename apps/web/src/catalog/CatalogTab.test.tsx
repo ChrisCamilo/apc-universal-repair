@@ -12,7 +12,7 @@ import '../app/fonts.ts'
 import '../index.css'
 import { themeCss } from '../app/theme.ts'
 import { CatalogTab } from './CatalogTab.tsx'
-import { PhoneHeaderContext, type PhoneHeader } from './phoneHeaderContext.ts'
+import { PhoneHeaderContext, type PhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 import { testItem, type FlatItem } from '@apc/shared/test-items'
 
 const OPALA_25 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-2.5']

@@ -29,7 +29,7 @@ import { Heading, NumericReadout, Text } from '../components/Typography';
 import { useItems } from '../inventory/useItems';
 import { useStyles } from './CatalogTab.styles';
 import { PartResults } from './PartResults';
-import { usePhoneHeader } from './phoneHeaderContext';
+import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 
 // The Catalog tab, the same as the web's on a phone: a stack of screens, as in the "Catálogo no celular" mockup (see
 // CatalogScreen in @apc/shared/catalog). The brands, each on a line with how many models and sheets it has; a brand's
