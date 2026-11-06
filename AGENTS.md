@@ -269,6 +269,25 @@ export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): 
 }
 ```
 
+### Folders
+
+The web and the phone app lay out `src` the same way, so a file lives in the same folder on both:
+
+- **`app/`:** what starts and frames the app. Web: `App.tsx`, `api.ts`, `theme.ts`, `ThemeProvider.tsx`, `useTheme.ts`, `storage.ts`, `fonts.ts`; mobile: `api.ts`, `theme.tsx`, `motion.ts`. On the web, `main.tsx`, `index.css` and the test setup stay at the root of `src`, where Vite and Vitest look for them; the phone's `App.tsx` stays at the root of `apps/mobile`.
+- **`components/`:** the design system, the base components with their style files and contexts (`Button`, `Dialog`, `Menu` and `menuContext`, `Tour` and `tourContext`…).
+- **`styles/`:** the style tools and the shared recipes.
+- **One folder per feature:** `auth/`, `dashboard/` (the frame only: the layout, the bottom bar, the user menu and the dashboard's own contexts), `catalog/` (the Catalog tab), `inventory/` (the Inventory tab, its tutorial, dialogs and hooks) and `notifications/`; then the web's `desktop/`, `demo/` and `stories/`, and the phone's `updates/`.
+- **Tests:** on the web a file's test and story sit beside it; the phone's tests are in `apps/mobile/__tests__/`.
+
+`packages/shared/src` is in three groups, and the `exports` map in its `package.json` gives each module its `@apc/shared/<name>` subpath, so an import never names the folder:
+
+- **`ui/`:** the component contracts and the design system's values: `button`, `dialog`, `field`, `filters`, `pagination`, `table`, `tabs`, `toast`, `tour`, `tree`, `typography`, `icons`, `theme`, `styles` (style ids and the style guard) and `screens`.
+- **`domain/`:** the rules, one folder per feature: `auth/`, `devices/`, `catalog/`, `notifications/` and `inventory/` (items, lists, photos, the CSV and the Inventory tutorial's steps).
+- **`platform/`:** what ties the parts together: `api/` (the route list), `server/` (ports and pairing), `schemas/` and `testing/` (the test tags).
+- **Nothing in `ui/` imports from `domain/` or `platform/`:** a module that needs an item or a route belongs in `domain/`.
+
+The API (`apps/api`) and the desktop app (`apps/desktop`, see [`docs/architecture.md`](docs/architecture.md)) keep their own layout.
+
 ### Windows installer (NSIS)
 
 The installer's own pages live in `apps/desktop/build/installer.nsh`. NSIS drops text without a warning, so the build passing says nothing about what the page shows:
@@ -290,7 +309,7 @@ A component's look lives in a recipe in its own `<Component>.styles.ts`, beside 
 - **Shared recipes:** a pattern three or more components repeat goes in `styles/shared.ts` of each app, under the same names on both:
   - Web: `DISPLAY_LABEL` (the display face in uppercase), `FIELD` (a field's frame, border by state, input, end button, list and option) and `menuItem`.
   - Mobile: `displayLabel()`, `fieldStyles()`, `glow()`, `menuItemStyles()` and `roundStyles()` (the × and the photo viewer's arrows).
-  - Mobile color helpers that are not a recipe, `withAlpha()` and `softHairline()` (the softer frame of a nested panel or a photo frame), live in `theme.tsx`, so any style file imports them without a cycle.
+  - Mobile color helpers that are not a recipe, `withAlpha()` and `softHairline()` (the softer frame of a nested panel or a photo frame), live in `app/theme.tsx`, so any style file imports them without a cycle.
   - A shared recipe gives classes or styles only. The component puts them in its own recipe (web) or spreads them in its build (mobile), so the elements keep their component's ids.
 - **The tools:**
   - Web: `apps/web/src/styles/tv.ts` gives `tv()`, which knows the token classes, and `recipe()`.
@@ -379,7 +398,7 @@ Every styled element carries a style id, in `data-testid` on web and `testID` on
 
 `lint` on each app fails when a component breaks these conventions, in CI as well:
 
-- **`lint:styles`** (`@apc/web` and `@apc/mobile`): the guard in `packages/shared/src/styles/styleGuard.ts` reads every component file (the `.tsx` files under `src`, not tests or stories) and lists each place that has:
+- **`lint:styles`** (`@apc/web` and `@apc/mobile`): the guard in `packages/shared/src/ui/styles/styleGuard.ts` reads every component file (the `.tsx` files under `src`, not tests or stories) and lists each place that has:
   - a style id written by hand (`data-testid="…"`, `testID="…"`) instead of the recipe's `ids`;
   - on web, classes written in the JSX (`className="…"`, or a string inside the className's expression; a recipe's variant argument, `classes.nav({ side: 'prev' })`, is fine), a `style={{…}}` object, or an HTML element with classes but no `data-testid`;
   - on mobile, a `style={{…}}` object, or a React Native element (anything imported from a `react-native…` package) with a style but no `testID`.
