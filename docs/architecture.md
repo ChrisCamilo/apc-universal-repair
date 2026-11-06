@@ -81,9 +81,9 @@ flowchart TB
     apiRoutes --> lists
 ```
 
-The web and the phone app lay out `src` the same way: `app/`, what starts and frames the app (the API's address, the theme, the routes on the web, the motion on the phone); `components/`, the design system's components with their style files; `styles/`, the style tools; and one folder per feature, `auth/`, `dashboard/` (the frame around the tabs only), `catalog/`, `inventory/` and `notifications/`.
+The web and the phone app lay out `src` the same way: `app/`, what starts and frames the app (the API's address, the theme, the routes on the web, the motion on the phone); `components/`, the design system's components, each in its own folder with its style file and an `index.ts` the screens import it through; `styles/`, the style tools; and one folder per feature, `auth/`, `dashboard/` (the frame around the tabs only), `catalog/`, `inventory/` and `notifications/`.
 
-O app web e o do celular organizam o `src` do mesmo jeito: `app/`, o que inicia e emoldura o app (o endereço da API, o tema, as rotas na web, o movimento no celular); `components/`, os componentes do design system com os arquivos de estilo; `styles/`, as ferramentas de estilo; e uma pasta por funcionalidade, `auth/`, `dashboard/` (só a moldura em volta das abas), `catalog/`, `inventory/` e `notifications/`.
+O app web e o do celular organizam o `src` do mesmo jeito: `app/`, o que inicia e emoldura o app (o endereço da API, o tema, as rotas na web, o movimento no celular); `components/`, os componentes do design system, cada um na sua pasta com o arquivo de estilo e um `index.ts` pelo qual as telas o importam; `styles/`, as ferramentas de estilo; e uma pasta por funcionalidade, `auth/`, `dashboard/` (só a moldura em volta das abas), `catalog/`, `inventory/` e `notifications/`.
 
 ## Saving an item · Salvando um item
 

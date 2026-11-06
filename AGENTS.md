@@ -274,7 +274,10 @@ export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): 
 The web and the phone app lay out `src` the same way, so a file lives in the same folder on both:
 
 - **`app/`:** what starts and frames the app. Web: `App.tsx`, `api.ts`, `theme.ts`, `ThemeProvider.tsx`, `useTheme.ts`, `storage.ts`, `fonts.ts`; mobile: `api.ts`, `theme.tsx`, `motion.ts`. On the web, `main.tsx`, `index.css` and the test setup stay at the root of `src`, where Vite and Vitest look for them; the phone's `App.tsx` stays at the root of `apps/mobile`.
-- **`components/`:** the design system, the base components with their style files and contexts (`Button`, `Dialog`, `Menu` and `menuContext`, `Tour` and `tourContext`…).
+- **`components/`:** the design system, one folder per base component (`components/Button/`):
+  - **In the folder:** the component, its style file, its own context or helper (`Menu/menuContext.ts`, `Tour/tourContext.ts`, `Markdown/markdownParser.ts`) and, on the web, its test and story. A file with several components stays one folder (`FilterChip` and `FilterChipGroup`, `Menu` and `MenuItem`).
+  - **`index.ts`:** exports the component and whatever the rest of the app takes from the folder. Screens import the folder (`../components/Button`), never a file inside it; components import each other's files directly.
+  - **At the root of `components/`:** on the web, the hooks and helpers several components share (`usePhone`, `usePresence`, `radioKeys`) and the tests that cover every component (`TouchSizes`, `Feedback`).
 - **`styles/`:** the style tools and the shared recipes.
 - **One folder per feature:** `auth/`, `dashboard/` (the frame only: the layout, the bottom bar, the user menu and the dashboard's own contexts), `catalog/` (the Catalog tab), `inventory/` (the Inventory tab, its tutorial, dialogs and hooks) and `notifications/`; then the web's `desktop/`, `demo/` and `stories/`, and the phone's `updates/`.
 - **Tests:** on the web a file's test and story sit beside it; the phone's tests are in `apps/mobile/__tests__/`.
