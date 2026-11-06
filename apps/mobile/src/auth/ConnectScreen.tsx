@@ -5,12 +5,12 @@ import { CodeScanner, type Barcode, type TargetBarcodeFormat } from 'react-nativ
 import { waitForDevice, type AuthService, type SessionUser } from '@apc/shared/auth';
 import { pencilIcon, qrIcon } from '@apc/shared/icons';
 import { readEntryCode, readFingerprint, readPairingLink, readServerAddress, type Pairing, type PairingInvite } from '@apc/shared/pairing';
-import { applyServer, currentServer, saveServer } from '../api';
-import { BackButton } from '../BackButton';
-import { Button } from '../Button';
-import { FieldScrollView } from '../FieldScrollView';
-import { TextField } from '../TextField';
-import { Heading, Text } from '../Typography';
+import { applyServer, currentServer, saveServer } from '../app/api';
+import { BackButton } from '../components/BackButton';
+import { Button } from '../components/Button';
+import { FieldScrollView } from '../components/FieldScrollView';
+import { TextField } from '../components/TextField';
+import { Heading, Text } from '../components/Typography';
 import { useStyles } from './ConnectScreen.styles';
 import { DevicePending } from './DevicePending';
 

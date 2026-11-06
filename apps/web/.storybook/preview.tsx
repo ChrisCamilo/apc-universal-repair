@@ -8,10 +8,10 @@ import {
   MOBILE_DESIGN_WIDTH,
 } from '@apc/shared/screens'
 import { MODES, STYLES } from '@apc/shared/theme'
-import '../src/fonts.ts'
+import '../src/app/fonts.ts'
 import '../src/index.css'
-import { themeCss } from '../src/theme.ts'
-import { ThemeProvider } from '../src/ThemeProvider.tsx'
+import { themeCss } from '../src/app/theme.ts'
+import { ThemeProvider } from '../src/app/ThemeProvider.tsx'
 
 /** Minimum supported sizes from AGENTS.md, plus the mobile design reference. */
 const VIEWPORTS = {

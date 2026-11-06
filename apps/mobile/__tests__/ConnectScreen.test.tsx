@@ -13,9 +13,9 @@ import { fingerprintGroups, pairingLink } from '@apc/shared/pairing';
 import { TEST_USERS } from '@apc/shared/test-users';
 import { isStyleId } from '@apc/shared/style-ids';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { apiUrl, applyServer, SERVER_STORAGE_KEY } from '../src/api';
+import { apiUrl, applyServer, SERVER_STORAGE_KEY } from '../src/app/api';
 import { ConnectScreen } from '../src/auth/ConnectScreen';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 /** The home server, as the Servidor dialog's QR code carries it. */
 const SERVER = { url: 'https://192.168.0.10:3000', fingerprint: 'q1Wn7ZbX-0_aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV' };

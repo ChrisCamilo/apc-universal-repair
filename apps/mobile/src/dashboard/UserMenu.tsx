@@ -3,17 +3,17 @@ import { Text, View } from 'react-native';
 import type { SessionUser } from '@apc/shared/auth';
 import { playIcon } from '@apc/shared/icons';
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme';
-import { BottomSheet } from '../BottomSheet';
-import { MenuHeader, MenuItem, MenuLabel } from '../Menu';
-import { MenuContext } from '../menuContext';
-import { Divider } from '../Panel';
-import { Segmented } from '../Segmented';
-import { Switch } from '../Switch';
-import { useTheme } from '../theme';
+import { BottomSheet } from '../components/BottomSheet';
+import { MenuHeader, MenuItem, MenuLabel } from '../components/Menu';
+import { MenuContext } from '../components/menuContext';
+import { Divider } from '../components/Panel';
+import { Segmented } from '../components/Segmented';
+import { Switch } from '../components/Switch';
+import { useTheme } from '../app/theme';
 import { BottomBarItem } from './BottomBarItem';
 import { useBarStyles } from './Dashboard.styles';
 import { useStyles } from './UserMenu.styles';
-import { useInventoryTutorial } from './inventoryTutorialContext';
+import { useInventoryTutorial } from '../inventory/inventoryTutorialContext';
 import { useTabReorder } from './tabReorderContext';
 
 // The user menu, the same as the web's on a phone: Conta at the end of the Dashboard's bottom bar, the logged user's

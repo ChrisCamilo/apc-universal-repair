@@ -11,8 +11,8 @@ import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Dashboard } from '../src/dashboard/Dashboard';
 import { BOTTOM_BAR_HEIGHT } from '../src/dashboard/Dashboard.styles';
-import { InventoryTutorial } from '../src/dashboard/InventoryTutorial';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { InventoryTutorial } from '../src/inventory/InventoryTutorial';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 // The Inventory tab holds bottom sheets, which pad their end for the screen's insets.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };

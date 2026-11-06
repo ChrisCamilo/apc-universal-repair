@@ -6,7 +6,7 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { TreeView } from './TreeView.tsx'
 
 const LEAF = '4.1'

@@ -10,7 +10,7 @@ import { isStyleId } from '@apc/shared/style-ids';
 import { TEST_USERS } from '@apc/shared/test-users';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { RegisterScreen } from '../src/auth/RegisterScreen';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 // The fields as a new user fills them in, by label.
 const NEW_USER = { Nome: 'Ana Souza', Usuário: 'Ana.Souza', 'E-mail': 'ana@oficina.com', Senha: 'freio1234', 'Confirmar senha': 'freio1234' };

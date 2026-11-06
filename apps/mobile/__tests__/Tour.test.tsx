@@ -9,10 +9,10 @@ import ReactTestRenderer from 'react-test-renderer';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, spotlightDim, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { cardPlacement, spotlightRect, TOUR_ADVANCE_DELAY_MS, TOUR_CARD_GAP, TOUR_CHECK_MS, type TourStep } from '@apc/shared/tour';
-import { Button } from '../src/Button';
-import { Dialog } from '../src/Dialog';
-import { themeStorage, ThemeProvider } from '../src/theme';
-import { Tour, TourProvider } from '../src/Tour';
+import { Button } from '../src/components/Button';
+import { Dialog } from '../src/components/Dialog';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
+import { Tour, TourProvider } from '../src/components/Tour';
 
 // Where each sample view sits on screen, as measureInWindow reports it.
 const RECTS: Record<string, [number, number, number, number]> = {

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { csvExportName, exportedSummary, exportItems, exportScope } from '@apc/shared/item-csv';
-import { apiUrl } from '../api';
-import { Button } from '../Button';
-import { Dialog } from '../Dialog';
-import { Switch } from '../Switch';
-import { useToast } from '../Toast';
-import { Text } from '../Typography';
+import { apiUrl } from '../app/api';
+import { Button } from '../components/Button';
+import { Dialog } from '../components/Dialog';
+import { Switch } from '../components/Switch';
+import { useToast } from '../components/Toast';
+import { Text } from '../components/Typography';
 import { shareCsv } from './csv';
 
 // The "Exportar CSV" dialog of the Inventory tab, the same as the web: it says which items go into the file, the whole

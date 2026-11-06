@@ -4,9 +4,9 @@ import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import '../fonts.ts'
+import '../app/fonts.ts'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { SearchField, TextField } from './TextField.tsx'
 
 const root = document.documentElement

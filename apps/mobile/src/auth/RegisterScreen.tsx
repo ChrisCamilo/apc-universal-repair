@@ -4,11 +4,11 @@ import { registerErrors, type AuthService, type RegisterErrors, type Registratio
 import { DEVICE_MESSAGES } from '@apc/shared/devices';
 import type { FieldKind } from '@apc/shared/field';
 import { lockIcon, userIcon, type IconShape } from '@apc/shared/icons';
-import { BackButton } from '../BackButton';
-import { Button } from '../Button';
-import { FieldScrollView } from '../FieldScrollView';
-import { TextField } from '../TextField';
-import { Text } from '../Typography';
+import { BackButton } from '../components/BackButton';
+import { Button } from '../components/Button';
+import { FieldScrollView } from '../components/FieldScrollView';
+import { TextField } from '../components/TextField';
+import { Text } from '../components/Typography';
 import { DevicePending } from './DevicePending';
 import { useStyles } from './RegisterScreen.styles';
 import { useDeviceWait } from './useDeviceWait';

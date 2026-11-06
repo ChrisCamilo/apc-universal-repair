@@ -6,11 +6,11 @@ import React from 'react';
 import { AccessibilityInfo, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { EmptyState, ErrorState } from '../src/EmptyState';
-import { Icon } from '../src/Icon';
-import { Skeleton } from '../src/Skeleton';
-import { Spinner } from '../src/Spinner';
-import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
+import { EmptyState, ErrorState } from '../src/components/EmptyState';
+import { Icon } from '../src/components/Icon';
+import { Skeleton } from '../src/components/Skeleton';
+import { Spinner } from '../src/components/Spinner';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.

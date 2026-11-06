@@ -8,9 +8,9 @@ import ReactTestRenderer from 'react-test-renderer';
 import { pencilIcon, trashIcon } from '@apc/shared/icons';
 import { sortRows, type Sort } from '@apc/shared/table';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { DataTable, RowAction, TableThumbnail } from '../src/DataTable';
-import { Icon } from '../src/Icon';
-import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
+import { DataTable, RowAction, TableThumbnail } from '../src/components/DataTable';
+import { Icon } from '../src/components/Icon';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 
 const COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
   { key: 'name', header: 'Item', sortable: true, card: 'main', cell: (item) => <Text>{item.name}</Text> },

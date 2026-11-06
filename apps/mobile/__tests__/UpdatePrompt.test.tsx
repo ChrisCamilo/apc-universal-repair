@@ -16,7 +16,7 @@ import {
   type Release,
 } from '../src/updates/appUpdate';
 import { UpdatePrompt } from '../src/updates/UpdatePrompt';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 const INSTALLED = '0.6.8';
 const NEXT = '0.6.9';

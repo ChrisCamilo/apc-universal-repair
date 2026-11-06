@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { softHairline } from '../theme';
+import { softHairline } from '../app/theme';
 
 // The look of the item form, the same as the web on a phone, as in the Novo item mockup: the item's fields in one
 // column 16px apart, the position and side choices each with its label over it; then the brands, each a raised card

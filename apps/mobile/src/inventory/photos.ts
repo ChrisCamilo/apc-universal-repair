@@ -9,8 +9,8 @@ import {
   photoParts,
   photosChanged,
 } from '@apc/shared/photos';
-import { apiUrl } from '../api';
-import type { PickedPhoto, UploadPhoto } from '../ImageUpload';
+import { apiUrl } from '../app/api';
+import type { PickedPhoto, UploadPhoto } from '../components/ImageUpload';
 
 // The item photos on the phone: the photo library to pick them from, and the camera to take one with, which hand them
 // over already reduced to PHOTO_MAX_DIMENSION at PHOTO_QUALITY, so less is sent and a photo over 3 MB can still be

@@ -1,7 +1,7 @@
 import { LOGIN_BRAND } from '@apc/shared/auth';
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily, softAccent } from '../theme';
+import { fontFamily, softAccent } from '../app/theme';
 
 /** The side of the tinted square that holds the QR code of Conectar a outro servidor, in px. */
 export const CONNECT_ICON_TILE = scales.space.s1 * 10;

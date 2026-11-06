@@ -1,6 +1,6 @@
 import { apiFetch, entryCodeSchema, type EntryCode } from '@apc/shared/auth'
 import { deviceListSchema, deviceSchema, type Device } from '@apc/shared/devices'
-import { API_BASE } from '../api.ts'
+import { API_BASE } from '../app/api.ts'
 
 // The calls of the devices' screens on the server's computer (see DeviceApprovals.tsx and DevicesDialog.tsx): the
 // list, authorizing, renaming and removing a device, and the entry code that logs a phone in (see PairingCode.tsx).

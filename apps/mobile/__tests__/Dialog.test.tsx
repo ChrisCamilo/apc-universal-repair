@@ -10,11 +10,11 @@ import ReactTestRenderer from 'react-test-renderer';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
-import { Button } from '../src/Button';
-import { Dialog } from '../src/Dialog';
-import { themeStorage, ThemeProvider } from '../src/theme';
-import { ToastProvider, useToast } from '../src/Toast';
-import { TOAST_RISE } from '../src/Toast.styles';
+import { Button } from '../src/components/Button';
+import { Dialog } from '../src/components/Dialog';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
+import { ToastProvider, useToast } from '../src/components/Toast';
+import { TOAST_RISE } from '../src/components/Toast.styles';
 
 // Trees the test rendered, unmounted after it so a toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];

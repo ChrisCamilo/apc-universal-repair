@@ -7,7 +7,7 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render, type RenderResult } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { RegisterScreen } from './RegisterScreen.tsx'
 
 // The fields as a new user fills them in.

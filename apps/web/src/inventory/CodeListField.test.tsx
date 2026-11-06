@@ -3,9 +3,9 @@ import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import '../fonts.ts'
+import '../app/fonts.ts'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { CodeListField } from './CodeListField.tsx'
 
 const root = document.documentElement

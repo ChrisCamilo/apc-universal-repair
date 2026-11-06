@@ -9,7 +9,7 @@ import { KeyboardAvoidingView, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LOGIN_MESSAGES, onSessionExpired, type SessionUser } from '@apc/shared/auth';
 import type { Pairing } from '@apc/shared/pairing';
-import { loadServer } from './src/api';
+import { loadServer } from './src/app/api';
 import { auth } from './src/auth/auth';
 import { ConnectScreen } from './src/auth/ConnectScreen';
 import { LoginScreen } from './src/auth/LoginScreen';
@@ -18,9 +18,9 @@ import { RegisterScreen } from './src/auth/RegisterScreen';
 import { Dashboard } from './src/dashboard/Dashboard';
 import { UserMenu } from './src/dashboard/UserMenu';
 import { NotificationsMenu } from './src/notifications/NotificationsMenu';
-import { ThemeProvider, useTheme } from './src/theme';
-import { ToastProvider } from './src/Toast';
-import { TourProvider } from './src/Tour';
+import { ThemeProvider, useTheme } from './src/app/theme';
+import { ToastProvider } from './src/components/Toast';
+import { TourProvider } from './src/components/Tour';
 import { UpdatePrompt } from './src/updates/UpdatePrompt';
 
 /** What Conectar ao servidor says when the API refused the session's token, while pairing is the login. */

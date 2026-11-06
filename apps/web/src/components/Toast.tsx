@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ICON_SIZES } from '@apc/shared/icons'
 import { readToastDuration, TOAST_DURATION_STORAGE_KEY, TOAST_FADE_MS, TOAST_KIND_LOOKS, type ToastKind } from '@apc/shared/toast'
-import { readStored, writeStored } from '../storage.ts'
+import { readStored, writeStored } from '../app/storage.ts'
 import { Icon } from './Icon.tsx'
 import { toast } from './Toast.styles.ts'
 import { NotifyContext, ToastContext, ToastDurationContext, ToastFeedContext, type ToastDuration, type ToastListener, type Toasts } from './toastContext.ts'

@@ -2,7 +2,7 @@ import { MODES, STYLES, scales, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { page } from 'vitest/browser'
 import { render, type RenderResult } from 'vitest-browser-react'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { MotionSheet, PaletteSheet, RadiiSheet, SpacingSheet, TypeSheet } from './Foundations.tsx'
 
 const root = document.documentElement

@@ -12,140 +12,140 @@
       "default": "./src/index.ts"
     },
     "./api-routes": {
-      "apc-dist": "./dist/api/apiRoutes.js",
-      "default": "./src/api/apiRoutes.ts"
+      "apc-dist": "./dist/platform/api/apiRoutes.js",
+      "default": "./src/platform/api/apiRoutes.ts"
     },
     "./auth": {
-      "apc-dist": "./dist/auth/auth.js",
-      "default": "./src/auth/auth.ts"
+      "apc-dist": "./dist/domain/auth/auth.js",
+      "default": "./src/domain/auth/auth.ts"
     },
     "./devices": {
-      "apc-dist": "./dist/devices/devices.js",
-      "default": "./src/devices/devices.ts"
+      "apc-dist": "./dist/domain/devices/devices.js",
+      "default": "./src/domain/devices/devices.ts"
     },
     "./device-crypto": {
-      "apc-dist": "./dist/devices/deviceCrypto.js",
-      "default": "./src/devices/deviceCrypto.ts"
+      "apc-dist": "./dist/domain/devices/deviceCrypto.js",
+      "default": "./src/domain/devices/deviceCrypto.ts"
     },
     "./theme": {
-      "apc-dist": "./dist/theme/tokens.js",
-      "default": "./src/theme/tokens.ts"
+      "apc-dist": "./dist/ui/theme/tokens.js",
+      "default": "./src/ui/theme/tokens.ts"
     },
     "./icons": {
-      "apc-dist": "./dist/icons/icons.js",
-      "default": "./src/icons/icons.ts"
+      "apc-dist": "./dist/ui/icons/icons.js",
+      "default": "./src/ui/icons/icons.ts"
     },
     "./typography": {
-      "apc-dist": "./dist/typography/typography.js",
-      "default": "./src/typography/typography.ts"
+      "apc-dist": "./dist/ui/typography/typography.js",
+      "default": "./src/ui/typography/typography.ts"
     },
     "./button": {
-      "apc-dist": "./dist/button/button.js",
-      "default": "./src/button/button.ts"
+      "apc-dist": "./dist/ui/button/button.js",
+      "default": "./src/ui/button/button.ts"
     },
     "./catalog": {
-      "apc-dist": "./dist/catalog/catalog.js",
-      "default": "./src/catalog/catalog.ts"
+      "apc-dist": "./dist/domain/catalog/catalog.js",
+      "default": "./src/domain/catalog/catalog.ts"
     },
     "./field": {
-      "apc-dist": "./dist/field/field.js",
-      "default": "./src/field/field.ts"
+      "apc-dist": "./dist/ui/field/field.js",
+      "default": "./src/ui/field/field.ts"
     },
     "./tabs": {
-      "apc-dist": "./dist/tabs/tabs.js",
-      "default": "./src/tabs/tabs.ts"
+      "apc-dist": "./dist/ui/tabs/tabs.js",
+      "default": "./src/ui/tabs/tabs.ts"
     },
     "./test-tags": {
-      "apc-dist": "./dist/testing/tags.js",
-      "default": "./src/testing/tags.ts"
+      "apc-dist": "./dist/platform/testing/tags.js",
+      "default": "./src/platform/testing/tags.ts"
     },
     "./test-users": {
-      "apc-dist": "./dist/auth/testUsers.js",
-      "default": "./src/auth/testUsers.ts"
+      "apc-dist": "./dist/domain/auth/testUsers.js",
+      "default": "./src/domain/auth/testUsers.ts"
     },
     "./filters": {
-      "apc-dist": "./dist/filters/filters.js",
-      "default": "./src/filters/filters.ts"
+      "apc-dist": "./dist/ui/filters/filters.js",
+      "default": "./src/ui/filters/filters.ts"
     },
     "./table": {
-      "apc-dist": "./dist/table/table.js",
-      "default": "./src/table/table.ts"
+      "apc-dist": "./dist/ui/table/table.js",
+      "default": "./src/ui/table/table.ts"
     },
     "./items": {
-      "apc-dist": "./dist/items/items.js",
-      "default": "./src/items/items.ts"
+      "apc-dist": "./dist/domain/inventory/items.js",
+      "default": "./src/domain/inventory/items.ts"
     },
     "./item-form": {
-      "apc-dist": "./dist/items/itemForm.js",
-      "default": "./src/items/itemForm.ts"
+      "apc-dist": "./dist/domain/inventory/itemForm.js",
+      "default": "./src/domain/inventory/itemForm.ts"
     },
     "./item-filters": {
-      "apc-dist": "./dist/items/itemFilters.js",
-      "default": "./src/items/itemFilters.ts"
+      "apc-dist": "./dist/domain/inventory/itemFilters.js",
+      "default": "./src/domain/inventory/itemFilters.ts"
     },
     "./item-csv": {
-      "apc-dist": "./dist/items/itemCsv.js",
-      "default": "./src/items/itemCsv.ts"
+      "apc-dist": "./dist/domain/inventory/itemCsv.js",
+      "default": "./src/domain/inventory/itemCsv.ts"
     },
     "./lists": {
-      "apc-dist": "./dist/lists/lists.js",
-      "default": "./src/lists/lists.ts"
+      "apc-dist": "./dist/domain/inventory/lists.js",
+      "default": "./src/domain/inventory/lists.ts"
     },
     "./test-items": {
-      "apc-dist": "./dist/items/testItems.js",
-      "default": "./src/items/testItems.ts"
+      "apc-dist": "./dist/domain/inventory/testItems.js",
+      "default": "./src/domain/inventory/testItems.ts"
     },
     "./test-lists": {
-      "apc-dist": "./dist/lists/testLists.js",
-      "default": "./src/lists/testLists.ts"
+      "apc-dist": "./dist/domain/inventory/testLists.js",
+      "default": "./src/domain/inventory/testLists.ts"
     },
     "./dialog": {
-      "apc-dist": "./dist/dialog/dialog.js",
-      "default": "./src/dialog/dialog.ts"
+      "apc-dist": "./dist/ui/dialog/dialog.js",
+      "default": "./src/ui/dialog/dialog.ts"
     },
     "./notifications": {
-      "apc-dist": "./dist/notifications/notifications.js",
-      "default": "./src/notifications/notifications.ts"
+      "apc-dist": "./dist/domain/notifications/notifications.js",
+      "default": "./src/domain/notifications/notifications.ts"
     },
     "./pagination": {
-      "apc-dist": "./dist/pagination/pagination.js",
-      "default": "./src/pagination/pagination.ts"
+      "apc-dist": "./dist/ui/pagination/pagination.js",
+      "default": "./src/ui/pagination/pagination.ts"
     },
     "./photos": {
-      "apc-dist": "./dist/photos/photos.js",
-      "default": "./src/photos/photos.ts"
+      "apc-dist": "./dist/domain/inventory/photos.js",
+      "default": "./src/domain/inventory/photos.ts"
     },
     "./screens": {
-      "apc-dist": "./dist/screens/screens.js",
-      "default": "./src/screens/screens.ts"
+      "apc-dist": "./dist/ui/screens/screens.js",
+      "default": "./src/ui/screens/screens.ts"
     },
     "./server": {
-      "apc-dist": "./dist/server/ports.js",
-      "default": "./src/server/ports.ts"
+      "apc-dist": "./dist/platform/server/ports.js",
+      "default": "./src/platform/server/ports.ts"
     },
     "./pairing": {
-      "apc-dist": "./dist/server/pairing.js",
-      "default": "./src/server/pairing.ts"
+      "apc-dist": "./dist/platform/server/pairing.js",
+      "default": "./src/platform/server/pairing.ts"
     },
     "./style-ids": {
-      "apc-dist": "./dist/styles/styleIds.js",
-      "default": "./src/styles/styleIds.ts"
+      "apc-dist": "./dist/ui/styles/styleIds.js",
+      "default": "./src/ui/styles/styleIds.ts"
     },
     "./toast": {
-      "apc-dist": "./dist/toast/toast.js",
-      "default": "./src/toast/toast.ts"
+      "apc-dist": "./dist/ui/toast/toast.js",
+      "default": "./src/ui/toast/toast.ts"
     },
     "./tour": {
-      "apc-dist": "./dist/tour/tour.js",
-      "default": "./src/tour/tour.ts"
+      "apc-dist": "./dist/ui/tour/tour.js",
+      "default": "./src/ui/tour/tour.ts"
     },
     "./inventory-tutorial": {
-      "apc-dist": "./dist/tour/inventoryTutorial.js",
-      "default": "./src/tour/inventoryTutorial.ts"
+      "apc-dist": "./dist/domain/inventory/inventoryTutorial.js",
+      "default": "./src/domain/inventory/inventoryTutorial.ts"
     },
     "./tree": {
-      "apc-dist": "./dist/tree/tree.js",
-      "default": "./src/tree/tree.ts"
+      "apc-dist": "./dist/ui/tree/tree.js",
+      "default": "./src/ui/tree/tree.ts"
     }
   },
   "scripts": {

@@ -1,6 +1,6 @@
-import { Button } from '../Button';
-import { Dialog } from '../Dialog';
-import { Text } from '../Typography';
+import { Button } from '../components/Button';
+import { Dialog } from '../components/Dialog';
+import { Text } from '../components/Typography';
 
 // The question an item's details ask before duplicating it, the same as the web: what the new item takes along. Copiar
 // dados e fotos and Copiar só os dados hand the choice over, and the owner opens the new item's form filled in;

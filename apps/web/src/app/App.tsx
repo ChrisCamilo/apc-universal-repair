@@ -1,0 +1,120 @@
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
+import { LOGIN_MESSAGES, type Credentials } from '@apc/shared/auth'
+import { auth } from '../auth/auth.ts'
+import { LoginScreen } from '../auth/LoginScreen.tsx'
+import { RegisterScreen } from '../auth/RegisterScreen.tsx'
+import { RequireSession } from '../auth/RequireSession.tsx'
+import { SessionProvider } from '../auth/SessionProvider.tsx'
+import { useSession } from '../auth/sessionContext.ts'
+import { CatalogTab } from '../catalog/CatalogTab.tsx'
+import { DashboardLayout } from '../dashboard/DashboardLayout.tsx'
+import { InventoryTab } from '../inventory/InventoryTab.tsx'
+import { UserMenu } from '../dashboard/UserMenu.tsx'
+import { DeviceApprovals } from '../desktop/DeviceApprovals.tsx'
+import { desktopBridge } from '../desktop/desktopBridge.ts'
+import { ServerFailure } from '../desktop/ServerFailure.tsx'
+import { ServerSettingsProvider } from '../desktop/ServerSettings.tsx'
+import { useEntryScreen, useOpenServerSettings } from '../desktop/serverSettingsContext.ts'
+import { UpdateNotice } from '../desktop/UpdateNotice.tsx'
+import { NotificationsMenu } from '../notifications/NotificationsMenu.tsx'
+
+// The app's routes. /login is the login screen and /register the sign-up; the Dashboard, behind them, frames every
+// tab at its own path. "/" opens the last tab used (the Inventory tab the first time) and any unknown path goes back
+// there. Only a logged user reaches the Dashboard: anyone else goes to /login and, once logged in or signed up, back
+// to where they were going. In the desktop app, the notice that a new version is ready and the Servidor dialog show
+// over any of them, and when its server isn't on, the screen that says why covers them all; the first start's offer
+// to import an old server shows over the login and the sign-up only, and a device waiting to be authorized is asked
+// about over the Dashboard (see DeviceApprovals.tsx). The routes live under the build's base: "/"
+// for the app, "/apc-universal-repair/demo/" for the web app's demo on GitHub Pages, whose user the login fills in.
+
+export default function App({ login }: { login?: Credentials }) {
+  return (
+    <ServerSettingsProvider>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
+        <SessionProvider auth={auth}>
+          <Routes>
+            <Route path="/login" element={<LoginPage login={login} />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/"
+              element={
+                <RequireSession>
+                  <DashboardLayout
+                    userMenu={
+                      <>
+                        <NotificationsMenu />
+                        <UserMenu />
+                        {desktopBridge()?.server && <DeviceApprovals />}
+                      </>
+                    }
+                  />
+                </RequireSession>
+              }
+            >
+              <Route path="inventory" element={<InventoryTab />} />
+              <Route path="catalog" element={<CatalogTab />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SessionProvider>
+      </BrowserRouter>
+      <UpdateNotice />
+      <ServerFailure />
+    </ServerSettingsProvider>
+  )
+}
+
+// The login, or straight on to the Dashboard when someone is already logged in. A login goes on to the route
+// that sent the user here, or to the Dashboard. After the API refused the session, it says the session expired. In the
+// desktop app it also opens the Servidor dialog. The demo fills in its user.
+function LoginPage({ login }: { login?: Credentials }) {
+  useEntryScreen()
+  const { user, expired, setUser } = useSession()
+  const openServerSettings = useOpenServerSettings()
+  const navigate = useNavigate()
+  const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
+  if (user === undefined) {
+    return null
+  }
+  if (user) {
+    return <Navigate to={from} replace />
+  }
+  return (
+    <LoginScreen
+      auth={auth}
+      notice={expired ? LOGIN_MESSAGES.expired : undefined}
+      onLoggedIn={(loggedIn) => {
+        setUser(loggedIn)
+        navigate(from, { replace: true })
+      }}
+      onRegister={() => navigate('/register', { state: { from } })}
+      onServerSettings={desktopBridge()?.server ? openServerSettings : undefined}
+      initialCredentials={login}
+    />
+  )
+}
+
+// The sign-up, or straight on to the Dashboard when someone is already logged in. A new user goes on to the route
+// that sent them to the login, or to the Dashboard; "Já tem conta? Entrar" goes back to the login.
+function RegisterPage() {
+  useEntryScreen()
+  const { user, setUser } = useSession()
+  const navigate = useNavigate()
+  const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
+  if (user === undefined) {
+    return null
+  }
+  if (user) {
+    return <Navigate to={from} replace />
+  }
+  return (
+    <RegisterScreen
+      auth={auth}
+      onRegistered={(created) => {
+        setUser(created)
+        navigate(from, { replace: true })
+      }}
+      onLogin={() => navigate('/login', { state: { from } })}
+    />
+  )
+}

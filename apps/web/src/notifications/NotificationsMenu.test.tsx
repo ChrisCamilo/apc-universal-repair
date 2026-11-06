@@ -12,7 +12,7 @@ import { SessionContext } from '../auth/sessionContext.ts'
 import { Button } from '../components/Button.tsx'
 import { ToastProvider } from '../components/Toast.tsx'
 import { useToast } from '../components/toastContext.ts'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { NotificationsMenu } from './NotificationsMenu.tsx'
 
 const root = document.documentElement

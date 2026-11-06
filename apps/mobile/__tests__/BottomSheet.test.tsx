@@ -5,9 +5,9 @@ import ReactTestRenderer from 'react-test-renderer';
 import { SHEET_HANDLE, SHEET_RADIUS, SHEET_TOP_INSET } from '@apc/shared/dialog';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { BottomSheet } from '../src/BottomSheet';
-import { Button } from '../src/Button';
-import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
+import { BottomSheet } from '../src/components/BottomSheet';
+import { Button } from '../src/components/Button';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 
 /** A phone's bottom inset for its home indicator, in px. */
 const HOME_INDICATOR = 24;

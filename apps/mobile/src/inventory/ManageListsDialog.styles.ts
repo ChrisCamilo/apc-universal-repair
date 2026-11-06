@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { softHairline } from '../theme';
+import { softHairline } from '../app/theme';
 
 // The look of "Gerenciar listas", the same as the web: a section per list, the vehicle models grouped by brand, and
 // each name in a row over a soft hairline, with its item count and its pencil and trash at the end; a name being

@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import type { ServerBridge, ServerFailure as Failure } from './desktopBridge.ts'
 import { ServerFailure } from './ServerFailure.tsx'
 import { ServerSettingsContext } from './serverSettingsContext.ts'

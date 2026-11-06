@@ -3,7 +3,7 @@ import { MODES, scales, STYLES, themes, type Mode } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { FilterChip, FilterChipGroup } from './FilterChip.tsx'
 
 const root = document.documentElement

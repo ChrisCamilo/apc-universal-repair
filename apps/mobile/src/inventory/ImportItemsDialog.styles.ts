@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { softHairline } from '../theme';
+import { softHairline } from '../app/theme';
 
 // The look of the CSV import, the same as the web: the file buttons in a wrapping row, and the preview, with the names
 // to create and each row of the file over a soft hairline, its line, code and name in a wrapping head, and a row with

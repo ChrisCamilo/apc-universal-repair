@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import type { DesktopBridge } from './desktopBridge.ts'
 import { UpdateNotice } from './UpdateNotice.tsx'
 

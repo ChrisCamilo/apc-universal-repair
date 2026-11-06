@@ -1,4 +1,4 @@
-import { API_BASE } from '../api.ts'
+import { API_BASE } from '../app/api.ts'
 import { createDemoApi } from './demoApi.ts'
 
 // Puts the demo's API in front of the page's fetch: a request to this page's /api is answered by the demo, in the

@@ -7,7 +7,7 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from './DataTable.tsx'
 
 const ITEMS: Item[] = [

@@ -4,7 +4,7 @@ import { beforeAll, expect, test } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { Segmented } from './Segmented.tsx'
 import { Switch } from './Switch.tsx'
 

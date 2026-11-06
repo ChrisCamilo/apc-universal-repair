@@ -6,7 +6,7 @@ import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { expectOverlayAtOnce, expectOverlayMotion } from '../test-motion.ts'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { Select } from './Select.tsx'
 
 const CATEGORIES = ['Arrefecimento', 'Elétrica', 'Freios', 'Ignição', 'Motor', 'Suspensão', 'Transmissão'].map(

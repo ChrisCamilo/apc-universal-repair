@@ -7,8 +7,8 @@ import { AccessibilityInfo, Animated, LayoutAnimation, StyleSheet, Text, type Vi
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import type { TreeNode } from '@apc/shared/tree';
-import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
-import { TreeView } from '../src/TreeView';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
+import { TreeView } from '../src/components/TreeView';
 
 const LEAF = '4.1';
 const OPALA: TreeNode = {

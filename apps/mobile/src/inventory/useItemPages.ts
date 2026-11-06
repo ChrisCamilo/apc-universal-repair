@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@apc/shared/auth';
 import { itemListResponseSchema, type Item } from '@apc/shared/items';
-import { apiUrl } from '../api';
+import { apiUrl } from '../app/api';
 
 // Loads a list query's pages one after another, as a phone's list scrolls to its end: pages 1 to `pages`, joined in
 // order, fetching only the ones not loaded yet. A new query starts over from its first page. A reload, e.g. after an

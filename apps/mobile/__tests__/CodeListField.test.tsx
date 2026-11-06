@@ -7,7 +7,7 @@ import { StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { CodeListField } from '../src/inventory/CodeListField';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.

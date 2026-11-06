@@ -1,7 +1,7 @@
 import { REGISTER_TITLE } from '@apc/shared/auth';
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily } from '../theme';
+import { fontFamily } from '../app/theme';
 import { authScreenStyles } from './LoginScreen.styles';
 
 // The look of Conectar ao servidor, like the login's: one column, centered, no wider than the web's form, the title as

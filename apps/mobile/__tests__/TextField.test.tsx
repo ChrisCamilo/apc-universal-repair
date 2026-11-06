@@ -8,8 +8,8 @@ import ReactTestRenderer from 'react-test-renderer';
 import { FIELD_KINDS } from '@apc/shared/field';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { FIELD_DISABLED_OPACITY } from '../src/styles/shared';
-import { SearchField, TextField } from '../src/TextField';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { SearchField, TextField } from '../src/components/TextField';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.

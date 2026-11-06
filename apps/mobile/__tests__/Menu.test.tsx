@@ -7,11 +7,11 @@ import { Dimensions, Modal, StyleSheet, Text, type ViewStyle } from 'react-nativ
 import ReactTestRenderer from 'react-test-renderer';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../src/Menu';
-import { MENU_INSET, MENU_OFFSET } from '../src/Menu.styles';
-import { Segmented } from '../src/Segmented';
-import { Switch } from '../src/Switch';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../src/components/Menu';
+import { MENU_INSET, MENU_OFFSET } from '../src/components/Menu.styles';
+import { Segmented } from '../src/components/Segmented';
+import { Switch } from '../src/components/Switch';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 const STYLE_OPTIONS = [
   { value: 'eighties', label: 'Anos 80' },

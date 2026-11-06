@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { apiFetch } from '@apc/shared/auth';
 import { itemCodes, type Item } from '@apc/shared/items';
-import { apiUrl } from '../api';
-import { Button } from '../Button';
-import { Dialog } from '../Dialog';
-import { useToast } from '../Toast';
-import { tourTarget } from '../tourTargets';
-import { Text } from '../Typography';
+import { apiUrl } from '../app/api';
+import { Button } from '../components/Button';
+import { Dialog } from '../components/Dialog';
+import { useToast } from '../components/Toast';
+import { tourTarget } from '../components/tourTargets';
+import { Text } from '../components/Typography';
 
 // The confirmation that removes an item from the inventory, the same as the web: it names the item and its codes.
 // Excluir sends the delete to the API, shows a toast and hands the removal over; Cancel and the back button close

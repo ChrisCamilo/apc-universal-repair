@@ -11,8 +11,8 @@ import type { Item } from '@apc/shared/items';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { DeleteItemDialog } from '../src/inventory/DeleteItemDialog';
-import { themeStorage, ThemeProvider } from '../src/theme';
-import { ToastProvider } from '../src/Toast';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
+import { ToastProvider } from '../src/components/Toast';
 import { testItem } from '@apc/shared/test-items';
 
 const FILTER: Item = testItem({
