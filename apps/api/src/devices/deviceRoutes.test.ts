@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { after, afterEach, test, mock } from "node:test";
 import { proveDevice } from "@apc/shared/devices";
 import { buildApp } from "../app.js";
-import { checkProof, isLoopback, issueChallenge } from "../devices/devices.js";
-import { entryCodeUser, HELD_MS, holdEntryCode, issueEntryCode, useEntryCode } from "../devices/entryCodes.js";
-import { testDevice } from "../devices/testDevices.js";
-import { AUTHORIZED, TEST_SESSIONS } from "../sessions/testSessions.js";
+import { checkProof, isLoopback, issueChallenge } from "./devices.js";
+import { entryCodeUser, HELD_MS, holdEntryCode, issueEntryCode, useEntryCode } from "./entryCodes.js";
+import { testDevice } from "./testDevices.js";
+import { AUTHORIZED, TEST_SESSIONS } from "../auth/testSessions.js";
 
 // The devices' rules and routes that answer before any database call: the nonces, the proof, and the routes kept to
 // the server's computer.

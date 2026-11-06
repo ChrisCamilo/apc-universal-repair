@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { itemListQuerySchema } from "@apc/shared/items";
 import type { Prisma } from "../generated/prisma/client.js";
-import { signedPhotoPath } from "../sessions/sessions.js";
-import { TEST_SESSION } from "../sessions/testSessions.js";
+import { signedPhotoPath } from "../auth/sessions.js";
+import { TEST_SESSION } from "../auth/testSessions.js";
 import { brandData, createData, itemWhere, toItem, toSortable, updateData } from "./items.js";
 
 // The list entries of an item, as listIds finds them.

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { bearerToken, type ActiveSession, type SessionLookup } from "../sessions/sessions.js";
+import { bearerToken, type ActiveSession, type SessionLookup } from "../auth/sessions.js";
 
 // Every route asks who is calling, before the body is read: a request without "Authorization: Bearer <token>", or
 // with a token of no session or of an expired one, is answered 401, unknown paths included. A route opts out with

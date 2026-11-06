@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import { after, afterEach, test, mock } from "node:test";
 import { buildApp } from "../app.js";
-import { TEST_SESSIONS } from "../sessions/testSessions.js";
+import { TEST_SESSIONS } from "../auth/testSessions.js";
 import { hostName } from "./allowed-hosts.js";
 
 // The host check answers before any database call, so these run without a database.

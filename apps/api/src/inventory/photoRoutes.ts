@@ -7,10 +7,10 @@ import { z } from "zod";
 import { itemBrandIdParamsSchema, itemSchema } from "@apc/shared/items";
 import { ITEM_PHOTO_LIMIT, PHOTO_PARTS } from "@apc/shared/photos";
 import { prisma } from "../db/client.js";
-import { ITEM_INCLUDE, toItem } from "../items/items.js";
-import { checkPhoto, copyStoredPhoto, photosDir, removePhotoFiles, storePhoto } from "../photos/photos.js";
-import { validPhotoSignature, type SessionLookup } from "../sessions/sessions.js";
-import { notFound } from "./items.js";
+import { ITEM_INCLUDE, toItem } from "./items.js";
+import { checkPhoto, copyStoredPhoto, photosDir, removePhotoFiles, storePhoto } from "./photos.js";
+import { validPhotoSignature, type SessionLookup } from "../auth/sessions.js";
+import { notFound } from "./itemRoutes.js";
 
 // The photos of an item's brand. PUT /items/:id/brands/:brandId/photos sets them all at once, in the order of the request's parts: a "keep" part
 // keeps a saved photo by its id, a "copy" part copies a saved photo of any brand, as a duplicated item's do, into a new

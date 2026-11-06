@@ -8,7 +8,7 @@ import { DEMO_USER } from './demoData.ts'
 import { DEMO_DEVICE_STAND_IN } from './demoDevice.ts'
 
 // The demo's routes against @apc/shared/api-routes, the list the API's server is checked against too (see
-// apps/api/src/routes/apiRoutes.test.ts): a route the API has and the demo doesn't, or the other way around, fails,
+// apps/api/src/apiRoutes.test.ts): a route the API has and the demo doesn't, or the other way around, fails,
 // and so does an answer of the demo that the API's schema for it doesn't read, as when the API gains a field. Each
 // route of the list has a call here that it answers with success, so a new route needs one too; the device routes
 // the demo doesn't do answer 501 saying so (DEMO_UNAVAILABLE_ROUTES).

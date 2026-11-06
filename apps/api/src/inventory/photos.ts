@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from "@apc/shared/photos";
 import type { ItemPhoto } from "@apc/shared/items";
 import type { ItemPhoto as ItemPhotoRow } from "../generated/prisma/client.js";
-import { signedPhotoPath, type ActiveSession } from "../sessions/sessions.js";
+import { signedPhotoPath, type ActiveSession } from "../auth/sessions.js";
 
 // Item photos on disk: each one is checked by its content (JPG, PNG or WebP up to 3 MB, whatever its name says),
 // reduced and stored under PHOTOS_DIR as a WebP named after its id, next to a square WebP thumbnail for the list, and

@@ -5,9 +5,9 @@ import { entryCodeSchema } from "@apc/shared/auth";
 import { deviceCode } from "@apc/shared/device-crypto";
 import { deviceChallengeSchema, deviceListSchema, deviceNameSchema, deviceProofSchema, deviceSchema, deviceStatusSchema } from "@apc/shared/devices";
 import { prisma } from "../db/client.js";
-import { checkProof, deviceOf, isLoopback, issueChallenge } from "../devices/devices.js";
-import { issueEntryCode } from "../devices/entryCodes.js";
-import { createLimiter } from "../users/attempts.js";
+import { checkProof, deviceOf, isLoopback, issueChallenge } from "./devices.js";
+import { issueEntryCode } from "./entryCodes.js";
+import { createLimiter } from "../auth/attempts.js";
 
 // The devices users log in from (see devices.ts). Open without a session: GET /devices/challenge hands out a nonce to
 // sign, and POST /devices/status tells a device that proves it holds its key whether it was authorized yet ("pending",

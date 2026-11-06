@@ -5,9 +5,9 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 import sharp from "sharp";
 import { buildApp } from "../app.js";
-import { photosDir, storePhoto } from "../photos/photos.js";
-import { signedPhotoPath } from "../sessions/sessions.js";
-import { AUTHORIZED, TEST_SESSION, TEST_SESSIONS } from "../sessions/testSessions.js";
+import { photosDir, storePhoto } from "./photos.js";
+import { signedPhotoPath } from "../auth/sessions.js";
+import { AUTHORIZED, TEST_SESSION, TEST_SESSIONS } from "../auth/testSessions.js";
 
 // These requests are answered before any database call, so they run without a database, from the stand-in session.
 

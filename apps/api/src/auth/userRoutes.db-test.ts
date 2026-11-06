@@ -4,8 +4,8 @@ import { TEST_USERS } from "@apc/shared/test-users";
 import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
 import { testDevice, testProof } from "../devices/testDevices.js";
-import { hashToken } from "../sessions/sessions.js";
-import { ATTEMPT_WINDOW_MS } from "../users/attempts.js";
+import { hashToken } from "./sessions.js";
+import { ATTEMPT_WINDOW_MS } from "./attempts.js";
 
 // Wrong logins against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded with the test users.
 // Each test builds its own app, so it starts with no attempts counted, and the clock is held so a window can end.

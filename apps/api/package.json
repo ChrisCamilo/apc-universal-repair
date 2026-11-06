@@ -19,7 +19,7 @@
     "predb:seed": "pnpm run db:generate",
     "db:seed": "prisma db seed",
     "prephotos:compress": "pnpm run db:generate",
-    "photos:compress": "tsx src/photos/compressStored.ts",
+    "photos:compress": "tsx src/inventory/compressStored.ts",
     "lint": "eslint src && pnpm run db:check-schemas",
     "test": "tsx --test \"src/**/*.test.ts\"",
     "pretest:db": "pnpm run db:generate",

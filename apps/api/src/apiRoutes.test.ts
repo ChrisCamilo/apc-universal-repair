@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { RouteOptions } from "fastify";
 import { API_ROUTES } from "@apc/shared/api-routes";
-import { buildApp } from "../app.js";
-import { TEST_SESSIONS } from "../sessions/testSessions.js";
+import { buildApp } from "./app.js";
+import { TEST_SESSIONS } from "./auth/testSessions.js";
 
 // The API's routes against @apc/shared/api-routes, the list the web app's demo answers too (see
 // apps/web/src/demo/demoRoutes.test.ts): a route registered here and not there, or there and not here, or answering

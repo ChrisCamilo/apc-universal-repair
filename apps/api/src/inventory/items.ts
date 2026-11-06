@@ -14,9 +14,9 @@ import {
 } from "@apc/shared/items";
 import { splitVehicleModel } from "@apc/shared/item-filters";
 import type { Position, Prisma, Side } from "../generated/prisma/client.js";
-import { photoOf } from "../photos/photos.js";
+import { photoOf } from "./photos.js";
 import { listIds } from "./listIds.js";
-import type { ActiveSession } from "../sessions/sessions.js";
+import type { ActiveSession } from "../auth/sessions.js";
 
 // Translates between the items API and the database: the writing rule and search keys applied on create and
 // update, the filters of the list, and the row sent back with its vehicles, its original codes and its brands and

@@ -5,8 +5,8 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 import sharp from "sharp";
 import { PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION } from "@apc/shared/photos";
-import { signedPhotoPath } from "../sessions/sessions.js";
-import { TEST_SESSION } from "../sessions/testSessions.js";
+import { signedPhotoPath } from "../auth/sessions.js";
+import { TEST_SESSION } from "../auth/testSessions.js";
 import { checkPhoto, photoOf, photosDir, reduceStoredPhoto, removePhotoFiles, storePhoto, THUMB_SIZE } from "./photos.js";
 
 const ID = "00000000-0000-4000-8000-000000000001";

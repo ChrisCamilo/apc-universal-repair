@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { REGISTER_MESSAGES } from "@apc/shared/auth";
 import { buildApp } from "../app.js";
-import { sessionOf } from "./users.js";
+import { sessionOf } from "./userRoutes.js";
 
 // These requests are rejected by validation before any database call, so they run without a database.
 
