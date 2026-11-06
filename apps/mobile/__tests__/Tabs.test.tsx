@@ -8,8 +8,8 @@ import ReactTestRenderer from 'react-test-renderer';
 import { coneIcon, cubeIcon, documentIcon, gripIcon, ICON_SIZES, searchIcon } from '@apc/shared/icons';
 import { MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { Icon } from '../src/ui/Icon';
-import { Tabs, useStoredTab } from '../src/ui/Tabs';
+import { Icon } from '../src/components/Icon';
+import { Tabs, useStoredTab } from '../src/components/Tabs';
 import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 
 const IDS = ['stock', 'catalog'] as const;

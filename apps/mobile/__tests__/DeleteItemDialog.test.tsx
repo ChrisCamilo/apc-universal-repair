@@ -12,7 +12,7 @@ import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MOBILE_DESIGN_HEIGHT, MOBILE_DESIG
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { DeleteItemDialog } from '../src/features/inventory/DeleteItemDialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { ToastProvider } from '../src/ui/Toast';
+import { ToastProvider } from '../src/components/Toast';
 import { testItem } from '@apc/shared/test-items';
 
 const FILTER: Item = testItem({

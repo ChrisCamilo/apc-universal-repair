@@ -1,6 +1,6 @@
 import { Text as RNText, View } from 'react-native';
 import { DEVICE_MESSAGES } from '@apc/shared/devices';
-import { Text } from '../../ui/Typography';
+import { Text } from '../../components/Typography';
 import { useStyles } from './DevicePending.styles';
 
 // What a login or sign-up from a phone the server's computer hasn't authorized shows above its form (see

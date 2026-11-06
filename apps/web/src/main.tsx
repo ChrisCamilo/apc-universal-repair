@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './app/fonts.ts'
 import './index.css'
-import { ToastProvider } from './ui/Toast'
+import { ToastProvider } from './components/Toast'
 import { ThemeProvider } from './app/ThemeProvider.tsx'
 import App from './app/App.tsx'
 

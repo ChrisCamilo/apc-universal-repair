@@ -6,11 +6,11 @@ import { waitForDevice, type AuthService, type SessionUser } from '@apc/shared/a
 import { pencilIcon, qrIcon } from '@apc/shared/icons';
 import { readEntryCode, readFingerprint, readPairingLink, readServerAddress, type Pairing, type PairingInvite } from '@apc/shared/pairing';
 import { applyServer, currentServer, saveServer } from '../../app/api';
-import { BackButton } from '../../ui/BackButton';
-import { Button } from '../../ui/Button';
-import { FieldScrollView } from '../../ui/FieldScrollView';
-import { TextField } from '../../ui/TextField';
-import { Heading, Text } from '../../ui/Typography';
+import { BackButton } from '../../components/BackButton';
+import { Button } from '../../components/Button';
+import { FieldScrollView } from '../../components/FieldScrollView';
+import { TextField } from '../../components/TextField';
+import { Heading, Text } from '../../components/Typography';
 import { useStyles } from './ConnectScreen.styles';
 import { DevicePending } from './DevicePending';
 

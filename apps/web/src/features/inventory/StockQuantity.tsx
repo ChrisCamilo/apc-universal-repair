@@ -1,5 +1,5 @@
 import { QUANTITY_UNIT, STOCK_STATUS_SHORT, stockStatus } from '@apc/shared/items'
-import { usePhone } from '../../ui/usePhone.ts'
+import { usePhone } from '../../components/usePhone.ts'
 import { inventoryTab } from './InventoryTab.styles.ts'
 
 // An item's quantity in a list: the number on a desktop row; on a phone's card, with its stock status under it in its

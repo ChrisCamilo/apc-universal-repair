@@ -2,10 +2,10 @@ import { useRef, useState } from 'react';
 import { Pressable, Text as NativeText, TextInput, View, type HostInstance } from 'react-native';
 import { closeIcon, ICON_SIZES } from '@apc/shared/icons';
 import { addCodes, codesInput } from '@apc/shared/item-form';
-import { useRevealField } from '../../ui/FieldScrollView';
-import { Icon } from '../../ui/Icon';
+import { useRevealField } from '../../components/FieldScrollView';
+import { Icon } from '../../components/Icon';
 import { useTheme } from '../../app/theme';
-import { Label, Text } from '../../ui/Typography';
+import { Label, Text } from '../../components/Typography';
 import { REMOVE_HIT_SLOP, useStyles } from './CodeListField.styles';
 
 // A field of codes typed as chips, the same as the web, such as an item's original codes: a code typed joins the list

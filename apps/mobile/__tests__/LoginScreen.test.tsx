@@ -12,7 +12,7 @@ import { isStyleId } from '@apc/shared/style-ids';
 import { TEST_USERS } from '@apc/shared/test-users';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { LoginScreen } from '../src/features/auth/LoginScreen';
-import { Icon } from '../src/ui/Icon';
+import { Icon } from '../src/components/Icon';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 // A login that keeps no session and answers at once.

@@ -19,8 +19,8 @@ import { Dashboard } from './src/features/dashboard/Dashboard';
 import { UserMenu } from './src/features/dashboard/UserMenu';
 import { NotificationsMenu } from './src/features/notifications/NotificationsMenu';
 import { ThemeProvider, useTheme } from './src/app/theme';
-import { ToastProvider } from './src/ui/Toast';
-import { TourProvider } from './src/ui/Tour';
+import { ToastProvider } from './src/components/Toast';
+import { TourProvider } from './src/components/Tour';
 import { UpdatePrompt } from './src/features/updates/UpdatePrompt';
 
 /** What Conectar ao servidor says when the API refused the session's token, while pairing is the login. */

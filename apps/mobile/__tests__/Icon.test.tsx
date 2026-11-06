@@ -7,7 +7,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { ICON_STROKE, ICONS, searchIcon } from '@apc/shared/icons';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
-import { Icon } from '../src/ui/Icon';
+import { Icon } from '../src/components/Icon';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 /**

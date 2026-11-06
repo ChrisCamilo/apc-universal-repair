@@ -14,11 +14,11 @@ import {
   type ItemVehicleFormErrors,
 } from '@apc/shared/item-form';
 import { findEntry, type ItemListKind, type ItemLists } from '@apc/shared/lists';
-import { Button } from '../../ui/Button';
-import { Combobox } from '../../ui/Combobox';
-import { Icon } from '../../ui/Icon';
+import { Button } from '../../components/Button';
+import { Combobox } from '../../components/Combobox';
+import { Icon } from '../../components/Icon';
 import { useTheme } from '../../app/theme';
-import { Label, Text } from '../../ui/Typography';
+import { Label, Text } from '../../components/Typography';
 import { useStyles } from './VehiclesField.styles';
 
 // The vehicles an item fits in the item form, the same as the web on a phone: each vehicle a chip with its × (see

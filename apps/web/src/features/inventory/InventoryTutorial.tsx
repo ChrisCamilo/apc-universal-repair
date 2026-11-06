@@ -3,7 +3,7 @@ import {
   inventoryTutorialSteps,
   type TutorialScreen,
 } from '@apc/shared/inventory-tutorial'
-import { Tour } from '../../ui/Tour'
+import { Tour } from '../../components/Tour'
 import { BOTTOM_BAR_HEIGHT } from '../dashboard/DashboardLayout.styles.ts'
 
 // The Inventory tutorial on the web: the shared steps (see inventoryTutorialSteps) run by the Tour over the Inventory

@@ -4,16 +4,16 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { scales, THEME_STORAGE_KEYS } from '@apc/shared/theme';
-import { BottomSheet } from '../src/ui/BottomSheet';
-import { Combobox } from '../src/ui/Combobox';
-import { Dialog } from '../src/ui/Dialog';
-import { FilterMenu } from '../src/ui/FilterMenu';
-import { ImageViewer } from '../src/ui/ImageViewer';
-import { Menu, MenuItem } from '../src/ui/Menu';
+import { BottomSheet } from '../src/components/BottomSheet';
+import { Combobox } from '../src/components/Combobox';
+import { Dialog } from '../src/components/Dialog';
+import { FilterMenu } from '../src/components/FilterMenu';
+import { ImageViewer } from '../src/components/ImageViewer';
+import { Menu, MenuItem } from '../src/components/Menu';
 import { useOverlayMotion, type OverlayMove } from '../src/app/motion';
-import { Select } from '../src/ui/Select';
+import { Select } from '../src/components/Select';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { ToastProvider } from '../src/ui/Toast';
+import { ToastProvider } from '../src/components/Toast';
 
 // How the dialogs, the photo viewer, the menus, the filter panel and the fields' lists open and close (see motion.ts).
 // Animated.timing is stood in for, so a test ends each movement when it says, never on the clock.

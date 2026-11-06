@@ -1,8 +1,8 @@
 import { useId, useState } from 'react'
 import { closeIcon, ICON_SIZES } from '@apc/shared/icons'
 import { addCodes, codesInput, splitCodes } from '@apc/shared/item-form'
-import { Icon } from '../../ui/Icon'
-import { Label, Text } from '../../ui/Typography'
+import { Icon } from '../../components/Icon'
+import { Label, Text } from '../../components/Typography'
 import { codeListField } from './CodeListField.styles.ts'
 
 // A field of codes typed as chips, such as an item's original codes: a code typed joins the list as a chip with Enter,

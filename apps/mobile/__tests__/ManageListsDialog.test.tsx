@@ -14,7 +14,7 @@ import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/t
 import { ManageListsDialog } from '../src/features/inventory/ManageListsDialog';
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/features/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { ToastProvider } from '../src/ui/Toast';
+import { ToastProvider } from '../src/components/Toast';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 
 const ITEMS = [

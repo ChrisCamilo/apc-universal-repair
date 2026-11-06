@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Linking } from 'react-native';
 import app from '../../../package.json';
-import { Button } from '../../ui/Button';
-import { Dialog } from '../../ui/Dialog';
+import { Button } from '../../components/Button';
+import { Dialog } from '../../components/Dialog';
 import { save, themeStorage } from '../../app/theme';
-import { Text } from '../../ui/Typography';
+import { Text } from '../../components/Typography';
 import {
   dayKey,
   DISMISSED_UPDATE_KEY,

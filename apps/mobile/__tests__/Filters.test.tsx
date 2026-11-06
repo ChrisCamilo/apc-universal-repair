@@ -11,13 +11,13 @@ import { filterIcon, sortIcon } from '@apc/shared/icons';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { sortValue, type Sort } from '@apc/shared/table';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { FilterChip, FilterChipGroup } from '../src/ui/FilterChip';
-import { ClearFilters, FilterMenu } from '../src/ui/FilterMenu';
-import { FilterSheet, SortSheet } from '../src/ui/FilterSheet';
-import { Select } from '../src/ui/Select';
+import { FilterChip, FilterChipGroup } from '../src/components/FilterChip';
+import { ClearFilters, FilterMenu } from '../src/components/FilterMenu';
+import { FilterSheet, SortSheet } from '../src/components/FilterSheet';
+import { Select } from '../src/components/Select';
 import { withAlpha } from '../src/app/theme';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { ToolButton } from '../src/ui/ToolButton';
+import { ToolButton } from '../src/components/ToolButton';
 
 const CATEGORIES = ['Arrefecimento', 'Elétrica', 'Freios', 'Ignição', 'Motor', 'Suspensão', 'Transmissão'].map(
   (label) => ({ value: label, label }),

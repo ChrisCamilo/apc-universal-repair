@@ -7,10 +7,10 @@ import { Dimensions, Modal, StyleSheet, Text, type ViewStyle } from 'react-nativ
 import ReactTestRenderer from 'react-test-renderer';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../src/ui/Menu';
-import { MENU_INSET, MENU_OFFSET } from '../src/ui/Menu';
-import { Segmented } from '../src/ui/Segmented';
-import { Switch } from '../src/ui/Switch';
+import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from '../src/components/Menu';
+import { MENU_INSET, MENU_OFFSET } from '../src/components/Menu';
+import { Segmented } from '../src/components/Segmented';
+import { Switch } from '../src/components/Switch';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 const STYLE_OPTIONS = [

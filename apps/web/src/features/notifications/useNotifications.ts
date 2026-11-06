@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { addNotification, markAllRead, notificationsKey, readNotifications, type Notification } from '@apc/shared/notifications'
-import { useToastFeed } from '../../ui/Toast'
+import { useToastFeed } from '../../components/Toast'
 import { readStored, writeStored } from '../../app/storage.ts'
 
 /** A user's notifications and the ways to change them. */

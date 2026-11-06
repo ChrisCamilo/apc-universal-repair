@@ -13,11 +13,11 @@ import {
 } from '@apc/shared/item-csv'
 import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/shared/lists'
 import { API_BASE } from '../../app/api.ts'
-import { Button } from '../../ui/Button'
-import { Dialog } from '../../ui/Dialog'
-import { useToast } from '../../ui/Toast'
-import { Heading, Text } from '../../ui/Typography'
-import { usePhone } from '../../ui/usePhone.ts'
+import { Button } from '../../components/Button'
+import { Dialog } from '../../components/Dialog'
+import { useToast } from '../../components/Toast'
+import { Heading, Text } from '../../components/Typography'
+import { usePhone } from '../../components/usePhone.ts'
 import { importItemsDialog } from './ImportItemsDialog.styles.ts'
 
 // The "Importar CSV" dialog of the Inventory tab: it explains the file, downloads the template and reads the file

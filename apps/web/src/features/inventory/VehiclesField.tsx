@@ -13,10 +13,10 @@ import {
   type ItemVehicleFormErrors,
 } from '@apc/shared/item-form'
 import { findEntry, type ItemListKind, type ItemLists } from '@apc/shared/lists'
-import { Button } from '../../ui/Button'
-import { Combobox } from '../../ui/Combobox'
-import { Icon } from '../../ui/Icon'
-import { Label, Text } from '../../ui/Typography'
+import { Button } from '../../components/Button'
+import { Combobox } from '../../components/Combobox'
+import { Icon } from '../../components/Icon'
+import { Label, Text } from '../../components/Typography'
 import { vehiclesField } from './VehiclesField.styles.ts'
 
 // The vehicles an item fits in a phone's item form, as in the Novo item mockup: each vehicle a chip with its × (see
