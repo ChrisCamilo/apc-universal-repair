@@ -14,8 +14,8 @@ import {
   releaseUpdate,
   shouldOffer,
   type Release,
-} from '../src/updates/appUpdate';
-import { UpdatePrompt } from '../src/updates/UpdatePrompt';
+} from '../src/features/updates/appUpdate';
+import { UpdatePrompt } from '../src/features/updates/UpdatePrompt';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 const INSTALLED = '0.6.8';

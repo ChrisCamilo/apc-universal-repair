@@ -12,9 +12,9 @@ import type { ItemCreate } from '@apc/shared/items';
 import type { ItemLists } from '@apc/shared/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
-import { ImportItemsDialog } from '../src/inventory/ImportItemsDialog';
+import { ImportItemsDialog } from '../src/features/inventory/ImportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { ToastProvider } from '../src/components/Toast';
+import { ToastProvider } from '../src/ui/Toast';
 
 // The lists the API keeps: the Motor category, Mann, and Volkswagen with the Gol.
 const LISTS: ItemLists = {

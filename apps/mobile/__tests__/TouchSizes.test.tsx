@@ -5,16 +5,16 @@ import ReactTestRenderer from 'react-test-renderer';
 import { pencilIcon } from '@apc/shared/icons';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { scales, THEME_STORAGE_KEYS } from '@apc/shared/theme';
-import { Button } from '../src/components/Button';
-import { BackButton } from '../src/components/BackButton';
-import { CloseButton } from '../src/components/CloseButton';
-import { Combobox } from '../src/components/Combobox';
-import { RowAction } from '../src/components/DataTable';
-import { FilterChip } from '../src/components/FilterChip';
-import { Menu, MenuItem } from '../src/components/Menu';
-import { Segmented } from '../src/components/Segmented';
-import { Select } from '../src/components/Select';
-import { TextField } from '../src/components/TextField';
+import { Button } from '../src/ui/Button';
+import { BackButton } from '../src/ui/BackButton';
+import { CloseButton } from '../src/ui/CloseButton';
+import { Combobox } from '../src/ui/Combobox';
+import { RowAction } from '../src/ui/DataTable';
+import { FilterChip } from '../src/ui/FilterChip';
+import { Menu, MenuItem } from '../src/ui/Menu';
+import { Segmented } from '../src/ui/Segmented';
+import { Select } from '../src/ui/Select';
+import { TextField } from '../src/ui/TextField';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 /** The trees each test renders, unmounted after it. */

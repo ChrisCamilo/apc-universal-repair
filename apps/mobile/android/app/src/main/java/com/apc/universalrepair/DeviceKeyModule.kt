@@ -16,7 +16,7 @@ import java.security.spec.ECGenParameterSpec
 
 /**
  * The phone's device key for logging in (see @apc/shared/devices): an ECDSA P-256 key pair made in the Android
- * Keystore on its first use, whose private key never leaves it, not even to the app. JavaScript (src/auth/deviceKey.ts,
+ * Keystore on its first use, whose private key never leaves it, not even to the app. JavaScript (src/features/auth/deviceKey.ts,
  * as NativeModules.DeviceKey) gets the public key, SPKI in base64url, and the Keystore's signature of a nonce, turned
  * from DER into r and s, 32 bytes each, as the API checks it. Uninstalling the app deletes the key, so the phone is
  * authorized again after a new install.

@@ -10,11 +10,11 @@ import { addNotification, notificationsKey, type Notification } from '@apc/share
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { scales, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { TOAST_DURATION, TOAST_DURATION_STORAGE_KEY, TOAST_KIND_LOOKS } from '@apc/shared/toast';
-import { Button } from '../src/components/Button';
-import { Icon } from '../src/components/Icon';
-import { NotificationsMenu } from '../src/notifications/NotificationsMenu';
+import { Button } from '../src/ui/Button';
+import { Icon } from '../src/ui/Icon';
+import { NotificationsMenu } from '../src/features/notifications/NotificationsMenu';
 import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
-import { ToastProvider, useToast } from '../src/components/Toast';
+import { ToastProvider, useToast } from '../src/ui/Toast';
 
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 const USER_ID = 'user-christian';

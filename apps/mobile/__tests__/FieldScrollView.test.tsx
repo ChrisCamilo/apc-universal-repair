@@ -5,10 +5,10 @@
 import React from 'react';
 import { Keyboard, ScrollView, StyleSheet, TextInput, View, type HostInstance, type KeyboardEventName } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { Combobox } from '../src/components/Combobox';
-import { FIELD_CLEARANCE, FieldScrollView } from '../src/components/FieldScrollView';
-import { CodeListField } from '../src/inventory/CodeListField';
-import { SearchField, TextField } from '../src/components/TextField';
+import { Combobox } from '../src/ui/Combobox';
+import { FIELD_CLEARANCE, FieldScrollView } from '../src/ui/FieldScrollView';
+import { CodeListField } from '../src/features/inventory/CodeListField';
+import { SearchField, TextField } from '../src/ui/TextField';
 import { ThemeProvider } from '../src/app/theme';
 
 // The view's box on a 360×780 screen, and the top of a keyboard 300px tall.

@@ -7,7 +7,7 @@ import { Image, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { ImageUpload, type PickedPhoto, type UploadPhoto } from '../src/components/ImageUpload';
+import { ImageUpload, type PickedPhoto, type UploadPhoto } from '../src/ui/ImageUpload';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 const MB = 1024 * 1024;

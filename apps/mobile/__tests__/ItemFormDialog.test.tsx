@@ -14,11 +14,11 @@ import { copiedPhotos, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/shared/ph
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
 import { STYLES, MODES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
-import type { UploadPhoto } from '../src/components/ImageUpload';
-import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
-import type { CreateListEntry } from '../src/inventory/useItemLists';
+import type { UploadPhoto } from '../src/ui/ImageUpload';
+import { ItemFormDialog } from '../src/features/inventory/ItemFormDialog';
+import type { CreateListEntry } from '../src/features/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { ToastProvider } from '../src/components/Toast';
+import { ToastProvider } from '../src/ui/Toast';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.

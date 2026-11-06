@@ -9,11 +9,11 @@ import ReactTestRenderer from 'react-test-renderer';
 import type { Item } from '@apc/shared/items';
 import { lowStockKey, notificationsKey, type Notification } from '@apc/shared/notifications';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
-import { Button } from '../src/components/Button';
-import { NotificationsMenu } from '../src/notifications/NotificationsMenu';
-import { useLowStockAlerts } from '../src/notifications/useLowStockAlerts';
+import { Button } from '../src/ui/Button';
+import { NotificationsMenu } from '../src/features/notifications/NotificationsMenu';
+import { useLowStockAlerts } from '../src/features/notifications/useLowStockAlerts';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { ToastProvider } from '../src/components/Toast';
+import { ToastProvider } from '../src/ui/Toast';
 import { testItem } from '@apc/shared/test-items';
 
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
