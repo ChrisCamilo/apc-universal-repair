@@ -16,7 +16,7 @@ import okhttp3.OkHttpClient
 /**
  * Pins the home server's certificate. The server answers HTTPS with a certificate the desktop app made, which no
  * authority vouches for: the phone pairs with it by the SHA-256 fingerprint the Servidor dialog's QR code carries
- * (src/api.ts hands it here), and trusts, for that server's address, only a certificate with that fingerprint, whatever
+ * (src/app/api.ts hands it here), and trusts, for that server's address, only a certificate with that fingerprint, whatever
  * address the certificate names, so a new address only needs the code scanned again. Every other address, GitHub's
  * among them, is checked as Android checks it. React Native's requests and images all go through the OkHttp client
  * this installs, before React Native starts.

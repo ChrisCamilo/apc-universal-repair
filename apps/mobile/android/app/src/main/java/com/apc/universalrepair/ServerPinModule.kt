@@ -9,7 +9,7 @@ import com.facebook.react.module.model.ReactModuleInfo
 import com.facebook.react.module.model.ReactModuleInfoProvider
 
 /**
- * Hands the paired server from JavaScript (src/api.ts, as NativeModules.ServerPin) to [ServerPin]. The call is
+ * Hands the paired server from JavaScript (src/app/api.ts, as NativeModules.ServerPin) to [ServerPin]. The call is
  * synchronous, so the pin is in place before the next request JavaScript sends.
  */
 class ServerPinModule(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
