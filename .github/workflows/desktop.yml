@@ -1,7 +1,7 @@
 name: Desktop
 
 # The Windows desktop app (apps/desktop).
-# - Pull requests that change it, the web app it packages or the shared package: build and smoke-test it with
+# - Pull requests that change it, the web app it packages or the shared packages: build and smoke-test it with
 #   Playwright's Electron support.
 # - Run by hand (Actions → Desktop → Run workflow): publish a version. The version comes from apps/desktop/package.json
 #   and must equal apps/api/package.json's, since the app brings the server at home to its own version, and
@@ -16,7 +16,7 @@ on:
     paths:
       - "apps/desktop/**"
       - "apps/web/**"
-      - "packages/shared/**"
+      - "packages/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/desktop.yml"
 

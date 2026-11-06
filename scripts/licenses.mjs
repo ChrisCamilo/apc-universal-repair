@@ -7,7 +7,7 @@
 //   ships, as MIT, BSD and Apache ask, copied into the installer and the APK, and docs/licenses.md, the audit's
 //   report. Run it after adding or upgrading a dependency.
 // What ships: the production dependencies of the apps (the web build, the desktop app with the server it bundles, and
-// the phone app) and of the shared package, the native modules the desktop server installs on its own, and the
+// the phone app) and of the shared packages, the native modules the desktop server installs on its own, and the
 // Android libraries in the phone app's release, which `gradlew :app:writeLicenses` writes to
 // apps/mobile/android/licenses.json with the licenses their POMs name, since resolving them takes the Android SDK (the
 // Android workflow checks the file is up to date). Electron and Chromium ship their own notices beside the app
@@ -96,7 +96,7 @@ export const REVIEWED = [
   },
 ];
 /** The workspace packages whose production dependencies ship. */
-const SHIPPED = ["@apc/api", "@apc/desktop", "@apc/mobile", "@apc/shared", "@apc/web"];
+const SHIPPED = ["@apc/api", "@apc/desktop", "@apc/domain", "@apc/mobile", "@apc/tokens", "@apc/ui-spec", "@apc/web"];
 /** What ships besides them: sharp's binary for Windows, an optional dependency the desktop server installs. */
 const SHIPPED_EXTRA = /^@img\/sharp-(win32-x64|libvips-win32-x64)$/;
 
