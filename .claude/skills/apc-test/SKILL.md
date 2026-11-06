@@ -17,7 +17,7 @@ Sources of truth: AGENTS.md "Testing" and "Writing tests", CLAUDE.md "Tests made
 ## Playwright (web, demo, desktop)
 
 - `test` and `expect` from `apps/web/e2e/support/fixtures.ts`, starting from the fixtures' state (`signedIn`, `stock`), every API call answered by a stand-in.
-- One area tag plus the kind tags that apply, from `TEST_TAGS` in `@apc/shared/test-tags`. A desktop-only screen is tagged `@desktop-only`, not skipped by project name.
+- One area tag plus the kind tags that apply, from `TEST_TAGS` in `@apc/domain/test-tags`. A desktop-only screen is tagged `@desktop-only`, not skipped by project name.
 - Elements through `apps/web/e2e/locators/<scope>.ts`: `getByRole` with the name, then `getByLabel`, `getByText`, then `getByTestId` for elements with no role or text. No assertions in locator files.
 - Generator output: move its locators into those files and drop its step comments. It writes a new `e2e/<scope>-<behavior>.spec.ts`, never over an existing spec.
 

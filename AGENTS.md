@@ -186,11 +186,11 @@ These rules apply to every test, whatever the tool (Playwright, Vitest, Jest, `n
   | `Mobile:` | `apps/mobile` |
   | `Desktop:` | `apps/desktop` |
   | `API:` | `apps/api` |
-  | `Shared:` | `packages/shared` |
+  | `Shared:` | `packages/tokens`, `packages/ui-spec`, `packages/domain` |
   | `Repo:` | `scripts/`, the repository's own tooling |
 
   The prefix goes on every `test`/`it` title, also inside a `describe`, so a failing test is identified by its title alone in any report.
-- **Every Playwright test has one area tag,** the style-id scope it covers, and the kind tags that apply (`@smoke`, `@layout`, `@theme`, `@motion`, `@demo`, `@bundled`, `@desktop-only`), from `TEST_TAGS` in `@apc/shared/test-tags`: `test("Web: …", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, …)`. The title keeps its prefix. A test of a desktop screen is tagged `@desktop-only` instead of skipping the phone by project name ([docs/testing.md](docs/testing.md#tags)).
+- **Every Playwright test has one area tag,** the style-id scope it covers, and the kind tags that apply (`@smoke`, `@layout`, `@theme`, `@motion`, `@demo`, `@bundled`, `@desktop-only`), from `TEST_TAGS` in `@apc/domain/test-tags`: `test("Web: …", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, …)`. The title keeps its prefix. A test of a desktop screen is tagged `@desktop-only` instead of skipping the phone by project name ([docs/testing.md](docs/testing.md#tags)).
 - **The web E2E find an element through `apps/web/e2e/locators/<scope>.ts`,** the file of the scope of its style id (`common`, `auth`, `dashboard`, `inventory`, `notifications`, `catalog`). Each file has functions that take the page and return its elements, with no assertions, e.g. `itemForm(page, "Novo item").save`. An element a spec reaches more than once goes there. A locator finds an element as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`. It uses the style id (`getByTestId`) for an element with no role or text of its own, and CSS only for what has none of these (`html`, `body`, `header`).
 
 ```ts
@@ -214,7 +214,7 @@ Sizes are in logical pixels (CSS px on web, dp on mobile), not the physical reso
 - **The desktop app's window, 1280×640 and up:** on a 1366×768 or 1360×768 notebook, the taskbar and the title bar leave about 1360×689 of content, less than 720. So the window opens at 1280×720 only when the screen's work area holds it, otherwise at what the work area holds, and can be made as small as 1280×640 (`MIN_WINDOW_HEIGHT`). Down to that height the page never scrolls; only the content that is meant to, such as the Inventory's table, does.
 - **Mobile, 360×780:** covers mid-range and premium phones from 2020 on. The 360 width comes from Samsung Galaxy S20–S23 at their default setting; the 780 height from the S22 and S23. Screens are designed at 390×844 (iPhone 12–14) and adapt up and down from there.
 - Below the minimum, the app keeps working with its responsive layout, but the layout is not guaranteed.
-- The sizes are constants in `@apc/shared/screens` (`MIN_DESKTOP_WIDTH`, `MIN_DESKTOP_HEIGHT`, `MIN_MOBILE_WIDTH`, `MIN_MOBILE_HEIGHT`, `MIN_TOUCH_TARGET`, `MIN_WINDOW_HEIGHT`, `MOBILE_DESIGN_WIDTH`, `MOBILE_DESIGN_HEIGHT`, and the notebook's `NOTEBOOK_WIDTH`, `NOTEBOOK_HEIGHT`, `NOTEBOOK_WINDOW_HEIGHT`): code, configs, stories and tests import them instead of writing the numbers.
+- The sizes are constants in `@apc/ui-spec/screens` (`MIN_DESKTOP_WIDTH`, `MIN_DESKTOP_HEIGHT`, `MIN_MOBILE_WIDTH`, `MIN_MOBILE_HEIGHT`, `MIN_TOUCH_TARGET`, `MIN_WINDOW_HEIGHT`, `MOBILE_DESIGN_WIDTH`, `MOBILE_DESIGN_HEIGHT`, and the notebook's `NOTEBOOK_WIDTH`, `NOTEBOOK_HEIGHT`, `NOTEBOOK_WINDOW_HEIGHT`): code, configs, stories and tests import them instead of writing the numbers.
 - Every UI task is checked at the minimum sizes before it is done: on web with the Playwright `desktop` (1280×720) and `mobile` (360×780) projects, on mobile with a 360×780 emulator. Screens that fill the window (the Inventory, the Catalog, the login) are also checked at 1360×768 and 1360×689, a notebook in full screen and in a window.
 
 ### Phone layout
@@ -224,7 +224,7 @@ On the web below `card:` (`TABLE_CARD_BREAKPOINT`) and always in the native app,
 - **The page scrolls as a whole,** never inside a box of fixed height, and never sideways.
 - **A form or an item's details opens as a full screen,** with its actions in a footer fixed to the bottom. A dialog that only confirms, such as deleting an item, stays a centered box.
 - **A list of choices opens as a bottom sheet** (the filters, the sort, a menu of actions), never as a popover anchored to its button.
-- **Every control a finger reaches is at least 44px** tall and wide (`MIN_TOUCH_TARGET` in `@apc/shared/screens`). The phone's heights are in `scales.touch`: 52px for a button, a field and a select, 44px for a small button, an icon button such as the × and a chip, 40px for a segmented choice's option, 56px for a list's or a menu's row. On web they apply below `card:` (`max-card:min-h-13` and the like); a field's end button reaches into its padding, so the field stays 52px.
+- **Every control a finger reaches is at least 44px** tall and wide (`MIN_TOUCH_TARGET` in `@apc/ui-spec/screens`). The phone's heights are in `scales.touch`: 52px for a button, a field and a select, 44px for a small button, an icon button such as the × and a chip, 40px for a segmented choice's option, 56px for a list's or a menu's row. On web they apply below `card:` (`max-card:min-h-13` and the like); a field's end button reaches into its padding, so the field stays 52px.
 - **Text inputs use 16px text,** so the browser doesn't zoom in when one gets focus.
 - **The Dashboard's tabs sit in a bottom bar,** fixed at the bottom of the screen, in their saved order, then Alertas (the notifications, as a full screen) and Conta (the user menu, in a bottom sheet); each tab draws its own header, with the APC mark and the tab's name. On the web, the parts a phone draws differently from the desktop, rather than restyles, follow `usePhone()`.
 - **A screen reached from another one has a header** with the back arrow (`BackButton`, 44px, named for where it goes, such as "Voltar ao login") at the left of its title, in place of the desktop's brand.
@@ -254,7 +254,7 @@ export type FontWeight = keyof typeof WEIGHTS;
 ```
 
 ```ts
-import { scales } from '@apc/shared/theme';
+import { scales } from '@apc/tokens/theme';
 
 const WEIGHTS = { 400: 'Regular', 600: 'SemiBold' } as const;
 
@@ -283,14 +283,14 @@ The web and the phone app lay out `src` the same way, so a file lives in the sam
 - **Only on the web:** `demo/` (the demo's stand-in for the API) and `stories/` (Storybook's pages).
 - **Tests:** on the web a file's test and story sit beside it; the phone's tests are in `apps/mobile/__tests__/`.
 
-`packages/shared/src` is in three groups, and the `exports` map in its `package.json` gives each module its `@apc/shared/<name>` subpath, so an import never names the folder:
+What the apps share is in three packages under `packages/`. The `exports` map in each `package.json` gives each module its `@apc/<package>/<name>` subpath, so an import never names the folder:
 
-- **`ui/`:** the component contracts and the design system's values: `button`, `dialog`, `field`, `filters`, `pagination`, `table`, `tabs`, `toast`, `tour`, `tree`, `typography`, `icons`, `theme`, `styles` (style ids and the style guard) and `screens`.
-- **`domain/`:** the rules, one folder per feature: `auth/`, `devices/`, `catalog/`, `notifications/` and `inventory/` (items, lists, photos, the CSV and the Inventory tutorial's steps).
-- **`platform/`:** what ties the parts together: `api/` (the route list), `server/` (ports and pairing), `schemas/` and `testing/` (the test tags).
-- **Nothing in `ui/` imports from `domain/` or `platform/`:** a module that needs an item or a route belongs in `domain/`.
+- **`@apc/tokens`** (`packages/tokens`): the design system's values: `theme`, `typography`, `icons` and `style-ids` (the style ids, with the style guard in `src/styles`).
+- **`@apc/ui-spec`** (`packages/ui-spec`): the component contracts the web and mobile components follow alike: `button`, `dialog`, `field`, `filters`, `pagination`, `table`, `tabs`, `toast`, `tour`, `tree` and `screens`.
+- **`@apc/domain`** (`packages/domain`): the rules, one folder per feature (`auth/`, `devices/`, `catalog/`, `notifications/` and `inventory/`: items, lists, photos, the CSV and the Inventory tutorial's steps), and in `platform/` what ties the parts together: `api/` (the route list), `query/` (`list-query`: the sort, the page sizes and the filter values a list is asked for with), `server/` (ports and pairing), `schemas/` and `testing/` (the test tags).
+- **Who depends on what:** `@apc/ui-spec` on `@apc/tokens` only, `@apc/domain` on neither, the API on `@apc/domain` only, and the web and phone apps on all three. A module of `@apc/domain` that needs a shape a UI contract has (a tree's node, a toast's kind, a tour's step) keeps its own, which the contract accepts as it is.
 
-The API's `src` (`apps/api/src`) has one folder per feature, named as in `packages/shared/src/domain/`. Each keeps its routes, with their tests, in its own `routes/`, apart from the feature's logic:
+The API's `src` (`apps/api/src`) has one folder per feature, named as in `packages/domain/src/`. Each keeps its routes, with their tests, in its own `routes/`, apart from the feature's logic:
 
 - **`inventory/`:** the item and photo code and the CSV import; `routes/` has `items.ts`, `lists.ts` and `photos.ts`.
 - **`auth/`:** sessions, passwords and login attempts (`sessions.ts`, `passwords.ts`, `attempts.ts`); `routes/users.ts`.
@@ -371,9 +371,9 @@ const { styles, ids } = useStyles()
 
 ### Values
 
-- **Tokens first:** every color, size, space, radius, font and duration comes from the tokens (`@apc/shared/theme`, the Tailwind token classes on web).
+- **Tokens first:** every color, size, space, radius, font and duration comes from the tokens (`@apc/tokens/theme`, the Tailwind token classes on web).
 - **No white by day:** in day mode the canvas, the panels and the raised panels are tinted in the style's hue, each a visible step from the next, and never `#FFFFFF`; a new surface uses one of those tokens rather than white. The soft accent (`accentSoft`) is stronger by day. `tokens.test.ts` guards both, with WCAG AA for text and status colors on every surface.
-- **Named constants:** a value that has a meaning or repeats is a named constant. A constant only one component uses is exported from its style file (`FRAME_OPACITY`, `BADGE_WIDTH`), so its tests import it. One both apps or several components use goes in `@apc/shared`: screen sizes in `screens`, icon sizes in `icons` (`ICON_SIZES`), the table's breakpoint in `table`.
+- **Named constants:** a value that has a meaning or repeats is a named constant. A constant only one component uses is exported from its style file (`FRAME_OPACITY`, `BADGE_WIDTH`), so its tests import it. One both apps or several components use goes in `@apc/tokens` or `@apc/ui-spec`: screen sizes in `screens`, icon sizes in `icons` (`ICON_SIZES`), the table's breakpoint in `table`.
 - **Breakpoints:** they have names (`card:`, `max-card:`), built from the shared constants in `tailwind.config.ts`, never `max-[720px]:`.
 - **Overlays open and close in the motion token** (`scales.motion`): a dialog or the photo viewer fades in with its backdrop while it grows from `enterScale` (a form that fills a phone's screen rises from the bottom edge instead), a menu, a panel or a field's list fades in sliding `enterShift` px from its trigger, and a bottom sheet fades in with its backdrop while it rises from the bottom edge; closing goes back the same way before it leaves. On web, `usePresence` keeps the overlay on the page, `inert`, until its closing transitions end (`POPOVER_MOTION` in `styles/shared.ts` for popovers and lists, the `Dialog` and `BottomSheet` recipes for dialogs and sheets); on mobile, `useOverlayMotion` in `motion.ts` keeps its `Modal` or list and takes no touches meanwhile. With reduced motion, both open and close at once. A new overlay does the same.
 - **Runtime values only:** the JSX keeps only values known at run time (measured positions, insets, the window's size, `Animated` values). On mobile they go last in the style array, `[styles.card, { top }]`; on web, `style` only takes a style function's result, never an object written in the JSX.
@@ -386,7 +386,7 @@ Every styled element carries a style id, in `data-testid` on web and `testID` on
 - **Format:** `<scope>.<component>[.<slot>…]`, in kebab-case, with a dot for each level. The component is its file's name in kebab-case (`ItemFormDialog` → `item-form-dialog`), and the slots follow how the elements nest inside it, from the outside in. A wrapper that only lays out or places its children (the web login's `layout`, the web combobox's `anchor`, the web tree's open and clip boxes, the web table's `tbody`, the web photo viewer's `footer`) or only draws around them (a mobile field's focus `ring`) has its own id but adds no level to theirs, so an element has the same id on web and mobile even where one platform needs an extra wrapper. Examples: `common.dialog.header.close`, `inventory.item-form-dialog.fields.code`, `catalog.part-results.list.part.line.code`.
 - **It names a kind of element, not one instance:** every row of a list shares its id, and tests tell rows apart by text or role. That is why it isn't an HTML `id`.
 - **A component inside another keeps its own id:** the × in a dialog is `common.close-button`, inside `common.dialog.header`.
-- **Scopes** (`STYLE_SCOPES` in `@apc/shared/style-ids`). The scope follows the area that owns the component, not its folder:
+- **Scopes** (`STYLE_SCOPES` in `@apc/tokens/style-ids`). The scope follows the area that owns the component, not its folder:
 
 | Scope | Covers | Epic |
 |---|---|---|
@@ -410,7 +410,7 @@ Every styled element carries a style id, in `data-testid` on web and `testID` on
 
 `lint` on each app fails when a component breaks these conventions, in CI as well:
 
-- **`lint:styles`** (`@apc/web` and `@apc/mobile`): the guard in `packages/shared/src/ui/styles/styleGuard.ts` reads every component file (the `.tsx` files under `src`, not tests or stories) and lists each place that has:
+- **`lint:styles`** (`@apc/web` and `@apc/mobile`): the guard in `packages/tokens/src/styles/styleGuard.ts` reads every component file (the `.tsx` files under `src`, not tests or stories) and lists each place that has:
   - a style id written by hand (`data-testid="…"`, `testID="…"`) instead of the recipe's `ids`;
   - on web, classes written in the JSX (`className="…"`, or a string inside the className's expression; a recipe's variant argument, `classes.nav({ side: 'prev' })`, is fine), a `style={{…}}` object, or an HTML element with classes but no `data-testid`;
   - on mobile, a `style={{…}}` object, or a React Native element (anything imported from a `react-native…` package) with a style but no `testID`.
@@ -422,12 +422,12 @@ Every styled element carries a style id, in `data-testid` on web and `testID` on
 Two visual documents describe the project, with Mermaid diagrams that GitHub renders, in English and Portuguese:
 
 - [`docs/database.md`](docs/database.md): every table, its columns and keys, the relationships between the entities and the rules the schema enforces.
-- [`docs/architecture.md`](docs/architecture.md): the apps and packages (`packages/shared`, `apps/web`, `apps/mobile`, `apps/api`), how they depend on and talk to each other, and the technologies each one uses.
+- [`docs/architecture.md`](docs/architecture.md): the apps and packages (`packages/tokens`, `packages/ui-spec`, `packages/domain`, `apps/web`, `apps/mobile`, `apps/api`), how they depend on and talk to each other, and the technologies each one uses.
 
 Always keep them up to date, **in the same pull request** as the change:
 
 - Changing `apps/api/prisma/schema.prisma` (a table, column, key, relation, enum or delete rule) changes `apps/api/prisma/sqlite/schema.prisma` the same way, with a migration for each database, and updates `docs/database.md`. Lint fails when the two schemas' models differ.
-- Adding, removing or renaming an app, a package or a `@apc/shared` module, changing how the parts talk to each other, or adding, removing or upgrading a main technology (a new major version included) updates `docs/architecture.md`.
+- Adding, removing or renaming an app, a package or a module of `@apc/tokens`, `@apc/ui-spec` or `@apc/domain`, changing how the parts talk to each other, or adding, removing or upgrading a main technology (a new major version included) updates `docs/architecture.md`.
 - Update the diagrams and both languages together, and check the diagrams still render (Mermaid syntax errors show as an error box on GitHub). Use a `docs:` commit.
 
 ## Licenses
@@ -443,5 +443,5 @@ The project is all rights reserved ([LICENSE](LICENSE), `"license": "UNLICENSED"
 - Keep commits atomic and `main` always deployable.
 - Prefer reusing existing components/utilities over introducing new ones.
 - Do not add features, abstractions, or error handling beyond what the current task requires.
-- **The Storybook is public:** every merge that changes `apps/web` or `packages/shared` publishes it on GitHub Pages, at `https://chriscamilo.github.io/apc-universal-repair/storybook/` (`.github/workflows/pages.yml`), so a new story shows there once merged. Stories show their own sample data only: no API, browser storage or desktop bridge, which `apps/web/src/stories/Stories.test.ts` checks. The site's root page is `docs/site/index.html`.
-- **The web app's demo changes with the API,** in the same pull request. The demo on GitHub Pages (`/demo/`) answers the API in the browser (`apps/web/src/demo/demoApi.ts`), so adding, removing or changing an API route, or what it answers, changes the demo's stand-in too, and the route's entry in `@apc/shared/api-routes`, the list of routes and response schemas both follow. CI checks it: `apps/api/src/routes/apiRoutes.test.ts` fails when the API's routes or their response schemas differ from the list, and `apps/web/src/demo/demoRoutes.test.ts` when the demo's routes differ from it or its answers don't parse with those schemas (a new route needs a call there too). The demo's E2E runs in the Pages workflow on every pull request that touches `apps/api`, `apps/web` or `packages/shared`.
+- **The Storybook is public:** every merge that changes `apps/web` or `packages/` publishes it on GitHub Pages, at `https://chriscamilo.github.io/apc-universal-repair/storybook/` (`.github/workflows/pages.yml`), so a new story shows there once merged. Stories show their own sample data only: no API, browser storage or desktop bridge, which `apps/web/src/stories/Stories.test.ts` checks. The site's root page is `docs/site/index.html`.
+- **The web app's demo changes with the API,** in the same pull request. The demo on GitHub Pages (`/demo/`) answers the API in the browser (`apps/web/src/demo/demoApi.ts`), so adding, removing or changing an API route, or what it answers, changes the demo's stand-in too, and the route's entry in `@apc/domain/api-routes`, the list of routes and response schemas both follow. CI checks it: `apps/api/src/apiRoutes.test.ts` fails when the API's routes or their response schemas differ from the list, and `apps/web/src/demo/demoRoutes.test.ts` when the demo's routes differ from it or its answers don't parse with those schemas (a new route needs a call there too). The demo's E2E runs in the Pages workflow on every pull request that touches `apps/api`, `apps/web` or `packages/`.

@@ -16,7 +16,7 @@ Read these AGENTS.md sections before writing code: "Styles" (Files, `tv()`/`reci
    - Mobile: `createStyles('<scope>.<component>', slots, (theme) => ({ … }))`, then `style={styles.x} testID={ids.x}`; states as `<element><State>` keys.
    - Same ids for the same element on web and mobile.
    - No classes, `style={{…}}` or ids written in the JSX; only runtime values, through a style function in the style file.
-4. **Values from tokens** (`@apc/shared/theme`); named constants exported from the style file or put in `@apc/shared`; no white by day; overlays open and close in `scales.motion`.
+4. **Values from tokens** (`@apc/tokens/theme`); named constants exported from the style file or put in `@apc/tokens` or `@apc/ui-spec`; no white by day; overlays open and close in `scales.motion`.
 5. **Phone layout** below `card:` on web and always in the native app: page scrolls as a whole, forms full screen, choices in a bottom sheet, 44px touch targets (`scales.touch`), 16px text inputs.
 6. **Code layout:** imports → constants (A–Z) → types → functions (A–Z, JSDoc) → components.
 7. **Story** in Storybook with its own sample data only (no API, storage or desktop bridge): it is public on GitHub Pages.

@@ -9,8 +9,8 @@ AGENTS.md "General Contribution Notes" (the demo) and "Architecture Docs" are th
 
 ## A route or what it answers
 
-1. The route in the `routes/` folder of its feature in `apps/api/src` (`inventory/routes/items.ts`, `auth/routes/users.ts`…), with its tests beside it, with its Zod schemas from `packages/shared`.
-2. Its entry in `@apc/shared/api-routes` (the list of routes and response schemas).
+1. The route in the `routes/` folder of its feature in `apps/api/src` (`inventory/routes/items.ts`, `auth/routes/users.ts`…), with its tests beside it, with its Zod schemas from `@apc/domain`.
+2. Its entry in `@apc/domain/api-routes` (the list of routes and response schemas).
 3. The demo's stand-in in `apps/web/src/demo/demoApi.ts`, answering the same shape.
 4. A call for a new route in `apps/web/src/demo/demoRoutes.test.ts`.
 5. API tests (`API:` prefix).

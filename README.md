@@ -98,7 +98,9 @@ A **pnpm** + **Turborepo** monorepo:
 | `apps/mobile` | Mobile app — React Native 0.88, with VisionCamera to read the server's QR code |
 | `apps/desktop` | Windows desktop app — Electron 44 with the web build, packaged by electron-builder |
 | `apps/api` | API — Fastify 5, Zod, Prisma 7 on SQLite or PostgreSQL, with sharp to reduce the photos and make their thumbnails |
-| `packages/shared` | Zod schemas, rules, types and design tokens shared by web, mobile and API |
+| `packages/tokens` | Design tokens: theme, typography, icons and style ids, shared by web and mobile |
+| `packages/ui-spec` | Component contracts the web and mobile components follow alike |
+| `packages/domain` | Zod schemas, rules and types shared by web, mobile and API, with the API's route list |
 
 The [architecture overview](docs/architecture.md) shows how these parts fit together and the technologies each one uses, and the [database diagram](docs/database.md) shows the tables and how they relate.
 
@@ -120,7 +122,7 @@ pnpm --filter @apc/api db:seed            # adds the test users, the default lis
 pnpm dev                                  # API on :3333, web on :5173 (the desktop app's server is on :3000)
 ```
 
-Users live in the database: the seed adds the test users from `packages/shared/src/domain/auth/testUsers.ts`, such as `christian.camilo` / `opala4100` (test values only), and anyone can create an account with "Criar conta" on the login, giving a name, a username, an e-mail (only kept for now) and a password. Passwords are stored hashed. A login or sign-up starts a session: the API answers a token, which the app keeps on the device (localStorage on the web and the desktop, the keychain on the phone) and sends on every call. Every route but the health check, the login and the sign-up refuses a call without a live session, and the database keeps only the token's hash. A session lasts 7 days from its last use and ends on "Sair"; when it expires, the app goes back to the login and says so. Five wrong passwords for a username lock it from that address for 15 minutes, and an address gets 30 logins and 10 sign-ups every 15 minutes; past that, the login and the sign-up say how many minutes to wait. Photos load at paths the API signs for the session, since an image can't send the token.
+Users live in the database: the seed adds the test users from `packages/domain/src/auth/testUsers.ts`, such as `christian.camilo` / `opala4100` (test values only), and anyone can create an account with "Criar conta" on the login, giving a name, a username, an e-mail (only kept for now) and a password. Passwords are stored hashed. A login or sign-up starts a session: the API answers a token, which the app keeps on the device (localStorage on the web and the desktop, the keychain on the phone) and sends on every call. Every route but the health check, the login and the sign-up refuses a call without a live session, and the database keeps only the token's hash. A session lasts 7 days from its last use and ends on "Sair"; when it expires, the app goes back to the login and says so. Five wrong passwords for a username lock it from that address for 15 minutes, and an address gets 30 logins and 10 sign-ups every 15 minutes; past that, the login and the sign-up say how many minutes to wait. Photos load at paths the API signs for the session, since an image can't send the token.
 
 Before the first test run, download the browser that the component and E2E tests use:
 
@@ -138,7 +140,7 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm test:e2e` | Runs the web E2E tests at 1280×720 and 360×780 (starts the API and the web app) |
 | `pnpm --filter @apc/api start` | Starts the built API with Node (run `pnpm build` first) |
 | `pnpm --filter @apc/web test:e2e:ui` | Opens the Playwright UI to run and debug the tests |
-| `pnpm --filter @apc/web storybook` | Opens Storybook on :6006, with the design system foundations, components and screen mockups. Every merge that changes the web app or the shared package publishes it on GitHub Pages, in `/storybook/` (`.github/workflows/pages.yml`) |
+| `pnpm --filter @apc/web storybook` | Opens Storybook on :6006, with the design system foundations, components and screen mockups. Every merge that changes the web app or the shared packages publishes it on GitHub Pages, in `/storybook/` (`.github/workflows/pages.yml`) |
 | `pnpm --filter @apc/web build:demo` | Builds the web app's demo, which answers its API in the browser, in `apps/web/dist-demo/`; GitHub Pages publishes it in `/demo/` with the Storybook |
 | `pnpm --filter @apc/web test:e2e:demo` | Runs the demo's E2E tests on the Pages site put together in `site/` (`demo/` from the demo's build, with `docs/site/404.html`), as Pages serves it |
 | `pnpm --filter @apc/mobile start` | Starts the React Native bundler |
@@ -350,7 +352,9 @@ Monorepo com **pnpm** + **Turborepo**:
 | `apps/mobile` | App para celular — React Native 0.88, com o VisionCamera para ler o QR code do servidor |
 | `apps/desktop` | App desktop para Windows — Electron 44 com o build da web, empacotado pelo electron-builder |
 | `apps/api` | API — Fastify 5, Zod, Prisma 7 com SQLite ou PostgreSQL, e sharp para reduzir as fotos e fazer as miniaturas |
-| `packages/shared` | Schemas Zod, regras, tipos e tokens do design system compartilhados entre web, celular e API |
+| `packages/tokens` | Tokens do design system: tema, tipografia, ícones e ids de estilo, compartilhados entre web e celular |
+| `packages/ui-spec` | Contratos dos componentes que os componentes da web e do celular seguem igual |
+| `packages/domain` | Schemas Zod, regras e tipos compartilhados entre web, celular e API, com a lista de rotas da API |
 
 A [visão geral da arquitetura](docs/architecture.md#-português-brasil) mostra como essas partes se encaixam e as tecnologias de cada uma, e o [diagrama do banco](docs/database.md#-português-brasil) mostra as tabelas e como se relacionam.
 
@@ -372,7 +376,7 @@ pnpm --filter @apc/api db:seed            # adiciona os usuários de teste, as l
 pnpm dev                                  # API na porta 3333, web na 5173 (o servidor do app desktop fica na 3000)
 ```
 
-Os usuários ficam no banco: o seed cadastra os usuários de teste de `packages/shared/src/domain/auth/testUsers.ts`, como `christian.camilo` / `opala4100` (valores só de teste), e qualquer pessoa pode criar uma conta em "Criar conta" no login, informando nome, usuário, e-mail (só guardado por enquanto) e senha. As senhas são guardadas em hash. Um login ou cadastro abre uma sessão: a API responde um token, que o app guarda no aparelho (localStorage na web e no desktop, o keychain no celular) e envia em toda chamada. Toda rota, menos o health check, o login e o cadastro, recusa uma chamada sem uma sessão válida, e o banco guarda só o hash do token. Uma sessão dura 7 dias desde o último uso e termina no "Sair"; quando ela expira, o app volta para o login e avisa. Cinco senhas erradas para um usuário o bloqueiam a partir daquele endereço por 15 minutos, e um endereço tem 30 logins e 10 cadastros a cada 15 minutos; passando disso, o login e o cadastro dizem quantos minutos esperar. As fotos carregam por caminhos que a API assina para a sessão, já que uma imagem não consegue enviar o token.
+Os usuários ficam no banco: o seed cadastra os usuários de teste de `packages/domain/src/auth/testUsers.ts`, como `christian.camilo` / `opala4100` (valores só de teste), e qualquer pessoa pode criar uma conta em "Criar conta" no login, informando nome, usuário, e-mail (só guardado por enquanto) e senha. As senhas são guardadas em hash. Um login ou cadastro abre uma sessão: a API responde um token, que o app guarda no aparelho (localStorage na web e no desktop, o keychain no celular) e envia em toda chamada. Toda rota, menos o health check, o login e o cadastro, recusa uma chamada sem uma sessão válida, e o banco guarda só o hash do token. Uma sessão dura 7 dias desde o último uso e termina no "Sair"; quando ela expira, o app volta para o login e avisa. Cinco senhas erradas para um usuário o bloqueiam a partir daquele endereço por 15 minutos, e um endereço tem 30 logins e 10 cadastros a cada 15 minutos; passando disso, o login e o cadastro dizem quantos minutos esperar. As fotos carregam por caminhos que a API assina para a sessão, já que uma imagem não consegue enviar o token.
 
 Antes de rodar os testes pela primeira vez, baixe o navegador que os testes de componente e E2E usam:
 
@@ -390,7 +394,7 @@ pnpm --filter @apc/web exec playwright install chromium
 | `pnpm test:e2e` | Roda os testes E2E da web em 1280×720 e 360×780 (sobe a API e o app web) |
 | `pnpm --filter @apc/api start` | Sobe a API compilada com o Node (rode `pnpm build` antes) |
 | `pnpm --filter @apc/web test:e2e:ui` | Abre a interface do Playwright para rodar e depurar os testes |
-| `pnpm --filter @apc/web storybook` | Abre o Storybook na porta 6006, com as bases, os componentes e os mockups de tela do design system. Todo merge que muda o app web ou o pacote compartilhado o publica no GitHub Pages, em `/storybook/` (`.github/workflows/pages.yml`) |
+| `pnpm --filter @apc/web storybook` | Abre o Storybook na porta 6006, com as bases, os componentes e os mockups de tela do design system. Todo merge que muda o app web ou os pacotes compartilhados o publica no GitHub Pages, em `/storybook/` (`.github/workflows/pages.yml`) |
 | `pnpm --filter @apc/web build:demo` | Gera o build da demo do app web, que responde a API no navegador, em `apps/web/dist-demo/`; o GitHub Pages a publica em `/demo/` junto com o Storybook |
 | `pnpm --filter @apc/web test:e2e:demo` | Roda os testes E2E da demo no site do Pages montado em `site/` (`demo/` do build da demo, com o `docs/site/404.html`), como o Pages o serve |
 | `pnpm --filter @apc/mobile start` | Inicia o bundler do React Native |
