@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily, softAccent, softHairline, withAlpha } from '../theme';
+import { fontFamily, softAccent, softHairline, withAlpha } from '../app/theme';
 
 // The look of the photo field, the same as the web: the photos as square tiles, the first one marked as the cover,
 // each with a remove × on a dark chip that turns to the danger color while pressed; Tirar foto and Galeria sharing a

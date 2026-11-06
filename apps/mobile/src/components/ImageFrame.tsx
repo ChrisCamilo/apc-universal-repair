@@ -5,7 +5,7 @@ import { Icon } from './Icon';
 import { DEFAULT_RATIO, useStyles } from './ImageFrame.styles';
 import { useInPanel } from './Panel';
 import { Spinner } from './Spinner';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Text } from './Typography';
 
 // The car photo frame, the same as the web. It keeps its aspect ratio whatever the photo's size and never

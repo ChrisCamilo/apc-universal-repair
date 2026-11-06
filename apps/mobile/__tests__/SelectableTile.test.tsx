@@ -7,7 +7,7 @@ import { Image, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { SelectableTileGroup } from '../src/components/SelectableTile';
-import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 
 const BRANDS = ['Chevrolet', 'Volkswagen', 'Fiat'].map((name) => ({ value: name.toLowerCase(), label: name }));
 

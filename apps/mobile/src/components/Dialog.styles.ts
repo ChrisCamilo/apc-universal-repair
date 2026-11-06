@@ -2,7 +2,7 @@ import type { ViewStyle } from 'react-native';
 import { DIALOG_HEADER_HEIGHT, DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog';
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { softHairline, withAlpha } from '../theme';
+import { softHairline, withAlpha } from '../app/theme';
 
 // The look of a modal window, the same as the web: the panel with its sheen and hairline frame over a dimmed backdrop,
 // its content scrolling inside while the action bar stays pinned at the bottom under a soft hairline. A closable

@@ -2,7 +2,7 @@ import { BUTTON_SIZES } from '@apc/shared/button';
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { displayLabel, glow } from '../styles/shared';
-import { fontFamily, withAlpha } from '../theme';
+import { fontFamily, withAlpha } from '../app/theme';
 
 // The look of the buttons, the same variants and sizes as the web (see @apc/shared/button): pill shape and the display
 // face in uppercase with the style's tracking, except the link, which reads as inline text. Pressing shows what hover

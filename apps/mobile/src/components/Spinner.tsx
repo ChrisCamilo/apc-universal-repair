@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
-import { useReducedMotion } from '../motion';
+import { useReducedMotion } from '../app/motion';
 import { useStyles } from './Spinner.styles';
 
 // A ring with a gap, turning while something loads, the same as the web. "sm" matches body text, e.g. inside

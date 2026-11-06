@@ -14,7 +14,7 @@ import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
 import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorderContext';
 import { UserMenu } from '../src/dashboard/UserMenu';
-import { themeStorage, ThemeProvider, useTheme } from '../src/theme';
+import { themeStorage, ThemeProvider, useTheme } from '../src/app/theme';
 
 // A phone's screen with no notch, for the bottom sheet.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };

@@ -6,10 +6,10 @@ import { Button } from './Button';
 import { FilterChipGroup } from './FilterChip';
 import { PANEL_INSET, PANEL_MAX_WIDTH, useStyles } from './FilterMenu.styles';
 import { Icon } from './Icon';
-import { useOverlayMotion } from '../motion';
+import { useOverlayMotion } from '../app/motion';
 import { Panel } from './Panel';
 import { Select } from './Select';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { TourLayer } from './Tour';
 import { Label } from './Typography';
 

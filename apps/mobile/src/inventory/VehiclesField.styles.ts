@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { fieldStyles } from '../styles/shared';
-import { fontFamily, softAccent, softHairline } from '../theme';
+import { fontFamily, softAccent, softHairline } from '../app/theme';
 
 // The look of the vehicles in the item form, the same as the web: the chips wrap in rows, each a 44px soft accent pill
 // with the vehicle and a 44px muted × that brightens while pressed; the new vehicle's fields sit in a soft hairline

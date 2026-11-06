@@ -1,6 +1,6 @@
 import { SESSION_STORAGE_KEY } from '@apc/shared/auth'
 import { afterEach, expect, test } from 'vitest'
-import { readStored, removeStored } from '../storage.ts'
+import { readStored, removeStored } from '../app/storage.ts'
 import { DEMO_USER } from './demoData.ts'
 import { DemoNotice } from './DemoNotice.tsx'
 import { ROUTE_PARAM, startDemo } from './startDemo.ts'

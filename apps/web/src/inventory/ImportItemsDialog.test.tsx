@@ -7,9 +7,9 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { ToastProvider } from '../components/Toast.tsx'
-import '../fonts.ts'
+import '../app/fonts.ts'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { ImportItemsDialog } from './ImportItemsDialog.tsx'
 
 // The lists the API keeps: the Motor category, Mann, and Volkswagen with the Gol.

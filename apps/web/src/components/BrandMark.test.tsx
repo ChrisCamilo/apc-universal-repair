@@ -3,7 +3,7 @@ import { beforeAll, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import favicon from '../../public/favicon.svg?raw'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { BrandMark } from './BrandMark.tsx'
 
 const root = document.documentElement

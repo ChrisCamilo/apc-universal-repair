@@ -4,9 +4,9 @@ import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
 import { shownRows, sortFromValue, sortOptions, sortValue, type ShownRow, type Sort } from '@apc/shared/table';
 import { useRowActionStyles, useStyles, useThumbnailStyles } from './DataTable.styles';
 import { Icon } from './Icon';
-import { useOverlayMotion, useReducedMotion } from '../motion';
+import { useOverlayMotion, useReducedMotion } from '../app/motion';
 import { Select } from './Select';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Label } from './Typography';
 
 // The list of rows on a phone, the same as the web table below 720px: each row is a card (thumbnail |

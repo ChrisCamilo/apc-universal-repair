@@ -1,7 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { ICON_SIZES, type IconShape } from '@apc/shared/icons';
 import { Icon } from './Icon';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { useStyles } from './ToolButton.styles';
 
 // A round icon button of a phone's toolbar, the same as the web, such as the Inventory's Filtros and Ordenar, which

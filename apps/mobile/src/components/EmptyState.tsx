@@ -3,7 +3,7 @@ import { alertIcon, cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/ico
 import { Button } from './Button';
 import { useStyles } from './EmptyState.styles';
 import { Icon } from './Icon';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Heading, Text } from './Typography';
 
 // What a screen or panel shows when there is nothing to list, or when loading failed, the same as the web:

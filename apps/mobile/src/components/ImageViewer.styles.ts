@@ -3,7 +3,7 @@ import { DIALOG_SCREEN_INSET, DIALOG_WIDTHS } from '@apc/shared/dialog';
 import { popShadow, scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { roundStyles } from '../styles/shared';
-import { fontFamily, softHairline, withAlpha } from '../theme';
+import { fontFamily, softHairline, withAlpha } from '../app/theme';
 
 // The look of the photo viewer, the same as the web: a window on the panel over the dimmed backdrop; the item's name
 // and code over a 4:3 frame on the canvas that never grows past FRAME_MAX_SHARE of the screen's height; round arrows

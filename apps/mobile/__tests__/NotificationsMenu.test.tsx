@@ -13,7 +13,7 @@ import { TOAST_DURATION, TOAST_DURATION_STORAGE_KEY, TOAST_KIND_LOOKS } from '@a
 import { Button } from '../src/components/Button';
 import { Icon } from '../src/components/Icon';
 import { NotificationsMenu } from '../src/notifications/NotificationsMenu';
-import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 import { ToastProvider, useToast } from '../src/components/Toast';
 
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };

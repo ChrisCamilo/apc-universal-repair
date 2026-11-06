@@ -2,7 +2,7 @@ import { REGISTER_TITLE } from '@apc/shared/auth';
 import { DIALOG_HEADER_HEIGHT } from '@apc/shared/dialog';
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily } from '../theme';
+import { fontFamily } from '../app/theme';
 import { authScreenStyles } from './LoginScreen.styles';
 
 // The look of the sign-up screen, the same as the web's on a phone: a header with the back arrow and the title in a

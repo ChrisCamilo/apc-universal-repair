@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { softHairline, withAlpha } from '../theme';
+import { softHairline, withAlpha } from '../app/theme';
 
 // The look of the list of rows on a phone, the same as the web table below the card breakpoint: each row is a card
 // (lead | thumbnail | main | end and actions) on a soft hairline, the raised fill while pressed; a row that needs

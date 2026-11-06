@@ -2,7 +2,7 @@ import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { WorkInProgress } from './WorkInProgress.tsx'
 
 const root = document.documentElement

@@ -8,7 +8,7 @@ import { BottomBarItem } from '../dashboard/BottomBarItem';
 import { useBarStyles } from '../dashboard/Dashboard.styles';
 import { Dialog } from '../components/Dialog';
 import { Icon } from '../components/Icon';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { useToastDuration } from '../components/Toast';
 import { useSettingsStyles, useStyles } from './NotificationsMenu.styles';
 import { useNotifications } from './useNotifications';

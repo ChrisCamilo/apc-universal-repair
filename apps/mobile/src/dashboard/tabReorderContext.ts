@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
-import { save, themeStorage } from '../theme';
+import { save, themeStorage } from '../app/theme';
 
 /** The "Arrastar para reordenar" choice, shared by the Dashboard's tabs and the user menu that switches it. */
 export const TabReorderContext = createContext<TabReorder | null>(null);

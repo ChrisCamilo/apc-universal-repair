@@ -5,7 +5,7 @@ import { CodeScanner, type Barcode, type TargetBarcodeFormat } from 'react-nativ
 import { waitForDevice, type AuthService, type SessionUser } from '@apc/shared/auth';
 import { pencilIcon, qrIcon } from '@apc/shared/icons';
 import { readEntryCode, readFingerprint, readPairingLink, readServerAddress, type Pairing, type PairingInvite } from '@apc/shared/pairing';
-import { applyServer, currentServer, saveServer } from '../api';
+import { applyServer, currentServer, saveServer } from '../app/api';
 import { BackButton } from '../components/BackButton';
 import { Button } from '../components/Button';
 import { FieldScrollView } from '../components/FieldScrollView';

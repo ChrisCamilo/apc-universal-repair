@@ -2,7 +2,7 @@ import type { ViewStyle } from 'react-native';
 import { SHEET_HANDLE, SHEET_RADIUS, SHEET_TOP_INSET } from '@apc/shared/dialog';
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { softHairline, withAlpha } from '../theme';
+import { softHairline, withAlpha } from '../app/theme';
 
 // The look of a bottom sheet, the same as the web: a panel docked to the bottom edge, its top corners rounded, over
 // the dimmed backdrop of a dialog. The handle's bar sits on top, then the title row with an optional action, the

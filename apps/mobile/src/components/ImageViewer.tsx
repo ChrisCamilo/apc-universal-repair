@@ -9,8 +9,8 @@ import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import type { PickedPhoto, UploadPhoto } from './ImageUpload';
 import { FRAME_MAX_SHARE, useStyles, viewerBox } from './ImageViewer.styles';
-import { useOverlayMotion } from '../motion';
-import { useTheme } from '../theme';
+import { useOverlayMotion } from '../app/motion';
+import { useTheme } from '../app/theme';
 import { ToastProvider, useToast } from './Toast';
 import { Heading, NumericReadout, Text } from './Typography';
 

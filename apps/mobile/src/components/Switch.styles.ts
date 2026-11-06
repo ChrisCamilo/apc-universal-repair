@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { glow, menuItemStyles } from '../styles/shared';
-import { softAccent } from '../theme';
+import { softAccent } from '../app/theme';
 
 // The look of the on/off control, the same as the web: a pill track whose knob slides over to the accent when on,
 // glowing where the style has a glow. On its own it sits beside its label; inside a Menu it is a full-width menu item

@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { FIELD_DISABLED_OPACITY, fieldStyles, roundStyles } from '../styles/shared';
-import { fontFamily } from '../theme';
+import { fontFamily } from '../app/theme';
 
 // The look of the stepper, the same as the web: a 48px round − and + in the field's frame, lit in the accent while
 // pressed and dimmed when locked, and between them a 72px pill with the number centered, its frame in the accent while

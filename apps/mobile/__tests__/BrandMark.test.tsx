@@ -7,7 +7,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { Text } from 'react-native-svg';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { BrandMark } from '../src/components/BrandMark';
-import { fontFamily, themeStorage, ThemeProvider } from '../src/theme';
+import { fontFamily, themeStorage, ThemeProvider } from '../src/app/theme';
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.

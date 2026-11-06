@@ -49,7 +49,7 @@ import { TUTORIAL_CODE, type TutorialScreen } from '@apc/shared/inventory-tutori
 import { PAGE_SIZES, pageForSize, SCROLL_PAGE_SIZE } from '@apc/shared/pagination'
 import { sortValue, type Sort } from '@apc/shared/table'
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos'
-import { API_BASE } from '../api.ts'
+import { API_BASE } from '../app/api.ts'
 import { useSession } from '../auth/sessionContext.ts'
 import { ActionSheet } from '../components/ActionSheet.tsx'
 import { Button } from '../components/Button.tsx'

@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { roundStyles } from '../styles/shared';
-import { softAccent } from '../theme';
+import { softAccent } from '../app/theme';
 
 // The look of a round icon button in a phone's toolbar, the same as the web: a 44px pill on the panel with a hairline,
 // its frame in the accent while pressed. While what it opens is on, such as a filter, it takes the accent, its fill the

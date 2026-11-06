@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, type DimensionValue } from 'react-native';
-import { useReducedMotion } from '../motion';
+import { useReducedMotion } from '../app/motion';
 import { useStyles } from './Skeleton.styles';
 
 // A placeholder block in the shape of what is still loading, the same as the web: a soft hairline fill that

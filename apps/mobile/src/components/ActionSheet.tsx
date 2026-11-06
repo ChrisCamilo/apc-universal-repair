@@ -3,7 +3,7 @@ import { ICON_SIZES, type IconShape } from '@apc/shared/icons';
 import { useStyles } from './ActionSheet.styles';
 import { BottomSheet } from './BottomSheet';
 import { Icon } from './Icon';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 
 // A phone's list of actions in a bottom sheet, the same as the web, such as the Inventory's "⋯" (the Mais ações
 // mockup): a row per action, with its icon and its name. A press closes the sheet and runs the action, which may open a

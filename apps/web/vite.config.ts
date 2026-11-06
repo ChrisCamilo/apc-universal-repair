@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 import { DEV_SERVER_PORT } from '@apc/shared/server'
-import { themeBootScript, themeCss } from './src/theme.ts'
+import { themeBootScript, themeCss } from './src/app/theme.ts'
 
 // The module that gives the app the release it is built for (see releasePlugin and src/release.d.ts).
 const RELEASE_MODULE = 'virtual:apc-release'

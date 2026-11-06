@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { csvExportName, exportedSummary, exportItems, exportScope } from '@apc/shared/item-csv'
-import { API_BASE } from '../api.ts'
+import { API_BASE } from '../app/api.ts'
 import { Button } from '../components/Button.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { Switch } from '../components/Switch.tsx'

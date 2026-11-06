@@ -17,7 +17,7 @@ import { STYLES, MODES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import type { UploadPhoto } from '../src/components/ImageUpload';
 import { ItemFormDialog } from '../src/inventory/ItemFormDialog';
 import type { CreateListEntry } from '../src/inventory/useItemLists';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 

@@ -12,7 +12,7 @@ import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { Button } from '../src/components/Button';
 import { NotificationsMenu } from '../src/notifications/NotificationsMenu';
 import { useLowStockAlerts } from '../src/notifications/useLowStockAlerts';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { testItem } from '@apc/shared/test-items';
 

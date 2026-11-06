@@ -5,7 +5,7 @@ import { takePhotos, type PhotoFile } from '@apc/shared/photos';
 import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
 import { useStyles } from './ImageUpload.styles';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Label, Text } from './Typography';
 
 // The photo field of the item form, the same as the web on a phone. Photos show as thumbnails, the first one marked

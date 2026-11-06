@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { barItemStyles } from '../styles/shared';
-import { fontFamily, softHairline } from '../theme';
+import { fontFamily, softHairline } from '../app/theme';
 
 // The look of the Dashboard, the same as the web's on a phone (the Estoque mockup): the page on the canvas; on top, the
 // open tab's header, with the compact APC mark, the tab's name and the tab's "⋯", a bare 44px circle that fills in while

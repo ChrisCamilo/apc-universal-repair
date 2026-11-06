@@ -15,8 +15,8 @@ import {
   useStyles,
 } from './Menu.styles';
 import { MenuContext, useMenu } from './menuContext';
-import { useOverlayMotion } from '../motion';
-import { useTheme } from '../theme';
+import { useOverlayMotion } from '../app/motion';
+import { useTheme } from '../app/theme';
 
 // A dropdown menu, the same as the web (see Menu.styles.ts), such as the Dashboard's user menu: a trigger and a
 // popover anchored under it, kept inside the screen when the trigger isn't at its edge. Checkbox and radio items (Switch, Segmented) keep the menu open when chosen, and only

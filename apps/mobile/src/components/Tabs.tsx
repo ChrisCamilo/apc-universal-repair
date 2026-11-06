@@ -10,7 +10,7 @@ import { coneIcon, gripIcon, ICON_SIZES, type IconShape } from '@apc/shared/icon
 import { dropTab, initialTab, moveTab, type DropSide } from '@apc/shared/tabs';
 import { Icon } from './Icon';
 import { useStyles } from './Tabs.styles';
-import { save, themeStorage, useTheme } from '../theme';
+import { save, themeStorage, useTheme } from '../app/theme';
 
 // Top-level navigation of the Dashboard, the same as the web: the selected tab takes the accent with an
 // underline, which glows where the style has a glow; pressing shows what hover shows on the web. Pair it

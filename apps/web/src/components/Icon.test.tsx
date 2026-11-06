@@ -3,7 +3,7 @@ import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { Icon } from './Icon.tsx'
 
 const root = document.documentElement

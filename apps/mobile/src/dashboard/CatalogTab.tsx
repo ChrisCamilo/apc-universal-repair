@@ -23,7 +23,7 @@ import { Icon } from '../components/Icon';
 import { ImageFrame } from '../components/ImageFrame';
 import { Panel } from '../components/Panel';
 import { SearchField } from '../components/TextField';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { TreeView } from '../components/TreeView';
 import { Heading, NumericReadout, Text } from '../components/Typography';
 import { useItems } from '../inventory/useItems';

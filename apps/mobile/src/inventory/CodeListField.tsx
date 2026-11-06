@@ -4,7 +4,7 @@ import { closeIcon, ICON_SIZES } from '@apc/shared/icons';
 import { addCodes, codesInput } from '@apc/shared/item-form';
 import { useRevealField } from '../components/FieldScrollView';
 import { Icon } from '../components/Icon';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Label, Text } from '../components/Typography';
 import { REMOVE_HIT_SLOP, useStyles } from './CodeListField.styles';
 

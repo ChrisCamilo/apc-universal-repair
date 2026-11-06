@@ -3,7 +3,7 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { AboutDialog } from './AboutDialog.tsx'
 import { portugueseNotes, RELEASES_URL } from './releaseNotes.ts'
 

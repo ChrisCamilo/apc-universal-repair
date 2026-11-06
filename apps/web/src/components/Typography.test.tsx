@@ -2,9 +2,9 @@ import { MODES, scales, STYLES, themes } from '@apc/shared/theme'
 import { HEADING_LEVELS, HEADING_TRACKING, LABEL_TYPE } from '@apc/shared/typography'
 import { beforeAll, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
-import '../fonts.ts'
+import '../app/fonts.ts'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { Heading, Label, NumericReadout, Text } from './Typography.tsx'
 
 const root = document.documentElement

@@ -1,6 +1,6 @@
 import Svg, { Circle, Line, Path, Rect, Text } from 'react-native-svg';
 import { ids, NAME_SIZE, NAME_TRACKING, TAGLINE_SIZE, TAGLINE_TRACKING } from './BrandMark.styles';
-import { fontFamily, useTheme } from '../theme';
+import { fontFamily, useTheme } from '../app/theme';
 
 // APC brand mark, the same as the web's: an instrument-panel badge whose needle and inner rule take the active
 // accent, with everything else in the text colors, so it follows the style and mode. "badge" is the full logo

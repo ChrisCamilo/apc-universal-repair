@@ -8,7 +8,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { mechanicIcon } from '@apc/shared/icons';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Icon } from '../src/components/Icon';
-import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 import { WorkInProgress } from '../src/components/WorkInProgress';
 
 /**

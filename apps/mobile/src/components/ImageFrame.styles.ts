@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { softHairline } from '../theme';
+import { softHairline } from '../app/theme';
 
 // The look of the photo frame, the same as the web: the whole photo, letterboxed on the raised fill in a soft hairline,
 // hidden until it loads; a note with a picture when there is no photo. A frame in a panel takes the smaller tile

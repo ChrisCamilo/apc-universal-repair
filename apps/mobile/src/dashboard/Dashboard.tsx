@@ -6,7 +6,7 @@ import { BackButton } from '../components/BackButton';
 import { BrandMark } from '../components/BrandMark';
 import { Icon } from '../components/Icon';
 import { Tabs, useStoredTab } from '../components/Tabs';
-import { save, themeStorage, useTheme } from '../theme';
+import { save, themeStorage, useTheme } from '../app/theme';
 import { WorkInProgress } from '../components/WorkInProgress';
 import { CatalogTab } from './CatalogTab';
 import { MARK_SIZE, useBarStyles, useStyles } from './Dashboard.styles';

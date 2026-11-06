@@ -5,7 +5,7 @@ import { beforeAll, expect, test } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { SelectableTileGroup } from './SelectableTile.tsx'
 
 const BRANDS = ['Chevrolet', 'Volkswagen', 'Fiat'].map((name) => ({ value: name.toLowerCase(), label: name }))

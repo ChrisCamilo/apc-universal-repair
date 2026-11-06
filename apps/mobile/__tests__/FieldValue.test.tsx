@@ -8,7 +8,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { FieldValue } from '../src/components/FieldValue';
 import { TextField } from '../src/components/TextField';
-import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.

@@ -1,7 +1,7 @@
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme'
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import './index.css'
+import '../index.css'
 import { themeBootScript, themeCss } from './theme.ts'
 import { ThemeProvider } from './ThemeProvider.tsx'
 import { useTheme } from './useTheme.ts'

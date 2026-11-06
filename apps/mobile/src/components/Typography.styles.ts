@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { HEADING_LEVELS, HEADING_TRACKING, LABEL_TYPE, READOUT_TYPE, TONES, type HeadingLevel, type TextSize, type Tone } from '@apc/shared/typography';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily, type ActiveTheme } from '../theme';
+import { fontFamily, type ActiveTheme } from '../app/theme';
 
 // The look of the text primitives, the same as the web, on the type scale of @apc/shared/typography. Each weight is its
 // own bundled font file, so the weight goes into fontFamily() instead of fontWeight. Tones, heading levels and text

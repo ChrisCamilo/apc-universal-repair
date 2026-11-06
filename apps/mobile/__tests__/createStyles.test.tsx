@@ -6,7 +6,7 @@ import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { createStyles, type Styled } from '../src/styles/createStyles';
-import { themeStorage, ThemeProvider, useTheme, type ActiveTheme } from '../src/theme';
+import { themeStorage, ThemeProvider, useTheme, type ActiveTheme } from '../src/app/theme';
 
 // A recipe like PartResults': the box, its parts and a part's code are elements with a style id; a chosen part is a
 // state of the part. Each build is counted.

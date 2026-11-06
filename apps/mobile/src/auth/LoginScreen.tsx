@@ -9,7 +9,7 @@ import { Dialog } from '../components/Dialog';
 import { FieldScrollView } from '../components/FieldScrollView';
 import { Icon } from '../components/Icon';
 import { TextField } from '../components/TextField';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Text } from '../components/Typography';
 import { DevicePending } from './DevicePending';
 import { useStyles } from './LoginScreen.styles';

@@ -15,7 +15,7 @@ import { Menu, MenuItem } from '../src/components/Menu';
 import { Segmented } from '../src/components/Segmented';
 import { Select } from '../src/components/Select';
 import { TextField } from '../src/components/TextField';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 /** The trees each test renders, unmounted after it. */
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];

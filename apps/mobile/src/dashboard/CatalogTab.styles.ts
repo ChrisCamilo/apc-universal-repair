@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { displayLabel } from '../styles/shared';
-import { fontFamily, softHairline } from '../theme';
+import { fontFamily, softHairline } from '../app/theme';
 
 // The look of the Catalog tab, the same as the web's on a phone (the "Catálogo no celular" mockup): one screen at a
 // time, scrolling under the header. A section's heading, such as "Marcas · 4", is small and muted in the display face.

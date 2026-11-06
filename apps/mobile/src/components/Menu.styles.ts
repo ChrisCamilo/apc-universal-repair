@@ -2,7 +2,7 @@ import { MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { displayLabel, menuItemStyles } from '../styles/shared';
-import { fontFamily, softAccent, softHairline } from '../theme';
+import { fontFamily, softAccent, softHairline } from '../app/theme';
 
 // The look of the dropdown menu, the same as the web: a pill trigger that lights up in the accent while open, its
 // chevron turning, and a panel with the sheen under it. Inside it: a header, small section labels, action items, and

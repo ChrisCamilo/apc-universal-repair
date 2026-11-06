@@ -5,7 +5,7 @@ import { brandPlaceText, originalCodesText, positionSideText, vehiclesText } fro
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { Icon } from '../components/Icon';
 import { ImageUpload, type UploadPhoto } from '../components/ImageUpload';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { useStyles } from './ItemDetails.styles';
 import { pickPhotos, takePhoto } from './photos';
 

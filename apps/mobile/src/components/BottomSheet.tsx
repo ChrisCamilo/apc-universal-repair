@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SHEET_CLOSE_DRAG } from '@apc/shared/dialog';
 import { sheetBox, sheetEnd, useStyles } from './BottomSheet.styles';
 import { FieldScrollView } from './FieldScrollView';
-import { useOverlayMotion } from '../motion';
+import { useOverlayMotion } from '../app/motion';
 import { TourLayer } from './Tour';
 import { Heading } from './Typography';
 

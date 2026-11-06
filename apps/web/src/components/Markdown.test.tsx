@@ -3,7 +3,7 @@ import { beforeAll, expect, test } from 'vitest'
 import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { Markdown } from './Markdown.tsx'
 
 beforeAll(async () => {

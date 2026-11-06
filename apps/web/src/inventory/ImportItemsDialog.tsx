@@ -12,7 +12,7 @@ import {
   type CsvItems,
 } from '@apc/shared/item-csv'
 import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/shared/lists'
-import { API_BASE } from '../api.ts'
+import { API_BASE } from '../app/api.ts'
 import { Button } from '../components/Button.tsx'
 import { Dialog } from '../components/Dialog.tsx'
 import { useToast } from '../components/toastContext.ts'

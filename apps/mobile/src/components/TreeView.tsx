@@ -4,9 +4,9 @@ import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { ancestors, canOpen, isLeaf, type TreeNode } from '@apc/shared/tree';
 import { Icon } from './Icon';
-import { useReducedMotion } from '../motion';
+import { useReducedMotion } from '../app/motion';
 import { Divider } from './Panel';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { useStyles } from './TreeView.styles';
 
 // Opens and closes a branch's children: their rows fade in or out while the rows below slide.

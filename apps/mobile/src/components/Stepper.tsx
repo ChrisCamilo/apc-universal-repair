@@ -4,7 +4,7 @@ import { ICON_SIZES, minusIcon, plusIcon, type IconShape } from '@apc/shared/ico
 import { useRevealField } from './FieldScrollView';
 import { Icon } from './Icon';
 import { useStyles } from './Stepper.styles';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Label, Text } from './Typography';
 
 // A whole number between a − and a +, the same as the web, such as an item's minimum stock (see Stepper.styles.ts):

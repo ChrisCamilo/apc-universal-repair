@@ -1,6 +1,6 @@
 import { scales, sheenGradient } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { softHairline } from '../theme';
+import { softHairline } from '../app/theme';
 
 // The look of the surfaces the Dashboard nests, the same as the web: every panel pads its content and has the soft
 // hairline; an outer panel takes the panel radius and the top sheen, a nested one the smaller tile radius and no

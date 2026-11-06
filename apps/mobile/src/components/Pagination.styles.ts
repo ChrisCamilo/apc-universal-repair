@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { glow } from '../styles/shared';
-import { fontFamily, softHairline } from '../theme';
+import { fontFamily, softHairline } from '../app/theme';
 
 // The look of the pagination, the same as the web: the page size, the range and the page buttons under a soft hairline,
 // wrapping on a phone. The current page fills with the accent and glows where the style has a glow; pressing a page

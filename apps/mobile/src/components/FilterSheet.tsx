@@ -9,7 +9,7 @@ import { Button } from './Button';
 import { useStyles } from './FilterSheet.styles';
 import { Icon } from './Icon';
 import { Segmented } from './Segmented';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 
 // A list's filters and sort in a bottom sheet, the same as the web on a phone (the Filtros mockup). "Ordenar por" comes
 // first, then a row per filter with what it has chosen ("Todas", "Freios", "Freios +2"), in the accent once something

@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { fieldStyles } from '../styles/shared';
-import { fontFamily, softHairline } from '../theme';
+import { fontFamily, softHairline } from '../app/theme';
 
 // The look of a field of codes typed as chips, the same as the web: the field's frame, which grows into rows of chips,
 // each code in mono in a soft pill with its ×, a code with a message in the danger color, the input after the chips,

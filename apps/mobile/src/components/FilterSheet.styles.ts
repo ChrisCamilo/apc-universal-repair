@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { displayLabel } from '../styles/shared';
-import { fontFamily, softHairline } from '../theme';
+import { fontFamily, softHairline } from '../app/theme';
 
 // The look of a phone's filter sheet, the same as the web (the Filtros mockup): full-width 56px rows under soft
 // hairlines, each with its label, its value (muted, or in the accent once chosen) and a chevron; the sort's row leads

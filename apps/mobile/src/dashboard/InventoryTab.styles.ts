@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { displayLabel, glow } from '../styles/shared';
-import { fontFamily } from '../theme';
+import { fontFamily } from '../app/theme';
 
 // The look of the Inventory tab, the same as the web on a phone (the Estoque mockup): on the canvas, with no panel
 // around it, one column that scrolls as a whole (the toolbar, the filters and the cards), ending clear

@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { DISABLED_OPACITY } from '../components/Button.styles';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily, softAccent, softHairline } from '../theme';
+import { fontFamily, softAccent, softHairline } from '../app/theme';
 
 // The look of the notifications, the same as the web's on a phone: in their full screen, the toast's time on top,
 // between a − and a + button 44px for a finger, then the latest notifications, each with its kind's icon in the kind's

@@ -3,7 +3,7 @@ import { AppState, Linking } from 'react-native';
 import app from '../../package.json';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
-import { save, themeStorage } from '../theme';
+import { save, themeStorage } from '../app/theme';
 import { Text } from '../components/Typography';
 import {
   dayKey,

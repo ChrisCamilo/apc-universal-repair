@@ -9,7 +9,7 @@ import { MenuContext } from '../components/menuContext';
 import { Divider } from '../components/Panel';
 import { Segmented } from '../components/Segmented';
 import { Switch } from '../components/Switch';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { BottomBarItem } from './BottomBarItem';
 import { useBarStyles } from './Dashboard.styles';
 import { useStyles } from './UserMenu.styles';

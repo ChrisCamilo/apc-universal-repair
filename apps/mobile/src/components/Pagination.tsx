@@ -6,7 +6,7 @@ import { scales } from '@apc/shared/theme';
 import { Icon } from './Icon';
 import { useStyles } from './Pagination.styles';
 import { Segmented } from './Segmented';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Label, NumericReadout } from './Typography';
 
 // Page navigation for long lists, the same as the web: the page size selector, the range shown ("1–25 de

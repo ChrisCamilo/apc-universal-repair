@@ -10,9 +10,9 @@ import { Dialog } from '../src/components/Dialog';
 import { FilterMenu } from '../src/components/FilterMenu';
 import { ImageViewer } from '../src/components/ImageViewer';
 import { Menu, MenuItem } from '../src/components/Menu';
-import { useOverlayMotion, type OverlayMove } from '../src/motion';
+import { useOverlayMotion, type OverlayMove } from '../src/app/motion';
 import { Select } from '../src/components/Select';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 
 // How the dialogs, the photo viewer, the menus, the filter panel and the fields' lists open and close (see motion.ts).

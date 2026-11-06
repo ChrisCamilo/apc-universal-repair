@@ -12,9 +12,9 @@ import {
   type ToastKind,
 } from '@apc/shared/toast';
 import { Icon } from './Icon';
-import { useReducedMotion } from '../motion';
+import { useReducedMotion } from '../app/motion';
 import { KIND_STYLES, TOAST_OFFSET, TOAST_RISE, useStyles } from './Toast.styles';
-import { save, themeStorage, useTheme } from '../theme';
+import { save, themeStorage, useTheme } from '../app/theme';
 
 // Short messages at the bottom of the screen, each of a kind, the same as the web: success ("Item adicionado"), error
 // ("Não foi possível …"), info or warning, in a pill of the kind's color with its icon. Screen readers read an error

@@ -2,7 +2,7 @@ import { ICON_SIZES } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { displayLabel, glow } from '../styles/shared';
-import { fontFamily, softAccent } from '../theme';
+import { fontFamily, softAccent } from '../app/theme';
 
 // The look of the tree, the same as the web: rows in the display face at the top level, the body face in between and
 // the mono face for the leaves; the selected or highlighted row on the soft accent with an accent rule on its left;

@@ -3,9 +3,9 @@ import { Animated, Pressable, Text, View } from 'react-native';
 import { selectionSummary, toggleValue } from '@apc/shared/filters';
 import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/shared/icons';
 import { Icon } from './Icon';
-import { useOverlayMotion } from '../motion';
+import { useOverlayMotion } from '../app/motion';
 import { useStyles } from './Select.styles';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 
 // A pick-only dropdown, the same as the web: at most SELECT_VISIBLE_OPTIONS options show at once and the
 // rest scroll. On a phone the list opens right under the button and pushes what follows down, so it works

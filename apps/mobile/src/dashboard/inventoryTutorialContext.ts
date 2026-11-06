@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial';
-import { themeStorage } from '../theme';
+import { themeStorage } from '../app/theme';
 
 /** The Inventory tutorial's state, shared by the Inventory tab that runs it and the user menu that replays it. */
 export const InventoryTutorialContext = createContext<InventoryTutorialChoice | null>(null);

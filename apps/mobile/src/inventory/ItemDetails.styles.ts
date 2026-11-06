@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { displayLabel } from '../styles/shared';
-import { fontFamily, softAccent, softHairline } from '../theme';
+import { fontFamily, softAccent, softHairline } from '../app/theme';
 
 // The look of an item's details, the same as the web on a phone (the Detalhes mockup), inside the Dialog that fills
 // the screen: the photos, or a dashed frame saying there are none; the category as an accent chip over the name; two

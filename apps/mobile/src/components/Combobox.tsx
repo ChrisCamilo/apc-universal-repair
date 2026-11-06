@@ -5,8 +5,8 @@ import { capitalizeFirst, findOption, matchingOptions } from '@apc/shared/items'
 import { CHEVRON_HIT_SLOP, useStyles } from './Combobox.styles';
 import { useRevealField } from './FieldScrollView';
 import { Icon } from './Icon';
-import { useOverlayMotion } from '../motion';
-import { useTheme } from '../theme';
+import { useOverlayMotion } from '../app/motion';
+import { useTheme } from '../app/theme';
 import { Label, Text } from './Typography';
 
 // A text field with a list of options that filters as the user types, the same as the web: case and accents

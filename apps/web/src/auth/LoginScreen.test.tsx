@@ -8,7 +8,7 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
-import { themeCss } from '../theme.ts'
+import { themeCss } from '../app/theme.ts'
 import { LoginScreen } from './LoginScreen.tsx'
 
 // A login that keeps no session and answers at once.

@@ -8,7 +8,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { ImageUpload, type PickedPhoto, type UploadPhoto } from '../src/components/ImageUpload';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 const MB = 1024 * 1024;
 const SAVED: UploadPhoto[] = ['a', 'b', 'c'].map((name) => ({ url: `file:///saved/${name}.jpg` }));

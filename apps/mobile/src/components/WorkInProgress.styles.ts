@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { withAlpha } from '../theme';
+import { withAlpha } from '../app/theme';
 
 // The look of a screen still being built, the same as the web: its content stays in place under the canvas tint of
 // the dialogs' backdrop, and a panel near the top, centered, holds the mechanic, the title and the note. React Native

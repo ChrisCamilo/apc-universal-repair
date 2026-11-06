@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily, softHairline } from '../theme';
+import { fontFamily, softHairline } from '../app/theme';
 
 // The look of a phone's sheet of actions, the same as the web (the Mais ações mockup): full-width 56px rows, each with
 // its muted icon and its name, soft hairlines between them, the raised fill while pressed, and room under the last

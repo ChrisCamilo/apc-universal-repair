@@ -17,7 +17,7 @@ import { findEntry, type ItemListKind, type ItemLists } from '@apc/shared/lists'
 import { Button } from '../components/Button';
 import { Combobox } from '../components/Combobox';
 import { Icon } from '../components/Icon';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Label, Text } from '../components/Typography';
 import { useStyles } from './VehiclesField.styles';
 

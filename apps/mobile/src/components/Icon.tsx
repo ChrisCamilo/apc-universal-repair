@@ -1,7 +1,7 @@
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { ICON_SIZES, ICON_STROKE, ICON_VIEWBOX, type IconShape } from '@apc/shared/icons';
 import { ids } from './Icon.styles';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 
 // Draws a shared icon with react-native-svg. Without a color it takes the active theme's text color;
 // pass another token color (theme.colors.accent…) to tint it.

@@ -10,7 +10,7 @@ import { MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { Icon } from '../src/components/Icon';
 import { Tabs, useStoredTab } from '../src/components/Tabs';
-import { themeStorage, ThemeProvider, withAlpha } from '../src/theme';
+import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 
 const IDS = ['stock', 'catalog'] as const;
 const STORAGE_KEY = 'apc-tab-test';

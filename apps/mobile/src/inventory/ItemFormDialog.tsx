@@ -32,7 +32,7 @@ import {
 } from '@apc/shared/item-form';
 import { ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists';
 import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/shared/photos';
-import { apiUrl } from '../api';
+import { apiUrl } from '../app/api';
 import { Button } from '../components/Button';
 import { Combobox } from '../components/Combobox';
 import { Dialog } from '../components/Dialog';

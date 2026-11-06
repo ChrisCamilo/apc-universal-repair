@@ -11,7 +11,7 @@ import {
   type CsvItems,
 } from '@apc/shared/item-csv';
 import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/shared/lists';
-import { apiUrl } from '../api';
+import { apiUrl } from '../app/api';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
 import { useToast } from '../components/Toast';

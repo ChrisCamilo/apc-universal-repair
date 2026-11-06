@@ -12,7 +12,7 @@ import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Styl
 import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
 import { Button } from '../src/components/Button';
 import { Dialog } from '../src/components/Dialog';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider, useToast } from '../src/components/Toast';
 import { TOAST_RISE } from '../src/components/Toast.styles';
 

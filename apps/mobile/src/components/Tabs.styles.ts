@@ -1,7 +1,7 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
 import { barItemStyles, displayLabel, glow } from '../styles/shared';
-import { fontFamily, withAlpha } from '../theme';
+import { fontFamily, withAlpha } from '../app/theme';
 
 // The look of the tabs, the same as the web: labels in the muted display face, the selected one in the accent over an
 // accent underline that glows where the style has a glow; pressing shows what hover shows on the web; a count in a pill

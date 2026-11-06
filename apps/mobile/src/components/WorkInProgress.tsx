@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { ICON_SIZES, mechanicIcon } from '@apc/shared/icons';
 import { Icon } from './Icon';
 import { Panel } from './Panel';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Heading, Text } from './Typography';
 import { useStyles } from './WorkInProgress.styles';
 

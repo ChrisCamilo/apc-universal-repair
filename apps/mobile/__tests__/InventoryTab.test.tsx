@@ -21,7 +21,7 @@ import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { InventoryTab } from '../src/dashboard/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/dashboard/inventoryTutorialContext';
 import { MoreActionsContext } from '../src/dashboard/moreActionsContext';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 
 // A photo the API saved, as items carry it.

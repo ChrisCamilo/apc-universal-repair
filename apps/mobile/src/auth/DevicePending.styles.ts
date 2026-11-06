@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { fontFamily, softHairline } from '../theme';
+import { fontFamily, softHairline } from '../app/theme';
 
 // The look of the notice of a phone waiting for authorization, above the login or sign-up form, as the web's: a soft
 // tile with the message, the phone's short code large in the mono face, spaced to read out, and what to do on the

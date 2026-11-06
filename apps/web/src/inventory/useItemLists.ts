@@ -12,7 +12,7 @@ import {
   type ItemLists,
   type ListEntry,
 } from '@apc/shared/lists'
-import { API_BASE } from '../api.ts'
+import { API_BASE } from '../app/api.ts'
 
 // Loads the lists the item form picks from (categories, part brands, vehicle brands and vehicle models), creates
 // new names in them, renames, merges and deletes, keeping each change in the lists at once, and loads them again on

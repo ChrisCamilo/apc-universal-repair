@@ -9,7 +9,7 @@ import { MODES, scales, sheenGradient, STYLES, THEME_STORAGE_KEYS, themes, type 
 import { ImageFrame } from '../src/components/ImageFrame';
 import { Divider, Panel } from '../src/components/Panel';
 import { Spinner } from '../src/components/Spinner';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 // The panels the tests nest, by their place in render order: the outer one, then the ones inside it.
 // The style id of a photo frame.

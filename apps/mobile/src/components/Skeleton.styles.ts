@@ -1,6 +1,6 @@
 import { scales } from '@apc/shared/theme';
 import { createStyles } from '../styles/createStyles';
-import { softHairline } from '../theme';
+import { softHairline } from '../app/theme';
 
 // The look of a loading placeholder, the same as the web: a soft hairline fill that pulses gently, standing still
 // with reduced motion. Lines are pills, blocks take the tile radius and circles are round. Its size comes from the

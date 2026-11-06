@@ -6,7 +6,7 @@ import { BackButton } from './BackButton';
 import { CloseButton } from './CloseButton';
 import { fillEdges, useStyles, windowBox } from './Dialog.styles';
 import { FieldScrollView } from './FieldScrollView';
-import { useOverlayMotion } from '../motion';
+import { useOverlayMotion } from '../app/motion';
 import { ToastLayer } from './Toast';
 import { TourLayer } from './Tour';
 import { Heading } from './Typography';

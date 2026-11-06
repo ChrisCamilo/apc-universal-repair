@@ -10,7 +10,7 @@ import type { Item } from '@apc/shared/items';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { CatalogTab } from '../src/dashboard/CatalogTab';
 import { PhoneHeaderContext, type PhoneHeader } from '../src/dashboard/phoneHeaderContext';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 
 const OPALA_41 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1'];

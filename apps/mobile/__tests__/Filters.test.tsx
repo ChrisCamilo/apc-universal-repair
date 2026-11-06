@@ -15,8 +15,8 @@ import { FilterChip, FilterChipGroup } from '../src/components/FilterChip';
 import { ClearFilters, FilterMenu } from '../src/components/FilterMenu';
 import { FilterSheet, SortSheet } from '../src/components/FilterSheet';
 import { Select } from '../src/components/Select';
-import { withAlpha } from '../src/theme';
-import { themeStorage, ThemeProvider } from '../src/theme';
+import { withAlpha } from '../src/app/theme';
+import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToolButton } from '../src/components/ToolButton';
 
 const CATEGORIES = ['Arrefecimento', 'Elétrica', 'Freios', 'Ignição', 'Motor', 'Suspensão', 'Transmissão'].map(

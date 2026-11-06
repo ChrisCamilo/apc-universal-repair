@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { Item } from '@apc/shared/items'
 import { lowStockAlerts, lowStockKey, lowStockMessage, readLowStockWarned } from '@apc/shared/notifications'
 import { useNotify, useToast } from '../components/toastContext.ts'
-import { readStored, writeStored } from '../storage.ts'
+import { readStored, writeStored } from '../app/storage.ts'
 
 /**
  * Warns about the items that reach their minimum stock, once while they stay there: each time the stock loads, the

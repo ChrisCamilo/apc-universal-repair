@@ -5,7 +5,7 @@ import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icon
 import { useRevealField } from './FieldScrollView';
 import { Icon } from './Icon';
 import { TRAILING_HIT_SLOP, useSearchStyles, useStyles } from './TextField.styles';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 import { Label, Text } from './Typography';
 
 // The pill-shaped inputs, the same as the web (see TextField.styles.ts). Each field kind sets the keyboard, autofill

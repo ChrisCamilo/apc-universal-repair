@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { initialTab } from '@apc/shared/tabs'
-import { readStored, writeStored } from '../storage.ts'
+import { readStored, writeStored } from '../app/storage.ts'
 
 /**
  * Holds the selected tab and remembers it, so the page reopens on the last tab used.

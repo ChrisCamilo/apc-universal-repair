@@ -9,7 +9,7 @@ import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Styl
 import { Button } from '../src/components/Button';
 import { DISABLED_OPACITY } from '../src/components/Button.styles';
 import { Spinner } from '../src/components/Spinner';
-import { fontFamily, themeStorage, ThemeProvider } from '../src/theme';
+import { fontFamily, themeStorage, ThemeProvider } from '../src/app/theme';
 
 /**
  * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.

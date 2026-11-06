@@ -3,7 +3,7 @@ import { closeIcon } from '@apc/shared/icons';
 import { scales } from '@apc/shared/theme';
 import { useStyles } from './CloseButton.styles';
 import { Icon } from './Icon';
-import { useTheme } from '../theme';
+import { useTheme } from '../app/theme';
 
 // The round × that closes a window, such as the photo viewer or a dialog, the same as the web (see
 // CloseButton.styles.ts), named "Fechar".

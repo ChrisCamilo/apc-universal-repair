@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './fonts.ts'
+import './app/fonts.ts'
 import './index.css'
 import { ToastProvider } from './components/Toast.tsx'
-import { ThemeProvider } from './ThemeProvider.tsx'
-import App from './App.tsx'
+import { ThemeProvider } from './app/ThemeProvider.tsx'
+import App from './app/App.tsx'
 
 // The demo's build (VITE_DEMO) answers /api in the browser, with no server, logs its user in and shows its notice (see
 // src/demo/startDemo.ts); the app's own build leaves it out, which its build script checks.
