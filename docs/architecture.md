@@ -44,7 +44,7 @@ flowchart LR
     api -- "photos reduced to WebP + thumbnails" --> files
 ```
 
-## Shared package · Pacote compartilhado
+## Shared packages · Pacotes compartilhados
 
 Everything web, mobile and API must agree on lives in three packages, imported by subpath (e.g. `@apc/domain/items`): `@apc/tokens`, the design system's values (theme, typography, icons, style ids and the style guard); `@apc/ui-spec`, the component contracts the web and mobile components follow alike; and `@apc/domain`, the rules, one folder per feature (`auth`, `devices`, `catalog`, `notifications`, `inventory`), and in `platform/` the route list, the list query (sort, page sizes, filter values), the server's ports and pairing, the schemas and the test tags. `@apc/ui-spec` depends on `@apc/tokens` only, `@apc/domain` on neither, and the API on `@apc/domain` alone; a domain module that needs a shape a contract has (a tree's node, a toast's kind, a tour's step) keeps its own, which the contract accepts. Each `exports` map gives each module its subpath, so an import never names the folder.
 
