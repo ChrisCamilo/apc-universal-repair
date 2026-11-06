@@ -1,8 +1,8 @@
-import type { FilterValues } from "../filters/filters.ts";
-import { EMPTY_ITEM_FILTERS } from "../items/itemFilters.ts";
-import { formValue, itemFormOf, parsePrice, withFormValues, type FormField, type ItemForm } from "../items/itemForm.ts";
-import { matchesSearch, optionKey, type Item } from "../items/items.ts";
-import type { TourStep } from "./tour.ts";
+import type { FilterValues } from "../../ui/filters/filters.ts";
+import { EMPTY_ITEM_FILTERS } from "./itemFilters.ts";
+import { formValue, itemFormOf, parsePrice, withFormValues, type FormField, type ItemForm } from "./itemForm.ts";
+import { matchesSearch, optionKey, type Item } from "./items.ts";
+import type { TourStep } from "../../ui/tour/tour.ts";
 
 // The Inventory tutorial, shared by web and mobile: a guided tour in three parts that creates a test item, finds it
 // with the search and the filters, edits it (to a low, then an out-of-stock row) and deletes it. Each platform

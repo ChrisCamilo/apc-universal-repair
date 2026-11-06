@@ -1,5 +1,5 @@
-import { distinct } from "../items/itemForm.ts";
-import { optionKey, type Item } from "../items/items.ts";
+import { distinct } from "./itemForm.ts";
+import { optionKey, type Item } from "./items.ts";
 import type { ItemLists } from "./lists.ts";
 
 // The lists that hold what some items use, for the tests of web, mobile and the E2E stand-ins, which answer the

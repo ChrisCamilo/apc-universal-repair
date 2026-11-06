@@ -21,7 +21,7 @@ import {
   type POSITIONS,
   type SIDES,
 } from "./items.ts";
-import { findEntry, type ItemLists } from "../lists/lists.ts";
+import { findEntry, type ItemLists } from "./lists.ts";
 
 // The item form shared by web and mobile, for creating and editing an inventory item: what the item's brands share
 // (name, category, the vehicles it fits, each a vehicle brand with its model or any model, position, side, minimum

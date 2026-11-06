@@ -1,5 +1,5 @@
-import type { FilterValues } from "../filters/filters.ts";
-import { sortOptions, type Sort, type SortColumn } from "../table/table.ts";
+import type { FilterValues } from "../../ui/filters/filters.ts";
+import { sortOptions, type Sort, type SortColumn } from "../../ui/table/table.ts";
 import {
   ITEM_LIST_FIELDS,
   type ItemListKind,
@@ -7,7 +7,7 @@ import {
   type ListEntry,
   type ListEntryChange,
   type VehicleModel,
-} from "../lists/lists.ts";
+} from "./lists.ts";
 import { distinct, POSITION_CHOICES, SIDE_CHOICES } from "./itemForm.ts";
 import {
   includeBoth,

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { EMPTY_ITEM_FILTERS } from "../items/itemFilters.ts";
-import { EMPTY_ITEM_FORM, itemFormOf, withFormValues } from "../items/itemForm.ts";
-import type { Item } from "../items/items.ts";
-import { testItem } from "../items/testItems.ts";
+import { EMPTY_ITEM_FILTERS } from "./itemFilters.ts";
+import { EMPTY_ITEM_FORM, itemFormOf, withFormValues } from "./itemForm.ts";
+import type { Item } from "./items.ts";
+import { testItem } from "./testItems.ts";
 import {
   filtersHave,
   formHas,
@@ -15,7 +15,7 @@ import {
   TUTORIAL_PHONE_FILTERS,
   type TutorialScreen,
 } from "./inventoryTutorial.ts";
-import { stepHeader } from "./tour.ts";
+import { stepHeader } from "../../ui/tour/tour.ts";
 
 // The test item as the API would send it back.
 const SAVED: Item = testItem({

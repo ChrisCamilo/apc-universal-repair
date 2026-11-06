@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ItemPhoto } from "../items/items.ts";
+import type { ItemPhoto } from "./items.ts";
 import {
   copiedPhotos,
   fitPhoto,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
-import { findEntry, listName, type ItemLists, type ListEntry } from "../lists/lists.ts";
+import { findEntry, listName, type ItemLists, type ListEntry } from "./lists.ts";
 import { addCodes, ITEM_FORM_MESSAGES, parsePrice, priceInput } from "./itemForm.ts";
 import {
   capitalizeFirst,

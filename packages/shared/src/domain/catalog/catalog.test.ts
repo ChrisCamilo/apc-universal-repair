@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Item } from "../items/items.ts";
-import type { TreeNode } from "../tree/tree.ts";
+import type { Item } from "../inventory/items.ts";
+import type { TreeNode } from "../../ui/tree/tree.ts";
 import {
   brandsNamed,
   brandSummary,
@@ -22,7 +22,7 @@ import {
   screenHeader,
   treePath,
 } from "./catalog.ts";
-import { testItem, type FlatItem } from "../items/testItems.ts";
+import { testItem, type FlatItem } from "../inventory/testItems.ts";
 
 /**
  * Lists every node of a tree, depth first.

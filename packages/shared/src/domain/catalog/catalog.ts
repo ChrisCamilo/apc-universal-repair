@@ -1,5 +1,5 @@
-import { codeKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../items/items.ts";
-import type { TreeNode } from "../tree/tree.ts";
+import { codeKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
+import type { TreeNode } from "../../ui/tree/tree.ts";
 
 // The vehicle catalog of the Catalog tab, mocked until the real data (EP-10): each brand's models as a tree, model →
 // generation → version → year → engine, and each engine's sheet. Branches whose data is still to come are empty

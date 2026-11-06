@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
-import type { ItemLists } from "../lists/lists.ts";
+import type { ItemLists } from "./lists.ts";
 import {
   CSV_COLUMNS,
   CSV_PHOTOS_COLUMN,

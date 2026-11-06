@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
-import { entryFilters } from "../items/itemFilters.ts";
+import { entryFilters } from "./itemFilters.ts";
 import {
   createListEntry,
   deleteListEntry,
@@ -20,7 +20,7 @@ import {
   withoutEntry,
   type ItemLists,
 } from "./lists.ts";
-import { testItem } from "../items/testItems.ts";
+import { testItem } from "./testItems.ts";
 import { itemListsOf } from "./testLists.ts";
 
 const BRAND_ID = "00000000-0000-4000-8000-000000000001";

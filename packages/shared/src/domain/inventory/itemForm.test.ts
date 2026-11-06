@@ -42,7 +42,7 @@ import {
 } from "./itemForm.ts";
 import { POSITION_SEGMENTS, SIDE_SEGMENTS } from "./itemFilters.ts";
 import type { Item } from "./items.ts";
-import type { ItemLists } from "../lists/lists.ts";
+import type { ItemLists } from "./lists.ts";
 import { testItem, type FlatItem } from "./testItems.ts";
 
 // An oil filter with the vehicle maker's original code.

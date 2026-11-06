@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { stockStatus, type Item } from "../items/items.ts";
-import { TOAST_KINDS, type ToastKind } from "../toast/toast.ts";
+import { stockStatus, type Item } from "../inventory/items.ts";
+import { TOAST_KINDS, type ToastKind } from "../../ui/toast/toast.ts";
 
 // The notifications history behind the Dashboard's bell, the same on web and mobile: every toast shown is kept, newest
 // first, up to NOTIFICATIONS_LIMIT, on the device under a key for each user, so it survives a reload and another user

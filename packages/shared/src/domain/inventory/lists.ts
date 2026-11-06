@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
 import { CATALOG } from "../catalog/catalog.ts";
-import { capitalizeFirst, optionKey, type Item } from "../items/items.ts";
+import { capitalizeFirst, optionKey, type Item } from "./items.ts";
 
 // The lists an item's category, part brand, vehicle brand and vehicle model are picked from, kept by the API, grown
 // from the item form and tidied in the "Gerenciar listas" dialog: each name is unique ignoring case, accents and

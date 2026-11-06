@@ -1,9 +1,9 @@
 import type { z } from "zod";
-import { entryCodeSchema, loggedInSchema } from "../auth/auth.ts";
-import { deviceChallengeSchema, deviceListSchema, deviceSchema, deviceStatusSchema } from "../devices/devices.ts";
-import { itemImportResultSchema } from "../items/itemCsv.ts";
-import { itemListResponseSchema, itemSchema } from "../items/items.ts";
-import { ITEM_LIST_PATHS, listEntriesSchema, listEntryMergedSchema, listEntrySchema, vehicleModelSchema, vehicleModelsSchema } from "../lists/lists.ts";
+import { entryCodeSchema, loggedInSchema } from "../../domain/auth/auth.ts";
+import { deviceChallengeSchema, deviceListSchema, deviceSchema, deviceStatusSchema } from "../../domain/devices/devices.ts";
+import { itemImportResultSchema } from "../../domain/inventory/itemCsv.ts";
+import { itemListResponseSchema, itemSchema } from "../../domain/inventory/items.ts";
+import { ITEM_LIST_PATHS, listEntriesSchema, listEntryMergedSchema, listEntrySchema, vehicleModelSchema, vehicleModelsSchema } from "../../domain/inventory/lists.ts";
 import { healthResponseSchema } from "../schemas/health.ts";
 
 // The API's routes, each with the shared schema of the body it answers with, by status: what the API's server

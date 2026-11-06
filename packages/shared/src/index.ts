@@ -1,1 +1,1 @@
-export * from "./schemas/health.js";
+export * from "./platform/schemas/health.js";

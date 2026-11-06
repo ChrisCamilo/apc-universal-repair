@@ -1,4 +1,4 @@
-import type { ItemPhoto } from "../items/items.ts";
+import type { ItemPhoto } from "./items.ts";
 
 // Photo rules shared by the web and mobile ImageUpload and the API: which files are accepted, how many photos an
 // item holds, the messages that name each file left out and say why, how the photos are sent to be saved, and how
