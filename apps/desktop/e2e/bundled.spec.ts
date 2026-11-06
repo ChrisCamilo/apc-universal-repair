@@ -536,6 +536,7 @@ test("Desktop: the server reaches the network only with the phone's access on", 
   const { app, userData, server } = await launchApp();
   const page = await app.firstWindow();
   await keepRecoveryKey(page);
+  await startFromScratch(page);
   await signUp(page);
   const onNetwork = `http://${address}:${new URL(server).port}`;
   expect(await healthOf(server)).toBe("up");
