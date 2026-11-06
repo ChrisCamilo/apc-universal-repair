@@ -26,9 +26,12 @@ apply plugin: "com.facebook.react.rootproject"
 // the libraries' own CMakeLists.txt have, about 250 lines a build that no one here can fix: -Wno-deprecated and
 // -Wno-dev keep CMake's own notices out, and the compilers' warnings stay. The libraries add their arguments after
 // these. The app's own native build (React Native's) gets the same in app/build.gradle, as it is read before this.
+// With -Papc.ccache=true, as the CI builds, the libraries compile through ccache, which keeps the objects by content
+// between runs; React Native's own native build already uses ccache wherever it is installed.
+def ccache = findProperty("apc.ccache") == "true" ? ["-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"] : []
 subprojects {
     plugins.withId("com.android.library") {
         android.externalNativeBuild.cmake.version = "3.31.6"
-        android.defaultConfig.externalNativeBuild.cmake.arguments("-Wno-deprecated", "-Wno-dev")
+        android.defaultConfig.externalNativeBuild.cmake.arguments("-Wno-deprecated", "-Wno-dev", *ccache)
     }
 }

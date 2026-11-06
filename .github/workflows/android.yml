@@ -2,7 +2,7 @@ name: Android
 
 # The phone app's release APK (apps/mobile), as a phone at the shop installs it.
 # - Pull requests that change the phone app, the shared package or the lockfile: check the Android libraries' licenses
-#   and build the APK, uploading nothing.
+#   and build the APK for arm64-v8a alone, uploading nothing.
 # - Run by hand (Actions → Android → Run workflow): the same, then upload the APK as an artifact, kept 14 days.
 # - Called by the Desktop workflow's release (`release: true`): the same, then, when it is signed with the upload key,
 #   upload it as apc-universal-repair-<version>.apk in the artifact `release-apk`, for the release to carry, and say so
@@ -69,6 +69,29 @@ jobs:
       - name: Install the NDK and CMake
         run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;27.1.12297006" "cmake;3.31.6"
 
+      # The C++ is most of the build. ccache keeps its objects by their content, the compiler's included (the NDK is
+      # installed again on each run), with paths taken from the workspace; the build passes it to CMake with
+      # -Papc.ccache=true (see build.gradle). Its folder and Gradle's build cache are saved after every run, and the
+      # latest one is restored: a pull request reuses what its own earlier runs, or the last release on main, compiled.
+      - name: Install ccache
+        run: |
+          sudo apt-get install -y ccache
+          {
+            echo "CCACHE_DIR=$HOME/.ccache"
+            echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE"
+            echo "CCACHE_COMPILERCHECK=content"
+            echo "CCACHE_MAXSIZE=2G"
+          } >> "$GITHUB_ENV"
+
+      - name: Restore the compiled C++ and Gradle's build cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.ccache
+            ~/.gradle/caches/build-cache-1
+          key: android-build-${{ github.run_id }}
+          restore-keys: android-build-
+
       - name: Check the Android libraries' licenses
         run: |
           ./gradlew :app:writeLicenses
@@ -91,12 +114,19 @@ jobs:
             echo "ARTIFACT=app-release-debug-signed" >> "$GITHUB_ENV"
           fi
 
+      # A pull request builds the phones' architecture alone, which proves the app builds and signs; runs by hand and
+      # the release build every architecture in gradle.properties.
       - name: Build the release APK
         env:
           APC_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
           APC_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
           APC_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+          ARCHITECTURES: ${{ github.event_name == 'pull_request' && '-PreactNativeArchitectures=arm64-v8a' || '' }}
+        run: ./gradlew assembleRelease -Papc.ccache=true $ARCHITECTURES
+
+      - name: Say how much C++ ccache reused
+        if: always()
+        run: ccache --show-stats
 
       - name: Check the APK carries the notices
         run: unzip -l app/build/outputs/apk/release/app-release.apk | grep -q "assets/THIRD_PARTY_NOTICES.md"
