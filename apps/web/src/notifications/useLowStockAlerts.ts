@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { Item } from '@apc/shared/items'
 import { lowStockAlerts, lowStockKey, lowStockMessage, readLowStockWarned } from '@apc/shared/notifications'
-import { useNotify, useToast } from '../components/toastContext.ts'
+import { useNotify, useToast } from '../components/Toast'
 import { readStored, writeStored } from '../app/storage.ts'
 
 /**

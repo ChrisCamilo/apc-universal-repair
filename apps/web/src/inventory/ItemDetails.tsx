@@ -3,9 +3,9 @@ import { ICON_SIZES, imageIcon, trashIcon } from '@apc/shared/icons'
 import { formatPrice, NOT_APPLICABLE, QUANTITY_UNIT, type Item } from '@apc/shared/items'
 import { brandPlaceText, originalCodesText, positionSideText, vehiclesText } from '@apc/shared/item-form'
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
-import { Icon } from '../components/Icon.tsx'
-import { ImageUpload, type UploadPhoto } from '../components/ImageUpload.tsx'
-import { Heading } from '../components/Typography.tsx'
+import { Icon } from '../components/Icon'
+import { ImageUpload, type UploadPhoto } from '../components/ImageUpload'
+import { Heading } from '../components/Typography'
 import { itemDetails } from './ItemDetails.styles.ts'
 
 // An item's details on a phone, as in the Detalhes mockup, inside the item dialog that fills the screen: the photos of

@@ -1,5 +1,5 @@
 import { DEVICE_MESSAGES } from '@apc/shared/devices'
-import { Text } from '../components/Typography.tsx'
+import { Text } from '../components/Typography'
 import { devicePending } from './DevicePending.styles.ts'
 
 // What a login or sign-up from a device the server's computer hasn't authorized shows above its form (see

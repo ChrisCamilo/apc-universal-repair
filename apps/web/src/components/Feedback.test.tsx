@@ -4,9 +4,9 @@ import { commands } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../index.css'
 import { themeCss } from '../app/theme.ts'
-import { EmptyState, ErrorState } from './EmptyState.tsx'
-import { Skeleton } from './Skeleton.tsx'
-import { Spinner } from './Spinner.tsx'
+import { EmptyState, ErrorState } from './EmptyState/EmptyState.tsx'
+import { Skeleton } from './Skeleton/Skeleton.tsx'
+import { Spinner } from './Spinner/Spinner.tsx'
 
 const root = document.documentElement
 

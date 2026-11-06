@@ -5,7 +5,7 @@ import { playIcon } from '@apc/shared/icons';
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme';
 import { BottomSheet } from '../components/BottomSheet';
 import { MenuHeader, MenuItem, MenuLabel } from '../components/Menu';
-import { MenuContext } from '../components/menuContext';
+import { MenuContext } from '../components/Menu';
 import { Divider } from '../components/Panel';
 import { Segmented } from '../components/Segmented';
 import { Switch } from '../components/Switch';

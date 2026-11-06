@@ -42,7 +42,7 @@ import { Stepper } from '../components/Stepper';
 import { TextField } from '../components/TextField';
 import { useToast } from '../components/Toast';
 import { Heading, Label } from '../components/Typography';
-import { tourTarget } from '../components/tourTargets';
+import { tourTarget } from '../components/Tour';
 import { CodeListField } from './CodeListField';
 import { DeleteItemDialog } from './DeleteItemDialog';
 import { ItemDetails, RemoveItemButton } from './ItemDetails';

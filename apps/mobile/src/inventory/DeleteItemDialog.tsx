@@ -6,7 +6,7 @@ import { apiUrl } from '../app/api';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
 import { useToast } from '../components/Toast';
-import { tourTarget } from '../components/tourTargets';
+import { tourTarget } from '../components/Tour';
 import { Text } from '../components/Typography';
 
 // The confirmation that removes an item from the inventory, the same as the web: it names the item and its codes.

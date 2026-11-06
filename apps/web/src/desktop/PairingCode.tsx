@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { encode } from 'uqr'
 import type { EntryCode } from '@apc/shared/auth'
 import { entryCodeGroups, fingerprintGroups, pairingLink, type Pairing } from '@apc/shared/pairing'
-import { Button } from '../components/Button.tsx'
+import { Button } from '../components/Button'
 import { issueEntryCode, type DevicesOutcome } from './devices.ts'
 import { pairingCode } from './PairingCode.styles.ts'
 

@@ -1,6 +1,6 @@
-import { Button } from '../components/Button.tsx'
-import { Dialog } from '../components/Dialog.tsx'
-import { Text } from '../components/Typography.tsx'
+import { Button } from '../components/Button'
+import { Dialog } from '../components/Dialog'
+import { Text } from '../components/Typography'
 
 // The question an item's details ask before duplicating it: what the new item takes along. Copiar dados e fotos and
 // Copiar só os dados hand the choice over, and the owner opens the new item's form filled in; Cancelar and Escape close

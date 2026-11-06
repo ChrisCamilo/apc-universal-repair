@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { searchIcon } from '@apc/shared/icons'
-import { Button } from './Button.tsx'
-import { EmptyState, ErrorState } from './EmptyState.tsx'
-import { Panel } from './Panel.tsx'
-import { Skeleton } from './Skeleton.tsx'
-import { Spinner } from './Spinner.tsx'
+import { Button } from './Button/Button.tsx'
+import { EmptyState, ErrorState } from './EmptyState/EmptyState.tsx'
+import { Panel } from './Panel/Panel.tsx'
+import { Skeleton } from './Skeleton/Skeleton.tsx'
+import { Spinner } from './Spinner/Spinner.tsx'
 
 // The shared loading and empty-state vocabulary: spinners in both sizes, alone and inside a button;
 // skeletons shaped as the catalog tree rows, the detail panel and the inventory rows; the empty states

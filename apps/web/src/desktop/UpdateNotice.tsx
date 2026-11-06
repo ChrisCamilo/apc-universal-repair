@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ICON_SIZES, infoIcon } from '@apc/shared/icons'
-import { Button } from '../components/Button.tsx'
-import { Icon } from '../components/Icon.tsx'
+import { Button } from '../components/Button'
+import { Icon } from '../components/Icon'
 import { desktopBridge } from './desktopBridge.ts'
 import { updateNotice } from './UpdateNotice.styles.ts'
 

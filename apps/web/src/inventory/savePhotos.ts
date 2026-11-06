@@ -2,7 +2,7 @@ import { apiFetch } from '@apc/shared/auth'
 import { itemSchema, type Item, type ItemBrand } from '@apc/shared/items'
 import { PHOTO_PARTS, photoParts, photosChanged } from '@apc/shared/photos'
 import { API_BASE } from '../app/api.ts'
-import type { UploadPhoto } from '../components/ImageUpload.tsx'
+import type { UploadPhoto } from '../components/ImageUpload'
 
 // Saves the photos of an item's brand as a photo field or the viewer holds them: the saved ones kept by their id, the
 // ones of another item copied by their id, as a duplicated item's are, and the new files sent, all in one request, in

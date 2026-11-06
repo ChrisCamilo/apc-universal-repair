@@ -63,7 +63,7 @@ import { Spinner } from '../components/Spinner';
 import { SearchField } from '../components/TextField';
 import { useTheme } from '../app/theme';
 import { ToolButton } from '../components/ToolButton';
-import { tourTarget } from '../components/tourTargets';
+import { tourTarget } from '../components/Tour';
 import { NumericReadout } from '../components/Typography';
 import { useInventoryTutorial } from './inventoryTutorialContext';
 import { CardTitle, StockQuantity } from './ItemCard';

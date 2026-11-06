@@ -34,7 +34,7 @@ flowchart LR
 |---|---|---|---|
 | Unit (shared, API) | Node test runner (`tsx --test` on the API) | `packages/shared/src/**/*.test.ts`, `apps/api/src/**/*.test.ts` | `pnpm test` |
 | API against a database | Node test runner, one file at a time | `apps/api/src/**/*.db-test.ts` | `pnpm --filter @apc/api test:db` |
-| Component (web) | Vitest Browser Mode, Chromium through the Playwright provider | next to the component, `apps/web/src/**/*.test.tsx` | `pnpm test` |
+| Component (web) | Vitest Browser Mode, Chromium through the Playwright provider | next to the component, in its folder, `apps/web/src/**/*.test.tsx` | `pnpm test` |
 | Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` | `pnpm test` |
 | Desktop main process | Node test runner | `apps/desktop/src/**/*.test.ts` | `pnpm test` |
 | **E2E (web)** | Playwright Test | `apps/web/e2e/*.spec.ts` | `pnpm --filter @apc/web test:e2e` |
@@ -326,7 +326,7 @@ pnpm --filter @apc/desktop test:e2e
 |---|---|---|---|
 | Unitário (shared, API) | test runner do Node (`tsx --test` na API) | `packages/shared/src/**/*.test.ts`, `apps/api/src/**/*.test.ts` | `pnpm test` |
 | API contra um banco | test runner do Node, um arquivo por vez | `apps/api/src/**/*.db-test.ts` | `pnpm --filter @apc/api test:db` |
-| Componente (web) | Vitest Browser Mode, Chromium pelo provider do Playwright | ao lado do componente, `apps/web/src/**/*.test.tsx` | `pnpm test` |
+| Componente (web) | Vitest Browser Mode, Chromium pelo provider do Playwright | ao lado do componente, na pasta dele, `apps/web/src/**/*.test.tsx` | `pnpm test` |
 | Celular | Jest com `react-test-renderer` | `apps/mobile/__tests__/` | `pnpm test` |
 | Processo principal do desktop | test runner do Node | `apps/desktop/src/**/*.test.ts` | `pnpm test` |
 | **E2E (web)** | Playwright Test | `apps/web/e2e/*.spec.ts` | `pnpm --filter @apc/web test:e2e` |
