@@ -7,7 +7,7 @@ import { Keyboard, ScrollView, StyleSheet, TextInput, View, type HostInstance, t
 import ReactTestRenderer from 'react-test-renderer';
 import { Combobox } from '../src/components/Combobox';
 import { FIELD_CLEARANCE, FieldScrollView } from '../src/components/FieldScrollView';
-import { CodeListField } from '../src/inventory/CodeListField';
+import { CodeListField } from '../src/features/inventory/CodeListField';
 import { SearchField, TextField } from '../src/components/TextField';
 import { ThemeProvider } from '../src/app/theme';
 

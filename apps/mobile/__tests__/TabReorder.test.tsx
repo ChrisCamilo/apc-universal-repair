@@ -8,8 +8,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs';
-import { Dashboard } from '../src/dashboard/Dashboard';
-import { useTabReorder } from '../src/dashboard/tabReorderContext';
+import { Dashboard } from '../src/features/dashboard/Dashboard';
+import { useTabReorder } from '../src/features/dashboard/tabReorderContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 // The MVP has one tab; three let the order change. The Catalog and Specs tabs stand in for the ones to come.

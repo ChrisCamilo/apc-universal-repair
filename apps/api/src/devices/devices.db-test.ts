@@ -5,7 +5,7 @@ import type { DeviceSigner } from "@apc/shared/devices";
 import { TEST_USERS } from "@apc/shared/test-users";
 import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
-import { hashToken } from "../sessions/sessions.js";
+import { hashToken } from "../auth/sessions.js";
 import { testDevice, testProof } from "./testDevices.js";
 
 // Authorizing devices against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded with the test

@@ -1,0 +1,45 @@
+import { apiFetch } from '@apc/shared/auth'
+import { itemSchema, type Item, type ItemBrand } from '@apc/shared/items'
+import { PHOTO_PARTS, photoParts, photosChanged } from '@apc/shared/photos'
+import { API_BASE } from '../../app/api.ts'
+import type { UploadPhoto } from '../../components/ImageUpload'
+
+// Saves the photos of an item's brand as a photo field or the viewer holds them: the saved ones kept by their id, the
+// ones of another item copied by their id, as a duplicated item's are, and the new files sent, all in one request, in
+// their order. Nothing is sent when the photos didn't change.
+
+/**
+ * Saves the photos of an item's brand when they changed, and lets go of the previews of the files sent once they are
+ * saved.
+ * @param item The item as saved.
+ * @param brand Its brand, with its saved photos.
+ * @param photos The photos the brand should have, in order.
+ * @returns The item with its photos as the API saved them (the same item when nothing changed), or null when the
+ * photos couldn't be saved.
+ */
+export async function savePhotos(item: Item, brand: ItemBrand, photos: readonly UploadPhoto[]): Promise<Item | null> {
+  const parts = photoParts(photos, brand.photos, API_BASE)
+  if (!photosChanged(parts, brand.photos)) {
+    return item
+  }
+  const body = new FormData()
+  for (const part of parts) {
+    if ('keep' in part) {
+      body.append(PHOTO_PARTS.keep, part.keep)
+    } else if ('copy' in part) {
+      body.append(PHOTO_PARTS.copy, part.copy)
+    } else {
+      body.append(PHOTO_PARTS.file, part.file, part.file.name)
+    }
+  }
+  const response = await apiFetch(`${API_BASE}/items/${item.id}/brands/${brand.id}/photos`, { method: 'PUT', body }).catch(() => null)
+  if (!response?.ok) {
+    return null
+  }
+  for (const photo of photos) {
+    if (photo.file) {
+      URL.revokeObjectURL(photo.url)
+    }
+  }
+  return itemSchema.parse(await response.json())
+}

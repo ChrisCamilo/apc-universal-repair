@@ -1,0 +1,193 @@
+import { useRef, useState } from 'react'
+import {
+  CSV_TEMPLATE,
+  CSV_TEMPLATE_NAME,
+  importedDetails,
+  importedItems,
+  importedSummary,
+  importItems,
+  newListNames,
+  readItemsCsv,
+  rowsSummary,
+  type CsvItems,
+} from '@apc/shared/item-csv'
+import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/shared/lists'
+import { API_BASE } from '../../app/api.ts'
+import { Button } from '../../components/Button'
+import { Dialog } from '../../components/Dialog'
+import { useToast } from '../../components/Toast'
+import { Heading, Text } from '../../components/Typography'
+import { usePhone } from '../../components/usePhone.ts'
+import { importItemsDialog } from './ImportItemsDialog.styles.ts'
+
+// The "Importar CSV" dialog of the Inventory tab: it explains the file, downloads the template and reads the file
+// chosen, UTF-8, comma or semicolon separated. The preview counts the items ready and the rows with errors, lists the
+// categories, brands and models the import creates, and shows each row as it will be saved, the rows with errors
+// marked with their reasons; rows with the same "item" are the brands of one item. "Importar" sends the valid items
+// only, and a toast says how many items were created and updated (a part code in use updates its item); a file that
+// can't be read says why, and another can be chosen. On a phone it fills the screen, as every form does, with the × at
+// the left of its title.
+
+/** How each list's new names are worded in the preview, e.g. "Categorias: Ignição, Turbo". */
+const NEW_NAMES = [
+  ['categories', ITEM_LIST_TEXTS.categories.title],
+  ['partBrands', ITEM_LIST_TEXTS.partBrands.title],
+  ['vehicleBrands', ITEM_LIST_TEXTS.vehicleBrands.title],
+] as const
+
+type ImportItemsDialogProps = {
+  open: boolean
+  /** The lists the API keeps, whose spelling the imported names take. */
+  lists: ItemLists
+  onClose: () => void
+  /** Called once the items are imported, so the inventory and the lists load again. */
+  onImported: () => void
+}
+
+export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportItemsDialogProps) {
+  const toast = useToast()
+  const { classes, ids } = importItemsDialog()
+  const picker = useRef<HTMLInputElement>(null)
+  // The file read, with its name.
+  const [read, setRead] = useState<{ name: string; result: CsvItems }>()
+  const [importing, setImporting] = useState(false)
+  const phone = usePhone()
+  const rows = read && 'rows' in read.result ? read.result.rows : []
+  // The items the import sends: the rows of one item count once.
+  const valid = importedItems(rows).length
+  const created = newListNames(rows, lists)
+  const creates = [
+    ...NEW_NAMES.filter(([kind]) => created[kind].length > 0).map(([kind, title]) => `${title}: ${created[kind].join(', ')}`),
+    ...(created.vehicleModels.length > 0
+      ? [`${ITEM_LIST_TEXTS.vehicleModels.title}: ${created.vehicleModels.map((model) => `${model.name} (${model.vehicleBrand})`).join(', ')}`]
+      : []),
+  ]
+
+  /** Hands over the template as a file to save. */
+  const downloadTemplate = () => {
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' }))
+    link.download = CSV_TEMPLATE_NAME
+    link.click()
+    // Let go of the file once the download has it.
+    setTimeout(() => URL.revokeObjectURL(link.href))
+  }
+
+  /** Reads the file chosen into the preview. */
+  const choose = async (file: File | undefined) => {
+    if (file) {
+      setRead({ name: file.name, result: readItemsCsv(await file.text(), lists) })
+    }
+  }
+
+  /** Sends the valid rows, then says how many items were created and updated. */
+  const submit = async () => {
+    setImporting(true)
+    const result = await importItems(API_BASE, rows)
+    setImporting(false)
+    if (!result) {
+      toast.error('Não foi possível importar os itens. Tente de novo.')
+      return
+    }
+    toast.success(importedSummary(result))
+    onImported()
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Importar CSV"
+      closable={phone}
+      actions={
+        <>
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button size="sm" loading={importing} disabled={valid === 0} onClick={submit}>
+            {valid === 1 ? 'Importar 1 item' : `Importar ${valid} itens`}
+          </Button>
+        </>
+      }
+    >
+      <Text size="sm" tone="muted">
+        Use o modelo: uma linha por marca da peça, separada por vírgula ou ponto e vírgula, em UTF-8; as linhas com o mesmo
+        número na coluna “item” são as marcas de um item. Os veículos vão em “vehicles”, como “Volkswagen / Gol | Fiat”, e os
+        códigos originais em “original_codes”, separados por “|”. Com vírgula, um valor como “189,90” vai entre aspas. Um
+        código que já está no estoque atualiza o item.
+      </Text>
+      <div className={classes.buttons()} data-testid={ids.buttons}>
+        <Button variant="secondary" size="sm" onClick={downloadTemplate}>
+          Baixar modelo
+        </Button>
+        <Button size="sm" onClick={() => picker.current?.click()}>
+          {read ? 'Escolher outro arquivo' : 'Escolher arquivo'}
+        </Button>
+        <input
+          ref={picker}
+          type="file"
+          accept=".csv,text/csv"
+          aria-label="Arquivo CSV"
+          className={classes.picker()}
+          data-testid={ids.picker}
+          onChange={(event) => {
+            void choose(event.target.files?.[0])
+            event.target.value = ''
+          }}
+        />
+      </div>
+      {read && 'error' in read.result && (
+        <p role="alert" className={classes.problem()} data-testid={ids.problem}>
+          {read.name}: {read.result.error}
+        </p>
+      )}
+      {read && 'rows' in read.result && (
+        <section aria-label="Prévia da importação" className={classes.preview()} data-testid={ids.preview}>
+          <Text size="sm">
+            {read.name} · {rowsSummary(rows)}
+          </Text>
+          {creates.length > 0 && (
+            <div className={classes.creates()} data-testid={ids.creates}>
+              <Heading level={4}>Serão criados</Heading>
+              {creates.map((line) => (
+                <Text key={line} size="sm" tone="muted">
+                  {line}
+                </Text>
+              ))}
+            </div>
+          )}
+          <ul aria-label="Linhas do arquivo" className={classes.rows()} data-testid={ids.rows}>
+            {rows.map(({ line, item, errors }) => (
+              <li
+                key={line}
+                data-invalid={errors.length > 0 || undefined}
+                className={classes.row()}
+                data-testid={ids.row}
+              >
+                <span className={classes.head()} data-testid={ids.head}>
+                  <span className={classes.line()} data-testid={ids.line}>
+                    Linha {line}
+                  </span>
+                  <span className={classes.code()} data-testid={ids.code}>
+                    {item.brands[0].code || '—'}
+                  </span>
+                  <span className={classes.name()} data-testid={ids.name}>
+                    {item.name || '—'}
+                  </span>
+                </span>
+                <Text size="sm" tone="muted">
+                  {importedDetails(item)}
+                </Text>
+                {errors.map((error) => (
+                  <p key={error} className={classes.error()} data-testid={ids.error}>
+                    {error}
+                  </p>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </Dialog>
+  )
+}

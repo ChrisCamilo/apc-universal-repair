@@ -11,8 +11,8 @@ import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type Li
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
-import { ManageListsDialog } from '../src/inventory/ManageListsDialog';
-import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/inventory/useItemLists';
+import { ManageListsDialog } from '../src/features/inventory/ManageListsDialog';
+import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/features/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { testItem, type FlatItem } from '@apc/shared/test-items';

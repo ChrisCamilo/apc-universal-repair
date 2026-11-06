@@ -11,7 +11,7 @@ import type { Item } from '@apc/shared/items';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { apiUrl } from '../src/app/api';
-import { ExportItemsDialog } from '../src/inventory/ExportItemsDialog';
+import { ExportItemsDialog } from '../src/features/inventory/ExportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { testItem } from '@apc/shared/test-items';

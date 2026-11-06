@@ -14,7 +14,7 @@ import { TEST_USERS } from '@apc/shared/test-users';
 import App from '../App';
 import { applyServer, SERVER_STORAGE_KEY } from '../src/app/api';
 
-// The app while pairing is the login (PASSWORD_LOGIN off, see src/auth/passwordLogin.ts): it opens on Conectar ao
+// The app while pairing is the login (PASSWORD_LOGIN off, see src/features/auth/passwordLogin.ts): it opens on Conectar ao
 // servidor, whose QR code from the computer logs the phone in; App.test.tsx covers the password login set aside.
 
 // The safe area waits for the native insets before drawing anything; the package's mock hands them over at once.

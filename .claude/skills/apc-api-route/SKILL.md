@@ -9,12 +9,12 @@ AGENTS.md "General Contribution Notes" (the demo) and "Architecture Docs" are th
 
 ## A route or what it answers
 
-1. The route in `apps/api` with its Zod schemas from `packages/shared`.
+1. The route in the `routes/` folder of its feature in `apps/api/src` (`inventory/routes/items.ts`, `auth/routes/users.ts`…), with its tests beside it, with its Zod schemas from `packages/shared`.
 2. Its entry in `@apc/shared/api-routes` (the list of routes and response schemas).
 3. The demo's stand-in in `apps/web/src/demo/demoApi.ts`, answering the same shape.
 4. A call for a new route in `apps/web/src/demo/demoRoutes.test.ts`.
 5. API tests (`API:` prefix).
-6. Run `pnpm test`: `apps/api/src/routes/apiRoutes.test.ts` fails when the routes differ from the list, `demoRoutes.test.ts` when the demo differs or its answers don't parse.
+6. Run `pnpm test`: `apps/api/src/apiRoutes.test.ts` fails when the routes differ from the list, `demoRoutes.test.ts` when the demo differs or its answers don't parse.
 7. Every route but health, login and sign-up needs a live session; keep it that way.
 
 ## The schema

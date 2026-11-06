@@ -7,7 +7,7 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 import { TEST_USERS } from "@apc/shared/test-users";
 import type { PrismaClient } from "../generated/prisma/client.js";
-import { createSession } from "../sessions/sessions.js";
+import { createSession } from "../auth/sessions.js";
 import { createPrisma, prisma } from "./client.js";
 import { copyDatabase, copyProblems, TABLES } from "./copy.js";
 import { API_DIR } from "./provider.js";

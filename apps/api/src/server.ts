@@ -18,7 +18,7 @@ import { ensureEncrypted, WRONG_KEY_ERROR } from "./db/cipher.js";
 import { prepareDatabase } from "./db/client.js";
 import { migrate } from "./db/migrate.js";
 import { databaseUrl } from "./db/provider.js";
-import { API_VERSION } from "./routes/health.js";
+import { API_VERSION } from "./health/routes/health.js";
 
 const { HTTPS_CERT: cert, HTTPS_KEY: key } = process.env;
 const app = buildApp({ https: cert && key ? { cert, key } : undefined });

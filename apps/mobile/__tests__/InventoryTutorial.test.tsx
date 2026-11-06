@@ -10,8 +10,8 @@ import { INVENTORY_TUTORIAL_STORAGE_KEY, TUTORIAL_CODE } from '@apc/shared/inven
 import { matchesSearch, type Item } from '@apc/shared/items';
 import { ITEM_LIST_PATHS } from '@apc/shared/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
-import { InventoryTab } from '../src/inventory/InventoryTab';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/inventory/inventoryTutorialContext';
+import { InventoryTab } from '../src/features/inventory/InventoryTab';
+import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { TourProvider } from '../src/components/Tour';

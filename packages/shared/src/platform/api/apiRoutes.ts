@@ -8,7 +8,7 @@ import { healthResponseSchema } from "../schemas/health.ts";
 
 // The API's routes, each with the shared schema of the body it answers with, by status: what the API's server
 // registers, and what the web app's demo answers in the browser (apps/web/src/demo/demoApi.ts). A test on each side
-// checks its routes against this list (apps/api/src/routes/apiRoutes.test.ts, apps/web/src/demo/demoRoutes.test.ts),
+// checks its routes against this list (apps/api/src/apiRoutes.test.ts, apps/web/src/demo/demoRoutes.test.ts),
 // and the demo's answers against these schemas, so a route the API gains, loses or changes without the demo fails.
 // A route that answers no JSON body (204, or a file) has no schema.
 

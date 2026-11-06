@@ -18,9 +18,9 @@ import { ITEM_LIST_PATHS, type ItemListKind } from '@apc/shared/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { itemListsOf } from '@apc/shared/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
-import { InventoryTab } from '../src/inventory/InventoryTab';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/inventory/inventoryTutorialContext';
-import { MoreActionsContext } from '../src/dashboard/moreActionsContext';
+import { InventoryTab } from '../src/features/inventory/InventoryTab';
+import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
+import { MoreActionsContext } from '../src/features/dashboard/moreActionsContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { testItem, type FlatItem } from '@apc/shared/test-items';
 

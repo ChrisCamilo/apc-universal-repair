@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 import { buildApp } from "../app.js";
-import { TEST_SESSIONS } from "../sessions/testSessions.js";
+import { TEST_SESSIONS } from "../auth/testSessions.js";
 import { serverAnswers } from "./copy.js";
 
 // The copy's check for a server that is on runs without a database: it only asks for the health check.

@@ -1,6 +1,6 @@
 import type { Credentials } from '@apc/shared/auth'
-import { auth } from '../auth/auth.ts'
-import { replaceDevice } from '../auth/deviceKey.ts'
+import { auth } from '../features/auth/auth.ts'
+import { replaceDevice } from '../features/auth/deviceKey.ts'
 import { DEMO_USER } from './demoData.ts'
 import { demoDevice } from './demoDevice.ts'
 import { DemoNotice } from './DemoNotice.tsx'

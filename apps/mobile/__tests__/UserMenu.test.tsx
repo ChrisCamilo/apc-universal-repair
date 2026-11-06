@@ -11,9 +11,9 @@ import { playIcon } from '@apc/shared/icons';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens';
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/inventory/inventoryTutorialContext';
-import { TabReorderContext, useReorderChoice } from '../src/dashboard/tabReorderContext';
-import { UserMenu } from '../src/dashboard/UserMenu';
+import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
+import { TabReorderContext, useReorderChoice } from '../src/features/dashboard/tabReorderContext';
+import { UserMenu } from '../src/features/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/app/theme';
 
 // A phone's screen with no notch, for the bottom sheet.

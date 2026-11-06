@@ -139,7 +139,7 @@ jobs:
           path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
 
-      # The phone app finds its update by this name (apps/mobile/src/updates/appUpdate.ts).
+      # The phone app finds its update by this name (apps/mobile/src/features/updates/appUpdate.ts).
       - name: Name the APK for the release, when signed with the upload key
         id: release
         if: inputs.release

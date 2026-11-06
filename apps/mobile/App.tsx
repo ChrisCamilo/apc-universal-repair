@@ -10,18 +10,18 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LOGIN_MESSAGES, onSessionExpired, type SessionUser } from '@apc/shared/auth';
 import type { Pairing } from '@apc/shared/pairing';
 import { loadServer } from './src/app/api';
-import { auth } from './src/auth/auth';
-import { ConnectScreen } from './src/auth/ConnectScreen';
-import { LoginScreen } from './src/auth/LoginScreen';
-import { PASSWORD_LOGIN } from './src/auth/passwordLogin';
-import { RegisterScreen } from './src/auth/RegisterScreen';
-import { Dashboard } from './src/dashboard/Dashboard';
-import { UserMenu } from './src/dashboard/UserMenu';
-import { NotificationsMenu } from './src/notifications/NotificationsMenu';
+import { auth } from './src/features/auth/auth';
+import { ConnectScreen } from './src/features/auth/ConnectScreen';
+import { LoginScreen } from './src/features/auth/LoginScreen';
+import { PASSWORD_LOGIN } from './src/features/auth/passwordLogin';
+import { RegisterScreen } from './src/features/auth/RegisterScreen';
+import { Dashboard } from './src/features/dashboard/Dashboard';
+import { UserMenu } from './src/features/dashboard/UserMenu';
+import { NotificationsMenu } from './src/features/notifications/NotificationsMenu';
 import { ThemeProvider, useTheme } from './src/app/theme';
 import { ToastProvider } from './src/components/Toast';
 import { TourProvider } from './src/components/Tour';
-import { UpdatePrompt } from './src/updates/UpdatePrompt';
+import { UpdatePrompt } from './src/features/updates/UpdatePrompt';
 
 /** What Conectar ao servidor says when the API refused the session's token, while pairing is the login. */
 const PAIR_AGAIN = 'Sua sessão expirou. Leia o código do computador de novo.';

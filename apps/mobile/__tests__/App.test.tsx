@@ -11,13 +11,13 @@ import { initials, LOGIN_MESSAGES, SESSION_STORAGE_KEY, type SessionUser } from 
 import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
 import { TEST_USERS } from '@apc/shared/test-users';
 import App from '../App';
-import { auth } from '../src/auth/auth';
+import { auth } from '../src/features/auth/auth';
 
 // The safe area waits for the native insets before drawing anything; the package's mock hands them over at once.
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
 // The flow with the password login, set aside while pairing is the login (see passwordLogin.ts), kept tested for when
 // it comes back; AppPairing.test.tsx covers the flow in use.
-jest.mock('../src/auth/passwordLogin', () => ({ PASSWORD_LOGIN: true }));
+jest.mock('../src/features/auth/passwordLogin', () => ({ PASSWORD_LOGIN: true }));
 
 const STORAGE = createAsyncStorage('apc-universal-repair');
 const USER = TEST_USERS[0];

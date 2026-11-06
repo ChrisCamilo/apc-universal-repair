@@ -12,7 +12,7 @@ Sources of truth: AGENTS.md "Testing" and "Writing tests", CLAUDE.md "Tests made
 - A comment right above it: what it checks and why, up to 3 lines.
 - Title starts with where it lives: `Web:`, `Mobile:`, `Desktop:`, `API:`, `Shared:`, `Repo:`, also inside a `describe`.
 - Runs with reduced motion; a test about motion turns it on for itself.
-- Where it goes: a web component's test beside it, in its folder (`apps/web/src/components/Button/Button.test.tsx`); a mobile test in `apps/mobile/__tests__/`, importing the component's folder (`../src/components/Button`).
+- Where it goes: a web component's test beside it, in its folder (`apps/web/src/components/Button/Button.test.tsx`), and a screen's beside it in its feature (`apps/web/src/features/inventory/`); a mobile test in `apps/mobile/__tests__/`, importing the component's folder (`../src/components/Button`).
 
 ## Playwright (web, demo, desktop)
 

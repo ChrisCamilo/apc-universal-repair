@@ -14,7 +14,7 @@ import { TEST_USERS } from '@apc/shared/test-users';
 import { isStyleId } from '@apc/shared/style-ids';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { apiUrl, applyServer, SERVER_STORAGE_KEY } from '../src/app/api';
-import { ConnectScreen } from '../src/auth/ConnectScreen';
+import { ConnectScreen } from '../src/features/auth/ConnectScreen';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 /** The home server, as the Servidor dialog's QR code carries it. */

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { createMockAuth } from '@apc/shared/auth'
 import { TEST_USERS } from '@apc/shared/test-users'
-import { LoginScreen } from '../auth/LoginScreen.tsx'
+import { LoginScreen } from '../features/auth/LoginScreen.tsx'
 import { DashboardScreen } from './Screens.tsx'
 
 // The wireframe screens rebuilt from the design system alone: the real Login, and the Dashboard on its Catalog and

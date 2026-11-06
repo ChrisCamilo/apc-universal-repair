@@ -12,7 +12,7 @@ import { scales, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { TOAST_DURATION, TOAST_DURATION_STORAGE_KEY, TOAST_KIND_LOOKS } from '@apc/shared/toast';
 import { Button } from '../src/components/Button';
 import { Icon } from '../src/components/Icon';
-import { NotificationsMenu } from '../src/notifications/NotificationsMenu';
+import { NotificationsMenu } from '../src/features/notifications/NotificationsMenu';
 import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 import { ToastProvider, useToast } from '../src/components/Toast';
 
