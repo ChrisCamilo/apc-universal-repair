@@ -1,7 +1,7 @@
-import { Button } from '../components/Button.tsx'
-import { Dialog } from '../components/Dialog.tsx'
-import { Markdown } from '../components/Markdown.tsx'
-import { NumericReadout, Text } from '../components/Typography.tsx'
+import { Button } from '../components/Button'
+import { Dialog } from '../components/Dialog'
+import { Markdown } from '../components/Markdown'
+import { NumericReadout, Text } from '../components/Typography'
 import { aboutDialog } from './AboutDialog.styles.ts'
 import { portugueseNotes, RELEASES_URL } from './releaseNotes.ts'
 

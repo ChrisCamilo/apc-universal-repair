@@ -16,12 +16,12 @@ import {
   type ListEntryChange,
   type VehicleModel,
 } from '@apc/shared/lists'
-import { Button } from '../components/Button.tsx'
-import { RowAction } from '../components/DataTable.tsx'
-import { Dialog } from '../components/Dialog.tsx'
-import { TextField } from '../components/TextField.tsx'
-import { useToast } from '../components/toastContext.ts'
-import { Heading, Text } from '../components/Typography.tsx'
+import { Button } from '../components/Button'
+import { RowAction } from '../components/DataTable'
+import { Dialog } from '../components/Dialog'
+import { TextField } from '../components/TextField'
+import { useToast } from '../components/Toast'
+import { Heading, Text } from '../components/Typography'
 import { manageListsDialog } from './ManageListsDialog.styles.ts'
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists.ts'
 

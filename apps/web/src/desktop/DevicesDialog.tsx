@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { DEVICE_MESSAGES, type Device } from '@apc/shared/devices'
-import { Button } from '../components/Button.tsx'
-import { Dialog } from '../components/Dialog.tsx'
-import { TextField } from '../components/TextField.tsx'
-import { Text } from '../components/Typography.tsx'
+import { Button } from '../components/Button'
+import { Dialog } from '../components/Dialog'
+import { TextField } from '../components/TextField'
+import { Text } from '../components/Typography'
 import { listDevices, removeDevice, renameDevice } from './devices.ts'
 import { devices as devicesRecipe } from './Devices.styles.ts'
 

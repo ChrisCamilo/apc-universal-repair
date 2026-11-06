@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { apiFetch } from '@apc/shared/auth'
 import { itemCodes, type Item } from '@apc/shared/items'
-import { Button } from '../components/Button.tsx'
-import { Dialog } from '../components/Dialog.tsx'
-import { useToast } from '../components/toastContext.ts'
-import { Text } from '../components/Typography.tsx'
+import { Button } from '../components/Button'
+import { Dialog } from '../components/Dialog'
+import { useToast } from '../components/Toast'
+import { Text } from '../components/Typography'
 
 // The confirmation that removes an item from the inventory, naming it and its code. Excluir sends the delete to
 // the API, shows a toast and hands the removal over; Cancel and Escape close it with nothing changed. A failed
