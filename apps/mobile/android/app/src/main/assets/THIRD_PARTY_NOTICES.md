@@ -3667,7 +3667,7 @@ License text: https://spdx.org/licenses/MIT.html
 Source: https://github.com/react-native-async-storage/async-storage#readme
 ~~~~
 
-### @react-native-documents/picker 12.0.2
+### @react-native-documents/picker 12.0.3
 
 MIT
 
@@ -10391,7 +10391,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### react-native-image-picker 8.2.1
+### react-native-image-picker 8.3.0
 
 MIT
 
@@ -10484,7 +10484,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### react-native-safe-area-context 5.9.1
+### react-native-safe-area-context 5.11.1
 
 MIT
 
@@ -10512,7 +10512,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### react-native-svg 15.15.5
+### react-native-svg 15.16.0
 
 MIT
 
