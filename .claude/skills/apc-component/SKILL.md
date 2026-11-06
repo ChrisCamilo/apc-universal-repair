@@ -11,7 +11,7 @@ Read these AGENTS.md sections before writing code: "Styles" (Files, `tv()`/`reci
 
 1. **Reuse first.** Look for a design-system component or a shared recipe (`styles/shared.ts`: web `DISPLAY_LABEL`, `FIELD`, `menuItem`; mobile `displayLabel()`, `fieldStyles()`, `glow()`, `menuItemStyles()`, `roundStyles()`) before adding one.
 2. **Scope.** Pick the style-id scope from the table in AGENTS.md (`common` only if it would work unchanged in another app).
-3. **Style file beside it:** `<Component>.styles.ts`. A base component has its own folder, `ui/<Component>/`, with its style file, its test and story on the web, and an `index.ts` exporting it; screens import the folder, never a file inside it (AGENTS.md "Folders").
+3. **Style file beside it:** `<Component>.styles.ts`. A base component has its own folder, `components/<Component>/`, with its style file, its test and story on the web, and an `index.ts` exporting it; screens import the folder, never a file inside it (AGENTS.md "Folders").
    - Web: `recipe('<scope>.<component>', tv({ slots: { base: … } }), { base: '', … })`, then `className={classes.x()} data-testid={ids.x}`.
    - Mobile: `createStyles('<scope>.<component>', slots, (theme) => ({ … }))`, then `style={styles.x} testID={ids.x}`; states as `<element><State>` keys.
    - Same ids for the same element on web and mobile.

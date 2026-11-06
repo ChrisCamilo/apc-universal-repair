@@ -274,10 +274,10 @@ export function fontFamily(family: string, weight: keyof typeof WEIGHTS = 400): 
 The web and the phone app lay out `src` the same way, so a file lives in the same folder on both:
 
 - **`app/`:** what starts and frames the app. Web: `App.tsx`, `api.ts`, `theme.ts`, `ThemeProvider.tsx`, `useTheme.ts`, `storage.ts`, `fonts.ts`; mobile: `api.ts`, `theme.tsx`, `motion.ts`. On the web, `main.tsx`, `index.css` and the test setup stay at the root of `src`, where Vite and Vitest look for them; the phone's `App.tsx` stays at the root of `apps/mobile`.
-- **`ui/`:** the design system, one folder per base component (`ui/Button/`):
+- **`components/`:** the design system, one folder per base component (`components/Button/`):
   - **In the folder:** the component, its style file, its own context or helper (`Menu/menuContext.ts`, `Tour/tourContext.ts`, `Markdown/markdownParser.ts`) and, on the web, its test and story. A file with several components stays one folder (`FilterChip` and `FilterChipGroup`, `Menu` and `MenuItem`).
-  - **`index.ts`:** exports the component and whatever the rest of the app takes from the folder. Screens import the folder (`../../ui/Button`), never a file inside it; components import each other's files directly.
-  - **At the root of `ui/`:** on the web, the hooks and helpers several components share (`usePhone`, `usePresence`, `radioKeys`) and the tests that cover every component (`TouchSizes`, `Feedback`).
+  - **`index.ts`:** exports the component and whatever the rest of the app takes from the folder. Screens import the folder (`../../components/Button`), never a file inside it; components import each other's files directly.
+  - **At the root of `components/`:** on the web, the hooks and helpers several components share (`usePhone`, `usePresence`, `radioKeys`) and the tests that cover every component (`TouchSizes`, `Feedback`).
 - **`features/`:** one folder per feature: `auth/`, `dashboard/` (the frame only: the layout, the bottom bar, the user menu and the dashboard's own contexts), `catalog/` (the Catalog tab), `inventory/` (the Inventory tab, its tutorial, dialogs and hooks) and `notifications/`; then the web's `desktop/` and the phone's `updates/`.
 - **`styles/`:** the style tools and the shared recipes.
 - **Only on the web:** `demo/` (the demo's stand-in for the API) and `stories/` (Storybook's pages).
@@ -290,12 +290,12 @@ The web and the phone app lay out `src` the same way, so a file lives in the sam
 - **`platform/`:** what ties the parts together: `api/` (the route list), `server/` (ports and pairing), `schemas/` and `testing/` (the test tags).
 - **Nothing in `ui/` imports from `domain/` or `platform/`:** a module that needs an item or a route belongs in `domain/`.
 
-The API's `src` (`apps/api/src`) has one folder per feature, named as in `packages/shared/src/domain/`, each with its routes beside its logic:
+The API's `src` (`apps/api/src`) has one folder per feature, named as in `packages/shared/src/domain/`. Each keeps its routes, with their tests, in its own `routes/`, apart from the feature's logic:
 
-- **`inventory/`:** the item, list and photo routes (`itemRoutes.ts`, `listRoutes.ts`, `photoRoutes.ts`), the item and photo code and the CSV import.
-- **`auth/`:** users and sessions (`userRoutes.ts`, `sessions.ts`, `passwords.ts`, `attempts.ts`).
-- **`devices/`:** the devices, their authorization and the entry codes (`deviceRoutes.ts`).
-- **`health/`:** `GET /health` (`healthRoutes.ts`).
+- **`inventory/`:** the item and photo code and the CSV import; `routes/` has `items.ts`, `lists.ts` and `photos.ts`.
+- **`auth/`:** sessions, passwords and login attempts (`sessions.ts`, `passwords.ts`, `attempts.ts`); `routes/users.ts`.
+- **`devices/`:** the devices, their authorization and the entry codes; `routes/devices.ts`.
+- **`health/`:** `routes/health.ts`, `GET /health`.
 - **The rest:** `db/` (the database client, migrations, copy and import) and `plugins/` (Fastify's plugins) stay apart. `app.ts`, which registers every route, has `apiRoutes.test.ts` beside it.
 
 The desktop app (`apps/desktop`, see [`docs/architecture.md`](docs/architecture.md)) keeps its own layout.
