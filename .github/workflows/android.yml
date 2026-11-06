@@ -2,7 +2,7 @@ name: Android
 
 # The phone app's release APK (apps/mobile), as a phone at the shop installs it.
 # - Pull requests that change the phone app, the shared package or the lockfile: check the Android libraries' licenses
-#   and build the APK, uploading nothing.
+#   and build the APK for arm64-v8a alone, uploading nothing.
 # - Run by hand (Actions → Android → Run workflow): the same, then upload the APK as an artifact, kept 14 days.
 # - Called by the Desktop workflow's release (`release: true`): the same, then, when it is signed with the upload key,
 #   upload it as apc-universal-repair-<version>.apk in the artifact `release-apk`, for the release to carry, and say so
@@ -114,12 +114,15 @@ jobs:
             echo "ARTIFACT=app-release-debug-signed" >> "$GITHUB_ENV"
           fi
 
+      # A pull request builds the phones' architecture alone, which proves the app builds and signs; runs by hand and
+      # the release build every architecture in gradle.properties.
       - name: Build the release APK
         env:
           APC_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
           APC_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
           APC_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease -Papc.ccache=true
+          ARCHITECTURES: ${{ github.event_name == 'pull_request' && '-PreactNativeArchitectures=arm64-v8a' || '' }}
+        run: ./gradlew assembleRelease -Papc.ccache=true $ARCHITECTURES
 
       - name: Say how much C++ ccache reused
         if: always()
