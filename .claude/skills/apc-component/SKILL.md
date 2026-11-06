@@ -5,7 +5,7 @@ description: Build or change a UI component or screen in APC Universal Repair (a
 
 # Building an APC component
 
-Read these AGENTS.md sections before writing code: "Styles" (Files, `tv()`/`recipe()`, `createStyles()`, Values, Style ids, Guards), "Phone layout", "Supported Screen Sizes" and "Code Conventions". Look at `LoginScreen` and `PartResults` on both platforms as short examples.
+Read these AGENTS.md sections before writing code: "Styles" (Files, `tv()`/`recipe()`, `createStyles()`, Values, Style ids, Guards), "Phone layout", "Supported Screen Sizes" and "Code Conventions" (with "Folders", for where the file goes). Look at `LoginScreen` and `PartResults` on both platforms as short examples.
 
 ## Checklist
 
