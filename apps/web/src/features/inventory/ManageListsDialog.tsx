@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { pencilIcon, trashIcon } from '@apc/shared/icons'
-import { entryFilters, type ItemFilters } from '@apc/shared/item-filters'
-import type { Item } from '@apc/shared/items'
+import { pencilIcon, trashIcon } from '@apc/tokens/icons'
+import { entryFilters, type ItemFilters } from '@apc/domain/item-filters'
+import type { Item } from '@apc/domain/items'
 import {
   CATALOG_BRAND_MESSAGE,
   CATALOG_MERGE_MESSAGE,
@@ -15,7 +15,7 @@ import {
   type ListEntry,
   type ListEntryChange,
   type VehicleModel,
-} from '@apc/shared/lists'
+} from '@apc/domain/lists'
 import { Button } from '../../components/Button'
 import { RowAction } from '../../components/DataTable'
 import { Dialog } from '../../components/Dialog'

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { ICONS, searchIcon } from '@apc/shared/icons'
+import { ICONS, searchIcon } from '@apc/tokens/icons'
 import { Icon } from './Icon.tsx'
 
 // Every icon in the colors it is used with: text, muted text, accent and on-accent (inside a

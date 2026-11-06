@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ICON_SIZES, ICONS, moreIcon } from '@apc/shared/icons';
-import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs';
+import { ICON_SIZES, ICONS, moreIcon } from '@apc/tokens/icons';
+import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/ui-spec/tabs';
 import { BackButton } from '../../components/BackButton';
 import { BrandMark } from '../../components/BrandMark';
 import { Icon } from '../../components/Icon';

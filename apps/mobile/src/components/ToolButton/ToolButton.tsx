@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { ICON_SIZES, type IconShape } from '@apc/shared/icons';
+import { ICON_SIZES, type IconShape } from '@apc/tokens/icons';
 import { Icon } from '../Icon/Icon';
 import { useTheme } from '../../app/theme';
 import { useStyles } from './ToolButton.styles';

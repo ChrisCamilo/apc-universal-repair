@@ -1,5 +1,5 @@
-import { FILTER_PANEL_SPACING } from '@apc/shared/filters';
-import { popShadow, scales } from '@apc/shared/theme';
+import { FILTER_PANEL_SPACING } from '@apc/ui-spec/filters';
+import { popShadow, scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { displayLabel } from '../../styles/shared';
 import { fontFamily, softAccent, softHairline } from '../../app/theme';

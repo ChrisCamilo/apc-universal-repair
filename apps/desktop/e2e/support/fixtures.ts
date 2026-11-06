@@ -3,9 +3,9 @@ import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron, expect, test as base, type ElectronApplication, type Page, type TraceMode } from "@playwright/test";
-import type { Device } from "@apc/shared/devices";
-import type { Item } from "@apc/shared/items";
-import type { TEST_USERS } from "@apc/shared/test-users";
+import type { Device } from "@apc/domain/devices";
+import type { Item } from "@apc/domain/items";
+import type { TEST_USERS } from "@apc/domain/test-users";
 import { reduceMotion } from "../reducedMotion.ts";
 import { startStubApi } from "../stubApi.ts";
 

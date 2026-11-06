@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { documentIcon } from '@apc/shared/icons'
+import { documentIcon } from '@apc/tokens/icons'
 import { userEvent, within } from 'storybook/test'
 import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from './Menu.tsx'
 import { Segmented } from '../Segmented/Segmented.tsx'

@@ -5,7 +5,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { FieldValue } from '../src/components/FieldValue';
 import { TextField } from '../src/components/TextField';
 import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';

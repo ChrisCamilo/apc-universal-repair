@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { PAGE_SIZES } from '@apc/shared/list-query'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { PAGE_SIZES } from '@apc/domain/list-query'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../../index.css'

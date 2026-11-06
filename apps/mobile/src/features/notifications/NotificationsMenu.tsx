@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { bellIcon, ICON_SIZES, minusIcon, plusIcon } from '@apc/shared/icons';
-import { timeAgo, unreadBadge, type Notification } from '@apc/shared/notifications';
-import { stepToastDuration, TOAST_DURATION, TOAST_KIND_LOOKS, toastDurationLabel } from '@apc/shared/toast';
+import { bellIcon, ICON_SIZES, minusIcon, plusIcon } from '@apc/tokens/icons';
+import { timeAgo, unreadBadge, type Notification } from '@apc/domain/notifications';
+import { stepToastDuration, TOAST_DURATION, TOAST_KIND_LOOKS, toastDurationLabel } from '@apc/ui-spec/toast';
 import { Button } from '../../components/Button';
 import { BottomBarItem } from '../dashboard/BottomBarItem';
 import { useBarStyles } from '../dashboard/Dashboard.styles';

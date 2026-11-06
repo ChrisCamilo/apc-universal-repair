@@ -15,8 +15,8 @@ import {
   screenHeader,
   type CatalogScreen,
   type FoundPart,
-} from '@apc/shared/catalog';
-import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
+} from '@apc/domain/catalog';
+import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons';
 import { EmptyState } from '../../components/EmptyState';
 import { FieldScrollView } from '../../components/FieldScrollView';
 import { Icon } from '../../components/Icon';
@@ -32,14 +32,14 @@ import { PartResults } from './PartResults';
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 
 // The Catalog tab, the same as the web's on a phone: a stack of screens, as in the "Catálogo no celular" mockup (see
-// CatalogScreen in @apc/shared/catalog). The brands, each on a line with how many models and sheets it has; a brand's
+// CatalogScreen in @apc/domain/catalog). The brands, each on a line with how many models and sheets it has; a brand's
 // models, as a tree whose engines say "Ver ficha"; and an engine's sheet under the path to it, with its photo and its
 // readouts. A screen past the brands puts its brand's name and a ← in the header, opens at its top, and Android's back
 // button goes back a screen too, before it leaves the tab. The search above the brands and the models looks for the
 // inventory parts with that code (3+ letters or digits), listed as the Inventory's cards, and a press on one clears it
 // and opens the part's engine sheet, or its brand's models with its model pointed out and a note when the catalog has
 // no sheet for it. Otherwise it narrows the brands to the ones with a model of that name, and the tree to those models.
-// The data is the mocked catalog of @apc/shared/catalog.
+// The data is the mocked catalog of @apc/domain/catalog.
 
 export function CatalogTab() {
   const { colors } = useTheme();

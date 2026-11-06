@@ -1,5 +1,5 @@
-import type { Item } from "@apc/shared/items";
-import { testItem, type FlatItem } from "@apc/shared/test-items";
+import type { Item } from "@apc/domain/items";
+import { testItem, type FlatItem } from "@apc/domain/test-items";
 
 /**
  * Fills in an item with the fields a test doesn't look at: testItem's, a new random id and a price of R$ 1,00.

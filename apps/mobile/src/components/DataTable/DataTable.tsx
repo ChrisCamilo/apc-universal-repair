@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Animated, Image, Pressable, Text, View } from 'react-native';
-import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
-import { shownRows, type ShownRow } from '@apc/shared/table';
-import { sortFromValue, sortOptions, sortValue, type Sort } from '@apc/shared/list-query';
+import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/tokens/icons';
+import { shownRows, type ShownRow } from '@apc/ui-spec/table';
+import { sortFromValue, sortOptions, sortValue, type Sort } from '@apc/domain/list-query';
 import { useRowActionStyles, useStyles, useThumbnailStyles } from './DataTable.styles';
 import { Icon } from '../Icon/Icon';
 import { useOverlayMotion, useReducedMotion } from '../../app/motion';
@@ -12,13 +12,13 @@ import { Label } from '../Typography/Typography';
 
 // The list of rows on a phone, the same as the web table below 720px: each row is a card (thumbnail |
 // main | end and actions) and a "Sort by" select takes the place of the header, unless the owner sorts in its own
-// way. The owner sorts the rows (sortRows in @apc/shared/table). A row's status tints the card with a stripe at its start and is also
+// way. The owner sorts the rows (sortRows in @apc/ui-spec/table). A row's status tints the card with a stripe at its start and is also
 // read out, since color alone doesn't reach screen readers; the text keeps the text color on every tint. With
 // onRowOpen, a tap on a card opens it, shown by the raised fill while pressed, except on its own buttons
 // (thumbnail, actions), which keep their tap. A nested row (rowNested) belongs to the row above it, such as a brand
 // of an item: it is indented and never tinted. A row that opens into nested rows says whether it is open
 // (rowExpanded), and a lead cell, such as its chevron, comes first on the card, at its left. Nested rows fade in as
-// their row opens, and fade out in place as it closes (shownRows in @apc/shared/table), taking no taps and hidden from
+// their row opens, and fade out in place as it closes (shownRows in @apc/ui-spec/table), taking no taps and hidden from
 // screen readers meanwhile, as on the web; with reduced motion they show and go at once.
 
 type CardArea = 'lead' | 'thumb' | 'main' | 'end' | 'actions';

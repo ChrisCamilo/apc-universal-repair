@@ -1,6 +1,6 @@
 import type { ViewStyle } from 'react-native';
-import { DIALOG_SCREEN_INSET, DIALOG_WIDTHS } from '@apc/shared/dialog';
-import { popShadow, scales } from '@apc/shared/theme';
+import { DIALOG_SCREEN_INSET, DIALOG_WIDTHS } from '@apc/ui-spec/dialog';
+import { popShadow, scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { roundStyles } from '../../styles/shared';
 import { fontFamily, softHairline, withAlpha } from '../../app/theme';

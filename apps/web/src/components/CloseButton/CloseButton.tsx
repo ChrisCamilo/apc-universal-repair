@@ -1,5 +1,5 @@
 import type { Ref } from 'react'
-import { closeIcon } from '@apc/shared/icons'
+import { closeIcon } from '@apc/tokens/icons'
 import { closeButton } from './CloseButton.styles.ts'
 import { Icon } from '../Icon/Icon.tsx'
 

@@ -1,5 +1,5 @@
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { dashboard } from "./locators/dashboard.ts";
 
 // The page Playwright's test agents start from (docs/testing.md): the planner explores the app from it, and the

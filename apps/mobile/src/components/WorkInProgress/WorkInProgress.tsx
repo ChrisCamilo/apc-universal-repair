@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
-import { ICON_SIZES, mechanicIcon } from '@apc/shared/icons';
+import { ICON_SIZES, mechanicIcon } from '@apc/tokens/icons';
 import { Icon } from '../Icon/Icon';
 import { Panel } from '../Panel/Panel';
 import { useTheme } from '../../app/theme';

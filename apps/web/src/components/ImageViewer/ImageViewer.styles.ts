@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { DIALOG_SCREEN_INSET, DIALOG_WIDTHS } from '@apc/shared/dialog'
+import { DIALOG_SCREEN_INSET, DIALOG_WIDTHS } from '@apc/ui-spec/dialog'
 import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of the photo viewer: a modal on the panel over the dimmed, blurred backdrop; the item's name and code over

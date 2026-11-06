@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react'
-import { ICON_SIZES, type IconShape } from '@apc/shared/icons'
+import { ICON_SIZES, type IconShape } from '@apc/tokens/icons'
 import { Icon } from '../Icon/Icon.tsx'
 import { toolButton } from './ToolButton.styles.ts'
 

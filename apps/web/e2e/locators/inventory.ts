@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { TABLE_CARD_BREAKPOINT } from "@apc/shared/table";
+import { TABLE_CARD_BREAKPOINT } from "@apc/ui-spec/table";
 import { dataTable, dialog, pagination } from "./common.ts";
 
 // The Inventory tab: its toolbar and search, the list's states, and its dialogs (the item form and details, Manage

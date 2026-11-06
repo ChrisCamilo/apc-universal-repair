@@ -1,6 +1,6 @@
 import { createRef, useState, type ComponentProps } from 'react'
-import { FIELD_KINDS } from '@apc/shared/field'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { FIELD_KINDS } from '@apc/ui-spec/field'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'

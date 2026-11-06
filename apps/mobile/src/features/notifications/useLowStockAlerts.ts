@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { Item } from '@apc/shared/items';
-import { lowStockAlerts, lowStockKey, lowStockMessage, readLowStockWarned } from '@apc/shared/notifications';
+import type { Item } from '@apc/domain/items';
+import { lowStockAlerts, lowStockKey, lowStockMessage, readLowStockWarned } from '@apc/domain/notifications';
 import { save, themeStorage } from '../../app/theme';
 import { useNotify, useToast } from '../../components/Toast';
 

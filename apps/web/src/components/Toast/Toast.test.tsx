@@ -1,5 +1,5 @@
-import { themes, type Mode, type Style } from '@apc/shared/theme'
-import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast'
+import { themes, type Mode, type Style } from '@apc/tokens/theme'
+import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/ui-spec/toast'
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { commands } from 'vitest/browser'
 import { render } from 'vitest-browser-react'

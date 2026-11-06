@@ -1,4 +1,4 @@
-import { SESSION_STORAGE_KEY } from '@apc/shared/auth'
+import { SESSION_STORAGE_KEY } from '@apc/domain/auth'
 import { afterEach, expect, test } from 'vitest'
 import { readStored, removeStored } from '../app/storage.ts'
 import { DEMO_USER } from './demoData.ts'

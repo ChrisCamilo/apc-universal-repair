@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { apiFetch } from '@apc/shared/auth'
-import { itemListResponseSchema, type Item } from '@apc/shared/items'
+import { apiFetch } from '@apc/domain/auth'
+import { itemListResponseSchema, type Item } from '@apc/domain/items'
 
 // Loads the inventory items from the API, every item or the page a list query asks for, and again on reload, e.g.
 // after an item is saved. The list screen loads every item too, so the counter can say how many there are in all

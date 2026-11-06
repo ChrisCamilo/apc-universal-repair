@@ -1,13 +1,13 @@
 import { expect, test } from 'vitest'
-import { API_ROUTES } from '@apc/shared/api-routes'
-import type { Item } from '@apc/shared/items'
-import { ITEM_LIST_PATHS, type ListEntry } from '@apc/shared/lists'
-import { PHOTO_PARTS } from '@apc/shared/photos'
+import { API_ROUTES } from '@apc/domain/api-routes'
+import type { Item } from '@apc/domain/items'
+import { ITEM_LIST_PATHS, type ListEntry } from '@apc/domain/lists'
+import { PHOTO_PARTS } from '@apc/domain/photos'
 import { createDemoApi, DEMO_UNAVAILABLE, DEMO_UNAVAILABLE_ROUTES } from './demoApi.ts'
 import { DEMO_USER } from './demoData.ts'
 import { DEMO_DEVICE_STAND_IN } from './demoDevice.ts'
 
-// The demo's routes against @apc/shared/api-routes, the list the API's server is checked against too (see
+// The demo's routes against @apc/domain/api-routes, the list the API's server is checked against too (see
 // apps/api/src/apiRoutes.test.ts): a route the API has and the demo doesn't, or the other way around, fails,
 // and so does an answer of the demo that the API's schema for it doesn't read, as when the API gains a field. Each
 // route of the list has a call here that it answers with success, so a new route needs one too; the device routes

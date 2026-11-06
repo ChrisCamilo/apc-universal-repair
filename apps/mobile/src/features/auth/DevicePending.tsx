@@ -1,5 +1,5 @@
 import { Text as RNText, View } from 'react-native';
-import { DEVICE_MESSAGES } from '@apc/shared/devices';
+import { DEVICE_MESSAGES } from '@apc/domain/devices';
 import { Text } from '../../components/Typography';
 import { useStyles } from './DevicePending.styles';
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { test } from "node:test";
-import * as shared from "@apc/shared/server";
+import * as shared from "@apc/domain/server";
 import {
   LOCAL_HOST,
   NETWORK_HOST,
@@ -48,7 +48,7 @@ test("Desktop: the bundled server keeps its data in userData", () => {
 });
 
 // Checks the bundled server's port and addresses, the development API's address and the exit codes of a taken port
-// and a wrong key are those of @apc/shared/server, which the packaged app can't import, so the server the app ships and a development
+// and a wrong key are those of @apc/domain/server, which the packaged app can't import, so the server the app ships and a development
 // API never share a port, and those failures are told apart.
 test("Desktop: the server's port and the development API's match the shared ports", () => {
   assert.equal(SERVER_PORT, shared.SERVER_PORT);

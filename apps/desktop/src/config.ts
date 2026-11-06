@@ -7,7 +7,7 @@ import path from "node:path";
 
 /**
  * The API address when nothing sets another, as in development: the API `pnpm dev` runs on this computer, on
- * DEV_SERVER_PORT of @apc/shared/server, written here since the packaged app doesn't carry that package.
+ * DEV_SERVER_PORT of @apc/domain/server, written here since the packaged app doesn't carry that package.
  */
 export const DEFAULT_API_URL = "http://localhost:3333";
 

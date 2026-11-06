@@ -7,19 +7,19 @@ import { Image, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { codeTakenMessage, duplicateForm, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE, type ItemForm } from '@apc/shared/item-form';
-import type { Item, ItemBrand, ItemCreate } from '@apc/shared/items';
-import { withEntry, type ItemLists } from '@apc/shared/lists';
-import { copiedPhotos, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/shared/photos';
-import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
-import { itemListsOf } from '@apc/shared/test-lists';
-import { STYLES, MODES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
+import { codeTakenMessage, duplicateForm, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE, type ItemForm } from '@apc/domain/item-form';
+import type { Item, ItemBrand, ItemCreate } from '@apc/domain/items';
+import { withEntry, type ItemLists } from '@apc/domain/lists';
+import { copiedPhotos, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '@apc/domain/photos';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
+import { itemListsOf } from '@apc/domain/test-lists';
+import { STYLES, MODES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import type { UploadPhoto } from '../src/components/ImageUpload';
 import { ItemFormDialog } from '../src/features/inventory/ItemFormDialog';
 import type { CreateListEntry } from '../src/features/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
-import { testItem, type FlatItem } from '@apc/shared/test-items';
+import { testItem, type FlatItem } from '@apc/domain/test-items';
 
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];

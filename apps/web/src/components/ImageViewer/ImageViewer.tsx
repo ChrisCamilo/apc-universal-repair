@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { chevronIcon, ICON_SIZES, imageIcon } from '@apc/shared/icons'
-import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/shared/photos'
+import { chevronIcon, ICON_SIZES, imageIcon } from '@apc/tokens/icons'
+import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/domain/photos'
 import { Button } from '../Button/Button.tsx'
 import { CloseButton } from '../CloseButton/CloseButton.tsx'
 import { Dialog } from '../Dialog/Dialog.tsx'

@@ -1,12 +1,12 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { rgb } from "./support/expect.ts";
 import { toasts } from "./locators/common.ts";
 import { fillItem, inventory, itemForm } from "./locators/inventory.ts";
-import type { Item } from "@apc/shared/items";
-import { THEME_STORAGE_KEYS, themes, type Mode, type Style } from "@apc/shared/theme";
-import { TOAST_KIND_LOOKS, type ToastKind } from "@apc/shared/toast";
+import type { Item } from "@apc/domain/items";
+import { THEME_STORAGE_KEYS, themes, type Mode, type Style } from "@apc/tokens/theme";
+import { TOAST_KIND_LOOKS, type ToastKind } from "@apc/ui-spec/toast";
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { item } from "./data/items.ts";
 

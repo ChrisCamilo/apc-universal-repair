@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { Text as NativeText, type TextStyle } from 'react-native';
-import type { HeadingLevel, TextSize, Tone } from '@apc/shared/typography';
+import type { HeadingLevel, TextSize, Tone } from '@apc/tokens/typography';
 import { LEVEL_KEYS, SIZE_KEYS, TONE_KEYS, useHeadingStyles, useLabelStyles, useReadoutStyles, useTextStyles } from './Typography.styles';
 
-// Text primitives on top of the type scale, the same variants as the web (see @apc/shared/typography and
+// Text primitives on top of the type scale, the same variants as the web (see @apc/tokens/typography and
 // Typography.styles.ts).
 
 type HeadingProps = { level?: HeadingLevel; tone?: Tone; align?: TextStyle['textAlign']; children: ReactNode };

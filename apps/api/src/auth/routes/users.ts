@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { initials, loggedInSchema, loginRequestSchema, pairingLoginRequestSchema, userCreateRequestSchema, type SessionUser } from "@apc/shared/auth";
-import { DEVICE_MESSAGES } from "@apc/shared/devices";
+import { initials, loggedInSchema, loginRequestSchema, pairingLoginRequestSchema, userCreateRequestSchema, type SessionUser } from "@apc/domain/auth";
+import { DEVICE_MESSAGES } from "@apc/domain/devices";
 import { prisma } from "../../db/client.js";
 import { checkProof, deviceForLogin, isLoopback } from "../../devices/devices.js";
 import { entryCodeUser, holdEntryCode, useEntryCode } from "../../devices/entryCodes.js";
@@ -10,7 +10,7 @@ import { createSession, endSession } from "../sessions.js";
 import { createLimiter, type Limiter } from "../attempts.js";
 import { hashPassword, verifyPassword } from "../passwords.js";
 
-// Sign-up, login and logout. POST /users creates a user under the rules of the sign-up form (see @apc/shared/auth), with
+// Sign-up, login and logout. POST /users creates a user under the rules of the sign-up form (see @apc/domain/auth), with
 // the password hashed and the e-mail only kept for now; a username in use, in any case, is refused with 409. POST
 // /sessions checks a username and password, or answers 401 without saying which was wrong. An unknown username still
 // goes through a hash, so the time taken doesn't tell whether it exists. Both are open without a session and start

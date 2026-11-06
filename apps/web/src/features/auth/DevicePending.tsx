@@ -1,4 +1,4 @@
-import { DEVICE_MESSAGES } from '@apc/shared/devices'
+import { DEVICE_MESSAGES } from '@apc/domain/devices'
 import { Text } from '../../components/Typography'
 import { devicePending } from './DevicePending.styles.ts'
 

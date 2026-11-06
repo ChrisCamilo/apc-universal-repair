@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { dataTable } from "./locators/common.ts";
 import { inventory } from "./locators/inventory.ts";
-import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from "@apc/shared/item-csv";
-import type { Item } from "@apc/shared/items";
+import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from "@apc/domain/item-csv";
+import type { Item } from "@apc/domain/items";
 import { item } from "./data/items.ts";
 
 // 30 parts the search finds, over two pages of 25, the first with a photo, and 5 filters it leaves out.

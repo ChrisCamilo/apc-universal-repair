@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Animated, Modal, PanResponder, Pressable, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SHEET_CLOSE_DRAG } from '@apc/shared/dialog';
+import { SHEET_CLOSE_DRAG } from '@apc/ui-spec/dialog';
 import { sheetBox, sheetEnd, useStyles } from './BottomSheet.styles';
 import { FieldScrollView } from '../FieldScrollView/FieldScrollView';
 import { useOverlayMotion } from '../../app/motion';

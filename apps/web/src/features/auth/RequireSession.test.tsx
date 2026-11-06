@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { apiFetch, createApiAuth, SESSION_STORAGE_KEY, type AuthService, type SessionUser } from '@apc/shared/auth'
+import { apiFetch, createApiAuth, SESSION_STORAGE_KEY, type AuthService, type SessionUser } from '@apc/domain/auth'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'

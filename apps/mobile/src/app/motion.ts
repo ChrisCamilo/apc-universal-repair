@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, Animated, Dimensions, Easing } from 'react-native';
-import { scales } from '@apc/shared/theme';
+import { scales } from '@apc/tokens/theme';
 
 /**
  * How an overlay moves besides fading: a dialog grows ("scale"), a menu, a panel or a list slides from its trigger

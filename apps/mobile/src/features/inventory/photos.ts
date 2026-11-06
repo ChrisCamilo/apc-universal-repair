@@ -1,6 +1,6 @@
 import { launchCamera, launchImageLibrary, type ImagePickerResponse, type PhotoQuality } from 'react-native-image-picker';
-import { apiFetch } from '@apc/shared/auth';
-import { itemSchema, type Item, type ItemBrand } from '@apc/shared/items';
+import { apiFetch } from '@apc/domain/auth';
+import { itemSchema, type Item, type ItemBrand } from '@apc/domain/items';
 import {
   ITEM_PHOTO_LIMIT,
   PHOTO_MAX_DIMENSION,
@@ -8,7 +8,7 @@ import {
   PHOTO_QUALITY,
   photoParts,
   photosChanged,
-} from '@apc/shared/photos';
+} from '@apc/domain/photos';
 import { apiUrl } from '../../app/api';
 import type { PickedPhoto, UploadPhoto } from '../../components/ImageUpload';
 

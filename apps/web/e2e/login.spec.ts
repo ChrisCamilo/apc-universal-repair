@@ -1,11 +1,11 @@
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { atNotebookSizes } from "./support/sizes.ts";
 import { loginForm } from "./locators/auth.ts";
 import { dialog } from "./locators/common.ts";
 import { dashboard } from "./locators/dashboard.ts";
-import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/domain/auth";
+import { TEST_USERS } from "@apc/domain/test-users";
 
 const USER = TEST_USERS[0];
 

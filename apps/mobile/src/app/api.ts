@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
-import type { Pairing } from '@apc/shared/pairing';
-import { DEV_SERVER_PORT } from '@apc/shared/server';
+import type { Pairing } from '@apc/domain/pairing';
+import { DEV_SERVER_PORT } from '@apc/domain/server';
 import { themeStorage } from './theme';
 
 // Where the app reaches the API: the home server it paired with on Conectar ao servidor (see ConnectScreen.tsx), over

@@ -28,7 +28,7 @@
     "typecheck": "tsc -p tsconfig.test.json"
   },
   "dependencies": {
-    "@apc/shared": "workspace:*",
+    "@apc/domain": "workspace:*",
     "@fastify/multipart": "^10.1.2",
     "@fastify/type-provider-zod": "^1.0.0",
     "@prisma/adapter-better-sqlite3": "^7.10.0",

@@ -1,4 +1,4 @@
-import { MODES, STYLES, scales, themes } from '@apc/shared/theme'
+import { MODES, STYLES, scales, themes } from '@apc/tokens/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { page } from 'vitest/browser'
 import { render, type RenderResult } from 'vitest-browser-react'

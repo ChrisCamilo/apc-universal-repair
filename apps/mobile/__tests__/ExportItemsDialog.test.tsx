@@ -6,15 +6,15 @@ import React from 'react';
 import { Share, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from '@apc/shared/item-csv';
-import type { Item } from '@apc/shared/items';
-import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
+import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from '@apc/domain/item-csv';
+import type { Item } from '@apc/domain/items';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { apiUrl } from '../src/app/api';
 import { ExportItemsDialog } from '../src/features/inventory/ExportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
-import { testItem } from '@apc/shared/test-items';
+import { testItem } from '@apc/domain/test-items';
 
 // An item as the API sends it, with a photo.
 const ITEM: Item = testItem({

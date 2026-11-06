@@ -1,4 +1,4 @@
-import { scales } from '@apc/shared/theme';
+import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 
 // The look of the user menu in its bottom sheet: inset as the menu's popover was, so the items' text lines up with the

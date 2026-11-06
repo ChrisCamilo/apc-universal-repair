@@ -1,8 +1,8 @@
 import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
-import { ICON_SIZES, imageIcon, trashIcon } from '@apc/shared/icons';
-import { formatPrice, NOT_APPLICABLE, QUANTITY_UNIT, type Item } from '@apc/shared/items';
-import { brandPlaceText, originalCodesText, positionSideText, vehiclesText } from '@apc/shared/item-form';
-import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
+import { ICON_SIZES, imageIcon, trashIcon } from '@apc/tokens/icons';
+import { formatPrice, NOT_APPLICABLE, QUANTITY_UNIT, type Item } from '@apc/domain/items';
+import { brandPlaceText, originalCodesText, positionSideText, vehiclesText } from '@apc/domain/item-form';
+import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
 import { Icon } from '../../components/Icon';
 import { ImageUpload, type UploadPhoto } from '../../components/ImageUpload';
 import { useTheme } from '../../app/theme';

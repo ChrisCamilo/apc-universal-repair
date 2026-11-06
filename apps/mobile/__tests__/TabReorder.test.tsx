@@ -6,15 +6,15 @@ import React from 'react';
 import { Pressable } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
-import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
+import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/ui-spec/tabs';
 import { Dashboard } from '../src/features/dashboard/Dashboard';
 import { useTabReorder } from '../src/features/dashboard/tabReorderContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
 // The MVP has one tab; three let the order change. The Catalog and Specs tabs stand in for the ones to come.
-jest.mock('@apc/shared/tabs', () => ({
-  ...jest.requireActual('@apc/shared/tabs'),
+jest.mock('@apc/ui-spec/tabs', () => ({
+  ...jest.requireActual('@apc/ui-spec/tabs'),
   DASHBOARD_TABS: [
     { id: 'inventory', label: 'Estoque', icon: 'cube' },
     { id: 'catalog', label: 'Catálogo', icon: 'document' },

@@ -2,7 +2,7 @@ import {
   INVENTORY_TUTORIAL_PARTS,
   inventoryTutorialSteps,
   type TutorialScreen,
-} from '@apc/shared/inventory-tutorial'
+} from '@apc/domain/inventory-tutorial'
 import { Tour } from '../../components/Tour'
 import { BOTTOM_BAR_HEIGHT } from '../dashboard/DashboardLayout.styles.ts'
 

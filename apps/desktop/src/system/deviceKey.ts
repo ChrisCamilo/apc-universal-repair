@@ -2,7 +2,7 @@ import { createPrivateKey, createPublicKey, generateKeyPairSync, sign, type KeyO
 import { readConfig, updateConfig } from "../config.ts";
 import { seal, unseal, type Sealer } from "../server/database.ts";
 
-// The desktop app's device key (see @apc/shared/devices): an ECDSA P-256 key pair made on its first login, whose
+// The desktop app's device key (see @apc/domain/devices): an ECDSA P-256 key pair made on its first login, whose
 // private key the main process keeps in config.json sealed by safeStorage (DPAPI), tied to the Windows user, as the
 // database's key is. The page never sees it: through the preload it asks for the public key and for a nonce's
 // signature, and only the app's own page is answered (see main.ts). A key this Windows user can't open makes a new

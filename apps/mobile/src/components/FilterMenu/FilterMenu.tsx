@@ -1,7 +1,7 @@
 import { useState, type Ref } from 'react';
 import { Animated, Modal, Pressable, ScrollView, Text, View, useWindowDimensions, type HostInstance } from 'react-native';
-import { activeFilterCount, clearedFilters, offeredValues, type FilterValues } from '@apc/shared/filters';
-import { filterIcon, ICON_SIZES } from '@apc/shared/icons';
+import { activeFilterCount, clearedFilters, offeredValues, type FilterValues } from '@apc/ui-spec/filters';
+import { filterIcon, ICON_SIZES } from '@apc/tokens/icons';
 import { Button } from '../Button/Button';
 import { FilterChipGroup } from '../FilterChip/FilterChip';
 import { PANEL_INSET, PANEL_MAX_WIDTH, useStyles } from './FilterMenu.styles';

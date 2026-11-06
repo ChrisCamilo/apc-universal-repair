@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
-import { LOGIN_MESSAGES, type Credentials } from '@apc/shared/auth'
+import { LOGIN_MESSAGES, type Credentials } from '@apc/domain/auth'
 import { auth } from '../features/auth/auth.ts'
 import { LoginScreen } from '../features/auth/LoginScreen.tsx'
 import { RegisterScreen } from '../features/auth/RegisterScreen.tsx'

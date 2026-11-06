@@ -1,5 +1,5 @@
-import { DEVICE_KEY_ALGORITHM, signNonce, toBase64url } from "@apc/shared/device-crypto";
-import { proveDevice, type DeviceProof, type DeviceSigner } from "@apc/shared/devices";
+import { DEVICE_KEY_ALGORITHM, signNonce, toBase64url } from "@apc/domain/device-crypto";
+import { proveDevice, type DeviceProof, type DeviceSigner } from "@apc/domain/devices";
 import type { buildApp } from "../app.js";
 
 // Devices for the tests, as a browser makes one: a key pair whose private key can't be exported, and the proof a login

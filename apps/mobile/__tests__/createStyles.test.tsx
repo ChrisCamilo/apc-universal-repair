@@ -4,7 +4,7 @@
 
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
-import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
+import { THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { createStyles, type Styled } from '../src/styles/createStyles';
 import { themeStorage, ThemeProvider, useTheme, type ActiveTheme } from '../src/app/theme';
 

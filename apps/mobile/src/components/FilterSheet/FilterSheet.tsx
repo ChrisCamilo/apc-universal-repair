@@ -1,8 +1,8 @@
 import { useState, type Ref } from 'react';
 import { Pressable, Text, View, type HostInstance } from 'react-native';
-import { clearedFilters, offeredValues, selectionSummary, toggleValue, type FilterValues } from '@apc/shared/filters';
-import { checkIcon, chevronIcon, ICON_SIZES, sortIcon } from '@apc/shared/icons';
-import { sortFromValue, sortValue, type Sort } from '@apc/shared/list-query';
+import { clearedFilters, offeredValues, selectionSummary, toggleValue, type FilterValues } from '@apc/ui-spec/filters';
+import { checkIcon, chevronIcon, ICON_SIZES, sortIcon } from '@apc/tokens/icons';
+import { sortFromValue, sortValue, type Sort } from '@apc/domain/list-query';
 import { BackButton } from '../BackButton/BackButton';
 import { BottomSheet } from '../BottomSheet/BottomSheet';
 import { Button } from '../Button/Button';

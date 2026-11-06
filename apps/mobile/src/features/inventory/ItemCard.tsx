@@ -1,5 +1,5 @@
 import { Text as RNText, View } from 'react-native';
-import { QUANTITY_UNIT, STOCK_STATUS_SHORT, stockStatus } from '@apc/shared/items';
+import { QUANTITY_UNIT, STOCK_STATUS_SHORT, stockStatus } from '@apc/domain/items';
 import { NumericReadout, Text } from '../../components/Typography';
 import { useStyles } from './InventoryTab.styles';
 

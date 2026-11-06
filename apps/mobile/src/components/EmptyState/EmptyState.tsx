@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { alertIcon, cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
+import { alertIcon, cubeIcon, ICON_SIZES, type IconShape } from '@apc/tokens/icons';
 import { Button } from '../Button/Button';
 import { useStyles } from './EmptyState.styles';
 import { Icon } from '../Icon/Icon';
@@ -12,7 +12,7 @@ import { Heading, Text } from '../Typography/Typography';
 // what failed and what to do next, with no apologies or vague wording.
 
 type StateMessageProps = {
-  /** Icon from @apc/shared/icons; the empty state defaults to the cube and the error state to the alert. */
+  /** Icon from @apc/tokens/icons; the empty state defaults to the cube and the error state to the alert. */
   icon?: IconShape[];
   /** What is going on, e.g. "Nenhum item cadastrado" or "Não foi possível carregar o estoque". */
   title: string;

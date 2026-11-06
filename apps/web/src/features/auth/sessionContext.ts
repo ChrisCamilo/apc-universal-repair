@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { SessionUser } from '@apc/shared/auth'
+import type { SessionUser } from '@apc/domain/auth'
 
 /** The logged user, shared by the routes: undefined while the saved session is being read, null when nobody is. */
 export const SessionContext = createContext<Session | null>(null)

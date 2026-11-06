@@ -1,5 +1,5 @@
-import { MODES, scales, STYLES, themes } from '@apc/shared/theme'
-import { HEADING_LEVELS, HEADING_TRACKING, LABEL_TYPE } from '@apc/shared/typography'
+import { MODES, scales, STYLES, themes } from '@apc/tokens/theme'
+import { HEADING_LEVELS, HEADING_TRACKING, LABEL_TYPE } from '@apc/tokens/typography'
 import { beforeAll, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../../app/fonts.ts'

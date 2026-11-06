@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { TABLE_CARD_BREAKPOINT } from '@apc/shared/table'
+import { TABLE_CARD_BREAKPOINT } from '@apc/ui-spec/table'
 
 // Whether the window is as narrow as a phone, below `card:` (TABLE_CARD_BREAKPOINT), where a screen follows the phone
 // layout (see "Phone layout" in AGENTS.md). Most of it is CSS (`max-card:`); this is for the parts a phone draws

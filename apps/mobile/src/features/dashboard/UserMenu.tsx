@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import type { SessionUser } from '@apc/shared/auth';
-import { playIcon } from '@apc/shared/icons';
-import { isStyle, STYLE_LABELS, STYLES } from '@apc/shared/theme';
+import type { SessionUser } from '@apc/domain/auth';
+import { playIcon } from '@apc/tokens/icons';
+import { isStyle, STYLE_LABELS, STYLES } from '@apc/tokens/theme';
 import { BottomSheet } from '../../components/BottomSheet';
 import { MenuHeader, MenuItem, MenuLabel } from '../../components/Menu';
 import { MenuContext } from '../../components/Menu';

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { TreeNode } from '@apc/shared/tree'
+import type { TreeNode } from '@apc/ui-spec/tree'
 import { Panel } from '../Panel/Panel.tsx'
 import { TreeView } from './TreeView.tsx'
 import { NumericReadout } from '../Typography/Typography.tsx'

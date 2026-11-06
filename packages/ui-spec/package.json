@@ -1,0 +1,67 @@
+{
+  "name": "@apc/ui-spec",
+  "description": "The component contracts the web and mobile components follow alike.",
+  "private": true,
+  "license": "UNLICENSED",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./button": {
+      "apc-dist": "./dist/button/button.js",
+      "default": "./src/button/button.ts"
+    },
+    "./field": {
+      "apc-dist": "./dist/field/field.js",
+      "default": "./src/field/field.ts"
+    },
+    "./tabs": {
+      "apc-dist": "./dist/tabs/tabs.js",
+      "default": "./src/tabs/tabs.ts"
+    },
+    "./filters": {
+      "apc-dist": "./dist/filters/filters.js",
+      "default": "./src/filters/filters.ts"
+    },
+    "./table": {
+      "apc-dist": "./dist/table/table.js",
+      "default": "./src/table/table.ts"
+    },
+    "./dialog": {
+      "apc-dist": "./dist/dialog/dialog.js",
+      "default": "./src/dialog/dialog.ts"
+    },
+    "./pagination": {
+      "apc-dist": "./dist/pagination/pagination.js",
+      "default": "./src/pagination/pagination.ts"
+    },
+    "./screens": {
+      "apc-dist": "./dist/screens/screens.js",
+      "default": "./src/screens/screens.ts"
+    },
+    "./toast": {
+      "apc-dist": "./dist/toast/toast.js",
+      "default": "./src/toast/toast.ts"
+    },
+    "./tour": {
+      "apc-dist": "./dist/tour/tour.js",
+      "default": "./src/tour/tour.ts"
+    },
+    "./tree": {
+      "apc-dist": "./dist/tree/tree.js",
+      "default": "./src/tree/tree.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src",
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "@apc/tokens": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

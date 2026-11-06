@@ -1,6 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { chevronIcon, ICON_SIZES } from '@apc/shared/icons'
-import { ancestors, canOpen, isLeaf, treeKey, visibleRows, type TreeNode } from '@apc/shared/tree'
+import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
+import { ancestors, canOpen, isLeaf, treeKey, visibleRows, type TreeNode } from '@apc/ui-spec/tree'
 import { Icon } from '../Icon/Icon.tsx'
 import { treeView } from './TreeView.styles.ts'
 
@@ -9,7 +9,7 @@ import { treeView } from './TreeView.styles.ts'
 // no chevron. A leaf is selected with a click and handed to onSelect, and the selected leaf takes the accent
 // with a rule on its left, glowing where the style has a glow. Each level hangs from a hairline guide, and a
 // separator stands between the top-level models. The keyboard follows the ARIA tree pattern (see treeKey in
-// @apc/shared/tree), with a roving tabIndex so Tab enters the tree on the selected leaf and leaves it at once.
+// @apc/ui-spec/tree), with a roving tabIndex so Tab enters the tree on the selected leaf and leaves it at once.
 // The tree scrolls inside its own height, set through className, and long labels are cut short instead of
 // widening it. A row can also be pointed out, such as the model of a part found by its code: it takes the accent
 // like the selected leaf, and is marked aria-current for screen readers.

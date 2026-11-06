@@ -1,5 +1,5 @@
-import { popShadow, scales } from '@apc/shared/theme';
-import { TOAST_KIND_LOOKS, type ToastKind } from '@apc/shared/toast';
+import { popShadow, scales } from '@apc/tokens/theme';
+import { TOAST_KIND_LOOKS, type ToastKind } from '@apc/ui-spec/toast';
 import { createStyles } from '../../styles/createStyles';
 import { displayLabel } from '../../styles/shared';
 

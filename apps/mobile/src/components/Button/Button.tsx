@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type TextStyle } from 'react-native';
-import type { ButtonSize, ButtonVariant } from '@apc/shared/button';
-import { ICON_SIZES, type IconShape } from '@apc/shared/icons';
+import type { ButtonSize, ButtonVariant } from '@apc/ui-spec/button';
+import { ICON_SIZES, type IconShape } from '@apc/tokens/icons';
 import { LINK_HIT_SLOP, useStyles } from './Button.styles';
 import { Icon } from '../Icon/Icon';
 import { Spinner } from '../Spinner/Spinner';
@@ -13,7 +13,7 @@ import { Spinner } from '../Spinner/Spinner';
 type ButtonProps = {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** Leading icon from @apc/shared/icons. */
+  /** Leading icon from @apc/tokens/icons. */
   icon?: IconShape[];
   /** Shows a spinner, blocks presses and marks the button busy, e.g. while the login is sent. */
   loading?: boolean;

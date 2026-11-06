@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { apiFetch } from '@apc/shared/auth';
-import { itemListResponseSchema, type Item } from '@apc/shared/items';
+import { apiFetch } from '@apc/domain/auth';
+import { itemListResponseSchema, type Item } from '@apc/domain/items';
 import { apiUrl } from '../../app/api';
 
 // Loads a list query's pages one after another, as a phone's list scrolls to its end: pages 1 to `pages`, joined in

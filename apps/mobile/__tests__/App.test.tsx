@@ -7,9 +7,9 @@ import { Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { createAsyncStorage } from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
-import { initials, LOGIN_MESSAGES, SESSION_STORAGE_KEY, type SessionUser } from '@apc/shared/auth';
-import { THEME_STORAGE_KEYS } from '@apc/shared/theme';
-import { TEST_USERS } from '@apc/shared/test-users';
+import { initials, LOGIN_MESSAGES, SESSION_STORAGE_KEY, type SessionUser } from '@apc/domain/auth';
+import { THEME_STORAGE_KEYS } from '@apc/tokens/theme';
+import { TEST_USERS } from '@apc/domain/test-users';
 import App from '../App';
 import { auth } from '../src/features/auth/auth';
 

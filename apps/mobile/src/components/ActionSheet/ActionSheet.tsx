@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { ICON_SIZES, type IconShape } from '@apc/shared/icons';
+import { ICON_SIZES, type IconShape } from '@apc/tokens/icons';
 import { useStyles } from './ActionSheet.styles';
 import { BottomSheet } from '../BottomSheet/BottomSheet';
 import { Icon } from '../Icon/Icon';

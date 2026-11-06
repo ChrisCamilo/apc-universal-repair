@@ -9,8 +9,8 @@ import {
   readItemsCsv,
   rowsSummary,
   type CsvItems,
-} from '@apc/shared/item-csv';
-import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/shared/lists';
+} from '@apc/domain/item-csv';
+import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/domain/lists';
 import { apiUrl } from '../../app/api';
 import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';

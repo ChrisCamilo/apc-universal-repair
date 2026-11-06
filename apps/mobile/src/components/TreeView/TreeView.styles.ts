@@ -1,5 +1,5 @@
-import { ICON_SIZES } from '@apc/shared/icons';
-import { scales } from '@apc/shared/theme';
+import { ICON_SIZES } from '@apc/tokens/icons';
+import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { displayLabel, glow } from '../../styles/shared';
 import { fontFamily, softAccent } from '../../app/theme';

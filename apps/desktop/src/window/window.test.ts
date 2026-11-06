@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_WINDOW_HEIGHT } from "@apc/shared/screens";
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_WINDOW_HEIGHT } from "@apc/ui-spec/screens";
 import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window.ts";
 
 // The title bar and borders of a window on Windows 11 at 100%.
@@ -14,7 +14,7 @@ test("Desktop: the window opens at 1280×720, or at what the work area holds", (
   assert.deepEqual(openingContentSize({ width: 1024, height: 600 }, FRAME), { width: 1280, height: 640 });
 });
 
-// Checks the window's sizes are the screen sizes of @apc/shared/screens, which the packaged app can't import.
+// Checks the window's sizes are the screen sizes of @apc/ui-spec/screens, which the packaged app can't import.
 test("Desktop: the window's sizes match the shared screen sizes", () => {
   assert.deepEqual(WINDOW_SIZE, { width: MIN_DESKTOP_WIDTH, height: MIN_DESKTOP_HEIGHT });
   assert.deepEqual(MIN_WINDOW_SIZE, { width: MIN_DESKTOP_WIDTH, height: MIN_WINDOW_HEIGHT });

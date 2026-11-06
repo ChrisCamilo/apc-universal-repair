@@ -8,9 +8,9 @@ import {
   type Credentials,
   type LoginErrors,
   type SessionUser,
-} from '@apc/shared/auth'
-import { DEVICE_MESSAGES } from '@apc/shared/devices'
-import { lockIcon, userIcon } from '@apc/shared/icons'
+} from '@apc/domain/auth'
+import { DEVICE_MESSAGES } from '@apc/domain/devices'
+import { lockIcon, userIcon } from '@apc/tokens/icons'
 import { BrandMark } from '../../components/BrandMark'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'

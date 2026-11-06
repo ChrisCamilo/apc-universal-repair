@@ -1,4 +1,4 @@
-import { backIcon, ICON_SIZES } from '@apc/shared/icons'
+import { backIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { backButton } from './BackButton.styles.ts'
 import { Icon } from '../Icon/Icon.tsx'
 

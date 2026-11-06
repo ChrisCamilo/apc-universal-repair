@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { healthResponseSchema } from "@apc/shared";
+import { healthResponseSchema } from "@apc/domain";
 
 // GET /health, open without a session: whether the API is up, and its version, which the desktop app compares with its
 // own to warn about a server on another computer at another release (see apps/desktop/src/system/update.ts).

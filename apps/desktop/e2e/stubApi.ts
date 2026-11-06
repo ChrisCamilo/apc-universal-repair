@@ -1,10 +1,10 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { initials } from "@apc/shared/auth";
-import type { Device } from "@apc/shared/devices";
-import type { Item } from "@apc/shared/items";
-import { ITEM_LIST_PATHS } from "@apc/shared/lists";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { initials } from "@apc/domain/auth";
+import type { Device } from "@apc/domain/devices";
+import type { Item } from "@apc/domain/items";
+import { ITEM_LIST_PATHS } from "@apc/domain/lists";
+import { TEST_USERS } from "@apc/domain/test-users";
 
 // A stand-in for the API, on a free port of this computer, for the desktop smoke test: the health check, the login
 // of the test users (who have seen the Inventory tutorial, so it doesn't start over the screen), answering the token

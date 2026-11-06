@@ -5,8 +5,8 @@
 import React, { useState } from 'react';
 import { AccessibilityInfo, Animated, LayoutAnimation, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import type { TreeNode } from '@apc/shared/tree';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
+import type { TreeNode } from '@apc/ui-spec/tree';
 import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 import { TreeView } from '../src/components/TreeView';
 

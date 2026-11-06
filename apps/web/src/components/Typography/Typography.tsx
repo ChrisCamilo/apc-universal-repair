@@ -6,10 +6,10 @@ import {
   type HeadingLevel,
   type TextSize,
   type Tone,
-} from '@apc/shared/typography'
+} from '@apc/tokens/typography'
 import { heading, label, numericReadout, text, textClamp } from './Typography.styles.ts'
 
-// Text primitives on top of the type scale (see @apc/shared/typography and Typography.styles.ts).
+// Text primitives on top of the type scale (see @apc/tokens/typography and Typography.styles.ts).
 
 const HEADING_TAGS = { 1: 'h1', 2: 'h2', 3: 'h3', 4: 'h4' } as const
 type HeadingProps = HTMLAttributes<HTMLHeadingElement> & { level?: HeadingLevel; tone?: Tone; children: ReactNode }

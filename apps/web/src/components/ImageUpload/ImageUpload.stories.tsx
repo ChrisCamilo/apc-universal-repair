@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos'
+import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos'
 import { userEvent } from 'storybook/test'
 import { ImageUpload, type UploadPhoto } from './ImageUpload.tsx'
 

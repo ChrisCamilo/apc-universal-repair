@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
-import { initials, loginRequestSchema, userCreateRequestSchema, type TestUser } from "@apc/shared/auth";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { initials, loginRequestSchema, userCreateRequestSchema, type TestUser } from "@apc/domain/auth";
+import { TEST_USERS } from "@apc/domain/test-users";
 
 // A stand-in for the API's sign-up and login, so they work the same on every run without a database: it knows the
 // test users, as the seed puts them in the database, and the users the test signs up. POST /api/users creates a user

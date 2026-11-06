@@ -1,8 +1,8 @@
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from "@apc/shared/photos";
-import type { ItemPhoto } from "@apc/shared/items";
+import { PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from "@apc/domain/photos";
+import type { ItemPhoto } from "@apc/domain/items";
 import type { ItemPhoto as ItemPhotoRow } from "../generated/prisma/client.js";
 import { signedPhotoPath, type ActiveSession } from "../auth/sessions.js";
 

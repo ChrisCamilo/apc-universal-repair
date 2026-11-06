@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog'
+import { DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/ui-spec/dialog'
 import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of a modal window: the panel with its sheen and hairline frame over a dimmed, blurred backdrop, its content

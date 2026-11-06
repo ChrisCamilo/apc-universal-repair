@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { apiFetch } from '@apc/shared/auth'
-import { copyIcon, pencilIcon, plusIcon, trashIcon } from '@apc/shared/icons'
-import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/shared/items'
+import { apiFetch } from '@apc/domain/auth'
+import { copyIcon, pencilIcon, plusIcon, trashIcon } from '@apc/tokens/icons'
+import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/domain/items'
 import {
   BRAND_FIELD_LABELS,
   brandDetailTexts,
@@ -37,9 +37,9 @@ import {
   type ItemForm,
   type ItemFormErrors,
   type VehicleField,
-} from '@apc/shared/item-form'
-import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists'
-import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/shared/photos'
+} from '@apc/domain/item-form'
+import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/domain/lists'
+import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/domain/photos'
 import { Button } from '../../components/Button'
 import { Combobox } from '../../components/Combobox'
 import { RowAction } from '../../components/DataTable'

@@ -6,16 +6,16 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import type { Item } from '@apc/shared/items';
-import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/shared/lists';
-import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
-import { itemListsOf } from '@apc/shared/test-lists';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
+import type { Item } from '@apc/domain/items';
+import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/domain/lists';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
+import { itemListsOf } from '@apc/domain/test-lists';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { ManageListsDialog } from '../src/features/inventory/ManageListsDialog';
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/features/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
-import { testItem, type FlatItem } from '@apc/shared/test-items';
+import { testItem, type FlatItem } from '@apc/domain/test-items';
 
 const ITEMS = [
   item({ id: '00000000-0000-4000-8000-0000000000c1', code: 'W 712/95', name: 'Filtro de óleo', category: 'Motor', vehicleModel: 'Gol' }),

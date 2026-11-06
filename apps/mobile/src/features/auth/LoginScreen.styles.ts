@@ -1,5 +1,5 @@
-import { LOGIN_BRAND } from '@apc/shared/auth';
-import { scales } from '@apc/shared/theme';
+import { LOGIN_BRAND } from '@apc/domain/auth';
+import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { fontFamily, softAccent } from '../../app/theme';
 

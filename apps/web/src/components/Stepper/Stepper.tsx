@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { ICON_SIZES, minusIcon, plusIcon } from '@apc/shared/icons'
+import { ICON_SIZES, minusIcon, plusIcon } from '@apc/tokens/icons'
 import { Icon } from '../Icon/Icon.tsx'
 import { stepper } from './Stepper.styles.ts'
 import { Label, Text } from '../Typography/Typography.tsx'

@@ -1,6 +1,6 @@
 import { test as base } from "@playwright/test";
-import type { TestUser } from "@apc/shared/auth";
-import type { Item } from "@apc/shared/items";
+import type { TestUser } from "@apc/domain/auth";
+import type { Item } from "@apc/domain/items";
 import { serveItems } from "../stubs/items.ts";
 import { signIn } from "../stubs/session.ts";
 import { serveUsers } from "../stubs/users.ts";

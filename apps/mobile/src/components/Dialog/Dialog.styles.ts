@@ -1,6 +1,6 @@
 import type { ViewStyle } from 'react-native';
-import { DIALOG_HEADER_HEIGHT, DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/shared/dialog';
-import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
+import { DIALOG_HEADER_HEIGHT, DIALOG_HEIGHT_INSET, DIALOG_SCREEN_INSET, DIALOG_WIDTHS, type DialogSize } from '@apc/ui-spec/dialog';
+import { popShadow, scales, sheenGradient } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { softHairline, withAlpha } from '../../app/theme';
 

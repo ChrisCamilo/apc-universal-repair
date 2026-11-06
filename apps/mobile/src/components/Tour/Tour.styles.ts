@@ -1,6 +1,6 @@
 import type { ViewStyle } from 'react-native';
-import { popShadow, scales, spotlightDim } from '@apc/shared/theme';
-import type { TourRect } from '@apc/shared/tour';
+import { popShadow, scales, spotlightDim } from '@apc/tokens/theme';
+import type { TourRect } from '@apc/ui-spec/tour';
 import { createStyles } from '../../styles/createStyles';
 import { glow } from '../../styles/shared';
 

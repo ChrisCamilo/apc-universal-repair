@@ -1,5 +1,5 @@
-import { MIN_DESKTOP_WIDTH, MIN_WINDOW_HEIGHT } from '@apc/shared/screens'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { MIN_DESKTOP_WIDTH, MIN_WINDOW_HEIGHT } from '@apc/ui-spec/screens'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Pressable, Text as NativeText, TextInput, View, type HostInstance } from 'react-native';
-import { ICON_SIZES, minusIcon, plusIcon, type IconShape } from '@apc/shared/icons';
+import { ICON_SIZES, minusIcon, plusIcon, type IconShape } from '@apc/tokens/icons';
 import { useRevealField } from '../FieldScrollView/FieldScrollView';
 import { Icon } from '../Icon/Icon';
 import { useStyles } from './Stepper.styles';

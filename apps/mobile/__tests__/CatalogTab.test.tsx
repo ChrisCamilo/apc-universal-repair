@@ -5,13 +5,13 @@
 import React from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { ENGINE_SHEETS, NO_SHEET_MESSAGE } from '@apc/shared/catalog';
-import type { Item } from '@apc/shared/items';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { ENGINE_SHEETS, NO_SHEET_MESSAGE } from '@apc/domain/catalog';
+import type { Item } from '@apc/domain/items';
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { CatalogTab } from '../src/features/catalog/CatalogTab';
 import { PhoneHeaderContext, type PhoneHeader } from '../src/features/dashboard/phoneHeaderContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { testItem, type FlatItem } from '@apc/shared/test-items';
+import { testItem, type FlatItem } from '@apc/domain/test-items';
 
 const OPALA_41 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1'];
 // What Android's back button calls.

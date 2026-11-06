@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ICON_SIZES, infoIcon } from '@apc/shared/icons'
+import { ICON_SIZES, infoIcon } from '@apc/tokens/icons'
 import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { desktopBridge } from './desktopBridge.ts'

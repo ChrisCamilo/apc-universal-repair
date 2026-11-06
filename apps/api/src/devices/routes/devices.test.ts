@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, afterEach, test, mock } from "node:test";
-import { proveDevice } from "@apc/shared/devices";
+import { proveDevice } from "@apc/domain/devices";
 import { buildApp } from "../../app.js";
 import { checkProof, isLoopback, issueChallenge } from "../devices.js";
 import { entryCodeUser, HELD_MS, holdEntryCode, issueEntryCode, useEntryCode } from "../entryCodes.js";

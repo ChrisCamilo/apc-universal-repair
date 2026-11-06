@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { toggleExclusive, toggleValue } from '@apc/shared/filters';
+import { toggleExclusive, toggleValue } from '@apc/ui-spec/filters';
 import { useGroupStyles, useStyles } from './FilterChip.styles';
 
 // Toggle chips for quick filters, the same as the web. A chip says whether it is on to screen readers and

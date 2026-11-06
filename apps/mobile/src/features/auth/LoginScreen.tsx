@@ -1,8 +1,8 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { Pressable, Text as RNText, TextInput, View } from 'react-native';
-import { LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/shared/auth';
-import { DEVICE_MESSAGES } from '@apc/shared/devices';
-import { chevronIcon, ICON_SIZES, lockIcon, qrIcon, userIcon } from '@apc/shared/icons';
+import { LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, loginErrors, type AuthService, type Credentials, type LoginErrors, type SessionUser } from '@apc/domain/auth';
+import { DEVICE_MESSAGES } from '@apc/domain/devices';
+import { chevronIcon, ICON_SIZES, lockIcon, qrIcon, userIcon } from '@apc/tokens/icons';
 import { BrandMark } from '../../components/BrandMark';
 import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';

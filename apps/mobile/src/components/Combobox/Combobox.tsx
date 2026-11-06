@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Animated, Pressable, Text as NativeText, TextInput, View, type HostInstance } from 'react-native';
-import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
-import { capitalizeFirst, findOption, matchingOptions } from '@apc/shared/items';
+import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons';
+import { capitalizeFirst, findOption, matchingOptions } from '@apc/domain/items';
 import { CHEVRON_HIT_SLOP, useStyles } from './Combobox.styles';
 import { useRevealField } from '../FieldScrollView/FieldScrollView';
 import { Icon } from '../Icon/Icon';

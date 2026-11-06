@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { BUTTON_SIZES, BUTTON_VARIANTS } from '@apc/shared/button'
-import { cubeIcon, documentIcon } from '@apc/shared/icons'
+import { BUTTON_SIZES, BUTTON_VARIANTS } from '@apc/ui-spec/button'
+import { cubeIcon, documentIcon } from '@apc/tokens/icons'
 import { Button } from './Button.tsx'
 
 // Every variant in every state. Hover, active and focus-visible are forced by storybook-addon-pseudo-states

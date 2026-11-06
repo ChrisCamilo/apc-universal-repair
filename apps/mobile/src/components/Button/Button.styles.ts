@@ -1,10 +1,10 @@
-import { BUTTON_SIZES } from '@apc/shared/button';
-import { scales } from '@apc/shared/theme';
+import { BUTTON_SIZES } from '@apc/ui-spec/button';
+import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { displayLabel, glow } from '../../styles/shared';
 import { fontFamily, withAlpha } from '../../app/theme';
 
-// The look of the buttons, the same variants and sizes as the web (see @apc/shared/button): pill shape and the display
+// The look of the buttons, the same variants and sizes as the web (see @apc/ui-spec/button): pill shape and the display
 // face in uppercase with the style's tracking, except the link, which reads as inline text. Pressing shows what hover
 // shows on the web; a focus ring frames the button when it has keyboard focus. Each variant has its frame and label
 // keys, and a `Pressed` one where pressing changes it.

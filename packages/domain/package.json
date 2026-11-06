@@ -1,0 +1,109 @@
+{
+  "name": "@apc/domain",
+  "description": "The features' schemas and rules, the API's route list, the server's ports and pairing, and the test tags.",
+  "private": true,
+  "license": "UNLICENSED",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "apc-dist": "./dist/index.js",
+      "default": "./src/index.ts"
+    },
+    "./api-routes": {
+      "apc-dist": "./dist/platform/api/apiRoutes.js",
+      "default": "./src/platform/api/apiRoutes.ts"
+    },
+    "./auth": {
+      "apc-dist": "./dist/auth/auth.js",
+      "default": "./src/auth/auth.ts"
+    },
+    "./devices": {
+      "apc-dist": "./dist/devices/devices.js",
+      "default": "./src/devices/devices.ts"
+    },
+    "./device-crypto": {
+      "apc-dist": "./dist/devices/deviceCrypto.js",
+      "default": "./src/devices/deviceCrypto.ts"
+    },
+    "./catalog": {
+      "apc-dist": "./dist/catalog/catalog.js",
+      "default": "./src/catalog/catalog.ts"
+    },
+    "./test-tags": {
+      "apc-dist": "./dist/platform/testing/tags.js",
+      "default": "./src/platform/testing/tags.ts"
+    },
+    "./test-users": {
+      "apc-dist": "./dist/auth/testUsers.js",
+      "default": "./src/auth/testUsers.ts"
+    },
+    "./items": {
+      "apc-dist": "./dist/inventory/items.js",
+      "default": "./src/inventory/items.ts"
+    },
+    "./item-form": {
+      "apc-dist": "./dist/inventory/itemForm.js",
+      "default": "./src/inventory/itemForm.ts"
+    },
+    "./item-filters": {
+      "apc-dist": "./dist/inventory/itemFilters.js",
+      "default": "./src/inventory/itemFilters.ts"
+    },
+    "./item-csv": {
+      "apc-dist": "./dist/inventory/itemCsv.js",
+      "default": "./src/inventory/itemCsv.ts"
+    },
+    "./lists": {
+      "apc-dist": "./dist/inventory/lists.js",
+      "default": "./src/inventory/lists.ts"
+    },
+    "./test-items": {
+      "apc-dist": "./dist/inventory/testItems.js",
+      "default": "./src/inventory/testItems.ts"
+    },
+    "./test-lists": {
+      "apc-dist": "./dist/inventory/testLists.js",
+      "default": "./src/inventory/testLists.ts"
+    },
+    "./notifications": {
+      "apc-dist": "./dist/notifications/notifications.js",
+      "default": "./src/notifications/notifications.ts"
+    },
+    "./photos": {
+      "apc-dist": "./dist/inventory/photos.js",
+      "default": "./src/inventory/photos.ts"
+    },
+    "./server": {
+      "apc-dist": "./dist/platform/server/ports.js",
+      "default": "./src/platform/server/ports.ts"
+    },
+    "./pairing": {
+      "apc-dist": "./dist/platform/server/pairing.js",
+      "default": "./src/platform/server/pairing.ts"
+    },
+    "./inventory-tutorial": {
+      "apc-dist": "./dist/inventory/inventoryTutorial.js",
+      "default": "./src/inventory/inventoryTutorial.ts"
+    },
+    "./list-query": {
+      "apc-dist": "./dist/platform/query/listQuery.js",
+      "default": "./src/platform/query/listQuery.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src",
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "zod": "^4.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

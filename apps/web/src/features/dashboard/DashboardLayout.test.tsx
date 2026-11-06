@@ -1,7 +1,7 @@
-import { initials } from '@apc/shared/auth'
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/shared/screens'
-import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/shared/tabs'
-import { TEST_USERS } from '@apc/shared/test-users'
+import { initials } from '@apc/domain/auth'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/ui-spec/screens'
+import { REORDER_TABS_STORAGE_KEY, TAB_ORDER_STORAGE_KEY } from '@apc/ui-spec/tabs'
+import { TEST_USERS } from '@apc/domain/test-users'
 import { useEffect, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
@@ -19,8 +19,8 @@ import { useTabReorder } from './tabReorderContext.ts'
 const SESSION_USER = { ...TEST_USERS[0], initials: initials(TEST_USERS[0].displayName), inventoryTutorialSeen: false }
 
 // Three tabs let the order change; Specs stands in for a tab still being built.
-vi.mock('@apc/shared/tabs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@apc/shared/tabs')>()),
+vi.mock('@apc/ui-spec/tabs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@apc/ui-spec/tabs')>()),
   DASHBOARD_TABS: [
     { id: 'inventory', label: 'Estoque', icon: 'cube' },
     { id: 'catalog', label: 'Catálogo', icon: 'document' },

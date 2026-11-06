@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { ENGINE_SHEETS } from "@apc/shared/catalog";
+import { ENGINE_SHEETS } from "@apc/domain/catalog";
 
 // The Catalog tab: its brands, the models' tree, its searches and the engine sheets; on a phone, the brand lines, the
 // screen's title and its ←, and the parts a code search found as cards.

@@ -1,7 +1,7 @@
 import { useContext, type ComponentRef, type ReactNode, type RefObject } from 'react';
 import { Animated, Modal, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
-import type { DialogSize } from '@apc/shared/dialog';
+import type { DialogSize } from '@apc/ui-spec/dialog';
 import { BackButton } from '../BackButton/BackButton';
 import { CloseButton } from '../CloseButton/CloseButton';
 import { fillEdges, useStyles, windowBox } from './Dialog.styles';

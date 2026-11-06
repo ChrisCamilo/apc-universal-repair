@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { after, before, test } from "node:test";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { TEST_USERS } from "@apc/domain/test-users";
 import { buildApp } from "../../app.js";
 import { prisma } from "../../db/client.js";
 import { testDevice, testProof } from "../../devices/testDevices.js";

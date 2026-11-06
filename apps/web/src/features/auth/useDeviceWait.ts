@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { waitForDevice, type AuthService, type Credentials, type SessionUser } from '@apc/shared/auth'
+import { waitForDevice, type AuthService, type Credentials, type SessionUser } from '@apc/domain/auth'
 
-// A login or sign-up from a device the server's computer hasn't authorized waits here (see @apc/shared/devices): the
+// A login or sign-up from a device the server's computer hasn't authorized waits here (see @apc/domain/devices): the
 // screen shows the device's code while waitForDevice asks whether it was authorized, then logs in with what was typed.
 // Another login, or the screen closing, stops the wait.
 

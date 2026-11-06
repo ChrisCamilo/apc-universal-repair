@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { Mode, Style } from '@apc/shared/theme'
+import type { Mode, Style } from '@apc/tokens/theme'
 
 export const ThemeContext = createContext<ThemeState | null>(null)
 

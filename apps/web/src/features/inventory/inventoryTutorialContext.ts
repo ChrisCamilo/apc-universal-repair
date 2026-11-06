@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/shared/inventory-tutorial'
+import { INVENTORY_TUTORIAL_STORAGE_KEY } from '@apc/domain/inventory-tutorial'
 import { useSession } from '../auth/sessionContext.ts'
 import { removeStored } from '../../app/storage.ts'
 

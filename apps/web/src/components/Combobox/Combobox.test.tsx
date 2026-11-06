@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { SELECT_VISIBLE_OPTIONS } from '@apc/shared/filters'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { SELECT_VISIBLE_OPTIONS } from '@apc/ui-spec/filters'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'

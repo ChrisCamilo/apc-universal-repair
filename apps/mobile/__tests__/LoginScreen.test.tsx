@@ -5,12 +5,12 @@
 import React from 'react';
 import { Modal, StyleSheet, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { createMockAuth, LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/shared/auth';
-import { DEVICE_MESSAGES, DEVICE_POLL_MS, type DeviceStatus } from '@apc/shared/devices';
-import { qrIcon } from '@apc/shared/icons';
-import { isStyleId } from '@apc/shared/style-ids';
-import { TEST_USERS } from '@apc/shared/test-users';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { createMockAuth, LOGIN_BRAND, LOGIN_INTRO, LOGIN_MESSAGES, tooManyAttempts, type AuthService, type SessionUser } from '@apc/domain/auth';
+import { DEVICE_MESSAGES, DEVICE_POLL_MS, type DeviceStatus } from '@apc/domain/devices';
+import { qrIcon } from '@apc/tokens/icons';
+import { isStyleId } from '@apc/tokens/style-ids';
+import { TEST_USERS } from '@apc/domain/test-users';
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { LoginScreen } from '../src/features/auth/LoginScreen';
 import { Icon } from '../src/components/Icon';
 import { themeStorage, ThemeProvider } from '../src/app/theme';

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { DASHBOARD_TABS } from "@apc/shared/tabs";
+import { DASHBOARD_TABS } from "@apc/ui-spec/tabs";
 
 // The shell around the tabs: the header, the tab bar and the user menu; on a phone, the open tab's title and the bottom
 // bar.

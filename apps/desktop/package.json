@@ -20,7 +20,8 @@
   },
   "devDependencies": {
     "@apc/api": "workspace:*",
-    "@apc/shared": "workspace:*",
+    "@apc/domain": "workspace:*",
+    "@apc/ui-spec": "workspace:*",
     "@electron/rebuild": "^4.2.1",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.2",

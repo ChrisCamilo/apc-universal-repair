@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Image, Pressable, Text as NativeText, View } from 'react-native';
-import { cameraIcon, closeIcon, ICON_SIZES, imageIcon, type IconShape } from '@apc/shared/icons';
-import { takePhotos, type PhotoFile } from '@apc/shared/photos';
-import { scales } from '@apc/shared/theme';
+import { cameraIcon, closeIcon, ICON_SIZES, imageIcon, type IconShape } from '@apc/tokens/icons';
+import { takePhotos, type PhotoFile } from '@apc/domain/photos';
+import { scales } from '@apc/tokens/theme';
 import { Icon } from '../Icon/Icon';
 import { useStyles } from './ImageUpload.styles';
 import { useTheme } from '../../app/theme';

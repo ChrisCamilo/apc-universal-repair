@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { createMockAuth } from '@apc/shared/auth'
-import { TEST_USERS } from '@apc/shared/test-users'
+import { createMockAuth } from '@apc/domain/auth'
+import { TEST_USERS } from '@apc/domain/test-users'
 import { LoginScreen } from '../features/auth/LoginScreen.tsx'
 import { DashboardScreen } from './Screens.tsx'
 
@@ -8,7 +8,7 @@ import { DashboardScreen } from './Screens.tsx'
 // Inventory tabs. Switch Style and Mode in the toolbar to see each combination, and the viewports to see them at
 // 1280×720 and at phone width.
 
-// The Login story logs in with the repo's test users (see @apc/shared/auth) and keeps no session.
+// The Login story logs in with the repo's test users (see @apc/domain/auth) and keeps no session.
 const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}, removeItem: async () => {} }, TEST_USERS)
 const meta = { title: 'Screens', parameters: { layout: 'fullscreen' } } satisfies Meta
 export const Catalog: Story = { render: () => <DashboardScreen initialTab="catalog" /> }

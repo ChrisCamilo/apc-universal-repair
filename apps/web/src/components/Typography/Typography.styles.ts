@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { recipe, tv } from '../../styles/tv.ts'
 
-// The look of the text primitives, on the type scale of @apc/shared/typography: the display face, colors and tracking
+// The look of the text primitives, on the type scale of @apc/tokens/typography: the display face, colors and tracking
 // come from the theme variables, so every primitive follows the active style and mode. Size, tone and weight are
 // variants every primitive shares.
 

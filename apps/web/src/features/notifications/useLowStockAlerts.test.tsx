@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import type { SessionUser } from '@apc/shared/auth'
-import type { Item } from '@apc/shared/items'
-import { lowStockKey, notificationsKey, type Notification } from '@apc/shared/notifications'
+import type { SessionUser } from '@apc/domain/auth'
+import type { Item } from '@apc/domain/items'
+import { lowStockKey, notificationsKey, type Notification } from '@apc/domain/notifications'
 import { beforeEach, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../../index.css'
@@ -10,7 +10,7 @@ import { Button } from '../../components/Button'
 import { ToastProvider } from '../../components/Toast'
 import { NotificationsMenu } from './NotificationsMenu.tsx'
 import { useLowStockAlerts } from './useLowStockAlerts.ts'
-import { testItem } from '@apc/shared/test-items'
+import { testItem } from '@apc/domain/test-items'
 
 const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true }
 const FILTER = item('a', 'Filtro de óleo', 8, 2)

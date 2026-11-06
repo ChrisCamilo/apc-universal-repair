@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from 'react'
-import { PAGE_SIZE_STORAGE_KEY } from '@apc/shared/pagination'
-import { PAGE_SIZES } from '@apc/shared/list-query'
+import { PAGE_SIZE_STORAGE_KEY } from '@apc/ui-spec/pagination'
+import { PAGE_SIZES } from '@apc/domain/list-query'
 import { readStored, writeStored } from '../../app/storage.ts'
 
 /** The "Itens por página" default, shared by the Inventory tab's list and the user menu that sets it. */

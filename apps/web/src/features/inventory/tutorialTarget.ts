@@ -1,4 +1,4 @@
-import type { TutorialTarget } from '@apc/shared/inventory-tutorial'
+import type { TutorialTarget } from '@apc/domain/inventory-tutorial'
 
 // Where each part of the Inventory tab the tutorial points at is on the page: the marked buttons and fields
 // (data-tour), the Filtros menu (on a phone, the filter sheet's "Ver itens", as the sheet itself fills the screen),

@@ -1,4 +1,4 @@
-import type { DeviceSigner } from '@apc/shared/devices'
+import type { DeviceSigner } from '@apc/domain/devices'
 
 // The demo's device: not a key at all. The demo authorizes no devices (see demoApi.ts), so it makes no key pair and
 // keeps nothing in the browser; the logins it sends carry this stand-in, which no real server accepts: it isn't an

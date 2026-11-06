@@ -11,8 +11,8 @@ import {
   type ItemUpdate,
   type ItemVehicleCreate,
   type SortableItem,
-} from "@apc/shared/items";
-import { splitVehicleModel } from "@apc/shared/item-filters";
+} from "@apc/domain/items";
+import { splitVehicleModel } from "@apc/domain/item-filters";
 import type { Position, Prisma, Side } from "../generated/prisma/client.js";
 import { photoOf } from "./photos.js";
 import { listIds } from "./listIds.js";

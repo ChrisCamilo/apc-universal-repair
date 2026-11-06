@@ -1,7 +1,7 @@
 import { RELEASE_VERSION } from 'virtual:apc-release'
-import { initials, loginRequestSchema, userCreateRequestSchema } from '@apc/shared/auth'
-import { IMPORT_CONFLICTS, itemImportSchema } from '@apc/shared/item-csv'
-import { itemMatchesQuery } from '@apc/shared/item-filters'
+import { initials, loginRequestSchema, userCreateRequestSchema } from '@apc/domain/auth'
+import { IMPORT_CONFLICTS, itemImportSchema } from '@apc/domain/item-csv'
+import { itemMatchesQuery } from '@apc/domain/item-filters'
 import {
   capitalizeFirst,
   codeKey,
@@ -19,7 +19,7 @@ import {
   type ItemCreate,
   type ItemPhoto,
   type ItemVehicleCreate,
-} from '@apc/shared/items'
+} from '@apc/domain/items'
 import {
   isCatalogBrand,
   ITEM_LIST_PATHS,
@@ -30,8 +30,8 @@ import {
   vehicleModelCreateSchema,
   type ItemListKind,
   type ListEntry,
-} from '@apc/shared/lists'
-import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_PARTS } from '@apc/shared/photos'
+} from '@apc/domain/lists'
+import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_PARTS } from '@apc/domain/photos'
 import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 
@@ -41,7 +41,7 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // the shared matcher (itemMatchesQuery) and sorts them with sortItems, codes are unique across the stock, the lists'
 // names follow the writing rule and stay apart ignoring case and accents, and the CSV import goes in whole or not at
 // all, refused with the API's own reasons (IMPORT_CONFLICTS). A photo sent stays in the browser as an object URL, which
-// the item carries as its whole address (see photoAddress in @apc/shared/photos), and is let go once the photo is
+// the item carries as its whole address (see photoAddress in @apc/domain/photos), and is let go once the photo is
 // removed; a few sample items carry drawings of the demo's own. Everything is held in memory and starts over from
 // demoData.ts when the page loads again. Each answer carries the demo's marker (demoMarker.ts).
 // The demo authorizes no devices: its logins and sign-ups go through without checking the device's proof, which the

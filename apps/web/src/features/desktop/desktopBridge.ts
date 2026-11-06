@@ -1,5 +1,5 @@
-import type { DeviceSigner } from '@apc/shared/devices'
-import type { Pairing } from '@apc/shared/pairing'
+import type { DeviceSigner } from '@apc/domain/devices'
+import type { Pairing } from '@apc/domain/pairing'
 
 // What the desktop app's preload hands the page (see apps/desktop/src/preload.cts): asking for a Windows notification
 // and hearing when one was clicked, hearing when a new version is ready and asking to restart into it, and the

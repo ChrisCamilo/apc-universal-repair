@@ -1,8 +1,8 @@
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { atNotebookSizes } from "./support/sizes.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
-import { DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from "@apc/shared/tabs";
+import { DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from "@apc/ui-spec/tabs";
 
 // The first tab still being built, if any.
 const WIP_TAB = DASHBOARD_TABS.find((tab) => tab.wip);

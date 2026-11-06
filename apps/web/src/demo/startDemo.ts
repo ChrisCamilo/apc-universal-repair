@@ -1,4 +1,4 @@
-import type { Credentials } from '@apc/shared/auth'
+import type { Credentials } from '@apc/domain/auth'
 import { auth } from '../features/auth/auth.ts'
 import { replaceDevice } from '../features/auth/deviceKey.ts'
 import { DEMO_USER } from './demoData.ts'

@@ -10,8 +10,8 @@ import {
   itemUpdateSchema,
   sortItems,
   type ItemBrandCreate,
-} from "@apc/shared/items";
-import { itemImportResultSchema, itemImportSchema } from "@apc/shared/item-csv";
+} from "@apc/domain/items";
+import { itemImportResultSchema, itemImportSchema } from "@apc/domain/item-csv";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { prisma } from "../../db/client.js";
 import { importItems, ImportConflict } from "../import.js";

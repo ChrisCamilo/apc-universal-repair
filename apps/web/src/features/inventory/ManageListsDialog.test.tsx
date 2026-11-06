@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import type { Item } from '@apc/shared/items'
-import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/shared/lists'
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
-import { itemListsOf } from '@apc/shared/test-lists'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import type { Item } from '@apc/domain/items'
+import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/domain/lists'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
+import { itemListsOf } from '@apc/domain/test-lists'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -13,7 +13,7 @@ import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
 import { ManageListsDialog } from './ManageListsDialog.tsx'
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists.ts'
-import { testItem, type FlatItem } from '@apc/shared/test-items'
+import { testItem, type FlatItem } from '@apc/domain/test-items'
 
 const ITEMS = [
   item({ code: 'W 712/95', name: 'Filtro de óleo', category: 'Motor', vehicleBrand: 'Volkswagen', vehicleModel: 'Gol' }),

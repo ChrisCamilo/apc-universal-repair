@@ -1,4 +1,4 @@
-import type { ItemBrandCreate, ItemCreate, ItemVehicleCreate } from '@apc/shared/items'
+import type { ItemBrandCreate, ItemCreate, ItemVehicleCreate } from '@apc/domain/items'
 import shockAbsorber from './photos/amortecedor.svg'
 import timingBelt from './photos/correia-dentada.svg'
 import brakeDisc from './photos/disco-de-freio.svg'

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { searchIcon } from '@apc/shared/icons'
+import { searchIcon } from '@apc/tokens/icons'
 import { Button } from './Button/Button.tsx'
 import { EmptyState, ErrorState } from './EmptyState/EmptyState.tsx'
 import { Panel } from './Panel/Panel.tsx'

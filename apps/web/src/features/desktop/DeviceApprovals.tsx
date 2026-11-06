@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { DEVICE_MESSAGES, type Device } from '@apc/shared/devices'
+import { DEVICE_MESSAGES, type Device } from '@apc/domain/devices'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { TextField } from '../../components/TextField'
@@ -9,7 +9,7 @@ import { authorizeDevice, DEVICES_FAILED, listDevices, removeDevice } from './de
 import { devices as devicesRecipe } from './Devices.styles.ts'
 
 // On the server's computer, while someone is logged in to the desktop app: a device waiting to be authorized (see
-// @apc/shared/devices) shows "Autorizar este dispositivo?", with whose login it is, its short code to compare with
+// @apc/domain/devices) shows "Autorizar este dispositivo?", with whose login it is, its short code to compare with
 // the one on the device, and a name to give it, "Dispositivo <code>" when left blank. "Autorizar" lets it in, and
 // it logs in by itself; "Recusar" removes it, and it is told so. Waiting devices are asked about every APPROVALS_POLL_MS,
 // one at a time, oldest first, and each also gets a Windows notification once, shown while the window isn't focused.

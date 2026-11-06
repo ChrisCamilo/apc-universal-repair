@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
-import { selectionSummary, toggleValue } from '@apc/shared/filters'
-import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/shared/icons'
+import { selectionSummary, toggleValue } from '@apc/ui-spec/filters'
+import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { Icon } from '../Icon/Icon.tsx'
 import { select } from './Select.styles.ts'
 import { usePresence } from '../usePresence.ts'

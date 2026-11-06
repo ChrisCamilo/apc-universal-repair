@@ -1,9 +1,9 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { Text as RNText, TextInput, View } from 'react-native';
-import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/shared/auth';
-import { DEVICE_MESSAGES } from '@apc/shared/devices';
-import type { FieldKind } from '@apc/shared/field';
-import { lockIcon, userIcon, type IconShape } from '@apc/shared/icons';
+import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/domain/auth';
+import { DEVICE_MESSAGES } from '@apc/domain/devices';
+import type { FieldKind } from '@apc/ui-spec/field';
+import { lockIcon, userIcon, type IconShape } from '@apc/tokens/icons';
 import { BackButton } from '../../components/BackButton';
 import { Button } from '../../components/Button';
 import { FieldScrollView } from '../../components/FieldScrollView';

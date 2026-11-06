@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ICON_SIZES } from '@apc/shared/icons';
+import { ICON_SIZES } from '@apc/tokens/icons';
 import {
   readToastDuration,
   TOAST_DURATION,
@@ -10,7 +10,7 @@ import {
   TOAST_KIND_LOOKS,
   TOAST_KINDS,
   type ToastKind,
-} from '@apc/shared/toast';
+} from '@apc/ui-spec/toast';
 import { Icon } from '../Icon/Icon';
 import { useReducedMotion } from '../../app/motion';
 import { KIND_STYLES, TOAST_OFFSET, TOAST_RISE, useStyles } from './Toast.styles';

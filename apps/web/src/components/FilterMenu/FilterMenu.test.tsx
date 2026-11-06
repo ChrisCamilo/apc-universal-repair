@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { FILTER_PANEL_SPACING, type FilterValues } from '@apc/shared/filters'
-import { scales, themes } from '@apc/shared/theme'
+import { FILTER_PANEL_SPACING, type FilterValues } from '@apc/ui-spec/filters'
+import { scales, themes } from '@apc/tokens/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'

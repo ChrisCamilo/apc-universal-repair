@@ -1,4 +1,4 @@
-import { DEVICE_MESSAGES, type Device } from '@apc/shared/devices'
+import { DEVICE_MESSAGES, type Device } from '@apc/domain/devices'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../../index.css'

@@ -1,6 +1,6 @@
 import { Pressable } from 'react-native';
-import { closeIcon } from '@apc/shared/icons';
-import { scales } from '@apc/shared/theme';
+import { closeIcon } from '@apc/tokens/icons';
+import { scales } from '@apc/tokens/theme';
 import { useStyles } from './CloseButton.styles';
 import { Icon } from '../Icon/Icon';
 import { useTheme } from '../../app/theme';

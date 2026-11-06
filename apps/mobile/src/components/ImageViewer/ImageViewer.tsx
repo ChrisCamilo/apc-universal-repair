@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Animated, Image, Modal, Pressable, Text as NativeText, View, useWindowDimensions } from 'react-native';
-import { chevronIcon, ICON_SIZES, imageIcon } from '@apc/shared/icons';
-import { photoCount, takePhotos } from '@apc/shared/photos';
-import { scales } from '@apc/shared/theme';
+import { chevronIcon, ICON_SIZES, imageIcon } from '@apc/tokens/icons';
+import { photoCount, takePhotos } from '@apc/domain/photos';
+import { scales } from '@apc/tokens/theme';
 import { Button } from '../Button/Button';
 import { CloseButton } from '../CloseButton/CloseButton';
 import { Dialog } from '../Dialog/Dialog';

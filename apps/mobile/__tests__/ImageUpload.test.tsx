@@ -5,8 +5,8 @@
 import React, { useState } from 'react';
 import { Image, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { ImageUpload, type PickedPhoto, type UploadPhoto } from '../src/components/ImageUpload';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 

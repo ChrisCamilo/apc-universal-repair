@@ -1,8 +1,8 @@
-import { DEVICE_KEY_ALGORITHM, signNonce, toBase64url } from '@apc/shared/device-crypto'
-import type { DeviceSigner } from '@apc/shared/devices'
+import { DEVICE_KEY_ALGORITHM, signNonce, toBase64url } from '@apc/domain/device-crypto'
+import type { DeviceSigner } from '@apc/domain/devices'
 import { desktopBridge } from '../desktop/desktopBridge.ts'
 
-// The web app's device key (see @apc/shared/devices). Inside the desktop app it is the main process's, which signs for
+// The web app's device key (see @apc/domain/devices). Inside the desktop app it is the main process's, which signs for
 // the page through the preload, so the page never sees it. In a browser, as in development, it is a WebCrypto key pair
 // whose private key can't be exported, kept in IndexedDB (a CryptoKey is stored as it is, never as bytes) and made on
 // the first login. The demo, which has no server, swaps in its own stand-in before it logs in (see

@@ -1,6 +1,6 @@
 import type { TextStyle, ViewStyle } from 'react-native';
-import { SELECT_VISIBLE_OPTIONS } from '@apc/shared/filters';
-import { scales } from '@apc/shared/theme';
+import { SELECT_VISIBLE_OPTIONS } from '@apc/ui-spec/filters';
+import { scales } from '@apc/tokens/theme';
 import { fontFamily, softAccent, softHairline, withAlpha, type ActiveTheme } from '../app/theme';
 
 // The style recipes three or more components share, the same patterns as the web's styles/shared.ts. Each gives

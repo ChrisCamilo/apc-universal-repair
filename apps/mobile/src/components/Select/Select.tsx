@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
-import { selectionSummary, toggleValue } from '@apc/shared/filters';
-import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/shared/icons';
+import { selectionSummary, toggleValue } from '@apc/ui-spec/filters';
+import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/tokens/icons';
 import { Icon } from '../Icon/Icon';
 import { useOverlayMotion } from '../../app/motion';
 import { useStyles } from './Select.styles';

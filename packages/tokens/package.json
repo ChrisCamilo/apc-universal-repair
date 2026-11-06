@@ -1,0 +1,36 @@
+{
+  "name": "@apc/tokens",
+  "description": "The design system's values: the theme's tokens, the typography, the icons, the style ids and the style guard.",
+  "private": true,
+  "license": "UNLICENSED",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./theme": {
+      "apc-dist": "./dist/theme/tokens.js",
+      "default": "./src/theme/tokens.ts"
+    },
+    "./icons": {
+      "apc-dist": "./dist/icons/icons.js",
+      "default": "./src/icons/icons.ts"
+    },
+    "./typography": {
+      "apc-dist": "./dist/typography/typography.js",
+      "default": "./src/typography/typography.ts"
+    },
+    "./style-ids": {
+      "apc-dist": "./dist/styles/styleIds.js",
+      "default": "./src/styles/styleIds.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src",
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.test.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

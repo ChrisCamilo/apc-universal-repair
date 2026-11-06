@@ -1,5 +1,5 @@
-import { MIN_TOUCH_TARGET } from '@apc/shared/screens';
-import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
+import { MIN_TOUCH_TARGET } from '@apc/ui-spec/screens';
+import { popShadow, scales, sheenGradient } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { displayLabel, menuItemStyles } from '../../styles/shared';
 import { fontFamily, softAccent, softHairline } from '../../app/theme';
