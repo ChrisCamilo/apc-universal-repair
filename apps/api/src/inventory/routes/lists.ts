@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { optionKey } from "@apc/shared/items";
+import { optionKey } from "@apc/domain/items";
 import {
   isCatalogBrand,
   ITEM_LIST_PATHS,
@@ -16,7 +16,7 @@ import {
   vehicleModelsSchema,
   type ItemListKind,
   type ListEntry,
-} from "@apc/shared/lists";
+} from "@apc/domain/lists";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { prisma } from "../../db/client.js";
 

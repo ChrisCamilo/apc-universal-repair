@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
-import type { DialogSize } from '@apc/shared/dialog'
+import type { DialogSize } from '@apc/ui-spec/dialog'
 import { BackButton } from '../BackButton/BackButton.tsx'
 import { CloseButton } from '../CloseButton/CloseButton.tsx'
 import { dialog as dialogRecipe, dialogBox } from './Dialog.styles.ts'

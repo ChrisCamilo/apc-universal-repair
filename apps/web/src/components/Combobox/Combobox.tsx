@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
-import { capitalizeFirst, findOption, matchingOptions } from '@apc/shared/items'
-import { chevronIcon, ICON_SIZES } from '@apc/shared/icons'
+import { capitalizeFirst, findOption, matchingOptions } from '@apc/domain/items'
+import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { combobox } from './Combobox.styles.ts'
 import { Icon } from '../Icon/Icon.tsx'
 import { Label, Text } from '../Typography/Typography.tsx'

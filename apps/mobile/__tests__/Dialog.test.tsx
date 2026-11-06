@@ -7,9 +7,9 @@ import { AccessibilityInfo, Animated, Modal, ScrollView, StyleSheet, Text } from
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Circle, Path } from 'react-native-svg';
 import ReactTestRenderer from 'react-test-renderer';
-import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/shared/toast';
+import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
+import { TOAST_DURATION, TOAST_FADE_MS, TOAST_KIND_LOOKS, TOAST_KINDS, type ToastKind } from '@apc/ui-spec/toast';
 import { Button } from '../src/components/Button';
 import { Dialog } from '../src/components/Dialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';

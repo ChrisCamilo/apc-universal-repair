@@ -19,8 +19,8 @@ import {
   screenHeader,
   type CatalogScreen,
   type FoundPart,
-} from '@apc/shared/catalog'
-import { chevronIcon, ICON_SIZES } from '@apc/shared/icons'
+} from '@apc/domain/catalog'
+import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { EmptyState } from '../../components/EmptyState'
 import { Icon } from '../../components/Icon'
 import { ImageFrame } from '../../components/ImageFrame'
@@ -38,7 +38,7 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // The Catalog tab (/catalog): the brand tiles in a rail, the chosen brand's model tree, and the detail column with
 // the chosen engine's sheet. A brand opens on its first engine; one with no engine yet says so in the detail
 // column. On narrow screens the tiles sit above the tree in rows and the detail column goes below it. The data is
-// the mocked catalog of @apc/shared/catalog.
+// the mocked catalog of @apc/domain/catalog.
 // The rail's search narrows the brand tiles by name. The search above the tree looks for the code of a part kept in
 // the inventory first: with 3+ letters or digits of a code it lists the matching parts, and choosing one (the first
 // at once) reveals its vehicle: its brand, its model pointed out, the path open and the engine chosen, or, when the
@@ -46,7 +46,7 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // the tree by model name, moving to the first brand that has the model, or says no brand has it. Clearing it drops
 // the part list and the pointed-out model.
 // On a phone (below `card:`) the tab is a stack of screens, as in the "Catálogo no celular" mockup (see
-// CatalogScreen in @apc/shared/catalog): the brands, each on a line with how many models and sheets it has; a brand's
+// CatalogScreen in @apc/domain/catalog): the brands, each on a line with how many models and sheets it has; a brand's
 // models, as a tree whose engines say "Ver ficha"; and an engine's sheet under the path to it. A screen past the
 // brands puts its brand's name and a ← in the page's header, and opens at its top. The search above the brands and
 // the models looks for parts by code as above, listed as the Inventory's cards, and a tap on one clears it and opens

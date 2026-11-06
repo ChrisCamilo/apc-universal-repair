@@ -1,6 +1,6 @@
 import type { ViewStyle } from 'react-native';
-import { SHEET_HANDLE, SHEET_RADIUS, SHEET_TOP_INSET } from '@apc/shared/dialog';
-import { popShadow, scales, sheenGradient } from '@apc/shared/theme';
+import { SHEET_HANDLE, SHEET_RADIUS, SHEET_TOP_INSET } from '@apc/ui-spec/dialog';
+import { popShadow, scales, sheenGradient } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { softHairline, withAlpha } from '../../app/theme';
 

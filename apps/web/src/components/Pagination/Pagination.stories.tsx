@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { PAGE_SIZES } from '@apc/shared/pagination'
+import { PAGE_SIZES } from '@apc/domain/list-query'
 import { Pagination } from './Pagination.tsx'
 
 // Pagination at the start, middle and end of a long list, on a single page, and with a page button hovered

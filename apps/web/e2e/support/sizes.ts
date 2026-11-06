@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
+import { NOTEBOOK_HEIGHT, NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/ui-spec/screens";
 import { expect } from "./expect.ts";
 
 /**

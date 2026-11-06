@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
-import { REGISTER_MESSAGES } from "@apc/shared/auth";
+import { REGISTER_MESSAGES } from "@apc/domain/auth";
 import { buildApp } from "../../app.js";
 import { sessionOf } from "./users.js";
 

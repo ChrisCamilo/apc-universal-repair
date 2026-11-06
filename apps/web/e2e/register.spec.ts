@@ -1,11 +1,11 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { logIn, loginForm, registerForm } from "./locators/auth.ts";
 import { tour } from "./locators/common.ts";
 import { logOut } from "./locators/dashboard.ts";
-import { REGISTER_MESSAGES, SESSION_STORAGE_KEY } from "@apc/shared/auth";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { REGISTER_MESSAGES, SESSION_STORAGE_KEY } from "@apc/domain/auth";
+import { TEST_USERS } from "@apc/domain/test-users";
 
 // Nobody is logged in when these start.
 test.use({ signedIn: false });

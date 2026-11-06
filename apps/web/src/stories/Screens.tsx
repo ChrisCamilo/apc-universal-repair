@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
-import { cubeIcon, documentIcon, pencilIcon, trashIcon } from '@apc/shared/icons'
+import { activeFilterCount, type FilterValues } from '@apc/ui-spec/filters'
+import { cubeIcon, documentIcon, pencilIcon, trashIcon } from '@apc/tokens/icons'
 import {
   brandsValue,
   formatPriceRange,
@@ -16,10 +16,9 @@ import {
   stockStatus,
   type Item,
   type SortableItem,
-} from '@apc/shared/items'
-import { PAGE_SIZES } from '@apc/shared/pagination'
-import { sortRows, type Sort } from '@apc/shared/table'
-import type { TreeNode } from '@apc/shared/tree'
+} from '@apc/domain/items'
+import { PAGE_SIZES, sortRows, type Sort } from '@apc/domain/list-query'
+import type { TreeNode } from '@apc/ui-spec/tree'
 import { AppFrame } from '../components/AppFrame'
 import { Button } from '../components/Button'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from '../components/DataTable'
@@ -38,7 +37,7 @@ import { SearchField } from '../components/TextField'
 import { TreeView } from '../components/TreeView'
 import { Heading, NumericReadout, Text } from '../components/Typography'
 import { screens } from './Screens.styles.ts'
-import { testItem, type FlatItem } from '@apc/shared/test-items'
+import { testItem, type FlatItem } from '@apc/domain/test-items'
 
 // The wireframe screens rebuilt from the design system alone, to prove it is complete before the real screens:
 // the Dashboard on its Catalog and Inventory tabs (the Login story shows the real LoginScreen). They hold their

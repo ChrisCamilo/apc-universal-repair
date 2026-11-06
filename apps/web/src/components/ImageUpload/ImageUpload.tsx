@@ -1,6 +1,6 @@
 import { useId, useState, type DragEvent } from 'react'
-import { cameraIcon, closeIcon, ICON_SIZES, imageIcon, type IconShape } from '@apc/shared/icons'
-import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/shared/photos'
+import { cameraIcon, closeIcon, ICON_SIZES, imageIcon, type IconShape } from '@apc/tokens/icons'
+import { PHOTO_TYPES, photoCount, takePhotos } from '@apc/domain/photos'
 import { Icon } from '../Icon/Icon.tsx'
 import { imageUpload } from './ImageUpload.styles.ts'
 import { shrinkPhoto } from './shrinkPhoto.ts'

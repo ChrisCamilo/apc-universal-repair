@@ -1,7 +1,7 @@
 // The size of the app's window. It opens at the minimum desktop screen from AGENTS.md (1280×720 of content) when the
 // screen has room, and otherwise at the most the work area above the taskbar holds, so no part of it opens behind the
 // taskbar, e.g. about 1280×689 on a 1366×768 notebook. It can't be made smaller than 1280×640, which still fits there
-// with its title bar. These are MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT and MIN_WINDOW_HEIGHT in @apc/shared/screens,
+// with its title bar. These are MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT and MIN_WINDOW_HEIGHT in @apc/ui-spec/screens,
 // written here since the packaged app doesn't carry that package.
 
 /** The smallest content the window can be resized to. */

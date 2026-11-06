@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useEffectEvent } from 'react'
-import { TOAST_DURATION, type ToastKind } from '@apc/shared/toast'
+import { TOAST_DURATION, type ToastKind } from '@apc/ui-spec/toast'
 
 /** The time a toast stays on screen, in ms, and the way to change it, which also saves it on the device. */
 export type ToastDuration = { ms: number; setMs: (ms: number) => void }

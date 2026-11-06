@@ -1,13 +1,14 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
-import { nextSort, shownRows, sortFromValue, sortOptions, sortValue, type ShownRow, type Sort } from '@apc/shared/table'
+import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/tokens/icons'
+import { shownRows, type ShownRow } from '@apc/ui-spec/table'
+import { nextSort, sortFromValue, sortOptions, sortValue, type Sort } from '@apc/domain/list-query'
 import { dataTable, rowAction, tableThumbnail, tableTitle } from './DataTable.styles.ts'
 import { Icon } from '../Icon/Icon.tsx'
 import { Select } from '../Select/Select.tsx'
 import { Label } from '../Typography/Typography.tsx'
 
 // A list of rows with sortable columns, for the inventory and later data screens. The owner sorts the rows
-// (sortRows in @apc/shared/table) and the table shows the sort: a click on a header sorts ascending, a second
+// (sortRows in @apc/ui-spec/table) and the table shows the sort: a click on a header sorts ascending, a second
 // click descending, with an arrow and aria-sort. Numeric columns are right-aligned with tabular figures.
 // A row's status (low stock, out of stock) tints the whole row with a stripe at its start, and is also
 // written out for screen readers, since color alone doesn't reach them; the cell text keeps the text color,
@@ -20,7 +21,7 @@ import { Label } from '../Typography/Typography.tsx'
 // in its column and scrolls inside it, with the header pinned and the empty state centered. A nested row (rowNested)
 // belongs to the row above it, such as a brand of an item: it is indented and never tinted. A row that opens into
 // nested rows says whether it is open (rowExpanded), and a lead column, such as its chevron, comes first on the card.
-// Nested rows fade in as their row opens, and fade out in place as it closes (shownRows in @apc/shared/table), inert
+// Nested rows fade in as their row opens, and fade out in place as it closes (shownRows in @apc/ui-spec/table), inert
 // meanwhile; with reduced motion they show and go at once.
 
 const SORT_ARROWS = { ascending: '↑', descending: '↓', none: '↕' }

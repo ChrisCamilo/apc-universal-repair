@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { RouteOptions } from "fastify";
-import { API_ROUTES } from "@apc/shared/api-routes";
+import { API_ROUTES } from "@apc/domain/api-routes";
 import { buildApp } from "./app.js";
 import { TEST_SESSIONS } from "./auth/testSessions.js";
 
-// The API's routes against @apc/shared/api-routes, the list the web app's demo answers too (see
+// The API's routes against @apc/domain/api-routes, the list the web app's demo answers too (see
 // apps/web/src/demo/demoRoutes.test.ts): a route registered here and not there, or there and not here, or answering
 // with another schema, fails, so the demo can't fall behind the API unnoticed. Fastify's own HEAD routes are left out.
 

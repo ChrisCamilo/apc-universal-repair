@@ -1,4 +1,4 @@
-import { styleIds } from '@apc/shared/style-ids';
+import { styleIds } from '@apc/tokens/style-ids';
 
 // The look of the APC mark, the same as the web: its needle, hub and inner rule take the accent and everything else the
 // text colors. react-native-svg draws with props, not styles, so the colors go to the shapes as props from the theme,

@@ -1,7 +1,7 @@
 import multipart from "@fastify/multipart";
 import Fastify, { type RouteOptions } from "fastify";
 import { serializerCompiler, validatorCompiler } from "@fastify/type-provider-zod";
-import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES } from "@apc/shared/photos";
+import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES } from "@apc/domain/photos";
 import { registerAllowedHosts } from "./plugins/allowed-hosts.js";
 import { registerAuthentication } from "./plugins/authenticate.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";

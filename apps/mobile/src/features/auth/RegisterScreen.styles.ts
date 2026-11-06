@@ -1,6 +1,6 @@
-import { REGISTER_TITLE } from '@apc/shared/auth';
-import { DIALOG_HEADER_HEIGHT } from '@apc/shared/dialog';
-import { scales } from '@apc/shared/theme';
+import { REGISTER_TITLE } from '@apc/domain/auth';
+import { DIALOG_HEADER_HEIGHT } from '@apc/ui-spec/dialog';
+import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { fontFamily } from '../../app/theme';
 import { authScreenStyles } from './LoginScreen.styles';

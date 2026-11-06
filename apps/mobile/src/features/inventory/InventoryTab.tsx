@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
 import { Pressable, Text as RNText, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import { apiFetch } from '@apc/shared/auth';
+import { apiFetch } from '@apc/domain/auth';
 import {
   exportIcon,
   filterIcon,
@@ -10,7 +10,7 @@ import {
   playIcon,
   plusIcon,
   sortIcon,
-} from '@apc/shared/icons';
+} from '@apc/tokens/icons';
 import {
   itemCardCode,
   itemCardDetails,
@@ -22,8 +22,8 @@ import {
   type Item,
   type ItemBrand,
   type ItemStatus,
-} from '@apc/shared/items';
-import { activeFilterCount, type FilterValues } from '@apc/shared/filters';
+} from '@apc/domain/items';
+import { activeFilterCount, type FilterValues } from '@apc/ui-spec/filters';
 import {
   EMPTY_ITEM_FILTERS,
   followEntryChange,
@@ -31,12 +31,11 @@ import {
   itemFilterRows,
   itemListQuery,
   matchingCount,
-} from '@apc/shared/item-filters';
-import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form';
-import { isTestItem, TUTORIAL_CODE } from '@apc/shared/inventory-tutorial';
-import { SCROLL_PAGE_SIZE } from '@apc/shared/pagination';
-import { sortValue, type Sort } from '@apc/shared/table';
-import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos';
+} from '@apc/domain/item-filters';
+import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form';
+import { isTestItem, TUTORIAL_CODE } from '@apc/domain/inventory-tutorial';
+import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
+import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/domain/photos';
 import { ActionSheet } from '../../components/ActionSheet';
 import { apiUrl } from '../../app/api';
 import { DataTable, TableThumbnail } from '../../components/DataTable';

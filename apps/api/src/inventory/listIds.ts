@@ -1,5 +1,5 @@
-import { optionKey, type ItemVehicleCreate } from "@apc/shared/items";
-import { listName } from "@apc/shared/lists";
+import { optionKey, type ItemVehicleCreate } from "@apc/domain/items";
+import { listName } from "@apc/domain/lists";
 import type { Prisma } from "../generated/prisma/client.js";
 import type { ListIds } from "./items.js";
 

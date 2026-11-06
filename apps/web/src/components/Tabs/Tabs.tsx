@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { coneIcon, gripIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
-import { dropTab, moveTab, type DropSide } from '@apc/shared/tabs'
+import { coneIcon, gripIcon, ICON_SIZES, type IconShape } from '@apc/tokens/icons'
+import { dropTab, moveTab, type DropSide } from '@apc/ui-spec/tabs'
 import { Icon } from '../Icon/Icon.tsx'
 import { tabPanel, tabs as tabsRecipe } from './Tabs.styles.ts'
 
@@ -19,7 +19,7 @@ import { tabPanel, tabs as tabsRecipe } from './Tabs.styles.ts'
 type TabItem<T extends string> = {
   id: T
   label: string
-  /** Leading icon from @apc/shared/icons. */
+  /** Leading icon from @apc/tokens/icons. */
   icon?: IconShape[]
   /** Badge after the label, e.g. the number of items in stock. */
   count?: number

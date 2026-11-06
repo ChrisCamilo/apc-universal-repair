@@ -1,9 +1,9 @@
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { catalog } from "./locators/catalog.ts";
 import { dashboard } from "./locators/dashboard.ts";
-import type { Item } from "@apc/shared/items";
-import { DASHBOARD_TABS } from "@apc/shared/tabs";
+import type { Item } from "@apc/domain/items";
+import { DASHBOARD_TABS } from "@apc/ui-spec/tabs";
 import { item } from "./data/items.ts";
 
 // The inventory the code search looks in: a part for an engine the catalog has, and one for a model it has no sheet

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, beforeEach, mock, test } from "node:test";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { TEST_USERS } from "@apc/domain/test-users";
 import { buildApp } from "../../app.js";
 import { prisma } from "../../db/client.js";
 import { testDevice, testProof } from "../../devices/testDevices.js";

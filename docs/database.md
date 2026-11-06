@@ -208,7 +208,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 
 ### Starting data
 
-`pnpm --filter @apc/api db:seed` fills a new database with the test users (`christian.camilo` and `oficina`, from `@apc/shared/test-users`, with their passwords hashed), the default categories, part brands, vehicle brands with their models and a few sample items, three of them made by several brands (front brake pads, front shock absorber and air filter), with their original codes, and two that fit two vehicles. It can run again without duplicating anything.
+`pnpm --filter @apc/api db:seed` fills a new database with the test users (`christian.camilo` and `oficina`, from `@apc/domain/test-users`, with their passwords hashed), the default categories, part brands, vehicle brands with their models and a few sample items, three of them made by several brands (front brake pads, front shock absorber and air filter), with their original codes, and two that fit two vehicles. It can run again without duplicating anything.
 
 ---
 
@@ -297,4 +297,4 @@ A [#221](https://github.com/ChrisCamilo/apc-universal-repair/issues/221) provou 
 
 ### Dados iniciais
 
-`pnpm --filter @apc/api db:seed` preenche um banco novo com os usuários de teste (`christian.camilo` e `oficina`, de `@apc/shared/test-users`, com as senhas em hash), as categorias, marcas de peça, marcas de veículo com seus modelos e alguns itens de exemplo, três deles de várias marcas (pastilha de freio dianteira, amortecedor dianteiro e filtro de ar), com os códigos originais, e dois que servem em dois veículos. Pode rodar de novo sem duplicar nada.
+`pnpm --filter @apc/api db:seed` preenche um banco novo com os usuários de teste (`christian.camilo` e `oficina`, de `@apc/domain/test-users`, com as senhas em hash), as categorias, marcas de peça, marcas de veículo com seus modelos e alguns itens de exemplo, três deles de várias marcas (pastilha de freio dianteira, amortecedor dianteiro e filtro de ar), com os códigos originais, e dois que servem em dois veículos. Pode rodar de novo sem duplicar nada.

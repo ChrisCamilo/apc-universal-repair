@@ -10,8 +10,8 @@ import {
   type ItemCreate,
   type ItemSortKey,
   type ItemVehicle,
-} from "@apc/shared/items";
-import { splitVehicleModel } from "@apc/shared/item-filters";
+} from "@apc/domain/items";
+import { splitVehicleModel } from "@apc/domain/item-filters";
 import {
   findEntry,
   isCatalogBrand,
@@ -23,8 +23,8 @@ import {
   withoutEntry,
   type ItemListKind,
   type ListEntry,
-} from "@apc/shared/lists";
-import { itemListsOf } from "@apc/shared/test-lists";
+} from "@apc/domain/lists";
+import { itemListsOf } from "@apc/domain/test-lists";
 
 // A stand-in for GET /items, so the list works the same on every run without a database: it answers from the items
 // it is given, newest first as they are listed or sorted by a column as the API sorts, narrowed by the search, the

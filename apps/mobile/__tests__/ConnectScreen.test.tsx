@@ -7,12 +7,12 @@ import { BackHandler, NativeModules, StyleSheet, TextInput } from 'react-native'
 import ReactTestRenderer from 'react-test-renderer';
 import { useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { CodeScanner } from 'react-native-vision-camera-barcode-scanner';
-import { createMockAuth, PAIRING_REFUSED, type AuthService } from '@apc/shared/auth';
-import { DEVICE_POLL_MS, type DeviceStatus } from '@apc/shared/devices';
-import { fingerprintGroups, pairingLink } from '@apc/shared/pairing';
-import { TEST_USERS } from '@apc/shared/test-users';
-import { isStyleId } from '@apc/shared/style-ids';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { createMockAuth, PAIRING_REFUSED, type AuthService } from '@apc/domain/auth';
+import { DEVICE_POLL_MS, type DeviceStatus } from '@apc/domain/devices';
+import { fingerprintGroups, pairingLink } from '@apc/domain/pairing';
+import { TEST_USERS } from '@apc/domain/test-users';
+import { isStyleId } from '@apc/tokens/style-ids';
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { apiUrl, applyServer, SERVER_STORAGE_KEY } from '../src/app/api';
 import { ConnectScreen } from '../src/features/auth/ConnectScreen';
 import { themeStorage, ThemeProvider } from '../src/app/theme';

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ICON_SIZES, mechanicIcon } from '@apc/shared/icons'
+import { ICON_SIZES, mechanicIcon } from '@apc/tokens/icons'
 import { Icon } from '../Icon/Icon.tsx'
 import { Panel } from '../Panel/Panel.tsx'
 import { Heading, Text } from '../Typography/Typography.tsx'

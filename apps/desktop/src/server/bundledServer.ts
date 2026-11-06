@@ -9,20 +9,20 @@ import type { DesktopConfig } from "../config.js";
 // database.ts), only the photos. It migrates its database on start, so an update of the app updates the server and its
 // database together, with no clone, script or tag to move.
 
-/** The address of the server while only this computer reaches it, LOCAL_HOST in @apc/shared/server. */
+/** The address of the server while only this computer reaches it, LOCAL_HOST in @apc/domain/server. */
 export const LOCAL_HOST = "127.0.0.1";
-/** The address of the server while the phone's access is on, every address, NETWORK_HOST in @apc/shared/server. */
+/** The address of the server while the phone's access is on, every address, NETWORK_HOST in @apc/domain/server. */
 export const NETWORK_HOST = "0.0.0.0";
 /**
  * The exit code of a server whose port another program holds, which isn't started again. It is PORT_IN_USE_EXIT_CODE
- * in @apc/shared/server, written here since the packaged app doesn't carry that package.
+ * in @apc/domain/server, written here since the packaged app doesn't carry that package.
  */
 export const PORT_IN_USE_EXIT_CODE = 98;
-/** The exit code of a server whose SQLite key doesn't open its file, WRONG_KEY_EXIT_CODE in @apc/shared/server. */
+/** The exit code of a server whose SQLite key doesn't open its file, WRONG_KEY_EXIT_CODE in @apc/domain/server. */
 export const WRONG_KEY_EXIT_CODE = 97;
 /**
  * The port the server listens on, for the phone: http://<this computer's address>:3000. It is SERVER_PORT in
- * @apc/shared/server, written here since the packaged app doesn't carry that package, and apart from the development
+ * @apc/domain/server, written here since the packaged app doesn't carry that package, and apart from the development
  * API's, so a run from the repo never meets the real data.
  */
 export const SERVER_PORT = 3000;

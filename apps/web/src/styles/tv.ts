@@ -1,5 +1,5 @@
 import { createTV } from 'tailwind-variants'
-import { styleIds, type StyleId } from '@apc/shared/style-ids'
+import { styleIds, type StyleId } from '@apc/tokens/style-ids'
 
 // The style recipes of the web app: tv() builds a component's classes from its slots and variants, and recipe() adds
 // each slot's style id, so an element reads both from the same call, the same as on mobile:

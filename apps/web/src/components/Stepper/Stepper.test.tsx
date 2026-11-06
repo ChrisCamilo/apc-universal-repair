@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'

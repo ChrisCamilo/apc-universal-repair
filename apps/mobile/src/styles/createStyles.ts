@@ -1,5 +1,5 @@
 import { StyleSheet, type ImageStyle, type TextStyle, type ViewStyle } from 'react-native';
-import { styleIds, type StyleId } from '@apc/shared/style-ids';
+import { styleIds, type StyleId } from '@apc/tokens/style-ids';
 import { useTheme, type ActiveTheme } from '../app/theme';
 
 // The style recipes of the mobile app, the same idea as the web's recipe(): a component's styles are built from the

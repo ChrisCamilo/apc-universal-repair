@@ -1,6 +1,6 @@
-import type { Device } from "@apc/shared/devices";
-import { TEST_TAGS } from "@apc/shared/test-tags";
-import { TEST_USERS } from "@apc/shared/test-users";
+import type { Device } from "@apc/domain/devices";
+import { TEST_TAGS } from "@apc/domain/test-tags";
+import { TEST_USERS } from "@apc/domain/test-users";
 import { expect, logIn, test } from "./support/fixtures.ts";
 
 // Authorizing a device on the server's computer: the compiled app on a stand-in API that lists a phone waiting to be

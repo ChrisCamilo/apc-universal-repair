@@ -5,7 +5,7 @@
 import React from 'react';
 import { AccessibilityInfo, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { EmptyState, ErrorState } from '../src/components/EmptyState';
 import { Icon } from '../src/components/Icon';
 import { Skeleton } from '../src/components/Skeleton';

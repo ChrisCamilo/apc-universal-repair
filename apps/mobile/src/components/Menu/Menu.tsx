@@ -1,7 +1,7 @@
 import { useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import { Animated, Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { chevronIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
-import { scales } from '@apc/shared/theme';
+import { chevronIcon, ICON_SIZES, type IconShape } from '@apc/tokens/icons';
+import { scales } from '@apc/tokens/theme';
 import { Icon } from '../Icon/Icon';
 import {
   MENU_INSET,

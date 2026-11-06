@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { chevronIcon, ICON_SIZES } from '@apc/shared/icons'
-import { pageCount, pageForSize, pageRange, pageSlots } from '@apc/shared/pagination'
+import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
+import { pageCount, pageForSize, pageRange, pageSlots } from '@apc/ui-spec/pagination'
 import { Icon } from '../Icon/Icon.tsx'
 import { pagination } from './Pagination.styles.ts'
 import { Segmented } from '../Segmented/Segmented.tsx'

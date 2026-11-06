@@ -32,7 +32,7 @@ flowchart LR
 
 | Kind | Tool | Where | Command |
 |---|---|---|---|
-| Unit (shared, API) | Node test runner (`tsx --test` on the API) | `packages/shared/src/**/*.test.ts`, `apps/api/src/**/*.test.ts` | `pnpm test` |
+| Unit (shared, API) | Node test runner (`tsx --test` on the API) | `packages/*/src/**/*.test.ts`, `apps/api/src/**/*.test.ts` | `pnpm test` |
 | API against a database | Node test runner, one file at a time | `apps/api/src/**/*.db-test.ts` | `pnpm --filter @apc/api test:db` |
 | Component (web) | Vitest Browser Mode, Chromium through the Playwright provider | next to the component, in its folder, `apps/web/src/**/*.test.tsx` | `pnpm test` |
 | Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` | `pnpm test` |
@@ -104,7 +104,7 @@ apps/desktop/
     └── bundled.spec.ts         # the server the app ships: SQLite key, import, ports, tray, PostgreSQL
 ```
 
-Test data shared with the other kinds of tests lives in `@apc/shared`: `TEST_USERS` (`@apc/shared/test-users`), `testItem()` (`@apc/shared/test-items`), `itemListsOf()` (`@apc/shared/test-lists`). Screen sizes come from `@apc/shared/screens`, messages from the shared modules (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`…), so a test never repeats a number or a message.
+Test data shared with the other kinds of tests lives in `@apc/domain`: `TEST_USERS` (`@apc/domain/test-users`), `testItem()` (`@apc/domain/test-items`), `itemListsOf()` (`@apc/domain/test-lists`). Screen sizes come from `@apc/ui-spec/screens`, messages from the shared modules (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`…), so a test never repeats a number or a message.
 
 ### How the web E2E stand in for the API
 
@@ -148,7 +148,7 @@ test("Desktop: …", { tag: [TEST_TAGS.setup] }, async ({ launchApp }) => {
 
 ### Tags
 
-Every Playwright test, web, demo and desktop, has one area tag and the kind tags that apply. They come from `TEST_TAGS` in `@apc/shared/test-tags`, so a typo doesn't compile:
+Every Playwright test, web, demo and desktop, has one area tag and the kind tags that apply. They come from `TEST_TAGS` in `@apc/domain/test-tags`, so a typo doesn't compile:
 
 ```ts
 test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page }) => {
@@ -310,7 +310,7 @@ pnpm --filter @apc/desktop test:e2e
 ### Keeping the tests up
 
 - **UI copy changes:** the E2E find elements by their Portuguese names. Rename the text in the test too, or better, read it from the shared module that already holds it (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), as the login and sign-up specs do.
-- **API changes:** a route added or changed reaches three stand-ins: `apps/web/e2e/stubs/items.ts`/`users.ts` (web E2E), `apps/desktop/e2e/stubApi.ts` (desktop E2E) and `apps/web/src/demo/demoApi.ts` (the demo; CI checks this one against `@apc/shared/api-routes`). The first two are not checked: update them in the same pull request.
+- **API changes:** a route added or changed reaches three stand-ins: `apps/web/e2e/stubs/items.ts`/`users.ts` (web E2E), `apps/desktop/e2e/stubApi.ts` (desktop E2E) and `apps/web/src/demo/demoApi.ts` (the demo; CI checks this one against `@apc/domain/api-routes`). The first two are not checked: update them in the same pull request.
 - **Style ids change** with a component's file name or slots. A test that reads one fails with "element not found": search the id in `e2e/locators/` and follow the new one there, and the specs follow too. A renamed label is changed there the same way.
 - **A work-in-progress tab** keeps its tests skipped (`catalog.spec.ts` while the Catalog tab has `wip`). They come back by themselves once `wip` is gone.
 - **A flaky test:** run it many times to see it fail (`--repeat-each=20 --workers=4`), record a trace (`--trace on`), and fix the wait, not the timeout: wait for what the user would see (`toBeVisible`, `toHaveURL`, `expect.poll`), never `waitForTimeout`.
@@ -324,7 +324,7 @@ pnpm --filter @apc/desktop test:e2e
 
 | Tipo | Ferramenta | Onde | Comando |
 |---|---|---|---|
-| Unitário (shared, API) | test runner do Node (`tsx --test` na API) | `packages/shared/src/**/*.test.ts`, `apps/api/src/**/*.test.ts` | `pnpm test` |
+| Unitário (shared, API) | test runner do Node (`tsx --test` na API) | `packages/*/src/**/*.test.ts`, `apps/api/src/**/*.test.ts` | `pnpm test` |
 | API contra um banco | test runner do Node, um arquivo por vez | `apps/api/src/**/*.db-test.ts` | `pnpm --filter @apc/api test:db` |
 | Componente (web) | Vitest Browser Mode, Chromium pelo provider do Playwright | ao lado do componente, na pasta dele, `apps/web/src/**/*.test.tsx` | `pnpm test` |
 | Celular | Jest com `react-test-renderer` | `apps/mobile/__tests__/` | `pnpm test` |
@@ -396,7 +396,7 @@ apps/desktop/
     └── bundled.spec.ts         # o servidor que o app traz: chave do SQLite, importação, portas, bandeja, PostgreSQL
 ```
 
-Os dados de teste compartilhados com os outros tipos de teste ficam no `@apc/shared`: `TEST_USERS` (`@apc/shared/test-users`), `testItem()` (`@apc/shared/test-items`), `itemListsOf()` (`@apc/shared/test-lists`). Os tamanhos de tela vêm de `@apc/shared/screens` e as mensagens dos módulos compartilhados (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`…), então um teste nunca repete um número ou uma mensagem.
+Os dados de teste compartilhados com os outros tipos de teste ficam no `@apc/domain`: `TEST_USERS` (`@apc/domain/test-users`), `testItem()` (`@apc/domain/test-items`), `itemListsOf()` (`@apc/domain/test-lists`). Os tamanhos de tela vêm de `@apc/ui-spec/screens` e as mensagens dos módulos compartilhados (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`…), então um teste nunca repete um número ou uma mensagem.
 
 ### Como o E2E da web substitui a API
 
@@ -440,7 +440,7 @@ test("Desktop: …", { tag: [TEST_TAGS.setup] }, async ({ launchApp }) => {
 
 ### Tags
 
-Todo teste do Playwright, da web, da demo e do desktop, tem uma tag de área e as tags de tipo que se aplicam. Elas vêm de `TEST_TAGS` em `@apc/shared/test-tags`, então um erro de digitação não compila:
+Todo teste do Playwright, da web, da demo e do desktop, tem uma tag de área e as tags de tipo que se aplicam. Elas vêm de `TEST_TAGS` em `@apc/domain/test-tags`, então um erro de digitação não compila:
 
 ```ts
 test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page }) => {
@@ -602,7 +602,7 @@ pnpm --filter @apc/desktop test:e2e
 ### Mantendo os testes
 
 - **Mudou um texto da interface:** o E2E encontra os elementos pelos nomes em português. Troque o texto no teste também, ou melhor, leia-o do módulo compartilhado que já o guarda (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), como as specs de login e cadastro fazem.
-- **Mudou a API:** uma rota nova ou alterada chega a três substitutos: `apps/web/e2e/stubs/items.ts`/`users.ts` (E2E da web), `apps/desktop/e2e/stubApi.ts` (E2E do desktop) e `apps/web/src/demo/demoApi.ts` (a demo; o CI confere este contra o `@apc/shared/api-routes`). Os dois primeiros não são conferidos: atualize-os no mesmo pull request.
+- **Mudou a API:** uma rota nova ou alterada chega a três substitutos: `apps/web/e2e/stubs/items.ts`/`users.ts` (E2E da web), `apps/desktop/e2e/stubApi.ts` (E2E do desktop) e `apps/web/src/demo/demoApi.ts` (a demo; o CI confere este contra o `@apc/domain/api-routes`). Os dois primeiros não são conferidos: atualize-os no mesmo pull request.
 - **Style ids mudam** com o nome do arquivo de um componente ou seus slots. Um teste que lê um deles falha com "element not found": procure o id em `e2e/locators/` e siga o novo ali, que as specs seguem junto. Um rótulo renomeado muda ali do mesmo jeito.
 - **Uma aba em construção** deixa seus testes pulados (`catalog.spec.ts` enquanto a aba Catálogo tem `wip`). Eles voltam sozinhos quando o `wip` sai.
 - **Um teste instável:** rode-o muitas vezes para vê-lo falhar (`--repeat-each=20 --workers=4`), grave um trace (`--trace on`) e corrija a espera, não o timeout: espere pelo que o usuário veria (`toBeVisible`, `toHaveURL`, `expect.poll`), nunca `waitForTimeout`.

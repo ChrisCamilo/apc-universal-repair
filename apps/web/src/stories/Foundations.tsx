@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { scales, themes, type ColorToken } from '@apc/shared/theme'
+import { scales, themes, type ColorToken } from '@apc/tokens/theme'
 import type { Styled } from '../styles/tv.ts'
 import { motionSheet, paletteSheet, radiiSheet, spaceBar, spacingSheet, swatchFill, typeSheet, typeStep } from './Foundations.styles.ts'
 

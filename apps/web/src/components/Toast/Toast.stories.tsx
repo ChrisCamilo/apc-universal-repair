@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { TOAST_KINDS, type ToastKind } from '@apc/shared/toast'
+import { TOAST_KINDS, type ToastKind } from '@apc/ui-spec/toast'
 import { Button } from '../Button/Button.tsx'
 import { ToastMessage, ToastProvider } from './Toast.tsx'
 import { useToast } from './toastContext.ts'

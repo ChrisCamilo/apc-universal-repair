@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { initialTab } from '@apc/shared/tabs'
+import { initialTab } from '@apc/ui-spec/tabs'
 import { readStored, writeStored } from '../../app/storage.ts'
 
 /**
  * Holds the selected tab and remembers it, so the page reopens on the last tab used.
- * @param storageKey localStorage key, e.g. DASHBOARD_TAB_STORAGE_KEY from @apc/shared/tabs.
+ * @param storageKey localStorage key, e.g. DASHBOARD_TAB_STORAGE_KEY from @apc/ui-spec/tabs.
  * @param ids Tab ids in display order; the first opens when nothing valid was saved.
  * @returns The selected tab id and the setter that also saves it.
  */

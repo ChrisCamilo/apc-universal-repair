@@ -5,8 +5,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { PAGE_SIZES } from '@apc/shared/pagination';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { PAGE_SIZES } from '@apc/domain/list-query';
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { Pagination } from '../src/components/Pagination';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 

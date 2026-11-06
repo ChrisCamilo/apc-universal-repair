@@ -1,0 +1,462 @@
+import { codeKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
+
+// The vehicle catalog of the Catalog tab, mocked until the real data (EP-10): each brand's models as a tree, model →
+// generation → version → year → engine, and each engine's sheet. Branches whose data is still to come are empty
+// branches (see CatalogNode), so every engine in a tree has a sheet. Engine ids are unique across brands, as the sheets
+// are looked up by them. The Catalog search finds brands and models by name, ignoring case and accents, and parts
+// of the inventory by the code of any of their brands, or by one of their original codes; a part leads to its vehicle
+// in the catalog (of a part that fits several, the first the catalog has a sheet for): the same brand, the model by
+// the start of the part's model name ("Opala 4.1" → Opala) and the engine by the displacement ("4.1" → "4.1 L 6
+// cilindros").
+// On a phone the Catalog is a stack of screens, as in its mockup: the brands, each on a line with how many models and
+// sheets it has; a brand's models, as a tree; and an engine's sheet, under the path to it. ← goes back one screen. A
+// part found by code opens its engine's sheet, or else its brand's models with its model pointed out, saying when the
+// catalog has no sheet for its vehicle.
+
+/** The brands of the catalog, in the order of the rail, each with its model tree. */
+export const CATALOG: readonly CatalogBrand[] = [
+  {
+    id: "chevrolet",
+    name: "Chevrolet",
+    mark: "CH",
+    models: [
+      {
+        id: "chevrolet-chevette",
+        label: "Chevette",
+        children: [{ id: "chevrolet-chevette-2", label: "Segunda geração", detail: "1983–1993", children: [] }],
+      },
+      {
+        id: "chevrolet-opala",
+        label: "Opala",
+        children: [
+          { id: "chevrolet-opala-1", label: "Primeira geração", detail: "1968–1974", children: [] },
+          { id: "chevrolet-opala-2", label: "Segunda geração", detail: "1975–1979", children: [] },
+          {
+            id: "chevrolet-opala-3",
+            label: "Terceira geração",
+            detail: "1980–1992",
+            children: [
+              { id: "chevrolet-opala-3-comodoro", label: "Comodoro", children: [] },
+              {
+                id: "chevrolet-opala-3-diplomata",
+                label: "Diplomata",
+                children: [
+                  { id: "chevrolet-opala-3-diplomata-1985", label: "1985", children: [] },
+                  {
+                    id: "chevrolet-opala-3-diplomata-1986",
+                    label: "1986",
+                    children: [
+                      { id: "chevrolet-opala-diplomata-1986-2.5", label: "2.5 L 4 cilindros" },
+                      { id: "chevrolet-opala-diplomata-1986-4.1", label: "4.1 L 6 cilindros" },
+                    ],
+                  },
+                ],
+              },
+              { id: "chevrolet-opala-3-ss", label: "SS", children: [] },
+            ],
+          },
+        ],
+      },
+      { id: "chevrolet-monza", label: "Monza", children: [] },
+    ],
+  },
+  {
+    id: "volkswagen",
+    name: "Volkswagen",
+    mark: "VW",
+    models: [
+      { id: "volkswagen-fusca", label: "Fusca", children: [] },
+      {
+        id: "volkswagen-gol",
+        label: "Gol",
+        children: [
+          {
+            id: "volkswagen-gol-1",
+            label: "Primeira geração",
+            detail: "1980–1994",
+            children: [
+              {
+                id: "volkswagen-gol-1-gts",
+                label: "GTS",
+                children: [
+                  {
+                    id: "volkswagen-gol-1-gts-1989",
+                    label: "1989",
+                    children: [{ id: "volkswagen-gol-gts-1989-1.8", label: "1.8 L 4 cilindros" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      { id: "volkswagen-santana", label: "Santana", children: [] },
+    ],
+  },
+  {
+    id: "fiat",
+    name: "Fiat",
+    mark: "FI",
+    models: [
+      { id: "fiat-147", label: "147", children: [] },
+      {
+        id: "fiat-uno",
+        label: "Uno",
+        children: [
+          {
+            id: "fiat-uno-1",
+            label: "Primeira geração",
+            detail: "1984–2013",
+            children: [
+              {
+                id: "fiat-uno-1-mille",
+                label: "Mille",
+                children: [
+                  {
+                    id: "fiat-uno-1-mille-1991",
+                    label: "1991",
+                    children: [{ id: "fiat-uno-mille-1991-1.0", label: "1.0 L 4 cilindros" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      { id: "fiat-tempra", label: "Tempra", children: [] },
+    ],
+  },
+  {
+    id: "ford",
+    name: "Ford",
+    mark: "FO",
+    models: [
+      { id: "ford-corcel", label: "Corcel", children: [] },
+      { id: "ford-del-rey", label: "Del Rey", children: [] },
+      { id: "ford-escort", label: "Escort", children: [] },
+    ],
+  },
+];
+/** The sheet of each engine, by engine id. */
+export const ENGINE_SHEETS: Readonly<Record<string, EngineSheet>> = {
+  "chevrolet-opala-diplomata-1986-2.5": {
+    title: "1986 · Chevrolet Opala Diplomata 2.5",
+    specs: ["1986", "2.5 L", "4 CIL", "TRASEIRA"],
+    summary:
+      "Opção de entrada do Diplomata, o quatro-cilindros 2.5 usa bloco de ferro fundido e comando no bloco, priorizando " +
+      "torque em baixa sobre giro alto. Pesa menos sobre o eixo dianteiro e deixa a direção mais leve.",
+  },
+  "chevrolet-opala-diplomata-1986-4.1": {
+    title: "1986 · Chevrolet Opala Diplomata 4.1",
+    specs: ["1986", "4.1 L", "6 CIL", "TRASEIRA"],
+    summary:
+      "O seis-cilindros em linha de 4,1 L é a configuração mais lembrada do Opala e ajudou o Diplomata a virar sinônimo de " +
+      "conforto nos anos 80. Entrega torque farto desde a marcha lenta, com resposta longa e suave.",
+  },
+  "volkswagen-gol-gts-1989-1.8": {
+    title: "1989 · Volkswagen Gol GTS 1.8",
+    specs: ["1989", "1.8 L", "4 CIL", "DIANTEIRA"],
+    summary:
+      "Versão esportiva do primeiro Gol, com o motor AP 1.8 a álcool ou gasolina, câmbio de cinco marchas e acerto de " +
+      "suspensão mais firme que o das versões de entrada.",
+  },
+  "fiat-uno-mille-1991-1.0": {
+    title: "1991 · Fiat Uno Mille 1.0",
+    specs: ["1991", "1.0 L", "4 CIL", "DIANTEIRA"],
+    summary:
+      "O Uno de mil cilindradas que abriu a era dos carros populares no Brasil: motor pequeno e econômico, manutenção " +
+      "simples e peças fáceis de achar.",
+  },
+};
+
+/** The screen the Catalog opens on, on a phone: the brands. */
+export const CATALOG_HOME: CatalogScreen = { view: "brands" };
+/** What each of an engine sheet's readouts is, in their order, named above them on a phone. */
+export const ENGINE_SPEC_LABELS = ["Ano", "Motor", "Cilindros", "Tração"] as const;
+/** What a part's vehicle says when the catalog has no sheet for it. */
+export const NO_SHEET_MESSAGE = "Este veículo ainda não tem ficha técnica no catálogo. A peça continua cadastrada no estoque.";
+/** Least letters and digits of a part code before the search looks for parts. */
+export const PART_CODE_MIN_LENGTH = 3;
+/** Most parts the code search lists at once. */
+export const PART_RESULTS_LIMIT = 5;
+
+/**
+ * A node of a brand's model tree, in the shape of the tree's nodes (`TreeNode` of @apc/ui-spec/tree), so the web and
+ * mobile TreeView show it as it is: a node with `children` is a branch, even with an empty list, and one without is a
+ * leaf. `detail` is the muted text after the label, e.g. a generation's years.
+ */
+export type CatalogNode = { id: string; label: string; detail?: string; children?: CatalogNode[] };
+/** A brand of the catalog: its id, the name on its tile, the letters on its line on a phone and its model tree. */
+export type CatalogBrand = { id: string; name: string; mark: string; models: CatalogNode[] };
+/**
+ * A screen of the Catalog on a phone: the brands; a brand's models, with a model pointed out and an engine open in the
+ * tree, and the vehicle a part fits that the catalog has no sheet for; or an engine's sheet.
+ */
+export type CatalogScreen =
+  | { view: "brands" }
+  | { view: "models"; brandId: string; modelId?: string; engineId?: string; missing?: string }
+  | { view: "sheet"; brandId: string; engineId: string };
+/** An engine's sheet: its title, the readouts under it and a short summary. */
+export type EngineSheet = { title: string; specs: string[]; summary: string };
+/** Where a part's vehicle is in the catalog: its brand, and its model and engine when the catalog has them. */
+export type PartLocation = { brandId: string; modelId?: string; engineId?: string };
+/**
+ * A part a code search found: the brand of an item whose code matched, by the brand's id, or an item whose original
+ * code matched, by the item's id and the code; with the code and its item.
+ */
+export type FoundPart = { id: string; code: string; item: Item };
+/** The parts a code search lists, and how many more matched past the limit. */
+export type PartResults = { parts: FoundPart[]; more: number };
+
+/**
+ * Lists the brands whose name contains a search, ignoring case and accents.
+ * @param query The brand search as typed; an empty search lists every brand.
+ * @returns The matching brands, in rail order.
+ */
+export function brandsNamed(query: string): CatalogBrand[] {
+  return CATALOG.filter((brand) => searchKey(brand.name).includes(searchKey(query.trim())));
+}
+
+/**
+ * Says how many models and sheets a brand has, on its line of a phone's brand screen.
+ * @param brand A brand of the catalog.
+ * @returns E.g. "3 modelos · 2 fichas técnicas", or "3 modelos · sem ficha técnica ainda".
+ */
+export function brandSummary(brand: CatalogBrand): string {
+  const models = brand.models.length;
+  const sheets = brand.models.flatMap(leaves).filter((leaf) => ENGINE_SHEETS[leaf.id]).length;
+  const modelText = models === 1 ? "1 modelo" : `${models} modelos`;
+  const sheetText = sheets === 0 ? "sem ficha técnica ainda" : sheets === 1 ? "1 ficha técnica" : `${sheets} fichas técnicas`;
+  return `${modelText} · ${sheetText}`;
+}
+
+/**
+ * Finds the brand to show for a model search: the chosen brand while it has a model with that name, otherwise the
+ * first brand that has one.
+ * @param brandId The chosen brand.
+ * @param query The model search as typed.
+ * @returns The brand's id, or null when no brand has a model with that name.
+ */
+export function brandWithModel(brandId: string, query: string): string | null {
+  const has = (brand: CatalogBrand) => modelsNamed(brand.models, query).length > 0;
+  const chosen = CATALOG.find((brand) => brand.id === brandId);
+  if (chosen && has(chosen)) {
+    return brandId;
+  }
+  return CATALOG.find(has)?.id ?? null;
+}
+
+/**
+ * Writes the path to an engine above its sheet on a phone: its model and the branches down to it.
+ * @param brandId The engine's brand.
+ * @param engineId The engine.
+ * @returns E.g. "Opala › Terceira geração › Diplomata › 1986"; empty when the brand has no such engine.
+ */
+export function enginePath(brandId: string, engineId: string): string {
+  return treePath(brandId, engineId)
+    .slice(0, -1)
+    .map((node) => node.label)
+    .join(" › ");
+}
+
+/**
+ * Lists the inventory parts whose code contains a search, ignoring case, spaces and separators, once the search has
+ * enough letters and digits: each brand of an item whose code matches, and each original code of an item that
+ * matches, the exact codes first, then the others, up to the limit.
+ * @param items Every inventory item.
+ * @param query The search as typed, e.g. "fra1000" for "FRA-1000".
+ * @returns The parts to list and how many more matched; no parts while the search is too short.
+ */
+export function findParts(items: readonly Item[], query: string): PartResults {
+  const key = codeKey(query);
+  if (key.length < PART_CODE_MIN_LENGTH) {
+    return { parts: [], more: 0 };
+  }
+  const found = items.flatMap((item): FoundPart[] => [
+    ...item.brands.filter((brand) => codeKey(brand.code).includes(key)).map((brand) => ({ id: brand.id, code: brand.code, item })),
+    ...item.originalCodes.filter((code) => codeKey(code).includes(key)).map((code) => ({ id: `${item.id}:${codeKey(code)}`, code, item })),
+  ]);
+  const exactFirst = [...found.filter((part) => codeKey(part.code) === key), ...found.filter((part) => codeKey(part.code) !== key)];
+  return { parts: exactFirst.slice(0, PART_RESULTS_LIMIT), more: Math.max(0, found.length - PART_RESULTS_LIMIT) };
+}
+
+/**
+ * Finds the first engine with a sheet in a model tree, depth first, to show when a brand opens.
+ * @param nodes A brand's models, or any part of its tree.
+ * @returns The engine's id, or undefined when none in the tree has a sheet yet.
+ */
+export function firstSheet(nodes: readonly CatalogNode[]): string | undefined {
+  for (const node of nodes) {
+    if (ENGINE_SHEETS[node.id]) {
+      return node.id;
+    }
+    const below = node.children && firstSheet(node.children);
+    if (below) {
+      return below;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Says which vehicles a part fits, as the code search lists it: the one it reveals in the catalog (see partFit), and
+ * how many more it fits.
+ * @param item The part's item.
+ * @returns E.g. "Serve no Chevrolet Opala 4.1", or "Serve no Chevrolet Opala 4.1 +2".
+ */
+export function itemFit(item: Pick<Item, "vehicles">): string {
+  const others = item.vehicles.length - 1;
+  return others > 0 ? `${partFit(revealedVehicle(item))} +${others}` : partFit(revealedVehicle(item));
+}
+
+/**
+ * Lists the leaves of a tree: the engines under a model.
+ * @param node A node of the tree.
+ * @returns Its leaves, depth first.
+ */
+function leaves(node: CatalogNode): CatalogNode[] {
+  return node.children ? node.children.flatMap(leaves) : [node];
+}
+
+/**
+ * Places a part's vehicle in the catalog: the brand with the same name, the model the part's model name starts
+ * with, and in it the first engine whose name starts with the displacement in the part's model name.
+ * @param part The part's vehicle brand and model.
+ * @returns Its brand, model and engine as far as the catalog has them; null when the brand isn't in the catalog.
+ */
+export function locatePart(part: ItemVehicle): PartLocation | null {
+  const brand = CATALOG.find((b) => searchKey(b.name) === searchKey(part.vehicleBrand));
+  if (!brand) {
+    return null;
+  }
+  const name = searchKey(part.vehicleModel ?? "");
+  const model = brand.models.find((m) => name === searchKey(m.label) || name.startsWith(`${searchKey(m.label)} `));
+  if (!model) {
+    return { brandId: brand.id };
+  }
+  const displacement = part.vehicleModel?.match(/\d\.\d/)?.[0];
+  const engine = displacement ? leaves(model).find((leaf) => leaf.label.startsWith(displacement)) : undefined;
+  return { brandId: brand.id, modelId: model.id, engineId: engine?.id };
+}
+
+/**
+ * Lists the nodes of a tree with a search in their name, at its top level: the models of a brand.
+ * @param models A brand's models.
+ * @param query The model search as typed; an empty search lists every model.
+ * @returns The matching models, in tree order.
+ */
+export function modelsNamed(models: readonly CatalogNode[], query: string): CatalogNode[] {
+  return models.filter((model) => searchKey(model.label).includes(searchKey(query.trim())));
+}
+
+/**
+ * Says which vehicle a part fits, as the code search lists it: any vehicle for universal parts, its vehicle when
+ * the catalog has its engine, or what the catalog is still missing.
+ * @param part The part's vehicle brand and model.
+ * @returns E.g. "Serve no Chevrolet Opala 4.1" or "Ford Escort (modelo ainda sem ficha no catálogo)".
+ */
+export function partFit(part: ItemVehicle): string {
+  if (searchKey(part.vehicleBrand) === searchKey(UNIVERSAL_BRAND)) {
+    return "Serve em qualquer veículo";
+  }
+  const location = locatePart(part);
+  if (!location) {
+    return `${part.vehicleBrand} não está no catálogo`;
+  }
+  if (!part.vehicleModel) {
+    return `Serve em qualquer ${part.vehicleBrand}`;
+  }
+  const vehicle = `${part.vehicleBrand} ${part.vehicleModel}`;
+  const model = CATALOG.find((b) => b.id === location.brandId)!.models.find((m) => m.id === location.modelId);
+  if (!model || !firstSheet([model])) {
+    return `${vehicle} (modelo ainda sem ficha no catálogo)`;
+  }
+  return location.engineId ? `Serve no ${vehicle}` : `${vehicle} (motor ainda sem ficha no catálogo)`;
+}
+
+/**
+ * Finds the screen a part found by code opens on a phone: its vehicle's sheet when the catalog has the engine, or else
+ * its brand's models with its model pointed out, and its vehicle named when the catalog has no sheet for it.
+ * @param item The part's item.
+ * @returns The screen, or null when the catalog lacks its vehicle's brand.
+ */
+export function partScreen(item: Pick<Item, "vehicles">): CatalogScreen | null {
+  const vehicle = revealedVehicle(item);
+  const location = vehicle && locatePart(vehicle);
+  if (!location) {
+    return null;
+  }
+  if (location.engineId) {
+    return { view: "sheet", brandId: location.brandId, engineId: location.engineId };
+  }
+  const missing = vehicle.vehicleModel ? `${vehicle.vehicleBrand} ${vehicle.vehicleModel}` : undefined;
+  return { view: "models", brandId: location.brandId, modelId: location.modelId, missing };
+}
+
+/**
+ * Picks the vehicle a part shows in the catalog: the first of its vehicles whose engine has a sheet, or else the first
+ * the catalog has, or else its first.
+ * @param item The part's item.
+ * @returns One of its vehicles.
+ */
+export function revealedVehicle(item: Pick<Item, "vehicles">): ItemVehicle {
+  return (
+    item.vehicles.find((vehicle) => locatePart(vehicle)?.engineId) ?? item.vehicles.find((vehicle) => locatePart(vehicle)) ?? item.vehicles[0]
+  );
+}
+
+/**
+ * Finds the screen ← goes back to on a phone: from a sheet, its brand's models open on its engine; from the models,
+ * the brands.
+ * @param screen The screen on show.
+ * @returns The screen before it, or null on the brands, the first.
+ */
+export function screenBack(screen: CatalogScreen): CatalogScreen | null {
+  switch (screen.view) {
+    case "sheet":
+      return { view: "models", brandId: screen.brandId, engineId: screen.engineId };
+    case "models":
+      return CATALOG_HOME;
+    case "brands":
+      return null;
+  }
+}
+
+/**
+ * Names a phone screen's title row: the tab on the brands, the brand on the others, and where its ← goes.
+ * @param screen The screen on show.
+ * @returns Its title and its ←'s name, none on the brands.
+ */
+export function screenHeader(screen: CatalogScreen): { title: string; back?: string } {
+  switch (screen.view) {
+    case "brands":
+      return { title: "Catálogo" };
+    case "models":
+      return { title: CATALOG.find((brand) => brand.id === screen.brandId)?.name ?? "Catálogo", back: "Voltar às marcas" };
+    case "sheet":
+      return { title: CATALOG.find((brand) => brand.id === screen.brandId)?.name ?? "Catálogo", back: "Voltar aos modelos" };
+  }
+}
+
+/**
+ * Lists the nodes from a brand's model down to a node of its tree, e.g. to open the tree on an engine.
+ * @param brandId The node's brand.
+ * @param nodeId The node.
+ * @returns The nodes, the model first and the node last; empty when the brand has no such node.
+ */
+export function treePath(brandId: string, nodeId: string): CatalogNode[] {
+  /** The path to the node from one of some nodes, or empty when none leads to it. */
+  const find = (nodes: readonly CatalogNode[]): CatalogNode[] => {
+    for (const node of nodes) {
+      if (node.id === nodeId) {
+        return [node];
+      }
+      const below = find(node.children ?? []);
+      if (below.length > 0) {
+        return [node, ...below];
+      }
+    }
+    return [];
+  };
+  return find(CATALOG.find((brand) => brand.id === brandId)?.models ?? []);
+}

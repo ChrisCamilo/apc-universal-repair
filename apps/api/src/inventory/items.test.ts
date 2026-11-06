@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { itemListQuerySchema } from "@apc/shared/items";
+import { itemListQuerySchema } from "@apc/domain/items";
 import type { Prisma } from "../generated/prisma/client.js";
 import { signedPhotoPath } from "../auth/sessions.js";
 import { TEST_SESSION } from "../auth/testSessions.js";

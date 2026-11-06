@@ -6,8 +6,8 @@ import {
   MIN_MOBILE_WIDTH,
   MOBILE_DESIGN_HEIGHT,
   MOBILE_DESIGN_WIDTH,
-} from '@apc/shared/screens'
-import { MODES, STYLES } from '@apc/shared/theme'
+} from '@apc/ui-spec/screens'
+import { MODES, STYLES } from '@apc/tokens/theme'
 import '../src/app/fonts.ts'
 import '../src/index.css'
 import { themeCss } from '../src/app/theme.ts'
@@ -60,8 +60,8 @@ function ensureThemeCss(): void {
 /**
  * Describes a viewport of the toolbar from a size the project supports.
  * @param name What the size is, e.g. "Desktop".
- * @param width Width in px, from @apc/shared/screens.
- * @param height Height in px, from @apc/shared/screens.
+ * @param width Width in px, from @apc/ui-spec/screens.
+ * @param height Height in px, from @apc/ui-spec/screens.
  * @param type Whether Storybook frames it as a desktop or a phone.
  * @returns The viewport, named with its size, e.g. "Desktop · 1280×720".
  */

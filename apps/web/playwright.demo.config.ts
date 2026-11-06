@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from "@apc/shared/screens";
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from "@apc/ui-spec/screens";
 
 // The end-to-end tests of the web app's demo as GitHub Pages serves it: the site the Pages workflow puts together in
 // site/ at the repository's root (pnpm run build:demo, copied to site/demo with docs/site/404.html beside it), served

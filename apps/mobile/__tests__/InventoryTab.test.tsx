@@ -13,16 +13,16 @@ import {
   stockStatus,
   type Item,
   type ItemSortKey,
-} from '@apc/shared/items';
-import { ITEM_LIST_PATHS, type ItemListKind } from '@apc/shared/lists';
-import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
-import { itemListsOf } from '@apc/shared/test-lists';
-import { THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
+} from '@apc/domain/items';
+import { ITEM_LIST_PATHS, type ItemListKind } from '@apc/domain/lists';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
+import { itemListsOf } from '@apc/domain/test-lists';
+import { THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { InventoryTab } from '../src/features/inventory/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
 import { MoreActionsContext } from '../src/features/dashboard/moreActionsContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { testItem, type FlatItem } from '@apc/shared/test-items';
+import { testItem, type FlatItem } from '@apc/domain/test-items';
 
 // A photo the API saved, as items carry it.
 const COVER = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.jpg', thumbUrl: '/photos/aa-thumb.webp' };

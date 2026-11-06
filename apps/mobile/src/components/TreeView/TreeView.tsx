@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, Text, View, type ViewStyle } from 'react-native';
-import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
-import { scales } from '@apc/shared/theme';
-import { ancestors, canOpen, isLeaf, type TreeNode } from '@apc/shared/tree';
+import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons';
+import { scales } from '@apc/tokens/theme';
+import { ancestors, canOpen, isLeaf, type TreeNode } from '@apc/ui-spec/tree';
 import { Icon } from '../Icon/Icon';
 import { useReducedMotion } from '../../app/motion';
 import { Divider } from '../Panel/Panel';

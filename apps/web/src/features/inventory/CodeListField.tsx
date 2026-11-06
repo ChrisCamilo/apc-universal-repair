@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
-import { closeIcon, ICON_SIZES } from '@apc/shared/icons'
-import { addCodes, codesInput, splitCodes } from '@apc/shared/item-form'
+import { closeIcon, ICON_SIZES } from '@apc/tokens/icons'
+import { addCodes, codesInput, splitCodes } from '@apc/domain/item-form'
 import { Icon } from '../../components/Icon'
 import { Label, Text } from '../../components/Typography'
 import { codeListField } from './CodeListField.styles.ts'

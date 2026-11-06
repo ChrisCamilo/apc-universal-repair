@@ -1,0 +1,215 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { EMPTY_ITEM_FILTERS } from "./itemFilters.ts";
+import { EMPTY_ITEM_FORM, itemFormOf, withFormValues } from "./itemForm.ts";
+import type { Item } from "./items.ts";
+import { testItem } from "./testItems.ts";
+import {
+  filtersHave,
+  formHas,
+  INVENTORY_TUTORIAL_PARTS,
+  inventoryTutorialSteps,
+  TUTORIAL_EDIT,
+  TUTORIAL_FILTERS,
+  TUTORIAL_ITEM,
+  TUTORIAL_PHONE_FILTERS,
+  type TutorialScreen,
+} from "./inventoryTutorial.ts";
+
+// The test item as the API would send it back.
+const SAVED: Item = testItem({
+  id: "00000000-0000-4000-8000-000000000001",
+  code: "TUTORIAL-001",
+  name: "Item de teste do tutorial",
+  category: "Motor",
+  partBrand: "Bosch",
+  vehicleBrand: "Volkswagen",
+  vehicleModel: "Gol",
+  position: "D",
+  side: "LD",
+  color: "Preto",
+  location: "T-1",
+  quantity: 5,
+  minQuantity: 2,
+  unitPriceCents: 4990,
+  createdAt: "2026-10-08T12:00:00.000Z",
+  updatedAt: "2026-10-08T12:00:00.000Z",
+});
+
+/**
+ * Names an item for the calls the screen records, by its first brand's code.
+ * @param item The item, or none for a new one.
+ * @returns E.g. "TUTORIAL-001", or "new".
+ */
+function codeOf(item: Item | undefined): string {
+  return item?.brands[0].code ?? "new";
+}
+
+/**
+ * Builds a screen the test changes as it goes, recording what the tutorial asks it to do.
+ * @returns The screen and the calls made on it.
+ */
+function fakeScreen() {
+  const calls: string[] = [];
+  const screen: TutorialScreen<string> = {
+    form: null,
+    items: [],
+    search: "",
+    filters: EMPTY_ITEM_FILTERS,
+    filtersOpen: false,
+    busy: false,
+    phone: false,
+    target: (name) => name,
+    openForm: (item, details, values) => {
+      calls.push(`open ${codeOf(item)} ${details ? "details" : "edit"}`);
+      screen.form = { item, viewing: details, values: values ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM) };
+    },
+    setSearch: (search) => {
+      screen.search = search;
+    },
+    applyFilters: (filters) => {
+      screen.filters = filters;
+      screen.filtersOpen = false;
+    },
+    saveItem: (item, values) => {
+      calls.push(`save ${codeOf(item)} ${values.name} ${values.brands[0].quantity}`);
+    },
+    askDelete: (item) => {
+      screen.removing = item;
+    },
+    deleteItem: (item) => {
+      calls.push(`delete ${codeOf(item)}`);
+    },
+  };
+  return { screen, calls };
+}
+
+// Lists the steps and checks their order, the test item opened from its row into its details before the edit, that
+// every step but the last belongs to a part, and where a step falls: the fifth of 19, in part 2 of 3.
+test("Shared: the tutorial has three parts, opening the item from its row", () => {
+  const steps = inventoryTutorialSteps(() => fakeScreen().screen);
+  assert.deepEqual(steps.map((step) => step.id).slice(7, 11), ["found", "details", "unlock", "rename"]);
+  assert.deepEqual(
+    steps.filter((step) => !step.part).map((step) => step.id),
+    ["end"],
+  );
+  assert.equal(steps.length, 19);
+  assert.equal(steps[4].part, 2);
+  assert.deepEqual(INVENTORY_TUTORIAL_PARTS, ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir"]);
+});
+
+// Checks a form matches typed values ignoring case, accents and spaces and the price by its value, and that applied
+// filters hold the wanted values among others.
+test("Shared: the tutorial reads the form and the filters loosely", () => {
+  assert.equal(formHas(withFormValues(TUTORIAL_ITEM, { category: " motor ", price: "49,9" }), { category: "Motor", price: "49,90" }), true);
+  assert.equal(formHas(TUTORIAL_ITEM, { quantity: "4" }), false);
+  assert.equal(filtersHave({ ...TUTORIAL_FILTERS, color: ["Azul", "Preto"] }, TUTORIAL_FILTERS), true);
+  assert.equal(filtersHave(EMPTY_ITEM_FILTERS, TUTORIAL_FILTERS), false);
+});
+
+// Walks part 1 with "Fazer por mim" and checks each step opens and fills the form, goes back when the form closes,
+// but not while a save is on its way, and saves the test item.
+test("Shared: part 1 fills and saves the test item, going back when the form closes", () => {
+  const { screen, calls } = fakeScreen();
+  const [create, identity, stock, save] = inventoryTutorialSteps(() => screen);
+  assert.equal(create.target?.(), "new");
+  assert.equal(create.done?.(), false);
+  create.auto?.();
+  assert.equal(create.done?.(), true);
+  assert.equal(identity.done?.(), false);
+  identity.auto?.();
+  assert.equal(identity.done?.(), true);
+  assert.equal(screen.form?.values.brands[0].quantity, "");
+  stock.auto?.();
+  assert.deepEqual(screen.form?.values, TUTORIAL_ITEM);
+  screen.form = null;
+  assert.equal(stock.lost?.(), "new");
+  save.auto?.();
+  assert.equal(calls.at(-1), "save new Item de teste do tutorial 5");
+  screen.busy = true;
+  assert.equal(save.lost?.(), null);
+  screen.busy = false;
+  screen.items = [SAVED];
+  assert.equal(save.done?.(), true);
+});
+
+// Walks part 2 and checks the search finds the test item, the menu opening counts for its step, leaving the menu goes
+// back to it, and applying the tutorial's filters finishes the part.
+test("Shared: part 2 searches and filters for the test item", () => {
+  const { screen } = fakeScreen();
+  screen.items = [SAVED];
+  const steps = inventoryTutorialSteps(() => screen);
+  const step = (id: string) => steps.find((each) => each.id === id)!;
+  step("search").auto?.();
+  assert.equal(step("search").done?.(), true);
+  screen.filtersOpen = true;
+  assert.equal(step("filters").done?.(), true);
+  screen.filtersOpen = false;
+  assert.equal(step("filter").lost?.(), "filters");
+  step("filter").auto?.();
+  assert.equal(step("filter").done?.(), true);
+  assert.equal(step("filter").lost?.(), "filters");
+});
+
+// Walks part 3 and checks the details unlock into the edit, the rename and the zero are saved on the test item, a
+// form closed early goes back to where the edit starts, and the delete is asked, then confirmed.
+test("Shared: part 3 edits the test item twice, then deletes it", () => {
+  const { screen, calls } = fakeScreen();
+  screen.items = [SAVED];
+  const steps = inventoryTutorialSteps(() => screen);
+  const step = (id: string) => steps.find((each) => each.id === id)!;
+  step("details").auto?.();
+  assert.equal(calls.at(-1), "open TUTORIAL-001 details");
+  assert.equal(step("unlock").done?.(), false);
+  step("unlock").auto?.();
+  assert.equal(step("unlock").done?.(), true);
+  step("rename").auto?.();
+  assert.equal(step("rename").done?.(), true);
+  screen.form = null;
+  assert.equal(step("rename").lost?.(), "details");
+  step("save-low").auto?.();
+  assert.equal(calls.at(-1), "save TUTORIAL-001 Item de teste do tutorial editado 1");
+  screen.items = [{ ...SAVED, name: TUTORIAL_EDIT.name, quantity: 1 }];
+  assert.equal(step("save-low").done?.(), true);
+  step("zero").auto?.();
+  assert.equal(calls.at(-1), "save TUTORIAL-001 Item de teste do tutorial editado 0");
+  assert.equal(step("zero").lost?.(), "pencil");
+  step("delete").auto?.();
+  assert.equal(step("delete").done?.(), true);
+  step("confirm").auto?.();
+  assert.equal(calls.at(-1), "delete TUTORIAL-001");
+  screen.removing = undefined;
+  assert.equal(step("confirm").lost?.(), "delete");
+  screen.items = [];
+  assert.equal(step("confirm").done?.(), true);
+});
+
+// Lists the steps on a phone and checks they name the + and the full-word choices, while a desktop keeps its words,
+// and the filters leave the category out; then checks the second edit and the delete point at the test item's card,
+// and at Editar and Excluir item once its details are open, not at a row's pencil and trash.
+test("Shared: on a phone the tutorial names the phone layout and goes through the details", () => {
+  const { screen } = fakeScreen();
+  screen.items = [SAVED];
+  const desktop = inventoryTutorialSteps(() => screen);
+  screen.phone = true;
+  const steps = inventoryTutorialSteps(() => screen);
+  const step = (id: string) => steps.find((each) => each.id === id)!;
+  assert.equal(desktop[0].text, "Clique em Novo item para cadastrar uma peça de teste.");
+  assert.equal(step("new").text, "Toque no + para cadastrar uma peça de teste.");
+  assert.match(step("stock").text, /posição Dianteira, lado Direito/);
+  step("filter").auto?.();
+  assert.deepEqual(screen.filters, TUTORIAL_PHONE_FILTERS);
+  assert.equal(step("filter").done?.(), true);
+  assert.equal(filtersHave(screen.filters, TUTORIAL_FILTERS), false);
+  assert.equal(step("pencil").title, "Edite de novo");
+  assert.equal(step("pencil").target?.(), "row");
+  assert.equal(step("delete").target?.(), "row");
+  screen.form = { item: SAVED, viewing: true, values: itemFormOf(SAVED) };
+  assert.equal(step("pencil").target?.(), "form-edit");
+  assert.equal(step("delete").target?.(), "form-delete");
+  step("pencil").auto?.();
+  assert.equal(step("pencil").done?.(), true);
+  screen.phone = false;
+  assert.equal(step("pencil").target?.(), "pencil");
+  assert.equal(step("delete").target?.(), "trash");
+});

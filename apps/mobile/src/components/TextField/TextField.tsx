@@ -1,7 +1,7 @@
 import { useRef, useState, type ComponentRef, type Ref } from 'react';
 import { Pressable, Text as NativeText, TextInput, View, type HostInstance, type ReturnKeyTypeOptions } from 'react-native';
-import { FIELD_KINDS, type FieldKind } from '@apc/shared/field';
-import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons';
+import { FIELD_KINDS, type FieldKind } from '@apc/ui-spec/field';
+import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/tokens/icons';
 import { useRevealField } from '../FieldScrollView/FieldScrollView';
 import { Icon } from '../Icon/Icon';
 import { TRAILING_HIT_SLOP, useSearchStyles, useStyles } from './TextField.styles';
@@ -9,7 +9,7 @@ import { useTheme } from '../../app/theme';
 import { Label, Text } from '../Typography/Typography';
 
 // The pill-shaped inputs, the same as the web (see TextField.styles.ts). Each field kind sets the keyboard, autofill
-// hint and capitalization (see @apc/shared/field). Inside a FieldScrollView, a field that gets focus scrolls into sight
+// hint and capitalization (see @apc/ui-spec/field). Inside a FieldScrollView, a field that gets focus scrolls into sight
 // above the keyboard, its label and message included.
 
 type SearchFieldProps = {
@@ -27,7 +27,7 @@ type TextFieldProps = {
   onValueChange: (value: string) => void;
   /** Kind of data, which sets the keyboard and autofill; a password kind adds the reveal toggle. */
   kind?: FieldKind;
-  /** Leading icon from @apc/shared/icons. */
+  /** Leading icon from @apc/tokens/icons. */
   icon?: IconShape[];
   /** Hint shown under the field while there is no error. */
   helper?: string;

@@ -1,5 +1,5 @@
 import { test, type Page } from "@playwright/test";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { expect } from "../e2e/support/expect.ts";
 import { loginForm } from "../e2e/locators/auth.ts";
 import { dataTable, tour } from "../e2e/locators/common.ts";

@@ -1,10 +1,10 @@
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { logIn, loginForm } from "./locators/auth.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
-import { SESSION_STORAGE_KEY } from "@apc/shared/auth";
-import { THEME_STORAGE_KEYS } from "@apc/shared/theme";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { SESSION_STORAGE_KEY } from "@apc/domain/auth";
+import { THEME_STORAGE_KEYS } from "@apc/tokens/theme";
+import { TEST_USERS } from "@apc/domain/test-users";
 
 const USER = TEST_USERS[0];
 

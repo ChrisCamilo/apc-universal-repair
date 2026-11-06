@@ -8,7 +8,7 @@ import { readConfig, updateConfig } from "../config.ts";
 // session and data never cross the home Wi-Fi in clear text. The app makes it the first time the access is turned on:
 // self-signed, ECDSA P-256, kept in config.json, its private key sealed by safeStorage (DPAPI) as the database's key
 // is. No authority vouches for it: the phone trusts it by its SHA-256 fingerprint, handed over by the Servidor
-// dialog's QR code (see @apc/shared/pairing), and so does this app for its own requests to https://127.0.0.1 (the
+// dialog's QR code (see @apc/domain/pairing), and so does this app for its own requests to https://127.0.0.1 (the
 // page's, through protocol.ts, and the health checks): Chromium asks certificateVerdict about each certificate. A key
 // this Windows user can't open makes a new certificate, which the phone then pairs with again. The certificate names
 // no address, since the computer's changes: a phone that pinned it only scans again to follow a new address.

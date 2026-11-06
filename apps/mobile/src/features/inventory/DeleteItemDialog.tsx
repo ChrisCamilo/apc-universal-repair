@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { apiFetch } from '@apc/shared/auth';
-import { itemCodes, type Item } from '@apc/shared/items';
+import { apiFetch } from '@apc/domain/auth';
+import { itemCodes, type Item } from '@apc/domain/items';
 import { apiUrl } from '../../app/api';
 import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';

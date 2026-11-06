@@ -1,12 +1,12 @@
 import { useId, useRef, useState, type InputHTMLAttributes, type Ref } from 'react'
-import { FIELD_KINDS, type FieldKind } from '@apc/shared/field'
-import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/shared/icons'
+import { FIELD_KINDS, type FieldKind } from '@apc/ui-spec/field'
+import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/tokens/icons'
 import { Icon } from '../Icon/Icon.tsx'
 import { searchField, textField } from './TextField.styles.ts'
 import { Label, Text } from '../Typography/Typography.tsx'
 
 // The pill-shaped inputs of the login and the dashboard searches (see TextField.styles.ts). Each field kind sets the
-// input type, autofill hint and keyboard (see @apc/shared/field).
+// input type, autofill hint and keyboard (see @apc/ui-spec/field).
 
 type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'size' | 'children'>
 type SearchFieldProps = InputProps & {
@@ -23,7 +23,7 @@ type TextFieldProps = InputProps & {
   onValueChange: (value: string) => void
   /** Kind of data, which sets the input type, autofill and keyboard; a password kind adds the reveal toggle. */
   kind?: FieldKind
-  /** Leading icon from @apc/shared/icons. */
+  /** Leading icon from @apc/tokens/icons. */
   icon?: IconShape[]
   /** Hint shown under the field while there is no error. */
   helper?: string

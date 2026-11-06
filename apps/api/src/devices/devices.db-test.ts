@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
-import { deviceCode } from "@apc/shared/device-crypto";
-import type { DeviceSigner } from "@apc/shared/devices";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { deviceCode } from "@apc/domain/device-crypto";
+import type { DeviceSigner } from "@apc/domain/devices";
+import { TEST_USERS } from "@apc/domain/test-users";
 import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
 import { hashToken } from "../auth/sessions.js";

@@ -5,10 +5,10 @@
 import React from 'react';
 import { StyleSheet, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { createMockAuth, REGISTER_MESSAGES, REGISTER_TITLE, type AuthService, type RegisterResult } from '@apc/shared/auth';
-import { isStyleId } from '@apc/shared/style-ids';
-import { TEST_USERS } from '@apc/shared/test-users';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { createMockAuth, REGISTER_MESSAGES, REGISTER_TITLE, type AuthService, type RegisterResult } from '@apc/domain/auth';
+import { isStyleId } from '@apc/tokens/style-ids';
+import { TEST_USERS } from '@apc/domain/test-users';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { RegisterScreen } from '../src/features/auth/RegisterScreen';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 

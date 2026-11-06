@@ -1,9 +1,9 @@
 import { randomInt } from "node:crypto";
-import { ENTRY_CODE_MS } from "@apc/shared/auth";
-import { ENTRY_CODE_ALPHABET, ENTRY_CODE_LENGTH } from "@apc/shared/pairing";
+import { ENTRY_CODE_MS } from "@apc/domain/auth";
+import { ENTRY_CODE_ALPHABET, ENTRY_CODE_LENGTH } from "@apc/domain/pairing";
 
 // The entry codes the server's computer hands out, which log a phone into the account open there (see
-// @apc/shared/pairing): one free code per user at a time, a new one replacing theirs, each lasting ENTRY_CODE_MS. A
+// @apc/domain/pairing): one free code per user at a time, a new one replacing theirs, each lasting ENTRY_CODE_MS. A
 // phone the server's computer hasn't authorized yet holds the code it sent: from then on only that phone's key uses
 // it, for up to HELD_MS, so it logs in once it is authorized, and a new code for the user leaves it be. A code is used
 // up once it starts a session. They live in memory, as the devices' nonces do: there is one server, and a restart only

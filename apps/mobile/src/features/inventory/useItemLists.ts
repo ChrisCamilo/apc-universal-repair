@@ -11,7 +11,7 @@ import {
   type ItemListKind,
   type ItemLists,
   type ListEntry,
-} from '@apc/shared/lists';
+} from '@apc/domain/lists';
 import { apiUrl } from '../../app/api';
 
 // Loads the lists the item form picks from (categories, part brands, vehicle brands and vehicle models), creates

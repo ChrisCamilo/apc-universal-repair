@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { TEXT_SIZES } from '@apc/shared/typography'
+import { TEXT_SIZES } from '@apc/tokens/typography'
 import { Heading, Label, NumericReadout, Text } from './Typography.tsx'
 
 // The text primitives in every variant and tone. Switch Style and Mode in the toolbar: headings and

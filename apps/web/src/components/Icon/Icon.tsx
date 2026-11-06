@@ -1,12 +1,12 @@
 import type { SVGProps } from 'react'
-import { ICON_SIZES, ICON_STROKE, ICON_VIEWBOX, type IconShape } from '@apc/shared/icons'
+import { ICON_SIZES, ICON_STROKE, ICON_VIEWBOX, type IconShape } from '@apc/tokens/icons'
 import { icon as iconRecipe } from './Icon.styles.ts'
 
 // Draws a shared icon as inline SVG. The stroke is currentColor, so an icon takes the color of the
 // text around it (text-text-muted, text-accent…) and follows the active style and mode.
 
 type IconProps = Omit<SVGProps<SVGSVGElement>, 'children' | 'width' | 'height'> & {
-  /** Icon geometry from @apc/shared/icons, e.g. searchIcon. */
+  /** Icon geometry from @apc/tokens/icons, e.g. searchIcon. */
   icon: IconShape[]
   /** Width and height in px, from ICON_SIZES; defaults to ICON_SIZES.body. */
   size?: number

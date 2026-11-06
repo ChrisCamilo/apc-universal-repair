@@ -1,5 +1,5 @@
-import { REGISTER_TITLE } from '@apc/shared/auth';
-import { scales } from '@apc/shared/theme';
+import { REGISTER_TITLE } from '@apc/domain/auth';
+import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { fontFamily } from '../../app/theme';
 import { authScreenStyles } from './LoginScreen.styles';

@@ -9,7 +9,7 @@ import {
   TOUR_CHECK_MS,
   type TourRect,
   type TourStep,
-} from '@apc/shared/tour'
+} from '@apc/ui-spec/tour'
 import { Button } from '../Button/Button.tsx'
 import { Panel } from '../Panel/Panel.tsx'
 import { cardBox, spotBox, tour } from './Tour.styles.ts'

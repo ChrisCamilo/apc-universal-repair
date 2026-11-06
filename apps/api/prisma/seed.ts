@@ -1,13 +1,13 @@
 import "dotenv/config";
-import { codeKey, optionKey, type ItemCreate } from "@apc/shared/items";
-import { listName } from "@apc/shared/lists";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { codeKey, optionKey, type ItemCreate } from "@apc/domain/items";
+import { listName } from "@apc/domain/lists";
+import { TEST_USERS } from "@apc/domain/test-users";
 import { prisma } from "../src/db/client.js";
 import { brandData, createData, originalCodesData, vehiclesData, type ListIds } from "../src/inventory/items.js";
 import { listIds } from "../src/inventory/listIds.js";
 import { hashPassword } from "../src/auth/passwords.js";
 
-// The starting data of a new database (`pnpm --filter @apc/api db:seed`): the test users of @apc/shared/test-users
+// The starting data of a new database (`pnpm --filter @apc/api db:seed`): the test users of @apc/domain/test-users
 // (christian.camilo and oficina) with their passwords hashed, the default categories, part brands, vehicle brands with
 // the models of the catalog, and sample items, each with its brands. It can run again: a username in use, a name a
 // list holds and an item one of whose codes, its brands' or its original ones, is in use are left as they are.

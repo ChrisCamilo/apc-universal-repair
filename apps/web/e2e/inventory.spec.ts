@@ -1,16 +1,16 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { rgb } from "./support/expect.ts";
 import { atNotebookSizes } from "./support/sizes.ts";
 import { dataTable, dialog, options, thumbnailImage, tour } from "./locators/common.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
 import { deleteDialog, deleteItem, fillItem, filtersMenu, importDialog, inventory, itemDetails, itemForm, manageLists } from "./locators/inventory.ts";
-import type { Item, ItemCreate } from "@apc/shared/items";
-import { themes, type Mode, type Style } from "@apc/shared/theme";
+import type { Item, ItemCreate } from "@apc/domain/items";
+import { themes, type Mode, type Style } from "@apc/tokens/theme";
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { signIn } from "./stubs/session.ts";
-import { testItem } from "@apc/shared/test-items";
+import { testItem } from "@apc/domain/test-items";
 import { item } from "./data/items.ts";
 
 // The API answers GET /items with these items, newest first, so the list is the same on every run without a database.

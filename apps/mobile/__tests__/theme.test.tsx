@@ -5,7 +5,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { MODES, STYLES, scales, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { MODES, STYLES, scales, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { fontFamily, themeStorage, ThemeProvider, useTheme, type ActiveTheme, type FontWeight } from '../src/app/theme';
 import androidAssets from '../android/link-assets-manifest.json';
 import iosAssets from '../ios/link-assets-manifest.json';

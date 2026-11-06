@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { csvExportName, exportedSummary, exportItems, exportScope } from '@apc/shared/item-csv'
+import { csvExportName, exportedSummary, exportItems, exportScope } from '@apc/domain/item-csv'
 import { API_BASE } from '../../app/api.ts'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import sharp from "sharp";
-import { PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION } from "@apc/shared/photos";
+import { PHOTO_MAX_BYTES, PHOTO_MAX_DIMENSION } from "@apc/domain/photos";
 import { signedPhotoPath } from "../auth/sessions.js";
 import { TEST_SESSION } from "../auth/testSessions.js";
 import { checkPhoto, photoOf, photosDir, reduceStoredPhoto, removePhotoFiles, storePhoto, THUMB_SIZE } from "./photos.js";

@@ -1,4 +1,4 @@
-import { scales } from '@apc/shared/theme';
+import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 
 // The look of the ←, the same as the web: a bare 44px circle around the arrow, as tall as a finger needs, that fills in

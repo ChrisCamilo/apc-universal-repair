@@ -1,4 +1,4 @@
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/shared/screens'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/ui-spec/screens'
 import { beforeAll, expect, test } from 'vitest'
 import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'

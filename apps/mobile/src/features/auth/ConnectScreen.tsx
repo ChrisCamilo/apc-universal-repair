@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { BackHandler, Text as RNText, TextInput, View } from 'react-native';
 import { useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { CodeScanner, type Barcode, type TargetBarcodeFormat } from 'react-native-vision-camera-barcode-scanner';
-import { waitForDevice, type AuthService, type SessionUser } from '@apc/shared/auth';
-import { pencilIcon, qrIcon } from '@apc/shared/icons';
-import { readEntryCode, readFingerprint, readPairingLink, readServerAddress, type Pairing, type PairingInvite } from '@apc/shared/pairing';
+import { waitForDevice, type AuthService, type SessionUser } from '@apc/domain/auth';
+import { pencilIcon, qrIcon } from '@apc/tokens/icons';
+import { readEntryCode, readFingerprint, readPairingLink, readServerAddress, type Pairing, type PairingInvite } from '@apc/domain/pairing';
 import { applyServer, currentServer, saveServer } from '../../app/api';
 import { BackButton } from '../../components/BackButton';
 import { Button } from '../../components/Button';
@@ -14,7 +14,7 @@ import { Heading, Text } from '../../components/Typography';
 import { useStyles } from './ConnectScreen.styles';
 import { DevicePending } from './DevicePending';
 
-// Conectar ao servidor: how the phone pairs with the home server (see @apc/shared/pairing), before the login of a
+// Conectar ao servidor: how the phone pairs with the home server (see @apc/domain/pairing), before the login of a
 // phone with no server yet, and from the login or the user menu to pair again, as after the computer's address
 // changes. The camera reads the QR code of the desktop app's Servidor dialog. "Digitar manualmente", under it, puts the
 // camera away for the address and the code shown beside the QR code, the code with or without its spaces, and "Ler QR

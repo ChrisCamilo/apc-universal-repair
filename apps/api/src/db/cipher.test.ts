@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 import Database from "better-sqlite3";
-import { WRONG_KEY_EXIT_CODE } from "@apc/shared/server";
+import { WRONG_KEY_EXIT_CODE } from "@apc/domain/server";
 import { changeKey, ensureEncrypted, keyOpens, keyScript, readKey, REKEY_COPY, setSqliteKey } from "./cipher.js";
 import { createPrisma } from "./client.js";
 import { migrate, migrationNames } from "./migrate.js";

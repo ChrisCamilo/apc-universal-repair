@@ -11,7 +11,7 @@ import {
   type Mode,
   type Style,
   type Theme,
-} from '@apc/shared/theme';
+} from '@apc/tokens/theme';
 
 // Holds the style and mode, hands their tokens to the components and saves every explicit choice.
 // Until the user picks a mode, it follows the system color scheme.

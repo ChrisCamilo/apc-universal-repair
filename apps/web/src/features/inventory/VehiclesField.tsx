@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { closeIcon, ICON_SIZES, plusIcon } from '@apc/shared/icons'
-import { findOption } from '@apc/shared/items'
+import { closeIcon, ICON_SIZES, plusIcon } from '@apc/tokens/icons'
+import { findOption } from '@apc/domain/items'
 import {
   EMPTY_VEHICLE_FORM,
   ITEM_FORM_MESSAGES,
@@ -11,8 +11,8 @@ import {
   vehicleText,
   type ItemVehicleForm,
   type ItemVehicleFormErrors,
-} from '@apc/shared/item-form'
-import { findEntry, type ItemListKind, type ItemLists } from '@apc/shared/lists'
+} from '@apc/domain/item-form'
+import { findEntry, type ItemListKind, type ItemLists } from '@apc/domain/lists'
 import { Button } from '../../components/Button'
 import { Combobox } from '../../components/Combobox'
 import { Icon } from '../../components/Icon'

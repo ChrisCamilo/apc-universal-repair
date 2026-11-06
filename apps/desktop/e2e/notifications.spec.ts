@@ -1,9 +1,9 @@
 import type { ElectronApplication } from "@playwright/test";
 import { expect, logIn, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
-import type { Item } from "@apc/shared/items";
-import { TEST_USERS } from "@apc/shared/test-users";
-import { testItem } from "@apc/shared/test-items";
+import { TEST_TAGS } from "@apc/domain/test-tags";
+import type { Item } from "@apc/domain/items";
+import { TEST_USERS } from "@apc/domain/test-users";
+import { testItem } from "@apc/domain/test-items";
 
 // The desktop app's Windows notifications: the compiled app on a stand-in API whose one item is below its minimum
 // stock, so the Inventory warns about it as it opens. The main process's Notification is replaced by one that only

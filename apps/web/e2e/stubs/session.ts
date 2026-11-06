@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
-import { initials, SESSION_STORAGE_KEY } from "@apc/shared/auth";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { initials, SESSION_STORAGE_KEY } from "@apc/domain/auth";
+import { TEST_USERS } from "@apc/domain/test-users";
 
 // Logs a test user in before a page loads, as a session saved on a previous visit, with a token the API stand-ins
 // don't check, for the tests that start on the Dashboard, which only a logged user reaches. The user has seen the Inventory tutorial, so it doesn't start by itself

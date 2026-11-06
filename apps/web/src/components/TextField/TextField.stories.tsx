@@ -1,6 +1,6 @@
 import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { lockIcon, userIcon } from '@apc/shared/icons'
+import { lockIcon, userIcon } from '@apc/tokens/icons'
 import { SearchField, TextField } from './TextField.tsx'
 
 // Every field state. Focus is forced on the frame inside the "focus" wrapper by storybook-addon-pseudo-states; switch

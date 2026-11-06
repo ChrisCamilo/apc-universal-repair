@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { onSessionExpired, type AuthService, type SessionUser } from '@apc/shared/auth'
+import { onSessionExpired, type AuthService, type SessionUser } from '@apc/domain/auth'
 import { SessionContext } from './sessionContext.ts'
 
 // Holds the logged user for the routes: it reads the session saved on the device once, on start, and then takes

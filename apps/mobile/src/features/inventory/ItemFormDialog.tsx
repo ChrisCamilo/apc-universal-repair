@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
-import { apiFetch } from '@apc/shared/auth';
-import { copyIcon, pencilIcon, plusIcon } from '@apc/shared/icons';
-import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, type Item, type ItemBrand } from '@apc/shared/items';
+import { apiFetch } from '@apc/domain/auth';
+import { copyIcon, pencilIcon, plusIcon } from '@apc/tokens/icons';
+import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, type Item, type ItemBrand } from '@apc/domain/items';
 import {
   BRAND_FIELD_LABELS,
   codeTakenError,
@@ -29,9 +29,9 @@ import {
   type ItemField,
   type ItemForm,
   type ItemFormErrors,
-} from '@apc/shared/item-form';
-import { ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/shared/lists';
-import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/shared/photos';
+} from '@apc/domain/item-form';
+import { ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/domain/lists';
+import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/domain/photos';
 import { apiUrl } from '../../app/api';
 import { Button } from '../../components/Button';
 import { Combobox } from '../../components/Combobox';

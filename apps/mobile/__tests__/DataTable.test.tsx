@@ -5,9 +5,9 @@
 import React, { useState, type ComponentProps } from 'react';
 import { AccessibilityInfo, Animated, Image, StyleSheet, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { pencilIcon, trashIcon } from '@apc/shared/icons';
-import { sortRows, type Sort } from '@apc/shared/table';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { pencilIcon, trashIcon } from '@apc/tokens/icons';
+import { sortRows, type Sort } from '@apc/domain/list-query';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { DataTable, RowAction, TableThumbnail } from '../src/components/DataTable';
 import { Icon } from '../src/components/Icon';
 import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';

@@ -6,8 +6,8 @@ import {
   View,
   type GestureResponderEvent,
 } from 'react-native';
-import { coneIcon, gripIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
-import { dropTab, initialTab, moveTab, type DropSide } from '@apc/shared/tabs';
+import { coneIcon, gripIcon, ICON_SIZES, type IconShape } from '@apc/tokens/icons';
+import { dropTab, initialTab, moveTab, type DropSide } from '@apc/ui-spec/tabs';
 import { Icon } from '../Icon/Icon';
 import { useStyles } from './Tabs.styles';
 import { save, themeStorage, useTheme } from '../../app/theme';
@@ -29,7 +29,7 @@ const ACTIONS = [
 type TabItem<T extends string> = {
   id: T;
   label: string;
-  /** Leading icon from @apc/shared/icons. */
+  /** Leading icon from @apc/tokens/icons. */
   icon?: IconShape[];
   /** Badge after the label, e.g. the number of items in stock. */
   count?: number;
@@ -53,7 +53,7 @@ type TabsProps<T extends string> = {
 /**
  * Holds the selected tab and remembers it on the device, so the app reopens on the last tab used.
  * Storage is read once, on the first render.
- * @param storageKey AsyncStorage key, e.g. DASHBOARD_TAB_STORAGE_KEY from @apc/shared/tabs.
+ * @param storageKey AsyncStorage key, e.g. DASHBOARD_TAB_STORAGE_KEY from @apc/ui-spec/tabs.
  * @param ids Tab ids in display order; the first opens when nothing valid was saved.
  * @returns The selected tab id (null until storage is read, so render nothing yet) and the setter that
  * also saves it.

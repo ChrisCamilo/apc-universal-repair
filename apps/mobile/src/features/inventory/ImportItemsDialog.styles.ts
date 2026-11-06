@@ -1,4 +1,4 @@
-import { scales } from '@apc/shared/theme';
+import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { softHairline } from '../../app/theme';
 

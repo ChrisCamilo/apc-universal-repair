@@ -11,7 +11,7 @@
 // A port another program holds exits with PORT_IN_USE_EXIT_CODE, a SQLite key that doesn't open the file with
 // WRONG_KEY_EXIT_CODE, any other failure with 1.
 import "dotenv/config";
-import { DEV_SERVER_PORT, NETWORK_HOST, PORT_IN_USE_EXIT_CODE, SERVER_PORT, WRONG_KEY_EXIT_CODE } from "@apc/shared/server";
+import { DEV_SERVER_PORT, NETWORK_HOST, PORT_IN_USE_EXIT_CODE, SERVER_PORT, WRONG_KEY_EXIT_CODE } from "@apc/domain/server";
 import { buildApp } from "./app.js";
 import { backupBeforeMigrating } from "./db/backup.js";
 import { ensureEncrypted, WRONG_KEY_ERROR } from "./db/cipher.js";

@@ -1,4 +1,4 @@
-import { fitPhoto, PHOTO_MAX_BYTES, PHOTO_QUALITY, PHOTO_TYPES } from '@apc/shared/photos'
+import { fitPhoto, PHOTO_MAX_BYTES, PHOTO_QUALITY, PHOTO_TYPES } from '@apc/domain/photos'
 
 // Reduces a chosen photo in the browser before it is sent, so less goes up and a photo over 3 MB can still be taken:
 // drawn upright (as the camera meant) in a canvas fitted to PHOTO_MAX_DIMENSION, then saved as WebP at PHOTO_QUALITY,

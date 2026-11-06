@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { parseArgs } from "node:util";
-import { DEV_SERVER_PORT, SERVER_PORT } from "@apc/shared/server";
+import { DEV_SERVER_PORT, SERVER_PORT } from "@apc/domain/server";
 import { createPrisma } from "../src/db/client.js";
 import { copyDatabase, copyProblems, serverAnswers } from "../src/db/copy.js";
 import { databaseProvider, sqliteFile } from "../src/db/provider.js";

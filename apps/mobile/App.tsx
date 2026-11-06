@@ -7,8 +7,8 @@
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { LOGIN_MESSAGES, onSessionExpired, type SessionUser } from '@apc/shared/auth';
-import type { Pairing } from '@apc/shared/pairing';
+import { LOGIN_MESSAGES, onSessionExpired, type SessionUser } from '@apc/domain/auth';
+import type { Pairing } from '@apc/domain/pairing';
 import { loadServer } from './src/app/api';
 import { auth } from './src/features/auth/auth';
 import { ConnectScreen } from './src/features/auth/ConnectScreen';

@@ -1,4 +1,4 @@
-import { MODES, popShadow, STYLES, scales, sheenGradient, spotlightDim, THEME_STORAGE_KEYS, themes, type Mode, type Theme } from '@apc/shared/theme'
+import { MODES, popShadow, STYLES, scales, sheenGradient, spotlightDim, THEME_STORAGE_KEYS, themes, type Mode, type Theme } from '@apc/tokens/theme'
 
 // Turns the shared tokens into CSS variables: the scales on :root and one block per
 // [data-style][data-mode] pair, so switching style or mode is just changing two attributes on <html>.

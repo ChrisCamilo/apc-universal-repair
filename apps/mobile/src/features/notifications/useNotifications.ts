@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { addNotification, markAllRead, NOTIFICATIONS_LIMIT, notificationsKey, readNotifications, type Notification } from '@apc/shared/notifications';
+import { addNotification, markAllRead, NOTIFICATIONS_LIMIT, notificationsKey, readNotifications, type Notification } from '@apc/domain/notifications';
 import { save, themeStorage } from '../../app/theme';
 import { useToastFeed } from '../../components/Toast';
 

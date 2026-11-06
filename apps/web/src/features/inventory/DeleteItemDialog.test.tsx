@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import type { Item } from '@apc/shared/items'
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import type { Item } from '@apc/domain/items'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -10,7 +10,7 @@ import '../../app/fonts.ts'
 import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
 import { DeleteItemDialog } from './DeleteItemDialog.tsx'
-import { testItem } from '@apc/shared/test-items'
+import { testItem } from '@apc/domain/test-items'
 
 const FILTER: Item = testItem({
   id: '00000000-0000-4000-8000-000000000001',

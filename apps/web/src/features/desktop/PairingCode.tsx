@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { encode } from 'uqr'
-import type { EntryCode } from '@apc/shared/auth'
-import { entryCodeGroups, fingerprintGroups, pairingLink, type Pairing } from '@apc/shared/pairing'
+import type { EntryCode } from '@apc/domain/auth'
+import { entryCodeGroups, fingerprintGroups, pairingLink, type Pairing } from '@apc/domain/pairing'
 import { Button } from '../../components/Button'
 import { issueEntryCode, type DevicesOutcome } from './devices.ts'
 import { pairingCode } from './PairingCode.styles.ts'
 
 // What the phone pairs with, in the Servidor dialog while the phone's access is on: a QR code holding the pairing
-// link (see @apc/shared/pairing), which the phone's camera reads on its Conectar ao servidor screen, and the same
+// link (see @apc/domain/pairing), which the phone's camera reads on its Conectar ao servidor screen, and the same
 // address and codes to type in, in groups of four. The code is the fingerprint of the certificate the server answers
 // HTTPS with: the phone trusts that certificate alone. The entry code logs the phone into the account open on this
 // computer once this computer authorizes the phone, which it asks about as for any device (see DeviceApprovals.tsx):

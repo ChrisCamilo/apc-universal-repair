@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { z } from "zod";
-import { entryCodeSchema } from "@apc/shared/auth";
-import { deviceCode } from "@apc/shared/device-crypto";
-import { deviceChallengeSchema, deviceListSchema, deviceNameSchema, deviceProofSchema, deviceSchema, deviceStatusSchema } from "@apc/shared/devices";
+import { entryCodeSchema } from "@apc/domain/auth";
+import { deviceCode } from "@apc/domain/device-crypto";
+import { deviceChallengeSchema, deviceListSchema, deviceNameSchema, deviceProofSchema, deviceSchema, deviceStatusSchema } from "@apc/domain/devices";
 import { prisma } from "../../db/client.js";
 import { checkProof, deviceOf, isLoopback, issueChallenge } from "../devices.js";
 import { issueEntryCode } from "../entryCodes.js";

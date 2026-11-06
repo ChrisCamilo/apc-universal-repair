@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
-import type { ButtonSize, ButtonVariant } from '@apc/shared/button'
-import { ICON_SIZES, type IconShape } from '@apc/shared/icons'
+import type { ButtonSize, ButtonVariant } from '@apc/ui-spec/button'
+import { ICON_SIZES, type IconShape } from '@apc/tokens/icons'
 import { button } from './Button.styles.ts'
 import { Icon } from '../Icon/Icon.tsx'
 import { Spinner } from '../Spinner/Spinner.tsx'
@@ -11,7 +11,7 @@ import { Spinner } from '../Spinner/Spinner.tsx'
 type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
   variant?: ButtonVariant
   size?: ButtonSize
-  /** Leading icon from @apc/shared/icons. */
+  /** Leading icon from @apc/tokens/icons. */
   icon?: IconShape[]
   /** Shows a spinner, blocks presses and marks the button busy, e.g. while the login is sent. */
   loading?: boolean

@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { Stepper } from '../src/components/Stepper';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 

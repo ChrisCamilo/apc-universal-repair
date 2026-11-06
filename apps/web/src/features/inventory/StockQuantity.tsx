@@ -1,4 +1,4 @@
-import { QUANTITY_UNIT, STOCK_STATUS_SHORT, stockStatus } from '@apc/shared/items'
+import { QUANTITY_UNIT, STOCK_STATUS_SHORT, stockStatus } from '@apc/domain/items'
 import { usePhone } from '../../components/usePhone.ts'
 import { inventoryTab } from './InventoryTab.styles.ts'
 

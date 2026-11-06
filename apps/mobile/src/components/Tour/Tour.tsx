@@ -10,7 +10,7 @@ import {
   TOUR_CHECK_MS,
   type TourRect,
   type TourStep,
-} from '@apc/shared/tour';
+} from '@apc/ui-spec/tour';
 import { Button } from '../Button/Button';
 import { Panel } from '../Panel/Panel';
 import { dimBoxes, useStyles } from './Tour.styles';

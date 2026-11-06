@@ -8,9 +8,9 @@ import ReactTestRenderer from 'react-test-renderer';
 import { createAsyncStorage } from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
 import { CodeScanner } from 'react-native-vision-camera-barcode-scanner';
-import { initials, SESSION_STORAGE_KEY } from '@apc/shared/auth';
-import { pairingLink } from '@apc/shared/pairing';
-import { TEST_USERS } from '@apc/shared/test-users';
+import { initials, SESSION_STORAGE_KEY } from '@apc/domain/auth';
+import { pairingLink } from '@apc/domain/pairing';
+import { TEST_USERS } from '@apc/domain/test-users';
 import App from '../App';
 import { applyServer, SERVER_STORAGE_KEY } from '../src/app/api';
 

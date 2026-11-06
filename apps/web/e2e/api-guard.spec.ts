@@ -1,5 +1,5 @@
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 
 // Calls an API route no stand-in answers and checks the guard answers it with a 501 instead of the real API, and fails
 // the test once it ends: it is marked as failing, so the run reports it failed only if the guard let the call through.

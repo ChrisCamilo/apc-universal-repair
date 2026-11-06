@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { TEST_USERS } from "@apc/shared/test-users";
+import { TEST_USERS } from "@apc/domain/test-users";
 import type { PrismaClient } from "../generated/prisma/client.js";
 import { createSession } from "../auth/sessions.js";
 import { createPrisma, prisma } from "./client.js";

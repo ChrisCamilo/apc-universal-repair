@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { chevronIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
+import { chevronIcon, ICON_SIZES, type IconShape } from '@apc/tokens/icons'
 import { Icon } from '../Icon/Icon.tsx'
 import { menu as menuRecipe, menuHeader, menuItem, menuLabel, userBadge } from './Menu.styles.ts'
 import { MenuContext, useMenu } from './menuContext.ts'

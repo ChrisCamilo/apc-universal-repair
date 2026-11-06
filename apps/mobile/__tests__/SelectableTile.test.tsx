@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { Image, StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { SelectableTileGroup } from '../src/components/SelectableTile';
 import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';
 

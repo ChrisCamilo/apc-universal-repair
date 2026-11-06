@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from 'react'
-import { REORDER_TABS_STORAGE_KEY } from '@apc/shared/tabs'
+import { REORDER_TABS_STORAGE_KEY } from '@apc/ui-spec/tabs'
 import { readStored, writeStored } from '../../app/storage.ts'
 
 /** The "Arrastar para reordenar" choice, shared by the Dashboard's tabs and the user menu that switches it. */

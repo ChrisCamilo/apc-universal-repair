@@ -5,7 +5,7 @@
 import React from 'react';
 import { StyleSheet, Text, type ViewStyle } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { Button } from '../src/components/Button';
 import { DISABLED_OPACITY } from '../src/components/Button';
 import { Spinner } from '../src/components/Spinner';

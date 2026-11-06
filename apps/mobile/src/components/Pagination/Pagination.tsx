@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text as NativeText, View } from 'react-native';
-import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
-import { pageCount, pageForSize, pageRange, pageSlots } from '@apc/shared/pagination';
-import { scales } from '@apc/shared/theme';
+import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons';
+import { pageCount, pageForSize, pageRange, pageSlots } from '@apc/ui-spec/pagination';
+import { scales } from '@apc/tokens/theme';
 import { Icon } from '../Icon/Icon';
 import { useStyles } from './Pagination.styles';
 import { Segmented } from '../Segmented/Segmented';

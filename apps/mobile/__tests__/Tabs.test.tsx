@@ -5,9 +5,9 @@
 import React from 'react';
 import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { coneIcon, cubeIcon, documentIcon, gripIcon, ICON_SIZES, searchIcon } from '@apc/shared/icons';
-import { MIN_TOUCH_TARGET } from '@apc/shared/screens';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { coneIcon, cubeIcon, documentIcon, gripIcon, ICON_SIZES, searchIcon } from '@apc/tokens/icons';
+import { MIN_TOUCH_TARGET } from '@apc/ui-spec/screens';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { Icon } from '../src/components/Icon';
 import { Tabs, useStoredTab } from '../src/components/Tabs';
 import { themeStorage, ThemeProvider, withAlpha } from '../src/app/theme';

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
-import { DEV_SERVER_PORT } from '@apc/shared/server'
+import { DEV_SERVER_PORT } from '@apc/domain/server'
 import { themeBootScript, themeCss } from './src/app/theme.ts'
 
 // The module that gives the app the release it is built for (see releasePlugin and src/release.d.ts).

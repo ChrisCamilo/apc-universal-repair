@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Image, View } from 'react-native';
-import { ICON_SIZES, imageIcon } from '@apc/shared/icons';
+import { ICON_SIZES, imageIcon } from '@apc/tokens/icons';
 import { Icon } from '../Icon/Icon';
 import { DEFAULT_RATIO, useStyles } from './ImageFrame.styles';
 import { useInPanel } from '../Panel/Panel';

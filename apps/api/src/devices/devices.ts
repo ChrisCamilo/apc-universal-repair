@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
-import { deviceCode, verifyDevice } from "@apc/shared/device-crypto";
-import type { Device, DeviceProof } from "@apc/shared/devices";
+import { deviceCode, verifyDevice } from "@apc/domain/device-crypto";
+import type { Device, DeviceProof } from "@apc/domain/devices";
 import { prisma } from "../db/client.js";
 
-// The devices users log in from (see @apc/shared/devices). A login or sign-up proves the device holds its key by
+// The devices users log in from (see @apc/domain/devices). A login or sign-up proves the device holds its key by
 // signing a nonce from GET /devices/challenge, which lives CHALLENGE_MS and works once; the nonces live in memory, as
 // there is one server, and a restart only means asking for another. A key the user hasn't logged in with is recorded
 // as pending, unless it calls from the server's computer itself (the loopback address), which is authorized at once:

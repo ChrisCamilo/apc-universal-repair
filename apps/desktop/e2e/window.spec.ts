@@ -1,9 +1,9 @@
 import { expect, logIn, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
-import type { Item } from "@apc/shared/items";
-import { NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/shared/screens";
-import { TEST_USERS } from "@apc/shared/test-users";
-import { testItem } from "@apc/shared/test-items";
+import { TEST_TAGS } from "@apc/domain/test-tags";
+import type { Item } from "@apc/domain/items";
+import { NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/ui-spec/screens";
+import { TEST_USERS } from "@apc/domain/test-users";
+import { testItem } from "@apc/domain/test-items";
 
 // The desktop app in a window on a 1360×768 notebook, whose content is about 1360×689 once the taskbar and the title
 // bar are taken off: the compiled app on the stand-in API, with enough items to fill more than the window.

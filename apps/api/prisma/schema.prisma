@@ -8,7 +8,7 @@ datasource db {
 }
 
 /// A vehicle brand, the list the item form picks the vehicle brand from. nameKey holds the name in lowercase
-/// without accents or extra spaces, so names that differ only in those are the same brand (see @apc/shared/lists).
+/// without accents or extra spaces, so names that differ only in those are the same brand (see @apc/domain/lists).
 model Brand {
   id       String         @id @default(uuid())
   name     String         @unique
@@ -25,7 +25,7 @@ model Category {
   items   Item[]
 }
 
-/// A device a user logs in from (see @apc/shared/devices): only its public key, the name the approver gave it and its
+/// A device a user logs in from (see @apc/domain/devices): only its public key, the name the approver gave it and its
 /// dates, nothing else about the device or its owner. Pending until the server's computer authorizes it; deleting it
 /// ends its sessions.
 model Device {
@@ -53,7 +53,7 @@ enum DeviceStatus {
 }
 
 /// An inventory item: a part, made by one brand or more (see ItemBrand), which replace each other. nameKey holds the
-/// name without accents in lowercase, so searches ignore accents (see @apc/shared/items). It fits one vehicle or more
+/// name without accents in lowercase, so searches ignore accents (see @apc/domain/items). It fits one vehicle or more
 /// (see ItemVehicle). Its category and its vehicles' brands and models are entries of their lists, which can't be
 /// deleted while an item uses them. quantity is the sum
 /// of its brands' quantities, kept by the API on every change to them, so the list filters and sorts by it; the item
@@ -204,7 +204,7 @@ enum Side {
   BOTH
 }
 
-/// Someone who logs in. The username is kept in lowercase (see @apc/shared/auth), so names that differ only in case
+/// Someone who logs in. The username is kept in lowercase (see @apc/domain/auth), so names that differ only in case
 /// are the same user. The password is kept only as its salted scrypt hash, which the API never sends.
 model User {
   id                      String    @id @default(uuid())

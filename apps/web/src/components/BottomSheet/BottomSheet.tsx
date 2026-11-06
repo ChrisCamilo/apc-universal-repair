@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { SHEET_CLOSE_DRAG } from '@apc/shared/dialog'
+import { SHEET_CLOSE_DRAG } from '@apc/ui-spec/dialog'
 import { bottomSheet, sheetBox } from './BottomSheet.styles.ts'
 import { Heading } from '../Typography/Typography.tsx'
 import { usePresence } from '../usePresence.ts'

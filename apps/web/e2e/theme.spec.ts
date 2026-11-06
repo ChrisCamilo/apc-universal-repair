@@ -1,8 +1,8 @@
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 import { rgb } from "./support/expect.ts";
 import { dashboard } from "./locators/dashboard.ts";
-import { MODES, STYLES, scales, themes } from "@apc/shared/theme";
+import { MODES, STYLES, scales, themes } from "@apc/tokens/theme";
 
 for (const style of STYLES) {
   for (const mode of MODES) {

@@ -1,4 +1,4 @@
-import { ICON_SIZES, type IconShape } from '@apc/shared/icons'
+import { ICON_SIZES, type IconShape } from '@apc/tokens/icons'
 import { actionSheet } from './ActionSheet.styles.ts'
 import { BottomSheet } from '../BottomSheet/BottomSheet.tsx'
 import { Icon } from '../Icon/Icon.tsx'

@@ -5,8 +5,8 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { SELECT_VISIBLE_OPTIONS } from '@apc/shared/filters';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
+import { SELECT_VISIBLE_OPTIONS } from '@apc/ui-spec/filters';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { Combobox } from '../src/components/Combobox';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { isMode, isStyle, STYLES, THEME_STORAGE_KEYS, type Mode, type Style } from '@apc/shared/theme'
+import { isMode, isStyle, STYLES, THEME_STORAGE_KEYS, type Mode, type Style } from '@apc/tokens/theme'
 import { readStored, writeStored } from './storage.ts'
 import { ThemeContext, type ThemeState } from './useTheme.ts'
 

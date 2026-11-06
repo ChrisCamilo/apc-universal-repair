@@ -1,6 +1,6 @@
 import { NativeModules } from 'react-native';
 import { createAsyncStorage } from '@react-native-async-storage/async-storage';
-import { DEV_SERVER_PORT } from '@apc/shared/server';
+import { DEV_SERVER_PORT } from '@apc/domain/server';
 import { apiUrl, applyServer, loadServer, saveServer, SERVER_STORAGE_KEY } from '../src/app/api';
 
 const STORAGE = createAsyncStorage('apc-universal-repair');

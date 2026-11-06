@@ -1,4 +1,4 @@
-import { scales } from '@apc/shared/theme';
+import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 
 // The look of the spinner, the same as the web: a two-hairline ring open on its right side, in the muted text color

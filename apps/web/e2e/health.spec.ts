@@ -1,5 +1,5 @@
 import { expect, test } from "./support/fixtures.ts";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 
 // Calls the API through the web app's /api proxy and checks it answers healthy, which proves the web app
 // reaches the API.

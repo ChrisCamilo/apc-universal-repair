@@ -6,7 +6,7 @@
 
 ## 🇺🇸 English (US)
 
-Web app of APC Universal Repair: React 19, Vite and Tailwind 4, styled only through the theme tokens in `@apc/shared/theme`.
+Web app of APC Universal Repair: React 19, Vite and Tailwind 4, styled only through the theme tokens in `@apc/tokens/theme`.
 
 ### Scripts
 
@@ -37,7 +37,7 @@ The tests need Chromium once: `pnpm exec playwright install chromium`.
 
 ## 🇧🇷 Português (Brasil)
 
-App web do APC Universal Repair: React 19, Vite e Tailwind 4, com estilo vindo só dos tokens de tema em `@apc/shared/theme`.
+App web do APC Universal Repair: React 19, Vite e Tailwind 4, com estilo vindo só dos tokens de tema em `@apc/tokens/theme`.
 
 ### Scripts
 

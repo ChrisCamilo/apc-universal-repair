@@ -1,7 +1,7 @@
-import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from '@apc/shared/item-csv'
-import type { Item } from '@apc/shared/items'
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/shared/screens'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from '@apc/domain/item-csv'
+import type { Item } from '@apc/domain/items'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/ui-spec/screens'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -10,7 +10,7 @@ import '../../app/fonts.ts'
 import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
 import { ExportItemsDialog } from './ExportItemsDialog.tsx'
-import { testItem } from '@apc/shared/test-items'
+import { testItem } from '@apc/domain/test-items'
 
 // An item as the API sends it, with a photo.
 const ITEM: Item = testItem({

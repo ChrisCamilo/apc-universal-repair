@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { activeFilterCount, clearedFilters, offeredValues, type FilterValues } from '@apc/shared/filters'
-import { filterIcon, ICON_SIZES } from '@apc/shared/icons'
+import { activeFilterCount, clearedFilters, offeredValues, type FilterValues } from '@apc/ui-spec/filters'
+import { filterIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { Button } from '../Button/Button.tsx'
 import { FilterChipGroup } from '../FilterChip/FilterChip.tsx'
 import { filterMenu } from './FilterMenu.styles.ts'

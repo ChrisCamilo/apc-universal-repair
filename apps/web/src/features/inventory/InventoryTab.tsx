@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
-import { apiFetch } from '@apc/shared/auth'
+import { apiFetch } from '@apc/domain/auth'
 import {
   chevronIcon,
   exportIcon,
@@ -12,7 +12,7 @@ import {
   plusIcon,
   sortIcon,
   trashIcon,
-} from '@apc/shared/icons'
+} from '@apc/tokens/icons'
 import {
   brandsValue,
   formatPriceRange,
@@ -34,8 +34,8 @@ import {
   type Item,
   type ItemBrand,
   type ItemStatus,
-} from '@apc/shared/items'
-import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
+} from '@apc/domain/items'
+import { activeFilterCount, type FilterValues } from '@apc/ui-spec/filters'
 import {
   EMPTY_ITEM_FILTERS,
   followEntryChange,
@@ -43,12 +43,12 @@ import {
   itemFilterRows,
   itemListQuery,
   matchingCount,
-} from '@apc/shared/item-filters'
-import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form'
-import { TUTORIAL_CODE, type TutorialScreen } from '@apc/shared/inventory-tutorial'
-import { PAGE_SIZES, pageForSize, SCROLL_PAGE_SIZE } from '@apc/shared/pagination'
-import { sortValue, type Sort } from '@apc/shared/table'
-import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos'
+} from '@apc/domain/item-filters'
+import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form'
+import { TUTORIAL_CODE, type TutorialScreen } from '@apc/domain/inventory-tutorial'
+import { pageForSize } from '@apc/ui-spec/pagination'
+import { PAGE_SIZES, SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query'
+import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/domain/photos'
 import { API_BASE } from '../../app/api.ts'
 import { useSession } from '../auth/sessionContext.ts'
 import { ActionSheet } from '../../components/ActionSheet'

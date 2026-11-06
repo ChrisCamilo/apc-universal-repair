@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { ENGINE_SHEETS } from '@apc/shared/catalog'
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
-import { TABLE_CARD_BREAKPOINT } from '@apc/shared/table'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
-import type { Item } from '@apc/shared/items'
+import { ENGINE_SHEETS } from '@apc/domain/catalog'
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
+import { TABLE_CARD_BREAKPOINT } from '@apc/ui-spec/table'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
+import type { Item } from '@apc/domain/items'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -13,7 +13,7 @@ import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
 import { CatalogTab } from './CatalogTab.tsx'
 import { PhoneHeaderContext, type PhoneHeader } from '../dashboard/phoneHeaderContext.ts'
-import { testItem, type FlatItem } from '@apc/shared/test-items'
+import { testItem, type FlatItem } from '@apc/domain/test-items'
 
 const OPALA_25 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-2.5']
 const OPALA_41 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1']

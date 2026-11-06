@@ -1,8 +1,8 @@
 import { Text as RNText, View } from 'react-native';
 import type { ComponentProps } from 'react';
-import { type FoundPart, type PartResults as Results } from '@apc/shared/catalog';
-import { itemCardDetails, stockTint } from '@apc/shared/items';
-import { photoAddress } from '@apc/shared/photos';
+import { type FoundPart, type PartResults as Results } from '@apc/domain/catalog';
+import { itemCardDetails, stockTint } from '@apc/domain/items';
+import { photoAddress } from '@apc/domain/photos';
 import { apiUrl } from '../../app/api';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
 import { Text } from '../../components/Typography';

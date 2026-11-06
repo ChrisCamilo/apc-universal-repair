@@ -1,5 +1,5 @@
 import { Pressable } from 'react-native';
-import { backIcon, ICON_SIZES } from '@apc/shared/icons';
+import { backIcon, ICON_SIZES } from '@apc/tokens/icons';
 import { useStyles } from './BackButton.styles';
 import { Icon } from '../Icon/Icon';
 import { useTheme } from '../../app/theme';

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
+import { activeFilterCount, type FilterValues } from '@apc/ui-spec/filters'
 import { userEvent, within } from 'storybook/test'
 import { FilterChipGroup } from '../FilterChip/FilterChip.tsx'
 import { ClearFilters, FilterMenu } from './FilterMenu.tsx'

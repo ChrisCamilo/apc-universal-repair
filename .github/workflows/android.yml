@@ -1,7 +1,7 @@
 name: Android
 
 # The phone app's release APK (apps/mobile), as a phone at the shop installs it.
-# - Pull requests that change the phone app, the shared package or the lockfile: check the Android libraries' licenses
+# - Pull requests that change the phone app, the shared packages or the lockfile: check the Android libraries' licenses
 #   and build the APK for arm64-v8a alone, uploading nothing.
 # - Run by hand (Actions → Android → Run workflow): the same, then upload the APK as an artifact, kept 14 days.
 # - Called by the Desktop workflow's release (`release: true`): the same, then, when it is signed with the upload key,
@@ -27,7 +27,7 @@ on:
   pull_request:
     paths:
       - "apps/mobile/**"
-      - "packages/shared/**"
+      - "packages/**"
       - "scripts/licenses.mjs"
       - "pnpm-lock.yaml"
       - ".github/workflows/android.yml"

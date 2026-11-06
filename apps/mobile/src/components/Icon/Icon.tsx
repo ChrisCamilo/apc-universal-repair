@@ -1,5 +1,5 @@
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { ICON_SIZES, ICON_STROKE, ICON_VIEWBOX, type IconShape } from '@apc/shared/icons';
+import { ICON_SIZES, ICON_STROKE, ICON_VIEWBOX, type IconShape } from '@apc/tokens/icons';
 import { ids } from './Icon.styles';
 import { useTheme } from '../../app/theme';
 
@@ -7,7 +7,7 @@ import { useTheme } from '../../app/theme';
 // pass another token color (theme.colors.accent…) to tint it.
 
 type IconProps = {
-  /** Icon geometry from @apc/shared/icons, e.g. searchIcon. */
+  /** Icon geometry from @apc/tokens/icons, e.g. searchIcon. */
   icon: IconShape[];
   /** Width and height in dp, from ICON_SIZES; defaults to ICON_SIZES.body. */
   size?: number;

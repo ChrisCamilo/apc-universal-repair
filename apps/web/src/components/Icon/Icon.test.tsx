@@ -1,5 +1,5 @@
-import { ICON_STROKE, ICONS, searchIcon } from '@apc/shared/icons'
-import { MODES, STYLES, themes } from '@apc/shared/theme'
+import { ICON_STROKE, ICONS, searchIcon } from '@apc/tokens/icons'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { beforeAll, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../../index.css'

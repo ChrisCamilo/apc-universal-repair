@@ -1,5 +1,5 @@
 import type { HostInstance } from 'react-native';
-import { INVENTORY_TUTORIAL_PARTS, inventoryTutorialSteps, type TutorialScreen, type TutorialTarget } from '@apc/shared/inventory-tutorial';
+import { INVENTORY_TUTORIAL_PARTS, inventoryTutorialSteps, type TutorialScreen, type TutorialTarget } from '@apc/domain/inventory-tutorial';
 import { Tour } from '../../components/Tour';
 import { findTourTarget } from '../../components/Tour';
 import { BOTTOM_BAR_HEIGHT } from '../dashboard/Dashboard.styles';

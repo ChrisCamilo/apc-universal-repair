@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { DEVICE_MESSAGES, type Device } from '@apc/shared/devices'
+import { DEVICE_MESSAGES, type Device } from '@apc/domain/devices'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { TextField } from '../../components/TextField'

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentRef, type Ref } from 'react';
 import { Keyboard, ScrollView, StyleSheet, type HostInstance, type ScrollViewProps } from 'react-native';
-import { scales } from '@apc/shared/theme';
+import { scales } from '@apc/tokens/theme';
 
 // A ScrollView that keeps the focused field clear of the keyboard. A field in it calls useRevealField()'s function with
 // its outer view when it gets focus, and the view scrolls until the whole field, its label and its message included,

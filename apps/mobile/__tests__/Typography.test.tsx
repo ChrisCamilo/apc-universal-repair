@@ -5,8 +5,8 @@
 import React from 'react';
 import { Text as NativeText, StyleSheet } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { HEADING_LEVELS, HEADING_TRACKING } from '@apc/shared/typography';
+import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
+import { HEADING_LEVELS, HEADING_TRACKING } from '@apc/tokens/typography';
 import { fontFamily, themeStorage, ThemeProvider } from '../src/app/theme';
 import { Heading, Label, NumericReadout, Text } from '../src/components/Typography';
 

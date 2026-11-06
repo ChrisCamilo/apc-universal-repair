@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { SHEET_RADIUS, SHEET_TOP_INSET } from '@apc/shared/dialog'
+import { SHEET_RADIUS, SHEET_TOP_INSET } from '@apc/ui-spec/dialog'
 import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of a bottom sheet, for lists of choices on a phone: a panel docked to the bottom edge, its top corners

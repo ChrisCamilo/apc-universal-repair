@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
-import { toggleExclusive, toggleValue } from '@apc/shared/filters'
+import { toggleExclusive, toggleValue } from '@apc/ui-spec/filters'
 import { filterChip, filterChipGroup } from './FilterChip.styles.ts'
 
 // Toggle chips for quick filters. A chip says whether it is on with aria-pressed and lights up in the

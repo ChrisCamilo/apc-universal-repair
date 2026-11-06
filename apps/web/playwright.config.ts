@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
-import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from "@apc/shared/screens";
-import { DEV_SERVER_PORT } from "@apc/shared/server";
-import { TEST_TAGS } from "@apc/shared/test-tags";
+import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from "@apc/ui-spec/screens";
+import { DEV_SERVER_PORT } from "@apc/domain/server";
+import { TEST_TAGS } from "@apc/domain/test-tags";
 
 const isCI = !!process.env.CI;
 // The run starts the API and the web app itself, and fails if something already answers on their ports: on 3333 that
