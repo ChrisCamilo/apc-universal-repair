@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { PAGE_SIZES } from "../../ui/pagination/pagination.ts";
+import { PAGE_SIZES, sortRows, type Sort } from "../../platform/query/listQuery.ts";
 import { ITEM_PHOTO_LIMIT } from "./photos.ts";
-import { sortRows, type Sort } from "../../ui/table/table.ts";
 
 // Inventory items as the API sends and receives them, and the rules web, mobile and the API apply alike:
 // how text is written (first letter capital, codes uppercase), how a search matches names and part codes,

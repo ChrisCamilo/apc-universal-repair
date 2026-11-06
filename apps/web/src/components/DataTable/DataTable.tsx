@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons'
-import { nextSort, shownRows, sortFromValue, sortOptions, sortValue, type ShownRow, type Sort } from '@apc/shared/table'
+import { shownRows, type ShownRow } from '@apc/shared/table'
+import { nextSort, sortFromValue, sortOptions, sortValue, type Sort } from '@apc/shared/list-query'
 import { dataTable, rowAction, tableThumbnail, tableTitle } from './DataTable.styles.ts'
 import { Icon } from '../Icon/Icon.tsx'
 import { Select } from '../Select/Select.tsx'

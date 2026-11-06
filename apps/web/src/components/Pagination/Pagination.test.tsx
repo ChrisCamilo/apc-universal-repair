@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PAGE_SIZES } from '@apc/shared/pagination'
+import { PAGE_SIZES } from '@apc/shared/list-query'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'

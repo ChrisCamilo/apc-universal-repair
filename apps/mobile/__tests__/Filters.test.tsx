@@ -9,7 +9,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { SELECT_VISIBLE_OPTIONS, type FilterValues } from '@apc/shared/filters';
 import { filterIcon, sortIcon } from '@apc/shared/icons';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
-import { sortValue, type Sort } from '@apc/shared/table';
+import { sortValue, type Sort } from '@apc/shared/list-query';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
 import { FilterChip, FilterChipGroup } from '../src/components/FilterChip';
 import { ClearFilters, FilterMenu } from '../src/components/FilterMenu';

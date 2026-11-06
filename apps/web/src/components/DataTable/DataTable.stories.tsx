@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { pencilIcon, trashIcon } from '@apc/shared/icons'
-import { sortRows, type Sort } from '@apc/shared/table'
+import { sortRows, type Sort } from '@apc/shared/list-query'
 import { DataTable, RowAction, TableThumbnail, TableTitle } from './DataTable.tsx'
 import { Text } from '../Typography/Typography.tsx'
 

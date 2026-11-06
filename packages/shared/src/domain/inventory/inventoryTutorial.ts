@@ -1,8 +1,7 @@
-import type { FilterValues } from "../../ui/filters/filters.ts";
+import type { FilterValues } from "../../platform/query/listQuery.ts";
 import { EMPTY_ITEM_FILTERS } from "./itemFilters.ts";
 import { formValue, itemFormOf, parsePrice, withFormValues, type FormField, type ItemForm } from "./itemForm.ts";
 import { matchesSearch, optionKey, type Item } from "./items.ts";
-import type { TourStep } from "../../ui/tour/tour.ts";
 
 // The Inventory tutorial, shared by web and mobile: a guided tour in three parts that creates a test item, finds it
 // with the search and the filters, edits it (to a low, then an out-of-stock row) and deletes it. Each platform
@@ -123,6 +122,26 @@ export const TUTORIAL_ITEM: ItemForm = {
 export const TUTORIAL_CODE = TUTORIAL_ITEM.brands[0].code;
 /** The search part 2 types, which finds the test item by its name. */
 export const TUTORIAL_SEARCH = "tutorial";
+/**
+ * A step of the tutorial, in the shape of a guided tour's step (`TourStep` of @apc/shared/tour), so the web and
+ * mobile Tour take the steps as they are. `Target` is what the platform points at: an element on the web, a view on
+ * mobile.
+ */
+export type TutorialStep<Target> = {
+  id: string;
+  title: string;
+  text: string;
+  /** Part the step belongs to, from 1, of INVENTORY_TUTORIAL_PARTS. */
+  part?: number;
+  /** Finds what the step points at; without a target the card sits in the middle of the screen. */
+  target?: () => Target | null;
+  /** Tells whether the user did what the step asks, and the tour moves on by itself. */
+  done?: () => boolean;
+  /** Does the step for the user, behind "Fazer por mim". */
+  auto?: () => void;
+  /** Names the step to go back to when the user leaves this one, or null to stay. */
+  lost?: () => string | null;
+};
 /** The Inventory tab as the tutorial sees it, read again on every check, and what it does for the user. */
 export type TutorialScreen<Target> = {
   /** The item form while it is open: the item it is on (none for a new one), whether it shows the details, and the values typed. */
@@ -222,7 +241,7 @@ export function formHas(form: ItemForm, values: Partial<Record<FormField, string
  * @param screen Reads the screen as it is now.
  * @returns The steps in order.
  */
-export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Target>): TourStep<Target>[] {
+export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Target>): TutorialStep<Target>[] {
   /** The test item, while it is in stock. */
   const testItem = () => screen().items.find(isTestItem);
   /** Whether the form is open on the test item, on the edit when `viewing` is false. */
@@ -252,7 +271,7 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
     }
   };
 
-  const bindings: Record<TutorialStepId, Omit<TourStep<Target>, "id" | "title" | "text" | "part">> = {
+  const bindings: Record<TutorialStepId, Omit<TutorialStep<Target>, "id" | "title" | "text" | "part">> = {
     new: { target: () => screen().target("new"), done: onNew, auto: () => screen().openForm(undefined, false) },
     identity: {
       target: () => screen().target("form-identity"),

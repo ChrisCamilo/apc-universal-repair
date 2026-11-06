@@ -1,5 +1,4 @@
-import type { FilterValues } from "../../ui/filters/filters.ts";
-import { sortOptions, type Sort, type SortColumn } from "../../ui/table/table.ts";
+import { sortOptions, type FilterValues, type Sort, type SortColumn } from "../../platform/query/listQuery.ts";
 import {
   ITEM_LIST_FIELDS,
   type ItemListKind,

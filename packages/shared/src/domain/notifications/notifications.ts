@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { stockStatus, type Item } from "../inventory/items.ts";
-import { TOAST_KINDS, type ToastKind } from "../../ui/toast/toast.ts";
 
 // The notifications history behind the Dashboard's bell, the same on web and mobile: every toast shown is kept, newest
 // first, up to NOTIFICATIONS_LIMIT, on the device under a key for each user, so it survives a reload and another user
@@ -12,11 +11,13 @@ import { TOAST_KINDS, type ToastKind } from "../../ui/toast/toast.ts";
 const BADGE_MAX = 9;
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
+/** The kinds of a notification, those of the toast it keeps (`TOAST_KINDS` of @apc/shared/toast). */
+export const NOTIFICATION_KINDS = ["success", "error", "info", "warning"] as const;
 /** How many notifications are kept; older ones drop off. */
 export const NOTIFICATIONS_LIMIT = 20;
 const notificationSchema = z.object({
   id: z.number().int(),
-  kind: z.enum(TOAST_KINDS),
+  kind: z.enum(NOTIFICATION_KINDS),
   message: z.string(),
   /** When it was shown, as an ISO date. */
   at: z.string(),
@@ -24,6 +25,8 @@ const notificationSchema = z.object({
 });
 
 export type Notification = z.infer<typeof notificationSchema>;
+/** A notification's kind, one of NOTIFICATION_KINDS. */
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 /** What the low-stock warning needs of an item. */
 export type StockItem = Pick<Item, "id" | "name" | "quantity" | "minQuantity">;
 
@@ -35,7 +38,7 @@ export type StockItem = Pick<Item, "id" | "name" | "quantity" | "minQuantity">;
  * @param now When it was shown.
  * @returns The new list, newest first.
  */
-export function addNotification(list: readonly Notification[], kind: ToastKind, message: string, now: Date): Notification[] {
+export function addNotification(list: readonly Notification[], kind: NotificationKind, message: string, now: Date): Notification[] {
   const id = (list[0]?.id ?? 0) + 1;
   return [{ id, kind, message, at: now.toISOString(), read: false }, ...list].slice(0, NOTIFICATIONS_LIMIT);
 }

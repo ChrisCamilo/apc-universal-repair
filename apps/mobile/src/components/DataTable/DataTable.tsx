@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Animated, Image, Pressable, Text, View } from 'react-native';
 import { cubeIcon, ICON_SIZES, type IconShape } from '@apc/shared/icons';
-import { shownRows, sortFromValue, sortOptions, sortValue, type ShownRow, type Sort } from '@apc/shared/table';
+import { shownRows, type ShownRow } from '@apc/shared/table';
+import { sortFromValue, sortOptions, sortValue, type Sort } from '@apc/shared/list-query';
 import { useRowActionStyles, useStyles, useThumbnailStyles } from './DataTable.styles';
 import { Icon } from '../Icon/Icon';
 import { useOverlayMotion, useReducedMotion } from '../../app/motion';

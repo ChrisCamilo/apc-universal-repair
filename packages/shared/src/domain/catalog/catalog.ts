@@ -1,9 +1,8 @@
 import { codeKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
-import type { TreeNode } from "../../ui/tree/tree.ts";
 
 // The vehicle catalog of the Catalog tab, mocked until the real data (EP-10): each brand's models as a tree, model →
 // generation → version → year → engine, and each engine's sheet. Branches whose data is still to come are empty
-// branches (see TreeNode), so every engine in a tree has a sheet. Engine ids are unique across brands, as the sheets
+// branches (see CatalogNode), so every engine in a tree has a sheet. Engine ids are unique across brands, as the sheets
 // are looked up by them. The Catalog search finds brands and models by name, ignoring case and accents, and parts
 // of the inventory by the code of any of their brands, or by one of their original codes; a part leads to its vehicle
 // in the catalog (of a part that fits several, the first the catalog has a sheet for): the same brand, the model by
@@ -181,8 +180,14 @@ export const PART_CODE_MIN_LENGTH = 3;
 /** Most parts the code search lists at once. */
 export const PART_RESULTS_LIMIT = 5;
 
+/**
+ * A node of a brand's model tree, in the shape of the tree's nodes (`TreeNode` of @apc/shared/tree), so the web and
+ * mobile TreeView show it as it is: a node with `children` is a branch, even with an empty list, and one without is a
+ * leaf. `detail` is the muted text after the label, e.g. a generation's years.
+ */
+export type CatalogNode = { id: string; label: string; detail?: string; children?: CatalogNode[] };
 /** A brand of the catalog: its id, the name on its tile, the letters on its line on a phone and its model tree. */
-export type CatalogBrand = { id: string; name: string; mark: string; models: TreeNode[] };
+export type CatalogBrand = { id: string; name: string; mark: string; models: CatalogNode[] };
 /**
  * A screen of the Catalog on a phone: the brands; a brand's models, with a model pointed out and an engine open in the
  * tree, and the vehicle a part fits that the catalog has no sheet for; or an engine's sheet.
@@ -280,7 +285,7 @@ export function findParts(items: readonly Item[], query: string): PartResults {
  * @param nodes A brand's models, or any part of its tree.
  * @returns The engine's id, or undefined when none in the tree has a sheet yet.
  */
-export function firstSheet(nodes: readonly TreeNode[]): string | undefined {
+export function firstSheet(nodes: readonly CatalogNode[]): string | undefined {
   for (const node of nodes) {
     if (ENGINE_SHEETS[node.id]) {
       return node.id;
@@ -309,7 +314,7 @@ export function itemFit(item: Pick<Item, "vehicles">): string {
  * @param node A node of the tree.
  * @returns Its leaves, depth first.
  */
-function leaves(node: TreeNode): TreeNode[] {
+function leaves(node: CatalogNode): CatalogNode[] {
   return node.children ? node.children.flatMap(leaves) : [node];
 }
 
@@ -340,7 +345,7 @@ export function locatePart(part: ItemVehicle): PartLocation | null {
  * @param query The model search as typed; an empty search lists every model.
  * @returns The matching models, in tree order.
  */
-export function modelsNamed(models: readonly TreeNode[], query: string): TreeNode[] {
+export function modelsNamed(models: readonly CatalogNode[], query: string): CatalogNode[] {
   return models.filter((model) => searchKey(model.label).includes(searchKey(query.trim())));
 }
 
@@ -439,9 +444,9 @@ export function screenHeader(screen: CatalogScreen): { title: string; back?: str
  * @param nodeId The node.
  * @returns The nodes, the model first and the node last; empty when the brand has no such node.
  */
-export function treePath(brandId: string, nodeId: string): TreeNode[] {
+export function treePath(brandId: string, nodeId: string): CatalogNode[] {
   /** The path to the node from one of some nodes, or empty when none leads to it. */
-  const find = (nodes: readonly TreeNode[]): TreeNode[] => {
+  const find = (nodes: readonly CatalogNode[]): CatalogNode[] => {
     for (const node of nodes) {
       if (node.id === nodeId) {
         return [node];

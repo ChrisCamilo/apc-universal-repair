@@ -1,7 +1,7 @@
 import { useState, type ComponentProps } from 'react'
 import { pencilIcon, trashIcon } from '@apc/shared/icons'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens'
-import { sortRows, type Sort } from '@apc/shared/table'
+import { sortRows, type Sort } from '@apc/shared/list-query'
 import { MODES, STYLES, themes } from '@apc/shared/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { commands, page, userEvent } from 'vitest/browser'

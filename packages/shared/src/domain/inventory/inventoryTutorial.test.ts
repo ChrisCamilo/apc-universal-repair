@@ -15,7 +15,6 @@ import {
   TUTORIAL_PHONE_FILTERS,
   type TutorialScreen,
 } from "./inventoryTutorial.ts";
-import { stepHeader } from "../../ui/tour/tour.ts";
 
 // The test item as the API would send it back.
 const SAVED: Item = testItem({
@@ -86,7 +85,7 @@ function fakeScreen() {
 }
 
 // Lists the steps and checks their order, the test item opened from its row into its details before the edit, that
-// every step but the last belongs to a part, and the header of a step.
+// every step but the last belongs to a part, and where a step falls: the fifth of 19, in part 2 of 3.
 test("Shared: the tutorial has three parts, opening the item from its row", () => {
   const steps = inventoryTutorialSteps(() => fakeScreen().screen);
   assert.deepEqual(steps.map((step) => step.id).slice(7, 11), ["found", "details", "unlock", "rename"]);
@@ -94,7 +93,9 @@ test("Shared: the tutorial has three parts, opening the item from its row", () =
     steps.filter((step) => !step.part).map((step) => step.id),
     ["end"],
   );
-  assert.deepEqual(stepHeader(steps, 4, INVENTORY_TUTORIAL_PARTS), { part: "Parte 2 de 3 · Procurar e filtrar", count: "5 / 19" });
+  assert.equal(steps.length, 19);
+  assert.equal(steps[4].part, 2);
+  assert.deepEqual(INVENTORY_TUTORIAL_PARTS, ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir"]);
 });
 
 // Checks a form matches typed values ignoring case, accents and spaces and the price by its value, and that applied

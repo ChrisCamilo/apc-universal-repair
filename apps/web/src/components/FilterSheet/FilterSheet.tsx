@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { clearedFilters, offeredValues, selectionSummary, toggleValue, type FilterValues } from '@apc/shared/filters'
 import { checkIcon, chevronIcon, ICON_SIZES, sortIcon } from '@apc/shared/icons'
-import { sortFromValue, sortValue, type Sort } from '@apc/shared/table'
+import { sortFromValue, sortValue, type Sort } from '@apc/shared/list-query'
 import { BackButton } from '../BackButton/BackButton.tsx'
 import { BottomSheet } from '../BottomSheet/BottomSheet.tsx'
 import { Button } from '../Button/Button.tsx'

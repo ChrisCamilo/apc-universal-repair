@@ -146,6 +146,10 @@
     "./tree": {
       "apc-dist": "./dist/ui/tree/tree.js",
       "default": "./src/ui/tree/tree.ts"
+    },
+    "./list-query": {
+      "apc-dist": "./dist/platform/query/listQuery.js",
+      "default": "./src/platform/query/listQuery.ts"
     }
   },
   "scripts": {

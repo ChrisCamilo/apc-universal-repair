@@ -5,7 +5,7 @@ import { activeFilterCount, type FilterValues } from '@apc/shared/filters'
 import { filterIcon, sortIcon } from '@apc/shared/icons'
 import { EMPTY_ITEM_FILTERS, ITEM_SORT_OPTIONS, itemFilterRows, matchingCount } from '@apc/shared/item-filters'
 import { testItem } from '@apc/shared/test-items'
-import { sortValue, type Sort } from '@apc/shared/table'
+import { sortValue, type Sort } from '@apc/shared/list-query'
 import { FilterSheet, SortSheet } from './FilterSheet.tsx'
 import { ToolButton } from '../ToolButton/ToolButton.tsx'
 

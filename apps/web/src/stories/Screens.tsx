@@ -17,8 +17,7 @@ import {
   type Item,
   type SortableItem,
 } from '@apc/shared/items'
-import { PAGE_SIZES } from '@apc/shared/pagination'
-import { sortRows, type Sort } from '@apc/shared/table'
+import { PAGE_SIZES, sortRows, type Sort } from '@apc/shared/list-query'
 import type { TreeNode } from '@apc/shared/tree'
 import { AppFrame } from '../components/AppFrame'
 import { Button } from '../components/Button'

@@ -34,8 +34,7 @@ import {
 } from '@apc/shared/item-filters';
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/shared/item-form';
 import { isTestItem, TUTORIAL_CODE } from '@apc/shared/inventory-tutorial';
-import { SCROLL_PAGE_SIZE } from '@apc/shared/pagination';
-import { sortValue, type Sort } from '@apc/shared/table';
+import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/shared/list-query';
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/shared/photos';
 import { ActionSheet } from '../../components/ActionSheet';
 import { apiUrl } from '../../app/api';

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Item } from "../inventory/items.ts";
-import type { TreeNode } from "../../ui/tree/tree.ts";
 import {
   brandsNamed,
   brandSummary,
@@ -21,6 +20,7 @@ import {
   screenBack,
   screenHeader,
   treePath,
+  type CatalogNode,
 } from "./catalog.ts";
 import { testItem, type FlatItem } from "../inventory/testItems.ts";
 
@@ -29,7 +29,7 @@ import { testItem, type FlatItem } from "../inventory/testItems.ts";
  * @param nodes The tree's top level.
  * @returns Every node.
  */
-function allNodes(nodes: readonly TreeNode[]): TreeNode[] {
+function allNodes(nodes: readonly CatalogNode[]): CatalogNode[] {
   return nodes.flatMap((node) => [node, ...allNodes(node.children ?? [])]);
 }
 
