@@ -108,7 +108,8 @@ export const test = base.extend<Options & Fixtures, WorkerOptions & WorkerFixtur
       if (tracing.record) {
         await app.context().tracing.start({ screenshots: true, snapshots: true, sources: true });
         // The trace is saved as the app closes, whether the test or the teardown closes it. One that quits the app
-        // some other way has none.
+        // some other way has none, and waits for its close event before it ends: the teardown would otherwise stop
+        // the trace of an app that is still quitting, and fail as its context closes.
         const close = app.close.bind(app);
         app.close = async () => {
           if (open.has(app)) {
