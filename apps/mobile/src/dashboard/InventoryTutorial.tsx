@@ -1,7 +1,7 @@
 import type { HostInstance } from 'react-native';
 import { INVENTORY_TUTORIAL_PARTS, inventoryTutorialSteps, type TutorialScreen, type TutorialTarget } from '@apc/shared/inventory-tutorial';
-import { Tour } from '../Tour';
-import { findTourTarget } from '../tourTargets';
+import { Tour } from '../components/Tour';
+import { findTourTarget } from '../components/tourTargets';
 import { BOTTOM_BAR_HEIGHT } from './Dashboard.styles';
 
 // The Inventory tutorial on mobile, the same as the web: the shared steps (see inventoryTutorialSteps) run by the

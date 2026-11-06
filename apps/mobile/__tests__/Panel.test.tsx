@@ -6,9 +6,9 @@ import React from 'react';
 import { Image } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { MODES, scales, sheenGradient, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { ImageFrame } from '../src/ImageFrame';
-import { Divider, Panel } from '../src/Panel';
-import { Spinner } from '../src/Spinner';
+import { ImageFrame } from '../src/components/ImageFrame';
+import { Divider, Panel } from '../src/components/Panel';
+import { Spinner } from '../src/components/Spinner';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 // The panels the tests nest, by their place in render order: the outer one, then the ones inside it.

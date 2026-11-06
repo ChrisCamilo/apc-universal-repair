@@ -3,13 +3,13 @@ import { Pressable, Text, View } from 'react-native';
 import { bellIcon, ICON_SIZES, minusIcon, plusIcon } from '@apc/shared/icons';
 import { timeAgo, unreadBadge, type Notification } from '@apc/shared/notifications';
 import { stepToastDuration, TOAST_DURATION, TOAST_KIND_LOOKS, toastDurationLabel } from '@apc/shared/toast';
-import { Button } from '../Button';
+import { Button } from '../components/Button';
 import { BottomBarItem } from '../dashboard/BottomBarItem';
 import { useBarStyles } from '../dashboard/Dashboard.styles';
-import { Dialog } from '../Dialog';
-import { Icon } from '../Icon';
+import { Dialog } from '../components/Dialog';
+import { Icon } from '../components/Icon';
 import { useTheme } from '../theme';
-import { useToastDuration } from '../Toast';
+import { useToastDuration } from '../components/Toast';
 import { useSettingsStyles, useStyles } from './NotificationsMenu.styles';
 import { useNotifications } from './useNotifications';
 

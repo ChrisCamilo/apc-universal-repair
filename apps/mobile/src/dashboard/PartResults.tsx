@@ -4,8 +4,8 @@ import { type FoundPart, type PartResults as Results } from '@apc/shared/catalog
 import { itemCardDetails, stockTint } from '@apc/shared/items';
 import { photoAddress } from '@apc/shared/photos';
 import { apiUrl } from '../api';
-import { DataTable, TableThumbnail } from '../DataTable';
-import { Text } from '../Typography';
+import { DataTable, TableThumbnail } from '../components/DataTable';
+import { Text } from '../components/Typography';
 import { CardTitle, StockQuantity } from './ItemCard';
 import { useStyles } from './PartResults.styles';
 

@@ -9,8 +9,8 @@ import ReactTestRenderer from 'react-test-renderer';
 import { ITEM_PHOTO_LIMIT } from '@apc/shared/photos';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import type { PickedPhoto, UploadPhoto } from '../src/ImageUpload';
-import { ImageViewer } from '../src/ImageViewer';
+import type { PickedPhoto, UploadPhoto } from '../src/components/ImageUpload';
+import { ImageViewer } from '../src/components/ImageViewer';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.

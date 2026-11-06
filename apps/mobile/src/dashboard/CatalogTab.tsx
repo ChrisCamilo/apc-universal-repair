@@ -17,15 +17,15 @@ import {
   type FoundPart,
 } from '@apc/shared/catalog';
 import { chevronIcon, ICON_SIZES } from '@apc/shared/icons';
-import { EmptyState } from '../EmptyState';
-import { FieldScrollView } from '../FieldScrollView';
-import { Icon } from '../Icon';
-import { ImageFrame } from '../ImageFrame';
-import { Panel } from '../Panel';
-import { SearchField } from '../TextField';
+import { EmptyState } from '../components/EmptyState';
+import { FieldScrollView } from '../components/FieldScrollView';
+import { Icon } from '../components/Icon';
+import { ImageFrame } from '../components/ImageFrame';
+import { Panel } from '../components/Panel';
+import { SearchField } from '../components/TextField';
 import { useTheme } from '../theme';
-import { TreeView } from '../TreeView';
-import { Heading, NumericReadout, Text } from '../Typography';
+import { TreeView } from '../components/TreeView';
+import { Heading, NumericReadout, Text } from '../components/Typography';
 import { useItems } from '../inventory/useItems';
 import { useStyles } from './CatalogTab.styles';
 import { PartResults } from './PartResults';

@@ -14,7 +14,7 @@ import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/shared/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { ImportItemsDialog } from '../src/inventory/ImportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
-import { ToastProvider } from '../src/Toast';
+import { ToastProvider } from '../src/components/Toast';
 
 // The lists the API keeps: the Motor category, Mann, and Volkswagen with the Gol.
 const LISTS: ItemLists = {

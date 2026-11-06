@@ -1,5 +1,5 @@
 import { scales } from '@apc/shared/theme';
-import { DISABLED_OPACITY } from '../Button.styles';
+import { DISABLED_OPACITY } from '../components/Button.styles';
 import { createStyles } from '../styles/createStyles';
 import { fontFamily, softAccent, softHairline } from '../theme';
 

@@ -12,10 +12,10 @@ import {
 } from '@apc/shared/item-csv';
 import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/shared/lists';
 import { apiUrl } from '../api';
-import { Button } from '../Button';
-import { Dialog } from '../Dialog';
-import { useToast } from '../Toast';
-import { Heading, NumericReadout, Text } from '../Typography';
+import { Button } from '../components/Button';
+import { Dialog } from '../components/Dialog';
+import { useToast } from '../components/Toast';
+import { Heading, NumericReadout, Text } from '../components/Typography';
 import { pickCsv, shareTemplate } from './csv';
 import { useStyles } from './ImportItemsDialog.styles';
 

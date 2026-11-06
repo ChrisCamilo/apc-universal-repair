@@ -13,7 +13,7 @@ import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/shared/theme';
 import { apiUrl } from '../src/api';
 import { ExportItemsDialog } from '../src/inventory/ExportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/theme';
-import { ToastProvider } from '../src/Toast';
+import { ToastProvider } from '../src/components/Toast';
 import { testItem } from '@apc/shared/test-items';
 
 // An item as the API sends it, with a photo.

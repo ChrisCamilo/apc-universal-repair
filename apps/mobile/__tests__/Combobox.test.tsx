@@ -7,7 +7,7 @@ import { ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { SELECT_VISIBLE_OPTIONS } from '@apc/shared/filters';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/shared/theme';
-import { Combobox } from '../src/Combobox';
+import { Combobox } from '../src/components/Combobox';
 import { themeStorage, ThemeProvider } from '../src/theme';
 
 const CATEGORIES = ['Arrefecimento', 'Elétrica', 'Freios', 'Ignição', 'Motor', 'Suspensão', 'Transmissão'];
