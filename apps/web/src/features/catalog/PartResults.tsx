@@ -1,5 +1,5 @@
 import { useRef, type KeyboardEvent } from 'react'
-import { itemFit, type FoundPart, type PartResults as Results } from '@apc/domain/catalog'
+import { itemFit, type Catalog, type FoundPart, type PartResults as Results } from '@apc/domain/catalog'
 import { itemCardDetails, stockTint } from '@apc/domain/items'
 import { photoAddress } from '@apc/domain/photos'
 import { API_BASE } from '../../app/api.ts'
@@ -43,6 +43,8 @@ const CARD_COLUMNS = [
 ]
 
 type PartResultsProps = {
+  /** The catalog, which says which vehicle each part fits. */
+  catalog: Catalog
   results: Results
   /** The chosen part's id, its brand's. */
   chosen?: string
@@ -58,7 +60,7 @@ function partBrand({ id, item }: FoundPart) {
   return item.brands.find((brand) => brand.id === id) ?? item.brands[0]
 }
 
-export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
+export function PartResults({ catalog, results, chosen, onChoose }: PartResultsProps) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
   const { parts, more } = results
   const phone = usePhone()
@@ -131,7 +133,7 @@ export function PartResults({ results, chosen, onChoose }: PartResultsProps) {
               <code className={classes.code()} data-testid={ids.code}>{part.code}</code>
               <span className={classes.name()} data-testid={ids.name}>{part.item.name}</span>
             </span>
-            <span className={classes.fit()} data-testid={ids.fit}>{itemFit(part.item)}</span>
+            <span className={classes.fit()} data-testid={ids.fit}>{itemFit(catalog, part.item)}</span>
           </button>
         ))}
       </div>

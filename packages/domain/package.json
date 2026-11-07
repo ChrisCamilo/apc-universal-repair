@@ -32,6 +32,10 @@
       "apc-dist": "./dist/catalog/catalog.js",
       "default": "./src/catalog/catalog.ts"
     },
+    "./test-catalog": {
+      "apc-dist": "./dist/catalog/testCatalog.js",
+      "default": "./src/catalog/testCatalog.ts"
+    },
     "./test-tags": {
       "apc-dist": "./dist/platform/testing/tags.js",
       "default": "./src/platform/testing/tags.ts"

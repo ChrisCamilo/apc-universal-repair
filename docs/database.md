@@ -22,6 +22,12 @@ erDiagram
     User ||--o{ Device : "logs in from · entra por"
     User ||--o{ Session : "logs in · entra"
     Device ||--o{ Session : "holds · tem"
+    Brand ||--o| CatalogBrand : "in the catalog · no catálogo"
+    VehicleModel ||--o| CatalogModel : "in the catalog · no catálogo"
+    CatalogModel ||--o{ CatalogGeneration : "has · tem"
+    CatalogGeneration ||--o{ CatalogVersion : "has · tem"
+    CatalogVersion ||--o{ CatalogYear : "has · tem"
+    CatalogYear ||--o{ CatalogEngine : "has · tem"
 
     Item {
         string id PK "uuid"
@@ -91,6 +97,46 @@ erDiagram
         string nameKey "unique with brandId"
         string brandId FK "Brand.id, cascade"
     }
+    CatalogBrand {
+        string id PK "uuid"
+        string brandId FK "Brand.id, unique, restrict"
+        string mark "letters on a phone, e.g. CH"
+        int position "order in the rail"
+    }
+    CatalogModel {
+        string id PK "uuid"
+        string vehicleModelId FK "VehicleModel.id, unique, restrict"
+        int position "order in its brand"
+    }
+    CatalogGeneration {
+        string id PK "uuid"
+        string modelId FK "CatalogModel.id, cascade"
+        int position "order in its model"
+        string name "e.g. Terceira geração"
+        int firstYear
+        int lastYear "null while still made"
+    }
+    CatalogVersion {
+        string id PK "uuid"
+        string generationId FK "CatalogGeneration.id, cascade"
+        int position "order in its generation"
+        string name "e.g. Diplomata"
+    }
+    CatalogYear {
+        string id PK "uuid"
+        string versionId FK "CatalogVersion.id, cascade"
+        int position "order in its version"
+        int year "e.g. 1986"
+    }
+    CatalogEngine {
+        string id PK "uuid, with its sheet"
+        string yearId FK "CatalogYear.id, cascade"
+        int position "order in its year"
+        int displacementDl "decilitres, 41 = 4.1 L"
+        int cylinders
+        EngineDrive drive "FRONT REAR ALL"
+        string summary
+    }
     User {
         string id PK "uuid"
         string username UK "lowercase"
@@ -138,6 +184,10 @@ erDiagram
 | `PartBrand` | The brands of the parts (Bosch, NGK…). |
 | `Brand` | The vehicle brands (Chevrolet, Volkswagen…), shared with the catalog. |
 | `VehicleModel` | The models of each vehicle brand (Opala, Gol…). |
+| `CatalogBrand` | A vehicle brand the Catalog tab has, with the letters on its line on a phone and its place in the rail. |
+| `CatalogModel` | A vehicle model the Catalog tab has, of a catalog brand, in its brand's order. |
+| `CatalogGeneration`, `CatalogVersion`, `CatalogYear` | The levels of a catalog model's tree, each in its order: a generation with its first and last year (the last empty while it is still made), its versions (Diplomata, GTS…) and their model years. |
+| `CatalogEngine` | An engine of a catalog year, with its sheet: displacement in decilitres, cylinders, drive and summary. Its name in the tree ("4.1 L 6 cilindros") comes from the sheet, and its year and the sheet's title from the tree, so neither is kept twice. |
 | `User` | Who logs in: their username, name, e-mail (kept only, nothing is sent to it yet), the hash of their password, and when they first saw the Inventory tutorial, which runs by itself only until then, on any device. It has no relation to the inventory tables. |
 | `Device` | A device a user logs in from: its public key, unique per user, whether the server's computer authorized it, the name the approver gave it, and when it was recorded, authorized and last used. Nothing else about the device or its owner: no model, system, address or browser. |
 | `Session` | A user logged in on one device, from a login or sign-up until "Sair" or 7 days without use: the device, the hash of the token the device sends, and when it was last used and expires. |
@@ -148,6 +198,7 @@ erDiagram
 - A vehicle model belongs to **one** vehicle brand; a vehicle brand has **many** models.
 - An item's brand has **0 to 3** photos (the limit is checked by the API).
 - An item has **any number** of original codes, none at first.
+- The catalog is a tree: a catalog brand is **one** vehicle brand and a catalog model **one** vehicle model of it, each in the catalog at most once; a model has **any number** of generations, a generation of versions, a version of years and a year of engines.
 - A user logs in from **any number** of devices; every session belongs to **one** device and **one** user.
 - The item, its vehicles and its brands store **references** (`categoryId`, `vehicleBrandId`, `partBrandId`, …), not names: renaming a list entry renames it on every item at once, and merging an entry into another moves its items there in one transaction (a vehicle brand moving its models along) before deleting it; an item that ends up with a vehicle twice keeps it once.
 
@@ -163,7 +214,7 @@ erDiagram
 | An item's brands keep their order in `position`; the API saves an edit's brands as the whole set: one sent with its id is kept, one without is new, and one left out is deleted with its photos. | `ItemBrand` |
 | An item's original codes and its vehicles keep their order in `position`; an edit that sends them replaces the whole list. The filters by vehicle brand and model match an item by any of its vehicles, and sorting by vehicle uses the first. | `ItemOriginalCode`, `ItemVehicle` |
 | A list entry an item, a vehicle or a brand uses can't be deleted (`RESTRICT`), and two part brands both in one item can't be merged; deleting a vehicle brand deletes its models (`CASCADE`); deleting an item deletes its vehicles, brands and original codes, and a brand its photos (`CASCADE`). | Foreign keys, API |
-| Vehicle brands of the catalog can't be deleted from the inventory. | API |
+| A vehicle brand or model the catalog has can't be deleted from the inventory or merged away (409, and `RESTRICT` below it); the lists mark them `inCatalog`. Deleting a level of the catalog deletes the levels under it (`CASCADE`). | `CatalogBrand`, `CatalogModel`, API |
 | A username is kept in lowercase and is unique, so names that differ only in case are the same user. It takes 3 to 32 lowercase letters, digits, dots or hyphens. | `User.username`, API |
 | A password is never kept as typed: `passwordHash` holds `scrypt$<salt>$<hash>` with a random salt per user, and the API never sends it. | `User.passwordHash` |
 | A token is never kept: `tokenHash` holds its SHA-256, so the table alone can't be used to log in. An expired session is deleted when it is next looked up; deleting a user deletes their sessions (`CASCADE`). | `Session` |
@@ -176,6 +227,7 @@ erDiagram
 - **The same commands on both.** `pnpm --filter @apc/api db:migrate` applies the pending migrations of the database `DATABASE_URL` names, with that runner, and `db:check` fails when that database doesn't match its schema. To write a new migration, run `prisma migrate dev --name <change>` once with a PostgreSQL `DATABASE_URL`, and once with `--config prisma.sqlite.config.ts` and a SQLite one.
 - **An empty database migrates in one go.** `db:migrate` applies every pending migration in one database session. A new computer (see [home-server.md](home-server.md)) gets them all at once, while the computer at home took them one at a time. CI's `migrations` job builds an empty PostgreSQL and an empty SQLite file from them, checks each matches its schema, seeds it and runs the API's tests that need a database.
 - **Helpers in `pg_temp` live for the session.** A migration that creates a function in `pg_temp`, such as the name-key helper `list_key`, drops it at its end, so the next one can create it again. `20261008120000_drop_list_key` drops the helper that `20261008000000_item_lists` left behind, without changing a migration already applied.
+- **The starting catalog comes in a migration.** `20261106000000_catalog` creates the catalog's tables and inserts the catalog a new database starts with, the same rows as `TEST_CATALOG_DATA` in `@apc/domain/test-catalog`, ids included: each of its vehicle brands and models joins the lists unless they hold its name already, so a database in use keeps its own ids for them, and the desktop app's database, which is never seeded, has the catalog too.
 - **An applied migration never changes.** A fix goes into a new migration. Even one dated between older ones is applied on a database that has the later ones, as long as it is harmless there.
 - **A copy before migrating.** The server the desktop app ships copies its SQLite file before applying pending migrations (`src/db/backup.ts`): WAL checkpointed, the file copied to `backups/apc-before-<version>-<date>.db` beside it, with the same key, out of WAL mode and checked with `quick_check`, keeping the last 3. A migration that fails rolls back on its own; the copy is for one that succeeds and harms the data. A copy that can't be made stops the server before migrating. PostgreSQL isn't copied: the log asks for a `pg_dump`.
 
@@ -198,7 +250,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 - **What was checked:** every API test runs on both databases, including `test:db`, in CI's `migrations` job, once per database. That covers interactive transactions (saving an item, the import), `createMany` (photos), the low-stock filter comparing two columns, the search on `nameKey` and `codeKey`, sorting, the unique keys, `CASCADE` and `RESTRICT`, and 20 edits and 10 logins at once.
 - **WAL:** the API turns on `PRAGMA journal_mode = WAL` when it starts (`prepareDatabase`), so the list is read while an item is saved; it stays on in the file, next to its `-wal` and `-shm` files.
 - **One process writes:** the API is the only one, so its requests take turns on its connection. A second process writing at the same time, such as a script, can hit Prisma's 5 s transaction timeout, so scripts run with the server off and the tests on SQLite run one file at a time.
-- **Moving between them:** `pnpm --filter @apc/api db:copy --from <url> --to <url>` copies every table but the sessions, in one transaction on the target, into an empty database made with `db:migrate` (`src/db/copy.ts`); the desktop app imports an old server with the same copy (see [home-server.md](home-server.md#7-importing-an-old-server)). It refuses a target that isn't empty, either database lacking a migration, and a server that answers.
+- **Moving between them:** `pnpm --filter @apc/api db:copy --from <url> --to <url>` copies every table but the sessions, in one transaction on the target, into an empty database made with `db:migrate` (`src/db/copy.ts`), where the starting catalog its migration inserted doesn't count as data and gives way to the source's catalog and lists; the desktop app imports an old server with the same copy (see [home-server.md](home-server.md#7-importing-an-old-server)). It refuses a target that isn't empty, either database lacking a migration, and a server that answers.
 - **Encrypted at rest:** the desktop app's SQLite file is encrypted (`src/db/cipher.ts`), so a copy of it is unreadable without its key.
   - **The cipher:** better-sqlite3 is installed as `better-sqlite3-multiple-ciphers` (SQLite3 Multiple Ciphers), through an override in `pnpm-workspace.yaml`, so the API, the migration runner and Prisma's adapter all use it. The file is in SQLCipher 4's format, so its key also opens it in tools that read SQLCipher, such as DB Browser for SQLite.
   - **Which file has a key:** the server's own, the one `DATABASE_URL` names, takes `APC_SQLITE_KEY`; any other file is plain unless a database task gives its key, as an import of an encrypted file does. Every connection sends the key first. Without `APC_SQLITE_KEY`, as in development, the file is plain.
@@ -208,7 +260,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 
 ### Starting data
 
-`pnpm --filter @apc/api db:seed` fills a new database with the test users (`christian.camilo` and `oficina`, from `@apc/domain/test-users`, with their passwords hashed), the default categories, part brands, vehicle brands with their models and a few sample items, three of them made by several brands (front brake pads, front shock absorber and air filter), with their original codes, and two that fit two vehicles. It can run again without duplicating anything.
+`pnpm --filter @apc/api db:seed` fills a new database with the test users (`christian.camilo` and `oficina`, from `@apc/domain/test-users`, with their passwords hashed), the default categories, part brands, vehicle brands with their models and a few sample items, three of them made by several brands (front brake pads, front shock absorber and air filter), with their original codes, and two that fit two vehicles. It can run again without duplicating anything. The catalog isn't seeded: its migration brings it.
 
 ---
 
@@ -227,6 +279,10 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | `PartBrand` | As marcas das peças (Bosch, NGK…). |
 | `Brand` | As marcas de veículo (Chevrolet, Volkswagen…), as mesmas do catálogo. |
 | `VehicleModel` | Os modelos de cada marca de veículo (Opala, Gol…). |
+| `CatalogBrand` | Uma marca de veículo que a aba Catálogo tem, com as letras da linha dela no celular e o lugar dela na coluna de marcas. |
+| `CatalogModel` | Um modelo de veículo que a aba Catálogo tem, de uma marca do catálogo, na ordem da marca. |
+| `CatalogGeneration`, `CatalogVersion`, `CatalogYear` | Os níveis da árvore de um modelo do catálogo, cada um na sua ordem: uma geração com o primeiro e o último ano (o último vazio enquanto ainda é fabricada), as versões dela (Diplomata, GTS…) e os anos-modelo delas. |
+| `CatalogEngine` | Um motor de um ano do catálogo, com a ficha: cilindrada em decilitros, cilindros, tração e resumo. O nome dele na árvore ("4.1 L 6 cilindros") vem da ficha, e o ano e o título da ficha vêm da árvore, então nada é guardado duas vezes. |
 | `User` | Quem entra no app: o usuário, o nome, o e-mail (só guardado, nada é enviado a ele ainda), o hash da senha e quando viu o tutorial do Estoque pela primeira vez, que só roda sozinho até então, em qualquer aparelho. Não se relaciona com as tabelas do estoque. |
 | `Device` | Um dispositivo pelo qual um usuário entra: a chave pública dele, única por usuário, se o computador do servidor o autorizou, o nome que quem autorizou deu, e quando foi registrado, autorizado e usado pela última vez. Nada mais sobre o dispositivo ou o dono: nem modelo, sistema, endereço ou navegador. |
 | `Session` | Um usuário logado num aparelho, de um login ou cadastro até o "Sair" ou 7 dias sem uso: o dispositivo, o hash do token que o aparelho envia, e quando foi usada pela última vez e quando expira. |
@@ -237,6 +293,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 - Um modelo pertence a **uma** marca de veículo; uma marca tem **vários** modelos.
 - Uma marca do item tem de **0 a 3** fotos (o limite é conferido pela API).
 - Um item tem **quantos** códigos originais precisar, nenhum no começo.
+- O catálogo é uma árvore: uma marca do catálogo é **uma** marca de veículo e um modelo do catálogo **um** modelo de veículo dela, cada um no máximo uma vez no catálogo; um modelo tem **quantas** gerações precisar, uma geração versões, uma versão anos e um ano motores.
 - Um usuário entra por **quantos** dispositivos precisar; toda sessão é de **um** dispositivo e de **um** usuário.
 - O item, os veículos e as marcas dele guardam **referências** (`categoryId`, `vehicleBrandId`, `partBrandId`, …), não nomes: renomear uma entrada de lista renomeia em todos os itens de uma vez, e juntar uma entrada a outra passa os itens dela para a outra numa só transação (uma marca de veículo levando os modelos junto) antes de excluí-la; um item que fica com um veículo duas vezes o mantém uma vez.
 
@@ -252,7 +309,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | As marcas de um item mantêm a ordem em `position`; a API grava as marcas de uma edição como o conjunto inteiro: uma enviada com o id é mantida, uma sem id é nova, e uma que ficou de fora é excluída com as fotos. | `ItemBrand` |
 | Os códigos originais e os veículos de um item mantêm a ordem em `position`; uma edição que os envia troca a lista inteira. Os filtros por marca e modelo de veículo acham um item por qualquer um dos veículos dele, e ordenar por veículo usa o primeiro. | `ItemOriginalCode`, `ItemVehicle` |
 | Uma entrada de lista usada por um item, um veículo ou uma marca não pode ser excluída (`RESTRICT`), e duas marcas de peça que estão no mesmo item não podem ser juntadas; excluir uma marca de veículo exclui os modelos dela (`CASCADE`); excluir um item exclui os veículos, as marcas e os códigos originais dele, e uma marca as fotos dela (`CASCADE`). | Chaves estrangeiras, API |
-| As marcas de veículo do catálogo não podem ser excluídas pelo estoque. | API |
+| Uma marca ou um modelo de veículo que o catálogo tem não pode ser excluído pelo estoque nem juntado a outro (409, e `RESTRICT` por baixo); as listas os marcam com `inCatalog`. Excluir um nível do catálogo exclui os níveis abaixo dele (`CASCADE`). | `CatalogBrand`, `CatalogModel`, API |
 | O usuário é guardado em minúsculas e é único, então nomes que só mudam em maiúsculas são o mesmo usuário. Ele aceita de 3 a 32 letras minúsculas, números, pontos ou hífens. | `User.username`, API |
 | A senha nunca é guardada como foi digitada: `passwordHash` guarda `scrypt$<sal>$<hash>` com um sal aleatório por usuário, e a API nunca o envia. | `User.passwordHash` |
 | O token nunca é guardado: `tokenHash` guarda o SHA-256 dele, então a tabela sozinha não serve para entrar. Uma sessão expirada é apagada na próxima vez que é procurada; apagar um usuário apaga as sessões dele (`CASCADE`). | `Session` |
@@ -265,6 +322,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 - **Os mesmos comandos nos dois.** O `pnpm --filter @apc/api db:migrate` aplica as migrações pendentes do banco que o `DATABASE_URL` indica, com esse executor, e o `db:check` falha quando esse banco não bate com o schema dele. Para escrever uma migração nova, rode `prisma migrate dev --name <mudança>` uma vez com um `DATABASE_URL` do PostgreSQL, e uma vez com `--config prisma.sqlite.config.ts` e um do SQLite.
 - **Um banco vazio migra de uma vez.** O `db:migrate` aplica todas as migrações pendentes numa única sessão do banco. Um computador novo (veja [home-server.md](home-server.md#-português-brasil)) recebe todas de uma vez, enquanto o computador de casa as recebeu uma a uma. O job `migrations` do CI monta um PostgreSQL vazio e um arquivo SQLite vazio a partir delas, confere que cada um bate com o seu schema, roda o seed e os testes da API que precisam de um banco.
 - **Funções auxiliares em `pg_temp` duram a sessão.** Uma migração que cria uma função em `pg_temp`, como a `list_key` da chave dos nomes, a remove no fim, para a próxima poder criá-la de novo. A `20261008120000_drop_list_key` remove a função que a `20261008000000_item_lists` deixou, sem mudar uma migração já aplicada.
+- **O catálogo inicial vem numa migração.** A `20261106000000_catalog` cria as tabelas do catálogo e insere o catálogo com que um banco novo começa, as mesmas linhas do `TEST_CATALOG_DATA` do `@apc/domain/test-catalog`, ids inclusive: cada marca e modelo de veículo dele entra nas listas, a não ser que elas já tenham o nome, então um banco em uso mantém os próprios ids deles, e o banco do app desktop, que nunca recebe o seed, também tem o catálogo.
 - **Uma migração aplicada nunca muda.** Uma correção vai numa migração nova. Mesmo uma com data entre as antigas é aplicada num banco que já tem as seguintes, desde que não faça mal ali.
 - **Uma cópia antes de migrar.** O servidor que o app desktop traz copia o arquivo SQLite antes de aplicar as migrações pendentes (`src/db/backup.ts`): o WAL juntado ao arquivo, o arquivo copiado para `backups/apc-before-<versão>-<data>.db` ao lado dele, com a mesma chave, fora do modo WAL e conferido com o `quick_check`, mantendo as 3 últimas. Uma migração que falha se desfaz sozinha; a cópia é para uma que dá certo e estraga os dados. Uma cópia que não pode ser feita para o servidor antes de migrar. O PostgreSQL não é copiado: o log pede um `pg_dump`.
 
@@ -287,7 +345,7 @@ A [#221](https://github.com/ChrisCamilo/apc-universal-repair/issues/221) provou 
 - **O que foi conferido:** todos os testes da API rodam nos dois bancos, inclusive o `test:db`, no job `migrations` do CI, uma vez para cada banco. Isso cobre transações interativas (salvar um item, a importação), `createMany` (fotos), o filtro de estoque baixo comparando duas colunas, a busca em `nameKey` e `codeKey`, a ordenação, as chaves únicas, `CASCADE` e `RESTRICT`, e 20 edições e 10 logins ao mesmo tempo.
 - **WAL:** a API liga o `PRAGMA journal_mode = WAL` ao iniciar (`prepareDatabase`), para a lista ser lida enquanto um item é salvo; ele fica ligado no arquivo, ao lado dos arquivos `-wal` e `-shm`.
 - **Um processo escreve:** a API é o único, então as requisições dela se revezam na conexão. Um segundo processo escrevendo ao mesmo tempo, como um script, pode estourar o tempo de 5 s das transações do Prisma, por isso os scripts rodam com o servidor desligado e os testes em SQLite rodam um arquivo por vez.
-- **Passar de um para o outro:** o `pnpm --filter @apc/api db:copy --from <url> --to <url>` copia todas as tabelas menos as sessões, numa transação no destino, para um banco vazio feito com o `db:migrate` (`src/db/copy.ts`); o app desktop importa um servidor antigo com a mesma cópia (veja [home-server.md](home-server.md#7-importar-um-servidor-antigo)). Ele recusa um destino que não está vazio, um dos bancos sem alguma migração e um servidor que responde.
+- **Passar de um para o outro:** o `pnpm --filter @apc/api db:copy --from <url> --to <url>` copia todas as tabelas menos as sessões, numa transação no destino, para um banco vazio feito com o `db:migrate` (`src/db/copy.ts`), onde o catálogo inicial que a migração dele inseriu não conta como dado e dá lugar ao catálogo e às listas da origem; o app desktop importa um servidor antigo com a mesma cópia (veja [home-server.md](home-server.md#7-importar-um-servidor-antigo)). Ele recusa um destino que não está vazio, um dos bancos sem alguma migração e um servidor que responde.
 - **Criptografado em repouso:** o arquivo SQLite do app desktop é criptografado (`src/db/cipher.ts`), então uma cópia dele não é legível sem a chave.
   - **A cifra:** o better-sqlite3 é instalado como `better-sqlite3-multiple-ciphers` (SQLite3 Multiple Ciphers), por um override no `pnpm-workspace.yaml`, então a API, o executor de migrações e o adapter do Prisma usam todos ele. O arquivo fica no formato do SQLCipher 4, então a chave dele também o abre em ferramentas que leem SQLCipher, como o DB Browser for SQLite.
   - **Que arquivo tem chave:** o do próprio servidor, o que o `DATABASE_URL` indica, usa o `APC_SQLITE_KEY`; qualquer outro arquivo é comum, a não ser que uma tarefa de banco passe a chave dele, como faz a importação de um arquivo criptografado. Toda conexão manda a chave primeiro. Sem o `APC_SQLITE_KEY`, como em desenvolvimento, o arquivo é comum.
@@ -297,4 +355,4 @@ A [#221](https://github.com/ChrisCamilo/apc-universal-repair/issues/221) provou 
 
 ### Dados iniciais
 
-`pnpm --filter @apc/api db:seed` preenche um banco novo com os usuários de teste (`christian.camilo` e `oficina`, de `@apc/domain/test-users`, com as senhas em hash), as categorias, marcas de peça, marcas de veículo com seus modelos e alguns itens de exemplo, três deles de várias marcas (pastilha de freio dianteira, amortecedor dianteiro e filtro de ar), com os códigos originais, e dois que servem em dois veículos. Pode rodar de novo sem duplicar nada.
+`pnpm --filter @apc/api db:seed` preenche um banco novo com os usuários de teste (`christian.camilo` e `oficina`, de `@apc/domain/test-users`, com as senhas em hash), as categorias, marcas de peça, marcas de veículo com seus modelos e alguns itens de exemplo, três deles de várias marcas (pastilha de freio dianteira, amortecedor dianteiro e filtro de ar), com os códigos originais, e dois que servem em dois veículos. Pode rodar de novo sem duplicar nada. O catálogo não vem do seed: a migração dele o traz.

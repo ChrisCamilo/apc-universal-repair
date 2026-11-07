@@ -18,8 +18,12 @@ jest.mock('react-native-keychain', () => {
   };
 });
 
-// No API runs during tests: every request answers with an empty inventory unless a test sets its own reply.
-global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ items: [], total: 0 }) }));
+// No API runs during tests: the catalog answers with the catalog a new server starts with, and every other request with
+// an empty inventory, unless a test sets its own reply.
+const { TEST_CATALOG_DATA } = require('@apc/domain/test-catalog');
+global.fetch = jest.fn((url) =>
+  Promise.resolve({ ok: true, json: () => Promise.resolve(String(url).endsWith('/catalog') ? TEST_CATALOG_DATA : { items: [], total: 0 }) }),
+);
 
 // The photo library is a native screen; tests pick nothing unless they set their own result.
 jest.mock('react-native-image-picker', () => ({

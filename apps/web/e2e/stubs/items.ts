@@ -14,7 +14,6 @@ import {
 import { splitVehicleModel } from "@apc/domain/item-filters";
 import {
   findEntry,
-  isCatalogBrand,
   ITEM_LIST_FIELDS,
   ITEM_LIST_PATHS,
   itemsUsing,
@@ -32,8 +31,8 @@ import { itemListsOf } from "@apc/domain/test-lists";
 // routes, registered before it. The item lists are answered too, starting with what the items use: a POST creates
 // a name, or gives back the one a list already holds; a PATCH renames an entry and the items using it, refusing a
 // name another entry has; a merge moves an entry's items to another and removes it (a category or part brand; brands
-// and models aren't merged here); a DELETE removes an entry no item uses, refusing one in use or a brand of the
-// catalog. A part brand is a name of each brand of an item. savedItem answers a create or edit as the API would.
+// and models aren't merged here); a DELETE removes an entry no item uses, refusing one in use or a vehicle brand
+// or model of the catalog. A part brand is a name of each brand of an item. savedItem answers a create or edit as the API would.
 
 /**
  * Answers GET /api/items, with or without a query, from a list of items the test may change as it goes, and the
@@ -116,7 +115,7 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
       const { kind, entry } = entryOf(new URL(route.request().url()))!;
       const conflict = { status: 409, json: { statusCode: 409, error: "Conflict", message: "Conflict." } };
       if (route.request().method() === "DELETE") {
-        if (itemsUsing(stock, kind, entry, lists) > 0 || (kind === "vehicleBrands" && isCatalogBrand(entry.name))) {
+        if (itemsUsing(stock, kind, entry, lists) > 0 || entry.inCatalog) {
           return route.fulfill(conflict);
         }
         Object.assign(lists, withoutEntry(lists, kind, entry.id));

@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
-import { CATALOG } from "../catalog/catalog.ts";
 import { capitalizeFirst, optionKey, type Item } from "./items.ts";
 
 // The lists an item's category, part brand, vehicle brand and vehicle model are picked from, kept by the API, grown
@@ -8,13 +7,18 @@ import { capitalizeFirst, optionKey, type Item } from "./items.ts";
 // extra spaces (a vehicle model within its vehicle brand), so creating a name that already exists gives back the
 // existing one, and a rename can't take another entry's name: it merges the entry into the one that has it instead,
 // moving its items there. Renaming renames the items that use the entry; an entry is only deleted while no item uses
-// it, a vehicle brand with its models, and never a brand the catalog has, which can't be merged away either. Web and
-// mobile load, create, rename, merge and delete the same way, each through its own API address.
+// it, a vehicle brand with its models, and never a vehicle brand or model the catalog has (the API marks them
+// inCatalog), which can't be merged away either. Web and mobile load, create, rename, merge and delete the same way,
+// each through its own API address.
 
 /** Why a vehicle brand of the catalog can't be deleted from the inventory. */
 export const CATALOG_BRAND_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser excluída do estoque.`;
 /** Why a vehicle brand of the catalog can't be merged into another one. */
 export const CATALOG_MERGE_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser juntada a outra marca.`;
+/** Why a vehicle model of the catalog can't be deleted from the inventory. */
+export const CATALOG_MODEL_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser excluído do estoque.`;
+/** Why a vehicle model of the catalog can't be merged into another one. */
+export const CATALOG_MODEL_MERGE_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser juntado a outro modelo.`;
 /** The four lists before they load: all empty. */
 export const EMPTY_ITEM_LISTS: ItemLists = { categories: [], partBrands: [], vehicleBrands: [], vehicleModels: [] };
 /** The item field each list holds the names of: a part brand is a field of each of the item's brands. */
@@ -102,7 +106,8 @@ export const ITEM_LIST_TEXTS: Record<ItemListKind, ItemListTexts> = {
     mergeFailed: "Não foi possível juntar o modelo. Tente de novo.",
   },
 };
-export const listEntrySchema = z.object({ id: z.uuid(), name: z.string() });
+/** An entry of a list; a vehicle brand or model says whether the catalog has it, which keeps it in the list. */
+export const listEntrySchema = z.object({ id: z.uuid(), name: z.string(), inCatalog: z.boolean().optional() });
 export const listEntriesSchema = z.array(listEntrySchema);
 export const listEntryCreateSchema = z.object({ name: z.string().trim().min(1, "Required.") });
 export const listEntryIdParamsSchema = z.object({ id: z.uuid() });
@@ -214,12 +219,20 @@ export function findEntry<Entry extends ListEntry>(entries: readonly Entry[], te
 }
 
 /**
- * Tells whether a vehicle brand is one the catalog has, which the inventory can't delete.
- * @param name The brand's name.
- * @returns True for a catalog brand, ignoring case, accents and extra spaces.
+ * Says why an entry the catalog has can't be deleted or merged away: a vehicle brand or model of the catalog.
+ * @param kind The entry's list.
+ * @param entry The entry.
+ * @param action Deleting it, or merging it into another entry.
+ * @returns The message, or null when the catalog doesn't keep it.
  */
-export function isCatalogBrand(name: string): boolean {
-  return CATALOG.some((brand) => optionKey(brand.name) === optionKey(name));
+export function catalogLock(kind: ItemListKind, entry: ListEntry, action: "delete" | "merge"): string | null {
+  if (!entry.inCatalog) {
+    return null;
+  }
+  if (kind === "vehicleModels") {
+    return action === "delete" ? CATALOG_MODEL_MESSAGE(entry.name) : CATALOG_MODEL_MERGE_MESSAGE(entry.name);
+  }
+  return action === "delete" ? CATALOG_BRAND_MESSAGE(entry.name) : CATALOG_MERGE_MESSAGE(entry.name);
 }
 
 /**
