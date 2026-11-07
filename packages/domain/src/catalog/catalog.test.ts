@@ -5,10 +5,10 @@ import {
   brandsNamed,
   brandSummary,
   brandWithModel,
-  CATALOG,
   CATALOG_HOME,
+  catalogFrom,
+  engineLabel,
   enginePath,
-  ENGINE_SHEETS,
   findParts,
   firstSheet,
   itemFit,
@@ -23,6 +23,13 @@ import {
   type CatalogNode,
 } from "./catalog.ts";
 import { testItem, type FlatItem } from "../inventory/testItems.ts";
+import { TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES, testCatalogId } from "./testCatalog.ts";
+
+const CHEVROLET = testCatalogId("Chevrolet");
+const VOLKSWAGEN = testCatalogId("Volkswagen");
+const FIAT = testCatalogId("Fiat");
+const FORD = testCatalogId("Ford");
+const OPALA = testCatalogId("Chevrolet", "Opala");
 
 /**
  * Lists every node of a tree, depth first.
@@ -63,27 +70,53 @@ function part(fields: FlatItem & Required<Pick<FlatItem, "code">>): Item {
 // Checks every node id is unique across the whole catalog and the engines (the leaves) and the sheets match one to
 // one, so the engine the tree selects always has its sheet and every sheet can be reached.
 test("Shared: catalog ids are unique and every engine has its sheet", () => {
-  const nodes = CATALOG.flatMap((brand) => allNodes(brand.models));
+  const nodes = TEST_CATALOG.brands.flatMap((brand) => allNodes(brand.models));
   assert.equal(new Set(nodes.map((node) => node.id)).size, nodes.length);
   const leaves = nodes.filter((node) => node.children === undefined).map((node) => node.id);
-  assert.deepEqual([...leaves].sort(), Object.keys(ENGINE_SHEETS).sort());
+  assert.deepEqual([...leaves].sort(), Object.keys(TEST_CATALOG.sheets).sort());
+});
+
+// Turns the API's catalog into the tree and sheets the screens show: a generation's years after its name, open-ended
+// while it is still made, a year by its number, an engine named by its sheet, and the sheet's title built from the tree.
+test("Shared: the catalog from the API becomes the tree and the sheets", () => {
+  const opala = TEST_CATALOG.brands[0].models[1];
+  assert.equal(opala.label, "Opala");
+  assert.deepEqual(
+    opala.children!.map((generation) => [generation.label, generation.detail]),
+    [
+      ["Primeira geração", "1968–1974"],
+      ["Segunda geração", "1975–1979"],
+      ["Terceira geração", "1980–1992"],
+    ],
+  );
+  assert.deepEqual(TEST_CATALOG.sheets[TEST_ENGINES.opala41], {
+    title: "1986 · Chevrolet Opala Diplomata 4.1",
+    specs: ["1986", "4.1 L", "6 CIL", "TRASEIRA"],
+    summary: TEST_CATALOG_DATA.brands[0].models[1].generations[2].versions[1].years[1].engines[1].summary,
+  });
+  assert.deepEqual(TEST_CATALOG.sheets[TEST_ENGINES.unoMille].specs, ["1991", "1.0 L", "4 CIL", "DIANTEIRA"]);
+  assert.equal(engineLabel({ displacementDl: 10, cylinders: 4 }), "1.0 L 4 cilindros");
+  const current = catalogFrom({
+    brands: [{ ...TEST_CATALOG_DATA.brands[3], models: [{ id: OPALA, name: "Ka", generations: [{ id: FIAT, name: "Terceira geração", firstYear: 2014, lastYear: null, versions: [] }] }] }],
+  });
+  assert.equal(current.brands[0].models[0].children![0].detail, "2014–");
 });
 
 // Finds the first engine with a sheet in each brand, and checks a brand with none, and an empty tree, have none.
 test("Shared: firstSheet finds the first engine with a sheet, depth first", () => {
-  const brand = (id: string) => CATALOG.find((b) => b.id === id)!.models;
-  assert.equal(firstSheet(brand("chevrolet")), "chevrolet-opala-diplomata-1986-2.5");
-  assert.equal(firstSheet(brand("volkswagen")), "volkswagen-gol-gts-1989-1.8");
-  assert.equal(firstSheet(brand("ford")), undefined);
-  assert.equal(firstSheet([]), undefined);
+  const brand = (id: string) => TEST_CATALOG.brands.find((b) => b.id === id)!.models;
+  assert.equal(firstSheet(TEST_CATALOG, brand(CHEVROLET)), TEST_ENGINES.opala25);
+  assert.equal(firstSheet(TEST_CATALOG, brand(VOLKSWAGEN)), TEST_ENGINES.golGts);
+  assert.equal(firstSheet(TEST_CATALOG, brand(FORD)), undefined);
+  assert.equal(firstSheet(TEST_CATALOG, []), undefined);
 });
 
 // Searches brands and models in another case and without accents, and checks the matching ones are listed in order
 // and an empty search lists them all.
 test("Shared: brands and models are found by name, ignoring case and accents", () => {
-  assert.deepEqual(brandsNamed("VOLKS").map((brand) => brand.id), ["volkswagen"]);
-  assert.deepEqual(brandsNamed("  ").map((brand) => brand.id), ["chevrolet", "volkswagen", "fiat", "ford"]);
-  const chevrolet = CATALOG[0].models;
+  assert.deepEqual(brandsNamed(TEST_CATALOG, "VOLKS").map((brand) => brand.id), [VOLKSWAGEN]);
+  assert.deepEqual(brandsNamed(TEST_CATALOG, "  ").map((brand) => brand.id), [CHEVROLET, VOLKSWAGEN, FIAT, FORD]);
+  const chevrolet = TEST_CATALOG.brands[0].models;
   assert.deepEqual(modelsNamed(chevrolet, "ópa").map((model) => model.label), ["Opala"]);
   assert.deepEqual(modelsNamed(chevrolet, "fusca"), []);
 });
@@ -91,10 +124,10 @@ test("Shared: brands and models are found by name, ignoring case and accents", (
 // Searches a model the chosen brand has, one only another brand has, and one no brand has, and checks the brand to
 // show stays, moves to the first brand with the model, or is null.
 test("Shared: a model search keeps the brand that has it or moves to the first that does", () => {
-  assert.equal(brandWithModel("chevrolet", "opala"), "chevrolet");
-  assert.equal(brandWithModel("chevrolet", "uno"), "fiat");
-  assert.equal(brandWithModel("fiat", "Gol"), "volkswagen");
-  assert.equal(brandWithModel("chevrolet", "Kombi"), null);
+  assert.equal(brandWithModel(TEST_CATALOG, CHEVROLET, "opala"), CHEVROLET);
+  assert.equal(brandWithModel(TEST_CATALOG, CHEVROLET, "uno"), FIAT);
+  assert.equal(brandWithModel(TEST_CATALOG, FIAT, "Gol"), VOLKSWAGEN);
+  assert.equal(brandWithModel(TEST_CATALOG, CHEVROLET, "Kombi"), null);
 });
 
 // Searches part codes with separators left out and in another case, and checks the matches are listed with the exact
@@ -131,27 +164,31 @@ test("Shared: parts are found by their original codes too", () => {
 // Places parts in the catalog: an engine by its displacement, a model with no such engine, a model the catalog lacks,
 // a part for any model of a brand, and a brand the catalog lacks.
 test("Shared: a part leads to its brand, model and engine in the catalog", () => {
-  assert.deepEqual(locatePart({ vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1" }), {
-    brandId: "chevrolet",
-    modelId: "chevrolet-opala",
-    engineId: "chevrolet-opala-diplomata-1986-4.1",
+  assert.deepEqual(locatePart(TEST_CATALOG, { vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1" }), {
+    brandId: CHEVROLET,
+    modelId: OPALA,
+    engineId: TEST_ENGINES.opala41,
   });
-  assert.deepEqual(locatePart({ vehicleBrand: "chevrolet", vehicleModel: "Opala 3.8" }), { brandId: "chevrolet", modelId: "chevrolet-opala", engineId: undefined });
-  assert.deepEqual(locatePart({ vehicleBrand: "Ford", vehicleModel: "Escort XR3" }), { brandId: "ford", modelId: "ford-escort", engineId: undefined });
-  assert.deepEqual(locatePart({ vehicleBrand: "Fiat", vehicleModel: "Palio" }), { brandId: "fiat" });
-  assert.deepEqual(locatePart({ vehicleBrand: "Fiat", vehicleModel: null }), { brandId: "fiat" });
-  assert.equal(locatePart({ vehicleBrand: "Toyota", vehicleModel: "Corolla" }), null);
+  assert.deepEqual(locatePart(TEST_CATALOG, { vehicleBrand: "chevrolet", vehicleModel: "Opala 3.8" }), { brandId: CHEVROLET, modelId: OPALA, engineId: undefined });
+  assert.deepEqual(locatePart(TEST_CATALOG, { vehicleBrand: "Ford", vehicleModel: "Escort XR3" }), {
+    brandId: FORD,
+    modelId: testCatalogId("Ford", "Escort"),
+    engineId: undefined,
+  });
+  assert.deepEqual(locatePart(TEST_CATALOG, { vehicleBrand: "Fiat", vehicleModel: "Palio" }), { brandId: FIAT });
+  assert.deepEqual(locatePart(TEST_CATALOG, { vehicleBrand: "Fiat", vehicleModel: null }), { brandId: FIAT });
+  assert.equal(locatePart(TEST_CATALOG, { vehicleBrand: "Toyota", vehicleModel: "Corolla" }), null);
 });
 
 // Writes the vehicle line of parts that fit an engine with a sheet, a model without one, an engine without one, any
 // model of a brand, any vehicle, and a brand the catalog lacks.
 test("Shared: the part list says which vehicle each part fits", () => {
-  assert.equal(partFit({ vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1" }), "Serve no Chevrolet Opala 4.1");
-  assert.equal(partFit({ vehicleBrand: "Ford", vehicleModel: "Escort" }), "Ford Escort (modelo ainda sem ficha no catálogo)");
-  assert.equal(partFit({ vehicleBrand: "Chevrolet", vehicleModel: "Opala 3.8" }), "Chevrolet Opala 3.8 (motor ainda sem ficha no catálogo)");
-  assert.equal(partFit({ vehicleBrand: "Volkswagen", vehicleModel: null }), "Serve em qualquer Volkswagen");
-  assert.equal(partFit({ vehicleBrand: "Universal", vehicleModel: null }), "Serve em qualquer veículo");
-  assert.equal(partFit({ vehicleBrand: "Toyota", vehicleModel: "Corolla" }), "Toyota não está no catálogo");
+  assert.equal(partFit(TEST_CATALOG, { vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1" }), "Serve no Chevrolet Opala 4.1");
+  assert.equal(partFit(TEST_CATALOG, { vehicleBrand: "Ford", vehicleModel: "Escort" }), "Ford Escort (modelo ainda sem ficha no catálogo)");
+  assert.equal(partFit(TEST_CATALOG, { vehicleBrand: "Chevrolet", vehicleModel: "Opala 3.8" }), "Chevrolet Opala 3.8 (motor ainda sem ficha no catálogo)");
+  assert.equal(partFit(TEST_CATALOG, { vehicleBrand: "Volkswagen", vehicleModel: null }), "Serve em qualquer Volkswagen");
+  assert.equal(partFit(TEST_CATALOG, { vehicleBrand: "Universal", vehicleModel: null }), "Serve em qualquer veículo");
+  assert.equal(partFit(TEST_CATALOG, { vehicleBrand: "Toyota", vehicleModel: "Corolla" }), "Toyota não está no catálogo");
 });
 
 // Lists a part of several vehicles: it shows the first whose engine has a sheet, or else the first the catalog has, or
@@ -160,25 +197,25 @@ test("Shared: a part of several vehicles shows the one the catalog knows best", 
   const toyota = { vehicleBrand: "Toyota", vehicleModel: "Corolla" };
   const escort = { vehicleBrand: "Ford", vehicleModel: "Escort" };
   const opala = { vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1" };
-  assert.deepEqual(revealedVehicle({ vehicles: [toyota, escort, opala] }), opala);
-  assert.deepEqual(revealedVehicle({ vehicles: [toyota, escort] }), escort);
-  assert.deepEqual(revealedVehicle({ vehicles: [toyota] }), toyota);
-  assert.equal(itemFit({ vehicles: [toyota, escort, opala] }), "Serve no Chevrolet Opala 4.1 +2");
-  assert.equal(itemFit({ vehicles: [opala] }), "Serve no Chevrolet Opala 4.1");
+  assert.deepEqual(revealedVehicle(TEST_CATALOG, { vehicles: [toyota, escort, opala] }), opala);
+  assert.deepEqual(revealedVehicle(TEST_CATALOG, { vehicles: [toyota, escort] }), escort);
+  assert.deepEqual(revealedVehicle(TEST_CATALOG, { vehicles: [toyota] }), toyota);
+  assert.equal(itemFit(TEST_CATALOG, { vehicles: [toyota, escort, opala] }), "Serve no Chevrolet Opala 4.1 +2");
+  assert.equal(itemFit(TEST_CATALOG, { vehicles: [opala] }), "Serve no Chevrolet Opala 4.1");
 });
 
 // Walks a phone's screens from an engine's sheet back to the brands and checks ← opens the brand's models on the
 // engine, then the brands, where there is nowhere to go back to; each screen's title row names the tab or the brand,
 // and where its ← goes.
 test("Shared: on a phone ← goes back from the sheet to the models, then the brands", () => {
-  const sheet = { view: "sheet", brandId: "chevrolet", engineId: "chevrolet-opala-diplomata-1986-4.1" } as const;
+  const sheet = { view: "sheet", brandId: CHEVROLET, engineId: TEST_ENGINES.opala41 } as const;
   const models = screenBack(sheet)!;
-  assert.deepEqual(models, { view: "models", brandId: "chevrolet", engineId: "chevrolet-opala-diplomata-1986-4.1" });
+  assert.deepEqual(models, { view: "models", brandId: CHEVROLET, engineId: TEST_ENGINES.opala41 });
   assert.deepEqual(screenBack(models), CATALOG_HOME);
   assert.equal(screenBack(CATALOG_HOME), null);
-  assert.deepEqual(screenHeader(CATALOG_HOME), { title: "Catálogo" });
-  assert.deepEqual(screenHeader(models), { title: "Chevrolet", back: "Voltar às marcas" });
-  assert.deepEqual(screenHeader(sheet), { title: "Chevrolet", back: "Voltar aos modelos" });
+  assert.deepEqual(screenHeader(TEST_CATALOG, CATALOG_HOME), { title: "Catálogo" });
+  assert.deepEqual(screenHeader(TEST_CATALOG, models), { title: "Chevrolet", back: "Voltar às marcas" });
+  assert.deepEqual(screenHeader(TEST_CATALOG, sheet), { title: "Chevrolet", back: "Voltar aos modelos" });
 });
 
 // Opens the screens of parts found by code: an engine with a sheet opens it; a model without one, its brand's models
@@ -186,29 +223,37 @@ test("Shared: on a phone ← goes back from the sheet to the models, then the br
 // with no note; and a brand the catalog lacks, no screen.
 test("Shared: a part found by code opens its sheet, or else its brand's models", () => {
   const fits = (vehicleBrand: string, vehicleModel: string | null) => ({ vehicles: [{ vehicleBrand, vehicleModel }] });
-  assert.deepEqual(partScreen(fits("Chevrolet", "Opala 4.1")), {
+  assert.deepEqual(partScreen(TEST_CATALOG, fits("Chevrolet", "Opala 4.1")), {
     view: "sheet",
-    brandId: "chevrolet",
-    engineId: "chevrolet-opala-diplomata-1986-4.1",
+    brandId: CHEVROLET,
+    engineId: TEST_ENGINES.opala41,
   });
-  assert.deepEqual(partScreen(fits("Ford", "Escort")), { view: "models", brandId: "ford", modelId: "ford-escort", missing: "Ford Escort" });
-  assert.deepEqual(partScreen(fits("Fiat", null)), { view: "models", brandId: "fiat", modelId: undefined, missing: undefined });
-  assert.equal(partScreen(fits("Toyota", "Corolla")), null);
+  assert.deepEqual(partScreen(TEST_CATALOG, fits("Ford", "Escort")), {
+    view: "models",
+    brandId: FORD,
+    modelId: testCatalogId("Ford", "Escort"),
+    missing: "Ford Escort",
+  });
+  assert.deepEqual(partScreen(TEST_CATALOG, fits("Fiat", null)), { view: "models", brandId: FIAT, modelId: undefined, missing: undefined });
+  assert.equal(partScreen(TEST_CATALOG, fits("Toyota", "Corolla")), null);
 });
 
 // Writes each brand's line on the brands screen, in plural and singular and with no sheet yet, and the path above an
 // engine's sheet; the path to a node goes from its model down to it, and to a node the brand lacks, nowhere.
 test("Shared: the brand lines and an engine's path read as in the mockup", () => {
   assert.deepEqual(
-    CATALOG.map(brandSummary),
+    TEST_CATALOG.brands.map((brand) => brandSummary(TEST_CATALOG, brand)),
     ["3 modelos · 2 fichas técnicas", "3 modelos · 1 ficha técnica", "3 modelos · 1 ficha técnica", "3 modelos · sem ficha técnica ainda"],
   );
-  assert.equal(brandSummary({ id: "x", name: "X", mark: "X", models: [{ id: "x-1", label: "Um", children: [] }] }), "1 modelo · sem ficha técnica ainda");
-  assert.equal(enginePath("chevrolet", "chevrolet-opala-diplomata-1986-4.1"), "Opala › Terceira geração › Diplomata › 1986");
-  assert.deepEqual(
-    treePath("volkswagen", "volkswagen-gol-1-gts").map((node) => node.id),
-    ["volkswagen-gol", "volkswagen-gol-1", "volkswagen-gol-1-gts"],
+  assert.equal(
+    brandSummary(TEST_CATALOG, { id: "x", name: "X", mark: "X", models: [{ id: "x-1", label: "Um", children: [] }] }),
+    "1 modelo · sem ficha técnica ainda",
   );
-  assert.deepEqual(treePath("ford", "chevrolet-opala"), []);
-  assert.equal(enginePath("ford", "chevrolet-opala-diplomata-1986-4.1"), "");
+  assert.equal(enginePath(TEST_CATALOG, CHEVROLET, TEST_ENGINES.opala41), "Opala › Terceira geração › Diplomata › 1986");
+  assert.deepEqual(
+    treePath(TEST_CATALOG, VOLKSWAGEN, testCatalogId("Volkswagen", "Gol", "Primeira geração", "GTS")).map((node) => node.label),
+    ["Gol", "Primeira geração", "GTS"],
+  );
+  assert.deepEqual(treePath(TEST_CATALOG, FORD, OPALA), []);
+  assert.equal(enginePath(TEST_CATALOG, FORD, TEST_ENGINES.opala41), "");
 });
