@@ -10,9 +10,9 @@ import { databaseProvider } from "./provider.js";
 // SQLite file, copied by copyDatabase (see copy.ts) into the database in use, and the photo files its rows name,
 // copied from the old photos folder into the new one. importProblem says first why it can't: a source of a newer
 // version, one that isn't an APC server's, one that lacks migrations of this version (which the desktop app offers to
-// apply, as they only add tables), or a target that already holds data, which holdsAnyData also tells the desktop
-// app on its first start. Photos go first, so a copy that fails leaves
-// only files no row names yet, and the data's copy keeps nothing.
+// apply, as they only add tables and the catalog a new database starts with), or a target that already holds data,
+// which holdsAnyData also tells the desktop app on its first start; the starting catalog doesn't count as data. Photos
+// go first, so a copy that fails leaves only files no row names yet, and the data's copy keeps nothing.
 
 /** Why an import can't start. */
 export type ImportProblem = "sourceBehind" | "sourceNewer" | "sourceNotApc" | "targetHasData";
@@ -72,9 +72,9 @@ export async function importProblem(from: string, to: string): Promise<ImportPro
 }
 
 /**
- * Tells whether a database holds any row, so an import into it would be refused.
+ * Tells whether a database holds any row besides the starting catalog, so an import into it would be refused.
  * @param url Its DATABASE_URL.
- * @returns True when a table holds a row, a session included.
+ * @returns True when a table holds a row, a session included, the starting catalog left out (see holdsData).
  */
 export async function holdsAnyData(url: string): Promise<boolean> {
   const client = createPrisma(url);

@@ -5,20 +5,52 @@ import { databaseProvider } from "./provider.js";
 // Copies the data from one database to another, PostgreSQL or SQLite in either direction (`pnpm --filter @apc/api
 // db:copy`), to move the server from one to the other. Every table is copied as it is, ids, dates and keys included, in
 // an order where each row's references are already there; sessions are left out, so everyone logs in again after the
-// move, from devices still authorized. Photo files stay in PHOTOS_DIR; only their rows are copied. The copy refuses to start unless both databases
-// have every migration of this version applied and the target is empty, and it runs in one transaction on the target,
-// so a failure keeps nothing there.
+// move, from devices still authorized. Photo files stay in PHOTOS_DIR; only their rows are copied. The copy refuses to
+// start unless both databases have every migration of this version applied and the target is empty, and it runs in one
+// transaction on the target, so a failure keeps nothing there. A target just migrated already holds the catalog a new
+// database starts with, which its migration inserts with the vehicle brands and models it names (see STARTING_TABLES):
+// that doesn't count as data, and the copy takes it out first, so the source's catalog and lists come over as they are.
 
 /** How long the copy may take, in milliseconds: ten minutes, for a large inventory. */
 const COPY_TIMEOUT_MS = 10 * 60 * 1000;
 /** How many rows go in each insert, under SQLite's limit of variables per statement. */
 const ROWS_PER_INSERT = 500;
 /** The tables copied, by their client's name, each after the ones it references. */
-export const TABLES = ["user", "device", "category", "partBrand", "brand", "vehicleModel", "item", "itemVehicle", "itemOriginalCode", "itemBrand", "itemPhoto"] as const;
+export const TABLES = [
+  "user",
+  "device",
+  "category",
+  "partBrand",
+  "brand",
+  "vehicleModel",
+  "catalogBrand",
+  "catalogModel",
+  "catalogGeneration",
+  "catalogVersion",
+  "catalogYear",
+  "catalogEngine",
+  "item",
+  "itemVehicle",
+  "itemOriginalCode",
+  "itemBrand",
+  "itemPhoto",
+] as const;
+/** The tables the migrations fill in a new database: the starting catalog and the vehicle brands and models it names. */
+export const STARTING_TABLES: readonly TableName[] = [
+  "brand",
+  "vehicleModel",
+  "catalogBrand",
+  "catalogModel",
+  "catalogGeneration",
+  "catalogVersion",
+  "catalogYear",
+  "catalogEngine",
+];
 
 /** A table of a client, as the copy uses it. */
 type Table = {
   count: () => Promise<number>;
+  deleteMany: () => Promise<unknown>;
   createMany: (args: { data: object[] }) => Promise<unknown>;
   findMany: (args: { orderBy: { id: "asc" }; skip?: number; take?: number }) => Promise<object[]>;
 };
@@ -39,6 +71,10 @@ export async function copyDatabase(
 ): Promise<Record<TableName, { source: number; target: number }>> {
   await target.$transaction(
     async (tx) => {
+      // The starting catalog the target's migration inserted, each table before the ones it references.
+      for (const name of [...STARTING_TABLES].reverse()) {
+        await tableOf(tx as PrismaClient, name).deleteMany();
+      }
       for (const name of TABLES) {
         let copied = 0;
         for (;;) {
@@ -85,12 +121,14 @@ export async function copyProblems(
 }
 
 /**
- * Tells whether a migrated database holds any row, a session included.
+ * Tells whether a migrated database holds any row, a session included, besides the starting catalog its migrations
+ * filled in.
  * @param client The database.
- * @returns True when a table holds a row.
+ * @returns True when a table other than STARTING_TABLES holds a row.
  */
 export async function holdsData(client: PrismaClient): Promise<boolean> {
-  const held = await Promise.all([...TABLES.map((name) => tableOf(client, name).count()), client.session.count()]);
+  const tables = TABLES.filter((name) => !STARTING_TABLES.includes(name));
+  const held = await Promise.all([...tables.map((name) => tableOf(client, name).count()), client.session.count()]);
   return held.some((rows) => rows > 0);
 }
 
