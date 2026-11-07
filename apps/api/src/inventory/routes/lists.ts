@@ -2,7 +2,6 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { optionKey } from "@apc/domain/items";
 import {
-  isCatalogBrand,
   ITEM_LIST_PATHS,
   listEntriesSchema,
   listEntryCreateSchema,
@@ -28,13 +27,17 @@ import { prisma } from "../../db/client.js";
 // can offer to merge them); the items that use it refer to it, so they show the new name. POST .../:id/merge merges an
 // entry into another of its list (a model into one of its brand) in one transaction: its items move there and it is
 // deleted, a vehicle brand's models moving along, those of a name the other brand has joining that model; it answers
-// how many items moved, and refuses a merge into itself, away from a catalog vehicle brand, or of two part brands
-// an item has both of (409); an item that ends up with a vehicle twice keeps it once. DELETE removes an entry no item uses, a vehicle brand with its models; an entry items
-// use is refused naming how many (409), and so is a vehicle brand of the catalog. A part brand is used by the items
-// it makes a brand of, and a vehicle brand or model by the items with a vehicle of it.
+// how many items moved, and refuses a merge into itself, away from a vehicle brand or model of the catalog, or of two
+// part brands an item has both of (409); an item that ends up with a vehicle twice keeps it once. DELETE removes an
+// entry no item uses, a vehicle brand with its models; an entry items use is refused naming how many (409), and so is a
+// vehicle brand or model of the catalog. A part brand is used by the items it makes a brand of, and a vehicle brand or
+// model by the items with a vehicle of it. Vehicle brands and models are sent saying whether the catalog has them
+// (inCatalog), so the screens can say why one can't go.
 
 /** The columns a list entry is sent with. */
 const ENTRY = { id: true, name: true } as const;
+/** The columns a vehicle brand is read with: an entry's, and whether the catalog has it. */
+const BRAND = { ...ENTRY, catalog: { select: { brandId: true } } } as const;
 /** The items using an entry of each list: by their category, or through any of their brands or vehicles. */
 const ITEMS_USING: Record<ItemListKind, (id: string) => Prisma.ItemWhereInput> = {
   categories: (id) => ({ categoryId: id }),
@@ -42,8 +45,8 @@ const ITEMS_USING: Record<ItemListKind, (id: string) => Prisma.ItemWhereInput> =
   vehicleBrands: (id) => ({ vehicles: { some: { vehicleBrandId: id } } }),
   vehicleModels: (id) => ({ vehicles: { some: { vehicleModelId: id } } }),
 };
-/** The columns a vehicle model is read with. */
-const MODEL = { id: true, name: true, brandId: true } as const;
+/** The columns a vehicle model is read with, and whether the catalog has it. */
+const MODEL = { id: true, name: true, brandId: true, catalogModel: { select: { id: true } } } as const;
 
 /** How the routes reach one of the lists of plain names. */
 type NameList = {
@@ -51,7 +54,7 @@ type NameList = {
   byId: (id: string) => Promise<ListEntry | null>;
   find: (nameKey: string) => Promise<ListEntry | null>;
   create: (name: string, nameKey: string) => Promise<ListEntry>;
-  rename: (id: string, name: string, nameKey: string) => Prisma.PrismaPromise<ListEntry>;
+  rename: (id: string, name: string, nameKey: string) => Promise<ListEntry>;
   remove: (id: string) => Promise<unknown>;
 };
 
@@ -74,11 +77,11 @@ const NAME_LISTS: Record<"categories" | "partBrands" | "vehicleBrands", NameList
     remove: (id) => prisma.partBrand.delete({ where: { id } }),
   },
   vehicleBrands: {
-    all: () => prisma.brand.findMany({ select: ENTRY }),
-    byId: (id) => prisma.brand.findUnique({ where: { id }, select: ENTRY }),
-    find: (nameKey) => prisma.brand.findUnique({ where: { nameKey }, select: ENTRY }),
-    create: (name, nameKey) => prisma.brand.create({ data: { name, nameKey }, select: ENTRY }),
-    rename: (id, name, nameKey) => prisma.brand.update({ where: { id }, data: { name, nameKey }, select: ENTRY }),
+    all: async () => (await prisma.brand.findMany({ select: BRAND })).map(toBrandEntry),
+    byId: async (id) => toFoundBrand(await prisma.brand.findUnique({ where: { id }, select: BRAND })),
+    find: async (nameKey) => toFoundBrand(await prisma.brand.findUnique({ where: { nameKey }, select: BRAND })),
+    create: async (name, nameKey) => toBrandEntry(await prisma.brand.create({ data: { name, nameKey }, select: BRAND })),
+    rename: async (id, name, nameKey) => toBrandEntry(await prisma.brand.update({ where: { id }, data: { name, nameKey }, select: BRAND })),
     // Its models go with it (onDelete: Cascade).
     remove: (id) => prisma.brand.delete({ where: { id } }),
   },
@@ -199,12 +202,30 @@ function mergeEntries(kind: ItemListKind, id: string, into: string): Promise<num
 }
 
 /**
- * Turns a vehicle model row into the model the API sends.
- * @param row Vehicle model row.
- * @returns The model with its vehicle brand's id.
+ * Turns a vehicle brand row into the entry the API sends.
+ * @param row Vehicle brand row, with its catalog brand if any.
+ * @returns The entry, saying whether the catalog has it.
  */
-function toVehicleModel(row: { id: string; name: string; brandId: string }) {
-  return { id: row.id, name: row.name, vehicleBrandId: row.brandId };
+function toBrandEntry(row: { id: string; name: string; catalog: object | null }): ListEntry {
+  return { id: row.id, name: row.name, inCatalog: row.catalog !== null };
+}
+
+/**
+ * Turns a vehicle brand row found by id or name into the entry the API sends.
+ * @param row Vehicle brand row, or null when none was found.
+ * @returns The entry, or null.
+ */
+function toFoundBrand(row: { id: string; name: string; catalog: object | null } | null): ListEntry | null {
+  return row && toBrandEntry(row);
+}
+
+/**
+ * Turns a vehicle model row into the model the API sends.
+ * @param row Vehicle model row, with its catalog model if any.
+ * @returns The model with its vehicle brand's id, saying whether the catalog has it.
+ */
+function toVehicleModel(row: { id: string; name: string; brandId: string; catalogModel: object | null }) {
+  return { id: row.id, name: row.name, vehicleBrandId: row.brandId, inCatalog: row.catalogModel !== null };
 }
 
 export function registerListRoutes(app: FastifyInstance) {
@@ -257,7 +278,7 @@ export function registerListRoutes(app: FastifyInstance) {
         if (id === into) {
           return conflict(reply, "An entry can't be merged into itself.");
         }
-        if (kind === "vehicleBrands" && isCatalogBrand(held.name)) {
+        if (held.inCatalog) {
           return conflict(reply, `"${held.name}" is a catalog brand.`);
         }
         // A part brand makes an item once: an item with both brands would hold the same part brand twice.
@@ -275,7 +296,7 @@ export function registerListRoutes(app: FastifyInstance) {
       if (!held) {
         return entryNotFound(reply);
       }
-      if (kind === "vehicleBrands" && isCatalogBrand(held.name)) {
+      if (held.inCatalog) {
         return conflict(reply, `"${held.name}" is a catalog brand.`);
       }
       const itemCount = await prisma.item.count({ where: ITEMS_USING[kind](id) });
@@ -354,6 +375,9 @@ export function registerListRoutes(app: FastifyInstance) {
       if (held.brandId !== kept.brandId) {
         return conflict(reply, "A model can only be merged into a model of its brand.");
       }
+      if (held.catalogModel) {
+        return conflict(reply, `"${held.name}" is a catalog model.`);
+      }
       return { moved: await mergeEntries("vehicleModels", id, into) };
     },
   );
@@ -363,6 +387,9 @@ export function registerListRoutes(app: FastifyInstance) {
     const held = await prisma.vehicleModel.findUnique({ where: { id }, select: MODEL });
     if (!held) {
       return entryNotFound(reply);
+    }
+    if (held.catalogModel) {
+      return conflict(reply, `"${held.name}" is a catalog model.`);
     }
     const itemCount = await prisma.item.count({ where: ITEMS_USING.vehicleModels(id) });
     if (itemCount > 0) {
