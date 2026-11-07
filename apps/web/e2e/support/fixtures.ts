@@ -1,6 +1,7 @@
 import { test as base } from "@playwright/test";
 import type { TestUser } from "@apc/domain/auth";
 import type { Item } from "@apc/domain/items";
+import { serveCatalog } from "../stubs/catalog.ts";
 import { serveItems } from "../stubs/items.ts";
 import { signIn } from "../stubs/session.ts";
 import { serveUsers } from "../stubs/users.ts";
@@ -13,7 +14,7 @@ import { expect } from "./expect.ts";
 // Playwright tries the routes registered last first. The page's are registered in this order, so the last one
 // listed is tried first:
 //   1. the guard, for every /api/** call, tried after everything else;
-//   2. the session's tutorial route, and the items' stand-in for the stock;
+//   2. the session's tutorial route, the catalog's stand-in, and the items' stand-in for the stock;
 //   3. the users' stand-in;
 //   4. the test's own routes, and any stand-in it starts itself (serveItems with its own items), in its order.
 //
@@ -48,6 +49,7 @@ export const test = base.extend<Options & Fixtures>({
     if (signedIn) {
       await signIn(page);
     }
+    await serveCatalog(page);
     await serveItems(page, [...stock.items]);
     await provide(page);
     expect(unanswered, "API calls no stand-in answered").toEqual([]);

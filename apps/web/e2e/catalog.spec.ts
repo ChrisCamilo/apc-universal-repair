@@ -31,14 +31,14 @@ test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_T
   await dashboard(page).tab("catalog").click();
   await expect(page).toHaveURL(/\/catalog$/);
   await expect(tab.brand("Chevrolet", true)).toBeChecked();
-  await expect(tab.sheet("chevrolet-opala-diplomata-1986-2.5")).toBeVisible();
+  await expect(tab.sheet("opala25")).toBeVisible();
 
   await tab.model("4.1 L 6 cilindros").click();
-  await expect(tab.sheet("chevrolet-opala-diplomata-1986-4.1")).toBeVisible();
+  await expect(tab.sheet("opala41")).toBeVisible();
 
   await tab.brand("Fiat").click();
   await expect(tab.models("Fiat")).toBeVisible();
-  await expect(tab.sheet("fiat-uno-mille-1991-1.0")).toBeVisible();
+  await expect(tab.sheet("unoMille")).toBeVisible();
 
   await tab.brand("Ford").click();
   await expect(page.getByText("Nenhuma ficha cadastrada")).toBeVisible();
@@ -57,14 +57,14 @@ test("Web: the Catalog search finds brands, models and inventory parts", { tag: 
 
   await tab.search.fill("gol");
   await expect(tab.brand("Volkswagen", true)).toBeChecked();
-  await expect(tab.sheet("volkswagen-gol-gts-1989-1.8")).toBeVisible();
+  await expect(tab.sheet("golGts")).toBeVisible();
 
   await tab.search.fill("fra1000");
   await expect(tab.parts.getByRole("radio")).toHaveCount(1);
   await expect(tab.parts).toContainText("Serve no Chevrolet Opala 4.1");
   await expect(tab.brand("Chevrolet", true)).toBeChecked();
   await expect(tab.model("Opala", true)).toHaveAttribute("aria-current", "true");
-  await expect(tab.sheet("chevrolet-opala-diplomata-1986-4.1")).toBeVisible();
+  await expect(tab.sheet("opala41")).toBeVisible();
 
   await tab.search.fill("esc200");
   await expect(page.getByText("Ford Escort", { exact: true })).toBeVisible();
@@ -90,7 +90,7 @@ test("Web: on a phone the Catalog goes from a brand to an engine sheet and back"
     await tab.model(name).click();
   }
   await tab.model("4.1 L 6 cilindros").click();
-  await expect(tab.sheet("chevrolet-opala-diplomata-1986-4.1")).toBeVisible();
+  await expect(tab.sheet("opala41")).toBeVisible();
   await expect(page.getByText("Opala › Terceira geração › Diplomata › 1986")).toBeVisible();
   await expect(shell.bar).toBeVisible();
   await expect(page).not.toScrollSideways();
@@ -111,7 +111,7 @@ test("Web: on a phone the Catalog search opens a part found by code", { tag: [TE
   await expect(tab.partCards).toHaveCount(1);
   await expect(tab.partCards).toContainText("Pastilha de freio dianteira");
   await tab.partCards.click();
-  await expect(tab.sheet("chevrolet-opala-diplomata-1986-4.1")).toBeVisible();
+  await expect(tab.sheet("opala41")).toBeVisible();
 
   await tab.back("Voltar aos modelos").click();
   await tab.search.fill("esc200");
