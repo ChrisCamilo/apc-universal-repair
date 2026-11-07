@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { entryCodeSchema, loggedInSchema } from "../../auth/auth.ts";
+import { CATALOG_PATH, catalogSchema } from "../../catalog/catalog.ts";
 import { deviceChallengeSchema, deviceListSchema, deviceSchema, deviceStatusSchema } from "../../devices/devices.ts";
 import { itemImportResultSchema } from "../../inventory/itemCsv.ts";
 import { itemListResponseSchema, itemSchema } from "../../inventory/items.ts";
@@ -37,6 +38,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   { method: "DELETE", path: "/items/:id", responses: {} },
   { method: "PUT", path: "/items/:id/brands/:brandId/photos", responses: { 200: itemSchema } },
   { method: "GET", path: "/photos/:file", responses: {} },
+  { method: "GET", path: CATALOG_PATH, responses: { 200: catalogSchema } },
   ...NAME_LIST_PATHS.flatMap((path) => listRoutes(path, listEntriesSchema, listEntrySchema)),
   ...listRoutes(ITEM_LIST_PATHS.vehicleModels, vehicleModelsSchema, vehicleModelSchema),
 ];
