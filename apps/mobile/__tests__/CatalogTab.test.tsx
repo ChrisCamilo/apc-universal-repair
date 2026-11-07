@@ -5,15 +5,16 @@
 import React from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { ENGINE_SHEETS, NO_SHEET_MESSAGE } from '@apc/domain/catalog';
+import { NO_SHEET_MESSAGE } from '@apc/domain/catalog';
 import type { Item } from '@apc/domain/items';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { CatalogTab } from '../src/features/catalog/CatalogTab';
 import { PhoneHeaderContext, type PhoneHeader } from '../src/features/dashboard/phoneHeaderContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
+import { TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
 
-const OPALA_41 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1'];
+const OPALA_41 = TEST_CATALOG.sheets[TEST_ENGINES.opala41];
 // What Android's back button calls.
 type BackListener = Parameters<typeof BackHandler.addEventListener>[1];
 // Parts in the inventory, for the code search: an engine the catalog has and one it lacks.
@@ -144,6 +145,21 @@ for (const style of STYLES) {
   }
 }
 
+// Opens the Catalog with the catalog failing to load and checks it says so with a button to try again, which loads it
+// and shows the brand lines.
+test('Mobile: the Catalog says when it fails to load and tries again', async () => {
+  let failing = true;
+  answer(
+    () => ({ ok: true, json: () => Promise.resolve({ items: [], total: 0 }) }),
+    () => (failing ? { ok: false, status: 500, json: () => Promise.resolve({}) } : { ok: true, json: () => Promise.resolve(TEST_CATALOG_DATA) }),
+  );
+  const tree = await mount('eighties', 'night');
+  expect(shows(tree, 'Não foi possível carregar o catálogo')).toBe(true);
+  failing = false;
+  await ReactTestRenderer.act(async () => pressable(textNode(tree, 'Tentar de novo')).props.onPress());
+  expect(shows(tree, 'Marcas · 4')).toBe(true);
+});
+
 // Checks the Catalog opens on the brand lines, each with its letters and its models and sheets, with no brand search,
 // then presses Chevrolet and checks the header turns to the brand with a ← and the tree's engines say "Ver ficha",
 // opens the 4.1 engine and checks its sheet shows under the path to it with each readout named. The ← goes back to
@@ -184,7 +200,7 @@ test('Mobile: the Catalog goes from a brand to an engine sheet and back', async 
 // and checks the parts show as the Inventory's cards under a heading, and a press on one clears the search and opens
 // its engine's sheet, or, for a model without a sheet, its brand's models with the model pointed out and the note.
 test('Mobile: the Catalog search narrows the brands and opens a part found by code', async () => {
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: PARTS, total: PARTS.length }) });
+  answer(() => ({ ok: true, json: () => Promise.resolve({ items: PARTS, total: PARTS.length }) }));
   const tree = await mount('fiat90', 'day');
   await search(tree, 'Procure modelo ou código da peça', 'uno');
   expect(shows(tree, 'Marcas · 1')).toBe(true);
@@ -210,6 +226,16 @@ test('Mobile: the Catalog search narrows the brands and opens a part found by co
   expect(shows(tree, 'Chevrolet Opala 3.8')).toBe(true);
   expect(shows(tree, NO_SHEET_MESSAGE)).toBe(true);
 });
+
+/**
+ * Answers the API's requests: the catalog with the test catalog, unless a test gives its own reply, and the inventory
+ * with a test's own.
+ * @param items The inventory's reply.
+ * @param catalog The catalog's reply.
+ */
+function answer(items: () => object, catalog: () => object = () => ({ ok: true, json: () => Promise.resolve(TEST_CATALOG_DATA) })) {
+  (fetch as jest.Mock).mockImplementation((url: string) => Promise.resolve(url.endsWith('/catalog') ? catalog() : items()));
+}
 
 /**
  * Stands in for Android's back button: keeps the listener the Catalog adds, while it is added.

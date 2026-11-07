@@ -309,19 +309,22 @@ test('Mobile: a name no item uses is deleted after confirming', async () => {
   expect(texts(tree.root)).not.toContain('Clio');
 });
 
-// Asks to delete a model items use and checks nothing can be deleted: the dialog says how many items use it, and Ver
-// itens hands over the filters that show them; a vehicle brand of the catalog can't be deleted either.
+// Asks to delete a category items use and checks nothing can be deleted: the dialog says how many items use it, and Ver
+// itens hands over the filters that show them; a vehicle model and a vehicle brand of the catalog can't be deleted
+// either.
 test('Mobile: a name in use or of the catalog is not deleted', async () => {
   const onRemove = jest.fn<ReturnType<RemoveListEntry>, Parameters<RemoveListEntry>>();
   const onShowItems = jest.fn();
   const tree = await mount({ onRemove, onShowItems });
-  await press(tree, 'Excluir Gol');
+  await press(tree, 'Excluir Motor');
   expect(texts(tree.root)).toEqual(
-    expect.arrayContaining(['Não é possível excluir', '1 item usa “Gol”. Troque o modelo do veículo desses itens antes de excluir.']),
+    expect.arrayContaining(['Não é possível excluir', '2 itens usam “Motor”. Troque a categoria desses itens antes de excluir.']),
   );
   await press(tree, 'Ver itens');
-  expect(onShowItems).toHaveBeenCalledWith(expect.objectContaining({ vehicleModel: ['Volkswagen|Gol'] }));
+  expect(onShowItems).toHaveBeenCalledWith(expect.objectContaining({ category: ['Motor'] }));
 
+  await press(tree, 'Excluir Gol');
+  expect(texts(tree.root)).toContain('“Gol” também está no catálogo e não pode ser excluído do estoque.');
   await press(tree, 'Excluir Chevrolet');
   expect(texts(tree.root)).toContain('“Chevrolet” também está no catálogo e não pode ser excluída do estoque.');
   expect(texts(tree.root)).not.toContain('Ver itens');
