@@ -3,11 +3,9 @@ import { pencilIcon, trashIcon } from '@apc/tokens/icons'
 import { entryFilters, type ItemFilters } from '@apc/domain/item-filters'
 import type { Item } from '@apc/domain/items'
 import {
-  CATALOG_BRAND_MESSAGE,
-  CATALOG_MERGE_MESSAGE,
+  catalogLock,
   entryChange,
   findEntry,
-  isCatalogBrand,
   ITEM_LIST_TEXTS,
   itemsUsing,
   type ItemListKind,
@@ -92,8 +90,9 @@ export function ManageListsDialog({
     }
     const other = findEntry(siblings, name)
     if (other && other.id !== entry.id) {
-      if (kind === 'vehicleBrands' && isCatalogBrand(entry.name)) {
-        setEditing({ ...editing, error: CATALOG_MERGE_MESSAGE(entry.name) })
+      const locked = catalogLock(kind, entry, 'merge')
+      if (locked) {
+        setEditing({ ...editing, error: locked })
         return
       }
       setMerging({ kind, entry, into: other })
@@ -182,8 +181,8 @@ export function ManageListsDialog({
   )
 
   const removingUses = removing ? itemsUsing(items, removing.kind, removing.entry, lists) : 0
-  const catalogBrand = removing?.kind === 'vehicleBrands' && isCatalogBrand(removing.entry.name)
-  const blocked = catalogBrand || removingUses > 0
+  const locked = removing ? catalogLock(removing.kind, removing.entry, 'delete') : null
+  const blocked = locked !== null || removingUses > 0
 
   return (
     <Dialog
@@ -238,7 +237,7 @@ export function ManageListsDialog({
               <Button variant="secondary" size="sm" onClick={() => setRemoving(undefined)}>
                 Fechar
               </Button>
-              {!catalogBrand && removing && (
+              {!locked && removing && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -264,8 +263,8 @@ export function ManageListsDialog({
       >
         {removing && (
           <Text size="sm" tone="muted">
-            {catalogBrand
-              ? CATALOG_BRAND_MESSAGE(removing.entry.name)
+            {locked
+              ? locked
               : removingUses > 0
                 ? ITEM_LIST_TEXTS[removing.kind].inUse(removing.entry.name, removingUses)
                 : ITEM_LIST_TEXTS[removing.kind].confirmDelete(removing.entry.name)}
