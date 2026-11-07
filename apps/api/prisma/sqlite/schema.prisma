@@ -15,6 +15,84 @@ model Brand {
   nameKey  String         @unique
   models   VehicleModel[]
   vehicles ItemVehicle[]
+  /// Set when the Catalog tab has the brand.
+  catalog  CatalogBrand?
+}
+
+/// A brand of the Catalog tab: a vehicle brand of the lists, which then can't be deleted or merged away, with the
+/// letters on its line on a phone and its place in the rail, from 0. The catalog a new database starts with comes in
+/// its migration (20261106000000_catalog).
+model CatalogBrand {
+  id       String @id @default(uuid())
+  brandId  String @unique
+  brand    Brand  @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  /// E.g. "CH" for Chevrolet.
+  mark     String
+  position Int
+}
+
+/// An engine of a catalog year, with its sheet. Its name in the tree comes from the sheet ("4.1 L 6 cilindros") and its
+/// year from the year above it, so neither is kept twice.
+model CatalogEngine {
+  id             String      @id @default(uuid())
+  yearId         String
+  year           CatalogYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  position       Int
+  /// In decilitres, 41 for 4.1 L, so it is never rounded.
+  displacementDl Int
+  cylinders      Int
+  drive          EngineDrive
+  summary        String
+
+  @@index([yearId])
+}
+
+/// A generation of a catalog model and its years; lastYear is null while it is still made.
+model CatalogGeneration {
+  id        String           @id @default(uuid())
+  modelId   String
+  model     CatalogModel     @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  position  Int
+  name      String
+  firstYear Int
+  lastYear  Int?
+  versions  CatalogVersion[]
+
+  @@index([modelId])
+}
+
+/// A model of the Catalog tab: a vehicle model of the lists, of a catalog brand, which then can't be deleted or merged
+/// away; position orders its brand's models from 0.
+model CatalogModel {
+  id             String              @id @default(uuid())
+  vehicleModelId String              @unique
+  vehicleModel   VehicleModel        @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
+  position       Int
+  generations    CatalogGeneration[]
+}
+
+/// A version of a catalog generation, e.g. Diplomata.
+model CatalogVersion {
+  id           String            @id @default(uuid())
+  generationId String
+  generation   CatalogGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  position     Int
+  name         String
+  years        CatalogYear[]
+
+  @@index([generationId])
+}
+
+/// A model year of a catalog version.
+model CatalogYear {
+  id        String          @id @default(uuid())
+  versionId String
+  version   CatalogVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  position  Int
+  year      Int
+  engines   CatalogEngine[]
+
+  @@index([versionId])
 }
 
 /// An item category, the list the item form picks the category from; nameKey as in Brand.
@@ -50,6 +128,13 @@ model Device {
 enum DeviceStatus {
   PENDING
   AUTHORIZED
+}
+
+/// Which wheels a catalog engine drives.
+enum EngineDrive {
+  FRONT
+  REAR
+  ALL
 }
 
 /// An inventory item: a part, made by one brand or more (see ItemBrand), which replace each other. nameKey holds the
@@ -223,12 +308,14 @@ model User {
 
 /// A vehicle model of a vehicle brand, unique within it; nameKey as in Brand.
 model VehicleModel {
-  id       String        @id @default(uuid())
-  name     String
-  nameKey  String
-  brandId  String
-  brand    Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  vehicles ItemVehicle[]
+  id           String        @id @default(uuid())
+  name         String
+  nameKey      String
+  brandId      String
+  brand        Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  vehicles     ItemVehicle[]
+  /// Set when the Catalog tab has the model.
+  catalogModel CatalogModel?
 
   @@unique([brandId, nameKey])
 }
