@@ -158,7 +158,6 @@ test('Web: a closable dialog closes on the × at the top right', async () => {
   await expect.element(plain.getByRole('button', { name: 'Fechar' })).not.toBeInTheDocument()
 })
 
-// Opens a long form at 1280×720 and at 360×780 and checks it fits the screen with its content scrolling
 // Cancels a file picker opened from a field inside the dialog, whose "cancel" event bubbles up to the dialog,
 // and checks the dialog stays open; Escape on the dialog still asks the owner to close it.
 test('Web: a canceled file picker leaves the dialog open', async () => {
@@ -175,6 +174,7 @@ test('Web: a canceled file picker leaves the dialog open', async () => {
   expect(onClose).toHaveBeenCalledTimes(1)
 })
 
+// Opens a long form at 1280×720 and at 360×780 and checks it fits the screen with its content scrolling
 // while Save stays visible without scrolling: a window as wide as its size allows on the desktop, the whole screen on
 // a phone.
 test('Web: long dialogs scroll inside with the actions pinned', async () => {
@@ -194,6 +194,27 @@ test('Web: long dialogs scroll inside with the actions pinned', async () => {
     await screen.unmount()
   }
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+})
+
+// Opens a long form whose last field hides its file input for screen readers only, as the photo field does, and
+// focuses that input, as a click on the field does before the file picker opens, and checks only the body scrolls to
+// it: the window stays where it was, with no empty space under its content and the first fields a scroll away.
+test('Web: a hidden input focused at the end of a long dialog scrolls its body, not the window', async () => {
+  const screen = await render(
+    <LongForm>
+      <label>
+        Adicionar fotos
+        <input type="file" className="sr-only" />
+      </label>
+    </LongForm>,
+  )
+  const window = screen.getByRole('dialog', { name: 'Novo item' }).element()
+  const body = screen.getByLabelText('Nome').element().closest('.overflow-y-auto')!
+  screen.getByLabelText('Adicionar fotos').element().focus()
+  expect(window.scrollTop).toBe(0)
+  expect(body.scrollTop).toBeGreaterThan(0)
+  body.scrollTop = 0
+  await expect.element(screen.getByLabelText('Nome')).toBeInViewport()
 })
 
 // Opens a closable form at 360×780 in every style and mode, and checks it fills the screen with no rounded corners,
@@ -284,12 +305,23 @@ function FormOpener() {
   )
 }
 
-function LongForm({ open = true, closable = false, onClose = () => {} }: { open?: boolean; closable?: boolean; onClose?: () => void }) {
+function LongForm({
+  open = true,
+  closable = false,
+  onClose = () => {},
+  children,
+}: {
+  open?: boolean
+  closable?: boolean
+  onClose?: () => void
+  children?: React.ReactNode
+}) {
   return (
     <Dialog open={open} onClose={onClose} title="Novo item" closable={closable} actions={<Button size="sm">Salvar item</Button>}>
       {['Nome', 'Código', 'Categoria', 'Marca', 'Veículo', 'Modelo', 'Cor', 'Local', 'Valor', 'Quantidade', 'Mínimo'].map((label) => (
         <TextField key={label} label={label} value="" onValueChange={() => {}} />
       ))}
+      {children}
     </Dialog>
   )
 }
