@@ -3,9 +3,7 @@ import {
   brandsNamed,
   brandSummary,
   brandWithModel,
-  CATALOG,
   CATALOG_HOME,
-  ENGINE_SHEETS,
   ENGINE_SPEC_LABELS,
   enginePath,
   findParts,
@@ -17,15 +15,17 @@ import {
   revealedVehicle,
   screenBack,
   screenHeader,
+  type Catalog,
   type CatalogScreen,
   type FoundPart,
 } from '@apc/domain/catalog'
 import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
-import { EmptyState } from '../../components/EmptyState'
+import { EmptyState, ErrorState } from '../../components/EmptyState'
 import { Icon } from '../../components/Icon'
 import { ImageFrame } from '../../components/ImageFrame'
 import { Panel } from '../../components/Panel'
 import { SelectableTileGroup } from '../../components/SelectableTile'
+import { Spinner } from '../../components/Spinner'
 import { SearchField } from '../../components/TextField'
 import { TreeView } from '../../components/TreeView'
 import { Heading, NumericReadout, Text } from '../../components/Typography'
@@ -33,12 +33,14 @@ import { usePhone } from '../../components/usePhone.ts'
 import { useItems } from '../inventory/useItems.ts'
 import { catalogTab } from './CatalogTab.styles.ts'
 import { PartResults } from './PartResults.tsx'
+import { useCatalog } from './useCatalog.ts'
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 
 // The Catalog tab (/catalog): the brand tiles in a rail, the chosen brand's model tree, and the detail column with
 // the chosen engine's sheet. A brand opens on its first engine; one with no engine yet says so in the detail
-// column. On narrow screens the tiles sit above the tree in rows and the detail column goes below it. The data is
-// the mocked catalog of @apc/domain/catalog.
+// column. On narrow screens the tiles sit above the tree in rows and the detail column goes below it. The catalog
+// comes from the API (useCatalog): while it loads the tab shows a spinner, and when it can't be loaded, why, with a
+// button to try again.
 // The rail's search narrows the brand tiles by name. The search above the tree looks for the code of a part kept in
 // the inventory first: with 3+ letters or digits of a code it lists the matching parts, and choosing one (the first
 // at once) reveals its vehicle: its brand, its model pointed out, the path open and the engine chosen, or, when the
@@ -55,45 +57,63 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // brand search is left out.
 
 export function CatalogTab() {
-  return usePhone() ? <PhoneCatalog /> : <WideCatalog />
+  const state = useCatalog()
+  const phone = usePhone()
+  const { classes, ids } = catalogTab()
+  if (state.status === 'ready' && state.catalog.brands.length > 0) {
+    return phone ? <PhoneCatalog catalog={state.catalog} /> : <WideCatalog catalog={state.catalog} />
+  }
+  return (
+    <div className={classes.status()} data-testid={ids.status}>
+      {state.status === 'loading' && <Spinner label="Carregando o catálogo" />}
+      {state.status === 'error' && (
+        <ErrorState
+          title="Não foi possível carregar o catálogo"
+          message="Verifique a conexão com o servidor e tente de novo."
+          action={{ label: 'Tentar de novo', onClick: state.reload }}
+        />
+      )}
+      {state.status === 'ready' && <EmptyState title="Nenhuma marca no catálogo" message="As marcas do catálogo aparecem aqui." />}
+    </div>
+  )
 }
 
 /** The Catalog from a tablet up: the rail, the tree and the detail column. */
-function WideCatalog() {
+function WideCatalog({ catalog }: { catalog: Catalog }) {
   const state = useItems()
   const { classes, ids } = catalogTab()
   const items = state.status === 'ready' ? state.items : []
   const [brandQuery, setBrandQuery] = useState('')
   const [query, setQuery] = useState('')
-  const [brandId, setBrandId] = useState(CATALOG[0].id)
-  const [engine, setEngine] = useState(() => firstSheet(CATALOG[0].models))
+  const [brandId, setBrandId] = useState(catalog.brands[0].id)
+  const [engine, setEngine] = useState(() => firstSheet(catalog, catalog.brands[0].models))
   const [part, setPart] = useState<FoundPart | null>(null)
   // Bumped to draw the tree again, open on the engine of a part just chosen.
   const [revealed, setRevealed] = useState(0)
-  const brand = CATALOG.find((b) => b.id === brandId)!
+  const brand = catalog.brands.find((b) => b.id === brandId)!
   const results = findParts(items, query)
   const searchingParts = results.parts.length > 0
   // The vehicle of the chosen part the catalog shows: the one it knows best, of a part of several.
-  const vehicle = part && revealedVehicle(part.item)
-  const location = searchingParts && vehicle ? locatePart(vehicle) : null
+  const vehicle = part && revealedVehicle(catalog, part.item)
+  const location = searchingParts && vehicle ? locatePart(catalog, vehicle) : null
   const models = modelsNamed(brand.models, searchingParts ? '' : query)
-  const sheet = engine ? ENGINE_SHEETS[engine] : undefined
+  const sheet = engine ? catalog.sheets[engine] : undefined
   // A part for a model the catalog has no sheet for says so, instead of showing another vehicle.
   const missingVehicle = location && vehicle?.vehicleModel && !location.engineId ? `${vehicle.vehicleBrand} ${vehicle.vehicleModel}` : null
 
   /** Opens a brand on its first engine. */
   const openBrand = (id: string) => {
     setBrandId(id)
-    setEngine(firstSheet(CATALOG.find((b) => b.id === id)!.models))
+    setEngine(firstSheet(catalog, catalog.brands.find((b) => b.id === id)!.models))
   }
 
   /** Reveals a part's vehicle: its brand, its engine, and the tree open on them. */
   const choosePart = (chosen: FoundPart) => {
     setPart(chosen)
-    const found = locatePart(revealedVehicle(chosen.item))
+    const found = locatePart(catalog, revealedVehicle(catalog, chosen.item))
     if (found) {
       setBrandId(found.brandId)
-      setEngine(found.engineId ?? (found.modelId ? undefined : firstSheet(CATALOG.find((b) => b.id === found.brandId)!.models)))
+      setEngine(found.engineId ?? (found.modelId ? undefined : firstSheet(catalog, catalog.brands.find((b) => b.id === found.brandId)!.models)))
       setRevealed((count) => count + 1)
     }
   }
@@ -107,7 +127,7 @@ function WideCatalog() {
       return
     }
     setPart(null)
-    const withModel = text.trim() ? brandWithModel(brandId, text) : null
+    const withModel = text.trim() ? brandWithModel(catalog, brandId, text) : null
     if (withModel && withModel !== brandId) {
       openBrand(withModel)
     }
@@ -119,7 +139,7 @@ function WideCatalog() {
         <SearchField label="Procure marca" value={brandQuery} onValueChange={setBrandQuery} />
         <SelectableTileGroup
           label="Marcas"
-          options={brandsNamed(brandQuery).map((b) => ({ value: b.id, label: b.name }))}
+          options={brandsNamed(catalog, brandQuery).map((b) => ({ value: b.id, label: b.name }))}
           value={brandId}
           onValueChange={openBrand}
           className={classes.brands()}
@@ -127,7 +147,7 @@ function WideCatalog() {
       </Panel>
       <div className={classes.main()} data-testid={ids.main}>
         <SearchField label="Procure modelo ou código da peça" value={query} onValueChange={search} />
-        {searchingParts && <PartResults results={results} chosen={part?.id} onChoose={choosePart} />}
+        {searchingParts && <PartResults catalog={catalog} results={results} chosen={part?.id} onChoose={choosePart} />}
         <div className={classes.body()} data-testid={ids.body}>
           <Panel>
             {models.length > 0 ? (
@@ -179,7 +199,7 @@ function WideCatalog() {
 }
 
 /** The Catalog on a phone: one screen at a time, the brands, a brand's models or an engine's sheet. */
-function PhoneCatalog() {
+function PhoneCatalog({ catalog }: { catalog: Catalog }) {
   const state = useItems()
   const setHeader = usePhoneHeader()
   const { classes, ids } = catalogTab()
@@ -193,15 +213,15 @@ function PhoneCatalog() {
   // Each screen opens at its top, with its title and ← in the page's header; the brands keep the tab's name.
   useEffect(() => {
     window.scrollTo(0, 0)
-    const { title, back } = screenHeader(screen)
+    const { title, back } = screenHeader(catalog, screen)
     const before = screenBack(screen)
     setHeader(back && before ? { title, back: { label: back, onClick: () => setScreen(before) } } : null)
     return () => setHeader(null)
-  }, [screen, setHeader])
+  }, [catalog, screen, setHeader])
 
   /** Opens the screen a part leads to, its engine's sheet or its brand's models, done with the search. */
   const choosePart = (part: FoundPart) => {
-    const next = partScreen(part.item)
+    const next = partScreen(catalog, part.item)
     if (next) {
       setQuery('')
       setScreen(next)
@@ -211,16 +231,16 @@ function PhoneCatalog() {
   const search = (
     <>
       <SearchField label="Procure modelo ou código da peça" value={query} onValueChange={setQuery} />
-      {searchingParts && <PartResults results={results} onChoose={choosePart} />}
+      {searchingParts && <PartResults catalog={catalog} results={results} onChoose={choosePart} />}
     </>
   )
 
   if (screen.view === 'sheet') {
-    const sheet = ENGINE_SHEETS[screen.engineId]
+    const sheet = catalog.sheets[screen.engineId]
     return (
       <div className={classes.screen()} data-testid={ids.screen}>
         <p className={classes.path()} data-testid={ids.path}>
-          {enginePath(screen.brandId, screen.engineId)}
+          {enginePath(catalog, screen.brandId, screen.engineId)}
         </p>
         <ImageFrame alt={`Foto do ${sheet.title}`} emptyLabel="Sem foto do modelo" />
         <Heading level={2}>{sheet.title}</Heading>
@@ -243,7 +263,7 @@ function PhoneCatalog() {
 
   if (screen.view === 'models') {
     const { brandId, modelId, engineId, missing } = screen
-    const brand = CATALOG.find((b) => b.id === brandId)!
+    const brand = catalog.brands.find((b) => b.id === brandId)!
     const models = modelsNamed(brand.models, modelQuery)
     return (
       <div className={classes.screen()} data-testid={ids.screen}>
@@ -276,7 +296,7 @@ function PhoneCatalog() {
   }
 
   // The brands that have a model with the name searched, every brand without a search.
-  const brands = CATALOG.filter((brand) => modelsNamed(brand.models, modelQuery).length > 0)
+  const brands = catalog.brands.filter((brand) => modelsNamed(brand.models, modelQuery).length > 0)
   return (
     <div className={classes.screen()} data-testid={ids.screen}>
       {search}
@@ -301,7 +321,7 @@ function PhoneCatalog() {
                     {brand.name}
                   </span>
                   <span className={classes.brandMeta()} data-testid={ids.brandMeta}>
-                    {brandSummary(brand)}
+                    {brandSummary(catalog, brand)}
                   </span>
                 </span>
                 <Icon icon={chevronIcon} size={ICON_SIZES.prominent} className={classes.chevron()} />

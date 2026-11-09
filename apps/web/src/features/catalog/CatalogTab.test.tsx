@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ENGINE_SHEETS } from '@apc/domain/catalog'
+import { TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
 import { TABLE_CARD_BREAKPOINT } from '@apc/ui-spec/table'
 import { MODES, STYLES, themes } from '@apc/tokens/theme'
@@ -15,8 +15,8 @@ import { CatalogTab } from './CatalogTab.tsx'
 import { PhoneHeaderContext, type PhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 import { testItem, type FlatItem } from '@apc/domain/test-items'
 
-const OPALA_25 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-2.5']
-const OPALA_41 = ENGINE_SHEETS['chevrolet-opala-diplomata-1986-4.1']
+const OPALA_25 = TEST_CATALOG.sheets[TEST_ENGINES.opala25]
+const OPALA_41 = TEST_CATALOG.sheets[TEST_ENGINES.opala41]
 // Parts in the inventory, for the code search: an engine the catalog has, an engine it lacks, a model it has no
 // sheet for, a part for any Volkswagen and a universal one.
 const PARTS: Item[] = [
@@ -63,14 +63,36 @@ function part(fields: Required<Pick<FlatItem, 'code' | 'name' | 'vehicleBrand' |
 }
 
 /**
+ * Answers the API's requests as a server would: the catalog with the test catalog, and the inventory with some items.
+ * @param items The inventory's items.
+ * @param catalog The catalog's answer, the test catalog unless a test gives its own.
+ */
+function answer(items: Item[], catalog: () => Response = () => new Response(JSON.stringify(TEST_CATALOG_DATA))) {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    return url.includes('/catalog') ? catalog() : new Response(JSON.stringify({ items, total: items.length }))
+  })
+}
+
+/**
+ * Renders the Catalog and waits for the catalog to load.
+ * @param phone Whether to render it as a phone's Dashboard would, under its header.
+ * @returns The rendered screen.
+ */
+async function renderCatalog(phone = false) {
+  const screen = await render(phone ? <PhoneDashboard /> : <CatalogTab />)
+  await expect.element(screen.getByRole('status', { name: 'Carregando o catálogo' })).not.toBeInTheDocument()
+  return screen
+}
+
+/**
  * Answers the inventory request with the test parts and renders the Catalog once they are in.
  * @param phone Whether to render it as a phone's Dashboard would, under its header.
  * @returns The rendered screen.
  */
 async function renderWithParts(phone = false) {
-  vi.mocked(globalThis.fetch).mockResolvedValue(new Response(JSON.stringify({ items: PARTS, total: PARTS.length })))
-  const screen = await render(phone ? <PhoneDashboard /> : <CatalogTab />)
-  await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
+  answer(PARTS)
+  const screen = await renderCatalog(phone)
   await new Promise((resolve) => setTimeout(resolve, 0))
   return screen
 }
@@ -82,9 +104,10 @@ beforeAll(async () => {
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
-// No API runs during these tests: the inventory request answers with no parts unless a test gives its own.
+// No API runs during these tests: the catalog request answers with the test catalog, and the inventory request with no
+// parts unless a test gives its own.
 beforeEach(() => {
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ items: [], total: 0 })))
+  answer([])
 })
 
 afterEach(async () => {
@@ -100,7 +123,7 @@ for (const style of STYLES) {
       const { colors } = themes[style][mode]
       root.dataset.style = style
       root.dataset.mode = mode
-      const screen = await render(<CatalogTab />)
+      const screen = await renderCatalog()
       expect(getComputedStyle(screen.getByRole('radio', { name: 'Chevrolet' }).element()).borderColor).toBe(rgb(colors.accent))
       const engine = screen.getByRole('treeitem', { name: '2.5 L 4 cilindros' }).element().firstElementChild!
       expect(getComputedStyle(engine).color).toBe(rgb(colors.accent))
@@ -109,10 +132,22 @@ for (const style of STYLES) {
   }
 }
 
+// Opens the Catalog while the catalog loads and checks the spinner shows, then has the catalog fail and checks the tab
+// says so with a button to try again, which loads it.
+test('Web: the Catalog loads, says when it fails and tries again', async () => {
+  let failing = true
+  answer([], () => (failing ? new Response(null, { status: 500 }) : new Response(JSON.stringify(TEST_CATALOG_DATA))))
+  const screen = await render(<CatalogTab />)
+  await expect.element(screen.getByRole('alert')).toMatchTextContent(/Não foi possível carregar o catálogo/)
+  failing = false
+  await screen.getByRole('button', { name: 'Tentar de novo' }).click()
+  await expect.element(screen.getByRole('radio', { name: 'Chevrolet' })).toBeChecked()
+})
+
 // Opens the Catalog and checks it starts on the first brand with its first engine chosen and its sheet shown, then
 // picks another engine, a brand with sheets and a brand without, and checks the tree and the detail column follow.
 test('Web: brands and engines drive the tree and the sheet', async () => {
-  const screen = await render(<CatalogTab />)
+  const screen = await renderCatalog()
   await expect.element(screen.getByRole('radio', { name: 'Chevrolet' })).toBeChecked()
   await expect.element(screen.getByRole('treeitem', { name: '2.5 L 4 cilindros' })).toHaveAttribute('aria-selected', 'true')
   await expect.element(screen.getByRole('heading', { name: OPALA_25.title })).toBeVisible()
@@ -124,7 +159,7 @@ test('Web: brands and engines drive the tree and the sheet', async () => {
   await screen.getByRole('radio', { name: 'Volkswagen' }).click()
   await expect.element(screen.getByRole('tree', { name: 'Modelos Volkswagen' })).toBeVisible()
   await expect.element(screen.getByRole('treeitem', { name: '1.8 L 4 cilindros' })).toHaveAttribute('aria-selected', 'true')
-  await expect.element(screen.getByRole('heading', { name: ENGINE_SHEETS['volkswagen-gol-gts-1989-1.8'].title })).toBeVisible()
+  await expect.element(screen.getByRole('heading', { name: TEST_CATALOG.sheets[TEST_ENGINES.golGts].title })).toBeVisible()
 
   await screen.getByRole('radio', { name: 'Ford' }).click()
   await expect.element(screen.getByRole('tree', { name: 'Modelos Ford' })).toBeVisible()
@@ -141,6 +176,7 @@ test('Web: the Catalog lays out in columns on desktop and stacks on a narrow scr
       <CatalogTab />
     </AppFrame>,
   )
+  await expect.element(screen.getByRole('tree')).toBeVisible()
   const box = (element: Element) => element.getBoundingClientRect()
   const rail = () => box(screen.getByRole('radiogroup').element())
   const tree = () => box(screen.getByRole('tree').element())
@@ -161,7 +197,7 @@ test('Web: the Catalog lays out in columns on desktop and stacks on a narrow scr
 // Types a brand search in another case and checks only the matching tile is left, then clears it and checks every
 // brand is back.
 test('Web: the brand search narrows the tiles', async () => {
-  const screen = await render(<CatalogTab />)
+  const screen = await renderCatalog()
   await screen.getByRole('searchbox', { name: 'Procure marca' }).fill('VOLKS')
   expect(screen.getByRole('radio').elements().map((tile) => tile.textContent)).toEqual(['Volkswagen'])
   await screen.getByRole('searchbox', { name: 'Procure marca' }).fill('')
@@ -171,13 +207,13 @@ test('Web: the brand search narrows the tiles', async () => {
 // Searches a model only another brand has, one no brand has, and clears the search, and checks the Catalog moves to
 // the brand with the model and narrows its tree, says when no brand has it, and shows the whole tree again.
 test('Web: the model search narrows the tree and moves to the brand that has the model', async () => {
-  const screen = await render(<CatalogTab />)
+  const screen = await renderCatalog()
   const search = screen.getByRole('searchbox', { name: 'Procure modelo ou código da peça' })
   const models = () => screen.getByRole('tree', { name: 'Modelos Fiat' }).element().querySelectorAll(':scope > [role="treeitem"]')
   await search.fill('uno')
   await expect.element(screen.getByRole('radio', { name: 'Fiat' })).toBeChecked()
   expect(models()).toHaveLength(1)
-  await expect.element(screen.getByRole('heading', { name: ENGINE_SHEETS['fiat-uno-mille-1991-1.0'].title })).toBeVisible()
+  await expect.element(screen.getByRole('heading', { name: TEST_CATALOG.sheets[TEST_ENGINES.unoMille].title })).toBeVisible()
   await search.fill('kombi')
   await expect.element(screen.getByText('Nenhum modelo com esse nome')).toBeVisible()
   await search.fill('')
@@ -237,7 +273,7 @@ test('Web: the arrow keys move between the listed parts', async () => {
 // tab's name. Nothing gets wider than the screen.
 test('Web: on a phone the Catalog goes from a brand to an engine sheet and back', async () => {
   await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
-  const screen = await render(<PhoneDashboard />)
+  const screen = await renderCatalog(true)
   const lines = screen.getByTestId('catalog.catalog-tab.screen.brands.brand')
   expect(lines.elements().map((line) => line.textContent)).toEqual([
     'CHChevrolet3 modelos · 2 fichas técnicas',

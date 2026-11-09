@@ -1,5 +1,6 @@
 import { RELEASE_VERSION } from 'virtual:apc-release'
 import { initials, loginRequestSchema, userCreateRequestSchema } from '@apc/domain/auth'
+import { CATALOG_PATH, type CatalogData } from '@apc/domain/catalog'
 import { IMPORT_CONFLICTS, itemImportSchema } from '@apc/domain/item-csv'
 import { itemMatchesQuery } from '@apc/domain/item-filters'
 import {
@@ -21,7 +22,6 @@ import {
   type ItemVehicleCreate,
 } from '@apc/domain/items'
 import {
-  isCatalogBrand,
   ITEM_LIST_PATHS,
   listEntryCreateSchema,
   listEntryIdParamsSchema,
@@ -32,6 +32,7 @@ import {
   type ListEntry,
 } from '@apc/domain/lists'
 import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_PARTS } from '@apc/domain/photos'
+import { TEST_CATALOG_DATA } from '@apc/domain/test-catalog'
 import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 
@@ -42,8 +43,10 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // names follow the writing rule and stay apart ignoring case and accents, and the CSV import goes in whole or not at
 // all, refused with the API's own reasons (IMPORT_CONFLICTS). A photo sent stays in the browser as an object URL, which
 // the item carries as its whole address (see photoAddress in @apc/domain/photos), and is let go once the photo is
-// removed; a few sample items carry drawings of the demo's own. Everything is held in memory and starts over from
-// demoData.ts when the page loads again. Each answer carries the demo's marker (demoMarker.ts).
+// removed; a few sample items carry drawings of the demo's own. The catalog is the one a new server starts with
+// (TEST_CATALOG_DATA), its brands and models joined to the lists, where they can't be deleted or merged away, and it
+// names them as the lists do. Everything is held in memory and starts over from demoData.ts when the page loads again.
+// Each answer carries the demo's marker (demoMarker.ts).
 // The demo authorizes no devices: its logins and sign-ups go through without checking the device's proof, which the
 // demo doesn't make (see demoDevice.ts), and the routes that list, authorize, rename and remove devices, hand out an
 // entry code for a phone and log one in with it answer 501 with DEMO_UNAVAILABLE (DEMO_UNAVAILABLE_ROUTES), which the
@@ -83,6 +86,8 @@ type Db = {
   partBrands: ListEntry[]
   vehicleBrands: ListEntry[]
   vehicleModels: (ListEntry & { brandId: string })[]
+  /** The catalog's brands, each by its vehicle brand's id, with its models, each by its vehicle model's id. */
+  catalog: { brandId: string; mark: string; models: (CatalogData['brands'][number]['models'][number] & { modelId: string })[] }[]
   items: StoredItem[]
   /** The files of the photos sent or copied, by photo id; a sample photo is a file of the site and has none. */
   files: Map<string, Blob>
@@ -188,12 +193,23 @@ function conflict(message: string, reason: { itemCount?: number; entryId?: strin
  * @returns The routes it answers, as the API's server writes them, and how it answers a request to /api.
  */
 export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; handle: (request: Request) => Promise<Response> } {
-  const db: Db = { users: [], sessions: new Map(), categories: [], partBrands: [], vehicleBrands: [], vehicleModels: [], items: [], files: new Map() }
+  const db: Db = {
+    users: [],
+    sessions: new Map(),
+    categories: [],
+    partBrands: [],
+    vehicleBrands: [],
+    vehicleModels: [],
+    catalog: [],
+    items: [],
+    files: new Map(),
+  }
   db.users.push({ id: crypto.randomUUID(), ...DEMO_USER, inventoryTutorialSeen: false })
   const start = Date.now() - DEMO_ITEMS.length * DAY_MS
   DEMO_ITEMS.forEach((input, index) => createItem(db, input, new Date(start + index * DAY_MS).toISOString()))
   addSamplePhotos(db)
-  const routes = [...sessionRoutes(db), ...deviceRoutes(), ...itemRoutes(db), ...photoRoutes(db), ...listRoutes(db)]
+  joinCatalog(db)
+  const routes = [...sessionRoutes(db), ...deviceRoutes(), ...itemRoutes(db), ...photoRoutes(db), ...listRoutes(db), ...catalogRoutes(db)]
 
   return {
     routes: routes.map(({ method, path }) => ({ method, path })),
@@ -224,6 +240,31 @@ export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; han
       return json(404, { message: `Route ${request.method}:${path} not found`, error: 'Not Found', statusCode: 404 })
     },
   }
+}
+
+/**
+ * Lists the route of the catalog: the catalog's brands and models named as the lists name them now.
+ * @param db The demo's data.
+ * @returns The route.
+ */
+function catalogRoutes(db: Db): Route[] {
+  /** The name of a list entry by its id. */
+  const nameOf = (list: ListEntry[], id: string) => list.find((entry) => entry.id === id)!.name
+  return [
+    {
+      method: 'GET',
+      path: CATALOG_PATH,
+      answer: () =>
+        json(200, {
+          brands: db.catalog.map((brand) => ({
+            id: brand.brandId,
+            name: nameOf(db.vehicleBrands, brand.brandId),
+            mark: brand.mark,
+            models: brand.models.map(({ modelId, ...model }) => ({ ...model, name: nameOf(db.vehicleModels, modelId) })),
+          })),
+        }),
+    },
+  ]
 }
 
 /**
@@ -538,17 +579,38 @@ function listed(list: ListEntry[], text: string): ListEntry {
 }
 
 /**
+ * Joins the catalog a new server starts with to the lists: each of its brands and models is the list entry of its
+ * name, added when the lists don't hold it.
+ * @param db The demo's data.
+ */
+function joinCatalog(db: Db): void {
+  db.catalog = TEST_CATALOG_DATA.brands.map((brand) => {
+    const brandId = listed(db.vehicleBrands, brand.name).id
+    const model = (name: string) =>
+      db.vehicleModels.find((held) => held.brandId === brandId && optionKey(held.name) === optionKey(name)) ?? modelOf(db, brandId, name)
+    return { brandId, mark: brand.mark, models: brand.models.map((each) => ({ ...each, modelId: model(each.name).id })) }
+  })
+}
+
+/**
  * Lists the routes of the four lists: listing, creating, renaming, merging and deleting entries.
  * @param db The demo's data.
  * @returns The routes.
  */
 function listRoutes(db: Db): Route[] {
   const routes: Route[] = []
+  /** Whether the catalog has a vehicle brand or model, by its id. */
+  const inCatalog = {
+    brand: (id: string) => db.catalog.some((brand) => brand.brandId === id),
+    model: (id: string) => db.catalog.some((brand) => brand.models.some((model) => model.modelId === id)),
+  }
   for (const kind of NAME_LISTS) {
     const path = ITEM_LIST_PATHS[kind]
     const list = () => db[kind]
+    /** An entry as the API sends it: a vehicle brand says whether the catalog has it. */
+    const toEntry = (entry: ListEntry) => (kind === 'vehicleBrands' ? { ...entry, inCatalog: inCatalog.brand(entry.id) } : entry)
     routes.push(
-      { method: 'GET', path, answer: () => json(200, byName(list())) },
+      { method: 'GET', path, answer: () => json(200, byName(list()).map(toEntry)) },
       {
         method: 'POST',
         path,
@@ -558,7 +620,7 @@ function listRoutes(db: Db): Route[] {
             return sent.answer
           }
           const held = list().find((entry) => optionKey(entry.name) === optionKey(listName(sent.value.name)))
-          return held ? json(200, held) : json(201, listed(list(), sent.value.name))
+          return held ? json(200, toEntry(held)) : json(201, toEntry(listed(list(), sent.value.name)))
         },
       },
       {
@@ -583,7 +645,7 @@ function listRoutes(db: Db): Route[] {
             return conflict(`"${other.name}" is already in the list.`, { entryId: other.id })
           }
           held.name = name
-          return json(200, held)
+          return json(200, toEntry(held))
         },
       },
       {
@@ -606,7 +668,7 @@ function listRoutes(db: Db): Route[] {
           if (held.id === kept.id) {
             return conflict("An entry can't be merged into itself.")
           }
-          if (kind === 'vehicleBrands' && isCatalogBrand(held.name)) {
+          if (kind === 'vehicleBrands' && inCatalog.brand(held.id)) {
             return conflict(`"${held.name}" is a catalog brand.`)
           }
           const both = kind === 'partBrands' ? db.items.filter((item) => ITEMS_USING.partBrands(item, held.id) && ITEMS_USING.partBrands(item, kept.id)).length : 0
@@ -628,7 +690,7 @@ function listRoutes(db: Db): Route[] {
           if (!held) {
             return entryNotFound()
           }
-          if (kind === 'vehicleBrands' && isCatalogBrand(held.name)) {
+          if (kind === 'vehicleBrands' && inCatalog.brand(held.id)) {
             return conflict(`"${held.name}" is a catalog brand.`)
           }
           const itemCount = db.items.filter((item) => ITEMS_USING[kind](item, held.id)).length
@@ -646,8 +708,13 @@ function listRoutes(db: Db): Route[] {
   }
 
   const modelsPath = ITEM_LIST_PATHS.vehicleModels
-  /** A model as the API sends it, with its vehicle brand's id. */
-  const toModel = (model: Db['vehicleModels'][number]) => ({ id: model.id, name: model.name, vehicleBrandId: model.brandId })
+  /** A model as the API sends it, with its vehicle brand's id, saying whether the catalog has it. */
+  const toModel = (model: Db['vehicleModels'][number]) => ({
+    id: model.id,
+    name: model.name,
+    vehicleBrandId: model.brandId,
+    inCatalog: inCatalog.model(model.id),
+  })
   routes.push(
     { method: 'GET', path: modelsPath, answer: () => json(200, byName(db.vehicleModels).map(toModel)) },
     {
@@ -715,6 +782,9 @@ function listRoutes(db: Db): Route[] {
         if (held.brandId !== kept.brandId) {
           return conflict('A model can only be merged into a model of its brand.')
         }
+        if (inCatalog.model(held.id)) {
+          return conflict(`"${held.name}" is a catalog model.`)
+        }
         return json(200, { moved: merge(db, 'vehicleModels', held.id, kept.id) })
       },
     },
@@ -729,6 +799,9 @@ function listRoutes(db: Db): Route[] {
         const held = db.vehicleModels.find((model) => model.id === id.value.id)
         if (!held) {
           return entryNotFound()
+        }
+        if (inCatalog.model(held.id)) {
+          return conflict(`"${held.name}" is a catalog model.`)
         }
         const itemCount = db.items.filter((item) => ITEMS_USING.vehicleModels(item, held.id)).length
         if (itemCount > 0) {

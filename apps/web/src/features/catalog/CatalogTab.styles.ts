@@ -6,7 +6,8 @@ import { recipe, tv } from '../../styles/tv.ts'
 // past max-h-96 (120 steps from lg), and the engine's specs wrap in a row. The rail, the tiles, the tree and the sheet
 // only pass their classes to the Panel, the tile group and the TreeView, which keep their own ids; the main column,
 // the body and the detail column only lay out, so they add no level to their children's ids, which are the same as on
-// mobile.
+// mobile. While the catalog loads, or when it can't be loaded, the tab is one box with the spinner or the message in
+// its middle.
 // On a phone (below `card:`) the tab is one screen at a time, as in the "Catálogo no celular" mockup, under the
 // page's header and over the bottom bar. A section's heading, such as "Marcas · 4", is small and muted in the display
 // face. Each brand is a line across the screen, 72px tall, over a soft hairline: its letters in a raised square in the
@@ -17,13 +18,14 @@ import { recipe, tv } from '../../styles/tv.ts'
 export const SECTION_HEADING = `m-0 text-sm text-text-muted ${DISPLAY_LABEL}`
 
 /**
- * The Catalog tab: its grid, the brand rail and tiles, the main column, the tree, the detail column and the sheet; on a
+ * The Catalog tab: the box of its loading and error states, its grid, the brand rail and tiles, the main column, the tree, the detail column and the sheet; on a
  * phone, the screen with its headings, the brand lines, the tree, the path to an engine and the sheet's readouts.
  */
 export const catalogTab = recipe(
   'catalog.catalog-tab',
   tv({
     slots: {
+      status: 'grid min-h-60 place-items-center p-6',
       base: 'grid gap-3 lg:grid-cols-[calc(var(--spacing)*46)_minmax(0,1fr)]',
       rail: 'grid content-start gap-3',
       brands: 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-1',
@@ -54,6 +56,7 @@ export const catalogTab = recipe(
     },
   }),
   {
+    status: 'status',
     base: '',
     rail: 'rail',
     brands: 'rail.brands',

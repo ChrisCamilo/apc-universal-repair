@@ -9,7 +9,7 @@ import { TEST_USERS } from "@apc/domain/test-users";
 import type { PrismaClient } from "../generated/prisma/client.js";
 import { createSession } from "../auth/sessions.js";
 import { createPrisma, prisma } from "./client.js";
-import { copyDatabase, copyProblems, TABLES } from "./copy.js";
+import { copyDatabase, copyProblems, STARTING_TABLES, TABLES } from "./copy.js";
 import { API_DIR } from "./provider.js";
 
 // Copying between databases (`pnpm --filter @apc/api test:db`), from the seeded database of DATABASE_URL, PostgreSQL
@@ -138,9 +138,11 @@ test("API: a target that isn't empty, or isn't migrated, is refused", async () =
   assert.match(unmigrated.join("\n"), /The target lacks \d+ migration/);
 });
 
-// Fails a copy after its first tables, and checks the target keeps nothing: the copy runs in one transaction.
-test("API: a copy that fails halfway leaves the target empty", async () => {
+// Fails a copy after its first tables, and checks the target keeps nothing of it: the copy runs in one transaction, so
+// the target holds only the starting catalog its migration inserted, as a target just migrated does.
+test("API: a copy that fails halfway leaves the target as it was", async () => {
   const target = migrated(sqliteUrl("halfway"));
+  const before = await rowsOf(target);
   await assert.rejects(
     copyDatabase(prisma, target, (table) => {
       if (table === "brand") {
@@ -149,7 +151,9 @@ test("API: a copy that fails halfway leaves the target empty", async () => {
     }),
     /Stopped halfway/,
   );
-  for (const name of TABLES) {
-    assert.equal(await (target[name] as unknown as { count: () => Promise<number> }).count(), 0, name);
+  assert.deepEqual(await rowsOf(target), before);
+  for (const name of TABLES.filter((table) => !STARTING_TABLES.includes(table))) {
+    assert.equal(before[name].length, 0, name);
   }
+  assert.ok(before.catalogEngine.length > 0);
 });

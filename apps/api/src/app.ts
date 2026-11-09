@@ -4,6 +4,7 @@ import { serializerCompiler, validatorCompiler } from "@fastify/type-provider-zo
 import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES } from "@apc/domain/photos";
 import { registerAllowedHosts } from "./plugins/allowed-hosts.js";
 import { registerAuthentication } from "./plugins/authenticate.js";
+import { registerCatalogRoutes } from "./catalog/routes/catalog.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerDeviceRoutes } from "./devices/routes/devices.js";
 import { registerHealthRoute } from "./health/routes/health.js";
@@ -46,6 +47,7 @@ export function buildApp({
   registerErrorHandler(app);
   registerAllowedHosts(app);
   registerAuthentication(app, sessions);
+  registerCatalogRoutes(app);
   registerDeviceRoutes(app);
   registerHealthRoute(app);
   registerItemRoutes(app);

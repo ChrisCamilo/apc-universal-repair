@@ -215,19 +215,23 @@ test('Web: a name no item uses is deleted after confirming', async () => {
   await expect.element(screen.getByRole('group', { name: 'Modelos de Renault' })).not.toBeInTheDocument()
 })
 
-// Asks to delete a model items use and checks nothing can be deleted: the dialog says how many items use it, and Ver
-// itens hands over the filters that show them; a vehicle brand of the catalog can't be deleted either.
+// Asks to delete a category items use and checks nothing can be deleted: the dialog says how many items use it, and Ver
+// itens hands over the filters that show them; a vehicle model and a vehicle brand of the catalog can't be deleted
+// either.
 test('Web: a name in use or of the catalog is not deleted', async () => {
   const onRemove = vi.fn<RemoveListEntry>()
   const onShowItems = vi.fn()
   const screen = await render(<Sample onRemove={onRemove} onShowItems={onShowItems} />)
-  await screen.getByRole('group', { name: 'Modelos de Volkswagen' }).getByRole('button', { name: 'Excluir Gol' }).click()
+  await screen.getByRole('button', { name: 'Excluir Motor' }).click()
   const blocked = screen.getByRole('dialog', { name: 'Não é possível excluir' })
   await expect.element(blocked).toBeVisible()
-  expect(blocked.element().textContent).toContain('1 item usa “Gol”. Troque o modelo do veículo desses itens antes de excluir.')
+  expect(blocked.element().textContent).toContain('2 itens usam “Motor”. Troque a categoria desses itens antes de excluir.')
   await blocked.getByRole('button', { name: 'Ver itens' }).click()
-  expect(onShowItems).toHaveBeenCalledWith(expect.objectContaining({ vehicleModel: ['Volkswagen|Gol'], category: [] }))
+  expect(onShowItems).toHaveBeenCalledWith(expect.objectContaining({ category: ['Motor'], vehicleModel: [] }))
 
+  await screen.getByRole('group', { name: 'Modelos de Volkswagen' }).getByRole('button', { name: 'Excluir Gol' }).click()
+  await expect.poll(() => blocked.element().textContent).toContain('“Gol” também está no catálogo e não pode ser excluído do estoque.')
+  await blocked.getByRole('button', { name: 'Fechar' }).click()
   await screen.getByRole('button', { name: 'Excluir Chevrolet' }).click()
   await expect.poll(() => blocked.element().textContent).toContain('“Chevrolet” também está no catálogo e não pode ser excluída do estoque.')
   expect(blocked.getByRole('button').elements().map((button) => button.textContent)).toEqual(['Fechar'])

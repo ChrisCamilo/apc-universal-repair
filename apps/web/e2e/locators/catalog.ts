@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { ENGINE_SHEETS } from "@apc/domain/catalog";
+import { TEST_CATALOG, TEST_ENGINES } from "@apc/domain/test-catalog";
 
 // The Catalog tab: its brands, the models' tree, its searches and the engine sheets; on a phone, the brand lines, the
 // screen's title and its ←, and the parts a code search found as cards.
@@ -16,7 +16,7 @@ export function catalog(page: Page) {
     brand: (name: string, exact?: boolean) => page.getByRole("radio", { name, exact }),
     models: (brand: string) => page.getByRole("tree", { name: `Modelos ${brand}` }),
     model: (name: string, exact?: boolean) => page.getByRole("treeitem", { name, exact }),
-    sheet: (key: keyof typeof ENGINE_SHEETS) => page.getByRole("heading", { name: ENGINE_SHEETS[key].title }),
+    sheet: (key: keyof typeof TEST_ENGINES) => page.getByRole("heading", { name: TEST_CATALOG.sheets[TEST_ENGINES[key]].title }),
     brandSearch: page.getByRole("searchbox", { name: "Procure marca" }),
     search: page.getByRole("searchbox", { name: "Procure modelo ou código da peça" }),
     parts: page.getByRole("radiogroup", { name: "Peças do estoque com esse código" }),

@@ -2,9 +2,7 @@ import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { BackHandler, Pressable, ScrollView, Text as RNText, View } from 'react-native';
 import {
   brandSummary,
-  CATALOG,
   CATALOG_HOME,
-  ENGINE_SHEETS,
   ENGINE_SPEC_LABELS,
   enginePath,
   findParts,
@@ -13,15 +11,17 @@ import {
   partScreen,
   screenBack,
   screenHeader,
+  type Catalog,
   type CatalogScreen,
   type FoundPart,
 } from '@apc/domain/catalog';
 import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons';
-import { EmptyState } from '../../components/EmptyState';
+import { EmptyState, ErrorState } from '../../components/EmptyState';
 import { FieldScrollView } from '../../components/FieldScrollView';
 import { Icon } from '../../components/Icon';
 import { ImageFrame } from '../../components/ImageFrame';
 import { Panel } from '../../components/Panel';
+import { Spinner } from '../../components/Spinner';
 import { SearchField } from '../../components/TextField';
 import { useTheme } from '../../app/theme';
 import { TreeView } from '../../components/TreeView';
@@ -29,6 +29,7 @@ import { Heading, NumericReadout, Text } from '../../components/Typography';
 import { useItems } from '../inventory/useItems';
 import { useStyles } from './CatalogTab.styles';
 import { PartResults } from './PartResults';
+import { useCatalog } from './useCatalog';
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 
 // The Catalog tab, the same as the web's on a phone: a stack of screens, as in the "Catálogo no celular" mockup (see
@@ -39,9 +40,32 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 // inventory parts with that code (3+ letters or digits), listed as the Inventory's cards, and a press on one clears it
 // and opens the part's engine sheet, or its brand's models with its model pointed out and a note when the catalog has
 // no sheet for it. Otherwise it narrows the brands to the ones with a model of that name, and the tree to those models.
-// The data is the mocked catalog of @apc/domain/catalog.
+// The catalog comes from the API (useCatalog): while it loads the tab shows a spinner, and when it can't be loaded, why,
+// with a button to try again.
 
 export function CatalogTab() {
+  const state = useCatalog();
+  const { styles, ids } = useStyles();
+  if (state.status === 'ready' && state.catalog.brands.length > 0) {
+    return <CatalogScreens catalog={state.catalog} />;
+  }
+  return (
+    <View style={styles.status} testID={ids.status}>
+      {state.status === 'loading' && <Spinner label="Carregando o catálogo" />}
+      {state.status === 'error' && (
+        <ErrorState
+          title="Não foi possível carregar o catálogo"
+          message="Verifique a conexão com o servidor e tente de novo."
+          action={{ label: 'Tentar de novo', onPress: state.reload }}
+        />
+      )}
+      {state.status === 'ready' && <EmptyState title="Nenhuma marca no catálogo" message="As marcas do catálogo aparecem aqui." />}
+    </View>
+  );
+}
+
+/** The Catalog's screens, one at a time: the brands, a brand's models or an engine's sheet. */
+function CatalogScreens({ catalog }: { catalog: Catalog }) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   const state = useItems();
@@ -58,7 +82,7 @@ export function CatalogTab() {
   // brands keep the tab's name and let the back button leave.
   useEffect(() => {
     scroll.current?.scrollTo({ y: 0, animated: false });
-    const { title, back } = screenHeader(screen);
+    const { title, back } = screenHeader(catalog, screen);
     const before = screenBack(screen);
     if (!back || !before) {
       setHeader(null);
@@ -73,11 +97,11 @@ export function CatalogTab() {
       subscription.remove();
       setHeader(null);
     };
-  }, [screen, setHeader]);
+  }, [catalog, screen, setHeader]);
 
   /** Opens the screen a part leads to, its engine's sheet or its brand's models, done with the search. */
   const choosePart = (part: FoundPart) => {
-    const next = partScreen(part.item);
+    const next = partScreen(catalog, part.item);
     if (next) {
       setQuery('');
       setScreen(next);
@@ -94,11 +118,11 @@ export function CatalogTab() {
   /** The screen on show. */
   const content = () => {
     if (screen.view === 'sheet') {
-      const sheet = ENGINE_SHEETS[screen.engineId];
+      const sheet = catalog.sheets[screen.engineId];
       return (
         <>
           <RNText style={styles.path} testID={ids.path}>
-            {enginePath(screen.brandId, screen.engineId)}
+            {enginePath(catalog, screen.brandId, screen.engineId)}
           </RNText>
           <ImageFrame alt={`Foto do ${sheet.title}`} emptyLabel="Sem foto do modelo" />
           <Heading level={2}>{sheet.title}</Heading>
@@ -119,7 +143,7 @@ export function CatalogTab() {
 
     if (screen.view === 'models') {
       const { brandId, modelId, engineId, missing } = screen;
-      const brand = CATALOG.find((b) => b.id === brandId)!;
+      const brand = catalog.brands.find((b) => b.id === brandId)!;
       const models = modelsNamed(brand.models, modelQuery);
       return (
         <>
@@ -152,7 +176,7 @@ export function CatalogTab() {
     }
 
     // The brands that have a model with the name searched, every brand without a search.
-    const brands = CATALOG.filter((brand) => modelsNamed(brand.models, modelQuery).length > 0);
+    const brands = catalog.brands.filter((brand) => modelsNamed(brand.models, modelQuery).length > 0);
     return (
       <>
         {search}
@@ -165,7 +189,7 @@ export function CatalogTab() {
               <Pressable
                 key={brand.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${brand.name}, ${brandSummary(brand)}`}
+                accessibilityLabel={`${brand.name}, ${brandSummary(catalog, brand)}`}
                 onPress={() => setScreen({ view: 'models', brandId: brand.id })}
                 style={({ pressed }) => [styles.brand, pressed && styles.brandPressed]}
                 testID={ids.brand}
@@ -180,7 +204,7 @@ export function CatalogTab() {
                     {brand.name}
                   </RNText>
                   <RNText style={styles.brandMeta} testID={ids.brandMeta}>
-                    {brandSummary(brand)}
+                    {brandSummary(catalog, brand)}
                   </RNText>
                 </View>
                 <View style={styles.chevron} testID={ids.chevron}>

@@ -63,7 +63,7 @@ flowchart TB
             tutorial["inventory-tutorial<br/>tutorial steps · test item"]
         end
         auth["auth · test-users<br/>sign-up rules · login on the API · mock"]
-        catalog["catalog<br/>mocked vehicle catalog"]
+        catalog["catalog · test-catalog<br/>vehicle catalog from the API · search · starting catalog"]
         subgraph platform["platform/"]
             apiRoutes["api-routes<br/>API routes · response schemas"]
             listQuery["list-query<br/>sort · page sizes · filter values"]
@@ -86,7 +86,6 @@ flowchart TB
     itemForm --> lists
     itemFilters --> lists
     itemCsv --> lists
-    lists --> catalog
     catalog --> items
     tutorial --> itemForm
     tutorial --> itemFilters
@@ -94,11 +93,12 @@ flowchart TB
     apiRoutes --> items
     apiRoutes --> itemCsv
     apiRoutes --> lists
+    apiRoutes --> catalog
 ```
 
-The web and the phone app lay out `src` the same way: `app/`, what starts and frames the app (the API's address, the theme, the routes on the web, the motion on the phone); `components/`, the design system's components, each in its own folder with its style file and an `index.ts` the screens import it through; `styles/`, the style tools; and `features/`, one folder per feature, `auth/`, `dashboard/` (the frame around the tabs only), `catalog/`, `inventory/` and `notifications/`. The API's `src` is by feature too, with the same names as the shared package's `domain/`: `inventory/`, `auth/`, `devices/` and `health/`, each with its routes in its own `routes/` folder, beside the feature's logic, apart from `db/` and `plugins/`.
+The web and the phone app lay out `src` the same way: `app/`, what starts and frames the app (the API's address, the theme, the routes on the web, the motion on the phone); `components/`, the design system's components, each in its own folder with its style file and an `index.ts` the screens import it through; `styles/`, the style tools; and `features/`, one folder per feature, `auth/`, `dashboard/` (the frame around the tabs only), `catalog/`, `inventory/` and `notifications/`. The API's `src` is by feature too, with the same names as the shared package's `domain/`: `inventory/`, `catalog/`, `auth/`, `devices/` and `health/`, each with its routes in its own `routes/` folder, beside the feature's logic, apart from `db/` and `plugins/`.
 
-O app web e o do celular organizam o `src` do mesmo jeito: `app/`, o que inicia e emoldura o app (o endereço da API, o tema, as rotas na web, o movimento no celular); `components/`, os componentes do design system, cada um na sua pasta com o arquivo de estilo e um `index.ts` pelo qual as telas o importam; `styles/`, as ferramentas de estilo; e `features/`, uma pasta por funcionalidade, `auth/`, `dashboard/` (só a moldura em volta das abas), `catalog/`, `inventory/` e `notifications/`. O `src` da API também é por funcionalidade, com os mesmos nomes do `domain/` do pacote compartilhado: `inventory/`, `auth/`, `devices/` e `health/`, cada uma com as rotas numa pasta `routes/` própria, ao lado da lógica da funcionalidade, separadas do `db/` e dos `plugins/`.
+O app web e o do celular organizam o `src` do mesmo jeito: `app/`, o que inicia e emoldura o app (o endereço da API, o tema, as rotas na web, o movimento no celular); `components/`, os componentes do design system, cada um na sua pasta com o arquivo de estilo e um `index.ts` pelo qual as telas o importam; `styles/`, as ferramentas de estilo; e `features/`, uma pasta por funcionalidade, `auth/`, `dashboard/` (só a moldura em volta das abas), `catalog/`, `inventory/` e `notifications/`. O `src` da API também é por funcionalidade, com os mesmos nomes do `domain/` do pacote compartilhado: `inventory/`, `catalog/`, `auth/`, `devices/` e `health/`, cada uma com as rotas numa pasta `routes/` própria, ao lado da lógica da funcionalidade, separadas do `db/` e dos `plugins/`.
 
 ## Saving an item · Salvando um item
 

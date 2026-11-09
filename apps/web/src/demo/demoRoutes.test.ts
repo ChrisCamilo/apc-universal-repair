@@ -41,6 +41,7 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
     const item = (await (await sendPhoto()).json()) as Item
     return call('GET', `/photos/${item.brands[0].photos[0].id}.png`)
   },
+  'GET /catalog': ({ call }) => call('GET', '/catalog'),
   ...Object.fromEntries(Object.values(ITEM_LIST_PATHS).flatMap((path) => Object.entries(listCalls(path)))),
 }
 /** An item to send. */
