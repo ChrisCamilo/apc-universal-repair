@@ -149,7 +149,7 @@ function WideCatalog({ catalog }: { catalog: Catalog }) {
         <SearchField label="Procure modelo ou código da peça" value={query} onValueChange={search} />
         {searchingParts && <PartResults catalog={catalog} results={results} chosen={part?.id} onChoose={choosePart} />}
         <div className={classes.body()} data-testid={ids.body}>
-          <Panel>
+          <Panel className={classes.models()}>
             {models.length > 0 ? (
               <TreeView
                 key={`${brandId}-${revealed}`}
