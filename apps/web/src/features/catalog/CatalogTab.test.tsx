@@ -26,6 +26,21 @@ const PARTS: Item[] = [
   part({ code: 'GOL-300', name: 'Filtro de ar', vehicleBrand: 'Volkswagen', vehicleModel: null }),
   part({ code: 'LAMP-100', name: 'Lâmpada H4', vehicleBrand: 'Universal', vehicleModel: null }),
 ]
+// A catalog with many brands and models, as one may grow to: the test catalog, 30 more models for Chevrolet and 12
+// more brands.
+const LARGE_CATALOG = {
+  brands: [
+    {
+      ...TEST_CATALOG_DATA.brands[0],
+      models: [
+        ...TEST_CATALOG_DATA.brands[0].models,
+        ...Array.from({ length: 30 }, (_, index) => ({ id: crypto.randomUUID(), name: `Modelo ${index + 1}`, generations: [] })),
+      ],
+    },
+    ...TEST_CATALOG_DATA.brands.slice(1),
+    ...Array.from({ length: 12 }, (_, index) => ({ id: crypto.randomUUID(), name: `Marca ${index + 1}`, mark: 'MA', models: [] })),
+  ],
+}
 const root = document.documentElement
 
 /**
@@ -192,6 +207,36 @@ test('Web: the Catalog lays out in columns on desktop and stacks on a narrow scr
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(TABLE_CARD_BREAKPOINT)
   const engine = screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' }).element().querySelector('.truncate')!
   expect(engine.scrollWidth).toBeLessThanOrEqual(engine.clientWidth)
+})
+
+// Fills the Catalog with 16 brands and a brand of 33 models at 1280×720 in the app frame, and checks the page doesn't
+// scroll: the tiles scroll under the brand search, the tree inside its panel and the detail column on its own, each
+// ending at the bottom of the window, and scrolling the tiles to their end keeps the brand search in view.
+test('Web: on desktop the Catalog fills the window and scrolls in its columns', async () => {
+  answer([], () => new Response(JSON.stringify(LARGE_CATALOG)))
+  const screen = await render(
+    <AppFrame navLabel="Seções do Dashboard" nav={null}>
+      <CatalogTab />
+    </AppFrame>,
+  )
+  await expect.element(screen.getByRole('tree')).toBeVisible()
+  const page = screen.getByTestId('common.app-frame.main').element()
+  expect(page.scrollHeight).toBeLessThanOrEqual(page.clientHeight)
+  const tiles = screen.getByRole('radiogroup', { name: 'Marcas' }).element()
+  const tree = screen.getByRole('tree').element()
+  const detail = screen.getByTestId('catalog.catalog-tab.detail').element()
+  for (const column of [tiles, tree]) {
+    expect(column.scrollHeight).toBeGreaterThan(column.clientHeight)
+  }
+  expect(getComputedStyle(detail).overflowY).toBe('auto')
+  const bottom = page.getBoundingClientRect().bottom
+  for (const column of [tiles, tree, detail]) {
+    expect(column.getBoundingClientRect().bottom).toBeLessThanOrEqual(bottom)
+    expect(column.getBoundingClientRect().bottom).toBeGreaterThan(bottom - 40)
+  }
+  tiles.scrollTop = tiles.scrollHeight
+  await expect.element(screen.getByRole('radio', { name: 'Marca 12' })).toBeInViewport()
+  await expect.element(screen.getByRole('searchbox', { name: 'Procure marca' })).toBeInViewport()
 })
 
 // Types a brand search in another case and checks only the matching tile is left, then clears it and checks every
