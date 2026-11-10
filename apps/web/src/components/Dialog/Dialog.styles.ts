@@ -10,6 +10,8 @@ import { recipe, tv } from '../../styles/tv.ts'
 // scrolls under it, and the actions sit at the bottom, clear of the home indicator; it slides up from the bottom edge
 // instead of growing. A confirmation stays a centered box, 16px from the screen's edges. A dialog with a ← has it at
 // the left of its title row, the title kept for screen readers, and its control at the right.
+// The body is the containing block of what it holds, so an input kept for screen readers only (absolutely positioned,
+// as the photo field's) scrolls the body into view when focused, never the window, which can't be scrolled back.
 
 /** A dialog: the window, its layout, the scrolling body, the title row with its title, and the action bar. */
 export const dialog = recipe(
@@ -24,7 +26,7 @@ export const dialog = recipe(
         'motion-reduce:transition-none motion-reduce:backdrop:transition-none',
       ],
       layout: 'flex max-h-[inherit] flex-col',
-      body: 'grid min-h-0 gap-4 overflow-y-auto p-6',
+      body: 'relative grid min-h-0 gap-4 overflow-y-auto p-6',
       header: 'flex items-start justify-between gap-3',
       title: '',
       actions: 'flex flex-wrap justify-end gap-2 border-t border-hairline-soft px-6 pt-3 pb-6',
