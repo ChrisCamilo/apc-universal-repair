@@ -7,6 +7,12 @@ on:
 jobs:
   lint-build-test:
     runs-on: ubuntu-latest
+    # Playwright's own image, with its Chromium and the system libraries it needs, so nothing is installed with apt or
+    # downloaded for the browser. Its tag is the Playwright version the lockfile resolves, which
+    # scripts/playwright-image.mjs checks below; a Playwright bump changes it too.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --user 1001
     env:
       # Placeholder: only needed for `prisma generate` to resolve its config, no live DB required for build/lint.
       DATABASE_URL: "postgresql://user:password@localhost:5432/apc_universal_repair"
@@ -14,6 +20,9 @@ jobs:
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v7
+
+      - name: Playwright's image matches the lockfile
+        run: node scripts/playwright-image.mjs
 
       - uses: actions/setup-node@v7
         with:
@@ -39,9 +48,6 @@ jobs:
 
       - name: Build
         run: pnpm turbo run build
-
-      - name: Install Playwright browser
-        run: pnpm --filter @apc/web exec playwright install --with-deps chromium
 
       - name: Unit tests
         run: pnpm turbo run test
