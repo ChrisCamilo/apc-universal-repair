@@ -6,6 +6,7 @@ import {
   capitalizeFirst,
   codeKey,
   generationText,
+  ITEM_DESCRIPTION_MAX,
   itemCreateSchema,
   itemDetails,
   itemListResponseSchema,
@@ -35,7 +36,8 @@ import {
 // "|", each "Marca / Modelo", optionally followed by " / " and its generation with its full years and its version
 // ("Chevrolet / Monza / 1985-1990 / 1.6 GLX"), or the brand alone for any model; a file with the "vehicle_brand" and "vehicle_model"
 // columns of before still reads, as the item's one vehicle. The "original_codes" column holds the vehicle maker's
-// codes, separated by "|". Text follows the writing rule, codes are uppercase, and a category, brand or model
+// codes, separated by "|". The "material" and "description" columns hold the part's material and its short
+// description, up to 30 characters, both optional. Text follows the writing rule, codes are uppercase, and a category, brand or model
 // already in the lists takes its spelling there; the names not in the lists yet are listed, to be created by the
 // import. The valid items go to the API in one request, checked with the item schema, and come back as how many items
 // were created and updated; an item with a row in error is left out whole. The export writes the items of the list as
@@ -58,13 +60,15 @@ export const CSV_COLUMNS = [
   "color",
   "position",
   "side",
+  "material",
+  "description",
 ] as const;
 /** The template to download: the header, an item of one brand and an item of two. */
 export const CSV_TEMPLATE = [
   CSV_COLUMNS.join(","),
-  '1,W 712/95,,Filtro de óleo,Motor,Mann,Volkswagen / Gol | Volkswagen / Voyage,8,2,A-2,"39,90",,,',
-  '2,BP-1020,52098472 | 52098473,Pastilha de freio,Freios,Cobreq,Chevrolet,4,1,B-10,"89,90",,D,Ambos',
-  '2,PD/1020,52098472 | 52098473,Pastilha de freio,Freios,Fras-le,Chevrolet,2,1,B-10,"94,90",,D,Ambos',
+  '1,W 712/95,,Filtro de óleo,Motor,Mann,Volkswagen / Gol | Volkswagen / Voyage,8,2,A-2,"39,90",,,,Papel,Com anel de vedação',
+  '2,BP-1020,52098472 | 52098473,Pastilha de freio,Freios,Cobreq,Chevrolet,4,1,B-10,"89,90",,D,Ambos,,',
+  '2,PD/1020,52098472 | 52098473,Pastilha de freio,Freios,Fras-le,Chevrolet,2,1,B-10,"94,90",,D,Ambos,,',
   "",
 ].join("\r\n");
 /** What separates an item's original codes in the original_codes column, as the export writes them. */
@@ -119,7 +123,7 @@ export type NewListNames = {
 
 /**
  * Checks the rows of each item of a file, adding to their errors: a row that describes the item otherwise than its
- * first row (name, category, vehicle, position, side, minimum or original codes), a part brand a row before already has, and, once
+ * first row (name, category, vehicle, position, side, minimum, original codes, material or description), a part brand a row before already has, and, once
  * any row of an item has an error, every other row of it, since the item is left out whole.
  * @param rows The rows read, changed in place.
  */
@@ -134,6 +138,8 @@ function checkGroups(rows: readonly CsvItemRow[]): void {
       item.side ?? NOT_APPLICABLE,
       String(item.minQuantity),
       (item.originalCodes ?? []).map(codeKey).join(" "),
+      item.material ?? "",
+      item.description ?? "",
     ]
       .map(optionKey)
       .join("|");
@@ -229,6 +235,9 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
   const listed = (entries: readonly ListEntry[], text: string) => (text ? (findEntry(entries, text)?.name ?? listName(text)) : "");
   const quantity = count("quantity", "Quantidade");
   const minQuantity = count("minimum", "Quantidade mínima");
+  if (value("description").length > ITEM_DESCRIPTION_MAX) {
+    errors.push(`Descrição deve ter no máximo ${ITEM_DESCRIPTION_MAX} caracteres.`);
+  }
   const item: ItemCreate = {
     name: name && capitalizeFirst(name),
     category: listed(lists.categories, category),
@@ -237,6 +246,8 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
     position: choice("position", POSITIONS, "Posição deve ser D, T ou Ambos, ou ficar vazia."),
     side: choice("side", SIDES, "Lado deve ser LD, LE ou Ambos, ou ficar vazio."),
     originalCodes: addCodes([], value("original_codes").split("|")),
+    ...(value("material") && { material: capitalizeFirst(value("material")) }),
+    ...(value("description") && { description: capitalizeFirst(value("description")) }),
     brands: [
       {
         partBrand: listed(lists.partBrands, partBrand),
@@ -456,6 +467,8 @@ export function itemsCsv(items: readonly Item[], { photos }: { photos: boolean }
         color: brand.color,
         position: item.position,
         side: item.side,
+        material: item.material ?? "",
+        description: item.description ?? "",
       };
       const row = CSV_COLUMNS.map((column) => cells[column]);
       return photos ? [...row, brand.photos.map((photo) => photo.url).join(CSV_PHOTO_SEPARATOR)] : row;
