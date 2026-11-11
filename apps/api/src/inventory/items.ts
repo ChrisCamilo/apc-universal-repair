@@ -21,7 +21,8 @@ import type { ActiveSession } from "../auth/sessions.js";
 // Translates between the items API and the database: the writing rule and search keys applied on create and
 // update, the filters of the list, and the row sent back with its vehicles, its original codes and its brands and
 // their photos.
-// The search finds an item by its name or any of its codes, its brands' or its original ones. The API speaks names and
+// The search finds an item by its name or any of its codes, its brands' or its original ones. Its material and short
+// description are free text, null when not given. The API speaks names and
 // the inventory's own position and side values ("D", "LE"); the database keeps references to the lists' entries (see
 // listIds) and enums, so the item comes back with the names its entries have. An item's vehicles and brands keep the
 // order they were sent in, by their position; the filters by vehicle match any of an item's vehicles; the item's quantity is their sum (see syncQuantity), so the list filters by stock
@@ -90,7 +91,7 @@ export function brandData(input: ItemBrandCreate, partBrandId: string, position:
 
 /**
  * Builds the row of a new item, without its brands: text values start with a capital, the search key is filled in,
- * the list entries are referenced, and position and side default to N/A.
+ * the list entries are referenced, position and side default to N/A, and a blank material or description is null.
  * @param input Validated create body.
  * @param ids The item's list entries, from listIds.
  * @returns Data for prisma.item.create, its quantity the brands' sum.
@@ -105,6 +106,8 @@ export function createData(input: ItemCreate, ids: ListIds): Prisma.ItemUnchecke
     side: SIDE_VALUES[input.side ?? NOT_APPLICABLE],
     quantity: input.brands.reduce((sum, brand) => sum + (brand.quantity ?? 0), 0),
     minQuantity: input.minQuantity ?? 0,
+    material: textOrNull(input.material),
+    description: textOrNull(input.description),
   };
 }
 
@@ -266,6 +269,8 @@ export function toItem(row: ItemRow, session: ActiveSession): Item {
     quantity: row.quantity,
     minQuantity: row.minQuantity,
     originalCodes: row.originalCodes.map((original) => original.code),
+    material: row.material,
+    description: row.description,
     brands: row.brands.map((brand) => ({
       id: brand.id,
       partBrand: brand.partBrand.name,
@@ -328,6 +333,12 @@ export function updateData(input: ItemUpdate, ids: Partial<ListIds>): Prisma.Ite
   }
   if (input.minQuantity !== undefined) {
     data.minQuantity = input.minQuantity;
+  }
+  // An empty material or description clears it.
+  for (const field of ["material", "description"] as const) {
+    if (input[field] !== undefined) {
+      data[field] = textOrNull(input[field]);
+    }
   }
   return data;
 }
