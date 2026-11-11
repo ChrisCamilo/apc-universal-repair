@@ -124,6 +124,8 @@ export function itemForm(page: Page, title: "Novo item" | "Editar item") {
     code: root.getByLabel("Código da peça"),
     name: root.getByLabel("Nome"),
     category: root.getByRole("combobox", { name: "Categoria" }),
+    description: root.getByLabel("Descrição curta"),
+    material: root.getByLabel("Material"),
     partBrand: root.getByRole("combobox", { name: "Marca da peça" }),
     vehicleBrand: root.getByRole("combobox", { name: "Marca do veículo" }),
     vehicleModel: root.getByRole("combobox", { name: "Modelo do veículo" }),
