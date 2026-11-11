@@ -45,6 +45,10 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --user 1001
+    # A container's steps run in sh unless told otherwise; the steps are written for bash, as on the runner.
+    defaults:
+      run:
+        shell: bash
     env:
       # Placeholder: only needed for `prisma generate` to resolve its config while installing, no database is used.
       DATABASE_URL: "postgresql://user:password@localhost:5432/apc_universal_repair"
