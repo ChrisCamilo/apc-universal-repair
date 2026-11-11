@@ -1,21 +1,14 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
-import { DASHBOARD_TABS } from "@apc/ui-spec/tabs";
 import { catalog } from "./locators/catalog.ts";
 
 // An engine added to a year with its sheet, and an engine's sheet edited, on the desktop, with the catalog's routes
 // answered by the stand-in, which keeps the changes for the test.
 
-// While the Catalog tab is a work in progress its screen sits out of reach behind the notice, so these tests wait for
-// it to come back; the notice itself is tested in dashboard.spec.ts.
-test.skip(DASHBOARD_TABS.some((tab) => tab.id === "catalog" && tab.wip), "The Catalog tab is a work in progress (#151)");
-// The issue that brings the Catalog back, shown with each of its tests in the report.
-const CATALOG_ISSUE = { type: "issue", description: "https://github.com/ChrisCamilo/apc-universal-repair/issues/151" };
-
 // Adds an engine to the Diplomata's empty 1985 from its dashed button and checks its sheet's title and the engine's
 // name as they will be, then saves it and checks the engine is chosen in the tree with its sheet; edits that sheet's
 // displacement and checks the engine's name and the title follow.
-test("Web: an engine is added with its sheet, and the sheet is edited", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
+test("Web: an engine is added with its sheet, and the sheet is edited", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/catalog");
   await tab.action("Novo motor em 1985").click();

@@ -3,7 +3,6 @@ import { TEST_TAGS } from "@apc/domain/test-tags";
 import { catalog } from "./locators/catalog.ts";
 import { dashboard } from "./locators/dashboard.ts";
 import type { Item } from "@apc/domain/items";
-import { DASHBOARD_TABS } from "@apc/ui-spec/tabs";
 import { item } from "./data/items.ts";
 
 // The inventory the code search looks in: a part for an engine the catalog has, and one for a model it has no sheet
@@ -13,19 +12,13 @@ const ITEMS: Item[] = [
   item({ code: "ESC-200", name: "Amortecedor", vehicleBrand: "Ford", vehicleModel: "Escort" }),
 ];
 
-// While the Catalog tab is a work in progress its screen sits out of reach behind the notice, so these tests wait for
-// it to come back; the notice itself is tested in dashboard.spec.ts.
-test.skip(DASHBOARD_TABS.some((tab) => tab.id === "catalog" && tab.wip), "The Catalog tab is a work in progress (#151)");
-// The issue that brings the Catalog back, shown with each of its tests in the report.
-const CATALOG_ISSUE = { type: "issue", description: "https://github.com/ChrisCamilo/apc-universal-repair/issues/151" };
-
 // Every test here starts on the Dashboard with the test inventory.
 test.use({ stock: { items: ITEMS } });
 
 // Opens the Catalog tab and checks it starts on Chevrolet with its first engine's sheet, then picks the other Opala
 // engine, Fiat and Ford, and checks the sheet follows each choice, Ford saying it has no sheet yet. Nothing scrolls
 // sideways.
-test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
+test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/inventory");
   await dashboard(page).tab("catalog").click();
@@ -48,7 +41,7 @@ test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_T
 // Narrows the brands by name, looks for a model another brand has, then types a part code without its separator and
 // checks the part is listed and reveals its vehicle, and a part for a model without a sheet says so; clearing the
 // search drops the part list.
-test("Web: the Catalog search finds brands, models and inventory parts", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
+test("Web: the Catalog search finds brands, models and inventory parts", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/catalog");
   await tab.brandSearch.fill("fia");
@@ -77,7 +70,7 @@ test("Web: the Catalog search finds brands, models and inventory parts", { tag: 
 // opens the Opala down to its 1986 engines and taps the 4.1, and checks its sheet shows under the path to it. ← goes
 // back to the models, open on the engine just seen, and ← again to the brands under the tab's name. The bottom bar
 // stays, and nothing scrolls sideways.
-test("Web: on a phone the Catalog goes from a brand to an engine sheet and back", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
+test("Web: on a phone the Catalog goes from a brand to an engine sheet and back", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   const tab = catalog(page);
   const shell = dashboard(page);
   await page.goto("/catalog");
@@ -104,7 +97,7 @@ test("Web: on a phone the Catalog goes from a brand to an engine sheet and back"
 
 // On a phone, types a part code without its separator and checks the part shows as an Inventory card, and a tap on it
 // opens its engine's sheet; then a part for a model without a sheet opens its brand's models with the note.
-test("Web: on a phone the Catalog search opens a part found by code", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
+test("Web: on a phone the Catalog search opens a part found by code", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/catalog");
   await tab.search.fill("fra1000");

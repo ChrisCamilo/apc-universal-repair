@@ -1,21 +1,14 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
-import { DASHBOARD_TABS } from "@apc/ui-spec/tabs";
 import { catalog } from "./locators/catalog.ts";
 
 // The Catalog's tree and engine sheets edited on a phone, in bottom sheets and a full-screen form, with the catalog's
 // routes answered by the stand-in, which keeps the changes for the test.
 
-// While the Catalog tab is a work in progress its screen sits out of reach behind the notice, so these tests wait for
-// it to come back; the notice itself is tested in dashboard.spec.ts.
-test.skip(DASHBOARD_TABS.some((tab) => tab.id === "catalog" && tab.wip), "The Catalog tab is a work in progress (#151)");
-// The issue that brings the Catalog back, shown with each of its tests in the report.
-const CATALOG_ISSUE = { type: "issue", description: "https://github.com/ChrisCamilo/apc-universal-repair/issues/151" };
-
 // On a phone, adds a brand and a model from beside their headings, then a generation, a version and a year from each
 // branch's "⋯", and an engine from the year's "Novo motor" in the full-screen sheet form, which opens the engine's
 // sheet; edits that sheet, renames the model and deletes it after the dialog says what goes with it.
-test("Web: on a phone a brand is filled down to an engine sheet, renamed and deleted", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
+test("Web: on a phone a brand is filled down to an engine sheet, renamed and deleted", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/catalog");
   await tab.newBrand.click();
