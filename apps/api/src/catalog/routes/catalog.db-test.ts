@@ -185,6 +185,35 @@ test("API: deleting a level of a tree takes what is under it", async () => {
   assert.equal((await call("DELETE", `/catalog/years/${randomUUID()}`)).statusCode, 404);
 });
 
+// Adds an engine with its sheet to a year of this run, and checks it ends the year's engines with its name and sheet as
+// sent; saves its sheet again and checks the change; a sheet out of range, or with no drive, is rejected, and a year or
+// engine that isn't there is not found.
+test("API: an engine is added with its sheet, and its sheet is saved again", async () => {
+  const brand = await addedBrand(`Lada ${RUN}`);
+  const tree = async () => catalogSchema.parse((await call("GET", "/catalog")).json()).brands.find((each) => each.id === brand)!;
+  await call("POST", `/catalog/brands/${brand}/models`, { name: `Niva ${RUN}` });
+  await call("POST", `/catalog/models/${(await tree()).models[0].id}/generations`, { name: "Primeira", firstYear: 1977, lastYear: null });
+  await call("POST", `/catalog/generations/${(await tree()).models[0].generations[0].id}/versions`, { name: "4x4" });
+  await call("POST", `/catalog/versions/${(await tree()).models[0].generations[0].versions[0].id}/years`, { year: 1991 });
+  const year = (await tree()).models[0].generations[0].versions[0].years[0];
+
+  const sheet = { displacementDl: 16, cylinders: 4, drive: "ALL", summary: "  Tração integral permanente.  " };
+  const added = await call("POST", `/catalog/years/${year.id}/engines`, sheet);
+  assert.equal(added.statusCode, 201);
+  const engine = catalogSchema.parse(added.json()).brands.find((each) => each.id === brand)!.models[0].generations[0].versions[0].years[0].engines[0];
+  assert.deepEqual({ ...engine, id: undefined }, { id: undefined, displacementDl: 16, cylinders: 4, drive: "ALL", summary: "Tração integral permanente." });
+
+  const saved = await call("PATCH", `/catalog/engines/${engine.id}`, { displacementDl: 17, cylinders: 4, drive: "ALL", summary: "" });
+  assert.equal(saved.statusCode, 200);
+  const engines = (await tree()).models[0].generations[0].versions[0].years[0].engines;
+  assert.deepEqual(engines.map((each) => [each.id, each.displacementDl, each.summary]), [[engine.id, 17, ""]]);
+
+  assert.equal((await call("POST", `/catalog/years/${year.id}/engines`, { ...sheet, cylinders: 0 })).statusCode, 400);
+  assert.equal((await call("POST", `/catalog/years/${year.id}/engines`, { displacementDl: 16, cylinders: 4, summary: "" })).statusCode, 400);
+  assert.equal((await call("POST", `/catalog/years/${randomUUID()}/engines`, sheet)).statusCode, 404);
+  assert.equal((await call("PATCH", `/catalog/engines/${randomUUID()}`, sheet)).statusCode, 404);
+});
+
 /**
  * Adds a catalog brand of this run.
  * @param name Its name, with the run's mark.
