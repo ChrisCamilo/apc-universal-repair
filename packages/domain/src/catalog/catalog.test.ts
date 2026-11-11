@@ -11,6 +11,7 @@ import {
   catalogFrom,
   engineLabel,
   enginePath,
+  engineSheet,
   findParts,
   firstSheet,
   itemFit,
@@ -325,4 +326,28 @@ test("Shared: a request to the catalog's routes says which change it makes", () 
   });
   assert.deepEqual(catalogChangeOf("DELETE", `/models/${OPALA}`, {}, FORD), { status: 200, change: { kind: "delete", level: "model", id: OPALA } });
   assert.equal(catalogChangeOf("GET", "", {}, FORD), null);
+});
+
+// Builds an engine's sheet from the tree's names and its sheet, and makes an engine's changes in memory: one added
+// under a year with its sheet, its summary trimmed, and its sheet saved again; and reads the engine routes' changes.
+test("Shared: an engine's sheet is built, and an engine is added and saved in memory", () => {
+  const names = { year: 1985, brand: "Chevrolet", model: "Opala", version: "Diplomata" };
+  assert.deepEqual(engineSheet(names, { displacementDl: 38, cylinders: 6, drive: "REAR", summary: "Seis em linha." }), {
+    title: "1985 · Chevrolet Opala Diplomata 3.8",
+    specs: ["1985", "3.8 L", "6 CIL", "TRASEIRA"],
+    summary: "Seis em linha.",
+  });
+  const year = testCatalogId("Chevrolet", "Opala", "Terceira geração", "Diplomata", "1985");
+  const sheet = { displacementDl: 38, cylinders: 6, drive: "REAR" as const, summary: "  Seis em linha.  " };
+  const added = applyCatalogChange(TEST_CATALOG_DATA, { kind: "add", level: "engine", parentId: year, id: FORD, values: sheet }) as CatalogData;
+  const engines = () => added.brands[0].models[1].generations[2].versions[1].years[0].engines;
+  assert.deepEqual(engines(), [{ id: FORD, displacementDl: 38, cylinders: 6, drive: "REAR", summary: "Seis em linha." }]);
+  const saved = applyCatalogChange(added, { kind: "edit", level: "engine", id: FORD, values: { ...sheet, cylinders: 4 } }) as CatalogData;
+  assert.equal(saved.brands[0].models[1].generations[2].versions[1].years[0].engines[0].cylinders, 4);
+  assert.deepEqual(catalogChangeOf("POST", `/years/${year}/engines`, sheet, FORD), {
+    status: 201,
+    change: { kind: "add", level: "engine", parentId: year, id: FORD, values: sheet },
+  });
+  assert.deepEqual(catalogChangeOf("PATCH", `/engines/${FORD}`, sheet, FIAT)?.change, { kind: "edit", level: "engine", id: FORD, values: sheet });
+  assert.equal(catalogChangeOf("DELETE", `/engines/${FORD}`, {}, FIAT), null);
 });

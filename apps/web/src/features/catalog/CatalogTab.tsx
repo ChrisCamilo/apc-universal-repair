@@ -6,6 +6,7 @@ import {
   brandWithModel,
   CATALOG_BRANDS_PATH,
   CATALOG_CHILDREN,
+  CATALOG_ENGINES_PATH,
   CATALOG_HOME,
   CATALOG_LEVEL_PATHS,
   changeCatalog,
@@ -20,11 +21,14 @@ import {
   revealedVehicle,
   screenBack,
   screenHeader,
+  treePath,
   type Catalog,
   type CatalogEditLevel,
+  type CatalogEngineInput,
   type CatalogNode,
   type CatalogScreen,
   type CatalogValues,
+  type EngineSheetNames,
   type FoundPart,
 } from '@apc/domain/catalog'
 import { chevronIcon, ICON_SIZES, pencilIcon, plusIcon, trashIcon } from '@apc/tokens/icons'
@@ -44,6 +48,7 @@ import { Heading, NumericReadout, Text } from '../../components/Typography'
 import { usePhone } from '../../components/usePhone.ts'
 import { useItems } from '../inventory/useItems.ts'
 import { catalogTab } from './CatalogTab.styles.ts'
+import { EngineSheetForm } from './EngineSheetForm.tsx'
 import { NodeForm } from './NodeForm.tsx'
 import { PartResults } from './PartResults.tsx'
 import { useCatalog } from './useCatalog.ts'
@@ -63,7 +68,9 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // The tree is edited in place (see @apc/domain/catalog): "Nova marca" under the tiles adds a brand, "Novo modelo" over
 // the tree a model, and each branch, while pointed at or focused, has buttons that add the level under it, rename it,
 // move it up or down and delete it. What is added or renamed is typed in a row inside the tree (see NodeForm), and an
-// empty branch shows a dashed button to add its first. Deleting asks first, saying what goes with it. Every change
+// empty branch shows a dashed button to add its first. Deleting asks first, saying what goes with it. A year's "+",
+// "Novo motor", opens an empty sheet in the detail column instead (see EngineSheetForm), and the engine joins the tree,
+// chosen, once its sheet is saved; an engine's sheet has "Editar ficha", which turns it into the same form. Every change
 // answers the whole catalog, which the tab takes as it is; a name or year another node has is said under the field.
 // On a phone (below `card:`) the tab is a stack of screens, as in the "Catálogo no celular" mockup (see
 // CatalogScreen in @apc/domain/catalog): the brands, each on a line with how many models and sheets it has; a brand's
@@ -89,6 +96,20 @@ const TAKEN: Record<CatalogEditLevel | 'brand', string> = {
 type Editing =
   | { kind: 'add'; level: CatalogEditLevel | 'brand'; parent: { level: 'brand' | Exclude<CatalogEditLevel, 'year'>; id: string } }
   | { kind: 'rename'; node: CatalogNode }
+/** The engine sheet being filled in: a new engine's under a year, or an engine's own. */
+type SheetEditing = { kind: 'add'; year: CatalogNode } | { kind: 'edit'; engine: CatalogNode }
+
+/**
+ * Reads the names an engine's sheet is titled with, from the path to a node of the brand's tree.
+ * @param catalog The catalog.
+ * @param brandId The brand.
+ * @param nodeId The year, or an engine of it.
+ * @returns The year, brand, model and version.
+ */
+function sheetNames(catalog: Catalog, brandId: string, nodeId: string): EngineSheetNames {
+  const [model, , version, year] = treePath(catalog, brandId, nodeId)
+  return { year: Number(year.label), brand: catalog.brands.find((brand) => brand.id === brandId)!.name, model: model.label, version: version.label }
+}
 
 /**
  * Finds the siblings of a node of a brand's tree, itself included.
@@ -179,6 +200,7 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
   const [editError, setEditError] = useState<string>()
   const [saving, setSaving] = useState(false)
   const [removing, setRemoving] = useState<CatalogNode>()
+  const [sheetEditing, setSheetEditing] = useState<SheetEditing | null>(null)
   const brand = catalog.brands.find((b) => b.id === brandId)!
   const results = findParts(items, query)
   const searchingParts = results.parts.length > 0
@@ -229,6 +251,32 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
   const edit = (next: Editing) => {
     setEditing(next)
     setEditError(undefined)
+    setSheetEditing(null)
+  }
+
+  /** Opens an engine's sheet as a form in the detail column, a new engine's or one's own. */
+  const editSheet = (next: SheetEditing) => {
+    setSheetEditing(next)
+    setEditing(null)
+  }
+
+  /** Saves the sheet being filled in: adds the new engine, chosen in the tree, or saves the engine's sheet again. */
+  const saveSheet = async (sheet: CatalogEngineInput) => {
+    if (!sheetEditing) {
+      return
+    }
+    const adding = sheetEditing.kind === 'add'
+    const path = adding ? `${CATALOG_LEVEL_PATHS.year}/${sheetEditing.year.id}/${CATALOG_CHILDREN.year.segment}` : `${CATALOG_ENGINES_PATH}/${sheetEditing.engine.id}`
+    const changed = await change(adding ? 'POST' : 'PATCH', path, sheet)
+    if (!changed) {
+      return
+    }
+    setSheetEditing(null)
+    if (adding) {
+      const year = treeNodes(changed.brands.find((b) => b.id === brandId)!.models).get(sheetEditing.year.id)
+      setEngine(year?.children?.at(-1)?.id)
+      setRevealed((count) => count + 1)
+    }
   }
 
   /**
@@ -322,16 +370,10 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
     }
     const siblings = siblingsOf(brand.models, id)
     const at = siblings.findIndex((each) => each.id === id)
-    const child = node.level === 'year' ? null : CATALOG_CHILDREN[node.level]
+    const child = CATALOG_CHILDREN[node.level]
     return (
       <>
-        {child && (
-          <RowAction
-            icon={plusIcon}
-            label={`${child.add} em ${node.label}`}
-            onClick={() => edit({ kind: 'add', level: child.level, parent: { level: node.level as Exclude<CatalogEditLevel, 'year'>, id } })}
-          />
-        )}
+        <RowAction icon={plusIcon} label={`${child.add} em ${node.label}`} onClick={() => addUnder(node)} />
         <RowAction icon={pencilIcon} label={`Renomear ${node.label}`} onClick={() => edit({ kind: 'rename', node })} />
         <RowAction icon={chevronIcon} iconClassName={classes.up()} label={`Mover ${node.label} para cima`} disabled={at === 0} onClick={() => void move(node, 'up')} />
         <RowAction
@@ -346,23 +388,28 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
     )
   }
 
+  /** Starts adding the level under a node: a row in the tree, or a year's new engine's sheet in the detail column. */
+  const addUnder = (node: CatalogNode) => {
+    if (node.level === 'year') {
+      editSheet({ kind: 'add', year: node })
+      return
+    }
+    const level = CATALOG_CHILDREN[node.level as Exclude<CatalogEditLevel, 'year'>].level as CatalogEditLevel
+    edit({ kind: 'add', level, parent: { level: node.level as Exclude<CatalogEditLevel, 'year'>, id: node.id } })
+  }
+
   /** The line after a branch's children: the row adding one more under it, or the button to add the first. */
   const after = (id: string) => {
     const node = nodes.get(id)
-    if (!node || node.level === 'year' || node.level === 'engine') {
+    if (!node || node.level === 'engine') {
       return null
     }
     const child = CATALOG_CHILDREN[node.level]
-    if (editing?.kind === 'add' && editing.level !== 'brand' && editing.parent.id === id) {
-      return form(child.level, `${child.add} em ${node.label}`)
+    if (node.level !== 'year' && editing?.kind === 'add' && editing.level !== 'brand' && editing.parent.id === id) {
+      return form(child.level as CatalogEditLevel, `${child.add} em ${node.label}`)
     }
     return node.children?.length === 0 ? (
-      <Button
-        variant="dashed"
-        size="sm"
-        icon={plusIcon}
-        onClick={() => edit({ kind: 'add', level: child.level, parent: { level: node.level as Exclude<CatalogEditLevel, 'year'>, id } })}
-      >
+      <Button variant="dashed" size="sm" icon={plusIcon} onClick={() => addUnder(node)}>
         {`${child.add} em ${node.label}`}
       </Button>
     ) : null
@@ -433,13 +480,28 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
             )}
           </Panel>
           <div className={classes.detail()} data-testid={ids.detail}>
-            <ImageFrame alt={sheet ? `Foto do ${sheet.title}` : 'Foto do modelo'} emptyLabel="Sem foto do modelo" />
+            {!sheetEditing && <ImageFrame alt={sheet ? `Foto do ${sheet.title}` : 'Foto do modelo'} emptyLabel="Sem foto do modelo" />}
             <Panel className={classes.sheet()}>
-              {missingVehicle ? (
+              {sheetEditing ? (
+                <EngineSheetForm
+                  key={sheetEditing.kind === 'add' ? sheetEditing.year.id : sheetEditing.engine.id}
+                  label={sheetEditing.kind === 'add' ? `Novo motor em ${sheetEditing.year.label}` : `Ficha do ${sheetEditing.engine.label}`}
+                  names={sheetNames(catalog, brandId, sheetEditing.kind === 'add' ? sheetEditing.year.id : sheetEditing.engine.id)}
+                  initial={sheetEditing.kind === 'edit' ? sheetEditing.engine.sheet : undefined}
+                  saving={saving}
+                  onSave={(values) => void saveSheet(values)}
+                  onCancel={() => setSheetEditing(null)}
+                />
+              ) : missingVehicle ? (
                 <EmptyState title={missingVehicle} message={NO_SHEET_MESSAGE} />
               ) : sheet ? (
                 <>
-                  <Heading level={3}>{sheet.title}</Heading>
+                  <div className={classes.sheetHead()} data-testid={ids.sheetHead}>
+                    <Heading level={3}>{sheet.title}</Heading>
+                    <Button variant="secondary" size="sm" icon={pencilIcon} onClick={() => editSheet({ kind: 'edit', engine: nodes.get(engine!)! })}>
+                      Editar ficha
+                    </Button>
+                  </div>
                   <div className={classes.specs()} data-testid={ids.specs}>
                     {sheet.specs.map((spec) => (
                       <NumericReadout key={spec} tone="accent">

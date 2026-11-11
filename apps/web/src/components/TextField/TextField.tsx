@@ -6,7 +6,8 @@ import { searchField, textField } from './TextField.styles.ts'
 import { Label, Text } from '../Typography/Typography.tsx'
 
 // The pill-shaped inputs of the login and the dashboard searches (see TextField.styles.ts). Each field kind sets the
-// input type, autofill hint and keyboard (see @apc/ui-spec/field).
+// input type, autofill hint and keyboard (see @apc/ui-spec/field). A field given a number of lines takes text of several lines,
+// such as a summary.
 
 type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'size' | 'children'>
 type SearchFieldProps = InputProps & {
@@ -29,6 +30,8 @@ type TextFieldProps = InputProps & {
   helper?: string
   /** Error shown under the field in the danger color; marks the field invalid. */
   error?: string
+  /** How many lines a field of several lines shows, e.g. a summary; without it the field is one line. */
+  lines?: number
 }
 
 export function TextField({
@@ -40,6 +43,7 @@ export function TextField({
   icon,
   helper,
   error,
+  lines,
   id,
   disabled,
   ...rest
@@ -51,7 +55,15 @@ export function TextField({
   const spec = FIELD_KINDS[kind]
   const isPassword = spec.type === 'password'
   const note = error ?? helper
-  const { classes, ids } = textField({ disabled: Boolean(disabled), error: Boolean(error) })
+  const { classes, ids } = textField({ disabled: Boolean(disabled), error: Boolean(error), multiline: Boolean(lines) })
+  const described = {
+    value,
+    disabled,
+    'aria-invalid': error ? true : undefined,
+    'aria-describedby': note ? noteId : undefined,
+    className: classes.input(),
+    'data-testid': ids.input,
+  }
 
   return (
     <div className={classes.base()} data-testid={ids.base}>
@@ -62,21 +74,20 @@ export function TextField({
             <Icon icon={icon} />
           </span>
         )}
-        <input
-          ref={ref}
-          id={inputId}
-          type={isPassword && revealed ? 'text' : spec.type}
-          autoComplete={spec.autoComplete}
-          inputMode={spec.inputMode}
-          value={value}
-          onChange={(event) => onValueChange(event.target.value)}
-          disabled={disabled}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={note ? noteId : undefined}
-          className={classes.input()}
-          data-testid={ids.input}
-          {...rest}
-        />
+        {lines ? (
+          <textarea id={inputId} rows={lines} onChange={(event) => onValueChange(event.target.value)} {...described} />
+        ) : (
+          <input
+            ref={ref}
+            id={inputId}
+            type={isPassword && revealed ? 'text' : spec.type}
+            autoComplete={spec.autoComplete}
+            inputMode={spec.inputMode}
+            onChange={(event) => onValueChange(event.target.value)}
+            {...described}
+            {...rest}
+          />
+        )}
         {isPassword && (
           <button
             type="button"

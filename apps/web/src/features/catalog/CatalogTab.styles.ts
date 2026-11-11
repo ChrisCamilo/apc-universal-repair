@@ -7,7 +7,8 @@ import { recipe, tv } from '../../styles/tv.ts'
 // page's header and scrolls in its columns instead: the brand search stays on top of the tiles, which scroll under it,
 // the search stays above the tree's panel, the tree scrolls inside it, and the detail column scrolls on its own, each
 // down to the bottom. "Nova marca" sits under the tiles, and the models' panel has a heading row, "Modelos · N" in the
-// display face with "Novo modelo" at its right. A branch's up and down buttons turn the chevron up and down. The engine's specs wrap in a row. The rail, the tiles, the models' panel, the tree and the sheet
+// display face with "Novo modelo" at its right. A branch's up and down buttons turn the chevron up and down. The
+// sheet's title has "Editar ficha" at its right, wrapping under it when the column is narrow. The engine's specs wrap in a row. The rail, the tiles, the models' panel, the tree and the sheet
 // only pass their classes to the Panel, the tile group and the TreeView, which keep their own ids; the main column,
 // the body and the detail column only lay out, so they add no level to their children's ids, which are the same as on
 // mobile. While the catalog loads, or when it can't be loaded, the tab is one box with the spinner or the message in
@@ -43,6 +44,7 @@ export const catalogTab = recipe(
       tree: 'max-h-96 lg:max-h-none lg:min-h-0 lg:flex-1',
       detail: 'grid min-w-0 content-start gap-3 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain',
       sheet: 'grid gap-3',
+      sheetHead: 'flex flex-wrap items-start justify-between gap-2',
       specs: 'flex flex-wrap gap-x-3 gap-y-1',
       screen: 'grid min-w-0 content-start gap-3',
       heading: `${SECTION_HEADING} pt-2`,
@@ -79,6 +81,7 @@ export const catalogTab = recipe(
     tree: 'tree',
     detail: 'detail',
     sheet: 'sheet',
+    sheetHead: 'sheet.head',
     specs: 'sheet.specs',
     screen: 'screen',
     heading: 'screen.heading',

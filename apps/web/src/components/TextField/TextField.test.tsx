@@ -72,6 +72,19 @@ test('Web: fields are labeled, typed into and described by their error', async (
   await expect.element(code).toHaveAccessibleDescription('Informe o código da peça.')
 })
 
+// Types two lines in a field of several lines and checks it is a box of that many rows that keeps the line break,
+// labeled and described by its error like any field.
+test('Web: a field of several lines keeps its lines', async () => {
+  const onValueChange = vi.fn()
+  const screen = await render(<TextField label="Resumo" value="" onValueChange={onValueChange} lines={4} error="Informe o resumo." />)
+  const summary = screen.getByLabelText('Resumo')
+  expect(summary.element().tagName).toBe('TEXTAREA')
+  await expect.element(summary).toHaveAttribute('rows', '4')
+  await expect.element(summary).toHaveAccessibleDescription('Informe o resumo.')
+  await summary.fill('Primeira linha\nSegunda linha')
+  expect(onValueChange).toHaveBeenLastCalledWith('Primeira linha\nSegunda linha')
+})
+
 // Checks each kind sets the input type, autofill hint and on-screen keyboard.
 test('Web: field kinds set the input type, autofill and keyboard', async () => {
   const kinds = ['username', 'password', 'email', 'number', 'decimal'] as const

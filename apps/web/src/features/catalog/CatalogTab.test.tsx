@@ -376,6 +376,57 @@ test('Web: branches are renamed, moved and deleted after confirming', async () =
   await expect.element(screen.getByText('“Terceira geração” saiu do catálogo.')).toBeVisible()
 })
 
+// Adds an engine to an empty year: its sheet opens empty in the detail column with the year from the tree, says what
+// each field needs when saved empty, then shows the title, the engine's name and the readouts as they will be, and once
+// saved the engine joins the tree under the year, chosen, its sheet shown with "Editar ficha".
+test('Web: an engine is added to a year from an empty sheet and chosen in the tree', async () => {
+  answerChanges()
+  const screen = await renderCatalog()
+  await screen.getByRole('button', { name: 'Novo motor em 1985' }).click()
+  const sheet = screen.getByRole('form', { name: 'Novo motor em 1985' })
+  await expect.element(sheet.getByText('Ano 1985, do galho de cima')).toBeVisible()
+  await sheet.getByRole('button', { name: 'Salvar ficha' }).click()
+  await expect.element(sheet.getByText('Use uma cilindrada de 0,1 a 15,0 L.')).toBeVisible()
+  await expect.element(sheet.getByText('Use de 1 a 16 cilindros.')).toBeVisible()
+  await expect.element(sheet.getByText('Escolha a tração.')).toBeVisible()
+
+  await sheet.getByLabelText('Cilindrada (L)').fill('2,5')
+  await sheet.getByLabelText('Cilindros').fill('4')
+  await sheet.getByRole('radio', { name: 'Traseira' }).click()
+  await sheet.getByLabelText('Resumo').fill('O quatro-cilindros de entrada.')
+  await expect.element(sheet.getByRole('heading', { name: '1985 · Chevrolet Opala Diplomata 2.5' })).toBeVisible()
+  await expect.element(sheet.getByText('Na árvore: 2.5 L 4 cilindros')).toBeVisible()
+  await sheet.getByRole('button', { name: 'Salvar ficha' }).click()
+
+  await expect.element(screen.getByRole('form', { name: 'Novo motor em 1985' })).not.toBeInTheDocument()
+  const chosen = screen.getByRole('treeitem', { selected: true })
+  await expect.element(chosen).toMatchTextContent(/^2\.5 L 4 cilindros/)
+  expect(chosen.element().parentElement!.closest('[role="treeitem"]')!.querySelector('[data-testid="common.tree-view.item.row.label"]')!.textContent).toBe('1985')
+  await expect.element(screen.getByRole('heading', { name: '1985 · Chevrolet Opala Diplomata 2.5' })).toBeVisible()
+  await expect.element(screen.getByText('O quatro-cilindros de entrada.')).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Editar ficha' })).toBeVisible()
+})
+
+// Opens the chosen engine's sheet as a form, filled with its sheet, gives up with Cancelar, then opens it again and
+// saves a new displacement and cylinders, and checks the engine's name in the tree and the sheet's title follow.
+test("Web: an engine's sheet is edited, its name and title following", async () => {
+  answerChanges()
+  const screen = await renderCatalog()
+  await screen.getByRole('button', { name: 'Editar ficha' }).click()
+  const sheet = screen.getByRole('form', { name: 'Ficha do 2.5 L 4 cilindros' })
+  await expect.element(sheet.getByLabelText('Cilindrada (L)')).toHaveValue('2,5')
+  await expect.element(sheet.getByRole('radio', { name: 'Traseira' })).toBeChecked()
+  await sheet.getByRole('button', { name: 'Cancelar' }).click()
+  await expect.element(screen.getByRole('heading', { name: OPALA_25.title })).toBeVisible()
+
+  await screen.getByRole('button', { name: 'Editar ficha' }).click()
+  await sheet.getByLabelText('Cilindrada (L)').fill('2.8')
+  await sheet.getByLabelText('Cilindros').fill('6')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('treeitem', { name: /^2\.8 L 6 cilindros/ })).toHaveAttribute('aria-selected', 'true')
+  await expect.element(screen.getByRole('heading', { name: '1986 · Chevrolet Opala Diplomata 2.8' })).toBeVisible()
+})
+
 // Types a brand search in another case and checks only the matching tile is left, then clears it and checks every
 // brand is back.
 test('Web: the brand search narrows the tiles', async () => {

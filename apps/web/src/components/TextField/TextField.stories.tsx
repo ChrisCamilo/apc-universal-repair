@@ -39,6 +39,7 @@ export const States: Story = {
       <Field label="Com erro" initial="" error="Dê um nome ao item para salvar." />
       <Field label="Desligado" initial="Bomba d’água" disabled />
       <Field label="Valor unitário" kind="decimal" initial="189,90" />
+      <Field label="Várias linhas" lines={3} initial="Entrega torque farto desde a marcha lenta, com resposta longa e suave." />
       <Search label="Busca com conteúdo" initial="Opala" />
     </div>
   ),

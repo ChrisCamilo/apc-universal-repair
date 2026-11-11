@@ -3,8 +3,10 @@ import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import {
   brandMark,
   CATALOG_BRANDS_PATH,
+  CATALOG_ENGINES_PATH,
   CATALOG_LEVEL_PATHS,
   CATALOG_PATH,
+  catalogEngineInputSchema,
   catalogGenerationInputSchema,
   catalogIdParamsSchema,
   catalogMoveSchema,
@@ -28,7 +30,9 @@ import { prisma } from "../../db/client.js";
 // year are added at the end of their parent's; a version can't have one year twice (409). Each of these is renamed (a
 // model by renaming its vehicle model, refused when another model of the brand has the name), moved up or down among
 // its siblings (past the ends it stays put), and deleted with everything under it; a model's vehicle model stays in the
-// lists. A node or parent that isn't there answers 404.
+// lists. An engine is added under a year with its sheet (displacement, cylinders, drive and summary), at the end of the
+// year's, and its sheet is saved again; its name and its sheet's title come from the sheet and the tree. A node or parent
+// that isn't there answers 404.
 
 /** Orders a level of the catalog by its place among its siblings. */
 const IN_ORDER = { orderBy: { position: "asc" } } as const;
@@ -277,6 +281,33 @@ export function registerCatalogRoutes(app: FastifyInstance) {
       const position = nextPosition(await prisma.catalogYear.aggregate({ where: { versionId }, _max: { position: true } }));
       await prisma.catalogYear.create({ data: { versionId, position, year } });
       return reply.status(201).send(await readCatalog());
+    },
+  );
+
+  routes.post(
+    `${CATALOG_LEVEL_PATHS.year}/:id/engines`,
+    { schema: { params, body: catalogEngineInputSchema, response: added } },
+    async (request, reply) => {
+      const yearId = request.params.id;
+      if (!(await prisma.catalogYear.findUnique({ where: { id: yearId }, select: { id: true } }))) {
+        return notFound(reply);
+      }
+      const position = nextPosition(await prisma.catalogEngine.aggregate({ where: { yearId }, _max: { position: true } }));
+      await prisma.catalogEngine.create({ data: { yearId, position, ...request.body } });
+      return reply.status(201).send(await readCatalog());
+    },
+  );
+
+  routes.patch(
+    `${CATALOG_ENGINES_PATH}/:id`,
+    { schema: { params, body: catalogEngineInputSchema, response: changed } },
+    async (request, reply) => {
+      const { id } = request.params;
+      if (!(await prisma.catalogEngine.findUnique({ where: { id }, select: { id: true } }))) {
+        return notFound(reply);
+      }
+      await prisma.catalogEngine.update({ where: { id }, data: request.body });
+      return readCatalog();
     },
   );
 
