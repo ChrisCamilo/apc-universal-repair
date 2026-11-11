@@ -127,6 +127,8 @@ export function itemForm(page: Page, title: "Novo item" | "Editar item") {
     partBrand: root.getByRole("combobox", { name: "Marca da peça" }),
     vehicleBrand: root.getByRole("combobox", { name: "Marca do veículo" }),
     vehicleModel: root.getByRole("combobox", { name: "Modelo do veículo" }),
+    generation: root.getByRole("combobox", { name: "Geração" }),
+    version: root.getByRole("combobox", { name: "Versão", exact: true }),
     addVehicle: root.getByRole("button", { name: "Adicionar veículo" }),
     // A phone's Adicionar, which makes the new vehicle a chip.
     confirmVehicle: root.getByRole("group", { name: "Novo veículo" }).getByRole("button", { name: "Adicionar", exact: true }),
