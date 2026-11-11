@@ -9,6 +9,8 @@ import {
 } from "./lists.ts";
 import { distinct, POSITION_CHOICES, SIDE_CHOICES } from "./itemForm.ts";
 import {
+  generationLabel,
+  generationText,
   includeBoth,
   matchesSearch,
   NOT_APPLICABLE,
@@ -23,7 +25,8 @@ import {
 // The inventory filters shared by web and mobile: the filters of the Filtros menu and the options each one offers,
 // taken from the items in stock, and the list query that sends them, with the stock status, to the API. The
 // vehicle model keeps its brand in the value, since two brands may share a model name; with vehicle brands chosen,
-// it offers only their models. An entry of the item lists also leads to the filters that show the items using it, and
+// it offers only their models, and the generations and versions only those of the chosen models (or brands). A
+// generation is sent with its full years ("1985-1990") and listed with their last two digits ("85/90"). An entry of the item lists also leads to the filters that show the items using it, and
 // the filters follow an entry renamed or merged, so they keep showing its items. itemMatchesQuery reads a list query
 // on an item in memory with the rules the API's query applies in the database (itemWhere), for the web app's demo,
 // which has no server, and for a phone's filter sheet, which counts the items its filters would show before they are
@@ -35,6 +38,8 @@ export const EMPTY_ITEM_FILTERS: ItemFilters = {
   partBrand: [],
   vehicleBrand: [],
   vehicleModel: [],
+  generation: [],
+  version: [],
   position: [],
   side: [],
   color: [],
@@ -85,6 +90,8 @@ export type ItemFilterOptions = {
   partBrands: string[];
   vehicleBrands: string[];
   vehicleModels: { value: string; label: string }[];
+  generations: { value: string; label: string }[];
+  versions: string[];
   colors: string[];
   locations: string[];
 };
@@ -98,7 +105,7 @@ export type ItemFilterRow =
   | { label: string; groups: { key: keyof ItemFilters; label: string; options: ChipOption[]; segments: { value: string; label: string }[] }[] };
 /** The values chosen in each filter of the Filtros menu. */
 export type ItemFilters = Record<
-  "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "position" | "side" | "color" | "location",
+  "category" | "partBrand" | "vehicleBrand" | "vehicleModel" | "generation" | "version" | "position" | "side" | "color" | "location",
   string[]
 >;
 /**
@@ -142,18 +149,23 @@ export function followEntryChange(filters: FilterValues, change: ListEntryChange
 /**
  * Lists what each filter offers: the categories, brands and locations in stock (of every brand of each item), the
  * colors in use with N/A first, the vehicle brands of every vehicle of each item, and their models as "Opala 4.1 ·
- * Chevrolet", only of the chosen vehicle brands when there are any.
+ * Chevrolet", only of the chosen vehicle brands when there are any; then the generations, oldest first, and versions
+ * of those vehicles, only of the chosen models when there are any.
  * @param items Every item in stock.
  * @param vehicleBrands Vehicle brands chosen in the menu.
+ * @param vehicleModels Vehicle models chosen in the menu, as vehicleModelValue writes them.
  * @returns The options of each filter, each list in alphabetical order.
  */
-export function itemFilterOptions(items: readonly Item[], vehicleBrands: readonly string[]): ItemFilterOptions {
+export function itemFilterOptions(items: readonly Item[], vehicleBrands: readonly string[], vehicleModels: readonly string[] = []): ItemFilterOptions {
   const brands = items.flatMap((item) => item.brands);
   const colors = distinct(brands.map((brand) => brand.color).filter((color) => color !== NOT_APPLICABLE));
   const vehicles = items.flatMap((item) => item.vehicles);
-  const models = vehicles.filter(
-    (vehicle) => vehicle.vehicleModel && (vehicleBrands.length === 0 || vehicleBrands.includes(vehicle.vehicleBrand)),
+  const ofBrands = vehicles.filter((vehicle) => vehicleBrands.length === 0 || vehicleBrands.includes(vehicle.vehicleBrand));
+  const models = ofBrands.filter((vehicle) => vehicle.vehicleModel);
+  const ofModels = ofBrands.filter(
+    (vehicle) => vehicleModels.length === 0 || (vehicle.vehicleModel && vehicleModels.includes(vehicleModelValue(vehicle.vehicleBrand, vehicle.vehicleModel))),
   );
+  const generations = new Map(ofModels.filter((vehicle) => vehicle.firstYear != null).map((vehicle) => [generationText(vehicle), vehicle]));
   return {
     categories: distinct(items.map((item) => item.category)),
     partBrands: distinct(brands.map((brand) => brand.partBrand)),
@@ -161,26 +173,33 @@ export function itemFilterOptions(items: readonly Item[], vehicleBrands: readonl
     vehicleModels: distinct(models.map((vehicle) => vehicleModelValue(vehicle.vehicleBrand, vehicle.vehicleModel!)))
       .map((value) => ({ value, label: vehicleModelLabel(value) }))
       .sort((a, b) => a.label.localeCompare(b.label, "pt-BR")),
+    generations: [...generations]
+      .sort(([, a], [, b]) => a.firstYear! - b.firstYear! || (a.lastYear ?? Infinity) - (b.lastYear ?? Infinity))
+      .map(([value, vehicle]) => ({ value, label: generationLabel(vehicle) })),
+    versions: distinct(ofModels.flatMap((vehicle) => (vehicle.version ? [vehicle.version] : []))),
     colors: brands.some((brand) => brand.color === NOT_APPLICABLE) ? [NOT_APPLICABLE, ...colors] : colors,
     locations: distinct(brands.flatMap((brand) => (brand.location ? [brand.location] : []))),
   };
 }
 
 /**
- * Lays out the Filtros menu for what is chosen in it so far: seven rows, position and side sharing one row of
- * chips, and the vehicle models narrowed to the chosen vehicle brands.
+ * Lays out the Filtros menu for what is chosen in it so far: nine rows, position and side sharing one row of
+ * chips, the vehicle models narrowed to the chosen vehicle brands, and the generations and versions to the chosen
+ * models.
  * @param items Every item in stock.
  * @param draft Values chosen in the menu so far.
  * @returns The rows, in menu order.
  */
 export function itemFilterRows(items: readonly Item[], draft: FilterValues): ItemFilterRow[] {
-  const options = itemFilterOptions(items, draft.vehicleBrand ?? []);
+  const options = itemFilterOptions(items, draft.vehicleBrand ?? [], draft.vehicleModel ?? []);
   const plain = (values: string[]) => values.map((value) => ({ value, label: value }));
   return [
     { key: "category", label: "Categoria", allLabel: "Todas", options: plain(options.categories) },
     { key: "partBrand", label: "Marca da peça", allLabel: "Todas", options: plain(options.partBrands) },
     { key: "vehicleBrand", label: "Marca do veículo", allLabel: "Todas", options: plain(options.vehicleBrands) },
     { key: "vehicleModel", label: "Modelo do veículo", allLabel: "Todos", options: options.vehicleModels },
+    { key: "generation", label: "Geração", allLabel: "Todas", options: options.generations },
+    { key: "version", label: "Versão do veículo", allLabel: "Todas", options: plain(options.versions) },
     {
       label: "Posição · Lado",
       groups: [
@@ -233,7 +252,7 @@ export function itemListQuery(
 /**
  * Tells whether an item matches a list query, as the API's GET /items chooses its items (itemWhere in apps/api): the
  * search by name or any code (matchesSearch); each filter by any of its values, with "Ambos" fitting a specific
- * position or side; a vehicle brand or model when any of the item's vehicles has it; a part brand, color or location
+ * position or side; a vehicle brand, model, generation or version when any of the item's vehicles has it; a part brand, color or location
  * when any of its brands has it; and the status, out at zero or low from one up to the item's minimum.
  * @param item The item.
  * @param query The list query, as itemListQuerySchema reads it.
@@ -250,6 +269,8 @@ export function itemMatchesQuery(item: Item, query: ItemListQuery): boolean {
     (!query.q || matchesSearch(item, query.q)) &&
     any(query.category, [item.category]) &&
     any(query.vehicleBrand, item.vehicles.map((vehicle) => vehicle.vehicleBrand)) &&
+    any(query.generation, item.vehicles.map(generationText)) &&
+    any(query.version, item.vehicles.map((vehicle) => vehicle.version ?? null)) &&
     any(query.partBrand, item.brands.map((brand) => brand.partBrand)) &&
     (query.position.length === 0 || includeBoth(query.position, ["D", "T"]).includes(item.position)) &&
     (query.side.length === 0 || includeBoth(query.side, ["LD", "LE"]).includes(item.side)) &&
