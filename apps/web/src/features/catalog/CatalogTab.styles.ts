@@ -17,7 +17,9 @@ import { recipe, tv } from '../../styles/tv.ts'
 // page's header and over the bottom bar. A section's heading, such as "Marcas · 4", is small and muted in the display
 // face. Each brand is a line across the screen, 72px tall, over a soft hairline: its letters in a raised square in the
 // accent, its name over its line of models and sheets, and a chevron. The tree grows to its full height, since the
-// page scrolls as a whole. The sheet's readouts sit two to a row, each in a box with its name above it.
+// page scrolls as a whole. The sheet's readouts sit two to a row, each in a box with its name above it. "Nova marca"
+// and "Novo modelo" sit at the right of their screen's heading, and the buttons of the sheet that adds or renames a
+// node share its foot in two equal halves, under its fields, inset as the sheet's title.
 
 /** A section's heading on a phone screen, such as "Marcas · 4" or the parts a code search found. */
 export const SECTION_HEADING = `m-0 text-sm text-text-muted ${DISPLAY_LABEL}`
@@ -47,7 +49,10 @@ export const catalogTab = recipe(
       sheetHead: 'flex flex-wrap items-start justify-between gap-2',
       specs: 'flex flex-wrap gap-x-3 gap-y-1',
       screen: 'grid min-w-0 content-start gap-3',
-      heading: `${SECTION_HEADING} pt-2`,
+      screenHead: 'flex items-center justify-between gap-2 pt-2',
+      heading: SECTION_HEADING,
+      sheetBody: 'px-5 pb-3',
+      sheetButtons: 'grid grid-cols-2 gap-2',
       brandList: 'm-0 -mx-4 list-none p-0',
       brand: [
         'flex min-h-18 w-full cursor-pointer items-center gap-3 border-0 border-b border-hairline-soft bg-transparent py-0 pr-3 pl-4',
@@ -84,7 +89,10 @@ export const catalogTab = recipe(
     sheetHead: 'sheet.head',
     specs: 'sheet.specs',
     screen: 'screen',
-    heading: 'screen.heading',
+    screenHead: 'screen.head',
+    heading: 'screen.head.heading',
+    sheetBody: 'sheet-body',
+    sheetButtons: 'sheet-buttons',
     brandList: 'screen.brands',
     brand: 'screen.brands.brand',
     mark: 'screen.brands.brand.mark',

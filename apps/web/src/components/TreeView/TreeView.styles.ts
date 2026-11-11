@@ -11,7 +11,7 @@ import { recipe, tv } from '../../styles/tv.ts'
 // leaf's tag is a pill in the display face, outlined at rest and filled in the accent on the selected leaf.
 // A row's own buttons sit at its right end, hidden until the row is pointed at, or shown on the row the keyboard is on
 // while the focus is in the tree (a state the tree keeps, as a focus rule would hide them while the focus moves from
-// the row into them); a row shown as something else, such as a field, takes the row's whole width; and the line after a branch's
+// the row into them), and always in view on a phone, which has no pointer to hover with; a row shown as something else, such as a field, takes the row's whole width; and the line after a branch's
 // children sits under them, on the guide.
 
 /** The tree: the list, an item, its row with chevron, label, detail and tag, and the group of its children. */
@@ -30,7 +30,7 @@ export const treeView = recipe(
       label: 'min-w-0 truncate',
       detail: 'shrink-0 font-mono text-xs font-normal text-text-muted',
       tag: `ml-auto shrink-0 rounded-pill border px-2.5 py-1 text-[11px]/none ${DISPLAY_LABEL}`,
-      actions: '-my-1 ml-auto hidden shrink-0 items-center gap-0.5 font-body font-normal normal-case tracking-normal',
+      actions: '-my-1 ml-auto hidden shrink-0 items-center max-card:flex gap-0.5 font-body font-normal normal-case tracking-normal',
       editing: 'min-w-0 flex-1 cursor-default font-body font-normal normal-case tracking-normal',
       after: 'py-1',
       group: 'grid motion-reduce:transition-none',
