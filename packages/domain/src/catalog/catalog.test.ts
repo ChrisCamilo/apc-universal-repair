@@ -8,17 +8,29 @@ import {
   brandSummary,
   brandWithModel,
   CATALOG_HOME,
+  CATALOG_TAKEN,
+  catalogAddUnder,
+  catalogEditRequest,
   catalogFrom,
+  catalogNodePath,
+  catalogNodes,
+  catalogSheetRequest,
+  catalogSiblings,
+  catalogValuesOf,
   engineLabel,
   enginePath,
   engineSheet,
+  engineSheetNames,
   findParts,
   firstSheet,
   itemFit,
+  litresText,
   locatePart,
   modelsNamed,
   partFit,
   partScreen,
+  readCatalogFields,
+  readEngineFields,
   revealedVehicle,
   screenBack,
   screenHeader,
@@ -350,4 +362,76 @@ test("Shared: an engine's sheet is built, and an engine is added and saved in me
   });
   assert.deepEqual(catalogChangeOf("PATCH", `/engines/${FORD}`, sheet, FIAT)?.change, { kind: "edit", level: "engine", id: FORD, values: sheet });
   assert.equal(catalogChangeOf("DELETE", `/engines/${FORD}`, {}, FIAT), null);
+});
+
+// Says what a screen adds under each node and which request saves it: a generation under a model, a new engine's
+// sheet under a year, a model under a brand, a brand, a rename and an engine's sheet; and finds a node, its siblings,
+// what its form opens with and the names its engine sheet is titled with.
+test("Shared: what a screen adds or renames is sent to the right route", () => {
+  const nodes = catalogNodes(TEST_CATALOG.brands[0].models);
+  const opala = nodes.get(OPALA)!;
+  const third = nodes.get(testCatalogId("Chevrolet", "Opala", "Terceira geração"))!;
+  const year = nodes.get(testCatalogId("Chevrolet", "Opala", "Terceira geração", "Diplomata", "1986"))!;
+  const engine = nodes.get(TEST_ENGINES.opala41)!;
+  assert.deepEqual(catalogAddUnder(opala), { editing: { kind: "add", level: "generation", parent: { level: "model", id: OPALA } } });
+  assert.deepEqual(catalogAddUnder(year), { sheet: { kind: "add", year } });
+  assert.deepEqual(catalogEditRequest({ kind: "add", level: "generation", parent: { level: "model", id: OPALA } }), {
+    method: "POST",
+    path: `/catalog/models/${OPALA}/generations`,
+    taken: CATALOG_TAKEN.generation,
+  });
+  assert.deepEqual(catalogEditRequest({ kind: "add", level: "model", parent: { level: "brand", id: CHEVROLET } }), {
+    method: "POST",
+    path: `/catalog/brands/${CHEVROLET}/models`,
+    taken: CATALOG_TAKEN.model,
+  });
+  assert.deepEqual(catalogEditRequest({ kind: "add", level: "brand", parent: { level: "brand", id: "" } }), {
+    method: "POST",
+    path: "/catalog/brands",
+    taken: CATALOG_TAKEN.brand,
+  });
+  assert.deepEqual(catalogEditRequest({ kind: "rename", node: year }), { method: "PATCH", path: `/catalog/years/${year.id}`, taken: CATALOG_TAKEN.year });
+  assert.deepEqual(catalogSheetRequest({ kind: "add", year }), { method: "POST", path: `/catalog/years/${year.id}/engines` });
+  assert.deepEqual(catalogSheetRequest({ kind: "edit", engine }), { method: "PATCH", path: `/catalog/engines/${engine.id}` });
+  assert.equal(catalogNodePath(third), `/catalog/generations/${third.id}`);
+  assert.deepEqual(
+    catalogSiblings(TEST_CATALOG.brands[0].models, third.id).map((each) => each.label),
+    ["Primeira geração", "Segunda geração", "Terceira geração"],
+  );
+  assert.deepEqual(catalogSiblings(TEST_CATALOG.brands[0].models, FORD), []);
+  assert.deepEqual(catalogValuesOf(third), { name: "Terceira geração", firstYear: third.firstYear, lastYear: third.lastYear });
+  assert.deepEqual(catalogValuesOf(year), { year: 1986 });
+  assert.deepEqual(catalogValuesOf(opala), { name: "Opala" });
+  assert.deepEqual(engineSheetNames(TEST_CATALOG, CHEVROLET, engine.id), { year: 1986, brand: "Chevrolet", model: "Opala", version: "Diplomata" });
+});
+
+// Reads the fields of a node as typed: a name required, a year of four digits in the catalog's range, a generation's
+// last year empty or not before the first; and an engine's sheet: litres with a comma or a dot, cylinders in range,
+// a drive chosen and the summary trimmed.
+test("Shared: what is typed into a node or an engine sheet is checked before it is saved", () => {
+  const empty = { name: "", firstYear: "", lastYear: "", year: "" };
+  assert.deepEqual(readCatalogFields("model", { ...empty, name: "Caravan" }), { values: { name: "Caravan" } });
+  assert.deepEqual(readCatalogFields("brand", { ...empty, name: "  " }), { problems: { name: "Informe o nome." } });
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "1990" }), { values: { year: 1990 } });
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "1890" }), { problems: { year: "Use um ano de 1900 a 2100." } });
+  assert.deepEqual(readCatalogFields("generation", { ...empty, name: "G2", firstYear: "1995" }), {
+    values: { name: "G2", firstYear: 1995, lastYear: null },
+  });
+  assert.deepEqual(readCatalogFields("generation", { ...empty, name: "G2", firstYear: "1995", lastYear: "1990" }), {
+    problems: { lastYear: "O último ano não pode vir antes do primeiro." },
+  });
+  assert.deepEqual(readCatalogFields("generation", { name: "", firstYear: "95", lastYear: "x", year: "" }), {
+    problems: { name: "Informe o nome.", firstYear: "Use um ano de 1900 a 2100.", lastYear: "Use um ano de 1900 a 2100." },
+  });
+
+  assert.deepEqual(readEngineFields({ litres: "4,1", cylinders: "6", drive: "REAR", summary: "  Seis em linha. " }), {
+    sheet: { displacementDl: 41, cylinders: 6, drive: "REAR", summary: "Seis em linha." },
+  });
+  assert.deepEqual(readEngineFields({ litres: "1.0", cylinders: "4", drive: "FRONT", summary: "" }), {
+    sheet: { displacementDl: 10, cylinders: 4, drive: "FRONT", summary: "" },
+  });
+  assert.deepEqual(readEngineFields({ litres: "0", cylinders: "20", drive: "", summary: "" }), {
+    problems: { litres: "Use uma cilindrada de 0,1 a 15,0 L.", cylinders: "Use de 1 a 16 cilindros.", drive: "Escolha a tração." },
+  });
+  assert.equal(litresText(41), "4,1");
 });
