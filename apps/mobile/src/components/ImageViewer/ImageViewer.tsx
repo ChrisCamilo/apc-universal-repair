@@ -16,7 +16,8 @@ import { Heading, NumericReadout, Text } from '../Typography/Typography';
 
 // A large view of an item's photos, the same as the web: one photo at a time, as large as the screen allows
 // and never cropped, under the item's name and code. With more than one photo, arrows over the photo move
-// through them, wrapping around, and dots under it show which one is on screen and jump to a photo. It closes
+// through them, wrapping around, the item's short description shows under the photo when it has one, and dots under
+// it show which one is on screen and jump to a photo. It closes
 // on the ×, on the back button and on a tap outside. "Remover esta foto" asks first, naming the item and
 // warning when the photo is the cover; the next photo takes its place. "Trocar esta foto" replaces the one on
 // screen and "Adicionar foto" shows while there is room, both through the owner's picker and with the
@@ -32,6 +33,8 @@ type ImageViewerProps = {
   name: string;
   /** Item code, shown under the name. */
   code: string;
+  /** The item's short description, shown under the photo; none for an item without one. */
+  caption?: string;
   photos: readonly UploadPhoto[];
   /** Takes the changed photos; resolving to false says they couldn't be saved. */
   onPhotosChange: (photos: UploadPhoto[]) => void | Promise<boolean>;
@@ -60,6 +63,7 @@ function ViewerBody({
   onClose,
   name,
   code,
+  caption,
   photos,
   onPhotosChange,
   limit,
@@ -172,6 +176,11 @@ function ViewerBody({
               </Pressable>
             ))}
         </View>
+        {caption && count > 0 && (
+          <NativeText style={styles.caption} testID={ids.caption}>
+            {caption}
+          </NativeText>
+        )}
         {count > 1 && (
           <View style={styles.dots} testID={ids.dots}>
             {photos.map((photo, i) => (

@@ -13,7 +13,8 @@ import { Heading, NumericReadout, Text } from '../Typography/Typography.tsx'
 import { usePresence } from '../usePresence.ts'
 
 // A large view of an item's photos, opened from its thumbnail: one photo at a time, as large as the screen
-// allows and never cropped, under the item's name and code. With more than one photo, arrows over the photo
+// allows and never cropped, under the item's name and code, with the item's short description under the photo when it
+// has one. With more than one photo, arrows over the photo
 // and the Left and Right keys move through them, wrapping around, and dots under it show which one is on
 // screen and jump to a photo. It closes on the ×, on Escape and on a click outside, over the blurred backdrop.
 // "Remover esta foto" asks first, naming the item and warning when the photo is the cover; the next photo
@@ -30,6 +31,8 @@ type ImageViewerProps = {
   name: string
   /** Item code, shown under the name. */
   code: string
+  /** The item's short description, shown under the photo; none for an item without one. */
+  caption?: string
   photos: readonly UploadPhoto[]
   /** Takes the changed photos; resolving to false says they couldn't be saved. */
   onPhotosChange: (photos: UploadPhoto[]) => void | Promise<boolean>
@@ -96,7 +99,7 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
   )
 }
 
-function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limit }: ViewerBodyProps) {
+function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosChange, limit }: ViewerBodyProps) {
   const toast = useToast()
   const input = useRef<HTMLInputElement>(null)
   const { classes, ids } = imageViewer()
@@ -225,6 +228,11 @@ function ViewerBody({ titleId, onClose, name, code, photos, onPhotosChange, limi
           </>
         )}
       </div>
+      {caption && count > 0 && (
+        <p className={classes.caption()} data-testid={ids.caption}>
+          {caption}
+        </p>
+      )}
       {count > 1 && (
         <div className={classes.dots()} data-testid={ids.dots}>
           {photos.map((photo, i) => (
