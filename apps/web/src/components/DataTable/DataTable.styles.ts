@@ -122,7 +122,10 @@ export const rowAction = recipe(
   'common.row-action',
   tv({
     slots: {
-      base: 'grid size-8 max-card:size-11 cursor-pointer place-items-center rounded-tile outline-none transition-colors hover:bg-panel focus-visible:shadow-ring',
+      base: [
+        'grid size-8 max-card:size-11 cursor-pointer place-items-center rounded-tile outline-none transition-colors hover:bg-panel focus-visible:shadow-ring',
+        'disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent',
+      ],
     },
     variants: { tone: { default: 'text-accent', danger: 'text-danger' } },
     defaultVariants: { tone: 'default' },
