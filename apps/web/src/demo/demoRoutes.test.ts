@@ -55,6 +55,10 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
     demo.call('PATCH', `/catalog/generations/${(await opala(demo)).generation}`, { name: 'Terceira geração', firstYear: 1980, lastYear: 1992 }),
   'PATCH /catalog/versions/:id': async (demo) => demo.call('PATCH', `/catalog/versions/${(await opala(demo)).version}`, { name: 'Diplomata SE' }),
   'PATCH /catalog/years/:id': async (demo) => demo.call('PATCH', `/catalog/years/${(await opala(demo)).year}`, { year: 1988 }),
+  'POST /catalog/years/:id/engines': async (demo) =>
+    demo.call('POST', `/catalog/years/${(await opala(demo)).year}/engines`, { displacementDl: 38, cylinders: 6, drive: 'REAR', summary: '' }),
+  'PATCH /catalog/engines/:id': async (demo) =>
+    demo.call('PATCH', `/catalog/engines/${(await opala(demo)).engine}`, { displacementDl: 41, cylinders: 6, drive: 'REAR', summary: 'Seis em linha.' }),
   ...Object.fromEntries(
     (['model', 'generation', 'version', 'year'] as const).flatMap((level) => {
       const path = `/catalog/${level === 'year' ? 'years' : `${level}s`}`
@@ -75,7 +79,7 @@ type Demo = Awaited<ReturnType<typeof startDemo>>
 /**
  * Finds the Opala's nodes in a fresh demo's catalog, down to its Diplomata's 1985.
  * @param demo The demo.
- * @returns The ids of Chevrolet, the Opala, its third generation, the Diplomata and its 1985.
+ * @returns The ids of Chevrolet, the Opala, its third generation, the Diplomata, its 1985 and the 1986's first engine.
  */
 async function opala({ call }: Demo) {
   const catalog: CatalogData = catalogSchema.parse(await (await call('GET', '/catalog')).json())
@@ -83,7 +87,7 @@ async function opala({ call }: Demo) {
   const model = brand.models[1]
   const generation = model.generations[2]
   const version = generation.versions[1]
-  return { brand: brand.id, model: model.id, generation: generation.id, version: version.id, year: version.years[0].id }
+  return { brand: brand.id, model: model.id, generation: generation.id, version: version.id, year: version.years[0].id, engine: version.years[1].engines[0].id }
 }
 
 /**
