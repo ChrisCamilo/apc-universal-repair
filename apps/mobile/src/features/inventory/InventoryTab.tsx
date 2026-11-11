@@ -57,6 +57,7 @@ import { useItemLists } from './useItemLists';
 import { useItemPages } from './useItemPages';
 import { useItems } from './useItems';
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts';
+import { useCatalog } from '../catalog/useCatalog';
 import { Skeleton } from '../../components/Skeleton';
 import { Spinner } from '../../components/Spinner';
 import { SearchField } from '../../components/TextField';
@@ -186,6 +187,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   useLowStockAlerts(state.status === 'ready' ? state.items : null, userId);
   // The lists the item form picks from and creates names in.
   const { lists, create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists();
+  // The catalog, for the generations and versions the item form offers for a vehicle.
+  const catalog = useCatalog();
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false);
   // Whether the sheet of the other actions, which the header's "⋯" opens, is open.
@@ -518,6 +521,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         scrollToBrand={form.brand}
         items={items}
         lists={lists}
+        catalog={catalog.status === 'ready' ? catalog.catalog : undefined}
         onCreateEntry={createEntry}
         initialForm={form.initial}
         initialPhotos={form.photos}

@@ -9,6 +9,7 @@ import {
   VEHICLE_FIELD_LABELS,
   VEHICLES_LABEL,
   vehicleFormErrors,
+  vehicleOfForm,
   vehicleText,
   type ItemVehicleForm,
   type ItemVehicleFormErrors,
@@ -22,8 +23,9 @@ import { Label, Text } from '../../components/Typography';
 import { useStyles } from './VehiclesField.styles';
 
 // The vehicles an item fits in the item form, the same as the web on a phone: each vehicle a chip with its × (see
-// vehicleText), then a dashed "Adicionar veículo" that opens a new vehicle's brand and model, with Cancelar and
-// Adicionar. Adicionar checks the new vehicle against the item's (see vehicleFormErrors) and only then makes it a chip;
+// vehicleText), then a dashed "Adicionar veículo" that opens a new vehicle's brand and model, then its generation and
+// version side by side, which offer what the catalog and the stock hold for its model and take any text, with Cancelar
+// and Adicionar. Adicionar checks the new vehicle against the item's (see vehicleFormErrors) and only then makes it a chip;
 // a vehicle with a brand not in the list, one the item already has, or a vehicle beside Universal is refused, saying
 // why. A blank line, as a new item's form starts with, shows no chip: saving without a vehicle says so under the
 // button, as it does a chip's message.
@@ -36,12 +38,14 @@ type VehiclesFieldProps = {
   lists: ItemLists;
   /** The vehicle brands the brand's combobox offers. */
   brands: readonly string[];
+  /** The generations and versions a vehicle's fields offer for its brand and model. */
+  suggest: (vehicle: ItemVehicleForm) => { generations: string[]; versions: string[] };
   onVehiclesChange: (vehicles: ItemVehicleForm[]) => void;
   /** Makes what a combobox calls with a typed name, which creates it in its list and fills the field with it. */
   onCreate: (kind: ItemListKind, fill: (name: string) => void, vehicleBrandId?: string) => (typed: string) => void;
 };
 
-export function VehiclesField({ vehicles, errors = [], lists, brands, onVehiclesChange, onCreate }: VehiclesFieldProps) {
+export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, onVehiclesChange, onCreate }: VehiclesFieldProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   // The vehicle being added, open under the chips, and its messages.
@@ -49,10 +53,11 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, onVehicles
   const [draftErrors, setDraftErrors] = useState<ItemVehicleFormErrors>({});
   const filled = vehicles.filter((vehicle) => vehicle.vehicleBrand.trim());
   const brand = draft && findEntry(lists.vehicleBrands, draft.vehicleBrand);
+  const suggested = draft ? suggest(draft) : { generations: [], versions: [] };
   const notes = vehicles.flatMap((vehicle, index) =>
     Object.values(errors[index] ?? {})
       .filter(Boolean)
-      .map((message) => (vehicle.vehicleBrand.trim() ? `${vehicleText(vehicle)}: ${message}` : message)),
+      .map((message) => (vehicle.vehicleBrand.trim() ? `${vehicleText(vehicleOfForm(vehicle))}: ${message}` : message)),
   );
 
   /** Takes a field of the new vehicle's new value and drops its messages; a new brand clears a model it doesn't have. */
@@ -98,11 +103,11 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, onVehicles
             vehicle.vehicleBrand.trim() ? (
               <View key={index} style={styles.chip} testID={ids.chip}>
                 <NativeText style={styles.chipText} testID={ids.chipText}>
-                  {vehicleText(vehicle)}
+                  {vehicleText(vehicleOfForm(vehicle))}
                 </NativeText>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Remover ${vehicleText(vehicle)}`}
+                  accessibilityLabel={`Remover ${vehicleText(vehicleOfForm(vehicle))}`}
                   onPress={() => remove(index)}
                   style={styles.remove}
                   testID={ids.remove}
@@ -140,6 +145,34 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, onVehicles
             error={draftErrors.vehicleModel}
             disabled={!brand}
           />
+          <View style={styles.pair} testID={ids.pair}>
+            <View style={styles.pairField} testID={ids.pairField}>
+              <Combobox
+                label={VEHICLE_FIELD_LABELS.generation}
+                value={draft.generation ?? ''}
+                onValueChange={(value) => change('generation', value)}
+                options={suggested.generations}
+                noun="geração"
+                toggleLabel="Mostrar gerações"
+                emptyLabel="Nenhuma geração conhecida para esse modelo"
+                placeholder="Ex.: 85/90"
+                error={draftErrors.generation}
+              />
+            </View>
+            <View style={styles.pairField} testID={ids.pairField}>
+              <Combobox
+                label={VEHICLE_FIELD_LABELS.version}
+                value={draft.version ?? ''}
+                onValueChange={(value) => change('version', value)}
+                options={suggested.versions}
+                noun="versão"
+                toggleLabel="Mostrar versões"
+                emptyLabel="Nenhuma versão conhecida para esse modelo"
+                placeholder="Ex.: 1.6 GLX"
+                error={draftErrors.version}
+              />
+            </View>
+          </View>
           <View style={styles.draftActions} testID={ids.draftActions}>
             <Button variant="secondary" size="sm" onPress={() => setDraft(null)}>
               Cancelar
