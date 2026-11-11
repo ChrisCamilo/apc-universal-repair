@@ -248,7 +248,7 @@ The MVP was estimated at 228 story points. It closed on October 8, 2026, four we
 | Optimizations | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Since then the API at home, the Windows desktop app (now at v0.6.8), the photo compression, the Android release build, the QA epic and most of the backend are done too, and the Mobile Redesign is underway, with 11 of its 16 tasks done. Still open: the rest of the Mobile Redesign, the Android notifications, pairing the phone over HTTPS and authorizing devices, the phone app's notice of a new version, the stock's starting categories and part brands, and the style values left for a decision. The Car Specs epic is TBD, with no phase yet.
+Since then the API at home, the Windows desktop app (now at v0.7.1), the photo compression, the Android release build and the phone app's notice of a new version are done too, and so are the Mobile Redesign (20 tasks), the backend (16 tasks, with the phone paired over HTTPS and the vehicle catalog kept in the API and edited on desktop and on phones) and phase 2. The QA epic has 9 of its 10 tasks done. Still open: the Android notifications, a toast test that fails now and then, the stock's starting categories and part brands, the Inventory refreshing by itself when another device changes it, and the Offline Mode epic, whose 9 tasks haven't started. The Car Specs epic is TBD, with no phase yet.
 
 ### Contributing
 
@@ -264,7 +264,7 @@ Help mechanics, enthusiasts, and vehicle owners preserve correct maintenance pra
 
 ### Status
 
-🚧 In development, at v0.6.8: the MVP is done on web and mobile — login and sign-up, the Dashboard and the Inventory — and the desktop and Android apps build for release. The Mobile Redesign is laying the screens out for phones, and phase 2 is underway, with the Catalog tab built on sample data.
+🚧 In development, at v0.7.1: the MVP is done on web and mobile — login and sign-up, the Dashboard and the Inventory — and laid out for phones, and the desktop and Android apps build for release. Phase 2 is done on `main`, with the Catalog tab kept in the API and edited on desktop and on phones, and comes in the next release. Phase 3 has the Android notifications left, and the Offline Mode is planned next.
 
 ---
 
@@ -512,7 +512,7 @@ O MVP foi estimado em 228 story points. Ele foi concluído em 8 de outubro de 20
 | Otimizações | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Depois disso, a API em casa, o app desktop para Windows (hoje na v0.6.8), a compressão das fotos, o build de release para Android, o épico de QA e a maior parte do backend também ficaram prontos, e o redesign para celular está em andamento, com 11 das suas 16 tasks concluídas. Ainda em aberto: o resto do redesign para celular, as notificações do Android, o pareamento do celular por HTTPS e a autorização dos aparelhos, o aviso de versão nova no app do celular, as categorias e marcas de peça iniciais do estoque e os valores de estilo que faltam decidir. O épico de Ficha técnica está a definir, ainda sem fase.
+Depois disso, a API em casa, o app desktop para Windows (hoje na v0.7.1), a compressão das fotos, o build de release para Android e o aviso de versão nova no app do celular também ficaram prontos, assim como o redesign para celular (20 tasks), o backend (16 tasks, com o celular pareado por HTTPS e o catálogo de veículos guardado na API e editado no desktop e no celular) e a fase 2. O épico de QA tem 9 das suas 10 tasks concluídas. Ainda em aberto: as notificações do Android, um teste de aviso que falha de vez em quando, as categorias e marcas de peça iniciais do estoque, o Estoque se atualizando sozinho quando outro aparelho o muda, e o épico de Modo offline, cujas 9 tasks ainda não começaram. O épico de Ficha técnica está a definir, ainda sem fase.
 
 ### Como Contribuir
 
@@ -528,4 +528,4 @@ Ajudar mecânicos, entusiastas e proprietários de veículos a preservar as boas
 
 ### Status
 
-🚧 Em desenvolvimento, na v0.6.8: o MVP está pronto na web e no celular — login e cadastro, o Dashboard e o Estoque — e os apps desktop e Android geram builds de release. O redesign para celular está diagramando as telas para o celular, e a fase 2 está em andamento, com a aba Catálogo feita sobre dados de exemplo.
+🚧 Em desenvolvimento, na v0.7.1: o MVP está pronto na web e no celular — login e cadastro, o Dashboard e o Estoque — e diagramado para o celular, e os apps desktop e Android geram builds de release. A fase 2 está pronta na `main`, com a aba Catálogo guardada na API e editada no desktop e no celular, e chega na próxima versão. A fase 3 tem as notificações do Android pendentes, e o Modo offline está planejado em seguida.
