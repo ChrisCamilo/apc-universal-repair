@@ -2,8 +2,11 @@ import { DISPLAY_LABEL } from '../../styles/shared.ts'
 import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of the Catalog tab: from the lg breakpoint, the brand rail beside the main column, where the tree sits
-// beside the detail column; below it, one column, with the tiles in rows of two, or four from sm. The tree scrolls
-// past max-h-96 (120 steps from lg), and the engine's specs wrap in a row. The rail, the tiles, the tree and the sheet
+// beside the detail column, which grows up to 400px; below it, one column, with the tiles in rows of two, or four from
+// sm, the tree scrolling past max-h-96 and the page scrolling as a whole. From lg the tab fills the window under the
+// page's header and scrolls in its columns instead: the brand search stays on top of the tiles, which scroll under it,
+// the search stays above the tree's panel, the tree scrolls inside it, and the detail column scrolls on its own, each
+// down to the bottom. The engine's specs wrap in a row. The rail, the tiles, the models' panel, the tree and the sheet
 // only pass their classes to the Panel, the tile group and the TreeView, which keep their own ids; the main column,
 // the body and the detail column only lay out, so they add no level to their children's ids, which are the same as on
 // mobile. While the catalog loads, or when it can't be loaded, the tab is one box with the spinner or the message in
@@ -18,21 +21,22 @@ import { recipe, tv } from '../../styles/tv.ts'
 export const SECTION_HEADING = `m-0 text-sm text-text-muted ${DISPLAY_LABEL}`
 
 /**
- * The Catalog tab: the box of its loading and error states, its grid, the brand rail and tiles, the main column, the tree, the detail column and the sheet; on a
- * phone, the screen with its headings, the brand lines, the tree, the path to an engine and the sheet's readouts.
+ * The Catalog tab: the box of its loading and error states, its grid, the brand rail and tiles, the main column, the
+ * models' panel and tree, the detail column and the sheet; on a phone, the screen with its headings, the brand lines, the tree, the path to an engine and the sheet's readouts.
  */
 export const catalogTab = recipe(
   'catalog.catalog-tab',
   tv({
     slots: {
       status: 'grid min-h-60 place-items-center p-6',
-      base: 'grid gap-3 lg:grid-cols-[calc(var(--spacing)*46)_minmax(0,1fr)]',
-      rail: 'grid content-start gap-3',
-      brands: 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-1',
-      main: 'grid min-w-0 content-start gap-3',
-      body: 'grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,calc(var(--spacing)*82))]',
-      tree: 'max-h-96 lg:max-h-[calc(var(--spacing)*120)]',
-      detail: 'grid min-w-0 content-start gap-3',
+      base: 'grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[calc(var(--spacing)*46)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]',
+      rail: 'grid content-start gap-3 lg:min-h-0 lg:grid-rows-[auto_minmax(0,1fr)]',
+      brands: 'grid-cols-2 content-start sm:grid-cols-4 lg:-m-1 lg:grid-cols-1 lg:overflow-y-auto lg:overscroll-contain lg:p-1',
+      main: 'grid min-w-0 content-start gap-3 lg:flex lg:min-h-0 lg:flex-col',
+      body: 'grid min-w-0 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,calc(var(--spacing)*100))] lg:grid-rows-[minmax(0,1fr)]',
+      models: 'lg:flex lg:min-h-0 lg:flex-col',
+      tree: 'max-h-96 lg:max-h-none lg:min-h-0 lg:flex-1',
+      detail: 'grid min-w-0 content-start gap-3 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain',
       sheet: 'grid gap-3',
       specs: 'flex flex-wrap gap-x-3 gap-y-1',
       screen: 'grid min-w-0 content-start gap-3',
@@ -62,6 +66,7 @@ export const catalogTab = recipe(
     brands: 'rail.brands',
     main: 'main',
     body: 'body',
+    models: 'models',
     tree: 'tree',
     detail: 'detail',
     sheet: 'sheet',
