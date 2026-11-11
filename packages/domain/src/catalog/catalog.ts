@@ -19,8 +19,9 @@ import { codeKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from
 // catalog has no sheet for its vehicle.
 // The tree is edited through the API: a catalog brand is added by name (a vehicle brand of the lists, added there when
 // they don't hold it), a model under a brand (a vehicle model of the lists the same way), a generation under a model,
-// a version under a generation and a year under a version; each can be renamed, moved up or down among its siblings
-// and deleted with what is under it. Every change answers the whole catalog, which the screen takes as it is.
+// a version under a generation, a year under a version and an engine with its sheet under a year; each but an engine
+// can be renamed, moved up or down among its siblings and deleted with what is under it, and an engine's sheet is
+// saved again. Every change answers the whole catalog, which the screen takes as it is.
 
 /** The screen the Catalog opens on, on a phone: the brands. */
 export const CATALOG_HOME: CatalogScreen = { view: "brands" };
@@ -28,12 +29,17 @@ export const CATALOG_HOME: CatalogScreen = { view: "brands" };
 export const CATALOG_PATH = "/catalog";
 export const CATALOG_BRANDS_PATH = "/catalog/brands";
 /** What each level below the brands adds under its parent: the level, its path under the parent's, and its button. */
-export const CATALOG_CHILDREN: Record<"brand" | "model" | "generation" | "version", { level: CatalogEditLevel; segment: string; add: string }> = {
+export const CATALOG_CHILDREN: Record<"brand" | CatalogEditLevel, { level: CatalogLevel; segment: string; add: string }> = {
   brand: { level: "model", segment: "models", add: "Novo modelo" },
   model: { level: "generation", segment: "generations", add: "Nova geração" },
   generation: { level: "version", segment: "versions", add: "Nova versão" },
   version: { level: "year", segment: "years", add: "Novo ano" },
+  year: { level: "engine", segment: "engines", add: "Novo motor" },
 };
+/** The API path of the engines, whose sheets are saved there. */
+export const CATALOG_ENGINES_PATH = "/catalog/engines";
+/** The engines a sheet can describe: displacement in decilitres and cylinders. */
+export const CATALOG_ENGINE_LIMITS = { displacementDl: { min: 1, max: 150 }, cylinders: { min: 1, max: 16 } } as const;
 /** The API path of each level of the tree that the Catalog tab edits. */
 export const CATALOG_LEVEL_PATHS: Record<CatalogEditLevel, string> = {
   model: "/catalog/models",
@@ -93,6 +99,13 @@ export const catalogGenerationInputSchema = z
   });
 /** A model year added or changed. */
 export const catalogYearInputSchema = z.object({ year: catalogYear });
+/** An engine's sheet, added with it or saved again: displacement in decilitres, cylinders, drive and summary. */
+export const catalogEngineInputSchema = z.object({
+  displacementDl: z.int().min(CATALOG_ENGINE_LIMITS.displacementDl.min).max(CATALOG_ENGINE_LIMITS.displacementDl.max),
+  cylinders: z.int().min(CATALOG_ENGINE_LIMITS.cylinders.min).max(CATALOG_ENGINE_LIMITS.cylinders.max),
+  drive: engineDriveSchema,
+  summary: z.string().trim(),
+});
 /** Moving a node up or down among its siblings. */
 export const catalogMoveSchema = z.object({ direction: z.enum(["up", "down"]) });
 
@@ -100,7 +113,7 @@ export const catalogMoveSchema = z.object({ direction: z.enum(["up", "down"]) })
  * A node of a brand's model tree, in the shape of the tree's nodes (`TreeNode` of @apc/ui-spec/tree), so the web and
  * mobile TreeView show it as it is: a node with `children` is a branch, even with an empty list, and one without is a
  * leaf, an engine. `detail` is the muted text after the label, e.g. a generation's years, which a generation also keeps
- * as numbers for its form. `level` says which level of the tree it is.
+ * as numbers for its form, as an engine keeps its sheet. `level` says which level of the tree it is.
  */
 export type CatalogNode = {
   id: string;
@@ -109,6 +122,7 @@ export type CatalogNode = {
   detail?: string;
   firstYear?: number;
   lastYear?: number | null;
+  sheet?: CatalogEngineInput;
   children?: CatalogNode[];
 };
 /** A brand of the catalog: its id, the name on its tile, the letters on its line on a phone and its model tree. */
@@ -123,8 +137,12 @@ export type CatalogLevel = "model" | "generation" | "version" | "year" | "engine
 export type CatalogEditLevel = Exclude<CatalogLevel, "engine">;
 /** A generation as added or renamed. */
 export type CatalogGenerationInput = z.infer<typeof catalogGenerationInputSchema>;
-/** What a node is added or renamed with: a name, a generation's years, or a model year. */
-export type CatalogValues = { name?: string; firstYear?: number; lastYear?: number | null; year?: number };
+/** An engine's sheet as added or saved. */
+export type CatalogEngineInput = z.infer<typeof catalogEngineInputSchema>;
+/** What a node is added or renamed with: a name, a generation's years, a model year, or an engine's sheet. */
+export type CatalogValues = { name?: string; firstYear?: number; lastYear?: number | null; year?: number } & Partial<CatalogEngineInput>;
+/** The names an engine's sheet is titled with: its year, brand, model and version. */
+export type EngineSheetNames = { year: number; brand: string; model: string; version: string };
 export type CatalogEngine = z.infer<typeof catalogEngineSchema>;
 export type EngineDrive = z.infer<typeof engineDriveSchema>;
 /**
@@ -285,14 +303,9 @@ export function catalogFrom(data: CatalogData): Catalog {
             id: year.id,
             label: String(year.year),
             level: "year" as const,
-            children: year.engines.map((engine) => {
-              const litres = engineLitres(engine);
-              sheets[engine.id] = {
-                title: `${year.year} · ${brand.name} ${model.name} ${version.name} ${litres}`,
-                specs: [String(year.year), `${litres} L`, `${engine.cylinders} CIL`, ENGINE_DRIVE_LABELS[engine.drive]],
-                summary: engine.summary,
-              };
-              return { id: engine.id, label: engineLabel(engine), level: "engine" as const };
+            children: year.engines.map(({ id, ...sheet }) => {
+              sheets[id] = engineSheet({ year: year.year, brand: brand.name, model: model.name, version: version.name }, sheet);
+              return { id, label: engineLabel(sheet), level: "engine" as const, sheet };
             }),
           })),
         })),
@@ -309,6 +322,21 @@ export function catalogFrom(data: CatalogData): Catalog {
  */
 export function engineLabel(engine: Pick<CatalogEngine, "displacementDl" | "cylinders">): string {
   return `${engineLitres(engine)} L ${engine.cylinders} cilindros`;
+}
+
+/**
+ * Builds the sheet an engine shows: its title from the tree and its displacement, its readouts and its summary.
+ * @param names The engine's year, brand, model and version.
+ * @param engine Its sheet as kept.
+ * @returns E.g. "1986 · Chevrolet Opala Diplomata 4.1", with ["1986", "4.1 L", "6 CIL", "TRASEIRA"].
+ */
+export function engineSheet(names: EngineSheetNames, engine: CatalogEngineInput): EngineSheet {
+  const litres = engineLitres(engine);
+  return {
+    title: `${names.year} · ${names.brand} ${names.model} ${names.version} ${litres}`,
+    specs: [String(names.year), `${litres} L`, `${engine.cylinders} CIL`, ENGINE_DRIVE_LABELS[engine.drive]],
+    summary: engine.summary,
+  };
 }
 
 /**
