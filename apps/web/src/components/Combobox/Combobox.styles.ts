@@ -11,7 +11,8 @@ export const combobox = recipe(
   'common.combobox',
   tv({
     slots: {
-      base: 'grid gap-1.5',
+      // One column that shrinks with its cell, so a narrow cell narrows the input instead of letting it overflow.
+      base: 'grid grid-cols-1 gap-1.5',
       anchor: 'relative',
       frame: FIELD.frame,
       input: FIELD.input,
