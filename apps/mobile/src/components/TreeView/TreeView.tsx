@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, Text, View, type ViewStyle } from 'react-native';
 import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons';
 import { scales } from '@apc/tokens/theme';
@@ -23,10 +23,22 @@ const OPEN_ANIMATION = LayoutAnimation.create(scales.motion.durationMs, 'easeInE
 // As on the web's phone layout, the rows are 48px tall, a finger's height, and each level is indented 16px with no
 // guide; a tag at the right of each leaf, such as "Ver ficha", can say what pressing it does, filled in the accent on
 // the selected one.
+// The owner can edit the tree from it, as on the web: a row can end with its own buttons (rowActions), always in view,
+// since a phone has no pointer to hover with; a branch can end with one more line under its children (after), such as
+// a button adding one more, which an empty branch shows though it has nothing to open; and a branch can be opened from
+// outside (reveal), e.g. the one something is being added to.
 
 type TreeItemProps = { node: TreeNode; level: number; tree: TreeState };
 // What every item needs from the tree around it.
-type TreeState = { expanded: ReadonlySet<string>; selected?: string; highlighted?: string; leafTag?: string; activate: (node: TreeNode) => void };
+type TreeState = {
+  expanded: ReadonlySet<string>;
+  selected?: string;
+  highlighted?: string;
+  leafTag?: string;
+  rowActions?: (id: string) => ReactNode;
+  after?: (id: string) => ReactNode;
+  activate: (node: TreeNode) => void;
+};
 type TreeViewProps = {
   /** Accessible name of the tree, e.g. "Modelos Chevrolet". */
   label: string;
@@ -43,13 +55,39 @@ type TreeViewProps = {
   leafTag?: string;
   /** Height of the tree, which scrolls inside it, e.g. { maxHeight: 380 }. */
   style?: ViewStyle;
+  /** The buttons at the end of a row, e.g. its "⋯"; none when it gives nothing. */
+  rowActions?: (id: string) => ReactNode;
+  /** One more line under a branch's children, e.g. a button adding one more; none when it gives nothing. */
+  after?: (id: string) => ReactNode;
+  /** A branch to open, with the ones above it, each time it changes. */
+  reveal?: string;
 };
 
-export function TreeView({ label, nodes, selected, onSelect, highlighted, defaultExpanded, leafTag, style }: TreeViewProps) {
+export function TreeView({
+  label,
+  nodes,
+  selected,
+  onSelect,
+  highlighted,
+  defaultExpanded,
+  leafTag,
+  style,
+  rowActions,
+  after,
+  reveal,
+}: TreeViewProps) {
   const reduced = useReducedMotion();
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(defaultExpanded ?? (selected ? ancestors(nodes, selected) : [])),
   );
+
+  // A branch the owner reveals opens, with the ones above it.
+  useEffect(() => {
+    if (reveal) {
+      setExpanded((open) => new Set([...open, ...ancestors(nodes, reveal), reveal]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new branch to reveal opens it: the nodes change on every edit
+  }, [reveal]);
 
   /** Selects a leaf, or opens or closes a branch, sliding its children in or out unless motion is reduced. */
   const activate = (node: TreeNode) => {
@@ -72,7 +110,7 @@ export function TreeView({ label, nodes, selected, onSelect, highlighted, defaul
     });
   };
 
-  const tree: TreeState = { expanded, selected, highlighted, leafTag, activate };
+  const tree: TreeState = { expanded, selected, highlighted, leafTag, rowActions, after, activate };
   const { styles, ids } = useStyles();
   return (
     <ScrollView role="tree" accessibilityLabel={label} nestedScrollEnabled style={[styles.tree, style]} testID={ids.tree}>
@@ -90,51 +128,66 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
   const { styles, ids } = useStyles();
   const branch = canOpen(node);
   const leaf = isLeaf(node);
-  const open = branch && tree.expanded.has(node.id);
+  const extra = node.children && tree.after?.(node.id);
+  // An empty branch with a line after it shows it, though it has nothing to open.
+  const open = (branch && tree.expanded.has(node.id)) || (!branch && Boolean(extra));
+  const actions = tree.rowActions?.(node.id);
   const selected = leaf && node.id === tree.selected;
   // A pointed-out row looks like the selected leaf.
   const accent = selected || node.id === tree.highlighted;
   return (
     <View style={styles.item} testID={ids.item}>
-      <Pressable
-        role="treeitem"
-        accessibilityLabel={node.detail ? `${node.label} ${node.detail}` : node.label}
-        accessibilityState={{ expanded: branch ? open : undefined, selected: leaf ? selected : undefined }}
-        accessibilityValue={node.id === tree.highlighted ? { text: 'em destaque' } : undefined}
-        disabled={!branch && !leaf}
-        onPress={() => tree.activate(node)}
-        style={({ pressed }) => [styles.row, pressed && styles.rowPressed, accent && styles.rowActive]}
-        testID={ids.row}
-      >
-        {branch ? <Chevron open={open} /> : <View style={styles.spacer} testID={ids.spacer} />}
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.label,
-            level === 1 && styles.labelDisplay,
-            level > 1 && leaf && (accent ? styles.labelMonoActive : styles.labelMono),
-            accent && styles.labelActive,
-          ]}
-          testID={ids.label}
+      <View style={styles.line} testID={ids.line}>
+        <Pressable
+          role="treeitem"
+          accessibilityLabel={node.detail ? `${node.label} ${node.detail}` : node.label}
+          accessibilityState={{ expanded: branch ? open : undefined, selected: leaf ? selected : undefined }}
+          accessibilityValue={node.id === tree.highlighted ? { text: 'em destaque' } : undefined}
+          disabled={!branch && !leaf}
+          onPress={() => tree.activate(node)}
+          style={({ pressed }) => [styles.row, pressed && styles.rowPressed, accent && styles.rowActive]}
+          testID={ids.row}
         >
-          {node.label}
-        </Text>
-        {node.detail && (
-          <Text style={styles.detail} testID={ids.detail}>
-            {node.detail}
+          {branch ? <Chevron open={open} /> : <View style={styles.spacer} testID={ids.spacer} />}
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.label,
+              level === 1 && styles.labelDisplay,
+              level > 1 && leaf && (accent ? styles.labelMonoActive : styles.labelMono),
+              accent && styles.labelActive,
+            ]}
+            testID={ids.label}
+          >
+            {node.label}
           </Text>
+          {node.detail && (
+            <Text style={styles.detail} testID={ids.detail}>
+              {node.detail}
+            </Text>
+          )}
+          {leaf && tree.leafTag && (
+            <Text style={[styles.tag, selected && styles.tagActive]} testID={ids.tag}>
+              {tree.leafTag}
+            </Text>
+          )}
+        </Pressable>
+        {actions && (
+          <View style={styles.actions} testID={ids.actions}>
+            {actions}
+          </View>
         )}
-        {leaf && tree.leafTag && (
-          <Text style={[styles.tag, selected && styles.tagActive]} testID={ids.tag}>
-            {tree.leafTag}
-          </Text>
-        )}
-      </Pressable>
+      </View>
       {open && (
         <View role="group" style={styles.group} testID={ids.group}>
           {node.children!.map((child) => (
             <TreeItem key={child.id} node={child} level={level + 1} tree={tree} />
           ))}
+          {extra && (
+            <View style={styles.after} testID={ids.after}>
+              {extra}
+            </View>
+          )}
         </View>
       )}
     </View>

@@ -4,13 +4,14 @@ import { FIELD_KINDS, type FieldKind } from '@apc/ui-spec/field';
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/tokens/icons';
 import { useRevealField } from '../FieldScrollView/FieldScrollView';
 import { Icon } from '../Icon/Icon';
-import { TRAILING_HIT_SLOP, useSearchStyles, useStyles } from './TextField.styles';
+import { FIELD_LINE_HEIGHT, TRAILING_HIT_SLOP, useSearchStyles, useStyles } from './TextField.styles';
 import { useTheme } from '../../app/theme';
 import { Label, Text } from '../Typography/Typography';
 
 // The pill-shaped inputs, the same as the web (see TextField.styles.ts). Each field kind sets the keyboard, autofill
 // hint and capitalization (see @apc/ui-spec/field). Inside a FieldScrollView, a field that gets focus scrolls into sight
-// above the keyboard, its label and message included.
+// above the keyboard, its label and message included. A field given a number of lines takes text of several lines, as
+// tall as those lines.
 
 type SearchFieldProps = {
   /** Accessible name; the search shows no visible label, so it is also the placeholder. */
@@ -39,6 +40,8 @@ type TextFieldProps = {
   returnKeyType?: ReturnKeyTypeOptions;
   /** Called when the keyboard's return key is pressed. */
   onSubmitEditing?: () => void;
+  /** How many lines a field of several lines shows, e.g. a summary; without it the field is one line. */
+  lines?: number;
   /** Called when the field loses focus, e.g. to fix how its text is written. */
   onBlur?: () => void;
 };
@@ -56,6 +59,7 @@ export function TextField({
   disabled = false,
   returnKeyType,
   onSubmitEditing,
+  lines,
   onBlur,
 }: TextFieldProps) {
   const { colors } = useTheme();
@@ -70,8 +74,14 @@ export function TextField({
   return (
     <View ref={root} style={[styles.field, disabled && styles.fieldDisabled]} testID={ids.field}>
       <Label>{label}</Label>
-      <View style={[styles.fieldRing, focused && (error ? styles.fieldRingError : styles.fieldRingFocused)]} testID={ids.fieldRing}>
-        <View style={[styles.fieldFrame, focused && styles.fieldFrameFocused, !!error && styles.fieldFrameError]} testID={ids.fieldFrame}>
+      <View
+        style={[styles.fieldRing, !!lines && styles.fieldRingMultiline, focused && (error ? styles.fieldRingError : styles.fieldRingFocused)]}
+        testID={ids.fieldRing}
+      >
+        <View
+          style={[styles.fieldFrame, !!lines && styles.fieldFrameMultiline, focused && styles.fieldFrameFocused, !!error && styles.fieldFrameError]}
+          testID={ids.fieldFrame}
+        >
           {icon && <Icon icon={icon} color={colors.textMuted} />}
           <TextInput
             ref={ref}
@@ -98,7 +108,9 @@ export function TextField({
               setFocused(false);
               onBlur?.();
             }}
-            style={styles.fieldInput}
+            multiline={!!lines}
+            numberOfLines={lines}
+            style={[styles.fieldInput, !!lines && [styles.fieldInputMultiline, { minHeight: lines * FIELD_LINE_HEIGHT }]]}
             testID={ids.fieldInput}
           />
           {isPassword && (

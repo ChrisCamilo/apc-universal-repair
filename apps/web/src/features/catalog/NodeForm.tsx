@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { CATALOG_YEARS, type CatalogEditLevel, type CatalogValues } from '@apc/domain/catalog'
+import { readCatalogFields, type CatalogEditLevel, type CatalogFields, type CatalogValues } from '@apc/domain/catalog'
 import { checkIcon, closeIcon } from '@apc/tokens/icons'
 import { RowAction } from '../../components/DataTable'
 import { TextField } from '../../components/TextField'
@@ -8,12 +8,14 @@ import { nodeForm } from './NodeForm.styles.ts'
 // The row that adds or renames a node of the Catalog's tree, or a brand: a brand, a model or a version by its name, a
 // generation by its name and its first and last years (the last one empty while it is still made), and a year by its
 // number. ✓ or Enter saves what is typed, once it is filled in right; ✕ or Escape gives up. It opens on its first
-// field, and shows under each field why it can't be saved, or the owner's error, such as a name another node has.
-
-/** The years a field takes, as typed. */
-const YEAR = /^\d{4}$/
+// field, and shows under each field why it can't be saved, or the owner's error, such as a name another node has. In a
+// phone's bottom sheet the form goes without ✓ and ✕: the sheet's own buttons send it, by its id.
 
 type NodeFormProps = {
+  /** The form's id, for a button outside it to send it. */
+  id?: string
+  /** Whether the row ends with ✓ and ✕; false when buttons outside it send it and give up. */
+  buttons?: boolean
   /** What is added or renamed: a brand or a level of the tree. */
   level: CatalogEditLevel | 'brand'
   /** Accessible name of the row, e.g. "Nova geração em Opala" or "Renomear Opala". */
@@ -28,65 +30,23 @@ type NodeFormProps = {
   onCancel: () => void
 }
 
-/**
- * Reads a year as typed.
- * @param text The field's text.
- * @returns The year, or null when it isn't four digits in the catalog's range.
- */
-function readYear(text: string): number | null {
-  const year = Number(text)
-  return YEAR.test(text.trim()) && year >= CATALOG_YEARS.min && year <= CATALOG_YEARS.max ? year : null
-}
-
-export function NodeForm({ level, label, initial = {}, error, saving = false, onSave, onCancel }: NodeFormProps) {
+export function NodeForm({ id, buttons = true, level, label, initial = {}, error, saving = false, onSave, onCancel }: NodeFormProps) {
   const { classes, ids } = nodeForm()
   const form = useRef<HTMLFormElement>(null)
   const [name, setName] = useState(initial.name ?? '')
   const [firstYear, setFirstYear] = useState(initial.firstYear?.toString() ?? '')
   const [lastYear, setLastYear] = useState(initial.lastYear?.toString() ?? '')
   const [year, setYear] = useState(initial.year?.toString() ?? '')
-  const [problems, setProblems] = useState<Record<string, string>>({})
+  const [problems, setProblems] = useState<Partial<Record<keyof CatalogFields, string>>>({})
   const named = level !== 'year'
-  const yearsMessage = `Use um ano de ${CATALOG_YEARS.min} a ${CATALOG_YEARS.max}.`
 
   /** Checks what is typed and hands it over, or says what to fix under each field. */
   const save = (event: FormEvent) => {
     event.preventDefault()
-    const found: Record<string, string> = {}
-    if (named && !name.trim()) {
-      found.name = 'Informe o nome.'
-    }
-    if (level === 'year') {
-      const read = readYear(year)
-      if (read === null) {
-        found.year = yearsMessage
-      }
-      if (Object.keys(found).length === 0) {
-        onSave({ year: read! })
-      }
-      setProblems(found)
-      return
-    }
-    if (level === 'generation') {
-      const first = readYear(firstYear)
-      const last = lastYear.trim() ? readYear(lastYear) : null
-      if (first === null) {
-        found.firstYear = yearsMessage
-      }
-      if (lastYear.trim() && last === null) {
-        found.lastYear = yearsMessage
-      } else if (first !== null && last !== null && last < first) {
-        found.lastYear = 'O último ano não pode vir antes do primeiro.'
-      }
-      setProblems(found)
-      if (Object.keys(found).length === 0) {
-        onSave({ name, firstYear: first!, lastYear: last })
-      }
-      return
-    }
-    setProblems(found)
-    if (Object.keys(found).length === 0) {
-      onSave({ name })
+    const read = readCatalogFields(level, { name, firstYear, lastYear, year })
+    setProblems('problems' in read ? read.problems : {})
+    if ('values' in read) {
+      onSave(read.values)
     }
   }
 
@@ -102,7 +62,7 @@ export function NodeForm({ level, label, initial = {}, error, saving = false, on
   }
 
   return (
-    <form ref={form} aria-label={label} className={classes.base()} data-testid={ids.base} onSubmit={save} onKeyDown={onKeyDown} noValidate>
+    <form ref={form} id={id} aria-label={label} className={classes.base()} data-testid={ids.base} onSubmit={save} onKeyDown={onKeyDown} noValidate>
       {named && (
         <div className={classes.name()} data-testid={ids.name}>
           <TextField label="Nome" value={name} onValueChange={setName} error={problems.name ?? error} autoFocus />
@@ -123,10 +83,12 @@ export function NodeForm({ level, label, initial = {}, error, saving = false, on
           <TextField label="Ano" kind="number" value={year} onValueChange={setYear} error={problems.year ?? error} autoFocus />
         </div>
       )}
-      <div className={classes.buttons()} data-testid={ids.buttons}>
-        <RowAction icon={checkIcon} label="Salvar" onClick={() => form.current?.requestSubmit()} disabled={saving} />
-        <RowAction icon={closeIcon} label="Cancelar" onClick={onCancel} />
-      </div>
+      {buttons && (
+        <div className={classes.buttons()} data-testid={ids.buttons}>
+          <RowAction icon={checkIcon} label="Salvar" onClick={() => form.current?.requestSubmit()} disabled={saving} />
+          <RowAction icon={closeIcon} label="Cancelar" onClick={onCancel} />
+        </div>
+      )}
     </form>
   )
 }

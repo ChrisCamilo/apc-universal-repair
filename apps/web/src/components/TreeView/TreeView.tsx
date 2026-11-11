@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
 import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { ancestors, canOpen, isLeaf, treeKey, visibleRows, type TreeNode } from '@apc/ui-spec/tree'
 import { Icon } from '../Icon/Icon.tsx'
@@ -17,7 +17,8 @@ import { treeView } from './TreeView.styles.ts'
 // pointed at, and on the row the keyboard is on while the focus is in the tree, so Tab reaches them from the row; a row can show something else in its place, such as a
 // field to rename it (editing); a branch can end with one more line under its children (after), such as a field to
 // add one more, which also shows under an empty branch; and a branch can be opened from outside, with the ones above
-// it (reveal), e.g. the one something is being added to. The keys inside those keep their own meaning.
+// it (reveal), e.g. the one something is being added to. The keys inside those keep their own meaning. A row is named
+// by its label and detail alone, so the buttons it ends with don't join its name.
 // On a phone (below `card:`) the rows are 48px tall, a finger's height, and each level is indented without the guides;
 // a tag at the right of each leaf, such as "Ver ficha", can say what choosing it does, filled in the accent on the
 // selected one.
@@ -196,6 +197,7 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
   const open = (branch && tree.expanded.has(node.id)) || (!branch && Boolean(extra))
   const editing = tree.editing?.id === node.id ? tree.editing.content : null
   const actions = !editing && tree.rowActions?.(node.id)
+  const labelId = useId()
   const selected = leaf && node.id === tree.selected
   const highlighted = node.id === tree.highlighted
   const { classes, ids } = treeView({
@@ -213,6 +215,7 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
       aria-expanded={branch ? open : undefined}
       aria-selected={leaf ? selected : undefined}
       aria-current={highlighted || undefined}
+      aria-labelledby={editing ? undefined : node.detail ? `${labelId} ${labelId}-detail` : labelId}
       tabIndex={node.id === tree.tabbable ? 0 : -1}
       className={classes.item()}
       data-testid={ids.item}
@@ -234,11 +237,11 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
         )}
         {!editing && (
           <>
-            <span className={classes.label()} data-testid={ids.label}>
+            <span id={labelId} className={classes.label()} data-testid={ids.label}>
               {node.label}
             </span>
             {node.detail && (
-              <span className={classes.detail()} data-testid={ids.detail}>
+              <span id={`${labelId}-detail`} className={classes.detail()} data-testid={ids.detail}>
                 {node.detail}
               </span>
             )}

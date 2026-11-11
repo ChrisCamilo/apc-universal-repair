@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import {
-  CATALOG_ENGINE_LIMITS,
   ENGINE_DRIVE_LABELS,
+  ENGINE_DRIVES,
   engineLabel,
   engineSheet,
+  litresText,
+  readEngineFields,
   type CatalogEngineInput,
-  type EngineDrive,
+  type EngineFields,
   type EngineSheetNames,
 } from '@apc/domain/catalog'
 import { capitalizeFirst } from '@apc/domain/items'
@@ -19,14 +21,13 @@ import { engineSheetForm } from './EngineSheetForm.styles.ts'
 // the displacement in litres (a comma or a dot), the cylinders, the drive and a summary. The year comes from the tree
 // and isn't typed. While what is typed makes a sheet, the form shows the title it will have, the engine's name in the
 // tree and its readouts as they will look. Salvar ficha checks each field and says under it what to fix; Cancelar
-// gives up.
-
-/** The drives to choose from, in their order. */
-const DRIVES: EngineDrive[] = ['FRONT', 'REAR', 'ALL']
-/** A displacement as typed: digits with one decimal at most, after a comma or a dot. */
-const LITRES = /^\d{1,2}([.,]\d)?$/
+// gives up. On a phone the form fills a full-screen dialog, whose own Cancelar and Salvar ficha send it by its id.
 
 type EngineSheetFormProps = {
+  /** The form's id, for a button outside it to send it. */
+  id?: string
+  /** Whether the form ends with Cancelar and Salvar ficha; false when buttons outside it send it and give up. */
+  actions?: boolean
   /** Accessible name of the form, e.g. "Novo motor em 1986". */
   label: string
   /** The year, brand, model and version the sheet's title is built from. */
@@ -39,47 +40,14 @@ type EngineSheetFormProps = {
   onCancel: () => void
 }
 
-/**
- * Reads what is typed into a sheet, when every field makes one.
- * @param litres The displacement as typed, e.g. "4,1".
- * @param cylinders The cylinders as typed.
- * @param drive The drive chosen, or empty.
- * @param summary The summary.
- * @returns The sheet, or what to fix in each field.
- */
-function readSheet(
-  litres: string,
-  cylinders: string,
-  drive: string,
-  summary: string,
-): { sheet: CatalogEngineInput } | { problems: Record<string, string> } {
-  const { displacementDl: dl, cylinders: count } = CATALOG_ENGINE_LIMITS
-  const problems: Record<string, string> = {}
-  const displacementDl = Math.round(Number(litres.trim().replace(',', '.')) * 10)
-  if (!LITRES.test(litres.trim()) || displacementDl < dl.min || displacementDl > dl.max) {
-    problems.litres = `Use uma cilindrada de ${(dl.min / 10).toFixed(1).replace('.', ',')} a ${(dl.max / 10).toFixed(1).replace('.', ',')} L.`
-  }
-  const cylinderCount = Number(cylinders.trim())
-  if (!/^\d+$/.test(cylinders.trim()) || cylinderCount < count.min || cylinderCount > count.max) {
-    problems.cylinders = `Use de ${count.min} a ${count.max} cilindros.`
-  }
-  if (!drive) {
-    problems.drive = 'Escolha a tração.'
-  }
-  if (Object.keys(problems).length > 0) {
-    return { problems }
-  }
-  return { sheet: { displacementDl, cylinders: cylinderCount, drive: drive as EngineDrive, summary: summary.trim() } }
-}
-
-export function EngineSheetForm({ label, names, initial, saving = false, onSave, onCancel }: EngineSheetFormProps) {
+export function EngineSheetForm({ id, actions = true, label, names, initial, saving = false, onSave, onCancel }: EngineSheetFormProps) {
   const { classes, ids } = engineSheetForm()
-  const [litres, setLitres] = useState(initial ? (initial.displacementDl / 10).toFixed(1).replace('.', ',') : '')
+  const [litres, setLitres] = useState(initial ? litresText(initial.displacementDl) : '')
   const [cylinders, setCylinders] = useState(initial?.cylinders.toString() ?? '')
   const [drive, setDrive] = useState<string>(initial?.drive ?? '')
   const [summary, setSummary] = useState(initial?.summary ?? '')
-  const [problems, setProblems] = useState<Record<string, string>>({})
-  const read = readSheet(litres, cylinders, drive, summary)
+  const [problems, setProblems] = useState<Partial<Record<keyof EngineFields, string>>>({})
+  const read = readEngineFields({ litres, cylinders, drive, summary })
   const sheet = 'sheet' in read ? read.sheet : null
   const preview = sheet && engineSheet(names, sheet)
 
@@ -95,7 +63,7 @@ export function EngineSheetForm({ label, names, initial, saving = false, onSave,
   }
 
   return (
-    <form aria-label={label} className={classes.base()} data-testid={ids.base} onSubmit={save} noValidate>
+    <form id={id} aria-label={label} className={classes.base()} data-testid={ids.base} onSubmit={save} noValidate>
       <div className={classes.head()} data-testid={ids.head}>
         <p className={classes.kicker()} data-testid={ids.kicker}>
           Ficha do motor
@@ -112,7 +80,7 @@ export function EngineSheetForm({ label, names, initial, saving = false, onSave,
       <div className={classes.drive()} data-testid={ids.drive}>
         <Segmented
           label="Tração"
-          options={DRIVES.map((value) => ({ value, label: capitalizeFirst(ENGINE_DRIVE_LABELS[value].toLowerCase()) }))}
+          options={ENGINE_DRIVES.map((value) => ({ value, label: capitalizeFirst(ENGINE_DRIVE_LABELS[value].toLowerCase()) }))}
           value={drive}
           onValueChange={setDrive}
         />
@@ -137,14 +105,16 @@ export function EngineSheetForm({ label, names, initial, saving = false, onSave,
           </div>
         </div>
       )}
-      <div className={classes.actions()} data-testid={ids.actions}>
-        <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" size="sm" loading={saving}>
-          Salvar ficha
-        </Button>
-      </div>
+      {actions && (
+        <div className={classes.actions()} data-testid={ids.actions}>
+          <Button variant="secondary" size="sm" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button type="submit" size="sm" loading={saving}>
+            Salvar ficha
+          </Button>
+        </div>
+      )}
     </form>
   )
 }

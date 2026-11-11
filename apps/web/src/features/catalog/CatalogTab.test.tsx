@@ -569,6 +569,119 @@ test('Web: on a phone the Catalog search narrows the brands and opens a part fou
   await expect.element(screen.getByText(/ainda não tem ficha técnica no catálogo/)).toBeVisible()
 })
 
+// On a phone, adds a brand from beside the brands' heading in a bottom sheet, which opens its empty models, adds a model
+// from beside the models' heading, and a generation from the model's "⋯", always in view and a finger wide: the sheet
+// says the last year can't come before the first, then adds it with the model open on it.
+test('Web: on a phone a brand, a model and a generation are added in bottom sheets', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  answerChanges()
+  const screen = await renderCatalog(true)
+  await screen.getByRole('button', { name: 'Nova marca' }).click()
+  const brand = screen.getByRole('dialog', { name: 'Nova marca' })
+  await brand.getByLabelText('Nome').fill('renault')
+  await brand.getByRole('button', { name: 'Adicionar' }).click()
+  await expect.element(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Renault')
+  await expect.element(screen.getByText('Nenhum modelo nessa marca')).toBeVisible()
+
+  await screen.getByRole('button', { name: 'Novo modelo' }).click()
+  const model = screen.getByRole('dialog', { name: 'Novo modelo em Renault' })
+  await model.getByLabelText('Nome').fill('Clio')
+  await model.getByRole('button', { name: 'Adicionar' }).click()
+  await expect.element(screen.getByRole('treeitem', { name: 'Clio' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Nova geração em Clio' })).toBeVisible()
+  const more = screen.getByRole('button', { name: 'Ações de Clio' })
+  await expect.element(more).toBeVisible()
+  expect(more.element().getBoundingClientRect().width).toBe(44)
+
+  await more.click()
+  const actions = screen.getByRole('dialog', { name: 'Clio' })
+  expect(actions.getByRole('button').elements().map((button) => button.textContent)).toEqual(['Nova geração', 'Renomear', 'Excluir…', 'Fechar'])
+  await actions.getByRole('button', { name: 'Nova geração' }).click()
+  const generation = screen.getByRole('dialog', { name: 'Nova geração em Clio' })
+  await generation.getByLabelText('Nome').fill('Primeira geração')
+  await generation.getByLabelText('De').fill('1990')
+  await generation.getByLabelText('Até').fill('1980')
+  await generation.getByRole('button', { name: 'Adicionar' }).click()
+  await expect.element(generation.getByText('O último ano não pode vir antes do primeiro.')).toBeVisible()
+  await generation.getByLabelText('Até').fill('1998')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('dialog', { name: 'Nova geração em Clio' })).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('treeitem', { name: 'Clio' }).getByText('1990–1998')).toBeVisible()
+})
+
+// On a phone, opens a version's "⋯" and checks the first has no "Mover para cima", renames it in a sheet that opens with
+// its name, moves another up, and deletes a generation after the dialog says what goes with it.
+test('Web: on a phone branches are renamed, moved and deleted from their actions', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  answerChanges()
+  const screen = await renderCatalog(true)
+  await screen.getByRole('button', { name: /^Chevrolet/ }).click()
+  for (const name of ['Opala', 'Terceira geração']) {
+    await screen.getByRole('treeitem', { name, exact: name === 'Opala' }).getByText(name, { exact: true }).click()
+  }
+  await screen.getByRole('button', { name: 'Ações de Comodoro' }).click()
+  const actions = screen.getByRole('dialog', { name: 'Comodoro' })
+  expect(actions.getByRole('button').elements().map((button) => button.textContent)).toEqual([
+    'Novo ano',
+    'Renomear',
+    'Mover para baixo',
+    'Excluir…',
+    'Fechar',
+  ])
+  await actions.getByRole('button', { name: 'Renomear' }).click()
+  const rename = screen.getByRole('dialog', { name: 'Renomear Comodoro' })
+  await expect.element(rename.getByLabelText('Nome')).toHaveValue('Comodoro')
+  await rename.getByLabelText('Nome').fill('Comodoro SL')
+  await rename.getByRole('button', { name: 'Salvar' }).click()
+  await expect.element(screen.getByText('Comodoro SL', { exact: true })).toBeVisible()
+
+  await screen.getByRole('button', { name: 'Ações de SS' }).click()
+  await screen.getByRole('dialog', { name: 'SS' }).getByRole('button', { name: 'Mover para cima' }).click()
+  await expect.poll(() => versionsOf(screen)).toEqual(['Comodoro SL', 'SS', 'Diplomata'])
+
+  await screen.getByRole('button', { name: 'Ações de Terceira geração' }).click()
+  await screen.getByRole('dialog', { name: 'Terceira geração' }).getByRole('button', { name: 'Excluir…' }).click()
+  const confirm = screen.getByRole('dialog', { name: 'Excluir “Terceira geração”?' })
+  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 anos, 2 motores com ficha\./)
+  await confirm.getByRole('button', { name: 'Excluir' }).click()
+  await expect.element(screen.getByText('Terceira geração', { exact: true })).not.toBeInTheDocument()
+})
+
+// On a phone, adds an engine from its year's "Novo motor em 1985": the sheet's form fills the screen, with Cancelar and
+// Salvar ficha at its foot, and once saved the engine's sheet opens; then "Editar ficha" opens the same form filled
+// with the sheet, and a new displacement and cylinders change its title.
+test('Web: on a phone an engine is added and its sheet edited in a full-screen form', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  answerChanges()
+  const screen = await renderCatalog(true)
+  await screen.getByRole('button', { name: /^Chevrolet/ }).click()
+  for (const name of ['Opala', 'Terceira geração', 'Diplomata']) {
+    await screen.getByRole('treeitem', { name, exact: name === 'Opala' }).getByText(name, { exact: true }).click()
+  }
+  await screen.getByRole('button', { name: 'Novo motor em 1985' }).click()
+  const sheet = screen.getByRole('dialog', { name: 'Novo motor em 1985' })
+  const box = sheet.element().getBoundingClientRect()
+  expect([box.left, box.top, box.width, box.height]).toEqual([0, 0, MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT])
+  const save = sheet.getByRole('button', { name: 'Salvar ficha' })
+  expect(save.element().getBoundingClientRect().bottom).toBeGreaterThan(MIN_MOBILE_HEIGHT - 80)
+  await expect.element(sheet.getByRole('button', { name: 'Cancelar' })).toBeVisible()
+  await sheet.getByLabelText('Cilindrada (L)').fill('2,5')
+  await sheet.getByLabelText('Cilindros').fill('4')
+  await sheet.getByRole('radio', { name: 'Traseira' }).click()
+  await save.click()
+  await expect.element(screen.getByRole('dialog', { name: 'Novo motor em 1985' })).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('heading', { name: '1985 · Chevrolet Opala Diplomata 2.5' })).toBeVisible()
+  await expect.element(screen.getByText('Opala › Terceira geração › Diplomata › 1985')).toBeVisible()
+
+  await screen.getByRole('button', { name: 'Editar ficha' }).click()
+  const edit = screen.getByRole('dialog', { name: 'Ficha do 2.5 L 4 cilindros' })
+  await expect.element(edit.getByLabelText('Cilindrada (L)')).toHaveValue('2,5')
+  await edit.getByLabelText('Cilindrada (L)').fill('2.8')
+  await edit.getByLabelText('Cilindros').fill('6')
+  await edit.getByRole('button', { name: 'Salvar ficha' }).click()
+  await expect.element(screen.getByRole('heading', { name: '1985 · Chevrolet Opala Diplomata 2.8' })).toBeVisible()
+})
+
 /** The Catalog under a phone Dashboard's header: the tab's name, or a deeper screen's title with its ←. */
 function PhoneDashboard() {
   const [header, setHeader] = useState<PhoneHeader | null>(null)
