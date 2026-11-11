@@ -1,12 +1,15 @@
 import type { Page } from "@playwright/test";
 import { TEST_CATALOG, TEST_ENGINES } from "@apc/domain/test-catalog";
 
-// The Catalog tab: its brands, the models' tree, its searches and the engine sheets; on a phone, the brand lines, the
-// screen's title and its ←, and the parts a code search found as cards.
+// The Catalog tab: its brands, the models' tree, its searches and the engine sheets; the tree's editing, its buttons,
+// the row that adds or renames a node and the delete dialog; on a phone, the brand lines, the screen's title and its ←,
+// and the parts a code search found as cards.
 
 /**
  * The Catalog tab: a brand, a model and an engine sheet by name, the two searches and the parts a code search finds;
- * on a phone, a brand's line, the screen's title, its ← by name and the found parts' cards.
+ * the tree's editing: a brand's models in order, "Nova marca" and "Novo modelo", a node's name in its row, a row's button by name, the row that
+ * adds or renames a node and a field of it, and the delete dialog; on a phone, a brand's line, the screen's title, its ←
+ * by name and the found parts' cards.
  * @param page The test's page.
  * @returns The tab's elements.
  */
@@ -25,5 +28,14 @@ export function catalog(page: Page) {
     title: page.getByRole("heading", { level: 1 }),
     back: (name: string) => page.getByRole("button", { name }),
     partCards: page.getByRole("table", { name: "Peças do estoque com esse código" }).getByRole("row"),
+    topModels: (brand: string) =>
+      page.getByRole("tree", { name: `Modelos ${brand}` }).locator(':scope > [role="treeitem"] > [data-row]').getByTestId("common.tree-view.item.row.label"),
+    newBrand: page.getByRole("button", { name: "Nova marca" }),
+    newModel: page.getByRole("button", { name: "Novo modelo" }),
+    node: (name: string) => page.getByText(name, { exact: true }),
+    action: (name: string) => page.getByRole("button", { name }),
+    form: (name: string) => page.getByRole("form", { name }),
+    field: (form: string, label: string) => page.getByRole("form", { name: form }).getByLabel(label),
+    deleteDialog: (name: string) => page.getByRole("dialog", { name: `Excluir “${name}”?` }),
   };
 }

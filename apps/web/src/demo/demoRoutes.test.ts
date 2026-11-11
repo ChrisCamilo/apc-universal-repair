@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
 import { API_ROUTES } from '@apc/domain/api-routes'
+import { catalogSchema, type CatalogData } from '@apc/domain/catalog'
 import type { Item } from '@apc/domain/items'
 import { ITEM_LIST_PATHS, type ListEntry } from '@apc/domain/lists'
 import { PHOTO_PARTS } from '@apc/domain/photos'
@@ -42,6 +43,27 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
     return call('GET', `/photos/${item.brands[0].photos[0].id}.png`)
   },
   'GET /catalog': ({ call }) => call('GET', '/catalog'),
+  'POST /catalog/brands': ({ call }) => call('POST', '/catalog/brands', { name: 'Renault' }),
+  'POST /catalog/brands/:id/models': async (demo) => demo.call('POST', `/catalog/brands/${(await opala(demo)).brand}/models`, { name: 'Kadett' }),
+  'POST /catalog/models/:id/generations': async (demo) =>
+    demo.call('POST', `/catalog/models/${(await opala(demo)).model}/generations`, { name: 'Quarta geração', firstYear: 1993, lastYear: null }),
+  'POST /catalog/generations/:id/versions': async (demo) =>
+    demo.call('POST', `/catalog/generations/${(await opala(demo)).generation}/versions`, { name: 'Caravan' }),
+  'POST /catalog/versions/:id/years': async (demo) => demo.call('POST', `/catalog/versions/${(await opala(demo)).version}/years`, { year: 1987 }),
+  'PATCH /catalog/models/:id': async (demo) => demo.call('PATCH', `/catalog/models/${(await opala(demo)).model}`, { name: 'Opala SS' }),
+  'PATCH /catalog/generations/:id': async (demo) =>
+    demo.call('PATCH', `/catalog/generations/${(await opala(demo)).generation}`, { name: 'Terceira geração', firstYear: 1980, lastYear: 1992 }),
+  'PATCH /catalog/versions/:id': async (demo) => demo.call('PATCH', `/catalog/versions/${(await opala(demo)).version}`, { name: 'Diplomata SE' }),
+  'PATCH /catalog/years/:id': async (demo) => demo.call('PATCH', `/catalog/years/${(await opala(demo)).year}`, { year: 1988 }),
+  ...Object.fromEntries(
+    (['model', 'generation', 'version', 'year'] as const).flatMap((level) => {
+      const path = `/catalog/${level === 'year' ? 'years' : `${level}s`}`
+      return [
+        [`POST ${path}/:id/move`, async (demo: Demo) => demo.call('POST', `${path}/${(await opala(demo))[level]}/move`, { direction: 'up' })],
+        [`DELETE ${path}/:id`, async (demo: Demo) => demo.call('DELETE', `${path}/${(await opala(demo))[level]}`)],
+      ]
+    }),
+  ),
   ...Object.fromEntries(Object.values(ITEM_LIST_PATHS).flatMap((path) => Object.entries(listCalls(path)))),
 }
 /** An item to send. */
@@ -49,6 +71,20 @@ const ITEM = { name: 'tensor da correia', category: 'motor', vehicles: [{ vehicl
 
 /** A fresh demo, logged in as its user. */
 type Demo = Awaited<ReturnType<typeof startDemo>>
+
+/**
+ * Finds the Opala's nodes in a fresh demo's catalog, down to its Diplomata's 1985.
+ * @param demo The demo.
+ * @returns The ids of Chevrolet, the Opala, its third generation, the Diplomata and its 1985.
+ */
+async function opala({ call }: Demo) {
+  const catalog: CatalogData = catalogSchema.parse(await (await call('GET', '/catalog')).json())
+  const brand = catalog.brands[0]
+  const model = brand.models[1]
+  const generation = model.generations[2]
+  const version = generation.versions[1]
+  return { brand: brand.id, model: model.id, generation: generation.id, version: version.id, year: version.years[0].id }
+}
 
 /**
  * Lists the calls of one of the item lists' routes: a new entry, and an unused one to rename, merge and delete.

@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog'
+import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
 import { TABLE_CARD_BREAKPOINT } from '@apc/ui-spec/table'
 import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import type { Item } from '@apc/domain/items'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
-import { render } from 'vitest-browser-react'
+import { render, type RenderResult } from 'vitest-browser-react'
 import { AppFrame } from '../../components/AppFrame'
+import { ToastProvider } from '../../components/Toast'
 import '../../app/fonts.ts'
 import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
@@ -90,12 +91,60 @@ function answer(items: Item[], catalog: () => Response = () => new Response(JSON
 }
 
 /**
- * Renders the Catalog and waits for the catalog to load.
+ * Answers the API's requests as a server would, keeping the changes made to the catalog: the inventory with no parts,
+ * the catalog with the test catalog at first, and each change made on it under the API's rules, answering the whole
+ * catalog, or 404 or 409.
+ */
+function answerChanges() {
+  let catalog = structuredClone(TEST_CATALOG_DATA)
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : String(input), location.href)
+    if (!url.pathname.startsWith('/api/catalog')) {
+      return new Response(JSON.stringify({ items: [], total: 0 }))
+    }
+    const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+    const made = catalogChangeOf(init?.method ?? 'GET', url.pathname.slice('/api/catalog'.length), body, crypto.randomUUID())
+    if (!made) {
+      return new Response(JSON.stringify(catalog))
+    }
+    const result = applyCatalogChange(catalog, made.change)
+    if (result === 'missing' || result === 'taken') {
+      return new Response(null, { status: result === 'missing' ? 404 : 409 })
+    }
+    catalog = result
+    return new Response(JSON.stringify(catalog), { status: made.status })
+  })
+}
+
+/**
+ * Finds the name of a node of the tree in its row, to point at the row.
+ * @param screen The rendered screen.
+ * @param label The node's name, which only that node has.
+ * @returns The name in its row.
+ */
+function rowOf(screen: RenderResult, label: string) {
+  return screen.getByText(label, { exact: true })
+}
+
+/**
+ * Reads the names of the Opala's third generation's versions, in order.
+ * @param screen The rendered screen.
+ * @returns The names.
+ */
+function versionsOf(screen: RenderResult): string[] {
+  const generation = screen.getByText('Terceira geração', { exact: true }).element().closest('[role="treeitem"]')!
+  return [...generation.querySelectorAll(':scope > [role="none"] > [role="none"] > [role="group"] > [role="treeitem"]')].map(
+    (item) => item.querySelector('[data-testid="common.tree-view.item.row.label"]')!.textContent!,
+  )
+}
+
+/**
+ * Renders the Catalog, with its toasts, and waits for the catalog to load.
  * @param phone Whether to render it as a phone's Dashboard would, under its header.
  * @returns The rendered screen.
  */
 async function renderCatalog(phone = false) {
-  const screen = await render(phone ? <PhoneDashboard /> : <CatalogTab />)
+  const screen = await render(<ToastProvider>{phone ? <PhoneDashboard /> : <CatalogTab />}</ToastProvider>)
   await expect.element(screen.getByRole('status', { name: 'Carregando o catálogo' })).not.toBeInTheDocument()
   return screen
 }
@@ -210,8 +259,9 @@ test('Web: the Catalog lays out in columns on desktop and stacks on a narrow scr
 })
 
 // Fills the Catalog with 16 brands and a brand of 33 models at 1280×720 in the app frame, and checks the page doesn't
-// scroll: the tiles scroll under the brand search, the tree inside its panel and the detail column on its own, each
-// ending at the bottom of the window, and scrolling the tiles to their end keeps the brand search in view.
+// scroll: the tiles scroll between the brand search and "Nova marca", the tree inside its panel and the detail column
+// on its own, each column ending at the bottom of the window, and scrolling the tiles to their end keeps the brand
+// search in view.
 test('Web: on desktop the Catalog fills the window and scrolls in its columns', async () => {
   answer([], () => new Response(JSON.stringify(LARGE_CATALOG)))
   const screen = await render(
@@ -230,13 +280,100 @@ test('Web: on desktop the Catalog fills the window and scrolls in its columns', 
   }
   expect(getComputedStyle(detail).overflowY).toBe('auto')
   const bottom = page.getBoundingClientRect().bottom
-  for (const column of [tiles, tree, detail]) {
+  const newBrand = screen.getByRole('button', { name: 'Nova marca' }).element()
+  expect(tiles.getBoundingClientRect().bottom).toBeLessThanOrEqual(newBrand.getBoundingClientRect().top)
+  for (const column of [newBrand, tree, detail]) {
     expect(column.getBoundingClientRect().bottom).toBeLessThanOrEqual(bottom)
     expect(column.getBoundingClientRect().bottom).toBeGreaterThan(bottom - 40)
   }
   tiles.scrollTop = tiles.scrollHeight
   await expect.element(screen.getByRole('radio', { name: 'Marca 12' })).toBeInViewport()
   await expect.element(screen.getByRole('searchbox', { name: 'Procure marca' })).toBeInViewport()
+})
+
+// Adds a brand from the rail and checks it ends the tiles chosen, with no models, then adds a model over the tree and
+// checks it shows with a button to add its first generation; adding the brand again says it is in the catalog.
+test('Web: a brand and a model are added from the rail and over the tree', async () => {
+  answerChanges()
+  const screen = await renderCatalog()
+  await screen.getByRole('button', { name: 'Nova marca' }).click()
+  await screen.getByRole('form', { name: 'Nova marca' }).getByLabelText('Nome').fill('renault')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('radio', { name: 'Renault' })).toBeChecked()
+  await expect.element(screen.getByRole('heading', { name: 'Modelos · 0' })).toBeVisible()
+
+  await screen.getByRole('button', { name: 'Novo modelo' }).click()
+  await screen.getByRole('form', { name: 'Novo modelo em Renault' }).getByLabelText('Nome').fill('Clio')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('treeitem', { name: 'Clio' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Nova geração em Clio' })).toBeVisible()
+
+  await screen.getByRole('button', { name: 'Nova marca' }).click()
+  await screen.getByRole('form', { name: 'Nova marca' }).getByLabelText('Nome').fill('RENAULT')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByText('Essa marca já está no catálogo.')).toBeVisible()
+})
+
+// Adds a generation to an empty model, first with its last year before the first, which the row says, then right;
+// reaches the new generation's "+" with Tab from its row and adds a version with the keyboard; and adds a year a
+// version has already, which the row says, and Escape gives up on.
+test('Web: the levels under a model are added, by keyboard too, and their fields are checked', async () => {
+  answerChanges()
+  const screen = await renderCatalog()
+  await screen.getByRole('button', { name: 'Nova geração em Monza' }).click()
+  const generation = screen.getByRole('form', { name: 'Nova geração em Monza' })
+  await generation.getByLabelText('Nome').fill('primeira geração')
+  await generation.getByLabelText('De').fill('1982')
+  await generation.getByLabelText('Até').fill('1980')
+  await generation.getByRole('button', { name: 'Salvar' }).click()
+  await expect.element(generation.getByText('O último ano não pode vir antes do primeiro.')).toBeVisible()
+  await generation.getByLabelText('Até').fill('1996')
+  await userEvent.keyboard('{Enter}')
+  const monza = screen.getByRole('treeitem', { name: /^Monza/ })
+  await expect.element(monza.getByText('1982–1996')).toBeVisible()
+
+  ;(monza.getByRole('treeitem').first().element() as HTMLElement).focus()
+  await userEvent.keyboard('{Tab}')
+  await expect.element(monza.getByRole('button', { name: 'Nova versão em Primeira geração' }).first()).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await userEvent.keyboard('SL/E{Enter}')
+  await expect.element(monza.getByText('SL/E', { exact: true })).toBeVisible()
+
+  await rowOf(screen, 'Diplomata').hover()
+  await screen.getByRole('button', { name: 'Novo ano em Diplomata' }).click()
+  await screen.getByRole('form', { name: 'Novo ano em Diplomata' }).getByLabelText('Ano').fill('1986')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByText('Essa versão já tem esse ano.')).toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('form', { name: 'Novo ano em Diplomata' })).not.toBeInTheDocument()
+})
+
+// Renames a version from its row, moves another up and checks the order, the first's "up" turned off, and deletes a
+// generation after the dialog says what goes with it, which then leaves the tree.
+test('Web: branches are renamed, moved and deleted after confirming', async () => {
+  answerChanges()
+  const screen = await renderCatalog()
+  await rowOf(screen, 'Comodoro').hover()
+  await screen.getByRole('button', { name: 'Renomear Comodoro' }).click()
+  const rename = screen.getByRole('form', { name: 'Renomear Comodoro' }).getByLabelText('Nome')
+  await expect.element(rename).toHaveValue('Comodoro')
+  await rename.fill('Comodoro SL')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByText('Comodoro SL', { exact: true })).toBeVisible()
+
+  await rowOf(screen, 'SS').hover()
+  await screen.getByRole('button', { name: 'Mover SS para cima' }).click()
+  await expect.poll(() => versionsOf(screen)).toEqual(['Comodoro SL', 'SS', 'Diplomata'])
+  await rowOf(screen, 'Comodoro SL').hover()
+  await expect.element(screen.getByRole('button', { name: 'Mover Comodoro SL para cima' })).toBeDisabled()
+
+  await rowOf(screen, 'Terceira geração').hover()
+  await screen.getByRole('button', { name: 'Excluir Terceira geração' }).click()
+  const confirm = screen.getByRole('dialog', { name: 'Excluir “Terceira geração”?' })
+  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 anos, 2 motores com ficha\./)
+  await confirm.getByRole('button', { name: 'Excluir' }).click()
+  await expect.element(screen.getByText('Terceira geração', { exact: true })).not.toBeInTheDocument()
+  await expect.element(screen.getByText('“Terceira geração” saiu do catálogo.')).toBeVisible()
 })
 
 // Types a brand search in another case and checks only the matching tile is left, then clears it and checks every
