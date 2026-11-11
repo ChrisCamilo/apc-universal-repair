@@ -3,13 +3,14 @@ import { TEST_CATALOG, TEST_ENGINES } from "@apc/domain/test-catalog";
 
 // The Catalog tab: its brands, the models' tree, its searches and the engine sheets; the tree's editing, its buttons,
 // the row that adds or renames a node, the delete dialog and an engine sheet's form; on a phone, the brand lines, the
-// screen's title and its ←, and the parts a code search found as cards.
+// screen's title and its ←, the parts a code search found as cards, and the sheets and dialogs the tree is edited in.
 
 /**
  * The Catalog tab: a brand, a model and an engine sheet by name, the two searches and the parts a code search finds;
  * the tree's editing: a brand's models in order, "Nova marca" and "Novo modelo", a node's name in its row, a row's
  * button by name, the row that adds or renames a node and a field of it, the delete dialog, "Editar ficha" and a choice
- * of the sheet's form; on a phone, a brand's line, the screen's title, its ← by name and the found parts' cards.
+ * of the sheet's form; on a phone, a brand's line, the screen's title, its ← by name, the found parts' cards, and a bottom
+ * sheet or dialog by its title, such as a branch's actions or the sheet adding a node.
  * @param page The test's page.
  * @returns The tab's elements.
  */
@@ -39,5 +40,6 @@ export function catalog(page: Page) {
     deleteDialog: (name: string) => page.getByRole("dialog", { name: `Excluir “${name}”?` }),
     editSheet: page.getByRole("button", { name: "Editar ficha" }),
     choice: (form: string, name: string) => page.getByRole("form", { name: form }).getByRole("radio", { name }),
+    dialog: (name: string) => page.getByRole("dialog", { name }),
   };
 }
