@@ -166,7 +166,7 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
 | `@desktop-only` | A desktop screen: the web's `mobile` project leaves it out (`grepInvert` in `playwright.config.ts`) instead of skipping it |
 | `@mobile-only` | A phone screen, such as the Dashboard's bottom bar: the web's `desktop` project leaves it out, the same way |
 
-The title keeps its prefix (`Web:`, `Desktop:`), and the tags follow it in the report. A test skipped until an issue is done says so in an `issue` annotation, as the Catalog's do for #151.
+The title keeps its prefix (`Web:`, `Desktop:`), and the tags follow it in the report. A test skipped until an issue is done says so in an `issue` annotation, with the issue's link.
 
 ### Writing a test
 
@@ -312,7 +312,7 @@ pnpm --filter @apc/desktop test:e2e
 - **UI copy changes:** the E2E find elements by their Portuguese names. Rename the text in the test too, or better, read it from the shared module that already holds it (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), as the login and sign-up specs do.
 - **API changes:** a route added or changed reaches three stand-ins: `apps/web/e2e/stubs/items.ts`/`users.ts` (web E2E), `apps/desktop/e2e/stubApi.ts` (desktop E2E) and `apps/web/src/demo/demoApi.ts` (the demo; CI checks this one against `@apc/domain/api-routes`). The first two are not checked: update them in the same pull request.
 - **Style ids change** with a component's file name or slots. A test that reads one fails with "element not found": search the id in `e2e/locators/` and follow the new one there, and the specs follow too. A renamed label is changed there the same way.
-- **A work-in-progress tab** keeps its tests skipped (`catalog.spec.ts` while the Catalog tab has `wip`). They come back by themselves once `wip` is gone.
+- **A work-in-progress tab** keeps its tests skipped, behind a `test.skip` that reads the tab's `wip` mark (as the Catalog's specs did until #449). They come back by themselves once `wip` is gone.
 - **A flaky test:** run it many times to see it fail (`--repeat-each=20 --workers=4`), record a trace (`--trace on`), and fix the wait, not the timeout: wait for what the user would see (`toBeVisible`, `toHaveURL`, `expect.poll`), never `waitForTimeout`.
 - **Upgrading Playwright:** `@playwright/test` and `playwright` in `apps/web`, `@playwright/test` in `apps/desktop` and `@vitest/browser-playwright` move together. Then download the browser again (`playwright install chromium`); CI installs it on each run.
 
@@ -458,7 +458,7 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
 | `@desktop-only` | Uma tela de desktop: o projeto `mobile` da web o deixa de fora (`grepInvert` no `playwright.config.ts`) em vez de pulá-lo |
 | `@mobile-only` | Uma tela de celular, como a barra inferior do Dashboard: o projeto `desktop` da web o deixa de fora, do mesmo jeito |
 
-O título mantém o prefixo (`Web:`, `Desktop:`), e as tags vêm depois dele no relatório. Um teste pulado até uma issue ficar pronta diz isso numa anotação `issue`, como os do Catálogo fazem para a #151.
+O título mantém o prefixo (`Web:`, `Desktop:`), e as tags vêm depois dele no relatório. Um teste pulado até uma issue ficar pronta diz isso numa anotação `issue`, com o link da issue.
 
 ### Escrevendo um teste
 
@@ -604,6 +604,6 @@ pnpm --filter @apc/desktop test:e2e
 - **Mudou um texto da interface:** o E2E encontra os elementos pelos nomes em português. Troque o texto no teste também, ou melhor, leia-o do módulo compartilhado que já o guarda (`LOGIN_MESSAGES`, `REGISTER_MESSAGES`, `ENGINE_SHEETS`), como as specs de login e cadastro fazem.
 - **Mudou a API:** uma rota nova ou alterada chega a três substitutos: `apps/web/e2e/stubs/items.ts`/`users.ts` (E2E da web), `apps/desktop/e2e/stubApi.ts` (E2E do desktop) e `apps/web/src/demo/demoApi.ts` (a demo; o CI confere este contra o `@apc/domain/api-routes`). Os dois primeiros não são conferidos: atualize-os no mesmo pull request.
 - **Style ids mudam** com o nome do arquivo de um componente ou seus slots. Um teste que lê um deles falha com "element not found": procure o id em `e2e/locators/` e siga o novo ali, que as specs seguem junto. Um rótulo renomeado muda ali do mesmo jeito.
-- **Uma aba em construção** deixa seus testes pulados (`catalog.spec.ts` enquanto a aba Catálogo tem `wip`). Eles voltam sozinhos quando o `wip` sai.
+- **Uma aba em construção** deixa seus testes pulados, atrás de um `test.skip` que lê a marca `wip` da aba (como as specs do Catálogo fizeram até a #449). Eles voltam sozinhos quando o `wip` sai.
 - **Um teste instável:** rode-o muitas vezes para vê-lo falhar (`--repeat-each=20 --workers=4`), grave um trace (`--trace on`) e corrija a espera, não o timeout: espere pelo que o usuário veria (`toBeVisible`, `toHaveURL`, `expect.poll`), nunca `waitForTimeout`.
 - **Atualizando o Playwright:** `@playwright/test` e `playwright` no `apps/web`, `@playwright/test` no `apps/desktop` e `@vitest/browser-playwright` andam juntos. Depois baixe o navegador de novo (`playwright install chromium`); o CI o instala a cada execução.
