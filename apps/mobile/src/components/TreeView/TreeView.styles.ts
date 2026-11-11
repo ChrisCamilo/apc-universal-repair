@@ -8,7 +8,9 @@ import { fontFamily, softAccent } from '../../app/theme';
 // the mono face for the leaves; the selected or highlighted row on the soft accent with an accent rule on its left;
 // pressing a row shows what hover shows on the web. As on the web's phone layout, a row is 48px tall in the body size,
 // and each level is indented 16px with no guide; a leaf's tag is a pill in the display face, outlined at rest and
-// filled in the accent on the selected leaf. The tree's height comes from its owner.
+// filled in the accent on the selected leaf. The tree's height comes from its owner. A row's own buttons sit at its
+// right end, always in view, and the line after a branch's children sits under them. The line holding a row and its
+// buttons only lays them out.
 
 /** The size of a leaf's tag, in px (text-[11px] on the web). */
 export const TAG_SIZE = 11;
@@ -19,18 +21,23 @@ export const useStyles = createStyles(
   {
     tree: '',
     item: 'item',
+    line: 'item.line',
     row: 'item.row',
     chevron: 'item.row.chevron',
     spacer: 'item.row.spacer',
     label: 'item.row.label',
     detail: 'item.row.detail',
     tag: 'item.row.tag',
+    actions: 'item.row.actions',
     group: 'item.group',
+    after: 'item.group.after',
   },
   (theme) => {
     const { colors } = theme;
     const size = scales.fontSize.base;
     return {
+      actions: { flexDirection: 'row', alignItems: 'center', gap: scales.space.s1 / 2 },
+      after: { paddingVertical: scales.space.s1, alignItems: 'flex-start' },
       chevron: {},
       detail: { fontFamily: fontFamily(scales.monoFont), fontSize: scales.fontSize.xs, color: colors.textMuted },
       group: { paddingLeft: scales.space.s4 },
@@ -43,8 +50,11 @@ export const useStyles = createStyles(
         textTransform: 'uppercase',
       },
       labelMono: { fontFamily: fontFamily(scales.monoFont) },
+      line: { flexDirection: 'row', alignItems: 'center' },
       labelMonoActive: { fontFamily: fontFamily(scales.monoFont, 500) },
       row: {
+        flex: 1,
+        minWidth: 0,
         minHeight: scales.space.s7,
         flexDirection: 'row',
         alignItems: 'center',
