@@ -2,7 +2,8 @@ import { FIELD } from '../../styles/shared.ts'
 import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of the pill-shaped inputs: the frame lights up in the accent with the theme's ring while focused, and in
-// the danger color when there is an error; a disabled field dims.
+// the danger color when there is an error; a disabled field dims. A field of several lines is a box with the tile's
+// corners instead of a pill, its text wrapping and the box growing downwards when dragged.
 
 /** A labeled text field: the field, its frame, leading icon, input, the password toggle and the error under it. */
 export const textField = recipe(
@@ -19,8 +20,9 @@ export const textField = recipe(
     variants: {
       disabled: { true: { base: 'opacity-50' } },
       error: { true: { frame: FIELD.frameError }, false: { frame: FIELD.frameIdle } },
+      multiline: { true: { frame: 'items-start rounded-tile', input: 'resize-y whitespace-pre-wrap' } },
     },
-    defaultVariants: { disabled: false, error: false },
+    defaultVariants: { disabled: false, error: false, multiline: false },
   }),
   { base: '', frame: 'frame', icon: 'frame.icon', input: 'frame.input', toggle: 'frame.toggle', error: 'error' },
 )
