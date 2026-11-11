@@ -12,8 +12,7 @@ export const DASHBOARD_TAB_STORAGE_KEY = "apc-tab";
  */
 export const DASHBOARD_TABS: readonly DashboardTab[] = [
   { id: "inventory", label: "Estoque", icon: "cube" },
-  // Still being built: it shows as a work in progress until this mark comes off (#151).
-  { id: "catalog", label: "Catálogo", icon: "document", wip: true },
+  { id: "catalog", label: "Catálogo", icon: "document" },
 ];
 /** localStorage (web) and AsyncStorage (mobile) key of the "Arrastar para reordenar" choice; off when not saved. */
 export const REORDER_TABS_STORAGE_KEY = "apc-reorder-tabs";
