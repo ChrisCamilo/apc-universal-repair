@@ -1,6 +1,19 @@
 import { RELEASE_VERSION } from 'virtual:apc-release'
 import { initials, loginRequestSchema, userCreateRequestSchema } from '@apc/domain/auth'
-import { CATALOG_PATH, type CatalogData } from '@apc/domain/catalog'
+import {
+  CATALOG_BRANDS_PATH,
+  CATALOG_CHILDREN,
+  CATALOG_LEVEL_PATHS,
+  CATALOG_PATH,
+  catalogGenerationInputSchema,
+  catalogIdParamsSchema,
+  catalogMoveSchema,
+  catalogNameSchema,
+  catalogYearInputSchema,
+  type CatalogData,
+  type CatalogEditLevel,
+  type CatalogValues,
+} from '@apc/domain/catalog'
 import { IMPORT_CONFLICTS, itemImportSchema } from '@apc/domain/item-csv'
 import { itemMatchesQuery } from '@apc/domain/item-filters'
 import {
@@ -32,7 +45,7 @@ import {
   type ListEntry,
 } from '@apc/domain/lists'
 import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_PARTS } from '@apc/domain/photos'
-import { TEST_CATALOG_DATA } from '@apc/domain/test-catalog'
+import { applyCatalogChange, TEST_CATALOG_DATA, type CatalogChange } from '@apc/domain/test-catalog'
 import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 
@@ -45,13 +58,20 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // the item carries as its whole address (see photoAddress in @apc/domain/photos), and is let go once the photo is
 // removed; a few sample items carry drawings of the demo's own. The catalog is the one a new server starts with
 // (TEST_CATALOG_DATA), its brands and models joined to the lists, where they can't be deleted or merged away, and it
-// names them as the lists do. Everything is held in memory and starts over from demoData.ts when the page loads again.
+// names them as the lists do; its tree is edited under the API's rules (applyCatalogChange). Everything is held in memory and starts over from demoData.ts when the page loads again.
 // Each answer carries the demo's marker (demoMarker.ts).
 // The demo authorizes no devices: its logins and sign-ups go through without checking the device's proof, which the
 // demo doesn't make (see demoDevice.ts), and the routes that list, authorize, rename and remove devices, hand out an
 // entry code for a phone and log one in with it answer 501 with DEMO_UNAVAILABLE (DEMO_UNAVAILABLE_ROUTES), which the
 // screens show.
 
+/** What adds or renames each level of the catalog's tree, as the API reads it. */
+const CATALOG_INPUTS = {
+  model: catalogNameSchema,
+  generation: catalogGenerationInputSchema,
+  version: catalogNameSchema,
+  year: catalogYearInputSchema,
+} as unknown as Record<CatalogEditLevel, Schema<CatalogValues>>
 /** One day, in milliseconds, between the demo's items' creation. */
 const DAY_MS = 86_400_000
 /** What the demo says of what it doesn't do, such as authorizing devices. */
@@ -74,6 +94,8 @@ const ITEMS_USING: Record<ItemListKind, (item: StoredItem, id: string) => boolea
 }
 /** The lists of plain names, by their path. */
 const NAME_LISTS = ['categories', 'partBrands', 'vehicleBrands'] as const
+/** The level each level of the catalog's tree is added under. */
+const PARENT_LEVELS = { generation: 'model', version: 'generation', year: 'version' } as const
 /** A photo's id, as a part of the photos' request names one. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -86,8 +108,10 @@ type Db = {
   partBrands: ListEntry[]
   vehicleBrands: ListEntry[]
   vehicleModels: (ListEntry & { brandId: string })[]
-  /** The catalog's brands, each by its vehicle brand's id, with its models, each by its vehicle model's id. */
-  catalog: { brandId: string; mark: string; models: (CatalogData['brands'][number]['models'][number] & { modelId: string })[] }[]
+  /** The catalog, each brand by its vehicle brand's id, as the API sends it. */
+  catalog: CatalogData
+  /** The vehicle model of each catalog model, by the catalog model's id. */
+  catalogModels: Map<string, string>
   items: StoredItem[]
   /** The files of the photos sent or copied, by photo id; a sample photo is a file of the site and has none. */
   files: Map<string, Blob>
@@ -200,7 +224,8 @@ export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; han
     partBrands: [],
     vehicleBrands: [],
     vehicleModels: [],
-    catalog: [],
+    catalog: { brands: [] },
+    catalogModels: new Map(),
     items: [],
     files: new Map(),
   }
@@ -243,28 +268,156 @@ export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; han
 }
 
 /**
- * Lists the route of the catalog: the catalog's brands and models named as the lists name them now.
+ * Lists the routes of the catalog: reading it, its brands and models named as the lists name them now, and adding,
+ * renaming, moving and deleting its brands and the levels of their trees, under the API's rules (applyCatalogChange). A
+ * brand or model added joins the lists, or is the entry of its name there; renaming a model renames its list entry.
  * @param db The demo's data.
- * @returns The route.
+ * @returns The routes.
  */
 function catalogRoutes(db: Db): Route[] {
   /** The name of a list entry by its id. */
   const nameOf = (list: ListEntry[], id: string) => list.find((entry) => entry.id === id)!.name
-  return [
+  /** The catalog with its brands and models named as the lists name them now. */
+  const named = (): CatalogData => ({
+    brands: db.catalog.brands.map((brand) => ({
+      ...brand,
+      name: nameOf(db.vehicleBrands, brand.id),
+      models: brand.models.map((model) => ({ ...model, name: nameOf(db.vehicleModels, db.catalogModels.get(model.id)!) })),
+    })),
+  })
+  /** Makes a change on the catalog, and answers it as the API does: the catalog, or 404 or 409. */
+  const change = (status: number, made: CatalogChange) => {
+    const result = applyCatalogChange(named(), made)
+    if (result === 'missing') {
+      return json(404, { statusCode: 404, error: 'Not Found', message: 'Catalog node not found.' })
+    }
+    if (result === 'taken') {
+      return conflict('The catalog has it already.')
+    }
+    db.catalog = result
+    return json(status, named())
+  }
+  /** Reads a node's id from a path. */
+  const idOf = (params: Record<string, string>) => read(catalogIdParamsSchema, params)
+  const routes: Route[] = [
+    { method: 'GET', path: CATALOG_PATH, answer: () => json(200, named()) },
     {
-      method: 'GET',
-      path: CATALOG_PATH,
-      answer: () =>
-        json(200, {
-          brands: db.catalog.map((brand) => ({
-            id: brand.brandId,
-            name: nameOf(db.vehicleBrands, brand.brandId),
-            mark: brand.mark,
-            models: brand.models.map(({ modelId, ...model }) => ({ ...model, name: nameOf(db.vehicleModels, modelId) })),
-          })),
-        }),
+      method: 'POST',
+      path: CATALOG_BRANDS_PATH,
+      answer: ({ body }) => {
+        const sent = read(catalogNameSchema, body)
+        if (!sent.ok) {
+          return sent.answer
+        }
+        const entry = listed(db.vehicleBrands, sent.value.name)
+        return change(201, { kind: 'addBrand', id: entry.id, name: entry.name })
+      },
     },
+    {
+      method: 'POST',
+      path: `${CATALOG_BRANDS_PATH}/:id/models`,
+      answer: ({ params, body }) => {
+        const id = idOf(params)
+        const sent = read(catalogNameSchema, body)
+        if (!id.ok) {
+          return id.answer
+        }
+        if (!sent.ok) {
+          return sent.answer
+        }
+        if (!db.catalog.brands.some((brand) => brand.id === id.value.id)) {
+          return json(404, { statusCode: 404, error: 'Not Found', message: 'Catalog node not found.' })
+        }
+        const name = listName(sent.value.name)
+        const model =
+          db.vehicleModels.find((held) => held.brandId === id.value.id && optionKey(held.name) === optionKey(name)) ?? modelOf(db, id.value.id, name)
+        const modelId = crypto.randomUUID()
+        db.catalogModels.set(modelId, model.id)
+        const answer = change(201, { kind: 'add', level: 'model', parentId: id.value.id, id: modelId, values: { name: model.name } })
+        if (answer.status !== 201) {
+          db.catalogModels.delete(modelId)
+        }
+        return answer
+      },
+    },
+    ...(['generation', 'version', 'year'] as const).map(
+      (level): Route => ({
+        method: 'POST',
+        path: `${CATALOG_LEVEL_PATHS[PARENT_LEVELS[level]]}/:id/${CATALOG_CHILDREN[PARENT_LEVELS[level]].segment}`,
+        answer: ({ params, body }) => {
+          const id = idOf(params)
+          const sent = read(CATALOG_INPUTS[level], body)
+          if (!id.ok) {
+            return id.answer
+          }
+          if (!sent.ok) {
+            return sent.answer
+          }
+          return change(201, { kind: 'add', level, parentId: id.value.id, id: crypto.randomUUID(), values: sent.value })
+        },
+      }),
+    ),
   ]
+  for (const [level, path] of Object.entries(CATALOG_LEVEL_PATHS) as [CatalogEditLevel, string][]) {
+    routes.push(
+      {
+        method: 'PATCH',
+        path: `${path}/:id`,
+        answer: ({ params, body }) => {
+          const id = idOf(params)
+          const sent = read(CATALOG_INPUTS[level], body)
+          if (!id.ok) {
+            return id.answer
+          }
+          if (!sent.ok) {
+            return sent.answer
+          }
+          const model = level === 'model' ? db.vehicleModels.find((held) => held.id === db.catalogModels.get(id.value.id)) : undefined
+          const name = listName(sent.value.name ?? '')
+          const other = model && db.vehicleModels.find((held) => held.brandId === model.brandId && held.id !== model.id && optionKey(held.name) === optionKey(name))
+          if (other) {
+            return conflict(`"${other.name}" is already a model of this brand.`)
+          }
+          const answer = change(200, { kind: 'edit', level, id: id.value.id, values: sent.value })
+          if (model && answer.status === 200) {
+            model.name = name
+          }
+          return answer
+        },
+      },
+      {
+        method: 'POST',
+        path: `${path}/:id/move`,
+        answer: ({ params, body }) => {
+          const id = idOf(params)
+          const sent = read(catalogMoveSchema, body)
+          if (!id.ok) {
+            return id.answer
+          }
+          if (!sent.ok) {
+            return sent.answer
+          }
+          return change(200, { kind: 'move', level, id: id.value.id, direction: sent.value.direction })
+        },
+      },
+      {
+        method: 'DELETE',
+        path: `${path}/:id`,
+        answer: ({ params }) => {
+          const id = idOf(params)
+          if (!id.ok) {
+            return id.answer
+          }
+          const answer = change(200, { kind: 'delete', level, id: id.value.id })
+          if (level === 'model') {
+            db.catalogModels.delete(id.value.id)
+          }
+          return answer
+        },
+      },
+    )
+  }
+  return routes
 }
 
 /**
@@ -584,12 +737,16 @@ function listed(list: ListEntry[], text: string): ListEntry {
  * @param db The demo's data.
  */
 function joinCatalog(db: Db): void {
-  db.catalog = TEST_CATALOG_DATA.brands.map((brand) => {
-    const brandId = listed(db.vehicleBrands, brand.name).id
-    const model = (name: string) =>
-      db.vehicleModels.find((held) => held.brandId === brandId && optionKey(held.name) === optionKey(name)) ?? modelOf(db, brandId, name)
-    return { brandId, mark: brand.mark, models: brand.models.map((each) => ({ ...each, modelId: model(each.name).id })) }
-  })
+  db.catalog = {
+    brands: TEST_CATALOG_DATA.brands.map((brand) => {
+      const brandId = listed(db.vehicleBrands, brand.name).id
+      for (const model of brand.models) {
+        const held = db.vehicleModels.find((each) => each.brandId === brandId && optionKey(each.name) === optionKey(model.name))
+        db.catalogModels.set(model.id, (held ?? modelOf(db, brandId, model.name)).id)
+      }
+      return { ...brand, id: brandId }
+    }),
+  }
 }
 
 /**
@@ -601,8 +758,8 @@ function listRoutes(db: Db): Route[] {
   const routes: Route[] = []
   /** Whether the catalog has a vehicle brand or model, by its id. */
   const inCatalog = {
-    brand: (id: string) => db.catalog.some((brand) => brand.brandId === id),
-    model: (id: string) => db.catalog.some((brand) => brand.models.some((model) => model.modelId === id)),
+    brand: (id: string) => db.catalog.brands.some((brand) => brand.id === id),
+    model: (id: string) => [...db.catalogModels.values()].includes(id),
   }
   for (const kind of NAME_LISTS) {
     const path = ITEM_LIST_PATHS[kind]
