@@ -31,17 +31,19 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
 - 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes; by day each one is tinted in its own hue (sand, steel blue, warm grey-red and sage), with no white panels
 
-**Mobile Redesign (in progress)**
+**Mobile Redesign ✅**
 
 - 📱 A phone layout, on the web and in the native app, with the tabs in a bottom bar, followed by Alertas and Conta ✅
 - 🔑 Login and sign-up laid out for phones ✅
 - 🃏 The Inventory as a list of cards that loads more as it scrolls ✅
 - 🧾 Filters, sorting and the other actions in bottom sheets, dialogs opening full screen, and buttons, fields and chips sized for touch ✅
-- 🚧 Still to lay out for phones: an item's details and form as full screens, the lists, CSV and About dialogs, the Inventory tutorial and the Catalog tab
+- 📄 An item's details and form as full screens, and the lists, CSV and About dialogs and the Inventory tutorial laid out for phones ✅
+- 📚 The Catalog as stacked screens on phones, the same on the web and in the native app ✅
+- 🔳 The phone logged in by scanning a QR code on the computer ✅
 
-**Phase 2 (in progress)**
+**Phase 2 ✅**
 
-- 📚 Vehicle catalog organized by brand, model, generation, version, year and engine, on sample data ✅
+- 📚 Vehicle catalog organized by brand, model, generation, version, year and engine, kept in the API's database, which starts with sample brands ✅
 - 🔎 Catalog search by brand, model or the code of a part in stock ✅
 - ✏️ The catalog edited in place, on desktop and on phones: brands, models, generations, versions, years and engines with their sheets ✅
 
@@ -63,9 +65,16 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🔁 The server at home following the desktop app's version ✅
 - 📱 Android release build, signed with the upload key, built by CI ✅
 - 🔐 Sessions checked on every call, login and sign-up attempts limited, and the SQLite file encrypted at rest ✅
-- 🔗 The phone paired with the server at home over HTTPS, by QR code, and each new device authorized on the server's computer
-- 📲 The phone app saying when a new version is out
+- 🔗 The phone paired with the server at home over HTTPS, by QR code, and each new device authorized on the server's computer ✅
+- 📲 The phone app saying when a new version is out ✅
 - 🏷️ A new stock starting with the usual categories and part brands
+- 🔃 The Inventory refreshing by itself when another device changes it
+
+**Offline Mode (planned)**
+
+- 📴 The phone keeping an encrypted copy of the paired server's inventory and its photos, and editing it away from the server
+- 🔄 The changes synced both ways once the server is back, each applied once, the ones made on both sides to the same item settled, and what is waiting to sync shown, with a way to sync now
+- 🔑 The phone's password login back, to open the copy offline
 
 **Later**
 
@@ -215,13 +224,14 @@ The server comes inside the desktop app: installed on a Windows computer at home
 Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisCamilo/apc-universal-repair/issues?q=label%3Aepic).
 
 - **MVP ✅:** Setup → Design System → Auth (login and sign-up) → Dashboard → Inventory (with photos, CSV import and export)
-- **Mobile Redesign (in progress):** the bottom sheet ✅, full-screen dialogs ✅, touch sizes ✅, login and sign-up ✅, the bottom bar ✅, the Inventory as cards loading more as it scrolls ✅, filters, sorting and actions in sheets ✅, then an item's details and form, the other dialogs, the tutorial and the Catalog tab
-- **Optimizations ✅:** style recipes and style ids in every component, guarded by lint
-- **QA ✅:** shared fixtures, locators and tags for the Playwright suites, a trace, screenshot and report of every failure, and Playwright's MCP and test agents
-- **Phase 2 (in progress):** Catalog tab ✅, edited on desktop and on phones ✅
+- **Mobile Redesign ✅:** the bottom sheet, full-screen dialogs, touch sizes, login and sign-up, the bottom bar, the Inventory as cards loading more as it scrolls, filters, sorting and actions in sheets, an item's details and form, the other dialogs, the tutorial, the Catalog as stacked screens and logging in by QR code
+- **Optimizations ✅:** style recipes and style ids in every component, guarded by lint, and the apps, the API and the shared packages organized by feature
+- **QA (in progress):** shared fixtures, locators and tags for the Playwright suites ✅, a trace, screenshot and report of every failure ✅, Playwright's MCP and test agents ✅, then a toast test that fails now and then
+- **Phase 2 ✅:** the Catalog tab, kept in the API and edited on desktop and on phones
 - **Phase 3 (in progress):** notifications and toasts — toast kinds ✅, the bell ✅, the toast's duration ✅, low-stock warnings ✅, Windows notifications ✅ and Android notifications
-- **Backend (in progress):** session tokens ✅, login limits ✅, SQLite or PostgreSQL ✅, the SQLite file encrypted ✅, then pairing the phone over HTTPS and authorizing each device
-- **Next:** the API on a home computer for the mobile app ✅, Windows desktop app ✅, photo compression ✅, Android release build ✅ and the phone app's notice of a new version
+- **Backend ✅:** session tokens, login limits, SQLite or PostgreSQL, the SQLite file encrypted, pairing the phone over HTTPS, authorizing each device, and the vehicle catalog kept in the API and edited
+- **Offline Mode (planned):** an encrypted copy of the inventory on the phone, edited away from the server and synced both ways once it is back
+- **Next:** the API on a home computer for the mobile app ✅, Windows desktop app ✅, photo compression ✅, Android release build ✅, the phone app's notice of a new version ✅, then the stock's starting categories and part brands and the Inventory refreshing by itself
 - **Later:** 3D viewer, maintenance specs, diagnostics, reference prices and full EN/PT-BR app UI
 - **TBD:** Car Specs, the vehicle spec sheet (fuel consumption, equipment and features), with no phase yet
 
@@ -238,7 +248,7 @@ The MVP was estimated at 228 story points. It closed on October 8, 2026, four we
 | Optimizations | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Since then the API at home, the Windows desktop app (now at v0.6.8), the photo compression, the Android release build, the QA epic and most of the backend are done too, and the Mobile Redesign is underway, with 11 of its 16 tasks done. Still open: the rest of the Mobile Redesign, the Android notifications, pairing the phone over HTTPS and authorizing devices, the phone app's notice of a new version, the stock's starting categories and part brands, and the style values left for a decision. The Car Specs epic is TBD, with no phase yet.
+Since then the API at home, the Windows desktop app (now at v0.7.1), the photo compression, the Android release build and the phone app's notice of a new version are done too, and so are the Mobile Redesign (20 tasks), the backend (16 tasks, with the phone paired over HTTPS and the vehicle catalog kept in the API and edited on desktop and on phones) and phase 2. The QA epic has 9 of its 10 tasks done. Still open: the Android notifications, a toast test that fails now and then, the stock's starting categories and part brands, the Inventory refreshing by itself when another device changes it, and the Offline Mode epic, whose 9 tasks haven't started. The Car Specs epic is TBD, with no phase yet.
 
 ### Contributing
 
@@ -254,7 +264,7 @@ Help mechanics, enthusiasts, and vehicle owners preserve correct maintenance pra
 
 ### Status
 
-🚧 In development, at v0.6.8: the MVP is done on web and mobile — login and sign-up, the Dashboard and the Inventory — and the desktop and Android apps build for release. The Mobile Redesign is laying the screens out for phones, and phase 2 is underway, with the Catalog tab built on sample data.
+🚧 In development, at v0.7.1: the MVP is done on web and mobile — login and sign-up, the Dashboard and the Inventory — and laid out for phones, and the desktop and Android apps build for release. Phase 2 is done on `main`, with the Catalog tab kept in the API and edited on desktop and on phones, and comes in the next release. Phase 3 has the Android notifications left, and the Offline Mode is planned next.
 
 ---
 
@@ -285,17 +295,19 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
 - 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro; de dia cada um é tingido no seu próprio tom (areia, azul-aço, cinza-avermelhado e sálvia), sem painéis brancos
 
-**Redesign para celular (em andamento)**
+**Redesign para celular ✅**
 
 - 📱 Um layout de celular, na web e no app nativo, com as abas numa barra inferior, seguidas de Alertas e Conta ✅
 - 🔑 Login e cadastro diagramados para o celular ✅
 - 🃏 O Estoque como uma lista de cards que carrega mais itens ao rolar ✅
 - 🧾 Filtros, ordenação e as outras ações em bottom sheets, diálogos abrindo em tela cheia, e botões, campos e chips do tamanho do toque ✅
-- 🚧 Ainda falta diagramar para o celular: os detalhes e o formulário de um item em tela cheia, os diálogos das listas, do CSV e do Sobre, o tutorial do Estoque e a aba Catálogo
+- 📄 Os detalhes e o formulário de um item em tela cheia, e os diálogos das listas, do CSV e do Sobre e o tutorial do Estoque diagramados para o celular ✅
+- 📚 O Catálogo em telas empilhadas no celular, igual na web e no app nativo ✅
+- 🔳 O celular entrando ao ler um QR code no computador ✅
 
-**Fase 2 (em andamento)**
+**Fase 2 ✅**
 
-- 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor, com dados de exemplo ✅
+- 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor, guardado no banco da API, que começa com marcas de exemplo ✅
 - 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque ✅
 - ✏️ O catálogo editado no lugar, no desktop e no celular: marcas, modelos, gerações, versões, anos e motores com suas fichas ✅
 
@@ -317,9 +329,16 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🔁 O servidor em casa acompanhando a versão do app desktop ✅
 - 📱 Build de release para Android, assinado com a chave de upload, gerado pelo CI ✅
 - 🔐 Sessões conferidas em toda chamada, tentativas de login e cadastro limitadas, e o arquivo SQLite criptografado em disco ✅
-- 🔗 O celular pareado com o servidor de casa por HTTPS, com um QR code, e cada aparelho novo autorizado no computador do servidor
-- 📲 O app do celular avisando quando sai uma versão nova
+- 🔗 O celular pareado com o servidor de casa por HTTPS, com um QR code, e cada aparelho novo autorizado no computador do servidor ✅
+- 📲 O app do celular avisando quando sai uma versão nova ✅
 - 🏷️ Um estoque novo começando com as categorias e marcas de peça de costume
+- 🔃 O Estoque se atualizando sozinho quando outro aparelho o muda
+
+**Modo offline (planejado)**
+
+- 📴 O celular guardando uma cópia criptografada do estoque do servidor pareado e das fotos, e editando-a longe do servidor
+- 🔄 As mudanças sincronizadas nos dois sentidos quando o servidor volta, cada uma aplicada uma vez, as feitas dos dois lados no mesmo item resolvidas, e o que espera para sincronizar mostrado, com um jeito de sincronizar na hora
+- 🔑 O login por senha de volta no celular, para abrir a cópia offline
 
 **Depois**
 
@@ -469,13 +488,14 @@ O `apps/mobile` é o app React Native para Android. Em desenvolvimento, ele fala
 O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https://github.com/ChrisCamilo/apc-universal-repair/issues?q=label%3Aepic).
 
 - **MVP ✅:** Setup → Design System → Auth (login e cadastro) → Dashboard → Estoque (com fotos, importação e exportação por CSV)
-- **Redesign para celular (em andamento):** o bottom sheet ✅, diálogos em tela cheia ✅, tamanhos de toque ✅, login e cadastro ✅, a barra inferior ✅, o Estoque em cards carregando mais ao rolar ✅, filtros, ordenação e ações em sheets ✅, depois os detalhes e o formulário de um item, os outros diálogos, o tutorial e a aba Catálogo
-- **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint
-- **QA ✅:** fixtures, locators e tags compartilhados nas suítes do Playwright, um trace, uma captura de tela e um relatório de toda falha, e o MCP e os agentes de teste do Playwright
-- **Fase 2 (em andamento):** aba Catálogo ✅, editada no desktop e no celular ✅
+- **Redesign para celular ✅:** o bottom sheet, diálogos em tela cheia, tamanhos de toque, login e cadastro, a barra inferior, o Estoque em cards carregando mais ao rolar, filtros, ordenação e ações em sheets, os detalhes e o formulário de um item, os outros diálogos, o tutorial, o Catálogo em telas empilhadas e a entrada por QR code
+- **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint, e os apps, a API e os pacotes compartilhados organizados por funcionalidade
+- **QA (em andamento):** fixtures, locators e tags compartilhados nas suítes do Playwright ✅, um trace, uma captura de tela e um relatório de toda falha ✅, o MCP e os agentes de teste do Playwright ✅, depois um teste de aviso que falha de vez em quando
+- **Fase 2 ✅:** a aba Catálogo, guardada na API e editada no desktop e no celular
 - **Fase 3 (em andamento):** notificações e avisos — tipos de aviso ✅, o sino ✅, o tempo do aviso ✅, avisos de estoque baixo ✅, notificações do Windows ✅ e notificações do Android
-- **Backend (em andamento):** tokens de sessão ✅, limite de logins ✅, SQLite ou PostgreSQL ✅, o arquivo SQLite criptografado ✅, depois o pareamento do celular por HTTPS e a autorização de cada aparelho
-- **Próximos passos:** a API num computador de casa para o app do celular ✅, app desktop para Windows ✅, compressão das fotos ✅, build de release para Android ✅ e o aviso de versão nova no app do celular
+- **Backend ✅:** tokens de sessão, limite de logins, SQLite ou PostgreSQL, o arquivo SQLite criptografado, o pareamento do celular por HTTPS, a autorização de cada aparelho, e o catálogo de veículos guardado na API e editado
+- **Modo offline (planejado):** uma cópia criptografada do estoque no celular, editada longe do servidor e sincronizada nos dois sentidos quando ele volta
+- **Próximos passos:** a API num computador de casa para o app do celular ✅, app desktop para Windows ✅, compressão das fotos ✅, build de release para Android ✅, o aviso de versão nova no app do celular ✅, depois as categorias e marcas de peça iniciais do estoque e o Estoque se atualizando sozinho
 - **Depois:** visualizador 3D, ficha de manutenção, diagnósticos, valores de referência e interface completa em inglês e português
 - **A definir:** Ficha técnica do veículo (consumo, equipamentos e itens de série), ainda sem fase
 
@@ -492,7 +512,7 @@ O MVP foi estimado em 228 story points. Ele foi concluído em 8 de outubro de 20
 | Otimizações | 9 | 43 |
 | **Total** | **66** | **321** |
 
-Depois disso, a API em casa, o app desktop para Windows (hoje na v0.6.8), a compressão das fotos, o build de release para Android, o épico de QA e a maior parte do backend também ficaram prontos, e o redesign para celular está em andamento, com 11 das suas 16 tasks concluídas. Ainda em aberto: o resto do redesign para celular, as notificações do Android, o pareamento do celular por HTTPS e a autorização dos aparelhos, o aviso de versão nova no app do celular, as categorias e marcas de peça iniciais do estoque e os valores de estilo que faltam decidir. O épico de Ficha técnica está a definir, ainda sem fase.
+Depois disso, a API em casa, o app desktop para Windows (hoje na v0.7.1), a compressão das fotos, o build de release para Android e o aviso de versão nova no app do celular também ficaram prontos, assim como o redesign para celular (20 tasks), o backend (16 tasks, com o celular pareado por HTTPS e o catálogo de veículos guardado na API e editado no desktop e no celular) e a fase 2. O épico de QA tem 9 das suas 10 tasks concluídas. Ainda em aberto: as notificações do Android, um teste de aviso que falha de vez em quando, as categorias e marcas de peça iniciais do estoque, o Estoque se atualizando sozinho quando outro aparelho o muda, e o épico de Modo offline, cujas 9 tasks ainda não começaram. O épico de Ficha técnica está a definir, ainda sem fase.
 
 ### Como Contribuir
 
@@ -508,4 +528,4 @@ Ajudar mecânicos, entusiastas e proprietários de veículos a preservar as boas
 
 ### Status
 
-🚧 Em desenvolvimento, na v0.6.8: o MVP está pronto na web e no celular — login e cadastro, o Dashboard e o Estoque — e os apps desktop e Android geram builds de release. O redesign para celular está diagramando as telas para o celular, e a fase 2 está em andamento, com a aba Catálogo feita sobre dados de exemplo.
+🚧 Em desenvolvimento, na v0.7.1: o MVP está pronto na web e no celular — login e cadastro, o Dashboard e o Estoque — e diagramado para o celular, e os apps desktop e Android geram builds de release. A fase 2 está pronta na `main`, com a aba Catálogo guardada na API e editada no desktop e no celular, e chega na próxima versão. A fase 3 tem as notificações do Android pendentes, e o Modo offline está planejado em seguida.
