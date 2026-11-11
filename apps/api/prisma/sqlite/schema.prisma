@@ -212,7 +212,7 @@ model ItemOriginalCode {
 }
 
 /// A vehicle an item's part fits: a vehicle brand and, optionally, one of its models; without one, any model of the
-/// brand. position orders the item's vehicles from 0. The API keeps each vehicle once in an item, and Universal alone.
+/// brand; and optionally its generation's years and its version. position orders the item's vehicles from 0. The API keeps each vehicle once in an item, and Universal alone.
 /// An item from before vehicles were added kept its id for its first vehicle.
 model ItemVehicle {
   id             String        @id @default(uuid())
@@ -223,6 +223,12 @@ model ItemVehicle {
   vehicleBrand   Brand         @relation(fields: [vehicleBrandId], references: [id], onDelete: Restrict)
   vehicleModelId String?
   vehicleModel   VehicleModel? @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
+  /// The first and last year of its generation, shown as "85/90"; lastYear null while it is still made, both null
+  /// without a generation.
+  firstYear      Int?
+  lastYear       Int?
+  /// E.g. "1.6 GLX"; null when not given.
+  version        String?
 
   @@index([itemId])
   @@index([vehicleBrandId])
