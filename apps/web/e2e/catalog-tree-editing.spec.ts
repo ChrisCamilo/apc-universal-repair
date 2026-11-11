@@ -1,21 +1,14 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
-import { DASHBOARD_TABS } from "@apc/ui-spec/tabs";
 import { catalog } from "./locators/catalog.ts";
 
 // The Catalog's tree edited in place on the desktop, with the catalog's routes answered by the stand-in, which keeps
 // the changes for the test.
 
-// While the Catalog tab is a work in progress its screen sits out of reach behind the notice, so these tests wait for
-// it to come back; the notice itself is tested in dashboard.spec.ts.
-test.skip(DASHBOARD_TABS.some((tab) => tab.id === "catalog" && tab.wip), "The Catalog tab is a work in progress (#151)");
-// The issue that brings the Catalog back, shown with each of its tests in the report.
-const CATALOG_ISSUE = { type: "issue", description: "https://github.com/ChrisCamilo/apc-universal-repair/issues/151" };
-
 // Adds a model to Chevrolet, then a generation, a version and a year down from it with the dashed buttons of its empty
 // branches; renames the version from its row, moves the model up past Monza, and deletes it after the dialog says what
 // goes with it, which then leaves the tree.
-test("Web: a model is added down to a year, renamed, moved and deleted", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly], annotation: CATALOG_ISSUE }, async ({ page }) => {
+test("Web: a model is added down to a year, renamed, moved and deleted", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/catalog");
   await tab.newModel.click();

@@ -43,7 +43,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 
 - 📚 Vehicle catalog organized by brand, model, generation, version, year and engine, on sample data ✅
 - 🔎 Catalog search by brand, model or the code of a part in stock ✅
-- 🚧 Until phase 2 is done the Catalog tab shows as a work in progress: it opens blurred behind a notice that it isn't ready yet
+- ✏️ The catalog edited in place, on desktop and on phones: brands, models, generations, versions, years and engines with their sheets ✅
 
 **Phase 3**
 
@@ -218,7 +218,7 @@ Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisC
 - **Mobile Redesign (in progress):** the bottom sheet ✅, full-screen dialogs ✅, touch sizes ✅, login and sign-up ✅, the bottom bar ✅, the Inventory as cards loading more as it scrolls ✅, filters, sorting and actions in sheets ✅, then an item's details and form, the other dialogs, the tutorial and the Catalog tab
 - **Optimizations ✅:** style recipes and style ids in every component, guarded by lint
 - **QA ✅:** shared fixtures, locators and tags for the Playwright suites, a trace, screenshot and report of every failure, and Playwright's MCP and test agents
-- **Phase 2 (in progress):** Catalog tab ✅ (on sample data, shown as a work in progress)
+- **Phase 2 (in progress):** Catalog tab ✅, edited on desktop and on phones ✅
 - **Phase 3 (in progress):** notifications and toasts — toast kinds ✅, the bell ✅, the toast's duration ✅, low-stock warnings ✅, Windows notifications ✅ and Android notifications
 - **Backend (in progress):** session tokens ✅, login limits ✅, SQLite or PostgreSQL ✅, the SQLite file encrypted ✅, then pairing the phone over HTTPS and authorizing each device
 - **Next:** the API on a home computer for the mobile app ✅, Windows desktop app ✅, photo compression ✅, Android release build ✅ and the phone app's notice of a new version
@@ -297,7 +297,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 
 - 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor, com dados de exemplo ✅
 - 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque ✅
-- 🚧 Até a fase 2 terminar, a aba Catálogo aparece em construção: ela abre desfocada atrás de um aviso de que ainda não está pronta
+- ✏️ O catálogo editado no lugar, no desktop e no celular: marcas, modelos, gerações, versões, anos e motores com suas fichas ✅
 
 **Fase 3**
 
@@ -472,7 +472,7 @@ O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https:
 - **Redesign para celular (em andamento):** o bottom sheet ✅, diálogos em tela cheia ✅, tamanhos de toque ✅, login e cadastro ✅, a barra inferior ✅, o Estoque em cards carregando mais ao rolar ✅, filtros, ordenação e ações em sheets ✅, depois os detalhes e o formulário de um item, os outros diálogos, o tutorial e a aba Catálogo
 - **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint
 - **QA ✅:** fixtures, locators e tags compartilhados nas suítes do Playwright, um trace, uma captura de tela e um relatório de toda falha, e o MCP e os agentes de teste do Playwright
-- **Fase 2 (em andamento):** aba Catálogo ✅ (com dados de exemplo, aparecendo em construção)
+- **Fase 2 (em andamento):** aba Catálogo ✅, editada no desktop e no celular ✅
 - **Fase 3 (em andamento):** notificações e avisos — tipos de aviso ✅, o sino ✅, o tempo do aviso ✅, avisos de estoque baixo ✅, notificações do Windows ✅ e notificações do Android
 - **Backend (em andamento):** tokens de sessão ✅, limite de logins ✅, SQLite ou PostgreSQL ✅, o arquivo SQLite criptografado ✅, depois o pareamento do celular por HTTPS e a autorização de cada aparelho
 - **Próximos passos:** a API num computador de casa para o app do celular ✅, app desktop para Windows ✅, compressão das fotos ✅, build de release para Android ✅ e o aviso de versão nova no app do celular
