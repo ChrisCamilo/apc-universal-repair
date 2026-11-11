@@ -156,6 +156,10 @@ model Item {
   /// The sum of the brands' quantities.
   quantity      Int                @default(0)
   minQuantity   Int                @default(0)
+  /// What the part is made of, e.g. "Alumínio"; null when not given.
+  material      String?
+  /// A short note that tells the part apart, up to 30 characters, shown under its photo; null when not given.
+  description   String?
   /// The brands that make the part, in order (see ItemBrand.position), the first one the item's cover.
   brands        ItemBrand[]
   /// The vehicle maker's codes of the part, in order (see ItemOriginalCode.position).
