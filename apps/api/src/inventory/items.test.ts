@@ -126,8 +126,23 @@ test("API: a vehicle model filter matches the model with its brand", () => {
   });
 });
 
+// Filters by two generations, one still made, and a version, and checks each matches an item by any of its vehicles,
+// a generation by its years, while a value that isn't one matches nothing.
+test("API: the generation and version filters match a vehicle's own", () => {
+  const query = itemListQuerySchema.parse({ generation: ["1985-1990", "2019-"], version: "1.6 GLX" });
+  assert.deepEqual(itemWhere(query, MIN_QUANTITY), {
+    AND: [
+      { vehicles: { some: { OR: [{ firstYear: 1985, lastYear: 1990 }, { firstYear: 2019, lastYear: null }] } } },
+      { vehicles: { some: { version: { in: ["1.6 GLX"] } } } },
+    ],
+  });
+  assert.deepEqual(itemWhere(itemListQuerySchema.parse({ generation: "GLX" }), MIN_QUANTITY), {
+    AND: [{ vehicles: { some: { OR: [{ id: { in: [] } }] } } }],
+  });
+});
+
 // Turns a row into the item the API sends: dates as ISO text, no search keys or references, the names of its list
-// entries, its vehicles in order, the position and side as the API speaks them, its original codes in order, and its
+// entries, its vehicles in order with their generations and versions, the position and side as the API speaks them, its original codes in order, and its
 // brands in order with their photos at their paths, signed for the caller.
 test("API: items carry their entries' names and their brands' photos", () => {
   const date = new Date("2026-10-03T12:00:00.000Z");
@@ -156,8 +171,8 @@ test("API: items carry their entries' names and their brands' photos", () => {
       ...IDS,
       category: { name: "Motor" },
       vehicles: [
-        { vehicleBrand: { name: "Volkswagen" }, vehicleModel: null },
-        { vehicleBrand: { name: "Fiat" }, vehicleModel: { name: "Uno" } },
+        { vehicleBrand: { name: "Volkswagen" }, vehicleModel: null, firstYear: null, lastYear: null, version: null },
+        { vehicleBrand: { name: "Fiat" }, vehicleModel: { name: "Uno" }, firstYear: 1984, lastYear: 2013, version: "Mille 1.0" },
       ],
       position: "FRONT",
       side: "BOTH",
@@ -177,8 +192,8 @@ test("API: items carry their entries' names and their brands' photos", () => {
     ["Motor", "D", "Ambos", 4],
   );
   assert.deepEqual(item.vehicles, [
-    { vehicleBrand: "Volkswagen", vehicleModel: null },
-    { vehicleBrand: "Fiat", vehicleModel: "Uno" },
+    { vehicleBrand: "Volkswagen", vehicleModel: null, firstYear: null, lastYear: null, version: null },
+    { vehicleBrand: "Fiat", vehicleModel: "Uno", firstYear: 1984, lastYear: 2013, version: "Mille 1.0" },
   ]);
   assert.deepEqual(item.originalCodes, ["030 115 561 AN", "030 115 561 AP"]);
   assert.deepEqual(
