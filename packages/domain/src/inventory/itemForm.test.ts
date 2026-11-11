@@ -8,6 +8,7 @@ import {
   codesInput,
   codeTakenError,
   codeTakenMessage,
+  descriptionInput,
   duplicateForm,
   EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
@@ -22,6 +23,7 @@ import {
   itemFormErrors,
   itemFormOf,
   itemFormOptions,
+  itemNoteTexts,
   modelsOfBrand,
   originalCodeMessages,
   originalCodesText,
@@ -285,6 +287,30 @@ test("Shared: a vehicle's generation and version are checked and sent as years",
   assert.equal(vehiclesText(held), "Volkswagen Gol 08/12 1.0 G5");
 });
 
+// Types a material and a description: both go with a capital letter, a blank one goes empty so an edit clears it, and
+// a description past 30 characters is refused; the description field cuts what passes 30 and counts from 20 on. An
+// item's notes fill the form, save back unchanged, and list in its details only when it has them, the description first.
+test("Shared: an item's material and short description are optional, the description up to 30 characters", () => {
+  const form = { ...VALID, material: "alumínio", description: "lado do motorista" };
+  assert.deepEqual(itemFormErrors(form, ITEMS, LISTS), {});
+  assert.deepEqual([itemFormBody(form, []).material, itemFormBody(form, []).description], ["Alumínio", "Lado do motorista"]);
+  assert.deepEqual([itemFormBody(VALID, []).material, itemFormBody(VALID, []).description], ["", ""]);
+  assert.equal(itemFormErrors({ ...VALID, description: "x".repeat(31) }, ITEMS, LISTS).description, ITEM_FORM_MESSAGES.descriptionTooLong);
+  assert.deepEqual(descriptionInput("Curta"), { value: "Curta" });
+  assert.deepEqual(descriptionInput("x".repeat(24)), { value: "x".repeat(24), counter: "24/30" });
+  assert.deepEqual(descriptionInput("y".repeat(40)), { value: "y".repeat(30), counter: "30/30" });
+  const held = item({ id: "e", name: "Junta", material: "Cortiça", description: "Com furo extra" });
+  assert.deepEqual([itemFormOf(held).material, itemFormOf(held).description], ["Cortiça", "Com furo extra"]);
+  assert.equal(itemFormChanged(itemFormOf(held), held, []), false);
+  assert.equal(itemFormChanged({ ...itemFormOf(held), material: "" }, held, []), true);
+  assert.deepEqual(duplicateForm(held).description, "Com furo extra");
+  assert.deepEqual(itemNoteTexts(held), [
+    { field: "description", label: "Descrição curta", text: "Com furo extra" },
+    { field: "material", label: "Material", text: "Cortiça" },
+  ]);
+  assert.deepEqual(itemNoteTexts(FILTER), []);
+});
+
 // Checks a phone's form names every position and side in full words, N/A first, as the filter sheet does after its
 // "every" choice.
 test("Shared: a phone's form chooses the position and the side in full words", () => {
@@ -394,6 +420,8 @@ test("Shared: the item body follows the writing rule", () => {
     position: "N/A",
     side: "N/A",
     originalCodes: ["5U0 698 151"],
+    material: "",
+    description: "",
     brands: [{ partBrand: "NGK", code: "NGK-B7", quantity: 3, unitPriceCents: 3490, color: "Preto", location: "A-2" }],
   });
   assert.equal(itemFormBody(VALID, []).brands[0].color, "N/A");
