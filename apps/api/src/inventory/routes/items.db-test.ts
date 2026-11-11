@@ -416,6 +416,18 @@ test("API: a vehicle keeps its generation and version, and is found by them", as
   assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: null, lastYear: null, version: null }]);
 });
 
+// Creates an item with a material and a short description and checks they come back with a capital letter; that a
+// description past 30 characters is refused with 400; and that an edit sending them empty clears them.
+test("API: an item keeps its material and short description, and an edit clears them", async () => {
+  const created = await call("POST", "/items", item([brand("MD-1", "Sabó")], { name: `Junta ${RUN}`, material: "cortiça", description: "com furo extra" }));
+  assert.equal(created.statusCode, 201);
+  assert.deepEqual([created.json().material, created.json().description], ["Cortiça", "Com furo extra"]);
+  const long = await call("POST", "/items", item([brand("MD-2", "Sabó")], { description: "x".repeat(31) }));
+  assert.equal(long.statusCode, 400);
+  const edited = await call("PATCH", `/items/${created.json().id}`, { material: "", description: "" });
+  assert.deepEqual([edited.json().material, edited.json().description], [null, null]);
+});
+
 // Duplicates an item with a photo, copying it twice into the copy's brand, and checks the copies are new photos with
 // files of their own, which stay once the first item is deleted, and that a photo that doesn't exist is refused.
 test("API: a duplicated item's photos are copies with files of their own", async () => {

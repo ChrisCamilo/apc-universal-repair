@@ -13,7 +13,8 @@ const VEHICLES = [{ vehicleBrand: "volkswagen", vehicleModel: "  " }];
 const MIN_QUANTITY = { name: "minQuantity" } as unknown as Prisma.FieldRef<"Item", "Int">;
 
 // Creates an item of two brands from typed values and checks the writing rule, the search key, the category
-// referenced (its vehicles are rows of their own), the defaults (N/A position and side, zero minimum) and the quantity as the brands' sum; a position and
+// referenced (its vehicles are rows of their own), the defaults (N/A position and side, zero minimum, no material or
+// description) and the quantity as the brands' sum; a position and
 // side sent are kept as the database's values.
 test("API: new items follow the writing rule and get their defaults", () => {
   const brands = [
@@ -27,6 +28,9 @@ test("API: new items follow the writing rule and get their defaults", () => {
   assert.equal("vehicles" in data, false);
   assert.deepEqual([data.position, data.side], ["NA", "NA"]);
   assert.deepEqual([data.quantity, data.minQuantity], [3, 0]);
+  assert.deepEqual([data.material, data.description], [null, null]);
+  const noted = createData({ name: "B", category: "C", vehicles: VEHICLES, material: "alumínio", description: " lado do motorista ", brands }, IDS);
+  assert.deepEqual([noted.material, noted.description], ["Alumínio", "Lado do motorista"]);
   const placed = createData({ name: "B", category: "C", vehicles: VEHICLES, position: "Ambos", side: "LE", brands }, IDS);
   assert.deepEqual([placed.position, placed.side], ["BOTH", "LEFT"]);
 });
@@ -57,11 +61,13 @@ test("API: a brand's row follows the writing rule and gets its defaults", () => 
 });
 
 // Edits a few fields and checks only those change, with the same rules, the search key kept in step and the list
-// entries that changed referenced; the brands and vehicles sent are left to the routes.
+// entries that changed referenced, and an empty material or description cleared; the brands and vehicles sent are left
+// to the routes.
 test("API: edits apply the rules only to the fields sent", () => {
   assert.deepEqual(updateData({ name: "junta", minQuantity: 3 }, {}), { name: "Junta", nameKey: "junta", minQuantity: 3 });
   assert.deepEqual(updateData({ position: "T", side: "LD" }, {}), { position: "REAR", side: "RIGHT" });
   assert.deepEqual(updateData({ category: "motor" }, IDS), IDS);
+  assert.deepEqual(updateData({ material: "borracha", description: "" }, {}), { material: "Borracha", description: null });
   assert.deepEqual(updateData({ vehicles: VEHICLES }, {}), {});
   assert.deepEqual(updateData({ brands: [{ code: "A", partBrand: "B", unitPriceCents: 1 }] }, {}), {});
   assert.deepEqual(updateData({}, {}), {});
@@ -179,6 +185,8 @@ test("API: items carry their entries' names and their brands' photos", () => {
       quantity: 4,
       minQuantity: 2,
       originalCodes: [{ code: "030 115 561 AN" }, { code: "030 115 561 AP" }],
+      material: "Papel",
+      description: null,
       brands: [brand("b1", "W712", "Mann", [{ id: "p1", file: "p1.jpg", thumbFile: "p1-thumb.webp" }]), brand("b2", "C2433", "Tecfil", [])],
       createdAt: date,
       updatedAt: date,
@@ -196,6 +204,7 @@ test("API: items carry their entries' names and their brands' photos", () => {
     { vehicleBrand: "Fiat", vehicleModel: "Uno", firstYear: 1984, lastYear: 2013, version: "Mille 1.0" },
   ]);
   assert.deepEqual(item.originalCodes, ["030 115 561 AN", "030 115 561 AP"]);
+  assert.deepEqual([item.material, item.description], ["Papel", null]);
   assert.deepEqual(
     item.brands.map((each) => [each.id, each.partBrand, each.code, "codeKey" in each]),
     [
