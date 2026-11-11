@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Item } from "../inventory/items.ts";
 import {
+  belowNode,
+  brandMark,
   brandsNamed,
   brandSummary,
   brandWithModel,
@@ -20,10 +22,11 @@ import {
   screenBack,
   screenHeader,
   treePath,
+  type CatalogData,
   type CatalogNode,
 } from "./catalog.ts";
 import { testItem, type FlatItem } from "../inventory/testItems.ts";
-import { TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES, testCatalogId } from "./testCatalog.ts";
+import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES, testCatalogId } from "./testCatalog.ts";
 
 const CHEVROLET = testCatalogId("Chevrolet");
 const VOLKSWAGEN = testCatalogId("Volkswagen");
@@ -246,7 +249,7 @@ test("Shared: the brand lines and an engine's path read as in the mockup", () =>
     ["3 modelos · 2 fichas técnicas", "3 modelos · 1 ficha técnica", "3 modelos · 1 ficha técnica", "3 modelos · sem ficha técnica ainda"],
   );
   assert.equal(
-    brandSummary(TEST_CATALOG, { id: "x", name: "X", mark: "X", models: [{ id: "x-1", label: "Um", children: [] }] }),
+    brandSummary(TEST_CATALOG, { id: "x", name: "X", mark: "X", models: [{ id: "x-1", label: "Um", level: "model", children: [] }] }),
     "1 modelo · sem ficha técnica ainda",
   );
   assert.equal(enginePath(TEST_CATALOG, CHEVROLET, TEST_ENGINES.opala41), "Opala › Terceira geração › Diplomata › 1986");
@@ -256,4 +259,70 @@ test("Shared: the brand lines and an engine's path read as in the mockup", () =>
   );
   assert.deepEqual(treePath(TEST_CATALOG, FORD, OPALA), []);
   assert.equal(enginePath(TEST_CATALOG, FORD, TEST_ENGINES.opala41), "");
+});
+
+// Writes a brand's letters from one word and from two, without accents, and says what deleting a node takes with it:
+// counted in the singular and plural, leaving out the levels it hasn't, and nothing for a node with nothing under it.
+test("Shared: a brand's letters and what a delete takes with it", () => {
+  assert.equal(brandMark("Renault"), "RE");
+  assert.equal(brandMark("  del  rey "), "DR");
+  assert.equal(brandMark("Citroën"), "CI");
+  const opala = TEST_CATALOG.brands[0].models[1];
+  assert.equal(belowNode(opala), "3 gerações, 3 versões, 2 anos, 2 motores com ficha");
+  assert.equal(belowNode(opala.children![2].children![1]), "2 anos, 2 motores com ficha");
+  assert.equal(belowNode(opala.children![0]), null);
+});
+
+// Makes the API's changes on the test catalog in memory: a brand added once, a model of one name and a year of one
+// number once each, a generation renamed with its years and its versions kept, a move up and one past the top, a delete
+// with what is under it, and a node that isn't there; the catalog given is left as it was.
+test("Shared: the catalog's changes are made in memory under the API's rules", () => {
+  const added = applyCatalogChange(TEST_CATALOG_DATA, { kind: "addBrand", id: FORD, name: "renault" });
+  assert.notEqual(added, "taken");
+  assert.deepEqual((added as CatalogData).brands.at(-1), { id: FORD, name: "Renault", mark: "RE", models: [] });
+  assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "addBrand", id: FORD, name: "FIAT" }), "taken");
+  assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "add", level: "model", parentId: CHEVROLET, id: FIAT, values: { name: "opala" } }), "taken");
+  const diplomata = testCatalogId("Chevrolet", "Opala", "Terceira geração", "Diplomata");
+  assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "add", level: "year", parentId: diplomata, id: FIAT, values: { year: 1986 } }), "taken");
+
+  const third = testCatalogId("Chevrolet", "Opala", "Terceira geração");
+  const renamed = applyCatalogChange(TEST_CATALOG_DATA, {
+    kind: "edit",
+    level: "generation",
+    id: third,
+    values: { name: "fase 3", firstYear: 1980, lastYear: null },
+  }) as CatalogData;
+  const generation = renamed.brands[0].models[1].generations[2];
+  assert.deepEqual([generation.name, generation.firstYear, generation.lastYear, generation.versions.length], ["Fase 3", 1980, null, 3]);
+
+  const moved = applyCatalogChange(TEST_CATALOG_DATA, { kind: "move", level: "generation", id: third, direction: "up" }) as CatalogData;
+  assert.deepEqual(moved.brands[0].models[1].generations.map((each) => each.name), ["Primeira geração", "Terceira geração", "Segunda geração"]);
+  const top = testCatalogId("Chevrolet", "Opala", "Primeira geração");
+  assert.deepEqual(applyCatalogChange(TEST_CATALOG_DATA, { kind: "move", level: "generation", id: top, direction: "up" }), TEST_CATALOG_DATA);
+
+  const deleted = applyCatalogChange(TEST_CATALOG_DATA, { kind: "delete", level: "model", id: OPALA }) as CatalogData;
+  assert.deepEqual(deleted.brands[0].models.map((each) => each.name), ["Chevette", "Monza"]);
+  assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "delete", level: "year", id: FIAT }), "missing");
+  assert.equal(TEST_CATALOG_DATA.brands[0].models.length, 3);
+});
+
+// Reads the change of each kind of request to the catalog's routes, with the status it answers, and nothing for a read.
+test("Shared: a request to the catalog's routes says which change it makes", () => {
+  assert.deepEqual(catalogChangeOf("POST", "/brands", { name: "Renault" }, FORD), {
+    status: 201,
+    change: { kind: "addBrand", id: FORD, name: "Renault" },
+  });
+  assert.deepEqual(catalogChangeOf("POST", `/models/${OPALA}/generations`, { name: "Quarta" }, FORD), {
+    status: 201,
+    change: { kind: "add", level: "generation", parentId: OPALA, id: FORD, values: { name: "Quarta" } },
+  });
+  assert.deepEqual(catalogChangeOf("PATCH", `/years/${FIAT}`, { year: 1990 }, FORD)?.change, { kind: "edit", level: "year", id: FIAT, values: { year: 1990 } });
+  assert.deepEqual(catalogChangeOf("POST", `/versions/${FIAT}/move`, { direction: "down" }, FORD)?.change, {
+    kind: "move",
+    level: "version",
+    id: FIAT,
+    direction: "down",
+  });
+  assert.deepEqual(catalogChangeOf("DELETE", `/models/${OPALA}`, {}, FORD), { status: 200, change: { kind: "delete", level: "model", id: OPALA } });
+  assert.equal(catalogChangeOf("GET", "", {}, FORD), null);
 });
