@@ -9,6 +9,10 @@ import { recipe, tv } from '../../styles/tv.ts'
 // animate the list, so they add no level to its id, which is the same as on mobile.
 // On a phone (below `card:`) a row is 48px tall in the body size, and each level is indented 16px with no guide. A
 // leaf's tag is a pill in the display face, outlined at rest and filled in the accent on the selected leaf.
+// A row's own buttons sit at its right end, hidden until the row is pointed at, or shown on the row the keyboard is on
+// while the focus is in the tree (a state the tree keeps, as a focus rule would hide them while the focus moves from
+// the row into them); a row shown as something else, such as a field, takes the row's whole width; and the line after a branch's
+// children sits under them, on the guide.
 
 /** The tree: the list, an item, its row with chevron, label, detail and tag, and the group of its children. */
 export const treeView = recipe(
@@ -16,7 +20,7 @@ export const treeView = recipe(
   tv({
     slots: {
       base: 'min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain p-1',
-      item: 'outline-none [&:focus-visible>[data-row]]:shadow-ring',
+      item: 'outline-none [&:focus-visible>[data-row]]:shadow-ring [&>[data-row]:hover_[data-actions]]:flex',
       row: [
         'relative flex min-w-0 items-center gap-2 overflow-hidden rounded-tile px-2 py-1 text-sm transition-[color,background-color,box-shadow]',
         'max-card:min-h-12 max-card:text-base',
@@ -26,6 +30,9 @@ export const treeView = recipe(
       label: 'min-w-0 truncate',
       detail: 'shrink-0 font-mono text-xs font-normal text-text-muted',
       tag: `ml-auto shrink-0 rounded-pill border px-2.5 py-1 text-[11px]/none ${DISPLAY_LABEL}`,
+      actions: '-my-1 ml-auto hidden shrink-0 items-center gap-0.5 font-body font-normal normal-case tracking-normal',
+      editing: 'min-w-0 flex-1 cursor-default font-body font-normal normal-case tracking-normal',
+      after: 'py-1',
       group: 'grid motion-reduce:transition-none',
       // The box that cuts the children off while they open reaches a little past them, so the focus ring of a row
       // inside isn't cut off too.
@@ -47,12 +54,13 @@ export const treeView = recipe(
         false: { row: 'text-text hover:bg-panel-raised', tag: 'border-hairline text-text' },
       },
       clickable: { true: { row: 'cursor-pointer' }, false: { row: 'cursor-default' } },
+      actionsShown: { true: { actions: 'flex' } },
       open: {
         true: { chevron: 'rotate-90', group: 'visible grid-rows-[1fr] transition-[grid-template-rows]' },
         false: { group: 'invisible grid-rows-[0fr] transition-[grid-template-rows,visibility]' },
       },
     },
-    defaultVariants: { separated: false, face: 'body', active: false, clickable: false, open: false },
+    defaultVariants: { separated: false, face: 'body', active: false, clickable: false, actionsShown: false, open: false },
   }),
   {
     base: '',
@@ -63,6 +71,9 @@ export const treeView = recipe(
     label: 'item.row.label',
     detail: 'item.row.detail',
     tag: 'item.row.tag',
+    actions: 'item.row.actions',
+    editing: 'item.row.editing',
+    after: 'item.group.after',
     group: 'item.open',
     clip: 'item.clip',
     list: 'item.group',
