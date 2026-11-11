@@ -1,7 +1,7 @@
 import type { Ref } from 'react'
 import { ICON_SIZES, imageIcon, trashIcon } from '@apc/tokens/icons'
 import { formatPrice, NOT_APPLICABLE, QUANTITY_UNIT, type Item } from '@apc/domain/items'
-import { brandPlaceText, originalCodesText, positionSideText, vehiclesText } from '@apc/domain/item-form'
+import { brandPlaceText, ITEM_NOTE_LABELS, originalCodesText, positionSideText, vehiclesText } from '@apc/domain/item-form'
 import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos'
 import { Icon } from '../../components/Icon'
 import { ImageUpload, type UploadPhoto } from '../../components/ImageUpload'
@@ -9,8 +9,9 @@ import { Heading } from '../../components/Typography'
 import { itemDetails } from './ItemDetails.styles.ts'
 
 // An item's details on a phone, as in the Detalhes mockup, inside the item dialog that fills the screen: the photos of
-// every brand, or "Sem fotos"; the category as a chip over the item's name; the stock and the minimum in two tiles;
-// the vehicles, the position and side, and the original codes; then "Marcas · n" and a card per brand, with its name,
+// every brand, or "Sem fotos"; the category as a chip over the item's name, and its short description under it when it
+// has one; the stock and the minimum in two tiles; the vehicles, the material when it has one, the position and side,
+// and the original codes; then "Marcas · n" and a card per brand, with its name,
 // code, quantity, price and where it is. Opened on a brand, as a brand's row in the desktop list does, its card is
 // the one scrolled to. RemoveItemButton is the red round Excluir at the right of the dialog's title row.
 
@@ -46,6 +47,11 @@ export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetai
         <Heading level={2} className={classes.name()}>
           {item.name}
         </Heading>
+        {item.description && (
+          <p className={classes.description()} data-testid={ids.description}>
+            {item.description}
+          </p>
+        )}
       </div>
       <div className={classes.tiles()} data-testid={ids.tiles}>
         <Tile label="Em estoque" value={item.quantity} />
@@ -53,6 +59,7 @@ export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetai
       </div>
       <dl className={classes.list()} data-testid={ids.list}>
         <Detail term="Veículos" value={vehiclesText(item)} />
+        {item.material && <Detail term={ITEM_NOTE_LABELS.material} value={item.material} />}
         <Detail term="Posição · Lado" value={positionSideText(item)} none={noPlace} />
         <Detail term="Códigos originais" value={originalCodesText(item)} none={noCodes} />
       </dl>

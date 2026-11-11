@@ -4,7 +4,8 @@ import { displayLabel } from '../../styles/shared';
 import { fontFamily, softAccent, softHairline } from '../../app/theme';
 
 // The look of an item's details, the same as the web on a phone (the Detalhes mockup), inside the Dialog that fills
-// the screen: the photos, or a dashed frame saying there are none; the category as an accent chip over the name; two
+// the screen: the photos, or a dashed frame saying there are none; the category as an accent chip over the name, the
+// short description muted under it; two
 // tiles, the stock and the minimum, each a display label over its number and unit; a list of the details, each label
 // in a muted column of its own, the value muted when there is none; then "Marcas · n" and a card per brand, its name
 // and quantity over its code and price, and where it is under them. The tiles and the cards sit raised on the Dialog's
@@ -33,6 +34,7 @@ export const useStyles = createStyles(
     head: 'head',
     category: 'head.category',
     name: 'head.name',
+    description: 'head.description',
     tiles: 'tiles',
     tile: 'tiles.tile',
     tileLabel: 'tiles.tile.label',
@@ -87,6 +89,7 @@ export const useStyles = createStyles(
       },
       code: { fontFamily: fontFamily(scales.monoFont), fontSize: SMALL_SIZE, color: colors.textMuted },
       content: { gap: scales.space.s4 },
+      description: { ...body(scales.fontSize.base), color: colors.textMuted },
       head: { gap: scales.space.s1 + scales.space.s1 / 2 },
       line: { flexDirection: 'row', gap: scales.space.s3 },
       list: { gap: scales.space.s2 + scales.space.s1 / 2 },

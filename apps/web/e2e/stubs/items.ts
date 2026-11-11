@@ -164,8 +164,8 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
 
 /**
  * Answers a create or an edit as the API would: the item with the fields sent, its brands as sent (a kept one with its
- * photos, a new one with an id), its original codes as sent, or kept, its codes in uppercase and its quantity the
- * brands' sum.
+ * photos, a new one with an id), its original codes, material and description as sent, or kept, its codes in uppercase
+ * and its quantity the brands' sum.
  * @param sent The body sent.
  * @param held The item before an edit; none for a new one.
  * @returns The item saved.
@@ -201,6 +201,9 @@ export function savedItem(sent: Partial<ItemCreate>, held?: Item): Item {
     side: sent.side ?? held?.side ?? NOT_APPLICABLE,
     minQuantity: sent.minQuantity ?? held?.minQuantity ?? 0,
     originalCodes: (sent.originalCodes ?? held?.originalCodes ?? []).map((code) => code.trim().toUpperCase()),
+    // A note sent empty clears it, as on the API.
+    material: sent.material !== undefined ? sent.material || null : (held?.material ?? null),
+    description: sent.description !== undefined ? sent.description || null : (held?.description ?? null),
     quantity: brands.reduce((sum, brand) => sum + brand.quantity, 0),
     brands,
     createdAt: held?.createdAt ?? now,

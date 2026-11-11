@@ -144,6 +144,17 @@ test('Mobile: one photo has no arrows, and no photo shows the empty state', asyn
   expect(texts(none.root)).not.toContain('Remover esta foto');
 });
 
+// Opens the viewer of an item with a short description and checks it shows under the photo; one without it, or with
+// no photo to show, has no caption.
+test("Mobile: the item's short description shows under the photo", async () => {
+  const noted = await mount('eighties', 'night', <Sample initial={PHOTOS} caption="Lado do motorista" />);
+  expect(texts(noted.root)).toContain('Lado do motorista');
+  const plain = await mount('eighties', 'night', <Sample initial={PHOTOS} />);
+  expect(plain.root.findAll((n) => n.props.testID === 'common.image-viewer.body.caption')).toHaveLength(0);
+  const empty = await mount('eighties', 'night', <Sample initial={[]} caption="Lado do motorista" />);
+  expect(texts(empty.root)).not.toContain('Lado do motorista');
+});
+
 // Closes the viewer with the ×, a tap outside and the back button, and checks each one asks the owner to close.
 test('Mobile: the ×, a tap outside and the back button close the viewer', async () => {
   const onClose = jest.fn();
@@ -218,11 +229,13 @@ test('Mobile: adding and changing photos follow the upload rules', async () => {
 
 function Sample({
   initial,
+  caption,
   onClose,
   picks = [],
   failSave = false,
 }: {
   initial: UploadPhoto[];
+  caption?: string;
   onClose?: () => void;
   picks?: PickedPhoto[][];
   failSave?: boolean;
@@ -235,6 +248,7 @@ function Sample({
       onClose={onClose ?? (() => {})}
       name={NAME}
       code="FR-0142"
+      caption={caption}
       photos={photos}
       onPhotosChange={failSave ? async () => false : setPhotos}
       limit={ITEM_PHOTO_LIMIT}

@@ -455,6 +455,8 @@ function createItem(db: Db, input: ItemCreate, createdAt = new Date().toISOStrin
     side: input.side ?? NOT_APPLICABLE,
     minQuantity: input.minQuantity ?? 0,
     originalCodes: (input.originalCodes ?? []).map((code) => code.trim().toUpperCase()),
+    material: textOrNull(input.material),
+    description: textOrNull(input.description),
     brands: input.brands.map((brand) => brandOf(db, { ...brand, id: undefined })),
     createdAt,
     updatedAt: createdAt,
@@ -562,8 +564,8 @@ function importItems(db: Db, inputs: readonly ItemCreate[]): { created: number; 
     const [item] = owners
     const heldCodes = item.brands.map((brand) => codeKey(brand.code))
     const heldOriginals = item.originalCodes.map(codeKey)
-    const { name, category, position, side, minQuantity } = input
-    updateItem(db, item, { name, category, position, side, minQuantity }, { vehicles: input.vehicles })
+    const { name, category, position, side, minQuantity, material, description } = input
+    updateItem(db, item, { name, category, position, side, minQuantity, material, description }, { vehicles: input.vehicles })
     for (const original of originals) {
       if (heldCodes.includes(codeKey(original))) {
         throw new ImportConflict(IMPORT_CONFLICTS.crossed(input.name, original))
@@ -1337,7 +1339,7 @@ function toItem(db: Db, item: StoredItem): Item {
 function updateItem(
   db: Db,
   item: StoredItem,
-  fields: Partial<Pick<ItemCreate, 'name' | 'category' | 'position' | 'side' | 'minQuantity'>>,
+  fields: Partial<Pick<ItemCreate, 'name' | 'category' | 'position' | 'side' | 'minQuantity' | 'material' | 'description'>>,
   lists: { brands?: ItemBrandCreate[]; originalCodes?: string[]; vehicles?: ItemVehicleCreate[] },
 ): void {
   if (fields.name !== undefined) {
@@ -1349,6 +1351,12 @@ function updateItem(
   item.position = fields.position ?? item.position
   item.side = fields.side ?? item.side
   item.minQuantity = fields.minQuantity ?? item.minQuantity
+  // An empty material or description clears it, as on the API.
+  for (const note of ['material', 'description'] as const) {
+    if (fields[note] !== undefined) {
+      item[note] = textOrNull(fields[note])
+    }
+  }
   if (lists.vehicles) {
     item.vehicles = lists.vehicles.map((vehicle) => vehicleOf(db, vehicle))
   }

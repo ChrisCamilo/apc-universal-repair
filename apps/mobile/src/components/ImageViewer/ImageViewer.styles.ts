@@ -7,7 +7,8 @@ import { fontFamily, softHairline, withAlpha } from '../../app/theme';
 
 // The look of the photo viewer, the same as the web: a window on the panel over the dimmed backdrop; the item's name
 // and code over a 4:3 frame on the canvas that never grows past FRAME_MAX_SHARE of the screen's height; round arrows
-// over the photo, lit in the accent while pressed; dots under it, the current one in the accent; the problems in the
+// over the photo, lit in the accent while pressed; the item's short description under it, muted and centered; dots
+// under it, the current one in the accent; the problems in the
 // danger color; and the note and buttons at the bottom.
 
 /** A dot under the photo, in px. */
@@ -35,6 +36,7 @@ export const useStyles = createStyles(
     empty: 'body.stage.frame.empty',
     round: 'body.stage.nav',
     previous: 'body.stage.nav.previous',
+    caption: 'body.caption',
     dots: 'body.dots',
     dot: 'body.dots.dot',
     problems: 'body.problems',
@@ -48,6 +50,7 @@ export const useStyles = createStyles(
       backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(colors.canvas, scales.backdrop.opacity) },
       body: { gap: scales.space.s3, padding: scales.space.s4 },
       buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: scales.space.s2 },
+      caption: { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.sm, color: colors.textMuted, textAlign: 'center' },
       dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: scales.radiusPill, backgroundColor: colors.hairline },
       dotOn: { backgroundColor: colors.accent },
       dots: { flexDirection: 'row', justifyContent: 'center', gap: scales.space.s2 },

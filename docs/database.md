@@ -38,6 +38,8 @@ erDiagram
         Side side "NA RIGHT LEFT BOTH, default NA"
         int quantity "the brands' sum"
         int minQuantity "default 0"
+        string material "null = none"
+        string description "up to 30 characters, null = none"
         datetime createdAt
         datetime updatedAt
     }
@@ -178,7 +180,7 @@ erDiagram
 
 | Table | What it holds |
 |---|---|
-| `Item` | An inventory item: a part in stock, with what its brands share: its name, category, where on the vehicle it fits, the minimum stock, and how many there are, added up from its brands. |
+| `Item` | An inventory item: a part in stock, with what its brands share: its name, category, where on the vehicle it fits, the minimum stock, and how many there are, added up from its brands; and, when given, what the part is made of (`material`) and a short description of up to 30 characters, shown in its details and under its photo. |
 | `ItemVehicle` | A vehicle an item's part fits, in order: a vehicle brand and, optionally, one of its models; without one, any model of the brand. It may also say its generation, by its first and last year (shown as "85/90", the last one empty while it is still made), and its version ("1.6 GLX"), neither of them part of the item's name. Every item fits at least one; an item from before vehicles became one of its vehicle, with the item's id. |
 | `ItemBrand` | A brand that makes an item's part (Cobreq, Fras-le…), in order: its part code, color, location, quantity and unit price. Every item has at least one; an item from before brands became its first, with the item's id. |
 | `ItemOriginalCode` | The vehicle maker's codes of an item's part (OEM), in order, the same for every brand that makes it. An item may have none. |
@@ -273,7 +275,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 
 | Tabela | O que guarda |
 |---|---|
-| `Item` | Um item do estoque: uma peça, com o que as marcas dela têm em comum: o nome, a categoria, onde serve no veículo, o estoque mínimo, e quantas há, somando as marcas. |
+| `Item` | Um item do estoque: uma peça, com o que as marcas dela têm em comum: o nome, a categoria, onde serve no veículo, o estoque mínimo, e quantas há, somando as marcas; e, quando informados, de que a peça é feita (`material`) e uma descrição curta de até 30 caracteres, exibida nos detalhes e embaixo da foto. |
 | `ItemVehicle` | Um veículo em que a peça do item serve, em ordem: uma marca de veículo e, se quiser, um dos modelos dela; sem modelo, qualquer modelo da marca. Ele também pode dizer a geração, pelo primeiro e pelo último ano (exibida como "85/90", o último vazio enquanto ainda é fabricado), e a versão ("1.6 GLX"), nenhuma das duas no nome do item. Todo item serve em pelo menos um; um item de antes dos veículos virou um item do seu veículo, com o id do item. |
 | `ItemBrand` | Uma marca que fabrica a peça do item (Cobreq, Fras-le…), em ordem: o código da peça, a cor, o local, a quantidade e o valor unitário. Todo item tem pelo menos uma; um item de antes das marcas virou a primeira, com o id do item. |
 | `ItemOriginalCode` | Os códigos da montadora para a peça do item (OEM), em ordem, os mesmos para todas as marcas que a fabricam. Um item pode não ter nenhum. |

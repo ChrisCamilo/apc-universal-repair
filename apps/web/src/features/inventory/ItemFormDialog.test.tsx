@@ -368,6 +368,42 @@ test('Web: the details list a vehicle with its generation and version', async ()
   await expect.element(screen.getByText('Disco', { exact: true })).toBeVisible()
 })
 
+// Types a material and a description past 30 characters, and checks the description is cut at 30 with its counter,
+// then that both are posted with a capital letter.
+test('Web: an item takes an optional material and a description of up to 30 characters', async () => {
+  const fetch = answerSave()
+  const onSaved = vi.fn()
+  const screen = await render(<Sample onSaved={onSaved} />)
+  await fill(screen, { code: 'ngk-b7', name: 'vela', category: 'ignição', partBrand: 'NGK', vehicleBrand: 'chevrolet', price: '34,9' })
+  await screen.getByLabelText('Material').fill('níquel')
+  await screen.getByLabelText('Descrição curta').fill('eletrodo de níquel, rosca longa 19 mm')
+  await expect.element(screen.getByLabelText('Descrição curta')).toHaveValue('eletrodo de níquel, rosca long')
+  await expect.element(screen.getByText('30/30')).toBeVisible()
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(sent(fetch).body).toMatchObject({ material: 'Níquel', description: 'Eletrodo de níquel, rosca long' })
+})
+
+// Opens the details of an item with a material and a description, and checks both are listed, the description right
+// after the name and category.
+test('Web: the details list an item\'s description and material', async () => {
+  const noted = item({ code: 'N-1', name: 'Junta', material: 'Cortiça', description: 'Com furo extra' })
+  const screen = await render(<Sample item={noted} details />)
+  await expect.element(screen.getByText('Com furo extra')).toBeVisible()
+  await expect.element(screen.getByText('Cortiça')).toBeVisible()
+  const fields = screen.getByTestId('inventory.item-form-dialog.fields').element()
+  const labels = [...fields.querySelectorAll('[role="group"]')].map((group) => group.firstElementChild?.textContent)
+  expect(labels.slice(0, 4)).toEqual(['Nome', 'Categoria', 'Descrição curta', 'Material'])
+})
+
+// Opens the details of an item without a material or a description, and checks neither is listed.
+test('Web: the details of an item without notes list neither', async () => {
+  const plain = await render(<Sample item={FILTER} details />)
+  await expect.element(plain.getByText('Filtro de óleo')).toBeVisible()
+  expect(plain.getByText('Descrição curta').query()).toBeNull()
+  expect(plain.getByText('Material', { exact: true }).query()).toBeNull()
+})
+
 // Opens the form on an item and checks every field shows its value, then changes the quantity and saves, and checks
 // the item is patched by its id and the toast says it was saved.
 test('Web: an item opens filled in and is patched on save', async () => {

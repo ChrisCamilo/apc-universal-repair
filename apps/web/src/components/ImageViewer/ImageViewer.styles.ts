@@ -4,11 +4,14 @@ import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of the photo viewer: a modal on the panel over the dimmed, blurred backdrop; the item's name and code over
 // a 4:3 frame on the canvas that never grows past 62% of the screen's height; round arrows over the photo, lit in the
-// accent on hover; dots under it, the current one in the accent; the problems in the danger color; and the note and
-// buttons at the bottom. The footer only lines the note up with the buttons, so it adds no level to their ids, which are
-// the same as on mobile. It opens and closes as a Dialog does, growing and fading in, and back.
+// accent on hover; the item's short description under it, muted and centered; dots under it, the current one in the
+// accent; the problems in the danger color; and the note and buttons at the bottom. The footer only lines the note up
+// with the buttons, so it adds no level to their ids, which are the same as on mobile. It opens and closes as a Dialog does, growing and fading in, and back.
 
-/** The viewer: the window, its body, head and name, the frame with the photo or the empty note, arrows, dots and footer. */
+/**
+ * The viewer: the window, its body, head and name, the frame with the photo or the empty note, arrows, the caption,
+ * dots and footer.
+ */
 export const imageViewer = recipe(
   'common.image-viewer',
   tv({
@@ -32,6 +35,7 @@ export const imageViewer = recipe(
         'outline-none transition-[border-color,color,box-shadow] hover:border-accent hover:text-accent hover:shadow-glow focus-visible:shadow-ring',
       ],
       previous: 'rotate-180',
+      caption: 'm-0 text-center font-body text-sm text-text-muted',
       dots: 'flex items-center justify-center gap-2',
       dot: 'size-2.5 cursor-pointer rounded-pill bg-hairline outline-none focus-visible:shadow-ring aria-current:bg-accent aria-current:shadow-glow',
       problems: 'm-0 grid list-none gap-0.5 p-0 font-body text-sm text-danger',
@@ -52,6 +56,7 @@ export const imageViewer = recipe(
     empty: 'body.stage.frame.empty',
     nav: 'body.stage.nav',
     previous: 'body.stage.nav.previous',
+    caption: 'body.caption',
     dots: 'body.dots',
     dot: 'body.dots.dot',
     problems: 'body.problems',

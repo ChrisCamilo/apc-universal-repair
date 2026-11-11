@@ -442,6 +442,35 @@ test('Mobile: leaving a field writes it back by the rules', async () => {
   expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 1.234,50');
 });
 
+// Types a material and a description past 30 characters, and checks the description is cut at 30 with its counter,
+// and both are posted with a capital letter; then opens the details of an item with both, which show the description
+// under the name and the material among the details.
+test('Mobile: an item takes an optional material and a description of up to 30 characters', async () => {
+  const tree = await mount();
+  (fetch as jest.Mock).mockClear();
+  answerSave();
+  await type(tree, 'Código da peça', 'ngk-b7');
+  await type(tree, 'Nome', 'vela');
+  await type(tree, 'Categoria', 'ignição');
+  await type(tree, 'Marca da peça', 'NGK');
+  await addVehicle(tree, 'chevrolet');
+  await type(tree, 'Valor unitário (R$)', '34,9');
+  await type(tree, 'Material', 'níquel');
+  await type(tree, 'Descrição curta', 'eletrodo de níquel, rosca longa 19 mm');
+  expect(value(tree, 'Descrição curta')).toBe('eletrodo de níquel, rosca long');
+  expect(shows(tree, '30/30')).toBe(true);
+  await press(tree, 'Salvar item');
+  const [, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(JSON.parse(init.body)).toMatchObject({ material: 'Níquel', description: 'Eletrodo de níquel, rosca long' });
+
+  const details = await mount({ ...FILTER, material: 'Papel', description: 'Com anel de vedação' }, { details: true });
+  expect(shows(details, 'Com anel de vedação')).toBe(true);
+  expect(shows(details, 'Material')).toBe(true);
+  expect(shows(details, 'Papel')).toBe(true);
+  const plain = await mount(FILTER, { details: true });
+  expect(shows(plain, 'Material')).toBe(false);
+});
+
 // Opens a new vehicle with a generation that isn't years and checks Adicionar refuses it on its field; then gives it a
 // generation and a version, and checks its chip names both and the item is posted with the years and the version.
 test('Mobile: a vehicle takes an optional generation and version, sent as years', async () => {

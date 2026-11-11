@@ -53,6 +53,8 @@ const STOCK: Item[] = [
     quantity: 4,
     minQuantity: 1,
     unitPriceCents: 123456,
+    material: "Cerâmica",
+    description: "Com sensor de desgaste",
     photos: [
       { id: "00000000-0000-4000-8000-0000000000a1", url: "/photos/a1.jpg", thumbUrl: "/photos/a1-thumb.webp" },
       { id: "00000000-0000-4000-8000-0000000000a2", url: "/photos/a2.png", thumbUrl: "/photos/a2-thumb.webp" },
@@ -110,6 +112,8 @@ function createOf(item: Item): ItemCreate {
     position: item.position,
     side: item.side,
     originalCodes: item.originalCodes,
+    ...(item.material && { material: item.material }),
+    ...(item.description && { description: item.description }),
     brands: item.brands.map((brand) => ({
       partBrand: brand.partBrand,
       code: brand.code,
@@ -366,6 +370,24 @@ test("Shared: CSV vehicles may carry their generation and version", () => {
   assert.ok(exported.includes("Chevrolet / Monza / 1985-1990 / 1.6 GLX | Chevrolet / Onix / 2019- | Volkswagen / Gol /  / G5"));
 });
 
+// Reads a row with a material and a description, with the writing rule applied, one without either, which leaves them
+// out, and one whose description passes 30 characters, which is refused.
+test("Shared: CSV rows may carry the part's material and a short description", () => {
+  const text = [
+    HEADER,
+    ",A-1,,Junta,Motor,Mann,Volkswagen,1,1,,10,,,,cortiça,com furo extra",
+    ",A-2,,Junta,Motor,Mann,Volkswagen,1,1,,10,,,,,",
+    `,A-3,,Junta,Motor,Mann,Volkswagen,1,1,,10,,,,,${"x".repeat(31)}`,
+  ].join("\n");
+  const read = rows(text);
+  assert.deepEqual([read[0].item.material, read[0].item.description], ["Cortiça", "Com furo extra"]);
+  assert.equal("material" in read[1].item || "description" in read[1].item, false);
+  assert.deepEqual(
+    read.map((row) => row.errors),
+    [[], [], ["Descrição deve ter no máximo 30 caracteres."]],
+  );
+});
+
 // Reads rows with quantities past the limit, a negative one and the limit itself, and checks only those past it and
 // the negative one are refused, naming the column.
 test("Shared: CSV quantities can't pass the limit", () => {
@@ -457,16 +479,19 @@ test("Shared: the export writes the import's columns, a row per brand, with phot
   assert.ok(plain.startsWith("﻿"));
   const lines = plain.slice(1).split("\r\n");
   assert.equal(lines[0], CSV_COLUMNS.join(","));
-  assert.equal(lines[1], '1,BP-1020,,"Pastilha de freio ""cerâmica"", dianteira",Freios,Cobreq,Volkswagen / Gol,4,1,B-10,"1.234,56",Preto,D,Ambos');
-  assert.equal(lines[2], '2,BKR6E,,Vela de ignição,Motor,NGK,Volkswagen,0,0,,"24,90",N/A,N/A,N/A');
-  assert.equal(lines[3], '3,C 2433,1J0 129 620 | 1J0129620A,Filtro de ar,Motor,Mann,Volkswagen / Gol | Volkswagen / Voyage,3,3,A-4,"49,90",N/A,N/A,N/A');
-  assert.equal(lines[4], '3,ARL 4433,1J0 129 620 | 1J0129620A,Filtro de ar,Motor,Tecfil,Volkswagen / Gol | Volkswagen / Voyage,5,3,A-5,"32,90",N/A,N/A,N/A');
+  assert.equal(
+    lines[1],
+    '1,BP-1020,,"Pastilha de freio ""cerâmica"", dianteira",Freios,Cobreq,Volkswagen / Gol,4,1,B-10,"1.234,56",Preto,D,Ambos,Cerâmica,Com sensor de desgaste',
+  );
+  assert.equal(lines[2], '2,BKR6E,,Vela de ignição,Motor,NGK,Volkswagen,0,0,,"24,90",N/A,N/A,N/A,,');
+  assert.equal(lines[3], '3,C 2433,1J0 129 620 | 1J0129620A,Filtro de ar,Motor,Mann,Volkswagen / Gol | Volkswagen / Voyage,3,3,A-4,"49,90",N/A,N/A,N/A,,');
+  assert.equal(lines[4], '3,ARL 4433,1J0 129 620 | 1J0129620A,Filtro de ar,Motor,Tecfil,Volkswagen / Gol | Volkswagen / Voyage,5,3,A-5,"32,90",N/A,N/A,N/A,,');
   assert.equal(lines[5], "");
   const withPhotos = itemsCsv(STOCK, { photos: true }).slice(1).split("\r\n");
   assert.equal(withPhotos[0], `${CSV_COLUMNS.join(",")},${CSV_PHOTOS_COLUMN}`);
   assert.ok(withPhotos[1].endsWith(",/photos/a1.jpg | /photos/a2.png"));
-  assert.ok(withPhotos[2].endsWith(",N/A,"));
-  assert.ok(withPhotos[3].endsWith(",N/A,"));
+  assert.ok(withPhotos[2].endsWith(",N/A,,,"));
+  assert.ok(withPhotos[3].endsWith(",N/A,,,"));
   assert.ok(withPhotos[4].endsWith(",/photos/b3.webp"));
 });
 
