@@ -3,10 +3,12 @@ import { listName } from "../inventory/lists.ts";
 import {
   brandMark,
   CATALOG_CHILDREN,
+  CATALOG_ENGINES_PATH,
   CATALOG_LEVEL_PATHS,
   catalogFrom,
   type CatalogData,
   type CatalogEditLevel,
+  type CatalogLevel,
   type CatalogEngine,
   type CatalogValues,
 } from "./catalog.ts";
@@ -214,13 +216,13 @@ export const TEST_ENGINES = {
 /** A change of the catalog, as the API makes it: what is added, renamed, moved or deleted, and where. */
 export type CatalogChange =
   | { kind: "addBrand"; id: string; name: string }
-  | { kind: "add"; level: CatalogEditLevel; parentId: string; id: string; values: CatalogValues }
-  | { kind: "edit"; level: CatalogEditLevel; id: string; values: CatalogValues }
+  | { kind: "add"; level: CatalogLevel; parentId: string; id: string; values: CatalogValues }
+  | { kind: "edit"; level: CatalogLevel; id: string; values: CatalogValues }
   | { kind: "move"; level: CatalogEditLevel; id: string; direction: "up" | "down" }
   | { kind: "delete"; level: CatalogEditLevel; id: string };
-/** Each level by its path's segment, e.g. "generations". */
-const LEVEL_SEGMENTS: Record<string, CatalogEditLevel> = Object.fromEntries(
-  Object.entries(CATALOG_LEVEL_PATHS).map(([level, path]) => [path.split("/").at(-1)!, level as CatalogEditLevel]),
+/** Each level by its path's segment, e.g. "generations", the engines' included. */
+const LEVEL_SEGMENTS: Record<string, CatalogLevel> = Object.fromEntries(
+  Object.entries({ ...CATALOG_LEVEL_PATHS, engine: CATALOG_ENGINES_PATH }).map(([level, path]) => [path.split("/").at(-1)!, level as CatalogLevel]),
 );
 /** A node of any level as the API sends it, by its id and what tells it from its siblings. */
 type RawNode = { id: string; name?: string; year?: number };
@@ -299,11 +301,14 @@ export function catalogChangeOf(
   if (!level) {
     return null;
   }
-  if (method === "POST" && last === "move") {
-    return { status: 200, change: { kind: "move", level, id, direction: body.direction as "up" | "down" } };
-  }
   if (method === "PATCH") {
     return { status: 200, change: { kind: "edit", level, id, values: body } };
+  }
+  if (level === "engine") {
+    return null;
+  }
+  if (method === "POST" && last === "move") {
+    return { status: 200, change: { kind: "move", level, id, direction: body.direction as "up" | "down" } };
   }
   return method === "DELETE" ? { status: 200, change: { kind: "delete", level, id } } : null;
 }
@@ -314,7 +319,10 @@ export function catalogChangeOf(
  * @param node The node as it was.
  * @returns Its children, under their key.
  */
-function keptChildren(level: CatalogEditLevel, node: RawNode): object {
+function keptChildren(level: CatalogLevel, node: RawNode): object {
+  if (level === "engine") {
+    return {};
+  }
   const key = { model: "generations", generation: "versions", version: "years", year: "engines" }[level];
   return { [key]: (node as unknown as Record<string, unknown>)[key] };
 }
@@ -326,7 +334,7 @@ function keptChildren(level: CatalogEditLevel, node: RawNode): object {
  * @param values Its name, years or year.
  * @returns The node, with nothing under it.
  */
-function nodeOf(level: CatalogEditLevel, id: string, values: CatalogValues): RawNode {
+function nodeOf(level: CatalogLevel, id: string, values: CatalogValues): RawNode {
   const name = listName(values.name ?? "");
   switch (level) {
     case "model":
@@ -337,6 +345,8 @@ function nodeOf(level: CatalogEditLevel, id: string, values: CatalogValues): Raw
       return { id, name, years: [] } as RawNode;
     case "year":
       return { id, year: values.year, engines: [] } as RawNode;
+    case "engine":
+      return { id, displacementDl: values.displacementDl, cylinders: values.cylinders, drive: values.drive, summary: values.summary?.trim() ?? "" } as RawNode;
   }
 }
 
@@ -345,9 +355,9 @@ function nodeOf(level: CatalogEditLevel, id: string, values: CatalogValues): Raw
  * @param level Their level.
  * @param a One node.
  * @param b The other.
- * @returns True for models and years that clash; generations and versions never do.
+ * @returns True for models and years that clash; generations, versions and engines never do.
  */
-function sameNode(level: CatalogEditLevel, a: RawNode, b: RawNode): boolean {
+function sameNode(level: CatalogLevel, a: RawNode, b: RawNode): boolean {
   if (level === "model") {
     return optionKey(a.name ?? "") === optionKey(b.name ?? "");
   }
@@ -360,7 +370,7 @@ function sameNode(level: CatalogEditLevel, a: RawNode, b: RawNode): boolean {
  * @param level The level.
  * @returns Each group, by its parent's id, with the list itself, so a change to it changes the catalog.
  */
-function siblingGroups(data: CatalogData, level: CatalogEditLevel): { parentId: string; list: RawNode[] }[] {
+function siblingGroups(data: CatalogData, level: CatalogLevel): { parentId: string; list: RawNode[] }[] {
   const models = data.brands.map((brand) => ({ parentId: brand.id, list: brand.models as RawNode[] }));
   if (level === "model") {
     return models;
@@ -374,5 +384,9 @@ function siblingGroups(data: CatalogData, level: CatalogEditLevel): { parentId: 
   if (level === "version") {
     return versions;
   }
-  return allGenerations.flatMap((generation) => generation.versions).map((version) => ({ parentId: version.id, list: version.years as RawNode[] }));
+  const allVersions = allGenerations.flatMap((generation) => generation.versions);
+  if (level === "year") {
+    return allVersions.map((version) => ({ parentId: version.id, list: version.years as RawNode[] }));
+  }
+  return allVersions.flatMap((version) => version.years).map((year) => ({ parentId: year.id, list: year.engines as RawNode[] }));
 }
