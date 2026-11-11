@@ -8,7 +8,7 @@ import { fontFamily, softHairline } from '../../app/theme';
 // Each brand is a line across the screen, 72px tall, over a soft hairline: its letters in a raised square in the
 // accent, its name over its line of models and sheets, and a chevron. The tree spans the screen too, and grows to its
 // full height, since the screen scrolls as a whole. The sheet's readouts sit two to a row, each in a box with its name
-// above it. While the catalog loads, or when it can't be loaded, the tab is one box with the spinner or the message in
+// above it. "Nova marca" and "Novo modelo" sit at the right of their screen's heading. While the catalog loads, or when it can't be loaded, the tab is one box with the spinner or the message in
 // its middle.
 
 /** A brand line's height, in px (min-h-18 on the web). */
@@ -27,7 +27,8 @@ export const useStyles = createStyles(
   {
     status: 'status',
     tab: '',
-    heading: 'screen.heading',
+    screenHead: 'screen.head',
+    heading: 'screen.head.heading',
     brandList: 'screen.brands',
     brand: 'screen.brands.brand',
     mark: 'screen.brands.brand.mark',
@@ -60,7 +61,8 @@ export const useStyles = createStyles(
       brandPressed: { backgroundColor: colors.panelRaised },
       brandText: { flex: 1, gap: scales.space.s1 / 2 },
       chevron: {},
-      heading: { ...displayLabel(theme, 'sm'), paddingTop: scales.space.s2, color: colors.textMuted },
+      heading: { ...displayLabel(theme, 'sm'), color: colors.textMuted },
+      screenHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: scales.space.s2, paddingTop: scales.space.s2 },
       mark: {
         width: scales.touch.icon,
         height: scales.touch.icon,
