@@ -8,6 +8,8 @@ import {
   findOption,
   formatPrice,
   formatPriceRange,
+  generationLabel,
+  generationText,
   includeBoth,
   itemCodes,
   itemCreateSchema,
@@ -23,6 +25,7 @@ import {
   MIXED_VALUES,
   optionKey,
   partBrandsLabel,
+  readGeneration,
   resultSummary,
   stockCounts,
   searchKey,
@@ -158,6 +161,42 @@ test("Shared: an item fits at least one vehicle, each once and Universal alone",
     ["vehicles", 0, "vehicleBrand"],
   ]);
   assert.equal(item([{ vehicleBrand: "Universal" }]).success, true);
+});
+
+// A vehicle may say its generation and version: the last year can't come before the first, nor stand without it, and
+// the version holds 30 characters; the same model in two generations is two vehicles, not a repeated one.
+test("Shared: a vehicle's generation and version are checked as they are sent", () => {
+  const brand = { code: "W 712/95", partBrand: "Mann", unitPriceCents: 3990 };
+  const item = (vehicles: object[]) => itemCreateSchema.safeParse({ name: "Filtro", category: "Motor", vehicles, brands: [brand] });
+  const monza = { vehicleBrand: "Chevrolet", vehicleModel: "Monza" };
+  assert.equal(item([{ ...monza, firstYear: 1985, lastYear: 1990, version: "1.6 GLX" }, { ...monza, firstYear: 1982, lastYear: 1984 }]).success, true);
+  assert.equal(item([{ ...monza, firstYear: 2019, lastYear: null }]).success, true);
+  assert.deepEqual(item([{ ...monza, firstYear: 1990, lastYear: 1985 }]).error?.issues.map((issue) => issue.path), [["vehicles", 0, "lastYear"]]);
+  assert.deepEqual(item([{ ...monza, lastYear: 1990 }]).error?.issues.map((issue) => issue.path), [["vehicles", 0, "lastYear"]]);
+  assert.equal(item([{ ...monza, version: "x".repeat(31) }]).success, false);
+});
+
+// Writes a generation with its years' last two digits, one year alone and "atual" while still made, and reads back what
+// a user types: two or four digits, "/" or "-", refusing a last year before the first or text that isn't years.
+test("Shared: a generation is written as 85/90 and read as typed", () => {
+  assert.equal(generationLabel({ firstYear: 1985, lastYear: 1990 }), "85/90");
+  assert.equal(generationLabel({ firstYear: 1999, lastYear: 2005 }), "99/05");
+  assert.equal(generationLabel({ firstYear: 1988, lastYear: 1988 }), "88");
+  assert.equal(generationLabel({ firstYear: 2019, lastYear: null }), "19/atual");
+  assert.equal(generationLabel({ firstYear: null, lastYear: null }), "");
+  assert.equal(generationText({ firstYear: 1985, lastYear: 1990 }), "1985-1990");
+  assert.equal(generationText({ firstYear: 2019, lastYear: null }), "2019-");
+  for (const typed of ["85/90", "1985/1990", "1985 - 1990", "85-1990", "1985–1990"]) {
+    assert.deepEqual(readGeneration(typed), { firstYear: 1985, lastYear: 1990 }, typed);
+  }
+  assert.deepEqual(readGeneration("99/05"), { firstYear: 1999, lastYear: 2005 });
+  assert.deepEqual(readGeneration("88"), { firstYear: 1988, lastYear: 1988 });
+  assert.deepEqual(readGeneration("19/atual"), { firstYear: 2019, lastYear: null });
+  assert.deepEqual(readGeneration("2019-"), { firstYear: 2019, lastYear: null });
+  assert.deepEqual(readGeneration(" "), { firstYear: null, lastYear: null });
+  for (const typed of ["90/85", "85/", "GLX", "1985/19900", "1850-1860"]) {
+    assert.equal(readGeneration(typed), null, typed);
+  }
 });
 
 // Finds items by name ignoring case and accents and by any brand's part code or original code ignoring separators,

@@ -340,6 +340,32 @@ test("Shared: CSV vehicles are split at a bar, each a brand and maybe a model", 
   );
 });
 
+// Reads a vehicle's generation, with its full years, and its version after its model, and writes them back the same
+// way; a model with a "/" of its own still reads whole, and a generation that isn't years is refused.
+test("Shared: CSV vehicles may carry their generation and version", () => {
+  const text = [
+    HEADER,
+    ",A-1,,Junta,Motor,Mann,Chevrolet / Monza / 1985-1990 / 1.6 GLX | Chevrolet / Onix / 2019- | Volkswagen / Gol /  / G5,1,1,,10,,,",
+    ",A-2,,Junta,Motor,Mann,Ford / Escort XR3 / Conversível,1,1,,10,,,",
+    ",A-3,,Junta,Motor,Mann,Chevrolet / Monza / 1990-1985,1,1,,10,,,",
+  ].join("\n");
+  const read = rows(text);
+  assert.deepEqual(read[0].item.vehicles, [
+    { vehicleBrand: "Chevrolet", vehicleModel: "Monza", firstYear: 1985, lastYear: 1990, version: "1.6 GLX" },
+    { vehicleBrand: "Chevrolet", vehicleModel: "Onix", firstYear: 2019, lastYear: null },
+    { vehicleBrand: "Volkswagen", vehicleModel: "Gol", version: "G5" },
+  ]);
+  assert.deepEqual(read[1].item.vehicles, [{ vehicleBrand: "Ford", vehicleModel: "Escort XR3 / Conversível" }]);
+  assert.deepEqual(
+    read.map((row) => row.errors),
+    [[], [], [`Geração “1990-1985”: ${ITEM_FORM_MESSAGES.generationInvalid.toLowerCase()}`]],
+  );
+  const exported = itemsCsv([testItem({ vehicles: read[0].item.vehicles.map((vehicle) => ({ ...vehicle, vehicleModel: vehicle.vehicleModel || null })) })], {
+    photos: false,
+  });
+  assert.ok(exported.includes("Chevrolet / Monza / 1985-1990 / 1.6 GLX | Chevrolet / Onix / 2019- | Volkswagen / Gol /  / G5"));
+});
+
 // Reads rows with quantities past the limit, a negative one and the limit itself, and checks only those past it and
 // the negative one are refused, naming the column.
 test("Shared: CSV quantities can't pass the limit", () => {
