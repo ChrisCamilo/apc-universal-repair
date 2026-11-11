@@ -31,17 +31,19 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
 - 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes; by day each one is tinted in its own hue (sand, steel blue, warm grey-red and sage), with no white panels
 
-**Mobile Redesign (in progress)**
+**Mobile Redesign ✅**
 
 - 📱 A phone layout, on the web and in the native app, with the tabs in a bottom bar, followed by Alertas and Conta ✅
 - 🔑 Login and sign-up laid out for phones ✅
 - 🃏 The Inventory as a list of cards that loads more as it scrolls ✅
 - 🧾 Filters, sorting and the other actions in bottom sheets, dialogs opening full screen, and buttons, fields and chips sized for touch ✅
-- 🚧 Still to lay out for phones: an item's details and form as full screens, the lists, CSV and About dialogs, the Inventory tutorial and the Catalog tab
+- 📄 An item's details and form as full screens, and the lists, CSV and About dialogs and the Inventory tutorial laid out for phones ✅
+- 📚 The Catalog as stacked screens on phones, the same on the web and in the native app ✅
+- 🔳 The phone logged in by scanning a QR code on the computer ✅
 
-**Phase 2 (in progress)**
+**Phase 2 ✅**
 
-- 📚 Vehicle catalog organized by brand, model, generation, version, year and engine, on sample data ✅
+- 📚 Vehicle catalog organized by brand, model, generation, version, year and engine, kept in the API's database, which starts with sample brands ✅
 - 🔎 Catalog search by brand, model or the code of a part in stock ✅
 - ✏️ The catalog edited in place, on desktop and on phones: brands, models, generations, versions, years and engines with their sheets ✅
 
@@ -63,9 +65,16 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🔁 The server at home following the desktop app's version ✅
 - 📱 Android release build, signed with the upload key, built by CI ✅
 - 🔐 Sessions checked on every call, login and sign-up attempts limited, and the SQLite file encrypted at rest ✅
-- 🔗 The phone paired with the server at home over HTTPS, by QR code, and each new device authorized on the server's computer
-- 📲 The phone app saying when a new version is out
+- 🔗 The phone paired with the server at home over HTTPS, by QR code, and each new device authorized on the server's computer ✅
+- 📲 The phone app saying when a new version is out ✅
 - 🏷️ A new stock starting with the usual categories and part brands
+- 🔃 The Inventory refreshing by itself when another device changes it
+
+**Offline Mode (planned)**
+
+- 📴 The phone keeping an encrypted copy of the paired server's inventory and its photos, and editing it away from the server
+- 🔄 The changes synced both ways once the server is back, each applied once, the ones made on both sides to the same item settled, and what is waiting to sync shown, with a way to sync now
+- 🔑 The phone's password login back, to open the copy offline
 
 **Later**
 
@@ -285,17 +294,19 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
 - 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro; de dia cada um é tingido no seu próprio tom (areia, azul-aço, cinza-avermelhado e sálvia), sem painéis brancos
 
-**Redesign para celular (em andamento)**
+**Redesign para celular ✅**
 
 - 📱 Um layout de celular, na web e no app nativo, com as abas numa barra inferior, seguidas de Alertas e Conta ✅
 - 🔑 Login e cadastro diagramados para o celular ✅
 - 🃏 O Estoque como uma lista de cards que carrega mais itens ao rolar ✅
 - 🧾 Filtros, ordenação e as outras ações em bottom sheets, diálogos abrindo em tela cheia, e botões, campos e chips do tamanho do toque ✅
-- 🚧 Ainda falta diagramar para o celular: os detalhes e o formulário de um item em tela cheia, os diálogos das listas, do CSV e do Sobre, o tutorial do Estoque e a aba Catálogo
+- 📄 Os detalhes e o formulário de um item em tela cheia, e os diálogos das listas, do CSV e do Sobre e o tutorial do Estoque diagramados para o celular ✅
+- 📚 O Catálogo em telas empilhadas no celular, igual na web e no app nativo ✅
+- 🔳 O celular entrando ao ler um QR code no computador ✅
 
-**Fase 2 (em andamento)**
+**Fase 2 ✅**
 
-- 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor, com dados de exemplo ✅
+- 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, ano e motor, guardado no banco da API, que começa com marcas de exemplo ✅
 - 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque ✅
 - ✏️ O catálogo editado no lugar, no desktop e no celular: marcas, modelos, gerações, versões, anos e motores com suas fichas ✅
 
@@ -317,9 +328,16 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🔁 O servidor em casa acompanhando a versão do app desktop ✅
 - 📱 Build de release para Android, assinado com a chave de upload, gerado pelo CI ✅
 - 🔐 Sessões conferidas em toda chamada, tentativas de login e cadastro limitadas, e o arquivo SQLite criptografado em disco ✅
-- 🔗 O celular pareado com o servidor de casa por HTTPS, com um QR code, e cada aparelho novo autorizado no computador do servidor
-- 📲 O app do celular avisando quando sai uma versão nova
+- 🔗 O celular pareado com o servidor de casa por HTTPS, com um QR code, e cada aparelho novo autorizado no computador do servidor ✅
+- 📲 O app do celular avisando quando sai uma versão nova ✅
 - 🏷️ Um estoque novo começando com as categorias e marcas de peça de costume
+- 🔃 O Estoque se atualizando sozinho quando outro aparelho o muda
+
+**Modo offline (planejado)**
+
+- 📴 O celular guardando uma cópia criptografada do estoque do servidor pareado e das fotos, e editando-a longe do servidor
+- 🔄 As mudanças sincronizadas nos dois sentidos quando o servidor volta, cada uma aplicada uma vez, as feitas dos dois lados no mesmo item resolvidas, e o que espera para sincronizar mostrado, com um jeito de sincronizar na hora
+- 🔑 O login por senha de volta no celular, para abrir a cópia offline
 
 **Depois**
 
