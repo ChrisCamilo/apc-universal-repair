@@ -5,16 +5,20 @@
 import React from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import { NO_SHEET_MESSAGE } from '@apc/domain/catalog';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NO_SHEET_MESSAGE, type CatalogData } from '@apc/domain/catalog';
 import type { Item } from '@apc/domain/items';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { CatalogTab } from '../src/features/catalog/CatalogTab';
 import { PhoneHeaderContext, type PhoneHeader } from '../src/features/dashboard/phoneHeaderContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog';
+import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
+import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 
 const OPALA_41 = TEST_CATALOG.sheets[TEST_ENGINES.opala41];
+// A phone's screen with no insets, for the sheets and dialogs.
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 // What Android's back button calls.
 type BackListener = Parameters<typeof BackHandler.addEventListener>[1];
 // Parts in the inventory, for the code search: an engine the catalog has and one it lacks.
@@ -36,7 +40,8 @@ const PARTS: Item[] = [
 ];
 
 /**
- * Saves a style and mode, renders the Catalog under a header inside a ThemeProvider and waits for it to load.
+ * Saves a style and mode, renders the Catalog under a header inside a ThemeProvider, on a phone's screen, and waits for
+ * it to load.
  * @param style Style to start on.
  * @param mode Mode to start on.
  * @returns The rendered tree.
@@ -46,9 +51,11 @@ async function mount(style: Style, mode: Mode) {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
-      <ThemeProvider>
-        <Harness />
-      </ThemeProvider>,
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>
+          <Harness />
+        </ThemeProvider>
+      </SafeAreaProvider>,
     );
   });
   return tree!;
@@ -101,12 +108,12 @@ function byRole(tree: ReactTestRenderer.ReactTestRenderer, role: string, name: s
 }
 
 /**
- * Types into a search field.
+ * Types into a field.
  * @param tree Rendered tree.
  * @param label The field's accessible name.
  * @param text Text to type.
  */
-async function search(tree: ReactTestRenderer.ReactTestRenderer, label: string, text: string) {
+async function fill(tree: ReactTestRenderer.ReactTestRenderer, label: string, text: string) {
   const input = tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);
   await ReactTestRenderer.act(async () => input.props.onChangeText(text));
 }
@@ -202,13 +209,13 @@ test('Mobile: the Catalog goes from a brand to an engine sheet and back', async 
 test('Mobile: the Catalog search narrows the brands and opens a part found by code', async () => {
   answer(() => ({ ok: true, json: () => Promise.resolve({ items: PARTS, total: PARTS.length }) }));
   const tree = await mount('fiat90', 'day');
-  await search(tree, 'Procure modelo ou código da peça', 'uno');
+  await fill(tree, 'Procure modelo ou código da peça', 'uno');
   expect(shows(tree, 'Marcas · 1')).toBe(true);
   await press(tree, 'Fiat, 3 modelos · 1 ficha técnica');
   expect(shows(tree, 'Modelos · 1')).toBe(true);
   await press(tree, 'Voltar às marcas');
 
-  await search(tree, 'Procure modelo ou código da peça', 'fra1000');
+  await fill(tree, 'Procure modelo ou código da peça', 'fra1000');
   expect(shows(tree, 'Peças do estoque com esse código')).toBe(true);
   const cards = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'common.data-table.table.row');
   expect(cards()).toHaveLength(2);
@@ -219,7 +226,7 @@ test('Mobile: the Catalog search narrows the brands and opens a part found by co
   await press(tree, 'Voltar aos modelos');
   expect(tree.root.find((n) => n.type === TextInput).props.value).toBe('');
 
-  await search(tree, 'Procure modelo ou código da peça', 'fra10002');
+  await fill(tree, 'Procure modelo ou código da peça', 'fra10002');
   await ReactTestRenderer.act(async () => pressable(cards()[0]).props.onPress());
   expect(title(tree)).toBe('Chevrolet');
   expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityValue).toEqual({ text: 'em destaque' });
@@ -227,6 +234,86 @@ test('Mobile: the Catalog search narrows the brands and opens a part found by co
   expect(shows(tree, NO_SHEET_MESSAGE)).toBe(true);
 });
 
+// Adds a brand from beside the brands' heading in a bottom sheet, which opens its empty models, a model from beside the
+// models' heading, and a generation from the model's "⋯": the sheet says the last year can't come before the first,
+// then adds it under the model, open on it.
+test('Mobile: the Catalog adds a brand, a model and a generation in sheets', async () => {
+  answerChanges();
+  const tree = await mount('eighties', 'night');
+  await pressText(tree, 'Nova marca');
+  await fill(tree, 'Nome', 'renault');
+  await pressText(tree, 'Adicionar');
+  expect(title(tree)).toBe('Renault');
+  expect(shows(tree, 'Nenhum modelo nessa marca')).toBe(true);
+
+  await pressText(tree, 'Novo modelo');
+  expect(shows(tree, 'Novo modelo em Renault')).toBe(true);
+  await fill(tree, 'Nome', 'Clio');
+  await pressText(tree, 'Adicionar');
+  expect(byRole(tree, 'treeitem', 'Clio')).toBeTruthy();
+  expect(shows(tree, 'Nova geração em Clio')).toBe(true);
+
+  await press(tree, 'Ações de Clio');
+  expect(['Nova geração', 'Renomear', 'Excluir…', 'Fechar'].every((label) => shows(tree, label))).toBe(true);
+  expect(shows(tree, 'Mover para cima') || shows(tree, 'Mover para baixo')).toBe(false);
+  await pressText(tree, 'Nova geração');
+  await fill(tree, 'Nome', 'Primeira geração');
+  await fill(tree, 'De', '1990');
+  await fill(tree, 'Até', '1980');
+  await pressText(tree, 'Adicionar');
+  expect(shows(tree, 'O último ano não pode vir antes do primeiro.')).toBe(true);
+  await fill(tree, 'Até', '1998');
+  await pressText(tree, 'Adicionar');
+  expect(byRole(tree, 'treeitem', 'Primeira geração 1990–1998')).toBeTruthy();
+});
+
+// Renames the Opala's first version from its "⋯", which has no "Mover para cima", moves the last one up, adds an engine
+// to a year in the full-screen sheet form and opens its sheet, edits that sheet, and deletes the generation after the
+// dialog says what goes with it.
+test('Mobile: the Catalog renames, moves and deletes branches and adds and edits an engine sheet', async () => {
+  answerChanges();
+  const tree = await mount('gt4', 'day');
+  await press(tree, 'Chevrolet, 3 modelos · 2 fichas técnicas');
+  await press(tree, 'Opala');
+  await press(tree, 'Terceira geração 1980–1992');
+  await press(tree, 'Ações de Comodoro');
+  expect(shows(tree, 'Mover para cima')).toBe(false);
+  expect(shows(tree, 'Mover para baixo')).toBe(true);
+  await pressText(tree, 'Renomear');
+  expect(field(tree, 'Nome').props.value).toBe('Comodoro');
+  await fill(tree, 'Nome', 'Comodoro SL');
+  await pressText(tree, 'Salvar');
+  expect(shows(tree, 'Comodoro SL')).toBe(true);
+
+  await press(tree, 'Ações de SS');
+  await pressText(tree, 'Mover para cima');
+  const versions = treeLabels(tree).filter((label) => ['Comodoro SL', 'SS', 'Diplomata'].includes(label));
+  expect(versions).toEqual(['Comodoro SL', 'SS', 'Diplomata']);
+
+  await press(tree, 'Diplomata');
+  await pressText(tree, 'Novo motor em 1985');
+  expect(shows(tree, 'Ficha do motor')).toBe(true);
+  await fill(tree, 'Cilindrada (L)', '2,5');
+  await fill(tree, 'Cilindros', '4');
+  await pressText(tree, 'Traseira');
+  await pressText(tree, 'Salvar ficha');
+  expect(shows(tree, '1985 · Chevrolet Opala Diplomata 2.5')).toBe(true);
+  expect(shows(tree, 'Opala › Terceira geração › Diplomata › 1985')).toBe(true);
+
+  await pressText(tree, 'Editar ficha');
+  expect(field(tree, 'Cilindrada (L)').props.value).toBe('2,5');
+  await fill(tree, 'Cilindrada (L)', '2.8');
+  await pressText(tree, 'Salvar ficha');
+  expect(shows(tree, '1985 · Chevrolet Opala Diplomata 2.8')).toBe(true);
+
+  await press(tree, 'Voltar aos modelos');
+  await press(tree, 'Ações de Terceira geração');
+  await pressText(tree, 'Excluir…');
+  expect(shows(tree, 'Excluir “Terceira geração”?')).toBe(true);
+  expect(showsPart(tree, 'Vão junto 3 versões, 2 anos, 3 motores com ficha.')).toBe(true);
+  await pressText(tree, 'Excluir');
+  expect(treeLabels(tree).some((label) => label.startsWith('Terceira geração'))).toBe(false);
+});
 /**
  * Answers the API's requests: the catalog with the test catalog, unless a test gives its own reply, and the inventory
  * with a test's own.
@@ -235,6 +322,73 @@ test('Mobile: the Catalog search narrows the brands and opens a part found by co
  */
 function answer(items: () => object, catalog: () => object = () => ({ ok: true, json: () => Promise.resolve(TEST_CATALOG_DATA) })) {
   (fetch as jest.Mock).mockImplementation((url: string) => Promise.resolve(url.endsWith('/catalog') ? catalog() : items()));
+}
+
+/**
+ * Answers the API's requests as a server would, keeping the changes made to the catalog: the inventory with no parts,
+ * the catalog with the test catalog at first, and each change made on it under the API's rules, answering the whole
+ * catalog, or 404 or 409.
+ */
+function answerChanges() {
+  let catalog: CatalogData = JSON.parse(JSON.stringify(TEST_CATALOG_DATA));
+  let made = 0;
+  (fetch as jest.Mock).mockImplementation((url: string, init?: RequestInit) => {
+    const at = url.indexOf('/catalog');
+    if (at < 0) {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: [], total: 0 }) });
+    }
+    made += 1;
+    const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {};
+    const id = `00000000-0000-4000-8000-${String(made).padStart(12, '0')}`;
+    const change = catalogChangeOf(init?.method ?? 'GET', url.slice(at + '/catalog'.length), body, id);
+    if (change) {
+      const result = applyCatalogChange(catalog, change.change);
+      if (result === 'missing' || result === 'taken') {
+        return Promise.resolve({ ok: false, status: result === 'missing' ? 404 : 409, json: () => Promise.resolve({}) });
+      }
+      catalog = result;
+    }
+    const answered = catalog;
+    return Promise.resolve({ ok: true, status: change?.status ?? 200, json: () => Promise.resolve(answered) });
+  });
+}
+
+/**
+ * Finds a text field's input by its label.
+ * @param tree Rendered tree.
+ * @param label The field's label.
+ * @returns The input.
+ */
+function field(tree: ReactTestRenderer.ReactTestRenderer, label: string): ReactTestRenderer.ReactTestInstance {
+  return tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);
+}
+
+/**
+ * Presses the pressable that shows a text, such as a button's label or an action's name.
+ * @param tree Rendered tree.
+ * @param text Exact text.
+ */
+async function pressText(tree: ReactTestRenderer.ReactTestRenderer, text: string) {
+  await ReactTestRenderer.act(async () => pressable(textNode(tree, text)).props.onPress());
+}
+
+/**
+ * Tells whether a text shows part of what it says, for a Text put together from several pieces.
+ * @param tree Rendered tree.
+ * @param piece The piece looked for.
+ * @returns True when a Text says it.
+ */
+function showsPart(tree: ReactTestRenderer.ReactTestRenderer, piece: string): boolean {
+  return tree.root.findAll((n) => n.type === Text && ([] as unknown[]).concat(n.props.children).join('').includes(piece)).length > 0;
+}
+
+/**
+ * Reads the names of the tree's rows on show, in order.
+ * @param tree Rendered tree.
+ * @returns Each row's accessible name.
+ */
+function treeLabels(tree: ReactTestRenderer.ReactTestRenderer): string[] {
+  return tree.root.findAll((n) => typeof n.type === 'string' && n.props.role === 'treeitem').map((n) => n.props.accessibilityLabel);
 }
 
 /**
