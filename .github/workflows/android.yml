@@ -35,6 +35,10 @@ on:
 jobs:
   android:
     runs-on: ubuntu-latest
+    # A new push to a pull request cancels the build of its older commit; a run by hand or a release's is never cut.
+    concurrency:
+      group: android-${{ github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     outputs:
       signed: ${{ steps.release.outputs.signed }}
     env:
@@ -45,13 +49,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
+      # pnpm comes first, so setup-node finds its store and keeps it between runs.
       - uses: pnpm/action-setup@v6
         with:
           run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
 
       - name: Install dependencies
         working-directory: .
@@ -73,9 +79,22 @@ jobs:
       # installed again on each run), with paths taken from the workspace; the build passes it to CMake with
       # -Papc.ccache=true (see build.gradle). Its folder and Gradle's build cache are saved after every run, and the
       # latest one is restored: a pull request reuses what its own earlier runs, or the last release on main, compiled.
+      # ccache comes from its own release on GitHub, checked against the SHA-256 GitHub gives for it, not from apt, so
+      # Ubuntu's package mirrors can't fail the build; to update it, change the version and its digest (the release's
+      # asset list on GitHub shows it).
       - name: Install ccache
+        working-directory: ${{ runner.temp }}
+        env:
+          CCACHE_VERSION: 4.14.3
+          CCACHE_SHA256: c94a5688546883eee4c87764b34fa2eb18a4879421a51589c37538aed6312dfc
         run: |
-          sudo apt-get install -y ccache
+          archive="ccache-$CCACHE_VERSION-linux-x86_64-glibc.tar.xz"
+          curl --fail --silent --show-error --location --retry 5 --output "$archive"             "https://github.com/ccache/ccache/releases/download/v$CCACHE_VERSION/$archive"
+          echo "$CCACHE_SHA256  $archive" | sha256sum --check
+          tar -xJf "$archive"
+          mkdir -p "$HOME/.local/bin"
+          cp "ccache-$CCACHE_VERSION-linux-x86_64-glibc/ccache" "$HOME/.local/bin/"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           {
             echo "CCACHE_DIR=$HOME/.ccache"
             echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE"

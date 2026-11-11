@@ -1,0 +1,28 @@
+name: Caches
+
+# Deletes a pull request's caches once it is closed, merged or not. Its jobs save their caches under the pull request's
+# merge ref (refs/pull/<n>/merge), where nothing else reads them, so they only took room in the repository's 10 GB:
+# Gradle's and the compiled C++ of the Android build, pnpm's store and Turbo's results. main's caches stay, for the
+# pull requests to come. A pull request reopened afterwards starts its first run from main's caches.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  actions: write
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete the pull request's caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REF: refs/pull/${{ github.event.pull_request.number }}/merge
+        run: |
+          ids=$(gh cache list --ref "$REF" --limit 100 --json id --jq '.[].id')
+          for id in $ids; do
+            gh cache delete "$id"
+          done
+          echo "Deleted $(echo "$ids" | grep -c . || true) cache(s) of $REF."

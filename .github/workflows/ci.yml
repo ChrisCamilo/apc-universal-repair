@@ -4,9 +4,24 @@ name: CI
 on:
   pull_request:
 
+# A new push to a pull request cancels the run of its older commit.
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   lint-build-test:
     runs-on: ubuntu-latest
+    # Playwright's own image, with its Chromium and the system libraries it needs, so nothing is installed with apt or
+    # downloaded for the browser. Its tag is the Playwright version the lockfile resolves, which
+    # scripts/playwright-image.mjs checks below; a Playwright bump changes it too.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --user 1001
+    # A container's steps run in sh unless told otherwise; the steps are written for bash, as on the runner.
+    defaults:
+      run:
+        shell: bash
     env:
       # Placeholder: only needed for `prisma generate` to resolve its config, no live DB required for build/lint.
       DATABASE_URL: "postgresql://user:password@localhost:5432/apc_universal_repair"
@@ -15,16 +30,30 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
+      - name: Playwright's image matches the lockfile
+        run: node scripts/playwright-image.mjs
 
+      # pnpm comes first, so setup-node finds its store and keeps it between runs.
       - uses: pnpm/action-setup@v6
         with:
           run_install: false
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Turbo's results, by the hash of each package's inputs: a run skips the lint, typecheck, build and tests of the
+      # packages it didn't change since the last run that saved them.
+      - name: Restore Turbo's cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ github.job }}-${{ github.sha }}
+          restore-keys: turbo-${{ github.job }}-
 
       # Every installed package's license must be allowed or reviewed, and every shipped one in THIRD_PARTY_NOTICES.md
       # (scripts/licenses.mjs).
@@ -39,9 +68,6 @@ jobs:
 
       - name: Build
         run: pnpm turbo run build
-
-      - name: Install Playwright browser
-        run: pnpm --filter @apc/web exec playwright install --with-deps chromium
 
       - name: Unit tests
         run: pnpm turbo run test
@@ -93,13 +119,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
+      # pnpm comes first, so setup-node finds its store and keeps it between runs.
       - uses: pnpm/action-setup@v6
         with:
           run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

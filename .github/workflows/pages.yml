@@ -40,6 +40,15 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Playwright's own image, as the CI workflow's lint-build-test job: no browser download and no apt for the demo's
+    # tests. Its tag follows the lockfile's Playwright version (scripts/playwright-image.mjs).
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --user 1001
+    # A container's steps run in sh unless told otherwise; the steps are written for bash, as on the runner.
+    defaults:
+      run:
+        shell: bash
     env:
       # Placeholder: only needed for `prisma generate` to resolve its config while installing, no database is used.
       DATABASE_URL: "postgresql://user:password@localhost:5432/apc_universal_repair"
@@ -48,13 +57,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
+      # pnpm comes first, so setup-node finds its store and keeps it between runs.
       - uses: pnpm/action-setup@v6
         with:
           run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -74,9 +85,6 @@ jobs:
           mkdir site/fonts
           cp apps/web/node_modules/@fontsource/barlow/files/barlow-latin-{400,600}-normal.woff2 site/fonts/
           cp apps/web/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-{600,700}-normal.woff2 site/fonts/
-
-      - name: Install Playwright browser
-        run: pnpm --filter @apc/web exec playwright install --with-deps chromium
 
       - name: Playwright E2E (demo)
         run: pnpm --filter @apc/web run test:e2e:demo
