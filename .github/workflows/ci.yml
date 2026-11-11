@@ -37,6 +37,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Turbo's results, by the hash of each package's inputs: a run skips the lint, typecheck, build and tests of the
+      # packages it didn't change since the last run that saved them.
+      - name: Restore Turbo's cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ github.job }}-${{ github.sha }}
+          restore-keys: turbo-${{ github.job }}-
+
       # Every installed package's license must be allowed or reviewed, and every shipped one in THIRD_PARTY_NOTICES.md
       # (scripts/licenses.mjs).
       - name: Licenses
