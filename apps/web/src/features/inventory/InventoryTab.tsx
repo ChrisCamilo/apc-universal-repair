@@ -78,6 +78,7 @@ import { useItemLists } from './useItemLists.ts'
 import { useItemPages } from './useItemPages.ts'
 import { useItems } from './useItems.ts'
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts.ts'
+import { useCatalog } from '../catalog/useCatalog.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
 import { inventoryTab, LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB } from './InventoryTab.styles.ts'
 import { InventoryTutorial } from './InventoryTutorial.tsx'
@@ -257,6 +258,8 @@ export function InventoryTab() {
   useLowStockAlerts(state.status === 'ready' ? state.items : null, user?.id ?? '')
   // The lists the item form picks from and creates names in.
   const { lists, create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists()
+  // The catalog, for the generations and versions the item form offers for a vehicle.
+  const catalog = useCatalog()
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false)
   // Whether a phone's sheet of the other actions, which the header's "⋯" opens, is open.
@@ -765,6 +768,7 @@ export function InventoryTab() {
         scrollToBrand={form.brand}
         items={items}
         lists={lists}
+        catalog={catalog.status === 'ready' ? catalog.catalog : undefined}
         onCreateEntry={createEntry}
         initialForm={form.initial}
         initialPhotos={form.photos}

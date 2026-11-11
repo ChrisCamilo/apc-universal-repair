@@ -2,10 +2,13 @@ import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of a phone's vehicles in the item form, as in the Novo item mockup: the chips wrap in rows, each a 44px
 // accent-soft pill with the vehicle and a 44px muted × that brightens on hover; the new vehicle's fields sit in a soft
-// hairline frame with Cancelar and Adicionar at its end; "Adicionar veículo" takes the whole width; a message is in the
-// danger color.
+// hairline frame, its generation and version side by side, with Cancelar and Adicionar at its end; "Adicionar veículo"
+// takes the whole width; a message is in the danger color.
 
-/** A phone's vehicles: the field, the chips, a chip and its ×, the new vehicle with its buttons, the add button and a message. */
+/**
+ * A phone's vehicles: the field, the chips, a chip and its ×, the new vehicle with its generation and version and its
+ * buttons, the add button and a message.
+ */
 export const vehiclesField = recipe(
   'inventory.vehicles-field',
   tv({
@@ -18,6 +21,7 @@ export const vehiclesField = recipe(
         'transition-colors hover:text-text focus-visible:shadow-ring',
       ],
       draft: 'grid gap-3 rounded-tile border border-hairline-soft p-3',
+      pair: 'grid grid-cols-2 items-start gap-2.5',
       draftActions: 'flex justify-end gap-2',
       add: 'grid',
       error: 'm-0 font-body text-sm text-danger',
@@ -29,6 +33,7 @@ export const vehiclesField = recipe(
     chip: 'chips.chip',
     remove: 'chips.chip.remove',
     draft: 'draft',
+    pair: 'draft.pair',
     draftActions: 'draft.actions',
     add: 'add',
     error: 'error',
