@@ -12,7 +12,9 @@ import { ITEM_PHOTO_LIMIT } from "./photos.ts";
 // used once in the stock. The item's quantity is its brands' sum, against its minimum; a column of the list reads the brands as
 // one value: the first brand's (the cover's), every brand's when they agree, or the lowest price. A vehicle is a
 // vehicle brand with, optionally, one of its models; without one, any model of the brand. "Universal" fits any vehicle
-// and stands alone in an item's list.
+// and stands alone in an item's list. A vehicle may also say its generation, a first and a last year shown with their
+// last two digits ("85/90"), the last one left out while it is still made, and its version ("1.6 GLX"); neither is part
+// of the item's name or its row, only of its details and filters.
 
 /** The columns the inventory list sorts by, as the list query's `sort` names them. */
 export const ITEM_SORT_KEYS = ["name", "category", "partBrand", "vehicle", "position", "side", "color", "location", "price", "quantity"] as const;
@@ -29,6 +31,8 @@ const ITEM_SORT_VALUES: Record<ItemSortKey, (item: SortableItem) => string | num
   price: (item) => item.unitPriceCents,
   quantity: (item) => item.quantity,
 };
+/** What ends the generation of a vehicle still made, as "19/atual". */
+export const GENERATION_ONGOING = "atual";
 /** The status filter values: low stock (at or under the minimum, not zero) and out of stock (zero). */
 export const ITEM_STATUSES = ["low", "out"] as const;
 /** The most a unit price can be, in cents: R$ 1.000.000,00. */
@@ -59,6 +63,11 @@ export const SIDE_NAMES: Record<(typeof SIDES)[number], string> = {
 export const SIDES = ["N/A", "LD", "LE", "Ambos"] as const;
 /** The vehicle brand of the parts that fit any vehicle, alone in an item's vehicles. */
 export const UNIVERSAL_BRAND = "Universal";
+/** The most characters a vehicle's version has, e.g. "Hatch GLX 1.5". */
+export const VEHICLE_VERSION_MAX = 30;
+/** The years a vehicle's generation can start and end in, as the catalog's. */
+export const VEHICLE_YEARS = { min: 1900, max: 2100 } as const;
+const vehicleYear = z.int().min(VEHICLE_YEARS.min).max(VEHICLE_YEARS.max);
 /** What each stock status is called on screen and read out. */
 export const STOCK_STATUS_LABELS: Record<(typeof ITEM_STATUSES)[number], string> = { low: "Estoque baixo", out: "Esgotado" };
 /** The stock statuses in short, as a phone's card and quick filters show them: "Baixo · 5". */
@@ -93,8 +102,22 @@ const brandsSchema = z
       });
     }
   });
-/** A vehicle an item fits as it is sent: a vehicle brand and, optionally, a model of it; any model without one. */
-export const itemVehicleCreateSchema = z.object({ vehicleBrand: requiredText, vehicleModel: optionalText });
+/**
+ * A vehicle an item fits as it is sent: a vehicle brand and, optionally, a model of it (any model without one), its
+ * generation's first and last year (no last year while it is still made) and its version.
+ */
+export const itemVehicleCreateSchema = z
+  .object({
+    vehicleBrand: requiredText,
+    vehicleModel: optionalText,
+    firstYear: vehicleYear.nullish(),
+    lastYear: vehicleYear.nullish(),
+    version: z.string().trim().max(VEHICLE_VERSION_MAX).optional(),
+  })
+  .refine((vehicle) => vehicle.lastYear == null || (vehicle.firstYear != null && vehicle.lastYear >= vehicle.firstYear), {
+    path: ["lastYear"],
+    message: "The last year comes after the first one.",
+  });
 // An item's vehicles: at least one, each pair once, compared ignoring case and accents, and Universal alone.
 const vehiclesSchema = z
   .array(itemVehicleCreateSchema)
@@ -165,6 +188,10 @@ export const itemListQuerySchema = z.object({
   side: manyValues,
   color: manyValues,
   location: manyValues,
+  /** A vehicle's generation, as generationText writes it ("1985-1990"). */
+  generation: manyValues,
+  /** A vehicle's version, e.g. "1.6 GLX". */
+  version: manyValues,
   status: z.enum(ITEM_STATUSES).optional(),
   /** Page to send, from 1; only with pageSize. */
   page: z.coerce.number().int().min(1).optional(),
@@ -196,8 +223,17 @@ export const itemBrandSchema = z.object({
   photos: z.array(itemPhotoSchema).max(ITEM_PHOTO_LIMIT),
 });
 export const itemBrandIdParamsSchema = z.object({ id: z.uuid(), brandId: z.uuid() });
-/** A vehicle an item fits: a vehicle brand, and its model, or null for any model of the brand. */
-export const itemVehicleSchema = z.object({ vehicleBrand: z.string(), vehicleModel: z.string().nullable() });
+/**
+ * A vehicle an item fits: a vehicle brand, and its model, or null for any model of the brand; its generation's first
+ * and last year, the last null while it is still made, and its version, each null or left out when not given.
+ */
+export const itemVehicleSchema = z.object({
+  vehicleBrand: z.string(),
+  vehicleModel: z.string().nullable(),
+  firstYear: z.int().nullish(),
+  lastYear: z.int().nullish(),
+  version: z.string().nullish(),
+});
 export const itemSchema = z.object({
   id: z.uuid(),
   name: z.string(),
@@ -319,6 +355,31 @@ export function formatPrice(cents: number): string {
 export function formatPriceRange(item: { brands: readonly Pick<ItemBrand, "unitPriceCents">[] }): string {
   const { lowest, highest } = priceRange(item);
   return lowest === highest ? formatPrice(lowest) : `${formatPrice(lowest)} – ${formatPrice(highest)}`;
+}
+
+/**
+ * Writes a vehicle's generation with its years' last two digits, the way the details and the filters show it.
+ * @param vehicle The vehicle's first and last year.
+ * @returns E.g. "85/90", "85" for a single year, "19/atual" while it is still made, or "" without a generation.
+ */
+export function generationLabel(vehicle: Pick<ItemVehicle, "firstYear" | "lastYear">): string {
+  if (vehicle.firstYear == null) {
+    return "";
+  }
+  const short = (year: number) => String(year % 100).padStart(2, "0");
+  if (vehicle.lastYear === vehicle.firstYear) {
+    return short(vehicle.firstYear);
+  }
+  return `${short(vehicle.firstYear)}/${vehicle.lastYear == null ? GENERATION_ONGOING : short(vehicle.lastYear)}`;
+}
+
+/**
+ * Writes a vehicle's generation with its full years, as the generation filter sends it and the CSV holds it.
+ * @param vehicle The vehicle's first and last year.
+ * @returns E.g. "1985-1990", "2019-" while it is still made, or "" without a generation.
+ */
+export function generationText(vehicle: Pick<ItemVehicle, "firstYear" | "lastYear">): string {
+  return vehicle.firstYear == null ? "" : `${vehicle.firstYear}-${vehicle.lastYear ?? ""}`;
 }
 
 /**
@@ -487,6 +548,33 @@ export function stockCounts(items: readonly Pick<Item, "quantity" | "minQuantity
 }
 
 /**
+ * Reads a vehicle's generation as typed: two years apart by "/" or "-", or one year alone, each with four digits or
+ * its last two (up to next year's are this century's, the others the last one's: "05" is 2005, "85" is 1985), and the
+ * last one "atual", or nothing after a "-", while it is still made.
+ * @param text E.g. "85/90", "1985 - 1990", "1985-1990", "88", "19/atual" or "2019-".
+ * @returns The first and last year, both null when the text is empty, or null when it isn't a generation, its years
+ * out of VEHICLE_YEARS or the last before the first.
+ */
+export function readGeneration(text: string): { firstYear: number | null; lastYear: number | null } | null {
+  const typed = text.trim().toLowerCase();
+  if (!typed) {
+    return { firstYear: null, lastYear: null };
+  }
+  const parts = /^(\d{2}|\d{4})(?:\s*([/–-])\s*(\d{2}|\d{4}|atual)?)?$/.exec(typed);
+  if (!parts || (parts[2] === "/" && !parts[3])) {
+    return null;
+  }
+  const pivot = (new Date().getFullYear() + 1) % 100;
+  /** Takes a year of two digits to its century. */
+  const full = (year: string) => (year.length === 4 ? Number(year) : Number(year) + (Number(year) <= pivot ? 2000 : 1900));
+  const firstYear = full(parts[1]);
+  const lastYear = !parts[2] ? firstYear : !parts[3] || parts[3] === GENERATION_ONGOING ? null : full(parts[3]);
+  const inRange = (year: number) => year >= VEHICLE_YEARS.min && year <= VEHICLE_YEARS.max;
+  const valid = inRange(firstYear) && (lastYear === null || (inRange(lastYear) && lastYear >= firstYear));
+  return valid ? { firstYear, lastYear } : null;
+}
+
+/**
  * Writes the result counter of the inventory: how many items show of the total, and how many of all items
  * are low and out of stock.
  * @param shown How many items the search and filters leave.
@@ -570,13 +658,19 @@ export function stockTint(item: { quantity: number; minQuantity: number }): { to
 }
 
 /**
- * Reduces a vehicle to what tells vehicles apart: its brand and model ignoring case, accents and extra spaces, so an
- * item fits each vehicle once.
+ * Reduces a vehicle to what tells vehicles apart: its brand, model and version ignoring case, accents and extra
+ * spaces, and its generation's years, so an item fits each vehicle once.
  * @param vehicle The vehicle, its model empty or missing for any model.
- * @returns E.g. "volkswagen|gol g5".
+ * @returns E.g. "volkswagen|gol g5||", or "chevrolet|monza|1985-1990|1.6 glx".
  */
-export function vehicleKey(vehicle: { vehicleBrand: string; vehicleModel?: string | null }): string {
-  return `${optionKey(vehicle.vehicleBrand)}|${optionKey(vehicle.vehicleModel ?? "")}`;
+export function vehicleKey(vehicle: {
+  vehicleBrand: string;
+  vehicleModel?: string | null;
+  firstYear?: number | null;
+  lastYear?: number | null;
+  version?: string | null;
+}): string {
+  return [optionKey(vehicle.vehicleBrand), optionKey(vehicle.vehicleModel ?? ""), generationText(vehicle), optionKey(vehicle.version ?? "")].join("|");
 }
 
 /**
