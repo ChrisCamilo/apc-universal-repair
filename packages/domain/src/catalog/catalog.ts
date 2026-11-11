@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
-import { codeKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
+import { codeKey, generationText, optionKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
+import { distinct, generationInput } from "../inventory/itemForm.ts";
 
 // The vehicle catalog of the Catalog tab, kept by the API (GET /catalog): the catalog brands, each a vehicle brand of
 // the Inventory's lists, in the rail's order, and under each its models, each a vehicle model of those lists, then
@@ -805,4 +806,45 @@ export function treePath(catalog: Catalog, brandId: string, nodeId: string): Cat
     return [];
   };
   return find(catalog.brands.find((brand) => brand.id === brandId)?.models ?? []);
+}
+
+/**
+ * Lists what a vehicle's generation and version fields offer in the item form: the generations, oldest first, and the
+ * versions of its model in the catalog (found as locatePart finds it) and of the same brand and model in stock.
+ * @param catalog The catalog.
+ * @param items Every item in stock.
+ * @param vehicle The vehicle's brand and model as typed.
+ * @returns The generations as their field writes them ("85/90") and the versions in alphabetical order; none without
+ * a model.
+ */
+export function vehicleSuggestions(
+  catalog: Catalog,
+  items: readonly Item[],
+  vehicle: { vehicleBrand: string; vehicleModel: string },
+): { generations: string[]; versions: string[] } {
+  if (!vehicle.vehicleModel.trim()) {
+    return { generations: [], versions: [] };
+  }
+  const location = locatePart(catalog, vehicle);
+  const model = location?.modelId
+    ? catalog.brands.find((brand) => brand.id === location.brandId)?.models.find((each) => each.id === location.modelId)
+    : undefined;
+  const catalogGenerations = model?.children ?? [];
+  const held = items
+    .flatMap((item) => item.vehicles)
+    .filter((each) => optionKey(each.vehicleBrand) === optionKey(vehicle.vehicleBrand) && optionKey(each.vehicleModel ?? "") === optionKey(vehicle.vehicleModel));
+  const years = [
+    ...catalogGenerations.map((generation) => ({ firstYear: generation.firstYear!, lastYear: generation.lastYear ?? null })),
+    ...held.flatMap((each) => (each.firstYear == null ? [] : [{ firstYear: each.firstYear, lastYear: each.lastYear ?? null }])),
+  ];
+  const generations = new Map(years.map((each) => [generationText(each), each]));
+  return {
+    generations: [...generations.values()]
+      .sort((a, b) => a.firstYear - b.firstYear || (a.lastYear ?? Infinity) - (b.lastYear ?? Infinity))
+      .map(generationInput),
+    versions: distinct([
+      ...catalogGenerations.flatMap((generation) => (generation.children ?? []).map((version) => version.label)),
+      ...held.flatMap((each) => (each.version ? [each.version] : [])),
+    ]),
+  };
 }
