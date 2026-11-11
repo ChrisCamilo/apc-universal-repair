@@ -8,7 +8,7 @@ import { usePresence } from '../usePresence.ts'
 
 // A text field with a list of options that filters as the user types, ignoring case and accents, and that
 // lets them create a new option without leaving the field: when the text names no option, the list ends with
-// "+ Criar <noun> “<text>”". The chevron opens the full list. It is an editable combobox (WAI-ARIA): Up/Down
+// "+ Criar <noun> “<text>”" (a combobox without onCreate takes any text instead, its options only suggestions). The chevron opens the full list. It is an editable combobox (WAI-ARIA): Up/Down
 // move through the list, Enter picks, Escape closes only the list, not a dialog around it. On blur, a text
 // that names an option takes that option's spelling, and any other text starts with a capital letter. It looks like the TextField, with its error and hint,
 // and its list is the Select's, showing at most five options, sliding in and out as the Select's does.
@@ -20,8 +20,11 @@ type ComboboxProps = {
   value: string
   onValueChange: (value: string) => void
   options: readonly string[]
-  /** Creates a new option, called with the typed text starting with a capital letter; the field then holds it. */
-  onCreate: (value: string) => void
+  /**
+   * Creates a new option, called with the typed text starting with a capital letter; the field then holds it. Left
+   * out, the field takes any text and offers no create row.
+   */
+  onCreate?: (value: string) => void
   /** What an option is, for the create row, e.g. "categoria" in "+ Criar categoria “Freios”". */
   noun: string
   /** Accessible name of the chevron, e.g. "Mostrar categorias". */
@@ -62,7 +65,7 @@ export function Combobox({
   const current = findOption(options, value)
   const entries: Entry[] = [
     ...(showAll ? options : matchingOptions(options, value)).map((option) => ({ kind: 'option' as const, value: option })),
-    ...(typed && !current ? [{ kind: 'create' as const, value: capitalizeFirst(typed) }] : []),
+    ...(typed && !current && onCreate ? [{ kind: 'create' as const, value: capitalizeFirst(typed) }] : []),
   ]
   const note = error ?? helper
   const { classes, ids } = combobox({ disabled: Boolean(disabled), error: Boolean(error), open })
@@ -84,7 +87,7 @@ export function Combobox({
   /** Picks an entry: an option fills the field, the create row creates the option first; the list closes. */
   const pick = (entry: Entry) => {
     if (entry.kind === 'create') {
-      onCreate(entry.value)
+      onCreate?.(entry.value)
     }
     onValueChange(entry.value)
     show(false)

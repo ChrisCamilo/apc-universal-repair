@@ -11,7 +11,8 @@ import { Label, Text } from '../Typography/Typography';
 
 // A text field with a list of options that filters as the user types, the same as the web: case and accents
 // don't matter, and when the text names no option the list ends with "+ Criar <noun> “<text>”", which creates
-// it without leaving the field. The chevron opens the full list. On a phone the list opens right under the
+// it without leaving the field (a combobox without onCreate takes any text instead, its options only suggestions).
+// The chevron opens the full list. On a phone the list opens right under the
 // field and pushes what follows down; tapping an option keeps the keyboard and the focus in the field. On
 // blur the list closes, a text that names an option takes that option's spelling, and any other text starts with
 // a capital letter. The list fades and slides in under the field, and back out, as on the web (see motion.ts). Inside a
@@ -23,8 +24,11 @@ type ComboboxProps = {
   value: string;
   onValueChange: (value: string) => void;
   options: readonly string[];
-  /** Creates a new option, called with the typed text starting with a capital letter; the field then holds it. */
-  onCreate: (value: string) => void;
+  /**
+   * Creates a new option, called with the typed text starting with a capital letter; the field then holds it. Left
+   * out, the field takes any text and offers no create row.
+   */
+  onCreate?: (value: string) => void;
   /** What an option is, for the create row, e.g. "categoria" in "+ Criar categoria “Freios”". */
   noun: string;
   /** Accessible name of the chevron, e.g. "Mostrar categorias". */
@@ -66,7 +70,7 @@ export function Combobox({
   const current = findOption(options, value);
   const entries: Entry[] = [
     ...(showAll ? options : matchingOptions(options, value)).map((option) => ({ kind: 'option' as const, value: option })),
-    ...(typed && !current ? [{ kind: 'create' as const, value: capitalizeFirst(typed) }] : []),
+    ...(typed && !current && onCreate ? [{ kind: 'create' as const, value: capitalizeFirst(typed) }] : []),
   ];
 
   /** Opens the list, the full list when the chevron asks for it, or closes it. */
@@ -78,7 +82,7 @@ export function Combobox({
   /** Picks an entry: an option fills the field, the create row creates the option first; the list closes. */
   const pick = (entry: Entry) => {
     if (entry.kind === 'create') {
-      onCreate(entry.value);
+      onCreate?.(entry.value);
     }
     onValueChange(entry.value);
     show(false);
