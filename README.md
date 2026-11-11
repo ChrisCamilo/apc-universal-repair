@@ -224,13 +224,14 @@ The server comes inside the desktop app: installed on a Windows computer at home
 Work is organized in epics, tracked as [GitHub issues](https://github.com/ChrisCamilo/apc-universal-repair/issues?q=label%3Aepic).
 
 - **MVP ✅:** Setup → Design System → Auth (login and sign-up) → Dashboard → Inventory (with photos, CSV import and export)
-- **Mobile Redesign (in progress):** the bottom sheet ✅, full-screen dialogs ✅, touch sizes ✅, login and sign-up ✅, the bottom bar ✅, the Inventory as cards loading more as it scrolls ✅, filters, sorting and actions in sheets ✅, then an item's details and form, the other dialogs, the tutorial and the Catalog tab
-- **Optimizations ✅:** style recipes and style ids in every component, guarded by lint
-- **QA ✅:** shared fixtures, locators and tags for the Playwright suites, a trace, screenshot and report of every failure, and Playwright's MCP and test agents
-- **Phase 2 (in progress):** Catalog tab ✅, edited on desktop and on phones ✅
+- **Mobile Redesign ✅:** the bottom sheet, full-screen dialogs, touch sizes, login and sign-up, the bottom bar, the Inventory as cards loading more as it scrolls, filters, sorting and actions in sheets, an item's details and form, the other dialogs, the tutorial, the Catalog as stacked screens and logging in by QR code
+- **Optimizations ✅:** style recipes and style ids in every component, guarded by lint, and the apps, the API and the shared packages organized by feature
+- **QA (in progress):** shared fixtures, locators and tags for the Playwright suites ✅, a trace, screenshot and report of every failure ✅, Playwright's MCP and test agents ✅, then a toast test that fails now and then
+- **Phase 2 ✅:** the Catalog tab, kept in the API and edited on desktop and on phones
 - **Phase 3 (in progress):** notifications and toasts — toast kinds ✅, the bell ✅, the toast's duration ✅, low-stock warnings ✅, Windows notifications ✅ and Android notifications
-- **Backend (in progress):** session tokens ✅, login limits ✅, SQLite or PostgreSQL ✅, the SQLite file encrypted ✅, then pairing the phone over HTTPS and authorizing each device
-- **Next:** the API on a home computer for the mobile app ✅, Windows desktop app ✅, photo compression ✅, Android release build ✅ and the phone app's notice of a new version
+- **Backend ✅:** session tokens, login limits, SQLite or PostgreSQL, the SQLite file encrypted, pairing the phone over HTTPS, authorizing each device, and the vehicle catalog kept in the API and edited
+- **Offline Mode (planned):** an encrypted copy of the inventory on the phone, edited away from the server and synced both ways once it is back
+- **Next:** the API on a home computer for the mobile app ✅, Windows desktop app ✅, photo compression ✅, Android release build ✅, the phone app's notice of a new version ✅, then the stock's starting categories and part brands and the Inventory refreshing by itself
 - **Later:** 3D viewer, maintenance specs, diagnostics, reference prices and full EN/PT-BR app UI
 - **TBD:** Car Specs, the vehicle spec sheet (fuel consumption, equipment and features), with no phase yet
 
@@ -487,13 +488,14 @@ O `apps/mobile` é o app React Native para Android. Em desenvolvimento, ele fala
 O trabalho é organizado em épicos, acompanhados como [issues no GitHub](https://github.com/ChrisCamilo/apc-universal-repair/issues?q=label%3Aepic).
 
 - **MVP ✅:** Setup → Design System → Auth (login e cadastro) → Dashboard → Estoque (com fotos, importação e exportação por CSV)
-- **Redesign para celular (em andamento):** o bottom sheet ✅, diálogos em tela cheia ✅, tamanhos de toque ✅, login e cadastro ✅, a barra inferior ✅, o Estoque em cards carregando mais ao rolar ✅, filtros, ordenação e ações em sheets ✅, depois os detalhes e o formulário de um item, os outros diálogos, o tutorial e a aba Catálogo
-- **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint
-- **QA ✅:** fixtures, locators e tags compartilhados nas suítes do Playwright, um trace, uma captura de tela e um relatório de toda falha, e o MCP e os agentes de teste do Playwright
-- **Fase 2 (em andamento):** aba Catálogo ✅, editada no desktop e no celular ✅
+- **Redesign para celular ✅:** o bottom sheet, diálogos em tela cheia, tamanhos de toque, login e cadastro, a barra inferior, o Estoque em cards carregando mais ao rolar, filtros, ordenação e ações em sheets, os detalhes e o formulário de um item, os outros diálogos, o tutorial, o Catálogo em telas empilhadas e a entrada por QR code
+- **Otimizações ✅:** receitas e ids de estilo em todos os componentes, garantidos pelo lint, e os apps, a API e os pacotes compartilhados organizados por funcionalidade
+- **QA (em andamento):** fixtures, locators e tags compartilhados nas suítes do Playwright ✅, um trace, uma captura de tela e um relatório de toda falha ✅, o MCP e os agentes de teste do Playwright ✅, depois um teste de aviso que falha de vez em quando
+- **Fase 2 ✅:** a aba Catálogo, guardada na API e editada no desktop e no celular
 - **Fase 3 (em andamento):** notificações e avisos — tipos de aviso ✅, o sino ✅, o tempo do aviso ✅, avisos de estoque baixo ✅, notificações do Windows ✅ e notificações do Android
-- **Backend (em andamento):** tokens de sessão ✅, limite de logins ✅, SQLite ou PostgreSQL ✅, o arquivo SQLite criptografado ✅, depois o pareamento do celular por HTTPS e a autorização de cada aparelho
-- **Próximos passos:** a API num computador de casa para o app do celular ✅, app desktop para Windows ✅, compressão das fotos ✅, build de release para Android ✅ e o aviso de versão nova no app do celular
+- **Backend ✅:** tokens de sessão, limite de logins, SQLite ou PostgreSQL, o arquivo SQLite criptografado, o pareamento do celular por HTTPS, a autorização de cada aparelho, e o catálogo de veículos guardado na API e editado
+- **Modo offline (planejado):** uma cópia criptografada do estoque no celular, editada longe do servidor e sincronizada nos dois sentidos quando ele volta
+- **Próximos passos:** a API num computador de casa para o app do celular ✅, app desktop para Windows ✅, compressão das fotos ✅, build de release para Android ✅, o aviso de versão nova no app do celular ✅, depois as categorias e marcas de peça iniciais do estoque e o Estoque se atualizando sozinho
 - **Depois:** visualizador 3D, ficha de manutenção, diagnósticos, valores de referência e interface completa em inglês e português
 - **A definir:** Ficha técnica do veículo (consumo, equipamentos e itens de série), ainda sem fase
 
