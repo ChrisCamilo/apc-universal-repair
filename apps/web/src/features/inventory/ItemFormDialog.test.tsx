@@ -22,6 +22,8 @@ import { testItem, type FlatItem } from '@apc/domain/test-items'
 const SAVED_PHOTO = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.png', thumbUrl: '/photos/aa-thumb.webp' }
 const FILTER = item({ code: 'W 712/95', name: 'Filtro de óleo', vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', color: 'Preto' })
 const PADS = item({ code: 'FRA-1000', name: 'Pastilha de freio', vehicleBrand: 'Chevrolet', vehicleModel: 'Opala 4.1' })
+// A part that fits one generation and version of a model.
+const DISC = item({ code: 'M-1', name: 'Disco', vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', firstYear: 2008, lastYear: 2012, version: '1.0 G5' })
 const ITEMS = [FILTER, PADS, item({ code: 'J-1', name: 'Junta', vehicleBrand: 'Volkswagen', vehicleModel: 'Santana' })]
 // The lists the form picks from: what the items use, plus the category and brands of a new spark plug.
 const LISTS = itemListsOf([...ITEMS, item({ code: 'B7', name: 'Vela', category: 'Ignição', partBrand: 'NGK', vehicleBrand: 'Fiat' })])
@@ -109,7 +111,7 @@ function rgb(hex: string): string {
 function savedOf(sent: ItemCreate, photos: ItemBrand['photos'] = []): Item {
   return testItem({
     ...sent,
-    vehicles: sent.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel || null })),
+    vehicles: sent.vehicles.map((vehicle) => ({ ...vehicle, vehicleModel: vehicle.vehicleModel || null })),
     brands: sent.brands.map((brand, index) => ({
       color: 'N/A',
       quantity: 0,
@@ -332,6 +334,38 @@ test('Web: a new item is posted, announced and handed over', async () => {
     }),
   })
   await expect.element(screen.getByText('Item “Vela” cadastrado.')).toBeVisible()
+})
+
+// Gives a vehicle a generation and a version, picking the generation the stock already has for that model, and checks
+// a generation that isn't years is refused on its field; then that the item is posted with the years and the version.
+test('Web: a vehicle takes an optional generation and version, sent as years', async () => {
+  const fetch = answerSave()
+  const onSaved = vi.fn()
+  const screen = await render(<Sample items={[...ITEMS, DISC]} onSaved={onSaved} />)
+  await fill(screen, { code: 'ngk-b7', name: 'vela', category: 'ignição', partBrand: 'NGK', vehicleBrand: 'volkswagen', price: '34,9' })
+  await screen.getByRole('combobox', { name: 'Modelo do veículo' }).fill('gol')
+  await screen.getByRole('combobox', { name: 'Geração' }).fill('12/08')
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.generationInvalid)).toBeVisible()
+  expect(fetch).not.toHaveBeenCalled()
+  // Clearing the field lists every generation it offers.
+  await screen.getByRole('combobox', { name: 'Geração' }).clear()
+  await screen.getByRole('option', { name: '08/12' }).click()
+  await screen.getByRole('combobox', { name: 'Versão' }).fill('1.0 G5')
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(sent(fetch).body).toMatchObject({
+    name: 'Vela',
+    vehicles: [{ vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', firstYear: 2008, lastYear: 2012, version: '1.0 G5' }],
+  })
+})
+
+// Opens the details of an item whose vehicle has a generation and a version, and checks they are listed with the
+// vehicle, apart from the item's name.
+test('Web: the details list a vehicle with its generation and version', async () => {
+  const screen = await render(<Sample item={DISC} details />)
+  await expect.element(screen.getByText('Volkswagen Gol 08/12 1.0 G5')).toBeVisible()
+  await expect.element(screen.getByText('Disco', { exact: true })).toBeVisible()
 })
 
 // Opens the form on an item and checks every field shows its value, then changes the quantity and saves, and checks
@@ -695,7 +729,7 @@ test('Web: on a phone the form fills the screen, as in the Novo item mockup', as
       const addVehicle = dialog.getByRole('button', { name: 'Adicionar veículo' }).element()
       expect(getComputedStyle(addVehicle).borderStyle).toBe('dashed')
       expect(addVehicle.getBoundingClientRect().width).toBe(MIN_MOBILE_WIDTH - 32)
-      await expect.element(dialog.getByText('Sem modelo, a peça serve em qualquer modelo da marca.')).toBeVisible()
+      await expect.element(dialog.getByText('Sem modelo, a peça serve em qualquer modelo da marca. A geração e a versão são opcionais.')).toBeVisible()
       expect(dialog.getByRole('combobox', { name: 'Marca do veículo' }).query()).toBeNull()
 
       for (const [group, labels] of [
@@ -980,6 +1014,7 @@ function Sample({
   item: editing,
   details,
   scrollToBrand,
+  items = ITEMS,
   onSaved = () => {},
   onCreateEntry,
   initialForm,
@@ -990,6 +1025,8 @@ function Sample({
   item?: Item
   details?: boolean
   scrollToBrand?: string
+  /** Every item in stock; ITEMS when left out. */
+  items?: Item[]
   onSaved?: (item: Item) => void
   initialForm?: ItemForm
   initialPhotos?: UploadPhoto[][]
@@ -1018,7 +1055,7 @@ function Sample({
         item={editing}
         details={details}
         scrollToBrand={scrollToBrand}
-        items={ITEMS}
+        items={items}
         lists={lists}
         onCreateEntry={create}
         onClose={() => setOpen(false)}
