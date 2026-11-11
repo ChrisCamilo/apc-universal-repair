@@ -3,15 +3,17 @@ import { initials, loginRequestSchema, userCreateRequestSchema } from '@apc/doma
 import {
   CATALOG_BRANDS_PATH,
   CATALOG_CHILDREN,
+  CATALOG_ENGINES_PATH,
   CATALOG_LEVEL_PATHS,
   CATALOG_PATH,
+  catalogEngineInputSchema,
   catalogGenerationInputSchema,
   catalogIdParamsSchema,
   catalogMoveSchema,
   catalogNameSchema,
   catalogYearInputSchema,
   type CatalogData,
-  type CatalogEditLevel,
+  type CatalogLevel,
   type CatalogValues,
 } from '@apc/domain/catalog'
 import { IMPORT_CONFLICTS, itemImportSchema } from '@apc/domain/item-csv'
@@ -65,13 +67,14 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // entry code for a phone and log one in with it answer 501 with DEMO_UNAVAILABLE (DEMO_UNAVAILABLE_ROUTES), which the
 // screens show.
 
-/** What adds or renames each level of the catalog's tree, as the API reads it. */
+/** What adds or renames each level of the catalog's tree, or saves an engine's sheet, as the API reads it. */
 const CATALOG_INPUTS = {
   model: catalogNameSchema,
   generation: catalogGenerationInputSchema,
   version: catalogNameSchema,
   year: catalogYearInputSchema,
-} as unknown as Record<CatalogEditLevel, Schema<CatalogValues>>
+  engine: catalogEngineInputSchema,
+} as unknown as Record<CatalogLevel, Schema<CatalogValues>>
 /** One day, in milliseconds, between the demo's items' creation. */
 const DAY_MS = 86_400_000
 /** What the demo says of what it doesn't do, such as authorizing devices. */
@@ -95,7 +98,7 @@ const ITEMS_USING: Record<ItemListKind, (item: StoredItem, id: string) => boolea
 /** The lists of plain names, by their path. */
 const NAME_LISTS = ['categories', 'partBrands', 'vehicleBrands'] as const
 /** The level each level of the catalog's tree is added under. */
-const PARENT_LEVELS = { generation: 'model', version: 'generation', year: 'version' } as const
+const PARENT_LEVELS = { generation: 'model', version: 'generation', year: 'version', engine: 'year' } as const
 /** A photo's id, as a part of the photos' request names one. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -340,7 +343,7 @@ function catalogRoutes(db: Db): Route[] {
         return answer
       },
     },
-    ...(['generation', 'version', 'year'] as const).map(
+    ...(['generation', 'version', 'year', 'engine'] as const).map(
       (level): Route => ({
         method: 'POST',
         path: `${CATALOG_LEVEL_PATHS[PARENT_LEVELS[level]]}/:id/${CATALOG_CHILDREN[PARENT_LEVELS[level]].segment}`,
@@ -358,7 +361,22 @@ function catalogRoutes(db: Db): Route[] {
       }),
     ),
   ]
-  for (const [level, path] of Object.entries(CATALOG_LEVEL_PATHS) as [CatalogEditLevel, string][]) {
+  routes.push({
+    method: 'PATCH',
+    path: `${CATALOG_ENGINES_PATH}/:id`,
+    answer: ({ params, body }) => {
+      const id = idOf(params)
+      const sent = read(CATALOG_INPUTS.engine, body)
+      if (!id.ok) {
+        return id.answer
+      }
+      if (!sent.ok) {
+        return sent.answer
+      }
+      return change(200, { kind: 'edit', level: 'engine', id: id.value.id, values: sent.value })
+    },
+  })
+  for (const [level, path] of Object.entries(CATALOG_LEVEL_PATHS) as [Exclude<CatalogLevel, 'engine'>, string][]) {
     routes.push(
       {
         method: 'PATCH',
