@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { entryCodeSchema, loggedInSchema } from "../../auth/auth.ts";
-import { CATALOG_PATH, catalogSchema } from "../../catalog/catalog.ts";
+import { CATALOG_BRANDS_PATH, CATALOG_CHILDREN, CATALOG_LEVEL_PATHS, CATALOG_PATH, catalogSchema } from "../../catalog/catalog.ts";
 import { deviceChallengeSchema, deviceListSchema, deviceSchema, deviceStatusSchema } from "../../devices/devices.ts";
 import { itemImportResultSchema } from "../../inventory/itemCsv.ts";
 import { itemListResponseSchema, itemSchema } from "../../inventory/items.ts";
@@ -13,6 +13,8 @@ import { healthResponseSchema } from "../schemas/health.ts";
 // and the demo's answers against these schemas, so a route the API gains, loses or changes without the demo fails.
 // A route that answers no JSON body (204, or a file) has no schema.
 
+/** The paths of the catalog's levels a node is added under: its brands, models, generations and versions. */
+const CATALOG_PARENT_PATHS = { brand: CATALOG_BRANDS_PATH, ...CATALOG_LEVEL_PATHS };
 /** The paths of the item lists of names, which each have the same routes. */
 const NAME_LIST_PATHS = [ITEM_LIST_PATHS.categories, ITEM_LIST_PATHS.partBrands, ITEM_LIST_PATHS.vehicleBrands];
 
@@ -39,6 +41,17 @@ export const API_ROUTES: readonly ApiRoute[] = [
   { method: "PUT", path: "/items/:id/brands/:brandId/photos", responses: { 200: itemSchema } },
   { method: "GET", path: "/photos/:file", responses: {} },
   { method: "GET", path: CATALOG_PATH, responses: { 200: catalogSchema } },
+  { method: "POST", path: CATALOG_BRANDS_PATH, responses: { 201: catalogSchema } },
+  ...Object.entries(CATALOG_CHILDREN).map(([parent, child]): ApiRoute => ({
+    method: "POST",
+    path: `${CATALOG_PARENT_PATHS[parent as keyof typeof CATALOG_CHILDREN]}/:id/${child.segment}`,
+    responses: { 201: catalogSchema },
+  })),
+  ...Object.values(CATALOG_LEVEL_PATHS).flatMap((path): ApiRoute[] => [
+    { method: "PATCH", path: `${path}/:id`, responses: { 200: catalogSchema } },
+    { method: "POST", path: `${path}/:id/move`, responses: { 200: catalogSchema } },
+    { method: "DELETE", path: `${path}/:id`, responses: { 200: catalogSchema } },
+  ]),
   ...NAME_LIST_PATHS.flatMap((path) => listRoutes(path, listEntriesSchema, listEntrySchema)),
   ...listRoutes(ITEM_LIST_PATHS.vehicleModels, vehicleModelsSchema, vehicleModelSchema),
 ];

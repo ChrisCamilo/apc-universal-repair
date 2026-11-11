@@ -74,6 +74,10 @@ type RowActionProps = {
   onClick: () => void
   /** Danger is red instead of the accent, for actions like delete. */
   tone?: 'default' | 'danger'
+  /** Grays the action out and ignores presses, e.g. moving the first row up. */
+  disabled?: boolean
+  /** Classes for the icon, from the owner's style file, e.g. to turn a chevron up. */
+  iconClassName?: string
 }
 type RowTone = 'warn' | 'danger'
 type TableTitleProps = {
@@ -276,11 +280,11 @@ export function DataTable<Row>({
   )
 }
 
-export function RowAction({ icon, label, onClick, tone = 'default' }: RowActionProps) {
+export function RowAction({ icon, label, onClick, tone = 'default', disabled, iconClassName }: RowActionProps) {
   const { classes, ids } = rowAction({ tone })
   return (
-    <button type="button" aria-label={label} className={classes.base()} data-testid={ids.base} onClick={onClick}>
-      <Icon icon={icon} size={ICON_SIZES.label} />
+    <button type="button" aria-label={label} className={classes.base()} data-testid={ids.base} onClick={onClick} disabled={disabled}>
+      <Icon icon={icon} size={ICON_SIZES.label} className={iconClassName} />
     </button>
   )
 }

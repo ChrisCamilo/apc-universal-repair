@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import {
+  belowNode,
   brandsNamed,
   brandSummary,
   brandWithModel,
+  CATALOG_BRANDS_PATH,
+  CATALOG_CHILDREN,
   CATALOG_HOME,
+  CATALOG_LEVEL_PATHS,
+  changeCatalog,
   ENGINE_SPEC_LABELS,
   enginePath,
   findParts,
@@ -16,22 +21,30 @@ import {
   screenBack,
   screenHeader,
   type Catalog,
+  type CatalogEditLevel,
+  type CatalogNode,
   type CatalogScreen,
+  type CatalogValues,
   type FoundPart,
 } from '@apc/domain/catalog'
-import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
+import { chevronIcon, ICON_SIZES, pencilIcon, plusIcon, trashIcon } from '@apc/tokens/icons'
+import { Button } from '../../components/Button'
+import { RowAction } from '../../components/DataTable'
+import { Dialog } from '../../components/Dialog'
 import { EmptyState, ErrorState } from '../../components/EmptyState'
 import { Icon } from '../../components/Icon'
 import { ImageFrame } from '../../components/ImageFrame'
 import { Panel } from '../../components/Panel'
 import { SelectableTileGroup } from '../../components/SelectableTile'
 import { Spinner } from '../../components/Spinner'
+import { useToast } from '../../components/Toast'
 import { SearchField } from '../../components/TextField'
 import { TreeView } from '../../components/TreeView'
 import { Heading, NumericReadout, Text } from '../../components/Typography'
 import { usePhone } from '../../components/usePhone.ts'
 import { useItems } from '../inventory/useItems.ts'
 import { catalogTab } from './CatalogTab.styles.ts'
+import { NodeForm } from './NodeForm.tsx'
 import { PartResults } from './PartResults.tsx'
 import { useCatalog } from './useCatalog.ts'
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
@@ -47,6 +60,11 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // catalog has no sheet for that vehicle, a note saying so instead of another vehicle's sheet. Otherwise it narrows
 // the tree by model name, moving to the first brand that has the model, or says no brand has it. Clearing it drops
 // the part list and the pointed-out model.
+// The tree is edited in place (see @apc/domain/catalog): "Nova marca" under the tiles adds a brand, "Novo modelo" over
+// the tree a model, and each branch, while pointed at or focused, has buttons that add the level under it, rename it,
+// move it up or down and delete it. What is added or renamed is typed in a row inside the tree (see NodeForm), and an
+// empty branch shows a dashed button to add its first. Deleting asks first, saying what goes with it. Every change
+// answers the whole catalog, which the tab takes as it is; a name or year another node has is said under the field.
 // On a phone (below `card:`) the tab is a stack of screens, as in the "Catálogo no celular" mockup (see
 // CatalogScreen in @apc/domain/catalog): the brands, each on a line with how many models and sheets it has; a brand's
 // models, as a tree whose engines say "Ver ficha"; and an engine's sheet under the path to it. A screen past the
@@ -56,12 +74,77 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // for it. Otherwise it narrows the brands to the ones with a model of that name, and the tree to those models. The
 // brand search is left out.
 
+/** What a change of the catalog that failed says. */
+const CATALOG_FAILED = 'Não foi possível salvar no catálogo. Tente de novo.'
+/** What is said under the field when the API refuses a name or year another node has, by what is added or renamed. */
+const TAKEN: Record<CatalogEditLevel | 'brand', string> = {
+  brand: 'Essa marca já está no catálogo.',
+  model: 'Já existe um modelo com esse nome nessa marca.',
+  generation: CATALOG_FAILED,
+  version: CATALOG_FAILED,
+  year: 'Essa versão já tem esse ano.',
+}
+
+/** What is being added, under which parent, or renamed. */
+type Editing =
+  | { kind: 'add'; level: CatalogEditLevel | 'brand'; parent: { level: 'brand' | Exclude<CatalogEditLevel, 'year'>; id: string } }
+  | { kind: 'rename'; node: CatalogNode }
+
+/**
+ * Finds the siblings of a node of a brand's tree, itself included.
+ * @param models The brand's models.
+ * @param id The node.
+ * @returns The list it is in, or empty when the tree hasn't it.
+ */
+function siblingsOf(models: readonly CatalogNode[], id: string): readonly CatalogNode[] {
+  if (models.some((node) => node.id === id)) {
+    return models
+  }
+  for (const node of models) {
+    const found = siblingsOf(node.children ?? [], id)
+    if (found.length > 0) {
+      return found
+    }
+  }
+  return []
+}
+
+/**
+ * Lists every node of a brand's tree by its id.
+ * @param models The brand's models.
+ * @returns The nodes, by id.
+ */
+function treeNodes(models: readonly CatalogNode[]): Map<string, CatalogNode> {
+  const nodes = new Map<string, CatalogNode>()
+  /** Adds some nodes and everything under them. */
+  const add = (list: readonly CatalogNode[]) => {
+    for (const node of list) {
+      nodes.set(node.id, node)
+      add(node.children ?? [])
+    }
+  }
+  add(models)
+  return nodes
+}
+
+/**
+ * Reads what a node is renamed from: its name, a generation's years, or a year's number.
+ * @param node The node.
+ * @returns What its row opens with.
+ */
+function valuesOf(node: CatalogNode): CatalogValues {
+  if (node.level === 'year') {
+    return { year: Number(node.label) }
+  }
+  return node.level === 'generation' ? { name: node.label, firstYear: node.firstYear, lastYear: node.lastYear } : { name: node.label }
+}
+
 export function CatalogTab() {
   const state = useCatalog()
   const phone = usePhone()
   const { classes, ids } = catalogTab()
   if (state.status === 'ready' && state.catalog.brands.length > 0) {
-    return phone ? <PhoneCatalog catalog={state.catalog} /> : <WideCatalog catalog={state.catalog} />
+    return phone ? <PhoneCatalog catalog={state.catalog} /> : <WideCatalog catalog={state.catalog} onChanged={state.replace} />
   }
   return (
     <div className={classes.status()} data-testid={ids.status}>
@@ -78,9 +161,10 @@ export function CatalogTab() {
   )
 }
 
-/** The Catalog from a tablet up: the rail, the tree and the detail column. */
-function WideCatalog({ catalog }: { catalog: Catalog }) {
+/** The Catalog from a tablet up: the rail, the tree and the detail column, with the tree edited in place. */
+function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (catalog: Catalog) => void }) {
   const state = useItems()
+  const toast = useToast()
   const { classes, ids } = catalogTab()
   const items = state.status === 'ready' ? state.items : []
   const [brandQuery, setBrandQuery] = useState('')
@@ -90,6 +174,11 @@ function WideCatalog({ catalog }: { catalog: Catalog }) {
   const [part, setPart] = useState<FoundPart | null>(null)
   // Bumped to draw the tree again, open on the engine of a part just chosen.
   const [revealed, setRevealed] = useState(0)
+  // What is being added or renamed, why it couldn't be saved, and the node whose deletion is being confirmed.
+  const [editing, setEditing] = useState<Editing | null>(null)
+  const [editError, setEditError] = useState<string>()
+  const [saving, setSaving] = useState(false)
+  const [removing, setRemoving] = useState<CatalogNode>()
   const brand = catalog.brands.find((b) => b.id === brandId)!
   const results = findParts(items, query)
   const searchingParts = results.parts.length > 0
@@ -100,11 +189,14 @@ function WideCatalog({ catalog }: { catalog: Catalog }) {
   const sheet = engine ? catalog.sheets[engine] : undefined
   // A part for a model the catalog has no sheet for says so, instead of showing another vehicle.
   const missingVehicle = location && vehicle?.vehicleModel && !location.engineId ? `${vehicle.vehicleBrand} ${vehicle.vehicleModel}` : null
+  const nodes = treeNodes(brand.models)
+  const removingBelow = removing && belowNode(removing)
 
   /** Opens a brand on its first engine. */
   const openBrand = (id: string) => {
     setBrandId(id)
     setEngine(firstSheet(catalog, catalog.brands.find((b) => b.id === id)!.models))
+    setEditing(null)
   }
 
   /** Reveals a part's vehicle: its brand, its engine, and the tree open on them. */
@@ -133,6 +225,149 @@ function WideCatalog({ catalog }: { catalog: Catalog }) {
     }
   }
 
+  /** Starts adding or renaming something, in place of anything else being edited. */
+  const edit = (next: Editing) => {
+    setEditing(next)
+    setEditError(undefined)
+  }
+
+  /**
+   * Sends a change of the catalog and takes the catalog it answers, or says why it couldn't be made.
+   * @param method The change's method.
+   * @param path Its path.
+   * @param body What it sends.
+   * @param taken What to say under the field when the API refuses a name or year another node has.
+   * @returns The catalog after the change, or null when it wasn't made.
+   */
+  const change = async (method: 'POST' | 'PATCH' | 'DELETE', path: string, body?: object, taken?: string): Promise<Catalog | null> => {
+    setSaving(true)
+    const result = await changeCatalog('/api', method, path, body)
+    setSaving(false)
+    if (result === 'taken') {
+      setEditError(taken ?? CATALOG_FAILED)
+      return null
+    }
+    if (!result) {
+      toast.error(CATALOG_FAILED)
+      return null
+    }
+    onChanged(result)
+    return result
+  }
+
+  /** Saves what is being added or renamed, from the row's fields. */
+  const save = async (values: CatalogValues) => {
+    if (!editing) {
+      return
+    }
+    if (editing.kind === 'rename') {
+      const { node } = editing
+      const changed = await change('PATCH', `${CATALOG_LEVEL_PATHS[node.level as CatalogEditLevel]}/${node.id}`, values, TAKEN[node.level as CatalogEditLevel])
+      if (changed) {
+        setEditing(null)
+      }
+      return
+    }
+    const parentPath = editing.parent.level === 'brand' ? CATALOG_BRANDS_PATH : CATALOG_LEVEL_PATHS[editing.parent.level]
+    const path = editing.level === 'brand' ? CATALOG_BRANDS_PATH : `${parentPath}/${editing.parent.id}/${CATALOG_CHILDREN[editing.parent.level].segment}`
+    const changed = await change('POST', path, values, TAKEN[editing.level])
+    if (changed) {
+      setEditing(null)
+      if (editing.level === 'brand') {
+        openBrandOf(changed, changed.brands.at(-1)!.id)
+      }
+    }
+  }
+
+  /** Opens a brand of a catalog just changed, on its first engine. */
+  const openBrandOf = (changed: Catalog, id: string) => {
+    setBrandId(id)
+    setEngine(firstSheet(changed, changed.brands.find((b) => b.id === id)!.models))
+  }
+
+  /** Moves a node up or down among its siblings. */
+  const move = (node: CatalogNode, direction: 'up' | 'down') =>
+    change('POST', `${CATALOG_LEVEL_PATHS[node.level as CatalogEditLevel]}/${node.id}/move`, { direction })
+
+  /** Deletes the node whose deletion was confirmed, with what is under it. */
+  const remove = async () => {
+    if (!removing) {
+      return
+    }
+    const deleted = await change('DELETE', `${CATALOG_LEVEL_PATHS[removing.level as CatalogEditLevel]}/${removing.id}`)
+    if (deleted) {
+      toast.success(`“${removing.label}” saiu do catálogo.`)
+      setRemoving(undefined)
+    }
+  }
+
+  /** The row that adds a node, or renames one. */
+  const form = (level: CatalogEditLevel | 'brand', label: string, initial?: CatalogValues) => (
+    <NodeForm
+      level={level}
+      label={label}
+      initial={initial}
+      error={editError}
+      saving={saving}
+      onSave={(values) => void save(values)}
+      onCancel={() => setEditing(null)}
+    />
+  )
+
+  /** A row's buttons: add the level under it, rename it, move it up or down, delete it; none for an engine. */
+  const rowActions = (id: string) => {
+    const node = nodes.get(id)
+    if (!node || node.level === 'engine') {
+      return null
+    }
+    const siblings = siblingsOf(brand.models, id)
+    const at = siblings.findIndex((each) => each.id === id)
+    const child = node.level === 'year' ? null : CATALOG_CHILDREN[node.level]
+    return (
+      <>
+        {child && (
+          <RowAction
+            icon={plusIcon}
+            label={`${child.add} em ${node.label}`}
+            onClick={() => edit({ kind: 'add', level: child.level, parent: { level: node.level as Exclude<CatalogEditLevel, 'year'>, id } })}
+          />
+        )}
+        <RowAction icon={pencilIcon} label={`Renomear ${node.label}`} onClick={() => edit({ kind: 'rename', node })} />
+        <RowAction icon={chevronIcon} iconClassName={classes.up()} label={`Mover ${node.label} para cima`} disabled={at === 0} onClick={() => void move(node, 'up')} />
+        <RowAction
+          icon={chevronIcon}
+          iconClassName={classes.down()}
+          label={`Mover ${node.label} para baixo`}
+          disabled={at === siblings.length - 1}
+          onClick={() => void move(node, 'down')}
+        />
+        <RowAction icon={trashIcon} tone="danger" label={`Excluir ${node.label}`} onClick={() => setRemoving(node)} />
+      </>
+    )
+  }
+
+  /** The line after a branch's children: the row adding one more under it, or the button to add the first. */
+  const after = (id: string) => {
+    const node = nodes.get(id)
+    if (!node || node.level === 'year' || node.level === 'engine') {
+      return null
+    }
+    const child = CATALOG_CHILDREN[node.level]
+    if (editing?.kind === 'add' && editing.level !== 'brand' && editing.parent.id === id) {
+      return form(child.level, `${child.add} em ${node.label}`)
+    }
+    return node.children?.length === 0 ? (
+      <Button
+        variant="dashed"
+        size="sm"
+        icon={plusIcon}
+        onClick={() => edit({ kind: 'add', level: child.level, parent: { level: node.level as Exclude<CatalogEditLevel, 'year'>, id } })}
+      >
+        {`${child.add} em ${node.label}`}
+      </Button>
+    ) : null
+  }
+
   return (
     <div className={classes.base()} data-testid={ids.base}>
       <Panel className={classes.rail()}>
@@ -144,12 +379,33 @@ function WideCatalog({ catalog }: { catalog: Catalog }) {
           onValueChange={openBrand}
           className={classes.brands()}
         />
+        {editing?.kind === 'add' && editing.level === 'brand' ? (
+          form('brand', 'Nova marca')
+        ) : (
+          <Button variant="ghost" size="sm" icon={plusIcon} onClick={() => edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } })}>
+            Nova marca
+          </Button>
+        )}
       </Panel>
       <div className={classes.main()} data-testid={ids.main}>
         <SearchField label="Procure modelo ou código da peça" value={query} onValueChange={search} />
         {searchingParts && <PartResults catalog={catalog} results={results} chosen={part?.id} onChoose={choosePart} />}
         <div className={classes.body()} data-testid={ids.body}>
           <Panel className={classes.models()}>
+            <div className={classes.modelsHead()} data-testid={ids.modelsHead}>
+              <h3 className={classes.modelsTitle()} data-testid={ids.modelsTitle}>
+                Modelos · {brand.models.length}
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={plusIcon}
+                onClick={() => edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } })}
+              >
+                Novo modelo
+              </Button>
+            </div>
+            {editing?.kind === 'add' && editing.level === 'model' && form('model', `Novo modelo em ${brand.name}`)}
             {models.length > 0 ? (
               <TreeView
                 key={`${brandId}-${revealed}`}
@@ -159,6 +415,17 @@ function WideCatalog({ catalog }: { catalog: Catalog }) {
                 onSelect={setEngine}
                 highlighted={location?.modelId}
                 defaultExpanded={location?.modelId && !location.engineId ? [location.modelId] : undefined}
+                rowActions={rowActions}
+                editing={
+                  editing?.kind === 'rename'
+                    ? {
+                        id: editing.node.id,
+                        content: form(editing.node.level as CatalogEditLevel, `Renomear ${editing.node.label}`, valuesOf(editing.node)),
+                      }
+                    : undefined
+                }
+                after={after}
+                reveal={editing?.kind === 'add' && editing.level !== 'brand' && editing.level !== 'model' ? editing.parent.id : undefined}
                 className={classes.tree()}
               />
             ) : (
@@ -194,6 +461,26 @@ function WideCatalog({ catalog }: { catalog: Catalog }) {
           </div>
         </div>
       </div>
+      <Dialog
+        open={removing !== undefined}
+        onClose={() => setRemoving(undefined)}
+        title={`Excluir “${removing?.label ?? ''}”?`}
+        size="confirm"
+        actions={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setRemoving(undefined)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" size="sm" loading={saving} onClick={() => void remove()}>
+              Excluir
+            </Button>
+          </>
+        }
+      >
+        <Text size="sm" tone="muted">
+          {removingBelow ? `Vão junto ${removingBelow}. ` : ''}As peças do estoque continuam cadastradas. Isso não pode ser desfeito.
+        </Text>
+      </Dialog>
     </div>
   )
 }

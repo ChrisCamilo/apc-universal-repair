@@ -17,11 +17,32 @@ import { codeKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from
 // sheets it has; a brand's models, as a tree; and an engine's sheet, under the path to it. ← goes back one screen. A
 // part found by code opens its engine's sheet, or else its brand's models with its model pointed out, saying when the
 // catalog has no sheet for its vehicle.
+// The tree is edited through the API: a catalog brand is added by name (a vehicle brand of the lists, added there when
+// they don't hold it), a model under a brand (a vehicle model of the lists the same way), a generation under a model,
+// a version under a generation and a year under a version; each can be renamed, moved up or down among its siblings
+// and deleted with what is under it. Every change answers the whole catalog, which the screen takes as it is.
 
 /** The screen the Catalog opens on, on a phone: the brands. */
 export const CATALOG_HOME: CatalogScreen = { view: "brands" };
-/** The API path of the catalog. */
+/** The API path of the catalog, and of its brands. */
 export const CATALOG_PATH = "/catalog";
+export const CATALOG_BRANDS_PATH = "/catalog/brands";
+/** What each level below the brands adds under its parent: the level, its path under the parent's, and its button. */
+export const CATALOG_CHILDREN: Record<"brand" | "model" | "generation" | "version", { level: CatalogEditLevel; segment: string; add: string }> = {
+  brand: { level: "model", segment: "models", add: "Novo modelo" },
+  model: { level: "generation", segment: "generations", add: "Nova geração" },
+  generation: { level: "version", segment: "versions", add: "Nova versão" },
+  version: { level: "year", segment: "years", add: "Novo ano" },
+};
+/** The API path of each level of the tree that the Catalog tab edits. */
+export const CATALOG_LEVEL_PATHS: Record<CatalogEditLevel, string> = {
+  model: "/catalog/models",
+  generation: "/catalog/generations",
+  version: "/catalog/versions",
+  year: "/catalog/years",
+};
+/** The years a generation or a model year can have. */
+export const CATALOG_YEARS = { min: 1900, max: 2100 } as const;
 /** What each drive reads as on an engine's sheet. */
 export const ENGINE_DRIVE_LABELS: Record<EngineDrive, string> = { FRONT: "DIANTEIRA", REAR: "TRASEIRA", ALL: "INTEGRAL" };
 /** What each of an engine sheet's readouts is, in their order, named above them on a phone. */
@@ -56,21 +77,54 @@ export const catalogGenerationSchema = z.object({
 export const catalogModelSchema = z.object({ id: z.uuid(), name: z.string(), generations: z.array(catalogGenerationSchema) });
 /** A brand of the catalog: its vehicle brand's id and name, the letters on its line on a phone, and its models. */
 export const catalogBrandSchema = z.object({ id: z.uuid(), name: z.string(), mark: z.string(), models: z.array(catalogModelSchema) });
-/** What GET /catalog answers: the catalog brands in the rail's order. */
+/** What GET /catalog answers, and every change to it: the catalog brands in the rail's order. */
 export const catalogSchema = z.object({ brands: z.array(catalogBrandSchema) });
+/** A node of the tree, or the parent a node is added under, by its id. */
+export const catalogIdParamsSchema = z.object({ id: z.uuid() });
+/** A brand, model or version added or renamed: its name. */
+export const catalogNameSchema = z.object({ name: z.string().trim().min(1, "Required.") });
+const catalogYear = z.int(`Use a year from ${CATALOG_YEARS.min} to ${CATALOG_YEARS.max}.`).min(CATALOG_YEARS.min).max(CATALOG_YEARS.max);
+/** A generation added or renamed: its name and years, the last one null while it is still made. */
+export const catalogGenerationInputSchema = z
+  .object({ name: z.string().trim().min(1, "Required."), firstYear: catalogYear, lastYear: catalogYear.nullable() })
+  .refine((generation) => generation.lastYear === null || generation.lastYear >= generation.firstYear, {
+    path: ["lastYear"],
+    message: "The last year can't come before the first.",
+  });
+/** A model year added or changed. */
+export const catalogYearInputSchema = z.object({ year: catalogYear });
+/** Moving a node up or down among its siblings. */
+export const catalogMoveSchema = z.object({ direction: z.enum(["up", "down"]) });
 
 /**
  * A node of a brand's model tree, in the shape of the tree's nodes (`TreeNode` of @apc/ui-spec/tree), so the web and
  * mobile TreeView show it as it is: a node with `children` is a branch, even with an empty list, and one without is a
- * leaf, an engine. `detail` is the muted text after the label, e.g. a generation's years.
+ * leaf, an engine. `detail` is the muted text after the label, e.g. a generation's years, which a generation also keeps
+ * as numbers for its form. `level` says which level of the tree it is.
  */
-export type CatalogNode = { id: string; label: string; detail?: string; children?: CatalogNode[] };
+export type CatalogNode = {
+  id: string;
+  label: string;
+  level: CatalogLevel;
+  detail?: string;
+  firstYear?: number;
+  lastYear?: number | null;
+  children?: CatalogNode[];
+};
 /** A brand of the catalog: its id, the name on its tile, the letters on its line on a phone and its model tree. */
 export type CatalogBrand = { id: string; name: string; mark: string; models: CatalogNode[] };
 /** The catalog as the screens use it: the brands with their trees, and the sheet of each engine by engine id. */
 export type Catalog = { brands: readonly CatalogBrand[]; sheets: Readonly<Record<string, EngineSheet>> };
 /** The catalog as the API sends it. */
 export type CatalogData = z.infer<typeof catalogSchema>;
+/** A level of the tree, from a brand's models down to an engine. */
+export type CatalogLevel = "model" | "generation" | "version" | "year" | "engine";
+/** A level the Catalog tab adds, renames, moves and deletes; engines come with their sheets. */
+export type CatalogEditLevel = Exclude<CatalogLevel, "engine">;
+/** A generation as added or renamed. */
+export type CatalogGenerationInput = z.infer<typeof catalogGenerationInputSchema>;
+/** What a node is added or renamed with: a name, a generation's years, or a model year. */
+export type CatalogValues = { name?: string; firstYear?: number; lastYear?: number | null; year?: number };
 export type CatalogEngine = z.infer<typeof catalogEngineSchema>;
 export type EngineDrive = z.infer<typeof engineDriveSchema>;
 /**
@@ -138,6 +192,69 @@ export function brandWithModel(catalog: Catalog, brandId: string, query: string)
 }
 
 /**
+ * Writes the letters of a brand on its line on a phone: the first letters of its first two words, or the first two of
+ * its one word, without accents.
+ * @param name The brand's name.
+ * @returns E.g. "RE" for Renault, "DR" for "Del Rey".
+ */
+export function brandMark(name: string): string {
+  const words = searchKey(name.trim()).split(/\s+/).filter(Boolean);
+  const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? "").slice(0, 2);
+  return letters.toUpperCase();
+}
+
+/**
+ * Says what deleting a node takes with it: how many generations, versions, years and engines with their sheets are
+ * under it.
+ * @param node A node of the tree.
+ * @returns E.g. "3 versões, 2 anos, 2 motores com ficha", or null when nothing is under it.
+ */
+export function belowNode(node: CatalogNode): string | null {
+  const counts: Record<CatalogLevel, number> = { model: 0, generation: 0, version: 0, year: 0, engine: 0 };
+  /** Counts every node under some nodes. */
+  const count = (nodes: readonly CatalogNode[]) => {
+    for (const each of nodes) {
+      counts[each.level]++;
+      count(each.children ?? []);
+    }
+  };
+  count(node.children ?? []);
+  const words: [CatalogLevel, string, string][] = [
+    ["generation", "geração", "gerações"],
+    ["version", "versão", "versões"],
+    ["year", "ano", "anos"],
+    ["engine", "motor com ficha", "motores com ficha"],
+  ];
+  const parts = words.filter(([level]) => counts[level] > 0).map(([level, one, many]) => `${counts[level]} ${counts[level] === 1 ? one : many}`);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+/**
+ * Sends a change of the catalog to the API: a node added, renamed, moved or deleted.
+ * @param base Where the API is reached, e.g. "/api" on the web.
+ * @param method The change's method.
+ * @param path The change's path, e.g. "/catalog/models/<id>/generations".
+ * @param body What it sends, if anything.
+ * @returns The catalog as it is after the change, "taken" when the API refuses a name or year another node has, or
+ * null when the change couldn't be made.
+ */
+export async function changeCatalog(
+  base: string,
+  method: "POST" | "PATCH" | "DELETE",
+  path: string,
+  body?: object,
+): Promise<Catalog | "taken" | null> {
+  const response = await apiFetch(`${base}${path}`, {
+    method,
+    ...(body && { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+  }).catch(() => null);
+  if (response?.status === 409) {
+    return "taken";
+  }
+  return response?.ok ? catalogFrom(catalogSchema.parse(await response.json())) : null;
+}
+
+/**
  * Turns the catalog the API sends into the trees the screens show and the sheet of each engine: a generation's years
  * as the muted text after its name, a year by its number, and an engine by the name its sheet gives it.
  * @param data The catalog as GET /catalog answers it.
@@ -152,16 +269,22 @@ export function catalogFrom(data: CatalogData): Catalog {
     models: brand.models.map((model) => ({
       id: model.id,
       label: model.name,
+      level: "model" as const,
       children: model.generations.map((generation) => ({
         id: generation.id,
         label: generation.name,
+        level: "generation" as const,
         detail: `${generation.firstYear}–${generation.lastYear ?? ""}`,
+        firstYear: generation.firstYear,
+        lastYear: generation.lastYear,
         children: generation.versions.map((version) => ({
           id: version.id,
           label: version.name,
+          level: "version" as const,
           children: version.years.map((year) => ({
             id: year.id,
             label: String(year.year),
+            level: "year" as const,
             children: year.engines.map((engine) => {
               const litres = engineLitres(engine);
               sheets[engine.id] = {
@@ -169,7 +292,7 @@ export function catalogFrom(data: CatalogData): Catalog {
                 specs: [String(year.year), `${litres} L`, `${engine.cylinders} CIL`, ENGINE_DRIVE_LABELS[engine.drive]],
                 summary: engine.summary,
               };
-              return { id: engine.id, label: engineLabel(engine) };
+              return { id: engine.id, label: engineLabel(engine), level: "engine" as const };
             }),
           })),
         })),

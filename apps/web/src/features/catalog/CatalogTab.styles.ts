@@ -6,7 +6,8 @@ import { recipe, tv } from '../../styles/tv.ts'
 // sm, the tree scrolling past max-h-96 and the page scrolling as a whole. From lg the tab fills the window under the
 // page's header and scrolls in its columns instead: the brand search stays on top of the tiles, which scroll under it,
 // the search stays above the tree's panel, the tree scrolls inside it, and the detail column scrolls on its own, each
-// down to the bottom. The engine's specs wrap in a row. The rail, the tiles, the models' panel, the tree and the sheet
+// down to the bottom. "Nova marca" sits under the tiles, and the models' panel has a heading row, "Modelos · N" in the
+// display face with "Novo modelo" at its right. A branch's up and down buttons turn the chevron up and down. The engine's specs wrap in a row. The rail, the tiles, the models' panel, the tree and the sheet
 // only pass their classes to the Panel, the tile group and the TreeView, which keep their own ids; the main column,
 // the body and the detail column only lay out, so they add no level to their children's ids, which are the same as on
 // mobile. While the catalog loads, or when it can't be loaded, the tab is one box with the spinner or the message in
@@ -30,11 +31,15 @@ export const catalogTab = recipe(
     slots: {
       status: 'grid min-h-60 place-items-center p-6',
       base: 'grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[calc(var(--spacing)*46)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]',
-      rail: 'grid content-start gap-3 lg:min-h-0 lg:grid-rows-[auto_minmax(0,1fr)]',
+      rail: 'grid content-start gap-3 lg:min-h-0 lg:grid-rows-[auto_minmax(0,1fr)_auto]',
       brands: 'grid-cols-2 content-start sm:grid-cols-4 lg:-m-1 lg:grid-cols-1 lg:overflow-y-auto lg:overscroll-contain lg:p-1',
       main: 'grid min-w-0 content-start gap-3 lg:flex lg:min-h-0 lg:flex-col',
       body: 'grid min-w-0 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,calc(var(--spacing)*100))] lg:grid-rows-[minmax(0,1fr)]',
-      models: 'lg:flex lg:min-h-0 lg:flex-col',
+      models: 'grid content-start gap-2 lg:flex lg:min-h-0 lg:flex-col',
+      modelsHead: 'flex flex-none items-center gap-2 border-b border-hairline-soft pb-2',
+      modelsTitle: `m-0 flex-1 text-xs text-text-muted ${DISPLAY_LABEL}`,
+      up: '-rotate-90',
+      down: 'rotate-90',
       tree: 'max-h-96 lg:max-h-none lg:min-h-0 lg:flex-1',
       detail: 'grid min-w-0 content-start gap-3 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain',
       sheet: 'grid gap-3',
@@ -67,6 +72,10 @@ export const catalogTab = recipe(
     main: 'main',
     body: 'body',
     models: 'models',
+    modelsHead: 'models.head',
+    modelsTitle: 'models.head.title',
+    up: 'up',
+    down: 'down',
     tree: 'tree',
     detail: 'detail',
     sheet: 'sheet',
