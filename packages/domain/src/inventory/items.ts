@@ -14,7 +14,9 @@ import { ITEM_PHOTO_LIMIT } from "./photos.ts";
 // vehicle brand with, optionally, one of its models; without one, any model of the brand. "Universal" fits any vehicle
 // and stands alone in an item's list. A vehicle may also say its generation, a first and a last year shown with their
 // last two digits ("85/90"), the last one left out while it is still made, and its version ("1.6 GLX"); neither is part
-// of the item's name or its row, only of its details and filters.
+// of the item's name or its row, only of its details and filters. An item may also say what its part is made of
+// (its material) and carry a short description, up to 30 characters, that tells it apart from a similar part; both
+// show only in its details, and the description under its photo in the photo viewer.
 
 /** The columns the inventory list sorts by, as the list query's `sort` names them. */
 export const ITEM_SORT_KEYS = ["name", "category", "partBrand", "vehicle", "position", "side", "color", "location", "price", "quantity"] as const;
@@ -31,6 +33,8 @@ const ITEM_SORT_VALUES: Record<ItemSortKey, (item: SortableItem) => string | num
   price: (item) => item.unitPriceCents,
   quantity: (item) => item.quantity,
 };
+/** The most characters an item's short description has. */
+export const ITEM_DESCRIPTION_MAX = 30;
 /** What ends the generation of a vehicle still made, as "19/atual". */
 export const GENERATION_ONGOING = "atual";
 /** The status filter values: low stock (at or under the minimum, not zero) and out of stock (zero). */
@@ -156,6 +160,10 @@ const itemFieldsSchema = z.object({
   minQuantity: z.int().min(0).max(MAX_QUANTITY).optional(),
   /** The vehicle maker's original codes (OEM), in order; none when left out. */
   originalCodes: originalCodesSchema.optional(),
+  /** What the part is made of, e.g. "Alumínio"; empty or left out for none. */
+  material: optionalText,
+  /** A short note that tells the part apart, under its photo; empty or left out for none. */
+  description: z.string().trim().max(ITEM_DESCRIPTION_MAX).optional(),
   brands: brandsSchema,
 });
 /**
@@ -247,6 +255,10 @@ export const itemSchema = z.object({
   minQuantity: z.int().min(0),
   /** The vehicle maker's original codes (OEM), in order, the same for every brand. */
   originalCodes: z.array(z.string()),
+  /** What the part is made of; null or left out for none. */
+  material: z.string().nullish(),
+  /** A short note that tells the part apart, up to ITEM_DESCRIPTION_MAX characters; null or left out for none. */
+  description: z.string().nullish(),
   /** The brands in the order they were added, the first one the item's cover. */
   brands: z.array(itemBrandSchema).min(1),
   createdAt: z.iso.datetime(),

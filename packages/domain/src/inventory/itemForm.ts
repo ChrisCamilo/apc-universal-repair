@@ -6,6 +6,7 @@ import {
   formatPrice,
   generationLabel,
   generationText,
+  ITEM_DESCRIPTION_MAX,
   MAX_PRICE_CENTS,
   MAX_QUANTITY,
   NOT_APPLICABLE,
@@ -31,7 +32,8 @@ import { findEntry, type ItemLists } from "./lists.ts";
 // The item form shared by web and mobile, for creating and editing an inventory item: what the item's brands share
 // (name, category, the vehicles it fits, each a vehicle brand with its model or any model, and optionally its
 // generation, typed as "85/90" or "1985-1990" (see readGeneration), and its version, position, side, minimum
-// stock, and the vehicle maker's original codes, typed as chips: a
+// stock, the vehicle maker's original codes, typed as chips, and, optionally, the part's material and a short
+// description of up to 30 characters: a
 // code added with Enter or a comma, or several pasted at once, once each) and a section for each brand that makes the part (part
 // brand, code, quantity, unit price, color, location), as typed, the unit price always formatted in reais ("R$
 // 1.234,56"), a dot and a comma meaning the same; the message of each field that can't be saved, the body sent to the
@@ -73,6 +75,11 @@ export const ITEM_FIELD_LABELS: Record<ItemField, string> = {
   position: "Posição",
   side: "Lado",
   minQuantity: "Quantidade mínima",
+};
+/** Label of each optional note of the item, in the order the details show them. */
+export const ITEM_NOTE_LABELS: Record<NoteField, string> = {
+  description: "Descrição curta",
+  material: "Material",
 };
 /** The positions as a phone's form chooses them, in full words: not applicable, front, rear or both. */
 export const POSITION_CHOICES: { value: (typeof POSITIONS)[number]; label: string }[] = [
@@ -122,6 +129,7 @@ export const ITEM_FORM_MESSAGES = {
   price: "Informe o valor unitário.",
   priceInvalid: "Informe um valor maior que zero, como 89,90.",
   priceTooHigh: `Informe no máximo ${formatPrice(MAX_PRICE_CENTS).replace(/\s/, " ")}.`,
+  descriptionTooLong: `Use no máximo ${ITEM_DESCRIPTION_MAX} caracteres.`,
 } as const;
 /** The info toast of an edit saved with nothing changed, which isn't sent. */
 export const ITEM_UNCHANGED_MESSAGE = "Nenhuma alteração para salvar.";
@@ -146,8 +154,8 @@ export type ItemBrandForm = {
 };
 /** The message of each field of a brand's section that can't be saved; a field without one is fine. */
 export type ItemBrandFormErrors = Partial<Record<"partBrand" | "code" | "quantity" | "price", string>>;
-/** A field the item's brands share, written as one text or chosen. */
-export type ItemField = Exclude<keyof ItemForm, "brands" | "originalCodes" | "vehicles">;
+/** A field the item's brands share, written as one text or chosen; the optional notes are apart (see NoteField). */
+export type ItemField = Exclude<keyof ItemForm, "brands" | "originalCodes" | "vehicles" | NoteField>;
 /**
  * The item form as typed: every field as text, except position and side, which are chosen, the original codes, a
  * list, and its vehicles and brands.
@@ -161,13 +169,17 @@ export type ItemForm = {
   minQuantity: string;
   /** The vehicle maker's original codes, uppercase, each once. */
   originalCodes: string[];
+  /** What the part is made of; empty or left out for none. */
+  material?: string;
+  /** A short note that tells the part apart, up to ITEM_DESCRIPTION_MAX characters; empty or left out for none. */
+  description?: string;
   brands: ItemBrandForm[];
 };
 /**
  * The message of each field that can't be saved, the item's, each original code's and each brand's, in their order; a
  * field without one is fine.
  */
-export type ItemFormErrors = Partial<Record<"name" | "category" | "minQuantity", string>> & {
+export type ItemFormErrors = Partial<Record<"name" | "category" | "minQuantity" | "description", string>> & {
   vehicles?: ItemVehicleFormErrors[];
   originalCodes?: (string | undefined)[];
   brands?: ItemBrandFormErrors[];
@@ -199,6 +211,8 @@ export function addCodes(held: readonly string[], typed: readonly string[]): str
   return codes;
 }
 
+/** An optional note of the item: its material or its short description. */
+export type NoteField = "material" | "description";
 /** A field of a vehicle's line. */
 export type VehicleField = keyof ItemVehicleForm;
 
@@ -361,6 +375,18 @@ export function itemDetailTexts(item: Item): Record<ItemField, string> {
 }
 
 /**
+ * Lists an item's optional notes for its details, the description first: only those it has.
+ * @param item The item.
+ * @returns Each note's field, label and text, e.g. [{ field: "material", label: "Material", text: "Alumínio" }].
+ */
+export function itemNoteTexts(item: Pick<Item, "material" | "description">): { field: NoteField; label: string; text: string }[] {
+  return (["description", "material"] as const).flatMap((field) => {
+    const text = item[field];
+    return text ? [{ field, label: ITEM_NOTE_LABELS[field], text }] : [];
+  });
+}
+
+/**
  * Words an item's position and side on one line, for a phone's details.
  * @param item The item.
  * @returns E.g. "Dianteiro · Lado direito", one of them alone when the other doesn't apply, or "Não se aplica".
@@ -375,7 +401,8 @@ export function positionSideText(item: Pick<Item, "position" | "side">): string 
 
 /**
  * Builds the body sent to the API: every text starts with a capital letter, codes are uppercase, a color that
- * already exists takes its spelling and an empty one is N/A, and blank quantities are zero.
+ * already exists takes its spelling and an empty one is N/A, blank quantities are zero, and a blank material or
+ * description is sent empty.
  * @param form The form, already checked with itemFormErrors.
  * @param colors The colors already in stock.
  * @returns The create (or full edit) body, each brand kept on an edit with its id.
@@ -389,6 +416,9 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
     side: form.side,
     minQuantity: Number(form.minQuantity || 0),
     originalCodes: form.originalCodes.map((code) => code.trim().toUpperCase()),
+    // Sent empty when left blank, so an edit that clears a note clears it.
+    material: form.material?.trim() ? capitalizeFirst(form.material) : "",
+    description: form.description?.trim() ? capitalizeFirst(form.description) : "",
     brands: form.brands.map((brand) => ({
       ...(brand.id && { id: brand.id }),
       partBrand: capitalizeFirst(brand.partBrand),
@@ -419,7 +449,7 @@ export function itemFormChanged(form: ItemForm, item: Item, colors: readonly str
  * vehicle appears once in the item and Universal alone; a part brand and a code appear
  * once in the item; the quantities can't pass MAX_QUANTITY, the price must be a number above zero and up to
  * MAX_PRICE_CENTS, and a code can't be one another item uses (see codeTakenError); an original code can't be a code
- * of one of the item's brands either (see originalCodeMessages).
+ * of one of the item's brands either (see originalCodeMessages); the description can't pass ITEM_DESCRIPTION_MAX.
  * @param form The form as typed.
  * @param items Every item in stock.
  * @param lists The lists the API keeps.
@@ -463,6 +493,7 @@ export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: It
     ...(category && { category }),
     ...(vehicles.some((each) => Object.keys(each).length > 0) && { vehicles }),
     ...(Number(form.minQuantity) > MAX_QUANTITY && { minQuantity: ITEM_FORM_MESSAGES.quantityTooHigh }),
+    ...((form.description ?? "").trim().length > ITEM_DESCRIPTION_MAX && { description: ITEM_FORM_MESSAGES.descriptionTooLong }),
     ...(originalCodes.some(Boolean) && { originalCodes }),
     ...(brands.some((each) => Object.keys(each).length > 0) && { brands }),
   };
@@ -487,6 +518,8 @@ export function itemFormOf(item: Item): ItemForm {
     side: item.side,
     minQuantity: String(item.minQuantity),
     originalCodes: [...item.originalCodes],
+    ...(item.material && { material: item.material }),
+    ...(item.description && { description: item.description }),
     brands: item.brands.map((brand) => ({
       id: brand.id,
       partBrand: brand.partBrand,
@@ -625,6 +658,17 @@ export function priceMask(held: string, typed: string): { value: string; message
  */
 export function priceText(cents: number): string {
   return `R$ ${priceInput(cents)}`;
+}
+
+/**
+ * Reads a change to the description field, which holds ITEM_DESCRIPTION_MAX characters: a longer text, typed or
+ * pasted, is cut there; and says how many it holds once it nears the limit.
+ * @param typed The field's text after the change.
+ * @returns What the field takes, and its counter, e.g. "24/30", from 20 characters on.
+ */
+export function descriptionInput(typed: string): { value: string; counter?: string } {
+  const value = typed.slice(0, ITEM_DESCRIPTION_MAX);
+  return value.length >= ITEM_DESCRIPTION_MAX - 10 ? { value, counter: `${value.length}/${ITEM_DESCRIPTION_MAX}` } : { value };
 }
 
 /**
