@@ -8,11 +8,13 @@ import {
   brandDetailTexts,
   codeTakenError,
   codeTakenMessage,
+  descriptionInput,
   EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
   EMPTY_VEHICLE_FORM,
   hasFormErrors,
   ITEM_FIELD_LABELS,
+  ITEM_NOTE_LABELS,
   ITEM_UNCHANGED_MESSAGE,
   itemDetailTexts,
   itemFormBody,
@@ -20,6 +22,7 @@ import {
   itemFormErrors,
   itemFormOf,
   itemFormOptions,
+  itemNoteTexts,
   modelsOfBrand,
   ORIGINAL_CODES_LABEL,
   originalCodeMessages,
@@ -37,6 +40,7 @@ import {
   type ItemField,
   type ItemForm,
   type ItemFormErrors,
+  type NoteField,
   type VehicleField,
 } from '@apc/domain/item-form'
 import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/domain/lists'
@@ -63,7 +67,8 @@ import type { CreateListEntry } from './useItemLists.ts'
 import { VehiclesField } from './VehiclesField.tsx'
 
 // The form that creates a new item or edits one, in a dialog whose content scrolls while Cancel and Save stay at the
-// bottom: first what the item's brands share (name, category, the vehicles it fits, position, side, the minimum stock
+// bottom: first what the item's brands share (name, category, a short description of up to 30 characters, cut there
+// as it is typed or pasted and counted from 20 on, the part's material, the vehicles it fits, position, side, the minimum stock
 // and the
 // vehicle maker's original codes, typed as chips, each shown with its message when a brand of the item or another item
 // has it; see CodeListField), then a
@@ -208,6 +213,12 @@ export function ItemFormDialog({
   const change = (field: ItemField, value: string) => {
     setForm((typed) => ({ ...typed, [field]: value }))
     setErrors((shown) => ({ ...shown, [field]: undefined }))
+  }
+
+  /** Takes a note's new value, the description cut at its limit, and drops its message. */
+  const changeNote = (field: NoteField, value: string) => {
+    setForm((typed) => ({ ...typed, [field]: field === 'description' ? descriptionInput(value).value : value }))
+    setErrors((shown) => ({ ...shown, description: undefined }))
   }
 
   /** Sets the message of a brand's field, or drops it. */
@@ -439,9 +450,13 @@ export function ItemFormDialog({
           <ItemDetails item={item} photos={photos} scrollToBrand={scrollToBrand} brandRef={scrolledBrand} />
         ) : viewing && item ? (
           <div className={classes.fields()} data-testid={ids.fields}>
-            {Object.entries(itemDetailTexts(item)).map(([field, text]) => (
-              <FieldValue key={field} label={ITEM_FIELD_LABELS[field as ItemField]} value={text} />
-            ))}
+            {/* The notes the item has follow its name and category, the description right under the name. */}
+            {Object.entries(itemDetailTexts(item))
+              .map(([field, text]) => ({ field, label: ITEM_FIELD_LABELS[field as ItemField], text }))
+              .toSpliced(2, 0, ...itemNoteTexts(item))
+              .map(({ field, label, text }) => (
+                <FieldValue key={field} label={label} value={text} />
+              ))}
             <div className={classes.codes()} data-testid={ids.codes}>
               <FieldValue label={VEHICLES_LABEL} value={vehiclesText(item)} />
             </div>
@@ -499,6 +514,20 @@ export function ItemFormDialog({
               toggleLabel="Mostrar categorias"
               emptyLabel="Nenhuma categoria cadastrada"
               error={errors.category}
+            />
+            <TextField
+              label={ITEM_NOTE_LABELS.description}
+              placeholder={phone ? 'Ex.: Lado do motorista' : undefined}
+              value={form.description ?? ''}
+              onValueChange={(value) => changeNote('description', value)}
+              helper={descriptionInput(form.description ?? '').counter}
+              error={errors.description}
+            />
+            <TextField
+              label={ITEM_NOTE_LABELS.material}
+              placeholder={phone ? 'Ex.: Alumínio' : undefined}
+              value={form.material ?? ''}
+              onValueChange={(value) => changeNote('material', value)}
             />
             {phone ? (
               <VehiclesField

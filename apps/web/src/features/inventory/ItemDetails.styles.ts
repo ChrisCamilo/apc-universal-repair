@@ -2,7 +2,8 @@ import { DISPLAY_LABEL } from '../../styles/shared.ts'
 import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of an item's details on a phone, as in the Detalhes mockup, inside the Dialog that fills the screen: the
-// photos, or a dashed frame saying there are none; the category as an accent chip over the name; two tiles, the stock
+// photos, or a dashed frame saying there are none; the category as an accent chip over the name, the short description
+// muted under it; two tiles, the stock
 // and the minimum, each a display label over its number and unit; a list of the details, each label in a muted
 // column of its own, the value muted when there is none; then "Marcas · n" and a card per brand, its name and quantity
 // over its code and price, and where it is under them. The tiles and the cards sit raised on the Dialog's panel. The
@@ -22,6 +23,7 @@ export const itemDetails = recipe(
       head: 'grid gap-1.5',
       category: `justify-self-start rounded-pill bg-accent-soft px-2.5 py-1 text-xs ${DISPLAY_LABEL} text-accent`,
       name: 'm-0 font-body text-[26px]/8 font-semibold tracking-normal normal-case text-text',
+      description: 'm-0 font-body text-[15px] text-text-muted',
       tiles: 'grid grid-cols-2 gap-2',
       tile: 'grid rounded-tile border border-hairline-soft bg-panel-raised px-3.5 py-3',
       tileLabel: `text-xs ${DISPLAY_LABEL} text-text-muted`,
@@ -54,6 +56,7 @@ export const itemDetails = recipe(
     head: 'head',
     category: 'head.category',
     name: 'head.name',
+    description: 'head.description',
     tiles: 'tiles',
     tile: 'tiles.tile',
     tileLabel: 'tiles.tile.label',
