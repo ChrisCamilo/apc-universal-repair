@@ -105,6 +105,30 @@ test('Web: a single photo has no arrows or dots', async () => {
   await expect.element(screen.getByRole('button', { name: 'Foto 1' })).not.toBeInTheDocument()
 })
 
+// Opens the viewer of an item with a short description and checks it shows under the photo, after the frame.
+test('Web: the item\'s short description shows under the photo', async () => {
+  const screen = await render(<Sample initial={PHOTOS} caption="Lado do motorista" />)
+  const caption = screen.getByText('Lado do motorista')
+  await expect.element(caption).toBeVisible()
+  const frame = screen.getByTestId('common.image-viewer.body.stage.frame').element().getBoundingClientRect()
+  expect(caption.element().getBoundingClientRect().top).toBeGreaterThanOrEqual(frame.bottom)
+})
+
+// Opens the viewer of an item without a description, then of one with a description but no photo, and checks neither
+// has a caption.
+test('Web: there is no caption without a description or a photo', async () => {
+  const plain = await render(<Sample initial={PHOTOS} />)
+  await expect.element(plain.getByRole('img', { name: `Foto 1 de 3 · ${NAME}` })).toBeVisible()
+  expect(plain.getByTestId('common.image-viewer.body.caption').query()).toBeNull()
+})
+
+// Opens the viewer of an item with a description and no photo, and checks the empty state shows no caption.
+test('Web: an item with no photo shows no caption', async () => {
+  const empty = await render(<Sample initial={[]} caption="Lado do motorista" />)
+  await expect.element(empty.getByText('Este item ainda não tem fotos')).toBeVisible()
+  expect(empty.getByText('Lado do motorista').query()).toBeNull()
+})
+
 // Opens a viewer with no photo and checks it says so and only offers to add one.
 test('Web: with no photo the viewer shows the empty state', async () => {
   const screen = await render(<Sample initial={[]} />)
@@ -214,11 +238,13 @@ test('Web: the viewer fits a phone', async () => {
 
 function Sample({
   initial,
+  caption,
   onClose,
   keepOpen = false,
   failSave = false,
 }: {
   initial: UploadPhoto[]
+  caption?: string
   onClose?: () => void
   keepOpen?: boolean
   failSave?: boolean
@@ -236,6 +262,7 @@ function Sample({
       }}
       name={NAME}
       code="FR-0142"
+      caption={caption}
       photos={photos}
       onPhotosChange={failSave ? async () => false : setPhotos}
       limit={ITEM_PHOTO_LIMIT}
