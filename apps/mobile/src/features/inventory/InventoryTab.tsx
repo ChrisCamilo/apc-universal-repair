@@ -624,6 +624,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         onClose={() => setViewer(undefined)}
         name={viewer?.item.name ?? ''}
         code={viewer?.brand.code ?? ''}
+        caption={viewer?.item.description ?? undefined}
         photos={viewer?.photos ?? []}
         onPhotosChange={changePhotos}
         limit={ITEM_PHOTO_LIMIT}

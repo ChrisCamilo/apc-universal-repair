@@ -8,10 +8,12 @@ import {
   BRAND_FIELD_LABELS,
   codeTakenError,
   codeTakenMessage,
+  descriptionInput,
   EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
   hasFormErrors,
   ITEM_FIELD_LABELS,
+  ITEM_NOTE_LABELS,
   ITEM_UNCHANGED_MESSAGE,
   itemFormBody,
   itemFormChanged,
@@ -30,6 +32,7 @@ import {
   type ItemField,
   type ItemForm,
   type ItemFormErrors,
+  type NoteField,
 } from '@apc/domain/item-form';
 import { ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/domain/lists';
 import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/domain/photos';
@@ -55,7 +58,8 @@ import { VehiclesField } from './VehiclesField';
 
 // The form that creates a new item or edits one, the same as the web on a phone, as in the Novo item mockup: the × and
 // "Novo item", or the item's name, on top, the content scrolling under it in one column, and "Salvar item", or "Salvar
-// alterações", across the bottom. First what the item's brands share (name, category, the vehicles it fits, position
+// alterações", across the bottom. First what the item's brands share (name, category, a short description of up to 30
+// characters, cut there as it is typed or pasted and counted from 20 on, the part's material, the vehicles it fits, position
 // and side in full words with N/A, the minimum stock as a stepper (see Stepper) and the vehicle maker's original codes,
 // typed as chips, each shown with its message when a brand of the item or another item has it; see CodeListField),
 // then a raised card for each brand that makes the part, with its photos, taken with the camera or picked from the
@@ -197,6 +201,12 @@ export function ItemFormDialog({
   const change = (field: ItemField, value: string) => {
     setForm((typed) => ({ ...typed, [field]: value }));
     setErrors((shown) => ({ ...shown, [field]: undefined }));
+  };
+
+  /** Takes a note's new value, the description cut at its limit, and drops its message. */
+  const changeNote = (field: NoteField, value: string) => {
+    setForm((typed) => ({ ...typed, [field]: field === 'description' ? descriptionInput(value).value : value }));
+    setErrors((shown) => ({ ...shown, description: undefined }));
   };
 
   /** Sets the message of a brand's field, or drops it. */
@@ -412,6 +422,20 @@ export function ItemFormDialog({
             toggleLabel="Mostrar categorias"
             emptyLabel="Nenhuma categoria cadastrada"
             error={errors.category}
+          />
+          <TextField
+            label={ITEM_NOTE_LABELS.description}
+            placeholder="Ex.: Lado do motorista"
+            value={form.description ?? ''}
+            onValueChange={(value) => changeNote('description', value)}
+            helper={descriptionInput(form.description ?? '').counter}
+            error={errors.description}
+          />
+          <TextField
+            label={ITEM_NOTE_LABELS.material}
+            placeholder="Ex.: Alumínio"
+            value={form.material ?? ''}
+            onValueChange={(value) => changeNote('material', value)}
           />
           <VehiclesField
             vehicles={form.vehicles}
