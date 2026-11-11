@@ -21,7 +21,10 @@ import { codeKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from
 // they don't hold it), a model under a brand (a vehicle model of the lists the same way), a generation under a model,
 // a version under a generation, a year under a version and an engine with its sheet under a year; each but an engine
 // can be renamed, moved up or down among its siblings and deleted with what is under it, and an engine's sheet is
-// saved again. Every change answers the whole catalog, which the screen takes as it is.
+// saved again. Every change answers the whole catalog, which the screen takes as it is. What the screens edit (a node
+// being added or renamed, an engine's sheet being filled in) is described the same on the web and in the phone app,
+// which check what is typed with readCatalogFields and readEngineFields, send it with catalogEditRequest and
+// catalogSheetRequest, and say what went wrong with CATALOG_FAILED and CATALOG_TAKEN.
 
 /** The screen the Catalog opens on, on a phone: the brands. */
 export const CATALOG_HOME: CatalogScreen = { view: "brands" };
@@ -49,8 +52,22 @@ export const CATALOG_LEVEL_PATHS: Record<CatalogEditLevel, string> = {
 };
 /** The years a generation or a model year can have. */
 export const CATALOG_YEARS = { min: 1900, max: 2100 } as const;
+/** What a change of the catalog that failed says. */
+export const CATALOG_FAILED = "Não foi possível salvar no catálogo. Tente de novo.";
+/** What is said under the field when the API refuses a name or year another node has, by what is added or renamed. */
+export const CATALOG_TAKEN: Record<CatalogEditLevel | "brand", string> = {
+  brand: "Essa marca já está no catálogo.",
+  model: "Já existe um modelo com esse nome nessa marca.",
+  generation: CATALOG_FAILED,
+  version: CATALOG_FAILED,
+  year: "Essa versão já tem esse ano.",
+};
 /** What each drive reads as on an engine's sheet. */
 export const ENGINE_DRIVE_LABELS: Record<EngineDrive, string> = { FRONT: "DIANTEIRA", REAR: "TRASEIRA", ALL: "INTEGRAL" };
+/** The drives an engine's sheet chooses from, in their order. */
+export const ENGINE_DRIVES: readonly EngineDrive[] = ["FRONT", "REAR", "ALL"];
+/** A displacement as typed: digits with one decimal at most, after a comma or a dot. */
+const LITRES = /^\d{1,2}([.,]\d)?$/;
 /** What each of an engine sheet's readouts is, in their order, named above them on a phone. */
 export const ENGINE_SPEC_LABELS = ["Ano", "Motor", "Cilindros", "Tração"] as const;
 /** What a part's vehicle says when the catalog has no sheet for it. */
@@ -143,6 +160,16 @@ export type CatalogEngineInput = z.infer<typeof catalogEngineInputSchema>;
 export type CatalogValues = { name?: string; firstYear?: number; lastYear?: number | null; year?: number } & Partial<CatalogEngineInput>;
 /** The names an engine's sheet is titled with: its year, brand, model and version. */
 export type EngineSheetNames = { year: number; brand: string; model: string; version: string };
+/** What a screen is adding, under which parent, or renaming. */
+export type CatalogEditing =
+  | { kind: "add"; level: CatalogEditLevel | "brand"; parent: { level: "brand" | Exclude<CatalogEditLevel, "year">; id: string } }
+  | { kind: "rename"; node: CatalogNode };
+/** The engine sheet a screen is filling in: a new engine's under a year, or an engine's own. */
+export type CatalogSheetEditing = { kind: "add"; year: CatalogNode } | { kind: "edit"; engine: CatalogNode };
+/** The text of the fields that add or rename a node, as typed. */
+export type CatalogFields = { name: string; firstYear: string; lastYear: string; year: string };
+/** The text of an engine sheet's fields, as typed, and the drive chosen, or empty. */
+export type EngineFields = { litres: string; cylinders: string; drive: string; summary: string };
 export type CatalogEngine = z.infer<typeof catalogEngineSchema>;
 export type EngineDrive = z.infer<typeof engineDriveSchema>;
 /**
@@ -245,6 +272,197 @@ export function belowNode(node: CatalogNode): string | null {
   ];
   const parts = words.filter(([level]) => counts[level] > 0).map(([level, one, many]) => `${counts[level]} ${counts[level] === 1 ? one : many}`);
   return parts.length > 0 ? parts.join(", ") : null;
+}
+
+/**
+ * Says how a screen adds the level under a node: a new engine's sheet under a year, or a node in the tree.
+ * @param node A node of the tree, not an engine.
+ * @returns The sheet to fill in, or what to add and where.
+ */
+export function catalogAddUnder(node: CatalogNode): { sheet: CatalogSheetEditing } | { editing: CatalogEditing } {
+  if (node.level === "year") {
+    return { sheet: { kind: "add", year: node } };
+  }
+  const parent = node.level as Exclude<CatalogEditLevel, "year">;
+  return { editing: { kind: "add", level: CATALOG_CHILDREN[parent].level as CatalogEditLevel, parent: { level: parent, id: node.id } } };
+}
+
+/**
+ * Builds the request that saves what a screen adds or renames.
+ * @param editing What is added, and under which parent, or renamed.
+ * @returns Its method and path, and what to say when the API refuses a name or year another node has.
+ */
+export function catalogEditRequest(editing: CatalogEditing): { method: "POST" | "PATCH"; path: string; taken: string } {
+  if (editing.kind === "rename") {
+    const level = editing.node.level as CatalogEditLevel;
+    return { method: "PATCH", path: catalogNodePath(editing.node), taken: CATALOG_TAKEN[level] };
+  }
+  const { parent } = editing;
+  const parentPath = parent.level === "brand" ? CATALOG_BRANDS_PATH : CATALOG_LEVEL_PATHS[parent.level];
+  const path = editing.level === "brand" ? CATALOG_BRANDS_PATH : `${parentPath}/${parent.id}/${CATALOG_CHILDREN[parent.level].segment}`;
+  return { method: "POST", path, taken: CATALOG_TAKEN[editing.level] };
+}
+
+/**
+ * Lists every node of a brand's tree by its id.
+ * @param models The brand's models.
+ * @returns The nodes, by id.
+ */
+export function catalogNodes(models: readonly CatalogNode[]): Map<string, CatalogNode> {
+  const nodes = new Map<string, CatalogNode>();
+  /** Adds some nodes and everything under them. */
+  const add = (list: readonly CatalogNode[]) => {
+    for (const node of list) {
+      nodes.set(node.id, node);
+      add(node.children ?? []);
+    }
+  };
+  add(models);
+  return nodes;
+}
+
+/**
+ * Writes the API path of a node, which renames, moves and deletes it, or saves an engine's sheet.
+ * @param node The node.
+ * @returns E.g. "/catalog/generations/<id>".
+ */
+export function catalogNodePath(node: CatalogNode): string {
+  const base = node.level === "engine" ? CATALOG_ENGINES_PATH : CATALOG_LEVEL_PATHS[node.level];
+  return `${base}/${node.id}`;
+}
+
+/**
+ * Builds the request that saves the engine sheet a screen fills in: a new engine under its year, or an engine's sheet.
+ * @param sheet The sheet being filled in.
+ * @returns Its method and path.
+ */
+export function catalogSheetRequest(sheet: CatalogSheetEditing): { method: "POST" | "PATCH"; path: string } {
+  return sheet.kind === "add"
+    ? { method: "POST", path: `${CATALOG_LEVEL_PATHS.year}/${sheet.year.id}/${CATALOG_CHILDREN.year.segment}` }
+    : { method: "PATCH", path: catalogNodePath(sheet.engine) };
+}
+
+/**
+ * Finds the siblings of a node of a brand's tree, itself included.
+ * @param models The brand's models.
+ * @param id The node.
+ * @returns The list it is in, or empty when the tree hasn't it.
+ */
+export function catalogSiblings(models: readonly CatalogNode[], id: string): readonly CatalogNode[] {
+  if (models.some((node) => node.id === id)) {
+    return models;
+  }
+  for (const node of models) {
+    const found = catalogSiblings(node.children ?? [], id);
+    if (found.length > 0) {
+      return found;
+    }
+  }
+  return [];
+}
+
+/**
+ * Reads what a node is renamed from: its name, a generation's years, or a year's number.
+ * @param node The node.
+ * @returns What its form opens with.
+ */
+export function catalogValuesOf(node: CatalogNode): CatalogValues {
+  if (node.level === "year") {
+    return { year: Number(node.label) };
+  }
+  return node.level === "generation" ? { name: node.label, firstYear: node.firstYear, lastYear: node.lastYear } : { name: node.label };
+}
+
+/**
+ * Reads the names an engine's sheet is titled with, from the path to a node of a brand's tree.
+ * @param catalog The catalog.
+ * @param brandId The brand.
+ * @param nodeId A year, or an engine of it.
+ * @returns The year, brand, model and version.
+ */
+export function engineSheetNames(catalog: Catalog, brandId: string, nodeId: string): EngineSheetNames {
+  const [model, , version, year] = treePath(catalog, brandId, nodeId);
+  return { year: Number(year.label), brand: catalog.brands.find((brand) => brand.id === brandId)!.name, model: model.label, version: version.label };
+}
+
+/**
+ * Reads the fields of a node being added or renamed, as typed: a name, a generation's years, or a year's number.
+ * @param level What is added or renamed.
+ * @param fields The fields' text.
+ * @returns What is saved, or what to fix under each field.
+ */
+export function readCatalogFields(
+  level: CatalogEditLevel | "brand",
+  fields: CatalogFields,
+): { values: CatalogValues } | { problems: Partial<Record<keyof CatalogFields, string>> } {
+  const problems: Partial<Record<keyof CatalogFields, string>> = {};
+  const yearsMessage = `Use um ano de ${CATALOG_YEARS.min} a ${CATALOG_YEARS.max}.`;
+  if (level === "year") {
+    const year = readYear(fields.year);
+    return year === null ? { problems: { year: yearsMessage } } : { values: { year } };
+  }
+  if (!fields.name.trim()) {
+    problems.name = "Informe o nome.";
+  }
+  if (level !== "generation") {
+    return problems.name ? { problems } : { values: { name: fields.name } };
+  }
+  const first = readYear(fields.firstYear);
+  const last = fields.lastYear.trim() ? readYear(fields.lastYear) : null;
+  if (first === null) {
+    problems.firstYear = yearsMessage;
+  }
+  if (fields.lastYear.trim() && last === null) {
+    problems.lastYear = yearsMessage;
+  } else if (first !== null && last !== null && last < first) {
+    problems.lastYear = "O último ano não pode vir antes do primeiro.";
+  }
+  return Object.keys(problems).length > 0 ? { problems } : { values: { name: fields.name, firstYear: first!, lastYear: last } };
+}
+
+/**
+ * Reads an engine sheet's fields, as typed, into the sheet.
+ * @param fields The fields' text, the displacement in litres with a comma or a dot, and the drive chosen or empty.
+ * @returns The sheet, or what to fix in each field.
+ */
+export function readEngineFields(fields: EngineFields): { sheet: CatalogEngineInput } | { problems: Partial<Record<keyof EngineFields, string>> } {
+  const { displacementDl: dl, cylinders: count } = CATALOG_ENGINE_LIMITS;
+  const problems: Partial<Record<keyof EngineFields, string>> = {};
+  const litres = fields.litres.trim();
+  const displacementDl = Math.round(Number(litres.replace(",", ".")) * 10);
+  if (!LITRES.test(litres) || displacementDl < dl.min || displacementDl > dl.max) {
+    problems.litres = `Use uma cilindrada de ${litresText(dl.min)} a ${litresText(dl.max)} L.`;
+  }
+  const cylinders = Number(fields.cylinders.trim());
+  if (!/^\d+$/.test(fields.cylinders.trim()) || cylinders < count.min || cylinders > count.max) {
+    problems.cylinders = `Use de ${count.min} a ${count.max} cilindros.`;
+  }
+  if (!fields.drive) {
+    problems.drive = "Escolha a tração.";
+  }
+  if (Object.keys(problems).length > 0) {
+    return { problems };
+  }
+  return { sheet: { displacementDl, cylinders, drive: fields.drive as EngineDrive, summary: fields.summary.trim() } };
+}
+
+/**
+ * Writes a displacement in litres as its field shows it.
+ * @param displacementDl The displacement in decilitres, e.g. 41.
+ * @returns E.g. "4,1".
+ */
+export function litresText(displacementDl: number): string {
+  return (displacementDl / 10).toFixed(1).replace(".", ",");
+}
+
+/**
+ * Reads a year as typed.
+ * @param text The field's text.
+ * @returns The year, or null when it isn't four digits in the catalog's range.
+ */
+function readYear(text: string): number | null {
+  const year = Number(text);
+  return /^\d{4}$/.test(text.trim()) && year >= CATALOG_YEARS.min && year <= CATALOG_YEARS.max ? year : null;
 }
 
 /**
