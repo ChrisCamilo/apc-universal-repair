@@ -128,18 +128,18 @@ test("Shared: the list query sends each chosen value", () => {
   );
 });
 
-// Lays out the menu with a Ford chosen and checks the seven rows in order, position and side sharing a row of chips,
+// Lays out the menu with a Ford chosen and checks the nine rows in order, position and side sharing a row of chips,
 // and the vehicle models narrowed to Ford.
-test("Shared: the filter menu has seven rows, models following the brands", () => {
+test("Shared: the filter menu has nine rows, models following the brands", () => {
   const rows = itemFilterRows(ITEMS, { ...EMPTY_ITEM_FILTERS, vehicleBrand: ["Ford"] });
   assert.deepEqual(
     rows.map((row) => row.label),
-    ["Categoria", "Marca da peça", "Marca do veículo", "Modelo do veículo", "Posição · Lado", "Cor", "Local"],
+    ["Categoria", "Marca da peça", "Marca do veículo", "Modelo do veículo", "Geração", "Versão do veículo", "Posição · Lado", "Cor", "Local"],
   );
   const models = rows[3];
   assert.ok("options" in models);
   assert.deepEqual(models.options, [{ value: "Ford|Gol", label: "Gol · Ford" }]);
-  const chips = rows[4];
+  const chips = rows[6];
   assert.ok("groups" in chips);
   assert.deepEqual(chips.groups.map((group) => group.key), ["position", "side"]);
   assert.deepEqual(
@@ -149,6 +149,30 @@ test("Shared: the filter menu has seven rows, models following the brands", () =
       ["Todos", "Esquerdo", "Direito", "Ambos"],
     ],
   );
+});
+
+// Offers the generations, oldest first and written short, and the versions of the stock's vehicles, then only those of
+// the chosen model; the filters then find the items whose vehicle has them, as the API's query does.
+test("Shared: the generation and version filters list and match the vehicles' own", () => {
+  const stock = [
+    item({ vehicleBrand: "Chevrolet", vehicleModel: "Monza", firstYear: 1985, lastYear: 1990, version: "1.6 GLX" }),
+    item({ vehicleBrand: "Chevrolet", vehicleModel: "Monza", firstYear: 1982, lastYear: 1984, version: "Sedan GL 1.8" }),
+    item({ vehicleBrand: "Chevrolet", vehicleModel: "Onix", firstYear: 2019, lastYear: null, version: "Hatch LT 1.0" }),
+    item({ vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1" }),
+  ];
+  const all = itemFilterOptions(stock, []);
+  assert.deepEqual(all.generations, [
+    { value: "1982-1984", label: "82/84" },
+    { value: "1985-1990", label: "85/90" },
+    { value: "2019-", label: "19/atual" },
+  ]);
+  assert.deepEqual(all.versions, ["1.6 GLX", "Hatch LT 1.0", "Sedan GL 1.8"]);
+  const monza = itemFilterOptions(stock, [], ["Chevrolet|Monza"]);
+  assert.deepEqual(monza.generations.map((option) => option.label), ["82/84", "85/90"]);
+  assert.deepEqual(monza.versions, ["1.6 GLX", "Sedan GL 1.8"]);
+  const query = (filters: Record<string, string[]>) => itemListQuerySchema.parse({ ...EMPTY_ITEM_FILTERS, ...filters });
+  assert.deepEqual(stock.filter((each) => itemMatchesQuery(each, query({ generation: ["1985-1990"] }))), [stock[0]]);
+  assert.deepEqual(stock.filter((each) => itemMatchesQuery(each, query({ version: ["Hatch LT 1.0", "Sedan GL 1.8"] }))), [stock[1], stock[2]]);
 });
 
 // Counts the items of the list for some filters as a phone's sheet does before applying them: every item with none;

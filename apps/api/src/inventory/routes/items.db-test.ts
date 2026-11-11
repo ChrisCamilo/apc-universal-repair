@@ -186,7 +186,7 @@ test("API: items are filtered by stock and any brand, and sorted by their lowest
 
 // Adds items of every kind the filters tell apart, then asks the API for the same queries the shared matcher reads in
 // memory, for the web app's demo, and checks both choose the same items, of the run's and the seed's: the search, each
-// filter, "Ambos" and the stock status. The demo answers the list with the matcher, so it keeps choosing as the API.
+// filter (a vehicle's generation and version too), "Ambos" and the stock status. The demo answers the list with the matcher, so it keeps choosing as the API.
 test("API: the shared item matcher chooses the items the API's list does", async () => {
   const added = [
     item([brand("MQ-1", "Cobreq", { quantity: 0, color: "Preto", location: "A-2" })], { name: `Lona de freio ${RUN}`, position: "T", side: "LE" }),
@@ -196,7 +196,7 @@ test("API: the shared item matcher chooses the items the API's list does", async
       position: "N/A",
       side: "N/A",
       originalCodes: [`OEM 77-${RUN}`],
-      vehicles: [{ vehicleBrand: `Gurgel ${RUN}` }, { vehicleBrand: `Lafer ${RUN}`, vehicleModel: `LL ${RUN}` }],
+      vehicles: [{ vehicleBrand: `Gurgel ${RUN}` }, { vehicleBrand: `Lafer ${RUN}`, vehicleModel: `LL ${RUN}`, firstYear: 1974, lastYear: 1990, version: "TI" }],
     }),
     item([brand("MQ-3", "Cofap", { quantity: 1 }), brand("MQ-4", "Mann", { quantity: 1, color: "Azul" })], {
       name: `Amortecedor ${RUN}`,
@@ -218,6 +218,8 @@ test("API: the shared item matcher chooses the items the API's list does", async
     { partBrand: `Mann ${RUN}` },
     { vehicleBrand: `Lafer ${RUN}` },
     { vehicleModel: [`Lafer ${RUN}|LL ${RUN}`, `Gurgel ${RUN}|Xavante ${RUN}`] },
+    { generation: ["1974-1990", "2019-"] },
+    { version: "TI", q: RUN },
     { position: "D" },
     { position: "T", q: RUN },
     { side: ["LD"] },
@@ -244,7 +246,7 @@ test("API: an item is edited with its brands, and a brand left out goes with its
   const found = await find("bp1");
   const edited = await call("PATCH", `/items/${found.id}`, { vehicles: [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `Tocantins ${RUN}` }] });
   assert.equal(edited.statusCode, 200);
-  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `Tocantins ${RUN}` }]);
+  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `Tocantins ${RUN}`, firstYear: null, lastYear: null, version: null }]);
 
   const [first, second] = found.brands;
   const photos = await sendPhoto(found.id, second.id);
@@ -366,9 +368,9 @@ test("API: an item fits several vehicles and is found by each one", async () => 
   const created = await call("POST", "/items", item([brand("VE-1", "Cofap")], { name: `Lanterna ${RUN}`, vehicles }));
   assert.equal(created.statusCode, 201);
   assert.deepEqual(created.json().vehicles, [
-    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `X12 ${RUN}` },
-    { vehicleBrand: `Puma ${RUN}`, vehicleModel: `GTE ${RUN}` },
-    { vehicleBrand: `Miura ${RUN}`, vehicleModel: null },
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `X12 ${RUN}`, firstYear: null, lastYear: null, version: null },
+    { vehicleBrand: `Puma ${RUN}`, vehicleModel: `GTE ${RUN}`, firstYear: null, lastYear: null, version: null },
+    { vehicleBrand: `Miura ${RUN}`, vehicleModel: null, firstYear: null, lastYear: null, version: null },
   ]);
   /** The names of this run's items a list query finds. */
   const names = async (query: string) =>
@@ -383,8 +385,35 @@ test("API: an item fits several vehicles and is found by each one", async () => 
   assert.equal((await call("POST", "/items", universal)).statusCode, 400);
 
   const edited = await call("PATCH", `/items/${created.json().id}`, { vehicles: [vehicles[2]] });
-  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Miura ${RUN}`, vehicleModel: null }]);
+  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Miura ${RUN}`, vehicleModel: null, firstYear: null, lastYear: null, version: null }]);
   assert.equal(await prisma.itemVehicle.count({ where: { itemId: created.json().id } }), 1);
+});
+
+// Creates an item that fits one model in two generations, one still made, each with its version, and checks they come
+// back with their years and versions, the filters by generation and version find it, a last year before the first is
+// refused with 400, and an edit that leaves them out clears them.
+test("API: a vehicle keeps its generation and version, and is found by them", async () => {
+  const vehicles = [
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: 1988, lastYear: 1991, version: "sl" },
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: 2019, lastYear: null, version: "Supermini" },
+  ];
+  const created = await call("POST", "/items", item([brand("GE-1", "Cofap")], { name: `Farol ${RUN}`, vehicles }));
+  assert.equal(created.statusCode, 201);
+  assert.deepEqual(created.json().vehicles, [
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: 1988, lastYear: 1991, version: "Sl" },
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: 2019, lastYear: null, version: "Supermini" },
+  ]);
+  /** The names of this run's items a list query finds. */
+  const names = async (query: string) =>
+    ((await call("GET", `/items?q=${RUN}&${query}`)).json().items as Item[]).map((each) => each.name);
+  assert.deepEqual(await names("generation=1988-1991"), [`Farol ${RUN}`]);
+  assert.deepEqual(await names("generation=2019-"), [`Farol ${RUN}`]);
+  assert.deepEqual(await names("generation=1988-1990"), []);
+  assert.deepEqual(await names("version=Supermini"), [`Farol ${RUN}`]);
+  const backwards = item([brand("GE-2", "Cofap")], { vehicles: [{ ...vehicles[0], firstYear: 1991, lastYear: 1988 }] });
+  assert.equal((await call("POST", "/items", backwards)).statusCode, 400);
+  const edited = await call("PATCH", `/items/${created.json().id}`, { vehicles: [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}` }] });
+  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: null, lastYear: null, version: null }]);
 });
 
 // Duplicates an item with a photo, copying it twice into the copy's brand, and checks the copies are new photos with

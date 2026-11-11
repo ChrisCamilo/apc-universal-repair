@@ -29,7 +29,7 @@ type DialogProps = {
   /** Called on Escape (and a click outside when dismissible); the owner closes the dialog by setting `open` to false. */
   onClose: () => void
   title: string
-  /** "form" for forms such as the item form, "confirm" for short confirmations. */
+  /** "form" for forms, "wide" for a form that needs more room, such as the item form, "confirm" for short confirmations. */
   size?: DialogSize
   /** Buttons of the action bar, e.g. Cancel and Save. */
   actions: ReactNode
@@ -62,7 +62,9 @@ export function Dialog({
   const titleId = useId()
   const dialog = useRef<HTMLDialogElement>(null)
   const close = useRef<HTMLButtonElement>(null)
-  const { classes, ids } = dialogRecipe({ fill: size === 'form', back: back !== undefined })
+  // A form, wide or not, fills a phone's screen; a confirmation stays a box.
+  const form = size === 'form' || size === 'wide'
+  const { classes, ids } = dialogRecipe({ fill: form, back: back !== undefined })
   const { present, leaving } = usePresence(open, dialog)
   const phone = usePhone()
 
@@ -74,12 +76,12 @@ export function Dialog({
       // Start on the first control past the ×: the first field of a form, or Cancel in a confirmation; a form on a
       // phone starts on its title row, the × or the ←, so no keyboard rises over it.
       const controls = [...element.querySelectorAll<HTMLElement>(CONTROLS)]
-      const start = phone && size === 'form' ? controls[0] : controls.find((control) => control !== close.current)
+      const start = phone && form ? controls[0] : controls.find((control) => control !== close.current)
       start?.focus()
     } else if (!open && element?.open) {
       element.close()
     }
-  }, [open, phone, size])
+  }, [open, phone, form])
 
   return (
     <dialog

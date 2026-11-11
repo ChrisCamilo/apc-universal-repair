@@ -133,7 +133,7 @@ type Schema<Value> = { safeParse: (value: unknown) => { success: true; data: Val
 /** An item as the demo keeps it: its list entries by id, so a renamed entry shows its new name on every item. */
 type StoredItem = Omit<Item, 'category' | 'vehicles' | 'brands' | 'quantity'> & {
   categoryId: string
-  vehicles: { brandId: string; modelId: string | null }[]
+  vehicles: { brandId: string; modelId: string | null; firstYear: number | null; lastYear: number | null; version: string | null }[]
   brands: (Omit<Item['brands'][number], 'partBrand'> & { partBrandId: string })[]
 }
 /** Why the items of a file can't be saved as they are; the import answers it with 409 and keeps none of them. */
@@ -464,13 +464,14 @@ function createItem(db: Db, input: ItemCreate, createdAt = new Date().toISOStrin
 }
 
 /**
- * Takes out the vehicles an item holds twice after a merge, keeping each one's first place.
+ * Takes out the vehicles an item holds twice after a merge, the same brand, model, generation and version, keeping
+ * each one's first place.
  * @param item The item.
  */
 function dropRepeatedVehicles(item: StoredItem): void {
   const seen = new Set<string>()
   item.vehicles = item.vehicles.filter((vehicle) => {
-    const key = `${vehicle.brandId}|${vehicle.modelId ?? ''}`
+    const key = [vehicle.brandId, vehicle.modelId ?? '', vehicle.firstYear ?? '', vehicle.lastYear ?? '', optionKey(vehicle.version ?? '')].join('|')
     const first = !seen.has(key)
     seen.add(key)
     return first
@@ -1316,6 +1317,9 @@ function toItem(db: Db, item: StoredItem): Item {
     vehicles: vehicles.map((vehicle) => ({
       vehicleBrand: name(db.vehicleBrands, vehicle.brandId),
       vehicleModel: vehicle.modelId ? name(db.vehicleModels, vehicle.modelId) : null,
+      firstYear: vehicle.firstYear,
+      lastYear: vehicle.lastYear,
+      version: vehicle.version,
     })),
     quantity: brands.reduce((sum, brand) => sum + brand.quantity, 0),
     brands: brands.map(({ partBrandId, ...brand }) => ({ ...brand, partBrand: name(db.partBrands, partBrandId) })),
@@ -1363,15 +1367,20 @@ function updateItem(
  * Finds the entries of a vehicle an item fits, adding the brand, or the model under its brand, the lists don't hold.
  * @param db The demo's data.
  * @param vehicle The vehicle as sent.
- * @returns Its brand's and model's ids, the model null for any model of the brand.
+ * @returns Its brand's and model's ids, the model null for any model of the brand, with its generation and version.
  */
 function vehicleOf(db: Db, vehicle: ItemVehicleCreate): StoredItem['vehicles'][number] {
   const brandId = listed(db.vehicleBrands, vehicle.vehicleBrand).id
+  const generation = {
+    firstYear: vehicle.firstYear ?? null,
+    lastYear: vehicle.firstYear == null ? null : (vehicle.lastYear ?? null),
+    version: vehicle.version?.trim() ? capitalizeFirst(vehicle.version) : null,
+  }
   const model = vehicle.vehicleModel?.trim()
   if (!model) {
-    return { brandId, modelId: null }
+    return { brandId, modelId: null, ...generation }
   }
   const name = listName(model)
   const held = db.vehicleModels.find((each) => each.brandId === brandId && optionKey(each.name) === optionKey(name))
-  return { brandId, modelId: (held ?? modelOf(db, brandId, name)).id }
+  return { brandId, modelId: (held ?? modelOf(db, brandId, name)).id, ...generation }
 }

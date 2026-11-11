@@ -126,7 +126,8 @@ function entryNotFound(reply: FastifyReply) {
 }
 
 /**
- * Takes out the vehicles an item holds twice after a merge, keeping each one's first place.
+ * Takes out the vehicles an item holds twice after a merge, the same brand, model, generation and version, keeping
+ * each one's first place.
  * @param tx Database client, in the merge's transaction.
  * @param itemIds The items whose vehicles moved.
  */
@@ -134,12 +135,12 @@ async function dropRepeatedVehicles(tx: Prisma.TransactionClient, itemIds: reado
   const rows = await tx.itemVehicle.findMany({
     where: { itemId: { in: [...itemIds] } },
     orderBy: [{ itemId: "asc" }, { position: "asc" }, { id: "asc" }],
-    select: { id: true, itemId: true, vehicleBrandId: true, vehicleModelId: true },
+    select: { id: true, itemId: true, vehicleBrandId: true, vehicleModelId: true, firstYear: true, lastYear: true, version: true },
   });
   const seen = new Set<string>();
   const repeated = [];
   for (const row of rows) {
-    const key = `${row.itemId}|${row.vehicleBrandId}|${row.vehicleModelId ?? ""}`;
+    const key = [row.itemId, row.vehicleBrandId, row.vehicleModelId ?? "", row.firstYear ?? "", row.lastYear ?? "", optionKey(row.version ?? "")].join("|");
     if (seen.has(key)) {
       repeated.push(row);
     }

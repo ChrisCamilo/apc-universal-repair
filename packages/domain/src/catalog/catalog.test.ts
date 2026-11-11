@@ -35,6 +35,7 @@ import {
   screenBack,
   screenHeader,
   treePath,
+  vehicleSuggestions,
   type CatalogData,
   type CatalogNode,
 } from "./catalog.ts";
@@ -434,4 +435,24 @@ test("Shared: what is typed into a node or an engine sheet is checked before it 
     problems: { litres: "Use uma cilindrada de 0,1 a 15,0 L.", cylinders: "Use de 1 a 16 cilindros.", drive: "Escolha a tração." },
   });
   assert.equal(litresText(41), "4,1");
+});
+
+// Offers a vehicle's generations and versions in the item form: the Opala's in the catalog, its model found as a part's
+// is ("Opala 4.1" → Opala), with those the stock holds for the same brand and model, oldest first and each once; a model
+// the catalog lacks offers only the stock's, and no model offers none.
+test("Shared: the item form offers the catalog's and the stock's generations and versions", () => {
+  const stock = [
+    part({ code: "A", vehicleModel: "Opala 4.1", firstYear: 1980, lastYear: 1992, version: "Diplomata" }),
+    part({ code: "B", vehicleModel: "Opala 4.1", firstYear: 1985, lastYear: 1990, version: "4.1 SL" }),
+    part({ code: "C", vehicleModel: "Caravan", firstYear: 1975, lastYear: 1992, version: "Comodoro" }),
+  ];
+  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, stock, { vehicleBrand: "chevrolet", vehicleModel: "opala 4.1" }), {
+    generations: ["68/74", "75/79", "80/92", "85/90"],
+    versions: ["4.1 SL", "Comodoro", "Diplomata", "SS"],
+  });
+  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, stock, { vehicleBrand: "Chevrolet", vehicleModel: "Caravan" }), {
+    generations: ["75/92"],
+    versions: ["Comodoro"],
+  });
+  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, stock, { vehicleBrand: "Chevrolet", vehicleModel: "" }), { generations: [], versions: [] });
 });

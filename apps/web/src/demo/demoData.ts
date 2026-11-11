@@ -14,12 +14,12 @@ import sparkPlug from './photos/vela-de-ignicao.svg'
 /** The stock, oldest first. */
 export const DEMO_ITEMS: ItemCreate[] = [
   part('Pastilha de freio dianteira', 'Freios', [car('Volkswagen', 'Gol'), car('Volkswagen', 'Parati')], [brand('Cobreq', 'N-1210', 12, 8990, 'A-2'), brand('Fras-le', 'PD/1210', 4, 9490, 'A-2')], { position: 'D', side: 'Ambos', minQuantity: 6, originalCodes: ['5U0 698 151'] }),
-  part('Disco de freio ventilado', 'Freios', [car('Chevrolet', 'Monza')], [brand('Fremax', 'BD-3377', 4, 21500, 'A-3')], { position: 'D', side: 'Ambos', minQuantity: 2 }),
+  part('Disco de freio ventilado', 'Freios', [car('Chevrolet', 'Monza', { firstYear: 1985, lastYear: 1990, version: '1.6 GLX' })], [brand('Fremax', 'BD-3377', 4, 21500, 'A-3')], { position: 'D', side: 'Ambos', minQuantity: 2 }),
   part('Lona de freio traseira', 'Freios', [car('Fiat', 'Uno'), car('Fiat', 'Prêmio')], [brand('Fras-le', 'L-2214', 0, 6490, 'A-4')], { position: 'T', side: 'Ambos', minQuantity: 2 }),
   part('Cilindro mestre de freio', 'Freios', [car('Ford', 'Escort')], [brand('TRW', 'RCMA-0081', 2, 32900, 'A-5')], { minQuantity: 1 }),
   part('Flexível de freio', 'Freios', [car('Chevrolet', 'Chevette')], [brand('Cobreq', 'FL-0233', 6, 2890, 'A-6')], { position: 'D', side: 'LE', minQuantity: 2 }),
   part('Filtro de óleo', 'Motor', [car('Volkswagen'), car('Fiat')], [brand('Mann', 'W 712/95', 18, 3990, 'B-1'), brand('Tecfil', 'PSL 55', 10, 2990, 'B-1')], { minQuantity: 8 }),
-  part('Junta do cabeçote', 'Motor', [car('Chevrolet', 'Opala')], [brand('Sabó', 'MO-0031', 2, 18990, 'B-10')], { minQuantity: 2, originalCodes: ['93 211 104'] }),
+  part('Junta do cabeçote', 'Motor', [car('Chevrolet', 'Opala', { firstYear: 1980, lastYear: 1992, version: 'Diplomata 4.1' })], [brand('Sabó', 'MO-0031', 2, 18990, 'B-10')], { minQuantity: 2, originalCodes: ['93 211 104'] }),
   part('Bomba de óleo', 'Motor', [car('Volkswagen', 'Fusca')], [brand('Schadek', 'BO-1144', 3, 15800, 'B-2')], { minQuantity: 1 }),
   part('Correia dentada', 'Motor', [car('Fiat', 'Uno'), car('Fiat', 'Tempra')], [brand('Gates', 'CT-488', 7, 7490, 'B-3'), brand('Dayco', '94488', 3, 6990, 'B-3')], { minQuantity: 4 }),
   part('Tensor da correia dentada', 'Motor', [car('Fiat', 'Uno')], [brand('SKF', 'VKM-12174', 0, 11900, 'B-4')], { minQuantity: 2 }),
@@ -73,10 +73,15 @@ function brand(partBrand: string, code: string, quantity: number, unitPriceCents
  * Writes a vehicle a part fits.
  * @param vehicleBrand Its maker, or "Universal" for any vehicle.
  * @param vehicleModel Its model; without one, any model of the brand.
+ * @param generation Its generation's years and its version, when the part fits only them.
  * @returns The vehicle as the API takes it.
  */
-function car(vehicleBrand: string, vehicleModel?: string): ItemVehicleCreate {
-  return { vehicleBrand, vehicleModel }
+function car(
+  vehicleBrand: string,
+  vehicleModel?: string,
+  generation: Pick<ItemVehicleCreate, 'firstYear' | 'lastYear' | 'version'> = {},
+): ItemVehicleCreate {
+  return { vehicleBrand, vehicleModel, ...generation }
 }
 
 /**

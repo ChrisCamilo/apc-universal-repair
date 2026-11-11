@@ -61,6 +61,9 @@ erDiagram
         int position "order in the item"
         string vehicleBrandId FK "Brand.id"
         string vehicleModelId FK "VehicleModel.id, null = any model"
+        int firstYear "generation's first year, null = none"
+        int lastYear "generation's last year, null = still made"
+        string version "e.g. 1.6 GLX, null = none"
     }
     ItemOriginalCode {
         string id PK "uuid"
@@ -176,7 +179,7 @@ erDiagram
 | Table | What it holds |
 |---|---|
 | `Item` | An inventory item: a part in stock, with what its brands share: its name, category, where on the vehicle it fits, the minimum stock, and how many there are, added up from its brands. |
-| `ItemVehicle` | A vehicle an item's part fits, in order: a vehicle brand and, optionally, one of its models; without one, any model of the brand. Every item fits at least one; an item from before vehicles became one of its vehicle, with the item's id. |
+| `ItemVehicle` | A vehicle an item's part fits, in order: a vehicle brand and, optionally, one of its models; without one, any model of the brand. It may also say its generation, by its first and last year (shown as "85/90", the last one empty while it is still made), and its version ("1.6 GLX"), neither of them part of the item's name. Every item fits at least one; an item from before vehicles became one of its vehicle, with the item's id. |
 | `ItemBrand` | A brand that makes an item's part (Cobreq, Fras-le…), in order: its part code, color, location, quantity and unit price. Every item has at least one; an item from before brands became its first, with the item's id. |
 | `ItemOriginalCode` | The vehicle maker's codes of an item's part (OEM), in order, the same for every brand that makes it. An item may have none. |
 | `ItemPhoto` | Up to 3 photos of an item's brand, in order; the first one is the cover in the list. The files themselves are stored by the API under `PHOTOS_DIR`, each photo reduced to a WebP of up to 1600px next to its thumbnail. |
@@ -212,7 +215,7 @@ erDiagram
 | `position` and `side` default to "not applicable", and so does a brand's `color`. The API speaks `N/A`, `D`, `T`, `Ambos` (position) and `N/A`, `LD`, `LE`, `Ambos` (side); the database keeps them as the `Position` and `Side` enums. | `Item`, `ItemBrand.color` |
 | The quantities and the minimum are whole numbers from 0 to 1,000,000, which the API checks. The item's quantity is its brands' sum, kept by the API on every save. Stock status isn't stored: an item is out of stock at 0 and low at or under its minimum, counting all its brands. | `ItemBrand.quantity`, `Item.quantity`, `Item.minQuantity` |
 | An item's brands keep their order in `position`; the API saves an edit's brands as the whole set: one sent with its id is kept, one without is new, and one left out is deleted with its photos. | `ItemBrand` |
-| An item's original codes and its vehicles keep their order in `position`; an edit that sends them replaces the whole list. The filters by vehicle brand and model match an item by any of its vehicles, and sorting by vehicle uses the first. | `ItemOriginalCode`, `ItemVehicle` |
+| An item's original codes and its vehicles keep their order in `position`; an edit that sends them replaces the whole list. The filters by vehicle brand, model, generation and version match an item by any of its vehicles, and sorting by vehicle uses the first. The same model in two generations, or two versions, is two vehicles. | `ItemOriginalCode`, `ItemVehicle` |
 | A list entry an item, a vehicle or a brand uses can't be deleted (`RESTRICT`), and two part brands both in one item can't be merged; deleting a vehicle brand deletes its models (`CASCADE`); deleting an item deletes its vehicles, brands and original codes, and a brand its photos (`CASCADE`). | Foreign keys, API |
 | A vehicle brand or model the catalog has can't be deleted from the inventory or merged away (409, and `RESTRICT` below it); the lists mark them `inCatalog`. Deleting a level of the catalog deletes the levels under it (`CASCADE`). | `CatalogBrand`, `CatalogModel`, API |
 | A username is kept in lowercase and is unique, so names that differ only in case are the same user. It takes 3 to 32 lowercase letters, digits, dots or hyphens. | `User.username`, API |
@@ -271,7 +274,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | Tabela | O que guarda |
 |---|---|
 | `Item` | Um item do estoque: uma peça, com o que as marcas dela têm em comum: o nome, a categoria, onde serve no veículo, o estoque mínimo, e quantas há, somando as marcas. |
-| `ItemVehicle` | Um veículo em que a peça do item serve, em ordem: uma marca de veículo e, se quiser, um dos modelos dela; sem modelo, qualquer modelo da marca. Todo item serve em pelo menos um; um item de antes dos veículos virou um item do seu veículo, com o id do item. |
+| `ItemVehicle` | Um veículo em que a peça do item serve, em ordem: uma marca de veículo e, se quiser, um dos modelos dela; sem modelo, qualquer modelo da marca. Ele também pode dizer a geração, pelo primeiro e pelo último ano (exibida como "85/90", o último vazio enquanto ainda é fabricado), e a versão ("1.6 GLX"), nenhuma das duas no nome do item. Todo item serve em pelo menos um; um item de antes dos veículos virou um item do seu veículo, com o id do item. |
 | `ItemBrand` | Uma marca que fabrica a peça do item (Cobreq, Fras-le…), em ordem: o código da peça, a cor, o local, a quantidade e o valor unitário. Todo item tem pelo menos uma; um item de antes das marcas virou a primeira, com o id do item. |
 | `ItemOriginalCode` | Os códigos da montadora para a peça do item (OEM), em ordem, os mesmos para todas as marcas que a fabricam. Um item pode não ter nenhum. |
 | `ItemPhoto` | Até 3 fotos de uma marca do item, em ordem; a primeira é a capa na lista. Os arquivos ficam guardados pela API em `PHOTOS_DIR`, cada foto reduzida a um WebP de até 1600px ao lado da miniatura. |
@@ -307,7 +310,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | `position` e `side` começam como "não se aplica", e a `color` de uma marca também. A API usa `N/A`, `D`, `T`, `Ambos` (posição) e `N/A`, `LD`, `LE`, `Ambos` (lado); o banco guarda nos enums `Position` e `Side`. | `Item`, `ItemBrand.color` |
 | As quantidades e o mínimo são números inteiros de 0 a 1.000.000, que a API confere. A quantidade do item é a soma das marcas, mantida pela API a cada gravação. A situação do estoque não é guardada: o item está esgotado em 0 e baixo quando está no mínimo ou abaixo, somando todas as marcas. | `ItemBrand.quantity`, `Item.quantity`, `Item.minQuantity` |
 | As marcas de um item mantêm a ordem em `position`; a API grava as marcas de uma edição como o conjunto inteiro: uma enviada com o id é mantida, uma sem id é nova, e uma que ficou de fora é excluída com as fotos. | `ItemBrand` |
-| Os códigos originais e os veículos de um item mantêm a ordem em `position`; uma edição que os envia troca a lista inteira. Os filtros por marca e modelo de veículo acham um item por qualquer um dos veículos dele, e ordenar por veículo usa o primeiro. | `ItemOriginalCode`, `ItemVehicle` |
+| Os códigos originais e os veículos de um item mantêm a ordem em `position`; uma edição que os envia troca a lista inteira. Os filtros por marca, modelo, geração e versão do veículo acham um item por qualquer um dos veículos dele, e ordenar por veículo usa o primeiro. O mesmo modelo em duas gerações, ou em duas versões, são dois veículos. | `ItemOriginalCode`, `ItemVehicle` |
 | Uma entrada de lista usada por um item, um veículo ou uma marca não pode ser excluída (`RESTRICT`), e duas marcas de peça que estão no mesmo item não podem ser juntadas; excluir uma marca de veículo exclui os modelos dela (`CASCADE`); excluir um item exclui os veículos, as marcas e os códigos originais dele, e uma marca as fotos dela (`CASCADE`). | Chaves estrangeiras, API |
 | Uma marca ou um modelo de veículo que o catálogo tem não pode ser excluído pelo estoque nem juntado a outro (409, e `RESTRICT` por baixo); as listas os marcam com `inCatalog`. Excluir um nível do catálogo exclui os níveis abaixo dele (`CASCADE`). | `CatalogBrand`, `CatalogModel`, API |
 | O usuário é guardado em minúsculas e é único, então nomes que só mudam em maiúsculas são o mesmo usuário. Ele aceita de 3 a 32 letras minúsculas, números, pontos ou hífens. | `User.username`, API |

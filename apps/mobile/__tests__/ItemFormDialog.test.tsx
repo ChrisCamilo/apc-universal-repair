@@ -228,7 +228,7 @@ function savedOf(sent: ItemCreate, photos: ItemBrand['photos'] = []): Item {
   return testItem({
     ...sent,
     id: '00000000-0000-4000-8000-000000000009',
-    vehicles: sent.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel || null })),
+    vehicles: sent.vehicles.map((vehicle) => ({ ...vehicle, vehicleModel: vehicle.vehicleModel || null })),
     brands: sent.brands.map((brand, index) => ({
       color: 'N/A',
       quantity: 0,
@@ -440,6 +440,35 @@ test('Mobile: leaving a field writes it back by the rules', async () => {
   expect(value(tree, 'Nome')).toBe('Vela de ignição');
   expect(value(tree, 'Cor')).toBe('Preto');
   expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 1.234,50');
+});
+
+// Opens a new vehicle with a generation that isn't years and checks Adicionar refuses it on its field; then gives it a
+// generation and a version, and checks its chip names both and the item is posted with the years and the version.
+test('Mobile: a vehicle takes an optional generation and version, sent as years', async () => {
+  const onSaved = jest.fn();
+  const tree = await mount(undefined, { onSaved });
+  (fetch as jest.Mock).mockClear();
+  answerSave();
+  await type(tree, 'Código da peça', 'ngk-b7');
+  await type(tree, 'Nome', 'vela');
+  await type(tree, 'Categoria', 'ignição');
+  await type(tree, 'Marca da peça', 'NGK');
+  await press(tree, 'Adicionar veículo');
+  await type(tree, 'Marca do veículo', 'Volkswagen');
+  await type(tree, 'Modelo do veículo', 'Gol');
+  await type(tree, 'Geração', '12/08');
+  await press(tree, 'Adicionar');
+  expect(shows(tree, ITEM_FORM_MESSAGES.generationInvalid)).toBe(true);
+  expect(chips(tree)).toEqual([]);
+  await type(tree, 'Geração', '08/12');
+  await type(tree, 'Versão', '1.0 G5');
+  await press(tree, 'Adicionar');
+  expect(chips(tree)).toEqual(['Volkswagen Gol 08/12 1.0 G5']);
+  await type(tree, 'Valor unitário (R$)', '34,9');
+  await press(tree, 'Salvar item');
+  const [, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(JSON.parse(init.body).vehicles).toEqual([{ vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', firstYear: 2008, lastYear: 2012, version: '1.0 G5' }]);
+  expect(onSaved).toHaveBeenCalledTimes(1);
 });
 
 // Fills in a new item and saves it, and checks it is posted with the writing rule applied, a toast says it was added

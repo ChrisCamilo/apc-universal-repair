@@ -127,7 +127,7 @@ async function checkMigrated(client: PrismaClient) {
     const old = OLD.items[index];
     assert.deepEqual(
       item.vehicles.map((vehicle) => ({ ...vehicle })),
-      [{ id: old.id, itemId: old.id, position: 0, vehicleBrandId: OLD.brand.id, vehicleModelId: old.vehicleModelId }],
+      [{ id: old.id, itemId: old.id, position: 0, vehicleBrandId: OLD.brand.id, vehicleModelId: old.vehicleModelId, firstYear: null, lastYear: null, version: null }],
     );
     assert.deepEqual(
       item.brands.map((brand) => [brand.id, brand.code, brand.quantity, brand.photos.map((photo) => photo.file)]),

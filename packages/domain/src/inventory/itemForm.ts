@@ -4,27 +4,33 @@ import {
   codeKey,
   findOption,
   formatPrice,
+  generationLabel,
+  generationText,
   MAX_PRICE_CENTS,
   MAX_QUANTITY,
   NOT_APPLICABLE,
   optionKey,
   POSITION_NAMES,
+  readGeneration,
   searchKey,
   SIDE_NAMES,
   UNIVERSAL_BRAND,
+  VEHICLE_VERSION_MAX,
   vehicleKey,
   vehicleLabel,
   type Item,
   type ItemBrand,
   type ItemCreate,
   type ItemVehicle,
+  type ItemVehicleCreate,
   type POSITIONS,
   type SIDES,
 } from "./items.ts";
 import { findEntry, type ItemLists } from "./lists.ts";
 
 // The item form shared by web and mobile, for creating and editing an inventory item: what the item's brands share
-// (name, category, the vehicles it fits, each a vehicle brand with its model or any model, position, side, minimum
+// (name, category, the vehicles it fits, each a vehicle brand with its model or any model, and optionally its
+// generation, typed as "85/90" or "1985-1990" (see readGeneration), and its version, position, side, minimum
 // stock, and the vehicle maker's original codes, typed as chips: a
 // code added with Enter or a comma, or several pasted at once, once each) and a section for each brand that makes the part (part
 // brand, code, quantity, unit price, color, location), as typed, the unit price always formatted in reais ("R$
@@ -38,7 +44,7 @@ import { findEntry, type ItemLists } from "./lists.ts";
 
 /** A new brand's section: every field blank. */
 export const EMPTY_BRAND_FORM: ItemBrandForm = { partBrand: "", code: "", quantity: "", price: "", color: "", location: "" };
-/** A new vehicle's line: its brand and model blank. */
+/** A new vehicle's line: its brand and model blank, and no generation or version. */
 export const EMPTY_VEHICLE_FORM: ItemVehicleForm = { vehicleBrand: "", vehicleModel: "" };
 /** The empty form of a new item: every field blank, position and side on N/A, one blank vehicle and one blank brand. */
 export const EMPTY_ITEM_FORM: ItemForm = {
@@ -86,6 +92,8 @@ export const SIDE_CHOICES: { value: (typeof SIDES)[number]; label: string }[] = 
 export const VEHICLE_FIELD_LABELS: Record<VehicleField, string> = {
   vehicleBrand: "Marca do veículo",
   vehicleModel: "Modelo do veículo",
+  generation: "Geração",
+  version: "Versão",
 };
 /** Label of the item's vehicles, in the form and the details. */
 export const VEHICLES_LABEL = "Veículos";
@@ -106,6 +114,8 @@ export const ITEM_FORM_MESSAGES = {
   vehicleBrandNotListed: "Marca de veículo não cadastrada. Escolha “+ Criar marca” na lista.",
   vehicleModelNotListed: "Modelo não cadastrado para essa marca. Escolha “+ Criar modelo” na lista.",
   vehicleRepeated: "Esse veículo já está neste item.",
+  generationInvalid: "Use os anos da geração, como 85/90 ou 1985-1990.",
+  versionTooLong: `Use no máximo ${VEHICLE_VERSION_MAX} caracteres.`,
   universalAlone: "Universal serve em qualquer veículo: deixe só ele na lista.",
   quantityInvalid: "Use um número inteiro, de 0 em diante.",
   quantityTooHigh: `Informe no máximo ${MAX_QUANTITY.toLocaleString("pt-BR")}.`,
@@ -162,8 +172,11 @@ export type ItemFormErrors = Partial<Record<"name" | "category" | "minQuantity",
   originalCodes?: (string | undefined)[];
   brands?: ItemBrandFormErrors[];
 };
-/** A vehicle's line as typed: its brand, and its model, empty for any model of the brand. */
-export type ItemVehicleForm = { vehicleBrand: string; vehicleModel: string };
+/**
+ * A vehicle's line as typed: its brand, its model, empty for any model of the brand, and its generation and version,
+ * empty or left out when not given.
+ */
+export type ItemVehicleForm = { vehicleBrand: string; vehicleModel: string; generation?: string; version?: string };
 /** The message of each field of a vehicle's line that can't be saved; a field without one is fine. */
 export type ItemVehicleFormErrors = Partial<Record<VehicleField, string>>;
 /** The options of the item form's comboboxes, from the lists, and its color, from the brands in stock. */
@@ -300,7 +313,19 @@ export function formValue(form: ItemForm, field: FormField): string {
   if (field in BRAND_FIELD_LABELS) {
     return form.brands[0][field as BrandField];
   }
-  return field in VEHICLE_FIELD_LABELS ? form.vehicles[0][field as VehicleField] : form[field as ItemField];
+  return field in VEHICLE_FIELD_LABELS ? (form.vehicles[0][field as VehicleField] ?? "") : form[field as ItemField];
+}
+
+/**
+ * Writes a vehicle's generation for its field: with its years' last two digits ("85/90"), or with their four when the
+ * two would be read back as other years.
+ * @param vehicle The vehicle's first and last year.
+ * @returns E.g. "85/90", "19/atual", or "" without a generation.
+ */
+export function generationInput(vehicle: Pick<ItemVehicle, "firstYear" | "lastYear">): string {
+  const short = generationLabel(vehicle);
+  const read = readGeneration(short);
+  return read && read.firstYear === vehicle.firstYear && read.lastYear === (vehicle.lastYear ?? null) ? short : generationText(vehicle);
 }
 
 /**
@@ -359,10 +384,7 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
   return {
     name: capitalizeFirst(form.name),
     category: capitalizeFirst(form.category),
-    vehicles: form.vehicles.map((vehicle) => ({
-      vehicleBrand: capitalizeFirst(vehicle.vehicleBrand),
-      vehicleModel: vehicle.vehicleModel.trim() ? capitalizeFirst(vehicle.vehicleModel) : "",
-    })),
+    vehicles: form.vehicles.map(vehicleOfForm),
     position: form.position,
     side: form.side,
     minQuantity: Number(form.minQuantity || 0),
@@ -455,7 +477,12 @@ export function itemFormOf(item: Item): ItemForm {
   return {
     name: item.name,
     category: item.category,
-    vehicles: item.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel ?? "" })),
+    vehicles: item.vehicles.map((vehicle) => ({
+      vehicleBrand: vehicle.vehicleBrand,
+      vehicleModel: vehicle.vehicleModel ?? "",
+      ...(vehicle.firstYear != null && { generation: generationInput(vehicle) }),
+      ...(vehicle.version && { version: vehicle.version }),
+    })),
     position: item.position,
     side: item.side,
     minQuantity: String(item.minQuantity),
@@ -632,7 +659,8 @@ export function splitCodes(text: string): string[] {
 
 /**
  * Checks each vehicle's line: its brand is required and must be in the list, and so must its model, under that brand,
- * when it has one; a vehicle appears once, and Universal alone.
+ * when it has one; its generation, when typed, must be read as years (see readGeneration) and its version fit
+ * VEHICLE_VERSION_MAX; a vehicle appears once, and Universal alone.
  * @param vehicles The vehicles as typed.
  * @param lists The lists the API keeps.
  * @returns The message of each line's fields that can't be saved, in the lines' order.
@@ -646,27 +674,58 @@ export function vehicleFormErrors(vehicles: readonly ItemVehicleForm[], lists: I
       : listedMessage(each.vehicleBrand, lists.vehicleBrands, ITEM_FORM_MESSAGES.vehicleBrand, ITEM_FORM_MESSAGES.vehicleBrandNotListed);
     // A model is checked within a listed brand; without one, the brand's message says what to do first.
     const brandModels = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
-    const repeated = each.vehicleBrand.trim() !== "" && vehicles.slice(0, index).some((other) => vehicleKey(other) === vehicleKey(each));
+    const key = vehicleKey(vehicleOfForm(each));
+    const repeated = each.vehicleBrand.trim() !== "" && vehicles.slice(0, index).some((other) => vehicleKey(vehicleOfForm(other)) === key);
     const vehicleModel = repeated
       ? ITEM_FORM_MESSAGES.vehicleRepeated
       : brand && listedMessage(each.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES.vehicleModelNotListed);
-    return { ...(vehicleBrand && { vehicleBrand }), ...(vehicleModel && { vehicleModel }) };
+    const generation = readGeneration(each.generation ?? "") ? undefined : ITEM_FORM_MESSAGES.generationInvalid;
+    const version = (each.version ?? "").trim().length > VEHICLE_VERSION_MAX ? ITEM_FORM_MESSAGES.versionTooLong : undefined;
+    return {
+      ...(vehicleBrand && { vehicleBrand }),
+      ...(vehicleModel && { vehicleModel }),
+      ...(generation && { generation }),
+      ...(version && { version }),
+    };
   });
 }
 
 /**
- * Writes out a vehicle an item fits, as its details list it and the form's chip names it on a phone.
- * @param vehicle The vehicle.
- * @returns E.g. "Volkswagen Gol G5", or "Volkswagen (qualquer modelo)".
+ * Turns a vehicle's line into the vehicle sent to the API: the names start with a capital letter, the model is empty
+ * when not given, the generation is read into its years, and the generation and version are left out when not given
+ * (a generation that can't be read too, which vehicleFormErrors refuses first).
+ * @param vehicle The vehicle's line as typed.
+ * @returns The vehicle as itemCreateSchema takes it.
  */
-export function vehicleText(vehicle: Pick<ItemVehicle, "vehicleBrand" | "vehicleModel">): string {
-  return vehicle.vehicleModel ? vehicleLabel(vehicle) : `${vehicle.vehicleBrand} (qualquer modelo)`;
+export function vehicleOfForm(vehicle: ItemVehicleForm): ItemVehicleCreate {
+  const generation = readGeneration(vehicle.generation ?? "");
+  return {
+    vehicleBrand: capitalizeFirst(vehicle.vehicleBrand),
+    vehicleModel: vehicle.vehicleModel.trim() ? capitalizeFirst(vehicle.vehicleModel) : "",
+    ...(generation?.firstYear != null && generation),
+    ...(vehicle.version?.trim() && { version: capitalizeFirst(vehicle.version) }),
+  };
+}
+
+/**
+ * Writes out a vehicle an item fits, as its details list it and the form's chip names it on a phone: its brand and
+ * model, then its generation and version when it has them.
+ * @param vehicle The vehicle, its model empty or null for any model.
+ * @returns E.g. "Volkswagen Gol G5", "Chevrolet Monza 85/90 1.6 GLX", or "Volkswagen (qualquer modelo)".
+ */
+export function vehicleText(
+  vehicle: Pick<ItemVehicle, "vehicleBrand" | "firstYear" | "lastYear"> & { vehicleModel?: string | null; version?: string | null },
+): string {
+  const named = vehicle.vehicleModel
+    ? vehicleLabel({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel })
+    : `${vehicle.vehicleBrand} (qualquer modelo)`;
+  return [named, generationLabel(vehicle), vehicle.version].filter(Boolean).join(" ");
 }
 
 /**
  * Writes out each vehicle an item fits for its details.
  * @param item The item.
- * @returns E.g. "Volkswagen Gol G5, Volkswagen (qualquer modelo)".
+ * @returns E.g. "Volkswagen Gol G5, Chevrolet Monza 85/90 1.6 GLX, Volkswagen (qualquer modelo)".
  */
 export function vehiclesText(item: Pick<Item, "vehicles">): string {
   return item.vehicles.map(vehicleText).join(", ");

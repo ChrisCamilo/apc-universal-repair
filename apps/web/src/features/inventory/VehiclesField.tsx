@@ -8,6 +8,7 @@ import {
   VEHICLE_FIELD_LABELS,
   VEHICLES_LABEL,
   vehicleFormErrors,
+  vehicleOfForm,
   vehicleText,
   type ItemVehicleForm,
   type ItemVehicleFormErrors,
@@ -21,7 +22,8 @@ import { vehiclesField } from './VehiclesField.styles.ts'
 
 // The vehicles an item fits in a phone's item form, as in the Novo item mockup: each vehicle a chip with its × (see
 // vehicleText), then a dashed "Adicionar veículo" that opens a new vehicle's brand and model, the comboboxes of the
-// desktop's lines, with Cancelar and Adicionar. Adicionar checks the new vehicle against the item's (see
+// desktop's lines, then its generation and version side by side, which offer what the catalog and the stock hold for
+// its model and take any text, with Cancelar and Adicionar. Adicionar checks the new vehicle against the item's (see
 // vehicleFormErrors) and only then makes it a chip; a vehicle with a brand not in the list, one the item already has,
 // or a vehicle beside Universal is refused, saying why. The focus goes to the new vehicle's brand when it opens, and
 // back to "Adicionar veículo" when it closes. A blank line, as a new item's form starts with, shows no chip: saving
@@ -35,12 +37,14 @@ type VehiclesFieldProps = {
   lists: ItemLists
   /** The vehicle brands the brand's combobox offers. */
   brands: readonly string[]
+  /** The generations and versions a vehicle's fields offer for its brand and model. */
+  suggest: (vehicle: ItemVehicleForm) => { generations: string[]; versions: string[] }
   onVehiclesChange: (vehicles: ItemVehicleForm[]) => void
   /** Makes what a combobox calls with a typed name, which creates it in its list and fills the field with it. */
   onCreate: (kind: ItemListKind, fill: (name: string) => void, vehicleBrandId?: string) => (typed: string) => void
 }
 
-export function VehiclesField({ vehicles, errors = [], lists, brands, onVehiclesChange, onCreate }: VehiclesFieldProps) {
+export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, onVehiclesChange, onCreate }: VehiclesFieldProps) {
   const labelId = useId()
   // The vehicle being added, open under the chips, and its messages.
   const [draft, setDraft] = useState<ItemVehicleForm | null>(null)
@@ -51,10 +55,11 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, onVehicles
   const drafting = useRef(false)
   const filled = vehicles.filter((vehicle) => vehicle.vehicleBrand.trim())
   const brand = draft && findEntry(lists.vehicleBrands, draft.vehicleBrand)
+  const suggested = draft ? suggest(draft) : { generations: [], versions: [] }
   const notes = vehicles.flatMap((vehicle, index) =>
     Object.values(errors[index] ?? {})
       .filter(Boolean)
-      .map((message) => (vehicle.vehicleBrand.trim() ? `${vehicleText(vehicle)}: ${message}` : message)),
+      .map((message) => (vehicle.vehicleBrand.trim() ? `${vehicleText(vehicleOfForm(vehicle))}: ${message}` : message)),
   )
   const { classes, ids } = vehiclesField()
 
@@ -110,10 +115,10 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, onVehicles
           {vehicles.map((vehicle, index) =>
             vehicle.vehicleBrand.trim() ? (
               <li key={index} className={classes.chip()} data-testid={ids.chip}>
-                {vehicleText(vehicle)}
+                {vehicleText(vehicleOfForm(vehicle))}
                 <button
                   type="button"
-                  aria-label={`Remover ${vehicleText(vehicle)}`}
+                  aria-label={`Remover ${vehicleText(vehicleOfForm(vehicle))}`}
                   className={classes.remove()}
                   data-testid={ids.remove}
                   onClick={() => remove(index)}
@@ -151,6 +156,30 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, onVehicles
             error={draftErrors.vehicleModel}
             disabled={!brand}
           />
+          <div className={classes.pair()} data-testid={ids.pair}>
+            <Combobox
+              label={VEHICLE_FIELD_LABELS.generation}
+              value={draft.generation ?? ''}
+              onValueChange={(value) => change('generation', value)}
+              options={suggested.generations}
+              noun="geração"
+              toggleLabel="Mostrar gerações"
+              emptyLabel="Nenhuma geração conhecida para esse modelo"
+              placeholder="Ex.: 85/90"
+              error={draftErrors.generation}
+            />
+            <Combobox
+              label={VEHICLE_FIELD_LABELS.version}
+              value={draft.version ?? ''}
+              onValueChange={(value) => change('version', value)}
+              options={suggested.versions}
+              noun="versão"
+              toggleLabel="Mostrar versões"
+              emptyLabel="Nenhuma versão conhecida para esse modelo"
+              placeholder="Ex.: 1.6 GLX"
+              error={draftErrors.version}
+            />
+          </div>
           <div className={classes.draftActions()} data-testid={ids.draftActions}>
             <Button variant="secondary" size="sm" onClick={() => setDraft(null)}>
               Cancelar
@@ -173,7 +202,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, onVehicles
         </p>
       ))}
       <Text size="sm" tone="muted">
-        Sem modelo, a peça serve em qualquer modelo da marca.
+        Sem modelo, a peça serve em qualquer modelo da marca. A geração e a versão são opcionais.
       </Text>
     </div>
   )

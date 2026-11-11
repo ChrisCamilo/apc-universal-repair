@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import {
+  generationText,
   matchesSearch,
   NOT_APPLICABLE,
   optionKey,
@@ -27,7 +28,7 @@ import { itemListsOf } from "@apc/domain/test-lists";
 
 // A stand-in for GET /items, so the list works the same on every run without a database: it answers from the items
 // it is given, newest first as they are listed or sorted by a column as the API sorts, narrowed by the search, the
-// categories and the stock status, one page at a time when a page size is asked, with how many match in all. Other methods fall through to the test's own
+// categories, the vehicles' brands, models, generations and versions and the stock status, one page at a time when a page size is asked, with how many match in all. Other methods fall through to the test's own
 // routes, registered before it. The item lists are answered too, starting with what the items use: a POST creates
 // a name, or gives back the one a list already holds; a PATCH renames an entry and the items using it, refusing a
 // name another entry has; a merge moves an entry's items to another and removes it (a category or part brand; brands
@@ -53,6 +54,8 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
       const categories = query.getAll("category");
       const vehicleBrands = query.getAll("vehicleBrand");
       const models = query.getAll("vehicleModel").flatMap((value) => splitVehicleModel(value) ?? []);
+      const generations = query.getAll("generation");
+      const versions = query.getAll("version");
       const status = query.get("status");
       const matching = stock.filter(
         (item) =>
@@ -63,6 +66,8 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
             item.vehicles.some((vehicle) =>
               models.some((pair) => pair.vehicleBrand === vehicle.vehicleBrand && pair.vehicleModel === vehicle.vehicleModel),
             )) &&
+          (generations.length === 0 || item.vehicles.some((vehicle) => generations.includes(generationText(vehicle)))) &&
+          (versions.length === 0 || item.vehicles.some((vehicle) => vehicle.version && versions.includes(vehicle.version))) &&
           (!status || stockStatus(item.quantity, item.minQuantity) === status),
       );
       const sort = query.get("sort") as ItemSortKey | null;
@@ -184,7 +189,13 @@ export function savedItem(sent: Partial<ItemCreate>, held?: Item): Item {
     name: sent.name ?? held!.name,
     category: sent.category ?? held!.category,
     vehicles: sent.vehicles
-      ? sent.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel || null }))
+      ? sent.vehicles.map((vehicle) => ({
+          vehicleBrand: vehicle.vehicleBrand,
+          vehicleModel: vehicle.vehicleModel || null,
+          firstYear: vehicle.firstYear ?? null,
+          lastYear: vehicle.lastYear ?? null,
+          version: vehicle.version || null,
+        }))
       : held!.vehicles,
     position: sent.position ?? held?.position ?? NOT_APPLICABLE,
     side: sent.side ?? held?.side ?? NOT_APPLICABLE,

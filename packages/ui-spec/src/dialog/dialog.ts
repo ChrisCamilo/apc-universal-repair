@@ -6,8 +6,11 @@ export const DIALOG_HEADER_HEIGHT = 56;
 export const DIALOG_HEIGHT_INSET = 48;
 /** Room a dialog leaves to the side edges of the screen, in px, so it fits at 360px wide. */
 export const DIALOG_SCREEN_INSET = 32;
-/** Widest size of each dialog, in px: forms such as the item form, short confirmations, and the photo viewer. */
-export const DIALOG_WIDTHS = { form: 560, confirm: 420, viewer: 760 } as const;
+/**
+ * Widest size of each dialog, in px: forms, the item form (wide, so a vehicle's brand, model, generation and version
+ * fit on one line), short confirmations, and the photo viewer.
+ */
+export const DIALOG_WIDTHS = { form: 560, wide: 880, confirm: 420, viewer: 760 } as const;
 /** How far a bottom sheet's handle is dragged down, in px, before letting go closes the sheet. */
 export const SHEET_CLOSE_DRAG = 80;
 /** A bottom sheet's handle, the bar its user drags it down by, in px. */

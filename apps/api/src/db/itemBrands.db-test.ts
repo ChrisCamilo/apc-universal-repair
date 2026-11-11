@@ -143,7 +143,7 @@ async function checkMigrated(client: PrismaClient) {
     assert.equal(item.minQuantity, old.minQuantity);
     assert.deepEqual(
       item.vehicles.map((vehicle) => ({ ...vehicle })),
-      [{ id: old.id, itemId: old.id, position: 0, vehicleBrandId: OLD.brand.id, vehicleModelId: old.vehicleModelId }],
+      [{ id: old.id, itemId: old.id, position: 0, vehicleBrandId: OLD.brand.id, vehicleModelId: old.vehicleModelId, firstYear: null, lastYear: null, version: null }],
     );
     assert.equal(item.createdAt.toISOString(), new Date(old.createdAt).toISOString());
     assert.equal(item.brands.length, 1);

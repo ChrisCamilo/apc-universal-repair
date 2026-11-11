@@ -600,6 +600,8 @@ test('Mobile: the filter sheet counts what its choice would show before applying
     'Marca da peça, Todas',
     'Marca do veículo, Todas',
     'Modelo do veículo, Todos',
+    'Geração, Todas',
+    'Versão do veículo, Todas',
     'Cor, Todas',
     'Local, Todos',
   ]);

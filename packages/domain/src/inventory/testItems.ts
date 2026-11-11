@@ -27,12 +27,14 @@ function nextId(): string {
 /**
  * Builds an item for a test from flat fields, filling in what the test doesn't look at. Its one brand takes the
  * item's id, as an item from before brands has after the migration, unless brandId names another; its one vehicle is
- * its vehicle brand and model, a Volkswagen of any model unless given; its quantity is the brands' sum unless given.
+ * its vehicle brand and model (and generation and version, when given), a Volkswagen of any model unless given; its
+ * quantity is the brands' sum unless given.
  * @param fields The fields that matter for the test.
  * @returns A complete item.
  */
 export function testItem(fields: FlatItem = {}): Item {
-  const { brandId, brands, partBrand, code, color, location, unitPriceCents, photos, vehicleBrand, vehicleModel, vehicles, ...own } = fields;
+  const { brandId, brands, partBrand, code, color, location, unitPriceCents, photos, vehicleBrand, vehicleModel, firstYear, lastYear, version, vehicles, ...own } =
+    fields;
   const id = own.id ?? nextId();
   const made: ItemBrand[] = brands ?? [
     {
@@ -49,7 +51,14 @@ export function testItem(fields: FlatItem = {}): Item {
   return {
     name: "Item",
     category: "Motor",
-    vehicles: vehicles ?? [{ vehicleBrand: vehicleBrand ?? "Volkswagen", vehicleModel: vehicleModel ?? null }],
+    vehicles: vehicles ?? [
+      {
+        vehicleBrand: vehicleBrand ?? "Volkswagen",
+        vehicleModel: vehicleModel ?? null,
+        ...(firstYear !== undefined && { firstYear, lastYear }),
+        ...(version !== undefined && { version }),
+      },
+    ],
     position: NOT_APPLICABLE,
     side: NOT_APPLICABLE,
     minQuantity: 0,

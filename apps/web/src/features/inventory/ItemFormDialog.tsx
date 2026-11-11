@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@apc/domain/auth'
+import { EMPTY_CATALOG, vehicleSuggestions, type Catalog } from '@apc/domain/catalog'
 import { copyIcon, pencilIcon, plusIcon, trashIcon } from '@apc/tokens/icons'
 import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, POSITIONS, SIDES, type Item, type ItemBrand } from '@apc/domain/items'
 import {
@@ -67,7 +68,9 @@ import { VehiclesField } from './VehiclesField.tsx'
 // vehicle maker's original codes, typed as chips, each shown with its message when a brand of the item or another item
 // has it; see CodeListField), then a
 // section for each brand that makes the part, with its photos, part brand, code, quantity, unit price, color and
-// location. Each vehicle is a line of its brand and model; "Adicionar veículo" adds a blank line and "Adicionar marca"
+// location. Each vehicle is a line of its brand, its model, and optionally its generation ("85/90") and version ("1.6
+// GLX"), which offer what the catalog and the stock hold for that model and take any text, the generation read as years
+// (see readGeneration); the dialog is wide, so the four fit on one line. "Adicionar veículo" adds a blank line and "Adicionar marca"
 // a blank brand, and each line's or brand's trash, in red, takes it out while another is left. Category, part brands and
 // the vehicles' brands and models are comboboxes of the lists the API keeps, where "+ Criar" adds a new name to its
 // list, picks it and says so in a toast; a line's model only lists its brand's models, is created under that brand,
@@ -113,6 +116,8 @@ type ItemFormDialogProps = {
   items: Item[]
   /** The lists the comboboxes pick from. */
   lists: ItemLists
+  /** The vehicle catalog, for the generations and versions a vehicle's fields offer; none while it isn't loaded. */
+  catalog?: Catalog
   /** Creates a name in one of the lists. */
   onCreateEntry: CreateListEntry
   onClose: () => void
@@ -147,6 +152,7 @@ export function ItemFormDialog({
   scrollToBrand,
   items,
   lists,
+  catalog = EMPTY_CATALOG,
   onCreateEntry,
   onClose,
   onSaved,
@@ -382,6 +388,7 @@ export function ItemFormDialog({
       <Dialog
         open={open}
         onClose={onClose}
+        size="wide"
         title={viewing ? 'Detalhes do item' : item ? (phone ? item.name : 'Editar item') : 'Novo item'}
         closable={!screen}
         back={screen ? 'Voltar ao estoque' : undefined}
@@ -498,6 +505,7 @@ export function ItemFormDialog({
                 vehicles={form.vehicles}
                 errors={errors.vehicles}
                 lists={lists}
+                suggest={(vehicle) => vehicleSuggestions(catalog, items, vehicle)}
                 brands={options.vehicleBrands}
                 onVehiclesChange={(vehicles) => {
                   setForm((typed) => ({ ...typed, vehicles }))
@@ -508,12 +516,14 @@ export function ItemFormDialog({
             ) : (
             <div role="group" aria-label={VEHICLES_LABEL} className={classes.vehicles()} data-testid={ids.vehicles}>
               <Text size="sm" tone="muted">
-                Os veículos em que a peça serve. Deixe o modelo vazio se serve em qualquer modelo da marca.
+                Os veículos em que a peça serve. Deixe o modelo vazio se serve em qualquer modelo da marca; a geração e a
+                versão são opcionais.
               </Text>
               {form.vehicles.map((vehicle, index) => {
                 const brand = findEntry(lists.vehicleBrands, vehicle.vehicleBrand)
                 const shown = errors.vehicles?.[index] ?? {}
                 const line = `Veículo ${index + 1}`
+                const suggested = vehicleSuggestions(catalog, items, vehicle)
                 return (
                   <div key={index} role="group" aria-label={line} className={classes.vehicle()} data-testid={ids.vehicle}>
                     <Combobox
@@ -539,6 +549,28 @@ export function ItemFormDialog({
                       placeholder={brand ? 'Qualquer modelo' : 'Escolha a marca do veículo primeiro'}
                       error={shown.vehicleModel}
                       disabled={!brand}
+                    />
+                    <Combobox
+                      label={VEHICLE_FIELD_LABELS.generation}
+                      value={vehicle.generation ?? ''}
+                      onValueChange={(value) => changeVehicle(index, 'generation', value)}
+                      options={suggested.generations}
+                      noun="geração"
+                      toggleLabel="Mostrar gerações"
+                      emptyLabel="Nenhuma geração conhecida para esse modelo"
+                      placeholder="Ex.: 85/90"
+                      error={shown.generation}
+                    />
+                    <Combobox
+                      label={VEHICLE_FIELD_LABELS.version}
+                      value={vehicle.version ?? ''}
+                      onValueChange={(value) => changeVehicle(index, 'version', value)}
+                      options={suggested.versions}
+                      noun="versão"
+                      toggleLabel="Mostrar versões"
+                      emptyLabel="Nenhuma versão conhecida para esse modelo"
+                      placeholder="Ex.: 1.6 GLX"
+                      error={shown.version}
                     />
                     {form.vehicles.length > 1 && (
                       <div className={classes.removeVehicle()} data-testid={ids.removeVehicle}>

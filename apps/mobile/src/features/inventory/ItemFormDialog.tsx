@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import { apiFetch } from '@apc/domain/auth';
+import { EMPTY_CATALOG, vehicleSuggestions, type Catalog } from '@apc/domain/catalog';
 import { copyIcon, pencilIcon, plusIcon } from '@apc/tokens/icons';
 import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, type Item, type ItemBrand } from '@apc/domain/items';
 import {
@@ -59,8 +60,8 @@ import { VehiclesField } from './VehiclesField';
 // typed as chips, each shown with its message when a brand of the item or another item has it; see CodeListField),
 // then a raised card for each brand that makes the part, with its photos, taken with the camera or picked from the
 // gallery, its part brand and code, then its quantity and price side by side, and its color and location. The
-// vehicles are chips, and "Adicionar veículo" opens a new one's brand and model, checked before it joins them (see
-// VehiclesField); a dashed "Adicionar marca" adds a blank brand, and each brand's "Remover" takes it out while another
+// vehicles are chips, and "Adicionar veículo" opens a new one's brand, model, generation and version, the last two
+// offering what the catalog and the stock hold for the model, checked before it joins them (see VehiclesField); a dashed "Adicionar marca" adds a blank brand, and each brand's "Remover" takes it out while another
 // is left. Category, part brands and the vehicles' brands and models are comboboxes of the lists the API keeps, where
 // "+ Criar" adds a new name to its list, picks it and says so in a toast; a vehicle's model only lists its brand's
 // models, is created under that brand, stays locked until a brand of the list is chosen and clears when the brand
@@ -98,6 +99,8 @@ type ItemFormDialogProps = {
   items: Item[];
   /** The lists the comboboxes pick from. */
   lists: ItemLists;
+  /** The vehicle catalog, for the generations and versions a vehicle's fields offer; none while it isn't loaded. */
+  catalog?: Catalog;
   /** Creates a name in one of the lists. */
   onCreateEntry: CreateListEntry;
   onClose: () => void;
@@ -134,6 +137,7 @@ export function ItemFormDialog({
   scrollToBrand,
   items,
   lists,
+  catalog = EMPTY_CATALOG,
   onCreateEntry,
   onClose,
   onSaved,
@@ -414,6 +418,7 @@ export function ItemFormDialog({
             errors={errors.vehicles}
             lists={lists}
             brands={options.vehicleBrands}
+            suggest={(vehicle) => vehicleSuggestions(catalog, items, vehicle)}
             onVehiclesChange={(vehicles) => {
               setForm((typed) => ({ ...typed, vehicles }));
               setErrors((shown) => ({ ...shown, vehicles: undefined }));

@@ -31,12 +31,14 @@ import type { ActiveSession } from "../auth/sessions.js";
 export const BRAND_ORDER = [{ position: "asc" }, { id: "asc" }] satisfies Prisma.ItemBrandOrderByWithRelationInput[];
 /** The order of an item's vehicles: by their position, the first one the row shows. */
 const VEHICLE_ORDER = [{ position: "asc" }, { id: "asc" }] satisfies Prisma.ItemVehicleOrderByWithRelationInput[];
-/** What a vehicle is read with: the names of its brand and model. */
+/** The names of a vehicle's brand and model, all sorting reads of it. */
 const VEHICLE_NAMES = { vehicleBrand: { select: { name: true } }, vehicleModel: { select: { name: true } } } satisfies Prisma.ItemVehicleSelect;
+/** What an item's vehicle is read with: its names, its generation's years and its version. */
+const VEHICLE_SELECT = { ...VEHICLE_NAMES, firstYear: true, lastYear: true, version: true } satisfies Prisma.ItemVehicleSelect;
 /** What every item query includes: the names of its list entries, and its brands with their photos, in order. */
 export const ITEM_INCLUDE = {
   category: { select: { name: true } },
-  vehicles: { orderBy: VEHICLE_ORDER, select: VEHICLE_NAMES },
+  vehicles: { orderBy: VEHICLE_ORDER, select: VEHICLE_SELECT },
   originalCodes: { orderBy: { position: "asc" }, select: { code: true } },
   brands: { orderBy: BRAND_ORDER, include: { partBrand: { select: { name: true } }, photos: { orderBy: { position: "asc" } } } },
 } satisfies Prisma.ItemInclude;
@@ -108,9 +110,10 @@ export function createData(input: ItemCreate, ids: ListIds): Prisma.ItemUnchecke
 
 /**
  * Builds the list filter: the search matches the name, any brand's part code or any original code, every other
- * filter matches any of its values (with "Ambos" fitting a specific position or side, a vehicle brand, or a vehicle
- * model with its brand, matching an item when any of its vehicles has it, and a part brand, color or location when
- * any of its brands has it), and the status compares the brands' quantity with the item's own minimum.
+ * filter matches any of its values (with "Ambos" fitting a specific position or side, a vehicle brand, a vehicle
+ * model with its brand, a generation ("1985-1990", "2019-" while still made) or a version, matching an item when any
+ * of its vehicles has it, and a part brand, color or location when any of its brands has it), and the status compares
+ * the brands' quantity with the item's own minimum.
  * @param query Validated list query.
  * @param minQuantity Reference to the minQuantity column, for comparing two columns of the same row.
  * @returns The where clause for prisma.item.findMany.
@@ -155,6 +158,16 @@ export function itemWhere(query: ItemListQuery, minQuantity: Prisma.FieldRef<"It
     and.push({
       vehicles: { some: { OR: models.map((pair) => ({ vehicleBrand: { name: pair.vehicleBrand }, vehicleModel: { name: pair.vehicleModel } })) } },
     });
+  }
+  const generations = query.generation.flatMap((value) => {
+    const [first, last] = value.split("-");
+    return /^\d+$/.test(first) ? [{ firstYear: Number(first), lastYear: last ? Number(last) : null }] : [];
+  });
+  if (query.generation.length > 0) {
+    and.push({ vehicles: { some: { OR: generations.length > 0 ? generations : [{ id: { in: [] } }] } } });
+  }
+  if (query.version.length > 0) {
+    and.push({ vehicles: { some: { version: { in: query.version } } } });
   }
   if (query.status === "out") {
     and.push({ quantity: 0 });
@@ -206,8 +219,8 @@ function textOrNull(value: string | undefined): string | null {
 }
 
 /**
- * Builds the rows of an item's vehicles, each at its place in the list, adding the vehicle brands and models the lists
- * don't hold (see listIds).
+ * Builds the rows of an item's vehicles, each at its place in the list with its generation and version, adding the
+ * vehicle brands and models the lists don't hold (see listIds).
  * @param tx Database client, in the transaction that saves the item.
  * @param vehicles The vehicles as sent.
  * @returns Data for prisma.itemVehicle.create, without the item.
@@ -216,7 +229,14 @@ export async function vehiclesData(tx: Prisma.TransactionClient, vehicles: reado
   const rows = [];
   for (const [position, vehicle] of vehicles.entries()) {
     const ids = await listIds(tx, { vehicle });
-    rows.push({ position, vehicleBrandId: ids.vehicleBrandId!, vehicleModelId: ids.vehicleModelId ?? null });
+    rows.push({
+      position,
+      vehicleBrandId: ids.vehicleBrandId!,
+      vehicleModelId: ids.vehicleModelId ?? null,
+      firstYear: vehicle.firstYear ?? null,
+      lastYear: vehicle.firstYear == null ? null : (vehicle.lastYear ?? null),
+      version: textOrNull(vehicle.version),
+    });
   }
   return rows;
 }
@@ -234,7 +254,13 @@ export function toItem(row: ItemRow, session: ActiveSession): Item {
     id: row.id,
     name: row.name,
     category: row.category.name,
-    vehicles: row.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand.name, vehicleModel: vehicle.vehicleModel?.name ?? null })),
+    vehicles: row.vehicles.map((vehicle) => ({
+      vehicleBrand: vehicle.vehicleBrand.name,
+      vehicleModel: vehicle.vehicleModel?.name ?? null,
+      firstYear: vehicle.firstYear,
+      lastYear: vehicle.lastYear,
+      version: vehicle.version,
+    })),
     position: labelOf(POSITION_VALUES, row.position),
     side: labelOf(SIDE_VALUES, row.side),
     quantity: row.quantity,

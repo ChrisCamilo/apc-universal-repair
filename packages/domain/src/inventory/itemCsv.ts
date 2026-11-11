@@ -5,6 +5,7 @@ import { addCodes, ITEM_FORM_MESSAGES, parsePrice, priceInput } from "./itemForm
 import {
   capitalizeFirst,
   codeKey,
+  generationText,
   itemCreateSchema,
   itemDetails,
   itemListResponseSchema,
@@ -13,8 +14,10 @@ import {
   NOT_APPLICABLE,
   optionKey,
   POSITIONS,
+  readGeneration,
   SIDES,
   UNIVERSAL_BRAND,
+  VEHICLE_VERSION_MAX,
   vehicleKey,
   type Item,
   type ItemCreate,
@@ -29,7 +32,8 @@ import {
 // Each row is a brand of an item: rows with the same value in the "item" column are the brands of one item, and must
 // describe it the same way (name, category, vehicles, position, side, minimum, original codes), each with its own part
 // brand; a row without one is an item of its own. The "vehicles" column holds the vehicles the item fits, separated by
-// "|", each "Marca / Modelo" or the brand alone for any model; a file with the "vehicle_brand" and "vehicle_model"
+// "|", each "Marca / Modelo", optionally followed by " / " and its generation with its full years and its version
+// ("Chevrolet / Monza / 1985-1990 / 1.6 GLX"), or the brand alone for any model; a file with the "vehicle_brand" and "vehicle_model"
 // columns of before still reads, as the item's one vehicle. The "original_codes" column holds the vehicle maker's
 // codes, separated by "|". Text follows the writing rule, codes are uppercase, and a category, brand or model
 // already in the lists takes its spelling there; the names not in the lists yet are listed, to be created by the
@@ -248,18 +252,24 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
 }
 
 /**
- * Writes a vehicle as the vehicles column holds it.
+ * Writes a vehicle as the vehicles column holds it: its brand, its model, its generation with its full years and its
+ * version, apart by " / ", leaving out what it doesn't have at the end.
  * @param vehicle The vehicle.
- * @returns E.g. "Volkswagen / Gol", or "Volkswagen" for any model.
+ * @returns E.g. "Volkswagen / Gol", "Volkswagen" for any model, or "Chevrolet / Monza / 1985-1990 / 1.6 GLX".
  */
 function csvVehicle(vehicle: ItemVehicle): string {
-  return vehicle.vehicleModel ? `${vehicle.vehicleBrand}${CSV_MODEL_SEPARATOR}${vehicle.vehicleModel}` : vehicle.vehicleBrand;
+  const parts = [vehicle.vehicleBrand, vehicle.vehicleModel ?? "", generationText(vehicle), vehicle.version ?? ""];
+  while (parts.length > 1 && !parts[parts.length - 1]) {
+    parts.pop();
+  }
+  return parts.join(CSV_MODEL_SEPARATOR);
 }
 
 /**
- * Reads the vehicles column of a row: each vehicle "Marca / Modelo", or the brand alone for any model, separated by
- * "|", the names in their lists' spelling or written by the rule; and checks at least one is given, each once, and
- * Universal alone.
+ * Reads the vehicles column of a row: each vehicle "Marca / Modelo / Geração / Versão", the last ones left out when not
+ * given, or the brand alone for any model, separated by "|", the names in their lists' spelling or written by the
+ * rule; a model with a "/" of its own still reads when no generation follows it. Checks at least one is given, each
+ * once, Universal alone, and each generation and version as the item form does.
  * @param text The column's value.
  * @param lists The lists the API keeps.
  * @param errors The row's errors, added to.
@@ -272,18 +282,35 @@ function csvVehicles(text: string, lists: ItemLists, errors: string[]): ItemVehi
     .filter(Boolean)
     .map((part): ItemVehicleCreate => {
       const at = part.indexOf("/");
-      const [brandText, modelText] = at < 0 ? [part, ""] : [part.slice(0, at).trim(), part.slice(at + 1).trim()];
+      const segments = part.split("/").map((segment) => segment.trim());
+      // A third segment that is empty or starts with a year is a generation; otherwise the model goes on past its "/".
+      const withGeneration = segments.length >= 3 && (segments[2] === "" || /^\d{2,4}\b/.test(segments[2]));
+      const [brandText, modelText] = at < 0 ? [part, ""] : withGeneration ? segments : [part.slice(0, at).trim(), part.slice(at + 1).trim()];
+      const generationTyped = withGeneration ? segments[2] : "";
+      const version = withGeneration ? segments.slice(3).join("/").trim() : "";
       const brand = findEntry(lists.vehicleBrands, brandText);
       const models = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
       const model = modelText && (findEntry(models, modelText)?.name ?? listName(modelText));
-      return { vehicleBrand: brand?.name ?? listName(brandText), vehicleModel: model };
+      if (!readGeneration(generationTyped)) {
+        errors.push(`Geração “${generationTyped}”: ${ITEM_FORM_MESSAGES.generationInvalid.toLowerCase()}`);
+      }
+      if (version.length > VEHICLE_VERSION_MAX) {
+        errors.push(`Versão “${version}”: ${ITEM_FORM_MESSAGES.versionTooLong.toLowerCase()}`);
+      }
+      const generation = readGeneration(generationTyped);
+      return {
+        vehicleBrand: brand?.name ?? listName(brandText),
+        vehicleModel: model,
+        ...(generation?.firstYear != null && generation),
+        ...(version && { version: capitalizeFirst(version) }),
+      };
     });
   if (vehicles.length === 0) {
     errors.push(ITEM_FORM_MESSAGES.vehicleBrand);
   }
   const repeated = vehicles.find((vehicle, index) => vehicles.slice(0, index).some((other) => vehicleKey(other) === vehicleKey(vehicle)));
   if (repeated) {
-    errors.push(`Veículo repetido: ${csvVehicle({ vehicleBrand: repeated.vehicleBrand, vehicleModel: repeated.vehicleModel || null })}.`);
+    errors.push(`Veículo repetido: ${csvVehicle({ ...repeated, vehicleModel: repeated.vehicleModel || null })}.`);
   }
   if (vehicles.length > 1 && vehicles.some((vehicle) => optionKey(vehicle.vehicleBrand) === optionKey(UNIVERSAL_BRAND))) {
     errors.push(ITEM_FORM_MESSAGES.universalAlone);
@@ -341,7 +368,7 @@ export function exportScope(count: number, narrowed: boolean): string {
 export function importedDetails(item: ItemCreate): string {
   return itemDetails({
     ...item,
-    vehicles: item.vehicles.map((vehicle) => ({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel || null })),
+    vehicles: item.vehicles.map((vehicle) => ({ ...vehicle, vehicleModel: vehicle.vehicleModel || null })),
     position: item.position ?? NOT_APPLICABLE,
     side: item.side ?? NOT_APPLICABLE,
     brands: item.brands.map((brand) => ({ ...brand, location: brand.location || null, color: brand.color ?? NOT_APPLICABLE })),

@@ -264,6 +264,27 @@ test("Shared: a phone's new vehicle is checked against the item's before it join
   assert.equal(vehicleText({ vehicleBrand: "Volkswagen", vehicleModel: "" }), "Volkswagen (qualquer modelo)");
 });
 
+// Types a vehicle's generation and version: "08/12" goes as its years and the version as typed, both left out when
+// blank; a generation that isn't years or a version past 30 characters is refused on its field; the same model in two
+// generations is no repeat; and an item's generation fills the form as "08/12" and shows so in its details.
+test("Shared: a vehicle's generation and version are checked and sent as years", () => {
+  const gol = { vehicleBrand: "Volkswagen", vehicleModel: "Gol" };
+  const form = { ...VALID, vehicles: [{ ...gol, generation: "08/12", version: "1.0 g5" }, { ...gol, generation: "2013-" }] };
+  assert.deepEqual(itemFormErrors(form, ITEMS, LISTS), {});
+  assert.deepEqual(itemFormBody(form, []).vehicles, [
+    { ...gol, firstYear: 2008, lastYear: 2012, version: "1.0 g5" },
+    { ...gol, firstYear: 2013, lastYear: null },
+  ]);
+  const wrong = { ...VALID, vehicles: [{ ...gol, generation: "12/08", version: "x".repeat(31) }] };
+  assert.deepEqual(itemFormErrors(wrong, ITEMS, LISTS).vehicles, [
+    { generation: ITEM_FORM_MESSAGES.generationInvalid, version: ITEM_FORM_MESSAGES.versionTooLong },
+  ]);
+  const held = item({ id: "d", name: "Junta", ...gol, firstYear: 2008, lastYear: 2012, version: "1.0 G5" });
+  assert.deepEqual(itemFormOf(held).vehicles, [{ ...gol, generation: "08/12", version: "1.0 G5" }]);
+  assert.equal(itemFormChanged(itemFormOf(held), held, []), false);
+  assert.equal(vehiclesText(held), "Volkswagen Gol 08/12 1.0 G5");
+});
+
 // Checks a phone's form names every position and side in full words, N/A first, as the filter sheet does after its
 // "every" choice.
 test("Shared: a phone's form chooses the position and the side in full words", () => {
