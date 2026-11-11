@@ -14,7 +14,7 @@ import sparkPlug from './photos/vela-de-ignicao.svg'
 /** The stock, oldest first. */
 export const DEMO_ITEMS: ItemCreate[] = [
   part('Pastilha de freio dianteira', 'Freios', [car('Volkswagen', 'Gol'), car('Volkswagen', 'Parati')], [brand('Cobreq', 'N-1210', 12, 8990, 'A-2'), brand('Fras-le', 'PD/1210', 4, 9490, 'A-2')], { position: 'D', side: 'Ambos', minQuantity: 6, originalCodes: ['5U0 698 151'] }),
-  part('Disco de freio ventilado', 'Freios', [car('Chevrolet', 'Monza', { firstYear: 1985, lastYear: 1990, version: '1.6 GLX' })], [brand('Fremax', 'BD-3377', 4, 21500, 'A-3')], { position: 'D', side: 'Ambos', minQuantity: 2 }),
+  part('Disco de freio ventilado', 'Freios', [car('Chevrolet', 'Monza', { firstYear: 1985, lastYear: 1990, version: '1.6 GLX' })], [brand('Fremax', 'BD-3377', 4, 21500, 'A-3')], { position: 'D', side: 'Ambos', minQuantity: 2, material: 'Ferro fundido', description: 'Ventilado, 256 mm' }),
   part('Lona de freio traseira', 'Freios', [car('Fiat', 'Uno'), car('Fiat', 'Prêmio')], [brand('Fras-le', 'L-2214', 0, 6490, 'A-4')], { position: 'T', side: 'Ambos', minQuantity: 2 }),
   part('Cilindro mestre de freio', 'Freios', [car('Ford', 'Escort')], [brand('TRW', 'RCMA-0081', 2, 32900, 'A-5')], { minQuantity: 1 }),
   part('Flexível de freio', 'Freios', [car('Chevrolet', 'Chevette')], [brand('Cobreq', 'FL-0233', 6, 2890, 'A-6')], { position: 'D', side: 'LE', minQuantity: 2 }),
@@ -90,7 +90,7 @@ function car(
  * @param category Its category.
  * @param vehicles The vehicles it fits.
  * @param brands Who makes it, the first the cover.
- * @param fields Its position, side, minimum stock and original codes.
+ * @param fields Its position, side, minimum stock, original codes, and material and short description when it has them.
  * @returns The item as the API takes it.
  */
 function part(
@@ -98,7 +98,7 @@ function part(
   category: string,
   vehicles: ItemVehicleCreate[],
   brands: ItemBrandCreate[],
-  fields: Pick<ItemCreate, 'position' | 'side' | 'minQuantity' | 'originalCodes'>,
+  fields: Pick<ItemCreate, 'position' | 'side' | 'minQuantity' | 'originalCodes' | 'material' | 'description'>,
 ): ItemCreate {
   return { name, category, vehicles, brands, ...fields }
 }
