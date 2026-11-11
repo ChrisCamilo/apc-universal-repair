@@ -35,6 +35,10 @@ on:
 jobs:
   android:
     runs-on: ubuntu-latest
+    # A new push to a pull request cancels the build of its older commit; a run by hand or a release's is never cut.
+    concurrency:
+      group: android-${{ github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     outputs:
       signed: ${{ steps.release.outputs.signed }}
     env:
