@@ -6,11 +6,13 @@ import React from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NO_SHEET_MESSAGE, type CatalogData } from '@apc/domain/catalog';
+import { NO_SHEET_MESSAGE, type CatalogData, type InventoryLink } from '@apc/domain/catalog';
+import { EMPTY_ITEM_FILTERS } from '@apc/domain/item-filters';
 import type { Item } from '@apc/domain/items';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { CatalogTab } from '../src/features/catalog/CatalogTab';
 import { PhoneHeaderContext, type PhoneHeader } from '../src/features/dashboard/phoneHeaderContext';
+import { InventoryLinkContext } from '../src/features/dashboard/inventoryLinkContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
@@ -44,16 +46,17 @@ const PARTS: Item[] = [
  * it to load.
  * @param style Style to start on.
  * @param mode Mode to start on.
+ * @param open Takes the link the Catalog opens the Inventory on.
  * @returns The rendered tree.
  */
-async function mount(style: Style, mode: Mode) {
+async function mount(style: Style, mode: Mode, open: (link: InventoryLink) => void = () => {}) {
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
-          <Harness />
+          <Harness open={open} />
         </ThemeProvider>
       </SafeAreaProvider>,
     );
@@ -234,6 +237,57 @@ test('Mobile: the Catalog search narrows the brands and opens a part found by co
   expect(shows(tree, NO_SHEET_MESSAGE)).toBe(true);
 });
 
+// Presses the Opala's name and checks its sheet shows its generations with their years and versions, its engines and the
+// two parts that fit it as cards, and an engine opens its sheet. ← goes back to the models with the Opala chosen and
+// open, its chevron closes it without leaving; the Diplomata's sheet shows under the path to it, and a part opens its
+// details in the Inventory, "Ver todas as peças" the Inventory with the Opalas' brand and models filtered.
+test("Mobile: a model's and a version's sheets list their parts and open them in the Inventory", async () => {
+  answer(() => ({ ok: true, json: () => Promise.resolve({ items: PARTS, total: PARTS.length }) }));
+  const open = jest.fn();
+  const tree = await mount('bmw90', 'night', open);
+  await press(tree, 'Chevrolet, 3 modelos · 2 fichas técnicas');
+  await press(tree, 'Opala');
+  expect(shows(tree, 'Chevrolet Opala')).toBe(true);
+  expect(['68/74', '75/79', '80/92', 'Comodoro, Diplomata, SS'].every((text) => shows(tree, text))).toBe(true);
+  expect(shows(tree, 'Peças disponíveis · 2')).toBe(true);
+  const cards = () => tree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'common.data-table.table.row');
+  expect(cards()).toHaveLength(2);
+  await pressText(tree, 'Diplomata 1986 · 4.1 L 6 cilindros');
+  expect(shows(tree, OPALA_41.title)).toBe(true);
+
+  await press(tree, 'Voltar aos modelos');
+  await press(tree, 'Opala');
+  await press(tree, 'Voltar aos modelos');
+  expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityState).toMatchObject({ selected: true, expanded: true });
+  await press(tree, 'Fechar Opala');
+  expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityState).toMatchObject({ expanded: false });
+  expect(title(tree)).toBe('Chevrolet');
+  await press(tree, 'Abrir Opala');
+  await press(tree, 'Terceira geração 1980–1992');
+  await press(tree, 'Diplomata');
+  expect(shows(tree, 'Chevrolet Opala Diplomata')).toBe(true);
+  expect(shows(tree, 'Opala › Terceira geração')).toBe(true);
+  await ReactTestRenderer.act(async () => pressable(cards()[0]).props.onPress());
+  expect(open).toHaveBeenLastCalledWith({ itemId: PARTS[0].id });
+  await pressText(tree, 'Ver todas as peças');
+  expect(open).toHaveBeenLastCalledWith({
+    filters: { ...EMPTY_ITEM_FILTERS, vehicleBrand: ['Chevrolet'], vehicleModel: ['Chevrolet|Opala 4.1', 'Chevrolet|Opala 3.8'] },
+  });
+});
+
+// Presses a model no part fits, with no engine yet, and checks its sheet and its parts say so, with no "Ver todas as
+// peças".
+test('Mobile: a model with no parts in stock says so', async () => {
+  const tree = await mount('eighties', 'day');
+  await press(tree, 'Chevrolet, 3 modelos · 2 fichas técnicas');
+  await press(tree, 'Monza');
+  expect(shows(tree, 'Chevrolet Monza')).toBe(true);
+  expect(shows(tree, 'Nenhum motor com ficha ainda')).toBe(true);
+  expect(shows(tree, 'Peças disponíveis · 0')).toBe(true);
+  expect(shows(tree, 'Nenhuma peça no estoque')).toBe(true);
+  expect(shows(tree, 'Ver todas as peças')).toBe(false);
+});
+
 // Adds a brand from beside the brands' heading in a bottom sheet, which opens its empty models, a model from beside the
 // models' heading, and a generation from the model's "⋯": the sheet says the last year can't come before the first,
 // then adds it under the model, open on it.
@@ -274,7 +328,7 @@ test('Mobile: the Catalog renames, moves and deletes branches and adds and edits
   answerChanges();
   const tree = await mount('gt4', 'day');
   await press(tree, 'Chevrolet, 3 modelos · 2 fichas técnicas');
-  await press(tree, 'Opala');
+  await press(tree, 'Abrir Opala');
   await press(tree, 'Terceira geração 1980–1992');
   await press(tree, 'Ações de Comodoro');
   expect(shows(tree, 'Mover para cima')).toBe(false);
@@ -290,7 +344,7 @@ test('Mobile: the Catalog renames, moves and deletes branches and adds and edits
   const versions = treeLabels(tree).filter((label) => ['Comodoro SL', 'SS', 'Diplomata'].includes(label));
   expect(versions).toEqual(['Comodoro SL', 'SS', 'Diplomata']);
 
-  await press(tree, 'Diplomata');
+  await press(tree, 'Abrir Diplomata');
   await pressText(tree, 'Novo motor em 1985');
   expect(shows(tree, 'Ficha do motor')).toBe(true);
   await fill(tree, 'Cilindrada (L)', '2,5');
@@ -411,12 +465,13 @@ function backButton() {
 }
 
 /**
- * Opens Chevrolet, the Opala's tree down to its 1986 engines, and the 4.1's sheet.
+ * Opens Chevrolet, the Opala's tree down to its 1986 engines, the model and the version by their chevrons, and the
+ * 4.1's sheet.
  * @param tree Rendered tree.
  */
 async function openOpala41(tree: ReactTestRenderer.ReactTestRenderer) {
   await press(tree, 'Chevrolet, 3 modelos · 2 fichas técnicas');
-  for (const name of ['Opala', 'Terceira geração 1980–1992', 'Diplomata', '1986', '4.1 L 6 cilindros']) {
+  for (const name of ['Abrir Opala', 'Terceira geração 1980–1992', 'Abrir Diplomata', '1986', '4.1 L 6 cilindros']) {
     await press(tree, name);
   }
 }
@@ -464,16 +519,21 @@ function title(tree: ReactTestRenderer.ReactTestRenderer): string {
   return tree.root.find((n) => n.type === Text && n.props.accessibilityRole === 'header' && n.props.testID === 'harness.title').props.children;
 }
 
-/** The Catalog under the Dashboard's header: the tab's name, or a deeper screen's title with its ←. */
-function Harness() {
+/**
+ * The Catalog under the Dashboard's header: the tab's name, or a deeper screen's title with its ←; and the Dashboard's
+ * links to the Inventory.
+ */
+function Harness({ open }: { open: (link: InventoryLink) => void }) {
   const [header, setHeader] = React.useState<PhoneHeader | null>(null);
   return (
     <PhoneHeaderContext.Provider value={setHeader}>
-      {header && <Pressable accessibilityLabel={header.back.label} onPress={header.back.onPress} />}
-      <Text accessibilityRole="header" testID="harness.title">
-        {header?.title ?? 'Catálogo'}
-      </Text>
-      <CatalogTab />
+      <InventoryLinkContext.Provider value={{ link: null, open, taken: () => {} }}>
+        {header && <Pressable accessibilityLabel={header.back.label} onPress={header.back.onPress} />}
+        <Text accessibilityRole="header" testID="harness.title">
+          {header?.title ?? 'Catálogo'}
+        </Text>
+        <CatalogTab />
+      </InventoryLinkContext.Provider>
     </PhoneHeaderContext.Provider>
   );
 }
