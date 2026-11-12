@@ -77,6 +77,8 @@ async function startIn(page: Page, [style, mode]: [Style, Mode]) {
 
 for (const theme of THEMES) {
   // Adds an item through the form against an API that saves it, and checks the success toast in green with the check.
+  // The item has stock above its minimum: one at its minimum raises a low-stock warning once the list loads again, and
+  // that toast takes the success's place while it is being checked.
   test(`Web: a saved item shows a success toast in ${theme.join("/")}`, { tag: [TEST_TAGS.notifications, TEST_TAGS.theme] }, async ({ page }) => {
     await startIn(page, theme);
     const stock = [FILTER];
@@ -87,7 +89,9 @@ for (const theme of THEMES) {
     });
     await serveItems(page, stock);
     await page.goto("/inventory");
-    await (await fillNewItem(page)).save.click();
+    const form = await fillNewItem(page);
+    await form.quantity.fill("5");
+    await form.save.click();
     await expectToast(page, "success", "Item “Vela de ignição” cadastrado.", theme);
   });
 
