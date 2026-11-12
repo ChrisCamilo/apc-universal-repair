@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
-import { codeKey, generationText, optionKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
+import { codeKey, generationLabel, generationText, optionKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
+import { EMPTY_ITEM_FILTERS, vehicleModelValue, type ItemFilters } from "../inventory/itemFilters.ts";
 import { distinct, generationInput } from "../inventory/itemForm.ts";
 
 // The vehicle catalog of the Catalog tab, kept by the API (GET /catalog): the catalog brands, each a vehicle brand of
@@ -18,6 +19,13 @@ import { distinct, generationInput } from "../inventory/itemForm.ts";
 // sheets it has; a brand's models, as a tree; and an engine's sheet, under the path to it. ← goes back one screen. A
 // part found by code opens its engine's sheet, or else its brand's models with its model pointed out, saying when the
 // catalog has no sheet for its vehicle.
+// A model or a version also has a sheet (carSheet): its brand, its generations with their years and versions, and the
+// engines with sheets under it; and the parts in stock that fit it (carParts). A vehicle of an item fits a model when
+// it is that model, as the code search places it; it fits a generation or a version of the model when what it states
+// agrees: its years those of the generation, its version that version (or one of the generation's), by name ignoring
+// case, accents and spaces; what it leaves out fits any. The Catalog then opens the Inventory (InventoryLink) on a
+// part's details, or with the filters that list every part that fits (carFilters): the vehicle brands and models of
+// the vehicles that fit, and for a version their generations and versions.
 // The tree is edited through the API: a catalog brand is added by name (a vehicle brand of the lists, added there when
 // they don't hold it), a model under a brand (a vehicle model of the lists the same way), a generation under a model,
 // a version under a generation, a year under a version and an engine with its sheet under a year; each but an engine
@@ -145,6 +153,16 @@ export type CatalogNode = {
 };
 /** A brand of the catalog: its id, the name on its tile, the letters on its line on a phone and its model tree. */
 export type CatalogBrand = { id: string; name: string; mark: string; models: CatalogNode[] };
+/**
+ * A model's or a version's sheet: its title, its generations (a version's own) with their years ("85/90") and, for a
+ * model, their versions, and the engines with sheets under it, each named by its year, and its version under a model.
+ */
+export type CarSheet = {
+  level: "model" | "version";
+  title: string;
+  generations: { id: string; name: string; years: string; versions: string[] }[];
+  engines: { id: string; label: string }[];
+};
 /** The catalog as the screens use it: the brands with their trees, and the sheet of each engine by engine id. */
 export type Catalog = { brands: readonly CatalogBrand[]; sheets: Readonly<Record<string, EngineSheet>> };
 /** The catalog as the API sends it. */
@@ -174,13 +192,17 @@ export type EngineFields = { litres: string; cylinders: string; drive: string; s
 export type CatalogEngine = z.infer<typeof catalogEngineSchema>;
 export type EngineDrive = z.infer<typeof engineDriveSchema>;
 /**
- * A screen of the Catalog on a phone: the brands; a brand's models, with a model pointed out and an engine open in the
- * tree, and the vehicle a part fits that the catalog has no sheet for; or an engine's sheet.
+ * A screen of the Catalog on a phone: the brands; a brand's models, with a model pointed out, a node chosen and open in
+ * the tree, and the vehicle a part fits that the catalog has no sheet for; an engine's sheet; or a model's or a
+ * version's sheet with its parts.
  */
 export type CatalogScreen =
   | { view: "brands" }
-  | { view: "models"; brandId: string; modelId?: string; engineId?: string; missing?: string }
-  | { view: "sheet"; brandId: string; engineId: string };
+  | { view: "models"; brandId: string; modelId?: string; nodeId?: string; missing?: string }
+  | { view: "sheet"; brandId: string; engineId: string }
+  | { view: "car"; brandId: string; nodeId: string };
+/** What the Catalog asks the Inventory to show: an item's details, or the items some filters let through. */
+export type InventoryLink = { itemId: string } | { filters: ItemFilters };
 /** An engine's sheet: its title, the readouts under it and a short summary. */
 export type EngineSheet = { title: string; specs: string[]; summary: string };
 /** Where a part's vehicle is in the catalog: its brand, and its model and engine when the catalog has them. */
@@ -273,6 +295,71 @@ export function belowNode(node: CatalogNode): string | null {
   ];
   const parts = words.filter(([level]) => counts[level] > 0).map(([level, one, many]) => `${counts[level]} ${counts[level] === 1 ? one : many}`);
   return parts.length > 0 ? parts.join(", ") : null;
+}
+
+/**
+ * Sets the filters that list in the Inventory every part that fits a model or a version: the vehicle brands and
+ * models of the vehicles that fit, and for a version, the generations and versions they state, as the items hold them.
+ * @param catalog The catalog.
+ * @param brandId The node's brand.
+ * @param nodeId A model or a version of its tree.
+ * @param items Every item in stock.
+ * @returns Every filter off but those.
+ */
+export function carFilters(catalog: Catalog, brandId: string, nodeId: string, items: readonly Item[]): ItemFilters {
+  const path = treePath(catalog, brandId, nodeId);
+  const vehicles = items.flatMap((item) => item.vehicles).filter((vehicle) => vehicleFits(catalog, path, vehicle));
+  const deeper = path.length > 1;
+  return {
+    ...EMPTY_ITEM_FILTERS,
+    vehicleBrand: [...new Set(vehicles.map((vehicle) => vehicle.vehicleBrand))],
+    vehicleModel: [...new Set(vehicles.map((vehicle) => vehicleModelValue(vehicle.vehicleBrand, vehicle.vehicleModel!)))],
+    generation: deeper ? [...new Set(vehicles.filter((vehicle) => vehicle.firstYear != null).map(generationText))] : [],
+    version: deeper ? [...new Set(vehicles.flatMap((vehicle) => (vehicle.version ? [vehicle.version] : [])))] : [],
+  };
+}
+
+/**
+ * Lists the parts in stock that fit a node of the tree: a model, a generation or a version (see vehicleFits).
+ * @param catalog The catalog.
+ * @param brandId The node's brand.
+ * @param nodeId The node.
+ * @param items Every item in stock.
+ * @returns The items one of whose vehicles fits it, in their order.
+ */
+export function carParts(catalog: Catalog, brandId: string, nodeId: string, items: readonly Item[]): Item[] {
+  const path = treePath(catalog, brandId, nodeId);
+  return items.filter((item) => item.vehicles.some((vehicle) => vehicleFits(catalog, path, vehicle)));
+}
+
+/**
+ * Builds a model's or a version's sheet from the tree.
+ * @param catalog The catalog.
+ * @param brandId The node's brand.
+ * @param nodeId A model or a version of its tree.
+ * @returns E.g. "Chevrolet Opala" with its three generations and the engines "Diplomata 1986 · 2.5 L 4 cilindros"…, or
+ * "Chevrolet Opala Diplomata" with its generation and "1986 · 2.5 L 4 cilindros"….
+ */
+export function carSheet(catalog: Catalog, brandId: string, nodeId: string): CarSheet {
+  const brand = catalog.brands.find((each) => each.id === brandId)!;
+  const [model, generation, version] = treePath(catalog, brandId, nodeId);
+  const generations = version ? [generation] : (model.children ?? []);
+  const versions = version ? [version] : generations.flatMap((each) => each.children ?? []);
+  return {
+    level: version ? "version" : "model",
+    title: [brand.name, model.label, version?.label].filter(Boolean).join(" "),
+    generations: generations.map((each) => ({
+      id: each.id,
+      name: each.label,
+      years: generationLabel({ firstYear: each.firstYear!, lastYear: each.lastYear ?? null }),
+      versions: version ? [] : (each.children ?? []).map((child) => child.label),
+    })),
+    engines: versions.flatMap((each) =>
+      (each.children ?? []).flatMap((year) =>
+        (year.children ?? []).map((engine) => ({ id: engine.id, label: `${version ? "" : `${each.label} `}${year.label} · ${engine.label}` })),
+      ),
+    ),
+  };
 }
 
 /**
@@ -622,6 +709,15 @@ export function firstSheet(catalog: Catalog, nodes: readonly CatalogNode[]): str
 }
 
 /**
+ * Tells whether a node of the tree has a sheet of its own with its parts: a model or a version.
+ * @param node A node of the tree, or none.
+ * @returns True for a model or a version.
+ */
+export function hasCarSheet(node: CatalogNode | undefined): boolean {
+  return node?.level === "model" || node?.level === "version";
+}
+
+/**
  * Says which vehicles a part fits, as the code search lists it: the one it reveals in the catalog (see partFit), and
  * how many more it fits.
  * @param catalog The catalog.
@@ -751,15 +847,17 @@ export function revealedVehicle(catalog: Catalog, item: Pick<Item, "vehicles">):
 }
 
 /**
- * Finds the screen ← goes back to on a phone: from a sheet, its brand's models open on its engine; from the models,
- * the brands.
+ * Finds the screen ← goes back to on a phone: from an engine's sheet, or a model's or a version's, its brand's models
+ * open on it; from the models, the brands.
  * @param screen The screen on show.
  * @returns The screen before it, or null on the brands, the first.
  */
 export function screenBack(screen: CatalogScreen): CatalogScreen | null {
   switch (screen.view) {
     case "sheet":
-      return { view: "models", brandId: screen.brandId, engineId: screen.engineId };
+      return { view: "models", brandId: screen.brandId, nodeId: screen.engineId };
+    case "car":
+      return { view: "models", brandId: screen.brandId, nodeId: screen.nodeId };
     case "models":
       return CATALOG_HOME;
     case "brands":
@@ -780,6 +878,7 @@ export function screenHeader(catalog: Catalog, screen: CatalogScreen): { title: 
     case "models":
       return { title: catalog.brands.find((brand) => brand.id === screen.brandId)?.name ?? "Catálogo", back: "Voltar às marcas" };
     case "sheet":
+    case "car":
       return { title: catalog.brands.find((brand) => brand.id === screen.brandId)?.name ?? "Catálogo", back: "Voltar aos modelos" };
   }
 }
@@ -806,6 +905,31 @@ export function treePath(catalog: Catalog, brandId: string, nodeId: string): Cat
     return [];
   };
   return find(catalog.brands.find((brand) => brand.id === brandId)?.models ?? []);
+}
+
+/**
+ * Tells whether a vehicle of an item fits a node of the tree: it is the node's model, as the code search places it
+ * (locatePart), and what it states agrees with the node's generation and version: its years with the generation's,
+ * its version, by name ignoring case, accents and spaces, with the version or one of the generation's. What it leaves
+ * out fits any.
+ * @param catalog The catalog.
+ * @param path The nodes from the model down to the node: a model, a generation or a version.
+ * @param vehicle A vehicle of an item.
+ * @returns True when it fits.
+ */
+function vehicleFits(catalog: Catalog, path: readonly CatalogNode[], vehicle: ItemVehicle): boolean {
+  const [model, generation, version] = path;
+  if (!model || locatePart(catalog, vehicle)?.modelId !== model.id) {
+    return false;
+  }
+  if (!generation) {
+    return true;
+  }
+  /** A name without case, accents or spaces. */
+  const bare = (name: string) => searchKey(name).replace(/\s+/g, "");
+  const years = vehicle.firstYear == null || (vehicle.firstYear === generation.firstYear && (vehicle.lastYear ?? null) === (generation.lastYear ?? null));
+  const versions = version ? [version] : (generation.children ?? []);
+  return years && (!vehicle.version || versions.some((each) => bare(each.label) === bare(vehicle.version!)));
 }
 
 /**
