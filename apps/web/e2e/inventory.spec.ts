@@ -150,9 +150,9 @@ test("Web: the Inventory panel fills the window and keeps its pagination", { tag
 });
 
 // Opens the Inventory with 100 items on a page and scrolls the list, and checks only the list scrolls: the page stays
-// put, the pagination and the toolbar stay in view, and the table's header row stays pinned on top. A phone's page
-// scrolls as a whole instead, above the bottom bar.
-test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
+// put, the pagination and the toolbar in view, the table's header row pinned on top; on a 1360×768 notebook, in full
+// screen and in a window, the header stays at the top too. A phone's page scrolls as a whole instead.
+test("Web: only the Inventory list scrolls, also on a 1360×768 notebook", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const inv = inventory(page);
   const table = dataTable(page);
   await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
@@ -169,6 +169,15 @@ test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_T
   const header = (await table.header(/Item/).boundingBox())!;
   const scroll = (await table.scroll.boundingBox())!;
   expect(Math.abs(header.y - scroll.y)).toBeLessThanOrEqual(1);
+
+  await atNotebookSizes(page, async (size) => {
+    expect((await layout(page)).pageExtra, size).toBe(0);
+    expect((await dashboard(page).header.boundingBox())!.y, size).toBe(0);
+    await expect(inv.newItem, size).toBeInViewport();
+    await expect(inv.pager.pages, size).toBeInViewport();
+    expect(await table.scroll.evaluate((box) => box.scrollHeight > box.clientHeight), size).toBe(true);
+    await expect(page, size).not.toScrollSideways();
+  });
 });
 
 // Searches by part code without separators, by name without accents, and for something that isn't there,
@@ -1435,26 +1444,6 @@ test("Web: on a phone the list loads more as it scrolls and keeps its place", { 
   await inv.search.fill("Peça");
   await expect(rows).toHaveCount(25);
   expect(queries.at(-1)).toBe("q=Pe%C3%A7a&page=1&pageSize=25");
-});
-
-// On a 1360×768 notebook, in full screen and in a window (1360×689 once the taskbar and the title bar are taken off),
-// opens the Inventory with 100 items and checks the page doesn't scroll: the header at the top, the toolbar and the
-// pagination in view, nothing sideways, and only the table scrolls.
-test("Web: on a 1360×768 notebook only the Inventory's table scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
-  await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
-  await page.goto("/inventory");
-  const inv = inventory(page);
-  const table = dataTable(page);
-  await inv.pager.size(100).click();
-  await expect(table.rows).toHaveCount(100);
-  await atNotebookSizes(page, async (size) => {
-    expect((await layout(page)).pageExtra, size).toBe(0);
-    expect((await dashboard(page).header.boundingBox())!.y, size).toBe(0);
-    await expect(inv.newItem, size).toBeInViewport();
-    await expect(inv.pager.pages, size).toBeInViewport();
-    expect(await table.scroll.evaluate((box) => box.scrollHeight > box.clientHeight), size).toBe(true);
-    await expect(page, size).not.toScrollSideways();
-  });
 });
 
 // Lists an item of two brands and checks its row shows both codes, the quantity added up, "2 marcas" and a chevron
