@@ -18,6 +18,7 @@ import { Select } from '../src/components/Select';
 import { withAlpha } from '../src/app/theme';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToolButton } from '../src/components/ToolButton';
+import { FIELD_DISABLED_OPACITY } from '../src/styles/shared';
 
 const CATEGORIES = ['Arrefecimento', 'Elétrica', 'Freios', 'Ignição', 'Motor', 'Suspensão', 'Transmissão'].map(
   (label) => ({ value: label, label }),
@@ -334,6 +335,21 @@ test('Mobile: the filter sheet opens each filter as a list and applies on "Ver n
   expect(onApply).toHaveBeenCalledTimes(1);
 });
 
+// Opens the sheet with the model waiting for a brand, and checks its row is off, faded and saying so, then opens once a
+// brand is chosen.
+test('Mobile: a filter sheet row stays off while the row it waits for has nothing chosen', async () => {
+  const tree = await mountSheet(<Sheet waiting onApplied={() => {}} />);
+  await press(pressable(tree, 'Filtros'));
+  const model = pressable(tree, 'Modelo do veículo, Escolha a marca');
+  expect(model.props.disabled).toBe(true);
+  expect(model.props.accessibilityState).toEqual({ disabled: true });
+  expect(styleOf(model).opacity).toBe(FIELD_DISABLED_OPACITY);
+  await press(pressable(tree, 'Marca do veículo, Todas'));
+  await press(pressable(tree, 'Fiat'));
+  await ReactTestRenderer.act(async () => tree.root.findAllByType(Modal).find((each) => each.props.visible)!.props.onRequestClose());
+  expect(pressable(tree, 'Modelo do veículo, Todos').props.disabled).toBe(false);
+});
+
 // Chooses two vehicle brands and a model of each, then takes one brand off: its model leaves the choice, and the
 // models' list offers only the brand left.
 test('Mobile: filter sheet rows that depend on the choice drop what they stop offering', async () => {
@@ -428,7 +444,19 @@ function Menu({ initial = NO_FILTERS, onApplied }: { initial?: FilterValues; onA
   );
 }
 
-function Sheet({ onApplied }: { onApplied: (values: FilterValues, sort: Sort | null) => void }) {
+/**
+ * Lays out the sheet's rows with the model's row waiting for a brand: off, offering nothing and saying so, until one is
+ * chosen.
+ * @param draft Values chosen so far.
+ * @returns The rows.
+ */
+function waitingRows(draft: FilterValues) {
+  return sheetRows(draft).map((row) =>
+    'key' in row && row.key === 'model' && !draft.brand?.length ? { ...row, allLabel: 'Escolha a marca', options: [], disabled: true } : row,
+  );
+}
+
+function Sheet({ waiting = false, onApplied }: { waiting?: boolean; onApplied: (values: FilterValues, sort: Sort | null) => void }) {
   const [values, setValues] = useState(SHEET_FILTERS);
   const [sort, setSort] = useState<Sort | null>(null);
   const [open, setOpen] = useState(false);
@@ -444,7 +472,7 @@ function Sheet({ onApplied }: { onApplied: (values: FilterValues, sort: Sort | n
       <FilterSheet
         open={open}
         onClose={() => setOpen(false)}
-        rows={sheetRows}
+        rows={waiting ? waitingRows : sheetRows}
         values={values}
         sort={sort}
         sortOptions={SORTS}

@@ -367,6 +367,26 @@ test('Mobile: the vehicle model follows the vehicle brand', async () => {
   expect(value(tree, 'Modelo do veículo')).toBe('');
 });
 
+// Opens a new vehicle and checks its generation waits for its model and its version for its generation, each opening
+// once the one before is filled in; emptying the model clears and locks both again.
+test('Mobile: a vehicle\'s generation opens after its model, and its version after its generation', async () => {
+  const tree = await mount();
+  await press(tree, 'Adicionar veículo');
+  await type(tree, 'Marca do veículo', 'Volkswagen');
+  expect(field(tree, 'Geração').props.editable).toBe(false);
+  expect(field(tree, 'Versão').props.editable).toBe(false);
+  await type(tree, 'Modelo do veículo', 'Gol');
+  expect(field(tree, 'Geração').props.editable).toBe(true);
+  expect(field(tree, 'Versão').props.editable).toBe(false);
+  await type(tree, 'Geração', '08/12');
+  await type(tree, 'Versão', '1.0 G5');
+  expect(field(tree, 'Versão').props.editable).toBe(true);
+  await type(tree, 'Modelo do veículo', '');
+  expect([value(tree, 'Geração'), value(tree, 'Versão')]).toEqual(['', '']);
+  expect(field(tree, 'Geração').props.editable).toBe(false);
+  expect(field(tree, 'Versão').props.editable).toBe(false);
+});
+
 // Types a new category and presses "+ Criar", and checks the row already shows the name with a capital letter, the
 // name is created in the categories, picked in the field and announced; then a new vehicle model is created under
 // the chosen brand.
