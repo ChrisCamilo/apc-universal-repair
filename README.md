@@ -67,6 +67,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🔐 Sessions checked on every call, login and sign-up attempts limited, and the SQLite file encrypted at rest ✅
 - 🔗 The phone paired with the server at home over HTTPS, by QR code, and each new device authorized on the server's computer ✅
 - 📲 The phone app saying when a new version is out ✅
+- 🚗 The vehicle lists starting with the 30 brands most sold in Brazil and their usual models, old and new, and a brand typed under another name (GM, VW…) brought together with its standard one, with no part lost ✅
 - 🏷️ A new stock starting with the usual categories and part brands
 - 🔃 The Inventory refreshing by itself when another device changes it
 
@@ -331,6 +332,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🔐 Sessões conferidas em toda chamada, tentativas de login e cadastro limitadas, e o arquivo SQLite criptografado em disco ✅
 - 🔗 O celular pareado com o servidor de casa por HTTPS, com um QR code, e cada aparelho novo autorizado no computador do servidor ✅
 - 📲 O app do celular avisando quando sai uma versão nova ✅
+- 🚗 As listas de veículos começando com as 30 marcas mais vendidas no Brasil e os modelos de costume delas, antigos e novos, e uma marca digitada com outro nome (GM, VW…) unida à padrão, sem perder nenhuma peça ✅
 - 🏷️ Um estoque novo começando com as categorias e marcas de peça de costume
 - 🔃 O Estoque se atualizando sozinho quando outro aparelho o muda
 
