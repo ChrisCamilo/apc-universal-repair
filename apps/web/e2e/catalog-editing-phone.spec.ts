@@ -66,3 +66,16 @@ test("Web: on a phone a brand is filled down to an engine sheet, renamed and del
   await expect(page.getByText("Nenhum modelo nessa marca")).toBeVisible();
   await expect(page).not.toScrollSideways();
 });
+
+// On a phone, deletes Ford from its models screen with Excluir marca, and checks the screen goes back to the brands, one
+// fewer.
+test("Web: on a phone a brand is deleted from its models screen", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+  const tab = catalog(page);
+  await page.goto("/catalog");
+  await tab.brandLine("Ford").click();
+  await tab.deleteBrand.click();
+  await dialog(page, "Excluir “Ford”?").button("Excluir").click();
+  await expect(tab.title).toHaveText("Catálogo");
+  await expect(tab.brandLines).toHaveCount(3);
+  await expect(page).not.toScrollSideways();
+});

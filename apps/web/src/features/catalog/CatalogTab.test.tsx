@@ -15,7 +15,7 @@ import { themeCss } from '../../app/theme.ts'
 import { CatalogTab } from './CatalogTab.tsx'
 import { PhoneHeaderContext, type PhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 import { InventoryLinkContext } from '../dashboard/inventoryLinkContext.ts'
-import type { InventoryLink } from '@apc/domain/catalog'
+import type { CatalogData, InventoryLink } from '@apc/domain/catalog'
 import { EMPTY_ITEM_FILTERS } from '@apc/domain/item-filters'
 import { testItem, type FlatItem } from '@apc/domain/test-items'
 
@@ -100,11 +100,12 @@ function answer(items: Item[], catalog: () => Response = () => new Response(JSON
 
 /**
  * Answers the API's requests as a server would, keeping the changes made to the catalog: the inventory with no parts,
- * the catalog with the test catalog at first, and each change made on it under the API's rules, answering the whole
- * catalog, or 404 or 409.
+ * the catalog with the test catalog at first, or the one given, and each change made on it under the API's rules,
+ * answering the whole catalog, or 404 or 409.
+ * @param start The catalog at first.
  */
-function answerChanges() {
-  let catalog = structuredClone(TEST_CATALOG_DATA)
+function answerChanges(start: CatalogData = TEST_CATALOG_DATA) {
+  let catalog = structuredClone(start)
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : String(input), location.href)
     if (!url.pathname.startsWith('/api/catalog')) {
@@ -727,6 +728,44 @@ test('Web: on a phone a brand, a model and a generation are added in bottom shee
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByRole('dialog', { name: 'Nova geração em Clio' })).not.toBeInTheDocument()
   await expect.element(screen.getByRole('treeitem', { name: 'Clio' }).getByText('1990–1998')).toBeVisible()
+})
+
+// Deletes the chosen brand from the catalog with Excluir marca: the dialog says what goes with it, and once confirmed
+// the brand leaves the rail, the next brand opens, and a toast says so.
+test('Web: a brand is deleted from the catalog after confirming', async () => {
+  answerChanges()
+  const screen = await renderCatalog()
+  await screen.getByRole('button', { name: 'Excluir marca' }).click()
+  const confirm = screen.getByRole('dialog', { name: 'Excluir “Chevrolet”?' })
+  await expect.element(confirm).toMatchTextContent(/Vão junto 3 modelos, 4 gerações, 3 versões, 2 anos, 2 motores com ficha\./)
+  await confirm.getByRole('button', { name: 'Excluir' }).click()
+  await expect.element(screen.getByRole('radio', { name: 'Chevrolet' })).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('radio', { name: 'Volkswagen' })).toBeChecked()
+  await expect.element(screen.getByText('“Chevrolet” saiu do catálogo.')).toBeVisible()
+})
+
+// On a phone, deletes a brand from its models screen with Excluir marca, and checks the screen goes back to the brands,
+// one fewer.
+test('Web: on a phone a brand is deleted from its models screen', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  answerChanges()
+  const screen = await renderCatalog(true)
+  await screen.getByRole('button', { name: /^Ford/ }).click()
+  await screen.getByRole('button', { name: 'Excluir marca' }).click()
+  await screen.getByRole('dialog', { name: 'Excluir “Ford”?' }).getByRole('button', { name: 'Excluir' }).click()
+  await expect.element(screen.getByRole('heading', { name: 'Marcas · 3' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: /^Ford/ })).not.toBeInTheDocument()
+})
+
+// With no brand in the catalog, checks the tab says so and adds the first brand from there, which opens the catalog.
+test('Web: an empty catalog adds its first brand', async () => {
+  answerChanges({ brands: [] })
+  const screen = await renderCatalog()
+  await expect.element(screen.getByText('Nenhuma marca no catálogo')).toBeVisible()
+  await screen.getByRole('button', { name: 'Nova marca' }).click()
+  await screen.getByRole('form', { name: 'Nova marca' }).getByLabelText('Nome').fill('Renault')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('radio', { name: 'Renault' })).toBeChecked()
 })
 
 // On a phone, opens a version's "⋯" and checks the first has no "Mover para cima", renames it in a sheet that opens with

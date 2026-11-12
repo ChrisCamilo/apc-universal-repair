@@ -321,6 +321,20 @@ test('Mobile: the Catalog adds a brand, a model and a generation in sheets', asy
   expect(byRole(tree, 'treeitem', 'Primeira geração 1990–1998')).toBeTruthy();
 });
 
+// Deletes Ford from its models screen with Excluir marca: the dialog says what goes with it, and once confirmed the
+// screen goes back to the brands, one fewer.
+test('Mobile: the Catalog deletes a brand from its models screen', async () => {
+  answerChanges();
+  const tree = await mount('bmw90', 'night');
+  await press(tree, 'Ford, 3 modelos · sem ficha técnica ainda');
+  await pressText(tree, 'Excluir marca');
+  expect(shows(tree, 'Excluir “Ford”?')).toBe(true);
+  expect(showsPart(tree, 'Vão junto 3 modelos')).toBe(true);
+  await pressText(tree, 'Excluir');
+  expect(shows(tree, 'Marcas · 3')).toBe(true);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel?.startsWith?.('Ford,')).length).toBe(0);
+});
+
 // Renames the Opala's first version from its "⋯", which has no "Mover para cima", moves the last one up, adds an engine
 // to a year in the full-screen sheet form and opens its sheet, edits that sheet, and deletes the generation after the
 // dialog says what goes with it.

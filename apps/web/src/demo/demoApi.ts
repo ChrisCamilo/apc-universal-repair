@@ -271,9 +271,10 @@ export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; han
 }
 
 /**
- * Lists the routes of the catalog: reading it, its brands and models named as the lists name them now, and adding,
- * renaming, moving and deleting its brands and the levels of their trees, under the API's rules (applyCatalogChange). A
- * brand or model added joins the lists, or is the entry of its name there; renaming a model renames its list entry.
+ * Lists the routes of the catalog: reading it, its brands and models named as the lists name them now, adding and
+ * deleting its brands, and adding, renaming, moving and deleting the levels of their trees, under the API's rules
+ * (applyCatalogChange). A brand or model added joins the lists, or is the entry of its name there; renaming a model
+ * renames its list entry; a brand deleted leaves its vehicle brand and models in the lists.
  * @param db The demo's data.
  * @returns The routes.
  */
@@ -314,6 +315,21 @@ function catalogRoutes(db: Db): Route[] {
         }
         const entry = listed(db.vehicleBrands, sent.value.name)
         return change(201, { kind: 'addBrand', id: entry.id, name: entry.name })
+      },
+    },
+    {
+      method: 'DELETE',
+      path: `${CATALOG_BRANDS_PATH}/:id`,
+      answer: ({ params }) => {
+        const id = idOf(params)
+        if (!id.ok) {
+          return id.answer
+        }
+        const answer = change(200, { kind: 'deleteBrand', id: id.value.id })
+        if (answer.status === 200) {
+          forgetCatalogModels(db)
+        }
+        return answer
       },
     },
     {
@@ -771,6 +787,19 @@ function joinCatalog(db: Db): void {
 }
 
 /**
+ * Forgets the vehicle model of each catalog model the catalog no longer has, after a brand or model left it.
+ * @param db The demo's data.
+ */
+function forgetCatalogModels(db: Db): void {
+  const held = new Set(db.catalog.brands.flatMap((brand) => brand.models.map((model) => model.id)))
+  for (const id of [...db.catalogModels.keys()]) {
+    if (!held.has(id)) {
+      db.catalogModels.delete(id)
+    }
+  }
+}
+
+/**
  * Lists the routes of the four lists: listing, creating, renaming, merging and deleting entries.
  * @param db The demo's data.
  * @returns The routes.
@@ -868,16 +897,16 @@ function listRoutes(db: Db): Route[] {
           if (!held) {
             return entryNotFound()
           }
-          if (kind === 'vehicleBrands' && inCatalog.brand(held.id)) {
-            return conflict(`"${held.name}" is a catalog brand.`)
-          }
           const itemCount = db.items.filter((item) => ITEMS_USING[kind](item, held.id)).length
           if (itemCount > 0) {
             return conflict(`"${held.name}" is used by ${itemCount} items.`, { itemCount })
           }
           list().splice(list().indexOf(held), 1)
           if (kind === 'vehicleBrands') {
+            // Its models go with it, and so does its place in the catalog, with its models' trees.
             db.vehicleModels = db.vehicleModels.filter((model) => model.brandId !== held.id)
+            db.catalog = { brands: db.catalog.brands.filter((brand) => brand.id !== held.id) }
+            forgetCatalogModels(db)
           }
           return noContent()
         },
@@ -978,14 +1007,15 @@ function listRoutes(db: Db): Route[] {
         if (!held) {
           return entryNotFound()
         }
-        if (inCatalog.model(held.id)) {
-          return conflict(`"${held.name}" is a catalog model.`)
-        }
         const itemCount = db.items.filter((item) => ITEMS_USING.vehicleModels(item, held.id)).length
         if (itemCount > 0) {
           return conflict(`"${held.name}" is used by ${itemCount} items.`, { itemCount })
         }
         db.vehicleModels = db.vehicleModels.filter((model) => model.id !== held.id)
+        // Its place in the catalog goes with it, with its tree.
+        const ids = new Set([...db.catalogModels].filter(([, modelId]) => modelId === held.id).map(([id]) => id))
+        db.catalog = { brands: db.catalog.brands.map((brand) => ({ ...brand, models: brand.models.filter((model) => !ids.has(model.id)) })) }
+        forgetCatalogModels(db)
         return noContent()
       },
     },

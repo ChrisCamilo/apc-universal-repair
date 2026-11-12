@@ -7,16 +7,12 @@ import { capitalizeFirst, optionKey, type Item } from "./items.ts";
 // extra spaces (a vehicle model within its vehicle brand), so creating a name that already exists gives back the
 // existing one, and a rename can't take another entry's name: it merges the entry into the one that has it instead,
 // moving its items there. Renaming renames the items that use the entry; an entry is only deleted while no item uses
-// it, a vehicle brand with its models, and never a vehicle brand or model the catalog has (the API marks them
-// inCatalog), which can't be merged away either. Web and mobile load, create, rename, merge and delete the same way,
-// each through its own API address.
+// it, a vehicle brand with its models. A vehicle brand or model the catalog has (the API marks them inCatalog) can't be
+// merged away, and deleting it takes it out of the catalog too, which the delete's question says. Web and mobile load,
+// create, rename, merge and delete the same way, each through its own API address.
 
-/** Why a vehicle brand of the catalog can't be deleted from the inventory. */
-export const CATALOG_BRAND_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser excluída do estoque.`;
 /** Why a vehicle brand of the catalog can't be merged into another one. */
 export const CATALOG_MERGE_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser juntada a outra marca.`;
-/** Why a vehicle model of the catalog can't be deleted from the inventory. */
-export const CATALOG_MODEL_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser excluído do estoque.`;
 /** Why a vehicle model of the catalog can't be merged into another one. */
 export const CATALOG_MODEL_MERGE_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser juntado a outro modelo.`;
 /** The four lists before they load: all empty. */
@@ -219,20 +215,32 @@ export function findEntry<Entry extends ListEntry>(entries: readonly Entry[], te
 }
 
 /**
- * Says why an entry the catalog has can't be deleted or merged away: a vehicle brand or model of the catalog.
+ * Says why an entry the catalog has can't be merged away: a vehicle brand or model of the catalog.
  * @param kind The entry's list.
  * @param entry The entry.
- * @param action Deleting it, or merging it into another entry.
  * @returns The message, or null when the catalog doesn't keep it.
  */
-export function catalogLock(kind: ItemListKind, entry: ListEntry, action: "delete" | "merge"): string | null {
+export function catalogLock(kind: ItemListKind, entry: ListEntry): string | null {
   if (!entry.inCatalog) {
     return null;
   }
-  if (kind === "vehicleModels") {
-    return action === "delete" ? CATALOG_MODEL_MESSAGE(entry.name) : CATALOG_MODEL_MERGE_MESSAGE(entry.name);
+  return kind === "vehicleModels" ? CATALOG_MODEL_MERGE_MESSAGE(entry.name) : CATALOG_MERGE_MESSAGE(entry.name);
+}
+
+/**
+ * Says what else deleting an entry of the catalog takes: it leaves the catalog, with its models' trees or its own.
+ * @param kind The entry's list.
+ * @param entry The entry.
+ * @returns E.g. "“Ford” também sai do Catálogo, com os modelos e as fichas dela.", or null when the catalog doesn't
+ *   have it.
+ */
+export function catalogDeleteNote(kind: ItemListKind, entry: ListEntry): string | null {
+  if (!entry.inCatalog) {
+    return null;
   }
-  return action === "delete" ? CATALOG_BRAND_MESSAGE(entry.name) : CATALOG_MERGE_MESSAGE(entry.name);
+  return kind === "vehicleModels"
+    ? `“${entry.name}” também sai do Catálogo, com as gerações e as fichas dele.`
+    : `“${entry.name}” também sai do Catálogo, com os modelos e as fichas dela.`;
 }
 
 /**

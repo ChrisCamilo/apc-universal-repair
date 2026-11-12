@@ -8,7 +8,7 @@ import { TEST_CATALOG, TEST_ENGINES } from "@apc/domain/test-catalog";
 /**
  * The Catalog tab: a brand, a model and an engine sheet by name, a model's or a version's chevron, the two searches and
  * the parts a code search finds;
- * the tree's editing: a brand's models in order, "Nova marca" and "Novo modelo", a node's name in its row, a row's
+ * the tree's editing: a brand's models in order, "Nova marca", "Novo modelo" and "Excluir marca", a node's name in its row, a row's
  * button by name and "Editar ficha"; on a phone, a brand's line, the screen's title, its ← by name and the found parts'
  * cards; a model's or a version's sheet by its title, the rows of the parts that fit it, and "Ver todas as peças".
  * The rows and sheets that add or rename a node, a node's actions and the delete dialog are common's form and dialog.
@@ -37,6 +37,7 @@ export function catalog(page: Page) {
       page.getByRole("tree", { name: `Modelos ${brand}` }).locator(':scope > [role="treeitem"] > [data-row]').getByTestId("common.tree-view.item.row.label"),
     newBrand: page.getByRole("button", { name: "Nova marca" }),
     newModel: page.getByRole("button", { name: "Novo modelo" }),
+    deleteBrand: page.getByRole("button", { name: "Excluir marca" }),
     node: (name: string) => page.getByText(name, { exact: true }),
     action: (name: string) => page.getByRole("button", { name }),
     editSheet: page.getByRole("button", { name: "Editar ficha" }),

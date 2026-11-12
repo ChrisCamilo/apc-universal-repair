@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { BackHandler, Pressable, ScrollView, Text as RNText, View } from 'react-native';
 import {
+  belowBrand,
   belowNode,
   brandSummary,
   carFilters,
@@ -25,6 +26,7 @@ import {
   type Catalog,
   type CatalogEditing,
   type CatalogEditLevel,
+  type CatalogBrand,
   type CatalogNode,
   type CatalogScreen,
   type CatalogSheetEditing,
@@ -70,7 +72,9 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 // brands' heading and "Novo modelo" beside the models' open a bottom sheet with the new node's fields (see NodeForm).
 // Each branch has a "⋯", always in view, opening an action sheet with its name: add the level under it, rename it (a
 // generation, with its years), move it up or down (only where it can go), delete it after confirming, or close. A
-// year's engines end with "Novo motor em <ano>", and an empty branch with the button adding its first. A new engine's
+// year's engines end with "Novo motor em <ano>", and an empty branch with the button adding its first; a brand's models
+// end with "Excluir marca", which deletes the brand from the catalog after confirming, its vehicle brand staying in the
+// lists, and goes back to the brands. A catalog with no brand says so and adds the first with "Nova marca". A new engine's
 // sheet, and "Editar ficha" under an engine's sheet, open the sheet's form in a full-screen dialog (see
 // EngineSheetForm); a new brand opens its models, and a new engine its sheet. Every change answers the whole catalog,
 // which the tab takes as it is.
@@ -95,8 +99,34 @@ export function CatalogTab() {
           action={{ label: 'Tentar de novo', onPress: state.reload }}
         />
       )}
-      {state.status === 'ready' && <EmptyState title="Nenhuma marca no catálogo" message="As marcas do catálogo aparecem aqui." />}
+      {state.status === 'ready' && <EmptyCatalog onChanged={state.replace} />}
     </View>
+  );
+}
+
+/** A catalog with no brand: says so, and adds the first. */
+function EmptyCatalog({ onChanged }: { onChanged: (catalog: Catalog) => void }) {
+  const editor = useCatalogEditing({ onChanged });
+  return (
+    <>
+      <EmptyState
+        title="Nenhuma marca no catálogo"
+        message="As marcas do catálogo aparecem aqui."
+        action={{ label: 'Nova marca', onPress: () => editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } }) }}
+      />
+      {editor.editing && (
+        <NodeForm
+          open
+          title="Nova marca"
+          level="brand"
+          submitLabel="Adicionar"
+          error={editor.error}
+          saving={editor.saving}
+          onSave={editor.save}
+          onClose={() => editor.edit(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -136,10 +166,12 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
         setScreen(engineId ? { view: 'sheet', brandId: screen.brandId, engineId } : screen);
       }
     },
+    onBrandRemoved: () => setScreen(CATALOG_HOME),
   });
   const editing = useShown<CatalogEditing>(editor.editing);
   const sheetEditing = useShown<CatalogSheetEditing>(editor.sheet);
   const removing = useShown<CatalogNode>(editor.removing ?? null);
+  const removingBrand = useShown<CatalogBrand>(editor.removingBrand ?? null);
   const results = findParts(items, query);
   const searchingParts = results.parts.length > 0;
   const modelQuery = searchingParts ? '' : query;
@@ -336,6 +368,9 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
           ) : (
             <NoModel none={brand!.models.length === 0} />
           )}
+          <Button variant="secondary" icon={trashIcon} onPress={() => editor.askRemoveBrand(brand)}>
+            Excluir marca
+          </Button>
         </>
       );
     }
@@ -394,7 +429,6 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
   const shownSheet = sheetEditing.last;
   // The node the engine sheet's form belongs to, while the tree still has it.
   const sheetNode = shownSheet && (shownSheet.kind === 'add' ? shownSheet.year.id : shownSheet.engine.id);
-  const removingBelow = removing.last && belowNode(removing.last);
   return (
     <>
       <FieldScrollView ref={scroll} style={styles.scroll} contentContainerStyle={styles.tab} testID={ids.tab}>
@@ -427,27 +461,63 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
           onClose={() => editor.editSheet(null)}
         />
       )}
-      <Dialog
+      <DeleteDialog
         open={editor.removing !== undefined}
-        onClose={() => editor.askRemove(undefined)}
-        title={`Excluir “${removing.last?.label ?? ''}”?`}
-        size="confirm"
-        actions={
-          <>
-            <Button variant="secondary" size="sm" onPress={() => editor.askRemove(undefined)}>
-              Cancelar
-            </Button>
-            <Button variant="danger" size="sm" loading={editor.saving} onPress={editor.remove}>
-              Excluir
-            </Button>
-          </>
-        }
-      >
-        <Text size="sm" tone="muted">
-          {removingBelow ? `Vão junto ${removingBelow}. ` : ''}As peças do estoque continuam cadastradas. Isso não pode ser desfeito.
-        </Text>
-      </Dialog>
+        name={removing.last?.label ?? ''}
+        below={removing.last && belowNode(removing.last)}
+        saving={editor.saving}
+        onCancel={() => editor.askRemove(undefined)}
+        onConfirm={editor.remove}
+      />
+      <DeleteDialog
+        open={editor.removingBrand !== undefined}
+        name={removingBrand.last?.name ?? ''}
+        below={removingBrand.last && belowBrand(removingBrand.last)}
+        saving={editor.saving}
+        onCancel={() => editor.askRemoveBrand(undefined)}
+        onConfirm={editor.removeBrand}
+      />
     </>
+  );
+}
+
+/** Asks to confirm deleting a node or a brand of the catalog, saying what goes with it and that the inventory's parts stay. */
+function DeleteDialog({
+  open,
+  name,
+  below,
+  saving,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  name: string;
+  below: string | null;
+  saving: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onCancel}
+      title={`Excluir “${name}”?`}
+      size="confirm"
+      actions={
+        <>
+          <Button variant="secondary" size="sm" onPress={onCancel}>
+            Cancelar
+          </Button>
+          <Button variant="danger" size="sm" loading={saving} onPress={onConfirm}>
+            Excluir
+          </Button>
+        </>
+      }
+    >
+      <Text size="sm" tone="muted">
+        {below ? `Vão junto ${below}. ` : ''}As peças do estoque continuam cadastradas. Isso não pode ser desfeito.
+      </Text>
+    </Dialog>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  CATALOG_BRANDS_PATH,
   CATALOG_FAILED,
   catalogAddUnder,
   catalogEditRequest,
@@ -7,6 +8,7 @@ import {
   catalogSheetRequest,
   changeCatalog,
   type Catalog,
+  type CatalogBrand,
   type CatalogEditing,
   type CatalogEngineInput,
   type CatalogNode,
@@ -17,7 +19,7 @@ import { apiUrl } from '../../app/api';
 import { useToast } from '../../components/Toast';
 
 // The Catalog's editing, the same as the web's: what is being added or renamed and why it couldn't
-// be saved, the engine sheet being filled in, the node whose deletion is being confirmed, and the changes themselves,
+// be saved, the engine sheet being filled in, the node or brand whose deletion is being confirmed, and the changes themselves,
 // each sent to the API and answered with the whole catalog, which the owner takes. A name or year another node has is
 // said under the field; any other failure, in a toast.
 
@@ -28,6 +30,8 @@ type CatalogEditingOptions = {
   onBrandAdded?: (catalog: Catalog) => void;
   /** Called with a catalog where an engine was just added under a year, and the year's id. */
   onEngineAdded?: (catalog: Catalog, yearId: string) => void;
+  /** Called with a catalog where a brand was just deleted. */
+  onBrandRemoved?: (catalog: Catalog) => void;
 };
 
 /**
@@ -35,12 +39,13 @@ type CatalogEditingOptions = {
  * @param options What to do with the catalog after a change.
  * @returns What is being edited, and the ways to start, save and give up on each edit.
  */
-export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded }: CatalogEditingOptions) {
+export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBrandRemoved }: CatalogEditingOptions) {
   const toast = useToast();
   const [editing, setEditing] = useState<CatalogEditing | null>(null);
   const [error, setError] = useState<string>();
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState<CatalogNode>();
+  const [removingBrand, setRemovingBrand] = useState<CatalogBrand>();
   const [sheet, setSheet] = useState<CatalogSheetEditing | null>(null);
 
   /**
@@ -85,11 +90,26 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded }: Ca
     error,
     saving,
     removing,
+    removingBrand,
     sheet,
     edit,
     editSheet,
     /** Asks to confirm deleting a node, or gives up on it. */
     askRemove: setRemoving,
+    /** Asks to confirm deleting a brand from the catalog, or gives up on it. */
+    askRemoveBrand: setRemovingBrand,
+    /** Deletes the brand whose deletion was confirmed, with its models' trees; its vehicle brand stays in the lists. */
+    removeBrand: async () => {
+      if (!removingBrand) {
+        return;
+      }
+      const changed = await change('DELETE', `${CATALOG_BRANDS_PATH}/${removingBrand.id}`);
+      if (changed) {
+        toast.success(`“${removingBrand.name}” saiu do catálogo.`);
+        setRemovingBrand(undefined);
+        onBrandRemoved?.(changed);
+      }
+    },
     /** Starts adding the level under a node: a node of the tree, or a year's new engine's sheet. */
     addUnder: (node: CatalogNode) => {
       const next = catalogAddUnder(node);

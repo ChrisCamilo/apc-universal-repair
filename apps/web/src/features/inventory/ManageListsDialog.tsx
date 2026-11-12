@@ -3,6 +3,7 @@ import { pencilIcon, trashIcon } from '@apc/tokens/icons'
 import { entryFilters, type ItemFilters } from '@apc/domain/item-filters'
 import type { Item } from '@apc/domain/items'
 import {
+  catalogDeleteNote,
   catalogLock,
   entryChange,
   findEntry,
@@ -30,8 +31,9 @@ import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useIt
 // (a model's, within its brand) asks to merge the two: Juntar moves every item to the other entry and deletes this one,
 // a vehicle brand's models going along; a vehicle brand of the catalog can't be merged away. The trash asks to confirm
 // deleting a name no item uses (a vehicle brand with its models); a name items use can't be deleted, and the dialog
-// says how many items use it, with "Ver itens" to show them in the list; nor can a vehicle brand of the catalog. A
-// toast confirms each rename, merge and delete, and the owner hears of each rename and merge, for its filters.
+// says how many items use it, with "Ver itens" to show them in the list. Deleting a vehicle brand or model of the
+// catalog takes it out of the catalog too, which the question says. A toast confirms each rename, merge and delete, and
+// the owner hears of each rename and merge, for its filters.
 
 const KINDS: ItemListKind[] = ['categories', 'partBrands', 'vehicleBrands', 'vehicleModels']
 
@@ -90,7 +92,7 @@ export function ManageListsDialog({
     }
     const other = findEntry(siblings, name)
     if (other && other.id !== entry.id) {
-      const locked = catalogLock(kind, entry, 'merge')
+      const locked = catalogLock(kind, entry)
       if (locked) {
         setEditing({ ...editing, error: locked })
         return
@@ -181,8 +183,8 @@ export function ManageListsDialog({
   )
 
   const removingUses = removing ? itemsUsing(items, removing.kind, removing.entry, lists) : 0
-  const locked = removing ? catalogLock(removing.kind, removing.entry, 'delete') : null
-  const blocked = locked !== null || removingUses > 0
+  const blocked = removingUses > 0
+  const leavesCatalog = removing ? catalogDeleteNote(removing.kind, removing.entry) : null
 
   return (
     <Dialog
@@ -237,7 +239,7 @@ export function ManageListsDialog({
               <Button variant="secondary" size="sm" onClick={() => setRemoving(undefined)}>
                 Fechar
               </Button>
-              {!locked && removing && (
+              {removing && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -263,11 +265,9 @@ export function ManageListsDialog({
       >
         {removing && (
           <Text size="sm" tone="muted">
-            {locked
-              ? locked
-              : removingUses > 0
-                ? ITEM_LIST_TEXTS[removing.kind].inUse(removing.entry.name, removingUses)
-                : ITEM_LIST_TEXTS[removing.kind].confirmDelete(removing.entry.name)}
+            {removingUses > 0
+              ? ITEM_LIST_TEXTS[removing.kind].inUse(removing.entry.name, removingUses)
+              : [ITEM_LIST_TEXTS[removing.kind].confirmDelete(removing.entry.name), leavesCatalog].filter(Boolean).join(' ')}
           </Text>
         )}
       </Dialog>

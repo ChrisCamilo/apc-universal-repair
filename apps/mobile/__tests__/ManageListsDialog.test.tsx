@@ -22,10 +22,12 @@ const ITEMS = [
   item({ id: '00000000-0000-4000-8000-0000000000c2', code: 'J-1', name: 'Junta', category: 'Motor', vehicleModel: 'Santana' }),
   item({ id: '00000000-0000-4000-8000-0000000000c3', code: 'P-1', name: 'Pastilha', category: 'Freios', vehicleBrand: 'Chevrolet', vehicleModel: 'Opala' }),
 ];
-// The lists: what the items use, plus a category, a vehicle brand and a model no item uses.
+// The lists: what the items use, plus a category, a vehicle brand and a model no item uses, and a model of the catalog
+// (Ford's Corcel) no item uses.
 const LISTS = itemListsOf([
   ...ITEMS,
   item({ id: '00000000-0000-4000-8000-0000000000c4', code: 'X', name: 'Sem uso', category: 'Turbo', vehicleBrand: 'Renault', vehicleModel: 'Clio' }),
+  item({ id: '00000000-0000-4000-8000-0000000000c5', code: 'Y', name: 'Sem uso do catálogo', category: 'Turbo', vehicleBrand: 'Ford', vehicleModel: 'Corcel' }),
 ]);
 // Trees the test rendered, unmounted after it so the toast's hide timer doesn't outlive the test.
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
@@ -309,11 +311,11 @@ test('Mobile: a name no item uses is deleted after confirming', async () => {
   expect(texts(tree.root)).not.toContain('Clio');
 });
 
-// Asks to delete a category items use and checks nothing can be deleted: the dialog says how many items use it, and Ver
-// itens hands over the filters that show them; a vehicle model and a vehicle brand of the catalog can't be deleted
-// either.
-test('Mobile: a name in use or of the catalog is not deleted', async () => {
-  const onRemove = jest.fn<ReturnType<RemoveListEntry>, Parameters<RemoveListEntry>>();
+// Asks to delete a category items use and checks it can't be deleted: the dialog says how many items use it, and Ver
+// itens hands over the filters that show them; a model of the catalog items use can't be deleted either. Then deletes a
+// model of the catalog no item uses, after the question says it leaves the catalog too.
+test('Mobile: a name in use is not deleted, and one of the catalog leaves the catalog when deleted', async () => {
+  const onRemove = jest.fn<ReturnType<RemoveListEntry>, Parameters<RemoveListEntry>>(async () => true);
   const onShowItems = jest.fn();
   const tree = await mount({ onRemove, onShowItems });
   await press(tree, 'Excluir Motor');
@@ -324,9 +326,13 @@ test('Mobile: a name in use or of the catalog is not deleted', async () => {
   expect(onShowItems).toHaveBeenCalledWith(expect.objectContaining({ category: ['Motor'] }));
 
   await press(tree, 'Excluir Gol');
-  expect(texts(tree.root)).toContain('“Gol” também está no catálogo e não pode ser excluído do estoque.');
-  await press(tree, 'Excluir Chevrolet');
-  expect(texts(tree.root)).toContain('“Chevrolet” também está no catálogo e não pode ser excluída do estoque.');
-  expect(texts(tree.root)).not.toContain('Ver itens');
+  expect(texts(tree.root).some((text) => text.startsWith('1 item usa “Gol”'))).toBe(true);
+  expect(texts(tree.root)).toContain('Ver itens');
   expect(onRemove).not.toHaveBeenCalled();
+
+  await press(tree, 'Excluir Corcel');
+  expect(texts(tree.root).some((text) => text.endsWith('“Corcel” também sai do Catálogo, com as gerações e as fichas dele.'))).toBe(true);
+  await press(tree, 'Excluir');
+  const corcel = LISTS.vehicleModels.find((model) => model.name === 'Corcel')!;
+  expect(onRemove).toHaveBeenCalledWith('vehicleModels', corcel.id);
 });

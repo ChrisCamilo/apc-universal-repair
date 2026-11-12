@@ -69,6 +69,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 📲 The phone app saying when a new version is out ✅
 - 🚗 The vehicle lists starting with the 30 brands most sold in Brazil and their usual models, old and new, and a brand typed under another name (GM, VW…) brought together with its standard one, with no part lost ✅
 - 🏷️ A new stock starting with the usual categories and part brands
+- 📚 The Catalog starting with those brands and models, each with an empty tree to fill in, and a brand deleted from the Catalog, or a brand or model no part uses deleted from the lists, leaving the Catalog with its tree ✅
 - 🔃 The Inventory refreshing by itself when another device changes it
 
 **Offline Mode (planned)**
@@ -334,6 +335,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 📲 O app do celular avisando quando sai uma versão nova ✅
 - 🚗 As listas de veículos começando com as 30 marcas mais vendidas no Brasil e os modelos de costume delas, antigos e novos, e uma marca digitada com outro nome (GM, VW…) unida à padrão, sem perder nenhuma peça ✅
 - 🏷️ Um estoque novo começando com as categorias e marcas de peça de costume
+- 📚 O Catálogo começando com essas marcas e modelos, cada um com a árvore vazia para preencher, e uma marca excluída do Catálogo, ou uma marca ou modelo que nenhuma peça usa excluído das listas, saindo do Catálogo com a árvore ✅
 - 🔃 O Estoque se atualizando sozinho quando outro aparelho o muda
 
 **Modo offline (planejado)**
