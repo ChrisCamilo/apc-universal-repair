@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { loggedInSchema } from '@apc/domain/auth'
+import { catalogSchema } from '@apc/domain/catalog'
 import { IMPORT_CONFLICTS } from '@apc/domain/item-csv'
 import { itemMatchesQuery } from '@apc/domain/item-filters'
 import { itemListQuerySchema, itemListResponseSchema, itemSchema, type Item } from '@apc/domain/items'
@@ -194,8 +195,9 @@ test('Web: the demo edits and deletes items under the API rules', async () => {
 })
 
 // Adds a category that is already listed and one that isn't, renames one onto another's name and then freely, merges
-// one into another and into itself, deletes a used one and an unused one, and tries a catalog brand, and checks every
-// answer is the API's and the items show the new names.
+// one into another and into itself, deletes a used one and an unused one, and deletes a catalog brand items use, which
+// is refused, and one no item uses, which leaves the catalog too; and checks every answer is the API's and the items show
+// the new names.
 test('Web: the demo keeps the lists as the API does', async () => {
   const { as, items, list } = await demo()
   const held = await as('POST', '/categories', { name: ' freios ' })
@@ -224,7 +226,11 @@ test('Web: the demo keeps the lists as the API does', async () => {
   const extra = (await (await as('POST', '/part-brands', { name: 'Sem uso' })).json()) as ListEntry
   expect((await as('DELETE', `/part-brands/${extra.id}`)).status).toBe(204)
   const fiat = (await list('/vehicle-brands')).find((entry) => entry.name === 'Fiat')!
-  expect((await (await as('DELETE', `/vehicle-brands/${fiat.id}`)).json()).message).toBe('"Fiat" is a catalog brand.')
+  expect((await (await as('DELETE', `/vehicle-brands/${fiat.id}`)).json()).message).toMatch(/^"Fiat" is used by \d+ items\.$/)
+  const renault = catalogSchema.parse(await (await as('POST', '/catalog/brands', { name: 'Renault' })).json()).brands.at(-1)!
+  expect((await as('DELETE', `/vehicle-brands/${renault.id}`)).status).toBe(204)
+  const catalog = catalogSchema.parse(await (await as('GET', '/catalog')).json())
+  expect(catalog.brands.map((brand) => brand.name)).not.toContain('Renault')
 })
 
 // Adds vehicle models under a brand and an unknown brand, merges a model into one of another brand and into one of

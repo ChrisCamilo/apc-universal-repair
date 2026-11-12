@@ -52,3 +52,17 @@ test("Web: a model is added down to a year, renamed, moved and deleted", { tag: 
   await expect(tab.node("Kadett")).toHaveCount(0);
   await expect(page).not.toScrollSideways();
 });
+
+// Deletes Ford from the Catalog with Excluir marca: the dialog says what goes with it, and once confirmed Ford leaves
+// the rail and the next brand opens.
+test("Web: a brand is deleted from the Catalog after confirming", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly] }, async ({ page }) => {
+  const tab = catalog(page);
+  await page.goto("/catalog");
+  await tab.brand("Ford").click();
+  await tab.deleteBrand.click();
+  const removal = dialog(page, "Excluir “Ford”?");
+  await expect(removal.root).toContainText("Vão junto 3 modelos.");
+  await removal.button("Excluir").click();
+  await expect(tab.brand("Ford")).toHaveCount(0);
+  await expect(tab.brand("Fiat")).toBeChecked();
+});

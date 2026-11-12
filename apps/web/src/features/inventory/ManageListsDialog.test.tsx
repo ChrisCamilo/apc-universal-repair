@@ -20,10 +20,12 @@ const ITEMS = [
   item({ code: 'J-1', name: 'Junta', category: 'Motor', vehicleBrand: 'Volkswagen', vehicleModel: 'Santana' }),
   item({ code: 'P-1', name: 'Pastilha', category: 'Freios', vehicleBrand: 'Chevrolet', vehicleModel: 'Opala' }),
 ]
-// The lists: what the items use, plus a category, a vehicle brand and a model no item uses.
+// The lists: what the items use, plus a category, a vehicle brand and a model no item uses, and a model of the catalog
+// (Ford's Corcel) no item uses.
 const LISTS = itemListsOf([
   ...ITEMS,
   item({ code: 'X', name: 'Sem uso', category: 'Turbo', vehicleBrand: 'Renault', vehicleModel: 'Clio' }),
+  item({ code: 'Y', name: 'Sem uso do catálogo', category: 'Turbo', vehicleBrand: 'Ford', vehicleModel: 'Corcel' }),
 ])
 const root = document.documentElement
 
@@ -215,10 +217,10 @@ test('Web: a name no item uses is deleted after confirming', async () => {
   await expect.element(screen.getByRole('group', { name: 'Modelos de Renault' })).not.toBeInTheDocument()
 })
 
-// Asks to delete a category items use and checks nothing can be deleted: the dialog says how many items use it, and Ver
-// itens hands over the filters that show them; a vehicle model and a vehicle brand of the catalog can't be deleted
-// either.
-test('Web: a name in use or of the catalog is not deleted', async () => {
+// Asks to delete a category items use and checks it can't be deleted: the dialog says how many items use it, and Ver
+// itens hands over the filters that show them; a model of the catalog items use can't be deleted either. Then deletes a
+// model of the catalog no item uses, after the question says it leaves the catalog too.
+test('Web: a name in use is not deleted, and one of the catalog leaves the catalog when deleted', async () => {
   const onRemove = vi.fn<RemoveListEntry>()
   const onShowItems = vi.fn()
   const screen = await render(<Sample onRemove={onRemove} onShowItems={onShowItems} />)
@@ -230,12 +232,17 @@ test('Web: a name in use or of the catalog is not deleted', async () => {
   expect(onShowItems).toHaveBeenCalledWith(expect.objectContaining({ category: ['Motor'], vehicleModel: [] }))
 
   await screen.getByRole('group', { name: 'Modelos de Volkswagen' }).getByRole('button', { name: 'Excluir Gol' }).click()
-  await expect.poll(() => blocked.element().textContent).toContain('“Gol” também está no catálogo e não pode ser excluído do estoque.')
+  await expect.poll(() => blocked.element().textContent).toContain('1 item usa “Gol”')
+  expect(blocked.getByRole('button').elements().map((button) => button.textContent)).toEqual(['Fechar', 'Ver itens'])
   await blocked.getByRole('button', { name: 'Fechar' }).click()
-  await screen.getByRole('button', { name: 'Excluir Chevrolet' }).click()
-  await expect.poll(() => blocked.element().textContent).toContain('“Chevrolet” também está no catálogo e não pode ser excluída do estoque.')
-  expect(blocked.getByRole('button').elements().map((button) => button.textContent)).toEqual(['Fechar'])
   expect(onRemove).not.toHaveBeenCalled()
+
+  await screen.getByRole('group', { name: 'Modelos de Ford' }).getByRole('button', { name: 'Excluir Corcel' }).click()
+  const confirm = screen.getByRole('dialog', { name: 'Excluir “Corcel”?' })
+  await expect.poll(() => confirm.element().textContent).toContain('“Corcel” também sai do Catálogo, com as gerações e as fichas dele.')
+  await confirm.getByRole('button', { name: 'Excluir' }).click()
+  const corcel = LISTS.vehicleModels.find((model) => model.name === 'Corcel')!
+  expect(onRemove).toHaveBeenCalledWith('vehicleModels', corcel.id)
 })
 
 // Opens the dialog on the smallest phone and checks nothing scrolls sideways and each row's trash stays on screen.

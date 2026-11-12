@@ -44,6 +44,7 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
   },
   'GET /catalog': ({ call }) => call('GET', '/catalog'),
   'POST /catalog/brands': ({ call }) => call('POST', '/catalog/brands', { name: 'Renault' }),
+  'DELETE /catalog/brands/:id': async (demo) => demo.call('DELETE', `/catalog/brands/${(await opala(demo)).brand}`),
   'POST /catalog/brands/:id/models': async (demo) => demo.call('POST', `/catalog/brands/${(await opala(demo)).brand}/models`, { name: 'Kadett' }),
   'POST /catalog/models/:id/generations': async (demo) =>
     demo.call('POST', `/catalog/models/${(await opala(demo)).model}/generations`, { name: 'Quarta geração', firstYear: 1993, lastYear: null }),
