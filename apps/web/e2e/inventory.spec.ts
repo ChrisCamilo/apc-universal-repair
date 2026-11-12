@@ -727,7 +727,7 @@ test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TA
   const details = itemDetails(page);
   const edit = itemForm(page, "Editar item");
 
-  await rows.nth(3).getByText("Amortecedor").click();
+  await inventory(page).name("Amortecedor").click();
   await expect(details.field("Lado")).toContainText("Lado esquerdo");
   await expect(details.field("Local")).toContainText("A-10");
   await expect(details.root.getByRole("textbox")).toHaveCount(0);
@@ -772,7 +772,7 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await expect(rows).toHaveCount(4);
   await expect(page.getByRole("button", { name: /^(Editar|Excluir) / })).toHaveCount(0);
 
-  await rows.nth(3).getByText("Amortecedor").click();
+  await inventory(page).name("Amortecedor").click();
   await expect(details.root).toBeVisible();
   const { width, height } = page.viewportSize()!;
   await expect.poll(async () => details.root.boundingBox()).toEqual({ x: 0, y: 0, width, height });
@@ -797,7 +797,7 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await details.back.click();
   await expect(details.root).toBeHidden();
 
-  await rows.nth(3).getByText("Amortecedor").click();
+  await inventory(page).name("Amortecedor").click();
   await details.duplicate.click();
   const question = dialog(page, "Duplicar item?").root;
   await expect(question).toBeVisible();
@@ -809,7 +809,7 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await page.keyboard.press("Escape");
   await expect(itemForm(page, "Editar item").root).toBeHidden();
 
-  await rows.nth(3).getByText("Amortecedor").click();
+  await inventory(page).name("Amortecedor").click();
   await details.remove.click();
   await deleteDialog(page).confirm.click();
   await expect(toasts(page).named("Item “Amortecedor” excluído.")).toBeVisible();
@@ -1003,11 +1003,10 @@ test("Web: the item form and Manage lists close on the ×", { tag: [TEST_TAGS.in
   });
   await page.goto("/inventory");
   const inv = inventory(page);
-  const { rows } = dataTable(page);
   const openers = [
     { open: () => inv.newItem.click(), name: "Novo item" },
     { open: () => inv.edit("Filtro de óleo").click(), name: isMobile ? "Filtro de óleo" : "Editar item" },
-    { open: () => rows.first().getByText("Filtro de óleo").click(), name: "Detalhes do item" },
+    { open: () => inv.name("Filtro de óleo").click(), name: "Detalhes do item" },
     { open: () => inv.manageLists.click(), name: "Gerenciar listas" },
   ];
   for (const { open, name } of openers) {
