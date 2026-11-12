@@ -364,7 +364,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const tutorialStarted = useEffectEvent(() => {
     tutorial.setSeen();
     tutorial.replayStarted();
-    void deleteTestItem();
+    deleteTestItem();
   });
   useEffect(() => {
     if (touring) {
@@ -593,12 +593,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             setFilters((held) => followEntryChange(held, change));
           }
         }}
-        onShowItems={(shown) => {
+        onShowItems={(entryFilters) => {
           setManaging(false);
           narrow(() => {
             setSearch('');
             setStatus(null);
-            setFilters(shown);
+            setFilters(entryFilters);
           });
         }}
         onClose={() => setManaging(false)}
@@ -608,7 +608,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         onClose={() => {
           setTouring(false);
           clearForTutorial();
-          void deleteTestItem();
+          deleteTestItem();
         }}
         screen={{
           form: form.open
@@ -634,7 +634,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           saveItem: (item, values) => {
             setForm((current) => ({ ...current, open: false }));
             const body = itemFormBody(values, itemFormOptions(items, lists).colors);
-            void send(item ? `${apiUrl()}/items/${item.id}` : `${apiUrl()}/items`, item ? 'PATCH' : 'POST', body);
+            send(item ? `${apiUrl()}/items/${item.id}` : `${apiUrl()}/items`, item ? 'PATCH' : 'POST', body);
           },
           // The details close first: a confirmation opened here would sit under their Modal.
           askDelete: (item) => {
@@ -644,7 +644,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           deleteItem: (item) => {
             setRemoving(undefined);
             setForm((current) => ({ ...current, open: false }));
-            void send(`${apiUrl()}/items/${item.id}`, 'DELETE');
+            send(`${apiUrl()}/items/${item.id}`, 'DELETE');
           },
         }}
       />
