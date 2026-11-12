@@ -3,7 +3,7 @@ import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { rgb } from "./support/expect.ts";
 import { atNotebookSizes } from "./support/sizes.ts";
-import { dataTable, dialog, options, thumbnailImage, tour } from "./locators/common.ts";
+import { dataTable, dialog, options, thumbnailImage, toasts, tour } from "./locators/common.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
 import { deleteDialog, deleteItem, fillItem, filtersMenu, importDialog, inventory, itemDetails, itemForm, manageLists } from "./locators/inventory.ts";
 import type { Item, ItemCreate } from "@apc/domain/items";
@@ -236,7 +236,7 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
 
   await fillItem(page, "Novo item", { code: "ngk-b7", name: "vela de ignição", category: "motor", partBrand: "Mann", vehicleBrand: "Chevrolet", unitPrice: "34,9" });
   await form.save.click();
-  await expect(page.getByText("Item “Vela de ignição” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Vela de ignição” cadastrado.")).toBeVisible();
   await expect(form.root).toBeHidden();
   await expect(rows).toHaveCount(5);
   await expect(rows.first()).toContainText("NGK-B7");
@@ -246,7 +246,7 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
   await expect(edit.unitPrice).toHaveValue("R$ 34,90");
   await edit.quantity.fill("9");
   await edit.save.click();
-  await expect(page.getByText("Item “Vela de ignição” salvo.")).toBeVisible();
+  await expect(toasts(page).named("Item “Vela de ignição” salvo.")).toBeVisible();
   await expect(rows.first()).toContainText("9");
 });
 
@@ -303,11 +303,11 @@ test("Web: categories, brands and models are created from the item form", { tag:
 
   await form.category.fill("motor diesel");
   await option("+ Criar categoria “Motor diesel”").click();
-  await expect(page.getByText("Categoria “Motor diesel” criada.")).toBeVisible();
+  await expect(toasts(page).named("Categoria “Motor diesel” criada.")).toBeVisible();
   await expect(form.category).toHaveValue("Motor diesel");
   await form.partBrand.fill("NGK");
   await option("+ Criar marca “NGK”").click();
-  await expect(page.getByText("Marca de peça “NGK” criada.")).toBeVisible();
+  await expect(toasts(page).named("Marca de peça “NGK” criada.")).toBeVisible();
   if (isMobile) {
     await form.addVehicle.click();
   }
@@ -316,13 +316,13 @@ test("Web: categories, brands and models are created from the item form", { tag:
   const brandCreated = page.waitForResponse((response) => response.url().endsWith("/api/vehicle-brands") && response.status() === 201);
   await option("+ Criar marca “Renault”").click();
   const renault = await (await brandCreated).json();
-  await expect(page.getByText("Marca de veículo “Renault” criada.")).toBeVisible();
+  await expect(toasts(page).named("Marca de veículo “Renault” criada.")).toBeVisible();
   await expect(form.vehicleModel).toBeEnabled();
   await form.vehicleModel.fill("Clio");
   const modelCreated = page.waitForRequest((request) => request.url().endsWith("/api/vehicle-models") && request.method() === "POST");
   await option("+ Criar modelo “Clio”").click();
   expect((await modelCreated).postDataJSON()).toEqual({ name: "Clio", vehicleBrandId: renault.id });
-  await expect(page.getByText("Modelo “Clio” criado.")).toBeVisible();
+  await expect(toasts(page).named("Modelo “Clio” criado.")).toBeVisible();
   if (isMobile) {
     await form.confirmVehicle.click();
     await expect(form.vehicle("Renault Clio")).toBeVisible();
@@ -334,7 +334,7 @@ test("Web: categories, brands and models are created from the item form", { tag:
   await expect(form.root.getByText("Categoria não cadastrada. Escolha “+ Criar categoria” na lista.")).toBeVisible();
   await form.category.fill("motor diesel");
   await form.save.click();
-  await expect(page.getByText("Item “Turbina” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Turbina” cadastrado.")).toBeVisible();
   expect(stock[0]).toMatchObject({
     category: "Motor diesel",
     vehicles: [{ vehicleBrand: "Renault", vehicleModel: "Clio" }],
@@ -453,7 +453,7 @@ test("Web: items are imported from a CSV file", { tag: [TEST_TAGS.inventory] }, 
   await expect(submit).toBeInViewport();
   await submit.click();
 
-  await expect(page.getByText("Importação concluída: 1 item criado, 1 atualizado.")).toBeVisible();
+  await expect(toasts(page).named("Importação concluída: 1 item criado, 1 atualizado.")).toBeVisible();
   await expect(importer.root).toBeHidden();
   expect(imported).toEqual(["W 712/95", "NGK-B7"]);
   await expect(rows).toHaveCount(5);
@@ -621,13 +621,13 @@ test("Web: the lists are renamed and cleaned up in Manage lists", { tag: [TEST_T
   const confirm = dialog(page, "Excluir “Arrefecimento”?").root.getByRole("button", { name: "Excluir" });
   await expect(confirm).toBeInViewport();
   await confirm.click();
-  await expect(page.getByText("Categoria “Arrefecimento” excluída.")).toBeVisible();
+  await expect(toasts(page).named("Categoria “Arrefecimento” excluída.")).toBeVisible();
   await expect(lists.remove("Categorias", "Arrefecimento")).toBeHidden();
 
   await lists.rename("Categorias", "Suspensão").click();
   await lists.newName("Suspensão").fill("suspensão e direção");
   await page.keyboard.press("Enter");
-  await expect(page.getByText("Categoria renomeada para “Suspensão e direção”.")).toBeVisible();
+  await expect(toasts(page).named("Categoria renomeada para “Suspensão e direção”.")).toBeVisible();
   await lists.closeText.click();
   await expect(rows.filter({ hasText: "Amortecedor" })).toContainText("Suspensão e direção");
 
@@ -662,7 +662,7 @@ test("Web: a name merged into another keeps the filters on its items", { tag: [T
   const confirm = dialog(page, "Juntar “Freios” com “Motor”?").root;
   await expect(confirm).toContainText("O item de “Freios” passa para “Motor”");
   await confirm.getByRole("button", { name: "Juntar" }).click();
-  await expect(page.getByText("Categoria “Freios” juntada a “Motor”: 1 item mudou.")).toBeVisible();
+  await expect(toasts(page).named("Categoria “Freios” juntada a “Motor”: 1 item mudou.")).toBeVisible();
   await expect(lists.rename("Categorias", "Freios")).toBeHidden();
   await lists.closeText.click();
   await expect(rows).toHaveCount(2);
@@ -703,7 +703,7 @@ test("Web: an item is deleted after confirming", { tag: [TEST_TAGS.inventory] },
   const id = ITEMS[2].id;
   await trash.click();
   await confirmation.confirm.click();
-  await expect(page.getByText("Item “Bomba d'água” excluído.")).toBeVisible();
+  await expect(toasts(page).named("Item “Bomba d'água” excluído.")).toBeVisible();
   await expect(confirmation.root).toBeHidden();
   await expect(rows).toHaveCount(3);
   await expect(inventory(page).count).toHaveText("3 de 3 itens · 1 baixo · 0 esgotados");
@@ -737,7 +737,7 @@ test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TA
   await expect(edit.save).toHaveAccessibleName("Salvar alterações");
   await expect(edit.save).toBeInViewport();
   await edit.save.click();
-  await expect(page.getByText("Item “Amortecedor” salvo.")).toBeVisible();
+  await expect(toasts(page).named("Item “Amortecedor” salvo.")).toBeVisible();
   await expect(edit.root).toBeHidden();
   expect(stock[3].brands[0].location).toBe("A-11");
 
@@ -812,7 +812,7 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await rows.nth(3).getByText("Amortecedor").click();
   await details.remove.click();
   await deleteDialog(page).confirm.click();
-  await expect(page.getByText("Item “Amortecedor” excluído.")).toBeVisible();
+  await expect(toasts(page).named("Item “Amortecedor” excluído.")).toBeVisible();
   await expect(details.root).toBeHidden();
   await expect(rows).toHaveCount(3);
 });
@@ -884,7 +884,7 @@ test("Web: on a phone the item form fills the screen, as in the Novo item mockup
   await second.getByLabel("Código da peça").fill("w-2");
   await second.getByLabel("Valor unitário (R$)").fill("10");
   await form.save.click();
-  await expect(page.getByText("Item “Pastilha de freio” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Pastilha de freio” cadastrado.")).toBeVisible();
   await expect(form.root).toBeHidden();
   expect(stock[0]).toMatchObject({
     name: "Pastilha de freio",
@@ -906,7 +906,7 @@ test("Web: on a phone the item form fills the screen, as in the Novo item mockup
   await expect(edit.position("Dianteira")).toBeChecked();
   await edit.side("Ambos").click();
   await edit.save.click();
-  await expect(page.getByText("Item “Pastilha de freio” salvo.")).toBeVisible();
+  await expect(toasts(page).named("Item “Pastilha de freio” salvo.")).toBeVisible();
   expect(stock[0]).toMatchObject({ side: "Ambos", brands: [{ code: "N-1210" }, { code: "W-2" }] });
 });
 
@@ -962,7 +962,7 @@ test("Web: an item is duplicated from its details, with or without its photos", 
   await expect(form.photos).toHaveCount(2);
   await form.code.fill("W 712/96");
   await form.save.click();
-  await expect(page.getByText("Item “Filtro de óleo” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Filtro de óleo” cadastrado.")).toBeVisible();
   expect(sent).toEqual([photos.map((photo) => `copy ${photo.id}`)]);
   await expect(rows).toHaveCount(5);
   const copy = stock[0];
@@ -1153,7 +1153,7 @@ test("Web: item photos are added and removed from the list and the form", { tag:
   const edit = itemForm(page, "Editar item");
   await edit.photoFile.setInputFiles({ name: "frente.png", mimeType: "image/png", buffer: png });
   await edit.save.click();
-  await expect(page.getByText("Item “Pastilha de freio” salvo.")).toBeVisible();
+  await expect(toasts(page).named("Item “Pastilha de freio” salvo.")).toBeVisible();
   expect(sent[2]).toEqual(["photo frente.png"]);
   await expect(thumbnailImage(inv.photos("Pastilha de freio"))).toHaveAttribute("src", "/api/photos/new-0-thumb.webp");
 });

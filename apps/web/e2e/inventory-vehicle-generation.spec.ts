@@ -2,7 +2,7 @@ import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import type { Item } from "@apc/domain/items";
 import { TABLE_CARD_BREAKPOINT } from "@apc/ui-spec/table";
-import { dataTable, options } from "./locators/common.ts";
+import { dataTable, options, toasts } from "./locators/common.ts";
 import { filtersMenu, inventory, itemDetails, itemForm } from "./locators/inventory.ts";
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { item } from "./data/items.ts";
@@ -63,7 +63,7 @@ test("Web: a vehicle's generation and version are saved, shown in the details an
   }
   await form.unitPrice.fill("49,9");
   await form.save.click();
-  await expect(page.getByText("Item “Bieleta” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Bieleta” cadastrado.")).toBeVisible();
   await expect(rows).toHaveCount(3);
   await expect(rows.first()).toContainText("Bieleta");
   await expect(rows.first()).not.toContainText("08/12");

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
-import { dataTable } from "./locators/common.ts";
+import { dataTable, toasts } from "./locators/common.ts";
 import { inventory } from "./locators/inventory.ts";
 import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from "@apc/domain/item-csv";
 import type { Item } from "@apc/domain/items";
@@ -39,7 +39,7 @@ async function exportList(page: Page, photos: boolean): Promise<{ name: string; 
   await dialog.getByRole("button", { name: "Exportar" }).click();
   const file = await download;
   // The last one: the same message from the export before may still be fading out under it.
-  await expect(page.getByText("30 itens exportados.").last()).toBeVisible();
+  await expect(toasts(page).named("30 itens exportados.").last()).toBeVisible();
   await expect(dialog).toBeHidden();
   const text = (await readFile(await file.path(), "utf8")).replace(/^﻿/, "");
   return { name: file.suggestedFilename(), lines: text.split("\r\n") };

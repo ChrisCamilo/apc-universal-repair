@@ -2,7 +2,7 @@ import { test, type Page } from "@playwright/test";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { expect } from "../e2e/support/expect.ts";
 import { loginForm } from "../e2e/locators/auth.ts";
-import { dataTable, tour } from "../e2e/locators/common.ts";
+import { dataTable, toasts, tour } from "../e2e/locators/common.ts";
 import { dashboard, logOut } from "../e2e/locators/dashboard.ts";
 import { deleteItem, fillItem, inventory, itemForm } from "../e2e/locators/inventory.ts";
 
@@ -60,14 +60,14 @@ test("Web: the demo finds, filters, creates, edits and deletes items", { tag: [T
   await inv.newItem.click();
   await fillItem(page, "Novo item", { code: "rc-100", name: "retentor de câmbio", category: "Motor", partBrand: "Sabó", vehicleBrand: "Ford", unitPrice: "21,5" });
   await itemForm(page, "Novo item").save.click();
-  await expect(page.getByText("Item “Retentor de câmbio” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Retentor de câmbio” cadastrado.")).toBeVisible();
   await expect(rows.first()).toContainText("RC-100");
 
   await inv.edit("Retentor de câmbio").click();
   const edit = itemForm(page, "Editar item");
   await edit.quantity.fill("7");
   await edit.save.click();
-  await expect(page.getByText("Item “Retentor de câmbio” salvo.")).toBeVisible();
+  await expect(toasts(page).named("Item “Retentor de câmbio” salvo.")).toBeVisible();
 
   await deleteItem(page, "Retentor de câmbio");
   await expect(dataTable(page).rows.filter({ hasText: "Retentor de câmbio" })).toHaveCount(0);

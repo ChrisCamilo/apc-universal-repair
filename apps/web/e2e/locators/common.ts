@@ -71,13 +71,16 @@ export function options(page: Page) {
 }
 
 /**
- * The toasts: their pills, and the live regions they are read out in, the alert for errors and warnings.
+ * The toasts: their pills, one by its message, and the live regions they are read out in, the alert for errors and
+ * warnings.
  * @param page The test's page.
  * @returns The toasts' elements.
  */
 export function toasts(page: Page) {
+  const messages = page.getByTestId("common.toast.message");
   return {
-    messages: page.getByTestId("common.toast.message"),
+    messages,
+    named: (text: string) => messages.filter({ hasText: text }),
     urgent: page.getByRole("alert"),
     polite: page.getByRole("status"),
   };
