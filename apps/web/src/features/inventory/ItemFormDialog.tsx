@@ -610,7 +610,7 @@ export function ItemFormDialog({
                 )
               })}
               <div className={classes.addVehicle()} data-testid={ids.addVehicle}>
-                <Button variant="secondary" size="sm" onClick={addVehicle}>
+                <Button variant="secondary" size="sm" className={classes.accent()} onClick={addVehicle}>
                   Adicionar veículo
                 </Button>
               </div>
@@ -759,7 +759,7 @@ export function ItemFormDialog({
                     Adicionar marca
                   </Button>
                 ) : (
-                  <Button variant="secondary" size="sm" onClick={addBrand}>
+                  <Button variant="secondary" size="sm" className={classes.accent()} onClick={addBrand}>
                     Adicionar marca
                   </Button>
                 )}
