@@ -146,7 +146,7 @@ test("Web: the Inventory panel fills the window and keeps its pagination", { tag
     expect(gapBelow, state).toBeLessThanOrEqual(16);
     expect(pageExtra, state).toBe(0);
   }
-  await expect(page.getByText("0 de 0")).toBeVisible();
+  await expect(inventory(page).pager.range("0 de 0")).toBeVisible();
 });
 
 // Opens the Inventory with 100 items on a page and scrolls the list, and checks only the list scrolls: the page stays
@@ -1361,7 +1361,7 @@ test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inven
   const inv = inventory(page);
   const { rows } = dataTable(page);
   await expect(rows).toHaveCount(25);
-  await expect(page.getByText("1–25 de 51")).toBeVisible();
+  await expect(inv.pager.range("1–25 de 51")).toBeVisible();
   expect(queries.at(-1)).toBe("page=1&pageSize=25");
 
   await inv.pager.page(2).click();
@@ -1369,13 +1369,13 @@ test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inven
   expect(queries.at(-1)).toBe("page=2&pageSize=25");
   await inv.pager.size(50).click();
   await expect(rows).toHaveCount(50);
-  await expect(page.getByText("1–50 de 51")).toBeVisible();
+  await expect(inv.pager.range("1–50 de 51")).toBeVisible();
   await expect(rows.nth(25)).toContainText("P-026");
 
   await inv.pager.page(2).click();
   await expect(rows).toHaveCount(1);
   await inv.search.fill("Peça 1");
-  await expect(page.getByText(/^1–\d+ de \d+$/)).toBeVisible();
+  await expect(inv.pager.range(/^1–\d+ de \d+$/)).toBeVisible();
   expect(queries.at(-1)).toBe("q=Pe%C3%A7a+1&page=1&pageSize=50");
   await inv.clearSearch.click();
 
@@ -1388,12 +1388,12 @@ test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inven
   await inv.pager.page(3).click();
   await expect(rows).toHaveCount(1);
   await deleteItem(page, "Peça 51");
-  await expect(page.getByText("26–50 de 50")).toBeVisible();
+  await expect(inv.pager.range("26–50 de 50")).toBeVisible();
 
   await inv.newItem.first().click();
   await fillItem(page, "Novo item", { code: "nova-1", name: "peça nova", category: "Motor", partBrand: "Bosch", vehicleBrand: "Volkswagen", unitPrice: "10" });
   await itemForm(page, "Novo item").save.click();
-  await expect(page.getByText("1–25 de 51")).toBeVisible();
+  await expect(inv.pager.range("1–25 de 51")).toBeVisible();
   await expect(rows.first()).toContainText("NOVA-1");
 });
 

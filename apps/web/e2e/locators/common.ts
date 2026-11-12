@@ -44,7 +44,8 @@ export function thumbnailImage(thumbnail: Locator): Locator {
 }
 
 /**
- * The pagination under a list: its pages' navigation, a page's button and the page size's choices.
+ * The pagination under a list: its pages' navigation, the range it shows by its text ("1–25 de 51", "0 de 0"), a
+ * page's button and the page size's choices.
  * @param page The test's page.
  * @param name The pages' navigation's name, e.g. "Páginas do estoque".
  * @returns The pagination's elements.
@@ -53,6 +54,7 @@ export function pagination(page: Page, name: string) {
   const pages = page.getByRole("navigation", { name });
   return {
     pages,
+    range: (text: string | RegExp) => page.getByTestId("common.pagination").filter({ has: pages }).getByText(text),
     page: (number: number) => pages.getByRole("button", { name: `Página ${number}` }),
     size: (size: number) => page.getByRole("radiogroup", { name: "Itens por página" }).getByRole("radio", { name: String(size), exact: true }),
   };
