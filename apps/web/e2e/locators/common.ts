@@ -5,18 +5,46 @@ import type { Locator, Page } from "@playwright/test";
 // assertions, so a renamed label or a moved element is changed here once.
 
 /**
- * A dialog by its name, with its round × and its text "Fechar" button, which some dialogs also have at the bottom.
+ * What every dialog and form has inside: a button, a field and a choice by name. Names given as text are matched
+ * whole, so "Excluir" is never "Excluir…", "Salvar" never "Salvar ficha", and the field "Ano" never the form "Novo ano
+ * em RT" around it.
+ * @param root The dialog or the form.
+ * @returns Its root and its parts by name.
+ */
+function parts(root: Locator) {
+  return {
+    root,
+    button: (name: string | RegExp) => root.getByRole("button", { name, exact: typeof name === "string" }),
+    field: (label: string) => root.getByLabel(label, { exact: true }),
+    choice: (name: string) => root.getByRole("radio", { name, exact: true }),
+  };
+}
+
+/**
+ * A dialog or a bottom sheet by its name: a button, a field and a choice by name, its round × and its text "Fechar"
+ * button, which some dialogs also have at the bottom. E.g. dialog(page, "Excluir “Kadett”?").button("Excluir").
  * @param page The test's page.
  * @param name The dialog's accessible name, its title.
- * @returns The dialog and its close buttons.
+ * @returns The dialog and its parts.
  */
 export function dialog(page: Page, name: string | RegExp) {
   const root = page.getByRole("dialog", { name });
   return {
-    root,
+    ...parts(root),
     close: root.getByRole("button", { name: "Fechar" }).first(),
     closeText: root.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }),
   };
+}
+
+/**
+ * A form outside a dialog by its name, such as a row that adds or renames something: a button, a field and a choice by
+ * name.
+ * @param page The test's page.
+ * @param name The form's accessible name.
+ * @returns The form and its parts.
+ */
+export function form(page: Page, name: string) {
+  return parts(page.getByRole("form", { name }));
 }
 
 /**
@@ -44,7 +72,8 @@ export function thumbnailImage(thumbnail: Locator): Locator {
 }
 
 /**
- * The pagination under a list: its pages' navigation, a page's button and the page size's choices.
+ * The pagination under a list: its pages' navigation, the range it shows by its text ("1–25 de 51", "0 de 0"), a
+ * page's button and the page size's choices.
  * @param page The test's page.
  * @param name The pages' navigation's name, e.g. "Páginas do estoque".
  * @returns The pagination's elements.
@@ -53,6 +82,7 @@ export function pagination(page: Page, name: string) {
   const pages = page.getByRole("navigation", { name });
   return {
     pages,
+    range: (text: string | RegExp) => page.getByTestId("common.pagination").filter({ has: pages }).getByText(text),
     page: (number: number) => pages.getByRole("button", { name: `Página ${number}` }),
     size: (size: number) => page.getByRole("radiogroup", { name: "Itens por página" }).getByRole("radio", { name: String(size), exact: true }),
   };
@@ -71,13 +101,16 @@ export function options(page: Page) {
 }
 
 /**
- * The toasts: their pills, and the live regions they are read out in, the alert for errors and warnings.
+ * The toasts: their pills, one by its message, and the live regions they are read out in, the alert for errors and
+ * warnings.
  * @param page The test's page.
  * @returns The toasts' elements.
  */
 export function toasts(page: Page) {
+  const messages = page.getByTestId("common.toast.message");
   return {
-    messages: page.getByTestId("common.toast.message"),
+    messages,
+    named: (text: string) => messages.filter({ hasText: text }),
     urgent: page.getByRole("alert"),
     polite: page.getByRole("status"),
   };

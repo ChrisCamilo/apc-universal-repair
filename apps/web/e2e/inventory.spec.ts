@@ -3,7 +3,7 @@ import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { rgb } from "./support/expect.ts";
 import { atNotebookSizes } from "./support/sizes.ts";
-import { dataTable, dialog, options, thumbnailImage, tour } from "./locators/common.ts";
+import { dataTable, dialog, options, thumbnailImage, toasts, tour } from "./locators/common.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
 import { deleteDialog, deleteItem, fillItem, filtersMenu, importDialog, inventory, itemDetails, itemForm, manageLists } from "./locators/inventory.ts";
 import type { Item, ItemCreate } from "@apc/domain/items";
@@ -146,13 +146,13 @@ test("Web: the Inventory panel fills the window and keeps its pagination", { tag
     expect(gapBelow, state).toBeLessThanOrEqual(16);
     expect(pageExtra, state).toBe(0);
   }
-  await expect(page.getByText("0 de 0")).toBeVisible();
+  await expect(inventory(page).pager.range("0 de 0")).toBeVisible();
 });
 
 // Opens the Inventory with 100 items on a page and scrolls the list, and checks only the list scrolls: the page stays
-// put, the pagination and the toolbar stay in view, and the table's header row stays pinned on top. A phone's page
-// scrolls as a whole instead, above the bottom bar.
-test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
+// put, the pagination and the toolbar in view, the table's header row pinned on top; on a 1360×768 notebook, in full
+// screen and in a window, the header stays at the top too. A phone's page scrolls as a whole instead.
+test("Web: only the Inventory list scrolls, also on a 1360×768 notebook", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const inv = inventory(page);
   const table = dataTable(page);
   await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
@@ -169,6 +169,15 @@ test("Web: only the Inventory list scrolls", { tag: [TEST_TAGS.inventory, TEST_T
   const header = (await table.header(/Item/).boundingBox())!;
   const scroll = (await table.scroll.boundingBox())!;
   expect(Math.abs(header.y - scroll.y)).toBeLessThanOrEqual(1);
+
+  await atNotebookSizes(page, async (size) => {
+    expect((await layout(page)).pageExtra, size).toBe(0);
+    expect((await dashboard(page).header.boundingBox())!.y, size).toBe(0);
+    await expect(inv.newItem, size).toBeInViewport();
+    await expect(inv.pager.pages, size).toBeInViewport();
+    expect(await table.scroll.evaluate((box) => box.scrollHeight > box.clientHeight), size).toBe(true);
+    await expect(page, size).not.toScrollSideways();
+  });
 });
 
 // Searches by part code without separators, by name without accents, and for something that isn't there,
@@ -236,7 +245,7 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
 
   await fillItem(page, "Novo item", { code: "ngk-b7", name: "vela de ignição", category: "motor", partBrand: "Mann", vehicleBrand: "Chevrolet", unitPrice: "34,9" });
   await form.save.click();
-  await expect(page.getByText("Item “Vela de ignição” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Vela de ignição” cadastrado.")).toBeVisible();
   await expect(form.root).toBeHidden();
   await expect(rows).toHaveCount(5);
   await expect(rows.first()).toContainText("NGK-B7");
@@ -246,7 +255,7 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
   await expect(edit.unitPrice).toHaveValue("R$ 34,90");
   await edit.quantity.fill("9");
   await edit.save.click();
-  await expect(page.getByText("Item “Vela de ignição” salvo.")).toBeVisible();
+  await expect(toasts(page).named("Item “Vela de ignição” salvo.")).toBeVisible();
   await expect(rows.first()).toContainText("9");
 });
 
@@ -303,11 +312,11 @@ test("Web: categories, brands and models are created from the item form", { tag:
 
   await form.category.fill("motor diesel");
   await option("+ Criar categoria “Motor diesel”").click();
-  await expect(page.getByText("Categoria “Motor diesel” criada.")).toBeVisible();
+  await expect(toasts(page).named("Categoria “Motor diesel” criada.")).toBeVisible();
   await expect(form.category).toHaveValue("Motor diesel");
   await form.partBrand.fill("NGK");
   await option("+ Criar marca “NGK”").click();
-  await expect(page.getByText("Marca de peça “NGK” criada.")).toBeVisible();
+  await expect(toasts(page).named("Marca de peça “NGK” criada.")).toBeVisible();
   if (isMobile) {
     await form.addVehicle.click();
   }
@@ -316,13 +325,13 @@ test("Web: categories, brands and models are created from the item form", { tag:
   const brandCreated = page.waitForResponse((response) => response.url().endsWith("/api/vehicle-brands") && response.status() === 201);
   await option("+ Criar marca “Renault”").click();
   const renault = await (await brandCreated).json();
-  await expect(page.getByText("Marca de veículo “Renault” criada.")).toBeVisible();
+  await expect(toasts(page).named("Marca de veículo “Renault” criada.")).toBeVisible();
   await expect(form.vehicleModel).toBeEnabled();
   await form.vehicleModel.fill("Clio");
   const modelCreated = page.waitForRequest((request) => request.url().endsWith("/api/vehicle-models") && request.method() === "POST");
   await option("+ Criar modelo “Clio”").click();
   expect((await modelCreated).postDataJSON()).toEqual({ name: "Clio", vehicleBrandId: renault.id });
-  await expect(page.getByText("Modelo “Clio” criado.")).toBeVisible();
+  await expect(toasts(page).named("Modelo “Clio” criado.")).toBeVisible();
   if (isMobile) {
     await form.confirmVehicle.click();
     await expect(form.vehicle("Renault Clio")).toBeVisible();
@@ -334,7 +343,7 @@ test("Web: categories, brands and models are created from the item form", { tag:
   await expect(form.root.getByText("Categoria não cadastrada. Escolha “+ Criar categoria” na lista.")).toBeVisible();
   await form.category.fill("motor diesel");
   await form.save.click();
-  await expect(page.getByText("Item “Turbina” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Turbina” cadastrado.")).toBeVisible();
   expect(stock[0]).toMatchObject({
     category: "Motor diesel",
     vehicles: [{ vehicleBrand: "Renault", vehicleModel: "Clio" }],
@@ -453,7 +462,7 @@ test("Web: items are imported from a CSV file", { tag: [TEST_TAGS.inventory] }, 
   await expect(submit).toBeInViewport();
   await submit.click();
 
-  await expect(page.getByText("Importação concluída: 1 item criado, 1 atualizado.")).toBeVisible();
+  await expect(toasts(page).named("Importação concluída: 1 item criado, 1 atualizado.")).toBeVisible();
   await expect(importer.root).toBeHidden();
   expect(imported).toEqual(["W 712/95", "NGK-B7"]);
   await expect(rows).toHaveCount(5);
@@ -618,16 +627,16 @@ test("Web: the lists are renamed and cleaned up in Manage lists", { tag: [TEST_T
   const categories = lists.section("Categorias");
   await expect(categories.getByRole("listitem").filter({ hasText: "Arrefecimento" })).toContainText("sem itens");
   await lists.remove("Categorias", "Arrefecimento").click();
-  const confirm = dialog(page, "Excluir “Arrefecimento”?").root.getByRole("button", { name: "Excluir" });
+  const confirm = dialog(page, "Excluir “Arrefecimento”?").button("Excluir");
   await expect(confirm).toBeInViewport();
   await confirm.click();
-  await expect(page.getByText("Categoria “Arrefecimento” excluída.")).toBeVisible();
+  await expect(toasts(page).named("Categoria “Arrefecimento” excluída.")).toBeVisible();
   await expect(lists.remove("Categorias", "Arrefecimento")).toBeHidden();
 
   await lists.rename("Categorias", "Suspensão").click();
   await lists.newName("Suspensão").fill("suspensão e direção");
   await page.keyboard.press("Enter");
-  await expect(page.getByText("Categoria renomeada para “Suspensão e direção”.")).toBeVisible();
+  await expect(toasts(page).named("Categoria renomeada para “Suspensão e direção”.")).toBeVisible();
   await lists.closeText.click();
   await expect(rows.filter({ hasText: "Amortecedor" })).toContainText("Suspensão e direção");
 
@@ -659,10 +668,10 @@ test("Web: a name merged into another keeps the filters on its items", { tag: [T
   await lists.rename("Categorias", "Freios").click();
   await lists.newName("Freios").fill("motor");
   await page.keyboard.press("Enter");
-  const confirm = dialog(page, "Juntar “Freios” com “Motor”?").root;
-  await expect(confirm).toContainText("O item de “Freios” passa para “Motor”");
-  await confirm.getByRole("button", { name: "Juntar" }).click();
-  await expect(page.getByText("Categoria “Freios” juntada a “Motor”: 1 item mudou.")).toBeVisible();
+  const merge = dialog(page, "Juntar “Freios” com “Motor”?");
+  await expect(merge.root).toContainText("O item de “Freios” passa para “Motor”");
+  await merge.button("Juntar").click();
+  await expect(toasts(page).named("Categoria “Freios” juntada a “Motor”: 1 item mudou.")).toBeVisible();
   await expect(lists.rename("Categorias", "Freios")).toBeHidden();
   await lists.closeText.click();
   await expect(rows).toHaveCount(2);
@@ -703,7 +712,7 @@ test("Web: an item is deleted after confirming", { tag: [TEST_TAGS.inventory] },
   const id = ITEMS[2].id;
   await trash.click();
   await confirmation.confirm.click();
-  await expect(page.getByText("Item “Bomba d'água” excluído.")).toBeVisible();
+  await expect(toasts(page).named("Item “Bomba d'água” excluído.")).toBeVisible();
   await expect(confirmation.root).toBeHidden();
   await expect(rows).toHaveCount(3);
   await expect(inventory(page).count).toHaveText("3 de 3 itens · 1 baixo · 0 esgotados");
@@ -727,7 +736,7 @@ test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TA
   const details = itemDetails(page);
   const edit = itemForm(page, "Editar item");
 
-  await rows.nth(3).getByText("Amortecedor").click();
+  await inventory(page).name("Amortecedor").click();
   await expect(details.field("Lado")).toContainText("Lado esquerdo");
   await expect(details.field("Local")).toContainText("A-10");
   await expect(details.root.getByRole("textbox")).toHaveCount(0);
@@ -737,7 +746,7 @@ test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TA
   await expect(edit.save).toHaveAccessibleName("Salvar alterações");
   await expect(edit.save).toBeInViewport();
   await edit.save.click();
-  await expect(page.getByText("Item “Amortecedor” salvo.")).toBeVisible();
+  await expect(toasts(page).named("Item “Amortecedor” salvo.")).toBeVisible();
   await expect(edit.root).toBeHidden();
   expect(stock[3].brands[0].location).toBe("A-11");
 
@@ -772,7 +781,7 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await expect(rows).toHaveCount(4);
   await expect(page.getByRole("button", { name: /^(Editar|Excluir) / })).toHaveCount(0);
 
-  await rows.nth(3).getByText("Amortecedor").click();
+  await inventory(page).name("Amortecedor").click();
   await expect(details.root).toBeVisible();
   const { width, height } = page.viewportSize()!;
   await expect.poll(async () => details.root.boundingBox()).toEqual({ x: 0, y: 0, width, height });
@@ -797,7 +806,7 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await details.back.click();
   await expect(details.root).toBeHidden();
 
-  await rows.nth(3).getByText("Amortecedor").click();
+  await inventory(page).name("Amortecedor").click();
   await details.duplicate.click();
   const question = dialog(page, "Duplicar item?").root;
   await expect(question).toBeVisible();
@@ -809,10 +818,10 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await page.keyboard.press("Escape");
   await expect(itemForm(page, "Editar item").root).toBeHidden();
 
-  await rows.nth(3).getByText("Amortecedor").click();
+  await inventory(page).name("Amortecedor").click();
   await details.remove.click();
   await deleteDialog(page).confirm.click();
-  await expect(page.getByText("Item “Amortecedor” excluído.")).toBeVisible();
+  await expect(toasts(page).named("Item “Amortecedor” excluído.")).toBeVisible();
   await expect(details.root).toBeHidden();
   await expect(rows).toHaveCount(3);
 });
@@ -884,7 +893,7 @@ test("Web: on a phone the item form fills the screen, as in the Novo item mockup
   await second.getByLabel("Código da peça").fill("w-2");
   await second.getByLabel("Valor unitário (R$)").fill("10");
   await form.save.click();
-  await expect(page.getByText("Item “Pastilha de freio” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Pastilha de freio” cadastrado.")).toBeVisible();
   await expect(form.root).toBeHidden();
   expect(stock[0]).toMatchObject({
     name: "Pastilha de freio",
@@ -906,7 +915,7 @@ test("Web: on a phone the item form fills the screen, as in the Novo item mockup
   await expect(edit.position("Dianteira")).toBeChecked();
   await edit.side("Ambos").click();
   await edit.save.click();
-  await expect(page.getByText("Item “Pastilha de freio” salvo.")).toBeVisible();
+  await expect(toasts(page).named("Item “Pastilha de freio” salvo.")).toBeVisible();
   expect(stock[0]).toMatchObject({ side: "Ambos", brands: [{ code: "N-1210" }, { code: "W-2" }] });
 });
 
@@ -947,12 +956,12 @@ test("Web: an item is duplicated from its details, with or without its photos", 
   await page.goto("/inventory");
   const { rows } = dataTable(page);
   const details = itemDetails(page);
-  const question = dialog(page, "Duplicar item?").root;
+  const question = dialog(page, "Duplicar item?");
   const form = itemForm(page, "Novo item");
 
   await rows.first().getByText("Filtro de óleo").click();
   await details.duplicate.click();
-  const withPhotos = question.getByRole("button", { name: "Copiar dados e fotos" });
+  const withPhotos = question.button("Copiar dados e fotos");
   await expect(withPhotos).toBeInViewport();
   await withPhotos.click();
   await expect(details.root).toBeHidden();
@@ -962,7 +971,7 @@ test("Web: an item is duplicated from its details, with or without its photos", 
   await expect(form.photos).toHaveCount(2);
   await form.code.fill("W 712/96");
   await form.save.click();
-  await expect(page.getByText("Item “Filtro de óleo” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Filtro de óleo” cadastrado.")).toBeVisible();
   expect(sent).toEqual([photos.map((photo) => `copy ${photo.id}`)]);
   await expect(rows).toHaveCount(5);
   const copy = stock[0];
@@ -981,7 +990,7 @@ test("Web: an item is duplicated from its details, with or without its photos", 
 
   await rows.first().getByText("Filtro de óleo").click();
   await details.duplicate.click();
-  await question.getByRole("button", { name: "Copiar só os dados" }).click();
+  await question.button("Copiar só os dados").click();
   await expect(form.photos).toHaveCount(0);
   await form.code.fill("W 712/97");
   await form.save.click();
@@ -1003,11 +1012,10 @@ test("Web: the item form and Manage lists close on the ×", { tag: [TEST_TAGS.in
   });
   await page.goto("/inventory");
   const inv = inventory(page);
-  const { rows } = dataTable(page);
   const openers = [
     { open: () => inv.newItem.click(), name: "Novo item" },
     { open: () => inv.edit("Filtro de óleo").click(), name: isMobile ? "Filtro de óleo" : "Editar item" },
-    { open: () => rows.first().getByText("Filtro de óleo").click(), name: "Detalhes do item" },
+    { open: () => inv.name("Filtro de óleo").click(), name: "Detalhes do item" },
     { open: () => inv.manageLists.click(), name: "Gerenciar listas" },
   ];
   for (const { open, name } of openers) {
@@ -1143,7 +1151,7 @@ test("Web: item photos are added and removed from the list and the form", { tag:
 
   await viewer.root.getByRole("button", { name: "Foto 1" }).click();
   await viewer.root.getByRole("button", { name: "Remover esta foto" }).click();
-  await dialog(page, "Remover esta foto?").root.getByRole("button", { name: "Remover" }).click();
+  await dialog(page, "Remover esta foto?").button("Remover").click();
   await expect(viewer.root.getByText("Foto removida")).toBeVisible();
   expect(sent[1]).toEqual([`keep ${stock[0].brands[0].photos[0].id}`]);
   await viewer.close.click();
@@ -1153,7 +1161,7 @@ test("Web: item photos are added and removed from the list and the form", { tag:
   const edit = itemForm(page, "Editar item");
   await edit.photoFile.setInputFiles({ name: "frente.png", mimeType: "image/png", buffer: png });
   await edit.save.click();
-  await expect(page.getByText("Item “Pastilha de freio” salvo.")).toBeVisible();
+  await expect(toasts(page).named("Item “Pastilha de freio” salvo.")).toBeVisible();
   expect(sent[2]).toEqual(["photo frente.png"]);
   await expect(thumbnailImage(inv.photos("Pastilha de freio"))).toHaveAttribute("src", "/api/photos/new-0-thumb.webp");
 });
@@ -1362,7 +1370,7 @@ test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inven
   const inv = inventory(page);
   const { rows } = dataTable(page);
   await expect(rows).toHaveCount(25);
-  await expect(page.getByText("1–25 de 51")).toBeVisible();
+  await expect(inv.pager.range("1–25 de 51")).toBeVisible();
   expect(queries.at(-1)).toBe("page=1&pageSize=25");
 
   await inv.pager.page(2).click();
@@ -1370,13 +1378,13 @@ test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inven
   expect(queries.at(-1)).toBe("page=2&pageSize=25");
   await inv.pager.size(50).click();
   await expect(rows).toHaveCount(50);
-  await expect(page.getByText("1–50 de 51")).toBeVisible();
+  await expect(inv.pager.range("1–50 de 51")).toBeVisible();
   await expect(rows.nth(25)).toContainText("P-026");
 
   await inv.pager.page(2).click();
   await expect(rows).toHaveCount(1);
   await inv.search.fill("Peça 1");
-  await expect(page.getByText(/^1–\d+ de \d+$/)).toBeVisible();
+  await expect(inv.pager.range(/^1–\d+ de \d+$/)).toBeVisible();
   expect(queries.at(-1)).toBe("q=Pe%C3%A7a+1&page=1&pageSize=50");
   await inv.clearSearch.click();
 
@@ -1389,12 +1397,12 @@ test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inven
   await inv.pager.page(3).click();
   await expect(rows).toHaveCount(1);
   await deleteItem(page, "Peça 51");
-  await expect(page.getByText("26–50 de 50")).toBeVisible();
+  await expect(inv.pager.range("26–50 de 50")).toBeVisible();
 
   await inv.newItem.first().click();
   await fillItem(page, "Novo item", { code: "nova-1", name: "peça nova", category: "Motor", partBrand: "Bosch", vehicleBrand: "Volkswagen", unitPrice: "10" });
   await itemForm(page, "Novo item").save.click();
-  await expect(page.getByText("1–25 de 51")).toBeVisible();
+  await expect(inv.pager.range("1–25 de 51")).toBeVisible();
   await expect(rows.first()).toContainText("NOVA-1");
 });
 
@@ -1436,26 +1444,6 @@ test("Web: on a phone the list loads more as it scrolls and keeps its place", { 
   await inv.search.fill("Peça");
   await expect(rows).toHaveCount(25);
   expect(queries.at(-1)).toBe("q=Pe%C3%A7a&page=1&pageSize=25");
-});
-
-// On a 1360×768 notebook, in full screen and in a window (1360×689 once the taskbar and the title bar are taken off),
-// opens the Inventory with 100 items and checks the page doesn't scroll: the header at the top, the toolbar and the
-// pagination in view, nothing sideways, and only the table scrolls.
-test("Web: on a 1360×768 notebook only the Inventory's table scrolls", { tag: [TEST_TAGS.inventory, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
-  await serveItems(page, Array.from({ length: 100 }, (_, index) => item({ code: `P-${index + 1}`, name: `Peça ${index + 1}` })));
-  await page.goto("/inventory");
-  const inv = inventory(page);
-  const table = dataTable(page);
-  await inv.pager.size(100).click();
-  await expect(table.rows).toHaveCount(100);
-  await atNotebookSizes(page, async (size) => {
-    expect((await layout(page)).pageExtra, size).toBe(0);
-    expect((await dashboard(page).header.boundingBox())!.y, size).toBe(0);
-    await expect(inv.newItem, size).toBeInViewport();
-    await expect(inv.pager.pages, size).toBeInViewport();
-    expect(await table.scroll.evaluate((box) => box.scrollHeight > box.clientHeight), size).toBe(true);
-    await expect(page, size).not.toScrollSideways();
-  });
 });
 
 // Lists an item of two brands and checks its row shows both codes, the quantity added up, "2 marcas" and a chevron

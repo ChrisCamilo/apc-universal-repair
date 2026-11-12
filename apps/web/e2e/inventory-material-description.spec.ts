@@ -1,7 +1,7 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import type { Item } from "@apc/domain/items";
-import { dialog, thumbnailImage } from "./locators/common.ts";
+import { dialog, thumbnailImage, toasts } from "./locators/common.ts";
 import { fillItem, inventory, itemDetails, itemForm } from "./locators/inventory.ts";
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { item } from "./data/items.ts";
@@ -62,7 +62,7 @@ test("Web: an item's material and short description show in its details and unde
   await form.description.fill("eletrodo de níquel, rosca longa 19 mm");
   await expect(form.description).toHaveValue("eletrodo de níquel, rosca long");
   await form.save.click();
-  await expect(page.getByText("Item “Vela” cadastrado.")).toBeVisible();
+  await expect(toasts(page).named("Item “Vela” cadastrado.")).toBeVisible();
   await page.getByText("Vela", { exact: true }).first().click();
   await expect(details.root.getByText("Eletrodo de níquel, rosca long")).toBeVisible();
   await expect(details.root.getByText("Níquel", { exact: true })).toBeVisible();

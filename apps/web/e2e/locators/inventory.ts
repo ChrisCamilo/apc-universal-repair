@@ -93,6 +93,8 @@ export function inventory(page: Page) {
     failed: page.getByRole("alert").filter({ hasText: "Não foi possível carregar o estoque" }),
     nothingFound: page.getByRole("heading", { name: "Nenhum item encontrado" }),
     empty: page.getByRole("heading", { name: "Nenhum item cadastrado" }),
+    // An item's name in its row, whose click opens the item's details.
+    name: (name: string) => page.getByTestId("common.data-table.table.row").getByText(name, { exact: true }),
     // The row's pencil and trash, or on a phone the item's details' Editar and Excluir.
     edit: (name: string) => itemAction(page, "Editar", name),
     remove: (name: string) => itemAction(page, "Excluir", name),
@@ -209,11 +211,11 @@ export function itemDetails(page: Page) {
  * @returns The dialog and its buttons.
  */
 export function deleteDialog(page: Page) {
-  const root = page.getByRole("dialog", { name: "Excluir item?" });
+  const { root, button } = dialog(page, "Excluir item?");
   return {
     root,
-    confirm: root.getByRole("button", { name: "Excluir" }),
-    cancel: root.getByRole("button", { name: "Cancelar" }),
+    confirm: button("Excluir"),
+    cancel: button("Cancelar"),
   };
 }
 

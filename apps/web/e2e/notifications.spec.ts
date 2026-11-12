@@ -58,7 +58,7 @@ test("Web: the bell keeps the latest toasts for each user", { tag: [TEST_TAGS.no
   await expect(bell.button).toHaveAccessibleName("Notificações");
 
   await deleteItem(page, "Filtro de óleo");
-  await expect(page.getByText("Item “Filtro de óleo” excluído.")).toBeVisible();
+  await expect(toasts(page).named("Item “Filtro de óleo” excluído.")).toBeVisible();
   await deleteItem(page, "Bomba d'água");
   await expect(toasts(page).urgent.getByText("Não foi possível excluir o item. Tente de novo.")).toBeVisible();
   await deleteDialog(page).cancel.click();
@@ -107,7 +107,7 @@ test("Web: on a phone Alertas opens the notifications as a full screen", { tag: 
   const bell = bellOf(page);
   await expect(bell.button).toHaveAccessibleName("Alertas");
   await deleteItem(page, "Filtro de óleo");
-  await expect(page.getByText("Item “Filtro de óleo” excluído.")).toBeVisible();
+  await expect(toasts(page).named("Item “Filtro de óleo” excluído.")).toBeVisible();
   await deleteItem(page, "Bomba d'água");
   await expect(toasts(page).urgent.getByText("Não foi possível excluir o item. Tente de novo.")).toBeVisible();
   await deleteDialog(page).cancel.click();
@@ -197,7 +197,7 @@ test("Web: items reaching their minimum stock are warned about once", { tag: [TE
   await saveQuantity("2");
   await expect(toasts(page).urgent.getByText("Estoque baixo: “Filtro de óleo” (2 de 2)")).toBeVisible();
   await saveQuantity("1");
-  await expect(page.getByText("Item “Filtro de óleo” salvo.").last()).toBeVisible();
+  await expect(toasts(page).named("Item “Filtro de óleo” salvo.").last()).toBeVisible();
 
   await inventory(page).importCsv.click();
   const importer = importDialog(page);
