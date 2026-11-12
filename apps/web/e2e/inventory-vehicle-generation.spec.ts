@@ -25,7 +25,8 @@ const ITEMS: Item[] = [
 
 // Adds an item for one generation and version of the Gol, picking the generation the stock already has for it and
 // typing the version, and checks they stay out of its name and row but show in its details; then that the Geração and
-// Versão do veículo filters narrow the list to the items with them.
+// Versão do veículo filters, each chosen after the filters before it (the vehicle's brand, then its model, then its
+// generation), narrow the list to the items with them.
 test("Web: a vehicle's generation and version are saved, shown in the details and filtered", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
@@ -73,19 +74,27 @@ test("Web: a vehicle's generation and version are saved, shown in the details an
   await expect(details.root.getByText("Volkswagen Gol 08/12 1.0 G5")).toBeVisible();
   await (phone ? details.back : details.closeText).click();
 
-  /** Applies one value of one filter of the Filtros menu. */
-  const filterBy = async (filter: string, value: string) => {
+  /** Applies a value of each of some filters of the Filtros menu, chosen in their order. */
+  const filterBy = async (choices: [filter: string, value: string][]) => {
     await inventory(page).filters.click();
     const menu = filtersMenu(page);
-    await menu.field(filter).click();
-    await options(page).named(value, true).click();
-    await page.keyboard.press("Escape");
+    for (const [filter, value] of choices) {
+      await menu.field(filter).click();
+      await options(page).named(value, true).click();
+      // A phone's list goes back to the sheet's rows by its ←; the desktop's closes.
+      await (phone ? page.getByRole("button", { name: "Voltar aos filtros" }).click() : page.keyboard.press("Escape"));
+    }
     await menu.apply.click();
   };
-  await filterBy("Geração", "08/12");
+  const gol: [string, string][] = [
+    ["Marca do veículo", "Volkswagen"],
+    ["Modelo do veículo", "Gol · Volkswagen"],
+    ["Geração", "08/12"],
+  ];
+  await filterBy(gol);
   await expect(rows).toHaveCount(2);
   await expect(rows.filter({ hasText: "Filtro de óleo" })).toHaveCount(0);
   await inventory(page).clearFilters.click();
-  await filterBy("Versão do veículo", "1.0 G5");
+  await filterBy([...gol, ["Versão do veículo", "1.0 G5"]]);
   await expect(rows).toHaveCount(2);
 });
