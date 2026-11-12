@@ -169,6 +169,22 @@ test('Web: errors describe the field and an empty list says so', async () => {
   await expect.element(screen.getByText('Nenhuma categoria cadastrada')).toBeVisible()
 })
 
+// Opens an empty list under a narrow field and checks its note wraps onto its lines and shows whole, without
+// scrolling the list or spilling out of it.
+test('Web: an empty list\'s note shows whole under a narrow field', async () => {
+  const screen = await render(
+    <div style={{ width: 150 }}>
+      <Category initial="" options={[]} />
+    </div>,
+  )
+  await screen.getByRole('combobox', { name: 'Categoria' }).click()
+  const note = screen.getByText('Nenhuma categoria cadastrada').element()
+  const list = screen.getByRole('listbox').element()
+  expect(note.getBoundingClientRect().height).toBeGreaterThan(36)
+  expect(note.scrollHeight).toBeLessThanOrEqual(note.clientHeight)
+  expect(list.scrollHeight).toBeLessThanOrEqual(list.clientHeight)
+})
+
 function Category({
   initial,
   label = 'Categoria',

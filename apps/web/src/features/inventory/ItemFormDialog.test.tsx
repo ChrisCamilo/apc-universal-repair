@@ -360,6 +360,46 @@ test('Web: a vehicle takes an optional generation and version, sent as years', a
   })
 })
 
+// Fills a vehicle line and checks its generation waits for its model and its version for its generation, each saying
+// what to choose first; emptying the model clears and locks both again.
+test("Web: a vehicle's generation opens after its model, and its version after its generation", async () => {
+  const screen = await render(<Sample items={[...ITEMS, DISC]} />)
+  await screen.getByRole('combobox', { name: 'Marca do veículo' }).fill('volkswagen')
+  const generation = screen.getByRole('combobox', { name: 'Geração' })
+  const version = screen.getByRole('combobox', { name: 'Versão' })
+  await expect.element(generation).toBeDisabled()
+  await expect.element(generation).toHaveAttribute('placeholder', 'Escolha o modelo primeiro')
+  await expect.element(version).toBeDisabled()
+  await screen.getByRole('combobox', { name: 'Modelo do veículo' }).fill('gol')
+  await expect.element(generation).toBeEnabled()
+  await expect.element(version).toHaveAttribute('placeholder', 'Escolha a geração primeiro')
+  await generation.fill('08/12')
+  await expect.element(version).toBeEnabled()
+  await version.fill('1.0 G5')
+  await screen.getByRole('combobox', { name: 'Modelo do veículo' }).clear()
+  await expect.element(generation).toHaveValue('')
+  await expect.element(version).toHaveValue('')
+  await expect.element(generation).toBeDisabled()
+  await expect.element(version).toBeDisabled()
+})
+
+// Opens a new item at the minimum desktop size and checks the position and side keep their own width instead of
+// stretching across their cells, and "Adicionar veículo" and "Adicionar marca" are framed and written in the accent.
+test('Web: the position and side keep their width and the add buttons stand out in the accent', async () => {
+  root.dataset.style = 'eighties'
+  root.dataset.mode = 'night'
+  const { accent } = themes.eighties.night.colors
+  const screen = await render(<Sample />)
+  for (const name of ['Posição', 'Lado']) {
+    const choice = screen.getByRole('radiogroup', { name }).element()
+    expect(choice.getBoundingClientRect().width).toBeLessThan(choice.parentElement!.getBoundingClientRect().width / 2)
+  }
+  for (const name of ['Adicionar veículo', 'Adicionar marca']) {
+    const button = getComputedStyle(screen.getByRole('button', { name }).element())
+    expect([button.borderColor, button.color]).toEqual([rgb(accent), rgb(accent)])
+  }
+})
+
 // Opens the details of an item whose vehicle has a generation and a version, and checks they are listed with the
 // vehicle, apart from the item's name.
 test('Web: the details list a vehicle with its generation and version', async () => {
