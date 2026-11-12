@@ -3,14 +3,17 @@ import { TEST_CATALOG, TEST_ENGINES } from "@apc/domain/test-catalog";
 
 // The Catalog tab: its brands, the models' tree, its searches and the engine sheets; the tree's editing, its buttons,
 // the row that adds or renames a node, the delete dialog and an engine sheet's form; on a phone, the brand lines, the
-// screen's title and its ←, the parts a code search found as cards, and the sheets and dialogs the tree is edited in.
+// screen's title and its ←, the parts a code search found as cards, and the sheets and dialogs the tree is edited in;
+// a model's or a version's sheet with the parts that fit it.
 
 /**
- * The Catalog tab: a brand, a model and an engine sheet by name, the two searches and the parts a code search finds;
+ * The Catalog tab: a brand, a model and an engine sheet by name, a model's or a version's chevron, the two searches and
+ * the parts a code search finds;
  * the tree's editing: a brand's models in order, "Nova marca" and "Novo modelo", a node's name in its row, a row's
  * button by name, the row that adds or renames a node and a field of it, the delete dialog, "Editar ficha" and a choice
  * of the sheet's form; on a phone, a brand's line, the screen's title, its ← by name, the found parts' cards, and a bottom
- * sheet or dialog by its title, such as a branch's actions or the sheet adding a node.
+ * sheet or dialog by its title, such as a branch's actions or the sheet adding a node; a model's or a version's sheet
+ * by its title, the rows of the parts that fit it, and "Ver todas as peças".
  * @param page The test's page.
  * @returns The tab's elements.
  */
@@ -20,6 +23,9 @@ export function catalog(page: Page) {
     brand: (name: string, exact?: boolean) => page.getByRole("radio", { name, exact }),
     models: (brand: string) => page.getByRole("tree", { name: `Modelos ${brand}` }),
     model: (name: string, exact?: boolean) => page.getByRole("treeitem", { name, exact }),
+    // The chevron of a model or a version, which opens or closes it, as a click on its name opens its sheet.
+    toggle: (name: string) =>
+      page.getByRole("treeitem", { name, exact: true }).locator(':scope > [data-row]').getByTestId("common.tree-view.item.row.toggle"),
     sheet: (key: keyof typeof TEST_ENGINES) => page.getByRole("heading", { name: TEST_CATALOG.sheets[TEST_ENGINES[key]].title }),
     brandSearch: page.getByRole("searchbox", { name: "Procure marca" }),
     search: page.getByRole("searchbox", { name: "Procure modelo ou código da peça" }),
@@ -41,5 +47,8 @@ export function catalog(page: Page) {
     editSheet: page.getByRole("button", { name: "Editar ficha" }),
     choice: (form: string, name: string) => page.getByRole("form", { name: form }).getByRole("radio", { name }),
     dialog: (name: string) => page.getByRole("dialog", { name }),
+    carSheet: (title: string) => page.getByRole("heading", { name: title, exact: true }),
+    carParts: page.getByRole("table", { name: "Peças disponíveis" }).getByRole("row").filter({ has: page.locator("code") }),
+    allParts: page.getByRole("button", { name: "Ver todas as peças" }),
   };
 }
