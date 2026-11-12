@@ -72,6 +72,10 @@
       "apc-dist": "./dist/inventory/testLists.js",
       "default": "./src/inventory/testLists.ts"
     },
+    "./vehicle-lists": {
+      "apc-dist": "./dist/inventory/vehicleLists.js",
+      "default": "./src/inventory/vehicleLists.ts"
+    },
     "./notifications": {
       "apc-dist": "./dist/notifications/notifications.js",
       "default": "./src/notifications/notifications.ts"
