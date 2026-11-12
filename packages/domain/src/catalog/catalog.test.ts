@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Item } from "../inventory/items.ts";
 import {
+  belowBrand,
   belowNode,
   brandMark,
   brandsNamed,
@@ -539,4 +540,15 @@ test("Shared: the item form offers the catalog's and the stock's generations and
     versions: ["Comodoro"],
   });
   assert.deepEqual(vehicleSuggestions(TEST_CATALOG, stock, { vehicleBrand: "Chevrolet", vehicleModel: "" }), { generations: [], versions: [] });
+});
+
+// Deletes a catalog brand in memory, and checks its models' trees go with it, the rail closes up, and a brand that
+// isn't there is missing; reads the request that deletes one; and says what deleting a brand takes, its models counted.
+test("Shared: a brand is deleted from the catalog with its models' trees", () => {
+  const deleted = applyCatalogChange(TEST_CATALOG_DATA, { kind: "deleteBrand", id: CHEVROLET }) as CatalogData;
+  assert.deepEqual(deleted.brands.map((brand) => brand.name), ["Volkswagen", "Fiat", "Ford"]);
+  assert.equal(applyCatalogChange(deleted, { kind: "deleteBrand", id: CHEVROLET }), "missing");
+  assert.deepEqual(catalogChangeOf("DELETE", `/brands/${CHEVROLET}`, {}, FORD), { status: 200, change: { kind: "deleteBrand", id: CHEVROLET } });
+  assert.equal(belowBrand(TEST_CATALOG.brands[0]), "3 modelos, 4 gerações, 3 versões, 2 anos, 2 motores com ficha");
+  assert.equal(belowBrand({ ...TEST_CATALOG.brands[0], models: [] }), null);
 });
