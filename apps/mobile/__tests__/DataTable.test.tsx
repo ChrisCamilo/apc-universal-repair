@@ -298,6 +298,9 @@ function Inventory({ items = ITEMS, onRowOpen }: { items?: Item[]; onRowOpen?: (
   );
 }
 
+/** The one column of Openable's table: the part's name. */
+const PART_COLUMNS: ComponentProps<typeof DataTable<Part>>['columns'] = [{ key: 'name', header: 'Item', card: 'main', cell: (part) => <Text>{part.name}</Text> }];
+
 function Openable() {
   const [open, setOpen] = useState(false);
   const item = { code: 'CB-4500', name: 'Cabo de embreagem', brand: false };
@@ -317,7 +320,7 @@ function Openable() {
       onSortChange={() => {}}
       unsortedLabel="Ordem de cadastro"
       empty={null}
-      columns={[{ key: 'name', header: 'Item', card: 'main', cell: (part) => <Text>{part.name}</Text> }]}
+      columns={PART_COLUMNS}
     />
   );
 }
