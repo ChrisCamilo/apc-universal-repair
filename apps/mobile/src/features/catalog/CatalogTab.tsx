@@ -3,6 +3,9 @@ import { BackHandler, Pressable, ScrollView, Text as RNText, View } from 'react-
 import {
   belowNode,
   brandSummary,
+  carFilters,
+  carParts,
+  carSheet,
   CATALOG_CHILDREN,
   CATALOG_HOME,
   catalogNodes,
@@ -12,11 +15,13 @@ import {
   ENGINE_SPEC_LABELS,
   enginePath,
   findParts,
+  hasCarSheet,
   modelsNamed,
   NO_SHEET_MESSAGE,
   partScreen,
   screenBack,
   screenHeader,
+  treePath,
   type Catalog,
   type CatalogEditing,
   type CatalogEditLevel,
@@ -41,12 +46,14 @@ import { useTheme } from '../../app/theme';
 import { TreeView } from '../../components/TreeView';
 import { Heading, NumericReadout, Text } from '../../components/Typography';
 import { useItems } from '../inventory/useItems';
+import { CarParts, CarSheet } from './CarSheet';
 import { useStyles } from './CatalogTab.styles';
 import { EngineSheetForm } from './EngineSheetForm';
 import { NodeForm } from './NodeForm';
 import { PartResults } from './PartResults';
 import { useCatalog } from './useCatalog';
 import { useCatalogEditing } from './useCatalogEditing';
+import { useInventoryLink } from '../dashboard/inventoryLinkContext';
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 
 // The Catalog tab, the same as the web's on a phone: a stack of screens, as in the "Catálogo no celular" mockup (see
@@ -67,6 +74,10 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 // sheet, and "Editar ficha" under an engine's sheet, open the sheet's form in a full-screen dialog (see
 // EngineSheetForm); a new brand opens its models, and a new engine its sheet. Every change answers the whole catalog,
 // which the tab takes as it is.
+// A press on a model's or a version's name opens its sheet (see CarSheet) under the path to it, whose engines open
+// their sheets, and under it the parts in stock that fit it: a press on one opens its details in the Inventory tab, and
+// "Ver todas as peças" opens the Inventory with the filters that list them (see inventoryLinkContext.ts). ← goes back
+// to the models, open on it.
 
 export function CatalogTab() {
   const state = useCatalog();
@@ -113,6 +124,7 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
   const items = state.status === 'ready' ? state.items : [];
   const [screen, setScreen] = useState<CatalogScreen>(CATALOG_HOME);
   const [query, setQuery] = useState('');
+  const links = useInventoryLink();
   // The node whose actions are open in a sheet.
   const [acting, setActing] = useState<CatalogNode>();
   const editor = useCatalogEditing({
@@ -229,6 +241,31 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
 
   /** The screen on show. */
   const content = () => {
+    if (screen.view === 'car') {
+      const path = enginePath(catalog, screen.brandId, screen.nodeId);
+      return (
+        <>
+          {path !== '' && (
+            <RNText style={styles.path} testID={ids.path}>
+              {path}
+            </RNText>
+          )}
+          <ImageFrame alt={`Foto do ${carSheet(catalog, screen.brandId, screen.nodeId).title}`} emptyLabel="Sem foto do modelo" />
+          <CarSheet
+            catalog={catalog}
+            brandId={screen.brandId}
+            nodeId={screen.nodeId}
+            onEngine={(engineId) => setScreen({ view: 'sheet', brandId: screen.brandId, engineId })}
+          />
+          <CarParts
+            parts={carParts(catalog, screen.brandId, screen.nodeId, items)}
+            onPart={(item) => links.open({ itemId: item.id })}
+            onAll={() => links.open({ filters: carFilters(catalog, screen.brandId, screen.nodeId, items) })}
+          />
+        </>
+      );
+    }
+
     if (screen.view === 'sheet') {
       const sheet = catalog.sheets[screen.engineId];
       return (
@@ -257,7 +294,7 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
     }
 
     if (screen.view === 'models') {
-      const { brandId, modelId, engineId, missing } = screen;
+      const { brandId, modelId, nodeId, missing } = screen;
       const models = modelsNamed(brand!.models, modelQuery);
       return (
         <>
@@ -282,13 +319,14 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
           </View>
           {models.length > 0 ? (
             <TreeView
-              key={`${brandId}-${modelId}-${engineId}`}
+              key={`${brandId}-${modelId}-${nodeId}`}
               label={`Modelos ${brand!.name}`}
               nodes={models}
-              selected={engineId}
-              onSelect={(id) => setScreen({ view: 'sheet', brandId, engineId: id })}
+              selected={nodeId}
+              onSelect={(id) => setScreen(hasCarSheet(nodes.get(id)) ? { view: 'car', brandId, nodeId: id } : { view: 'sheet', brandId, engineId: id })}
+              selectable={(id) => hasCarSheet(nodes.get(id))}
               highlighted={modelId}
-              defaultExpanded={modelId && !engineId ? [modelId] : undefined}
+              defaultExpanded={nodeId ? treePath(catalog, brandId, nodeId).map((node) => node.id) : modelId ? [modelId] : undefined}
               leafTag="Ver ficha"
               rowActions={rowActions}
               after={after}
