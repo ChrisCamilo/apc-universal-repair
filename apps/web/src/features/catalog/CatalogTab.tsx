@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  belowBrand,
   belowNode,
   brandsNamed,
   brandSummary,
@@ -74,7 +75,9 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // The tree is edited in place (see @apc/domain/catalog): "Nova marca" under the tiles adds a brand, "Novo modelo" over
 // the tree a model, and each branch, while pointed at or focused, has buttons that add the level under it, rename it,
 // move it up or down and delete it. What is added or renamed is typed in a row inside the tree (see NodeForm), and an
-// empty branch shows a dashed button to add its first. Deleting asks first, saying what goes with it. A year's "+",
+// empty branch shows a dashed button to add its first. "Excluir marca" beside "Novo modelo" deletes the brand from the
+// catalog with its models' trees, its vehicle brand staying in the lists, and opens the next brand. Deleting asks first,
+// saying what goes with it. A catalog with no brand says so and adds the first with "Nova marca". A year's "+",
 // "Novo motor", opens an empty sheet in the detail column instead (see EngineSheetForm), and the engine joins the tree,
 // chosen, once its sheet is saved; an engine's sheet has "Editar ficha", which turns it into the same form. Every change
 // answers the whole catalog, which the tab takes as it is; a name or year another node has is said under the field.
@@ -90,7 +93,8 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // brands' heading and "Novo modelo" beside the models' open a bottom sheet with the new node's fields, Cancelar and
 // Adicionar. Each branch has a "⋯", always in view, opening an action sheet with its name: add the level under it,
 // rename it (a generation, with its years), move it up or down (only where it can go), delete it after confirming, or
-// close. A year's engines end with "Novo motor em <ano>", and an empty branch with the button adding its first. A new
+// close. A year's engines end with "Novo motor em <ano>", and an empty branch with the button adding its first, and a
+// brand's models end with "Excluir marca", which deletes the brand from the catalog and goes back to the brands. A new
 // engine's sheet, and "Editar ficha" under an engine's sheet, open the sheet's form in a full-screen dialog with
 // Cancelar and Salvar ficha at its foot; a new brand opens its models, and a new engine its sheet.
 // A click on a model's or a version's name chooses it as well as opening or closing it, and the detail column shows its
@@ -120,8 +124,32 @@ export function CatalogTab() {
           action={{ label: 'Tentar de novo', onClick: state.reload }}
         />
       )}
-      {state.status === 'ready' && <EmptyState title="Nenhuma marca no catálogo" message="As marcas do catálogo aparecem aqui." />}
+      {state.status === 'ready' && <EmptyCatalog onChanged={state.replace} />}
     </div>
+  )
+}
+
+/** A catalog with no brand: says so, and adds the first. */
+function EmptyCatalog({ onChanged }: { onChanged: (catalog: Catalog) => void }) {
+  const editor = useCatalogEditing({ onChanged })
+  return (
+    <>
+      <EmptyState title="Nenhuma marca no catálogo" message="As marcas do catálogo aparecem aqui." />
+      {editor.editing ? (
+        <NodeForm
+          level="brand"
+          label="Nova marca"
+          error={editor.error}
+          saving={editor.saving}
+          onSave={(values) => void editor.save(values)}
+          onCancel={() => editor.edit(null)}
+        />
+      ) : (
+        <Button variant="ghost" size="sm" icon={plusIcon} onClick={() => editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } })}>
+          Nova marca
+        </Button>
+      )}
+    </>
   )
 }
 
@@ -143,6 +171,11 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
     onEngineAdded: (changed, yearId) => {
       setEngine(catalogNodes(changed.brands.find((b) => b.id === brandId)!.models).get(yearId)?.children?.at(-1)?.id)
       setRevealed((count) => count + 1)
+    },
+    onBrandRemoved: (changed) => {
+      if (changed.brands.length > 0) {
+        openBrandOf(changed, changed.brands[Math.min(catalog.brands.findIndex((b) => b.id === brandId), changed.brands.length - 1)].id)
+      }
     },
   })
   const { editing, sheet: sheetEditing, removing } = editor
@@ -299,6 +332,9 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
               >
                 Novo modelo
               </Button>
+              <Button variant="ghost" size="sm" icon={trashIcon} onClick={() => editor.askRemoveBrand(brand)}>
+                Excluir marca
+              </Button>
             </div>
             {editing?.kind === 'add' && editing.level === 'model' && form('model', `Novo modelo em ${brand.name}`)}
             {models.length > 0 ? (
@@ -396,7 +432,20 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
           </div>
         </div>
       </div>
-      <DeleteNodeDialog node={removing} saving={editor.saving} onCancel={() => editor.askRemove(undefined)} onConfirm={() => void editor.remove()} />
+      <DeleteDialog
+        name={removing?.label}
+        below={removing && belowNode(removing)}
+        saving={editor.saving}
+        onCancel={() => editor.askRemove(undefined)}
+        onConfirm={() => void editor.remove()}
+      />
+      <DeleteDialog
+        name={editor.removingBrand?.name}
+        below={editor.removingBrand && belowBrand(editor.removingBrand)}
+        saving={editor.saving}
+        onCancel={() => editor.askRemoveBrand(undefined)}
+        onConfirm={() => void editor.removeBrand()}
+      />
     </div>
   )
 }
@@ -421,6 +470,7 @@ function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (ca
         setScreen(engineId ? { view: 'sheet', brandId: screen.brandId, engineId } : screen)
       }
     },
+    onBrandRemoved: () => setScreen(CATALOG_HOME),
   })
   const { editing, sheet: sheetEditing } = editor
   const results = findParts(items, query)
@@ -589,6 +639,9 @@ function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (ca
           ) : (
             <NoModel none={brand!.models.length === 0} />
           )}
+          <Button variant="secondary" icon={trashIcon} onClick={() => editor.askRemoveBrand(brand)}>
+            Excluir marca
+          </Button>
         </div>
       )
     }
@@ -698,19 +751,43 @@ function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (ca
           />
         )}
       </Dialog>
-      <DeleteNodeDialog node={editor.removing} saving={editor.saving} onCancel={() => editor.askRemove(undefined)} onConfirm={() => void editor.remove()} />
+      <DeleteDialog
+        name={editor.removing?.label}
+        below={editor.removing && belowNode(editor.removing)}
+        saving={editor.saving}
+        onCancel={() => editor.askRemove(undefined)}
+        onConfirm={() => void editor.remove()}
+      />
+      <DeleteDialog
+        name={editor.removingBrand?.name}
+        below={editor.removingBrand && belowBrand(editor.removingBrand)}
+        saving={editor.saving}
+        onCancel={() => editor.askRemoveBrand(undefined)}
+        onConfirm={() => void editor.removeBrand()}
+      />
     </>
   )
 }
 
-/** Asks to confirm deleting a node, saying what goes with it and that the inventory's parts stay. */
-function DeleteNodeDialog({ node, saving, onCancel, onConfirm }: { node?: CatalogNode; saving: boolean; onCancel: () => void; onConfirm: () => void }) {
-  const below = node && belowNode(node)
+/** Asks to confirm deleting a node or a brand of the catalog, saying what goes with it and that the inventory's parts stay. */
+function DeleteDialog({
+  name,
+  below,
+  saving,
+  onCancel,
+  onConfirm,
+}: {
+  name?: string
+  below?: string | null
+  saving: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
   return (
     <Dialog
-      open={node !== undefined}
+      open={name !== undefined}
       onClose={onCancel}
-      title={`Excluir “${node?.label ?? ''}”?`}
+      title={`Excluir “${name ?? ''}”?`}
       size="confirm"
       actions={
         <>
