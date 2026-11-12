@@ -26,7 +26,9 @@ import {
 // taken from the items in stock, and the list query that sends them, with the stock status, to the API. The
 // vehicle model keeps its brand in the value, since two brands may share a model name; with vehicle brands chosen,
 // it offers only their models, and the generations and versions only those of the chosen models (or brands). A
-// generation is sent with its full years ("1985-1990") and listed with their last two digits ("85/90"). An entry of the item lists also leads to the filters that show the items using it, and
+// generation is sent with its full years ("1985-1990") and listed with their last two digits ("85/90"). The vehicle
+// filters open one after the other: the model is off, with nothing to offer, until a brand is chosen, the generation
+// until a model is, and the version until a generation is. An entry of the item lists also leads to the filters that show the items using it, and
 // the filters follow an entry renamed or merged, so they keep showing its items. itemMatchesQuery reads a list query
 // on an item in memory with the rules the API's query applies in the database (itemWhere), for the web app's demo,
 // which has no server, and for a phone's filter sheet, which counts the items its filters would show before they are
@@ -45,6 +47,15 @@ export const EMPTY_ITEM_FILTERS: ItemFilters = {
   color: [],
   location: [],
 };
+/**
+ * What the vehicle filters say while the one before them has nothing chosen: the model waits for a brand, the
+ * generation for a model, and the version for a generation.
+ */
+export const VEHICLE_FILTER_WAITING = {
+  vehicleModel: "Escolha a marca do veículo",
+  generation: "Escolha o modelo do veículo",
+  version: "Escolha a geração",
+} as const;
 /** The position chips: front, rear and not applicable; "Ambos" items match front and rear. */
 export const POSITION_FILTERS = (["D", "T", NOT_APPLICABLE] as const).map((value) => ({
   value,
@@ -101,7 +112,7 @@ export type ItemFilterOptions = {
  * sheet shows in place of its chips.
  */
 export type ItemFilterRow =
-  | { key: keyof ItemFilters; label: string; allLabel: string; options: { value: string; label: string }[] }
+  | { key: keyof ItemFilters; label: string; allLabel: string; options: { value: string; label: string }[]; disabled?: boolean }
   | { label: string; groups: { key: keyof ItemFilters; label: string; options: ChipOption[]; segments: { value: string; label: string }[] }[] };
 /** The values chosen in each filter of the Filtros menu. */
 export type ItemFilters = Record<
@@ -110,7 +121,7 @@ export type ItemFilters = Record<
 >;
 /**
  * Sets the filters that show the items using an entry of the item lists, e.g. the category "Motor"; a vehicle model
- * goes with its brand.
+ * goes with its brand, in its own filter too, since the model's filter needs a brand chosen.
  * @param kind The entry's list.
  * @param entry The entry.
  * @param lists The four lists, for a vehicle model's brand.
@@ -119,7 +130,7 @@ export type ItemFilters = Record<
 export function entryFilters(kind: ItemListKind, entry: ListEntry | VehicleModel, lists: ItemLists): ItemFilters {
   const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
   const value = brand ? vehicleModelValue(brand.name, entry.name) : entry.name;
-  return { ...EMPTY_ITEM_FILTERS, [ITEM_LIST_FIELDS[kind]]: [value] };
+  return { ...EMPTY_ITEM_FILTERS, ...(brand && { vehicleBrand: [brand.name] }), [ITEM_LIST_FIELDS[kind]]: [value] };
 }
 
 /**
@@ -149,14 +160,20 @@ export function followEntryChange(filters: FilterValues, change: ListEntryChange
 /**
  * Lists what each filter offers: the categories, brands and locations in stock (of every brand of each item), the
  * colors in use with N/A first, the vehicle brands of every vehicle of each item, and their models as "Opala 4.1 ·
- * Chevrolet", only of the chosen vehicle brands when there are any; then the generations, oldest first, and versions
- * of those vehicles, only of the chosen models when there are any.
+ * Chevrolet", only of the chosen vehicle brands when there are any; then the generations, oldest first, of those
+ * vehicles, only of the chosen models when there are any, and their versions, only of the chosen generations too.
  * @param items Every item in stock.
  * @param vehicleBrands Vehicle brands chosen in the menu.
  * @param vehicleModels Vehicle models chosen in the menu, as vehicleModelValue writes them.
+ * @param generations Generations chosen in the menu, as generationText writes them.
  * @returns The options of each filter, each list in alphabetical order.
  */
-export function itemFilterOptions(items: readonly Item[], vehicleBrands: readonly string[], vehicleModels: readonly string[] = []): ItemFilterOptions {
+export function itemFilterOptions(
+  items: readonly Item[],
+  vehicleBrands: readonly string[],
+  vehicleModels: readonly string[] = [],
+  generations: readonly string[] = [],
+): ItemFilterOptions {
   const brands = items.flatMap((item) => item.brands);
   const colors = distinct(brands.map((brand) => brand.color).filter((color) => color !== NOT_APPLICABLE));
   const vehicles = items.flatMap((item) => item.vehicles);
@@ -165,7 +182,8 @@ export function itemFilterOptions(items: readonly Item[], vehicleBrands: readonl
   const ofModels = ofBrands.filter(
     (vehicle) => vehicleModels.length === 0 || (vehicle.vehicleModel && vehicleModels.includes(vehicleModelValue(vehicle.vehicleBrand, vehicle.vehicleModel))),
   );
-  const generations = new Map(ofModels.filter((vehicle) => vehicle.firstYear != null).map((vehicle) => [generationText(vehicle), vehicle]));
+  const ofGenerations = ofModels.filter((vehicle) => generations.length === 0 || generations.includes(generationText(vehicle)));
+  const held = new Map(ofModels.filter((vehicle) => vehicle.firstYear != null).map((vehicle) => [generationText(vehicle), vehicle]));
   return {
     categories: distinct(items.map((item) => item.category)),
     partBrands: distinct(brands.map((brand) => brand.partBrand)),
@@ -173,10 +191,10 @@ export function itemFilterOptions(items: readonly Item[], vehicleBrands: readonl
     vehicleModels: distinct(models.map((vehicle) => vehicleModelValue(vehicle.vehicleBrand, vehicle.vehicleModel!)))
       .map((value) => ({ value, label: vehicleModelLabel(value) }))
       .sort((a, b) => a.label.localeCompare(b.label, "pt-BR")),
-    generations: [...generations]
+    generations: [...held]
       .sort(([, a], [, b]) => a.firstYear! - b.firstYear! || (a.lastYear ?? Infinity) - (b.lastYear ?? Infinity))
       .map(([value, vehicle]) => ({ value, label: generationLabel(vehicle) })),
-    versions: distinct(ofModels.flatMap((vehicle) => (vehicle.version ? [vehicle.version] : []))),
+    versions: distinct(ofGenerations.flatMap((vehicle) => (vehicle.version ? [vehicle.version] : []))),
     colors: brands.some((brand) => brand.color === NOT_APPLICABLE) ? [NOT_APPLICABLE, ...colors] : colors,
     locations: distinct(brands.flatMap((brand) => (brand.location ? [brand.location] : []))),
   };
@@ -185,21 +203,28 @@ export function itemFilterOptions(items: readonly Item[], vehicleBrands: readonl
 /**
  * Lays out the Filtros menu for what is chosen in it so far: nine rows, position and side sharing one row of
  * chips, the vehicle models narrowed to the chosen vehicle brands, and the generations and versions to the chosen
- * models.
+ * models, and the versions to the chosen generations; each vehicle filter is off and offers nothing until the one
+ * before it has a choice (the model a brand, the generation a model, the version a generation), so what it held leaves
+ * the choice once that one is cleared.
  * @param items Every item in stock.
  * @param draft Values chosen in the menu so far.
  * @returns The rows, in menu order.
  */
 export function itemFilterRows(items: readonly Item[], draft: FilterValues): ItemFilterRow[] {
-  const options = itemFilterOptions(items, draft.vehicleBrand ?? [], draft.vehicleModel ?? []);
+  const options = itemFilterOptions(items, draft.vehicleBrand ?? [], draft.vehicleModel ?? [], draft.generation ?? []);
   const plain = (values: string[]) => values.map((value) => ({ value, label: value }));
+  /** A vehicle row that waits for another: off, offering nothing and saying what to choose, until that one has a choice. */
+  const after = (
+    before: keyof ItemFilters,
+    row: { key: keyof typeof VEHICLE_FILTER_WAITING; label: string; allLabel: string; options: { value: string; label: string }[] },
+  ) => ((draft[before] ?? []).length === 0 ? { ...row, allLabel: VEHICLE_FILTER_WAITING[row.key], options: [], disabled: true } : row);
   return [
     { key: "category", label: "Categoria", allLabel: "Todas", options: plain(options.categories) },
     { key: "partBrand", label: "Marca da peça", allLabel: "Todas", options: plain(options.partBrands) },
     { key: "vehicleBrand", label: "Marca do veículo", allLabel: "Todas", options: plain(options.vehicleBrands) },
-    { key: "vehicleModel", label: "Modelo do veículo", allLabel: "Todos", options: options.vehicleModels },
-    { key: "generation", label: "Geração", allLabel: "Todas", options: options.generations },
-    { key: "version", label: "Versão do veículo", allLabel: "Todas", options: plain(options.versions) },
+    after("vehicleBrand", { key: "vehicleModel", label: "Modelo do veículo", allLabel: "Todos", options: options.vehicleModels }),
+    after("vehicleModel", { key: "generation", label: "Geração", allLabel: "Todas", options: options.generations }),
+    after("generation", { key: "version", label: "Versão do veículo", allLabel: "Todas", options: plain(options.versions) }),
     {
       label: "Posição · Lado",
       groups: [

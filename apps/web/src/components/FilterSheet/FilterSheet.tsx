@@ -39,7 +39,7 @@ type FilterSheetProps = {
 }
 /** A row of the sheet: a multiple choice opened as a list, or segmented choices sharing a heading, e.g. position and side. */
 type Row =
-  | { key: string; label: string; allLabel: string; options: Option[] }
+  | { key: string; label: string; allLabel: string; options: Option[]; disabled?: boolean }
   | { label: string; groups: { key: string; label: string; segments: Option[] }[] }
 type SortSheetProps = {
   open: boolean
@@ -192,6 +192,7 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
                   label={row.label}
                   value={selectionSummary(chosen, row.allLabel)}
                   chosen={chosen.length > 0}
+                  disabled={row.disabled}
                   onClick={() => openList({ list: 'filter', key: row.key }, row.key)}
                 />
               )
@@ -229,14 +230,16 @@ type SheetRowProps = {
   chosen: boolean
   /** Leads with the sort's icon. */
   icon?: boolean
+  /** Whether it is off, e.g. the vehicle models until a vehicle brand is chosen. */
+  disabled?: boolean
   onClick: () => void
 }
 
 /** A row of the sheet: its label, what it has chosen and a chevron, opening its options. */
-function SheetRow({ id, label, value, chosen, icon = false, onClick }: SheetRowProps) {
+function SheetRow({ id, label, value, chosen, icon = false, disabled = false, onClick }: SheetRowProps) {
   const { classes, ids } = filterSheet({ chosen })
   return (
-    <button type="button" data-row={id} className={classes.row()} data-testid={ids.row} onClick={onClick}>
+    <button type="button" data-row={id} disabled={disabled} className={classes.row()} data-testid={ids.row} onClick={onClick}>
       {icon && (
         <span aria-hidden="true" className={classes.icon()} data-testid={ids.icon}>
           <Icon icon={sortIcon} size={ICON_SIZES.thumbnail} />

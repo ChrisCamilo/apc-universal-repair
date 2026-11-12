@@ -15,7 +15,8 @@ import { usePresence } from '../usePresence.ts'
 // with any value chosen lights up. Nothing changes until Apply; Clear resets every row and applies right
 // away; Escape or a click outside closes the panel without applying. The button counts the filters on. Rows may
 // depend on what is chosen in the panel, e.g. the vehicle models of the chosen brands: a value a row stops
-// offering leaves the choice. An owner may also open and close the panel itself, as the Inventory tutorial does.
+// offering leaves the choice, and a row may be off until another is chosen, e.g. the vehicle models until a vehicle
+// brand. An owner may also open and close the panel itself, as the Inventory tutorial does.
 // The panel slides in from the button and back out, staying inert while it leaves (see usePresence).
 
 type ChipsRow = {
@@ -45,6 +46,8 @@ type SelectRow = {
   options: { value: string; label: string }[]
   /** Label of the option that clears the row, e.g. "Todas". */
   allLabel: string
+  /** Whether the row is off, e.g. the vehicle models until a vehicle brand is chosen. */
+  disabled?: boolean
 }
 
 /**
@@ -196,6 +199,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
                       options={row.options}
                       value={draft[row.key] ?? []}
                       onValueChange={(chosen) => change(row.key, chosen)}
+                      disabled={row.disabled}
                     />
                   </>
                 )}

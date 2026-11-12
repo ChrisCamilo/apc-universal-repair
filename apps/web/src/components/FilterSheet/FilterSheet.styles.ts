@@ -2,8 +2,8 @@ import { DISPLAY_LABEL } from '../../styles/shared.ts'
 import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of a phone's filter sheet, as in the Filtros mockup: full-width 56px rows under soft hairlines, each with
-// its label, its value (muted, or in the accent once chosen) and a chevron; the sort's row leads with its icon and a
-// strip of the canvas sets it apart from the filters. A segmented choice sits under a muted display label. A list of
+// its label, its value (muted, or in the accent once chosen) and a chevron, faded while it is off; the sort's row leads
+// with its icon and a strip of the canvas sets it apart from the filters. A segmented choice sits under a muted display label. A list of
 // options, opened from a row, has the ← and the row's name on top and its options as rows, the chosen ones in the
 // accent with a check. "Limpar" is an accent text button, and "Ver n itens" fills the footer.
 
@@ -22,7 +22,7 @@ export const filterSheet = recipe(
       ],
       row: [
         'flex h-14 w-full cursor-pointer items-center gap-3 border-0 border-t border-hairline-soft bg-transparent pr-4 pl-5 text-left font-body text-base font-medium text-text',
-        'outline-none transition-colors hover:bg-panel-raised focus-visible:bg-panel-raised',
+        'outline-none transition-colors enabled:hover:bg-panel-raised focus-visible:bg-panel-raised disabled:cursor-not-allowed disabled:opacity-50',
       ],
       icon: 'shrink-0 text-text-muted',
       label: 'grow truncate',

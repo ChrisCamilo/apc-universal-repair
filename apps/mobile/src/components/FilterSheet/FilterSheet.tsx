@@ -43,7 +43,7 @@ type FilterSheetProps = {
 };
 /** A row of the sheet: a multiple choice opened as a list, or segmented choices sharing a heading, e.g. position and side. */
 type Row =
-  | { key: string; label: string; allLabel: string; options: Option[] }
+  | { key: string; label: string; allLabel: string; options: Option[]; disabled?: boolean }
   | { label: string; groups: { key: string; label: string; segments: Option[] }[] };
 type SortSheetProps = {
   open: boolean;
@@ -181,6 +181,7 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
                   label={row.label}
                   value={selectionSummary(chosen, row.allLabel)}
                   chosen={chosen.length > 0}
+                  disabled={row.disabled}
                   onPress={() => setView({ list: 'filter', key: row.key })}
                 />
               );
@@ -216,19 +217,23 @@ type SheetRowProps = {
   chosen: boolean;
   /** Leads with the sort's icon. */
   icon?: boolean;
+  /** Whether it is off, e.g. the vehicle models until a vehicle brand is chosen. */
+  disabled?: boolean;
   onPress: () => void;
 };
 
 /** A row of the sheet: its label, what it has chosen and a chevron, opening its options. */
-function SheetRow({ label, value, chosen, icon = false, onPress }: SheetRowProps) {
+function SheetRow({ label, value, chosen, icon = false, disabled = false, onPress }: SheetRowProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${value}`}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed, disabled && styles.rowDisabled]}
       testID={ids.row}
     >
       {icon && <Icon icon={sortIcon} size={ICON_SIZES.thumbnail} color={colors.textMuted} />}
