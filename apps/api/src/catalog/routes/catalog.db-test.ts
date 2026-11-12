@@ -1,17 +1,20 @@
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
-import { catalogSchema } from "@apc/domain/catalog";
+import { brandMark, catalogSchema } from "@apc/domain/catalog";
+import { optionKey } from "@apc/domain/items";
 import { TEST_CATALOG_DATA } from "@apc/domain/test-catalog";
+import { STARTING_VEHICLE_BRANDS } from "@apc/domain/vehicle-lists";
 import { TEST_USERS } from "@apc/domain/test-users";
 import { buildApp } from "../../app.js";
 import { prisma } from "../../db/client.js";
 import { testDevice, testProof } from "../../devices/testDevices.js";
 
 // The catalog against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded, on PostgreSQL or
-// SQLite: it holds the catalog a new database starts with, which its migration inserted, and the vehicle brands and
-// models it has are kept in the Inventory's lists; a brand and the levels of its tree are added, renamed, moved and
-// deleted. Each run uses its own names, removed at the end.
+// SQLite: it holds the catalog a new database starts with, which its migrations inserted, and the vehicle brands and
+// models it has are kept in the Inventory's lists, where deleting one takes it out of the catalog; a brand is added and
+// deleted, and the levels of its tree are added, renamed, moved and deleted. Each run uses its own names, removed at the
+// end.
 
 const app = buildApp();
 /** Tells this run's list names apart from the seed's and other runs'. */
@@ -52,21 +55,42 @@ function call(method: "GET" | "POST" | "PATCH" | "DELETE", url: string, payload?
   return app.inject({ method, url, payload, headers: { authorization: `Bearer ${token}` } });
 }
 
-// Loads the catalog and checks it is the starting one: its brands in the rail's order, each by the id of its vehicle
-// brand in the lists, and its models, generations, versions, years and engines with their sheets, ids included.
+// Loads the catalog and checks it is the starting one: the sample catalog's brands first, each by the id of its vehicle
+// brand in the lists, with their models, generations, versions, years and engines with their sheets, ids included, and
+// then each brand's other listed models with empty trees; then the other listed brands in the list's order, with their
+// letters and their models, with empty trees.
 test("API: the catalog holds the one a new database starts with", async () => {
   const answer = await call("GET", "/catalog");
   assert.equal(answer.statusCode, 200);
   const catalog = catalogSchema.parse(answer.json());
-  const brands = await prisma.brand.findMany({ where: { name: { in: TEST_CATALOG_DATA.brands.map((brand) => brand.name) } } });
-  const brandId = (name: string) => brands.find((brand) => brand.name === name)!.id;
-  assert.deepEqual(catalog, { brands: TEST_CATALOG_DATA.brands.map((brand) => ({ ...brand, id: brandId(brand.name) })) });
+  const listedOf = (name: string) => STARTING_VEHICLE_BRANDS.find((brand) => optionKey(brand.name) === optionKey(name));
+  const sample = TEST_CATALOG_DATA.brands;
+  const others = STARTING_VEHICLE_BRANDS.filter((brand) => !sample.some((each) => optionKey(each.name) === optionKey(brand.name)));
+  assert.deepEqual(
+    catalog.brands.map((brand) => [brand.name, brand.mark]),
+    [...sample.map((brand) => [brand.name, brand.mark]), ...others.map((brand) => [brand.name, brandMark(brand.name)])],
+  );
+  for (const [index, brand] of sample.entries()) {
+    const held = catalog.brands[index];
+    const extra = (listedOf(brand.name)?.models ?? []).filter((model) => !brand.models.some((each) => optionKey(each.name) === optionKey(model)));
+    assert.deepEqual(held.models.slice(0, brand.models.length), brand.models);
+    assert.deepEqual(
+      held.models.slice(brand.models.length).map((model) => [model.name, model.generations]),
+      extra.map((model) => [model, []]),
+    );
+  }
+  for (const [index, brand] of others.entries()) {
+    assert.deepEqual(
+      catalog.brands[sample.length + index].models.map((model) => [model.name, model.generations]),
+      brand.models.map((model) => [model, []]),
+    );
+  }
 });
 
-// Lists the vehicle brands and models and checks the catalog's are marked, then tries to delete a catalog brand, and
-// to delete and merge away a catalog model no item uses, and checks each is refused, while a model of this run isn't
-// marked.
-test("API: the catalog's vehicle brands and models are kept in the lists", async () => {
+// Lists the vehicle brands and models and checks the catalog's are marked; checks a catalog brand items use can't be
+// deleted and a catalog model can't be merged away, while a model of this run isn't marked; then deletes a catalog model
+// and a catalog brand of this run no item uses from the lists, and checks they leave the catalog too.
+test("API: the catalog's vehicle brands and models are kept in the lists, and leave the catalog when deleted there", async () => {
   const brands: { id: string; name: string; inCatalog: boolean }[] = (await call("GET", "/vehicle-brands")).json();
   const ford = brands.find((brand) => brand.name === "Ford")!;
   assert.equal(ford.inCatalog, true);
@@ -76,14 +100,45 @@ test("API: the catalog's vehicle brands and models are kept in the lists", async
   const escort = models.find((model) => model.name === "Escort" && model.vehicleBrandId === ford.id)!;
   assert.equal(corcel.inCatalog, true);
 
-  assert.equal((await call("DELETE", `/vehicle-brands/${ford.id}`)).statusCode, 409);
-  assert.equal((await call("DELETE", `/vehicle-models/${corcel.id}`)).statusCode, 409);
+  const fordInUse = await call("DELETE", `/vehicle-brands/${ford.id}`);
+  assert.equal(fordInUse.statusCode, 409);
+  assert.ok(fordInUse.json().details[0].itemCount > 0);
   assert.equal((await call("POST", `/vehicle-models/${corcel.id}/merge`, { into: escort.id })).statusCode, 409);
   assert.ok(await prisma.catalogModel.findUnique({ where: { vehicleModelId: corcel.id } }));
 
   const created = await call("POST", "/vehicle-models", { name: `Pampa ${RUN}`, vehicleBrandId: ford.id });
   assert.equal(created.json().inCatalog, false);
   assert.equal((await call("POST", `/vehicle-models/${created.json().id}/merge`, { into: corcel.id })).statusCode, 200);
+
+  const lada = await addedBrand(`Lada ${RUN}`);
+  await call("POST", `/catalog/brands/${lada}/models`, { name: `Niva ${RUN}` });
+  await call("POST", `/catalog/brands/${lada}/models`, { name: `Samara ${RUN}` });
+  const [niva, samara] = (await prisma.vehicleModel.findMany({ where: { brandId: lada }, orderBy: { name: "asc" } })).map((model) => model.id);
+  assert.equal((await call("DELETE", `/vehicle-models/${niva}`)).statusCode, 204);
+  assert.equal(await prisma.catalogModel.count({ where: { vehicleModelId: niva } }), 0);
+  assert.equal(await prisma.vehicleModel.count({ where: { id: niva } }), 0);
+  assert.equal((await call("DELETE", `/vehicle-brands/${lada}`)).statusCode, 204);
+  assert.equal(await prisma.catalogBrand.count({ where: { brandId: lada } }), 0);
+  assert.equal(await prisma.catalogModel.count({ where: { vehicleModelId: samara } }), 0);
+  assert.equal(await prisma.brand.count({ where: { id: lada } }), 0);
+});
+
+// Adds a brand of this run with a model and a generation under it, deletes the brand from the catalog, and checks its
+// tree goes with it while its vehicle brand and model stay in the lists; deleting it again is not found.
+test("API: a brand is deleted from the catalog with its models' trees", async () => {
+  const brand = await addedBrand(`Seat ${RUN}`);
+  await call("POST", `/catalog/brands/${brand}/models`, { name: `Ibiza ${RUN}` });
+  const model = catalogSchema.parse((await call("GET", "/catalog")).json()).brands.find((each) => each.id === brand)!.models[0];
+  await call("POST", `/catalog/models/${model.id}/generations`, { name: "Primeira", firstYear: 1993, lastYear: 2002 });
+
+  const deleted = await call("DELETE", `/catalog/brands/${brand}`);
+  assert.equal(deleted.statusCode, 200);
+  assert.equal(catalogSchema.parse(deleted.json()).brands.some((each) => each.id === brand), false);
+  assert.equal(await prisma.catalogModel.count({ where: { id: model.id } }), 0);
+  assert.equal(await prisma.catalogGeneration.count({ where: { modelId: model.id } }), 0);
+  assert.ok(await prisma.brand.findUnique({ where: { id: brand } }));
+  assert.equal(await prisma.vehicleModel.count({ where: { brandId: brand } }), 1);
+  assert.equal((await call("DELETE", `/catalog/brands/${brand}`)).statusCode, 404);
 });
 
 // Adds a brand of this run, and checks it joins the lists and ends the rail with its letters, and that adding it again
