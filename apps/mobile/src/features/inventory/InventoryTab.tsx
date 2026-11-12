@@ -593,12 +593,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             setFilters((held) => followEntryChange(held, change));
           }
         }}
-        onShowItems={(shown) => {
+        onShowItems={(entryFilters) => {
           setManaging(false);
           narrow(() => {
             setSearch('');
             setStatus(null);
-            setFilters(shown);
+            setFilters(entryFilters);
           });
         }}
         onClose={() => setManaging(false)}
