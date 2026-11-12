@@ -42,6 +42,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   { method: "GET", path: "/photos/:file", responses: {} },
   { method: "GET", path: CATALOG_PATH, responses: { 200: catalogSchema } },
   { method: "POST", path: CATALOG_BRANDS_PATH, responses: { 201: catalogSchema } },
+  { method: "DELETE", path: `${CATALOG_BRANDS_PATH}/:id`, responses: { 200: catalogSchema } },
   ...Object.entries(CATALOG_CHILDREN).map(([parent, child]): ApiRoute => ({
     method: "POST",
     path: `${CATALOG_PARENT_PATHS[parent as keyof typeof CATALOG_CHILDREN]}/:id/${child.segment}`,

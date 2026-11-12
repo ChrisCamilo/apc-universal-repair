@@ -272,8 +272,17 @@ export function brandMark(name: string): string {
 }
 
 /**
- * Says what deleting a node takes with it: how many generations, versions, years and engines with their sheets are
- * under it.
+ * Says what deleting a catalog brand takes with it: its models and everything under them.
+ * @param brand The brand.
+ * @returns E.g. "3 modelos, 2 gerações, 1 versão", or null when it has no model.
+ */
+export function belowBrand(brand: CatalogBrand): string | null {
+  return belowNode({ id: brand.id, label: brand.name, level: "model", children: brand.models });
+}
+
+/**
+ * Says what deleting a node takes with it: how many models, generations, versions, years and engines with their sheets
+ * are under it.
  * @param node A node of the tree.
  * @returns E.g. "3 versões, 2 anos, 2 motores com ficha", or null when nothing is under it.
  */
@@ -288,6 +297,7 @@ export function belowNode(node: CatalogNode): string | null {
   };
   count(node.children ?? []);
   const words: [CatalogLevel, string, string][] = [
+    ["model", "modelo", "modelos"],
     ["generation", "geração", "gerações"],
     ["version", "versão", "versões"],
     ["year", "ano", "anos"],

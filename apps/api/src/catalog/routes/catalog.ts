@@ -25,7 +25,8 @@ import { prisma } from "../../db/client.js";
 // generations, versions, years and engines with their sheets, each level in its order.
 // The tree is edited here, and every change answers the whole catalog (201 for something added). A brand is added by
 // name: the vehicle brand of that name, added to the lists when they don't hold it, becomes a catalog brand at the end of
-// the rail, refused when it is one already (409). A model is added under a catalog brand the same way, from its
+// the rail, refused when it is one already (409), and deleted with its models' trees, its vehicle brand and models
+// staying in the lists, so no item loses a vehicle. A model is added under a catalog brand the same way, from its
 // vehicle models, refused when the brand has it in the catalog already. A generation (with its years), a version and a
 // year are added at the end of their parent's; a version can't have one year twice (409). Each of these is renamed (a
 // model by renaming its vehicle model, refused when another model of the brand has the name), moved up or down among
@@ -212,6 +213,18 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     const position = nextPosition(await prisma.catalogBrand.aggregate({ _max: { position: true } }));
     await prisma.catalogBrand.create({ data: { brandId: brand.id, mark: brandMark(brand.name), position } });
     return reply.status(201).send(await readCatalog());
+  });
+
+  routes.delete(`${CATALOG_BRANDS_PATH}/:id`, { schema: { params, response: changed } }, async (request, reply) => {
+    const brandId = request.params.id;
+    if (!(await prisma.catalogBrand.findUnique({ where: { brandId }, select: { id: true } }))) {
+      return notFound(reply);
+    }
+    await prisma.$transaction([
+      prisma.catalogModel.deleteMany({ where: { vehicleModel: { brandId } } }),
+      prisma.catalogBrand.delete({ where: { brandId } }),
+    ]);
+    return readCatalog();
   });
 
   routes.post(

@@ -13,13 +13,14 @@ import {
   type CatalogValues,
 } from "./catalog.ts";
 
-// The catalog a new database starts with, as GET /catalog answers it: four brands, their models, the generations,
-// versions and years written so far, and four engines with their sheets. The migration that made the catalog tables
-// (apps/api/prisma/migrations/20261106000000_catalog) inserts these same rows with these same ids, so the web demo, the
-// E2E stand-ins and the tests of web and mobile answer what a new server holds. The ids are numbered in UUID form in
-// the order below.
+// The sample catalog, as GET /catalog answers it: four brands, their models, the generations, versions and years
+// written so far, and four engines with their sheets. The migration that made the catalog tables
+// (apps/api/prisma/migrations/20261106000000_catalog) inserts these same rows with these same ids, and the web demo, the
+// E2E stand-ins and the tests of web and mobile answer it. A server then gets the starting vehicle brands and models
+// too, with empty trees (20261113000000_catalog_starting_brands), which the demo and the stand-ins leave out. The ids
+// are numbered in UUID form in the order below.
 // applyCatalogChange makes the API's changes on a catalog held in memory, for the demo, the E2E stand-ins and the tests:
-// a brand or a node added, renamed, moved or deleted, under the API's rules; catalogChangeOf reads the change a request
+// a brand added or deleted, or a node added, renamed, moved or deleted, under the API's rules; catalogChangeOf reads the change a request
 // to the API makes, for the stand-ins that answer by path.
 
 let count = 0;
@@ -216,6 +217,7 @@ export const TEST_ENGINES = {
 /** A change of the catalog, as the API makes it: what is added, renamed, moved or deleted, and where. */
 export type CatalogChange =
   | { kind: "addBrand"; id: string; name: string }
+  | { kind: "deleteBrand"; id: string }
   | { kind: "add"; level: CatalogLevel; parentId: string; id: string; values: CatalogValues }
   | { kind: "edit"; level: CatalogLevel; id: string; values: CatalogValues }
   | { kind: "move"; level: CatalogEditLevel; id: string; direction: "up" | "down" }
@@ -230,7 +232,7 @@ type RawNode = { id: string; name?: string; year?: number };
 /**
  * Makes one of the API's changes on a catalog held in memory, under the API's rules: a brand, a model of a brand, or a
  * year of a version, only once each; a node added at the end of its siblings; a move past the ends leaving them as they
- * are; and a delete taking what is under the node.
+ * are; and a delete taking what is under the node, or a brand's delete its models with their trees.
  * @param data The catalog as the API sends it.
  * @param change The change.
  * @returns The catalog after it, "taken" when the name or year is another's, or "missing" when its node isn't there.
@@ -244,6 +246,10 @@ export function applyCatalogChange(data: CatalogData, change: CatalogChange): Ca
     }
     next.brands.push({ id: change.id, name, mark: brandMark(name), models: [] });
     return next;
+  }
+  if (change.kind === "deleteBrand") {
+    const left = next.brands.filter((brand) => brand.id !== change.id);
+    return left.length === next.brands.length ? "missing" : { brands: left };
   }
   const groups = siblingGroups(next, change.level);
   const group = groups.find((each) => (change.kind === "add" ? each.parentId === change.parentId : each.list.some((node) => node.id === change.id)));
@@ -292,6 +298,9 @@ export function catalogChangeOf(
   const [, first, id, last] = path.split("/");
   if (method === "POST" && first === "brands" && id === undefined) {
     return { status: 201, change: { kind: "addBrand", id: newId, name: String(body.name) } };
+  }
+  if (method === "DELETE" && first === "brands" && last === undefined) {
+    return { status: 200, change: { kind: "deleteBrand", id } };
   }
   const child = Object.values(CATALOG_CHILDREN).find((each) => each.segment === last);
   if (method === "POST" && child) {
