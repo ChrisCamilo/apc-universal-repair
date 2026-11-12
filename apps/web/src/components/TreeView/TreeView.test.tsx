@@ -279,13 +279,51 @@ test('Web: a pointed-out row takes the accent and is marked current', async () =
   expect(getComputedStyle(row('Chevette')).color).toBe(rgb(colors.text))
 })
 
-function Sample({ onSelect, ...props }: { onSelect?: (id: string) => void; selected?: string }) {
+// Lets the models and the versions be selected, and clicks the Opala, presses Enter on the Diplomata and clicks a
+// generation, and checks the model and the version go to onSelect and take the accent while opening, as a selected leaf
+// does, and the generation only opens.
+test('Web: a selectable branch is selected as it opens, by click and Enter', async () => {
+  root.dataset.style = 'gt4'
+  root.dataset.mode = 'day'
+  const { colors } = themes.gt4.day
+  const onSelect = vi.fn()
+  const screen = await render(<Sample onSelect={onSelect} selected={undefined} selectable={(id) => id === 'opala' || id === 'diplomata'} />)
+  const opala = screen.getByRole('treeitem', { name: 'Opala', exact: true })
+  await screen.getByText('Opala', { exact: true }).click()
+  expect(onSelect).toHaveBeenLastCalledWith('opala')
+  await expect.element(opala).toHaveAttribute('aria-selected', 'true')
+  await expect.element(opala).toHaveAttribute('aria-expanded', 'true')
+  // The row's color eases into the accent.
+  await expect.poll(() => getComputedStyle(row('Opala')).color).toBe(rgb(colors.accent))
+  await expect.element(screen.getByRole('treeitem', { name: 'Chevette' })).not.toHaveAttribute('aria-selected')
+
+  await screen.getByText('Terceira geração').click()
+  expect(onSelect).toHaveBeenCalledTimes(1)
+  await expect.element(screen.getByRole('treeitem', { name: 'Terceira geração 1980–1992' })).not.toHaveAttribute('aria-selected')
+  screen.getByRole('treeitem', { name: 'Diplomata' }).element().focus()
+  await userEvent.keyboard('{Enter}')
+  expect(onSelect).toHaveBeenLastCalledWith('diplomata')
+  await expect.element(screen.getByRole('treeitem', { name: 'Diplomata' })).toHaveAttribute('aria-selected', 'true')
+  await expect.element(screen.getByRole('treeitem', { name: 'Diplomata' })).toHaveAttribute('aria-expanded', 'true')
+  await expect.element(opala).toHaveAttribute('aria-selected', 'false')
+})
+
+function Sample({
+  onSelect,
+  selectable,
+  ...props
+}: {
+  onSelect?: (id: string) => void
+  selected?: string
+  selectable?: (id: string) => boolean
+}) {
   const [selected, setSelected] = useState<string | undefined>('selected' in props ? props.selected : LEAF)
   return (
     <TreeView
       label="Modelos Chevrolet"
       nodes={MODELS}
       selected={selected}
+      selectable={selectable}
       onSelect={(id) => {
         setSelected(id)
         onSelect?.(id)

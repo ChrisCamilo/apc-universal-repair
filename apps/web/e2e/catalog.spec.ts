@@ -67,7 +67,8 @@ test("Web: the Catalog search finds brands, models and inventory parts", { tag: 
 });
 
 // On a phone, opens the Catalog on its brand lines, taps Chevrolet and checks the header turns to the brand with a ←,
-// opens the Opala down to its 1986 engines and taps the 4.1, and checks its sheet shows under the path to it. ← goes
+// opens the Opala down to its 1986 engines (the model and the version by their chevrons, as a tap on their names opens
+// their sheets) and taps the 4.1, and checks its sheet shows under the path to it. ← goes
 // back to the models, open on the engine just seen, and ← again to the brands under the tab's name. The bottom bar
 // stays, and nothing scrolls sideways.
 test("Web: on a phone the Catalog goes from a brand to an engine sheet and back", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly] }, async ({ page }) => {
@@ -79,9 +80,10 @@ test("Web: on a phone the Catalog goes from a brand to an engine sheet and back"
 
   await tab.brandLine("Chevrolet").click();
   await expect(tab.title).toHaveText("Chevrolet");
-  for (const name of ["Opala", "Terceira geração", "Diplomata", "1986"]) {
-    await tab.model(name).click();
-  }
+  await tab.toggle("Opala").click();
+  await tab.model("Terceira geração").click();
+  await tab.toggle("Diplomata").click();
+  await tab.model("1986").click();
   await tab.model("4.1 L 6 cilindros").click();
   await expect(tab.sheet("opala41")).toBeVisible();
   await expect(page.getByText("Opala › Terceira geração › Diplomata › 1986")).toBeVisible();

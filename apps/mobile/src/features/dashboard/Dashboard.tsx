@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import type { InventoryLink } from '@apc/domain/catalog';
 import { ICON_SIZES, ICONS, moreIcon } from '@apc/tokens/icons';
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/ui-spec/tabs';
 import { BackButton } from '../../components/BackButton';
@@ -12,6 +13,7 @@ import { CatalogTab } from '../catalog/CatalogTab';
 import { MARK_SIZE, useBarStyles, useStyles } from './Dashboard.styles';
 import { InventoryTab } from '../inventory/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../inventory/inventoryTutorialContext';
+import { InventoryLinkContext, type InventoryLinks } from './inventoryLinkContext';
 import { MoreActionsContext } from './moreActionsContext';
 import { PhoneHeaderContext, type PhoneHeader } from './phoneHeaderContext';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
@@ -27,7 +29,8 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 // DASHBOARD_TABS) opens behind a notice saying it isn't ready yet. The open tab may put a "⋯" at the right of its name,
 // which opens what the tab hands over (see moreActionsContext.ts), such as the Inventory's other actions. A tab gone a
 // screen deeper, such as the Catalog's models of a brand, puts that screen's title there, with a ← in place of the mark
-// (see phoneHeaderContext.ts).
+// (see phoneHeaderContext.ts). A tab can open the Inventory on what it shows, such as a part the Catalog lists, which
+// the Dashboard holds until the Inventory takes it (see inventoryLinkContext.ts).
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id);
 // Each tab as the tab bar draws it, by id.
@@ -58,6 +61,9 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
   const handMore = useCallback((open: (() => void) | null) => setMore(() => open), []);
   // The title row of the open tab's deeper screen; the tab's name under the mark without it.
   const [header, setHeader] = useState<PhoneHeader | null>(null);
+  // What another tab asked the Inventory to show, until the Inventory takes it.
+  const [link, setLink] = useState<InventoryLink | null>(null);
+  const takeLink = useCallback(() => setLink(null), []);
 
   // Read the saved tab order.
   useEffect(() => {
@@ -76,6 +82,15 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
     return null;
   }
 
+  const links: InventoryLinks = {
+    link,
+    open: (next) => {
+      setLink(next);
+      setTab('inventory');
+    },
+    taken: takeLink,
+  };
+
   return (
     <TabReorderContext.Provider value={reorder}>
       <InventoryTutorialContext.Provider
@@ -90,50 +105,52 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
       >
         <MoreActionsContext.Provider value={handMore}>
           <PhoneHeaderContext.Provider value={setHeader}>
-            <View style={styles.page} testID={ids.page}>
-              <View style={[styles.header, header && styles.headerBack]} testID={ids.header}>
-                {header ? (
-                  <BackButton label={header.back.label} onPress={header.back.onPress} />
-                ) : (
-                  // The heading names the screen, so screen readers skip the mark.
-                  <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.mark} testID={ids.mark}>
-                    <BrandMark variant="compact" size={MARK_SIZE} />
-                  </View>
-                )}
-                <Text accessibilityRole="header" numberOfLines={1} style={styles.title} testID={ids.title}>
-                  {header?.title ?? TABS[tab].label}
-                </Text>
-                {more && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Mais ações"
-                    onPress={more}
-                    style={({ pressed }) => [styles.more, pressed && styles.morePressed]}
-                    testID={ids.more}
-                  >
-                    {({ pressed }) => <Icon icon={moreIcon} size={ICON_SIZES.fab} color={pressed ? colors.accent : colors.text} />}
-                  </Pressable>
-                )}
+            <InventoryLinkContext.Provider value={links}>
+              <View style={styles.page} testID={ids.page}>
+                <View style={[styles.header, header && styles.headerBack]} testID={ids.header}>
+                  {header ? (
+                    <BackButton label={header.back.label} onPress={header.back.onPress} />
+                  ) : (
+                    // The heading names the screen, so screen readers skip the mark.
+                    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.mark} testID={ids.mark}>
+                      <BrandMark variant="compact" size={MARK_SIZE} />
+                    </View>
+                  )}
+                  <Text accessibilityRole="header" numberOfLines={1} style={styles.title} testID={ids.title}>
+                    {header?.title ?? TABS[tab].label}
+                  </Text>
+                  {more && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Mais ações"
+                      onPress={more}
+                      style={({ pressed }) => [styles.more, pressed && styles.morePressed]}
+                      testID={ids.more}
+                    >
+                      {({ pressed }) => <Icon icon={moreIcon} size={ICON_SIZES.fab} color={pressed ? colors.accent : colors.text} />}
+                    </Pressable>
+                  )}
+                </View>
+                <View style={styles.content} testID={ids.content}>
+                  {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{screens[tab]}</WorkInProgress> : screens[tab]}
+                </View>
+                <View style={bar.styles.bar} testID={bar.ids.bar}>
+                  <Tabs
+                    label="Seções do Dashboard"
+                    tabs={order.map((id) => TABS[id])}
+                    selected={tab}
+                    onSelect={setTab}
+                    reorderable={reorder.reorderable}
+                    onReorder={(next) => {
+                      setOrder(next);
+                      save(TAB_ORDER_STORAGE_KEY, JSON.stringify(next));
+                    }}
+                    variant="bar"
+                  />
+                  {userMenu}
+                </View>
               </View>
-              <View style={styles.content} testID={ids.content}>
-                {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{screens[tab]}</WorkInProgress> : screens[tab]}
-              </View>
-              <View style={bar.styles.bar} testID={bar.ids.bar}>
-                <Tabs
-                  label="Seções do Dashboard"
-                  tabs={order.map((id) => TABS[id])}
-                  selected={tab}
-                  onSelect={setTab}
-                  reorderable={reorder.reorderable}
-                  onReorder={(next) => {
-                    setOrder(next);
-                    save(TAB_ORDER_STORAGE_KEY, JSON.stringify(next));
-                  }}
-                  variant="bar"
-                />
-                {userMenu}
-              </View>
-            </View>
+            </InventoryLinkContext.Provider>
           </PhoneHeaderContext.Provider>
         </MoreActionsContext.Provider>
       </InventoryTutorialContext.Provider>

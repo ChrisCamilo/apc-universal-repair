@@ -46,6 +46,7 @@ import {
 } from '@apc/domain/item-filters'
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form'
 import { TUTORIAL_CODE, type TutorialScreen } from '@apc/domain/inventory-tutorial'
+import type { InventoryLink } from '@apc/domain/catalog'
 import { pageForSize } from '@apc/ui-spec/pagination'
 import { PAGE_SIZES, SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query'
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/domain/photos'
@@ -83,6 +84,7 @@ import { useInventoryTutorial } from './inventoryTutorialContext.ts'
 import { inventoryTab, LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB } from './InventoryTab.styles.ts'
 import { InventoryTutorial } from './InventoryTutorial.tsx'
 import { StockQuantity } from './StockQuantity.tsx'
+import { useInventoryLink } from '../dashboard/inventoryLinkContext.ts'
 import { useMoreActions } from '../dashboard/moreActionsContext.ts'
 import { usePageSize } from '../dashboard/pageSizeContext.ts'
 import { tutorialTarget } from './tutorialTarget.ts'
@@ -115,7 +117,9 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // out-of-stock rows are tinted by the table, and an item that reaches its minimum raises a warning in the bell, once
 // while it stays there (a toast too when a save or an import brought it there). At phone width the row becomes a card and the columns that leave it
 // show as one line under the name. The Inventory tutorial runs over the tab by itself the first time, and again from
-// the user menu: it starts and ends with the test item deleted and the search, filters and sort off.
+// the user menu: it starts and ends with the test item deleted and the search, filters and sort off. The Catalog can
+// open the tab on a part's details, or with the filters that list the parts that fit a car, the search and the stock
+// status off (see inventoryLinkContext.ts).
 // On a phone (below `card:`) the tab follows the Estoque mockup: no panel around it, and the page scrolls as a whole.
 // Each card shows the item's name, its first code with its part brand or how many brands make it, and where it fits,
 // where it is and its price; its quantity has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
@@ -462,6 +466,31 @@ export function InventoryTab() {
       tutorialStarted()
     }
   }, [touring])
+
+  // Another tab's link: the filters it sets, with the search and the stock status off, or an item's details once the
+  // items are in; then it is let go.
+  const { link, taken } = useInventoryLink()
+  const [takenLink, setTakenLink] = useState<InventoryLink | null>(null)
+  if (link && link !== takenLink && ('filters' in link || state.status === 'ready')) {
+    setTakenLink(link)
+    if ('filters' in link) {
+      narrow(() => {
+        setSearch('')
+        setStatus(null)
+        setFilters(link.filters)
+      })
+    } else {
+      const item = items.find((each) => each.id === link.itemId)
+      if (item) {
+        openForm(item, true)
+      }
+    }
+  }
+  useEffect(() => {
+    if (takenLink) {
+      taken()
+    }
+  }, [takenLink, taken])
 
   // The tab as the tutorial sees it, and what "Fazer por mim" does on it.
   const testItem = items.find((item) => item.brands.some((brand) => brand.code === TUTORIAL_CODE))

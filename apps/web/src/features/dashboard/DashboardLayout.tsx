@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
+import type { InventoryLink } from '@apc/domain/catalog'
 import { ICON_SIZES, ICONS, moreIcon } from '@apc/tokens/icons'
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, initialTab, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/ui-spec/tabs'
 import { AppFrame } from '../../components/AppFrame'
@@ -15,6 +16,7 @@ import { bottomBar, phoneDashboard } from './DashboardLayout.styles.ts'
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../inventory/inventoryTutorialContext.ts'
 import { MoreActionsContext } from './moreActionsContext.ts'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
+import { InventoryLinkContext, type InventoryLinks } from './inventoryLinkContext.ts'
 import { PhoneHeaderContext, type PhoneHeader } from './phoneHeaderContext.ts'
 import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 
@@ -32,7 +34,8 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 // Conta (see NotificationsMenu and UserMenu). The open tab may put a "⋯" at the right of its name, which opens what the
 // tab hands over (see moreActionsContext.ts), such as the Inventory's other actions. A tab gone a screen deeper, such
 // as the Catalog's models of a brand, puts that screen's title there, with a ← in place of the mark (see
-// phoneHeaderContext.ts).
+// phoneHeaderContext.ts). A tab can open the Inventory on what it shows, such as a part the Catalog lists, which the
+// Dashboard holds until the Inventory takes it (see inventoryLinkContext.ts).
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id)
 // Each tab as the tab bar draws it, by id.
@@ -67,6 +70,17 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   const handMore = useCallback((open: (() => void) | null) => setMore(() => open), [])
   // The title row of the open tab's deeper screen; the tab's name under the mark without it.
   const [header, setHeader] = useState<PhoneHeader | null>(null)
+  // What another tab asked the Inventory to show, until the Inventory takes it.
+  const [link, setLink] = useState<InventoryLink | null>(null)
+  const takeLink = useCallback(() => setLink(null), [])
+  const links: InventoryLinks = {
+    link,
+    open: (next) => {
+      setLink(next)
+      navigate('/inventory')
+    },
+    taken: takeLink,
+  }
 
   // Remember the open tab, so "/" reopens it next time.
   useEffect(() => {
@@ -111,15 +125,17 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
         <InventoryTutorialContext.Provider value={tutorial}>
           <MoreActionsContext.Provider value={handMore}>
             <PhoneHeaderContext.Provider value={setHeader}>
-              {phone ? (
-                <PhoneDashboard title={header?.title ?? TABS[tab].label} back={header?.back} tabs={tabs} end={userMenu} more={more}>
-                  {panel}
-                </PhoneDashboard>
-              ) : (
-                <AppFrame navLabel="Seções do Dashboard" nav={tabs} end={userMenu}>
-                  {panel}
-                </AppFrame>
-              )}
+              <InventoryLinkContext.Provider value={links}>
+                {phone ? (
+                  <PhoneDashboard title={header?.title ?? TABS[tab].label} back={header?.back} tabs={tabs} end={userMenu} more={more}>
+                    {panel}
+                  </PhoneDashboard>
+                ) : (
+                  <AppFrame navLabel="Seções do Dashboard" nav={tabs} end={userMenu}>
+                    {panel}
+                  </AppFrame>
+                )}
+              </InventoryLinkContext.Provider>
             </PhoneHeaderContext.Provider>
           </MoreActionsContext.Provider>
         </InventoryTutorialContext.Provider>

@@ -6,7 +6,7 @@ import { recipe, tv } from '../../styles/tv.ts'
 // sm, the tree scrolling past max-h-96 and the page scrolling as a whole. From lg the tab fills the window under the
 // page's header and scrolls in its columns instead: the brand search stays on top of the tiles, which scroll under it,
 // the search stays above the tree's panel, the tree scrolls inside it, and the detail column scrolls on its own, each
-// down to the bottom. "Nova marca" sits under the tiles, and the models' panel has a heading row, "Modelos · N" in the
+// down to the bottom, its photo, sheet and parts each kept whole. "Nova marca" sits under the tiles, and the models' panel has a heading row, "Modelos · N" in the
 // display face with "Novo modelo" at its right. A branch's up and down buttons turn the chevron up and down. The
 // sheet's title has "Editar ficha" at its right, wrapping under it when the column is narrow. The engine's specs wrap in a row. The rail, the tiles, the models' panel, the tree and the sheet
 // only pass their classes to the Panel, the tile group and the TreeView, which keep their own ids; the main column,
@@ -44,7 +44,7 @@ export const catalogTab = recipe(
       up: '-rotate-90',
       down: 'rotate-90',
       tree: 'max-h-96 lg:max-h-none lg:min-h-0 lg:flex-1',
-      detail: 'grid min-w-0 content-start gap-3 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain',
+      detail: 'grid min-w-0 auto-rows-max content-start gap-3 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain',
       sheet: 'grid gap-3',
       sheetHead: 'flex flex-wrap items-start justify-between gap-2',
       specs: 'flex flex-wrap gap-x-3 gap-y-1',

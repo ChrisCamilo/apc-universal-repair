@@ -8,7 +8,9 @@ import { recipe, tv } from '../../styles/tv.ts'
 // the keyboard can move into them straight away, and hide only once it has closed. The two boxes that open them only
 // animate the list, so they add no level to its id, which is the same as on mobile.
 // On a phone (below `card:`) a row is 48px tall in the body size, and each level is indented 16px with no guide. A
-// leaf's tag is a pill in the display face, outlined at rest and filled in the accent on the selected leaf.
+// leaf's tag is a pill in the display face, outlined at rest and filled in the accent on the selected leaf. The chevron
+// of a branch that can be selected, which opens it apart from the row, is a finger wide, reaching past it on each side
+// so it and the label stay where they were.
 // A row's own buttons sit at its right end, hidden until the row is pointed at, or shown on the row the keyboard is on
 // while the focus is in the tree (a state the tree keeps, as a focus rule would hide them while the focus moves from
 // the row into them), and always in view on a phone, which has no pointer to hover with; a row shown as something else, such as a field, takes the row's whole width; and the line after a branch's
@@ -26,6 +28,7 @@ export const treeView = recipe(
         'max-card:min-h-12 max-card:text-base',
       ],
       chevron: 'shrink-0 text-text-muted transition-transform motion-reduce:transition-none',
+      toggle: 'grid shrink-0 place-items-center max-card:-mx-4 max-card:-my-2 max-card:size-11',
       spacer: 'w-3 shrink-0',
       label: 'min-w-0 truncate',
       detail: 'shrink-0 font-mono text-xs font-normal text-text-muted',
@@ -67,6 +70,7 @@ export const treeView = recipe(
     item: 'item',
     row: 'item.row',
     chevron: 'item.row.chevron',
+    toggle: 'item.row.toggle',
     spacer: 'item.row.spacer',
     label: 'item.row.label',
     detail: 'item.row.detail',

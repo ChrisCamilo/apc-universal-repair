@@ -14,6 +14,9 @@ import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
 import { CatalogTab } from './CatalogTab.tsx'
 import { PhoneHeaderContext, type PhoneHeader } from '../dashboard/phoneHeaderContext.ts'
+import { InventoryLinkContext } from '../dashboard/inventoryLinkContext.ts'
+import type { InventoryLink } from '@apc/domain/catalog'
+import { EMPTY_ITEM_FILTERS } from '@apc/domain/item-filters'
 import { testItem, type FlatItem } from '@apc/domain/test-items'
 
 const OPALA_25 = TEST_CATALOG.sheets[TEST_ENGINES.opala25]
@@ -41,6 +44,11 @@ const LARGE_CATALOG = {
     ...TEST_CATALOG_DATA.brands.slice(1),
     ...Array.from({ length: 12 }, (_, index) => ({ id: crypto.randomUUID(), name: `Marca ${index + 1}`, mark: 'MA', models: [] })),
   ],
+}
+// A part for the Opala's SS of the third generation, which fits the model but not its Diplomata.
+const SS_PART: Item = {
+  ...part({ code: 'SS-500', name: 'Spoiler traseiro', vehicleBrand: 'Chevrolet', vehicleModel: 'Opala' }),
+  vehicles: [{ vehicleBrand: 'Chevrolet', vehicleModel: 'Opala', firstYear: 1980, lastYear: 1992, version: 'SS' }],
 }
 const root = document.documentElement
 
@@ -124,6 +132,37 @@ function answerChanges() {
  */
 function rowOf(screen: RenderResult, label: string) {
   return screen.getByText(label, { exact: true })
+}
+
+/**
+ * Opens a branch of the tree on a phone: a model or a version by its chevron, since a tap on its name opens its sheet,
+ * and any other branch by its name.
+ * @param screen The rendered screen.
+ * @param name The branch's name, which only it has.
+ */
+async function openBranch(screen: RenderResult, name: string) {
+  const item = screen.getByRole('treeitem', { name, exact: name === 'Opala' })
+  const toggle = item.element().querySelector<HTMLElement>(':scope > [data-row] > [data-testid="common.tree-view.item.row.toggle"]')
+  await (toggle ? userEvent.click(toggle) : item.getByText(name, { exact: true }).click())
+}
+
+/**
+ * Renders the Catalog under a Dashboard that opens the Inventory on a link, with the test parts and a part for the
+ * Opala's SS, and waits for them.
+ * @param open Takes the link the Catalog opens the Inventory on.
+ * @param phone Whether to render it as a phone's Dashboard would, under its header.
+ * @returns The rendered screen.
+ */
+async function renderLinked(open: (link: InventoryLink) => void, phone = false) {
+  answer([...PARTS, SS_PART])
+  const screen = await render(
+    <ToastProvider>
+      <InventoryLinkContext.Provider value={{ link: null, open, taken: () => {} }}>{phone ? <PhoneDashboard /> : <CatalogTab />}</InventoryLinkContext.Provider>
+    </ToastProvider>,
+  )
+  await expect.element(screen.getByRole('status', { name: 'Carregando o catálogo' })).not.toBeInTheDocument()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  return screen
 }
 
 /**
@@ -499,6 +538,87 @@ test('Web: the arrow keys move between the listed parts', async () => {
   await expect.element(screen.getByText('Chevrolet Opala 3.8', { exact: true })).toBeVisible()
 })
 
+// Clicks the Opala's name and checks the detail column shows its sheet, with its brand, generations, versions and
+// engines, and the three parts in stock that fit it; an engine opens its sheet, chosen in the tree. Then clicks the
+// Diplomata, whose sheet has its generation and the two parts that fit it, not the SS's; a click on a part opens its
+// details in the Inventory, and "Ver todas as peças" the Inventory with the Opalas' brand and models filtered.
+test("Web: a model's and a version's sheets list their parts and open them in the Inventory", async () => {
+  const open = vi.fn()
+  const screen = await renderLinked(open)
+  await screen.getByText('Opala', { exact: true }).click()
+  await expect.element(screen.getByRole('treeitem', { name: 'Opala', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect.element(screen.getByRole('heading', { name: 'Chevrolet Opala' })).toBeVisible()
+  const facts = screen.getByTestId('catalog.car-sheet.facts.fact')
+  expect(facts.elements().map((fact) => fact.textContent)).toEqual([
+    'MarcaChevrolet',
+    'GeraçõesPrimeira geração 68/74Segunda geração 75/79Terceira geração 80/92Comodoro, Diplomata, SS',
+    'MotoresDiplomata 1986 · 2.5 L 4 cilindrosDiplomata 1986 · 4.1 L 6 cilindros',
+  ])
+  await expect.element(screen.getByRole('heading', { name: 'Peças disponíveis · 3' })).toBeVisible()
+  const rows = screen.getByRole('table', { name: 'Peças disponíveis' }).getByRole('row')
+  expect(rows.elements().slice(1).map((row) => row.querySelector('code')!.textContent)).toEqual(['FRA-10002 · Cobreq', 'FRA-1000 · Cobreq', 'SS-500 · Cobreq'])
+
+  await screen.getByRole('button', { name: 'Diplomata 1986 · 4.1 L 6 cilindros' }).click()
+  await expect.element(screen.getByRole('heading', { name: OPALA_41.title })).toBeVisible()
+  await expect.element(screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' })).toHaveAttribute('aria-selected', 'true')
+
+  await screen.getByText('Diplomata', { exact: true }).click()
+  await expect.element(screen.getByRole('heading', { name: 'Chevrolet Opala Diplomata' })).toBeVisible()
+  expect(facts.elements().map((fact) => fact.textContent)).toEqual(['GeraçãoTerceira geração 80/92', 'Motores1986 · 2.5 L 4 cilindros1986 · 4.1 L 6 cilindros'])
+  await expect.element(screen.getByRole('heading', { name: 'Peças disponíveis · 2' })).toBeVisible()
+  await screen.getByText('Pastilha de freio dianteira').click()
+  expect(open).toHaveBeenLastCalledWith({ itemId: PARTS[1].id })
+  await screen.getByRole('button', { name: 'Ver todas as peças' }).click()
+  expect(open).toHaveBeenLastCalledWith({
+    filters: { ...EMPTY_ITEM_FILTERS, vehicleBrand: ['Chevrolet'], vehicleModel: ['Chevrolet|Opala 3.8', 'Chevrolet|Opala 4.1'] },
+  })
+})
+
+// Clicks a model no part fits and with no engine yet, and checks its sheet says so and its parts say there are none,
+// with no "Ver todas as peças".
+test('Web: a model with no parts in stock says so', async () => {
+  const screen = await renderLinked(() => {})
+  await screen.getByText('Monza', { exact: true }).click()
+  await expect.element(screen.getByRole('heading', { name: 'Chevrolet Monza' })).toBeVisible()
+  await expect.element(screen.getByText('Nenhum motor com ficha ainda')).toBeVisible()
+  await expect.element(screen.getByRole('heading', { name: 'Peças disponíveis · 0' })).toBeVisible()
+  await expect.element(screen.getByText('Nenhuma peça no estoque')).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Ver todas as peças' })).not.toBeInTheDocument()
+})
+
+// On a phone, taps the Opala's name and checks its sheet fills the screen with its parts as cards and nothing wider
+// than the screen; an engine opens its sheet. ← goes back to the models with the Opala chosen and open, its chevron
+// closes and opens it without leaving, and a tap on the Diplomata opens its sheet under the path to it, whose part
+// opens in the Inventory.
+test("Web: on a phone a model's and a version's sheets are screens of their own", async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const open = vi.fn()
+  const screen = await renderLinked(open, true)
+  await screen.getByRole('button', { name: /^Chevrolet/ }).click()
+  await screen.getByText('Opala', { exact: true }).click()
+  await expect.element(screen.getByRole('heading', { name: 'Chevrolet Opala', level: 2 })).toBeVisible()
+  await expect.element(screen.getByRole('heading', { name: 'Peças disponíveis · 3' })).toBeVisible()
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+  await screen.getByRole('button', { name: 'Diplomata 1986 · 2.5 L 4 cilindros' }).click()
+  await expect.element(screen.getByRole('heading', { name: OPALA_25.title })).toBeVisible()
+
+  await screen.getByRole('button', { name: 'Voltar aos modelos' }).click()
+  await screen.getByText('Opala', { exact: true }).click()
+  await screen.getByRole('button', { name: 'Voltar aos modelos' }).click()
+  const opala = screen.getByRole('treeitem', { name: 'Opala', exact: true })
+  await expect.element(opala).toHaveAttribute('aria-selected', 'true')
+  await expect.element(opala).toHaveAttribute('aria-expanded', 'true')
+  await openBranch(screen, 'Opala')
+  await expect.element(opala).toHaveAttribute('aria-expanded', 'false')
+  await openBranch(screen, 'Opala')
+  await openBranch(screen, 'Terceira geração')
+  await screen.getByText('Diplomata', { exact: true }).click()
+  await expect.element(screen.getByRole('heading', { name: 'Chevrolet Opala Diplomata', level: 2 })).toBeVisible()
+  await expect.element(screen.getByText('Opala › Terceira geração')).toBeVisible()
+  await screen.getByRole('table', { name: 'Peças disponíveis' }).getByRole('row').first().click()
+  expect(open).toHaveBeenLastCalledWith({ itemId: PARTS[0].id })
+})
+
 // On a 360×780 phone, checks the Catalog opens on the brand lines, each with its letters and its models and sheets,
 // with no brand search, then taps Chevrolet and checks the header turns to the brand with a ← and the models' tree,
 // opens the tree down to the 4.1 engine and taps it, and checks its sheet shows under the path to it with each readout
@@ -521,7 +641,7 @@ test('Web: on a phone the Catalog goes from a brand to an engine sheet and back'
   await expect.element(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Chevrolet')
   await expect.element(screen.getByRole('heading', { name: 'Modelos · 3' })).toBeVisible()
   for (const name of ['Opala', 'Terceira geração', 'Diplomata', '1986']) {
-    await screen.getByRole('treeitem', { name, exact: name === 'Opala' }).getByText(name, { exact: true }).click()
+    await openBranch(screen, name)
   }
   await screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' }).click()
   await expect.element(screen.getByRole('heading', { name: OPALA_41.title })).toBeVisible()
@@ -617,7 +737,7 @@ test('Web: on a phone branches are renamed, moved and deleted from their actions
   const screen = await renderCatalog(true)
   await screen.getByRole('button', { name: /^Chevrolet/ }).click()
   for (const name of ['Opala', 'Terceira geração']) {
-    await screen.getByRole('treeitem', { name, exact: name === 'Opala' }).getByText(name, { exact: true }).click()
+    await openBranch(screen, name)
   }
   await screen.getByRole('button', { name: 'Ações de Comodoro' }).click()
   const actions = screen.getByRole('dialog', { name: 'Comodoro' })
@@ -656,7 +776,7 @@ test('Web: on a phone an engine is added and its sheet edited in a full-screen f
   const screen = await renderCatalog(true)
   await screen.getByRole('button', { name: /^Chevrolet/ }).click()
   for (const name of ['Opala', 'Terceira geração', 'Diplomata']) {
-    await screen.getByRole('treeitem', { name, exact: name === 'Opala' }).getByText(name, { exact: true }).click()
+    await openBranch(screen, name)
   }
   await screen.getByRole('button', { name: 'Novo motor em 1985' }).click()
   const sheet = screen.getByRole('dialog', { name: 'Novo motor em 1985' })

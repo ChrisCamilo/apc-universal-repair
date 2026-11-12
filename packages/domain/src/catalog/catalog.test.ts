@@ -7,6 +7,9 @@ import {
   brandsNamed,
   brandSummary,
   brandWithModel,
+  carFilters,
+  carParts,
+  carSheet,
   CATALOG_HOME,
   CATALOG_TAKEN,
   catalogAddUnder,
@@ -40,6 +43,7 @@ import {
   type CatalogNode,
 } from "./catalog.ts";
 import { testItem, type FlatItem } from "../inventory/testItems.ts";
+import { EMPTY_ITEM_FILTERS } from "../inventory/itemFilters.ts";
 import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES, testCatalogId } from "./testCatalog.ts";
 
 const CHEVROLET = testCatalogId("Chevrolet");
@@ -47,6 +51,21 @@ const VOLKSWAGEN = testCatalogId("Volkswagen");
 const FIAT = testCatalogId("Fiat");
 const FORD = testCatalogId("Ford");
 const OPALA = testCatalogId("Chevrolet", "Opala");
+const GENERATION_3 = testCatalogId("Chevrolet", "Opala", "Terceira geração");
+const DIPLOMATA = testCatalogId("Chevrolet", "Opala", "Terceira geração", "Diplomata");
+// Parts in stock, each named for the vehicle it fits: an Opala of any generation and version, the third generation's
+// Diplomata and Comodoro, the first generation, an "Opala 4.1" whose version has its own case and spaces, a version the
+// third generation lacks, a Monza, and a Chevrolet of any model.
+const FITTING: Item[] = [
+  testItem({ name: "Qualquer Opala", vehicleBrand: "Chevrolet", vehicleModel: "Opala" }),
+  testItem({ name: "Diplomata 80/92", vehicleBrand: "Chevrolet", vehicleModel: "Opala", firstYear: 1980, lastYear: 1992, version: "Diplomata" }),
+  testItem({ name: "Comodoro 80/92", vehicleBrand: "Chevrolet", vehicleModel: "Opala", firstYear: 1980, lastYear: 1992, version: "comodoro" }),
+  testItem({ name: "Opala 68/74", vehicleBrand: "Chevrolet", vehicleModel: "Opala", firstYear: 1968, lastYear: 1974 }),
+  testItem({ name: "Opala 4.1 diplomata", vehicleBrand: "Chevrolet", vehicleModel: "Opala 4.1", version: "diplo mata" }),
+  testItem({ name: "Caravan", vehicleBrand: "Chevrolet", vehicleModel: "Opala", version: "Caravan" }),
+  testItem({ name: "Monza", vehicleBrand: "Chevrolet", vehicleModel: "Monza" }),
+  testItem({ name: "Qualquer Chevrolet", vehicleBrand: "Chevrolet", vehicleModel: null }),
+];
 
 /**
  * Lists every node of a tree, depth first.
@@ -227,12 +246,77 @@ test("Shared: a part of several vehicles shows the one the catalog knows best", 
 test("Shared: on a phone ← goes back from the sheet to the models, then the brands", () => {
   const sheet = { view: "sheet", brandId: CHEVROLET, engineId: TEST_ENGINES.opala41 } as const;
   const models = screenBack(sheet)!;
-  assert.deepEqual(models, { view: "models", brandId: CHEVROLET, engineId: TEST_ENGINES.opala41 });
+  assert.deepEqual(models, { view: "models", brandId: CHEVROLET, nodeId: TEST_ENGINES.opala41 });
   assert.deepEqual(screenBack(models), CATALOG_HOME);
   assert.equal(screenBack(CATALOG_HOME), null);
   assert.deepEqual(screenHeader(TEST_CATALOG, CATALOG_HOME), { title: "Catálogo" });
   assert.deepEqual(screenHeader(TEST_CATALOG, models), { title: "Chevrolet", back: "Voltar às marcas" });
   assert.deepEqual(screenHeader(TEST_CATALOG, sheet), { title: "Chevrolet", back: "Voltar aos modelos" });
+});
+
+// Goes back from a model's sheet on a phone and checks ← opens the brand's models on that model, named as from an
+// engine's sheet.
+test("Shared: on a phone ← goes back from a model's sheet to the models open on it", () => {
+  const car = { view: "car", brandId: CHEVROLET, nodeId: OPALA } as const;
+  assert.deepEqual(screenBack(car), { view: "models", brandId: CHEVROLET, nodeId: OPALA });
+  assert.deepEqual(screenHeader(TEST_CATALOG, car), { title: "Chevrolet", back: "Voltar aos modelos" });
+});
+
+// Builds the Opala's sheet and its Diplomata's: the model lists its three generations with their short years and the
+// third one's versions, and the engines under it by version and year; the version, its generation and its engines by
+// year; a model with no engine yet lists none.
+test("Shared: a model's and a version's sheets list their generations and engines", () => {
+  assert.deepEqual(carSheet(TEST_CATALOG, CHEVROLET, OPALA), {
+    level: "model",
+    title: "Chevrolet Opala",
+    generations: [
+      { id: testCatalogId("Chevrolet", "Opala", "Primeira geração"), name: "Primeira geração", years: "68/74", versions: [] },
+      { id: testCatalogId("Chevrolet", "Opala", "Segunda geração"), name: "Segunda geração", years: "75/79", versions: [] },
+      { id: GENERATION_3, name: "Terceira geração", years: "80/92", versions: ["Comodoro", "Diplomata", "SS"] },
+    ],
+    engines: [
+      { id: TEST_ENGINES.opala25, label: "Diplomata 1986 · 2.5 L 4 cilindros" },
+      { id: TEST_ENGINES.opala41, label: "Diplomata 1986 · 4.1 L 6 cilindros" },
+    ],
+  });
+  assert.deepEqual(carSheet(TEST_CATALOG, CHEVROLET, DIPLOMATA), {
+    level: "version",
+    title: "Chevrolet Opala Diplomata",
+    generations: [{ id: GENERATION_3, name: "Terceira geração", years: "80/92", versions: [] }],
+    engines: [
+      { id: TEST_ENGINES.opala25, label: "1986 · 2.5 L 4 cilindros" },
+      { id: TEST_ENGINES.opala41, label: "1986 · 4.1 L 6 cilindros" },
+    ],
+  });
+  assert.deepEqual(carSheet(TEST_CATALOG, CHEVROLET, testCatalogId("Chevrolet", "Monza")).engines, []);
+});
+
+// Lists the parts that fit the Opala, its third generation and its Diplomata: any Opala fits the model, by its name
+// alone or followed by an engine; the generation takes those with its years or none, and a version of it or none; the
+// version only its own name, ignoring case and spaces. Another model, or a brand of any model, fits none.
+test("Shared: the parts in stock that fit a model, a generation and a version", () => {
+  const names = (nodeId: string) => carParts(TEST_CATALOG, CHEVROLET, nodeId, FITTING).map((item) => item.name);
+  assert.deepEqual(names(OPALA), ["Qualquer Opala", "Diplomata 80/92", "Comodoro 80/92", "Opala 68/74", "Opala 4.1 diplomata", "Caravan"]);
+  assert.deepEqual(names(GENERATION_3), ["Qualquer Opala", "Diplomata 80/92", "Comodoro 80/92", "Opala 4.1 diplomata"]);
+  assert.deepEqual(names(DIPLOMATA), ["Qualquer Opala", "Diplomata 80/92", "Opala 4.1 diplomata"]);
+  assert.deepEqual(carParts(TEST_CATALOG, CHEVROLET, testCatalogId("Chevrolet", "Chevette"), FITTING), []);
+});
+
+// Sets the filters that list every part fitting the Opala and its Diplomata: the brands and models of the vehicles
+// that fit, as the items hold them, and for the version their generations and versions; every other filter is off.
+test("Shared: the filters of a model and a version list the parts that fit it", () => {
+  assert.deepEqual(carFilters(TEST_CATALOG, CHEVROLET, OPALA, FITTING), {
+    ...EMPTY_ITEM_FILTERS,
+    vehicleBrand: ["Chevrolet"],
+    vehicleModel: ["Chevrolet|Opala", "Chevrolet|Opala 4.1"],
+  });
+  assert.deepEqual(carFilters(TEST_CATALOG, CHEVROLET, DIPLOMATA, FITTING), {
+    ...EMPTY_ITEM_FILTERS,
+    vehicleBrand: ["Chevrolet"],
+    vehicleModel: ["Chevrolet|Opala", "Chevrolet|Opala 4.1"],
+    generation: ["1980-1992"],
+    version: ["Diplomata", "diplo mata"],
+  });
 });
 
 // Opens the screens of parts found by code: an engine with a sheet opens it; a model without one, its brand's models

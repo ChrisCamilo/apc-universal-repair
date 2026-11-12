@@ -34,6 +34,7 @@ import {
 } from '@apc/domain/item-filters';
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form';
 import { isTestItem, TUTORIAL_CODE } from '@apc/domain/inventory-tutorial';
+import type { InventoryLink } from '@apc/domain/catalog';
 import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/domain/photos';
 import { ActionSheet } from '../../components/ActionSheet';
@@ -69,6 +70,7 @@ import { useInventoryTutorial } from './inventoryTutorialContext';
 import { CardTitle, StockQuantity } from './ItemCard';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './InventoryTutorial';
+import { useInventoryLink } from '../dashboard/inventoryLinkContext';
 import { useMoreActions } from '../dashboard/moreActionsContext';
 
 // The Inventory tab, the same as the web's on a phone (the Estoque mockup): on the canvas, with no panel around it, a
@@ -98,7 +100,9 @@ import { useMoreActions } from '../dashboard/moreActionsContext';
 // them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and
 // opens its photos in the ImageViewer (a brand's card, that brand's photos), where each photo removed, changed or added is saved at once and the list
 // follows. The Inventory tutorial runs over the tab by itself the first time, and again from the user menu: it starts
-// and ends with the test item deleted and the search, filters and sort off. Gerenciar listas, Importar CSV, Exportar CSV
+// and ends with the test item deleted and the search, filters and sort off. The Catalog can open the tab on a part's
+// details, or with the filters that list the parts that fit a car, the search and the stock status off (see
+// inventoryLinkContext.ts). Gerenciar listas, Importar CSV, Exportar CSV
 // and Tutorial do estoque sit in a bottom sheet the header's "⋯" opens (the Mais ações mockup), as the web does on a
 // phone.
 
@@ -367,6 +371,31 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       tutorialStarted();
     }
   }, [touring]);
+
+  // Another tab's link: the filters it sets, with the search and the stock status off, or an item's details once the
+  // items are in; then it is let go.
+  const { link, taken } = useInventoryLink();
+  const [takenLink, setTakenLink] = useState<InventoryLink | null>(null);
+  if (link && link !== takenLink && ('filters' in link || state.status === 'ready')) {
+    setTakenLink(link);
+    if ('filters' in link) {
+      narrow(() => {
+        setSearch('');
+        setStatus(null);
+        setFilters(link.filters);
+      });
+    } else {
+      const item = items.find((each) => each.id === link.itemId);
+      if (item) {
+        openForm(item, true);
+      }
+    }
+  }
+  useEffect(() => {
+    if (takenLink) {
+      taken();
+    }
+  }, [takenLink, taken]);
 
   return (
     <View style={styles.panel} testID={ids.panel}>

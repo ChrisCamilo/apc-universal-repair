@@ -27,6 +27,10 @@ const OPEN_ANIMATION = LayoutAnimation.create(scales.motion.durationMs, 'easeInE
 // since a phone has no pointer to hover with; a branch can end with one more line under its children (after), such as
 // a button adding one more, which an empty branch shows though it has nothing to open; and a branch can be opened from
 // outside (reveal), e.g. the one something is being added to.
+// The owner can also let some branches be selected (selectable), as on the web, such as a model whose sheet it shows: a
+// press on one hands it to onSelect as well as opening or closing it, and once selected it looks like a selected leaf.
+// A press on its chevron, a finger wide, only opens or closes it, so it still opens in place where choosing it leads to
+// another screen; screen readers find the chevron as a button, "Abrir" or "Fechar" and the branch's name.
 
 type TreeItemProps = { node: TreeNode; level: number; tree: TreeState };
 // What every item needs from the tree around it.
@@ -35,18 +39,22 @@ type TreeState = {
   selected?: string;
   highlighted?: string;
   leafTag?: string;
+  selectable?: (id: string) => boolean;
   rowActions?: (id: string) => ReactNode;
   after?: (id: string) => ReactNode;
   activate: (node: TreeNode) => void;
+  toggle: (id: string) => void;
 };
 type TreeViewProps = {
   /** Accessible name of the tree, e.g. "Modelos Chevrolet". */
   label: string;
   nodes: TreeNode[];
-  /** Id of the selected leaf. */
+  /** Id of the selected leaf, or of a selectable branch. */
   selected?: string;
-  /** Called with the leaf chosen with a press; the owner keeps it, e.g. for the detail panel. */
+  /** Called with the leaf, or selectable branch, chosen with a press; the owner keeps it, e.g. for the detail panel. */
   onSelect: (id: string) => void;
+  /** Whether a branch, by its id, is selected too when pressed, e.g. a model whose sheet the owner shows; none when left out. */
+  selectable?: (id: string) => boolean;
   /** Id of a row to point out in the accent, e.g. the model of a part found by its code. */
   highlighted?: string;
   /** Branches open at first; defaults to the ones above the selected leaf. */
@@ -68,6 +76,7 @@ export function TreeView({
   nodes,
   selected,
   onSelect,
+  selectable,
   highlighted,
   defaultExpanded,
   leafTag,
@@ -89,28 +98,35 @@ export function TreeView({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new branch to reveal opens it: the nodes change on every edit
   }, [reveal]);
 
-  /** Selects a leaf, or opens or closes a branch, sliding its children in or out unless motion is reduced. */
-  const activate = (node: TreeNode) => {
-    if (isLeaf(node)) {
-      onSelect(node.id);
-      return;
-    }
-    if (!canOpen(node)) {
-      return;
-    }
+  /** Opens a closed branch or closes an open one, sliding its children in or out unless motion is reduced. */
+  const toggle = (id: string) => {
     if (!reduced) {
       LayoutAnimation.configureNext(OPEN_ANIMATION);
     }
     setExpanded((open) => {
       const next = new Set(open);
-      if (!next.delete(node.id)) {
-        next.add(node.id);
+      if (!next.delete(id)) {
+        next.add(id);
       }
       return next;
     });
   };
 
-  const tree: TreeState = { expanded, selected, highlighted, leafTag, rowActions, after, activate };
+  /** Selects a leaf, or opens or closes a branch, selecting it too when it is selectable. */
+  const activate = (node: TreeNode) => {
+    if (isLeaf(node)) {
+      onSelect(node.id);
+      return;
+    }
+    if (selectable?.(node.id)) {
+      onSelect(node.id);
+    }
+    if (canOpen(node)) {
+      toggle(node.id);
+    }
+  };
+
+  const tree: TreeState = { expanded, selected, highlighted, leafTag, selectable, rowActions, after, activate, toggle };
   const { styles, ids } = useStyles();
   return (
     <ScrollView role="tree" accessibilityLabel={label} nestedScrollEnabled style={[styles.tree, style]} testID={ids.tree}>
@@ -132,7 +148,8 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
   // An empty branch with a line after it shows it, though it has nothing to open.
   const open = (branch && tree.expanded.has(node.id)) || (!branch && Boolean(extra));
   const actions = tree.rowActions?.(node.id);
-  const selected = leaf && node.id === tree.selected;
+  const choosable = leaf || Boolean(tree.selectable?.(node.id));
+  const selected = choosable && node.id === tree.selected;
   // A pointed-out row looks like the selected leaf.
   const accent = selected || node.id === tree.highlighted;
   return (
@@ -141,14 +158,28 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
         <Pressable
           role="treeitem"
           accessibilityLabel={node.detail ? `${node.label} ${node.detail}` : node.label}
-          accessibilityState={{ expanded: branch ? open : undefined, selected: leaf ? selected : undefined }}
+          accessibilityState={{ expanded: branch ? open : undefined, selected: choosable ? selected : undefined }}
           accessibilityValue={node.id === tree.highlighted ? { text: 'em destaque' } : undefined}
-          disabled={!branch && !leaf}
+          disabled={!branch && !choosable}
           onPress={() => tree.activate(node)}
           style={({ pressed }) => [styles.row, pressed && styles.rowPressed, accent && styles.rowActive]}
           testID={ids.row}
         >
-          {branch ? <Chevron open={open} /> : <View style={styles.spacer} testID={ids.spacer} />}
+          {branch && choosable ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${open ? 'Fechar' : 'Abrir'} ${node.label}`}
+              onPress={() => tree.toggle(node.id)}
+              style={styles.toggle}
+              testID={ids.toggle}
+            >
+              <Chevron open={open} />
+            </Pressable>
+          ) : branch ? (
+            <Chevron open={open} />
+          ) : (
+            <View style={styles.spacer} testID={ids.spacer} />
+          )}
           <Text
             numberOfLines={1}
             style={[
