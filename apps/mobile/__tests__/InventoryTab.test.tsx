@@ -575,9 +575,10 @@ test('Mobile: the round Ordenar sorts the list through the API', async () => {
   expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Ordenar por, Valor unitário (maior → menor)')).not.toHaveLength(0);
 });
 
-// Opens the filter sheet and checks its rows, then counts the items a choice would show in "Ver n itens" before it is
-// applied: a category picked in its options, then the front position. The back button goes from the options back to
-// the rows, then closes the sheet, dropping the choice; "Limpar" turns the filters and the sort off in the sheet.
+// Opens the filter sheet and checks its rows, the vehicle's model, generation and version each waiting for the one
+// before, then counts the items a choice would show in "Ver n itens" before it is applied: a category picked in its
+// options, then the front position. The back button goes from the options back to the rows, then closes the sheet,
+// dropping the choice; "Limpar" turns the filters and the sort off in the sheet.
 test('Mobile: the filter sheet counts what its choice would show before applying it', async () => {
   const tree = await mount();
   const press = async (name: string) => {
@@ -599,9 +600,9 @@ test('Mobile: the filter sheet counts what its choice would show before applying
     'Categoria, Todas',
     'Marca da peça, Todas',
     'Marca do veículo, Todas',
-    'Modelo do veículo, Todos',
-    'Geração, Todas',
-    'Versão do veículo, Todas',
+    'Modelo do veículo, Escolha a marca do veículo',
+    'Geração, Escolha o modelo do veículo',
+    'Versão do veículo, Escolha a geração',
     'Cor, Todas',
     'Local, Todos',
   ]);

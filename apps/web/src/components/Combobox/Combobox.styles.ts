@@ -2,8 +2,8 @@ import { FIELD, POPOVER_MOTION } from '../../styles/shared.ts'
 import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of the combobox: a text field's frame with a chevron button at its end that turns while the list is open,
-// the shared list and options, a note when nothing matches, and the "+ Criar" row in the accent, set apart by a
-// hairline from the options above it. The anchor only places the list under the frame, so it adds no level to the ids
+// the shared list and options, a note when nothing matches, growing to its lines in a narrow list, and the "+ Criar"
+// row in the accent, set apart by a hairline from the options above it. The anchor only places the list under the frame, so it adds no level to the ids
 // inside it, which are the same as on mobile.
 
 /** A combobox: the field, its frame, input and chevron, the list, an option or the create row, and the error. */
@@ -19,7 +19,7 @@ export const combobox = recipe(
       toggle: FIELD.button,
       chevron: 'transition-transform rotate-90',
       list: [FIELD.list, POPOVER_MOTION],
-      empty: 'flex h-9 items-center px-2.5 font-body text-sm text-text-muted',
+      empty: 'flex min-h-9 items-center px-2.5 py-1.5 font-body text-sm text-text-muted',
       option: FIELD.option,
       error: 'm-0 font-body text-sm text-danger',
     },

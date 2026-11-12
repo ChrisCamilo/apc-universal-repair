@@ -6,6 +6,7 @@ import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, POSITIO
 import {
   BRAND_FIELD_LABELS,
   brandDetailTexts,
+  changedVehicle,
   codeTakenError,
   codeTakenMessage,
   descriptionInput,
@@ -75,7 +76,9 @@ import { VehiclesField } from './VehiclesField.tsx'
 // section for each brand that makes the part, with its photos, part brand, code, quantity, unit price, color and
 // location. Each vehicle is a line of its brand, its model, and optionally its generation ("85/90") and version ("1.6
 // GLX"), which offer what the catalog and the stock hold for that model and take any text, the generation read as years
-// (see readGeneration); the dialog is wide, so the four fit on one line. "Adicionar veículo" adds a blank line and "Adicionar marca"
+// (see readGeneration); the dialog is wide, so the four fit on one line. The fields open one after the other: the brand
+// opens the model, the model the generation and the generation the version, and emptying one clears those after it
+// (see changedVehicle). "Adicionar veículo" adds a blank line and "Adicionar marca"
 // a blank brand, and each line's or brand's trash, in red, takes it out while another is left. Category, part brands and
 // the vehicles' brands and models are comboboxes of the lists the API keeps, where "+ Criar" adds a new name to its
 // list, picks it and says so in a toast; a line's model only lists its brand's models, is created under that brand,
@@ -266,7 +269,7 @@ export function ItemFormDialog({
 
   /** Takes a field of a vehicle's line's new value and drops its line's messages. */
   const changeVehicle = (index: number, field: VehicleField, value: string) => {
-    setForm((typed) => ({ ...typed, vehicles: typed.vehicles.map((vehicle, at) => (at === index ? { ...vehicle, [field]: value } : vehicle)) }))
+    setForm((typed) => ({ ...typed, vehicles: typed.vehicles.map((vehicle, at) => (at === index ? changedVehicle(vehicle, field, value) : vehicle)) }))
     setErrors((shown) => ({ ...shown, vehicles: shown.vehicles?.map((line, at) => (at === index ? {} : line)) }))
   }
 
@@ -587,8 +590,9 @@ export function ItemFormDialog({
                       noun="geração"
                       toggleLabel="Mostrar gerações"
                       emptyLabel="Nenhuma geração conhecida para esse modelo"
-                      placeholder="Ex.: 85/90"
+                      placeholder={vehicle.vehicleModel.trim() ? 'Ex.: 85/90' : 'Escolha o modelo primeiro'}
                       error={shown.generation}
+                      disabled={!vehicle.vehicleModel.trim()}
                     />
                     <Combobox
                       label={VEHICLE_FIELD_LABELS.version}
@@ -598,8 +602,9 @@ export function ItemFormDialog({
                       noun="versão"
                       toggleLabel="Mostrar versões"
                       emptyLabel="Nenhuma versão conhecida para esse modelo"
-                      placeholder="Ex.: 1.6 GLX"
+                      placeholder={vehicle.generation?.trim() ? 'Ex.: 1.6 GLX' : 'Escolha a geração primeiro'}
                       error={shown.version}
+                      disabled={!vehicle.generation?.trim()}
                     />
                     {form.vehicles.length > 1 && (
                       <div className={classes.removeVehicle()} data-testid={ids.removeVehicle}>
@@ -610,7 +615,7 @@ export function ItemFormDialog({
                 )
               })}
               <div className={classes.addVehicle()} data-testid={ids.addVehicle}>
-                <Button variant="secondary" size="sm" onClick={addVehicle}>
+                <Button variant="secondary" size="sm" className={classes.accent()} onClick={addVehicle}>
                   Adicionar veículo
                 </Button>
               </div>
@@ -759,7 +764,7 @@ export function ItemFormDialog({
                     Adicionar marca
                   </Button>
                 ) : (
-                  <Button variant="secondary" size="sm" onClick={addBrand}>
+                  <Button variant="secondary" size="sm" className={classes.accent()} onClick={addBrand}>
                     Adicionar marca
                   </Button>
                 )}

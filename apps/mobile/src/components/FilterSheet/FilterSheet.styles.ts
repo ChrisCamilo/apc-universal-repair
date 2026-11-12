@@ -1,13 +1,13 @@
 import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
-import { displayLabel } from '../../styles/shared';
+import { displayLabel, FIELD_DISABLED_OPACITY } from '../../styles/shared';
 import { fontFamily, softHairline } from '../../app/theme';
 
 // The look of a phone's filter sheet, the same as the web (the Filtros mockup): full-width 56px rows under soft
-// hairlines, each with its label, its value (muted, or in the accent once chosen) and a chevron; the sort's row leads
-// with its icon and a strip of the canvas sets it apart from the filters. A segmented choice sits under a muted display
-// label. A list of options, opened from a row, has the ← and the row's name on top and its options as rows, the chosen
-// ones in the accent with a check. "Limpar" is an accent text button.
+// hairlines, each with its label, its value (muted, or in the accent once chosen) and a chevron, faded while it is off;
+// the sort's row leads with its icon and a strip of the canvas sets it apart from the filters. A segmented choice sits
+// under a muted display label. A list of options, opened from a row, has the ← and the row's name on top and its
+// options as rows, the chosen ones in the accent with a check. "Limpar" is an accent text button.
 
 /** A row's inset from the sheet's sides, in px (px-5 on the web). */
 const ROW_INSET = scales.space.s4 + scales.space.s1;
@@ -82,6 +82,7 @@ export const useStyles = createStyles(
         paddingRight: scales.space.s4,
       },
       rowLabel: { ...body(scales.fontSize.base, 500), flexGrow: 1, flexShrink: 1 },
+      rowDisabled: { opacity: FIELD_DISABLED_OPACITY },
       rowPressed: { backgroundColor: colors.panelRaised },
       rowValue: { ...body(15), maxWidth: '45%', color: colors.textMuted },
       rowValueChosen: { fontFamily: fontFamily(scales.bodyFont, 600), color: colors.accent },

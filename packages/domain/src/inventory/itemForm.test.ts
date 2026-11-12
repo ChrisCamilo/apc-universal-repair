@@ -5,6 +5,7 @@ import {
   BRAND_FIELD_LABELS,
   brandDetailTexts,
   brandPlaceText,
+  changedVehicle,
   codesInput,
   codeTakenError,
   codeTakenMessage,
@@ -170,6 +171,16 @@ test("Shared: a price pasted into the field is read as a price", () => {
   assert.deepEqual(priceMask("R$ 39,90", "2.000.000"), { value: "R$ 39,90", message: ITEM_FORM_MESSAGES.priceTooHigh });
   assert.deepEqual(priceMask("R$ 39,90", ""), { value: "" });
   assert.equal(ITEM_FORM_MESSAGES.priceTooHigh, "Informe no máximo R$ 1.000.000,00.");
+});
+
+// Changes a vehicle's line field by field and checks emptying the model clears its generation and version, emptying the
+// generation clears the version, and any other change keeps the rest.
+test("Shared: a vehicle's line clears what waits on a field emptied", () => {
+  const line = { vehicleBrand: "Chevrolet", vehicleModel: "Monza", generation: "85/90", version: "1.6 GLX" };
+  assert.deepEqual(changedVehicle(line, "vehicleModel", " "), { ...line, vehicleModel: " ", generation: "", version: "" });
+  assert.deepEqual(changedVehicle(line, "generation", ""), { ...line, generation: "", version: "" });
+  assert.deepEqual(changedVehicle(line, "vehicleModel", "Monza Classic"), { ...line, vehicleModel: "Monza Classic" });
+  assert.deepEqual(changedVehicle(line, "version", ""), { ...line, version: "" });
 });
 
 // Checks a blank form names every required field, the item's and its brand's, a price that isn't above zero says so,

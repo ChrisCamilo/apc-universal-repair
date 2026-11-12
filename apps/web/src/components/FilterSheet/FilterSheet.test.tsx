@@ -169,6 +169,20 @@ test('Web: filter sheet rows that depend on the choice drop what they stop offer
   expect(onApply).toHaveBeenCalledWith({ ...NO_FILTERS, brand: ['Chevrolet'], model: ['Opala'] }, null)
 })
 
+// Opens the sheet with the model waiting for a brand, and checks its row is off and says so, then opens once a brand
+// is chosen.
+test('Web: a filter sheet row stays off while the row it waits for has nothing chosen', async () => {
+  const screen = await render(<Sheet waiting onApplied={() => {}} />)
+  await screen.getByRole('button', { name: 'Filtros' }).click()
+  const sheet = screen.getByRole('dialog', { name: 'Filtrar e ordenar' })
+  const model = sheet.getByRole('button', { name: 'Modelo do veículo Escolha a marca' })
+  await expect.element(model).toBeDisabled()
+  await sheet.getByRole('button', { name: /^Marca do veículo/ }).click()
+  await sheet.getByRole('option', { name: 'Fiat' }).click()
+  await sheet.getByRole('button', { name: 'Voltar aos filtros' }).click()
+  await expect.element(sheet.getByRole('button', { name: 'Modelo do veículo Todos' })).toBeEnabled()
+})
+
 // Picks a sort in the sort sheet, which sorts at once and closes, with the chosen sort checked when it opens again.
 test('Web: the sort sheet sorts on a pick and closes', async () => {
   const onSortChange = vi.fn()
@@ -205,10 +219,24 @@ test('Web: a toolbar button turns to the accent with a dot while on', async () =
 type SheetProps = {
   initial?: FilterValues
   initialSort?: Sort | null
+  /** Whether the model's row waits for a brand: off, and saying so, until one is chosen. */
+  waiting?: boolean
   onApplied: (values: FilterValues, sort: Sort | null) => void
 }
 
-function Sheet({ initial = NO_FILTERS, initialSort = null, onApplied }: SheetProps) {
+/**
+ * Lays out the sheet's rows with the model's row waiting for a brand: off, offering nothing and saying so, until one is
+ * chosen.
+ * @param draft Values chosen so far.
+ * @returns The rows.
+ */
+function waitingRows(draft: FilterValues) {
+  return rows(draft).map((row) =>
+    'key' in row && row.key === 'model' && !draft.brand?.length ? { ...row, allLabel: 'Escolha a marca', options: [], disabled: true } : row,
+  )
+}
+
+function Sheet({ initial = NO_FILTERS, initialSort = null, waiting = false, onApplied }: SheetProps) {
   const [values, setValues] = useState(initial)
   const [sort, setSort] = useState(initialSort)
   const [open, setOpen] = useState(false)
@@ -224,7 +252,7 @@ function Sheet({ initial = NO_FILTERS, initialSort = null, onApplied }: SheetPro
       <FilterSheet
         open={open}
         onClose={() => setOpen(false)}
-        rows={rows}
+        rows={waiting ? waitingRows : rows}
         values={values}
         sort={sort}
         sortOptions={SORTS}
