@@ -203,6 +203,32 @@ test('Web: rows that depend on the choice drop what they stop offering', async (
   expect(onApply).toHaveBeenCalledWith({ brand: ['Chevrolet'], model: ['Opala'] })
 })
 
+// Opens rows where the model waits for a brand, and checks the model's list is off and says so until a brand is chosen,
+// then offers that brand's models.
+test('Web: a row stays off while the row it waits for has nothing chosen', async () => {
+  const waitingRows = (draft: FilterValues) => {
+    const options = (values: string[]) => values.map((value) => ({ value, label: value }))
+    const brands = draft.brand ?? []
+    return [
+      { key: 'brand', label: 'Marca', allLabel: 'Todas', options: options(Object.keys(MODELS)) },
+      brands.length === 0
+        ? { key: 'model', label: 'Modelo', allLabel: 'Escolha a marca', options: [], disabled: true }
+        : { key: 'model', label: 'Modelo', allLabel: 'Todos', options: options(brands.flatMap((brand) => MODELS[brand])) },
+    ]
+  }
+  const screen = await render(<FilterMenu label="Filtros" title="Filtrar" rows={waitingRows} values={{ brand: [], model: [] }} onApply={() => {}} />)
+  await screen.getByRole('button', { name: 'Filtros' }).click()
+  const model = screen.getByRole('combobox', { name: 'Modelo' })
+  await expect.element(model).toBeDisabled()
+  await expect.element(model).toHaveTextContent('Escolha a marca')
+  await screen.getByRole('combobox', { name: 'Marca' }).click()
+  await screen.getByRole('option', { name: 'Fiat' }).click()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(model).toBeEnabled()
+  await model.click()
+  expect(screen.getByRole('option').elements().map((option) => option.textContent)).toEqual(['Todos', 'Uno'])
+})
+
 function Menu({ initial, onApplied }: { initial: FilterValues; onApplied: (values: FilterValues) => void }) {
   const [values, setValues] = useState(initial)
   return (
