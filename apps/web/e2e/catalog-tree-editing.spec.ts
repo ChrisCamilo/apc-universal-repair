@@ -45,7 +45,7 @@ test("Web: a model is added down to a year, renamed, moved and deleted", { tag: 
   await tab.node("Kadett").hover();
   await tab.action("Excluir Kadett").click();
   await expect(tab.deleteDialog("Kadett")).toContainText("Vão junto 1 geração, 1 versão, 1 ano.");
-  await tab.deleteDialog("Kadett").getByRole("button", { name: "Excluir" }).click();
+  await tab.confirmDelete("Kadett").click();
   await expect(tab.node("Kadett")).toHaveCount(0);
   await expect(page).not.toScrollSideways();
 });

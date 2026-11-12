@@ -10,9 +10,10 @@ import { TEST_CATALOG, TEST_ENGINES } from "@apc/domain/test-catalog";
  * The Catalog tab: a brand, a model and an engine sheet by name, a model's or a version's chevron, the two searches and
  * the parts a code search finds;
  * the tree's editing: a brand's models in order, "Nova marca" and "Novo modelo", a node's name in its row, a row's
- * button by name, the row that adds or renames a node and a field of it, the delete dialog, "Editar ficha" and a choice
- * of the sheet's form; on a phone, a brand's line, the screen's title, its ← by name, the found parts' cards, and a bottom
- * sheet or dialog by its title, such as a branch's actions or the sheet adding a node; a model's or a version's sheet
+ * button by name, the row that adds or renames a node and a field of it, the delete dialog and its Excluir, "Editar
+ * ficha", a choice of the sheet's form and its "Salvar ficha"; on a phone, a brand's line, the screen's title, its ← by
+ * name, the found parts' cards, and a bottom sheet or dialog by its title and a button of it, such as a branch's actions
+ * or the sheet adding a node; a model's or a version's sheet
  * by its title, the rows of the parts that fit it, and "Ver todas as peças".
  * @param page The test's page.
  * @returns The tab's elements.
@@ -44,9 +45,12 @@ export function catalog(page: Page) {
     form: (name: string) => page.getByRole("form", { name }),
     field: (form: string, label: string) => page.getByRole("form", { name: form }).getByLabel(label),
     deleteDialog: (name: string) => page.getByRole("dialog", { name: `Excluir “${name}”?` }),
+    confirmDelete: (name: string) => page.getByRole("dialog", { name: `Excluir “${name}”?` }).getByRole("button", { name: "Excluir" }),
     editSheet: page.getByRole("button", { name: "Editar ficha" }),
     choice: (form: string, name: string) => page.getByRole("form", { name: form }).getByRole("radio", { name }),
+    saveSheet: (form: string) => page.getByRole("form", { name: form }).getByRole("button", { name: "Salvar ficha" }),
     dialog: (name: string) => page.getByRole("dialog", { name }),
+    dialogButton: (dialog: string, name: string) => page.getByRole("dialog", { name: dialog }).getByRole("button", { name }),
     carSheet: (title: string) => page.getByRole("heading", { name: title, exact: true }),
     carParts: page.getByRole("table", { name: "Peças disponíveis" }).getByRole("row").filter({ has: page.locator("code") }),
     allParts: page.getByRole("button", { name: "Ver todas as peças" }),
