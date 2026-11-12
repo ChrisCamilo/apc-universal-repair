@@ -4,6 +4,10 @@ import {
   brandsNamed,
   brandSummary,
   brandWithModel,
+  carFilters,
+  carParts,
+  carSheet,
+  hasCarSheet,
   CATALOG_CHILDREN,
   CATALOG_HOME,
   catalogNodes,
@@ -21,6 +25,7 @@ import {
   revealedVehicle,
   screenBack,
   screenHeader,
+  treePath,
   type Catalog,
   type CatalogEditLevel,
   type CatalogNode,
@@ -45,12 +50,14 @@ import { TreeView } from '../../components/TreeView'
 import { Heading, NumericReadout, Text } from '../../components/Typography'
 import { usePhone } from '../../components/usePhone.ts'
 import { useItems } from '../inventory/useItems.ts'
+import { CarParts, CarSheet } from './CarSheet.tsx'
 import { catalogTab } from './CatalogTab.styles.ts'
 import { EngineSheetForm } from './EngineSheetForm.tsx'
 import { NodeForm } from './NodeForm.tsx'
 import { PartResults } from './PartResults.tsx'
 import { useCatalog } from './useCatalog.ts'
 import { useCatalogEditing } from './useCatalogEditing.ts'
+import { useInventoryLink } from '../dashboard/inventoryLinkContext.ts'
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 
 // The Catalog tab (/catalog): the brand tiles in a rail, the chosen brand's model tree, and the detail column with
@@ -86,6 +93,11 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // close. A year's engines end with "Novo motor em <ano>", and an empty branch with the button adding its first. A new
 // engine's sheet, and "Editar ficha" under an engine's sheet, open the sheet's form in a full-screen dialog with
 // Cancelar and Salvar ficha at its foot; a new brand opens its models, and a new engine its sheet.
+// A click on a model's or a version's name chooses it as well as opening or closing it, and the detail column shows its
+// sheet (see CarSheet), whose engines open their sheets in the tree, and under it the parts in stock that fit it: a
+// click on one opens its details in the Inventory tab, and "Ver todas as peças" opens the Inventory with the filters
+// that list them (see inventoryLinkContext.ts). On a phone it is a screen of its own under the path to it, which ← leaves
+// for the models open on it.
 
 /** The ids of the phone's node and sheet forms, which the buttons of their sheet and dialog send. */
 const NODE_FORM_ID = 'catalog-node-form'
@@ -145,6 +157,10 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
   // A part for a model the catalog has no sheet for says so, instead of showing another vehicle.
   const missingVehicle = location && vehicle?.vehicleModel && !location.engineId ? `${vehicle.vehicleBrand} ${vehicle.vehicleModel}` : null
   const nodes = catalogNodes(brand.models)
+  const links = useInventoryLink()
+  // The model or version chosen, whose sheet and parts the detail column shows.
+  const chosen = engine ? nodes.get(engine) : undefined
+  const car = chosen && hasCarSheet(chosen) ? chosen : undefined
 
   /** Opens a brand on its first engine. */
   const openBrand = (id: string) => {
@@ -292,6 +308,7 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
                 nodes={models}
                 selected={engine}
                 onSelect={setEngine}
+                selectable={(id) => hasCarSheet(nodes.get(id))}
                 highlighted={location?.modelId}
                 defaultExpanded={location?.modelId && !location.engineId ? [location.modelId] : undefined}
                 rowActions={rowActions}
@@ -312,7 +329,12 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
             )}
           </Panel>
           <div className={classes.detail()} data-testid={ids.detail}>
-            {!sheetEditing && <ImageFrame alt={sheet ? `Foto do ${sheet.title}` : 'Foto do modelo'} emptyLabel="Sem foto do modelo" />}
+            {!sheetEditing && (
+              <ImageFrame
+                alt={sheet ? `Foto do ${sheet.title}` : car ? `Foto do ${carSheet(catalog, brandId, car.id).title}` : 'Foto do modelo'}
+                emptyLabel="Sem foto do modelo"
+              />
+            )}
             <Panel className={classes.sheet()}>
               {sheetEditing ? (
                 <EngineSheetForm
@@ -323,6 +345,16 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
                   saving={editor.saving}
                   onSave={(values) => void editor.saveSheet(values)}
                   onCancel={() => editor.editSheet(null)}
+                />
+              ) : car ? (
+                <CarSheet
+                  catalog={catalog}
+                  brandId={brandId}
+                  nodeId={car.id}
+                  onEngine={(id) => {
+                    setEngine(id)
+                    setRevealed((count) => count + 1)
+                  }}
                 />
               ) : missingVehicle ? (
                 <EmptyState title={missingVehicle} message={NO_SHEET_MESSAGE} />
@@ -352,6 +384,15 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
                 />
               )}
             </Panel>
+            {car && !sheetEditing && (
+              <Panel className={classes.sheet()}>
+                <CarParts
+                  parts={carParts(catalog, brandId, car.id, items)}
+                  onPart={(item) => links.open({ itemId: item.id })}
+                  onAll={() => links.open({ filters: carFilters(catalog, brandId, car.id, items) })}
+                />
+              </Panel>
+            )}
           </div>
         </div>
       </div>
@@ -368,6 +409,7 @@ function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (ca
   const items = state.status === 'ready' ? state.items : []
   const [screen, setScreen] = useState<CatalogScreen>(CATALOG_HOME)
   const [query, setQuery] = useState('')
+  const links = useInventoryLink()
   // The node whose actions are open in a bottom sheet.
   const [acting, setActing] = useState<CatalogNode>()
   const editor = useCatalogEditing({
@@ -457,6 +499,26 @@ function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (ca
 
   /** The screen on show. */
   const content = () => {
+    if (screen.view === 'car') {
+      const path = enginePath(catalog, screen.brandId, screen.nodeId)
+      return (
+        <div className={classes.screen()} data-testid={ids.screen}>
+          {path && (
+            <p className={classes.path()} data-testid={ids.path}>
+              {path}
+            </p>
+          )}
+          <ImageFrame alt={`Foto do ${carSheet(catalog, screen.brandId, screen.nodeId).title}`} emptyLabel="Sem foto do modelo" />
+          <CarSheet catalog={catalog} brandId={screen.brandId} nodeId={screen.nodeId} onEngine={(engineId) => setScreen({ view: 'sheet', brandId: screen.brandId, engineId })} />
+          <CarParts
+            parts={carParts(catalog, screen.brandId, screen.nodeId, items)}
+            onPart={(item) => links.open({ itemId: item.id })}
+            onAll={() => links.open({ filters: carFilters(catalog, screen.brandId, screen.nodeId, items) })}
+          />
+        </div>
+      )
+    }
+
     if (screen.view === 'sheet') {
       const sheet = catalog.sheets[screen.engineId]
       return (
@@ -487,7 +549,7 @@ function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (ca
     }
 
     if (screen.view === 'models') {
-      const { brandId, modelId, engineId, missing } = screen
+      const { brandId, modelId, nodeId, missing } = screen
       const models = modelsNamed(brand!.models, modelQuery)
       return (
         <div className={classes.screen()} data-testid={ids.screen}>
@@ -507,13 +569,14 @@ function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (ca
           </div>
           {models.length > 0 ? (
             <TreeView
-              key={`${brandId}-${modelId}-${engineId}`}
+              key={`${brandId}-${modelId}-${nodeId}`}
               label={`Modelos ${brand!.name}`}
               nodes={models}
-              selected={engineId}
-              onSelect={(id) => setScreen({ view: 'sheet', brandId, engineId: id })}
+              selected={nodeId}
+              onSelect={(id) => setScreen(hasCarSheet(nodes.get(id)) ? { view: 'car', brandId, nodeId: id } : { view: 'sheet', brandId, engineId: id })}
+              selectable={(id) => hasCarSheet(nodes.get(id))}
               highlighted={modelId}
-              defaultExpanded={modelId && !engineId ? [modelId] : undefined}
+              defaultExpanded={nodeId ? treePath(catalog, brandId, nodeId).map((node) => node.id) : modelId ? [modelId] : undefined}
               leafTag="Ver ficha"
               rowActions={(id) => {
                 const node = nodes.get(id)
