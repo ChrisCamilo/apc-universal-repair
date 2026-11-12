@@ -227,7 +227,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
     }
     const invite = readPairingLink(text);
     if (invite && (!auth || invite.entry)) {
-      void connect(invite, text);
+      connect(invite, text);
     } else {
       refusedLink.current = text;
       setTried(true);
@@ -246,7 +246,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
       entry: entryCode === null ? MESSAGES.entry : undefined,
     });
     if (url && fingerprint && entryCode !== null) {
-      void connect({ url, fingerprint, entry: entryCode });
+      connect({ url, fingerprint, entry: entryCode });
     }
   };
 
@@ -277,7 +277,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
     }
     if (camera.canRequestPermission) {
       return (
-        <Button variant="secondary" align="stretch" onPress={() => void camera.requestPermission()}>
+        <Button variant="secondary" align="stretch" onPress={() => camera.requestPermission()}>
           Ler o código com a câmera
         </Button>
       );
