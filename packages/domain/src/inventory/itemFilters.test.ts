@@ -12,6 +12,7 @@ import {
   POSITION_FILTERS,
   SIDE_FILTERS,
   splitVehicleModel,
+  VEHICLE_FILTER_WAITING,
   vehicleModelLabel,
   vehicleModelValue,
 } from "./itemFilters.ts";
@@ -149,6 +150,39 @@ test("Shared: the filter menu has nine rows, models following the brands", () =>
       ["Todos", "Esquerdo", "Direito", "Ambos"],
     ],
   );
+});
+
+// Lays out the menu as the vehicle filters are chosen one after the other, and checks each stays off, offering nothing
+// and saying what to choose, until the one before it has a choice: the model a brand, the generation a model, the
+// version a generation. So what one held leaves the menu's choice once the one before it is cleared.
+test("Shared: the vehicle filters open one after the other", () => {
+  const stock = [
+    item({ vehicleBrand: "Chevrolet", vehicleModel: "Monza", firstYear: 1985, lastYear: 1990, version: "1.6 GLX" }),
+    item({ vehicleBrand: "Chevrolet", vehicleModel: "Monza", firstYear: 1982, lastYear: 1984, version: "Sedan GL 1.8" }),
+  ];
+  /** The model, generation and version rows for a choice: off, with what they say, and how many options. */
+  const vehicleRows = (draft: Partial<typeof EMPTY_ITEM_FILTERS>) =>
+    itemFilterRows(stock, { ...EMPTY_ITEM_FILTERS, ...draft })
+      .slice(3, 6)
+      .map((row) => "key" in row && [row.key, Boolean(row.disabled), row.allLabel, row.options.length]);
+  assert.deepEqual(vehicleRows({}), [
+    ["vehicleModel", true, VEHICLE_FILTER_WAITING.vehicleModel, 0],
+    ["generation", true, VEHICLE_FILTER_WAITING.generation, 0],
+    ["version", true, VEHICLE_FILTER_WAITING.version, 0],
+  ]);
+  assert.deepEqual(vehicleRows({ vehicleBrand: ["Chevrolet"] }), [
+    ["vehicleModel", false, "Todos", 1],
+    ["generation", true, VEHICLE_FILTER_WAITING.generation, 0],
+    ["version", true, VEHICLE_FILTER_WAITING.version, 0],
+  ]);
+  assert.deepEqual(vehicleRows({ vehicleBrand: ["Chevrolet"], vehicleModel: ["Chevrolet|Monza"] }), [
+    ["vehicleModel", false, "Todos", 1],
+    ["generation", false, "Todas", 2],
+    ["version", true, VEHICLE_FILTER_WAITING.version, 0],
+  ]);
+  const versions = itemFilterRows(stock, { ...EMPTY_ITEM_FILTERS, vehicleBrand: ["Chevrolet"], vehicleModel: ["Chevrolet|Monza"], generation: ["1985-1990"] })[5];
+  assert.ok("options" in versions && !versions.disabled);
+  assert.deepEqual(versions.options, [{ value: "1.6 GLX", label: "1.6 GLX" }]);
 });
 
 // Offers the generations, oldest first and written short, and the versions of the stock's vehicles, then only those of

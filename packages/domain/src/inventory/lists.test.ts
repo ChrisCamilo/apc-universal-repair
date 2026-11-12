@@ -112,12 +112,14 @@ test("Shared: the items using an entry are counted", () => {
   assert.equal(itemsUsing(items, "categories", { id: BRAND_ID, name: "Freios" }, lists), 0);
 });
 
-// Sets the filters of an entry's items: a category by its name, and a vehicle model with its brand.
+// Sets the filters of an entry's items: a category by its name, and a vehicle model with its brand, which its own
+// filter holds too, as the model's filter needs one.
 test("Shared: an entry leads to the filters of its items", () => {
   const lists = itemListsOf([{ category: "Motor", partBrand: "Bosch", vehicleBrand: "Fiat", vehicleModel: "Uno" }].map((fields) => testItem(fields)));
   assert.deepEqual(entryFilters("categories", lists.categories[0], lists).category, ["Motor"]);
   const filters = entryFilters("vehicleModels", lists.vehicleModels[0], lists);
   assert.deepEqual(filters.vehicleModel, ["Fiat|Uno"]);
+  assert.deepEqual(filters.vehicleBrand, ["Fiat"]);
   assert.deepEqual(filters.category, []);
 });
 
