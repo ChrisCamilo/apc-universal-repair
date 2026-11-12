@@ -627,7 +627,7 @@ test("Web: the lists are renamed and cleaned up in Manage lists", { tag: [TEST_T
   const categories = lists.section("Categorias");
   await expect(categories.getByRole("listitem").filter({ hasText: "Arrefecimento" })).toContainText("sem itens");
   await lists.remove("Categorias", "Arrefecimento").click();
-  const confirm = dialog(page, "Excluir “Arrefecimento”?").root.getByRole("button", { name: "Excluir" });
+  const confirm = dialog(page, "Excluir “Arrefecimento”?").button("Excluir");
   await expect(confirm).toBeInViewport();
   await confirm.click();
   await expect(toasts(page).named("Categoria “Arrefecimento” excluída.")).toBeVisible();
@@ -668,9 +668,9 @@ test("Web: a name merged into another keeps the filters on its items", { tag: [T
   await lists.rename("Categorias", "Freios").click();
   await lists.newName("Freios").fill("motor");
   await page.keyboard.press("Enter");
-  const confirm = dialog(page, "Juntar “Freios” com “Motor”?").root;
-  await expect(confirm).toContainText("O item de “Freios” passa para “Motor”");
-  await confirm.getByRole("button", { name: "Juntar" }).click();
+  const merge = dialog(page, "Juntar “Freios” com “Motor”?");
+  await expect(merge.root).toContainText("O item de “Freios” passa para “Motor”");
+  await merge.button("Juntar").click();
   await expect(toasts(page).named("Categoria “Freios” juntada a “Motor”: 1 item mudou.")).toBeVisible();
   await expect(lists.rename("Categorias", "Freios")).toBeHidden();
   await lists.closeText.click();
@@ -956,12 +956,12 @@ test("Web: an item is duplicated from its details, with or without its photos", 
   await page.goto("/inventory");
   const { rows } = dataTable(page);
   const details = itemDetails(page);
-  const question = dialog(page, "Duplicar item?").root;
+  const question = dialog(page, "Duplicar item?");
   const form = itemForm(page, "Novo item");
 
   await rows.first().getByText("Filtro de óleo").click();
   await details.duplicate.click();
-  const withPhotos = question.getByRole("button", { name: "Copiar dados e fotos" });
+  const withPhotos = question.button("Copiar dados e fotos");
   await expect(withPhotos).toBeInViewport();
   await withPhotos.click();
   await expect(details.root).toBeHidden();
@@ -990,7 +990,7 @@ test("Web: an item is duplicated from its details, with or without its photos", 
 
   await rows.first().getByText("Filtro de óleo").click();
   await details.duplicate.click();
-  await question.getByRole("button", { name: "Copiar só os dados" }).click();
+  await question.button("Copiar só os dados").click();
   await expect(form.photos).toHaveCount(0);
   await form.code.fill("W 712/97");
   await form.save.click();
@@ -1151,7 +1151,7 @@ test("Web: item photos are added and removed from the list and the form", { tag:
 
   await viewer.root.getByRole("button", { name: "Foto 1" }).click();
   await viewer.root.getByRole("button", { name: "Remover esta foto" }).click();
-  await dialog(page, "Remover esta foto?").root.getByRole("button", { name: "Remover" }).click();
+  await dialog(page, "Remover esta foto?").button("Remover").click();
   await expect(viewer.root.getByText("Foto removida")).toBeVisible();
   expect(sent[1]).toEqual([`keep ${stock[0].brands[0].photos[0].id}`]);
   await viewer.close.click();

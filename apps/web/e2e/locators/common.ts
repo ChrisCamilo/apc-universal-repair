@@ -5,18 +5,46 @@ import type { Locator, Page } from "@playwright/test";
 // assertions, so a renamed label or a moved element is changed here once.
 
 /**
- * A dialog by its name, with its round × and its text "Fechar" button, which some dialogs also have at the bottom.
+ * What every dialog and form has inside: a button, a field and a choice by name. Names given as text are matched
+ * whole, so "Excluir" is never "Excluir…", "Salvar" never "Salvar ficha", and the field "Ano" never the form "Novo ano
+ * em RT" around it.
+ * @param root The dialog or the form.
+ * @returns Its root and its parts by name.
+ */
+function parts(root: Locator) {
+  return {
+    root,
+    button: (name: string | RegExp) => root.getByRole("button", { name, exact: typeof name === "string" }),
+    field: (label: string) => root.getByLabel(label, { exact: true }),
+    choice: (name: string) => root.getByRole("radio", { name, exact: true }),
+  };
+}
+
+/**
+ * A dialog or a bottom sheet by its name: a button, a field and a choice by name, its round × and its text "Fechar"
+ * button, which some dialogs also have at the bottom. E.g. dialog(page, "Excluir “Kadett”?").button("Excluir").
  * @param page The test's page.
  * @param name The dialog's accessible name, its title.
- * @returns The dialog and its close buttons.
+ * @returns The dialog and its parts.
  */
 export function dialog(page: Page, name: string | RegExp) {
   const root = page.getByRole("dialog", { name });
   return {
-    root,
+    ...parts(root),
     close: root.getByRole("button", { name: "Fechar" }).first(),
     closeText: root.getByRole("button", { name: "Fechar" }).filter({ hasText: "Fechar" }),
   };
+}
+
+/**
+ * A form outside a dialog by its name, such as a row that adds or renames something: a button, a field and a choice by
+ * name.
+ * @param page The test's page.
+ * @param name The form's accessible name.
+ * @returns The form and its parts.
+ */
+export function form(page: Page, name: string) {
+  return parts(page.getByRole("form", { name }));
 }
 
 /**

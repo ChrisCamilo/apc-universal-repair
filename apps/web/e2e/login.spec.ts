@@ -70,7 +70,7 @@ test("Web: the login checks the fields and the user, and saves the session", { t
 test("Web: the forgotten-password notice opens from the link and closes", { tag: [TEST_TAGS.auth] }, async ({ page }) => {
   await page.goto("/login");
   const link = loginForm(page).forgotPassword;
-  const notice = dialog(page, "Esqueceu a senha?").root;
+  const { root: notice, button } = dialog(page, "Esqueceu a senha?");
   await link.click();
   await expect(notice).toContainText(LOGIN_MESSAGES.forgotPassword);
   const box = (await notice.boundingBox())!;
@@ -81,7 +81,7 @@ test("Web: the forgotten-password notice opens from the link and closes", { tag:
   await expect(link).toBeFocused();
 
   await link.click();
-  await notice.getByRole("button", { name: "Entendi" }).click();
+  await button("Entendi").click();
   await expect(notice).toBeHidden();
   await expect(link).toBeFocused();
 });

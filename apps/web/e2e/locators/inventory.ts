@@ -211,11 +211,11 @@ export function itemDetails(page: Page) {
  * @returns The dialog and its buttons.
  */
 export function deleteDialog(page: Page) {
-  const root = page.getByRole("dialog", { name: "Excluir item?" });
+  const { root, button } = dialog(page, "Excluir item?");
   return {
     root,
-    confirm: root.getByRole("button", { name: "Excluir" }),
-    cancel: root.getByRole("button", { name: "Cancelar" }),
+    confirm: button("Excluir"),
+    cancel: button("Cancelar"),
   };
 }
 
