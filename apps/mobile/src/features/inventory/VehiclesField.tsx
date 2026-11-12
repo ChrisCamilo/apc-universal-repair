@@ -3,6 +3,7 @@ import { Pressable, Text as NativeText, View } from 'react-native';
 import { closeIcon, ICON_SIZES, plusIcon } from '@apc/tokens/icons';
 import { findOption } from '@apc/domain/items';
 import {
+  changedVehicle,
   EMPTY_VEHICLE_FORM,
   ITEM_FORM_MESSAGES,
   modelsOfBrand,
@@ -25,7 +26,8 @@ import { useStyles } from './VehiclesField.styles';
 // The vehicles an item fits in the item form, the same as the web on a phone: each vehicle a chip with its × (see
 // vehicleText), then a dashed "Adicionar veículo" that opens a new vehicle's brand and model, then its generation and
 // version side by side, which offer what the catalog and the stock hold for its model and take any text, with Cancelar
-// and Adicionar. Adicionar checks the new vehicle against the item's (see vehicleFormErrors) and only then makes it a chip;
+// and Adicionar. The fields open one after the other, as on the web: the brand opens the model, the model the generation
+// and the generation the version, and emptying one clears those after it (see changedVehicle). Adicionar checks the new vehicle against the item's (see vehicleFormErrors) and only then makes it a chip;
 // a vehicle with a brand not in the list, one the item already has, or a vehicle beside Universal is refused, saying
 // why. A blank line, as a new item's form starts with, shows no chip: saving without a vehicle says so under the
 // button, as it does a chip's message.
@@ -60,12 +62,15 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
       .map((message) => (vehicle.vehicleBrand.trim() ? `${vehicleText(vehicleOfForm(vehicle))}: ${message}` : message)),
   );
 
-  /** Takes a field of the new vehicle's new value and drops its messages; a new brand clears a model it doesn't have. */
+  /**
+   * Takes a field of the new vehicle's new value and drops its messages; a new brand clears a model it doesn't have, and
+   * an emptied field what waits on it (see changedVehicle).
+   */
   const change = (field: keyof ItemVehicleForm, value: string) => {
     setDraft((typed) => {
-      const next = { ...(typed ?? EMPTY_VEHICLE_FORM), [field]: value };
+      const next = changedVehicle(typed ?? EMPTY_VEHICLE_FORM, field, value);
       return field === 'vehicleBrand' && next.vehicleModel && !findOption(modelsOfBrand(lists, value), next.vehicleModel)
-        ? { ...next, vehicleModel: '' }
+        ? changedVehicle(next, 'vehicleModel', '')
         : next;
     });
     setDraftErrors({});
@@ -155,8 +160,9 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
                 noun="geração"
                 toggleLabel="Mostrar gerações"
                 emptyLabel="Nenhuma geração conhecida para esse modelo"
-                placeholder="Ex.: 85/90"
+                placeholder={draft.vehicleModel.trim() ? 'Ex.: 85/90' : 'Escolha o modelo primeiro'}
                 error={draftErrors.generation}
+                disabled={!draft.vehicleModel.trim()}
               />
             </View>
             <View style={styles.pairField} testID={ids.pairField}>
@@ -168,8 +174,9 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
                 noun="versão"
                 toggleLabel="Mostrar versões"
                 emptyLabel="Nenhuma versão conhecida para esse modelo"
-                placeholder="Ex.: 1.6 GLX"
+                placeholder={draft.generation?.trim() ? 'Ex.: 1.6 GLX' : 'Escolha a geração primeiro'}
                 error={draftErrors.version}
+                disabled={!draft.generation?.trim()}
               />
             </View>
           </View>

@@ -244,6 +244,23 @@ export function brandPlaceText(brand: Pick<ItemBrand, "location" | "color">): st
 }
 
 /**
+ * Changes a field of a vehicle's line, clearing what waits on it once it is emptied: a model's generation and version,
+ * a generation's version, as the fields open one after the other (a brand opens the model, a model the generation and
+ * a generation the version).
+ * @param vehicle The line as typed.
+ * @param field The field changed.
+ * @param value Its new value.
+ * @returns The line with the new value.
+ */
+export function changedVehicle(vehicle: ItemVehicleForm, field: VehicleField, value: string): ItemVehicleForm {
+  const next = { ...vehicle, [field]: value };
+  if (field === "vehicleModel" && !value.trim()) {
+    return { ...next, generation: "", version: "" };
+  }
+  return field === "generation" && !value.trim() ? { ...next, version: "" } : next;
+}
+
+/**
  * Checks a part code against the other items' codes, their brands' and their original ones, as it is typed: the
  * message when another item uses it, compared as the search compares codes (see codeKey), so "cb4500" is "CB-4500";
  * nothing when it is free or still empty.
