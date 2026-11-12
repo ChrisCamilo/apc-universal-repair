@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./support/fixtures.ts";
+import { expect, guardApi, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { rgb } from "./support/expect.ts";
 import { toasts } from "./locators/common.ts";
@@ -10,6 +10,7 @@ import type { Item, ItemCreate } from "@apc/domain/items";
 import { TEST_USERS } from "@apc/domain/test-users";
 import { themes, type Mode, type Style } from "@apc/tokens/theme";
 import { TOAST_DURATION, TOAST_FADE_MS } from "@apc/ui-spec/toast";
+import { serveCatalog } from "./stubs/catalog.ts";
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { signIn } from "./stubs/session.ts";
 import { item } from "./data/items.ts";
@@ -82,13 +83,17 @@ test("Web: the bell keeps the latest toasts for each user", { tag: [TEST_TAGS.no
   await expect(bell.entries).toHaveCount(2);
   await page.keyboard.press("Escape");
 
+  // The other page has the stand-ins of the first, so none of its calls reaches the API and ends the shared session.
   const other = await page.context().newPage();
+  const unanswered = await guardApi(other);
   await signIn(other, true, TEST_USERS[1]);
+  await serveCatalog(other);
   await serveItems(other, [...ITEMS]);
   await other.goto("/inventory");
   await bellOf(other).button.click();
   await expect(bellOf(other).empty).toBeVisible();
   await other.close();
+  expect(unanswered, "API calls no stand-in answered").toEqual([]);
 
   await bell.button.click();
   await bell.clear.click();

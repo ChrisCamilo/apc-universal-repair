@@ -1,4 +1,4 @@
-import { test as base } from "@playwright/test";
+import { test as base, type Page } from "@playwright/test";
 import type { TestUser } from "@apc/domain/auth";
 import type { Item } from "@apc/domain/items";
 import { serveCatalog } from "../stubs/catalog.ts";
@@ -17,6 +17,8 @@ import { expect } from "./expect.ts";
 //   2. the session's tutorial route, the catalog's stand-in, and the items' stand-in for the stock;
 //   3. the users' stand-in;
 //   4. the test's own routes, and any stand-in it starts itself (serveItems with its own items), in its order.
+// A test that opens another page in the same browser guards it the same way (guardApi), with its own stand-ins: an
+// unanswered call there would reach that API, and its 401 would end the session the pages share.
 //
 // Playwright names a fixture's second argument `use`; it is `provide` here, as the React hooks lint rule takes any
 // call to `use` for React's hook.
@@ -36,16 +38,27 @@ type Fixtures = {
   users: TestUser[];
 };
 
+/**
+ * Answers every /api/** call no stand-in answers with a 501, so the page never reaches the API on port 3333, and keeps
+ * which calls those were. Stand-ins registered after it are tried first.
+ * @param page The page to guard.
+ * @returns The calls left unanswered, as "METHOD /path", filled in as the page makes them.
+ */
+export async function guardApi(page: Page): Promise<string[]> {
+  const unanswered: string[] = [];
+  await page.route("**/api/**", (route) => {
+    const { pathname } = new URL(route.request().url());
+    unanswered.push(`${route.request().method()} ${pathname}`);
+    return route.fulfill({ status: 501, json: { statusCode: 501, message: "No stand-in answers this call." } });
+  });
+  return unanswered;
+}
+
 export const test = base.extend<Options & Fixtures>({
   signedIn: [true, { option: true }],
   stock: [{ items: [] }, { option: true }],
   page: async ({ page, signedIn, stock }, provide) => {
-    const unanswered: string[] = [];
-    await page.route("**/api/**", (route) => {
-      const { pathname } = new URL(route.request().url());
-      unanswered.push(`${route.request().method()} ${pathname}`);
-      return route.fulfill({ status: 501, json: { statusCode: 501, message: "No stand-in answers this call." } });
-    });
+    const unanswered = await guardApi(page);
     if (signedIn) {
       await signIn(page);
     }
