@@ -29,10 +29,11 @@ import { prisma } from "../../db/client.js";
 // deleted, a vehicle brand's models moving along, those of a name the other brand has joining that model; it answers
 // how many items moved, and refuses a merge into itself, away from a vehicle brand or model of the catalog, or of two
 // part brands an item has both of (409); an item that ends up with a vehicle twice keeps it once. DELETE removes an
-// entry no item uses, a vehicle brand with its models; an entry items use is refused naming how many (409), and so is a
-// vehicle brand or model of the catalog. A part brand is used by the items it makes a brand of, and a vehicle brand or
-// model by the items with a vehicle of it. Vehicle brands and models are sent saying whether the catalog has them
-// (inCatalog), so the screens can say why one can't go.
+// entry no item uses, a vehicle brand with its models; an entry items use is refused naming how many (409). Deleting a
+// vehicle brand or model of the catalog takes it out of the catalog too, a brand with its models' trees and a model with
+// its own. A part brand is used by the items it makes a brand of, and a vehicle brand or model by the items with a
+// vehicle of it. Vehicle brands and models are sent saying whether the catalog has them (inCatalog), so the screens can
+// say why one can't be merged, and what else a delete takes.
 
 /** The columns a list entry is sent with. */
 const ENTRY = { id: true, name: true } as const;
@@ -82,8 +83,13 @@ const NAME_LISTS: Record<"categories" | "partBrands" | "vehicleBrands", NameList
     find: async (nameKey) => toFoundBrand(await prisma.brand.findUnique({ where: { nameKey }, select: BRAND })),
     create: async (name, nameKey) => toBrandEntry(await prisma.brand.create({ data: { name, nameKey }, select: BRAND })),
     rename: async (id, name, nameKey) => toBrandEntry(await prisma.brand.update({ where: { id }, data: { name, nameKey }, select: BRAND })),
-    // Its models go with it (onDelete: Cascade).
-    remove: (id) => prisma.brand.delete({ where: { id } }),
+    // Its models go with it (onDelete: Cascade), and so does its place in the catalog, with its models' trees.
+    remove: (id) =>
+      prisma.$transaction([
+        prisma.catalogModel.deleteMany({ where: { vehicleModel: { brandId: id } } }),
+        prisma.catalogBrand.deleteMany({ where: { brandId: id } }),
+        prisma.brand.delete({ where: { id } }),
+      ]),
   },
 };
 
@@ -297,9 +303,6 @@ export function registerListRoutes(app: FastifyInstance) {
       if (!held) {
         return entryNotFound(reply);
       }
-      if (held.inCatalog) {
-        return conflict(reply, `"${held.name}" is a catalog brand.`);
-      }
       const itemCount = await prisma.item.count({ where: ITEMS_USING[kind](id) });
       if (itemCount > 0) {
         return conflict(reply, `"${held.name}" is used by ${itemCount} items.`, { itemCount });
@@ -389,14 +392,12 @@ export function registerListRoutes(app: FastifyInstance) {
     if (!held) {
       return entryNotFound(reply);
     }
-    if (held.catalogModel) {
-      return conflict(reply, `"${held.name}" is a catalog model.`);
-    }
     const itemCount = await prisma.item.count({ where: ITEMS_USING.vehicleModels(id) });
     if (itemCount > 0) {
       return conflict(reply, `"${held.name}" is used by ${itemCount} items.`, { itemCount });
     }
-    await prisma.vehicleModel.delete({ where: { id } });
+    // Its place in the catalog goes with it, with its tree.
+    await prisma.$transaction([prisma.catalogModel.deleteMany({ where: { vehicleModelId: id } }), prisma.vehicleModel.delete({ where: { id } })]);
     return reply.status(204).send();
   });
 }
