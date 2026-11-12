@@ -1,6 +1,7 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { catalog } from "./locators/catalog.ts";
+import { form } from "./locators/common.ts";
 
 // An engine added to a year with its sheet, and an engine's sheet edited, on the desktop, with the catalog's routes
 // answered by the stand-in, which keeps the changes for the test.
@@ -12,18 +13,20 @@ test("Web: an engine is added with its sheet, and the sheet is edited", { tag: [
   const tab = catalog(page);
   await page.goto("/catalog");
   await tab.action("Novo motor em 1985").click();
-  await tab.field("Novo motor em 1985", "Cilindrada (L)").fill("3,8");
-  await tab.field("Novo motor em 1985", "Cilindros").fill("6");
-  await tab.choice("Novo motor em 1985", "Traseira").click();
-  await tab.field("Novo motor em 1985", "Resumo").fill("O seis-cilindros do Diplomata de 1985.");
-  await expect(tab.form("Novo motor em 1985")).toContainText("Na árvore: 3.8 L 6 cilindros");
-  await tab.saveSheet("Novo motor em 1985").click();
+  const engine = form(page, "Novo motor em 1985");
+  await engine.field("Cilindrada (L)").fill("3,8");
+  await engine.field("Cilindros").fill("6");
+  await engine.choice("Traseira").click();
+  await engine.field("Resumo").fill("O seis-cilindros do Diplomata de 1985.");
+  await expect(engine.root).toContainText("Na árvore: 3.8 L 6 cilindros");
+  await engine.button("Salvar ficha").click();
   await expect(tab.model("3.8 L 6 cilindros")).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "1985 · Chevrolet Opala Diplomata 3.8" })).toBeVisible();
 
   await tab.editSheet.click();
-  await tab.field("Ficha do 3.8 L 6 cilindros", "Cilindrada (L)").fill("4,1");
-  await tab.saveSheet("Ficha do 3.8 L 6 cilindros").click();
+  const sheet = form(page, "Ficha do 3.8 L 6 cilindros");
+  await sheet.field("Cilindrada (L)").fill("4,1");
+  await sheet.button("Salvar ficha").click();
   await expect(tab.model("4.1 L 6 cilindros").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "1985 · Chevrolet Opala Diplomata 4.1" })).toBeVisible();
   await expect(page).not.toScrollSideways();
