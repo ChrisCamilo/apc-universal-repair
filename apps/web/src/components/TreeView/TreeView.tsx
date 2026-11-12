@@ -19,6 +19,10 @@ import { treeView } from './TreeView.styles.ts'
 // add one more, which also shows under an empty branch; and a branch can be opened from outside, with the ones above
 // it (reveal), e.g. the one something is being added to. The keys inside those keep their own meaning. A row is named
 // by its label and detail alone, so the buttons it ends with don't join its name.
+// The owner can also let some branches be selected (selectable), such as a model whose sheet it shows: a click, Enter
+// or Space on one hands it to onSelect as well as opening or closing it, and once selected it looks like a selected
+// leaf. A click on its chevron only opens or closes it, so a phone, where choosing it may lead to another screen, can
+// still open it in place; there the chevron is a finger wide.
 // On a phone (below `card:`) the rows are 48px tall, a finger's height, and each level is indented without the guides;
 // a tag at the right of each leaf, such as "Ver ficha", can say what choosing it does, filled in the accent on the
 // selected one.
@@ -30,6 +34,7 @@ type TreeState = {
   selected?: string
   highlighted?: string
   leafTag?: string
+  selectable?: (id: string) => boolean
   rowActions?: (id: string) => ReactNode
   editing?: TreeEditing
   after?: (id: string) => ReactNode
@@ -39,6 +44,7 @@ type TreeState = {
   focusIn: boolean
   register: (id: string, item: HTMLLIElement | null) => void
   activate: (node: TreeNode) => void
+  toggle: (id: string) => void
   onFocus: (id: string) => void
 }
 /** A row shown as something else, e.g. a field to rename it. */
@@ -47,10 +53,12 @@ type TreeViewProps = {
   /** Accessible name of the tree, e.g. "Modelos Chevrolet". */
   label: string
   nodes: TreeNode[]
-  /** Id of the selected leaf. */
+  /** Id of the selected leaf, or of a selectable branch. */
   selected?: string
-  /** Called with the leaf chosen with a click, Enter or Space; the owner keeps it, e.g. for the detail panel. */
+  /** Called with the leaf, or selectable branch, chosen with a click, Enter or Space; the owner keeps it, e.g. for the detail panel. */
   onSelect: (id: string) => void
+  /** Whether a branch, by its id, is selected too when chosen, e.g. a model whose sheet the owner shows; none when left out. */
+  selectable?: (id: string) => boolean
   /** Id of a row to point out in the accent, e.g. the model of a part found by its code. */
   highlighted?: string
   /** Branches open at first; defaults to the ones above the selected leaf. */
@@ -74,6 +82,7 @@ export function TreeView({
   nodes,
   selected,
   onSelect,
+  selectable,
   highlighted,
   defaultExpanded,
   leafTag,
@@ -113,22 +122,33 @@ export function TreeView({
     })
   }
 
-  /** Selects a leaf, or opens or closes a branch. */
+  /** Selects a leaf, or opens or closes a branch, selecting it too when it is selectable. */
   const activate = (node: TreeNode) => {
     if (isLeaf(node)) {
       onSelect(node.id)
-    } else if (canOpen(node)) {
+      return
+    }
+    if (selectable?.(node.id)) {
+      onSelect(node.id)
+    }
+    if (canOpen(node)) {
       toggle(node.id)
     }
   }
 
-  /** Moves the focus, opens and closes branches, and selects leaves from the keyboard. */
+  /** Moves the focus, opens and closes branches, and selects leaves and selectable branches from the keyboard. */
   const onKeyDown = (event: KeyboardEvent) => {
     // A row's buttons and fields keep their keys.
     if ((event.target as HTMLElement).getAttribute('role') !== 'treeitem') {
       return
     }
     const index = rows.findIndex((row) => row.node.id === tabbable)
+    const node = rows[index]?.node
+    if (node && !isLeaf(node) && selectable?.(node.id) && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault()
+      activate(node)
+      return
+    }
     const action = index < 0 ? null : treeKey(event.key, rows, index, expanded)
     if (action === null) {
       return
@@ -148,6 +168,7 @@ export function TreeView({
     selected,
     highlighted,
     leafTag,
+    selectable,
     rowActions,
     editing,
     after,
@@ -161,6 +182,7 @@ export function TreeView({
       }
     },
     activate,
+    toggle,
     onFocus: setFocused,
   }
   const { classes, ids } = treeView()
@@ -198,14 +220,15 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
   const editing = tree.editing?.id === node.id ? tree.editing.content : null
   const actions = !editing && tree.rowActions?.(node.id)
   const labelId = useId()
-  const selected = leaf && node.id === tree.selected
+  const choosable = leaf || Boolean(tree.selectable?.(node.id))
+  const selected = choosable && node.id === tree.selected
   const highlighted = node.id === tree.highlighted
   const { classes, ids } = treeView({
     actionsShown: tree.focusIn && node.id === tree.tabbable,
     separated: level === 1 && !first,
     face: level === 1 ? 'display' : leaf ? 'mono' : 'body',
     active: selected || highlighted,
-    clickable: branch || leaf,
+    clickable: branch || choosable,
     open,
   })
   return (
@@ -213,7 +236,7 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
       ref={(item) => tree.register(node.id, item)}
       role="treeitem"
       aria-expanded={branch ? open : undefined}
-      aria-selected={leaf ? selected : undefined}
+      aria-selected={choosable ? selected : undefined}
       aria-current={highlighted || undefined}
       aria-labelledby={editing ? undefined : node.detail ? `${labelId} ${labelId}-detail` : labelId}
       tabIndex={node.id === tree.tabbable ? 0 : -1}
@@ -230,6 +253,18 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
           <div className={classes.editing()} data-testid={ids.editing} onClick={keepInside} onKeyDown={keepInside}>
             {editing}
           </div>
+        ) : branch && choosable ? (
+          <span
+            aria-hidden="true"
+            className={classes.toggle()}
+            data-testid={ids.toggle}
+            onClick={(event) => {
+              event.stopPropagation()
+              tree.toggle(node.id)
+            }}
+          >
+            <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
+          </span>
         ) : branch ? (
           <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.chevron()} />
         ) : (

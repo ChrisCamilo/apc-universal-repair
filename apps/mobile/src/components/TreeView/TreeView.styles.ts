@@ -8,7 +8,8 @@ import { fontFamily, softAccent } from '../../app/theme';
 // the mono face for the leaves; the selected or highlighted row on the soft accent with an accent rule on its left;
 // pressing a row shows what hover shows on the web. As on the web's phone layout, a row is 48px tall in the body size,
 // and each level is indented 16px with no guide; a leaf's tag is a pill in the display face, outlined at rest and
-// filled in the accent on the selected leaf. The tree's height comes from its owner. A row's own buttons sit at its
+// filled in the accent on the selected leaf. The chevron of a branch that can be selected, which opens it apart from the
+// row, is a finger wide, its center where it was. The tree's height comes from its owner. A row's own buttons sit at its
 // right end, always in view, and the line after a branch's children sits under them. The line holding a row and its
 // buttons only lays them out.
 
@@ -24,6 +25,7 @@ export const useStyles = createStyles(
     line: 'item.line',
     row: 'item.row',
     chevron: 'item.row.chevron',
+    toggle: 'item.row.toggle',
     spacer: 'item.row.spacer',
     label: 'item.row.label',
     detail: 'item.row.detail',
@@ -69,6 +71,15 @@ export const useStyles = createStyles(
       rowActive: { borderLeftColor: colors.accent, backgroundColor: softAccent(theme), ...glow(theme) },
       rowPressed: { backgroundColor: colors.panelRaised },
       spacer: { width: ICON_SIZES.caret },
+      // A finger wide, reaching past the chevron on each side, so the chevron and the label stay where they were.
+      toggle: {
+        width: scales.touch.icon,
+        height: scales.touch.icon,
+        marginVertical: -scales.space.s2,
+        marginHorizontal: (ICON_SIZES.caret - scales.touch.icon) / 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
       tag: {
         ...displayLabel(theme, 'xs'),
         marginLeft: 'auto',
