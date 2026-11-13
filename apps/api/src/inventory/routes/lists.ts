@@ -17,6 +17,7 @@ import {
   type ListEntry,
 } from "@apc/domain/lists";
 import type { Prisma } from "../../generated/prisma/client.js";
+import { mergeCatalogModel } from "../../catalog/catalogTree.js";
 import { prisma } from "../../db/client.js";
 
 // The lists the item form picks from: categories, part brands, vehicle brands and vehicle models. GET sends a list
@@ -27,8 +28,10 @@ import { prisma } from "../../db/client.js";
 // can offer to merge them); the items that use it refer to it, so they show the new name. POST .../:id/merge merges an
 // entry into another of its list (a model into one of its brand) in one transaction: its items move there and it is
 // deleted, a vehicle brand's models moving along, those of a name the other brand has joining that model; it answers
-// how many items moved, and refuses a merge into itself, away from a vehicle brand or model of the catalog, or of two
-// part brands an item has both of (409); an item that ends up with a vehicle twice keeps it once. DELETE removes an
+// how many items moved, and refuses a merge into itself, or of two part brands an item has both of (409); an item that
+// ends up with a vehicle twice keeps it once. A vehicle brand or model of the catalog takes its place and trees there to
+// the entry merged into: a brand's place in the rail goes to a brand the catalog doesn't have, or its models join the
+// other's after its own; a model's tree moves to a model with none, or joins its tree (see catalog/catalogTree.ts). DELETE removes an
 // entry no item uses, a vehicle brand with its models; an entry items use is refused naming how many (409). Deleting a
 // vehicle brand or model of the catalog takes it out of the catalog too, a brand with its models' trees and a model with
 // its own. A part brand is used by the items it makes a brand of, and a vehicle brand or model by the items with a
@@ -184,10 +187,19 @@ function mergeEntries(kind: ItemListKind, id: string, into: string): Promise<num
     });
     const moved = rows.map((row) => row.itemId);
     if (kind === "vehicleModels") {
+      await mergeCatalogModel(tx, id, into);
       await tx.itemVehicle.updateMany({ where: { vehicleModelId: id }, data: { vehicleModelId: into } });
       await dropRepeatedVehicles(tx, moved);
       await tx.vehicleModel.delete({ where: { id } });
       return moved.length;
+    }
+    const [fromCatalog, intoCatalog] = await Promise.all([
+      tx.catalogBrand.findUnique({ where: { brandId: id }, select: { id: true } }),
+      tx.catalogBrand.findUnique({ where: { brandId: into }, select: { id: true } }),
+    ]);
+    if (fromCatalog && !intoCatalog) {
+      // The brand merged into takes the other's place in the rail, with its models.
+      await tx.catalogBrand.update({ where: { id: fromCatalog.id }, data: { brandId: into } });
     }
     for (const model of await tx.vehicleModel.findMany({ where: { brandId: id }, select: { id: true, nameKey: true } })) {
       const twin = await tx.vehicleModel.findUnique({
@@ -195,11 +207,20 @@ function mergeEntries(kind: ItemListKind, id: string, into: string): Promise<num
         select: { id: true },
       });
       if (twin) {
+        await mergeCatalogModel(tx, model.id, twin.id);
         await tx.itemVehicle.updateMany({ where: { vehicleModelId: model.id }, data: { vehicleModelId: twin.id } });
         await tx.vehicleModel.delete({ where: { id: model.id } });
       } else {
         await tx.vehicleModel.update({ where: { id: model.id }, data: { brandId: into } });
+        if (fromCatalog && intoCatalog) {
+          // Its place in the catalog goes after the other brand's models.
+          const last = await tx.catalogModel.aggregate({ where: { vehicleModel: { brandId: into }, NOT: { vehicleModelId: model.id } }, _max: { position: true } });
+          await tx.catalogModel.updateMany({ where: { vehicleModelId: model.id }, data: { position: (last._max.position ?? -1) + 1 } });
+        }
       }
+    }
+    if (fromCatalog && intoCatalog) {
+      await tx.catalogBrand.delete({ where: { id: fromCatalog.id } });
     }
     await tx.itemVehicle.updateMany({ where: { vehicleBrandId: id }, data: { vehicleBrandId: into } });
     await dropRepeatedVehicles(tx, moved);
@@ -284,9 +305,6 @@ export function registerListRoutes(app: FastifyInstance) {
         }
         if (id === into) {
           return conflict(reply, "An entry can't be merged into itself.");
-        }
-        if (held.inCatalog) {
-          return conflict(reply, `"${held.name}" is a catalog brand.`);
         }
         // A part brand makes an item once: an item with both brands would hold the same part brand twice.
         const both = kind === "partBrands" ? await prisma.item.count({ where: { AND: [ITEMS_USING.partBrands(id), ITEMS_USING.partBrands(into)] } }) : 0;
@@ -378,9 +396,6 @@ export function registerListRoutes(app: FastifyInstance) {
       }
       if (held.brandId !== kept.brandId) {
         return conflict(reply, "A model can only be merged into a model of its brand.");
-      }
-      if (held.catalogModel) {
-        return conflict(reply, `"${held.name}" is a catalog model.`);
       }
       return { moved: await mergeEntries("vehicleModels", id, into) };
     },

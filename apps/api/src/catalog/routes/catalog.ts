@@ -19,6 +19,7 @@ import {
 import { optionKey } from "@apc/domain/items";
 import { listName } from "@apc/domain/lists";
 import { prisma } from "../../db/client.js";
+import { CATALOG_GENERATIONS } from "../catalogTree.js";
 
 // The vehicle catalog of the Catalog tab (see @apc/domain/catalog). GET sends every catalog brand in the rail's order,
 // by its vehicle brand's id and name, each with its models by their vehicle model's name, and under them the
@@ -77,34 +78,7 @@ async function readCatalog(): Promise<CatalogData> {
     prisma.catalogBrand.findMany({ ...IN_ORDER, select: { mark: true, brand: { select: { id: true, name: true } } } }),
     prisma.catalogModel.findMany({
       ...IN_ORDER,
-      select: {
-        id: true,
-        vehicleModel: { select: { name: true, brandId: true } },
-        generations: {
-          ...IN_ORDER,
-          select: {
-            id: true,
-            name: true,
-            firstYear: true,
-            lastYear: true,
-            versions: {
-              ...IN_ORDER,
-              select: {
-                id: true,
-                name: true,
-                years: {
-                  ...IN_ORDER,
-                  select: {
-                    id: true,
-                    year: true,
-                    engines: { ...IN_ORDER, select: { id: true, displacementDl: true, cylinders: true, drive: true, summary: true } },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      select: { id: true, vehicleModel: { select: { name: true, brandId: true } }, generations: CATALOG_GENERATIONS },
     }),
   ]);
   return {
