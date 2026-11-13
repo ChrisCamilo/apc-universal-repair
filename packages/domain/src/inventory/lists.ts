@@ -7,14 +7,10 @@ import { capitalizeFirst, optionKey, type Item } from "./items.ts";
 // extra spaces (a vehicle model within its vehicle brand), so creating a name that already exists gives back the
 // existing one, and a rename can't take another entry's name: it merges the entry into the one that has it instead,
 // moving its items there. Renaming renames the items that use the entry; an entry is only deleted while no item uses
-// it, a vehicle brand with its models. A vehicle brand or model the catalog has (the API marks them inCatalog) can't be
-// merged away, and deleting it takes it out of the catalog too, which the delete's question says. Web and mobile load,
+// it, a vehicle brand with its models. Merging a vehicle brand or model the catalog has (the API marks them inCatalog)
+// takes its place and trees in the catalog to the entry merged into, joining the trees where both have them, and
+// deleting one takes it out of the catalog too; the merge's and the delete's questions say so. Web and mobile load,
 // create, rename, merge and delete the same way, each through its own API address.
-
-/** Why a vehicle brand of the catalog can't be merged into another one. */
-export const CATALOG_MERGE_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser juntada a outra marca.`;
-/** Why a vehicle model of the catalog can't be merged into another one. */
-export const CATALOG_MODEL_MERGE_MESSAGE = (name: string) => `“${name}” também está no catálogo e não pode ser juntado a outro modelo.`;
 /** The four lists before they load: all empty. */
 export const EMPTY_ITEM_LISTS: ItemLists = { categories: [], partBrands: [], vehicleBrands: [], vehicleModels: [] };
 /** The item field each list holds the names of: a part brand is a field of each of the item's brands. */
@@ -215,16 +211,19 @@ export function findEntry<Entry extends ListEntry>(entries: readonly Entry[], te
 }
 
 /**
- * Says why an entry the catalog has can't be merged away: a vehicle brand or model of the catalog.
+ * Says what else merging an entry of the catalog does: its models' or its own sheets go to the entry merged into.
  * @param kind The entry's list.
- * @param entry The entry.
- * @returns The message, or null when the catalog doesn't keep it.
+ * @param entry The entry merged away.
+ * @param into The entry it is merged into.
+ * @returns E.g. "Os modelos e fichas de “GM” vão para “Chevrolet”.", or null when the catalog doesn't have it.
  */
-export function catalogLock(kind: ItemListKind, entry: ListEntry): string | null {
+export function catalogMergeNote(kind: ItemListKind, entry: ListEntry, into: ListEntry): string | null {
   if (!entry.inCatalog) {
     return null;
   }
-  return kind === "vehicleModels" ? CATALOG_MODEL_MERGE_MESSAGE(entry.name) : CATALOG_MERGE_MESSAGE(entry.name);
+  return kind === "vehicleModels"
+    ? `As gerações e fichas de “${entry.name}” vão para “${into.name}”.`
+    : `Os modelos e fichas de “${entry.name}” vão para “${into.name}”.`;
 }
 
 /**

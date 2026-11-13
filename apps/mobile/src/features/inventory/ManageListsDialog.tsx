@@ -5,7 +5,7 @@ import { entryFilters, type ItemFilters } from '@apc/domain/item-filters';
 import type { Item } from '@apc/domain/items';
 import {
   catalogDeleteNote,
-  catalogLock,
+  catalogMergeNote,
   entryChange,
   findEntry,
   ITEM_LIST_TEXTS,
@@ -29,8 +29,8 @@ import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useIt
 // vehicle brands and vehicle models, the models grouped by their brand, each name with how many items use it. The
 // pencil renames it in place, on a field with Salvar and Cancelar, refusing a blank name; the items using it take the
 // new name. Renaming to the name of another entry (a model's, within its brand) asks to merge the two: Juntar moves
-// every item to the other entry and deletes this one, a vehicle brand's models going along; a vehicle brand of the
-// catalog can't be merged away. The trash asks to confirm deleting a name no item uses (a vehicle brand with its
+// every item to the other entry and deletes this one, a vehicle brand's models going along, and a vehicle brand or
+// model of the catalog taking its place and trees there along, which the question says. The trash asks to confirm deleting a name no item uses (a vehicle brand with its
 // models); a name items use can't be deleted, and the dialog says how many items use it, with "Ver itens" to show
 // them in the list. Deleting a vehicle brand or model of the catalog takes it out of the catalog too, which the
 // question says. A toast confirms each rename, merge and delete, and the owner hears of each rename and merge, for its
@@ -93,11 +93,6 @@ export function ManageListsDialog({
     }
     const other = findEntry(siblings, name);
     if (other && other.id !== entry.id) {
-      const locked = catalogLock(kind, entry);
-      if (locked) {
-        setEditing({ ...editing, error: locked });
-        return;
-      }
       setMerging({ kind, entry, into: other });
       return;
     }
@@ -286,11 +281,12 @@ export function ManageListsDialog({
       >
         {merging && (
           <Text size="sm" tone="muted">
-            {ITEM_LIST_TEXTS[merging.kind].confirmMerge(
-              merging.entry.name,
-              merging.into.name,
-              itemsUsing(items, merging.kind, merging.entry, lists),
-            )}
+            {[
+              ITEM_LIST_TEXTS[merging.kind].confirmMerge(merging.entry.name, merging.into.name, itemsUsing(items, merging.kind, merging.entry, lists)),
+              catalogMergeNote(merging.kind, merging.entry, merging.into),
+            ]
+              .filter(Boolean)
+              .join(' ')}
           </Text>
         )}
       </Dialog>
