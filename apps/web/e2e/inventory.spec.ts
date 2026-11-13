@@ -1,4 +1,3 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { rgb } from "./support/expect.ts";
@@ -6,30 +5,13 @@ import { atNotebookSizes } from "./support/sizes.ts";
 import { dataTable, dialog, options, thumbnailImage, toasts, tour } from "./locators/common.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
 import { deleteDialog, deleteItem, fillItem, filtersMenu, importDialog, inventory, itemDetails, itemForm, manageLists } from "./locators/inventory.ts";
-import type { Item, ItemCreate } from "@apc/domain/items";
+import type { ItemCreate } from "@apc/domain/items";
 import { themes, type Mode, type Style } from "@apc/tokens/theme";
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { signIn } from "./stubs/session.ts";
 import { testItem } from "@apc/domain/test-items";
-import { item } from "./data/items.ts";
-
-// The API answers GET /items with these items, newest first, so the list is the same on every run without a database.
-const ITEMS: Item[] = [
-  item({ code: "W 712/95", name: "Filtro de óleo", category: "Motor", partBrand: "Mann", vehicleBrand: "Volkswagen", vehicleModel: "Gol", quantity: 8, minQuantity: 2, unitPriceCents: 3990, location: "A-2" }),
-  item({ code: "BP-1020", name: "Pastilha de freio", category: "Freios", partBrand: "Cobreq", vehicleBrand: "Chevrolet", vehicleModel: null, position: "D", quantity: 2, minQuantity: 3, unitPriceCents: 123456, location: "B-10" }),
-  item({ code: "BA-77", name: "Bomba d'água", category: "Arrefecimento", partBrand: "Urba", vehicleBrand: "Fiat", vehicleModel: "Uno", quantity: 0, minQuantity: 1, unitPriceCents: 13240, location: "C-1" }),
-  item({ code: "AM-501", name: "Amortecedor", category: "Suspensão", partBrand: "Cofap", vehicleBrand: "Ford", vehicleModel: "Escort", position: "T", side: "LE", color: "Preto", quantity: 4, minQuantity: 1, unitPriceCents: 24900, location: "A-10" }),
-];
-
-/**
- * Answers GET /items with the test items and opens the Inventory tab.
- * @param page The test's page.
- */
-async function openInventory(page: Page) {
-  await serveItems(page, ITEMS);
-  await page.goto("/inventory");
-  await expect(inventory(page).table).toBeVisible();
-}
+import { item, ITEMS } from "./data/items.ts";
+import { layout, openInventory } from "./support/inventory.ts";
 
 // Lists every item with the counter of the total and the stock alerts, the price in reais, "qualquer
 // modelo" for an item without a vehicle model, N/A muted with its full name as a tooltip, and the low and
@@ -114,20 +96,6 @@ test("Web: on a phone the Inventory scrolls as a whole under a round + for a new
   await newItem.click();
   await expect(itemForm(page, "Novo item").root).toBeVisible();
 });
-
-/**
- * Measures the Inventory's layout: how far the panel's bottom is from the window's, and whether the page scrolls.
- * @param page The test's page.
- * @returns The gap under the panel, in px, and the page's extra height (0 when it doesn't scroll).
- */
-async function layout(page: Page) {
-  const panel = (await inventory(page).panel.boundingBox())!;
-  const { height, pageExtra } = await page.evaluate(() => ({
-    height: window.innerHeight,
-    pageExtra: document.scrollingElement!.scrollHeight - window.innerHeight,
-  }));
-  return { gapBelow: height - (panel.y + panel.height), pageExtra };
-}
 
 // Opens the Inventory with a few items, with none and with the API failing, and checks each time the panel reaches the
 // bottom of the window (only the frame's margin under it), the pagination shows, and the page doesn't scroll. Each
