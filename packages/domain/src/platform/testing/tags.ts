@@ -11,7 +11,10 @@ export const TEST_TAGS = {
   notifications: "@notifications",
   setup: "@setup",
   // The kinds.
-  /** The flows a release needs: the login, the Inventory's list, creating and editing an item, the desktop's sign-in. */
+  /**
+   * The flows a release needs: the login, the Inventory's list, creating and editing an item, browsing the Catalog,
+   * the desktop's sign-in.
+   */
   smoke: "@smoke",
   /** Sizes and scrolling. */
   layout: "@layout",
