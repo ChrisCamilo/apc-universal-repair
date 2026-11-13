@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Item } from '@apc/domain/items'
-import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/domain/lists'
+import { withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/domain/lists'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
 import { itemListsOf } from '@apc/domain/test-lists'
 import { MODES, STYLES, themes } from '@apc/tokens/theme'
@@ -179,15 +179,17 @@ test('Web: a rename to a held name merges the two after confirming', async () =>
   expect(onRename).not.toHaveBeenCalled()
 })
 
-// Renames a vehicle brand of the catalog to another brand's name and checks it is refused under the field, without
-// asking to merge; a merge the API refuses says so and keeps the name.
-test('Web: a catalog brand is not merged away, and a failed merge is reported', async () => {
+// Renames a vehicle brand of the catalog to another brand's name and checks the merge it asks for says the brand's
+// models and sheets go along; a merge the API refuses says so and keeps the name.
+test("Web: a catalog brand's merge says its sheets go along, and a failed merge is reported", async () => {
   const onMerge = vi.fn<MergeListEntries>(async () => null)
   const screen = await render(<Sample onMerge={onMerge} />)
   await screen.getByRole('button', { name: 'Renomear Chevrolet' }).click()
   await screen.getByLabelText('Novo nome de “Chevrolet”').fill('renault')
   await screen.getByRole('button', { name: 'Salvar' }).click()
-  await expect.element(screen.getByText(CATALOG_MERGE_MESSAGE('Chevrolet'))).toBeVisible()
+  const merge = screen.getByRole('dialog', { name: 'Juntar “Chevrolet” com “Renault”?' })
+  await expect.poll(() => merge.element().textContent).toContain('Os modelos e fichas de “Chevrolet” vão para “Renault”.')
+  await merge.getByRole('button', { name: 'Cancelar' }).click()
   await screen.getByRole('button', { name: 'Cancelar' }).click()
 
   await screen.getByRole('button', { name: 'Renomear Renault' }).click()

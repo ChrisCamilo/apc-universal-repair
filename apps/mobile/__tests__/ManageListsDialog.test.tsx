@@ -7,7 +7,7 @@ import { StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Item } from '@apc/domain/items';
-import { CATALOG_MERGE_MESSAGE, withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/domain/lists';
+import { withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@apc/domain/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { itemListsOf } from '@apc/domain/test-lists';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
@@ -272,15 +272,16 @@ test('Mobile: a rename to a held name merges the two after confirming', async ()
   expect(onRename).not.toHaveBeenCalled();
 });
 
-// Renames a vehicle brand of the catalog to another brand's name and checks it is refused under the field, without
-// asking to merge; a merge the API refuses says so.
-test('Mobile: a catalog brand is not merged away, and a failed merge is reported', async () => {
+// Renames a vehicle brand of the catalog to another brand's name and checks the merge it asks for says the brand's
+// models and sheets go along; a merge the API refuses says so.
+test("Mobile: a catalog brand's merge says its sheets go along, and a failed merge is reported", async () => {
   const onMerge = jest.fn<ReturnType<MergeListEntries>, Parameters<MergeListEntries>>(async () => null);
   const tree = await mount({ onMerge });
   await press(tree, 'Renomear Chevrolet');
   await ReactTestRenderer.act(async () => tree.root.find((n) => n.type === TextInput).props.onChangeText('renault'));
   await press(tree, 'Salvar');
-  expect(texts(tree.root)).toContain(CATALOG_MERGE_MESSAGE('Chevrolet'));
+  expect(texts(tree.root).some((text) => text.endsWith('Os modelos e fichas de “Chevrolet” vão para “Renault”.'))).toBe(true);
+  await press(tree, 'Cancelar');
   await press(tree, 'Cancelar');
 
   await press(tree, 'Renomear Renault');

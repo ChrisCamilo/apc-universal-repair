@@ -2,9 +2,10 @@ import { test, type Page } from "@playwright/test";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { expect } from "../e2e/support/expect.ts";
 import { loginForm } from "../e2e/locators/auth.ts";
-import { dataTable, toasts, tour } from "../e2e/locators/common.ts";
+import { catalog } from "../e2e/locators/catalog.ts";
+import { dataTable, dialog, toasts, tour } from "../e2e/locators/common.ts";
 import { dashboard, logOut } from "../e2e/locators/dashboard.ts";
-import { deleteItem, fillItem, inventory, itemForm } from "../e2e/locators/inventory.ts";
+import { deleteItem, fillItem, inventory, itemForm, manageLists } from "../e2e/locators/inventory.ts";
 
 // The web app's demo, as GitHub Pages serves it (playwright.demo.config.ts): it opens logged in with its sample stock,
 // works without the API, and a link to one of its routes reaches it. Each test's page starts the demo over.
@@ -105,4 +106,33 @@ test("Web: after Sair, the demo's login is filled in", { tag: [TEST_TAGS.auth, T
   await expect(form.password).not.toHaveValue("");
   await form.submit.click();
   await expect(inventory(page).table).toBeVisible();
+});
+
+// Merges Ford into Chevrolet in Gerenciar listas: the question says Ford's models and sheets go along, and the
+// Catalog then shows Chevrolet with Ford's models in its tree, and Ford no longer in the rail.
+test("Web: the demo merges a catalog brand into another, its models joining the Catalog's tree", { tag: [TEST_TAGS.catalog, TEST_TAGS.demo] }, async ({ page, isMobile }) => {
+  await openDemo(page);
+  await inventory(page).manageLists.click();
+  const lists = manageLists(page);
+  await lists.rename("Marcas de veículo", "Ford").click();
+  await lists.newName("Ford").fill("chevrolet");
+  await page.keyboard.press("Enter");
+  const merge = dialog(page, "Juntar “Ford” com “Chevrolet”?");
+  await expect(merge.root).toContainText("Os modelos e fichas de “Ford” vão para “Chevrolet”.");
+  await merge.button("Juntar").click();
+  await expect(merge.root).toBeHidden();
+  await lists.closeText.click();
+
+  // A click on the tab, as reloading the page would start the demo over.
+  await dashboard(page).tab("catalog").click();
+  const tab = catalog(page);
+  if (isMobile) {
+    await expect(tab.brandLine("Ford")).toHaveCount(0);
+    await tab.brandLine("Chevrolet").click();
+  } else {
+    await expect(tab.brand("Ford")).toHaveCount(0);
+    await tab.brand("Chevrolet").click();
+  }
+  await expect(tab.model("Escort")).toBeVisible();
+  await expect(tab.model("Opala")).toBeVisible();
 });
