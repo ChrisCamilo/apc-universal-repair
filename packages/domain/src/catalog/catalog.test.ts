@@ -26,6 +26,7 @@ import {
   engineSheet,
   engineSheetNames,
   findParts,
+  joinCatalogTrees,
   firstSheet,
   itemFit,
   litresText,
@@ -551,4 +552,58 @@ test("Shared: a brand is deleted from the catalog with its models' trees", () =>
   assert.deepEqual(catalogChangeOf("DELETE", `/brands/${CHEVROLET}`, {}, FORD), { status: 200, change: { kind: "deleteBrand", id: CHEVROLET } });
   assert.equal(belowBrand(TEST_CATALOG.brands[0]), "3 modelos, 4 gerações, 3 versões, 2 anos, 2 motores com ficha");
   assert.equal(belowBrand({ ...TEST_CATALOG.brands[0], models: [] }), null);
+});
+
+// Joins one model's tree into another's: the generation of the same name and years becomes one, so do the version of
+// the same name in it and the year of the same number in that, the engines of the joined year are added together, and a
+// version, a year and a generation the kept tree hasn't come after its own; the steps move each of those and drop the
+// joined twins once their children moved.
+test("Shared: two models' trees join, the matching nodes made one and nothing lost", () => {
+  const engine = (id: string, displacementDl: number) => ({ id, displacementDl, cylinders: 4, drive: "FRONT" as const, summary: "" });
+  const kept = {
+    id: "model-kept",
+    generations: [
+      { id: "g3", name: "Terceira", firstYear: 1980, lastYear: 1992, versions: [{ id: "v-comodoro", name: "Comodoro", years: [{ id: "y85", year: 1985, engines: [engine("e1", 25)] }] }] },
+      { id: "g2", name: "Segunda", firstYear: 1975, lastYear: 1979, versions: [] },
+    ],
+  };
+  const merged = {
+    generations: [
+      {
+        id: "m-g3",
+        name: "terceira",
+        firstYear: 1980,
+        lastYear: 1992,
+        versions: [
+          {
+            id: "m-comodoro",
+            name: "COMODORO",
+            years: [
+              { id: "m-y85", year: 1985, engines: [engine("e2", 41)] },
+              { id: "m-y86", year: 1986, engines: [engine("e3", 41)] },
+            ],
+          },
+          { id: "m-diplomata", name: "Diplomata", years: [] },
+        ],
+      },
+      { id: "m-g4", name: "Quarta", firstYear: 1993, lastYear: null, versions: [] },
+    ],
+  };
+  const { generations, steps } = joinCatalogTrees(kept, merged);
+  assert.deepEqual(generations.map((each) => each.id), ["g3", "g2", "m-g4"]);
+  assert.deepEqual(generations[0].versions.map((each) => each.id), ["v-comodoro", "m-diplomata"]);
+  assert.deepEqual(generations[0].versions[0].years.map((each) => [each.id, each.engines.map((one) => one.id)]), [
+    ["y85", ["e1", "e2"]],
+    ["m-y86", ["e3"]],
+  ]);
+  assert.deepEqual(steps, [
+    { kind: "move", level: "engine", id: "e2", parentId: "y85" },
+    { kind: "drop", level: "year", id: "m-y85" },
+    { kind: "move", level: "year", id: "m-y86", parentId: "v-comodoro" },
+    { kind: "drop", level: "version", id: "m-comodoro" },
+    { kind: "move", level: "version", id: "m-diplomata", parentId: "g3" },
+    { kind: "drop", level: "generation", id: "m-g3" },
+    { kind: "move", level: "generation", id: "m-g4", parentId: "model-kept" },
+  ]);
+  assert.deepEqual(kept.generations[0].versions.map((each) => each.id), ["v-comodoro"]);
 });
