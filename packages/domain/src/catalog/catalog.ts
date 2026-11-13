@@ -167,6 +167,8 @@ export type CarSheet = {
 export type Catalog = { brands: readonly CatalogBrand[]; sheets: Readonly<Record<string, EngineSheet>> };
 /** The catalog as the API sends it. */
 export type CatalogData = z.infer<typeof catalogSchema>;
+/** A catalog model as the API sends it, with its tree. */
+export type CatalogModelData = z.infer<typeof catalogModelSchema>;
 /** A level of the tree, from a brand's models down to an engine. */
 export type CatalogLevel = "model" | "generation" | "version" | "year" | "engine";
 /** A level the Catalog tab adds, renames, moves and deletes; engines come with their sheets. */
@@ -561,6 +563,55 @@ export function litresText(displacementDl: number): string {
 function readYear(text: string): number | null {
   const year = Number(text);
   return /^\d{4}$/.test(text.trim()) && year >= CATALOG_YEARS.min && year <= CATALOG_YEARS.max ? year : null;
+}
+
+/** A step that joins one catalog model's tree into another's: a node moved, with what is under it, to the end of a new
+ * parent's, or a node dropped once what was under it joined its twin's. */
+export type CatalogJoinStep =
+  | { kind: "move"; level: "generation" | "version" | "year" | "engine"; id: string; parentId: string }
+  | { kind: "drop"; level: "generation" | "version" | "year"; id: string };
+
+/** The levels of a model's tree, from the top: what makes two nodes the same, and where their children are. */
+const JOIN_LEVELS = [
+  { level: "generation", key: (node: JoinNode) => `${optionKey(node.name ?? "")}|${node.firstYear}|${node.lastYear ?? ""}`, children: "versions" },
+  { level: "version", key: (node: JoinNode) => optionKey(node.name ?? ""), children: "years" },
+  { level: "year", key: (node: JoinNode) => String(node.year), children: "engines" },
+  { level: "engine", key: null, children: null },
+] as const;
+/** A node of any level of a model's tree, as the API sends it. */
+type JoinNode = { id: string; name?: string; firstYear?: number; lastYear?: number | null; year?: number } & Record<string, unknown>;
+
+/**
+ * Joins one catalog model's tree into another's, level by level: a generation of the same name and years becomes one, a
+ * version of the same name in it becomes one, and a year of the same number in a version becomes one; the engines of
+ * joined years are added together, and everything that differs is kept, after what the kept model had.
+ * @param kept The model whose tree takes the other's.
+ * @param merged The model whose tree joins it.
+ * @returns The joined generations, and the steps that make them: what moves where, and what is dropped once joined.
+ */
+export function joinCatalogTrees(
+  kept: Pick<CatalogModelData, "id" | "generations">,
+  merged: Pick<CatalogModelData, "generations">,
+): { generations: CatalogModelData["generations"]; steps: CatalogJoinStep[] } {
+  const steps: CatalogJoinStep[] = [];
+  /** Joins some siblings into those of the same parent, one level down at a time. */
+  const join = (depth: number, parentId: string, keptNodes: readonly JoinNode[], mergedNodes: readonly JoinNode[]): JoinNode[] => {
+    const level = JOIN_LEVELS[depth];
+    const joined = keptNodes.map((node) => ({ ...node }));
+    for (const node of mergedNodes) {
+      const twin = level.key && joined.find((each) => level.key(each) === level.key(node));
+      if (twin && level.children) {
+        twin[level.children] = join(depth + 1, twin.id, twin[level.children] as JoinNode[], node[level.children] as JoinNode[]);
+        steps.push({ kind: "drop", level: level.level as "generation" | "version" | "year", id: node.id });
+      } else {
+        steps.push({ kind: "move", level: level.level, id: node.id, parentId });
+        joined.push(node);
+      }
+    }
+    return joined;
+  };
+  const generations = join(0, kept.id, kept.generations as JoinNode[], merged.generations as JoinNode[]);
+  return { generations: generations as unknown as CatalogModelData["generations"], steps };
 }
 
 /**

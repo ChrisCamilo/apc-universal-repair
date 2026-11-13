@@ -90,8 +90,7 @@ test("API: a category merged into another takes its items there", async () => {
 });
 
 // Creates items on two vehicle brands, sharing a model name and each with a model of its own, merges one brand into
-// the other and checks every item moved, the shared model joined the other's, the other model moved along, and a
-// catalog brand can't be merged away.
+// the other and checks every item moved, the shared model joined the other's and the other model moved along.
 test("API: a vehicle brand merged into another takes its items and models there", async () => {
   await createItem("VB-1", { vehicles: [{ vehicleBrand: `GM ${RUN}`, vehicleModel: `Opala ${RUN}` }] });
   await createItem("VB-2", { vehicles: [{ vehicleBrand: `GM ${RUN}`, vehicleModel: `Monza ${RUN}` }] });
@@ -119,9 +118,6 @@ test("API: a vehicle brand merged into another takes its items and models there"
   );
   assert.equal(await prisma.vehicleModel.count({ where: { brandId: into.id } }), 2);
   assert.equal(await prisma.brand.findUnique({ where: { id: from.id } }), null);
-
-  const catalog = await prisma.brand.findUniqueOrThrow({ where: { name: "Chevrolet" } });
-  assert.equal((await call("POST", `/vehicle-brands/${catalog.id}/merge`, { into: into.id })).statusCode, 409);
 });
 
 // Creates two models of a brand and one of another, checks a model can't be merged into the other brand's, then

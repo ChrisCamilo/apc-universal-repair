@@ -11,6 +11,7 @@ import {
   catalogIdParamsSchema,
   catalogMoveSchema,
   catalogNameSchema,
+  joinCatalogTrees,
   catalogYearInputSchema,
   type CatalogData,
   type CatalogLevel,
@@ -58,9 +59,9 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // names follow the writing rule and stay apart ignoring case and accents, and the CSV import goes in whole or not at
 // all, refused with the API's own reasons (IMPORT_CONFLICTS). A photo sent stays in the browser as an object URL, which
 // the item carries as its whole address (see photoAddress in @apc/domain/photos), and is let go once the photo is
-// removed; a few sample items carry drawings of the demo's own. The catalog is the one a new server starts with
-// (TEST_CATALOG_DATA), its brands and models joined to the lists, where they can't be deleted or merged away, and it
-// names them as the lists do; its tree is edited under the API's rules (applyCatalogChange). Everything is held in memory and starts over from demoData.ts when the page loads again.
+// removed; a few sample items carry drawings of the demo's own. The catalog is the sample one (TEST_CATALOG_DATA), its
+// brands and models joined to the lists, where deleting or merging one carries it in the catalog as the API does, and
+// it names them as the lists do; its tree is edited under the API's rules (applyCatalogChange). Everything is held in memory and starts over from demoData.ts when the page loads again.
 // Each answer carries the demo's marker (demoMarker.ts).
 // The demo authorizes no devices: its logins and sign-ups go through without checking the device's proof, which the
 // demo doesn't make (see demoDevice.ts), and the routes that list, authorize, rename and remove devices, hand out an
@@ -875,9 +876,6 @@ function listRoutes(db: Db): Route[] {
           if (held.id === kept.id) {
             return conflict("An entry can't be merged into itself.")
           }
-          if (kind === 'vehicleBrands' && inCatalog.brand(held.id)) {
-            return conflict(`"${held.name}" is a catalog brand.`)
-          }
           const both = kind === 'partBrands' ? db.items.filter((item) => ITEMS_USING.partBrands(item, held.id) && ITEMS_USING.partBrands(item, kept.id)).length : 0
           if (both > 0) {
             return conflict(`${both} items have both "${held.name}" and "${kept.name}".`, { itemCount: both })
@@ -989,9 +987,6 @@ function listRoutes(db: Db): Route[] {
         if (held.brandId !== kept.brandId) {
           return conflict('A model can only be merged into a model of its brand.')
         }
-        if (inCatalog.model(held.id)) {
-          return conflict(`"${held.name}" is a catalog model.`)
-        }
         return json(200, { moved: merge(db, 'vehicleModels', held.id, kept.id) })
       },
     },
@@ -1059,7 +1054,9 @@ function matchPath(pattern: string, path: string): Record<string, string> | null
 /**
  * Merges an entry into another of its list: the items using it move there and it is deleted. A vehicle brand's models
  * move to the other brand, and one whose name that brand already has joins its model; an item left with a vehicle twice
- * keeps it once.
+ * keeps it once. A vehicle brand or model of the catalog takes its place and trees there along, as the API does: a
+ * brand's place goes to a brand the catalog doesn't have, or its models join the other's after its own, and a model's
+ * tree moves to a model with none, or joins its tree.
  * @param db The demo's data.
  * @param kind The list.
  * @param id The entry merged away.
@@ -1081,23 +1078,59 @@ function merge(db: Db, kind: ItemListKind, id: string, into: string): number {
   }
   const moved = db.items.filter((item) => ITEMS_USING[kind](item, id))
   if (kind === 'vehicleModels') {
+    mergeCatalogModel(db, id, into)
     moved.forEach((item) => item.vehicles.forEach((vehicle) => vehicle.modelId === id && (vehicle.modelId = into)))
     db.vehicleModels = db.vehicleModels.filter((model) => model.id !== id)
   } else {
     for (const model of db.vehicleModels.filter((each) => each.brandId === id)) {
       const twin = db.vehicleModels.find((each) => each.brandId === into && optionKey(each.name) === optionKey(model.name))
       if (twin) {
+        mergeCatalogModel(db, model.id, twin.id)
         db.items.forEach((item) => item.vehicles.forEach((vehicle) => vehicle.modelId === model.id && (vehicle.modelId = twin.id)))
         db.vehicleModels = db.vehicleModels.filter((each) => each.id !== model.id)
       } else {
         model.brandId = into
       }
     }
+    const from = db.catalog.brands.find((brand) => brand.id === id)
+    const to = db.catalog.brands.find((brand) => brand.id === into)
+    if (from && to) {
+      to.models.push(...from.models)
+      db.catalog = { brands: db.catalog.brands.filter((brand) => brand !== from) }
+    } else if (from) {
+      from.id = into
+    }
     moved.forEach((item) => item.vehicles.forEach((vehicle) => vehicle.brandId === id && (vehicle.brandId = into)))
     db.vehicleBrands = db.vehicleBrands.filter((entry) => entry.id !== id)
   }
   moved.forEach(dropRepeatedVehicles)
   return moved.length
+}
+
+/**
+ * Takes a vehicle model's place in the catalog to another it is merged into: its tree moves there when that model has
+ * none, or joins its tree (joinCatalogTrees), as the API does.
+ * @param db The demo's data.
+ * @param from The vehicle model merged away.
+ * @param into The vehicle model it is merged into.
+ */
+function mergeCatalogModel(db: Db, from: string, into: string): void {
+  /** The catalog model of a vehicle model, if any. */
+  const catalogIdOf = (vehicleModelId: string) => [...db.catalogModels].find(([, held]) => held === vehicleModelId)?.[0]
+  const merged = catalogIdOf(from)
+  const kept = catalogIdOf(into)
+  if (!merged) {
+    return
+  }
+  if (!kept) {
+    db.catalogModels.set(merged, into)
+    return
+  }
+  const models = db.catalog.brands.flatMap((brand) => brand.models)
+  const keptModel = models.find((model) => model.id === kept)!
+  keptModel.generations = joinCatalogTrees(keptModel, models.find((model) => model.id === merged)!).generations
+  db.catalog = { brands: db.catalog.brands.map((brand) => ({ ...brand, models: brand.models.filter((model) => model.id !== merged) })) }
+  db.catalogModels.delete(merged)
 }
 
 /**

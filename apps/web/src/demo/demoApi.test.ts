@@ -4,7 +4,7 @@ import { catalogSchema } from '@apc/domain/catalog'
 import { IMPORT_CONFLICTS } from '@apc/domain/item-csv'
 import { itemMatchesQuery } from '@apc/domain/item-filters'
 import { itemListQuerySchema, itemListResponseSchema, itemSchema, type Item } from '@apc/domain/items'
-import { listEntriesSchema, listEntrySchema, vehicleModelsSchema, type ListEntry } from '@apc/domain/lists'
+import { listEntriesSchema, listEntrySchema, vehicleModelSchema, vehicleModelsSchema, type ListEntry } from '@apc/domain/lists'
 import { ITEM_PHOTO_LIMIT, PHOTO_PARTS } from '@apc/domain/photos'
 import { createDemoApi } from './demoApi.ts'
 import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
@@ -231,6 +231,33 @@ test('Web: the demo keeps the lists as the API does', async () => {
   expect((await as('DELETE', `/vehicle-brands/${renault.id}`)).status).toBe(204)
   const catalog = catalogSchema.parse(await (await as('GET', '/catalog')).json())
   expect(catalog.brands.map((brand) => brand.name)).not.toContain('Renault')
+})
+
+// Merges Ford, a catalog brand, into Chevrolet, another, and checks Chevrolet keeps its place with Ford's models after
+// its own and Ford leaves the rail; then merges a catalog model into a model of its brand the catalog doesn't have, and
+// checks that model takes its place and tree, as the API does.
+test('Web: the demo merges catalog brands and models as the API does', async () => {
+  const { as, list } = await demo()
+  const read = async () => catalogSchema.parse(await (await as('GET', '/catalog')).json())
+  const before = await read()
+  const brands = await list('/vehicle-brands')
+  const ford = brands.find((entry) => entry.name === 'Ford')!
+  const chevrolet = brands.find((entry) => entry.name === 'Chevrolet')!
+  expect((await as('POST', `/vehicle-brands/${ford.id}/merge`, { into: chevrolet.id })).status).toBe(200)
+  const after = await read()
+  expect(after.brands.map((brand) => brand.name)).toEqual(before.brands.map((brand) => brand.name).filter((name) => name !== 'Ford'))
+  const fordModels = before.brands.find((brand) => brand.name === 'Ford')!.models.map((model) => model.name)
+  const chevroletModels = before.brands.find((brand) => brand.name === 'Chevrolet')!.models.map((model) => model.name)
+  expect(after.brands[0].models.map((model) => model.name)).toEqual([...chevroletModels, ...fordModels])
+
+  const opala = after.brands[0].models.find((model) => model.name === 'Opala')!
+  const models = vehicleModelsSchema.parse(await (await as('GET', '/vehicle-models')).json())
+  const opalaEntry = models.find((model) => model.name === 'Opala' && model.vehicleBrandId === chevrolet.id)!
+  const comodoro = vehicleModelSchema.parse(await (await as('POST', '/vehicle-models', { name: 'Opala Comodoro', vehicleBrandId: chevrolet.id })).json())
+  expect((await as('POST', `/vehicle-models/${opalaEntry.id}/merge`, { into: comodoro.id })).status).toBe(200)
+  const moved = (await read()).brands[0].models
+  expect(moved.map((model) => model.name)).not.toContain('Opala')
+  expect(moved.find((model) => model.name === 'Opala Comodoro')!.generations).toEqual(opala.generations)
 })
 
 // Adds vehicle models under a brand and an unknown brand, merges a model into one of another brand and into one of

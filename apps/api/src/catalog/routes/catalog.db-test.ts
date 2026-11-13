@@ -88,7 +88,7 @@ test("API: the catalog holds the one a new database starts with", async () => {
 });
 
 // Lists the vehicle brands and models and checks the catalog's are marked; checks a catalog brand items use can't be
-// deleted and a catalog model can't be merged away, while a model of this run isn't marked; then deletes a catalog model
+// deleted, while a model of this run isn't marked and merges into a catalog model; then deletes a catalog model
 // and a catalog brand of this run no item uses from the lists, and checks they leave the catalog too.
 test("API: the catalog's vehicle brands and models are kept in the lists, and leave the catalog when deleted there", async () => {
   const brands: { id: string; name: string; inCatalog: boolean }[] = (await call("GET", "/vehicle-brands")).json();
@@ -97,14 +97,11 @@ test("API: the catalog's vehicle brands and models are kept in the lists, and le
   assert.equal(brands.find((brand) => brand.name === "Universal")?.inCatalog, false);
   const models: { id: string; name: string; vehicleBrandId: string; inCatalog: boolean }[] = (await call("GET", "/vehicle-models")).json();
   const corcel = models.find((model) => model.name === "Corcel" && model.vehicleBrandId === ford.id)!;
-  const escort = models.find((model) => model.name === "Escort" && model.vehicleBrandId === ford.id)!;
   assert.equal(corcel.inCatalog, true);
 
   const fordInUse = await call("DELETE", `/vehicle-brands/${ford.id}`);
   assert.equal(fordInUse.statusCode, 409);
   assert.ok(fordInUse.json().details[0].itemCount > 0);
-  assert.equal((await call("POST", `/vehicle-models/${corcel.id}/merge`, { into: escort.id })).statusCode, 409);
-  assert.ok(await prisma.catalogModel.findUnique({ where: { vehicleModelId: corcel.id } }));
 
   const created = await call("POST", "/vehicle-models", { name: `Pampa ${RUN}`, vehicleBrandId: ford.id });
   assert.equal(created.json().inCatalog, false);

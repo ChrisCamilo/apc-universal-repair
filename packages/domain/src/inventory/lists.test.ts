@@ -7,7 +7,7 @@ import {
   EMPTY_ITEM_LISTS,
   entryChange,
   catalogDeleteNote,
-  catalogLock,
+  catalogMergeNote,
   findEntry,
   ITEM_LIST_TEXTS,
   itemsUsing,
@@ -124,10 +124,10 @@ test("Shared: an entry leads to the filters of its items", () => {
   assert.deepEqual(filters.category, []);
 });
 
-// Says why a vehicle brand and a vehicle model the catalog has can't be merged away, and that deleting one takes it out
-// of the catalog too, and has nothing to say of an entry the catalog doesn't have; the test lists mark the test
-// catalog's brands and models.
-test("Shared: the catalog's vehicle brands and models can't be merged away, and leave the catalog when deleted", () => {
+// Says that merging a vehicle brand or model the catalog has takes its sheets to the entry merged into, and that deleting
+// one takes it out of the catalog too, and has nothing to say of an entry the catalog doesn't have; the test lists mark
+// the test catalog's brands and models.
+test("Shared: the catalog's vehicle brands and models take their sheets along when merged, and leave the catalog when deleted", () => {
   const lists = itemListsOf(
     [
       { category: "Motor", partBrand: "Bosch", vehicleBrand: "Volkswagen", vehicleModel: "Gol" },
@@ -136,15 +136,16 @@ test("Shared: the catalog's vehicle brands and models can't be merged away, and 
     ].map((fields) => testItem(fields)),
   );
   const volkswagen = findEntry(lists.vehicleBrands, "volkswagen")!;
-  assert.equal(catalogLock("vehicleBrands", volkswagen), "“Volkswagen” também está no catálogo e não pode ser juntada a outra marca.");
-  assert.equal(catalogDeleteNote("vehicleBrands", volkswagen), "“Volkswagen” também sai do Catálogo, com os modelos e as fichas dela.");
   const renault = findEntry(lists.vehicleBrands, "Renault")!;
-  assert.equal(catalogLock("vehicleBrands", renault), null);
+  assert.equal(catalogMergeNote("vehicleBrands", volkswagen, renault), "Os modelos e fichas de “Volkswagen” vão para “Renault”.");
+  assert.equal(catalogDeleteNote("vehicleBrands", volkswagen), "“Volkswagen” também sai do Catálogo, com os modelos e as fichas dela.");
+  assert.equal(catalogMergeNote("vehicleBrands", renault, volkswagen), null);
   assert.equal(catalogDeleteNote("vehicleBrands", renault), null);
   const gol = findEntry(lists.vehicleModels, "Gol")!;
-  assert.equal(catalogLock("vehicleModels", gol), "“Gol” também está no catálogo e não pode ser juntado a outro modelo.");
+  const kombi = findEntry(lists.vehicleModels, "Kombi")!;
+  assert.equal(catalogMergeNote("vehicleModels", gol, kombi), "As gerações e fichas de “Gol” vão para “Kombi”.");
   assert.equal(catalogDeleteNote("vehicleModels", gol), "“Gol” também sai do Catálogo, com as gerações e as fichas dele.");
-  assert.equal(catalogLock("vehicleModels", findEntry(lists.vehicleModels, "Kombi")!), null);
+  assert.equal(catalogMergeNote("vehicleModels", kombi, gol), null);
 });
 
 // Words the message of an entry in use for one item and for several.
