@@ -70,13 +70,14 @@ apps/web/
 │   ├── support/
 │   │   ├── fixtures.ts         # test and expect for every spec: session, stock, users, API guard
 │   │   ├── expect.ts           # expect with not.toScrollSideways(); rgb() for computed colors
-│   │   └── sizes.ts            # atNotebookSizes(): a check at 1360×768 and 1360×689
+│   │   ├── sizes.ts            # atNotebookSizes(): a check at 1360×768 and 1360×689
+│   │   └── inventory.ts        # openInventory(), layout(): the Inventory specs' shared steps
 │   ├── stubs/
 │   │   ├── session.ts          # signIn(): a saved session before the page loads
 │   │   ├── users.ts            # serveUsers(): stand-in for sign-up, login, logout, tutorial
 │   │   └── items.ts            # serveItems(), savedItem(): stand-in for /items and the item lists
 │   ├── data/
-│   │   └── items.ts            # item(): a test item from the fields that matter
+│   │   └── items.ts            # item(): a test item from the fields that matter; ITEMS: the Inventory specs' items
 │   ├── locators/               # the elements the specs find, one file per style-id scope:
 │   │   ├── common.ts           # dialog(), dataTable(), pagination(), options(), toasts(), tour()
 │   │   ├── auth.ts             # loginForm(), registerForm(), logIn()
@@ -86,8 +87,8 @@ apps/web/
 │   │   └── catalog.ts          # catalog()
 │   ├── api-guard.spec.ts       # checks the guard fails a call no stand-in answers
 │   ├── seed.spec.ts            # where Playwright's test agents start (below)
-│   └── <area>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
-│                               # notifications, register, theme, toast, user-menu
+│   └── <screen-or-flow>.spec.ts # one per screen or flow: inventory-list, inventory-form, inventory-details,
+│                               # catalog-tree-editing, login, register, user-menu…
 ├── e2e-demo/
 │   └── demo.spec.ts
 └── specs/                      # the test plans of Playwright's planner agent
@@ -170,7 +171,7 @@ The title keeps its prefix (`Web:`, `Desktop:`), and the tags follow it in the r
 
 ### Writing a test
 
-1. Put it in the spec of its area (`inventory.spec.ts` for the Inventory). A new area gets a new `<area>.spec.ts`.
+1. Put it in the spec of its screen or flow (`inventory-form.spec.ts` for the item form, `catalog-tree-editing.spec.ts` for editing the Catalog's tree). A spec covers one screen or flow and is named after it, its area first when the area has more than one (`<area>-<screen-or-flow>.spec.ts`); a new screen or flow gets a new spec. The area tag stays on every test, so `--grep @inventory` still runs all of an area's.
 2. Title it with the prefix, `Web:` or `Desktop:`, and the behavior in English; write what it checks and why in a comment right above it ([AGENTS.md](../AGENTS.md#writing-tests)). Give it its area tag and the kind tags that apply ([Tags](#tags)).
 3. Import `test` and `expect` from `./support/fixtures.ts` and start from the state it needs: the Dashboard with a test user is the default, `test.use({ signedIn: false })` for the screens before the login, `test.use({ stock: { items } })` or `serveItems()` with only the items that matter (`item()` from `./data/items.ts` fills in the rest). Answer every API call the test makes: the guard fails any it doesn't.
 4. Find elements through `./locators/<scope>.ts`, the file of the scope of the element's style id: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, and flows many specs repeat, such as `logIn()`, `fillItem()` and `deleteItem()`. An element a spec reaches more than once is added there, with no assertions. A locator finds an element as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`. It uses the style id (`getByTestId("inventory.inventory-tab.filters.count")`) for an element with no role or text of its own, and CSS only for what has none of these (`html`, `body`, `header`). The demo's spec uses the same locators.
@@ -198,7 +199,7 @@ Claude Code can read the app as a test does, and plan, write and fix tests by ru
 
 1. Ask for the `playwright-test-planner` agent. It opens the app from the seed, on the API and web app the test server's run starts itself, explores the screen, and saves a plan in `apps/web/specs/<screen-or-flow>.plan.md`.
 2. Ask for the `playwright-test-generator` agent with a scenario of the plan. It does each step on the page and writes the test to a new `e2e/<scope>-<behavior>.spec.ts`, never to a spec that exists, as its tool replaces the whole file.
-3. Bring the test into the project's shape, as CLAUDE.md says: its locators into `e2e/locators/<scope>.ts`, the title prefix, the comment above it, the tags, and no comment before each step. Move it into its area's spec when there is one.
+3. Bring the test into the project's shape, as CLAUDE.md says: its locators into `e2e/locators/<scope>.ts`, the title prefix, the comment above it, the tags, and no comment before each step. Move it into the spec of its screen or flow when there is one; a flow of its own keeps its file, named `<area>-<flow>.spec.ts`.
 4. Run it in both projects, then the whole suite ([Running the tests](#running-the-tests)).
 
 **Fixing a failing test.** Ask for the `playwright-test-healer` agent. It runs the tests, pauses on a failure with the page's snapshot, fixes the test and runs it again. It never weakens an assertion, skips the test or adds a wait: when the app is wrong, it leaves the test failing and says what the app does.
@@ -362,13 +363,14 @@ apps/web/
 │   ├── support/
 │   │   ├── fixtures.ts         # test e expect de toda spec: sessão, estoque, usuários, guarda da API
 │   │   ├── expect.ts           # expect com not.toScrollSideways(); rgb() para cores calculadas
-│   │   └── sizes.ts            # atNotebookSizes(): uma conferência em 1360×768 e 1360×689
+│   │   ├── sizes.ts            # atNotebookSizes(): uma conferência em 1360×768 e 1360×689
+│   │   └── inventory.ts        # openInventory(), layout(): os passos que as specs do Estoque dividem
 │   ├── stubs/
 │   │   ├── session.ts          # signIn(): uma sessão salva antes de a página carregar
 │   │   ├── users.ts            # serveUsers(): substituto do cadastro, login, logout e tutorial
 │   │   └── items.ts            # serveItems(), savedItem(): substituto de /items e das listas de itens
 │   ├── data/
-│   │   └── items.ts            # item(): um item de teste a partir dos campos que importam
+│   │   └── items.ts            # item(): um item de teste a partir dos campos que importam; ITEMS: os itens das specs do Estoque
 │   ├── locators/               # os elementos que as specs encontram, um arquivo por escopo de style id:
 │   │   ├── common.ts           # dialog(), dataTable(), pagination(), options(), toasts(), tour()
 │   │   ├── auth.ts             # loginForm(), registerForm(), logIn()
@@ -378,8 +380,8 @@ apps/web/
 │   │   └── catalog.ts          # catalog()
 │   ├── api-guard.spec.ts       # confere que a guarda reprova uma chamada que nenhum substituto responde
 │   ├── seed.spec.ts            # de onde partem os agentes de teste do Playwright (abaixo)
-│   └── <área>.spec.ts          # catalog, dashboard, export, guard, health, inventory, login,
-│                               # notifications, register, theme, toast, user-menu
+│   └── <tela-ou-fluxo>.spec.ts # uma por tela ou fluxo: inventory-list, inventory-form, inventory-details,
+│                               # catalog-tree-editing, login, register, user-menu…
 ├── e2e-demo/
 │   └── demo.spec.ts
 └── specs/                      # os planos de teste do agente planejador do Playwright
@@ -462,7 +464,7 @@ O título mantém o prefixo (`Web:`, `Desktop:`), e as tags vêm depois dele no 
 
 ### Escrevendo um teste
 
-1. Coloque-o na spec da sua área (`inventory.spec.ts` para o Estoque). Uma área nova ganha um `<área>.spec.ts` novo.
+1. Coloque-o na spec da sua tela ou fluxo (`inventory-form.spec.ts` para o formulário do item, `catalog-tree-editing.spec.ts` para editar a árvore do Catálogo). Uma spec cobre uma tela ou um fluxo e leva o nome dele, com a área na frente quando a área tem mais de uma (`<área>-<tela-ou-fluxo>.spec.ts`); uma tela ou fluxo novo ganha uma spec nova. A tag da área continua em todo teste, então o `--grep @inventory` ainda roda todos os de uma área.
 2. Dê o título com o prefixo, `Web:` ou `Desktop:`, e o comportamento em inglês; escreva o que ele confere e por quê num comentário logo acima ([AGENTS.md](../AGENTS.md#writing-tests)). Dê a ele a tag da área e as tags de tipo que se aplicam ([Tags](#tags-1)).
 3. Importe `test` e `expect` de `./support/fixtures.ts` e comece do estado de que ele precisa: o Dashboard com um usuário de teste é o padrão, `test.use({ signedIn: false })` para as telas antes do login, `test.use({ stock: { items } })` ou `serveItems()` só com os itens que importam (o `item()` de `./data/items.ts` completa o resto). Responda toda chamada à API que o teste faz: a guarda reprova as que ficarem sem resposta.
 4. Encontre os elementos por `./locators/<escopo>.ts`, o arquivo do escopo do style id do elemento: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, e fluxos que muitas specs repetem, como `logIn()`, `fillItem()` e `deleteItem()`. Um elemento que uma spec alcança mais de uma vez entra lá, sem asserções. Um locator encontra o elemento como um usuário encontra, nesta ordem: `getByRole` com o nome acessível, `getByLabel`, `getByText`. Ele usa o style id (`getByTestId("inventory.inventory-tab.filters.count")`) para um elemento sem papel ou texto próprio, e CSS só para o que não tem nenhum deles (`html`, `body`, `header`). A spec da demo usa os mesmos locators.
@@ -490,7 +492,7 @@ O Claude Code pode ler o app como um teste lê, e planejar, escrever e corrigir 
 
 1. Peça o agente `playwright-test-planner`. Ele abre o app a partir da semente, na API e no app web que a execução do servidor de testes sobe ela mesma, explora a tela e salva um plano em `apps/web/specs/<tela-ou-fluxo>.plan.md`.
 2. Peça o agente `playwright-test-generator` com um cenário do plano. Ele faz cada passo na página e escreve o teste num novo `e2e/<escopo>-<comportamento>.spec.ts`, nunca numa spec que já existe, porque a ferramenta dele substitui o arquivo inteiro.
-3. Deixe o teste no formato do projeto, como o CLAUDE.md diz: os locators em `e2e/locators/<escopo>.ts`, o prefixo no título, o comentário acima dele, as tags, e nenhum comentário antes de cada passo. Leve-o para a spec da área dele quando houver uma.
+3. Deixe o teste no formato do projeto, como o CLAUDE.md diz: os locators em `e2e/locators/<escopo>.ts`, o prefixo no título, o comentário acima dele, as tags, e nenhum comentário antes de cada passo. Leve-o para a spec da tela ou do fluxo dele quando houver uma; um fluxo próprio mantém o arquivo, com o nome `<área>-<fluxo>.spec.ts`.
 4. Rode-o nos dois projetos, e depois a suíte inteira ([Rodando os testes](#rodando-os-testes)).
 
 **Corrigindo um teste que falha.** Peça o agente `playwright-test-healer`. Ele roda os testes, pausa numa falha com o snapshot da página, corrige o teste e o roda de novo. Ele nunca enfraquece uma asserção, pula o teste ou acrescenta uma espera: quando o app está errado, deixa o teste falhando e diz o que o app faz.
