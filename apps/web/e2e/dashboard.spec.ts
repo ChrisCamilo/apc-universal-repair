@@ -1,6 +1,5 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
-import { atNotebookSizes } from "./support/sizes.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
 import { DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from "@apc/ui-spec/tabs";
 
@@ -133,17 +132,4 @@ test("Web: a tab still being built opens behind the work-in-progress notice", { 
   await expect(page.getByRole("heading", { name: `A aba ${WIP_TAB!.label} ainda não está pronta` })).toBeVisible();
   await expect(page.getByTestId("common.work-in-progress.content")).toHaveJSProperty("inert", true);
   await expect(page).not.toScrollSideways();
-});
-
-// On a 1360×768 notebook, in full screen and in a window (1360×689), opens the Catalog tab and checks the page itself
-// doesn't scroll, down or sideways, with the header at the top.
-test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", { tag: [TEST_TAGS.catalog, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
-  const shell = dashboard(page);
-  await page.goto("/catalog");
-  await expect(shell.tab("catalog")).toHaveAttribute("aria-selected", "true");
-  await atNotebookSizes(page, async (size) => {
-    expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), size).toBe(0);
-    await expect(page, size).not.toScrollSideways();
-    expect((await shell.header.boundingBox())!.y, size).toBe(0);
-  });
 });

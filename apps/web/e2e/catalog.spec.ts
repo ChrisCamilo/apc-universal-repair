@@ -2,6 +2,7 @@ import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { catalog } from "./locators/catalog.ts";
 import { dashboard } from "./locators/dashboard.ts";
+import { atNotebookSizes } from "./support/sizes.ts";
 import type { Item } from "@apc/domain/items";
 import { item } from "./data/items.ts";
 
@@ -115,4 +116,17 @@ test("Web: on a phone the Catalog search opens a part found by code", { tag: [TE
   await expect(tab.model("Escort")).toHaveAttribute("aria-current", "true");
   await expect(page.getByText("Ford Escort", { exact: true })).toBeVisible();
   await expect(page).not.toScrollSideways();
+});
+
+// On a 1360×768 notebook, in full screen and in a window (1360×689), opens the Catalog tab and checks the page itself
+// doesn't scroll, down or sideways, with the header at the top.
+test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", { tag: [TEST_TAGS.catalog, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
+  const shell = dashboard(page);
+  await page.goto("/catalog");
+  await expect(shell.tab("catalog")).toHaveAttribute("aria-selected", "true");
+  await atNotebookSizes(page, async (size) => {
+    expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), size).toBe(0);
+    await expect(page, size).not.toScrollSideways();
+    expect((await shell.header.boundingBox())!.y, size).toBe(0);
+  });
 });
