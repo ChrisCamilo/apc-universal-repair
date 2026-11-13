@@ -2,6 +2,7 @@ import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { catalog } from "./locators/catalog.ts";
 import { dashboard } from "./locators/dashboard.ts";
+import { atNotebookSizes } from "./support/sizes.ts";
 import type { Item } from "@apc/domain/items";
 import { item } from "./data/items.ts";
 
@@ -18,7 +19,7 @@ test.use({ stock: { items: ITEMS } });
 // Opens the Catalog tab and checks it starts on Chevrolet with its first engine's sheet, then picks the other Opala
 // engine, Fiat and Ford, and checks the sheet follows each choice, Ford saying it has no sheet yet. Nothing scrolls
 // sideways.
-test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly] }, async ({ page }) => {
+test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_TAGS.catalog, TEST_TAGS.smoke, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/inventory");
   await dashboard(page).tab("catalog").click();
@@ -71,7 +72,7 @@ test("Web: the Catalog search finds brands, models and inventory parts", { tag: 
 // their sheets) and taps the 4.1, and checks its sheet shows under the path to it. ← goes
 // back to the models, open on the engine just seen, and ← again to the brands under the tab's name. The bottom bar
 // stays, and nothing scrolls sideways.
-test("Web: on a phone the Catalog goes from a brand to an engine sheet and back", { tag: [TEST_TAGS.catalog, TEST_TAGS.mobileOnly] }, async ({ page }) => {
+test("Web: on a phone the Catalog goes from a brand to an engine sheet and back", { tag: [TEST_TAGS.catalog, TEST_TAGS.smoke, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   const tab = catalog(page);
   const shell = dashboard(page);
   await page.goto("/catalog");
@@ -115,4 +116,17 @@ test("Web: on a phone the Catalog search opens a part found by code", { tag: [TE
   await expect(tab.model("Escort")).toHaveAttribute("aria-current", "true");
   await expect(page.getByText("Ford Escort", { exact: true })).toBeVisible();
   await expect(page).not.toScrollSideways();
+});
+
+// On a 1360×768 notebook, in full screen and in a window (1360×689), opens the Catalog tab and checks the page itself
+// doesn't scroll, down or sideways, with the header at the top.
+test("Web: on a 1360×768 notebook the Catalog tab doesn't scroll the page", { tag: [TEST_TAGS.catalog, TEST_TAGS.layout, TEST_TAGS.desktopOnly] }, async ({ page }) => {
+  const shell = dashboard(page);
+  await page.goto("/catalog");
+  await expect(shell.tab("catalog")).toHaveAttribute("aria-selected", "true");
+  await atNotebookSizes(page, async (size) => {
+    expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), size).toBe(0);
+    await expect(page, size).not.toScrollSideways();
+    expect((await shell.header.boundingBox())!.y, size).toBe(0);
+  });
 });
