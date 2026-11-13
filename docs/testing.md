@@ -157,7 +157,7 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
 | Tag | Tests |
 |---|---|
 | `@auth`, `@dashboard`, `@catalog`, `@inventory`, `@notifications`, `@setup` | The area: the style-id scope the test covers. Each test has exactly one. |
-| `@smoke` | The flows a release needs: the web app reaching the API, the login, the Inventory's list, creating and editing an item, the desktop's sign-in |
+| `@smoke` | The flows a release needs: the web app reaching the API, the login, the Inventory's list, creating and editing an item, browsing the Catalog down to an engine sheet, the desktop's sign-in |
 | `@layout` | Sizes and scrolling |
 | `@theme` | The styles and modes |
 | `@motion` | A motion, with reduced motion off |
@@ -449,7 +449,7 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
 | Tag | Testes |
 |---|---|
 | `@auth`, `@dashboard`, `@catalog`, `@inventory`, `@notifications`, `@setup` | A área: o escopo de style id que o teste cobre. Cada teste tem exatamente uma. |
-| `@smoke` | Os fluxos de que uma versão precisa: o app web alcançando a API, o login, a lista do Estoque, criar e editar um item, o login do desktop |
+| `@smoke` | Os fluxos de que uma versão precisa: o app web alcançando a API, o login, a lista do Estoque, criar e editar um item, navegar pelo Catálogo até uma ficha de motor, o login do desktop |
 | `@layout` | Tamanhos e rolagem |
 | `@theme` | Os estilos e modos |
 | `@motion` | Um movimento, com o movimento reduzido desligado |
