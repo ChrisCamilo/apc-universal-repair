@@ -51,12 +51,9 @@ test("Web: a row opens the item details, editable after Editar", { tag: [TEST_TA
   await expect(userMenu(page).checkbox(/Abrir item ao clicar na linha/)).toHaveCount(0);
 });
 
-// On a phone, opens an item's details from its card against an API that keeps what it is sent, the cards having no
-// pencil or trash: the details fill the screen, as in the Detalhes mockup, with the ← in place of the × and Fechar and
-// the red round "Excluir item" at the top right; the category over the name, the stock and the minimum, the vehicles,
-// the position and side and the original codes, and a card for the brand with its code, price and place; Duplicar and
-// Editar share the bottom. The ← closes them; Duplicar asks about the photos; Editar unlocks the fields, with no field
-// started on, so the keyboard doesn't rise; and Excluir asks to confirm, then deletes the item and closes its details.
+// On a phone, opens an item's details from its card against an API that keeps what it is sent: as the cards have no
+// pencil or trash, the details fill the screen, as in the Detalhes mockup, and hold every action on the item, none of
+// which starts the keyboard.
 test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   const stock = [...ITEMS];
   await serveItems(page, stock);
@@ -70,55 +67,59 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
   await expect(rows).toHaveCount(4);
   await expect(page.getByRole("button", { name: /^(Editar|Excluir) / })).toHaveCount(0);
 
-  await inventory(page).name("Amortecedor").click();
-  await expect(details.root).toBeVisible();
-  const { width, height } = page.viewportSize()!;
-  await expect.poll(async () => details.root.boundingBox()).toEqual({ x: 0, y: 0, width, height });
-  await expect(details.back).toBeInViewport();
-  await expect(details.remove).toBeInViewport();
-  await expect(details.root.getByRole("button", { name: "Fechar" })).toHaveCount(0);
-  await expect(details.root.getByRole("heading", { name: "Amortecedor" })).toBeVisible();
-  await expect(details.root).toContainText("Suspensão");
-  await expect(details.root).toContainText(/Em estoque\s*4\s*un\./);
-  await expect(details.root).toContainText(/Mínimo\s*1\s*un\./);
-  await expect(details.root).toContainText(/Veículos\s*Ford Escort/);
-  await expect(details.root).toContainText(/Posição · Lado\s*Traseiro · Lado esquerdo/);
-  await expect(details.root).toContainText(/Códigos originais\s*Nenhum/);
-  await expect(details.root).toContainText("Marcas · 1");
-  const brand = details.root.getByRole("group", { name: "Cofap" });
-  await expect(brand).toContainText("AM-501");
-  await expect(brand).toContainText(/R\$\s249,00/);
-  await expect(brand).toContainText("Local A-10 · Preto");
-  const halves = await Promise.all([details.duplicate, details.edit].map(async (button) => (await button.boundingBox())!));
-  expect(Math.abs(halves[0].width - halves[1].width)).toBeLessThanOrEqual(1);
-  expect(halves[0].y + halves[0].height).toBeLessThanOrEqual(height);
-  await details.back.click();
-  await expect(details.root).toBeHidden();
+  await test.step("the details fill the screen with every field, the ← and Excluir item on top and Duplicar and Editar below; the ← closes them", async () => {
+    await inventory(page).name("Amortecedor").click();
+    await expect(details.root).toBeVisible();
+    const { width, height } = page.viewportSize()!;
+    await expect.poll(async () => details.root.boundingBox()).toEqual({ x: 0, y: 0, width, height });
+    await expect(details.back).toBeInViewport();
+    await expect(details.remove).toBeInViewport();
+    await expect(details.root.getByRole("button", { name: "Fechar" })).toHaveCount(0);
+    await expect(details.root.getByRole("heading", { name: "Amortecedor" })).toBeVisible();
+    await expect(details.root).toContainText("Suspensão");
+    await expect(details.root).toContainText(/Em estoque\s*4\s*un\./);
+    await expect(details.root).toContainText(/Mínimo\s*1\s*un\./);
+    await expect(details.root).toContainText(/Veículos\s*Ford Escort/);
+    await expect(details.root).toContainText(/Posição · Lado\s*Traseiro · Lado esquerdo/);
+    await expect(details.root).toContainText(/Códigos originais\s*Nenhum/);
+    await expect(details.root).toContainText("Marcas · 1");
+    const brand = details.root.getByRole("group", { name: "Cofap" });
+    await expect(brand).toContainText("AM-501");
+    await expect(brand).toContainText(/R\$\s249,00/);
+    await expect(brand).toContainText("Local A-10 · Preto");
+    const halves = await Promise.all([details.duplicate, details.edit].map(async (button) => (await button.boundingBox())!));
+    expect(Math.abs(halves[0].width - halves[1].width)).toBeLessThanOrEqual(1);
+    expect(halves[0].y + halves[0].height).toBeLessThanOrEqual(height);
+    await details.back.click();
+    await expect(details.root).toBeHidden();
+  });
 
-  await inventory(page).name("Amortecedor").click();
-  await details.duplicate.click();
-  const question = dialog(page, "Duplicar item?").root;
-  await expect(question).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(question).toBeHidden();
-  await details.edit.click();
-  await expect(itemForm(page, "Editar item").name).toHaveValue("Amortecedor");
-  await expect(itemForm(page, "Editar item").name).not.toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(itemForm(page, "Editar item").root).toBeHidden();
+  await test.step("Duplicar asks about the photos, and Editar unlocks the fields with none focused, so the keyboard doesn't rise", async () => {
+    await inventory(page).name("Amortecedor").click();
+    await details.duplicate.click();
+    const question = dialog(page, "Duplicar item?").root;
+    await expect(question).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(question).toBeHidden();
+    await details.edit.click();
+    await expect(itemForm(page, "Editar item").name).toHaveValue("Amortecedor");
+    await expect(itemForm(page, "Editar item").name).not.toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(itemForm(page, "Editar item").root).toBeHidden();
+  });
 
-  await inventory(page).name("Amortecedor").click();
-  await details.remove.click();
-  await deleteDialog(page).confirm.click();
-  await expect(toasts(page).named("Item “Amortecedor” excluído.")).toBeVisible();
-  await expect(details.root).toBeHidden();
-  await expect(rows).toHaveCount(3);
+  await test.step("Excluir asks to confirm, then deletes the item and closes its details", async () => {
+    await inventory(page).name("Amortecedor").click();
+    await details.remove.click();
+    await deleteDialog(page).confirm.click();
+    await expect(toasts(page).named("Item “Amortecedor” excluído.")).toBeVisible();
+    await expect(details.root).toBeHidden();
+    await expect(rows).toHaveCount(3);
+  });
 });
 
-// Duplicates an item of two photos from its details against an API that keeps what it is sent: Copiar dados e fotos
-// opens a new item's form filled in without the code and with the quantity at 0, and saving it with a code of its own
-// posts the item, then sends the photos as copies of the first item's, which become photos of the copy's own. Deleting
-// the first item leaves the copy's photos; duplicating the copy with Copiar só os dados gives an item without photos.
+// Duplicates an item of two photos from its details against an API that keeps what it is sent, with and without its
+// photos. The copy's photos are copies the server makes, not links to the first item's, so they outlive it.
 test("Web: an item is duplicated from its details, with or without its photos", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   const png = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
@@ -155,44 +156,50 @@ test("Web: an item is duplicated from its details, with or without its photos", 
   const question = dialog(page, "Duplicar item?");
   const form = itemForm(page, "Novo item");
 
-  await rows.first().getByText("Filtro de óleo").click();
-  await details.duplicate.click();
-  const withPhotos = question.button("Copiar dados e fotos");
-  await expect(withPhotos).toBeInViewport();
-  await withPhotos.click();
-  await expect(details.root).toBeHidden();
-  await expect(form.name).toHaveValue("Filtro de óleo");
-  await expect(form.code).toHaveValue("");
-  await expect(form.quantity).toHaveValue("0");
-  await expect(form.photos).toHaveCount(2);
-  await form.code.fill("W 712/96");
-  await form.save.click();
-  await expect(toasts(page).named("Item “Filtro de óleo” cadastrado.")).toBeVisible();
-  expect(sent).toEqual([photos.map((photo) => `copy ${photo.id}`)]);
-  await expect(rows).toHaveCount(5);
-  const copy = stock[0];
-  expect([copy.brands[0].code, copy.quantity, copy.brands[0].photos.some((photo) => photos.some((each) => each.id === photo.id))]).toEqual(["W 712/96", 0, false]);
+  await test.step("Copiar dados e fotos opens the form filled in without the code and at 0, and saving it copies the photos", async () => {
+    await rows.first().getByText("Filtro de óleo").click();
+    await details.duplicate.click();
+    const withPhotos = question.button("Copiar dados e fotos");
+    await expect(withPhotos).toBeInViewport();
+    await withPhotos.click();
+    await expect(details.root).toBeHidden();
+    await expect(form.name).toHaveValue("Filtro de óleo");
+    await expect(form.code).toHaveValue("");
+    await expect(form.quantity).toHaveValue("0");
+    await expect(form.photos).toHaveCount(2);
+    await form.code.fill("W 712/96");
+    await form.save.click();
+    await expect(toasts(page).named("Item “Filtro de óleo” cadastrado.")).toBeVisible();
+    expect(sent).toEqual([photos.map((photo) => `copy ${photo.id}`)]);
+    await expect(rows).toHaveCount(5);
+    const copy = stock[0];
+    expect([copy.brands[0].code, copy.quantity, copy.brands[0].photos.some((photo) => photos.some((each) => each.id === photo.id))]).toEqual(["W 712/96", 0, false]);
+  });
 
-  // Both items are named "Filtro de óleo": the first item's trash is the second row's; on a phone, in its details.
-  if (isMobile) {
-    await rows.nth(1).getByText("Filtro de óleo").click();
-    await itemDetails(page).remove.click();
-  } else {
-    await rows.nth(1).getByRole("button", { name: "Excluir Filtro de óleo" }).click();
-  }
-  await deleteDialog(page).confirm.click();
-  await expect(rows).toHaveCount(4);
-  await expect(thumbnailImage(inventory(page).photos("Filtro de óleo"))).toHaveAttribute("src", "/api/photos/copy-0-thumb.webp");
+  await test.step("deleting the first item leaves the copy's photos", async () => {
+    // Both items are named "Filtro de óleo": the first item's trash is the second row's; on a phone, in its details.
+    if (isMobile) {
+      await rows.nth(1).getByText("Filtro de óleo").click();
+      await itemDetails(page).remove.click();
+    } else {
+      await rows.nth(1).getByRole("button", { name: "Excluir Filtro de óleo" }).click();
+    }
+    await deleteDialog(page).confirm.click();
+    await expect(rows).toHaveCount(4);
+    await expect(thumbnailImage(inventory(page).photos("Filtro de óleo"))).toHaveAttribute("src", "/api/photos/copy-0-thumb.webp");
+  });
 
-  await rows.first().getByText("Filtro de óleo").click();
-  await details.duplicate.click();
-  await question.button("Copiar só os dados").click();
-  await expect(form.photos).toHaveCount(0);
-  await form.code.fill("W 712/97");
-  await form.save.click();
-  await expect(rows).toHaveCount(5);
-  expect([stock[0].brands[0].code, stock[0].brands[0].photos]).toEqual(["W 712/97", []]);
-  expect(sent).toHaveLength(1);
+  await test.step("Copiar só os dados gives an item without photos", async () => {
+    await rows.first().getByText("Filtro de óleo").click();
+    await details.duplicate.click();
+    await question.button("Copiar só os dados").click();
+    await expect(form.photos).toHaveCount(0);
+    await form.code.fill("W 712/97");
+    await form.save.click();
+    await expect(rows).toHaveCount(5);
+    expect([stock[0].brands[0].code, stock[0].brands[0].photos]).toEqual(["W 712/97", []]);
+    expect(sent).toHaveLength(1);
+  });
 });
 
 // Deletes an item against an API that keeps what it is sent: the row's trash opens a confirmation naming the item
