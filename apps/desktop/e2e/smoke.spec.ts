@@ -11,9 +11,8 @@ import { updateNotice } from "../../web/e2e/locators/setup.ts";
 
 // The desktop app's smoke test: the compiled app on the stand-in API, with its own userData folder (support/fixtures.ts).
 
-// Opens the app, signs in through the API, and checks the Dashboard and the empty Inventory in a window of 1280×720, or
-// of what the screen's work area holds, that can't be made smaller than 1280×640. Then switches to dark mode and the Catalog tab, restarts the app with the same userData,
-// and checks the session, the theme and the open tab are still there.
+// Signs in to the compiled app and checks its window and the empty Inventory, then restarts it with the same userData:
+// the session, the theme and the open tab are still there, as the app opens where it was left.
 test("Desktop: the app signs in, shows the Inventory and keeps the session, theme and tab after a restart", { tag: [TEST_TAGS.auth, TEST_TAGS.smoke] }, async ({ launchApp }) => {
   const first = await launchApp();
   let page = await first.app.firstWindow();
@@ -24,54 +23,64 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
       blocked.push(message.text());
     }
   });
-  await expect(page).toHaveURL(/^app:\/\/apc\/login/);
-  await logIn(page, TEST_USERS[0]);
 
-  await expect(inventory(page).empty).toBeVisible();
-  // The window opens at 1280×720, or at what the screen's work area holds, and doesn't get smaller than 1280×640; the
-  // page fills it. With display scaling, rounding may add up to 2 pixels.
-  const window = await first.app.evaluate(({ BrowserWindow, screen }) => {
-    const [window] = BrowserWindow.getAllWindows();
-    const opened = window.getContentSize();
-    const [outerWidth, outerHeight] = window.getSize();
-    const frame = { width: outerWidth - opened[0], height: outerHeight - opened[1] };
-    const workArea = screen.getDisplayMatching(window.getBounds()).workAreaSize;
-    window.setContentSize(800, 600);
-    return { opened, frame, workArea, smallest: window.getContentSize() };
+  await test.step("the app opens on the login and signs in through the API", async () => {
+    await expect(page).toHaveURL(/^app:\/\/apc\/login/);
+    await logIn(page, TEST_USERS[0]);
   });
-  const expected = openingContentSize(window.workArea, window.frame);
-  const inner = await page.evaluate(() => [innerWidth, innerHeight]);
-  for (const [[width, height], size] of [
-    [window.opened, expected],
-    [window.smallest, MIN_WINDOW_SIZE],
-    [inner, MIN_WINDOW_SIZE],
-  ] as const) {
-    expect(width - size.width).toBeGreaterThanOrEqual(0);
-    expect(width - size.width).toBeLessThanOrEqual(2);
-    expect(height - size.height).toBeGreaterThanOrEqual(0);
-    expect(height - size.height).toBeLessThanOrEqual(2);
-  }
 
-  const modeOf = () => page.evaluate(() => document.documentElement.dataset.mode);
-  const before = await modeOf();
-  const menu = userMenu(page);
-  await menu.trigger.click();
-  await menu.checkbox("Modo escuro").click();
-  await page.keyboard.press("Escape");
-  await expect.poll(modeOf).not.toBe(before);
-  const mode = await modeOf();
-  await dashboard(page).tab("catalog").click();
-  await expect(page).toHaveURL(/\/catalog$/);
-  // The URL changes at once, in a transition, but the tab is open, and kept, only once the Catálogo screen renders.
-  await expect(dashboard(page).tab("catalog")).toHaveAttribute("aria-selected", "true");
-  expect(blocked).toEqual([]);
-  await first.app.close();
+  await test.step("the empty Inventory shows in a window of 1280×720, or of the work area, that can't get smaller than 1280×640", async () => {
+    await expect(inventory(page).empty).toBeVisible();
+    // The window opens at 1280×720, or at what the screen's work area holds, and doesn't get smaller than 1280×640; the
+    // page fills it. With display scaling, rounding may add up to 2 pixels.
+    const window = await first.app.evaluate(({ BrowserWindow, screen }) => {
+      const [window] = BrowserWindow.getAllWindows();
+      const opened = window.getContentSize();
+      const [outerWidth, outerHeight] = window.getSize();
+      const frame = { width: outerWidth - opened[0], height: outerHeight - opened[1] };
+      const workArea = screen.getDisplayMatching(window.getBounds()).workAreaSize;
+      window.setContentSize(800, 600);
+      return { opened, frame, workArea, smallest: window.getContentSize() };
+    });
+    const expected = openingContentSize(window.workArea, window.frame);
+    const inner = await page.evaluate(() => [innerWidth, innerHeight]);
+    for (const [[width, height], size] of [
+      [window.opened, expected],
+      [window.smallest, MIN_WINDOW_SIZE],
+      [inner, MIN_WINDOW_SIZE],
+    ] as const) {
+      expect(width - size.width).toBeGreaterThanOrEqual(0);
+      expect(width - size.width).toBeLessThanOrEqual(2);
+      expect(height - size.height).toBeGreaterThanOrEqual(0);
+      expect(height - size.height).toBeLessThanOrEqual(2);
+    }
+  });
 
-  const { app } = await launchApp({ userData: first.userData });
-  page = await app.firstWindow();
-  await expect(dashboard(page).tab("catalog")).toHaveAttribute("aria-selected", "true");
-  await expect(page).toHaveURL(/\/catalog$/);
-  expect(await page.evaluate(() => document.documentElement.dataset.mode)).toBe(mode);
+  const mode = await test.step("dark mode and the Catalog tab apply, with nothing blocked by the Content-Security-Policy", async () => {
+    const modeOf = () => page.evaluate(() => document.documentElement.dataset.mode);
+    const before = await modeOf();
+    const menu = userMenu(page);
+    await menu.trigger.click();
+    await menu.checkbox("Modo escuro").click();
+    await page.keyboard.press("Escape");
+    await expect.poll(modeOf).not.toBe(before);
+    const dark = await modeOf();
+    await dashboard(page).tab("catalog").click();
+    await expect(page).toHaveURL(/\/catalog$/);
+    // The URL changes at once, in a transition, but the tab is open, and kept, only once the Catálogo screen renders.
+    await expect(dashboard(page).tab("catalog")).toHaveAttribute("aria-selected", "true");
+    expect(blocked).toEqual([]);
+    await first.app.close();
+    return dark;
+  });
+
+  await test.step("a restart keeps the session, the theme and the open tab", async () => {
+    const { app } = await launchApp({ userData: first.userData });
+    page = await app.firstWindow();
+    await expect(dashboard(page).tab("catalog")).toHaveAttribute("aria-selected", "true");
+    await expect(page).toHaveURL(/\/catalog$/);
+    expect(await page.evaluate(() => document.documentElement.dataset.mode)).toBe(mode);
+  });
 });
 
 // With the preload, the page still has no Node: no require and no process. The bridge gives it only its calls, for
