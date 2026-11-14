@@ -1,8 +1,9 @@
 import type { Page } from "@playwright/test";
 import { DASHBOARD_TABS } from "@apc/ui-spec/tabs";
+import { dialog } from "./common.ts";
 
-// The shell around the tabs: the header, the tab bar and the user menu; on a phone, the open tab's title and the bottom
-// bar.
+// The shell around the tabs: the header, the tab bar, the user menu and its Sobre esta versão; on a phone, the open
+// tab's title and the bottom bar.
 
 /**
  * The Dashboard's header, tab bar and content; a tab and its panel are named by the tab's id, so the label is the
@@ -40,6 +41,20 @@ export function userMenu(page: Page) {
     item: (name: string) => page.getByRole("menuitem", { name }),
     checkbox: (name: string | RegExp) => page.getByRole("menuitemcheckbox", { name }),
     radio: (name: string) => page.getByRole("menuitemradio", { name }),
+  };
+}
+
+/**
+ * Sobre esta versão, from the user menu: the app's name and version, and a heading of that version's notes.
+ * @param page The test's page.
+ * @returns The dialog and its parts.
+ */
+export function aboutDialog(page: Page) {
+  const box = dialog(page, "Sobre esta versão");
+  return {
+    ...box,
+    version: (version: string) => box.root.getByText(`APC Universal Repair ${version}`),
+    heading: (name: string) => box.root.getByRole("heading", { name, exact: true }),
   };
 }
 

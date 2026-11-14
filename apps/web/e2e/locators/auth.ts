@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 // The screens before the session starts: the login and the sign-up.
 
 /**
- * The login's form, the error it shows above it, and its links.
+ * The login's form, the error it shows above it, and its links; in the desktop app, its button for the server too.
  * @param page The test's page.
  * @returns The login's elements.
  */
@@ -15,6 +15,8 @@ export function loginForm(page: Page) {
     error: page.getByRole("alert"),
     forgotPassword: page.getByRole("button", { name: "Esqueceu a senha?" }),
     signUp: page.getByRole("button", { name: "Criar conta" }),
+    // The desktop app's, which opens the Servidor dialog.
+    server: page.getByRole("button", { name: "Servidor e banco de dados" }),
   };
 }
 
