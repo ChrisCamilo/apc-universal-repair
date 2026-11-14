@@ -2,6 +2,8 @@ import type { Device } from "@apc/domain/devices";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { TEST_USERS } from "@apc/domain/test-users";
 import { expect, logIn, test } from "./support/fixtures.ts";
+import { userMenu } from "../../web/e2e/locators/dashboard.ts";
+import { devices } from "../../web/e2e/locators/setup.ts";
 
 // Authorizing a device on the server's computer: the compiled app on a stand-in API that lists a phone waiting to be
 // authorized, as the API does once the phone logged in with the right password from the Wi-Fi.
@@ -29,14 +31,15 @@ test("Desktop: a waiting device is authorized on the server's computer", { tag: 
   const page = await app.firstWindow();
   await logIn(page, TEST_USERS[0]);
 
-  const approval = page.getByRole("dialog", { name: "Autorizar este dispositivo?" });
-  await expect(approval).toContainText("Ana Souza (ana.souza) quer entrar por um dispositivo novo.");
-  await expect(approval.getByText("K7Q2ZD", { exact: true })).toBeVisible();
-  await approval.getByLabel("Nome do dispositivo").fill("Celular da Ana");
-  await approval.getByRole("button", { name: "Autorizar" }).click();
-  await expect(approval).toBeHidden();
+  const { approval, authorized } = devices(page);
+  await expect(approval.root).toContainText("Ana Souza (ana.souza) quer entrar por um dispositivo novo.");
+  await expect(approval.code("K7Q2ZD")).toBeVisible();
+  await approval.name.fill("Celular da Ana");
+  await approval.approve.click();
+  await expect(approval.root).toBeHidden();
 
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitem", { name: "Dispositivos" }).click();
-  await expect(page.getByRole("list", { name: "Dispositivos autorizados" })).toContainText("Celular da Ana");
+  const menu = userMenu(page);
+  await menu.trigger.click();
+  await menu.item("Dispositivos").click();
+  await expect(authorized).toContainText("Celular da Ana");
 });

@@ -5,6 +5,9 @@ import { TEST_TAGS } from "@apc/domain/test-tags";
 import { TEST_USERS } from "@apc/domain/test-users";
 import { INSTALLER_CHOICE_FILE } from "../src/server/database.ts";
 import { MIN_WINDOW_SIZE, openingContentSize } from "../src/window/window.ts";
+import { dashboard, userMenu } from "../../web/e2e/locators/dashboard.ts";
+import { inventory } from "../../web/e2e/locators/inventory.ts";
+import { updateNotice } from "../../web/e2e/locators/setup.ts";
 
 // The desktop app's smoke test: the compiled app on the stand-in API, with its own userData folder (support/fixtures.ts).
 
@@ -24,7 +27,7 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
   await expect(page).toHaveURL(/^app:\/\/apc\/login/);
   await logIn(page, TEST_USERS[0]);
 
-  await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
+  await expect(inventory(page).empty).toBeVisible();
   // The window opens at 1280×720, or at what the screen's work area holds, and doesn't get smaller than 1280×640; the
   // page fills it. With display scaling, rounding may add up to 2 pixels.
   const window = await first.app.evaluate(({ BrowserWindow, screen }) => {
@@ -51,21 +54,22 @@ test("Desktop: the app signs in, shows the Inventory and keeps the session, them
 
   const modeOf = () => page.evaluate(() => document.documentElement.dataset.mode);
   const before = await modeOf();
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitemcheckbox", { name: "Modo escuro" }).click();
+  const menu = userMenu(page);
+  await menu.trigger.click();
+  await menu.checkbox("Modo escuro").click();
   await page.keyboard.press("Escape");
   await expect.poll(modeOf).not.toBe(before);
   const mode = await modeOf();
-  await page.getByRole("tab", { name: /Catálogo/ }).click();
+  await dashboard(page).tab("catalog").click();
   await expect(page).toHaveURL(/\/catalog$/);
   // The URL changes at once, in a transition, but the tab is open, and kept, only once the Catálogo screen renders.
-  await expect(page.getByRole("tab", { name: /Catálogo/ })).toHaveAttribute("aria-selected", "true");
+  await expect(dashboard(page).tab("catalog")).toHaveAttribute("aria-selected", "true");
   expect(blocked).toEqual([]);
   await first.app.close();
 
   const { app } = await launchApp({ userData: first.userData });
   page = await app.firstWindow();
-  await expect(page.getByRole("tab", { name: /Catálogo/ })).toHaveAttribute("aria-selected", "true");
+  await expect(dashboard(page).tab("catalog")).toHaveAttribute("aria-selected", "true");
   await expect(page).toHaveURL(/\/catalog$/);
   expect(await page.evaluate(() => document.documentElement.dataset.mode)).toBe(mode);
 });
@@ -114,7 +118,7 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", { ta
       "useSqlite",
     ],
   });
-  await expect(page.getByTestId("setup.update-notice")).toBeEmpty();
+  await expect(updateNotice(page)).toBeEmpty();
   // The device key gives the page its public half and signatures only: SPKI, never the private key.
   const device = await page.evaluate(async () => {
     const bridge = (window as unknown as { apcDesktop: { device: { publicKey: () => Promise<string>; sign: (nonce: string) => Promise<string> } } }).apcDesktop.device;

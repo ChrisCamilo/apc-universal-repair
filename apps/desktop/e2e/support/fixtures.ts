@@ -6,6 +6,8 @@ import { _electron as electron, expect, test as base, type ElectronApplication, 
 import type { Device } from "@apc/domain/devices";
 import type { Item } from "@apc/domain/items";
 import type { TEST_USERS } from "@apc/domain/test-users";
+import { logIn as submitLogin } from "../../../web/e2e/locators/auth.ts";
+import { dashboard } from "../../../web/e2e/locators/dashboard.ts";
 import { reduceMotion } from "../reducedMotion.ts";
 import { startStubApi } from "../stubApi.ts";
 
@@ -189,8 +191,6 @@ export async function freePort(): Promise<number> {
  * @param user The username and password to type, e.g. a test user.
  */
 export async function logIn(page: Page, user: Pick<(typeof TEST_USERS)[number], "username" | "password">) {
-  await page.getByLabel("Usuário", { exact: true }).fill(user.username);
-  await page.getByLabel("Senha", { exact: true }).fill(user.password);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
+  await submitLogin(page, user);
+  await expect(dashboard(page).tab("inventory")).toHaveAttribute("aria-selected", "true");
 }

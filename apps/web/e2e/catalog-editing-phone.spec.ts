@@ -43,14 +43,14 @@ test("Web: on a phone a brand is filled down to an engine sheet, renamed and del
   await engine.field("Cilindros").fill("4");
   await engine.choice("Dianteira").click();
   await engine.button("Salvar ficha").click();
-  await expect(page.getByRole("heading", { name: "1994 · Renault Clio RT 1.4" })).toBeVisible();
-  await expect(page.getByText("Clio › Primeira geração › RT › 1994")).toBeVisible();
+  await expect(tab.sheetTitle("1994 · Renault Clio RT 1.4")).toBeVisible();
+  await expect(tab.path("Clio › Primeira geração › RT › 1994")).toBeVisible();
 
   await tab.editSheet.click();
   const sheet = dialog(page, "Ficha do 1.4 L 4 cilindros");
   await sheet.field("Cilindrada (L)").fill("1,6");
   await sheet.button("Salvar ficha").click();
-  await expect(page.getByRole("heading", { name: "1994 · Renault Clio RT 1.6" })).toBeVisible();
+  await expect(tab.sheetTitle("1994 · Renault Clio RT 1.6")).toBeVisible();
 
   await tab.back("Voltar aos modelos").click();
   await tab.action("Ações de Clio").click();
@@ -63,7 +63,7 @@ test("Web: on a phone a brand is filled down to an engine sheet, renamed and del
   await expect(removal.root).toContainText("Vão junto 1 geração, 1 versão, 1 ano, 1 motor com ficha.");
   await removal.button("Excluir").click();
   await expect(tab.model("Clio II")).toHaveCount(0);
-  await expect(page.getByText("Nenhum modelo nessa marca")).toBeVisible();
+  await expect(tab.noModels).toBeVisible();
   await expect(page).not.toScrollSideways();
 });
 

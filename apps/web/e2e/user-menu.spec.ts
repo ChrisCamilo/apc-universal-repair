@@ -2,7 +2,7 @@ import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { logIn, loginForm } from "./locators/auth.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
-import { SESSION_STORAGE_KEY } from "@apc/domain/auth";
+import { initials, SESSION_STORAGE_KEY } from "@apc/domain/auth";
 import { THEME_STORAGE_KEYS } from "@apc/tokens/theme";
 import { TEST_USERS } from "@apc/domain/test-users";
 
@@ -17,14 +17,14 @@ test.use({ colorScheme: "dark" });
 test("Web: the user menu changes and keeps the display preferences", { tag: [TEST_TAGS.dashboard, TEST_TAGS.theme] }, async ({ page, isMobile }) => {
   const { trigger, menu, checkbox, radio } = userMenu(page);
   await page.goto("/inventory");
-  await expect(trigger.getByText("CC")).toBeVisible();
+  await expect(trigger.getByText(initials(USER.displayName))).toBeVisible();
   if (!isMobile) {
-    await expect(trigger.getByText("christian.camilo")).toBeVisible();
+    await expect(trigger.getByText(USER.username)).toBeVisible();
   } else {
-    await expect(trigger.getByText("christian.camilo")).toBeHidden();
+    await expect(trigger.getByText(USER.username)).toBeHidden();
   }
   await trigger.click();
-  await expect(menu.getByText("Christian Camilo")).toBeVisible();
+  await expect(menu.getByText(USER.displayName)).toBeVisible();
   const box = (await menu.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);

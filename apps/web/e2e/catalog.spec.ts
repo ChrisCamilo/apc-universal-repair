@@ -35,7 +35,7 @@ test("Web: the Catalog browses brands, models and engine sheets", { tag: [TEST_T
   await expect(tab.sheet("unoMille")).toBeVisible();
 
   await tab.brand("Ford").click();
-  await expect(page.getByText("Nenhuma ficha cadastrada")).toBeVisible();
+  await expect(tab.noSheet).toBeVisible();
   await expect(page).not.toScrollSideways();
 });
 
@@ -87,7 +87,7 @@ test("Web: on a phone the Catalog goes from a brand to an engine sheet and back"
   await tab.model("1986").click();
   await tab.model("4.1 L 6 cilindros").click();
   await expect(tab.sheet("opala41")).toBeVisible();
-  await expect(page.getByText("Opala › Terceira geração › Diplomata › 1986")).toBeVisible();
+  await expect(tab.path("Opala › Terceira geração › Diplomata › 1986")).toBeVisible();
   await expect(shell.bar).toBeVisible();
   await expect(page).not.toScrollSideways();
 

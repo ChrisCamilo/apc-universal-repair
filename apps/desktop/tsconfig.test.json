@@ -4,7 +4,8 @@
     "noEmit": true,
     // The smoke test's page.evaluate callbacks run in the window.
     "lib": ["ES2022", "DOM"],
-    "rootDir": "."
+    // The E2E find their elements through the web E2E's locators (apps/web/e2e/locators).
+    "rootDir": "../.."
   },
   "include": ["src", "e2e", "scripts", "playwright.config.ts"],
   "exclude": []

@@ -21,13 +21,13 @@ test("Web: an engine is added with its sheet, and the sheet is edited", { tag: [
   await expect(engine.root).toContainText("Na árvore: 3.8 L 6 cilindros");
   await engine.button("Salvar ficha").click();
   await expect(tab.model("3.8 L 6 cilindros")).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("heading", { name: "1985 · Chevrolet Opala Diplomata 3.8" })).toBeVisible();
+  await expect(tab.sheetTitle("1985 · Chevrolet Opala Diplomata 3.8")).toBeVisible();
 
   await tab.editSheet.click();
   const sheet = form(page, "Ficha do 3.8 L 6 cilindros");
   await sheet.field("Cilindrada (L)").fill("4,1");
   await sheet.button("Salvar ficha").click();
   await expect(tab.model("4.1 L 6 cilindros").first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "1985 · Chevrolet Opala Diplomata 4.1" })).toBeVisible();
+  await expect(tab.sheetTitle("1985 · Chevrolet Opala Diplomata 4.1")).toBeVisible();
   await expect(page).not.toScrollSideways();
 });

@@ -48,7 +48,7 @@ test("Web: an item's material and short description show in its details and unde
   await expect(viewer.root).toBeHidden();
   await expect(page.getByText("Ventilado, 256 mm")).toHaveCount(0);
 
-  await page.getByText("Disco de freio").first().click();
+  await inv.name("Disco de freio").click();
   const details = itemDetails(page);
   await expect(details.root.getByText("Ventilado, 256 mm")).toBeVisible();
   await expect(details.root.getByText("Ferro fundido", { exact: true })).toBeVisible();
@@ -63,7 +63,7 @@ test("Web: an item's material and short description show in its details and unde
   await expect(form.description).toHaveValue("eletrodo de níquel, rosca long");
   await form.save.click();
   await expect(toasts(page).named("Item “Vela” cadastrado.")).toBeVisible();
-  await page.getByText("Vela", { exact: true }).first().click();
+  await inv.name("Vela").click();
   await expect(details.root.getByText("Eletrodo de níquel, rosca long")).toBeVisible();
   await expect(details.root.getByText("Níquel", { exact: true })).toBeVisible();
 });
