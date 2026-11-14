@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
 import { DASHBOARD_TABS } from "@apc/ui-spec/tabs";
 import { dialog } from "./common.ts";
 
@@ -63,7 +63,13 @@ export function aboutDialog(page: Page) {
  * @param page The test's page, on the Dashboard.
  */
 export async function logOut(page: Page) {
-  const menu = userMenu(page);
-  await menu.trigger.click();
-  await menu.item("Sair").click();
+  await test.step(
+    "Log out",
+    async () => {
+      const menu = userMenu(page);
+      await menu.trigger.click();
+      await menu.item("Sair").click();
+    },
+    { box: true },
+  );
 }

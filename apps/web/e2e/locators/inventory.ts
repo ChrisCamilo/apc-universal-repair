@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import { test, type Locator, type Page } from "@playwright/test";
 import { TABLE_CARD_BREAKPOINT } from "@apc/ui-spec/table";
 import { dataTable, dialog, pagination } from "./common.ts";
 
@@ -169,20 +169,26 @@ type NewItem = { code: string; name: string; category: string; partBrand: string
  * @param item The fields to type.
  */
 export async function fillItem(page: Page, title: "Novo item" | "Editar item", item: NewItem) {
-  const form = itemForm(page, title);
-  await form.code.fill(item.code);
-  await form.name.fill(item.name);
-  await form.category.fill(item.category);
-  await form.partBrand.fill(item.partBrand);
-  if ((page.viewportSize()?.width ?? 0) < TABLE_CARD_BREAKPOINT) {
-    await form.addVehicle.click();
-    await form.vehicleBrand.fill(item.vehicleBrand);
-    await form.vehicleBrand.press("Escape");
-    await form.confirmVehicle.click();
-  } else {
-    await form.vehicleBrand.fill(item.vehicleBrand);
-  }
-  await form.unitPrice.fill(item.unitPrice);
+  await test.step(
+    `Fill in ${item.code} in ${title}`,
+    async () => {
+      const form = itemForm(page, title);
+      await form.code.fill(item.code);
+      await form.name.fill(item.name);
+      await form.category.fill(item.category);
+      await form.partBrand.fill(item.partBrand);
+      if ((page.viewportSize()?.width ?? 0) < TABLE_CARD_BREAKPOINT) {
+        await form.addVehicle.click();
+        await form.vehicleBrand.fill(item.vehicleBrand);
+        await form.vehicleBrand.press("Escape");
+        await form.confirmVehicle.click();
+      } else {
+        await form.vehicleBrand.fill(item.vehicleBrand);
+      }
+      await form.unitPrice.fill(item.unitPrice);
+    },
+    { box: true },
+  );
 }
 
 /**
@@ -225,8 +231,14 @@ export function deleteDialog(page: Page) {
  * @param name The item's name.
  */
 export async function deleteItem(page: Page, name: string) {
-  await inventory(page).remove(name).click();
-  await deleteDialog(page).confirm.click();
+  await test.step(
+    `Delete ${name}`,
+    async () => {
+      await inventory(page).remove(name).click();
+      await deleteDialog(page).confirm.click();
+    },
+    { box: true },
+  );
 }
 
 /**
