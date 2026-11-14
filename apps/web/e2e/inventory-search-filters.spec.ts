@@ -102,10 +102,8 @@ test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS
 });
 
 // On a phone, filters and sorts the list from its round buttons, with no "Ordenar" select: the filter sheet starts
-// with "Ordenar por" and each filter's choice. Two categories picked in their options, then the rear position, count
-// the items they would show in "Ver n itens" before anything is sent; with a sort chosen in the sheet, applying sends
-// them together and names them on the buttons. "Limpar" turns the filters and the sort off in the sheet, sent on
-// "Ver 4 itens". The round Ordenar sorts at once, and the sheet's "Ordenar por" shows that sort.
+// with "Ordenar por" and each filter's choice, and sends nothing until "Ver n itens", so a phone's list doesn't reload
+// at each tap.
 test("Web: on a phone the filters and the sort open in bottom sheets", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   const queries: string[] = [];
   await serveItems(page, ITEMS, (query) => query.has("pageSize") && queries.push(query.toString()));
@@ -117,46 +115,52 @@ test("Web: on a phone the filters and the sort open in bottom sheets", { tag: [T
   await expect(rows).toHaveCount(4);
   await expect(dataTable(page).sort).toHaveCount(0);
 
-  await inv.filters.click();
-  await expect(menu.sort).toHaveAccessibleName("Ordenar por Ordem de cadastro");
-  await expect(menu.field("Categoria")).toHaveAccessibleName("Categoria Todas");
-  await expect(menu.apply).toHaveText("Ver 4 itens");
-  await menu.field("Categoria").click();
-  await option.named("Motor").click();
-  await option.named("Suspensão").click();
-  await expect(menu.apply).toHaveText("Ver 2 itens");
-  await page.keyboard.press("Escape");
-  await expect(menu.field("Categoria")).toHaveAccessibleName("Categoria Motor +1");
-  await menu.segment("Posição", "Traseira").click();
-  await expect(menu.apply).toHaveText("Ver 1 item");
-  await menu.sort.click();
-  await option.named("Local (A → Z)").click();
-  await expect(menu.sort).toHaveAccessibleName("Ordenar por Local (A → Z)");
-  expect(queries.at(-1)).toBe("page=1&pageSize=25");
-  await menu.apply.click();
-  await expect(menu.root).toBeHidden();
-  expect(queries.at(-1)).toBe("category=Motor&category=Suspens%C3%A3o&position=T&page=1&pageSize=25&sort=location&order=asc");
-  await expect(rows.first()).toContainText("A-2");
-  await expect(inv.filters).toHaveAccessibleName("Filtros, 2 ativos");
-  await expect(inv.sort).toHaveAccessibleName("Ordenar, Local (A → Z)");
+  await test.step("the sheet counts the items its filters would show before anything is sent, and applying sends them with its sort", async () => {
+    await inv.filters.click();
+    await expect(menu.sort).toHaveAccessibleName("Ordenar por Ordem de cadastro");
+    await expect(menu.field("Categoria")).toHaveAccessibleName("Categoria Todas");
+    await expect(menu.apply).toHaveText("Ver 4 itens");
+    await menu.field("Categoria").click();
+    await option.named("Motor").click();
+    await option.named("Suspensão").click();
+    await expect(menu.apply).toHaveText("Ver 2 itens");
+    await page.keyboard.press("Escape");
+    await expect(menu.field("Categoria")).toHaveAccessibleName("Categoria Motor +1");
+    await menu.segment("Posição", "Traseira").click();
+    await expect(menu.apply).toHaveText("Ver 1 item");
+    await menu.sort.click();
+    await option.named("Local (A → Z)").click();
+    await expect(menu.sort).toHaveAccessibleName("Ordenar por Local (A → Z)");
+    expect(queries.at(-1)).toBe("page=1&pageSize=25");
+    await menu.apply.click();
+    await expect(menu.root).toBeHidden();
+    expect(queries.at(-1)).toBe("category=Motor&category=Suspens%C3%A3o&position=T&page=1&pageSize=25&sort=location&order=asc");
+    await expect(rows.first()).toContainText("A-2");
+    await expect(inv.filters).toHaveAccessibleName("Filtros, 2 ativos");
+    await expect(inv.sort).toHaveAccessibleName("Ordenar, Local (A → Z)");
+  });
 
-  await inv.filters.click();
-  await menu.clear.click();
-  await expect(menu.sort).toHaveAccessibleName("Ordenar por Ordem de cadastro");
-  await expect(menu.segment("Posição", "Todas")).toHaveAttribute("aria-checked", "true");
-  await menu.apply.click();
-  await expect(rows).toHaveCount(4);
-  expect(queries.at(-1)).toBe("page=1&pageSize=25");
-  await expect(inv.filters).toHaveAccessibleName("Filtros");
-  await expect(inv.sort).toHaveAccessibleName("Ordenar");
+  await test.step("Limpar turns the filters and the sort off, sent on Ver 4 itens", async () => {
+    await inv.filters.click();
+    await menu.clear.click();
+    await expect(menu.sort).toHaveAccessibleName("Ordenar por Ordem de cadastro");
+    await expect(menu.segment("Posição", "Todas")).toHaveAttribute("aria-checked", "true");
+    await menu.apply.click();
+    await expect(rows).toHaveCount(4);
+    expect(queries.at(-1)).toBe("page=1&pageSize=25");
+    await expect(inv.filters).toHaveAccessibleName("Filtros");
+    await expect(inv.sort).toHaveAccessibleName("Ordenar");
+  });
 
-  await inv.sort.click();
-  await option.named("Valor unitário (maior → menor)").click();
-  await expect(rows.first()).toContainText("Pastilha de freio");
-  expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=price&order=desc");
-  await expect(inv.sort).toHaveAccessibleName("Ordenar, Valor unitário (maior → menor)");
-  await inv.filters.click();
-  await expect(menu.sort).toHaveAccessibleName("Ordenar por Valor unitário (maior → menor)");
+  await test.step("the round Ordenar sorts at once, and the sheet's Ordenar por shows that sort", async () => {
+    await inv.sort.click();
+    await option.named("Valor unitário (maior → menor)").click();
+    await expect(rows.first()).toContainText("Pastilha de freio");
+    expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=price&order=desc");
+    await expect(inv.sort).toHaveAccessibleName("Ordenar, Valor unitário (maior → menor)");
+    await inv.filters.click();
+    await expect(menu.sort).toHaveAccessibleName("Ordenar por Valor unitário (maior → menor)");
+  });
 });
 
 // Presses each stock status chip on its own: "Estoque baixo" lists only the item under its minimum and "Esgotado"

@@ -104,9 +104,8 @@ test("Web: only the Inventory list scrolls, also on a 1360×768 notebook", { tag
   });
 });
 
-// Sorts a list of 30 items through the API: on the second page (on a phone, with the whole list loaded), sorting by
-// location goes back to the first 25 with the locations in natural order (A-2 before A-10); the same column again
-// reverses it; and the unit price sorts by value, ties in part code order. The desktop sorts with the column headers,
+// Sorts a list of 30 items through the API, which sorts the whole stock, not the page showing, so a sort starts over
+// from the first 25 and orders codes as people read them (A-2 before A-10). The desktop sorts with the column headers,
 // the phone with its round Ordenar, which names the sort on.
 test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   const stock = Array.from({ length: 30 }, (_, index) =>
@@ -128,38 +127,46 @@ test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }
       await expect(inventory(page).sort).toHaveAccessibleName(`Ordenar, ${option}`);
     }
   };
-  if (desktop) {
-    await inventory(page).pager.page(2).click();
-    await expect(rows).toHaveCount(5);
-  } else {
+  await test.step("the list starts on its second page, or wholly loaded on a phone", async () => {
+    if (desktop) {
+      await inventory(page).pager.page(2).click();
+      await expect(rows).toHaveCount(5);
+    } else {
+      await expect(rows).toHaveCount(25);
+      await rows.last().scrollIntoViewIfNeeded();
+      await expect(rows).toHaveCount(30);
+    }
+  });
+
+  await test.step("sorting by location goes back to the first 25, in natural order", async () => {
+    await sortBy("Local", "Local (A → Z)");
     await expect(rows).toHaveCount(25);
-    await rows.last().scrollIntoViewIfNeeded();
-    await expect(rows).toHaveCount(30);
-  }
+    await expect(rows.nth(0)).toContainText("A-1");
+    await expect(rows.nth(1)).toContainText("A-2");
+    expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=location&order=asc");
+    if (desktop) {
+      await expect(table.header("Local")).toHaveAttribute("aria-sort", "ascending");
+    }
+  });
 
-  await sortBy("Local", "Local (A → Z)");
-  await expect(rows).toHaveCount(25);
-  await expect(rows.nth(0)).toContainText("A-1");
-  await expect(rows.nth(1)).toContainText("A-2");
-  expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=location&order=asc");
-  if (desktop) {
-    await expect(table.header("Local")).toHaveAttribute("aria-sort", "ascending");
-  }
+  await test.step("the same column again reverses the sort", async () => {
+    await sortBy("Local", "Local (Z → A)");
+    await expect(rows.nth(0)).toContainText("A-30");
+    expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=location&order=desc");
+  });
 
-  await sortBy("Local", "Local (Z → A)");
-  await expect(rows.nth(0)).toContainText("A-30");
-  expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=location&order=desc");
-
-  await sortBy("Valor unit.", "Valor unitário (menor → maior)");
-  if (desktop) {
-    await sortBy("Valor unit.", "");
-  } else {
-    await sortBy("", "Valor unitário (maior → menor)");
-  }
-  await expect(rows.nth(0)).toContainText("P-7");
-  await expect(rows.nth(0)).toContainText(/R\$\s7,00/);
-  await expect(rows.nth(1)).toContainText("P-14");
-  expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=price&order=desc");
+  await test.step("the unit price sorts by value, ties in part code order", async () => {
+    await sortBy("Valor unit.", "Valor unitário (menor → maior)");
+    if (desktop) {
+      await sortBy("Valor unit.", "");
+    } else {
+      await sortBy("", "Valor unitário (maior → menor)");
+    }
+    await expect(rows.nth(0)).toContainText("P-7");
+    await expect(rows.nth(0)).toContainText(/R\$\s7,00/);
+    await expect(rows.nth(1)).toContainText("P-14");
+    expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=price&order=desc");
+  });
 });
 
 // Follows the list's feedback: skeleton rows while the API takes its time, then the error state when it fails, whose
@@ -207,11 +214,9 @@ test("Web: the inventory shows loading, error and empty states", { tag: [TEST_TA
   await expect(itemForm(page, "Novo item").root).toBeVisible();
 });
 
-// Pages through 60 items, newest first, against an API that pages what it is asked for: 25 per page by default, with
-// the range shown; page 2 asks for page 2; 50 per page keeps the first item that was showing on screen; a search goes
-// back to page 1; the user menu's "Itens por página" applies to the list at once; deleting the last item of the last
-// page goes to the page before; and a new item shows first on page 1. A phone loads more as it scrolls instead (see
-// the test after this one).
+// Pages through 51 items, newest first, against an API that pages what it is asked for, 25 per page by default: each
+// change of page, size, search or stock asks for the page that keeps the user's place. A phone loads more as it
+// scrolls instead (see the test after this one).
 test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inventory, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const stock = Array.from({ length: 51 }, (_, index) =>
     item({ code: `P-${String(index + 1).padStart(3, "0")}`, name: `Peça ${index + 1}`, quantity: 5 }),
@@ -230,41 +235,51 @@ test("Web: the inventory list shows one page at a time", { tag: [TEST_TAGS.inven
   await page.goto("/inventory");
   const inv = inventory(page);
   const { rows } = dataTable(page);
-  await expect(rows).toHaveCount(25);
-  await expect(inv.pager.range("1–25 de 51")).toBeVisible();
-  expect(queries.at(-1)).toBe("page=1&pageSize=25");
+  await test.step("the first page shows 25 items and its range", async () => {
+    await expect(rows).toHaveCount(25);
+    await expect(inv.pager.range("1–25 de 51")).toBeVisible();
+    expect(queries.at(-1)).toBe("page=1&pageSize=25");
+  });
 
-  await inv.pager.page(2).click();
-  await expect(rows.first()).toContainText("P-026");
-  expect(queries.at(-1)).toBe("page=2&pageSize=25");
-  await inv.pager.size(50).click();
-  await expect(rows).toHaveCount(50);
-  await expect(inv.pager.range("1–50 de 51")).toBeVisible();
-  await expect(rows.nth(25)).toContainText("P-026");
+  await test.step("page 2 asks for page 2, and 50 per page keeps the first item that was showing", async () => {
+    await inv.pager.page(2).click();
+    await expect(rows.first()).toContainText("P-026");
+    expect(queries.at(-1)).toBe("page=2&pageSize=25");
+    await inv.pager.size(50).click();
+    await expect(rows).toHaveCount(50);
+    await expect(inv.pager.range("1–50 de 51")).toBeVisible();
+    await expect(rows.nth(25)).toContainText("P-026");
+  });
 
-  await inv.pager.page(2).click();
-  await expect(rows).toHaveCount(1);
-  await inv.search.fill("Peça 1");
-  await expect(inv.pager.range(/^1–\d+ de \d+$/)).toBeVisible();
-  expect(queries.at(-1)).toBe("q=Pe%C3%A7a+1&page=1&pageSize=50");
-  await inv.clearSearch.click();
+  await test.step("a search goes back to page 1", async () => {
+    await inv.pager.page(2).click();
+    await expect(rows).toHaveCount(1);
+    await inv.search.fill("Peça 1");
+    await expect(inv.pager.range(/^1–\d+ de \d+$/)).toBeVisible();
+    expect(queries.at(-1)).toBe("q=Pe%C3%A7a+1&page=1&pageSize=50");
+    await inv.clearSearch.click();
+  });
 
-  await userMenu(page).trigger.click();
-  await userMenu(page).radio("100").click();
-  await page.keyboard.press("Escape");
-  await expect(rows).toHaveCount(51);
-  await expect(inv.pager.size(100)).toHaveAttribute("aria-checked", "true");
-  await inv.pager.size(25).click();
-  await inv.pager.page(3).click();
-  await expect(rows).toHaveCount(1);
-  await deleteItem(page, "Peça 51");
-  await expect(inv.pager.range("26–50 de 50")).toBeVisible();
+  await test.step("the user menu's Itens por página applies at once, and deleting a last page's only item goes to the page before", async () => {
+    await userMenu(page).trigger.click();
+    await userMenu(page).radio("100").click();
+    await page.keyboard.press("Escape");
+    await expect(rows).toHaveCount(51);
+    await expect(inv.pager.size(100)).toHaveAttribute("aria-checked", "true");
+    await inv.pager.size(25).click();
+    await inv.pager.page(3).click();
+    await expect(rows).toHaveCount(1);
+    await deleteItem(page, "Peça 51");
+    await expect(inv.pager.range("26–50 de 50")).toBeVisible();
+  });
 
-  await inv.newItem.first().click();
-  await fillItem(page, "Novo item", { code: "nova-1", name: "peça nova", category: "Motor", partBrand: "Bosch", vehicleBrand: "Volkswagen", unitPrice: "10" });
-  await itemForm(page, "Novo item").save.click();
-  await expect(inv.pager.range("1–25 de 51")).toBeVisible();
-  await expect(rows.first()).toContainText("NOVA-1");
+  await test.step("a new item shows first on page 1", async () => {
+    await inv.newItem.first().click();
+    await fillItem(page, "Novo item", { code: "nova-1", name: "peça nova", category: "Motor", partBrand: "Bosch", vehicleBrand: "Volkswagen", unitPrice: "10" });
+    await itemForm(page, "Novo item").save.click();
+    await expect(inv.pager.range("1–25 de 51")).toBeVisible();
+    await expect(rows.first()).toContainText("NOVA-1");
+  });
 });
 
 // On a phone, lists 51 items and checks the first 25 show with no pagination; scrolling to the end asks the API for the

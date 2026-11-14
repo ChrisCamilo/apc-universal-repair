@@ -191,6 +191,12 @@ export async function freePort(): Promise<number> {
  * @param user The username and password to type, e.g. a test user.
  */
 export async function logIn(page: Page, user: Pick<(typeof TEST_USERS)[number], "username" | "password">) {
-  await submitLogin(page, user);
-  await expect(dashboard(page).tab("inventory")).toHaveAttribute("aria-selected", "true");
+  await base.step(
+    `Log in as ${user.username} and wait for the Inventory`,
+    async () => {
+      await submitLogin(page, user);
+      await expect(dashboard(page).tab("inventory")).toHaveAttribute("aria-selected", "true");
+    },
+    { box: true },
+  );
 }

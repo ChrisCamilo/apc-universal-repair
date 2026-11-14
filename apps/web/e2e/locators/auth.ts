@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
 
 // The screens before the session starts: the login and the sign-up.
 
@@ -26,10 +26,16 @@ export function loginForm(page: Page) {
  * @param user The username and password to type.
  */
 export async function logIn(page: Page, user: { username: string; password: string }) {
-  const form = loginForm(page);
-  await form.username.fill(user.username);
-  await form.password.fill(user.password);
-  await form.submit.click();
+  await test.step(
+    `Log in as ${user.username}`,
+    async () => {
+      const form = loginForm(page);
+      await form.username.fill(user.username);
+      await form.password.fill(user.password);
+      await form.submit.click();
+    },
+    { box: true },
+  );
 }
 
 /**

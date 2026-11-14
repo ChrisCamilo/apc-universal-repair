@@ -79,11 +79,9 @@ test("Web: a part code in use is named while it is typed", { tag: [TEST_TAGS.inv
   expect(sent).toEqual([]);
 });
 
-// Creates the names of a new item from the form against an API that keeps what it is sent: a category, part brand,
-// vehicle brand and model the lists don't hold each offer "+ Criar" with the name already written by the rule, and
-// picking it creates the name, fills it in and says so in a toast, the model under the brand just created. A name
-// typed without picking "+ Criar" is refused on save, pointing to it. Once the item is saved, its new category is in
-// the Filtros menu without a reload. On a phone the vehicle is created in a new vehicle, made a chip with Adicionar.
+// Creates a new item's names from the item form against an API that keeps what it is sent: a name the lists don't hold
+// offers "+ Criar", written by the rule, and picking it creates the name, fills it in and says so in a toast. Only a
+// name created this way is saved, so a list never gets a name no one meant to add.
 test("Web: categories, brands and models are created from the item form", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
@@ -99,57 +97,65 @@ test("Web: categories, brands and models are created from the item form", { tag:
   await form.code.fill("t-1");
   await form.name.fill("Turbina");
 
-  await form.category.fill("motor diesel");
-  await option("+ Criar categoria “Motor diesel”").click();
-  await expect(toasts(page).named("Categoria “Motor diesel” criada.")).toBeVisible();
-  await expect(form.category).toHaveValue("Motor diesel");
-  await form.partBrand.fill("NGK");
-  await option("+ Criar marca “NGK”").click();
-  await expect(toasts(page).named("Marca de peça “NGK” criada.")).toBeVisible();
-  if (isMobile) {
-    await form.addVehicle.click();
-  }
-  await form.vehicleBrand.fill("renault");
-  await expect(form.vehicleModel).toBeDisabled();
-  const brandCreated = page.waitForResponse((response) => response.url().endsWith("/api/vehicle-brands") && response.status() === 201);
-  await option("+ Criar marca “Renault”").click();
-  const renault = await (await brandCreated).json();
-  await expect(toasts(page).named("Marca de veículo “Renault” criada.")).toBeVisible();
-  await expect(form.vehicleModel).toBeEnabled();
-  await form.vehicleModel.fill("Clio");
-  const modelCreated = page.waitForRequest((request) => request.url().endsWith("/api/vehicle-models") && request.method() === "POST");
-  await option("+ Criar modelo “Clio”").click();
-  expect((await modelCreated).postDataJSON()).toEqual({ name: "Clio", vehicleBrandId: renault.id });
-  await expect(toasts(page).named("Modelo “Clio” criado.")).toBeVisible();
-  if (isMobile) {
-    await form.confirmVehicle.click();
-    await expect(form.vehicle("Renault Clio")).toBeVisible();
-  }
-  await form.unitPrice.fill("10");
-
-  await form.category.fill("Turbo");
-  await form.save.click();
-  await expect(form.root.getByText("Categoria não cadastrada. Escolha “+ Criar categoria” na lista.")).toBeVisible();
-  await form.category.fill("motor diesel");
-  await form.save.click();
-  await expect(toasts(page).named("Item “Turbina” cadastrado.")).toBeVisible();
-  expect(stock[0]).toMatchObject({
-    category: "Motor diesel",
-    vehicles: [{ vehicleBrand: "Renault", vehicleModel: "Clio" }],
-    brands: [{ partBrand: "NGK" }],
+  await test.step("a category and a part brand are created from their + Criar", async () => {
+    await form.category.fill("motor diesel");
+    await option("+ Criar categoria “Motor diesel”").click();
+    await expect(toasts(page).named("Categoria “Motor diesel” criada.")).toBeVisible();
+    await expect(form.category).toHaveValue("Motor diesel");
+    await form.partBrand.fill("NGK");
+    await option("+ Criar marca “NGK”").click();
+    await expect(toasts(page).named("Marca de peça “NGK” criada.")).toBeVisible();
   });
 
-  await inventory(page).filters.click();
-  await filtersMenu(page).field("Categoria").click();
-  await expect(option("Motor diesel")).toBeVisible();
+  await test.step("a vehicle brand is created, then a model under it", async () => {
+    // On a phone the vehicle is made in a new vehicle, a chip once Adicionar adds it.
+    if (isMobile) {
+      await form.addVehicle.click();
+    }
+    await form.vehicleBrand.fill("renault");
+    await expect(form.vehicleModel).toBeDisabled();
+    const brandCreated = page.waitForResponse((response) => response.url().endsWith("/api/vehicle-brands") && response.status() === 201);
+    await option("+ Criar marca “Renault”").click();
+    const renault = await (await brandCreated).json();
+    await expect(toasts(page).named("Marca de veículo “Renault” criada.")).toBeVisible();
+    await expect(form.vehicleModel).toBeEnabled();
+    await form.vehicleModel.fill("Clio");
+    const modelCreated = page.waitForRequest((request) => request.url().endsWith("/api/vehicle-models") && request.method() === "POST");
+    await option("+ Criar modelo “Clio”").click();
+    expect((await modelCreated).postDataJSON()).toEqual({ name: "Clio", vehicleBrandId: renault.id });
+    await expect(toasts(page).named("Modelo “Clio” criado.")).toBeVisible();
+    if (isMobile) {
+      await form.confirmVehicle.click();
+      await expect(form.vehicle("Renault Clio")).toBeVisible();
+    }
+  });
+
+  await test.step("a name typed without + Criar is refused on save, and the item is saved with the names created", async () => {
+    await form.unitPrice.fill("10");
+
+    await form.category.fill("Turbo");
+    await form.save.click();
+    await expect(form.root.getByText("Categoria não cadastrada. Escolha “+ Criar categoria” na lista.")).toBeVisible();
+    await form.category.fill("motor diesel");
+    await form.save.click();
+    await expect(toasts(page).named("Item “Turbina” cadastrado.")).toBeVisible();
+    expect(stock[0]).toMatchObject({
+      category: "Motor diesel",
+      vehicles: [{ vehicleBrand: "Renault", vehicleModel: "Clio" }],
+      brands: [{ partBrand: "NGK" }],
+    });
+  });
+
+  await test.step("the new category is in the Filtros menu without a reload", async () => {
+    await inventory(page).filters.click();
+    await filtersMenu(page).field("Categoria").click();
+    await expect(option("Motor diesel")).toBeVisible();
+  });
 });
 
-// At 360×780, creates an item of two brands through "Novo item" against an API that keeps what it is sent, then edits
-// it: the form fills the screen, as in the Novo item mockup, with the × and "Novo item" on top, where the focus starts
-// so no keyboard rises, and "Salvar item" across the bottom; the vehicle is added as a chip, the position and side are
-// chosen in full words, the minimum with its +, and a second brand from the dashed "Adicionar marca". The item is
-// posted with both brands. Its edit, from the card's details, is titled with its name, keeps its chip and its choices,
-// and patches a new side.
+// At 360×780, creates an item of two brands through "Novo item" and edits it, against an API that keeps what it is
+// sent: the form fills the screen as in the Novo item mockup, its focus on the × so no keyboard rises, and each choice
+// is made by touch, in full words, as a phone's form asks.
 test("Web: on a phone the item form fills the screen, as in the Novo item mockup", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
@@ -165,74 +171,82 @@ test("Web: on a phone the item form fills the screen, as in the Novo item mockup
   });
   await page.goto("/inventory");
   const form = itemForm(page, "Novo item");
-  await inventory(page).newItem.click();
-  const { width, height } = page.viewportSize()!;
-  await expect.poll(async () => form.root.boundingBox()).toEqual({ x: 0, y: 0, width, height });
-  await expect(form.close).toBeFocused();
-  await expect(form.root.getByRole("button", { name: "Cancelar" })).toHaveCount(0);
-  await expect(form.save).toHaveAccessibleName("Salvar item");
-  await expect(form.save).toBeInViewport();
-  const save = (await form.save.boundingBox())!;
-  expect(save.width).toBe(width - 32);
-
-  await form.name.fill("pastilha de freio");
-  await form.category.fill("Freios");
-  await form.category.press("Escape");
-  await form.addVehicle.click();
-  await expect(form.vehicleBrand).toBeFocused();
-  await form.vehicleBrand.fill("Volkswagen");
-  await form.vehicleBrand.press("Escape");
-  await form.vehicleModel.fill("Gol");
-  await form.vehicleModel.press("Escape");
-  await form.confirmVehicle.click();
-  await expect(form.vehicle("Volkswagen Gol")).toBeVisible();
-  await expect(form.addVehicle).toBeFocused();
-  await form.position("Dianteira").click();
-  await form.side("Esquerdo").click();
-  await form.raiseMinimum.click();
-  await expect(form.minimum).toHaveValue("1");
-
-  const first = form.brand(1);
-  await expect(first.getByLabel("Tirar foto")).toBeAttached();
-  await expect(first.getByLabel("Galeria")).toBeAttached();
-  await first.getByRole("combobox", { name: "Marca da peça" }).fill("Cobreq");
-  await first.getByRole("combobox", { name: "Marca da peça" }).press("Escape");
-  await first.getByLabel("Código da peça").fill("n-1210");
-  await first.getByLabel("Quantidade", { exact: true }).fill("4");
-  await first.getByLabel("Valor unitário (R$)").fill("79,9");
-  const [quantity, price] = await Promise.all(
-    [first.getByLabel("Quantidade", { exact: true }), first.getByLabel("Valor unitário (R$)")].map(async (field) => (await field.boundingBox())!),
-  );
-  expect(quantity.y).toBe(price.y);
-  await form.addBrand.click();
-  const second = form.brand(2);
-  await second.getByRole("combobox", { name: "Marca da peça" }).fill("Mann");
-  await second.getByRole("combobox", { name: "Marca da peça" }).press("Escape");
-  await second.getByLabel("Código da peça").fill("w-2");
-  await second.getByLabel("Valor unitário (R$)").fill("10");
-  await form.save.click();
-  await expect(toasts(page).named("Item “Pastilha de freio” cadastrado.")).toBeVisible();
-  await expect(form.root).toBeHidden();
-  expect(stock[0]).toMatchObject({
-    name: "Pastilha de freio",
-    vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Gol" }],
-    position: "D",
-    side: "LE",
-    minQuantity: 1,
-    brands: [
-      { partBrand: "Cobreq", code: "N-1210", quantity: 4, unitPriceCents: 7990 },
-      { partBrand: "Mann", code: "W-2", unitPriceCents: 1000 },
-    ],
+  await test.step("the form fills the screen, its × focused, with Salvar item across the bottom and no Cancelar", async () => {
+    await inventory(page).newItem.click();
+    const { width, height } = page.viewportSize()!;
+    await expect.poll(async () => form.root.boundingBox()).toEqual({ x: 0, y: 0, width, height });
+    await expect(form.close).toBeFocused();
+    await expect(form.root.getByRole("button", { name: "Cancelar" })).toHaveCount(0);
+    await expect(form.save).toHaveAccessibleName("Salvar item");
+    await expect(form.save).toBeInViewport();
+    const save = (await form.save.boundingBox())!;
+    expect(save.width).toBe(width - 32);
   });
 
-  await dataTable(page).rows.filter({ hasText: "N-1210" }).first().click();
-  await itemDetails(page).edit.click();
-  const edit = itemForm(page, "Editar item");
-  await expect(edit.root.getByRole("heading", { name: "Pastilha de freio" })).toBeVisible();
-  await expect(edit.vehicle("Volkswagen Gol")).toBeVisible();
-  await expect(edit.position("Dianteira")).toBeChecked();
-  await edit.side("Ambos").click();
-  await edit.save.click();
-  await expect(toasts(page).named("Item “Pastilha de freio” salvo.")).toBeVisible();
-  expect(stock[0]).toMatchObject({ side: "Ambos", brands: [{ code: "N-1210" }, { code: "W-2" }] });
+  await test.step("the vehicle is added as a chip, the position and side chosen in full words, the minimum raised with its +", async () => {
+    await form.name.fill("pastilha de freio");
+    await form.category.fill("Freios");
+    await form.category.press("Escape");
+    await form.addVehicle.click();
+    await expect(form.vehicleBrand).toBeFocused();
+    await form.vehicleBrand.fill("Volkswagen");
+    await form.vehicleBrand.press("Escape");
+    await form.vehicleModel.fill("Gol");
+    await form.vehicleModel.press("Escape");
+    await form.confirmVehicle.click();
+    await expect(form.vehicle("Volkswagen Gol")).toBeVisible();
+    await expect(form.addVehicle).toBeFocused();
+    await form.position("Dianteira").click();
+    await form.side("Esquerdo").click();
+    await form.raiseMinimum.click();
+    await expect(form.minimum).toHaveValue("1");
+  });
+
+  await test.step("two brands are filled in, the second from the dashed Adicionar marca, and the item is posted with both", async () => {
+    const first = form.brand(1);
+    await expect(first.getByLabel("Tirar foto")).toBeAttached();
+    await expect(first.getByLabel("Galeria")).toBeAttached();
+    await first.getByRole("combobox", { name: "Marca da peça" }).fill("Cobreq");
+    await first.getByRole("combobox", { name: "Marca da peça" }).press("Escape");
+    await first.getByLabel("Código da peça").fill("n-1210");
+    await first.getByLabel("Quantidade", { exact: true }).fill("4");
+    await first.getByLabel("Valor unitário (R$)").fill("79,9");
+    const [quantity, price] = await Promise.all(
+      [first.getByLabel("Quantidade", { exact: true }), first.getByLabel("Valor unitário (R$)")].map(async (field) => (await field.boundingBox())!),
+    );
+    expect(quantity.y).toBe(price.y);
+    await form.addBrand.click();
+    const second = form.brand(2);
+    await second.getByRole("combobox", { name: "Marca da peça" }).fill("Mann");
+    await second.getByRole("combobox", { name: "Marca da peça" }).press("Escape");
+    await second.getByLabel("Código da peça").fill("w-2");
+    await second.getByLabel("Valor unitário (R$)").fill("10");
+    await form.save.click();
+    await expect(toasts(page).named("Item “Pastilha de freio” cadastrado.")).toBeVisible();
+    await expect(form.root).toBeHidden();
+    expect(stock[0]).toMatchObject({
+      name: "Pastilha de freio",
+      vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Gol" }],
+      position: "D",
+      side: "LE",
+      minQuantity: 1,
+      brands: [
+        { partBrand: "Cobreq", code: "N-1210", quantity: 4, unitPriceCents: 7990 },
+        { partBrand: "Mann", code: "W-2", unitPriceCents: 1000 },
+      ],
+    });
+  });
+
+  await test.step("the edit, from the card's details, is titled with the item's name, keeps its choices and patches a new side", async () => {
+    await dataTable(page).rows.filter({ hasText: "N-1210" }).first().click();
+    await itemDetails(page).edit.click();
+    const edit = itemForm(page, "Editar item");
+    await expect(edit.root.getByRole("heading", { name: "Pastilha de freio" })).toBeVisible();
+    await expect(edit.vehicle("Volkswagen Gol")).toBeVisible();
+    await expect(edit.position("Dianteira")).toBeChecked();
+    await edit.side("Ambos").click();
+    await edit.save.click();
+    await expect(toasts(page).named("Item “Pastilha de freio” salvo.")).toBeVisible();
+    expect(stock[0]).toMatchObject({ side: "Ambos", brands: [{ code: "N-1210" }, { code: "W-2" }] });
+  });
 });
