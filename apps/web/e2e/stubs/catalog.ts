@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { CATALOG_PATH } from "@apc/domain/catalog";
 import { applyCatalogChange, catalogChangeOf, TEST_CATALOG_DATA } from "@apc/domain/test-catalog";
+import { apiUrl } from "../support/api.ts";
 
 // A stand-in for the catalog's routes, so the Catalog tab works the same on every run without a database: GET answers
 // the catalog a new server starts with, and the changes (a brand or a node added, renamed, moved or deleted) are made on
@@ -14,7 +15,7 @@ import { applyCatalogChange, catalogChangeOf, TEST_CATALOG_DATA } from "@apc/dom
 export async function serveCatalog(page: Page): Promise<void> {
   let catalog = structuredClone(TEST_CATALOG_DATA);
   await page.route(
-    (url) => url.pathname.startsWith(`/api${CATALOG_PATH}`),
+    apiUrl(`${CATALOG_PATH}(/.*)?`),
     (route) => {
       const request = route.request();
       const path = new URL(request.url()).pathname.slice(`/api${CATALOG_PATH}`.length);
