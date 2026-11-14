@@ -14,6 +14,7 @@ import {
   catalogNodes,
   catalogSiblings,
   catalogValuesOf,
+  catalogWithParts,
   engineSheetNames,
   ENGINE_SPEC_LABELS,
   enginePath,
@@ -34,6 +35,7 @@ import {
   type CatalogValues,
   type FoundPart,
 } from '@apc/domain/catalog'
+import type { Item } from '@apc/domain/items'
 import { chevronIcon, closeIcon, ICON_SIZES, moreIcon, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/tokens/icons'
 import { ActionSheet } from '../../components/ActionSheet'
 import { BottomSheet } from '../../components/BottomSheet'
@@ -46,6 +48,7 @@ import { ImageFrame } from '../../components/ImageFrame'
 import { Panel } from '../../components/Panel'
 import { SelectableTileGroup } from '../../components/SelectableTile'
 import { Spinner } from '../../components/Spinner'
+import { Switch } from '../../components/Switch'
 import { SearchField } from '../../components/TextField'
 import { TreeView } from '../../components/TreeView'
 import { Heading, NumericReadout, Text } from '../../components/Typography'
@@ -58,6 +61,7 @@ import { NodeForm } from './NodeForm.tsx'
 import { PartResults } from './PartResults.tsx'
 import { useCatalog } from './useCatalog.ts'
 import { useCatalogEditing } from './useCatalogEditing.ts'
+import { usePartsOnly } from './usePartsOnly.ts'
 import { useInventoryLink } from '../dashboard/inventoryLinkContext.ts'
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 
@@ -102,21 +106,40 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // click on one opens its details in the Inventory tab, and "Ver todas as peças" opens the Inventory with the filters
 // that list them (see inventoryLinkContext.ts). On a phone it is a screen of its own under the path to it, which ← leaves
 // for the models open on it.
+// "Só com peças", under the rail's search (on a phone, under the brands' search), shows only the models some
+// part in stock fits, and the brands with one (catalogWithParts); each device remembers it (usePartsOnly). The brand
+// open stays when it has a part, or the first brand opens. It can't be turned on while no part fits a vehicle, and
+// adding a brand or a model turns it off, so the new one, with no part yet, shows. The tab loads the items once, for
+// this and for the parts the searches and the sheets list, and waits for them when it is on.
 
 /** The ids of the phone's node and sheet forms, which the buttons of their sheet and dialog send. */
 const NODE_FORM_ID = 'catalog-node-form'
 const SHEET_FORM_ID = 'catalog-sheet-form'
 
+/** What both layouts take: the whole catalog, the items in stock, whether to show only the vehicles they fit, and the change handlers. */
+type CatalogProps = {
+  catalog: Catalog
+  items: readonly Item[]
+  partsOnly: boolean
+  onPartsOnly: (on: boolean) => void
+  onChanged: (catalog: Catalog) => void
+}
+
 export function CatalogTab() {
   const state = useCatalog()
+  const stock = useItems()
+  const [partsOnly, setPartsOnly] = usePartsOnly()
   const phone = usePhone()
   const { classes, ids } = catalogTab()
-  if (state.status === 'ready' && state.catalog.brands.length > 0) {
-    return phone ? <PhoneCatalog catalog={state.catalog} onChanged={state.replace} /> : <WideCatalog catalog={state.catalog} onChanged={state.replace} />
+  const items = stock.status === 'ready' ? stock.items : []
+  const waiting = partsOnly && stock.status === 'loading'
+  if (state.status === 'ready' && state.catalog.brands.length > 0 && !waiting) {
+    const props = { catalog: state.catalog, items, partsOnly, onPartsOnly: setPartsOnly, onChanged: state.replace }
+    return phone ? <PhoneCatalog {...props} /> : <WideCatalog {...props} />
   }
   return (
     <div className={classes.status()} data-testid={ids.status}>
-      {state.status === 'loading' && <Spinner label="Carregando o catálogo" />}
+      {(state.status === 'loading' || (state.status === 'ready' && waiting)) && <Spinner label="Carregando o catálogo" />}
       {state.status === 'error' && (
         <ErrorState
           title="Não foi possível carregar o catálogo"
@@ -124,7 +147,7 @@ export function CatalogTab() {
           action={{ label: 'Tentar de novo', onClick: state.reload }}
         />
       )}
-      {state.status === 'ready' && <EmptyCatalog onChanged={state.replace} />}
+      {state.status === 'ready' && !waiting && <EmptyCatalog onChanged={state.replace} />}
     </div>
   )
 }
@@ -154,13 +177,16 @@ function EmptyCatalog({ onChanged }: { onChanged: (catalog: Catalog) => void }) 
 }
 
 /** The Catalog from a tablet up: the rail, the tree and the detail column, with the tree edited in place. */
-function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (catalog: Catalog) => void }) {
-  const state = useItems()
+function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged }: CatalogProps) {
   const { classes, ids } = catalogTab()
-  const items = state.status === 'ready' ? state.items : []
+  const withParts = catalogWithParts(all, items)
+  const partsOnly = wanted && withParts.brands.length > 0
+  const catalog = partsOnly ? withParts : all
   const [brandQuery, setBrandQuery] = useState('')
   const [query, setQuery] = useState('')
-  const [brandId, setBrandId] = useState(catalog.brands[0].id)
+  const [chosenBrand, setBrandId] = useState(catalog.brands[0].id)
+  // The brand open, or the first when it isn't shown.
+  const brandId = catalog.brands.some((b) => b.id === chosenBrand) ? chosenBrand : catalog.brands[0].id
   const [engine, setEngine] = useState(() => firstSheet(catalog, catalog.brands[0].models))
   const [part, setPart] = useState<FoundPart | null>(null)
   // Bumped to draw the tree again, open on the engine of a part just chosen.
@@ -206,6 +232,15 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
   const openBrandOf = (changed: Catalog, id: string) => {
     setBrandId(id)
     setEngine(firstSheet(changed, changed.brands.find((b) => b.id === id)!.models))
+  }
+
+  /** Shows only the vehicles some part fits, or all of them, opening the first brand when the open one goes. */
+  const showPartsOnly = (on: boolean) => {
+    onPartsOnly(on)
+    const next = on ? withParts : all
+    if (!next.brands.some((b) => b.id === brandId)) {
+      openBrandOf(next, next.brands[0].id)
+    }
   }
 
   /** Reveals a part's vehicle: its brand, its engine, and the tree open on them. */
@@ -300,6 +335,9 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
     <div className={classes.base()} data-testid={ids.base}>
       <Panel className={classes.rail()}>
         <SearchField label="Procure marca" value={brandQuery} onValueChange={setBrandQuery} />
+        <Switch checked={partsOnly} onCheckedChange={showPartsOnly} disabled={withParts.brands.length === 0}>
+          Só com peças
+        </Switch>
         <SelectableTileGroup
           label="Marcas"
           options={brandsNamed(catalog, brandQuery).map((b) => ({ value: b.id, label: b.name }))}
@@ -310,7 +348,15 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
         {editing?.kind === 'add' && editing.level === 'brand' ? (
           form('brand', 'Nova marca')
         ) : (
-          <Button variant="ghost" size="sm" icon={plusIcon} onClick={() => editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } })}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={plusIcon}
+            onClick={() => {
+              onPartsOnly(false)
+              editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } })
+            }}
+          >
             Nova marca
           </Button>
         )}
@@ -328,7 +374,10 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
                 variant="ghost"
                 size="sm"
                 icon={plusIcon}
-                onClick={() => editor.edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } })}
+                onClick={() => {
+                  onPartsOnly(false)
+                  editor.edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } })
+                }}
               >
                 Novo modelo
               </Button>
@@ -451,11 +500,12 @@ function WideCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (cat
 }
 
 /** The Catalog on a phone: one screen at a time, the brands, a brand's models or an engine's sheet, edited in sheets. */
-function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (catalog: Catalog) => void }) {
-  const state = useItems()
+function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged }: CatalogProps) {
   const setHeader = usePhoneHeader()
   const { classes, ids } = catalogTab()
-  const items = state.status === 'ready' ? state.items : []
+  const withParts = catalogWithParts(all, items)
+  const partsOnly = wanted && withParts.brands.length > 0
+  const catalog = partsOnly ? withParts : all
   const [screen, setScreen] = useState<CatalogScreen>(CATALOG_HOME)
   const [query, setQuery] = useState('')
   const links = useInventoryLink()
@@ -613,7 +663,15 @@ function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (ca
             <h2 className={classes.heading()} data-testid={ids.heading}>
               Modelos · {models.length}
             </h2>
-            <Button variant="ghost" size="sm" icon={plusIcon} onClick={() => editor.edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } })}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={plusIcon}
+              onClick={() => {
+                onPartsOnly(false)
+                editor.edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } })
+              }}
+            >
               Novo modelo
             </Button>
           </div>
@@ -651,11 +709,22 @@ function PhoneCatalog({ catalog, onChanged }: { catalog: Catalog; onChanged: (ca
     return (
       <div className={classes.screen()} data-testid={ids.screen}>
         {search}
+        <Switch checked={partsOnly} onCheckedChange={onPartsOnly} disabled={withParts.brands.length === 0}>
+          Só com peças
+        </Switch>
         <div className={classes.screenHead()} data-testid={ids.screenHead}>
           <h2 className={classes.heading()} data-testid={ids.heading}>
             Marcas · {brands.length}
           </h2>
-          <Button variant="ghost" size="sm" icon={plusIcon} onClick={() => editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } })}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={plusIcon}
+            onClick={() => {
+              onPartsOnly(false)
+              editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } })
+            }}
+          >
             Nova marca
           </Button>
         </div>
