@@ -73,6 +73,13 @@ test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS
   await expect(inv.filters).toHaveAccessibleName("Filtros, 1 ativo");
   await expect(inv.count).toHaveText("2 de 4 itens · 1 baixo · 1 esgotado");
 
+  // A stock status chip narrows the menu's filters further, as no low item is a Motor or Suspensão one; the chips on
+  // their own are their test's.
+  await inv.lowStock.click();
+  await expect(inv.nothingFound).toBeVisible();
+  await inv.lowStock.click();
+  await expect(rows).toHaveCount(2);
+
   await inv.filters.click();
   await menu.field("Marca do veículo").click();
   await option.named("Ford").click();
