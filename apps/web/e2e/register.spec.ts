@@ -4,6 +4,7 @@ import { TEST_TAGS } from "@apc/domain/test-tags";
 import { logIn, loginForm, registerForm } from "./locators/auth.ts";
 import { tour } from "./locators/common.ts";
 import { logOut } from "./locators/dashboard.ts";
+import { inventory } from "./locators/inventory.ts";
 import { REGISTER_MESSAGES, SESSION_STORAGE_KEY } from "@apc/domain/auth";
 import { TEST_USERS } from "@apc/domain/test-users";
 
@@ -62,7 +63,7 @@ test("Web: a new user signs up, lands on the Dashboard and logs in again", { tag
 
   await logOutOf();
   await logInAs(NEW_USER);
-  await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
+  await expect(inventory(page).empty).toBeVisible();
   await expect(skip).toBeHidden();
 
   await logOutOf();

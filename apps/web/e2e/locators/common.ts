@@ -37,6 +37,16 @@ export function dialog(page: Page, name: string | RegExp) {
 }
 
 /**
+ * The dialogs, bottom sheets and photo viewers open over the page: the native dialogs the role finds, not a tour's
+ * card, which has the role too but floats over the page without covering it.
+ * @param page The test's page.
+ * @returns Every one open.
+ */
+export function modals(page: Page) {
+  return page.getByRole("dialog").and(page.locator("dialog"));
+}
+
+/**
  * A form outside a dialog by its name, such as a row that adds or renames something: a button, a field and a choice by
  * name.
  * @param page The test's page.

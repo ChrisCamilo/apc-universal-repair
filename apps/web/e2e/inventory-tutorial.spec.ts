@@ -1,6 +1,6 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
-import { dataTable, tour } from "./locators/common.ts";
+import { dataTable, modals, tour } from "./locators/common.ts";
 import { dashboard, userMenu } from "./locators/dashboard.ts";
 import { deleteDialog, filtersMenu, inventory, itemDetails, itemForm } from "./locators/inventory.ts";
 import { savedItem, serveItems } from "./stubs/items.ts";
@@ -42,7 +42,7 @@ test("Web: the Inventory tutorial creates, finds, edits and deletes a test item"
   const clear = async () => {
     const card = (await guide.card.boundingBox())!;
     const spot = (await guide.spotlight.count()) > 0 ? await guide.spotlight.boundingBox() : null;
-    const bar = (await page.locator("dialog[open]").count()) === 0 ? await dashboard(page).bar.boundingBox() : null;
+    const bar = (await modals(page).count()) === 0 ? await dashboard(page).bar.boundingBox() : null;
     const apart = (other: { y: number; height: number }) => card.y + card.height <= other.y || other.y + other.height <= card.y;
     return (!spot || apart(spot)) && (!bar || card.y + card.height <= bar.y);
   };

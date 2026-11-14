@@ -33,7 +33,7 @@ async function openOpala(page: Page, isMobile: boolean) {
     await tab.brandLine("Chevrolet").click();
   }
   await tab.node("Opala").click();
-  await expect(tab.carSheet("Chevrolet Opala")).toBeVisible();
+  await expect(tab.sheetTitle("Chevrolet Opala")).toBeVisible();
 }
 
 // Opens the Opala's sheet and checks it lists the two parts that fit it, then clicks one and checks the Inventory tab
@@ -60,12 +60,12 @@ test("Web: a car's sheet opens the Inventory with its filters on", { tag: [TEST_
   await expect(page).toHaveURL(/\/inventory$/);
   const inv = inventory(page);
   await expect(inv.filters).toHaveAccessibleName(/2 ativos/);
-  await expect(page.getByText("Pastilha de freio dianteira")).toBeVisible();
-  await expect(page.getByText("Junta do cabeçote")).toBeVisible();
-  await expect(page.getByText("Filtro de ar")).toHaveCount(0);
-  await expect(page.getByText("Amortecedor")).toHaveCount(0);
+  await expect(inv.name("Pastilha de freio dianteira")).toBeVisible();
+  await expect(inv.name("Junta do cabeçote")).toBeVisible();
+  await expect(inv.name("Filtro de ar")).toHaveCount(0);
+  await expect(inv.name("Amortecedor")).toHaveCount(0);
 
   await inv.clearFilters.first().click();
-  await expect(page.getByText("Amortecedor")).toBeVisible();
+  await expect(inv.name("Amortecedor")).toBeVisible();
   await expect(inv.filters).toHaveAccessibleName("Filtros");
 });

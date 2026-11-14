@@ -41,7 +41,12 @@ export function catalog(page: Page) {
     node: (name: string) => page.getByText(name, { exact: true }),
     action: (name: string) => page.getByRole("button", { name }),
     editSheet: page.getByRole("button", { name: "Editar ficha" }),
-    carSheet: (title: string) => page.getByRole("heading", { name: title, exact: true }),
+    // A sheet's heading by its title, a car's ("Chevrolet Opala") or an engine's ("1985 · Chevrolet Opala Diplomata 3.8").
+    sheetTitle: (title: string) => page.getByRole("heading", { name: title, exact: true }),
+    // On a phone, the path above an engine's sheet, e.g. "Opala › Terceira geração › Diplomata › 1986".
+    path: (text: string) => page.getByTestId("catalog.catalog-tab.screen.path").filter({ hasText: text }),
+    noSheet: page.getByRole("heading", { name: "Nenhuma ficha cadastrada" }),
+    noModels: page.getByRole("heading", { name: "Nenhum modelo nessa marca" }),
     carParts: page.getByRole("table", { name: "Peças disponíveis" }).getByRole("row").filter({ has: page.locator("code") }),
     allParts: page.getByRole("button", { name: "Ver todas as peças" }),
   };
