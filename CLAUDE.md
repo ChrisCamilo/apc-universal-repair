@@ -32,7 +32,7 @@ Playwright's MCP (`playwright`) and its test agents (`playwright-test-planner`, 
 - **Elements through `apps/web/e2e/locators/<scope>.ts`:** the generator records `page.getByRole(…)` calls and a comment before each step. Move the locators into those files, adding the ones that aren't there, and drop the step comments.
 - **A failing test is fixed, never weakened.** Never remove or loosen an assertion, and change an expected value only when the app's intended behavior changed. Never add `waitForTimeout`, a longer timeout, `test.fixme()` or a skip to make it pass. When the app is wrong, the test stays failing and the bug is reported.
 - **Explore only what the session can vouch for:** the demo (the Pages site, or `site/` served locally), or the web app on an API the session started. Never a server on port 3333 the session didn't start: it may be the installed desktop app, with real data. The test agents start their own servers through the web config, which fails when 3333 is taken.
-- **A new file for each test the generator writes:** `generator_write_test` replaces the whole file, so it writes to a new `e2e/<scope>-<behavior>.spec.ts`, never to a spec that exists.
+- **A new file for each test the generator writes:** `generator_write_test` replaces the whole file, so it writes to a new `e2e/<scope>-<behavior>.spec.ts`, never to a spec that exists. Then the test moves into the spec of its screen or flow (`inventory-form.spec.ts`), as every spec covers one; a flow of its own keeps its file, named `<area>-<flow>.spec.ts`.
 - **Keep a test only if it adds coverage** no other test has, after running it in both projects and the whole suite. A plan in `apps/web/specs/` is kept only with the tests made from it.
 
 ## Skills
