@@ -50,7 +50,7 @@ flowchart LR
 | Runs against | Vite dev server on :5173, which proxies `/api` to the dev API on :3333 | The Pages site in `site/`, served by `scripts/serve-pages.mjs` on :4174 under `/apc-universal-repair/demo/` | The compiled app (`dist/main.js`) with the web build, opened by `_electron.launch` |
 | Servers started | `pnpm --filter @apc/api run dev` and `pnpm dev` (`webServer`), reused locally only with `E2E_REUSE=1` | `serve-pages.mjs` | None: each spec starts its stand-in API or the app's own server |
 | Projects | `desktop` 1280×720, `mobile` 360×780 (touch, `isMobile`) | the same two | none (one Electron app) |
-| Parallelism | `fullyParallel` | `fullyParallel` | `workers: 1`, 60 s per test |
+| Parallelism | `fullyParallel`, at most 4 workers, as one Vite serves them all | `fullyParallel` | `workers: 1`, 60 s per test |
 | Retries | 2 on CI, 0 locally | 2 on CI, 0 locally | 2 on CI, 0 locally |
 | Reporter | `list` + `html` locally; `github` + `html` on CI | same, in `playwright-report-demo/` | same |
 | Trace | `retain-on-failure` locally, `on-first-retry` on CI | same, in `test-results-demo/` | same, recorded by `launchApp` (see [Reports](#reports-and-traces)) |
@@ -71,6 +71,7 @@ apps/web/
 │   │   ├── fixtures.ts         # test and expect for every spec: session, stock, users, API guard
 │   │   ├── expect.ts           # expect with not.toScrollSideways(); rgb() for computed colors
 │   │   ├── sizes.ts            # atNotebookSizes(): a check at 1360×768 and 1360×689
+│   │   ├── api.ts              # apiUrl(): the RegExp a stand-in routes an API path by
 │   │   └── inventory.ts        # openInventory(), layout(): the Inventory specs' shared steps
 │   ├── stubs/
 │   │   ├── session.ts          # signIn(): a saved session before the page loads
@@ -127,6 +128,8 @@ The fixtures use these stand-ins, which a test may also start itself, with items
 - **`savedItem(sent, held?)`** builds what the API answers for a create or an edit.
 
 Playwright tries the routes last registered first. The fixtures register the guard first, so it is tried last, then the session and the stock, then the users; the test's own routes come after all of them. So a test that answers a write itself registers its `page.route("**/api/items", …)` before its own `serveItems`, and a test that must override a GET (an expired session, an API error) registers it after. A test never calls `page.unrouteAll()`, which would take the guard away too.
+
+A route is matched by a glob (`"**/api/items"`) or a RegExp (`apiUrl("/items")` from `e2e/support/api.ts`, for a path with any query), never by a function. Playwright can't hand a function to the browser's side, so one route matched by a function sends every request of the page to the test to ask whether it matches, Vite's few hundred modules on each load included, and each load takes up to twice as long.
 
 Routes, `localStorage` and the init scripts belong to the test's own browser context, which Playwright throws away after each test: no `afterEach` is needed to clean up.
 
@@ -490,7 +493,7 @@ pnpm --filter @apc/desktop test:e2e
 | Roda contra | O servidor de desenvolvimento do Vite na :5173, que repassa `/api` para a API de desenvolvimento na :3333 | O site do Pages em `site/`, servido pelo `scripts/serve-pages.mjs` na :4174 em `/apc-universal-repair/demo/` | O app compilado (`dist/main.js`) com o build da web, aberto pelo `_electron.launch` |
 | Servidores que sobe | `pnpm --filter @apc/api run dev` e `pnpm dev` (`webServer`), reaproveitados localmente só com `E2E_REUSE=1` | `serve-pages.mjs` | Nenhum: cada spec sobe sua API substituta ou o servidor do próprio app |
 | Projetos | `desktop` 1280×720, `mobile` 360×780 (toque, `isMobile`) | os mesmos dois | nenhum (um app Electron) |
-| Paralelismo | `fullyParallel` | `fullyParallel` | `workers: 1`, 60 s por teste |
+| Paralelismo | `fullyParallel`, no máximo 4 workers, já que um só Vite serve todos | `fullyParallel` | `workers: 1`, 60 s por teste |
 | Retentativas | 2 no CI, 0 local | 2 no CI, 0 local | 2 no CI, 0 local |
 | Reporter | `list` + `html` local; `github` + `html` no CI | igual, em `playwright-report-demo/` | igual |
 | Trace | `retain-on-failure` local, `on-first-retry` no CI | igual, em `test-results-demo/` | igual, gravado pelo `launchApp` (veja [Relatórios](#relatórios-e-traces)) |
@@ -511,6 +514,7 @@ apps/web/
 │   │   ├── fixtures.ts         # test e expect de toda spec: sessão, estoque, usuários, guarda da API
 │   │   ├── expect.ts           # expect com not.toScrollSideways(); rgb() para cores calculadas
 │   │   ├── sizes.ts            # atNotebookSizes(): uma conferência em 1360×768 e 1360×689
+│   │   ├── api.ts              # apiUrl(): a RegExp pela qual uma substituta roteia um caminho da API
 │   │   └── inventory.ts        # openInventory(), layout(): os passos que as specs do Estoque dividem
 │   ├── stubs/
 │   │   ├── session.ts          # signIn(): uma sessão salva antes de a página carregar
@@ -567,6 +571,8 @@ As fixtures usam estes substitutos, que um teste também pode iniciar ele mesmo,
 - **`savedItem(sent, held?)`** monta o que a API responde a uma criação ou edição.
 
 O Playwright tenta primeiro as rotas registradas por último. As fixtures registram primeiro a guarda, que assim é tentada por último, depois a sessão e o estoque, depois os usuários; as rotas do próprio teste vêm depois de todas. Então um teste que responde ele mesmo a uma escrita registra o seu `page.route("**/api/items", …)` antes do seu `serveItems`, e um teste que precisa sobrepor um GET (sessão expirada, erro da API) registra depois. Um teste nunca chama `page.unrouteAll()`, que tiraria a guarda também.
+
+Uma rota é casada por um glob (`"**/api/items"`) ou uma RegExp (`apiUrl("/items")` de `e2e/support/api.ts`, para um caminho com qualquer query), nunca por uma função. O Playwright não consegue passar uma função para o lado do navegador, então uma única rota casada por função manda toda requisição da página para o teste perguntar se ela casa, inclusive as poucas centenas de módulos do Vite a cada carregamento, e cada carregamento chega a levar o dobro do tempo.
 
 Rotas, `localStorage` e init scripts pertencem ao contexto de navegador do próprio teste, que o Playwright descarta depois de cada teste: não é preciso `afterEach` para limpar.
 

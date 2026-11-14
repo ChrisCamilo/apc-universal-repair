@@ -10,6 +10,7 @@ import { savedItem, serveItems } from "./stubs/items.ts";
 import { testItem } from "@apc/domain/test-items";
 import { item, ITEMS } from "./data/items.ts";
 import { openInventory, layout } from "./support/inventory.ts";
+import { apiUrl } from "./support/api.ts";
 
 // The Inventory's list: its rows, stock alerts and states, its layout in the window, sorting, pages, and an item of
 // several brands.
@@ -61,7 +62,7 @@ test("Web: the Inventory panel fills the window and keeps its pagination", { tag
   for (const [state, open] of [
     ["a few items", () => serveItems(page, ITEMS.slice(0, 2))],
     ["no items", () => serveItems(page, [])],
-    ["an API error", () => page.route((url) => url.pathname.startsWith("/api/"), (route) => route.fulfill({ status: 500, body: "" }))],
+    ["an API error", () => page.route("**/api/**", (route) => route.fulfill({ status: 500, body: "" }))],
   ] as const) {
     await open();
     await page.goto("/inventory");
@@ -178,7 +179,7 @@ test("Web: the inventory shows loading, error and empty states", { tag: [TEST_TA
   const stock = [...ITEMS];
   await serveItems(page, stock);
   await page.route(
-    (url) => url.pathname === "/api/items",
+    apiUrl("/items"),
     async (route) => {
       if (answer === "slow") {
         await new Promise<void>((resolve) => (release = resolve));

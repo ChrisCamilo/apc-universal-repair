@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import { defineConfig, devices } from "@playwright/test";
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from "@apc/ui-spec/screens";
 import { DEV_SERVER_PORT } from "@apc/domain/server";
@@ -11,6 +12,10 @@ const reuse = !isCI && process.env.E2E_REUSE === "1";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  // Half the cores, as Playwright's default, but at most 4: one Vite dev server serves every worker's pages, a few
+  // hundred modules a load, and serves hardly more of them past 4 workers. More workers only make each load wait longer:
+  // on a 28-core machine, 14 workers made the tests with a few loads run out of time whenever the machine slowed down.
+  workers: Math.min(4, Math.max(1, Math.floor(availableParallelism() / 2))),
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
   // A failed test leaves a trace, a screenshot and the HTML report, which never opens by itself: on CI the trace of its

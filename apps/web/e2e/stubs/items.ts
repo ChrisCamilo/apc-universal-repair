@@ -25,6 +25,7 @@ import {
   type ListEntry,
 } from "@apc/domain/lists";
 import { itemListsOf } from "@apc/domain/test-lists";
+import { apiUrl } from "../support/api.ts";
 
 // A stand-in for GET /items, so the list works the same on every run without a database: it answers from the items
 // it is given, newest first as they are listed or sorted by a column as the API sorts, narrowed by the search, the
@@ -44,7 +45,7 @@ import { itemListsOf } from "@apc/domain/test-lists";
  */
 export async function serveItems(page: Page, stock: Item[], onQuery?: (query: URLSearchParams) => void): Promise<void> {
   await page.route(
-    (url) => url.pathname === "/api/items",
+    apiUrl("/items"),
     (route) => {
       if (route.request().method() !== "GET") {
         return route.fallback();
@@ -84,10 +85,11 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
   );
 
   const lists = itemListsOf(stock);
+  const listPaths = `(${Object.values(ITEM_LIST_PATHS).join("|")})`;
   const kindOf = (url: URL) =>
     (Object.keys(ITEM_LIST_PATHS) as ItemListKind[]).find((kind) => url.pathname === `/api${ITEM_LIST_PATHS[kind]}`);
   await page.route(
-    (url) => kindOf(url) !== undefined,
+    apiUrl(listPaths),
     (route) => {
       const kind = kindOf(new URL(route.request().url()))!;
       const list: ListEntry[] = lists[kind];
@@ -115,9 +117,13 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
     return kind && entry ? { kind, entry } : undefined;
   };
   await page.route(
-    (url) => entryOf(url) !== undefined,
+    apiUrl(`${listPaths}/.+`),
     (route) => {
-      const { kind, entry } = entryOf(new URL(route.request().url()))!;
+      const found = entryOf(new URL(route.request().url()));
+      if (!found) {
+        return route.fallback();
+      }
+      const { kind, entry } = found;
       const conflict = { status: 409, json: { statusCode: 409, error: "Conflict", message: "Conflict." } };
       if (route.request().method() === "DELETE") {
         if (itemsUsing(stock, kind, entry, lists) > 0) {
