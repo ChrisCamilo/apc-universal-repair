@@ -11,6 +11,7 @@ import { recipe, tv } from '../../styles/tv.ts'
 // leaf's tag is a pill in the display face, outlined at rest and filled in the accent on the selected leaf. The chevron
 // of a branch that can be selected, which opens it apart from the row, is a finger wide, reaching past it on each side
 // so it and the label stay where they were.
+// Every row is as tall as its buttons, which are taller than its text, so showing them doesn't make it jump.
 // A row's own buttons sit at its right end, hidden until the row is pointed at, or shown on the row the keyboard is on
 // while the focus is in the tree (a state the tree keeps, as a focus rule would hide them while the focus moves from
 // the row into them), and always in view on a phone, which has no pointer to hover with; a row shown as something else, such as a field, takes the row's whole width; and the line after a branch's
@@ -24,7 +25,7 @@ export const treeView = recipe(
       base: 'min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain p-1',
       item: 'outline-none [&:focus-visible>[data-row]]:shadow-ring [&>[data-row]:hover_[data-actions]]:flex',
       row: [
-        'relative flex min-w-0 items-center gap-2 overflow-hidden rounded-tile px-2 py-1 text-sm transition-[color,background-color,box-shadow]',
+        'relative flex min-h-8 min-w-0 items-center gap-2 overflow-hidden rounded-tile px-2 py-1 text-sm transition-[color,background-color,box-shadow]',
         'max-card:min-h-12 max-card:text-base',
       ],
       chevron: 'shrink-0 text-text-muted transition-transform motion-reduce:transition-none',
