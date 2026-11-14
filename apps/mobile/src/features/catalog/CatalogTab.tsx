@@ -12,6 +12,7 @@ import {
   catalogNodes,
   catalogSiblings,
   catalogValuesOf,
+  catalogWithParts,
   engineSheetNames,
   ENGINE_SPEC_LABELS,
   enginePath,
@@ -32,6 +33,7 @@ import {
   type CatalogSheetEditing,
   type FoundPart,
 } from '@apc/domain/catalog';
+import type { Item } from '@apc/domain/items';
 import { chevronIcon, closeIcon, ICON_SIZES, moreIcon, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/tokens/icons';
 import { ActionSheet } from '../../components/ActionSheet';
 import { Button } from '../../components/Button';
@@ -43,6 +45,7 @@ import { Icon } from '../../components/Icon';
 import { ImageFrame } from '../../components/ImageFrame';
 import { Panel } from '../../components/Panel';
 import { Spinner } from '../../components/Spinner';
+import { Switch } from '../../components/Switch';
 import { SearchField } from '../../components/TextField';
 import { useTheme } from '../../app/theme';
 import { TreeView } from '../../components/TreeView';
@@ -55,6 +58,7 @@ import { NodeForm } from './NodeForm';
 import { PartResults } from './PartResults';
 import { useCatalog } from './useCatalog';
 import { useCatalogEditing } from './useCatalogEditing';
+import { usePartsOnly } from './usePartsOnly';
 import { useInventoryLink } from '../dashboard/inventoryLinkContext';
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 
@@ -82,16 +86,40 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 // their sheets, and under it the parts in stock that fit it: a press on one opens its details in the Inventory tab, and
 // "Ver todas as peças" opens the Inventory with the filters that list them (see inventoryLinkContext.ts). ← goes back
 // to the models, open on it.
+// "Só com peças", under the brands' search, shows only the models some part in stock fits, and the brands with
+// one (catalogWithParts), as on the web; the device remembers it (usePartsOnly). It can't be turned on while no part
+// fits a vehicle, and adding a brand or a model turns it off, so the new one, with no part yet, shows. The tab loads the
+// items once, for this and for the parts the search and the sheets list, and waits for them when it is on.
+
+/** What the screens take: the whole catalog, the items in stock, whether to show only the vehicles they fit, and the change handlers. */
+type CatalogProps = {
+  catalog: Catalog;
+  items: readonly Item[];
+  partsOnly: boolean;
+  onPartsOnly: (on: boolean) => void;
+  onChanged: (catalog: Catalog) => void;
+};
 
 export function CatalogTab() {
   const state = useCatalog();
+  const stock = useItems();
+  const [partsOnly, setPartsOnly] = usePartsOnly();
   const { styles, ids } = useStyles();
-  if (state.status === 'ready' && state.catalog.brands.length > 0) {
-    return <CatalogScreens catalog={state.catalog} onChanged={state.replace} />;
+  const waiting = partsOnly === null || (partsOnly && stock.status === 'loading');
+  if (state.status === 'ready' && state.catalog.brands.length > 0 && !waiting) {
+    return (
+      <CatalogScreens
+        catalog={state.catalog}
+        items={stock.status === 'ready' ? stock.items : []}
+        partsOnly={partsOnly}
+        onPartsOnly={setPartsOnly}
+        onChanged={state.replace}
+      />
+    );
   }
   return (
     <View style={styles.status} testID={ids.status}>
-      {state.status === 'loading' && <Spinner label="Carregando o catálogo" />}
+      {(state.status === 'loading' || (state.status === 'ready' && waiting)) && <Spinner label="Carregando o catálogo" />}
       {state.status === 'error' && (
         <ErrorState
           title="Não foi possível carregar o catálogo"
@@ -99,7 +127,7 @@ export function CatalogTab() {
           action={{ label: 'Tentar de novo', onPress: state.reload }}
         />
       )}
-      {state.status === 'ready' && <EmptyCatalog onChanged={state.replace} />}
+      {state.status === 'ready' && !waiting && <EmptyCatalog onChanged={state.replace} />}
     </View>
   );
 }
@@ -145,13 +173,14 @@ function useShown<T>(value: T | null): { last: T | null; session: number } {
 }
 
 /** The Catalog's screens, one at a time: the brands, a brand's models or an engine's sheet, edited in sheets. */
-function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (catalog: Catalog) => void }) {
+function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged }: CatalogProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
-  const state = useItems();
   const setHeader = usePhoneHeader();
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const items = state.status === 'ready' ? state.items : [];
+  const withParts = catalogWithParts(all, items);
+  const partsOnly = wanted && withParts.brands.length > 0;
+  const catalog = partsOnly ? withParts : all;
   const [screen, setScreen] = useState<CatalogScreen>(CATALOG_HOME);
   const [query, setQuery] = useState('');
   const links = useInventoryLink();
@@ -344,7 +373,10 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
               variant="ghost"
               size="sm"
               icon={plusIcon}
-              onPress={() => editor.edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } })}
+              onPress={() => {
+                onPartsOnly(false);
+                editor.edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } });
+              }}
             >
               Novo modelo
             </Button>
@@ -380,11 +412,22 @@ function CatalogScreens({ catalog, onChanged }: { catalog: Catalog; onChanged: (
     return (
       <>
         {search}
+        <Switch checked={partsOnly} onCheckedChange={onPartsOnly} disabled={withParts.brands.length === 0}>
+          Só com peças
+        </Switch>
         <View style={styles.screenHead} testID={ids.screenHead}>
           <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
             {`Marcas · ${brands.length}`}
           </RNText>
-          <Button variant="ghost" size="sm" icon={plusIcon} onPress={() => editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } })}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={plusIcon}
+            onPress={() => {
+              onPartsOnly(false);
+              editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } });
+            }}
+          >
             Nova marca
           </Button>
         </View>
