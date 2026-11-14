@@ -15,7 +15,7 @@ import { themeCss } from '../../app/theme.ts'
 import { CatalogTab } from './CatalogTab.tsx'
 import { PhoneHeaderContext, type PhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 import { InventoryLinkContext } from '../dashboard/inventoryLinkContext.ts'
-import type { CatalogData, InventoryLink } from '@apc/domain/catalog'
+import { CATALOG_PARTS_ONLY_KEY, type CatalogData, type InventoryLink } from '@apc/domain/catalog'
 import { EMPTY_ITEM_FILTERS } from '@apc/domain/item-filters'
 import { testItem, type FlatItem } from '@apc/domain/test-items'
 
@@ -216,6 +216,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   vi.restoreAllMocks()
+  localStorage.removeItem(CATALOG_PARTS_ONLY_KEY)
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
@@ -585,6 +586,62 @@ test('Web: a model with no parts in stock says so', async () => {
   await expect.element(screen.getByRole('heading', { name: 'Peças disponíveis · 0' })).toBeVisible()
   await expect.element(screen.getByText('Nenhuma peça no estoque')).toBeVisible()
   await expect.element(screen.getByRole('button', { name: 'Ver todas as peças' })).not.toBeInTheDocument()
+})
+
+// Turns on "Só com peças" on Volkswagen, which no part's model fits, and checks the device saves it and the
+// rail keeps Chevrolet and Ford, the brands with a part, opening the first, whose tree keeps only the Opala, and Ford
+// only the Escort; turns it off and checks every brand is back; and adds a model with it on, which turns it off, so the
+// new model, with no part yet, shows.
+test('Web: "Só com peças" hides the vehicles no part fits, and the device saves it', async () => {
+  const screen = await renderWithParts()
+  const partsOnly = screen.getByRole('switch', { name: 'Só com peças' })
+  const tiles = () => screen.getByRole('radio').elements().map((tile) => tile.textContent)
+  const models = (brand: string) =>
+    [...screen.getByRole('tree', { name: `Modelos ${brand}` }).element().querySelectorAll(':scope > [role="treeitem"]')].map(
+      (item) => item.querySelector('[data-testid="common.tree-view.item.row.label"]')!.textContent,
+    )
+  await screen.getByRole('radio', { name: 'Volkswagen' }).click()
+  await partsOnly.click()
+  await expect.element(partsOnly).toBeChecked()
+  expect(localStorage.getItem(CATALOG_PARTS_ONLY_KEY)).toBe('true')
+  expect(tiles()).toEqual(['Chevrolet', 'Ford'])
+  await expect.element(screen.getByRole('radio', { name: 'Chevrolet' })).toBeChecked()
+  expect(models('Chevrolet')).toEqual(['Opala'])
+  await screen.getByRole('radio', { name: 'Ford' }).click()
+  expect(models('Ford')).toEqual(['Escort'])
+
+  await partsOnly.click()
+  expect(tiles()).toEqual(['Chevrolet', 'Volkswagen', 'Fiat', 'Ford'])
+  expect(localStorage.getItem(CATALOG_PARTS_ONLY_KEY)).toBe('false')
+  await partsOnly.click()
+  await screen.getByRole('button', { name: 'Novo modelo' }).click()
+  await expect.element(partsOnly).not.toBeChecked()
+  await expect.element(screen.getByRole('form', { name: 'Novo modelo em Ford' })).toBeVisible()
+})
+
+// With no part in stock, checks "Só com peças" can't be turned on and every brand shows, even on a device that
+// saved it on.
+test('Web: "Só com peças" needs a part that fits a vehicle', async () => {
+  localStorage.setItem(CATALOG_PARTS_ONLY_KEY, 'true')
+  const screen = await renderCatalog()
+  await expect.element(screen.getByRole('switch', { name: 'Só com peças' })).toBeDisabled()
+  await expect.element(screen.getByRole('switch', { name: 'Só com peças' })).not.toBeChecked()
+  expect(screen.getByRole('radio').elements()).toHaveLength(4)
+})
+
+// On a phone that saved "Só com peças" on, opens the Catalog and checks it is on, over the brands, and only
+// Chevrolet and Ford are listed, Chevrolet with its one model; then turns it off and checks the four brands are back.
+test('Web: on a phone "Só com peças" narrows the brands, as the device saved it', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  localStorage.setItem(CATALOG_PARTS_ONLY_KEY, 'true')
+  const screen = await renderWithParts(true)
+  const partsOnly = screen.getByRole('switch', { name: 'Só com peças' })
+  await expect.element(partsOnly).toBeChecked()
+  await expect.element(screen.getByRole('heading', { name: 'Marcas · 2' })).toBeVisible()
+  await expect.poll(() => screen.getByRole('button', { name: /^Chevrolet/ }).element().textContent).toContain('1 modelo')
+  await expect.element(screen.getByRole('button', { name: /^Ford/ })).toBeVisible()
+  await partsOnly.click()
+  await expect.element(screen.getByRole('heading', { name: 'Marcas · 4' })).toBeVisible()
 })
 
 // On a phone, taps the Opala's name and checks its sheet fills the screen with its parts as cards and nothing wider

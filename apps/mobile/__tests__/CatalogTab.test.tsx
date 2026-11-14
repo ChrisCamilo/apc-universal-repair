@@ -6,7 +6,7 @@ import React from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NO_SHEET_MESSAGE, type CatalogData, type InventoryLink } from '@apc/domain/catalog';
+import { CATALOG_PARTS_ONLY_KEY, NO_SHEET_MESSAGE, type CatalogData, type InventoryLink } from '@apc/domain/catalog';
 import { EMPTY_ITEM_FILTERS } from '@apc/domain/item-filters';
 import type { Item } from '@apc/domain/items';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
@@ -235,6 +235,35 @@ test('Mobile: the Catalog search narrows the brands and opens a part found by co
   expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityValue).toEqual({ text: 'em destaque' });
   expect(shows(tree, 'Chevrolet Opala 3.8')).toBe(true);
   expect(shows(tree, NO_SHEET_MESSAGE)).toBe(true);
+});
+
+// Turns on "Só com peças" and checks only Chevrolet is listed, with its one model, and the device saves it;
+// opens the Catalog again and checks it opens that way; then turns it off and checks the four brands are back.
+test('Mobile: "Só com peças" hides the vehicles no part fits, and the device remembers it', async () => {
+  answer(() => ({ ok: true, json: () => Promise.resolve({ items: PARTS, total: PARTS.length }) }));
+  const first = await mount('gt4', 'day');
+  await press(first, 'Só com peças');
+  expect(shows(first, 'Marcas · 1')).toBe(true);
+  expect(shows(first, 'Chevrolet')).toBe(true);
+  expect(shows(first, '1 modelo · 2 fichas técnicas')).toBe(true);
+  expect(await themeStorage.getItem(CATALOG_PARTS_ONLY_KEY)).toBe('true');
+  await ReactTestRenderer.act(async () => first.unmount());
+
+  const tree = await mount('gt4', 'day');
+  expect(byRole(tree, 'switch', 'Só com peças').props.accessibilityState).toEqual({ checked: true, disabled: false });
+  expect(shows(tree, 'Marcas · 1')).toBe(true);
+  await press(tree, 'Só com peças');
+  expect(shows(tree, 'Marcas · 4')).toBe(true);
+});
+
+// With no part in stock, on a device that saved "Só com peças" on, checks it is off and can't be turned on,
+// and every brand is listed.
+test('Mobile: "Só com peças" needs a part that fits a vehicle', async () => {
+  await themeStorage.setItem(CATALOG_PARTS_ONLY_KEY, 'true');
+  answer(() => ({ ok: true, json: () => Promise.resolve({ items: [], total: 0 }) }));
+  const tree = await mount('gt4', 'day');
+  expect(byRole(tree, 'switch', 'Só com peças').props.accessibilityState).toEqual({ checked: false, disabled: true });
+  expect(shows(tree, 'Marcas · 4')).toBe(true);
 });
 
 // Presses the Opala's name and checks its sheet shows its generations with their years and versions, its engines and the

@@ -34,7 +34,7 @@ export const catalogTab = recipe(
     slots: {
       status: 'grid min-h-60 place-items-center p-6',
       base: 'grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[calc(var(--spacing)*46)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]',
-      rail: 'grid content-start gap-3 lg:min-h-0 lg:grid-rows-[auto_minmax(0,1fr)_auto]',
+      rail: 'grid content-start gap-3 lg:min-h-0 lg:grid-rows-[auto_auto_minmax(0,1fr)_auto]',
       brands: 'grid-cols-2 content-start sm:grid-cols-4 lg:-m-1 lg:grid-cols-1 lg:overflow-y-auto lg:overscroll-contain lg:p-1',
       main: 'grid min-w-0 content-start gap-3 lg:flex lg:min-h-0 lg:flex-col',
       body: 'grid min-w-0 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,calc(var(--spacing)*100))] lg:grid-rows-[minmax(0,1fr)]',

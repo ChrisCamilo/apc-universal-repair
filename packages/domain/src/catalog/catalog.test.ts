@@ -10,6 +10,7 @@ import {
   brandWithModel,
   carFilters,
   carParts,
+  catalogWithParts,
   carSheet,
   CATALOG_HOME,
   CATALOG_TAKEN,
@@ -302,6 +303,19 @@ test("Shared: the parts in stock that fit a model, a generation and a version", 
   assert.deepEqual(names(GENERATION_3), ["Qualquer Opala", "Diplomata 80/92", "Comodoro 80/92", "Opala 4.1 diplomata"]);
   assert.deepEqual(names(DIPLOMATA), ["Qualquer Opala", "Diplomata 80/92", "Opala 4.1 diplomata"]);
   assert.deepEqual(carParts(TEST_CATALOG, CHEVROLET, testCatalogId("Chevrolet", "Chevette"), FITTING), []);
+});
+
+// Keeps only the vehicles the parts in stock fit: the Opala and the Monza, under Chevrolet, while the Chevette, which
+// only a Chevrolet of any model fits, and the brands left with no model go, the sheets staying; with no part, no brand
+// is left.
+test("Shared: the catalog of the vehicles some part fits", () => {
+  const kept = catalogWithParts(TEST_CATALOG, FITTING);
+  assert.deepEqual(
+    kept.brands.map((brand) => [brand.name, brand.models.map((model) => model.label)]),
+    [["Chevrolet", ["Opala", "Monza"]]],
+  );
+  assert.equal(kept.sheets, TEST_CATALOG.sheets);
+  assert.deepEqual(catalogWithParts(TEST_CATALOG, []).brands, []);
 });
 
 // Sets the filters that list every part fitting the Opala and its Diplomata: the brands and models of the vehicles

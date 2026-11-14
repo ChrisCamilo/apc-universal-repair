@@ -71,6 +71,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🏷️ A new stock starting with the usual categories and part brands
 - 📚 The Catalog starting with those brands and models, each with an empty tree to fill in, and a brand deleted from the Catalog, or a brand or model no part uses deleted from the lists, leaving the Catalog with its tree ✅
 - 🔀 A brand or model of the Catalog merged into another in the lists, taking its place and tree along: a brand's models join the other's, and twin models, generations, versions and years join into one, with nothing lost ✅
+- 🔎 "Só com peças" in the Catalog, showing only the models some part in stock fits and their brands, remembered on each device ✅
 - 🔃 The Inventory refreshing by itself when another device changes it
 
 **Offline Mode (planned)**
@@ -338,6 +339,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🏷️ Um estoque novo começando com as categorias e marcas de peça de costume
 - 📚 O Catálogo começando com essas marcas e modelos, cada um com a árvore vazia para preencher, e uma marca excluída do Catálogo, ou uma marca ou modelo que nenhuma peça usa excluído das listas, saindo do Catálogo com a árvore ✅
 - 🔀 Uma marca ou modelo do Catálogo juntado a outro nas listas, levando o lugar e a árvore junto: os modelos de uma marca se juntam aos da outra, e modelos, gerações, versões e anos gêmeos viram um só, sem perder nada ✅
+- 🔎 "Só com peças" no Catálogo, que mostra só os modelos em que alguma peça do estoque serve e as marcas deles, e que cada aparelho lembra ✅
 - 🔃 O Estoque se atualizando sozinho quando outro aparelho o muda
 
 **Modo offline (planejado)**
