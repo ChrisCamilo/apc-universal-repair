@@ -79,12 +79,13 @@ apps/web/
 │   ├── data/
 │   │   └── items.ts            # item(): a test item from the fields that matter; ITEMS: the Inventory specs' items
 │   ├── locators/               # the elements the specs find, one file per style-id scope:
-│   │   ├── common.ts           # dialog(), dataTable(), pagination(), options(), toasts(), tour()
+│   │   ├── common.ts           # dialog(), modals(), dataTable(), pagination(), options(), toasts(), tour()
 │   │   ├── auth.ts             # loginForm(), registerForm(), logIn()
-│   │   ├── dashboard.ts        # dashboard(), userMenu(), logOut()
+│   │   ├── dashboard.ts        # dashboard(), userMenu(), aboutDialog(), logOut()
 │   │   ├── inventory.ts        # inventory(), itemForm(), itemDetails(), deleteDialog(), manageLists()…
 │   │   ├── notifications.ts    # bell()
-│   │   └── catalog.ts          # catalog()
+│   │   ├── catalog.ts          # catalog()
+│   │   └── setup.ts            # what only the desktop shows: serverSettings(), recoveryKey(), devices()…
 │   ├── api-guard.spec.ts       # checks the guard fails a call no stand-in answers
 │   ├── seed.spec.ts            # where Playwright's test agents start (below)
 │   └── <screen-or-flow>.spec.ts # one per screen or flow: inventory-list, inventory-form, inventory-details,
@@ -145,6 +146,7 @@ test("Desktop: …", { tag: [TEST_TAGS.setup] }, async ({ launchApp }) => {
 - **Stand-in API** (the default, `smoke`, `window`, `notifications`): the worker-scoped `stubApi` fixture, started once for the spec's tests, whose address the app gets in `APC_API_URL`. It answers health, the test users' login, the tutorial, logout, `/items` and empty item lists, only for requests that carry a test user's token and are addressed to `127.0.0.1`/`localhost`. `test.use({ stubStock: { items: ITEMS } })` gives `GET /items` its items.
 - **The server the app ships** (`bundled`): `test.use({ server: "bundled" })`. No `APC_API_URL`, a free port in `APC_SERVER_PORT`, and the app's own SQLite in its `userData`. A fresh install shows its recovery key first, which `keepRecoveryKey()` keeps.
 - **`logIn(page, user)`** types a user into the login and waits for the Inventory.
+- **Elements come from the web E2E's locators** (`apps/web/e2e/locators/`), as an Electron window is a Playwright `Page`: `dashboard()`, `userMenu()`, `inventory()` and the rest, and `setup.ts` for what only the desktop shows, such as the Servidor dialog, the recovery key, the update notice and a device waiting for approval.
 - **A failed test** gets a trace of each app it opened, which `launchApp` records ([Reports](#reports-and-traces)).
 
 ### Tags
@@ -174,7 +176,7 @@ The title keeps its prefix (`Web:`, `Desktop:`), and the tags follow it in the r
 1. Put it in the spec of its screen or flow (`inventory-form.spec.ts` for the item form, `catalog-tree-editing.spec.ts` for editing the Catalog's tree). A spec covers one screen or flow and is named after it, its area first when the area has more than one (`<area>-<screen-or-flow>.spec.ts`); a new screen or flow gets a new spec. The area tag stays on every test, so `--grep @inventory` still runs all of an area's.
 2. Title it with the prefix, `Web:` or `Desktop:`, and the behavior in English; write what it checks and why in a comment right above it ([AGENTS.md](../AGENTS.md#writing-tests)). Give it its area tag and the kind tags that apply ([Tags](#tags)).
 3. Import `test` and `expect` from `./support/fixtures.ts` and start from the state it needs: the Dashboard with a test user is the default, `test.use({ signedIn: false })` for the screens before the login, `test.use({ stock: { items } })` or `serveItems()` with only the items that matter (`item()` from `./data/items.ts` fills in the rest). Answer every API call the test makes: the guard fails any it doesn't.
-4. Find elements through `./locators/<scope>.ts`, the file of the scope of the element's style id: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, and flows many specs repeat, such as `logIn()`, `fillItem()` and `deleteItem()`. An element a spec reaches more than once is added there, with no assertions. A locator finds an element as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`. It uses the style id (`getByTestId("inventory.inventory-tab.filters.count")`) for an element with no role or text of its own, and CSS only for what has none of these (`html`, `body`, `header`). The demo's spec uses the same locators.
+4. Find elements through `./locators/<scope>.ts`, the file of the scope of the element's style id: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, and flows many specs repeat, such as `logIn()`, `fillItem()` and `deleteItem()`. An element a spec reaches more than once is added there, with no assertions. A locator finds an element as a user does, in this order: `getByRole` with the accessible name, `getByLabel`, `getByText`. It uses the style id (`getByTestId("inventory.inventory-tab.filters.count")`) for an element with no role or text of its own, and CSS only for what has none of these (`html`, `body`, `header`). The demo's spec and the desktop E2E use the same locators.
 5. Assert with Playwright's web-first assertions (`toBeVisible`, `toHaveText`, `toHaveURL`), `expect.poll` for a value read from the page. Never wait a fixed time. A color in `toHaveCSS` comes from the theme through `rgb()`, and a page that must not scroll sideways is checked with `await expect(page).not.toScrollSideways()`, both from `./support/expect.ts`.
 6. Check the minimum sizes: the test runs in both projects. A test that only holds on a desktop screen gets `TEST_TAGS.desktopOnly`, and the `mobile` project leaves it out; one that only holds on a phone's gets `TEST_TAGS.mobileOnly`, and the `desktop` project leaves it out. A test that differs on the phone reads Playwright's `isMobile` fixture, never the project's name. Screens that fill the window are also checked on a notebook, in full screen and in a window, with `atNotebookSizes(page, async (size) => …)` from `./support/sizes.ts`, naming `size` in each assertion's message.
 7. A test about a motion turns it on for itself: `page.emulateMedia({ reducedMotion: "no-preference" })`.
@@ -372,12 +374,13 @@ apps/web/
 │   ├── data/
 │   │   └── items.ts            # item(): um item de teste a partir dos campos que importam; ITEMS: os itens das specs do Estoque
 │   ├── locators/               # os elementos que as specs encontram, um arquivo por escopo de style id:
-│   │   ├── common.ts           # dialog(), dataTable(), pagination(), options(), toasts(), tour()
+│   │   ├── common.ts           # dialog(), modals(), dataTable(), pagination(), options(), toasts(), tour()
 │   │   ├── auth.ts             # loginForm(), registerForm(), logIn()
-│   │   ├── dashboard.ts        # dashboard(), userMenu(), logOut()
+│   │   ├── dashboard.ts        # dashboard(), userMenu(), aboutDialog(), logOut()
 │   │   ├── inventory.ts        # inventory(), itemForm(), itemDetails(), deleteDialog(), manageLists()…
 │   │   ├── notifications.ts    # bell()
-│   │   └── catalog.ts          # catalog()
+│   │   ├── catalog.ts          # catalog()
+│   │   └── setup.ts            # o que só o desktop mostra: serverSettings(), recoveryKey(), devices()…
 │   ├── api-guard.spec.ts       # confere que a guarda reprova uma chamada que nenhum substituto responde
 │   ├── seed.spec.ts            # de onde partem os agentes de teste do Playwright (abaixo)
 │   └── <tela-ou-fluxo>.spec.ts # uma por tela ou fluxo: inventory-list, inventory-form, inventory-details,
@@ -438,6 +441,7 @@ test("Desktop: …", { tag: [TEST_TAGS.setup] }, async ({ launchApp }) => {
 - **API substituta** (o padrão; `smoke`, `window`, `notifications`): a fixture `stubApi`, com escopo de worker, iniciada uma vez para os testes da spec; o app recebe o endereço dela em `APC_API_URL`. Responde health, o login dos usuários de teste, o tutorial, o logout, `/items` e listas de itens vazias, só para requisições que levam o token de um usuário de teste e são endereçadas a `127.0.0.1`/`localhost`. O `test.use({ stubStock: { items: ITEMS } })` dá os itens do `GET /items`.
 - **O servidor que o app traz** (`bundled`): `test.use({ server: "bundled" })`. Sem `APC_API_URL`, uma porta livre em `APC_SERVER_PORT` e o SQLite do próprio app no `userData` dele. Uma instalação nova mostra primeiro a chave de recuperação, que o `keepRecoveryKey()` guarda.
 - **`logIn(page, user)`** digita um usuário no login e espera o Estoque.
+- **Os elementos vêm dos locators do E2E da web** (`apps/web/e2e/locators/`), já que uma janela do Electron é uma `Page` do Playwright: `dashboard()`, `userMenu()`, `inventory()` e os demais, e o `setup.ts` para o que só o desktop mostra, como o diálogo Servidor, a chave de recuperação, o aviso de atualização e um dispositivo esperando aprovação.
 - **Um teste que falha** ganha um trace de cada app que abriu, gravado pelo `launchApp` ([Relatórios](#relatórios-e-traces)).
 
 ### Tags
@@ -467,7 +471,7 @@ O título mantém o prefixo (`Web:`, `Desktop:`), e as tags vêm depois dele no 
 1. Coloque-o na spec da sua tela ou fluxo (`inventory-form.spec.ts` para o formulário do item, `catalog-tree-editing.spec.ts` para editar a árvore do Catálogo). Uma spec cobre uma tela ou um fluxo e leva o nome dele, com a área na frente quando a área tem mais de uma (`<área>-<tela-ou-fluxo>.spec.ts`); uma tela ou fluxo novo ganha uma spec nova. A tag da área continua em todo teste, então o `--grep @inventory` ainda roda todos os de uma área.
 2. Dê o título com o prefixo, `Web:` ou `Desktop:`, e o comportamento em inglês; escreva o que ele confere e por quê num comentário logo acima ([AGENTS.md](../AGENTS.md#writing-tests)). Dê a ele a tag da área e as tags de tipo que se aplicam ([Tags](#tags-1)).
 3. Importe `test` e `expect` de `./support/fixtures.ts` e comece do estado de que ele precisa: o Dashboard com um usuário de teste é o padrão, `test.use({ signedIn: false })` para as telas antes do login, `test.use({ stock: { items } })` ou `serveItems()` só com os itens que importam (o `item()` de `./data/items.ts` completa o resto). Responda toda chamada à API que o teste faz: a guarda reprova as que ficarem sem resposta.
-4. Encontre os elementos por `./locators/<escopo>.ts`, o arquivo do escopo do style id do elemento: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, e fluxos que muitas specs repetem, como `logIn()`, `fillItem()` e `deleteItem()`. Um elemento que uma spec alcança mais de uma vez entra lá, sem asserções. Um locator encontra o elemento como um usuário encontra, nesta ordem: `getByRole` com o nome acessível, `getByLabel`, `getByText`. Ele usa o style id (`getByTestId("inventory.inventory-tab.filters.count")`) para um elemento sem papel ou texto próprio, e CSS só para o que não tem nenhum deles (`html`, `body`, `header`). A spec da demo usa os mesmos locators.
+4. Encontre os elementos por `./locators/<escopo>.ts`, o arquivo do escopo do style id do elemento: `itemForm(page, "Novo item").save`, `dataTable(page).rows`, e fluxos que muitas specs repetem, como `logIn()`, `fillItem()` e `deleteItem()`. Um elemento que uma spec alcança mais de uma vez entra lá, sem asserções. Um locator encontra o elemento como um usuário encontra, nesta ordem: `getByRole` com o nome acessível, `getByLabel`, `getByText`. Ele usa o style id (`getByTestId("inventory.inventory-tab.filters.count")`) para um elemento sem papel ou texto próprio, e CSS só para o que não tem nenhum deles (`html`, `body`, `header`). A spec da demo e o E2E do desktop usam os mesmos locators.
 5. Verifique com as asserções web-first do Playwright (`toBeVisible`, `toHaveText`, `toHaveURL`), e `expect.poll` para um valor lido da página. Nunca espere um tempo fixo. Uma cor no `toHaveCSS` vem do tema pelo `rgb()`, e uma página que não pode rolar para o lado é conferida com `await expect(page).not.toScrollSideways()`, os dois de `./support/expect.ts`.
 6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Um teste que só vale numa tela de desktop ganha `TEST_TAGS.desktopOnly`, e o projeto `mobile` o deixa de fora; um que só vale na de um celular ganha `TEST_TAGS.mobileOnly`, e o projeto `desktop` o deixa de fora. Um teste que muda no celular lê a fixture `isMobile` do Playwright, nunca o nome do projeto. Telas que ocupam a janela também são conferidas num notebook, em tela cheia e numa janela, com `atNotebookSizes(page, async (size) => …)` de `./support/sizes.ts`, citando `size` na mensagem de cada asserção.
 7. Um teste sobre um movimento o liga para si: `page.emulateMedia({ reducedMotion: "no-preference" })`.
