@@ -25,7 +25,9 @@ import { distinct, generationInput } from "../inventory/itemForm.ts";
 // agrees: its years those of the generation, its version that version (or one of the generation's), by name ignoring
 // case, accents and spaces; what it leaves out fits any. The Catalog then opens the Inventory (InventoryLink) on a
 // part's details, or with the filters that list every part that fits (carFilters): the vehicle brands and models of
-// the vehicles that fit, and for a version their generations and versions.
+// the vehicles that fit, and for a version their generations and versions. The Catalog can also show only the
+// vehicles some part fits (catalogWithParts): the models a part in stock fits, and the brands with one, a choice each
+// device remembers under CATALOG_PARTS_ONLY_KEY.
 // The tree is edited through the API: a catalog brand is added by name (a vehicle brand of the lists, added there when
 // they don't hold it), a model under a brand (a vehicle model of the lists the same way), a generation under a model,
 // a version under a generation, a year under a version and an engine with its sheet under a year; each but an engine
@@ -59,6 +61,8 @@ export const CATALOG_LEVEL_PATHS: Record<CatalogEditLevel, string> = {
   version: "/catalog/versions",
   year: "/catalog/years",
 };
+/** Where a device remembers whether the Catalog shows only the vehicles some part fits ("true" when it does). */
+export const CATALOG_PARTS_ONLY_KEY = "apc.catalog.partsOnly";
 /** The years a generation or a model year can have. */
 export const CATALOG_YEARS = { min: 1900, max: 2100 } as const;
 /** What a change of the catalog that failed says. */
@@ -471,6 +475,20 @@ export function catalogValuesOf(node: CatalogNode): CatalogValues {
     return { year: Number(node.label) };
   }
   return node.level === "generation" ? { name: node.label, firstYear: node.firstYear, lastYear: node.lastYear } : { name: node.label };
+}
+
+/**
+ * Leaves out of the catalog the vehicles no part in stock fits: the models none fits (see carParts), and the brands
+ * left with no model.
+ * @param catalog The catalog.
+ * @param items Every item in stock.
+ * @returns The catalog with only those brands and models, in their order, and every sheet.
+ */
+export function catalogWithParts(catalog: Catalog, items: readonly Item[]): Catalog {
+  const brands = catalog.brands
+    .map((brand) => ({ ...brand, models: brand.models.filter((model) => carParts(catalog, brand.id, model.id, items).length > 0) }))
+    .filter((brand) => brand.models.length > 0);
+  return { ...catalog, brands };
 }
 
 /**
