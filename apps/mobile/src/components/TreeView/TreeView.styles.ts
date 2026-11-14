@@ -2,10 +2,12 @@ import { ICON_SIZES } from '@apc/tokens/icons';
 import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { displayLabel, glow } from '../../styles/shared';
-import { fontFamily, softAccent } from '../../app/theme';
+import { fontFamily, softAccent, withAlpha } from '../../app/theme';
 
 // The look of the tree, the same as the web: rows in the display face at the top level, the body face in between and
-// the mono face for the leaves; the selected or highlighted row on the soft accent with an accent rule on its left;
+// the mono face for the leaves; the row chosen last or highlighted on the soft accent with an accent rule on its left,
+// and the rows on the way to it, with the selected row when another was chosen since, on half the soft accent with a
+// fainter rule (the trail), their labels in the accent;
 // pressing a row shows what hover shows on the web. As on the web's phone layout, a row is 48px tall in the body size,
 // and each level is indented 16px with no guide; a leaf's tag is a pill in the display face, outlined at rest and
 // filled in the accent on the selected leaf. The chevron of a branch that can be selected, which opens it apart from the
@@ -15,6 +17,10 @@ import { fontFamily, softAccent } from '../../app/theme';
 
 /** The size of a leaf's tag, in px (text-[11px] on the web). */
 export const TAG_SIZE = 11;
+/** How much of the soft accent a row of the trail takes (bg-accent-soft/50 on the web). */
+export const TRAIL_FILL = 0.5;
+/** The opacity of the accent in a trail row's rule (before:bg-accent/40 on the web). */
+export const TRAIL_RULE_OPACITY = 0.4;
 
 /** A tree: an item, its row with chevron, label, detail and tag, and the group of its children. */
 export const useStyles = createStyles(
@@ -70,6 +76,10 @@ export const useStyles = createStyles(
       },
       rowActive: { borderLeftColor: colors.accent, backgroundColor: softAccent(theme), ...glow(theme) },
       rowPressed: { backgroundColor: colors.panelRaised },
+      rowTrail: {
+        borderLeftColor: withAlpha(colors.accent, TRAIL_RULE_OPACITY),
+        backgroundColor: withAlpha(colors.accent, scales.accentSoft[theme.mode] * TRAIL_FILL),
+      },
       spacer: { width: ICON_SIZES.caret },
       // A finger wide, reaching past the chevron on each side, so the chevron and the label stay where they were.
       toggle: {

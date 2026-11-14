@@ -2,7 +2,9 @@ import { DISPLAY_LABEL } from '../../styles/shared.ts'
 import { recipe, tv } from '../../styles/tv.ts'
 
 // The look of the tree: rows in the display face at the top level, the body face in between and the mono face for the
-// leaves; the selected or highlighted row on the soft accent with an accent bar on its left; a guide hanging under each
+// leaves; the row chosen last or highlighted on the soft accent with an accent bar on its left, and the rows on the way
+// to it, with the selected row when another was chosen since, in the accent on half of it with a fainter bar (the
+// trail), so a generation chosen stands out more than one a version inside it is chosen under; a guide hanging under each
 // open branch; and a soft hairline above every top-level row but the first, the same as Divider. A branch's children
 // open by growing the one grid row they sit in from nothing to their full height: they show at once when it opens, so
 // the keyboard can move into them straight away, and hide only once it has closed. The two boxes that open them only
@@ -25,7 +27,7 @@ export const treeView = recipe(
       base: 'min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain p-1',
       item: 'outline-none [&:focus-visible>[data-row]]:shadow-ring [&>[data-row]:hover_[data-actions]]:flex',
       row: [
-        'relative flex min-h-8 min-w-0 items-center gap-2 overflow-hidden rounded-tile px-2 py-1 text-sm transition-[color,background-color,box-shadow]',
+        'relative flex min-h-8 min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-tile px-2 py-1 text-sm transition-[color,background-color,box-shadow]',
         'max-card:min-h-12 max-card:text-base',
       ],
       chevron: 'shrink-0 text-text-muted transition-transform motion-reduce:transition-none',
@@ -57,14 +59,21 @@ export const treeView = recipe(
         },
         false: { row: 'text-text hover:bg-panel-raised', tag: 'border-hairline text-text' },
       },
-      clickable: { true: { row: 'cursor-pointer' }, false: { row: 'cursor-default' } },
+      trail: {
+        true: {
+          row: [
+            'bg-accent-soft/50 text-accent hover:bg-accent-soft',
+            "before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent/40 before:content-['']",
+          ],
+        },
+      },
       actionsShown: { true: { actions: 'flex' } },
       open: {
         true: { chevron: 'rotate-90', group: 'visible grid-rows-[1fr] transition-[grid-template-rows]' },
         false: { group: 'invisible grid-rows-[0fr] transition-[grid-template-rows,visibility]' },
       },
     },
-    defaultVariants: { separated: false, face: 'body', active: false, clickable: false, actionsShown: false, open: false },
+    defaultVariants: { separated: false, face: 'body', active: false, trail: false, actionsShown: false, open: false },
   }),
   {
     base: '',
