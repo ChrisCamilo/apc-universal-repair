@@ -4,9 +4,14 @@ import type { Item } from "@apc/domain/items";
 import { NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT } from "@apc/ui-spec/screens";
 import { TEST_USERS } from "@apc/domain/test-users";
 import { testItem } from "@apc/domain/test-items";
+import { dataTable } from "../../web/e2e/locators/common.ts";
+import { dashboard } from "../../web/e2e/locators/dashboard.ts";
+import { inventory } from "../../web/e2e/locators/inventory.ts";
 
 // The desktop app in a window on a 1360×768 notebook, whose content is about 1360×689 once the taskbar and the title
-// bar are taken off: the compiled app on the stand-in API, with enough items to fill more than the window.
+// bar are taken off: the compiled app on the stand-in API, with enough items to fill more than the window. The web
+// E2E check the same layout at that size on Vite's dev server; this checks the production build in Electron's window,
+// sized by the window's own content size, as the app ships.
 
 /** Items enough to fill the list past the window. */
 const ITEMS: Item[] = Array.from({ length: 40 }, (_, index) =>
@@ -39,14 +44,15 @@ test("Desktop: in a window on a 1360×768 notebook only the Inventory's table sc
   const { app } = await launchApp();
   const page = await app.firstWindow();
   await logIn(page, TEST_USERS[0]);
-  await expect(page.locator("tbody tr").first()).toBeVisible();
+  const { rows, scroll } = dataTable(page);
+  await expect(rows.first()).toBeVisible();
   await app.evaluate(({ BrowserWindow }, [width, height]) => BrowserWindow.getAllWindows()[0].setContentSize(width, height), [NOTEBOOK_WIDTH, NOTEBOOK_WINDOW_HEIGHT]);
   await expect.poll(() => page.evaluate(() => innerHeight)).toBeLessThanOrEqual(NOTEBOOK_WINDOW_HEIGHT + 1);
 
   expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight)).toBe(0);
-  expect((await page.locator("header").boundingBox())!.y).toBe(0);
-  await expect(page.getByRole("button", { name: "Novo item" })).toBeInViewport();
-  await expect(page.getByRole("navigation", { name: "Páginas do estoque" })).toBeInViewport();
-  const table = page.getByTestId("common.data-table.scroll");
-  expect(await table.evaluate((box) => box.scrollHeight > box.clientHeight)).toBe(true);
+  expect((await dashboard(page).header.boundingBox())!.y).toBe(0);
+  const { newItem, pager } = inventory(page);
+  await expect(newItem).toBeInViewport();
+  await expect(pager.pages).toBeInViewport();
+  expect(await scroll.evaluate((box) => box.scrollHeight > box.clientHeight)).toBe(true);
 });

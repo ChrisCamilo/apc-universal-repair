@@ -10,6 +10,11 @@ import { TEST_TAGS } from "@apc/domain/test-tags";
 import { readConfig, writeConfig } from "../src/config.ts";
 import { certificateFingerprint } from "../src/server/certificate.ts";
 import { phoneAddress } from "../src/system/tray.ts";
+import { loginForm, registerForm } from "../../web/e2e/locators/auth.ts";
+import { tour } from "../../web/e2e/locators/common.ts";
+import { aboutDialog, dashboard, userMenu } from "../../web/e2e/locators/dashboard.ts";
+import { inventory } from "../../web/e2e/locators/inventory.ts";
+import { databaseChoice, firstStart, recoveryKey, serverFailure, serverSettings } from "../../web/e2e/locators/setup.ts";
 
 // The desktop app with the server it ships (server/, from scripts/bundle-server.mjs), as an installed app runs: no
 // APC_API_URL and no clone, its own userData folder, and a free port in place of 3000 (support/fixtures.ts). Run
@@ -55,10 +60,10 @@ function pinnedHealthOf(server: string, cert: string): Promise<"up" | "down"> {
  * @returns The recovery copy, e.g. "1F2E3D4C-…".
  */
 async function keepRecoveryKey(page: Page): Promise<string> {
-  const dialog = page.getByRole("dialog", { name: "Chave de recuperação do banco" });
-  const key = (await dialog.getByLabel("Chave de recuperação").textContent({ timeout: 60_000 })) ?? "";
-  await dialog.getByRole("button", { name: "Já guardei a chave" }).click();
-  await expect(dialog).toBeHidden();
+  const copy = recoveryKey(page);
+  const key = (await copy.key.textContent({ timeout: 60_000 })) ?? "";
+  await copy.kept.click();
+  await expect(copy.root).toBeHidden();
   return key;
 }
 
@@ -76,9 +81,9 @@ async function openServerSettings(app: ElectronApplication): Promise<void> {
  * @param page The app's window.
  */
 async function startFromScratch(page: Page): Promise<void> {
-  const choice = page.getByRole("dialog", { name: "Começar o APC" });
-  await choice.getByRole("button", { name: "Começar do zero" }).click();
-  await expect(choice).toBeHidden();
+  const choice = firstStart(page);
+  await choice.scratch.click();
+  await expect(choice.root).toBeHidden();
 }
 
 /**
@@ -86,16 +91,17 @@ async function startFromScratch(page: Page): Promise<void> {
  * @param page The app's window.
  */
 async function signUp(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Criar conta" }).click();
-  await page.getByLabel("Nome").fill("Ana Souza");
-  await page.getByLabel("Usuário", { exact: true }).fill("ana.souza");
-  await page.getByLabel("E-mail").fill("ana@oficina.com");
-  await page.getByLabel("Senha", { exact: true }).fill("freio1234");
-  await page.getByLabel("Confirmar senha").fill("freio1234");
-  await page.getByRole("button", { name: "Criar conta" }).click();
-  await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
-  await page.getByRole("button", { name: "Pular tutorial" }).click();
-  await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
+  await loginForm(page).signUp.click();
+  const form = registerForm(page);
+  await form.displayName.fill("Ana Souza");
+  await form.username.fill("ana.souza");
+  await form.email.fill("ana@oficina.com");
+  await form.password.fill("freio1234");
+  await form.confirm.fill("freio1234");
+  await form.submit.click();
+  await expect(dashboard(page).tab("inventory")).toHaveAttribute("aria-selected", "true");
+  await tour(page).skip.click();
+  await expect(inventory(page).empty).toBeVisible();
 }
 
 // Opens the app with no server named, and checks it starts its own: the login shows, a sign-up goes on to the empty
@@ -137,11 +143,12 @@ test("Desktop: Sobre esta versão shows the app's version and its notes", { tag:
   const notes = readFileSync(path.join(APP_DIR, "..", "..", "docs", "releases", `v${version}.md`), "utf8");
   const heading = /^### (.+)$/m.exec(notes.slice(notes.search(/^---\s*$/m)))![1].trim();
 
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitem", { name: "Sobre esta versão" }).click();
-  const dialog = page.getByRole("dialog", { name: "Sobre esta versão" });
-  await expect(dialog.getByText(`APC Universal Repair ${version}`)).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();
+  const menu = userMenu(page);
+  await menu.trigger.click();
+  await menu.item("Sobre esta versão").click();
+  const about = aboutDialog(page);
+  await expect(about.version(version)).toBeVisible();
+  await expect(about.heading(heading).first()).toBeVisible();
 });
 
 // Opens a fresh install and checks it offers to import an old server once the recovery copy is kept, and "Importar de
@@ -151,26 +158,25 @@ test("Desktop: a fresh install offers to import an old server until someone sign
   const first = await launchApp();
   let page = await first.app.firstWindow();
   await keepRecoveryKey(page);
-  await page.getByRole("dialog", { name: "Começar o APC" }).getByRole("button", { name: "Importar de um servidor antigo" }).click();
-  const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
-  await expect(dialog.getByRole("heading", { name: "Importar dados de outro servidor" })).toBeInViewport();
+  await firstStart(page).importOld.click();
+  await expect(serverSettings(page).heading("Importar dados de outro servidor")).toBeInViewport();
   await first.app.close();
 
   const second = await launchApp({ userData: first.userData });
   page = await second.app.firstWindow();
-  const choice = page.getByRole("dialog", { name: "Começar o APC" });
-  await expect(choice).toBeVisible({ timeout: 60_000 });
+  const choice = firstStart(page);
+  await expect(choice.root).toBeVisible({ timeout: 60_000 });
   await page.keyboard.press("Escape");
-  await expect(choice).toBeHidden();
+  await expect(choice.root).toBeHidden();
   await signUp(page);
   expect(readConfig(first.userData).firstStartDone).toBeUndefined();
   await second.app.close();
 
   const third = await launchApp({ userData: first.userData });
   page = await third.app.firstWindow();
-  await expect(page.getByRole("tab", { name: "Estoque" })).toBeVisible({ timeout: 60_000 });
+  await expect(dashboard(page).tab("inventory")).toBeVisible({ timeout: 60_000 });
   await expect.poll(() => readConfig(first.userData).firstStartDone, { timeout: 30_000 }).toBe(true);
-  await expect(page.getByRole("dialog", { name: "Começar o APC" })).toHaveCount(0);
+  await expect(firstStart(page).root).toHaveCount(0);
 });
 
 // Closes the window, and checks it is hidden, not closed, with the server still answering; opening the app again
@@ -202,14 +208,14 @@ test("Desktop: a PostgreSQL address that doesn't connect says so and keeps SQLit
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(page);
   await openServerSettings(app);
-  const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
-  await expect(dialog.getByText(`SQLite criptografado, em ${path.join(userData, "data")}`)).toBeVisible();
+  const settings = serverSettings(page);
+  await expect(settings.inUse(`SQLite criptografado, em ${path.join(userData, "data")}`)).toBeVisible();
 
-  await dialog.getByRole("radio", { name: "PostgreSQL" }).first().click();
-  await dialog.getByLabel("Endereço do PostgreSQL").fill("postgresql://apc:segredo@127.0.0.1:1/apc");
-  await dialog.getByRole("button", { name: "Usar PostgreSQL" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("Não foi possível conectar ao PostgreSQL", { timeout: 30_000 });
-  await expect(dialog.getByText(/^SQLite criptografado, em /)).toBeVisible();
+  await settings.database("PostgreSQL").click();
+  await settings.field("Endereço do PostgreSQL").fill("postgresql://apc:segredo@127.0.0.1:1/apc");
+  await settings.button("Usar PostgreSQL").click();
+  await expect(settings.failed).toContainText("Não foi possível conectar ao PostgreSQL", { timeout: 30_000 });
+  await expect(settings.inUse(/^SQLite criptografado, em /)).toBeVisible();
   expect(readConfig(userData)).not.toHaveProperty("databaseUrl");
   expect(await healthOf(server)).toBe("up");
 });
@@ -231,24 +237,24 @@ test("Desktop: an old server's SQLite file imports into a fresh install", { tag:
   await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
   await keepRecoveryKey(page);
   // The empty database's offer to import comes over the login once its check answers; Escape puts it off for now.
-  const offer = page.getByRole("dialog", { name: "Começar o APC" });
-  await expect(offer).toBeVisible();
+  const offer = firstStart(page);
+  await expect(offer.root).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(offer).toBeHidden();
+  await expect(offer.root).toBeHidden();
   const file = path.join(old.userData, "data", "apc.db");
   await app.evaluate(({ dialog }, chosen) => {
     dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [chosen] })) as typeof dialog.showOpenDialog;
   }, file);
-  await page.getByRole("button", { name: "Servidor e banco de dados" }).click();
-  const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
-  await dialog.getByRole("button", { name: "Escolher o arquivo" }).click();
-  await expect(dialog.getByText(file)).toBeVisible();
-  await dialog.getByLabel("Chave de recuperação do arquivo").fill(oldKey);
-  await dialog.getByRole("button", { name: "Importar", exact: true }).click();
-  await expect(dialog.getByRole("status")).toHaveText("Pronto: os dados do servidor antigo estão neste servidor.", { timeout: 60_000 });
-  await expect(dialog.getByRole("list", { name: "Linhas copiadas" }).getByText("Usuários: 1 de 1")).toBeVisible();
+  await loginForm(page).server.click();
+  const settings = serverSettings(page);
+  await settings.button("Escolher o arquivo").click();
+  await expect(settings.file(file)).toBeVisible();
+  await settings.field("Chave de recuperação do arquivo").fill(oldKey);
+  await settings.button("Importar").click();
+  await expect(settings.done).toHaveText("Pronto: os dados do servidor antigo estão neste servidor.", { timeout: 60_000 });
+  await expect(settings.copied("Usuários: 1 de 1")).toBeVisible();
 
-  await dialog.getByRole("button", { name: "Fechar" }).first().click();
+  await settings.close.click();
   await expect(page).toHaveURL(/^app:\/\/apc\/login/);
   await logIn(page, { username: "ana.souza", password: "freio1234" });
 });
@@ -258,14 +264,14 @@ test("Desktop: an old server's SQLite file imports into a fresh install", { tag:
 test("Desktop: with PostgreSQL chosen at install, the app asks for its address before starting the server", { tag: [TEST_TAGS.setup, TEST_TAGS.bundled] }, async ({ launchApp }) => {
   const { app, userData, server } = await launchApp({ files: { "installer-database.txt": "postgresql" } });
   const page = await app.firstWindow();
-  const dialog = page.getByRole("dialog", { name: "Banco de dados do servidor" });
-  await expect(dialog).toBeVisible({ timeout: 60_000 });
+  const choice = databaseChoice(page);
+  await expect(choice.root).toBeVisible({ timeout: 60_000 });
   expect(await healthOf(server)).toBe("down");
-  await dialog.getByRole("button", { name: "Usar SQLite" }).click();
+  await choice.useSqlite.click();
   await expect.poll(() => healthOf(server), { timeout: 60_000 }).toBe("up");
-  await expect(dialog).toBeHidden();
+  await expect(choice.root).toBeHidden();
   await keepRecoveryKey(page);
-  await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
+  await expect(loginForm(page).submit).toBeVisible();
   expect(readConfig(userData).database).toBe("sqlite");
 });
 
@@ -292,8 +298,8 @@ test("Desktop: the SQLite file is encrypted with a key kept for the next start",
   const { app } = await launchApp({ userData: first.userData });
   const page = await app.firstWindow();
   await expect(page).toHaveURL(/^app:\/\/apc\//, { timeout: 60_000 });
-  await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("dialog", { name: "Chave de recuperação do banco" })).toHaveCount(0);
+  await expect(dashboard(page).tab("inventory")).toHaveAttribute("aria-selected", "true");
+  await expect(recoveryKey(page).root).toHaveCount(0);
 });
 
 // Starts the app on a database from before its migrations, as an update that brings new ones finds it, and checks the
@@ -322,7 +328,7 @@ test("Desktop: a server that can't start is said so, with why", { tag: [TEST_TAG
   writeConfig(first.userData, { ...readConfig(first.userData), database: "postgresql", databaseUrl: address });
   const { app, userData } = await launchApp({ userData: first.userData });
   const page = await app.firstWindow();
-  const failure = page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
+  const failure = serverFailure(page).root;
   await expect(failure).toBeVisible({ timeout: 90_000 });
   await expect(failure).toContainText("O servidor parou ao ligar, várias vezes seguidas. Último erro:");
   await expect(failure).toContainText(path.join(userData, "logs", "api.log"));
@@ -347,8 +353,8 @@ test("Desktop: closing the window to the tray keeps the SQLite key", { tag: [TES
 
   const { app } = await launchApp({ userData: first.userData });
   const next = await app.firstWindow();
-  await expect(next.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
-  await expect(next.getByRole("alert").filter({ hasText: "O servidor não ligou" })).toHaveCount(0);
+  await expect(dashboard(next).tab("inventory")).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+  await expect(serverFailure(next).root).toHaveCount(0);
 });
 
 // Signs up on a fresh install, keeping the recovery copy, then opens it again with no key in config.json, and then
@@ -367,35 +373,35 @@ test("Desktop: a missing or wrong SQLite key is asked for, never replaced", { ta
   await first.app.close();
   const { userData } = first;
   const kept = readConfig(userData);
-  const failure = (page: Page) => page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
 
   writeConfig(userData, { ...kept, sqliteKey: undefined, sqliteKeySaved: undefined });
   const missing = await launchApp({ userData });
   const missingPage = await missing.app.firstWindow();
-  await expect(failure(missingPage)).toContainText("A chave do banco SQLite não está mais neste computador.", { timeout: 60_000 });
+  await expect(serverFailure(missingPage).root).toContainText("A chave do banco SQLite não está mais neste computador.", { timeout: 60_000 });
   expect(readConfig(userData).sqliteKey).toBeUndefined();
-  await expect(missingPage.getByRole("dialog", { name: "Chave de recuperação do banco" })).toHaveCount(0);
+  await expect(recoveryKey(missingPage).root).toHaveCount(0);
   await missing.app.close();
 
   writeConfig(userData, { ...kept, sqliteKey: wrongKey, sqliteKeySaved: false });
   const { app } = await launchApp({ userData });
   const page = await app.firstWindow();
-  await expect(failure(page)).toContainText("A chave do banco SQLite guardada neste computador não abre o arquivo dele.", { timeout: 60_000 });
+  const failure = serverFailure(page);
+  await expect(failure.root).toContainText("A chave do banco SQLite guardada neste computador não abre o arquivo dele.", { timeout: 60_000 });
   expect(readConfig(userData).sqliteKey).toBe(wrongKey);
-  await expect(page.getByRole("dialog", { name: "Chave de recuperação do banco" })).toHaveCount(0);
+  await expect(recoveryKey(page).root).toHaveCount(0);
 
-  await page.getByLabel("Chave de recuperação", { exact: true }).fill("cd".repeat(32));
-  await page.getByRole("button", { name: "Usar a chave de recuperação" }).click();
-  await expect(page.getByText("Essa chave não abre o banco deste computador.", { exact: false })).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel("Chave de recuperação", { exact: true }).fill(copy);
-  await page.getByRole("button", { name: "Usar a chave de recuperação" }).click();
+  await failure.key.fill("cd".repeat(32));
+  await failure.useKey.click();
+  await expect(failure.refused).toBeVisible({ timeout: 30_000 });
+  await failure.key.fill(copy);
+  await failure.useKey.click();
   // The copy is checked and kept, and the server started on it, while the screen shows its spinner.
   await expect.poll(() => readConfig(userData).sqliteKeySaved, { timeout: 60_000 }).toBe(true);
   expect(readConfig(userData).sqliteKey).not.toBe(wrongKey);
   // Ana's session, from before the key was lost, is still in the data the key opens again.
-  await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
-  await expect(failure(page)).toHaveCount(0);
-  await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
+  await expect(dashboard(page).tab("inventory")).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+  await expect(failure.root).toHaveCount(0);
+  await expect(inventory(page).empty).toBeVisible();
 });
 
 /**
@@ -406,10 +412,10 @@ test("Desktop: a missing or wrong SQLite key is asked for, never replaced", { ta
  */
 async function changeKey(app: ElectronApplication, page: Page): Promise<string> {
   await openServerSettings(app);
-  const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
-  await dialog.getByRole("button", { name: "Trocar a chave" }).click();
-  await dialog.getByRole("button", { name: "Trocar a chave mesmo assim" }).click();
-  await expect(dialog.getByRole("status")).toHaveText("Pronto: o banco tem uma chave nova. Guarde a cópia de recuperação dela.", { timeout: 60_000 });
+  const settings = serverSettings(page);
+  await settings.button("Trocar a chave").click();
+  await settings.button("Trocar a chave mesmo assim").click();
+  await expect(settings.done).toHaveText("Pronto: o banco tem uma chave nova. Guarde a cópia de recuperação dela.", { timeout: 60_000 });
   return keepRecoveryKey(page);
 }
 
@@ -436,21 +442,22 @@ test("Desktop: the SQLite key changes, and the old recovery copy no longer opens
 
   const again = await launchApp({ userData });
   const againPage = await again.app.firstWindow();
-  await expect(againPage.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
-  await expect(againPage.getByText("Nenhum item cadastrado")).toBeVisible();
+  await expect(dashboard(againPage).tab("inventory")).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+  await expect(inventory(againPage).empty).toBeVisible();
   await again.app.close();
 
   writeConfig(userData, { ...readConfig(userData), sqliteKey: undefined, sqliteKeySaved: undefined });
   const { app } = await launchApp({ userData });
   const page = await app.firstWindow();
-  await expect(page.getByRole("alert").filter({ hasText: "O servidor não ligou" })).toBeVisible({ timeout: 60_000 });
-  await page.getByLabel("Chave de recuperação", { exact: true }).fill(oldCopy);
-  await page.getByRole("button", { name: "Usar a chave de recuperação" }).click();
-  await expect(page.getByText("Essa chave não abre o banco deste computador.", { exact: false })).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel("Chave de recuperação", { exact: true }).fill(newCopy);
-  await page.getByRole("button", { name: "Usar a chave de recuperação" }).click();
+  const failure = serverFailure(page);
+  await expect(failure.root).toBeVisible({ timeout: 60_000 });
+  await failure.key.fill(oldCopy);
+  await failure.useKey.click();
+  await expect(failure.refused).toBeVisible({ timeout: 30_000 });
+  await failure.key.fill(newCopy);
+  await failure.useKey.click();
   await expect.poll(() => readConfig(userData).sqliteKeySaved, { timeout: 60_000 }).toBe(true);
-  await expect(page.getByText("Nenhum item cadastrado")).toBeVisible({ timeout: 60_000 });
+  await expect(inventory(page).empty).toBeVisible({ timeout: 60_000 });
 });
 
 // Leaves config.json as a change of the SQLite key cut short leaves it, and checks the next start ends it with the key
@@ -473,8 +480,8 @@ test("Desktop: a change of the SQLite key cut short is ended on the next start",
   const opensTheData = async () => {
     const { app } = await launchApp({ userData });
     const page = await app.firstWindow();
-    await expect(page.getByRole("tab", { name: "Estoque" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
-    await expect(page.getByText("Nenhum item cadastrado")).toBeVisible();
+    await expect(dashboard(page).tab("inventory")).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+    await expect(inventory(page).empty).toBeVisible();
     await app.close();
   };
 
@@ -500,25 +507,25 @@ test("Desktop: a taken port is said so, and the server moves to another port", {
   try {
     const { app, userData } = await launchApp({ port });
     const page = await app.firstWindow();
-    const failure = page.getByRole("alert").filter({ hasText: "O servidor não ligou" });
-    await expect(failure).toContainText(`A porta ${port} já está em uso pelo programa node.exe (processo ${process.pid}).`);
+    const failure = serverFailure(page);
+    await expect(failure.root).toContainText(`A porta ${port} já está em uso pelo programa node.exe (processo ${process.pid}).`);
     const apiLog = path.join(userData, "logs", "api.log");
     expect(existsSync(apiLog) && readFileSync(apiLog, "utf8").includes("Starting the server.")).toBe(false);
 
-    await page.getByRole("button", { name: "Usar outra porta" }).click();
-    const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
+    await failure.otherPort.click();
+    const settings = serverSettings(page);
     const other = await freePort();
-    await dialog.getByLabel("Porta", { exact: true }).fill(String(other));
-    await dialog.getByRole("button", { name: "Trocar a porta" }).click();
-    await dialog.getByRole("button", { name: "Trocar mesmo assim" }).click();
-    await expect(dialog.getByRole("status")).toHaveText(`Pronto: o servidor ligou na porta ${other}.`, { timeout: 60_000 });
+    await settings.field("Porta").fill(String(other));
+    await settings.button("Trocar a porta").click();
+    await settings.button("Trocar mesmo assim").click();
+    await expect(settings.done).toHaveText(`Pronto: o servidor ligou na porta ${other}.`, { timeout: 60_000 });
     expect(readConfig(userData).port).toBe(other);
     expect(await healthOf(`http://127.0.0.1:${other}`)).toBe("up");
 
-    await dialog.getByRole("button", { name: "Fechar" }).first().click();
+    await settings.close.click();
     await keepRecoveryKey(page);
-    await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
-    await expect(failure).toHaveCount(0);
+    await expect(loginForm(page).submit).toBeVisible();
+    await expect(failure.root).toHaveCount(0);
   } finally {
     holder.close();
   }
@@ -543,11 +550,11 @@ test("Desktop: the server reaches the network only with the phone's access on", 
   expect(await healthOf(onNetwork)).toBe("down");
 
   await openServerSettings(app);
-  const dialog = page.getByRole("dialog", { name: "Servidor e banco de dados" });
-  const access = dialog.getByRole("switch", { name: "Deixar o celular acessar o servidor" });
+  const settings = serverSettings(page);
+  const access = settings.phoneAccess;
   await expect(access).toHaveAttribute("aria-checked", "false");
   await access.click();
-  await expect(dialog.getByRole("status")).toHaveText("Pronto: o celular já pode acessar o servidor.", { timeout: 60_000 });
+  await expect(settings.done).toHaveText("Pronto: o celular já pode acessar o servidor.", { timeout: 60_000 });
   const config = readConfig(userData);
   expect(config.phoneAccess).toBe(true);
   const cert = config.httpsCertificate!;
@@ -556,12 +563,12 @@ test("Desktop: the server reaches the network only with the phone's access on", 
   expect(await pinnedHealthOf(`https://127.0.0.1:${port}`, cert)).toBe("up");
   expect(await healthOf(onNetwork)).toBe("down");
   expect(await healthOf(server)).toBe("down");
-  await expect(dialog.getByRole("img", { name: "QR code para conectar o celular" })).toBeVisible();
-  await expect(dialog.getByText(fingerprintGroups(certificateFingerprint(cert)))).toBeVisible();
-  await expect(dialog.getByText(/^[2-9A-HJ-NP-Z]{4} [2-9A-HJ-NP-Z]{4}$/)).toBeVisible();
+  await expect(settings.qrCode).toBeVisible();
+  await expect(settings.fingerprint(fingerprintGroups(certificateFingerprint(cert)))).toBeVisible();
+  await expect(settings.entryCode).toBeVisible();
 
   await access.click();
-  await expect(dialog.getByRole("status")).toHaveText("Pronto: o servidor responde só a este computador.", { timeout: 60_000 });
+  await expect(settings.done).toHaveText("Pronto: o servidor responde só a este computador.", { timeout: 60_000 });
   expect(readConfig(userData).phoneAccess).toBe(false);
   expect(await healthOf(onNetwork)).toBe("down");
   expect(await healthOf(server)).toBe("up");

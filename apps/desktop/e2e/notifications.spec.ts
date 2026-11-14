@@ -4,6 +4,8 @@ import { TEST_TAGS } from "@apc/domain/test-tags";
 import type { Item } from "@apc/domain/items";
 import { TEST_USERS } from "@apc/domain/test-users";
 import { testItem } from "@apc/domain/test-items";
+import { logOut } from "../../web/e2e/locators/dashboard.ts";
+import { bell as bellOf } from "../../web/e2e/locators/notifications.ts";
 
 // The desktop app's Windows notifications: the compiled app on a stand-in API whose one item is below its minimum
 // stock, so the Inventory warns about it as it opens. The main process's Notification is replaced by one that only
@@ -58,20 +60,19 @@ test("Desktop: warnings show as Windows notifications while the window isn't foc
     };
   });
   const shown = () => app.evaluate(() => (globalThis as unknown as { apcShown: Electron.Notification[] }).apcShown.map(({ title, body }) => [title, body]));
-  const bell = page.getByRole("button", { name: /^Notificações/ });
+  const bell = bellOf(page);
 
   await setFocused(app, true);
   await logIn(page, TEST_USERS[0]);
-  await expect(bell).toHaveAccessibleName("Notificações, 1 não lidas");
+  await expect(bell.button).toHaveAccessibleName("Notificações, 1 não lidas");
   expect(await shown()).toEqual([]);
 
-  await page.getByRole("button", { name: "Menu do usuário" }).click();
-  await page.getByRole("menuitem", { name: "Sair" }).click();
+  await logOut(page);
   await setFocused(app, false);
   await logIn(page, TEST_USERS[1]);
   await expect.poll(shown).toEqual([["Aviso", "Estoque baixo: “Filtro de óleo” (1 de 3)"]]);
 
   await app.evaluate(() => (globalThis as unknown as { apcShown: Electron.Notification[] }).apcShown[0].emit("click"));
-  await expect(page.getByRole("menu", { name: /^Notificações/ })).toBeVisible();
-  await expect(page.getByRole("list", { name: "Últimas notificações" })).toContainText("Estoque baixo: “Filtro de óleo” (1 de 3)");
+  await expect(bell.menu).toBeVisible();
+  await expect(bell.list).toContainText("Estoque baixo: “Filtro de óleo” (1 de 3)");
 });
