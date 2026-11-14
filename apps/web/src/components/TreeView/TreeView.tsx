@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
 import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
-import { ancestors, canOpen, isLeaf, treeKey, visibleRows, type TreeNode } from '@apc/ui-spec/tree'
+import { ancestors, canOpen, isLeaf, treeKey, treeMarks, visibleRows, type TreeNode } from '@apc/ui-spec/tree'
 import { Icon } from '../Icon/Icon.tsx'
 import { treeView } from './TreeView.styles.ts'
 
@@ -13,6 +13,9 @@ import { treeView } from './TreeView.styles.ts'
 // The tree scrolls inside its own height, set through className, and long labels are cut short instead of
 // widening it. A row can also be pointed out, such as the model of a part found by its code: it takes the accent
 // like the selected leaf, and is marked aria-current for screen readers.
+// Any row can be chosen with a click, Enter or Space, even a branch that can't be selected, such as a generation: the
+// row chosen last takes the accent instead of the selected one, and the rows on the way to it, with the selected row
+// when it is another, a softer accent (treeMarks in @apc/ui-spec/tree). A new selection from the owner takes over.
 // The owner can edit the tree from it: a row can end with its own buttons (rowActions), shown while the row is
 // pointed at, and on the row the keyboard is on while the focus is in the tree, so Tab reaches them from the row; a row can show something else in its place, such as a
 // field to rename it (editing); a branch can end with one more line under its children (after), such as a field to
@@ -32,6 +35,10 @@ type TreeItemProps = { node: TreeNode; level: number; first: boolean; tree: Tree
 type TreeState = {
   expanded: ReadonlySet<string>
   selected?: string
+  /** The row marked in full: the one chosen last, or the selected one. */
+  current?: string
+  /** The rows marked softly: the ones on the way to the current row, and the selected one when it is another. */
+  trail: ReadonlySet<string>
   highlighted?: string
   leafTag?: string
   selectable?: (id: string) => boolean
@@ -98,9 +105,12 @@ export function TreeView({
   // The item last focused, which Tab comes back to, and whether the focus is in the tree.
   const [focused, setFocused] = useState<string | null>(null)
   const [focusIn, setFocusIn] = useState(false)
+  // The row chosen last that can't be selected, with the selection it was chosen under, so a new one takes over.
+  const [chosen, setChosen] = useState<{ id: string; under?: string }>()
   const items = useRef(new Map<string, HTMLLIElement>())
   const rows = visibleRows(nodes, expanded)
   const tabbable = (rows.find((row) => row.node.id === focused) ?? rows.find((row) => row.node.id === selected) ?? rows[0])?.node.id
+  const { current, trail } = treeMarks(nodes, chosen?.under === selected ? chosen?.id : undefined, selected)
 
   // A branch the owner reveals opens, with the ones above it.
   useEffect(() => {
@@ -122,14 +132,13 @@ export function TreeView({
     })
   }
 
-  /** Selects a leaf, or opens or closes a branch, selecting it too when it is selectable. */
+  /** Selects a leaf, or opens or closes a branch, selecting it too when it is selectable; a branch that isn't is chosen. */
   const activate = (node: TreeNode) => {
-    if (isLeaf(node)) {
+    if (isLeaf(node) || selectable?.(node.id)) {
+      setChosen(undefined)
       onSelect(node.id)
-      return
-    }
-    if (selectable?.(node.id)) {
-      onSelect(node.id)
+    } else {
+      setChosen({ id: node.id, under: selected })
     }
     if (canOpen(node)) {
       toggle(node.id)
@@ -144,7 +153,7 @@ export function TreeView({
     }
     const index = rows.findIndex((row) => row.node.id === tabbable)
     const node = rows[index]?.node
-    if (node && !isLeaf(node) && selectable?.(node.id) && (event.key === 'Enter' || event.key === ' ')) {
+    if (node && !isLeaf(node) && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault()
       activate(node)
       return
@@ -159,6 +168,7 @@ export function TreeView({
     } else if (action.kind === 'toggle') {
       toggle(action.id)
     } else {
+      setChosen(undefined)
       onSelect(action.id)
     }
   }
@@ -166,6 +176,8 @@ export function TreeView({
   const tree: TreeState = {
     expanded,
     selected,
+    current,
+    trail,
     highlighted,
     leafTag,
     selectable,
@@ -223,12 +235,13 @@ function TreeItem({ node, level, first, tree }: TreeItemProps) {
   const choosable = leaf || Boolean(tree.selectable?.(node.id))
   const selected = choosable && node.id === tree.selected
   const highlighted = node.id === tree.highlighted
+  const active = (node.id === tree.current && (choosable || node.id !== tree.selected)) || highlighted
   const { classes, ids } = treeView({
     actionsShown: tree.focusIn && node.id === tree.tabbable,
     separated: level === 1 && !first,
     face: level === 1 ? 'display' : leaf ? 'mono' : 'body',
-    active: selected || highlighted,
-    clickable: branch || choosable,
+    active,
+    trail: !active && tree.trail.has(node.id),
     open,
   })
   return (

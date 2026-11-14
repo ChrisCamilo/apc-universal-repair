@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ancestors, canOpen, isLeaf, treeKey, visibleRows, type TreeNode } from "./tree.ts";
+import { ancestors, canOpen, isLeaf, treeKey, treeMarks, visibleRows, type TreeNode } from "./tree.ts";
 
 const TREE: TreeNode[] = [
   {
@@ -113,4 +113,13 @@ test("Shared: Enter and Space select a leaf or open and close a branch", () => {
   assert.deepEqual(press(" ", "opala", []), { kind: "toggle", id: "opala" });
   assert.equal(press("Enter", "gen1", ["opala"]), null);
   assert.equal(press("a", "opala", []), null);
+});
+
+// Marks the selected leaf in full and the branches above it softly; then a generation chosen since, which marks it in
+// full and leaves the selected leaf soft with the model above it; and nothing when there is neither.
+test("Shared: the row chosen last is marked in full and the way to it softly", () => {
+  assert.deepEqual(treeMarks(TREE, undefined, "4.1"), { current: "4.1", trail: new Set(["opala", "gen3", "diplomata", "1986"]) });
+  assert.deepEqual(treeMarks(TREE, "gen3", "4.1"), { current: "gen3", trail: new Set(["opala", "4.1"]) });
+  assert.deepEqual(treeMarks(TREE, "gen1", undefined), { current: "gen1", trail: new Set(["opala"]) });
+  assert.deepEqual(treeMarks(TREE, undefined, undefined), { current: undefined, trail: new Set() });
 });

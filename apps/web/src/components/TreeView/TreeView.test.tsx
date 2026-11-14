@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
+import { pencilIcon } from '@apc/tokens/icons'
 import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import type { TreeNode } from '@apc/ui-spec/tree'
 import { beforeAll, expect, test, vi } from 'vitest'
@@ -7,6 +8,7 @@ import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
+import { RowAction } from '../DataTable'
 import { TreeView } from './TreeView.tsx'
 
 const LEAF = '4.1'
@@ -306,6 +308,65 @@ test('Web: a selectable branch is selected as it opens, by click and Enter', asy
   await expect.element(screen.getByRole('treeitem', { name: 'Diplomata' })).toHaveAttribute('aria-selected', 'true')
   await expect.element(screen.getByRole('treeitem', { name: 'Diplomata' })).toHaveAttribute('aria-expanded', 'true')
   await expect.element(opala).toHaveAttribute('aria-selected', 'false')
+})
+
+// Opens on the selected engine and checks it is marked in full and the branches above it softly; then clicks a
+// generation, which can't be selected, and an empty one, and checks the one clicked last is marked in full, with the
+// model above it and the selected engine softly; then opens the first generation again, clicks the other engine and
+// presses Enter on the empty generation, and checks the marks follow the row chosen last while only the engine is
+// handed to onSelect.
+test('Web: the row chosen last is marked in full and the way to it softly', async () => {
+  root.dataset.style = 'gt4'
+  root.dataset.mode = 'day'
+  const accent = rgb(themes.gt4.day.colors.accent)
+  const onSelect = vi.fn()
+  const screen = await render(<Sample onSelect={onSelect} />)
+  const labels = ['Opala', 'Primeira geração', 'Terceira geração', 'Diplomata', '1986', '2.5 L 4 cilindros', '4.1 L 6 cilindros']
+  const rows = [...screen.getByRole('tree').element().querySelectorAll<HTMLElement>('[data-row]')]
+  // How each row is marked, from the rule on its left: in the accent, in a fainter accent, or none; found by its label,
+  // as the rows of a closed branch are out of the accessibility tree.
+  const marks = () =>
+    labels.map((label) => {
+      const found = rows.find((each) => each.querySelector('[data-testid="common.tree-view.item.row.label"]')?.textContent === label)!
+      const rule = getComputedStyle(found, '::before')
+      return rule.content === 'none' ? 'none' : rule.backgroundColor === accent ? 'full' : 'soft'
+    })
+  expect(marks()).toEqual(['soft', 'none', 'soft', 'soft', 'soft', 'none', 'full'])
+  await screen.getByText('Terceira geração').click()
+  expect(marks()).toEqual(['soft', 'none', 'full', 'none', 'none', 'none', 'soft'])
+  await screen.getByText('Primeira geração').click()
+  expect(marks()).toEqual(['soft', 'full', 'none', 'none', 'none', 'none', 'soft'])
+  await expect.element(screen.getByRole('treeitem', { name: '4.1 L 6 cilindros' })).toHaveAttribute('aria-selected', 'true')
+  expect(onSelect).not.toHaveBeenCalled()
+
+  await screen.getByText('Terceira geração').click()
+  await screen.getByText('2.5 L 4 cilindros').click()
+  expect(onSelect).toHaveBeenLastCalledWith('2.5')
+  expect(marks()).toEqual(['soft', 'none', 'soft', 'soft', 'soft', 'full', 'none'])
+  screen.getByRole('treeitem', { name: 'Primeira geração 1968–1974' }).element().focus()
+  await userEvent.keyboard('{Enter}')
+  expect(marks()).toEqual(['soft', 'full', 'none', 'none', 'none', 'soft', 'none'])
+  expect(onSelect).toHaveBeenCalledTimes(1)
+})
+
+// Gives every branch a button at its end and points at a generation, and checks its button shows while the row keeps
+// its height, the same as a row without buttons, so pointing at rows doesn't make the tree jump.
+test('Web: a row keeps its height when its buttons show', async () => {
+  const screen = await render(
+    <TreeView
+      label="Modelos Chevrolet"
+      nodes={MODELS}
+      selected={LEAF}
+      onSelect={() => {}}
+      rowActions={(id) => (id === LEAF || id === '2.5' ? null : <RowAction icon={pencilIcon} label={`Renomear ${id}`} onClick={() => {}} />)}
+    />,
+  )
+  const height = row('Terceira geração 1980–1992').getBoundingClientRect().height
+  expect(getComputedStyle(row('Terceira geração 1980–1992').querySelector('[data-actions]')!).display).toBe('none')
+  await userEvent.hover(row('Terceira geração 1980–1992'))
+  await expect.element(screen.getByRole('button', { name: 'Renomear gen3' })).toBeVisible()
+  expect(row('Terceira geração 1980–1992').getBoundingClientRect().height).toBe(height)
+  expect(row('4.1 L 6 cilindros').getBoundingClientRect().height).toBe(height)
 })
 
 function Sample({

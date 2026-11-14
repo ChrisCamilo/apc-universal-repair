@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, Text, View, type ViewStyle } from 'react-native';
 import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons';
 import { scales } from '@apc/tokens/theme';
-import { ancestors, canOpen, isLeaf, type TreeNode } from '@apc/ui-spec/tree';
+import { ancestors, canOpen, isLeaf, treeMarks, type TreeNode } from '@apc/ui-spec/tree';
 import { Icon } from '../Icon/Icon';
 import { useReducedMotion } from '../../app/motion';
 import { Divider } from '../Panel/Panel';
@@ -20,6 +20,9 @@ const OPEN_ANIMATION = LayoutAnimation.create(scales.motion.durationMs, 'easeInE
 // reduced motion, branches open and the chevron turns at once. The tree scrolls inside its own height, set
 // through style, and long labels are cut short on one line. A row can also be pointed out, such as the model of a
 // part found by its code: it takes the accent like the selected leaf, and screen readers say it is "em destaque".
+// As on the web, any row can be chosen with a press, even a branch that can't be selected, such as a generation: the
+// row chosen last takes the accent instead of the selected one, and the rows on the way to it, with the selected row
+// when it is another, a softer accent (treeMarks in @apc/ui-spec/tree). A new selection from the owner takes over.
 // As on the web's phone layout, the rows are 48px tall, a finger's height, and each level is indented 16px with no
 // guide; a tag at the right of each leaf, such as "Ver ficha", can say what pressing it does, filled in the accent on
 // the selected one.
@@ -37,6 +40,10 @@ type TreeItemProps = { node: TreeNode; level: number; tree: TreeState };
 type TreeState = {
   expanded: ReadonlySet<string>;
   selected?: string;
+  /** The row marked in full: the one chosen last, or the selected one. */
+  current?: string;
+  /** The rows marked softly: the ones on the way to the current row, and the selected one when it is another. */
+  trail: ReadonlySet<string>;
   highlighted?: string;
   leafTag?: string;
   selectable?: (id: string) => boolean;
@@ -89,6 +96,9 @@ export function TreeView({
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(defaultExpanded ?? (selected ? ancestors(nodes, selected) : [])),
   );
+  // The row chosen last that can't be selected, with the selection it was chosen under, so a new one takes over.
+  const [chosen, setChosen] = useState<{ id: string; under?: string }>();
+  const { current, trail } = treeMarks(nodes, chosen?.under === selected ? chosen?.id : undefined, selected);
 
   // A branch the owner reveals opens, with the ones above it.
   useEffect(() => {
@@ -112,21 +122,20 @@ export function TreeView({
     });
   };
 
-  /** Selects a leaf, or opens or closes a branch, selecting it too when it is selectable. */
+  /** Selects a leaf, or opens or closes a branch, selecting it too when it is selectable; a branch that isn't is chosen. */
   const activate = (node: TreeNode) => {
-    if (isLeaf(node)) {
+    if (isLeaf(node) || selectable?.(node.id)) {
+      setChosen(undefined);
       onSelect(node.id);
-      return;
-    }
-    if (selectable?.(node.id)) {
-      onSelect(node.id);
+    } else {
+      setChosen({ id: node.id, under: selected });
     }
     if (canOpen(node)) {
       toggle(node.id);
     }
   };
 
-  const tree: TreeState = { expanded, selected, highlighted, leafTag, selectable, rowActions, after, activate, toggle };
+  const tree: TreeState = { expanded, selected, current, trail, highlighted, leafTag, selectable, rowActions, after, activate, toggle };
   const { styles, ids } = useStyles();
   return (
     <ScrollView role="tree" accessibilityLabel={label} nestedScrollEnabled style={[styles.tree, style]} testID={ids.tree}>
@@ -150,8 +159,9 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
   const actions = tree.rowActions?.(node.id);
   const choosable = leaf || Boolean(tree.selectable?.(node.id));
   const selected = choosable && node.id === tree.selected;
-  // A pointed-out row looks like the selected leaf.
-  const accent = selected || node.id === tree.highlighted;
+  // The row chosen last takes the accent, and a pointed-out row looks like it.
+  const accent = (node.id === tree.current && (choosable || node.id !== tree.selected)) || node.id === tree.highlighted;
+  const trail = !accent && tree.trail.has(node.id);
   return (
     <View style={styles.item} testID={ids.item}>
       <View style={styles.line} testID={ids.line}>
@@ -160,9 +170,8 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
           accessibilityLabel={node.detail ? `${node.label} ${node.detail}` : node.label}
           accessibilityState={{ expanded: branch ? open : undefined, selected: choosable ? selected : undefined }}
           accessibilityValue={node.id === tree.highlighted ? { text: 'em destaque' } : undefined}
-          disabled={!branch && !choosable}
           onPress={() => tree.activate(node)}
-          style={({ pressed }) => [styles.row, pressed && styles.rowPressed, accent && styles.rowActive]}
+          style={({ pressed }) => [styles.row, trail && styles.rowTrail, pressed && styles.rowPressed, accent && styles.rowActive]}
           testID={ids.row}
         >
           {branch && choosable ? (
@@ -186,7 +195,7 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
               styles.label,
               level === 1 && styles.labelDisplay,
               level > 1 && leaf && (accent ? styles.labelMonoActive : styles.labelMono),
-              accent && styles.labelActive,
+              (accent || trail) && styles.labelActive,
             ]}
             testID={ids.label}
           >

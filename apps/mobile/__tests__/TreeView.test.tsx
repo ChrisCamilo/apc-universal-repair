@@ -137,8 +137,8 @@ for (const style of STYLES) {
 }
 
 // Checks the tree is named, opens on the path to the selected engine, its branches tell whether they are open,
-// its leaves whether they are selected, the open ones hold a group, and an empty branch has no chevron, tells
-// neither and can't be pressed. A divider stands between the top-level models.
+// its leaves whether they are selected, the open ones hold a group, and an empty branch has no chevron and tells
+// neither, though it can still be pressed to be chosen. A divider stands between the top-level models.
 test('Mobile: the tree has tree, treeitem and group semantics', async () => {
   const tree = await mount('eighties', 'night', <Sample />);
   const root = tree.root.find((n) => n.props.role === 'tree' && typeof n.type === 'string');
@@ -151,7 +151,7 @@ test('Mobile: the tree has tree, treeitem and group semantics', async () => {
   expect(tree.root.findAll((n) => n.props.role === 'group' && typeof n.type === 'string')).toHaveLength(3);
   const monza = row(tree, 'Monza');
   expect(monza.props.accessibilityState).toEqual({ expanded: undefined, selected: undefined });
-  expect(monza.props.disabled).toBe(true);
+  expect(monza.props.disabled).toBeFalsy();
   expect(monza.findAll((n) => n.props.testID === 'common.tree-view.item.row.chevron')).toHaveLength(0);
   expect(row(tree, 'Chevette').findAll((n) => n.props.testID === 'common.tree-view.item.row.chevron' && typeof n.type === 'string')).toHaveLength(1);
   expect(tree.root.findAll((n) => n.props.testID === 'common.divider' && typeof n.type === 'string')).toHaveLength(2);
@@ -241,6 +241,30 @@ test('Mobile: a pointed-out row takes the accent and is read out', async () => {
   expect(row(tree, 'Opala').props.accessibilityValue).toEqual({ text: 'em destaque' });
   expect(look(tree, 'Chevette').frame.backgroundColor).toBe('transparent');
   expect(row(tree, 'Chevette').props.accessibilityValue).toBeUndefined();
+});
+
+// Opens on the selected engine and checks it is marked in full and the branches above it softly, labels in the accent;
+// then presses the empty generation, which can't be selected, and checks it is marked in full, with the model above it
+// and the selected engine softly, while the other generation is left clear and nothing is handed to onSelect.
+test('Mobile: the row pressed last is marked in full and the way to it softly', async () => {
+  const { colors } = themes.gt4.day;
+  const onSelect = jest.fn();
+  const tree = await mount('gt4', 'day', <Sample onSelect={onSelect} />);
+  const full = { borderLeftColor: colors.accent, backgroundColor: withAlpha(colors.accent, scales.accentSoft.day) };
+  const soft = { borderLeftColor: withAlpha(colors.accent, 0.4), backgroundColor: withAlpha(colors.accent, scales.accentSoft.day * 0.5) };
+  const clear = { borderLeftColor: 'transparent', backgroundColor: 'transparent' };
+  expect(look(tree, '4.1 L 6 cilindros').frame).toMatchObject(full);
+  expect(look(tree, 'Terceira geração 1980–1992')).toMatchObject({ frame: soft, color: colors.accent });
+  expect(look(tree, 'Opala').frame).toMatchObject(soft);
+  expect(look(tree, 'Primeira geração 1968–1974')).toMatchObject({ frame: clear, color: colors.text });
+
+  await press(tree, 'Primeira geração 1968–1974');
+  expect(look(tree, 'Primeira geração 1968–1974')).toMatchObject({ frame: full, color: colors.accent });
+  expect(look(tree, 'Opala').frame).toMatchObject(soft);
+  expect(look(tree, '4.1 L 6 cilindros').frame).toMatchObject(soft);
+  expect(look(tree, 'Terceira geração 1980–1992').frame).toMatchObject(clear);
+  expect(row(tree, '4.1 L 6 cilindros').props.accessibilityState.selected).toBe(true);
+  expect(onSelect).not.toHaveBeenCalled();
 });
 
 function Sample({ onSelect }: { onSelect?: (id: string) => void }) {

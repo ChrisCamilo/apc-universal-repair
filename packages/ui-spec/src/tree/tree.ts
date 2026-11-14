@@ -1,6 +1,6 @@
 // Tree behavior shared by the web and mobile TreeView: which branches open first, which rows are on screen,
-// and where the keyboard moves on the web. The Catalog tab's tree has five levels, model → generation →
-// version → year → engine, but nothing here depends on the depth.
+// which rows mark where the user is, and where the keyboard moves on the web. The Catalog tab's tree has five
+// levels, model → generation → version → year → engine, but nothing here depends on the depth.
 
 /**
  * A node of the tree. A node with `children` is a branch, even with an empty list (its data is still to come):
@@ -108,6 +108,28 @@ export function treeKey(key: string, rows: readonly TreeRow[], index: number, ex
     default:
       return null;
   }
+}
+
+/**
+ * Finds the rows a tree marks for where the user is: the row chosen last, or the selected one when none was chosen
+ * since, in full; the rows above it, and the selected row when another was chosen since, softly. Any row can be chosen,
+ * even a branch that can't be selected, such as a generation, so it shows where the user is.
+ * @param nodes Top-level nodes.
+ * @param chosen Id of the row chosen last, if one was chosen since the selection changed.
+ * @param selected Id of the selected row, if any.
+ * @returns The row marked in full, if any, and the ids of the rows marked softly.
+ */
+export function treeMarks(
+  nodes: readonly TreeNode[],
+  chosen: string | undefined,
+  selected: string | undefined,
+): { current?: string; trail: ReadonlySet<string> } {
+  const current = chosen ?? selected;
+  const trail = new Set(current ? ancestors(nodes, current) : []);
+  if (selected && selected !== current) {
+    trail.add(selected);
+  }
+  return { current, trail };
 }
 
 /**
