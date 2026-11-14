@@ -46,12 +46,10 @@ test("Web: an item is found by its second original code", { tag: [TEST_TAGS.inve
   await expect(rows.first()).toContainText("N-1210");
 });
 
-// Filters the list against an API that filters what it is asked for: two categories in the Filtros menu go out as the
-// list query only on Aplicar and leave their rows, with the button counting one filter; the stock status chips go
-// one at a time; a vehicle brand narrows the vehicle models, each named with its brand; the position chips carry
-// their full names (on the desktop); and "Limpar filtros" brings every item back with an empty query. On a phone the
-// same steps go through the filter sheet, where Escape leaves a field's options, then the sheet.
-test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
+// Filters the list against an API that filters what it is asked for: the Filtros menu's choices go out as the list
+// query only on Aplicar, so the list doesn't reload at each choice. The stock status chips and a phone's filter sheet
+// have tests of their own.
+test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS.inventory, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   // The queries of the list's page; the request for every item, with no query, is left out.
   const queries: string[] = [];
   await serveItems(page, ITEMS, (query) => query.has("pageSize") && queries.push(query.toString()));
@@ -67,9 +65,7 @@ test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS
   await option.named("Motor").click();
   await option.named("Suspensão").click();
   await page.keyboard.press("Escape");
-  if (!isMobile) {
-    await expect(menu.chip("N/A").first()).toHaveAttribute("title", "Posição não se aplica");
-  }
+  await expect(menu.chip("N/A").first()).toHaveAttribute("title", "Posição não se aplica");
   expect(queries.at(-1)).toBe("page=1&pageSize=25");
   await menu.apply.click();
   await expect(rows).toHaveCount(2);
@@ -77,13 +73,11 @@ test("Web: the filters narrow the list through the API query", { tag: [TEST_TAGS
   await expect(inv.filters).toHaveAccessibleName("Filtros, 1 ativo");
   await expect(inv.count).toHaveText("2 de 4 itens · 1 baixo · 1 esgotado");
 
+  // A stock status chip narrows the menu's filters further, as no low item is a Motor or Suspensão one; the chips on
+  // their own are their test's.
   await inv.lowStock.click();
   await expect(inv.nothingFound).toBeVisible();
-  expect(queries.at(-1)).toContain("status=low");
-  await inv.outOfStock.click();
-  await expect(inv.outOfStock).toHaveAttribute("aria-pressed", "true");
-  await expect(inv.lowStock).toHaveAttribute("aria-pressed", "false");
-  await inv.outOfStock.click();
+  await inv.lowStock.click();
   await expect(rows).toHaveCount(2);
 
   await inv.filters.click();
@@ -161,12 +155,29 @@ test("Web: on a phone the filters and the sort open in bottom sheets", { tag: [T
     await inv.filters.click();
     await expect(menu.sort).toHaveAccessibleName("Ordenar por Valor unitário (maior → menor)");
   });
+
+  await test.step("a vehicle brand narrows the vehicle models, each named with its brand, and Escape leaves a field's options, then the sheet", async () => {
+    await menu.field("Marca do veículo").click();
+    await option.named("Ford").click();
+    await page.keyboard.press("Escape");
+    await menu.field("Modelo do veículo").click();
+    await expect(option.all).toHaveText(["Todos", "Escort · Ford"]);
+    await page.keyboard.press("Escape");
+    await expect(option.all).toHaveCount(0);
+    await expect(menu.root).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(menu.root).toBeHidden();
+  });
 });
 
-// Presses each stock status chip on its own: "Estoque baixo" lists only the item under its minimum and "Esgotado"
-// only the one with none left, the counter saying how many of the stock match; pressing it again lists every item.
+// Presses each stock status chip on its own, against an API that filters what it is asked for: "Estoque baixo" lists
+// only the item under its minimum and "Esgotado" only the one with none left, one chip at a time, the counter saying
+// how many of the stock match; pressing it again lists every item.
 test("Web: each stock status chip lists only its items", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
-  await openInventory(page);
+  // The queries of the list's page; the request for every item, with no query, is left out.
+  const queries: string[] = [];
+  await serveItems(page, ITEMS, (query) => query.has("pageSize") && queries.push(query.toString()));
+  await page.goto("/inventory");
   const inv = inventory(page);
   const { rows } = dataTable(page);
 
@@ -174,8 +185,11 @@ test("Web: each stock status chip lists only its items", { tag: [TEST_TAGS.inven
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Pastilha de freio");
   await expect(inv.count).toHaveText("1 de 4 itens · 1 baixo · 1 esgotado");
+  expect(queries.at(-1)).toContain("status=low");
 
   await inv.outOfStock.click();
+  await expect(inv.outOfStock).toHaveAttribute("aria-pressed", "true");
+  await expect(inv.lowStock).toHaveAttribute("aria-pressed", "false");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Bomba d'água");
   await expect(inv.count).toHaveText("1 de 4 itens · 1 baixo · 1 esgotado");

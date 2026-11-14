@@ -171,6 +171,149 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
 
 The title keeps its prefix (`Web:`, `Desktop:`), and the tags follow it in the report. A test skipped until an issue is done says so in an `issue` annotation, with the issue's link.
 
+### Coverage map
+
+What each Playwright test checks, by area and by screen or flow, so a test that would repeat another shows before it is written. **Projects** says where it runs: both web projects (`desktop` 1280×720 and `mobile` 360×780), one of them (the test is `@desktop-only` or `@mobile-only`), or the compiled app in Electron (the desktop E2E). **Spec** is `apps/web/e2e/<spec>.spec.ts`; `demo` is the demo's (`apps/web/e2e-demo/`), and `desktop/<spec>` the desktop app's (`apps/desktop/e2e/`). **Kinds** lists its kind tags besides the area's. Each behavior is checked by one test; a test that adds, removes or moves a check updates its row ([Writing a test](#writing-a-test)).
+
+#### Auth (`@auth`)
+
+| Screen or flow | Checks | Spec | Projects | Kinds |
+|---|---|---|---|---|
+| Login | the brand and the form | `login` | both | `@layout` |
+|  | the fields, a wrong user, the session saved | `login` | both | `@smoke` |
+|  | the forgotten-password notice | `login` | both |  |
+|  | fits a 1360×768 notebook | `login` | desktop | `@layout` |
+|  | the demo's login comes filled in | `demo` | both | `@demo` |
+| Sign-up | signs up, lands on the Dashboard, logs in again | `register` | both |  |
+|  | the fields, and the link back to the login | `register` | both |  |
+| Route guard | logged out: to the login and back | `guard` | both |  |
+|  | an unknown path asks for the login | `guard` | both |  |
+|  | logged in: skips the login | `guard` | both |  |
+|  | an expired session, said on the login | `guard` | both |  |
+| Desktop app | signs in; window size; session, theme and tab kept after a restart | `desktop/smoke` | Electron | `@smoke` |
+|  | a waiting phone is authorized and listed | `desktop/devices` | Electron |  |
+
+#### Dashboard (`@dashboard`)
+
+| Screen or flow | Checks | Spec | Projects | Kinds |
+|---|---|---|---|---|
+| Tabs and routes | opens on the Inventory; the header or the bottom bar | `dashboard` | both |  |
+|  | each tab's route; the last tab remembered | `dashboard` | both |  |
+|  | a tab being built opens behind its notice | `dashboard` | both |  |
+|  | the agents' seed: the Inventory tab opens (also in the first Dashboard test; kept as the agents' start) | `seed` | both |  |
+|  | a link to a demo route opens it | `demo` | both | `@demo` |
+|  | a path outside the demo: the site's 404 | `demo` | both | `@demo` |
+| Layout | the page never scrolls; the header stays | `dashboard` | desktop | `@layout` |
+|  | the bottom bar: order, routes, scrolling, Conta | `dashboard` | mobile | `@layout` |
+| User menu | dark mode and style, kept after a reload | `user-menu` | both | `@theme` |
+|  | Sair ends the session, keeps the preferences | `user-menu` | both |  |
+|  | reordering the tabs by dragging | `user-menu` | both |  |
+|  | Sobre esta versão: the version and its notes | `desktop/bundled` | Electron | `@bundled` |
+| Theme | each style and mode's colors and display font | `theme` | both | `@theme` |
+
+#### Inventory (`@inventory`)
+
+| Screen or flow | Checks | Spec | Projects | Kinds |
+|---|---|---|---|---|
+| List | every item, its stock alerts and counter | `inventory-list` | both | `@smoke` |
+|  | the panel fills the window in each state | `inventory-list` | desktop | `@layout` |
+|  | only the list scrolls, also on a notebook | `inventory-list` | desktop | `@layout` |
+|  | sorting through the API | `inventory-list` | both |  |
+|  | loading, error and empty states | `inventory-list` | both |  |
+|  | paging: page, size, search, delete, new item | `inventory-list` | desktop |  |
+|  | loads more as it scrolls, keeps its place | `inventory-list` | mobile |  |
+|  | an item of several brands: a row per brand | `inventory-list` | desktop |  |
+|  | a card of several brands opens its details | `inventory-list` | mobile |  |
+|  | the compiled app's layout in a notebook's window | `desktop/window` | Electron | `@layout` |
+|  | the demo opens logged in, with its notice | `demo` | both | `@demo` `@layout` |
+| Toolbar | the buttons at the panel's right edge | `inventory-toolbar` | desktop | `@layout` |
+|  | the round + over a page that scrolls | `inventory-toolbar` | mobile | `@layout` |
+|  | the header's ⋯ and its sheet | `inventory-toolbar` | mobile |  |
+|  | the lists, CSV and About dialogs fill the screen | `inventory-toolbar` | mobile |  |
+|  | the item dialogs close on the ×, sending nothing | `inventory-toolbar` | both |  |
+| Search and filters | the search by name or part code | `inventory-search-filters` | both |  |
+|  | the search by an original code | `inventory-search-filters` | both |  |
+|  | the Filtros menu's query, sent on Aplicar | `inventory-search-filters` | desktop |  |
+|  | the phone's filter sheet: counts, sort, Limpar, Escape | `inventory-search-filters` | mobile |  |
+|  | the stock status chips, one at a time | `inventory-search-filters` | both |  |
+|  | an item of two vehicles, found by each | `inventory-search-filters` | both |  |
+| Item form | adding and editing an item | `inventory-form` | both | `@smoke` |
+|  | a part code in use, named as it is typed | `inventory-form` | both |  |
+|  | names created with + Criar | `inventory-form` | both |  |
+|  | the phone's form: chips, touch choices, two brands | `inventory-form` | mobile |  |
+|  | a vehicle's generation and version: saved, shown, filtered | `inventory-vehicle-generation` | both |  |
+| Details | a row's details, editable after Editar | `inventory-details` | desktop |  |
+|  | the phone's details: layout and their actions | `inventory-details` | mobile |  |
+|  | duplicating, with or without the photos | `inventory-details` | both |  |
+|  | deleting after the confirmation | `inventory-details` | both |  |
+|  | the material and the short description | `inventory-material-description` | both |  |
+| Photos | adding and removing photos | `inventory-photos` | both |  |
+| Manage lists | renaming and cleaning up the lists | `inventory-lists` | both |  |
+|  | a merged name keeps its items' filters | `inventory-lists` | both |  |
+| CSV | importing: preview, errors, updates | `inventory-import` | both |  |
+|  | exporting every page of the list as it is | `inventory-export` | both |  |
+| Tutorial | the guided tutorial, start to replay | `inventory-tutorial` | both |  |
+| Demo | the demo's find, filter, add, edit, delete | `demo` | both | `@demo` |
+
+#### Catalog (`@catalog`)
+
+| Screen or flow | Checks | Spec | Projects | Kinds |
+|---|---|---|---|---|
+| Browsing and search | brands, models and engine sheets | `catalog` | desktop | `@smoke` |
+|  | the searches: brands, models, parts by code | `catalog` | desktop |  |
+|  | a brand to an engine sheet and back | `catalog` | mobile | `@smoke` |
+|  | a part found by code opens | `catalog` | mobile |  |
+|  | fits a 1360×768 notebook without scrolling the page | `catalog` | desktop | `@layout` |
+| Editing | the tree: add, rename, move, delete | `catalog-tree-editing` | desktop |  |
+|  | deleting a brand after confirming | `catalog-tree-editing` | desktop |  |
+|  | an engine and its sheet | `catalog-engine-sheet` | desktop |  |
+|  | the phone: a brand down to a sheet, rename, delete | `catalog-editing-phone` | mobile |  |
+|  | the phone: deleting a brand | `catalog-editing-phone` | mobile |  |
+|  | the demo merges a brand into another | `demo` | both | `@demo` |
+| Car sheets | a sheet's part opens its details | `catalog-car-parts` | both |  |
+|  | a sheet opens the Inventory filtered | `catalog-car-parts` | both |  |
+
+#### Notifications (`@notifications`)
+
+| Screen or flow | Checks | Spec | Projects | Kinds |
+|---|---|---|---|---|
+| Bell | the latest toasts, per user | `notifications` | desktop |  |
+|  | the phone's Alertas screen | `notifications` | mobile |  |
+|  | how long a toast stays | `notifications` | desktop |  |
+|  | the minimum-stock warning, once | `notifications` | both |  |
+|  | Windows notifications; a click opens the bell | `desktop/notifications` | Electron |  |
+| Toasts | the success toast in every style and mode | `toast` | both | `@theme` |
+|  | the error toast in every style and mode | `toast` | both | `@theme` |
+|  | the warning toast in every style and mode | `toast` | both | `@theme` |
+|  | the info toast in every style and mode | `toast` | both | `@theme` |
+|  | a toast's motion | `toast` | both | `@motion` |
+|  | a toast with reduced motion | `toast` | both | `@motion` |
+
+#### Setup (`@setup`)
+
+| Screen or flow | Checks | Spec | Projects | Kinds |
+|---|---|---|---|---|
+| API | the web app reaches the API | `health` | both | `@smoke` |
+|  | a call no stand-in answers fails the test | `api-guard` | both |  |
+| Desktop app | the page gets only the bridge, no Node | `desktop/smoke` | Electron |  |
+|  | the installer's database choice | `desktop/smoke` | Electron |  |
+|  | runs the server it ships, data in userData | `desktop/bundled` | Electron | `@bundled` |
+|  | a fresh install's offer to import | `desktop/bundled` | Electron | `@bundled` |
+|  | the tray keeps the server on until Sair | `desktop/bundled` | Electron | `@bundled` |
+|  | a PostgreSQL address that fails keeps SQLite | `desktop/bundled` | Electron | `@bundled` |
+|  | importing an old server's SQLite file | `desktop/bundled` | Electron | `@bundled` |
+|  | PostgreSQL chosen at install asks its address | `desktop/bundled` | Electron | `@bundled` |
+|  | the SQLite file is encrypted, its key kept | `desktop/bundled` | Electron | `@bundled` |
+|  | a backup before new migrations | `desktop/bundled` | Electron | `@bundled` |
+|  | a server that can't start says why | `desktop/bundled` | Electron | `@bundled` |
+|  | the tray keeps the SQLite key | `desktop/bundled` | Electron | `@bundled` |
+|  | a missing or wrong key is asked for | `desktop/bundled` | Electron | `@bundled` |
+|  | changing the SQLite key | `desktop/bundled` | Electron | `@bundled` |
+|  | a key change cut short is ended | `desktop/bundled` | Electron | `@bundled` |
+|  | a taken port, and moving to another | `desktop/bundled` | Electron | `@bundled` |
+|  | the phone's access: HTTPS on the network | `desktop/bundled` | Electron | `@bundled` |
+|  | started hidden at sign-in | `desktop/bundled` | Electron | `@bundled` |
+
 ### Writing a test
 
 1. Put it in the spec of its screen or flow (`inventory-form.spec.ts` for the item form, `catalog-tree-editing.spec.ts` for editing the Catalog's tree). A spec covers one screen or flow and is named after it, its area first when the area has more than one (`<area>-<screen-or-flow>.spec.ts`); a new screen or flow gets a new spec. The area tag stays on every test, so `--grep @inventory` still runs all of an area's.
@@ -181,6 +324,7 @@ The title keeps its prefix (`Web:`, `Desktop:`), and the tags follow it in the r
 6. Check the minimum sizes: the test runs in both projects. A test that only holds on a desktop screen gets `TEST_TAGS.desktopOnly`, and the `mobile` project leaves it out; one that only holds on a phone's gets `TEST_TAGS.mobileOnly`, and the `desktop` project leaves it out. A test that differs on the phone reads Playwright's `isMobile` fixture, never the project's name. Screens that fill the window are also checked on a notebook, in full screen and in a window, with `atNotebookSizes(page, async (size) => …)` from `./support/sizes.ts`, naming `size` in each assertion's message.
 7. A test about a motion turns it on for itself: `page.emulateMedia({ reducedMotion: "no-preference" })`.
 8. Split a test with more than one idea, or longer than about 30 lines, into `test.step`s titled in English after what each checks (`await test.step("the copy keeps the photos", async () => { … })`). A failure's report and trace then name the step it broke in, not only a list of actions. The comment above the test keeps the why, in up to 3 lines. A flow in `./locators/` runs as a boxed step (`test.step(title, body, { box: true })`), so a failure inside `logIn()` or `fillItem()` points at the test's line, not into the locator file.
+9. Look the screen or flow up in the [coverage map](#coverage-map) first: a behavior another test checks is left to it. Then add the test's row, and update the rows of a test you remove or whose checks move.
 
 ### Writing tests with Playwright's agents
 
@@ -212,7 +356,7 @@ Claude Code can read the app as a test does, and plan, write and fix tests by ru
 - every assertion the test had is still there, with the same expected values, unless the app's intended behavior changed;
 - there is no `waitForTimeout`, longer timeout, `test.fixme()` or `test.skip()`;
 - the locators come from `e2e/locators/`, and the state from the fixtures, not from steps that build it;
-- the test adds coverage no other test has. Otherwise drop it, with its plan.
+- the test adds coverage no other test has, as the [coverage map](#coverage-map) shows, and has its row there. Otherwise drop it, with its plan.
 
 **After an update of Playwright,** `playwright init-agents --loop=claude` in `apps/web` writes the new agents to `apps/web/.claude/agents/`, with a seed and a `.mcp.json` of its own. Move the agents to `.claude/agents/` and add back the project's paragraphs, keep `e2e/seed.spec.ts` and the root's `.mcp.json`, and pin the `@playwright/mcp` release built on the same Playwright.
 
@@ -467,6 +611,149 @@ test("Web: items are added and edited through the item form", { tag: [TEST_TAGS.
 
 O título mantém o prefixo (`Web:`, `Desktop:`), e as tags vêm depois dele no relatório. Um teste pulado até uma issue ficar pronta diz isso numa anotação `issue`, com o link da issue.
 
+### Mapa de cobertura
+
+O que cada teste do Playwright confere, por área e por tela ou fluxo, para que um teste que repetiria outro apareça antes de ser escrito. **Projetos** diz onde ele roda: nos dois projetos da web (`desktop` 1280×720 e `mobile` 360×780), num deles (o teste é `@desktop-only` ou `@mobile-only`), ou no app compilado no Electron (o E2E do desktop). **Spec** é `apps/web/e2e/<spec>.spec.ts`; `demo` é a da demo (`apps/web/e2e-demo/`), e `desktop/<spec>` a do app desktop (`apps/desktop/e2e/`). **Tipos** lista as tags de tipo além da área. Cada comportamento é conferido por um teste; um teste que acrescenta, remove ou move uma conferência atualiza a linha dele ([Escrevendo um teste](#escrevendo-um-teste)).
+
+#### Autenticação (`@auth`)
+
+| Tela ou fluxo | Confere | Spec | Projetos | Tipos |
+|---|---|---|---|---|
+| Login | a marca e o formulário | `login` | ambos | `@layout` |
+|  | os campos, um usuário errado, a sessão salva | `login` | ambos | `@smoke` |
+|  | o aviso de senha esquecida | `login` | ambos |  |
+|  | cabe num notebook de 1360×768 | `login` | desktop | `@layout` |
+|  | o login da demo vem preenchido | `demo` | ambos | `@demo` |
+| Cadastro | cadastra, cai no Dashboard, entra de novo | `register` | ambos |  |
+|  | os campos, e o link de volta ao login | `register` | ambos |  |
+| Guarda de rotas | deslogado: vai ao login e volta | `guard` | ambos |  |
+|  | um caminho desconhecido pede o login | `guard` | ambos |  |
+|  | logado: pula o login | `guard` | ambos |  |
+|  | uma sessão expirada, avisada no login | `guard` | ambos |  |
+| App desktop | entra; tamanho da janela; sessão, tema e aba mantidos após reiniciar | `desktop/smoke` | Electron | `@smoke` |
+|  | um celular esperando é autorizado e listado | `desktop/devices` | Electron |  |
+
+#### Dashboard (`@dashboard`)
+
+| Tela ou fluxo | Confere | Spec | Projetos | Tipos |
+|---|---|---|---|---|
+| Abas e rotas | abre no Estoque; o cabeçalho ou a barra de baixo | `dashboard` | ambos |  |
+|  | a rota de cada aba; a última aba lembrada | `dashboard` | ambos |  |
+|  | uma aba em construção abre atrás do aviso | `dashboard` | ambos |  |
+|  | a semente dos agentes: a aba Estoque abre (também no primeiro teste do Dashboard; mantido como início dos agentes) | `seed` | ambos |  |
+|  | um link para uma rota da demo a abre | `demo` | ambos | `@demo` |
+|  | um caminho fora da demo: o 404 do site | `demo` | ambos | `@demo` |
+| Layout | a página nunca rola; o cabeçalho fica | `dashboard` | desktop | `@layout` |
+|  | a barra de baixo: ordem, rotas, rolagem, Conta | `dashboard` | mobile | `@layout` |
+| Menu do usuário | modo escuro e estilo, mantidos após recarregar | `user-menu` | ambos | `@theme` |
+|  | Sair encerra a sessão, mantém as preferências | `user-menu` | ambos |  |
+|  | reordenar as abas arrastando | `user-menu` | ambos |  |
+|  | Sobre esta versão: a versão e as notas | `desktop/bundled` | Electron | `@bundled` |
+| Tema | as cores e a fonte de cada estilo e modo | `theme` | ambos | `@theme` |
+
+#### Estoque (`@inventory`)
+
+| Tela ou fluxo | Confere | Spec | Projetos | Tipos |
+|---|---|---|---|---|
+| Lista | cada item, seus alertas de estoque e o contador | `inventory-list` | ambos | `@smoke` |
+|  | o painel ocupa a janela em cada estado | `inventory-list` | desktop | `@layout` |
+|  | só a lista rola, também num notebook | `inventory-list` | desktop | `@layout` |
+|  | ordenar pela API | `inventory-list` | ambos |  |
+|  | estados de carregando, erro e vazio | `inventory-list` | ambos |  |
+|  | paginação: página, tamanho, busca, exclusão, item novo | `inventory-list` | desktop |  |
+|  | carrega mais ao rolar, mantém o lugar | `inventory-list` | mobile |  |
+|  | item de várias marcas: uma linha por marca | `inventory-list` | desktop |  |
+|  | um card de várias marcas abre os detalhes | `inventory-list` | mobile |  |
+|  | o layout do app compilado na janela de um notebook | `desktop/window` | Electron | `@layout` |
+|  | a demo abre logada, com o aviso | `demo` | ambos | `@demo` `@layout` |
+| Barra de ferramentas | os botões na borda direita do painel | `inventory-toolbar` | desktop | `@layout` |
+|  | o + redondo sobre a página que rola | `inventory-toolbar` | mobile | `@layout` |
+|  | o ⋯ do cabeçalho e sua folha | `inventory-toolbar` | mobile |  |
+|  | os diálogos de listas, CSV e Sobre ocupam a tela | `inventory-toolbar` | mobile |  |
+|  | os diálogos do item fecham no ×, sem enviar nada | `inventory-toolbar` | ambos |  |
+| Busca e filtros | a busca por nome ou código | `inventory-search-filters` | ambos |  |
+|  | a busca por um código original | `inventory-search-filters` | ambos |  |
+|  | a query do menu Filtros, enviada no Aplicar | `inventory-search-filters` | desktop |  |
+|  | a folha de filtros do celular: contagem, ordem, Limpar, Escape | `inventory-search-filters` | mobile |  |
+|  | os chips de status do estoque, um por vez | `inventory-search-filters` | ambos |  |
+|  | um item de dois veículos, achado por cada um | `inventory-search-filters` | ambos |  |
+| Formulário do item | cadastrar e editar um item | `inventory-form` | ambos | `@smoke` |
+|  | um código em uso, avisado enquanto é digitado | `inventory-form` | ambos |  |
+|  | nomes criados com + Criar | `inventory-form` | ambos |  |
+|  | o formulário do celular: chips, escolhas por toque, duas marcas | `inventory-form` | mobile |  |
+|  | geração e versão do veículo: salvas, mostradas, filtradas | `inventory-vehicle-generation` | ambos |  |
+| Detalhes | os detalhes da linha, editáveis após Editar | `inventory-details` | desktop |  |
+|  | os detalhes do celular: layout e as ações | `inventory-details` | mobile |  |
+|  | duplicar, com ou sem as fotos | `inventory-details` | ambos |  |
+|  | excluir após a confirmação | `inventory-details` | ambos |  |
+|  | o material e a descrição curta | `inventory-material-description` | ambos |  |
+| Fotos | adicionar e remover fotos | `inventory-photos` | ambos |  |
+| Gerenciar listas | renomear e limpar as listas | `inventory-lists` | ambos |  |
+|  | um nome mesclado mantém os filtros dos itens | `inventory-lists` | ambos |  |
+| CSV | importar: prévia, erros, atualizações | `inventory-import` | ambos |  |
+|  | exportar todas as páginas da lista como está | `inventory-export` | ambos |  |
+| Tutorial | o tutorial guiado, do início à repetição | `inventory-tutorial` | ambos |  |
+| Demo | buscar, filtrar, cadastrar, editar, excluir na demo | `demo` | ambos | `@demo` |
+
+#### Catálogo (`@catalog`)
+
+| Tela ou fluxo | Confere | Spec | Projetos | Tipos |
+|---|---|---|---|---|
+| Navegação e busca | marcas, modelos e fichas de motor | `catalog` | desktop | `@smoke` |
+|  | as buscas: marcas, modelos, peças por código | `catalog` | desktop |  |
+|  | de uma marca a uma ficha de motor e de volta | `catalog` | mobile | `@smoke` |
+|  | uma peça achada pelo código abre | `catalog` | mobile |  |
+|  | cabe num notebook de 1360×768 sem rolar a página | `catalog` | desktop | `@layout` |
+| Edição | a árvore: adicionar, renomear, mover, excluir | `catalog-tree-editing` | desktop |  |
+|  | excluir uma marca após confirmar | `catalog-tree-editing` | desktop |  |
+|  | um motor e sua ficha | `catalog-engine-sheet` | desktop |  |
+|  | o celular: uma marca até a ficha, renomear, excluir | `catalog-editing-phone` | mobile |  |
+|  | o celular: excluir uma marca | `catalog-editing-phone` | mobile |  |
+|  | a demo mescla uma marca em outra | `demo` | ambos | `@demo` |
+| Fichas de carro | uma peça da ficha abre os detalhes | `catalog-car-parts` | ambos |  |
+|  | uma ficha abre o Estoque filtrado | `catalog-car-parts` | ambos |  |
+
+#### Notificações (`@notifications`)
+
+| Tela ou fluxo | Confere | Spec | Projetos | Tipos |
+|---|---|---|---|---|
+| Sino | os últimos avisos, por usuário | `notifications` | desktop |  |
+|  | a tela Alertas do celular | `notifications` | mobile |  |
+|  | quanto tempo um aviso fica | `notifications` | desktop |  |
+|  | o aviso de estoque mínimo, uma vez | `notifications` | ambos |  |
+|  | notificações do Windows; um clique abre o sino | `desktop/notifications` | Electron |  |
+| Avisos | o aviso de sucesso em cada estilo e modo | `toast` | ambos | `@theme` |
+|  | o aviso de erro em cada estilo e modo | `toast` | ambos | `@theme` |
+|  | o aviso de alerta em cada estilo e modo | `toast` | ambos | `@theme` |
+|  | o aviso informativo em cada estilo e modo | `toast` | ambos | `@theme` |
+|  | o movimento de um aviso | `toast` | ambos | `@motion` |
+|  | um aviso com movimento reduzido | `toast` | ambos | `@motion` |
+
+#### Instalação (`@setup`)
+
+| Tela ou fluxo | Confere | Spec | Projetos | Tipos |
+|---|---|---|---|---|
+| API | o app web alcança a API | `health` | ambos | `@smoke` |
+|  | uma chamada sem substituto reprova o teste | `api-guard` | ambos |  |
+| App desktop | a página só recebe a ponte, sem Node | `desktop/smoke` | Electron |  |
+|  | a escolha de banco do instalador | `desktop/smoke` | Electron |  |
+|  | roda o servidor que traz, dados no userData | `desktop/bundled` | Electron | `@bundled` |
+|  | a oferta de importar de uma instalação nova | `desktop/bundled` | Electron | `@bundled` |
+|  | a bandeja mantém o servidor até Sair | `desktop/bundled` | Electron | `@bundled` |
+|  | um endereço PostgreSQL que falha mantém o SQLite | `desktop/bundled` | Electron | `@bundled` |
+|  | importar o SQLite de um servidor antigo | `desktop/bundled` | Electron | `@bundled` |
+|  | PostgreSQL escolhido na instalação pede o endereço | `desktop/bundled` | Electron | `@bundled` |
+|  | o SQLite é criptografado, a chave guardada | `desktop/bundled` | Electron | `@bundled` |
+|  | uma cópia antes de migrações novas | `desktop/bundled` | Electron | `@bundled` |
+|  | um servidor que não liga diz por quê | `desktop/bundled` | Electron | `@bundled` |
+|  | a bandeja mantém a chave do SQLite | `desktop/bundled` | Electron | `@bundled` |
+|  | uma chave ausente ou errada é pedida | `desktop/bundled` | Electron | `@bundled` |
+|  | trocar a chave do SQLite | `desktop/bundled` | Electron | `@bundled` |
+|  | uma troca de chave interrompida é concluída | `desktop/bundled` | Electron | `@bundled` |
+|  | uma porta ocupada, e a troca por outra | `desktop/bundled` | Electron | `@bundled` |
+|  | o acesso do celular: HTTPS na rede | `desktop/bundled` | Electron | `@bundled` |
+|  | iniciado oculto no login do Windows | `desktop/bundled` | Electron | `@bundled` |
+
 ### Escrevendo um teste
 
 1. Coloque-o na spec da sua tela ou fluxo (`inventory-form.spec.ts` para o formulário do item, `catalog-tree-editing.spec.ts` para editar a árvore do Catálogo). Uma spec cobre uma tela ou um fluxo e leva o nome dele, com a área na frente quando a área tem mais de uma (`<área>-<tela-ou-fluxo>.spec.ts`); uma tela ou fluxo novo ganha uma spec nova. A tag da área continua em todo teste, então o `--grep @inventory` ainda roda todos os de uma área.
@@ -477,6 +764,7 @@ O título mantém o prefixo (`Web:`, `Desktop:`), e as tags vêm depois dele no 
 6. Confira os tamanhos mínimos: o teste roda nos dois projetos. Um teste que só vale numa tela de desktop ganha `TEST_TAGS.desktopOnly`, e o projeto `mobile` o deixa de fora; um que só vale na de um celular ganha `TEST_TAGS.mobileOnly`, e o projeto `desktop` o deixa de fora. Um teste que muda no celular lê a fixture `isMobile` do Playwright, nunca o nome do projeto. Telas que ocupam a janela também são conferidas num notebook, em tela cheia e numa janela, com `atNotebookSizes(page, async (size) => …)` de `./support/sizes.ts`, citando `size` na mensagem de cada asserção.
 7. Um teste sobre um movimento o liga para si: `page.emulateMedia({ reducedMotion: "no-preference" })`.
 8. Divida um teste com mais de uma ideia, ou com mais de umas 30 linhas, em `test.step`s com títulos em inglês, cada um dizendo o que confere (`await test.step("the copy keeps the photos", async () => { … })`). O relatório e o trace de uma falha mostram então o passo em que ela quebrou, não só uma lista de ações. O comentário acima do teste guarda o porquê, em até 3 linhas. Um fluxo em `./locators/` roda como um passo encaixotado (`test.step(título, corpo, { box: true })`), então uma falha dentro de `logIn()` ou `fillItem()` aponta para a linha do teste, não para dentro do arquivo de locators.
+9. Procure a tela ou o fluxo no [mapa de cobertura](#mapa-de-cobertura) antes: um comportamento que outro teste confere fica com ele. Depois acrescente a linha do teste, e atualize as linhas de um teste que você remove ou cujas conferências mudam de lugar.
 
 ### Escrevendo testes com os agentes do Playwright
 
@@ -508,7 +796,7 @@ O Claude Code pode ler o app como um teste lê, e planejar, escrever e corrigir 
 - toda asserção que o teste tinha continua lá, com os mesmos valores esperados, a menos que o comportamento pretendido do app tenha mudado;
 - não há `waitForTimeout`, timeout maior, `test.fixme()` nem `test.skip()`;
 - os locators vêm de `e2e/locators/`, e o estado das fixtures, não de passos que o montam;
-- o teste acrescenta uma cobertura que nenhum outro tem. Se não, descarte-o, com o plano dele.
+- o teste acrescenta uma cobertura que nenhum outro tem, como o [mapa de cobertura](#mapa-de-cobertura) mostra, e tem a linha dele lá. Se não, descarte-o, com o plano dele.
 
 **Depois de uma atualização do Playwright,** o `playwright init-agents --loop=claude` em `apps/web` escreve os novos agentes em `apps/web/.claude/agents/`, com uma semente e um `.mcp.json` próprios. Leve os agentes para `.claude/agents/` e devolva os parágrafos do projeto, mantenha o `e2e/seed.spec.ts` e o `.mcp.json` da raiz, e fixe a versão do `@playwright/mcp` feita no mesmo Playwright.
 
