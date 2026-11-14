@@ -108,13 +108,13 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
     await expect(itemForm(page, "Editar item").root).toBeHidden();
   });
 
-  await test.step("Excluir asks to confirm, then deletes the item and closes its details", async () => {
+  // The delete itself, its toast and the list after it, through these same details on a phone, are checked by "an item
+  // is deleted after confirming".
+  await test.step("Excluir asks to confirm, and the deleted item's details close", async () => {
     await inventory(page).name("Amortecedor").click();
     await details.remove.click();
     await deleteDialog(page).confirm.click();
-    await expect(toasts(page).named("Item “Amortecedor” excluído.")).toBeVisible();
     await expect(details.root).toBeHidden();
-    await expect(rows).toHaveCount(3);
   });
 });
 
@@ -202,9 +202,9 @@ test("Web: an item is duplicated from its details, with or without its photos", 
   });
 });
 
-// Deletes an item against an API that keeps what it is sent: the row's trash opens a confirmation naming the item
-// and its code, Cancel and Escape leave the list as it was, and Excluir deletes it by its id, a toast confirms it
-// and the list loses the row without a reload. Excluir is on screen without scrolling at both screen sizes.
+// Deletes an item against an API that keeps what it is sent: the row's trash (on a phone, its details' Excluir) asks to
+// confirm, naming the item and its code; only Excluir deletes it, by its id, with a toast, and the list loses the row
+// without a reload. Excluir is on screen without scrolling at both screen sizes.
 test("Web: an item is deleted after confirming", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = [...ITEMS];
   const deleted: string[] = [];
