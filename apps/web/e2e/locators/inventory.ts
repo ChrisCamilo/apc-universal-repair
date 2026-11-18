@@ -88,6 +88,10 @@ export function inventory(page: Page) {
     more: page.getByRole("button", { name: "Mais ações" }),
     moreSheet: dialog(page, "Mais ações").root,
     count: page.getByTestId("inventory.inventory-tab.filters.count"),
+    // The desktop's "Colunas" menu: its trigger, a column's switch and "Restaurar padrão".
+    columns: page.getByRole("button", { name: "Colunas da tabela" }),
+    column: (name: string) => page.getByRole("menuitemcheckbox", { name }),
+    restoreColumns: page.getByRole("menuitem", { name: "Restaurar padrão" }),
     loadingRows: page.getByTestId("inventory.inventory-tab.loading.row"),
     loading: page.getByRole("status", { name: "Carregando o estoque" }),
     failed: page.getByRole("alert").filter({ hasText: "Não foi possível carregar o estoque" }),
