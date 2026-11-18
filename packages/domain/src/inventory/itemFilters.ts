@@ -19,6 +19,7 @@ import {
   SIDE_NAMES,
   type Item,
   type ItemListQuery,
+  type ItemSortKey,
   type ItemStatus,
 } from "./items.ts";
 
@@ -76,7 +77,7 @@ export const POSITION_SEGMENTS = [{ value: "", label: "Todas" }, ...POSITION_CHO
 /** The side as a phone's filter sheet chooses it, one at a time: every side (""), left, right or both. */
 export const SIDE_SEGMENTS = [{ value: "", label: "Todos" }, ...SIDE_CHOICES.slice(1)];
 /** The columns the inventory list sorts by, in the desktop table's order, with the names its sort lists them by. */
-const ITEM_SORT_COLUMNS: SortColumn[] = [
+const ITEM_SORT_COLUMNS: (SortColumn & { key: ItemSortKey })[] = [
   { key: "name", label: "Item" },
   { key: "category", label: "Categoria" },
   { key: "partBrand", label: "Marca" },
@@ -84,6 +85,7 @@ const ITEM_SORT_COLUMNS: SortColumn[] = [
   { key: "position", label: "Posição" },
   { key: "side", label: "Lado" },
   { key: "color", label: "Cor" },
+  { key: "material", label: "Material" },
   { key: "location", label: "Local" },
   { key: "price", label: "Valor unitário", numeric: true },
   { key: "quantity", label: "Quantidade", numeric: true },
