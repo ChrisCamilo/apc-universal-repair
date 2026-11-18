@@ -102,14 +102,16 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
       setCopied(engine)
       toast.info(ENGINE_CLIPBOARD.copied(engine.label))
     },
-    /** Adds a copy of the engine copied, with its sheet, at the end of a period's engines; it says so. */
+    /** Adds a copy of the engine copied, with its sheet, at the end of a period's engines, chosen as a new engine is; it says so. */
     pasteEngine: async (period: CatalogNode) => {
       if (!copied) {
         return
       }
       const { method, path, body } = engineCopyRequest(copied, period)
-      if (await change(method, path, body)) {
+      const changed = await change(method, path, body)
+      if (changed) {
         toast.success(ENGINE_CLIPBOARD.pasted(copied.label, period.label))
+        onEngineAdded?.(changed, period.id)
       }
     },
     editSheet,
