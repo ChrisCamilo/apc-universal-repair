@@ -82,7 +82,7 @@ import { useMoreActions } from '../dashboard/moreActionsContext';
 // is saved or deleted. A card has no pencil or trash: its details fill the screen (the Detalhes mockup), with Editar
 // and Duplicar at the bottom and Excluir at the top right, which asks to confirm over them and, once the item is gone,
 // closes them too. A card is an item: its
-// name, its first code with its part brand or how many brands make it, and where it fits, where it is and its price;
+// name, its first code with its part brand or how many brands make it, and where it fits, what it is made of and its price;
 // its quantity, added up over its brands, has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
 // tap on a card opens the item's details. "Gerenciar listas" renames, merges and deletes the
 // categories, brands and models the form picks from; the list loads again after each change, the filters following a
@@ -126,7 +126,7 @@ type InventoryRow = { item: Item };
 
 /**
  * Builds the column of each card's name: the item's name, its first code with its part brand or how many brands make
- * it, and where it fits, where it is and its price, each on one line.
+ * it, and where it fits, what it is made of and its price, each on one line.
  * @returns The name column.
  */
 function nameColumn(): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {

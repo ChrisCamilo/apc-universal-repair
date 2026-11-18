@@ -17,8 +17,9 @@ import { apiUrl } from "./support/api.ts";
 
 // Lists every item with the counter of the total and the stock alerts, the price in reais, "qualquer
 // modelo" for an item without a vehicle model, N/A muted with its full name as a tooltip, and the low and
-// out-of-stock rows tinted. On a phone, each card shows its code with its part brand, then where it fits, where it is
-// and its price, and its stock status under its quantity.
+// out-of-stock rows tinted. The desktop's columns are the default ones, Material in place of Local. On a phone, each
+// card shows its code with its part brand, then where it fits, its material when it has one, and its price, and its
+// stock status under its quantity.
 test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_TAGS.inventory, TEST_TAGS.smoke] }, async ({ page, isMobile }) => {
   await openInventory(page);
   const { rows, head } = dataTable(page);
@@ -32,7 +33,7 @@ test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_T
   if (!isMobile) {
     // The sort arrows are left out, as screen readers leave them out.
     const headers = (await page.getByRole("columnheader").allTextContents()).map((header) => header.replace(/[↕↑↓]/g, ""));
-    expect(headers).toEqual(["Expandir", "Foto", "Item", "Categoria", "Marca", "Veículo", "Posição", "Lado", "Cor", "Local", "Valor unit.", "Qtd.", "Ações"]);
+    expect(headers).toEqual(["Expandir", "Foto", "Item", "Categoria", "Marca", "Veículo", "Posição", "Lado", "Cor", "Material", "Valor unit.", "Qtd.", "Ações"]);
     await expect(rows.nth(1)).toContainText(/R\$\s1\.234,56/);
     await expect(rows.nth(1)).toContainText("qualquer modelo");
     const position = rows.nth(1).getByTitle("Dianteiro");
@@ -45,7 +46,7 @@ test("Web: the inventory lists every item with its stock alerts", { tag: [TEST_T
   } else {
     await expect(head).toBeHidden();
     await expect(rows.nth(3)).toContainText("AM-501 · Cofap");
-    await expect(rows.nth(3)).toContainText(/Ford Escort · A-10 · R\$\s249,00/);
+    await expect(rows.nth(3)).toContainText(/Ford Escort · R\$\s249,00/);
     const { status } = inventory(page);
     await expect(status(rows.nth(0))).toHaveText("un.");
     await expect(status(rows.nth(1))).toHaveText("Baixo");
@@ -106,11 +107,19 @@ test("Web: only the Inventory list scrolls, also on a 1360×768 notebook", { tag
 });
 
 // Sorts a list of 30 items through the API, which sorts the whole stock, not the page showing, so a sort starts over
-// from the first 25 and orders codes as people read them (A-2 before A-10). The desktop sorts with the column headers,
-// the phone with its round Ordenar, which names the sort on.
+// from the first 25 and orders codes as people read them (A-2 before A-10), and the material with the items without
+// one last. The desktop sorts with the column headers, Local turned on first in the "Colunas" menu since it starts
+// hidden, the phone with its round Ordenar, which names the sort on.
 test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
   const stock = Array.from({ length: 30 }, (_, index) =>
-    item({ code: `P-${index + 1}`, name: `Peça ${index + 1}`, location: `A-${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
+    item({
+      code: `P-${index + 1}`,
+      name: `Peça ${index + 1}`,
+      location: `A-${index + 1}`,
+      unitPriceCents: ((index % 7) + 1) * 100,
+      // The first three of a material each; the others of none.
+      material: ["Cobre", "Aço", "Borracha"][index],
+    }),
   );
   const queries: string[] = [];
   await serveItems(page, stock, (query) => query.has("pageSize") && queries.push(query.toString()));
@@ -140,6 +149,11 @@ test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }
   });
 
   await test.step("sorting by location goes back to the first 25, in natural order", async () => {
+    if (desktop) {
+      await inventory(page).columns.click();
+      await inventory(page).column("Local").click();
+      await page.keyboard.press("Escape");
+    }
     await sortBy("Local", "Local (A → Z)");
     await expect(rows).toHaveCount(25);
     await expect(rows.nth(0)).toContainText("A-1");
@@ -156,6 +170,18 @@ test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }
     expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=location&order=desc");
   });
 
+  await test.step("the material sorts with the items without one last", async () => {
+    await sortBy("Material", "Material (A → Z)");
+    await expect(rows.nth(0)).toContainText("Aço");
+    await expect(rows.nth(1)).toContainText("Borracha");
+    await expect(rows.nth(2)).toContainText("Cobre");
+    expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=material&order=asc");
+    await sortBy("Material", "Material (Z → A)");
+    await expect(rows.nth(0)).toContainText("Cobre");
+    await expect(rows.nth(3)).toContainText("P-4");
+    expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=material&order=desc");
+  });
+
   await test.step("the unit price sorts by value, ties in part code order", async () => {
     await sortBy("Valor unit.", "Valor unitário (menor → maior)");
     if (desktop) {
@@ -167,6 +193,43 @@ test("Web: the inventory list sorts by a column", { tag: [TEST_TAGS.inventory] }
     await expect(rows.nth(0)).toContainText(/R\$\s7,00/);
     await expect(rows.nth(1)).toContainText("P-14");
     expect(queries.at(-1)).toBe("page=1&pageSize=25&sort=price&order=desc");
+  });
+});
+
+// Turns columns on and off in the desktop's "Colunas" menu and checks the table follows, the choice stays after the page
+// loads again, and "Restaurar padrão" brings back the default columns, Local hidden.
+test("Web: the Colunas menu shows and hides the table's columns, kept on the device", { tag: [TEST_TAGS.inventory, TEST_TAGS.desktopOnly] }, async ({ page }) => {
+  await openInventory(page);
+  const inv = inventory(page);
+  const table = dataTable(page);
+  await test.step("Material shows and Local is hidden by default", async () => {
+    await expect(table.header("Material")).toBeVisible();
+    await expect(table.header("Local")).toHaveCount(0);
+    await inv.columns.click();
+    await expect(inv.column("Local")).toHaveAttribute("aria-checked", "false");
+    await expect(inv.column("Material")).toHaveAttribute("aria-checked", "true");
+  });
+
+  await test.step("a column turned on or off follows at once, the menu staying open", async () => {
+    await inv.column("Local").click();
+    await inv.column("Categoria").click();
+    await expect(table.header("Local")).toBeVisible();
+    await expect(table.header("Categoria")).toHaveCount(0);
+    await expect(inv.column("Categoria")).toHaveAttribute("aria-checked", "false");
+  });
+
+  await test.step("the choice is kept when the page loads again", async () => {
+    await page.reload();
+    await expect(table.header("Local")).toBeVisible();
+    await expect(table.header("Categoria")).toHaveCount(0);
+  });
+
+  await test.step("Restaurar padrão brings the default columns back", async () => {
+    await inv.columns.click();
+    await inv.restoreColumns.click();
+    await expect(inv.restoreColumns).toBeHidden();
+    await expect(table.header("Categoria")).toBeVisible();
+    await expect(table.header("Local")).toHaveCount(0);
   });
 });
 

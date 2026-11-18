@@ -24,7 +24,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 👯 *Duplicar* in a part's details opens a new part filled in as a copy of it, with or without copies of its photos, its codes left blank and its stock at 0
 - 🏷️ Categories, part brands and vehicle models created right from the item form, and renamed, merged or deleted in their own lists
 - 🔢 A part code already in use is flagged while it is typed, ignoring case, spaces and separators ("CB4500" is "CB-4500")
-- 🧭 Inventory search by name or part code, filters, sorting on every column and pagination (25, 50 or 100 per page)
+- 🧭 Inventory search by name or part code, filters, sorting on every column, the columns each device shows (Material in place of Local by default) and pagination (25, 50 or 100 per page)
 - 🚦 Low-stock and out-of-stock rows highlighted in color
 - 🖼️ Up to 3 photos per part, with a large viewer
 - 📄 Batch import of parts from CSV, the rows of one item's brands grouped by its "item" column, its vehicles in "vehicles" and its original codes in "original_codes", and export of the list (every page, optionally with the photo paths) in the same format
@@ -292,7 +292,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 👯 *Duplicar*, nos detalhes de uma peça, abre uma peça nova preenchida como cópia dela, com ou sem cópias das fotos, os códigos em branco e o estoque zerado
 - 🏷️ Categorias, marcas de peça e modelos de veículo criados direto no formulário do item, e renomeados, juntados ou excluídos nas próprias listas
 - 🔢 Um código de peça já usado é apontado enquanto é digitado, sem levar em conta maiúsculas, espaços e separadores ("CB4500" é "CB-4500")
-- 🧭 Busca no estoque por nome ou código da peça, filtros, ordenação em todas as colunas e paginação (25, 50 ou 100 por página)
+- 🧭 Busca no estoque por nome ou código da peça, filtros, ordenação em todas as colunas, as colunas que cada dispositivo mostra (Material no lugar de Local por padrão) e paginação (25, 50 ou 100 por página)
 - 🚦 Linhas com estoque baixo e esgotado destacadas por cor
 - 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande
 - 📄 Importação de peças em lote por CSV, as linhas das marcas de um item agrupadas pela coluna "item", os veículos dele em "vehicles" e os códigos originais em "original_codes", e exportação da lista (todas as páginas, com o caminho das fotos se quiser) no mesmo formato

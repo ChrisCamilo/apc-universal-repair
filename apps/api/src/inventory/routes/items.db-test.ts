@@ -184,6 +184,19 @@ test("API: items are filtered by stock and any brand, and sorted by their lowest
   assert.deepEqual(dearFirst.items.map((found: Item) => found.brands[0].code), [`BP-1-${RUN}`, `BP-2-${RUN}`]);
 });
 
+// Adds three items of their own name, two with a material and one without, and sorts them by material both ways: the
+// item without one comes last either way.
+test("API: items are sorted by material, the ones without one last", async () => {
+  const name = `Junta de material ${RUN}`;
+  for (const [code, material] of [["MT-1", "Cortiça"], ["MT-2", ""], ["MT-3", "Aço"]]) {
+    assert.equal((await call("POST", "/items", item([brand(code, "Sabó")], { name, material }))).statusCode, 201);
+  }
+  const query = `q=${encodeURIComponent(name)}&sort=material&page=1&pageSize=25`;
+  const codes = async (order: string) => ((await call("GET", `/items?${query}&order=${order}`)).json().items as Item[]).map((found) => found.brands[0].code);
+  assert.deepEqual(await codes("asc"), [`MT-3-${RUN}`, `MT-1-${RUN}`, `MT-2-${RUN}`]);
+  assert.deepEqual(await codes("desc"), [`MT-1-${RUN}`, `MT-3-${RUN}`, `MT-2-${RUN}`]);
+});
+
 // Adds items of every kind the filters tell apart, then asks the API for the same queries the shared matcher reads in
 // memory, for the web app's demo, and checks both choose the same items, of the run's and the seed's: the search, each
 // filter (a vehicle's generation and version too), "Ambos" and the stock status. The demo answers the list with the matcher, so it keeps choosing as the API.

@@ -259,16 +259,17 @@ test("Shared: item details fit in one line without what doesn't apply", () => {
 });
 
 // Writes a phone card's lines under the name: the first code with the part brand, or how many brands make the item,
-// then where it fits, where it is and its price, leaving out a missing location.
+// then where it fits, what it is made of and its price, leaving out a missing material.
 test("Shared: a phone card's code and details fit in one line each", () => {
   const item = {
     vehicles: [{ vehicleBrand: "Chevrolet", vehicleModel: null }],
+    material: "Cerâmica",
     brands: [{ code: "PD-120", partBrand: "Cobreq", color: "N/A", location: null, unitPriceCents: 8990 }],
   };
   assert.equal(itemCardCode(item), "PD-120 · Cobreq");
-  assert.equal(itemCardDetails(item).replace(/\s/g, " "), "Chevrolet · R$ 89,90");
+  assert.equal(itemCardDetails(item).replace(/\s/g, " "), "Chevrolet · Cerâmica · R$ 89,90");
   assert.equal(itemCardCode(PADS), `${PADS.brands[0].code} · 3 marcas`);
-  assert.equal(itemCardDetails(PADS).replace(/\s/g, " "), "Volkswagen Gol · Várias · R$ 79,90 – R$ 112,90");
+  assert.equal(itemCardDetails(PADS).replace(/\s/g, " "), "Volkswagen Gol · R$ 79,90 – R$ 112,90");
 });
 
 // Reads an item of three brands for its row: the first code and part brand with how many more, a value the brands
@@ -289,6 +290,7 @@ test("Shared: an item sorts by its first brand and its lowest price", () => {
   assert.deepEqual(sortableOf(PADS), {
     name: "Pastilha de freio",
     category: "Freios",
+    material: null,
     vehicleBrand: "Volkswagen",
     vehicleModel: "Gol",
     position: "D",
@@ -336,6 +338,7 @@ function sortable(fields: Partial<SortableItem> & Pick<SortableItem, "code">): S
   return {
     name: "Peça",
     category: "Motor",
+    material: null,
     partBrand: "Bosch",
     vehicleBrand: "Volkswagen",
     vehicleModel: null,
@@ -361,6 +364,18 @@ test("Shared: text columns sort in pt-BR order with numbers in place", () => {
     sortItems(names, { key: "name", dir: "desc" }).map((item) => item.name),
     ["Óleo", "junta", "Bomba"],
   );
+});
+
+// Sorts by material and checks the items without one come last both ways, ties in the part code order.
+test("Shared: the material sorts with the items without one last", () => {
+  const items = [
+    sortable({ code: "D-4", material: null }),
+    sortable({ code: "C-3", material: "Borracha" }),
+    sortable({ code: "B-2", material: null }),
+    sortable({ code: "A-1", material: "Aço" }),
+  ];
+  assert.deepEqual(sortItems(items, { key: "material", dir: "asc" }).map((item) => item.code), ["A-1", "C-3", "B-2", "D-4"]);
+  assert.deepEqual(sortItems(items, { key: "material", dir: "desc" }).map((item) => item.code), ["C-3", "A-1", "B-2", "D-4"]);
 });
 
 // Sorts by price by value, not as text, and checks ties keep the part code order in both directions.

@@ -16,10 +16,11 @@ import { ITEM_PHOTO_LIMIT } from "./photos.ts";
 // last two digits ("85/90"), the last one left out while it is still made, and its version ("1.6 GLX"); neither is part
 // of the item's name or its row, only of its details and filters. An item may also say what its part is made of
 // (its material) and carry a short description, up to 30 characters, that tells it apart from a similar part; both
-// show only in its details, and the description under its photo in the photo viewer.
+// show in its details, the material also in its row and its phone card, and the description under its photo in the
+// photo viewer.
 
 /** The columns the inventory list sorts by, as the list query's `sort` names them. */
-export const ITEM_SORT_KEYS = ["name", "category", "partBrand", "vehicle", "position", "side", "color", "location", "price", "quantity"] as const;
+export const ITEM_SORT_KEYS = ["name", "category", "partBrand", "vehicle", "position", "side", "color", "material", "location", "price", "quantity"] as const;
 /** The value each column sorts by: the vehicle by its first vehicle's brand (then its model), the price in cents. */
 const ITEM_SORT_VALUES: Record<ItemSortKey, (item: SortableItem) => string | number> = {
   name: (item) => item.name,
@@ -29,6 +30,7 @@ const ITEM_SORT_VALUES: Record<ItemSortKey, (item: SortableItem) => string | num
   position: (item) => item.position,
   side: (item) => item.side,
   color: (item) => item.color,
+  material: (item) => item.material ?? "",
   location: (item) => item.location ?? "",
   price: (item) => item.unitPriceCents,
   quantity: (item) => item.quantity,
@@ -287,11 +289,11 @@ export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
 export type ItemVehicle = z.infer<typeof itemVehicleSchema>;
 export type ItemVehicleCreate = z.infer<typeof itemVehicleCreateSchema>;
 /**
- * What sorting an item looks at (see sortableOf): its first vehicle, its brands read as one value each, the first
- * brand's code, part brand, color and location and the lowest price; position and side as any text, as the database
- * keeps them.
+ * What sorting an item looks at (see sortableOf): its first vehicle, its material, its brands read as one value each,
+ * the first brand's code, part brand, color and location and the lowest price; position and side as any text, as the
+ * database keeps them.
  */
-export type SortableItem = Pick<Item, "name" | "category" | "quantity"> &
+export type SortableItem = Pick<Item, "name" | "category" | "quantity"> & { material: string | null } &
   ItemVehicle &
   Pick<ItemBrand, "code" | "partBrand" | "color" | "location" | "unitPriceCents"> & { position: string; side: string };
 
@@ -471,16 +473,18 @@ export function itemDetails(
 }
 
 /**
- * Writes an item's details for the phone card under its code: where it fits, where it is and its price, leaving out
- * what doesn't apply.
+ * Writes an item's details for the phone card under its code: where it fits, what it is made of and its price,
+ * leaving out what doesn't apply or isn't given; the material takes the place of the location, as in the desktop
+ * table's default columns.
  * @param item Inventory item.
- * @returns E.g. "Volkswagen Gol · A-2 · R$ 89,90", or "Volkswagen Gol +1 · Várias · R$ 79,90 – R$ 112,90".
+ * @returns E.g. "Volkswagen Gol · Alumínio · R$ 89,90", or "Volkswagen Gol +1 · R$ 79,90 – R$ 112,90".
  */
 export function itemCardDetails(item: {
   vehicles: readonly ItemVehicle[];
-  brands: readonly Pick<ItemBrand, "color" | "location" | "unitPriceCents">[];
+  material?: string | null;
+  brands: readonly Pick<ItemBrand, "unitPriceCents">[];
 }): string {
-  return [itemVehiclesLabel(item), brandsValue(item, "location"), formatPriceRange(item)]
+  return [itemVehiclesLabel(item), item.material, formatPriceRange(item)]
     .filter((value) => value && value !== NOT_APPLICABLE)
     .join(" · ");
 }
@@ -619,8 +623,8 @@ export function searchKey(text: string): string {
 }
 
 /**
- * Reads what an item sorts by: its first vehicle, its first brand's code, part brand, color and location, and its
- * lowest price.
+ * Reads what an item sorts by: its first vehicle, its material, its first brand's code, part brand, color and
+ * location, and its lowest price.
  * @param item The item.
  * @returns What sortItems looks at.
  */
@@ -629,6 +633,7 @@ export function sortableOf(item: Item): SortableItem {
   return {
     name: item.name,
     category: item.category,
+    material: item.material ?? null,
     vehicleBrand: item.vehicles[0].vehicleBrand,
     vehicleModel: item.vehicles[0].vehicleModel,
     position: item.position,
@@ -644,8 +649,9 @@ export function sortableOf(item: Item): SortableItem {
 
 /**
  * Sorts items by a column of the inventory list: text in pt-BR order ignoring case and accents, with numbers in
- * place ("A-2" before "A-10"), the price and quantity by value, and the vehicle by brand, then model. Ties keep the
- * part code order, so the result is the same on every request.
+ * place ("A-2" before "A-10"), the price and quantity by value, the vehicle by brand, then model, and the material
+ * with the items that have none last, either way. Ties keep the part code order, so the result is the same on every
+ * request.
  * @param items Items in any order.
  * @param sort The column and the direction.
  * @returns A new array in the sorted order.
@@ -653,7 +659,8 @@ export function sortableOf(item: Item): SortableItem {
 export function sortItems<Sortable extends SortableItem>(items: readonly Sortable[], sort: Sort & { key: ItemSortKey }): Sortable[] {
   const byCode = sortRows(items, (item) => item.code, "asc");
   const byModel = sort.key === "vehicle" ? sortRows(byCode, (item) => item.vehicleModel ?? "", sort.dir) : byCode;
-  return sortRows(byModel, ITEM_SORT_VALUES[sort.key], sort.dir);
+  const sorted = sortRows(byModel, ITEM_SORT_VALUES[sort.key], sort.dir);
+  return sort.key === "material" ? [...sorted.filter((item) => item.material), ...sorted.filter((item) => !item.material)] : sorted;
 }
 
 /**
