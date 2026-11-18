@@ -131,7 +131,8 @@ erDiagram
         string id PK "uuid"
         string versionId FK "CatalogVersion.id, cascade"
         int position "order in its version"
-        int year "e.g. 1986"
+        int year "first year, e.g. 2007"
+        int lastYear "last year, e.g. 2012; the same for one year"
     }
     CatalogEngine {
         string id PK "uuid, with its sheet"
@@ -191,7 +192,7 @@ erDiagram
 | `VehicleModel` | The models of each vehicle brand (Opala, Gol…). |
 | `CatalogBrand` | A vehicle brand the Catalog tab has, with the letters on its line on a phone and its place in the rail. |
 | `CatalogModel` | A vehicle model the Catalog tab has, of a catalog brand, in its brand's order. |
-| `CatalogGeneration`, `CatalogVersion`, `CatalogYear` | The levels of a catalog model's tree, each in its order: a generation with its first and last year (the last empty while it is still made), its versions (Diplomata, GTS…) and their model years. |
+| `CatalogGeneration`, `CatalogVersion`, `CatalogYear` | The levels of a catalog model's tree, each in its order: a generation with its first and last year (the last empty while it is still made), its versions (Diplomata, GTS…) and their periods: a first and a last model year, the same for a single year, whose engines are typed once for all of them; periods of a version may overlap but not repeat. |
 | `CatalogEngine` | An engine of a catalog year, with its sheet: displacement in decilitres, cylinders, drive and summary. Its name in the tree ("4.1 L 6 cilindros") comes from the sheet, and its year and the sheet's title from the tree, so neither is kept twice. |
 | `User` | Who logs in: their username, name, e-mail (kept only, nothing is sent to it yet), the hash of their password, and when they first saw the Inventory tutorial, which runs by itself only until then, on any device. It has no relation to the inventory tables. |
 | `Device` | A device a user logs in from: its public key, unique per user, whether the server's computer authorized it, the name the approver gave it, and when it was recorded, authorized and last used. Nothing else about the device or its owner: no model, system, address or browser. |
@@ -290,7 +291,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | `VehicleModel` | Os modelos de cada marca de veículo (Opala, Gol…). |
 | `CatalogBrand` | Uma marca de veículo que a aba Catálogo tem, com as letras da linha dela no celular e o lugar dela na coluna de marcas. |
 | `CatalogModel` | Um modelo de veículo que a aba Catálogo tem, de uma marca do catálogo, na ordem da marca. |
-| `CatalogGeneration`, `CatalogVersion`, `CatalogYear` | Os níveis da árvore de um modelo do catálogo, cada um na sua ordem: uma geração com o primeiro e o último ano (o último vazio enquanto ainda é fabricada), as versões dela (Diplomata, GTS…) e os anos-modelo delas. |
+| `CatalogGeneration`, `CatalogVersion`, `CatalogYear` | Os níveis da árvore de um modelo do catálogo, cada um na sua ordem: uma geração com o primeiro e o último ano (o último vazio enquanto ainda é fabricada), as versões dela (Diplomata, GTS…) e os períodos delas: um primeiro e um último ano-modelo, iguais para um ano só, cujos motores são cadastrados uma vez para todos; os períodos de uma versão podem se sobrepor, mas não se repetir. |
 | `CatalogEngine` | Um motor de um ano do catálogo, com a ficha: cilindrada em decilitros, cilindros, tração e resumo. O nome dele na árvore ("4.1 L 6 cilindros") vem da ficha, e o ano e o título da ficha vêm da árvore, então nada é guardado duas vezes. |
 | `User` | Quem entra no app: o usuário, o nome, o e-mail (só guardado, nada é enviado a ele ainda), o hash da senha e quando viu o tutorial do Estoque pela primeira vez, que só roda sozinho até então, em qualquer aparelho. Não se relaciona com as tabelas do estoque. |
 | `Device` | Um dispositivo pelo qual um usuário entra: a chave pública dele, única por usuário, se o computador do servidor o autorizou, o nome que quem autorizou deu, e quando foi registrado, autorizado e usado pela última vez. Nada mais sobre o dispositivo ou o dono: nem modelo, sistema, endereço ou navegador. |
