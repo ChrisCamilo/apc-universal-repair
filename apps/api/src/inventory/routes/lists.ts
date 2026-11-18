@@ -144,12 +144,12 @@ async function dropRepeatedVehicles(tx: Prisma.TransactionClient, itemIds: reado
   const rows = await tx.itemVehicle.findMany({
     where: { itemId: { in: [...itemIds] } },
     orderBy: [{ itemId: "asc" }, { position: "asc" }, { id: "asc" }],
-    select: { id: true, itemId: true, vehicleBrandId: true, vehicleModelId: true, firstYear: true, lastYear: true, version: true },
+    select: { id: true, itemId: true, vehicleBrandId: true, vehicleModelId: true, generationId: true, versionId: true },
   });
   const seen = new Set<string>();
   const repeated = [];
   for (const row of rows) {
-    const key = [row.itemId, row.vehicleBrandId, row.vehicleModelId ?? "", row.firstYear ?? "", row.lastYear ?? "", optionKey(row.version ?? "")].join("|");
+    const key = [row.itemId, row.vehicleBrandId, row.vehicleModelId ?? "", row.generationId ?? "", row.versionId ?? ""].join("|");
     if (seen.has(key)) {
       repeated.push(row);
     }
