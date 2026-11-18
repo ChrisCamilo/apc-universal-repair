@@ -114,19 +114,21 @@ test('Web: the item\'s short description shows under the photo', async () => {
   expect(caption.element().getBoundingClientRect().top).toBeGreaterThanOrEqual(frame.bottom)
 })
 
-// Opens the viewer of an item without a description, then of one with a description but no photo, and checks neither
-// has a caption.
-test('Web: there is no caption without a description or a photo', async () => {
+// Opens the viewer of an item without a description and checks it has no caption.
+test('Web: there is no caption without a description', async () => {
   const plain = await render(<Sample initial={PHOTOS} />)
   await expect.element(plain.getByRole('img', { name: `Foto 1 de 3 · ${NAME}` })).toBeVisible()
   expect(plain.getByTestId('common.image-viewer.body.caption').query()).toBeNull()
 })
 
-// Opens the viewer of an item with a description and no photo, and checks the empty state shows no caption.
-test('Web: an item with no photo shows no caption', async () => {
+// Opens the viewer of an item with a description and no photo, and checks the description shows under the empty frame.
+test('Web: an item with no photo still shows its short description', async () => {
   const empty = await render(<Sample initial={[]} caption="Lado do motorista" />)
   await expect.element(empty.getByText('Este item ainda não tem fotos')).toBeVisible()
-  expect(empty.getByText('Lado do motorista').query()).toBeNull()
+  const caption = empty.getByText('Lado do motorista')
+  await expect.element(caption).toBeVisible()
+  const frame = empty.getByTestId('common.image-viewer.body.stage.frame').element().getBoundingClientRect()
+  expect(caption.element().getBoundingClientRect().top).toBeGreaterThanOrEqual(frame.bottom)
 })
 
 // Opens a viewer with no photo and checks it says so and only offers to add one.

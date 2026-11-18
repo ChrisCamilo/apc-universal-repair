@@ -26,8 +26,9 @@ const ITEMS: Item[] = [
 ];
 
 // Opens the brake disc's photo and checks its short description shows under it, then its details, which list the
-// description and the material, neither in its row; then adds an item with both and checks its details show them.
-test("Web: an item's material and short description show in its details and under its photo", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// description and the material, neither in its row; then adds an item with both and no photo, and checks its details
+// show them and its photo viewer shows the description under the empty frame.
+test("Web: an item's material and short description show in its details and in its photo viewer", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = [...ITEMS];
   await page.route("**/api/photos/*", (route) => route.fulfill({ body: PNG, contentType: "image/png" }));
   await page.route("**/api/items", async (route) => {
@@ -66,4 +67,11 @@ test("Web: an item's material and short description show in its details and unde
   await inv.name("Vela").click();
   await expect(details.root.getByText("Eletrodo de níquel, rosca long")).toBeVisible();
   await expect(details.root.getByText("Níquel", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(details.root).toBeHidden();
+
+  await inv.photos("Vela").click();
+  const empty = dialog(page, "Vela");
+  await expect(empty.root.getByText("Este item ainda não tem fotos")).toBeVisible();
+  await expect(empty.root.getByText("Eletrodo de níquel, rosca long")).toBeVisible();
 });
