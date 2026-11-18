@@ -15,7 +15,7 @@ import { themeCss } from '../../app/theme.ts'
 import { CatalogTab } from './CatalogTab.tsx'
 import { PhoneHeaderContext, type PhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 import { InventoryLinkContext } from '../dashboard/inventoryLinkContext.ts'
-import { CATALOG_PARTS_ONLY_KEY, type CatalogData, type InventoryLink } from '@apc/domain/catalog'
+import { CATALOG_PARTS_ONLY_KEY, CATALOG_YEAR_MESSAGE, type CatalogData, type InventoryLink } from '@apc/domain/catalog'
 import { EMPTY_ITEM_FILTERS } from '@apc/domain/item-filters'
 import { testItem, type FlatItem } from '@apc/domain/test-items'
 
@@ -117,8 +117,8 @@ function answerChanges(start: CatalogData = TEST_CATALOG_DATA) {
       return new Response(JSON.stringify(catalog))
     }
     const result = applyCatalogChange(catalog, made.change)
-    if (result === 'missing' || result === 'taken') {
-      return new Response(null, { status: result === 'missing' ? 404 : 409 })
+    if (typeof result === 'string') {
+      return new Response(null, { status: { missing: 404, taken: 409, invalid: 400 }[result] })
     }
     catalog = result
     return new Response(JSON.stringify(catalog), { status: made.status })
@@ -491,6 +491,46 @@ test("Web: a period is added with De and Até, and its pencil changes its years"
   await change.getByLabelText('Até').fill('1988')
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByText('1985–1988', { exact: true })).toBeVisible()
+})
+
+// Narrows Terceira geração (1980–1992) past its periods (1985 and 1986) and checks it is refused under De and Até. Then
+// adds a period to Diplomata: its year fields show AAAA and keep only four digits, a year of two digits is refused
+// asking for four, and one outside the generation's years (1979–1993) under both fields; 1980–1992, the generation's
+// own years, is added.
+test("Web: a period stays inside its generation's years, written with four digits", async () => {
+  answerChanges()
+  const screen = await renderCatalog()
+  await rowOf(screen, 'Terceira geração').hover()
+  await screen.getByRole('button', { name: 'Renomear Terceira geração' }).click()
+  const generation = screen.getByRole('form', { name: 'Renomear Terceira geração' })
+  await generation.getByLabelText('De').fill('1986')
+  await generation.getByLabelText('Até').fill('1985')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(generation.getByText('O último ano não pode vir antes do primeiro.')).toBeVisible()
+  await generation.getByLabelText('Até').fill('1992')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(generation.getByText('Os períodos desta geração vão de 1985 a 1986.')).toBeVisible()
+  await generation.getByLabelText('De').fill('1980')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(generation).not.toBeInTheDocument()
+
+  await rowOf(screen, 'Diplomata').hover()
+  await screen.getByRole('button', { name: 'Novo período em Diplomata' }).click()
+  const add = screen.getByRole('form', { name: 'Novo período em Diplomata' })
+  await expect.element(add.getByLabelText('De')).toHaveAttribute('placeholder', 'AAAA')
+  await add.getByLabelText('De').fill('86')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(add.getByText(CATALOG_YEAR_MESSAGE)).toBeVisible()
+  await add.getByLabelText('De').fill('1979a')
+  await add.getByLabelText('Até').fill('19932')
+  await expect.element(add.getByLabelText('De')).toHaveValue('1979')
+  await expect.element(add.getByLabelText('Até')).toHaveValue('1993')
+  await userEvent.keyboard('{Enter}')
+  await expect.poll(() => add.getByText('O período tem de ficar dentro dos anos da geração: de 1980 a 1992.').elements()).toHaveLength(2)
+  await add.getByLabelText('De').fill('1980')
+  await add.getByLabelText('Até').fill('1992')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByText('1980–1992', { exact: true })).toBeVisible()
 })
 
 // Copies the 4.1 with its row's Copiar motor and checks 1985's Colar motor, missing until then, pastes a copy there,
