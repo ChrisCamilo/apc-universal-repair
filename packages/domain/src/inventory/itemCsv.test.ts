@@ -349,25 +349,31 @@ test("Shared: CSV vehicles are split at a bar, each a brand and maybe a model", 
 test("Shared: CSV vehicles may carry their generation and version", () => {
   const text = [
     HEADER,
-    ",A-1,,Junta,Motor,Mann,Chevrolet / Monza / 1985-1990 / 1.6 GLX | Chevrolet / Onix / 2019- | Volkswagen / Gol /  / G5,1,1,,10,,,",
+    ",A-1,,Junta,Motor,Mann,Chevrolet / Monza / 1985-1990 / 1.6 GLX | Chevrolet / Onix / 2019- | Volkswagen / Gol / 2008-2012 / G5,1,1,,10,,,",
     ",A-2,,Junta,Motor,Mann,Ford / Escort XR3 / Conversível,1,1,,10,,,",
     ",A-3,,Junta,Motor,Mann,Chevrolet / Monza / 1990-1985,1,1,,10,,,",
+    ",A-4,,Junta,Motor,Mann,Volkswagen / Gol /  / G5,1,1,,10,,,",
   ].join("\n");
   const read = rows(text);
   assert.deepEqual(read[0].item.vehicles, [
     { vehicleBrand: "Chevrolet", vehicleModel: "Monza", firstYear: 1985, lastYear: 1990, version: "1.6 GLX" },
     { vehicleBrand: "Chevrolet", vehicleModel: "Onix", firstYear: 2019, lastYear: null },
-    { vehicleBrand: "Volkswagen", vehicleModel: "Gol", version: "G5" },
+    { vehicleBrand: "Volkswagen", vehicleModel: "Gol", firstYear: 2008, lastYear: 2012, version: "G5" },
   ]);
   assert.deepEqual(read[1].item.vehicles, [{ vehicleBrand: "Ford", vehicleModel: "Escort XR3 / Conversível" }]);
   assert.deepEqual(
     read.map((row) => row.errors),
-    [[], [], [`Geração “1990-1985”: ${ITEM_FORM_MESSAGES.generationInvalid.toLowerCase()}`]],
+    [
+      [],
+      [],
+      [`Geração “1990-1985”: ${ITEM_FORM_MESSAGES.generationInvalid.toLowerCase()}`],
+      [`Versão “G5”: ${ITEM_FORM_MESSAGES.versionNeedsGeneration.toLowerCase()}`],
+    ],
   );
   const exported = itemsCsv([testItem({ vehicles: read[0].item.vehicles.map((vehicle) => ({ ...vehicle, vehicleModel: vehicle.vehicleModel || null })) })], {
     photos: false,
   });
-  assert.ok(exported.includes("Chevrolet / Monza / 1985-1990 / 1.6 GLX | Chevrolet / Onix / 2019- | Volkswagen / Gol /  / G5"));
+  assert.ok(exported.includes("Chevrolet / Monza / 1985-1990 / 1.6 GLX | Chevrolet / Onix / 2019- | Volkswagen / Gol / 2008-2012 / G5"));
 });
 
 // Reads a row with a material and a description, with the writing rule applied, one without either, which leaves them

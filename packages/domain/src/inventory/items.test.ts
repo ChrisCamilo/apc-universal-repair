@@ -130,6 +130,11 @@ test("Shared: new items need the required fields, a brand and a positive price",
   const brand = { code: "w 712/95", partBrand: "Mann", unitPriceCents: 3990 };
   const valid = { name: "Filtro de óleo", category: "Motor", vehicles: [{ vehicleBrand: "Volkswagen" }], brands: [brand] };
   assert.equal(itemCreateSchema.safeParse(valid).success, true);
+  // A version belongs to a generation of the model.
+  const opala = { vehicleBrand: "Chevrolet", vehicleModel: "Opala" };
+  assert.equal(itemCreateSchema.safeParse({ ...valid, vehicles: [{ ...opala, firstYear: 1980, lastYear: 1992, version: "SS" }] }).success, true);
+  assert.equal(itemCreateSchema.safeParse({ ...valid, vehicles: [{ ...opala, version: "SS" }] }).success, false);
+  assert.equal(itemCreateSchema.safeParse({ ...valid, vehicles: [{ vehicleBrand: "Chevrolet", firstYear: 1980, version: "SS" }] }).success, false);
   assert.equal(itemCreateSchema.safeParse({ ...valid, brands: [{ ...brand, unitPriceCents: 0 }] }).success, false);
   assert.equal(itemCreateSchema.safeParse({ ...valid, name: "   " }).success, false);
   assert.equal(itemCreateSchema.safeParse({ ...valid, brands: [] }).success, false);
@@ -193,6 +198,8 @@ test("Shared: a generation is written as 85/90 and read as typed", () => {
   assert.equal(generationLabel({ firstYear: 1988, lastYear: 1988 }), "88");
   assert.equal(generationLabel({ firstYear: 2019, lastYear: null }), "19/atual");
   assert.equal(generationLabel({ firstYear: null, lastYear: null }), "");
+  assert.equal(generationLabel({ firstYear: 1968, lastYear: 1974, generationNumber: 1 }), "G1 - 68/74");
+  assert.equal(generationLabel({ firstYear: null, lastYear: null, generationNumber: 2 }), "");
   assert.equal(generationText({ firstYear: 1985, lastYear: 1990 }), "1985-1990");
   assert.equal(generationText({ firstYear: 2019, lastYear: null }), "2019-");
   for (const typed of ["85/90", "1985/1990", "1985 - 1990", "85-1990", "1985–1990"]) {
@@ -202,6 +209,9 @@ test("Shared: a generation is written as 85/90 and read as typed", () => {
   assert.deepEqual(readGeneration("88"), { firstYear: 1988, lastYear: 1988 });
   assert.deepEqual(readGeneration("19/atual"), { firstYear: 2019, lastYear: null });
   assert.deepEqual(readGeneration("2019-"), { firstYear: 2019, lastYear: null });
+  assert.deepEqual(readGeneration("G1 - 68/74"), { firstYear: 1968, lastYear: 1974, generationNumber: 1 });
+  assert.deepEqual(readGeneration("g12–1985-1990"), { firstYear: 1985, lastYear: 1990, generationNumber: 12 });
+  assert.equal(readGeneration("G1 - "), null);
   assert.deepEqual(readGeneration(" "), { firstYear: null, lastYear: null });
   for (const typed of ["90/85", "85/", "GLX", "1985/19900", "1850-1860"]) {
     assert.equal(readGeneration(typed), null, typed);
