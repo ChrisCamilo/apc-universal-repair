@@ -29,6 +29,7 @@ import {
   type SIDES,
 } from "./items.ts";
 import { findEntry, type ItemLists } from "./lists.ts";
+import { photoCount } from "./photos.ts";
 
 // The item form shared by web and mobile, for creating and editing an inventory item: what the item's brands share
 // (name, category, the vehicles it fits, each a vehicle brand with its model or any model, and optionally its
@@ -43,7 +44,8 @@ import { findEntry, type ItemLists } from "./lists.ts";
 // vehicle appears once in an item, and Universal (any vehicle) alone; a
 // part brand and a code appear once in an item, original or a brand's, and a code nowhere else in stock. The same form shows an item's
 // details for reading, each field written out as text, and fills in a new item as a copy of one, without its codes or
-// its stock.
+// its stock. A brand's photos may also be copies of other items' photos, found by code in the photo picker (see
+// photoSources and pickPhoto).
 
 /** A new brand's section: every field blank. */
 export const EMPTY_BRAND_FORM: ItemBrandForm = { partBrand: "", code: "", quantity: "", price: "", color: "", location: "" };
@@ -136,6 +138,20 @@ export const ITEM_FORM_MESSAGES = {
 export const ITEM_UNCHANGED_MESSAGE = "Nenhuma alteração para salvar.";
 /** Label of the item's original codes, in the form and the details. */
 export const ORIGINAL_CODES_LABEL = "Códigos originais";
+/**
+ * What the photo picker says: the button under a brand's photos that opens it (also its title), its search, what it
+ * says before a search, when nothing is found and when more was found than it lists, and its Cancelar.
+ */
+export const PHOTO_PICKER = {
+  open: "Usar fotos de outra peça",
+  search: "Código da peça",
+  hint: "Digite o código de uma peça com fotos.",
+  none: "Nenhuma peça com fotos tem esse código.",
+  more: (count: number) => `Digite mais do código para ver ${count === 1 ? "a outra" : `as outras ${count}`}.`,
+  cancel: "Cancelar",
+} as const;
+/** The most items the photo picker lists for a search; a longer code finds the others. */
+export const PHOTO_SOURCES_LIMIT = 8;
 /** What the empty price field shows. */
 export const PRICE_PLACEHOLDER = "R$ 0,00";
 
@@ -639,6 +655,44 @@ export function parsePrice(text: string): number | null {
   }
   const [, reais, cents = ""] = parts;
   return Number(reais.replace(/[.,]/g, "")) * 100 + Number(cents.padEnd(2, "0"));
+}
+
+/**
+ * Writes the photo picker's count and its button: how many photos are checked of the room the brand has, or that it
+ * is full, and "Usar n fotos".
+ * @param picked How many photos are checked.
+ * @param room How many photos the brand still takes.
+ * @returns The count, e.g. "1 de 3 fotos escolhidas" or "3 de 3 fotos escolhidas: desmarque uma para trocar.", and the
+ * button, "Usar 1 foto", "Usar 2 fotos", or "Usar fotos" with none checked.
+ */
+export function photoPickerTexts(picked: number, room: number): { count: string; use: string } {
+  const count = `${picked} de ${photoCount(room)} ${room === 1 ? "escolhida" : "escolhidas"}`;
+  return {
+    count: picked >= room ? `${count}: desmarque uma para trocar.` : count,
+    use: picked > 0 ? `Usar ${photoCount(picked)}` : "Usar fotos",
+  };
+}
+
+/**
+ * Finds the items whose photos the photo picker offers: the ones with a photo, of any brand, with a code, a brand's or
+ * an original one, that holds the search, ignoring separators and case, as the Inventory search finds codes; the ones
+ * whose code is the search first. The item being edited is left out.
+ * @param items Every item in stock.
+ * @param query The code as typed.
+ * @param editingId The item being edited, if any.
+ * @returns Up to PHOTO_SOURCES_LIMIT items, and how many more were found; none without a code.
+ */
+export function photoSources(items: readonly Item[], query: string, editingId?: string): { items: Item[]; more: number } {
+  const key = codeKey(query);
+  if (!key) {
+    return { items: [], more: 0 };
+  }
+  const found = items.filter(
+    (item) => item.id !== editingId && item.brands.some((brand) => brand.photos.length > 0) && allCodes(item).some((code) => codeKey(code).includes(key)),
+  );
+  const exact = (item: Item) => allCodes(item).some((code) => codeKey(code) === key);
+  const sorted = [...found.filter(exact), ...found.filter((item) => !exact(item))];
+  return { items: sorted.slice(0, PHOTO_SOURCES_LIMIT), more: Math.max(0, sorted.length - PHOTO_SOURCES_LIMIT) };
 }
 
 /**
