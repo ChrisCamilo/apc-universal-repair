@@ -548,13 +548,14 @@ test('Web: the details show the item as text and change nothing', async () => {
 })
 
 // Opens the details, presses Editar and checks the fields unlock in place, the brand's each where its value was under
-// its photos (whose field grows a drop area), with the focus on the first field, the name, Cancelar and Salvar
+// its photos (whose field grows a drop area, with the photo picker's button under it), with the focus on the first field, the name, Cancelar and Salvar
 // alterações; then changes the quantity and checks it is patched like an edit.
 test('Web: Editar unlocks the details in place and saves like an edit', async () => {
   const fetch = answerSave(200)
   const onSaved = vi.fn()
   const screen = await render(<Sample item={FILTER} details onSaved={onSaved} />)
-  const photos = () => screen.getByRole('group', { name: 'Fotos do item' }).element().getBoundingClientRect().bottom
+  // The brand's photo block: its photos, and while editing "Usar fotos de outra peça" under them.
+  const photos = () => screen.getByTestId('inventory.item-form-dialog.fields.brands.brand.photos').element().getBoundingClientRect().bottom
   const below = (rect: DOMRect) => rect.top - photos()
   const before = screen.getByText('W 712/95').element().getBoundingClientRect()
   const beforeGap = below(before)
@@ -601,6 +602,34 @@ test('Web: a new item is saved with its photos', async () => {
   ])
   expect(onSaved.mock.calls[0][0].brands[0].photos).toEqual([SAVED_PHOTO])
   await expect.element(screen.getByText('Item “Vela” cadastrado.')).toBeVisible()
+})
+
+// Picks a photo of another item for a new item's brand in the photo picker, checks it shows as the brand's cover and the
+// button stays while there is room, and checks saving sends it as a copy of that photo, by its id.
+test("Web: a brand takes copies of another item's photos from the picker", async () => {
+  let posted: ItemCreate | undefined
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+    if (String(url).endsWith('/photos')) {
+      return new Response(JSON.stringify(savedOf(posted!, [SAVED_PHOTO])), { status: 200 })
+    }
+    posted = JSON.parse(String(init?.body))
+    return new Response(JSON.stringify(savedOf(posted!)), { status: 201 })
+  })
+  const withPhoto = { ...FILTER, brands: [{ ...FILTER.brands[0], photos: [SAVED_PHOTO] }] }
+  const onSaved = vi.fn()
+  const screen = await render(<Sample items={[withPhoto, PADS]} onSaved={onSaved} />)
+  await fill(screen, { code: 'ngk-b7', name: 'vela', category: 'Ignição', partBrand: 'NGK', vehicleBrand: 'Fiat', price: '10' })
+  await screen.getByRole('button', { name: 'Usar fotos de outra peça para a marca 1' }).click()
+  await screen.getByRole('searchbox', { name: 'Código da peça' }).fill('w712')
+  await screen.getByRole('button', { name: /Filtro de óleo/ }).click()
+  await screen.getByRole('checkbox', { name: /^Foto 1 de Filtro de óleo/ }).click()
+  await screen.getByRole('button', { name: 'Usar 1 foto' }).click()
+  await expect.element(screen.getByRole('img', { name: 'Foto 1, capa' })).toHaveAttribute('src', '/api/photos/aa.png')
+  await expect.element(screen.getByRole('button', { name: 'Usar fotos de outra peça para a marca 1' })).toBeVisible()
+  await screen.getByRole('button', { name: 'Salvar' }).click()
+  await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+  const [, [, photosInit]] = fetch.mock.calls
+  expect([...(photosInit!.body as FormData).entries()]).toEqual([['copy', SAVED_PHOTO.id]])
 })
 
 // Edits an item whose photos can't be saved. Saved as it is, nothing is sent and an info toast says there is nothing

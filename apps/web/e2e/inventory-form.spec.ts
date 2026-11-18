@@ -1,11 +1,12 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { dataTable, options, toasts } from "./locators/common.ts";
-import { fillItem, filtersMenu, inventory, itemDetails, itemForm } from "./locators/inventory.ts";
+import { fillItem, filtersMenu, inventory, itemDetails, itemForm, photoPicker } from "./locators/inventory.ts";
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { ITEMS } from "./data/items.ts";
 
-// The item form: adding and editing an item, a part code in use, the lists it creates, and the form on a phone.
+// The item form: adding and editing an item, a part code in use, the lists it creates, the form on a phone, and photos
+// copied from other items.
 
 // Adds an item through "Novo item" against an API that keeps what it is sent: saving the blank form names the
 // required fields, the filled-in form is posted with the writing rule applied, a toast confirms it and the list
@@ -248,5 +249,58 @@ test("Web: on a phone the item form fills the screen, as in the Novo item mockup
     await edit.save.click();
     await expect(toasts(page).named("Item “Pastilha de freio” salvo.")).toBeVisible();
     expect(stock[0]).toMatchObject({ side: "Ambos", brands: [{ code: "N-1210" }, { code: "W-2" }] });
+  });
+});
+
+// Adds a new item whose brand takes photos of two other items in the photo picker, against an API that keeps what it
+// is sent: both photos of the filter and the pad's one, found by their codes, checked up to the brand's three, the
+// picker's button gone once the brand is full; saving sends the three as copies of those photos, in the order checked.
+test("Web: a new item's brand takes photos of other items from the photo picker", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+  const photo = (name: string) => ({ id: crypto.randomUUID(), url: `/photos/${name}.png`, thumbUrl: `/photos/${name}-thumb.webp` });
+  const filterPhotos = [photo("frente"), photo("lado")];
+  const padPhotos = [photo("topo")];
+  const stock = ITEMS.map((it, index) => (index < 2 ? { ...it, brands: [{ ...it.brands[0], photos: index === 0 ? filterPhotos : padPhotos }] } : it));
+  const sent: string[][] = [];
+  await page.route("**/api/photos/*", (route) => route.fulfill({ body: png, contentType: "image/png" }));
+  await serveItems(page, stock);
+  await page.route("**/api/items", (route) => {
+    if (route.request().method() !== "POST") {
+      return route.fallback();
+    }
+    stock.unshift(savedItem(route.request().postDataJSON()));
+    return route.fulfill({ status: 201, json: stock[0] });
+  });
+  await page.route("**/api/items/*/brands/*/photos", (route) => {
+    const body = route.request().postDataBuffer()!.toString("latin1");
+    sent.push([...body.matchAll(/name="copy"\r\n\r\n([^\r]*)/g)].map(([, id]) => id));
+    return route.fulfill({ json: stock[0] });
+  });
+  await page.goto("/inventory");
+  const form = itemForm(page, "Novo item");
+  const picker = photoPicker(page);
+  await inventory(page).newItem.click();
+  await fillItem(page, "Novo item", { code: "ngk-b7", name: "vela", category: "Motor", partBrand: "Mann", vehicleBrand: "Volkswagen", unitPrice: "34,9" });
+
+  await test.step("the picker finds items by code and checks photos of two of them up to three", async () => {
+    await form.pickPhotos.click();
+    await picker.search.fill("w712");
+    await picker.item("Filtro de óleo").click();
+    await picker.photo("Foto 2 de Filtro de óleo · Mann").click();
+    await picker.photo("Foto 1 de Filtro de óleo · Mann").click();
+    await picker.search.fill("bp 1020");
+    await picker.item("Pastilha de freio").click();
+    await picker.photo("Foto 1 de Pastilha de freio · Cobreq").click();
+    await expect(picker.count).toHaveText("3 de 3 fotos escolhidas: desmarque uma para trocar.");
+    await picker.use.click();
+    await expect(picker.root).toBeHidden();
+    await expect(form.photos).toHaveCount(3);
+    await expect(form.pickPhotos).toHaveCount(0);
+  });
+
+  await test.step("saving sends the photos as copies, in the order checked", async () => {
+    await form.save.click();
+    await expect(toasts(page).named("Item “Vela” cadastrado.")).toBeVisible();
+    expect(sent).toEqual([[filterPhotos[1].id, filterPhotos[0].id, padPhotos[0].id]]);
   });
 });
