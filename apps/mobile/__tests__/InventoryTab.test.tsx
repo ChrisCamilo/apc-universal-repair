@@ -28,7 +28,7 @@ import { testItem, type FlatItem } from '@apc/domain/test-items';
 const COVER = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.jpg', thumbUrl: '/photos/aa-thumb.webp' };
 const ITEMS: Item[] = [
   item(1, { code: 'W 712/95', name: 'Filtro de óleo', quantity: 8, minQuantity: 2, photos: [COVER] }),
-  item(2, { code: 'BP-1020', name: 'Pastilha de freio', category: 'Freios', partBrand: 'Cobreq', position: 'D', quantity: 2, minQuantity: 3, unitPriceCents: 123456 }),
+  item(2, { code: 'BP-1020', name: 'Pastilha de freio', category: 'Freios', partBrand: 'Cobreq', position: 'D', quantity: 2, minQuantity: 3, unitPriceCents: 123456, material: 'Cerâmica', location: 'B-10' }),
   item(3, { code: 'BA-77', name: "Bomba d'água", quantity: 0, minQuantity: 1 }),
 ];
 // Trees the test rendered, unmounted after it so a toast's hide timer doesn't outlive the test.
@@ -141,7 +141,7 @@ beforeEach(async () => {
 });
 
 // Loads the items from the API and checks every card shows its name, its code with its part brand and where it fits
-// with its price, the counter of the total and the stock alerts, and the stock status chips with their counts. The
+// with its material and price, the counter of the total and the stock alerts, and the stock status chips with their counts. The
 // low and out-of-stock cards are tinted, and each card's quantity has its status under it, in its tone: "un.",
 // "Baixo", "Esgotado".
 test('Mobile: the inventory lists every item with its stock alerts', async () => {
@@ -150,7 +150,9 @@ test('Mobile: the inventory lists every item with its stock alerts', async () =>
   const shown = texts(tree);
   expect(shown).toContain('3 de 3 itens · 1 baixo · 1 esgotado');
   expect(shown).toEqual(expect.arrayContaining(['Pastilha de freio', 'BP-1020 · Cobreq', 'Baixo · 1', 'Esgotado · 1']));
-  expect(shown.some((t) => t.replace(/\s/g, ' ') === 'Volkswagen · R$ 1.234,56')).toBe(true);
+  // The material takes the location's place on the card.
+  expect(shown.some((t) => t.replace(/\s/g, ' ') === 'Volkswagen · Cerâmica · R$ 1.234,56')).toBe(true);
+  expect(shown.some((t) => t.includes('B-10'))).toBe(false);
 
   const cards = tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
   const { colors } = themes.eighties.night;
