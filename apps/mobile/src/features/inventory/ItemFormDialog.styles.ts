@@ -17,6 +17,7 @@ export const useStyles = createStyles(
     brands: 'fields.brands',
     brand: 'fields.brands.brand',
     brandHead: 'fields.brands.brand.head',
+    pickPhotos: 'fields.brands.brand.photos.pick',
     pair: 'fields.brands.brand.pair',
     half: 'fields.brands.brand.pair.half',
     action: 'action',
@@ -39,5 +40,7 @@ export const useStyles = createStyles(
     fields: { gap: scales.space.s4 },
     half: { flex: 1, minWidth: 0 },
     pair: { flexDirection: 'row', alignItems: 'flex-start', gap: scales.space.s2 + scales.space.s1 / 2 },
+    // Under a brand's photos, the photo picker's button, at the start.
+    pickPhotos: { flexDirection: 'row' },
   }),
 );

@@ -30,7 +30,9 @@ export const itemFormDialog = recipe(
       brands: 'grid gap-3 sm:col-span-2',
       brand: 'grid items-start rounded-tile border border-hairline-soft',
       brandHead: 'flex items-center justify-between gap-2',
-      photos: '',
+      photos: 'grid gap-2',
+      // Under a brand's photos, the photo picker's button, at the start.
+      pickPhotos: 'flex',
       wide: '',
       add: '',
       action: 'flex-1',
@@ -71,6 +73,7 @@ export const itemFormDialog = recipe(
     brand: 'fields.brands.brand',
     brandHead: 'fields.brands.brand.head',
     photos: 'fields.brands.brand.photos',
+    pickPhotos: 'fields.brands.brand.photos.pick',
     wide: 'fields.brands.brand.wide',
     add: 'fields.brands.add',
     action: 'action',

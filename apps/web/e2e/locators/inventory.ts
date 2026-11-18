@@ -110,6 +110,24 @@ export function inventory(page: Page) {
 }
 
 /**
+ * The photo picker a brand's "Usar fotos de outra peça" opens: its search, an item found by its name, a photo by its
+ * name ("Foto 1 de Filtro de óleo · Mann"), its count and its "Usar n fotos".
+ * @param page The test's page.
+ * @returns The picker's elements.
+ */
+export function photoPicker(page: Page) {
+  const { root } = dialog(page, "Usar fotos de outra peça");
+  return {
+    root,
+    search: root.getByRole("searchbox", { name: "Código da peça" }),
+    item: (name: string) => root.getByRole("button").filter({ hasText: name }),
+    photo: (name: string) => root.getByRole("checkbox", { name }),
+    count: root.getByRole("status"),
+    use: root.getByRole("button", { name: /^Usar \d+ fotos?$/ }),
+  };
+}
+
+/**
  * The item form, "Novo item" or "Editar item": its fields, its photos and its buttons. On a phone an item's edit is
  * titled with the item's name, so it is found by its Salvar alterações; its × stands for Cancelar, and its vehicles
  * are chips, a new one added from "Adicionar veículo" and its Adicionar.
@@ -154,6 +172,8 @@ export function itemForm(page: Page, title: "Novo item" | "Editar item") {
     location: root.getByLabel("Local"),
     photos: root.getByRole("img", { name: /^Foto \d/ }),
     removePhoto: (number: number) => root.getByRole("button", { name: `Remover foto ${number}` }),
+    // A brand's "Usar fotos de outra peça", which opens the photo picker.
+    pickPhotos: root.getByRole("button", { name: /^Usar fotos de outra peça/ }),
     // The drop area's file input, or a phone's Galeria.
     photoFile: root.getByTestId("common.image-upload.drop.input").or(root.getByLabel("Galeria", { exact: true })),
     // "Salvar", "Salvar item" on a phone, or "Salvar alterações" for an item's edit.

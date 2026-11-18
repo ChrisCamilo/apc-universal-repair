@@ -244,6 +244,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 | Item form | adding and editing an item | `inventory-form` | both | `@smoke` |
 |  | a part code in use, named as it is typed | `inventory-form` | both |  |
 |  | names created with + Criar | `inventory-form` | both |  |
+|  | photos copied from other items in the photo picker | `inventory-form` | both |  |
 |  | the phone's form: chips, touch choices, two brands | `inventory-form` | mobile |  |
 |  | a vehicle's generation and version: saved, shown, filtered | `inventory-vehicle-generation` | both |  |
 | Details | a row's details, editable after Editar | `inventory-details` | desktop |  |
@@ -688,6 +689,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 | Formulário do item | cadastrar e editar um item | `inventory-form` | ambos | `@smoke` |
 |  | um código em uso, avisado enquanto é digitado | `inventory-form` | ambos |  |
 |  | nomes criados com + Criar | `inventory-form` | ambos |  |
+|  | fotos copiadas de outras peças no seletor de fotos | `inventory-form` | ambos |  |
 |  | o formulário do celular: chips, escolhas por toque, duas marcas | `inventory-form` | mobile |  |
 |  | geração e versão do veículo: salvas, mostradas, filtradas | `inventory-vehicle-generation` | ambos |  |
 | Detalhes | os detalhes da linha, editáveis após Editar | `inventory-details` | desktop |  |

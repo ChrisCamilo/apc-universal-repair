@@ -146,6 +146,7 @@ async function mount(
     onDuplicate,
     scrollToBrand,
     onDeleted,
+    items = ITEMS,
   }: {
     onSaved?: (saved: Item) => void;
     details?: boolean;
@@ -156,6 +157,8 @@ async function mount(
     onDuplicate?: (item: Item, withPhotos: boolean) => void;
     scrollToBrand?: string;
     onDeleted?: (item: Item) => void;
+    /** Every item in stock; ITEMS when left out. */
+    items?: Item[];
   } = {},
 ) {
   /** Holds the lists as the inventory does, adding each name created unless onCreateEntry says it failed. */
@@ -175,7 +178,7 @@ async function mount(
         item={editing}
         details={details}
         scrollToBrand={scrollToBrand}
-        items={ITEMS}
+        items={items}
         lists={lists}
         onCreateEntry={create}
         onClose={onClose}
@@ -719,6 +722,37 @@ test("Mobile: a duplicated item opens without codes or stock and saves copies of
   await type(tree, 'Código da peça', 'w 712/96');
   await press(tree, 'Salvar item');
   expect(posted!.brands.map((brand) => [brand.code, brand.quantity])).toEqual([['W 712/96', 0]]);
+  const [, [, photosInit]] = (fetch as jest.Mock).mock.calls;
+  expect(photosInit.body.getParts().map((part: { fieldName: string; string: string }) => [part.fieldName, part.string])).toEqual([
+    ['copy', SAVED_PHOTO.id],
+  ]);
+  expect(onSaved).toHaveBeenCalledTimes(1);
+});
+
+// Fills in a new item as a copy of the filter, without its photos, picks the filter's photo in the photo picker, and
+// checks it shows in the brand's photos and saving sends it as a copy of that photo, by its id.
+test("Mobile: a brand takes copies of another item's photos from the picker", async () => {
+  const withPhoto = { ...FILTER, brands: [{ ...FILTER.brands[0], photos: [SAVED_PHOTO] }] };
+  const onSaved = jest.fn();
+  const tree = await mount(undefined, { onSaved, initialForm: duplicateForm(withPhoto), items: [withPhoto] });
+  await type(tree, 'Código da peça', 'w 712/96');
+  await press(tree, 'Usar fotos de outra peça para a marca 1');
+  // The picker's search, over the form, whose brand has a field of the same name.
+  const searchField = tree.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Código da peça').at(-1)!;
+  await ReactTestRenderer.act(async () => searchField.props.onChangeText('w712'));
+  await press(tree, 'Filtro de óleo');
+  await press(tree, `Foto 1 de Filtro de óleo · ${withPhoto.brands[0].partBrand}`);
+  await press(tree, 'Usar 1 foto');
+  expect(tree.root.findAllByType(Image).map((image) => image.props.source.uri)).toEqual([expect.stringMatching(/\/photos\/aa\.jpg$/)]);
+  (fetch as jest.Mock).mockClear();
+  let posted: ItemCreate | undefined;
+  (fetch as jest.Mock)
+    .mockImplementationOnce(async (_url: string, init: RequestInit) => {
+      posted = JSON.parse(String(init.body));
+      return { ok: true, status: 201, json: () => Promise.resolve(savedOf(posted!)) };
+    })
+    .mockImplementationOnce(async () => ({ ok: true, status: 200, json: () => Promise.resolve(savedOf(posted!, [SAVED_PHOTO])) }));
+  await press(tree, 'Salvar item');
   const [, [, photosInit]] = (fetch as jest.Mock).mock.calls;
   expect(photosInit.body.getParts().map((part: { fieldName: string; string: string }) => [part.fieldName, part.string])).toEqual([
     ['copy', SAVED_PHOTO.id],

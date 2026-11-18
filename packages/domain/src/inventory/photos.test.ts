@@ -13,6 +13,7 @@ import {
   photoParts,
   photoProblem,
   photosChanged,
+  pickPhoto,
   takePhotos,
 } from "./photos.ts";
 
@@ -97,6 +98,19 @@ test("Shared: another item's photos become the parts that copy them", () => {
 });
 
 // Reaches saved photos given as paths through the API's address, and ones given as whole addresses, as the web app's
+// Checks photos up to the room the brand has, from two items, in the order they were checked: a photo pressed again
+// leaves, and once full a new one doesn't join.
+test("Shared: the photo picker checks photos up to the brand's room", () => {
+  const [a, b] = SAVED;
+  const c: ItemPhoto = { id: "c", url: "/photos/c.jpg", thumbUrl: "/photos/c-thumb.webp" };
+  const two = pickPhoto(pickPhoto([], b, 2), a, 2);
+  assert.deepEqual(two.map((photo) => photo.id), ["b", "a"]);
+  assert.deepEqual(pickPhoto(two, c, 2).map((photo) => photo.id), ["b", "a"]);
+  assert.deepEqual(pickPhoto(two, b, 2).map((photo) => photo.id), ["a"]);
+  assert.deepEqual(pickPhoto([], c, ITEM_PHOTO_LIMIT).map((photo) => photo.id), ["c"]);
+  assert.deepEqual(pickPhoto([], c, 0), []);
+});
+
 // demo gives its own, as they are, and checks a field holding them still keeps them by their ids.
 test("Shared: a photo is reached under the API's address, or at its own whole address", () => {
   assert.equal(photoAddress("/photos/a.jpg", "/api"), "/api/photos/a.jpg");

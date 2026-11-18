@@ -5,7 +5,8 @@ import type { ItemPhoto } from "./items.ts";
 // far a photo is reduced: the web and the phone shrink it before sending it, and the API stores it as WebP at that
 // size and quality, so a photo over 3 MB is only refused when it is still over 3 MB once reduced. The API sends a saved
 // photo as a path the apps reach through its address; a photo already given as a whole address, as the web app's demo
-// gives its own, is reached as it is (photoAddress).
+// gives its own, is reached as it is (photoAddress). A brand may also take copies of other items' photos, checked in
+// the photo picker up to the room it has (pickPhoto), which the API copies when the item is saved.
 
 /** Photos an inventory item holds; the first one is its cover in the list. */
 export const ITEM_PHOTO_LIMIT = 3;
@@ -88,6 +89,21 @@ export function photoAddress(url: string, apiBase: string): string {
  */
 export function photoCount(count: number): string {
   return `${count} ${count === 1 ? "foto" : "fotos"}`;
+}
+
+/**
+ * Checks or unchecks a photo in the photo picker ("Usar fotos de outra peça"): a checked one leaves, and an unchecked
+ * one joins at the end while there is room, from one item or several.
+ * @param picked The photos checked so far, in the order they were checked.
+ * @param photo The photo pressed.
+ * @param room How many photos the brand still takes: ITEM_PHOTO_LIMIT less the ones it has.
+ * @returns The photos checked after the press; the same ones when it is full.
+ */
+export function pickPhoto(picked: readonly ItemPhoto[], photo: ItemPhoto, room: number): ItemPhoto[] {
+  if (picked.some((each) => each.id === photo.id)) {
+    return picked.filter((each) => each.id !== photo.id);
+  }
+  return picked.length < room ? [...picked, photo] : [...picked];
 }
 
 /**

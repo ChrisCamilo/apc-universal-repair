@@ -29,6 +29,7 @@ import {
   ORIGINAL_CODES_LABEL,
   originalCodeMessages,
   originalCodesText,
+  PHOTO_PICKER,
   POSITION_CHOICES,
   PRICE_PLACEHOLDER,
   priceMask,
@@ -46,7 +47,7 @@ import {
   type VehicleField,
 } from '@apc/domain/item-form'
 import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/domain/lists'
-import { heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/domain/photos'
+import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/domain/photos'
 import { Button } from '../../components/Button'
 import { Combobox } from '../../components/Combobox'
 import { RowAction } from '../../components/DataTable'
@@ -62,6 +63,7 @@ import { usePhone } from '../../components/usePhone.ts'
 import { Heading, Label, Text } from '../../components/Typography'
 import { CodeListField } from './CodeListField.tsx'
 import { DuplicateItemDialog } from './DuplicateItemDialog.tsx'
+import { PhotoPickerDialog } from './PhotoPickerDialog.tsx'
 import { ItemDetails, RemoveItemButton } from './ItemDetails.tsx'
 import { itemFormDialog } from './ItemFormDialog.styles.ts'
 import { savePhotos } from './savePhotos.ts'
@@ -91,7 +93,8 @@ import { VehiclesField } from './VehiclesField.tsx'
 // comma alike, up to a million (see priceMask). Saving checks the required fields, a part brand or code repeated in
 // the item and a code another item uses, then sends the item with its brands to the API, shows a toast and hands the
 // saved item over, then sends each brand's photos when they changed: up to 3 a brand, the first the cover, as its
-// ImageUpload field holds them. When the item is saved but its photos aren't, a warning toast says so; an edit that
+// ImageUpload field holds them; while a brand has room, "Usar fotos de outra peça" under them adds copies of other items'
+// photos, checked in the photo picker (see PhotoPickerDialog). When the item is saved but its photos aren't, a warning toast says so; an edit that
 // changes nothing isn't sent, and an info toast says so. Opened on an item's details, the same dialog shows each field
 // as text in the form's layout, a section for each brand (scrolled to one when opened on it, as a brand's row in the
 // list does), with Fechar and Editar: nothing can be changed or saved
@@ -186,6 +189,8 @@ export function ItemFormDialog({
   const [saving, setSaving] = useState(false)
   // Whether Duplicar's question is open.
   const [asking, setAsking] = useState(false)
+  // The brand whose photos the photo picker adds to, while it is open; each opening starts a new picker.
+  const [picker, setPicker] = useState<{ brand: number | null; session: number }>({ brand: null, session: 0 })
   // How many names are being created; saving waits for them.
   const [creating, setCreating] = useState(0)
   const options = itemFormOptions(items, lists)
@@ -700,6 +705,18 @@ export function ItemFormDialog({
                         onPhotosChange={(next) => setPhotos((held) => held.map((each, at) => (at === index ? next : each)))}
                         limit={ITEM_PHOTO_LIMIT}
                       />
+                      {(photos[index]?.length ?? 0) < ITEM_PHOTO_LIMIT && (
+                        <span className={classes.pickPhotos()} data-testid={ids.pickPhotos}>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            aria-label={`${PHOTO_PICKER.open} para a ${names.section.toLowerCase()}`}
+                            onClick={() => setPicker((current) => ({ brand: index, session: current.session + 1 }))}
+                          >
+                            {PHOTO_PICKER.open}
+                          </Button>
+                        </span>
+                      )}
                     </div>
                     <div className={classes.wide()} data-testid={ids.wide}>
                       <Combobox
@@ -772,6 +789,18 @@ export function ItemFormDialog({
           </div>
         )}
       </Dialog>
+      <PhotoPickerDialog
+        key={picker.session}
+        open={open && picker.brand !== null}
+        onClose={() => setPicker((current) => ({ ...current, brand: null }))}
+        items={items}
+        editingId={item?.id}
+        room={ITEM_PHOTO_LIMIT - (photos[picker.brand ?? 0]?.length ?? 0)}
+        onPick={(picked) => {
+          setPhotos((held) => held.map((each, at) => (at === picker.brand ? [...each, ...copiedPhotos(picked, API_BASE)] : each)))
+          setPicker((current) => ({ ...current, brand: null }))
+        }}
+      />
       {item && onDuplicate && (
         <DuplicateItemDialog
           open={open && asking}

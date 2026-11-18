@@ -26,7 +26,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🔢 A part code already in use is flagged while it is typed, ignoring case, spaces and separators ("CB4500" is "CB-4500")
 - 🧭 Inventory search by name or part code, filters, sorting on every column, the columns each device shows (Material in place of Local by default) and pagination (25, 50 or 100 per page)
 - 🚦 Low-stock and out-of-stock rows highlighted in color
-- 🖼️ Up to 3 photos per part, with a large viewer
+- 🖼️ Up to 3 photos per part, with a large viewer, and photos of other parts reused through *Usar fotos de outra peça*, found by code
 - 📄 Batch import of parts from CSV, the rows of one item's brands grouped by its "item" column, its vehicles in "vehicles" and its original codes in "original_codes", and export of the list (every page, optionally with the photo paths) in the same format
 - 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
 - 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes; by day each one is tinted in its own hue (sand, steel blue, warm grey-red and sage), with no white panels
@@ -294,7 +294,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🔢 Um código de peça já usado é apontado enquanto é digitado, sem levar em conta maiúsculas, espaços e separadores ("CB4500" é "CB-4500")
 - 🧭 Busca no estoque por nome ou código da peça, filtros, ordenação em todas as colunas, as colunas que cada dispositivo mostra (Material no lugar de Local por padrão) e paginação (25, 50 ou 100 por página)
 - 🚦 Linhas com estoque baixo e esgotado destacadas por cor
-- 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande
+- 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande, e fotos de outras peças reaproveitadas em *Usar fotos de outra peça*, achadas pelo código
 - 📄 Importação de peças em lote por CSV, as linhas das marcas de um item agrupadas pela coluna "item", os veículos dele em "vehicles" e os códigos originais em "original_codes", e exportação da lista (todas as páginas, com o caminho das fotos se quiser) no mesmo formato
 - 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
 - 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro; de dia cada um é tingido no seu próprio tom (areia, azul-aço, cinza-avermelhado e sálvia), sem painéis brancos
