@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { closeIcon, ICON_SIZES, plusIcon } from '@apc/tokens/icons'
 import { findOption } from '@apc/domain/items'
 import {
+  changedVehicle,
   EMPTY_VEHICLE_FORM,
   ITEM_FORM_MESSAGES,
   modelsOfBrand,
@@ -22,8 +23,9 @@ import { vehiclesField } from './VehiclesField.styles.ts'
 
 // The vehicles an item fits in a phone's item form, as in the Novo item mockup: each vehicle a chip with its × (see
 // vehicleText), then a dashed "Adicionar veículo" that opens a new vehicle's brand and model, the comboboxes of the
-// desktop's lines, then its generation and version side by side, which offer what the catalog and the stock hold for
-// its model and take any text, with Cancelar and Adicionar. Adicionar checks the new vehicle against the item's (see
+// desktop's lines, then its generation and version side by side, opened one after the other (the generation after the
+// model, the version after the generation), which offer what the catalog holds for its model (the generations numbered,
+// "G1 - 68/74", the versions of the generation chosen) and take any text, with Cancelar and Adicionar. Adicionar checks the new vehicle against the item's (see
 // vehicleFormErrors) and only then makes it a chip; a vehicle with a brand not in the list, one the item already has,
 // or a vehicle beside Universal is refused, saying why. The focus goes to the new vehicle's brand when it opens, and
 // back to "Adicionar veículo" when it closes. A blank line, as a new item's form starts with, shows no chip: saving
@@ -73,12 +75,15 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
     drafting.current = draft !== null
   }, [draft])
 
-  /** Takes a field of the new vehicle's new value and drops its messages; a new brand clears a model it doesn't have. */
+  /**
+   * Takes a field of the new vehicle's new value and drops its messages; a new brand clears a model it doesn't have, and
+   * an emptied field what waits on it (see changedVehicle).
+   */
   const change = (field: keyof ItemVehicleForm, value: string) => {
     setDraft((typed) => {
-      const next = { ...(typed ?? EMPTY_VEHICLE_FORM), [field]: value }
+      const next = changedVehicle(typed ?? EMPTY_VEHICLE_FORM, field, value)
       return field === 'vehicleBrand' && next.vehicleModel && !findOption(modelsOfBrand(lists, value), next.vehicleModel)
-        ? { ...next, vehicleModel: '' }
+        ? changedVehicle(next, 'vehicleModel', '')
         : next
     })
     setDraftErrors({})
@@ -165,8 +170,9 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
               noun="geração"
               toggleLabel="Mostrar gerações"
               emptyLabel="Nenhuma geração conhecida para esse modelo"
-              placeholder="Ex.: 85/90"
+              placeholder={draft.vehicleModel.trim() ? 'Ex.: 85/90' : 'Escolha o modelo primeiro'}
               error={draftErrors.generation}
+              disabled={!draft.vehicleModel.trim()}
             />
             <Combobox
               label={VEHICLE_FIELD_LABELS.version}
@@ -176,8 +182,9 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
               noun="versão"
               toggleLabel="Mostrar versões"
               emptyLabel="Nenhuma versão conhecida para esse modelo"
-              placeholder="Ex.: 1.6 GLX"
+              placeholder={draft.generation?.trim() ? 'Ex.: 1.6 GLX' : 'Escolha a geração primeiro'}
               error={draftErrors.version}
+              disabled={!draft.generation?.trim()}
             />
           </div>
           <div className={classes.draftActions()} data-testid={ids.draftActions}>

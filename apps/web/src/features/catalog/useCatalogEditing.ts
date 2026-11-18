@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   CATALOG_BRANDS_PATH,
   CATALOG_FAILED,
+  CATALOG_IN_USE,
   catalogAddUnder,
   catalogEditRequest,
   ENGINE_CLIPBOARD,
@@ -56,13 +57,18 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
    * @param method The change's method.
    * @param path Its path.
    * @param body What it sends.
-   * @param taken What to say under the field when the API refuses a name or year another node has.
+   * @param taken What to say under the field when the API refuses a name or year another node has; a delete leaves it
+   * out, and a refusal then says in a toast that an item of the stock uses what was deleted.
    * @returns The catalog after the change, or null when it wasn't made.
    */
   const change = async (method: 'POST' | 'PATCH' | 'DELETE', path: string, body?: object, taken?: string): Promise<Catalog | null> => {
     setSaving(true)
     const result = await changeCatalog('/api', method, path, body)
     setSaving(false)
+    if (result === 'taken' && method === 'DELETE') {
+      toast.error(CATALOG_IN_USE)
+      return null
+    }
     if (result === 'taken') {
       setError(taken ?? CATALOG_FAILED)
       return null
