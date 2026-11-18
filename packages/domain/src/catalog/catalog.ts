@@ -6,10 +6,13 @@ import { distinct, generationInput } from "../inventory/itemForm.ts";
 
 // The vehicle catalog of the Catalog tab, kept by the API (GET /catalog): the catalog brands, each a vehicle brand of
 // the Inventory's lists, in the rail's order, and under each its models, each a vehicle model of those lists, then
-// generation (with its years), version, year and engine, in their order. An engine carries its sheet: displacement,
-// cylinders, drive and summary. What is typed once: an engine's name in the tree comes from its sheet ("4.1 L 6
-// cilindros"), its year is the year above it, and its sheet's title is built from the tree ("1986 · Chevrolet Opala
-// Diplomata 4.1"). catalogFrom turns the API's answer into the tree the TreeView shows (see CatalogNode), where every
+// generation (with its years), version, period and engine, in their order. A period is a first and a last model year
+// ("2007–2012", or "1986" when both are the same) whose engines are typed once for all its years; its level is still
+// called "year" in the API (/catalog/years). Periods of a version may overlap, but not repeat. An engine carries its
+// sheet: displacement, cylinders, drive and summary. What is typed once: an engine's name in the tree comes from its
+// sheet ("4.1 L 6 cilindros"), its period is the one above it, and its sheet's title is built from the tree ("1986 ·
+// Chevrolet Opala Diplomata 4.1"). An engine can be copied to another period, of any version, model or brand, with its
+// sheet. catalogFrom turns the API's answer into the tree the TreeView shows (see CatalogNode), where every
 // branch whose data is still to come is an empty branch, and the sheets by engine id.
 // The Catalog search finds brands and models by name, ignoring case and accents, and parts of the inventory by the
 // code of any of their brands, or by one of their original codes; a part leads to its vehicle in the catalog (of a part
@@ -30,7 +33,7 @@ import { distinct, generationInput } from "../inventory/itemForm.ts";
 // device remembers under CATALOG_PARTS_ONLY_KEY.
 // The tree is edited through the API: a catalog brand is added by name (a vehicle brand of the lists, added there when
 // they don't hold it), a model under a brand (a vehicle model of the lists the same way), a generation under a model,
-// a version under a generation, a year under a version and an engine with its sheet under a year; each but an engine
+// a version under a generation, a period under a version and an engine with its sheet under a period; each but an engine
 // can be renamed, moved up or down among its siblings and deleted with what is under it, and an engine's sheet is
 // saved again. Every change answers the whole catalog, which the screen takes as it is. What the screens edit (a node
 // being added or renamed, an engine's sheet being filled in) is described the same on the web and in the phone app,
@@ -47,7 +50,7 @@ export const CATALOG_CHILDREN: Record<"brand" | CatalogEditLevel, { level: Catal
   brand: { level: "model", segment: "models", add: "Novo modelo" },
   model: { level: "generation", segment: "generations", add: "Nova geração" },
   generation: { level: "version", segment: "versions", add: "Nova versão" },
-  version: { level: "year", segment: "years", add: "Novo ano" },
+  version: { level: "year", segment: "years", add: "Novo período" },
   year: { level: "engine", segment: "engines", add: "Novo motor" },
 };
 /** The API path of the engines, whose sheets are saved there. */
@@ -63,7 +66,7 @@ export const CATALOG_LEVEL_PATHS: Record<CatalogEditLevel, string> = {
 };
 /** Where a device remembers whether the Catalog shows only the vehicles some part fits ("true" when it does). */
 export const CATALOG_PARTS_ONLY_KEY = "apc.catalog.partsOnly";
-/** The years a generation or a model year can have. */
+/** The years a generation or a period can have. */
 export const CATALOG_YEARS = { min: 1900, max: 2100 } as const;
 /** What a change of the catalog that failed says. */
 export const CATALOG_FAILED = "Não foi possível salvar no catálogo. Tente de novo.";
@@ -73,16 +76,26 @@ export const CATALOG_TAKEN: Record<CatalogEditLevel | "brand", string> = {
   model: "Já existe um modelo com esse nome nessa marca.",
   generation: CATALOG_FAILED,
   version: CATALOG_FAILED,
-  year: "Essa versão já tem esse ano.",
+  year: "Essa versão já tem esse período.",
 };
 /** What each drive reads as on an engine's sheet. */
 export const ENGINE_DRIVE_LABELS: Record<EngineDrive, string> = { FRONT: "DIANTEIRA", REAR: "TRASEIRA", ALL: "INTEGRAL" };
 /** The drives an engine's sheet chooses from, in their order. */
 export const ENGINE_DRIVES: readonly EngineDrive[] = ["FRONT", "REAR", "ALL"];
+/**
+ * What copying an engine to another period says: the engine's action, the period's while an engine is copied, and the
+ * toasts once copied and once pasted.
+ */
+export const ENGINE_CLIPBOARD = {
+  copy: "Copiar motor",
+  paste: "Colar motor",
+  copied: (engine: string) => `Motor ${engine} copiado. Cole-o num período com Colar motor ou Ctrl+V.`,
+  pasted: (engine: string, period: string) => `Motor ${engine} colado em ${period}.`,
+} as const;
 /** A displacement as typed: digits with one decimal at most, after a comma or a dot. */
 const LITRES = /^\d{1,2}([.,]\d)?$/;
 /** What each of an engine sheet's readouts is, in their order, named above them on a phone. */
-export const ENGINE_SPEC_LABELS = ["Ano", "Motor", "Cilindros", "Tração"] as const;
+export const ENGINE_SPEC_LABELS = ["Período", "Motor", "Cilindros", "Tração"] as const;
 /** What a part's vehicle says when the catalog has no sheet for it. */
 export const NO_SHEET_MESSAGE = "Este veículo ainda não tem ficha técnica no catálogo. A peça continua cadastrada no estoque.";
 /** Least letters and digits of a part code before the search looks for parts. */
@@ -99,7 +112,8 @@ export const catalogEngineSchema = z.object({
   drive: engineDriveSchema,
   summary: z.string(),
 });
-export const catalogYearSchema = z.object({ id: z.uuid(), year: z.int(), engines: z.array(catalogEngineSchema) });
+/** A period of a version: its first year (year) and its last, the same for a single year, and its engines. */
+export const catalogYearSchema = z.object({ id: z.uuid(), year: z.int(), lastYear: z.int(), engines: z.array(catalogEngineSchema) });
 export const catalogVersionSchema = z.object({ id: z.uuid(), name: z.string(), years: z.array(catalogYearSchema) });
 /** A generation and its years, the last one null while it is still made. */
 export const catalogGenerationSchema = z.object({
@@ -127,8 +141,10 @@ export const catalogGenerationInputSchema = z
     path: ["lastYear"],
     message: "The last year can't come before the first.",
   });
-/** A model year added or changed. */
-export const catalogYearInputSchema = z.object({ year: catalogYear });
+/** A period added or changed: its first year and its last, not before the first. */
+export const catalogYearInputSchema = z
+  .object({ year: catalogYear, lastYear: catalogYear })
+  .refine((period) => period.lastYear >= period.year, { path: ["lastYear"], message: "The last year can't come before the first." });
 /** An engine's sheet, added with it or saved again: displacement in decilitres, cylinders, drive and summary. */
 export const catalogEngineInputSchema = z.object({
   displacementDl: z.int().min(CATALOG_ENGINE_LIMITS.displacementDl.min).max(CATALOG_ENGINE_LIMITS.displacementDl.max),
@@ -143,7 +159,7 @@ export const catalogMoveSchema = z.object({ direction: z.enum(["up", "down"]) })
  * A node of a brand's model tree, in the shape of the tree's nodes (`TreeNode` of @apc/ui-spec/tree), so the web and
  * mobile TreeView show it as it is: a node with `children` is a branch, even with an empty list, and one without is a
  * leaf, an engine. `detail` is the muted text after the label, e.g. a generation's years, which a generation also keeps
- * as numbers for its form, as an engine keeps its sheet. `level` says which level of the tree it is.
+ * as numbers for its form, as a period keeps its first and last year and an engine its sheet. `level` says which level of the tree it is.
  */
 export type CatalogNode = {
   id: string;
@@ -181,17 +197,17 @@ export type CatalogEditLevel = Exclude<CatalogLevel, "engine">;
 export type CatalogGenerationInput = z.infer<typeof catalogGenerationInputSchema>;
 /** An engine's sheet as added or saved. */
 export type CatalogEngineInput = z.infer<typeof catalogEngineInputSchema>;
-/** What a node is added or renamed with: a name, a generation's years, a model year, or an engine's sheet. */
+/** What a node is added or renamed with: a name, a generation's years, a period's years, or an engine's sheet. */
 export type CatalogValues = { name?: string; firstYear?: number; lastYear?: number | null; year?: number } & Partial<CatalogEngineInput>;
-/** The names an engine's sheet is titled with: its year, brand, model and version. */
-export type EngineSheetNames = { year: number; brand: string; model: string; version: string };
+/** The names an engine's sheet is titled with: its period ("2007–2012", or "1986"), brand, model and version. */
+export type EngineSheetNames = { year: string; brand: string; model: string; version: string };
 /** What a screen is adding, under which parent, or renaming. */
 export type CatalogEditing =
   | { kind: "add"; level: CatalogEditLevel | "brand"; parent: { level: "brand" | Exclude<CatalogEditLevel, "year">; id: string } }
   | { kind: "rename"; node: CatalogNode };
-/** The engine sheet a screen is filling in: a new engine's under a year, or an engine's own. */
+/** The engine sheet a screen is filling in: a new engine's under a period, or an engine's own. */
 export type CatalogSheetEditing = { kind: "add"; year: CatalogNode } | { kind: "edit"; engine: CatalogNode };
-/** The text of the fields that add or rename a node, as typed. */
+/** The text of the fields that add or rename a node, as typed: a period's are year and lastYear, a generation's firstYear and lastYear. */
 export type CatalogFields = { name: string; firstYear: string; lastYear: string; year: string };
 /** The text of an engine sheet's fields, as typed, and the drive chosen, or empty. */
 export type EngineFields = { litres: string; cylinders: string; drive: string; summary: string };
@@ -287,10 +303,10 @@ export function belowBrand(brand: CatalogBrand): string | null {
 }
 
 /**
- * Says what deleting a node takes with it: how many models, generations, versions, years and engines with their sheets
+ * Says what deleting a node takes with it: how many models, generations, versions, periods and engines with their sheets
  * are under it.
  * @param node A node of the tree.
- * @returns E.g. "3 versões, 2 anos, 2 motores com ficha", or null when nothing is under it.
+ * @returns E.g. "3 versões, 2 períodos, 2 motores com ficha", or null when nothing is under it.
  */
 export function belowNode(node: CatalogNode): string | null {
   const counts: Record<CatalogLevel, number> = { model: 0, generation: 0, version: 0, year: 0, engine: 0 };
@@ -306,7 +322,7 @@ export function belowNode(node: CatalogNode): string | null {
     ["model", "modelo", "modelos"],
     ["generation", "geração", "gerações"],
     ["version", "versão", "versões"],
-    ["year", "ano", "anos"],
+    ["year", "período", "períodos"],
     ["engine", "motor com ficha", "motores com ficha"],
   ];
   const parts = words.filter(([level]) => counts[level] > 0).map(([level, one, many]) => `${counts[level]} ${counts[level] === 1 ? one : many}`);
@@ -379,7 +395,7 @@ export function carSheet(catalog: Catalog, brandId: string, nodeId: string): Car
 }
 
 /**
- * Says how a screen adds the level under a node: a new engine's sheet under a year, or a node in the tree.
+ * Says how a screen adds the level under a node: a new engine's sheet under a period, or a node in the tree.
  * @param node A node of the tree, not an engine.
  * @returns The sheet to fill in, or what to add and where.
  */
@@ -436,7 +452,7 @@ export function catalogNodePath(node: CatalogNode): string {
 }
 
 /**
- * Builds the request that saves the engine sheet a screen fills in: a new engine under its year, or an engine's sheet.
+ * Builds the request that saves the engine sheet a screen fills in: a new engine under its period, or an engine's sheet.
  * @param sheet The sheet being filled in.
  * @returns Its method and path.
  */
@@ -466,13 +482,13 @@ export function catalogSiblings(models: readonly CatalogNode[], id: string): rea
 }
 
 /**
- * Reads what a node is renamed from: its name, a generation's years, or a year's number.
+ * Reads what a node is renamed from: its name, a generation's years, or a period's first and last year.
  * @param node The node.
  * @returns What its form opens with.
  */
 export function catalogValuesOf(node: CatalogNode): CatalogValues {
   if (node.level === "year") {
-    return { year: Number(node.label) };
+    return { year: node.firstYear, lastYear: node.lastYear };
   }
   return node.level === "generation" ? { name: node.label, firstYear: node.firstYear, lastYear: node.lastYear } : { name: node.label };
 }
@@ -495,16 +511,17 @@ export function catalogWithParts(catalog: Catalog, items: readonly Item[]): Cata
  * Reads the names an engine's sheet is titled with, from the path to a node of a brand's tree.
  * @param catalog The catalog.
  * @param brandId The brand.
- * @param nodeId A year, or an engine of it.
- * @returns The year, brand, model and version.
+ * @param nodeId A period, or an engine of it.
+ * @returns The period, brand, model and version.
  */
 export function engineSheetNames(catalog: Catalog, brandId: string, nodeId: string): EngineSheetNames {
-  const [model, , version, year] = treePath(catalog, brandId, nodeId);
-  return { year: Number(year.label), brand: catalog.brands.find((brand) => brand.id === brandId)!.name, model: model.label, version: version.label };
+  const [model, , version, period] = treePath(catalog, brandId, nodeId);
+  return { year: period.label, brand: catalog.brands.find((brand) => brand.id === brandId)!.name, model: model.label, version: version.label };
 }
 
 /**
- * Reads the fields of a node being added or renamed, as typed: a name, a generation's years, or a year's number.
+ * Reads the fields of a node being added or renamed, as typed: a name, a generation's years, or a period's first year
+ * and last year, the last one left empty for a single year.
  * @param level What is added or renamed.
  * @param fields The fields' text.
  * @returns What is saved, or what to fix under each field.
@@ -517,7 +534,16 @@ export function readCatalogFields(
   const yearsMessage = `Use um ano de ${CATALOG_YEARS.min} a ${CATALOG_YEARS.max}.`;
   if (level === "year") {
     const year = readYear(fields.year);
-    return year === null ? { problems: { year: yearsMessage } } : { values: { year } };
+    const last = fields.lastYear.trim() ? readYear(fields.lastYear) : year;
+    if (year === null) {
+      problems.year = yearsMessage;
+    }
+    if (fields.lastYear.trim() && last === null) {
+      problems.lastYear = yearsMessage;
+    } else if (year !== null && last !== null && last < year) {
+      problems.lastYear = "O último ano não pode vir antes do primeiro.";
+    }
+    return Object.keys(problems).length > 0 ? { problems } : { values: { year: year!, lastYear: last! } };
   }
   if (!fields.name.trim()) {
     problems.name = "Informe o nome.";
@@ -593,7 +619,7 @@ export type CatalogJoinStep =
 const JOIN_LEVELS = [
   { level: "generation", key: (node: JoinNode) => `${optionKey(node.name ?? "")}|${node.firstYear}|${node.lastYear ?? ""}`, children: "versions" },
   { level: "version", key: (node: JoinNode) => optionKey(node.name ?? ""), children: "years" },
-  { level: "year", key: (node: JoinNode) => String(node.year), children: "engines" },
+  { level: "year", key: (node: JoinNode) => `${node.year}-${node.lastYear}`, children: "engines" },
   { level: "engine", key: null, children: null },
 ] as const;
 /** A node of any level of a model's tree, as the API sends it. */
@@ -601,8 +627,8 @@ type JoinNode = { id: string; name?: string; firstYear?: number; lastYear?: numb
 
 /**
  * Joins one catalog model's tree into another's, level by level: a generation of the same name and years becomes one, a
- * version of the same name in it becomes one, and a year of the same number in a version becomes one; the engines of
- * joined years are added together, and everything that differs is kept, after what the kept model had.
+ * version of the same name in it becomes one, and a period of the same years in a version becomes one; the engines of
+ * joined periods are added together, and everything that differs is kept, after what the kept model had.
  * @param kept The model whose tree takes the other's.
  * @param merged The model whose tree joins it.
  * @returns The joined generations, and the steps that make them: what moves where, and what is dropped once joined.
@@ -659,7 +685,8 @@ export async function changeCatalog(
 
 /**
  * Turns the catalog the API sends into the trees the screens show and the sheet of each engine: a generation's years
- * as the muted text after its name, a year by its number, and an engine by the name its sheet gives it.
+ * as the muted text after its name, a period by its years ("2007–2012", or "1986"), and an engine by the name its sheet
+ * gives it.
  * @param data The catalog as GET /catalog answers it.
  * @returns The catalog the screens use.
  */
@@ -684,12 +711,15 @@ export function catalogFrom(data: CatalogData): Catalog {
           id: version.id,
           label: version.name,
           level: "version" as const,
-          children: version.years.map((year) => ({
-            id: year.id,
-            label: String(year.year),
+          children: version.years.map((period) => ({
+            id: period.id,
+            label: periodLabel(period.year, period.lastYear),
             level: "year" as const,
-            children: year.engines.map(({ id, ...sheet }) => {
-              sheets[id] = engineSheet({ year: year.year, brand: brand.name, model: model.name, version: version.name }, sheet);
+            firstYear: period.year,
+            lastYear: period.lastYear,
+            children: period.engines.map(({ id, ...sheet }) => {
+              const years = periodLabel(period.year, period.lastYear);
+              sheets[id] = engineSheet({ year: years, brand: brand.name, model: model.name, version: version.name }, sheet);
               return { id, label: engineLabel(sheet), level: "engine" as const, sheet };
             }),
           })),
@@ -698,6 +728,16 @@ export function catalogFrom(data: CatalogData): Catalog {
     })),
   }));
   return { brands, sheets };
+}
+
+/**
+ * Builds the request that pastes a copied engine into a period: a new engine under it with the same sheet.
+ * @param engine The engine copied, with its sheet.
+ * @param period The period it is pasted into, of any version, model or brand.
+ * @returns Its method, path and body, as an engine added under the period is sent.
+ */
+export function engineCopyRequest(engine: CatalogNode, period: CatalogNode): { method: "POST"; path: string; body: CatalogEngineInput } {
+  return { method: "POST", path: catalogSheetRequest({ kind: "add", year: period }).path, body: engine.sheet! };
 }
 
 /**
@@ -711,7 +751,7 @@ export function engineLabel(engine: Pick<CatalogEngine, "displacementDl" | "cyli
 
 /**
  * Builds the sheet an engine shows: its title from the tree and its displacement, its readouts and its summary.
- * @param names The engine's year, brand, model and version.
+ * @param names The engine's period, brand, model and version.
  * @param engine Its sheet as kept.
  * @returns E.g. "1986 · Chevrolet Opala Diplomata 4.1", with ["1986", "4.1 L", "6 CIL", "TRASEIRA"].
  */
@@ -719,9 +759,19 @@ export function engineSheet(names: EngineSheetNames, engine: CatalogEngineInput)
   const litres = engineLitres(engine);
   return {
     title: `${names.year} · ${names.brand} ${names.model} ${names.version} ${litres}`,
-    specs: [String(names.year), `${litres} L`, `${engine.cylinders} CIL`, ENGINE_DRIVE_LABELS[engine.drive]],
+    specs: [names.year, `${litres} L`, `${engine.cylinders} CIL`, ENGINE_DRIVE_LABELS[engine.drive]],
     summary: engine.summary,
   };
+}
+
+/**
+ * Writes a period as the tree and the sheets show it.
+ * @param year Its first year.
+ * @param lastYear Its last year.
+ * @returns E.g. "2007–2012", or "1986" when both are the same.
+ */
+export function periodLabel(year: number, lastYear: number): string {
+  return year === lastYear ? String(year) : `${year}–${lastYear}`;
 }
 
 /**
