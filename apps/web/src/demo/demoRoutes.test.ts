@@ -44,7 +44,7 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
   },
   'GET /catalog': ({ call }) => call('GET', '/catalog'),
   'POST /catalog/brands': ({ call }) => call('POST', '/catalog/brands', { name: 'Renault' }),
-  'DELETE /catalog/brands/:id': async (demo) => demo.call('DELETE', `/catalog/brands/${(await opala(demo)).brand}`),
+  'DELETE /catalog/brands/:id': async (demo) => demo.call('DELETE', `/catalog/brands/${(await spare(demo)).brand}`),
   'POST /catalog/brands/:id/models': async (demo) => demo.call('POST', `/catalog/brands/${(await opala(demo)).brand}/models`, { name: 'Kadett' }),
   'POST /catalog/models/:id/generations': async (demo) =>
     demo.call('POST', `/catalog/models/${(await opala(demo)).model}/generations`, { name: 'Quarta geração', firstYear: 1993, lastYear: null }),
@@ -65,7 +65,7 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
       const path = `/catalog/${level === 'year' ? 'years' : `${level}s`}`
       return [
         [`POST ${path}/:id/move`, async (demo: Demo) => demo.call('POST', `${path}/${(await opala(demo))[level]}/move`, { direction: 'up' })],
-        [`DELETE ${path}/:id`, async (demo: Demo) => demo.call('DELETE', `${path}/${(await opala(demo))[level]}`)],
+        [`DELETE ${path}/:id`, async (demo: Demo) => demo.call('DELETE', `${path}/${(await spare(demo))[level]}`)],
       ]
     }),
   ),
@@ -89,6 +89,23 @@ async function opala({ call }: Demo) {
   const generation = model.generations[2]
   const version = generation.versions[1]
   return { brand: brand.id, model: model.id, generation: generation.id, version: version.id, year: version.years[0].id, engine: version.years[1].engines[0].id }
+}
+
+/**
+ * Adds a catalog brand with a tree no item uses, down to a period, so a delete of each is allowed: deleting what an
+ * item uses is refused, as the API does.
+ * @param demo The demo.
+ * @returns The ids of the brand, its model, generation, version and period.
+ */
+async function spare({ call }: Demo) {
+  /** Adds under a node and reads the catalog it answers. */
+  const add = async (path: string, body: object): Promise<CatalogData> => catalogSchema.parse(await (await call('POST', path, body)).json())
+  const brand = (await add('/catalog/brands', { name: 'Lada' })).brands.at(-1)!.id
+  const model = (await add(`/catalog/brands/${brand}/models`, { name: 'Niva' })).brands.at(-1)!.models[0].id
+  const generation = (await add(`/catalog/models/${model}/generations`, { name: 'Primeira', firstYear: 1977, lastYear: null })).brands.at(-1)!.models[0].generations[0].id
+  const version = (await add(`/catalog/generations/${generation}/versions`, { name: '1.6' })).brands.at(-1)!.models[0].generations[0].versions[0].id
+  const year = (await add(`/catalog/versions/${version}/years`, { year: 1990, lastYear: 1990 })).brands.at(-1)!.models[0].generations[0].versions[0].years[0].id
+  return { brand, model, generation, version, year }
 }
 
 /**

@@ -35,7 +35,8 @@ export const CATALOG_GENERATIONS = {
 } as const;
 
 /**
- * Moves a node of a tree to the end of its new parent's, or drops one whose children joined its twin's.
+ * Moves a node of a tree to the end of its new parent's, or drops one whose children joined its twin's, the item
+ * vehicles that used it moving to the twin.
  * @param tx Database client, in the merge's transaction.
  * @param step The step.
  */
@@ -43,8 +44,11 @@ async function applyStep(tx: Prisma.TransactionClient, step: CatalogJoinStep): P
   if (step.kind === "drop") {
     const where = { where: { id: step.id } };
     if (step.level === "generation") {
+      // The item vehicles of the generation dropped go to its twin, which took its versions.
+      await tx.itemVehicle.updateMany({ where: { generationId: step.id }, data: { generationId: step.into } });
       await tx.catalogGeneration.delete(where);
     } else if (step.level === "version") {
+      await tx.itemVehicle.updateMany({ where: { versionId: step.id }, data: { versionId: step.into } });
       await tx.catalogVersion.delete(where);
     } else {
       await tx.catalogYear.delete(where);

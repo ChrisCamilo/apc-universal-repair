@@ -126,6 +126,7 @@ export const ITEM_FORM_MESSAGES = {
   vehicleRepeated: "Esse veículo já está neste item.",
   generationInvalid: "Use os anos da geração, como 85/90 ou 1985-1990.",
   versionTooLong: `Use no máximo ${VEHICLE_VERSION_MAX} caracteres.`,
+  versionNeedsGeneration: "Informe a geração antes da versão.",
   universalAlone: "Universal serve em qualquer veículo: deixe só ele na lista.",
   quantityInvalid: "Use um número inteiro, de 0 em diante.",
   quantityTooHigh: `Informe no máximo ${MAX_QUANTITY.toLocaleString("pt-BR")}.`,
@@ -376,15 +377,17 @@ export function formValue(form: ItemForm, field: FormField): string {
 }
 
 /**
- * Writes a vehicle's generation for its field: with its years' last two digits ("85/90"), or with their four when the
- * two would be read back as other years.
- * @param vehicle The vehicle's first and last year.
- * @returns E.g. "85/90", "19/atual", or "" without a generation.
+ * Writes a vehicle's generation for its field: after its number in the Catalog when it has one ("G1 - "), with its
+ * years' last two digits ("85/90"), or with their four when the two would be read back as other years.
+ * @param vehicle The vehicle's first and last year, and its generation's number.
+ * @returns E.g. "G1 - 85/90", "85/90", "19/atual", or "" without a generation.
  */
-export function generationInput(vehicle: Pick<ItemVehicle, "firstYear" | "lastYear">): string {
-  const short = generationLabel(vehicle);
+export function generationInput(vehicle: Pick<ItemVehicle, "firstYear" | "lastYear"> & { generationNumber?: number | null }): string {
+  const years = { firstYear: vehicle.firstYear, lastYear: vehicle.lastYear };
+  const short = generationLabel(years);
   const read = readGeneration(short);
-  return read && read.firstYear === vehicle.firstYear && read.lastYear === (vehicle.lastYear ?? null) ? short : generationText(vehicle);
+  const written = read && read.firstYear === vehicle.firstYear && read.lastYear === (vehicle.lastYear ?? null) ? short : generationText(years);
+  return vehicle.generationNumber && written ? `G${vehicle.generationNumber} - ${written}` : written;
 }
 
 /**
@@ -806,7 +809,13 @@ export function vehicleFormErrors(vehicles: readonly ItemVehicleForm[], lists: I
       ? ITEM_FORM_MESSAGES.vehicleRepeated
       : brand && listedMessage(each.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES.vehicleModelNotListed);
     const generation = readGeneration(each.generation ?? "") ? undefined : ITEM_FORM_MESSAGES.generationInvalid;
-    const version = (each.version ?? "").trim().length > VEHICLE_VERSION_MAX ? ITEM_FORM_MESSAGES.versionTooLong : undefined;
+    const typedVersion = (each.version ?? "").trim();
+    const version =
+      typedVersion.length > VEHICLE_VERSION_MAX
+        ? ITEM_FORM_MESSAGES.versionTooLong
+        : typedVersion && !(each.generation ?? "").trim()
+          ? ITEM_FORM_MESSAGES.versionNeedsGeneration
+          : undefined;
     return {
       ...(vehicleBrand && { vehicleBrand }),
       ...(vehicleModel && { vehicleModel }),

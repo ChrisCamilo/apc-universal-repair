@@ -13,6 +13,7 @@ import {
   catalogNameSchema,
   joinCatalogTrees,
   catalogYearInputSchema,
+  brandMark,
   type CatalogData,
   type CatalogLevel,
   type CatalogValues,
@@ -135,7 +136,8 @@ type Schema<Value> = { safeParse: (value: unknown) => { success: true; data: Val
 /** An item as the demo keeps it: its list entries by id, so a renamed entry shows its new name on every item. */
 type StoredItem = Omit<Item, 'category' | 'vehicles' | 'brands' | 'quantity'> & {
   categoryId: string
-  vehicles: { brandId: string; modelId: string | null; firstYear: number | null; lastYear: number | null; version: string | null }[]
+  /** Each vehicle's brand and model in the lists, and its generation and version in the catalog, by id. */
+  vehicles: { brandId: string; modelId: string | null; generationId: string | null; versionId: string | null }[]
   brands: (Omit<Item['brands'][number], 'partBrand'> & { partBrandId: string })[]
 }
 /** Why the items of a file can't be saved as they are; the import answers it with 409 and keeps none of them. */
@@ -236,9 +238,9 @@ export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; han
   }
   db.users.push({ id: crypto.randomUUID(), ...DEMO_USER, inventoryTutorialSeen: false })
   const start = Date.now() - DEMO_ITEMS.length * DAY_MS
+  joinCatalog(db)
   DEMO_ITEMS.forEach((input, index) => createItem(db, input, new Date(start + index * DAY_MS).toISOString()))
   addSamplePhotos(db)
-  joinCatalog(db)
   const routes = [...sessionRoutes(db), ...deviceRoutes(), ...itemRoutes(db), ...photoRoutes(db), ...listRoutes(db), ...catalogRoutes(db)]
 
   return {
@@ -291,8 +293,12 @@ function catalogRoutes(db: Db): Route[] {
       models: brand.models.map((model) => ({ ...model, name: nameOf(db.vehicleModels, db.catalogModels.get(model.id)!) })),
     })),
   })
-  /** Makes a change on the catalog, and answers it as the API does: the catalog, or 404 or 409. */
+  /** Makes a change on the catalog, and answers it as the API does: the catalog, or 404 or 409, also for a delete of what an item uses. */
   const change = (status: number, made: CatalogChange) => {
+    const using = made.kind === 'deleteBrand' || made.kind === 'delete' ? itemsUsing(db, made.id) : 0
+    if (using > 0) {
+      return conflict(`${using} ${using === 1 ? 'item uses' : 'items use'} it in the stock.`)
+    }
     const result = applyCatalogChange(named(), made)
     if (result === 'missing') {
       return json(404, { statusCode: 404, error: 'Not Found', message: 'Catalog node not found.' })
@@ -491,7 +497,7 @@ function createItem(db: Db, input: ItemCreate, createdAt = new Date().toISOStrin
 function dropRepeatedVehicles(item: StoredItem): void {
   const seen = new Set<string>()
   item.vehicles = item.vehicles.filter((vehicle) => {
-    const key = [vehicle.brandId, vehicle.modelId ?? '', vehicle.firstYear ?? '', vehicle.lastYear ?? '', optionKey(vehicle.version ?? '')].join('|')
+    const key = [vehicle.brandId, vehicle.modelId ?? '', vehicle.generationId ?? '', vehicle.versionId ?? ''].join('|')
     const first = !seen.has(key)
     seen.add(key)
     return first
@@ -783,7 +789,7 @@ function joinCatalog(db: Db): void {
         const held = db.vehicleModels.find((each) => each.brandId === brandId && optionKey(each.name) === optionKey(model.name))
         db.catalogModels.set(model.id, (held ?? modelOf(db, brandId, model.name)).id)
       }
-      return { ...brand, id: brandId }
+      return { ...structuredClone(brand), id: brandId }
     }),
   }
 }
@@ -1129,7 +1135,20 @@ function mergeCatalogModel(db: Db, from: string, into: string): void {
   }
   const models = db.catalog.brands.flatMap((brand) => brand.models)
   const keptModel = models.find((model) => model.id === kept)!
-  keptModel.generations = joinCatalogTrees(keptModel, models.find((model) => model.id === merged)!).generations
+  const joined = joinCatalogTrees(keptModel, models.find((model) => model.id === merged)!)
+  keptModel.generations = joined.generations
+  // The vehicles of a generation or version dropped go to its twin, as the API does.
+  for (const step of joined.steps) {
+    if (step.kind === 'drop') {
+      for (const vehicle of db.items.flatMap((item) => item.vehicles)) {
+        if (step.level === 'generation' && vehicle.generationId === step.id) {
+          vehicle.generationId = step.into
+        } else if (step.level === 'version' && vehicle.versionId === step.id) {
+          vehicle.versionId = step.into
+        }
+      }
+    }
+  }
   db.catalog = { brands: db.catalog.brands.map((brand) => ({ ...brand, models: brand.models.filter((model) => model.id !== merged) })) }
   db.catalogModels.delete(merged)
 }
@@ -1383,9 +1402,7 @@ function toItem(db: Db, item: StoredItem): Item {
     vehicles: vehicles.map((vehicle) => ({
       vehicleBrand: name(db.vehicleBrands, vehicle.brandId),
       vehicleModel: vehicle.modelId ? name(db.vehicleModels, vehicle.modelId) : null,
-      firstYear: vehicle.firstYear,
-      lastYear: vehicle.lastYear,
-      version: vehicle.version,
+      ...catalogVehicle(db, vehicle),
     })),
     quantity: brands.reduce((sum, brand) => sum + brand.quantity, 0),
     brands: brands.map(({ partBrandId, ...brand }) => ({ ...brand, partBrand: name(db.partBrands, partBrandId) })),
@@ -1439,20 +1456,102 @@ function updateItem(
  * Finds the entries of a vehicle an item fits, adding the brand, or the model under its brand, the lists don't hold.
  * @param db The demo's data.
  * @param vehicle The vehicle as sent.
- * @returns Its brand's and model's ids, the model null for any model of the brand, with its generation and version.
+ * @returns Its brand's and model's ids, the model null for any model of the brand, with its generation and version in
+ * the catalog (see catalogLinks).
  */
 function vehicleOf(db: Db, vehicle: ItemVehicleCreate): StoredItem['vehicles'][number] {
   const brandId = listed(db.vehicleBrands, vehicle.vehicleBrand).id
-  const generation = {
-    firstYear: vehicle.firstYear ?? null,
-    lastYear: vehicle.firstYear == null ? null : (vehicle.lastYear ?? null),
-    version: vehicle.version?.trim() ? capitalizeFirst(vehicle.version) : null,
-  }
   const model = vehicle.vehicleModel?.trim()
   if (!model) {
-    return { brandId, modelId: null, ...generation }
+    return { brandId, modelId: null, generationId: null, versionId: null }
   }
   const name = listName(model)
   const held = db.vehicleModels.find((each) => each.brandId === brandId && optionKey(each.name) === optionKey(name))
-  return { brandId, modelId: (held ?? modelOf(db, brandId, name)).id, ...generation }
+  const modelId = (held ?? modelOf(db, brandId, name)).id
+  return { brandId, modelId, ...catalogLinks(db, brandId, modelId, vehicle) }
+}
+
+/**
+ * Links a vehicle to the catalog's generation and version, as the API does: the model's generation of the same years
+ * and the generation's version of the same name, ignoring case and accents, adding what the catalog lacks at the end
+ * of its siblings: the brand (with its letters), the model, a generation named after its place ("G3") and the version.
+ * @param db The demo's data.
+ * @param brandId The vehicle's brand in the lists.
+ * @param modelId Its model in the lists.
+ * @param vehicle The vehicle as sent.
+ * @returns Its generation's and version's ids, null without a generation.
+ */
+function catalogLinks(db: Db, brandId: string, modelId: string, vehicle: ItemVehicleCreate): { generationId: string | null; versionId: string | null } {
+  if (vehicle.firstYear == null) {
+    return { generationId: null, versionId: null }
+  }
+  let brand = db.catalog.brands.find((each) => each.id === brandId)
+  if (!brand) {
+    const brandName = db.vehicleBrands.find((each) => each.id === brandId)!.name
+    brand = { id: brandId, name: brandName, mark: brandMark(brandName), models: [] }
+    db.catalog.brands.push(brand)
+  }
+  const catalogId = [...db.catalogModels].find(([, held]) => held === modelId)?.[0]
+  let model = brand.models.find((each) => each.id === catalogId)
+  if (!model) {
+    model = { id: crypto.randomUUID(), name: db.vehicleModels.find((each) => each.id === modelId)!.name, generations: [] }
+    brand.models.push(model)
+    db.catalogModels.set(model.id, modelId)
+  }
+  const lastYear = vehicle.lastYear ?? null
+  let generation = model.generations.find((each) => each.firstYear === vehicle.firstYear && each.lastYear === lastYear)
+  if (!generation) {
+    generation = { id: crypto.randomUUID(), name: `G${model.generations.length + 1}`, firstYear: vehicle.firstYear, lastYear, versions: [] }
+    model.generations.push(generation)
+  }
+  const versionName = vehicle.version?.trim()
+  if (!versionName) {
+    return { generationId: generation.id, versionId: null }
+  }
+  let version = generation.versions.find((each) => optionKey(each.name) === optionKey(versionName))
+  if (!version) {
+    version = { id: crypto.randomUUID(), name: listName(versionName), years: [] }
+    generation.versions.push(version)
+  }
+  return { generationId: generation.id, versionId: version.id }
+}
+
+/**
+ * Reads a vehicle's generation and version from the catalog, as the API sends them: the generation's years and its
+ * number among its model's generations, and the version's name.
+ * @param db The demo's data.
+ * @param vehicle The vehicle as the demo keeps it.
+ * @returns Its years, number and version, null without them.
+ */
+function catalogVehicle(db: Db, vehicle: StoredItem['vehicles'][number]) {
+  for (const model of db.catalog.brands.flatMap((brand) => brand.models)) {
+    const index = model.generations.findIndex((each) => each.id === vehicle.generationId)
+    if (index >= 0) {
+      const generation = model.generations[index]
+      return {
+        firstYear: generation.firstYear,
+        lastYear: generation.lastYear,
+        generationNumber: index + 1,
+        version: generation.versions.find((each) => each.id === vehicle.versionId)?.name ?? null,
+      }
+    }
+  }
+  return { firstYear: null, lastYear: null, generationNumber: null, version: null }
+}
+
+/**
+ * Counts the items with a vehicle of a catalog brand or node, or of something under it, which keep it from being deleted.
+ * @param db The demo's data.
+ * @param id The brand's vehicle brand, or the node.
+ * @returns How many items.
+ */
+function itemsUsing(db: Db, id: string): number {
+  const generations = db.catalog.brands.flatMap((brand) =>
+    brand.models.flatMap((model) =>
+      model.generations.map((generation) => ({ generation, under: [brand.id, model.id, generation.id], versions: generation.versions.map((each) => each.id) })),
+    ),
+  )
+  const generationIds = new Set(generations.filter((each) => each.under.includes(id)).map((each) => each.generation.id))
+  const versionIds = new Set(generations.flatMap((each) => each.versions).filter((each) => each === id))
+  return db.items.filter((item) => item.vehicles.some((vehicle) => generationIds.has(vehicle.generationId ?? '') || versionIds.has(vehicle.versionId ?? ''))).length
 }

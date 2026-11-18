@@ -68,7 +68,7 @@ import { VehiclesField } from './VehiclesField';
 // then a raised card for each brand that makes the part, with its photos, taken with the camera or picked from the
 // gallery, its part brand and code, then its quantity and price side by side, and its color and location. The
 // vehicles are chips, and "Adicionar veículo" opens a new one's brand, model, generation and version, the last two
-// offering what the catalog and the stock hold for the model, checked before it joins them (see VehiclesField); a dashed "Adicionar marca" adds a blank brand, and each brand's "Remover" takes it out while another
+// offering what the catalog holds for the model (the generations numbered, the versions of the one chosen), checked before it joins them (see VehiclesField); a dashed "Adicionar marca" adds a blank brand, and each brand's "Remover" takes it out while another
 // is left. Category, part brands and the vehicles' brands and models are comboboxes of the lists the API keeps, where
 // "+ Criar" adds a new name to its list, picks it and says so in a toast; a vehicle's model only lists its brand's
 // models, is created under that brand, stays locked until a brand of the list is chosen and clears when the brand
@@ -449,7 +449,7 @@ export function ItemFormDialog({
             errors={errors.vehicles}
             lists={lists}
             brands={options.vehicleBrands}
-            suggest={(vehicle) => vehicleSuggestions(catalog, items, vehicle)}
+            suggest={(vehicle) => vehicleSuggestions(catalog, vehicle)}
             onVehiclesChange={(vehicles) => {
               setForm((typed) => ({ ...typed, vehicles }));
               setErrors((shown) => ({ ...shown, vehicles: undefined }));

@@ -25,7 +25,7 @@ import { useStyles } from './VehiclesField.styles';
 
 // The vehicles an item fits in the item form, the same as the web on a phone: each vehicle a chip with its × (see
 // vehicleText), then a dashed "Adicionar veículo" that opens a new vehicle's brand and model, then its generation and
-// version side by side, which offer what the catalog and the stock hold for its model and take any text, with Cancelar
+// version side by side, which offer what the catalog holds for its model (the generations numbered, the versions of the one chosen) and take any text, with Cancelar
 // and Adicionar. The fields open one after the other, as on the web: the brand opens the model, the model the generation
 // and the generation the version, and emptying one clears those after it (see changedVehicle). Adicionar checks the new vehicle against the item's (see vehicleFormErrors) and only then makes it a chip;
 // a vehicle with a brand not in the list, one the item already has, or a vehicle beside Universal is refused, saying

@@ -16,6 +16,7 @@ import {
 import { splitVehicleModel } from "@apc/domain/item-filters";
 import type { Position, Prisma, Side } from "../generated/prisma/client.js";
 import { photoOf } from "./photos.js";
+import { catalogLinks } from "./catalogLinks.js";
 import { listIds } from "./listIds.js";
 import type { ActiveSession } from "../auth/sessions.js";
 
@@ -35,8 +36,22 @@ export const BRAND_ORDER = [{ position: "asc" }, { id: "asc" }] satisfies Prisma
 const VEHICLE_ORDER = [{ position: "asc" }, { id: "asc" }] satisfies Prisma.ItemVehicleOrderByWithRelationInput[];
 /** The names of a vehicle's brand and model, all sorting reads of it. */
 const VEHICLE_NAMES = { vehicleBrand: { select: { name: true } }, vehicleModel: { select: { name: true } } } satisfies Prisma.ItemVehicleSelect;
-/** What an item's vehicle is read with: its names, its generation's years and its version. */
-const VEHICLE_SELECT = { ...VEHICLE_NAMES, firstYear: true, lastYear: true, version: true } satisfies Prisma.ItemVehicleSelect;
+/**
+ * What an item's vehicle is read with: its names, its catalog generation's years with its model's generations in order
+ * (to number it), and its catalog version's name.
+ */
+const VEHICLE_SELECT = {
+  ...VEHICLE_NAMES,
+  generation: {
+    select: {
+      id: true,
+      firstYear: true,
+      lastYear: true,
+      model: { select: { generations: { orderBy: [{ position: "asc" }, { id: "asc" }], select: { id: true } } } },
+    },
+  },
+  version: { select: { name: true } },
+} satisfies Prisma.ItemVehicleSelect;
 /** What every item query includes: the names of its list entries, and its brands with their photos, in order. */
 export const ITEM_INCLUDE = {
   category: { select: { name: true } },
@@ -166,13 +181,13 @@ export function itemWhere(query: ItemListQuery, minQuantity: Prisma.FieldRef<"It
   }
   const generations = query.generation.flatMap((value) => {
     const [first, last] = value.split("-");
-    return /^\d+$/.test(first) ? [{ firstYear: Number(first), lastYear: last ? Number(last) : null }] : [];
+    return /^\d+$/.test(first) ? [{ generation: { firstYear: Number(first), lastYear: last ? Number(last) : null } }] : [];
   });
   if (query.generation.length > 0) {
     and.push({ vehicles: { some: { OR: generations.length > 0 ? generations : [{ id: { in: [] } }] } } });
   }
   if (query.version.length > 0) {
-    and.push({ vehicles: { some: { version: { in: query.version } } } });
+    and.push({ vehicles: { some: { version: { name: { in: query.version } } } } });
   }
   if (query.status === "out") {
     and.push({ quantity: 0 });
@@ -224,8 +239,9 @@ function textOrNull(value: string | undefined): string | null {
 }
 
 /**
- * Builds the rows of an item's vehicles, each at its place in the list with its generation and version, adding the
- * vehicle brands and models the lists don't hold (see listIds).
+ * Builds the rows of an item's vehicles, each at its place in the list, linked to its generation and version in the
+ * Catalog, adding the vehicle brands and models the lists don't hold (see listIds) and what the Catalog lacks (see
+ * catalogLinks).
  * @param tx Database client, in the transaction that saves the item.
  * @param vehicles The vehicles as sent.
  * @returns Data for prisma.itemVehicle.create, without the item.
@@ -234,14 +250,9 @@ export async function vehiclesData(tx: Prisma.TransactionClient, vehicles: reado
   const rows = [];
   for (const [position, vehicle] of vehicles.entries()) {
     const ids = await listIds(tx, { vehicle });
-    rows.push({
-      position,
-      vehicleBrandId: ids.vehicleBrandId!,
-      vehicleModelId: ids.vehicleModelId ?? null,
-      firstYear: vehicle.firstYear ?? null,
-      lastYear: vehicle.firstYear == null ? null : (vehicle.lastYear ?? null),
-      version: textOrNull(vehicle.version),
-    });
+    const vehicleBrandId = ids.vehicleBrandId!;
+    const vehicleModelId = ids.vehicleModelId ?? null;
+    rows.push({ position, vehicleBrandId, vehicleModelId, ...(await catalogLinks(tx, { vehicleBrandId, vehicleModelId }, vehicle)) });
   }
   return rows;
 }
@@ -259,12 +270,13 @@ export function toItem(row: ItemRow, session: ActiveSession): Item {
     id: row.id,
     name: row.name,
     category: row.category.name,
-    vehicles: row.vehicles.map((vehicle) => ({
-      vehicleBrand: vehicle.vehicleBrand.name,
-      vehicleModel: vehicle.vehicleModel?.name ?? null,
-      firstYear: vehicle.firstYear,
-      lastYear: vehicle.lastYear,
-      version: vehicle.version,
+    vehicles: row.vehicles.map(({ vehicleBrand, vehicleModel, generation, version }) => ({
+      vehicleBrand: vehicleBrand.name,
+      vehicleModel: vehicleModel?.name ?? null,
+      firstYear: generation?.firstYear ?? null,
+      lastYear: generation?.lastYear ?? null,
+      generationNumber: generation ? generation.model.generations.findIndex((each) => each.id === generation.id) + 1 : null,
+      version: version?.name ?? null,
     })),
     position: labelOf(POSITION_VALUES, row.position),
     side: labelOf(SIDE_VALUES, row.side),

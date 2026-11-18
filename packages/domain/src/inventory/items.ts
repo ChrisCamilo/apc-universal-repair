@@ -123,6 +123,10 @@ export const itemVehicleCreateSchema = z
   .refine((vehicle) => vehicle.lastYear == null || (vehicle.firstYear != null && vehicle.lastYear >= vehicle.firstYear), {
     path: ["lastYear"],
     message: "The last year comes after the first one.",
+  })
+  .refine((vehicle) => !vehicle.version?.trim() || (vehicle.firstYear != null && Boolean(vehicle.vehicleModel?.trim())), {
+    path: ["version"],
+    message: "A version belongs to a generation of the model.",
   });
 // An item's vehicles: at least one, each pair once, compared ignoring case and accents, and Universal alone.
 const vehiclesSchema = z
@@ -237,11 +241,16 @@ export const itemBrandIdParamsSchema = z.object({ id: z.uuid(), brandId: z.uuid(
  * A vehicle an item fits: a vehicle brand, and its model, or null for any model of the brand; its generation's first
  * and last year, the last null while it is still made, and its version, each null or left out when not given.
  */
+/**
+ * A vehicle of an item as the API sends it: its generation's years, its number among the model's generations in the
+ * Catalog (1 for the first) and its version's name, all read from the Catalog.
+ */
 export const itemVehicleSchema = z.object({
   vehicleBrand: z.string(),
   vehicleModel: z.string().nullable(),
   firstYear: z.int().nullish(),
   lastYear: z.int().nullish(),
+  generationNumber: z.int().nullish(),
   version: z.string().nullish(),
 });
 export const itemSchema = z.object({
@@ -382,13 +391,18 @@ export function formatPriceRange(item: { brands: readonly Pick<ItemBrand, "unitP
 }
 
 /**
- * Writes a vehicle's generation with its years' last two digits, the way the details and the filters show it.
- * @param vehicle The vehicle's first and last year.
- * @returns E.g. "85/90", "85" for a single year, "19/atual" while it is still made, or "" without a generation.
+ * Writes a vehicle's generation with its years' last two digits, after its number in the Catalog when it has one, the
+ * way the item form, the details and the filters show it.
+ * @param vehicle The vehicle's first and last year, and its generation's number.
+ * @returns E.g. "G1 - 85/90", "85/90" without a number, "85" for a single year, "19/atual" while it is still made, or ""
+ * without a generation.
  */
-export function generationLabel(vehicle: Pick<ItemVehicle, "firstYear" | "lastYear">): string {
+export function generationLabel(vehicle: Pick<ItemVehicle, "firstYear" | "lastYear"> & { generationNumber?: number | null }): string {
   if (vehicle.firstYear == null) {
     return "";
+  }
+  if (vehicle.generationNumber) {
+    return `G${vehicle.generationNumber} - ${generationLabel({ firstYear: vehicle.firstYear, lastYear: vehicle.lastYear })}`;
   }
   const short = (year: number) => String(year % 100).padStart(2, "0");
   if (vehicle.lastYear === vehicle.firstYear) {
@@ -576,12 +590,17 @@ export function stockCounts(items: readonly Pick<Item, "quantity" | "minQuantity
 /**
  * Reads a vehicle's generation as typed: two years apart by "/" or "-", or one year alone, each with four digits or
  * its last two (up to next year's are this century's, the others the last one's: "05" is 2005, "85" is 1985), and the
- * last one "atual", or nothing after a "-", while it is still made.
- * @param text E.g. "85/90", "1985 - 1990", "1985-1990", "88", "19/atual" or "2019-".
- * @returns The first and last year, both null when the text is empty, or null when it isn't a generation, its years
- * out of VEHICLE_YEARS or the last before the first.
+ * last one "atual", or nothing after a "-", while it is still made; a number in the Catalog may come first ("G1 - ").
+ * @param text E.g. "85/90", "G1 - 85/90", "1985 - 1990", "1985-1990", "88", "19/atual" or "2019-".
+ * @returns The first and last year, with the number when one came first, both years null when the text is empty, or
+ * null when it isn't a generation, its years out of VEHICLE_YEARS or the last before the first.
  */
-export function readGeneration(text: string): { firstYear: number | null; lastYear: number | null } | null {
+export function readGeneration(text: string): { firstYear: number | null; lastYear: number | null; generationNumber?: number } | null {
+  const numbered = /^g\s*(\d+)\s*[-–]\s*(.+)$/i.exec(text.trim());
+  if (numbered) {
+    const years = readGeneration(numbered[2]);
+    return years && years.firstYear !== null ? { ...years, generationNumber: Number(numbered[1]) } : null;
+  }
   const typed = text.trim().toLowerCase();
   if (!typed) {
     return { firstYear: null, lastYear: null };

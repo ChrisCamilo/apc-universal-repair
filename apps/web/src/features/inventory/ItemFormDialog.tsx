@@ -78,7 +78,8 @@ import { VehiclesField } from './VehiclesField.tsx'
 // has it; see CodeListField), then a
 // section for each brand that makes the part, with its photos, part brand, code, quantity, unit price, color and
 // location. Each vehicle is a line of its brand, its model, and optionally its generation ("85/90") and version ("1.6
-// GLX"), which offer what the catalog and the stock hold for that model and take any text, the generation read as years
+// GLX"), which offer the catalog's generations of that model, numbered ("G1 - 85/90"), and the versions of the one
+// chosen, and take any text, a new one joining the catalog when the item is saved; the generation is read as years
 // (see readGeneration); the dialog is wide, so the four fit on one line. The fields open one after the other: the brand
 // opens the model, the model the generation and the generation the version, and emptying one clears those after it
 // (see changedVehicle). "Adicionar veículo" adds a blank line and "Adicionar marca"
@@ -543,7 +544,7 @@ export function ItemFormDialog({
                 vehicles={form.vehicles}
                 errors={errors.vehicles}
                 lists={lists}
-                suggest={(vehicle) => vehicleSuggestions(catalog, items, vehicle)}
+                suggest={(vehicle) => vehicleSuggestions(catalog, vehicle)}
                 brands={options.vehicleBrands}
                 onVehiclesChange={(vehicles) => {
                   setForm((typed) => ({ ...typed, vehicles }))
@@ -561,7 +562,7 @@ export function ItemFormDialog({
                 const brand = findEntry(lists.vehicleBrands, vehicle.vehicleBrand)
                 const shown = errors.vehicles?.[index] ?? {}
                 const line = `Veículo ${index + 1}`
-                const suggested = vehicleSuggestions(catalog, items, vehicle)
+                const suggested = vehicleSuggestions(catalog, vehicle)
                 return (
                   <div key={index} role="group" aria-label={line} className={classes.vehicle()} data-testid={ids.vehicle}>
                     <Combobox

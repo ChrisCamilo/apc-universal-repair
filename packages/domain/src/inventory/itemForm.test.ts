@@ -300,6 +300,15 @@ test("Shared: a vehicle's generation and version are checked and sent as years",
   assert.deepEqual(itemFormOf(held).vehicles, [{ ...gol, generation: "08/12", version: "1.0 G5" }]);
   assert.equal(itemFormChanged(itemFormOf(held), held, []), false);
   assert.equal(vehiclesText(held), "Volkswagen Gol 08/12 1.0 G5");
+  // With its number in the Catalog, the generation fills the form and shows so, and reads back unchanged.
+  const numbered = { ...held, vehicles: [{ ...held.vehicles[0], generationNumber: 2 }] };
+  assert.deepEqual(itemFormOf(numbered).vehicles, [{ ...gol, generation: "G2 - 08/12", version: "1.0 G5" }]);
+  assert.equal(itemFormChanged(itemFormOf(numbered), numbered, []), false);
+  assert.equal(vehiclesText(numbered), "Volkswagen Gol G2 - 08/12 1.0 G5");
+  // A version waits for its generation.
+  assert.deepEqual(itemFormErrors({ ...VALID, vehicles: [{ ...gol, version: "1.0 G5" }] }, ITEMS, LISTS).vehicles, [
+    { version: ITEM_FORM_MESSAGES.versionNeedsGeneration },
+  ]);
 });
 
 // Types a material and a description: both go with a capital letter, a blank one goes empty so an edit clears it, and

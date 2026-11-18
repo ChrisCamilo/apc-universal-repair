@@ -81,14 +81,14 @@ after(async () => {
 });
 
 /**
- * Migrates a database up to the migration before MIGRATION, from a copy of the migrations without it and the ones
- * after it.
+ * Migrates a database up to the migration before MIGRATION, or through it, from a copy of the migrations up to there.
  * @param url The database's DATABASE_URL.
  * @param provider Its database.
+ * @param through Whether MIGRATION is applied too.
  */
-async function migrateBefore(url: string, provider: DatabaseProvider) {
+async function migrateBefore(url: string, provider: DatabaseProvider, through = false) {
   const folder = path.join(FOLDER, `migrations-${randomBytes(3).toString("hex")}`);
-  for (const name of migrationNames(provider).filter((each) => each < MIGRATION)) {
+  for (const name of migrationNames(provider).filter((each) => each < MIGRATION || (through && each === MIGRATION))) {
     cpSync(path.join(migrationsFolder(provider), name), path.join(folder, provider, name), { recursive: true });
   }
   process.env.APC_MIGRATIONS_DIR = folder;
@@ -146,8 +146,9 @@ async function checkMigrated(client: PrismaClient) {
   const brands = await client.brand.findMany({ include: { models: true } });
   const brandOf = (name: string) => brands.find((brand) => brand.nameKey === optionKey(name));
   const vehiclesOf = async (itemId: string) =>
-    (await client.itemVehicle.findMany({ where: { itemId }, orderBy: { position: "asc" }, include: { vehicleBrand: true, vehicleModel: true } })).map(
-      (vehicle) => [vehicle.vehicleBrand.name, vehicle.vehicleModel?.name ?? null, vehicle.version],
+    (await client.itemVehicle.findMany({ where: { itemId }, orderBy: { position: "asc" }, include: { vehicleBrand: true, vehicleModel: true, version: true } })).map(
+      // The version is the catalog's since a later migration (20261119000000_item_vehicle_catalog_links).
+      (vehicle) => [vehicle.vehicleBrand.name, vehicle.vehicleModel?.name ?? null, vehicle.version?.name ?? null],
     );
 
   // The brands under other names are gone, and each standard brand is held once.
@@ -189,22 +190,25 @@ async function checkMigrated(client: PrismaClient) {
   assert.equal(brandOf("Volkswagen")!.models.find((model) => model.nameKey === "gol")!.id, CATALOG.gol);
 }
 
+/** Counts the vehicle brands, models and item vehicles, in SQL that reads the database as MIGRATION leaves it. */
+const COUNTS = `SELECT (SELECT COUNT(*) FROM "Brand") AS "brands", (SELECT COUNT(*) FROM "VehicleModel") AS "models", (SELECT COUNT(*) FROM "ItemVehicle") AS "vehicles"`;
+
 /**
- * Migrates a database on, with this migration first to apply, and checks the result.
+ * Migrates a database on to the last migration, and checks the result as the database is now.
  * @param url The database's DATABASE_URL.
  * @returns A client of the migrated database.
  */
 async function migrateAndCheck(url: string) {
-  assert.equal((await migrate(url))[0], MIGRATION);
+  await migrate(url);
   const client = createPrisma(url);
   opened.push(client);
   await checkMigrated(client);
   return client;
 }
 
-// Migrates a new SQLite file up to the migration before, writes the old lists and items, and migrates on, checking the
-// merges, what stayed and the listed brands and models; then runs the migration's statements again and checks nothing
-// changed.
+// Migrates a new SQLite file up to the migration before, writes the old lists and items, and applies the migration; runs
+// its statements again and checks nothing changed; then migrates on and checks the merges, what stayed and the listed
+// brands and models.
 test("API: on SQLite, the vehicle lists start with the listed brands and models, and no item loses a vehicle", async () => {
   const file = path.join(FOLDER, "old.db");
   const url = `file:${file}`;
@@ -213,13 +217,13 @@ test("API: on SQLite, the vehicle lists start with the listed brands and models,
   await writeOld(async (sql, values) => db.prepare(sql).run(...values), () => "?");
   db.close();
 
-  const client = await migrateAndCheck(url);
-  const counts = [await client.brand.count(), await client.vehicleModel.count(), await client.itemVehicle.count()];
+  await migrateBefore(url, "sqlite", true);
   const again = new Database(file);
+  const counts = again.prepare(COUNTS).get();
   again.exec(readMigration("sqlite"));
+  assert.deepEqual(again.prepare(COUNTS).get(), counts);
   again.close();
-  assert.deepEqual([await client.brand.count(), await client.vehicleModel.count(), await client.itemVehicle.count()], counts);
-  await checkMigrated(client);
+  await migrateAndCheck(url);
   const check = new Database(file, { readonly: true });
   assert.deepEqual(check.pragma("foreign_key_check"), []);
   check.close();
@@ -239,12 +243,12 @@ test("API: on PostgreSQL, the vehicle lists start with the listed brands and mod
     await db.connect();
     await writeOld((sql, values) => db.query(sql, values), (place) => `$${place}`);
 
-    const client = await migrateAndCheck(url.toString());
-    const counts = [await client.brand.count(), await client.vehicleModel.count(), await client.itemVehicle.count()];
+    await migrateBefore(url.toString(), "postgresql", true);
+    const counts = (await db.query(COUNTS)).rows;
     await db.query(readMigration("postgresql"));
+    assert.deepEqual((await db.query(COUNTS)).rows, counts);
     await db.end();
-    assert.deepEqual([await client.brand.count(), await client.vehicleModel.count(), await client.itemVehicle.count()], counts);
-    await checkMigrated(client);
+    const client = await migrateAndCheck(url.toString());
     await client.$disconnect();
   } finally {
     await server.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);

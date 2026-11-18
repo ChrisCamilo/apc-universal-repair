@@ -279,13 +279,13 @@ test('Web: the demo merges vehicle models and brands as the API does', async () 
   const merged = await as('POST', `/vehicle-models/${parati.id}/merge`, { into: gol.id })
   expect(await merged.json()).toEqual({ moved: 1 })
   const pads = (await items()).find((item) => item.name === 'Pastilha de freio dianteira')!
-  expect(pads.vehicles).toEqual([{ vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', firstYear: null, lastYear: null, version: null }])
+  expect(pads.vehicles).toEqual([{ vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', firstYear: null, lastYear: null, generationNumber: null, version: null }])
 
   const extra = (await (await as('POST', '/vehicle-brands', { name: 'VW' })).json()) as ListEntry
   await as('POST', '/items', { ...ITEM, vehicles: [{ vehicleBrand: 'VW', vehicleModel: 'Gol' }, { vehicleBrand: 'Volkswagen', vehicleModel: 'Gol' }] })
   expect(await (await as('POST', `/vehicle-brands/${extra.id}/merge`, { into: vw.id })).json()).toEqual({ moved: 1 })
   const tensioner = (await items()).find((item) => item.name === 'Tensor da correia')!
-  expect(tensioner.vehicles).toEqual([{ vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', firstYear: null, lastYear: null, version: null }])
+  expect(tensioner.vehicles).toEqual([{ vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', firstYear: null, lastYear: null, generationNumber: null, version: null }])
   expect((await list('/vehicle-models')).filter((model) => model.name === 'Gol')).toHaveLength(1)
 })
 
@@ -366,7 +366,7 @@ test('Web: the demo imports a file whole or not at all, as the API does', async 
   const imported = await as('POST', '/items/import', { items: [created, pads] })
   expect([imported.status, await imported.json()]).toEqual([200, { created: 1, updated: 1 }])
   const after = (await items()).find((item) => item.name === 'Pastilha de freio dianteira')!
-  expect(after.vehicles).toEqual([{ vehicleBrand: 'Fiat', vehicleModel: 'Uno', firstYear: null, lastYear: null, version: null }])
+  expect(after.vehicles).toEqual([{ vehicleBrand: 'Fiat', vehicleModel: 'Uno', firstYear: null, lastYear: null, generationNumber: null, version: null }])
   expect(after.originalCodes).toEqual(['5U0 698 151', 'GM-0042'])
   expect(after.brands.map((brand) => [brand.partBrand, brand.code, brand.quantity])).toEqual([
     ['Cobreq', 'N-1210', 20],

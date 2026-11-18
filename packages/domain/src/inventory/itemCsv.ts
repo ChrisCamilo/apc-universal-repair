@@ -308,6 +308,8 @@ function csvVehicles(text: string, lists: ItemLists, errors: string[]): ItemVehi
       }
       if (version.length > VEHICLE_VERSION_MAX) {
         errors.push(`Versão “${version}”: ${ITEM_FORM_MESSAGES.versionTooLong.toLowerCase()}`);
+      } else if (version && !generationTyped) {
+        errors.push(`Versão “${version}”: ${ITEM_FORM_MESSAGES.versionNeedsGeneration.toLowerCase()}`);
       }
       const generation = readGeneration(generationTyped);
       return {

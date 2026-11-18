@@ -138,8 +138,8 @@ test("API: the generation and version filters match a vehicle's own", () => {
   const query = itemListQuerySchema.parse({ generation: ["1985-1990", "2019-"], version: "1.6 GLX" });
   assert.deepEqual(itemWhere(query, MIN_QUANTITY), {
     AND: [
-      { vehicles: { some: { OR: [{ firstYear: 1985, lastYear: 1990 }, { firstYear: 2019, lastYear: null }] } } },
-      { vehicles: { some: { version: { in: ["1.6 GLX"] } } } },
+      { vehicles: { some: { OR: [{ generation: { firstYear: 1985, lastYear: 1990 } }, { generation: { firstYear: 2019, lastYear: null } }] } } },
+      { vehicles: { some: { version: { name: { in: ["1.6 GLX"] } } } } },
     ],
   });
   assert.deepEqual(itemWhere(itemListQuerySchema.parse({ generation: "GLX" }), MIN_QUANTITY), {
@@ -177,8 +177,14 @@ test("API: items carry their entries' names and their brands' photos", () => {
       ...IDS,
       category: { name: "Motor" },
       vehicles: [
-        { vehicleBrand: { name: "Volkswagen" }, vehicleModel: null, firstYear: null, lastYear: null, version: null },
-        { vehicleBrand: { name: "Fiat" }, vehicleModel: { name: "Uno" }, firstYear: 1984, lastYear: 2013, version: "Mille 1.0" },
+        { vehicleBrand: { name: "Volkswagen" }, vehicleModel: null, generation: null, version: null },
+        {
+          vehicleBrand: { name: "Fiat" },
+          vehicleModel: { name: "Uno" },
+          // The Uno's second generation in the Catalog.
+          generation: { id: "g2", firstYear: 1984, lastYear: 2013, model: { generations: [{ id: "g1" }, { id: "g2" }] } },
+          version: { name: "Mille 1.0" },
+        },
       ],
       position: "FRONT",
       side: "BOTH",
@@ -200,8 +206,8 @@ test("API: items carry their entries' names and their brands' photos", () => {
     ["Motor", "D", "Ambos", 4],
   );
   assert.deepEqual(item.vehicles, [
-    { vehicleBrand: "Volkswagen", vehicleModel: null, firstYear: null, lastYear: null, version: null },
-    { vehicleBrand: "Fiat", vehicleModel: "Uno", firstYear: 1984, lastYear: 2013, version: "Mille 1.0" },
+    { vehicleBrand: "Volkswagen", vehicleModel: null, firstYear: null, lastYear: null, generationNumber: null, version: null },
+    { vehicleBrand: "Fiat", vehicleModel: "Uno", firstYear: 1984, lastYear: 2013, generationNumber: 2, version: "Mille 1.0" },
   ]);
   assert.deepEqual(item.originalCodes, ["030 115 561 AN", "030 115 561 AP"]);
   assert.deepEqual([item.material, item.description], ["Papel", null]);

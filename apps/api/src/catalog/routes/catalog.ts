@@ -36,7 +36,9 @@ import { CATALOG_GENERATIONS } from "../catalogTree.js";
 // its siblings (past the ends it stays put), and deleted with everything under it; a model's vehicle model stays in the
 // lists. An engine is added under a period with its sheet (displacement, cylinders, drive and summary), at the end of
 // the period's, and its sheet is saved again; its name and its sheet's title come from the sheet and the tree. A node or parent
-// that isn't there answers 404.
+// that isn't there answers 404. Item vehicles point at generations and versions, so a brand or node an item uses, or
+// one with such a node under it, isn't deleted (409): the item's vehicle changes first. Renaming a version or changing a
+// generation's years shows on the items that use them.
 
 /** Orders a level of the catalog by its place among its siblings. */
 const IN_ORDER = { orderBy: { position: "asc" } } as const;
@@ -93,6 +95,32 @@ async function readCatalog(): Promise<CatalogData> {
         .map(({ id, vehicleModel, generations }) => ({ id, name: vehicleModel.name, generations })),
     })),
   };
+}
+
+/**
+ * Counts the items with a vehicle of a catalog node, or of something under it, which keep it from being deleted.
+ * @param level A brand, or a level of the tree that has generations or versions under it or is one.
+ * @param id The node, or the brand's vehicle brand.
+ * @returns How many items, 0 for a period.
+ */
+async function itemsUsing(level: CatalogEditLevel | "brand", id: string): Promise<number> {
+  const vehicles: Record<Exclude<CatalogEditLevel, "year"> | "brand", object> = {
+    brand: { generation: { model: { vehicleModel: { brandId: id } } } },
+    model: { generation: { modelId: id } },
+    generation: { generationId: id },
+    version: { versionId: id },
+  };
+  return level === "year" ? 0 : prisma.item.count({ where: { vehicles: { some: vehicles[level] } } });
+}
+
+/**
+ * Answers 409 for a node, or a brand, some items' vehicles use.
+ * @param reply Reply to send.
+ * @param count How many items use it.
+ * @returns The sent reply.
+ */
+function inUse(reply: FastifyReply, count: number) {
+  return conflict(reply, `${count} ${count === 1 ? "item uses" : "items use"} it in the stock.`);
 }
 
 /**
@@ -195,6 +223,10 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     const brandId = request.params.id;
     if (!(await prisma.catalogBrand.findUnique({ where: { brandId }, select: { id: true } }))) {
       return notFound(reply);
+    }
+    const using = await itemsUsing("brand", brandId);
+    if (using > 0) {
+      return inUse(reply, using);
     }
     await prisma.$transaction([
       prisma.catalogModel.deleteMany({ where: { vehicleModel: { brandId } } }),
@@ -385,6 +417,10 @@ export function registerCatalogRoutes(app: FastifyInstance) {
       const { id } = request.params;
       if (!(await siblingsOf(level, id))) {
         return notFound(reply);
+      }
+      const using = await itemsUsing(level, id);
+      if (using > 0) {
+        return inUse(reply, using);
       }
       await removeNode(level, id);
       return readCatalog();

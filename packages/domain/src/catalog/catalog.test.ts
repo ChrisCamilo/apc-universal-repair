@@ -553,23 +553,17 @@ test("Shared: what is typed into a node or an engine sheet is checked before it 
 });
 
 // Offers a vehicle's generations and versions in the item form: the Opala's in the catalog, its model found as a part's
-// is ("Opala 4.1" → Opala), with those the stock holds for the same brand and model, oldest first and each once; a model
-// the catalog lacks offers only the stock's, and no model offers none.
-test("Shared: the item form offers the catalog's and the stock's generations and versions", () => {
-  const stock = [
-    part({ code: "A", vehicleModel: "Opala 4.1", firstYear: 1980, lastYear: 1992, version: "Diplomata" }),
-    part({ code: "B", vehicleModel: "Opala 4.1", firstYear: 1985, lastYear: 1990, version: "4.1 SL" }),
-    part({ code: "C", vehicleModel: "Caravan", firstYear: 1975, lastYear: 1992, version: "Comodoro" }),
-  ];
-  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, stock, { vehicleBrand: "chevrolet", vehicleModel: "opala 4.1" }), {
-    generations: ["68/74", "75/79", "80/92", "85/90"],
-    versions: ["4.1 SL", "Comodoro", "Diplomata", "SS"],
-  });
-  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, stock, { vehicleBrand: "Chevrolet", vehicleModel: "Caravan" }), {
-    generations: ["75/92"],
-    versions: ["Comodoro"],
-  });
-  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, stock, { vehicleBrand: "Chevrolet", vehicleModel: "" }), { generations: [], versions: [] });
+// is ("Opala 4.1" → Opala), each generation with its number among the model's, oldest first, and the versions of the
+// generation typed (by its number and years or its years alone), none before one is; a model the catalog lacks, or no
+// model, offers none.
+test("Shared: the item form offers the catalog's generations, numbered, and the versions of the one chosen", () => {
+  const opala = { vehicleBrand: "chevrolet", vehicleModel: "opala 4.1" };
+  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, opala), { generations: ["G1 - 68/74", "G2 - 75/79", "G3 - 80/92"], versions: [] });
+  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, { ...opala, generation: "G3 - 80/92" }).versions, ["Comodoro", "Diplomata", "SS"]);
+  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, { ...opala, generation: "1980-1992" }).versions, ["Comodoro", "Diplomata", "SS"]);
+  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, { ...opala, generation: "G1 - 68/74" }).versions, []);
+  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, { vehicleBrand: "Chevrolet", vehicleModel: "Caravan" }), { generations: [], versions: [] });
+  assert.deepEqual(vehicleSuggestions(TEST_CATALOG, { vehicleBrand: "Chevrolet", vehicleModel: "" }), { generations: [], versions: [] });
 });
 
 // Deletes a catalog brand in memory, and checks its models' trees go with it, the rail closes up, and a brand that
@@ -627,11 +621,11 @@ test("Shared: two models' trees join, the matching nodes made one and nothing lo
   ]);
   assert.deepEqual(steps, [
     { kind: "move", level: "engine", id: "e2", parentId: "y85" },
-    { kind: "drop", level: "year", id: "m-y85" },
+    { kind: "drop", level: "year", id: "m-y85", into: "y85" },
     { kind: "move", level: "year", id: "m-y86", parentId: "v-comodoro" },
-    { kind: "drop", level: "version", id: "m-comodoro" },
+    { kind: "drop", level: "version", id: "m-comodoro", into: "v-comodoro" },
     { kind: "move", level: "version", id: "m-diplomata", parentId: "g3" },
-    { kind: "drop", level: "generation", id: "m-g3" },
+    { kind: "drop", level: "generation", id: "m-g3", into: "g3" },
     { kind: "move", level: "generation", id: "m-g4", parentId: "model-kept" },
   ]);
   assert.deepEqual(kept.generations[0].versions.map((each) => each.id), ["v-comodoro"]);
