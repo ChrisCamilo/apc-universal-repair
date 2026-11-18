@@ -217,8 +217,9 @@ test("API: items carry their entries' names and their brands' photos", () => {
   ]);
 });
 
-// Turns a row of two brands read for sorting into what sortItems looks at: names, its first vehicle, the position and
-// side as the API speaks them, the first brand's code, part brand, color and location, and the lowest price.
+// Turns a row of two brands read for sorting into what sortItems looks at: names, its first vehicle, its material, the
+// position and side as the API speaks them, the first brand's code, part brand, color and location, and the lowest
+// price.
 test("API: rows read for sorting carry names, the API's values and their first brand", () => {
   const sortable = toSortable({
     id: "i1",
@@ -228,14 +229,15 @@ test("API: rows read for sorting carry names, the API's values and their first b
     position: "REAR",
     side: "LEFT",
     quantity: 3,
+    material: "Cortiça",
     brands: [
       { code: "A-1", partBrand: { name: "Mann" }, color: "Preto", location: "B-1", unitPriceCents: 900 },
       { code: "B-1", partBrand: { name: "Victor Reinz" }, color: "N/A", location: null, unitPriceCents: 500 },
     ],
   });
   assert.deepEqual(
-    [sortable.category, sortable.vehicleBrand, sortable.vehicleModel, sortable.position, sortable.side],
-    ["Motor", "Volkswagen", "Gol", "T", "LE"],
+    [sortable.category, sortable.vehicleBrand, sortable.vehicleModel, sortable.material, sortable.position, sortable.side],
+    ["Motor", "Volkswagen", "Gol", "Cortiça", "T", "LE"],
   );
   assert.deepEqual(
     [sortable.code, sortable.partBrand, sortable.color, sortable.location, sortable.unitPriceCents, sortable.quantity],
