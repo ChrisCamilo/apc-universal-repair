@@ -1,6 +1,7 @@
 import {
   capitalizeFirst,
   codeKey,
+  colorText,
   includeBoth,
   NOT_APPLICABLE,
   searchKey,
@@ -69,7 +70,7 @@ export type ListIds = { categoryId: string };
 
 /**
  * Builds the row of a brand of an item: the code uppercase with its search key, the part brand referenced, and the
- * color N/A when empty.
+ * color uppercase (see colorText), N/A when empty.
  * @param input A brand as sent.
  * @param partBrandId Its part brand's entry, from listIds.
  * @param position Its place among the item's brands, from 0.
@@ -82,7 +83,7 @@ export function brandData(input: ItemBrandCreate, partBrandId: string, position:
     position,
     code,
     codeKey: codeKey(code),
-    color: textOrNull(input.color) ?? NOT_APPLICABLE,
+    color: input.color?.trim() ? colorText(input.color.trim()) : NOT_APPLICABLE,
     location: textOrNull(input.location),
     quantity: input.quantity ?? 0,
     unitPriceCents: input.unitPriceCents,

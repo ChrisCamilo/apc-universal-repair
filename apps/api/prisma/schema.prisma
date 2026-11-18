@@ -185,7 +185,7 @@ model ItemBrand {
   code           String      @unique
   /// The code as the search compares it, also unique, so codes that differ only in separators clash.
   codeKey        String      @unique
-  /// Free text, "N/A" when the color doesn't apply.
+  /// Free text in uppercase, "N/A" when the color doesn't apply.
   color          String      @default("N/A")
   location       String?
   quantity       Int         @default(0)

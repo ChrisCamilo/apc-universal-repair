@@ -25,7 +25,7 @@ const ITEMS: ItemCreate[] = [
   { name: "Disco de freio", category: "Freios", vehicles: [{ vehicleBrand: "Fiat", vehicleModel: "Uno" }], position: "D", side: "Ambos", minQuantity: 2, brands: [{ partBrand: "Fras-le", code: "PD-580", location: "B-11", quantity: 4, unitPriceCents: 15990 }] },
   { name: "Bomba d'água", category: "Arrefecimento", vehicles: [{ vehicleBrand: "Fiat", vehicleModel: "Uno" }], minQuantity: 1, brands: [{ partBrand: "Urba", code: "BA-77", location: "C-1", quantity: 0, unitPriceCents: 13240 }] },
   { name: "Válvula termostática", category: "Arrefecimento", vehicles: [{ vehicleBrand: "Ford", vehicleModel: "Escort" }], minQuantity: 1, brands: [{ partBrand: "Valeo", code: "VT-40", location: "C-2", quantity: 3, unitPriceCents: 6590 }] },
-  { name: "Amortecedor", category: "Suspensão", vehicles: [{ vehicleBrand: "Ford", vehicleModel: "Escort" }], position: "T", side: "LE", minQuantity: 1, brands: [{ partBrand: "Cofap", code: "AM-501", color: "Preto", location: "A-10", quantity: 4, unitPriceCents: 24900 }] },
+  { name: "Amortecedor", category: "Suspensão", vehicles: [{ vehicleBrand: "Ford", vehicleModel: "Escort" }], position: "T", side: "LE", minQuantity: 1, brands: [{ partBrand: "Cofap", code: "AM-501", color: "PRETO", location: "A-10", quantity: 4, unitPriceCents: 24900 }] },
   { name: "Bieleta", category: "Suspensão", vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Santana" }], position: "D", side: "Ambos", minQuantity: 2, brands: [{ partBrand: "Monroe", code: "BT-2010", location: "A-11", quantity: 6, unitPriceCents: 4590 }] },
   { name: "Alternador", category: "Elétrica", vehicles: [{ vehicleBrand: "Chevrolet", vehicleModel: "Monza" }], minQuantity: 1, brands: [{ partBrand: "Bosch", code: "0 986 AN0 123", location: "D-1", quantity: 1, unitPriceCents: 89900 }] },
   { name: "Motor de partida", category: "Elétrica", vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Fusca" }], minQuantity: 1, brands: [{ partBrand: "Bosch", code: "MR-1500", location: "D-2", quantity: 2, unitPriceCents: 64900 }] },
@@ -57,8 +57,8 @@ const ITEMS: ItemCreate[] = [
     minQuantity: 2,
     originalCodes: ["7085 4321"],
     brands: [
-      { partBrand: "Cofap", code: "GP 32950", color: "Preto", location: "A-12", quantity: 4, unitPriceCents: 21900 },
-      { partBrand: "Monroe", code: "SP 0950", color: "Preto", location: "A-12", quantity: 2, unitPriceCents: 25900 },
+      { partBrand: "Cofap", code: "GP 32950", color: "PRETO", location: "A-12", quantity: 4, unitPriceCents: 21900 },
+      { partBrand: "Monroe", code: "SP 0950", color: "PRETO", location: "A-12", quantity: 2, unitPriceCents: 25900 },
     ],
   },
   {
