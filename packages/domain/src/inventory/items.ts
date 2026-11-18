@@ -16,7 +16,8 @@ import { ITEM_PHOTO_LIMIT } from "./photos.ts";
 // last two digits ("85/90"), the last one left out while it is still made, and its version ("1.6 GLX"); neither is part
 // of the item's name or its row, only of its details and filters. An item may also say what its part is made of
 // (its material) and carry a short description, up to 30 characters, that tells it apart from a similar part; both
-// show only in its details, and the description under its photo in the photo viewer.
+// show in its details, the material also in its row and its phone card, and the description under its photo in the
+// photo viewer.
 
 /** The columns the inventory list sorts by, as the list query's `sort` names them. */
 export const ITEM_SORT_KEYS = ["name", "category", "partBrand", "vehicle", "position", "side", "color", "material", "location", "price", "quantity"] as const;
@@ -472,16 +473,18 @@ export function itemDetails(
 }
 
 /**
- * Writes an item's details for the phone card under its code: where it fits, where it is and its price, leaving out
- * what doesn't apply.
+ * Writes an item's details for the phone card under its code: where it fits, what it is made of and its price,
+ * leaving out what doesn't apply or isn't given; the material takes the place of the location, as in the desktop
+ * table's default columns.
  * @param item Inventory item.
- * @returns E.g. "Volkswagen Gol · A-2 · R$ 89,90", or "Volkswagen Gol +1 · Várias · R$ 79,90 – R$ 112,90".
+ * @returns E.g. "Volkswagen Gol · Alumínio · R$ 89,90", or "Volkswagen Gol +1 · R$ 79,90 – R$ 112,90".
  */
 export function itemCardDetails(item: {
   vehicles: readonly ItemVehicle[];
-  brands: readonly Pick<ItemBrand, "color" | "location" | "unitPriceCents">[];
+  material?: string | null;
+  brands: readonly Pick<ItemBrand, "unitPriceCents">[];
 }): string {
-  return [itemVehiclesLabel(item), brandsValue(item, "location"), formatPriceRange(item)]
+  return [itemVehiclesLabel(item), item.material, formatPriceRange(item)]
     .filter((value) => value && value !== NOT_APPLICABLE)
     .join(" · ");
 }
