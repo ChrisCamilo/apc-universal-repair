@@ -28,6 +28,9 @@ import {
   itemNoteTexts,
   modelsOfBrand,
   originalCodeMessages,
+  photoPickerTexts,
+  photoSources,
+  PHOTO_SOURCES_LIMIT,
   originalCodesText,
   parsePrice,
   positionSideText,
@@ -426,6 +429,42 @@ test("Shared: an original code is refused when a brand of the item or another it
   assert.equal(hasFormErrors(itemFormErrors(form, ITEMS, LISTS)), true);
   assert.equal(hasFormErrors(itemFormErrors({ ...VALID, originalCodes: ["NEW-1"] }, ITEMS, LISTS)), false);
   assert.equal(hasFormErrors({ originalCodes: [undefined] }), false);
+});
+
+// Finds the items whose photos the picker offers by any code, a brand's or an original one, ignoring separators and
+// case, the exact code first; an item without photos, the item being edited and an empty search find nothing, and
+// past the limit it says how many more there are.
+test("Shared: the photo picker finds items with photos by code", () => {
+  const photo = (id: string) => [{ id, url: `/photos/${id}.jpg`, thumbUrl: `/photos/${id}-t.webp` }];
+  const disc = item({ id: "d", name: "Disco", code: "BD-3377", photos: photo("p1") });
+  const pads = item({
+    id: "e",
+    name: "Pastilha",
+    originalCodes: ["BD 33"],
+    brands: [
+      { id: "e1", partBrand: "Cobreq", code: "N-1", color: "N/A", location: null, quantity: 1, unitPriceCents: 100, photos: [] },
+      { id: "e2", partBrand: "Fras-le", code: "N-2", color: "N/A", location: null, quantity: 1, unitPriceCents: 100, photos: photo("p2") },
+    ],
+  });
+  const plain = item({ id: "f", name: "Sem foto", code: "BD-3378" });
+  const stock = [disc, pads, plain];
+  assert.deepEqual(photoSources(stock, "bd33").items.map((each) => each.id), ["e", "d"]);
+  assert.deepEqual(photoSources(stock, "bd 3377").items.map((each) => each.id), ["d"]);
+  assert.deepEqual(photoSources(stock, "BD", "d").items.map((each) => each.id), ["e"]);
+  assert.deepEqual(photoSources(stock, " - "), { items: [], more: 0 });
+  const many = Array.from({ length: PHOTO_SOURCES_LIMIT + 2 }, (_, index) =>
+    item({ id: `m${index}`, name: "Peça", code: `MX-${index}`, photos: photo(`m${index}`) }),
+  );
+  const found = photoSources(many, "mx");
+  assert.deepEqual([found.items.length, found.more], [PHOTO_SOURCES_LIMIT, 2]);
+});
+
+// Writes the picker's count and button: none, some, and full, which asks to uncheck one to change it.
+test("Shared: the photo picker says how many photos are checked", () => {
+  assert.deepEqual(photoPickerTexts(0, 3), { count: "0 de 3 fotos escolhidas", use: "Usar fotos" });
+  assert.deepEqual(photoPickerTexts(1, 3), { count: "1 de 3 fotos escolhidas", use: "Usar 1 foto" });
+  assert.deepEqual(photoPickerTexts(2, 2), { count: "2 de 2 fotos escolhidas: desmarque uma para trocar.", use: "Usar 2 fotos" });
+  assert.deepEqual(photoPickerTexts(1, 1), { count: "1 de 1 foto escolhida: desmarque uma para trocar.", use: "Usar 1 foto" });
 });
 
 // Builds the body of a filled-in form and checks the writing rule: capitals on every text, uppercase codes and
