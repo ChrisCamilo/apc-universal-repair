@@ -7,6 +7,7 @@ import { after, before, test } from "node:test";
 import sharp from "sharp";
 import { itemMatchesQuery } from "@apc/domain/item-filters";
 import { itemListQuerySchema, type Item } from "@apc/domain/items";
+import { catalogSchema } from "@apc/domain/catalog";
 import { TEST_USERS } from "@apc/domain/test-users";
 import { buildApp } from "../../app.js";
 import { prisma } from "../../db/client.js";
@@ -39,6 +40,9 @@ before(async () => {
 
 after(async () => {
   await prisma.item.deleteMany({ where: { brands: { some: { code: { contains: RUN } } } } });
+  // The catalog entries the run's vehicles added, once no item uses them.
+  await prisma.catalogModel.deleteMany({ where: { vehicleModel: { name: { contains: RUN } } } });
+  await prisma.catalogBrand.deleteMany({ where: { brand: { name: { contains: RUN } } } });
   await prisma.vehicleModel.deleteMany({ where: { name: { contains: RUN } } });
   await prisma.brand.deleteMany({ where: { name: { contains: RUN } } });
   await prisma.category.deleteMany({ where: { name: { contains: RUN } } });
@@ -260,7 +264,7 @@ test("API: an item is edited with its brands, and a brand left out goes with its
   const found = await find("bp1");
   const edited = await call("PATCH", `/items/${found.id}`, { vehicles: [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `Tocantins ${RUN}` }] });
   assert.equal(edited.statusCode, 200);
-  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `Tocantins ${RUN}`, firstYear: null, lastYear: null, version: null }]);
+  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `Tocantins ${RUN}`, firstYear: null, lastYear: null, generationNumber: null, version: null }]);
 
   const [first, second] = found.brands;
   const photos = await sendPhoto(found.id, second.id);
@@ -382,9 +386,9 @@ test("API: an item fits several vehicles and is found by each one", async () => 
   const created = await call("POST", "/items", item([brand("VE-1", "Cofap")], { name: `Lanterna ${RUN}`, vehicles }));
   assert.equal(created.statusCode, 201);
   assert.deepEqual(created.json().vehicles, [
-    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `X12 ${RUN}`, firstYear: null, lastYear: null, version: null },
-    { vehicleBrand: `Puma ${RUN}`, vehicleModel: `GTE ${RUN}`, firstYear: null, lastYear: null, version: null },
-    { vehicleBrand: `Miura ${RUN}`, vehicleModel: null, firstYear: null, lastYear: null, version: null },
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `X12 ${RUN}`, firstYear: null, lastYear: null, generationNumber: null, version: null },
+    { vehicleBrand: `Puma ${RUN}`, vehicleModel: `GTE ${RUN}`, firstYear: null, lastYear: null, generationNumber: null, version: null },
+    { vehicleBrand: `Miura ${RUN}`, vehicleModel: null, firstYear: null, lastYear: null, generationNumber: null, version: null },
   ]);
   /** The names of this run's items a list query finds. */
   const names = async (query: string) =>
@@ -399,13 +403,16 @@ test("API: an item fits several vehicles and is found by each one", async () => 
   assert.equal((await call("POST", "/items", universal)).statusCode, 400);
 
   const edited = await call("PATCH", `/items/${created.json().id}`, { vehicles: [vehicles[2]] });
-  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Miura ${RUN}`, vehicleModel: null, firstYear: null, lastYear: null, version: null }]);
+  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Miura ${RUN}`, vehicleModel: null, firstYear: null, lastYear: null, generationNumber: null, version: null }]);
   assert.equal(await prisma.itemVehicle.count({ where: { itemId: created.json().id } }), 1);
 });
 
 // Creates an item that fits one model in two generations, one still made, each with its version, and checks they come
-// back with their years and versions, the filters by generation and version find it, a last year before the first is
-// refused with 400, and an edit that leaves them out clears them.
+// back with their years, numbers and versions, and that the Catalog now holds them: its generations named "G1" and "G2"
+// with their versions. The filters by generation and version find it; a last year before the first, or a version
+// without a generation, is refused with 400. A version renamed and a generation's years changed in the Catalog show on
+// the item; deleting the version, the generation, the model or the brand while the item uses them is refused with
+// 409; and an edit that leaves them out clears them.
 test("API: a vehicle keeps its generation and version, and is found by them", async () => {
   const vehicles = [
     { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: 1988, lastYear: 1991, version: "sl" },
@@ -414,9 +421,19 @@ test("API: a vehicle keeps its generation and version, and is found by them", as
   const created = await call("POST", "/items", item([brand("GE-1", "Cofap")], { name: `Farol ${RUN}`, vehicles }));
   assert.equal(created.statusCode, 201);
   assert.deepEqual(created.json().vehicles, [
-    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: 1988, lastYear: 1991, version: "Sl" },
-    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: 2019, lastYear: null, version: "Supermini" },
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: 1988, lastYear: 1991, generationNumber: 1, version: "Sl" },
+    { vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: 2019, lastYear: null, generationNumber: 2, version: "Supermini" },
   ]);
+  const catalog = catalogSchema.parse((await call("GET", "/catalog")).json());
+  const brandNode = catalog.brands.find((each) => each.name === `Gurgel ${RUN}`)!;
+  const [first, second] = brandNode.models.find((each) => each.name === `BR-800 ${RUN}`)!.generations;
+  assert.deepEqual(
+    [first, second].map((each) => [each.name, each.firstYear, each.lastYear, each.versions.map((version) => version.name)]),
+    [
+      ["G1", 1988, 1991, ["Sl"]],
+      ["G2", 2019, null, ["Supermini"]],
+    ],
+  );
   /** The names of this run's items a list query finds. */
   const names = async (query: string) =>
     ((await call("GET", `/items?q=${RUN}&${query}`)).json().items as Item[]).map((each) => each.name);
@@ -426,8 +443,19 @@ test("API: a vehicle keeps its generation and version, and is found by them", as
   assert.deepEqual(await names("version=Supermini"), [`Farol ${RUN}`]);
   const backwards = item([brand("GE-2", "Cofap")], { vehicles: [{ ...vehicles[0], firstYear: 1991, lastYear: 1988 }] });
   assert.equal((await call("POST", "/items", backwards)).statusCode, 400);
+  const loose = item([brand("GE-3", "Cofap")], { vehicles: [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, version: "Sl" }] });
+  assert.equal((await call("POST", "/items", loose)).statusCode, 400);
+
+  await call("PATCH", `/catalog/versions/${first.versions[0].id}`, { name: "SL Turbo" });
+  await call("PATCH", `/catalog/generations/${first.id}`, { name: "G1", firstYear: 1988, lastYear: 1992 });
+  const changed = ((await call("GET", `/items?q=${RUN}`)).json().items as Item[]).find((each) => each.id === created.json().id)!.vehicles[0];
+  assert.deepEqual([changed.firstYear, changed.lastYear, changed.version], [1988, 1992, "SL Turbo"]);
+  assert.deepEqual(await names("generation=1988-1992"), [`Farol ${RUN}`]);
+  for (const used of [`versions/${first.versions[0].id}`, `generations/${first.id}`, `models/${brandNode.models[0].id}`, `brands/${brandNode.id}`]) {
+    assert.equal((await call("DELETE", `/catalog/${used}`)).statusCode, 409, used);
+  }
   const edited = await call("PATCH", `/items/${created.json().id}`, { vehicles: [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}` }] });
-  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: null, lastYear: null, version: null }]);
+  assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, firstYear: null, lastYear: null, generationNumber: null, version: null }]);
 });
 
 // Creates an item with a material and a short description and checks they come back with a capital letter; that a

@@ -93,16 +93,17 @@ async function catalogModel(
 }
 
 /**
- * Creates an item of this run fitting a vehicle.
+ * Creates an item of this run fitting a vehicle, maybe of a generation and version.
  * @param code The part code, before the run's mark.
  * @param vehicleBrand The vehicle brand's name.
  * @param vehicleModel The vehicle model's name.
+ * @param generation Its generation's first year and version, if any.
  */
-async function createItem(code: string, vehicleBrand: string, vehicleModel: string) {
+async function createItem(code: string, vehicleBrand: string, vehicleModel: string, generation?: { firstYear: number; version: string }) {
   const created = await call("POST", "/items", {
     name: `Peça ${RUN}`,
     category: `Motor ${RUN}`,
-    vehicles: [{ vehicleBrand, vehicleModel }],
+    vehicles: [{ vehicleBrand, vehicleModel, ...generation }],
     brands: [{ code: `${code}-${RUN}`, partBrand: `Bosch ${RUN}`, unitPriceCents: 1000 }],
   });
   assert.equal(created.statusCode, 201, created.body);
@@ -122,7 +123,8 @@ function shape(model: CatalogData["brands"][number]["models"][number]) {
 
 // Merges a catalog model into a model of its brand the catalog doesn't have, and checks the kept model takes its place
 // and tree; then merges a second catalog model into it, the two trees sharing a generation, a version and a year, and
-// checks they join with nothing lost, and the items move along.
+// checks they join with nothing lost, and the items move along, one of them to the twin generation and version its own
+// joined.
 test("API: a catalog model merged into another takes its tree there, joining the other's", async () => {
   const brand = await catalogBrand("Lada");
   const niva = await catalogModel(brand, "Niva", { generation: "Primeira", firstYear: 1977, version: "1.6", year: 1990, displacementDl: 16 });
@@ -136,12 +138,15 @@ test("API: a catalog model merged into another takes its tree there, joining the
 
   const other = await catalogModel(brand, "Taiga", { generation: "primeira", firstYear: 1977, version: "1.6", year: 1990, displacementDl: 17 });
   await call("POST", `/catalog/versions/${(await catalog()).brands.find((each) => each.id === brand)!.models.at(-1)!.generations[0].versions[0].id}/years`, { year: 1991, lastYear: 1991 });
-  await createItem("T1", `Lada ${RUN}`, `Taiga ${RUN}`);
+  await createItem("T1", `Lada ${RUN}`, `Taiga ${RUN}`, { firstYear: 1977, version: "1.6" });
   assert.equal((await call("POST", `/vehicle-models/${other}/merge`, { into: plain })).statusCode, 200);
   const joined = (await catalog()).brands.find((each) => each.id === brand)!.models;
   assert.deepEqual(joined.map((model) => model.name), [`Niva Nova ${RUN}`]);
   assert.deepEqual(shape(joined[0]), [["Primeira", [["1.6", [[1990, [16, 17]], [1991, []]]]]]]);
   assert.equal(await prisma.itemVehicle.count({ where: { vehicleModelId: plain } }), 2);
+  const twin = joined[0].generations[0];
+  const linked = await prisma.itemVehicle.findMany({ where: { vehicleModelId: plain, generationId: { not: null } }, select: { generationId: true, versionId: true } });
+  assert.deepEqual(linked, [{ generationId: twin.id, versionId: twin.versions[0].id }]);
 });
 
 // Merges a catalog brand into a brand the catalog doesn't have, and checks the kept brand takes its place in the rail
