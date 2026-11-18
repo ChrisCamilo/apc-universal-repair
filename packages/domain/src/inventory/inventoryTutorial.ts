@@ -38,7 +38,7 @@ const STEP_TEXTS: Record<TutorialStepId, { part?: number; title: string; text: s
   stock: {
     part: 1,
     title: "Diga onde e quantas",
-    text: "Quantidade 5, mínima 2, posição D, lado LD, cor Preto, local T-1 e valor 49,90. A foto é opcional.",
+    text: "Quantidade 5, mínima 2, posição D, lado LD, cor PRETO, local T-1 e valor 49,90. A foto é opcional.",
   },
   save: { part: 1, title: "Salve o item", text: "Clique em Salvar. O item novo aparece no topo da lista." },
   search: { part: 2, title: "Procure pelo nome", text: "Digite “tutorial” na busca: a lista fica só com o que combina." },
@@ -46,7 +46,7 @@ const STEP_TEXTS: Record<TutorialStepId, { part?: number; title: string; text: s
   filter: {
     part: 2,
     title: "Filtre o estoque",
-    text: "Escolha a categoria Motor, a marca da peça Bosch, a posição D e a cor Preto, e clique em Aplicar.",
+    text: "Escolha a categoria Motor, a marca da peça Bosch, a posição D e a cor PRETO, e clique em Aplicar.",
   },
   found: { part: 2, title: "Achou", text: "A busca e os filtros juntos deixaram na lista o item de teste." },
   details: { part: 3, title: "Abra o item", text: "Clique na linha do item de teste para ver os detalhes dele." },
@@ -76,11 +76,11 @@ const PHONE_TEXTS: Partial<Record<TutorialStepId, { title?: string; text: string
     text: "Preencha o nome “Item de teste do tutorial”, a categoria Motor, o veículo Volkswagen Gol em Adicionar veículo, a marca Bosch e o código TUTORIAL-001. Use “+ Criar” para um nome que ainda não existe.",
   },
   stock: {
-    text: "Quantidade 5, mínima 2, posição Dianteira, lado Direito, cor Preto, local T-1 e valor 49,90. A foto é opcional.",
+    text: "Quantidade 5, mínima 2, posição Dianteira, lado Direito, cor PRETO, local T-1 e valor 49,90. A foto é opcional.",
   },
   save: { text: "Toque em Salvar item. O item novo aparece no topo da lista." },
   filters: { text: "Toque no funil para filtrar por mais de um campo de uma vez." },
-  filter: { text: "Escolha a marca da peça Bosch, a posição Dianteira e a cor Preto, e toque em Ver itens." },
+  filter: { text: "Escolha a marca da peça Bosch, a posição Dianteira e a cor PRETO, e toque em Ver itens." },
   details: { text: "Toque no item de teste para ver os detalhes dele." },
   unlock: { text: "Os detalhes só mostram o item. Toque em Editar para liberar os campos." },
   "save-low": { text: "Toque em Salvar alterações." },
@@ -100,7 +100,7 @@ export const TUTORIAL_FILTERS: FilterValues = {
   category: ["Motor"],
   partBrand: ["Bosch"],
   position: ["D"],
-  color: ["Preto"],
+  color: ["PRETO"],
 };
 /**
  * The filters part 2 applies on a phone: the same but the category, whose row the step's card covers at the top of the
@@ -116,7 +116,7 @@ export const TUTORIAL_ITEM: ItemForm = {
   position: "D",
   side: "LD",
   originalCodes: [],
-  brands: [{ partBrand: "Bosch", code: "TUTORIAL-001", quantity: "5", price: "R$ 49,90", color: "Preto", location: "T-1" }],
+  brands: [{ partBrand: "Bosch", code: "TUTORIAL-001", quantity: "5", price: "R$ 49,90", color: "PRETO", location: "T-1" }],
 };
 /** The test item's part code, which tells it apart in the list. */
 export const TUTORIAL_CODE = TUTORIAL_ITEM.brands[0].code;

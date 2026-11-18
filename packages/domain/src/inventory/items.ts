@@ -329,6 +329,16 @@ export function capitalizeFirst(text: string): string {
 }
 
 /**
+ * Applies the color's writing rule: all uppercase, accents kept, so the same color is never saved twice in different
+ * cases ("preto" and "Preto" are "PRETO", "bordô" is "BORDÔ"). It leaves the spaces, for the field as it is typed.
+ * @param text A color as typed.
+ * @returns The color in uppercase.
+ */
+export function colorText(text: string): string {
+  return text.toLocaleUpperCase("pt-BR");
+}
+
+/**
  * Reduces a part code to what a search compares: letters and digits only, uppercase, so "w712" finds
  * "W 712/95".
  * @param code A part code or a search.

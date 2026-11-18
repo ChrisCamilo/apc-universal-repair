@@ -36,7 +36,7 @@ test("API: new items follow the writing rule and get their defaults", () => {
 });
 
 // Builds a brand's row from typed values and checks the uppercase code with its search key, the part brand
-// referenced, its place among the item's brands, the color N/A when empty, a quantity of zero when left out, and empty text saved as null.
+// referenced, its place among the item's brands, the color uppercase and N/A when empty, a quantity of zero when left out, and empty text saved as null.
 test("API: a brand's row follows the writing rule and gets its defaults", () => {
   assert.deepEqual(brandData({ code: " w 712/95 ", partBrand: "mann", color: "", location: "a-2", unitPriceCents: 3990 }, "mann", 0), {
     partBrandId: "mann",
@@ -48,12 +48,12 @@ test("API: a brand's row follows the writing rule and gets its defaults", () => 
     quantity: 0,
     unitPriceCents: 3990,
   });
-  assert.deepEqual(brandData({ code: "x", partBrand: "y", color: "preto", location: " ", quantity: 4, unitPriceCents: 1 }, "y", 2), {
+  assert.deepEqual(brandData({ code: "x", partBrand: "y", color: " bordô ", location: " ", quantity: 4, unitPriceCents: 1 }, "y", 2), {
     partBrandId: "y",
     position: 2,
     code: "X",
     codeKey: "X",
-    color: "Preto",
+    color: "BORDÔ",
     location: null,
     quantity: 4,
     unitPriceCents: 1,

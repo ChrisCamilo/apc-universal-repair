@@ -3,11 +3,12 @@ import { ScrollView, View } from 'react-native';
 import { apiFetch } from '@apc/domain/auth';
 import { EMPTY_CATALOG, vehicleSuggestions, type Catalog } from '@apc/domain/catalog';
 import { copyIcon, pencilIcon, plusIcon } from '@apc/tokens/icons';
-import { capitalizeFirst, codeKey, findOption, itemSchema, MAX_QUANTITY, type Item, type ItemBrand } from '@apc/domain/items';
+import { capitalizeFirst, codeKey, colorText, itemSchema, MAX_QUANTITY, type Item, type ItemBrand } from '@apc/domain/items';
 import {
   BRAND_FIELD_LABELS,
   codeTakenError,
   codeTakenMessage,
+  colorInput,
   descriptionInput,
   EMPTY_BRAND_FORM,
   EMPTY_ITEM_FORM,
@@ -69,7 +70,8 @@ import { VehiclesField } from './VehiclesField';
 // is left. Category, part brands and the vehicles' brands and models are comboboxes of the lists the API keeps, where
 // "+ Criar" adds a new name to its list, picks it and says so in a toast; a vehicle's model only lists its brand's
 // models, is created under that brand, stays locked until a brand of the list is chosen and clears when the brand
-// changes to one without it. A name not in its list can't be saved: the field points to "+ Criar". A code turns uppercase while typing and says at once when another item uses it; the texts start with a
+// changes to one without it. A name not in its list can't be saved: the field points to "+ Criar". A code turns uppercase while typing and says at once when another item uses it; a color turns uppercase while typing
+// too (see colorInput); the texts start with a
 // capital letter when leaving the field and again on save; the quantities take whole numbers only, up to a million,
 // and a pasted fraction or text is refused, saying so; and the price always shows in reais, digits filling from the
 // cents, a pasted price read with a dot or a comma alike, up to a million (see priceMask). Saving checks the required
@@ -554,10 +556,8 @@ export function ItemFormDialog({
                         label={BRAND_FIELD_LABELS.color}
                         placeholder="Se houver"
                         value={brand.color}
-                        onValueChange={(value) => changeBrand(index, 'color', value)}
-                        onBlur={() =>
-                          changeBrand(index, 'color', brand.color.trim() ? (findOption(options.colors, brand.color) ?? capitalizeFirst(brand.color)) : '')
-                        }
+                        onValueChange={(value) => changeBrand(index, 'color', colorText(value))}
+                        onBlur={() => changeBrand(index, 'color', colorInput(brand.color, options.colors))}
                       />
                     </View>
                     <View style={styles.half} testID={ids.half}>

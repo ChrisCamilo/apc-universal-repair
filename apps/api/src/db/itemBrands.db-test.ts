@@ -165,7 +165,8 @@ async function checkMigrated(client: PrismaClient) {
         partBrand: OLD.partBrand.name,
         code: old.code,
         codeKey: old.codeKey,
-        color: old.color,
+        // In uppercase since a later migration (20261117000000_uppercase_colors).
+        color: old.color.toUpperCase(),
         location: old.location,
         quantity: old.quantity,
         unitPriceCents: old.unitPriceCents,

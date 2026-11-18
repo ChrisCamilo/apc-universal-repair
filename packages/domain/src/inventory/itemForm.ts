@@ -2,6 +2,7 @@ import {
   allCodes,
   capitalizeFirst,
   codeKey,
+  colorText,
   findOption,
   formatPrice,
   generationLabel,
@@ -305,6 +306,17 @@ export function codesInput(held: readonly string[], text: string, typed: string)
 }
 
 /**
+ * Reads a brand's color as it is saved: in uppercase (see colorText), with the accents of a color already in stock
+ * when it is the same but for them ("bordo" is "BORDÔ" when the stock has it).
+ * @param typed The color as typed.
+ * @param colors The colors already in stock.
+ * @returns The color, trimmed and uppercase, or empty when none was typed.
+ */
+export function colorInput(typed: string, colors: readonly string[]): string {
+  return typed.trim() ? colorText(findOption(colors, typed) ?? typed.trim()) : "";
+}
+
+/**
  * Keeps one of each value, ignoring case and accents (the first spelling found), sorted.
  * @param values Values, possibly repeated.
  * @returns The distinct values in alphabetical order.
@@ -417,9 +429,8 @@ export function positionSideText(item: Pick<Item, "position" | "side">): string 
 }
 
 /**
- * Builds the body sent to the API: every text starts with a capital letter, codes are uppercase, a color that
- * already exists takes its spelling and an empty one is N/A, blank quantities are zero, and a blank material or
- * description is sent empty.
+ * Builds the body sent to the API: every text starts with a capital letter, codes and colors are uppercase (see
+ * colorInput) and an empty color is N/A, blank quantities are zero, and a blank material or description is sent empty.
  * @param form The form, already checked with itemFormErrors.
  * @param colors The colors already in stock.
  * @returns The create (or full edit) body, each brand kept on an edit with its id.
@@ -442,7 +453,7 @@ export function itemFormBody(form: ItemForm, colors: readonly string[]): ItemCre
       code: brand.code.trim().toUpperCase(),
       quantity: Number(brand.quantity || 0),
       unitPriceCents: parsePrice(brand.price) ?? 0,
-      color: brand.color.trim() ? (findOption(colors, brand.color) ?? capitalizeFirst(brand.color)) : NOT_APPLICABLE,
+      color: colorInput(brand.color, colors) || NOT_APPLICABLE,
       location: brand.location.trim() ? capitalizeFirst(brand.location) : "",
     })),
   };

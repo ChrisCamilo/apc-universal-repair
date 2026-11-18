@@ -448,17 +448,18 @@ test('Mobile: names not in their lists are refused on save', async () => {
 });
 
 // Leaves the name, the color and the price after typing them loosely, and checks each is written back: a capital,
-// an existing color in its own spelling, and the price in reais.
+// the color in uppercase as it is typed and trimmed after, and the price in reais.
 test('Mobile: leaving a field writes it back by the rules', async () => {
   const tree = await mount();
   await type(tree, 'Nome', 'vela de ignição');
   await leave(tree, 'Nome');
-  await type(tree, 'Cor', 'preto');
+  await type(tree, 'Cor', 'preto ');
+  expect(value(tree, 'Cor')).toBe('PRETO ');
   await leave(tree, 'Cor');
   await type(tree, 'Valor unitário (R$)', '1234,5');
   await leave(tree, 'Valor unitário (R$)');
   expect(value(tree, 'Nome')).toBe('Vela de ignição');
-  expect(value(tree, 'Cor')).toBe('Preto');
+  expect(value(tree, 'Cor')).toBe('PRETO');
   expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 1.234,50');
 });
 

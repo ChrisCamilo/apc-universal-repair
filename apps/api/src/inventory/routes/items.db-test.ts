@@ -224,7 +224,8 @@ test("API: the shared item matcher chooses the items the API's list does", async
     { position: "T", q: RUN },
     { side: ["LD"] },
     { side: "N/A" },
-    { color: "Azul" },
+    // Saved in uppercase, whatever case it was sent in.
+    { color: "AZUL" },
     { location: ["A-2", "B-1"] },
     { status: "low" },
     { status: "out" },

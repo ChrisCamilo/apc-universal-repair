@@ -48,7 +48,7 @@ const STOCK: Item[] = [
     vehicleModel: "Gol",
     position: "D",
     side: "Ambos",
-    color: "Preto",
+    color: "PRETO",
     location: "B-10",
     quantity: 4,
     minQuantity: 1,
@@ -213,7 +213,7 @@ test("Shared: a semicolon file is read with the writing rule and the lists' spel
     position: "D",
     side: "LD",
     originalCodes: [],
-    brands: [{ partBrand: "NGK", code: "NGK-B7", quantity: 0, location: "A-2", unitPriceCents: 3490, color: "Preto" }],
+    brands: [{ partBrand: "NGK", code: "NGK-B7", quantity: 0, location: "A-2", unitPriceCents: 3490, color: "PRETO" }],
   });
 });
 
@@ -481,7 +481,7 @@ test("Shared: the export writes the import's columns, a row per brand, with phot
   assert.equal(lines[0], CSV_COLUMNS.join(","));
   assert.equal(
     lines[1],
-    '1,BP-1020,,"Pastilha de freio ""cerâmica"", dianteira",Freios,Cobreq,Volkswagen / Gol,4,1,B-10,"1.234,56",Preto,D,Ambos,Cerâmica,Com sensor de desgaste',
+    '1,BP-1020,,"Pastilha de freio ""cerâmica"", dianteira",Freios,Cobreq,Volkswagen / Gol,4,1,B-10,"1.234,56",PRETO,D,Ambos,Cerâmica,Com sensor de desgaste',
   );
   assert.equal(lines[2], '2,BKR6E,,Vela de ignição,Motor,NGK,Volkswagen,0,0,,"24,90",N/A,N/A,N/A,,');
   assert.equal(lines[3], '3,C 2433,1J0 129 620 | 1J0129620A,Filtro de ar,Motor,Mann,Volkswagen / Gol | Volkswagen / Voyage,3,3,A-4,"49,90",N/A,N/A,N/A,,');
