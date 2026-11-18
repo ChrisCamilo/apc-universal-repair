@@ -14,7 +14,7 @@ import { usePresence } from '../usePresence.ts'
 
 // A large view of an item's photos, opened from its thumbnail: one photo at a time, as large as the screen
 // allows and never cropped, under the item's name and code, with the item's short description under the photo when it
-// has one. With more than one photo, arrows over the photo
+// has one, also when it has no photo yet. With more than one photo, arrows over the photo
 // and the Left and Right keys move through them, wrapping around, and dots under it show which one is on
 // screen and jump to a photo. It closes on the ×, on Escape and on a click outside, over the blurred backdrop.
 // "Remover esta foto" asks first, naming the item and warning when the photo is the cover; the next photo
@@ -228,7 +228,7 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
           </>
         )}
       </div>
-      {caption && count > 0 && (
+      {caption && (
         <p className={classes.caption()} data-testid={ids.caption}>
           {caption}
         </p>
