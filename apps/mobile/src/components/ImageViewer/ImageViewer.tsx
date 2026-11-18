@@ -16,7 +16,7 @@ import { Heading, NumericReadout, Text } from '../Typography/Typography';
 
 // A large view of an item's photos, the same as the web: one photo at a time, as large as the screen allows
 // and never cropped, under the item's name and code. With more than one photo, arrows over the photo move
-// through them, wrapping around, the item's short description shows under the photo when it has one, and dots under
+// through them, wrapping around, the item's short description shows under the photo when it has one, also when it has no photo yet, and dots under
 // it show which one is on screen and jump to a photo. It closes
 // on the ×, on the back button and on a tap outside. "Remover esta foto" asks first, naming the item and
 // warning when the photo is the cover; the next photo takes its place. "Trocar esta foto" replaces the one on
@@ -176,7 +176,7 @@ function ViewerBody({
               </Pressable>
             ))}
         </View>
-        {caption && count > 0 && (
+        {caption && (
           <NativeText style={styles.caption} testID={ids.caption}>
             {caption}
           </NativeText>
