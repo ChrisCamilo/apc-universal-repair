@@ -22,6 +22,7 @@ import { itemMatchesQuery } from '@apc/domain/item-filters'
 import {
   capitalizeFirst,
   codeKey,
+  colorText,
   itemBrandIdParamsSchema,
   itemCreateSchema,
   itemIdParamsSchema,
@@ -186,8 +187,8 @@ function badRequest(error: Issues): Response {
 }
 
 /**
- * Builds a brand of an item as the demo keeps it: the code uppercase, its part brand referenced, the color N/A when
- * empty.
+ * Builds a brand of an item as the demo keeps it: the code uppercase, its part brand referenced, the color uppercase,
+ * N/A when empty.
  * @param db The demo's data.
  * @param input The brand as sent.
  * @param photos The photos it keeps, on an edit.
@@ -198,7 +199,7 @@ function brandOf(db: Db, input: ItemBrandCreate, photos: ItemPhoto[] = []): Stor
     id: input.id ?? crypto.randomUUID(),
     partBrandId: listed(db.partBrands, input.partBrand).id,
     code: input.code.trim().toUpperCase(),
-    color: textOrNull(input.color) ?? NOT_APPLICABLE,
+    color: input.color?.trim() ? colorText(input.color.trim()) : NOT_APPLICABLE,
     location: textOrNull(input.location),
     quantity: input.quantity ?? 0,
     unitPriceCents: input.unitPriceCents,
