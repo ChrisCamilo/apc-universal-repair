@@ -12,6 +12,7 @@ import {
   catalogNodes,
   catalogSiblings,
   catalogValuesOf,
+  ENGINE_CLIPBOARD,
   catalogWithParts,
   engineSheetNames,
   ENGINE_SPEC_LABELS,
@@ -34,7 +35,7 @@ import {
   type FoundPart,
 } from '@apc/domain/catalog';
 import type { Item } from '@apc/domain/items';
-import { chevronIcon, closeIcon, ICON_SIZES, moreIcon, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/tokens/icons';
+import { chevronIcon, closeIcon, copyIcon, ICON_SIZES, importIcon, moreIcon, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/tokens/icons';
 import { ActionSheet } from '../../components/ActionSheet';
 import { Button } from '../../components/Button';
 import { RowAction } from '../../components/DataTable';
@@ -74,9 +75,11 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 // with a button to try again.
 // The catalog is edited in sheets, the same as the web on a phone (see useCatalogEditing): "Nova marca" beside the
 // brands' heading and "Novo modelo" beside the models' open a bottom sheet with the new node's fields (see NodeForm).
-// Each branch has a "⋯", always in view, opening an action sheet with its name: add the level under it, rename it (a
-// generation, with its years), move it up or down (only where it can go), delete it after confirming, or close. A
-// year's engines end with "Novo motor em <ano>", and an empty branch with the button adding its first; a brand's models
+// Each row has a "⋯", always in view, opening an action sheet with its name: add the level under it, rename it (a
+// generation, with its years; a period, with De and Até), move it up or down (only where it can go), delete it after
+// confirming, or close; a period's has "Colar motor" while an engine is copied, and an engine's has "Copiar motor",
+// which copies it with its sheet to paste into any period, a toast saying each. A period's engines end with "Novo motor
+// em <período>", and an empty branch with the button adding its first; a brand's models
 // end with "Excluir marca", which deletes the brand from the catalog after confirming, its vehicle brand staying in the
 // lists, and goes back to the brands. A catalog with no brand says so and adds the first with "Nova marca". A new engine's
 // sheet, and "Editar ficha" under an engine's sheet, open the sheet's form in a full-screen dialog (see
@@ -237,18 +240,28 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
     }
   };
 
-  /** The actions of the node whose sheet is open: add under it, rename it, move it up or down, delete it, close. */
+  /**
+   * The actions of the node whose sheet is open: add under it, paste the engine copied into a period, rename it (a
+   * period: change its years), move it up or down, delete it, close; an engine's copy it.
+   */
   const actions = () => {
     if (!acting || !brand) {
       return [];
+    }
+    if (acting.level === 'engine') {
+      return [
+        { icon: copyIcon, label: ENGINE_CLIPBOARD.copy, onSelect: () => editor.copyEngine(acting) },
+        { icon: closeIcon, label: 'Fechar', onSelect: () => {} },
+      ];
     }
     const siblings = catalogSiblings(brand.models, acting.id);
     const at = siblings.findIndex((each) => each.id === acting.id);
     return [
       { icon: plusIcon, label: CATALOG_CHILDREN[acting.level as CatalogEditLevel].add, onSelect: () => editor.addUnder(acting) },
+      ...(acting.level === 'year' && editor.copied ? [{ icon: importIcon, label: ENGINE_CLIPBOARD.paste, onSelect: () => editor.pasteEngine(acting) }] : []),
       {
         icon: pencilIcon,
-        label: acting.level === 'generation' ? 'Renomear e mudar os anos' : 'Renomear',
+        label: acting.level === 'generation' ? 'Renomear e mudar os anos' : acting.level === 'year' ? 'Mudar os anos' : 'Renomear',
         onSelect: () => editor.edit({ kind: 'rename', node: acting }),
       },
       ...(at > 0 ? [{ icon: sortIcon, label: 'Mover para cima', onSelect: () => editor.move(acting, 'up') }] : []),
@@ -258,10 +271,10 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
     ];
   };
 
-  /** A branch's "⋯", which opens its actions; none for an engine. */
+  /** A row's "⋯", which opens its actions: an engine's copy it. */
   const rowActions = (id: string) => {
     const node = nodes.get(id);
-    return node && node.level !== 'engine' ? <RowAction icon={moreIcon} label={`Ações de ${node.label}`} onPress={() => setActing(node)} /> : null;
+    return node ? <RowAction icon={moreIcon} label={`Ações de ${node.label}`} onPress={() => setActing(node)} /> : null;
   };
 
   /** The line after a branch's children: a year's "Novo motor", or the button to add an empty branch's first. */

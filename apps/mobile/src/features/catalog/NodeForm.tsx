@@ -8,7 +8,7 @@ import { useStyles } from './NodeForm.styles';
 
 // The sheet that adds or renames a node of the Catalog's tree, or a brand, the same as the web on a phone: a brand, a
 // model or a version by its name, a generation by its name and its first and last years (the last one empty while it
-// is still made), and a year by its number. The button that saves (Adicionar or Salvar) checks what is typed and says
+// is still made), and a period by its first and last years (De and Até, the last one empty for a single year). The button that saves (Adicionar or Salvar) checks what is typed and says
 // under each field what to fix, or shows the owner's error, such as a name another node has; Cancelar, the back
 // button, a tap outside or a drag down give up. The owner gives it a new key each time it opens, so it opens empty or
 // with the node's values.
@@ -70,7 +70,23 @@ export function NodeForm({ open, title, level, initial = {}, submitLabel, error,
     >
       <View style={styles.base} testID={ids.base}>
         {level === 'year' ? (
-          <TextField label="Ano" kind="number" value={year} onValueChange={setYear} error={problems.year ?? error} returnKeyType="done" onSubmitEditing={save} />
+          <View style={styles.years} testID={ids.years}>
+            <View style={styles.year} testID={ids.year}>
+              <TextField label="De" kind="number" value={year} onValueChange={setYear} error={problems.year ?? error} />
+            </View>
+            <View style={styles.year} testID={ids.year}>
+              <TextField
+                label="Até"
+                kind="number"
+                placeholder="Mesmo ano"
+                value={lastYear}
+                onValueChange={setLastYear}
+                error={problems.lastYear}
+                returnKeyType="done"
+                onSubmitEditing={save}
+              />
+            </View>
+          </View>
         ) : (
           <View style={styles.name} testID={ids.name}>
             <TextField label="Nome" value={name} onValueChange={setName} error={problems.name ?? error} returnKeyType="done" onSubmitEditing={save} />

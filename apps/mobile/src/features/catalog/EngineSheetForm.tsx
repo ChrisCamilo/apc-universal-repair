@@ -19,9 +19,9 @@ import { TextField } from '../../components/TextField';
 import { Heading, NumericReadout, Text } from '../../components/Typography';
 import { useStyles } from './EngineSheetForm.styles';
 
-// An engine's sheet as a form, the same as the web on a phone: a full-screen dialog to add an engine under a year or
+// An engine's sheet as a form, the same as the web on a phone: a full-screen dialog to add an engine under a period or
 // save its sheet again, with the displacement in litres (a comma or a dot), the cylinders, the drive and a summary. The
-// year comes from the tree and isn't typed. While what is typed makes a sheet, the form shows the title it will have,
+// period comes from the tree and isn't typed. While what is typed makes a sheet, the form shows the title it will have,
 // the engine's name in the tree and its readouts as they will look. Salvar ficha, at the dialog's foot, checks each
 // field and says under it what to fix; Cancelar, the × and the back button give up. The owner gives it a new key each
 // time it opens, so it opens empty or with the engine's sheet.
@@ -86,7 +86,7 @@ export function EngineSheetForm({ open, title, names, initial, saving = false, o
           <Heading level={3}>{preview?.title ?? `${names.year} · ${names.brand} ${names.model} ${names.version}`}</Heading>
         </View>
         <RNText style={styles.fromTree} testID={ids.fromTree}>
-          Ano {names.year}, do galho de cima
+          Período {names.year}, do galho de cima
         </RNText>
         <View style={styles.pair} testID={ids.pair}>
           <View style={styles.pairField} testID={ids.pairField}>
