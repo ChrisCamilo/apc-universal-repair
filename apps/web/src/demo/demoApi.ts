@@ -293,7 +293,10 @@ function catalogRoutes(db: Db): Route[] {
       models: brand.models.map((model) => ({ ...model, name: nameOf(db.vehicleModels, db.catalogModels.get(model.id)!) })),
     })),
   })
-  /** Makes a change on the catalog, and answers it as the API does: the catalog, or 404 or 409, also for a delete of what an item uses. */
+  /**
+   * Makes a change on the catalog, and answers it as the API does: the catalog, or 404, 409 (also for a delete of what an
+   * item uses) or 400 for years outside a generation's or its periods'.
+   */
   const change = (status: number, made: CatalogChange) => {
     const using = made.kind === 'deleteBrand' || made.kind === 'delete' ? itemsUsing(db, made.id) : 0
     if (using > 0) {
@@ -305,6 +308,9 @@ function catalogRoutes(db: Db): Route[] {
     }
     if (result === 'taken') {
       return conflict('The catalog has it already.')
+    }
+    if (result === 'invalid') {
+      return json(400, { statusCode: 400, error: 'Bad Request', message: "A period must stay inside its generation's years." })
     }
     db.catalog = result
     return json(status, named())
