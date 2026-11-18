@@ -69,7 +69,7 @@ test("Web: on a phone a brand is filled down to an engine sheet, renamed and del
     await tab.action("Ações de Clio II").click();
     await dialog(page, "Clio II").button("Excluir…").click();
     const removal = dialog(page, "Excluir “Clio II”?");
-    await expect(removal.root).toContainText("Vão junto 1 geração, 1 versão, 1 ano, 1 motor com ficha.");
+    await expect(removal.root).toContainText("Vão junto 1 geração, 1 versão, 1 período, 1 motor com ficha.");
     await removal.button("Excluir").click();
     await expect(tab.model("Clio II")).toHaveCount(0);
     await expect(tab.noModels).toBeVisible();

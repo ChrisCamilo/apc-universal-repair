@@ -35,7 +35,7 @@ test("Web: an engine is added with its sheet, and the sheet is edited", { tag: [
 
 // Copies the Diplomata 1986's 4.1 with its row's Copiar motor and pastes it into the empty 1985 with that period's Colar
 // motor, which only shows once an engine is copied; then copies the 2.5 with Ctrl+C and pastes it into 1985 with Ctrl+V.
-// Each says so in a toast, and the copies keep their sheets, titled by the period they are in.
+// Each says so in a toast, and each copy joins the tree chosen, as a new engine does, with its sheet titled by its period.
 test("Web: an engine is copied to another period, by its buttons and by Ctrl+C and Ctrl+V", { tag: [TEST_TAGS.catalog, TEST_TAGS.desktopOnly] }, async ({ page }) => {
   const tab = catalog(page);
   await page.goto("/catalog");
@@ -49,18 +49,21 @@ test("Web: an engine is copied to another period, by its buttons and by Ctrl+C a
     await tab.node("1985").hover();
     await tab.action("Colar motor em 1985").click();
     await expect(toasts(page).named("Motor 4.1 L 6 cilindros colado em 1985.")).toBeVisible();
-    await period.getByRole("treeitem", { name: "4.1 L 6 cilindros" }).click();
+    await expect(period.getByRole("treeitem", { name: "4.1 L 6 cilindros" })).toHaveAttribute("aria-selected", "true");
     await expect(tab.sheetTitle("1985 · Chevrolet Opala Diplomata 4.1")).toBeVisible();
   });
 
   await test.step("Ctrl+C on the 2.5 and Ctrl+V on 1985 copy it too", async () => {
+    // The tree opens on the copy, in 1985: 1986 is opened again to reach the 2.5.
+    await tab.node("1986").click();
     await tab.model("2.5 L 4 cilindros").focus();
     await page.keyboard.press("Control+c");
     await expect(toasts(page).named("Motor 2.5 L 4 cilindros copiado. Cole-o num período com Colar motor ou Ctrl+V.")).toBeVisible();
     await period.focus();
     await page.keyboard.press("Control+v");
     await expect(toasts(page).named("Motor 2.5 L 4 cilindros colado em 1985.")).toBeVisible();
-    await expect(period.getByRole("treeitem", { name: "2.5 L 4 cilindros" })).toBeVisible();
+    await expect(period.getByRole("treeitem", { name: "2.5 L 4 cilindros" })).toHaveAttribute("aria-selected", "true");
+    await expect(tab.sheetTitle("1985 · Chevrolet Opala Diplomata 2.5")).toBeVisible();
   });
   await expect(page).not.toScrollSideways();
 });

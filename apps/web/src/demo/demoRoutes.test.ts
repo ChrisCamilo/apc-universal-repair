@@ -50,12 +50,12 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
     demo.call('POST', `/catalog/models/${(await opala(demo)).model}/generations`, { name: 'Quarta geração', firstYear: 1993, lastYear: null }),
   'POST /catalog/generations/:id/versions': async (demo) =>
     demo.call('POST', `/catalog/generations/${(await opala(demo)).generation}/versions`, { name: 'Caravan' }),
-  'POST /catalog/versions/:id/years': async (demo) => demo.call('POST', `/catalog/versions/${(await opala(demo)).version}/years`, { year: 1987 }),
+  'POST /catalog/versions/:id/years': async (demo) => demo.call('POST', `/catalog/versions/${(await opala(demo)).version}/years`, { year: 1987, lastYear: 1990 }),
   'PATCH /catalog/models/:id': async (demo) => demo.call('PATCH', `/catalog/models/${(await opala(demo)).model}`, { name: 'Opala SS' }),
   'PATCH /catalog/generations/:id': async (demo) =>
     demo.call('PATCH', `/catalog/generations/${(await opala(demo)).generation}`, { name: 'Terceira geração', firstYear: 1980, lastYear: 1992 }),
   'PATCH /catalog/versions/:id': async (demo) => demo.call('PATCH', `/catalog/versions/${(await opala(demo)).version}`, { name: 'Diplomata SE' }),
-  'PATCH /catalog/years/:id': async (demo) => demo.call('PATCH', `/catalog/years/${(await opala(demo)).year}`, { year: 1988 }),
+  'PATCH /catalog/years/:id': async (demo) => demo.call('PATCH', `/catalog/years/${(await opala(demo)).year}`, { year: 1988, lastYear: 1988 }),
   'POST /catalog/years/:id/engines': async (demo) =>
     demo.call('POST', `/catalog/years/${(await opala(demo)).year}/engines`, { displacementDl: 38, cylinders: 6, drive: 'REAR', summary: '' }),
   'PATCH /catalog/engines/:id': async (demo) =>
