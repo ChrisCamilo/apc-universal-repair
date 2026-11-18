@@ -57,6 +57,7 @@ export const SORT_SELECT = {
   position: true,
   side: true,
   quantity: true,
+  material: true,
   brands: {
     orderBy: BRAND_ORDER,
     select: { code: true, partBrand: { select: { name: true } }, color: true, location: true, unitPriceCents: true },
@@ -289,7 +290,7 @@ export function toItem(row: ItemRow, session: ActiveSession): Item {
 
 /**
  * Turns a row read with SORT_SELECT into what sortItems looks at, as sortableOf reads an item: the first vehicle, the
- * first brand's code, part brand, color and location, and the lowest price.
+ * material, the first brand's code, part brand, color and location, and the lowest price.
  * @param row The row.
  * @returns The item's id and what it sorts by, with names and the position and side as the API speaks them.
  */
@@ -300,6 +301,7 @@ export function toSortable(row: Prisma.ItemGetPayload<{ select: typeof SORT_SELE
     id: row.id,
     name: row.name,
     category: row.category.name,
+    material: row.material,
     vehicleBrand: vehicle.vehicleBrand.name,
     vehicleModel: vehicle.vehicleModel?.name ?? null,
     position: labelOf(POSITION_VALUES, row.position),
