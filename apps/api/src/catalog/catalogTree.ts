@@ -25,6 +25,7 @@ export const CATALOG_GENERATIONS = {
           select: {
             id: true,
             year: true,
+            lastYear: true,
             engines: { ...IN_ORDER, select: { id: true, displacementDl: true, cylinders: true, drive: true, summary: true } },
           },
         },

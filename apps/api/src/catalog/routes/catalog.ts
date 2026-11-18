@@ -23,17 +23,19 @@ import { CATALOG_GENERATIONS } from "../catalogTree.js";
 
 // The vehicle catalog of the Catalog tab (see @apc/domain/catalog). GET sends every catalog brand in the rail's order,
 // by its vehicle brand's id and name, each with its models by their vehicle model's name, and under them the
-// generations, versions, years and engines with their sheets, each level in its order.
+// generations, versions, periods (the "year" level: a first and a last year) and engines with their sheets, each level in
+// its order.
 // The tree is edited here, and every change answers the whole catalog (201 for something added). A brand is added by
 // name: the vehicle brand of that name, added to the lists when they don't hold it, becomes a catalog brand at the end of
 // the rail, refused when it is one already (409), and deleted with its models' trees, its vehicle brand and models
 // staying in the lists, so no item loses a vehicle. A model is added under a catalog brand the same way, from its
 // vehicle models, refused when the brand has it in the catalog already. A generation (with its years), a version and a
-// year are added at the end of their parent's; a version can't have one year twice (409). Each of these is renamed (a
+// period are added at the end of their parent's; a version can't have the same period twice (409), though its periods
+// may overlap. Each of these is renamed (a
 // model by renaming its vehicle model, refused when another model of the brand has the name), moved up or down among
 // its siblings (past the ends it stays put), and deleted with everything under it; a model's vehicle model stays in the
-// lists. An engine is added under a year with its sheet (displacement, cylinders, drive and summary), at the end of the
-// year's, and its sheet is saved again; its name and its sheet's title come from the sheet and the tree. A node or parent
+// lists. An engine is added under a period with its sheet (displacement, cylinders, drive and summary), at the end of
+// the period's, and its sheet is saved again; its name and its sheet's title come from the sheet and the tree. A node or parent
 // that isn't there answers 404.
 
 /** Orders a level of the catalog by its place among its siblings. */
@@ -261,12 +263,12 @@ export function registerCatalogRoutes(app: FastifyInstance) {
       if (!(await prisma.catalogVersion.findUnique({ where: { id: versionId }, select: { id: true } }))) {
         return notFound(reply);
       }
-      const { year } = request.body;
-      if (await prisma.catalogYear.findFirst({ where: { versionId, year }, select: { id: true } })) {
-        return conflict(reply, `${year} is a year of this version already.`);
+      const { year, lastYear } = request.body;
+      if (await prisma.catalogYear.findFirst({ where: { versionId, year, lastYear }, select: { id: true } })) {
+        return conflict(reply, `${year}-${lastYear} is a period of this version already.`);
       }
       const position = nextPosition(await prisma.catalogYear.aggregate({ where: { versionId }, _max: { position: true } }));
-      await prisma.catalogYear.create({ data: { versionId, position, year } });
+      await prisma.catalogYear.create({ data: { versionId, position, year, lastYear } });
       return reply.status(201).send(await readCatalog());
     },
   );
@@ -354,11 +356,11 @@ export function registerCatalogRoutes(app: FastifyInstance) {
       if (!node) {
         return notFound(reply);
       }
-      const { year } = request.body;
-      if (await prisma.catalogYear.findFirst({ where: { versionId: node.versionId, year, id: { not: id } }, select: { id: true } })) {
-        return conflict(reply, `${year} is a year of this version already.`);
+      const { year, lastYear } = request.body;
+      if (await prisma.catalogYear.findFirst({ where: { versionId: node.versionId, year, lastYear, id: { not: id } }, select: { id: true } })) {
+        return conflict(reply, `${year}-${lastYear} is a period of this version already.`);
       }
-      await prisma.catalogYear.update({ where: { id }, data: { year } });
+      await prisma.catalogYear.update({ where: { id }, data: { year, lastYear } });
       return readCatalog();
     },
   );
