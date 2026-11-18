@@ -86,7 +86,7 @@ async function catalogModel(
   ).brands.find((brand) => brand.id === brandId)!.models.at(-1)!.generations.at(-1)!;
   const version = catalogSchema.parse((await call("POST", `/catalog/generations/${generation.id}/versions`, { name: tree.version })).json())
     .brands.find((brand) => brand.id === brandId)!.models.at(-1)!.generations.at(-1)!.versions.at(-1)!;
-  const year = catalogSchema.parse((await call("POST", `/catalog/versions/${version.id}/years`, { year: tree.year })).json())
+  const year = catalogSchema.parse((await call("POST", `/catalog/versions/${version.id}/years`, { year: tree.year, lastYear: tree.year })).json())
     .brands.find((brand) => brand.id === brandId)!.models.at(-1)!.generations.at(-1)!.versions.at(-1)!.years.at(-1)!;
   await call("POST", `/catalog/years/${year.id}/engines`, { displacementDl: tree.displacementDl, cylinders: 4, drive: "FRONT", summary: "" });
   return (await prisma.vehicleModel.findFirstOrThrow({ where: { brandId, name: `${model} ${RUN}` } })).id;
@@ -135,7 +135,7 @@ test("API: a catalog model merged into another takes its tree there, joining the
   assert.deepEqual(shape(moved[0]), [["Primeira", [["1.6", [[1990, [16]]]]]]]);
 
   const other = await catalogModel(brand, "Taiga", { generation: "primeira", firstYear: 1977, version: "1.6", year: 1990, displacementDl: 17 });
-  await call("POST", `/catalog/versions/${(await catalog()).brands.find((each) => each.id === brand)!.models.at(-1)!.generations[0].versions[0].id}/years`, { year: 1991 });
+  await call("POST", `/catalog/versions/${(await catalog()).brands.find((each) => each.id === brand)!.models.at(-1)!.generations[0].versions[0].id}/years`, { year: 1991, lastYear: 1991 });
   await createItem("T1", `Lada ${RUN}`, `Taiga ${RUN}`);
   assert.equal((await call("POST", `/vehicle-models/${other}/merge`, { into: plain })).statusCode, 200);
   const joined = (await catalog()).brands.find((each) => each.id === brand)!.models;

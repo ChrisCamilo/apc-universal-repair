@@ -193,7 +193,7 @@ test('Mobile: the Catalog goes from a brand to an engine sheet and back', async 
   await openOpala41(tree);
   expect(shows(tree, OPALA_41.title)).toBe(true);
   expect(shows(tree, 'Opala › Terceira geração › Diplomata › 1986')).toBe(true);
-  expect(['Ano', 'Motor', 'Cilindros', 'Tração'].every((label) => shows(tree, label))).toBe(true);
+  expect(['Período', 'Motor', 'Cilindros', 'Tração'].every((label) => shows(tree, label))).toBe(true);
   expect(title(tree)).toBe('Chevrolet');
 
   await press(tree, 'Voltar aos modelos');
@@ -407,7 +407,7 @@ test('Mobile: the Catalog renames, moves and deletes branches and adds and edits
   await press(tree, 'Ações de Terceira geração');
   await pressText(tree, 'Excluir…');
   expect(shows(tree, 'Excluir “Terceira geração”?')).toBe(true);
-  expect(showsPart(tree, 'Vão junto 3 versões, 2 anos, 3 motores com ficha.')).toBe(true);
+  expect(showsPart(tree, 'Vão junto 3 versões, 2 períodos, 3 motores com ficha.')).toBe(true);
   await pressText(tree, 'Excluir');
   expect(treeLabels(tree).some((label) => label.startsWith('Terceira geração'))).toBe(false);
 });

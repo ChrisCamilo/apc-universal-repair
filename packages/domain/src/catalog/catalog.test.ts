@@ -26,6 +26,7 @@ import {
   enginePath,
   engineSheet,
   engineSheetNames,
+  periodLabel,
   findParts,
   joinCatalogTrees,
   firstSheet,
@@ -382,13 +383,13 @@ test("Shared: a brand's letters and what a delete takes with it", () => {
   assert.equal(brandMark("  del  rey "), "DR");
   assert.equal(brandMark("Citroën"), "CI");
   const opala = TEST_CATALOG.brands[0].models[1];
-  assert.equal(belowNode(opala), "3 gerações, 3 versões, 2 anos, 2 motores com ficha");
-  assert.equal(belowNode(opala.children![2].children![1]), "2 anos, 2 motores com ficha");
+  assert.equal(belowNode(opala), "3 gerações, 3 versões, 2 períodos, 2 motores com ficha");
+  assert.equal(belowNode(opala.children![2].children![1]), "2 períodos, 2 motores com ficha");
   assert.equal(belowNode(opala.children![0]), null);
 });
 
-// Makes the API's changes on the test catalog in memory: a brand added once, a model of one name and a year of one
-// number once each, a generation renamed with its years and its versions kept, a move up and one past the top, a delete
+// Makes the API's changes on the test catalog in memory: a brand added once, a model of one name and a period of the same
+// years once each, though periods may overlap, a generation renamed with its years and its versions kept, a move up and one past the top, a delete
 // with what is under it, and a node that isn't there; the catalog given is left as it was.
 test("Shared: the catalog's changes are made in memory under the API's rules", () => {
   const added = applyCatalogChange(TEST_CATALOG_DATA, { kind: "addBrand", id: FORD, name: "renault" });
@@ -397,7 +398,9 @@ test("Shared: the catalog's changes are made in memory under the API's rules", (
   assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "addBrand", id: FORD, name: "FIAT" }), "taken");
   assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "add", level: "model", parentId: CHEVROLET, id: FIAT, values: { name: "opala" } }), "taken");
   const diplomata = testCatalogId("Chevrolet", "Opala", "Terceira geração", "Diplomata");
-  assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "add", level: "year", parentId: diplomata, id: FIAT, values: { year: 1986 } }), "taken");
+  assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "add", level: "year", parentId: diplomata, id: FIAT, values: { year: 1986, lastYear: 1986 } }), "taken");
+  const overlapping = applyCatalogChange(TEST_CATALOG_DATA, { kind: "add", level: "year", parentId: diplomata, id: FIAT, values: { year: 1986, lastYear: 1990 } });
+  assert.deepEqual((overlapping as CatalogData).brands[0].models[1].generations[2].versions[1].years.at(-1), { id: FIAT, year: 1986, lastYear: 1990, engines: [] });
 
   const third = testCatalogId("Chevrolet", "Opala", "Terceira geração");
   const renamed = applyCatalogChange(TEST_CATALOG_DATA, {
@@ -430,7 +433,12 @@ test("Shared: a request to the catalog's routes says which change it makes", () 
     status: 201,
     change: { kind: "add", level: "generation", parentId: OPALA, id: FORD, values: { name: "Quarta" } },
   });
-  assert.deepEqual(catalogChangeOf("PATCH", `/years/${FIAT}`, { year: 1990 }, FORD)?.change, { kind: "edit", level: "year", id: FIAT, values: { year: 1990 } });
+  assert.deepEqual(catalogChangeOf("PATCH", `/years/${FIAT}`, { year: 1990, lastYear: 1992 }, FORD)?.change, {
+    kind: "edit",
+    level: "year",
+    id: FIAT,
+    values: { year: 1990, lastYear: 1992 },
+  });
   assert.deepEqual(catalogChangeOf("POST", `/versions/${FIAT}/move`, { direction: "down" }, FORD)?.change, {
     kind: "move",
     level: "version",
@@ -444,12 +452,14 @@ test("Shared: a request to the catalog's routes says which change it makes", () 
 // Builds an engine's sheet from the tree's names and its sheet, and makes an engine's changes in memory: one added
 // under a year with its sheet, its summary trimmed, and its sheet saved again; and reads the engine routes' changes.
 test("Shared: an engine's sheet is built, and an engine is added and saved in memory", () => {
-  const names = { year: 1985, brand: "Chevrolet", model: "Opala", version: "Diplomata" };
+  const names = { year: "1985", brand: "Chevrolet", model: "Opala", version: "Diplomata" };
   assert.deepEqual(engineSheet(names, { displacementDl: 38, cylinders: 6, drive: "REAR", summary: "Seis em linha." }), {
     title: "1985 · Chevrolet Opala Diplomata 3.8",
     specs: ["1985", "3.8 L", "6 CIL", "TRASEIRA"],
     summary: "Seis em linha.",
   });
+  assert.equal(engineSheet({ ...names, year: "2007–2012" }, { displacementDl: 14, cylinders: 4, drive: "FRONT", summary: "" }).title, "2007–2012 · Chevrolet Opala Diplomata 1.4");
+  assert.deepEqual([periodLabel(2007, 2012), periodLabel(1986, 1986)], ["2007–2012", "1986"]);
   const year = testCatalogId("Chevrolet", "Opala", "Terceira geração", "Diplomata", "1985");
   const sheet = { displacementDl: 38, cylinders: 6, drive: "REAR" as const, summary: "  Seis em linha.  " };
   const added = applyCatalogChange(TEST_CATALOG_DATA, { kind: "add", level: "engine", parentId: year, id: FORD, values: sheet }) as CatalogData;
@@ -501,19 +511,24 @@ test("Shared: what a screen adds or renames is sent to the right route", () => {
   );
   assert.deepEqual(catalogSiblings(TEST_CATALOG.brands[0].models, FORD), []);
   assert.deepEqual(catalogValuesOf(third), { name: "Terceira geração", firstYear: third.firstYear, lastYear: third.lastYear });
-  assert.deepEqual(catalogValuesOf(year), { year: 1986 });
+  assert.deepEqual(catalogValuesOf(year), { year: 1986, lastYear: 1986 });
   assert.deepEqual(catalogValuesOf(opala), { name: "Opala" });
-  assert.deepEqual(engineSheetNames(TEST_CATALOG, CHEVROLET, engine.id), { year: 1986, brand: "Chevrolet", model: "Opala", version: "Diplomata" });
+  assert.deepEqual(engineSheetNames(TEST_CATALOG, CHEVROLET, engine.id), { year: "1986", brand: "Chevrolet", model: "Opala", version: "Diplomata" });
 });
 
-// Reads the fields of a node as typed: a name required, a year of four digits in the catalog's range, a generation's
-// last year empty or not before the first; and an engine's sheet: litres with a comma or a dot, cylinders in range,
+// Reads the fields of a node as typed: a name required, a period's years of four digits in the catalog's range, its last
+// year empty for a single year or not before the first, a generation's last year empty or not before the first; and an engine's sheet: litres with a comma or a dot, cylinders in range,
 // a drive chosen and the summary trimmed.
 test("Shared: what is typed into a node or an engine sheet is checked before it is saved", () => {
   const empty = { name: "", firstYear: "", lastYear: "", year: "" };
   assert.deepEqual(readCatalogFields("model", { ...empty, name: "Caravan" }), { values: { name: "Caravan" } });
   assert.deepEqual(readCatalogFields("brand", { ...empty, name: "  " }), { problems: { name: "Informe o nome." } });
-  assert.deepEqual(readCatalogFields("year", { ...empty, year: "1990" }), { values: { year: 1990 } });
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "1990" }), { values: { year: 1990, lastYear: 1990 } });
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "2007", lastYear: "2012" }), { values: { year: 2007, lastYear: 2012 } });
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "2007", lastYear: "2004" }), {
+    problems: { lastYear: "O último ano não pode vir antes do primeiro." },
+  });
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "2007", lastYear: "12" }), { problems: { lastYear: "Use um ano de 1900 a 2100." } });
   assert.deepEqual(readCatalogFields("year", { ...empty, year: "1890" }), { problems: { year: "Use um ano de 1900 a 2100." } });
   assert.deepEqual(readCatalogFields("generation", { ...empty, name: "G2", firstYear: "1995" }), {
     values: { name: "G2", firstYear: 1995, lastYear: null },
@@ -564,7 +579,7 @@ test("Shared: a brand is deleted from the catalog with its models' trees", () =>
   assert.deepEqual(deleted.brands.map((brand) => brand.name), ["Volkswagen", "Fiat", "Ford"]);
   assert.equal(applyCatalogChange(deleted, { kind: "deleteBrand", id: CHEVROLET }), "missing");
   assert.deepEqual(catalogChangeOf("DELETE", `/brands/${CHEVROLET}`, {}, FORD), { status: 200, change: { kind: "deleteBrand", id: CHEVROLET } });
-  assert.equal(belowBrand(TEST_CATALOG.brands[0]), "3 modelos, 4 gerações, 3 versões, 2 anos, 2 motores com ficha");
+  assert.equal(belowBrand(TEST_CATALOG.brands[0]), "3 modelos, 4 gerações, 3 versões, 2 períodos, 2 motores com ficha");
   assert.equal(belowBrand({ ...TEST_CATALOG.brands[0], models: [] }), null);
 });
 
@@ -577,7 +592,7 @@ test("Shared: two models' trees join, the matching nodes made one and nothing lo
   const kept = {
     id: "model-kept",
     generations: [
-      { id: "g3", name: "Terceira", firstYear: 1980, lastYear: 1992, versions: [{ id: "v-comodoro", name: "Comodoro", years: [{ id: "y85", year: 1985, engines: [engine("e1", 25)] }] }] },
+      { id: "g3", name: "Terceira", firstYear: 1980, lastYear: 1992, versions: [{ id: "v-comodoro", name: "Comodoro", years: [{ id: "y85", year: 1985, lastYear: 1985, engines: [engine("e1", 25)] }] }] },
       { id: "g2", name: "Segunda", firstYear: 1975, lastYear: 1979, versions: [] },
     ],
   };
@@ -593,8 +608,8 @@ test("Shared: two models' trees join, the matching nodes made one and nothing lo
             id: "m-comodoro",
             name: "COMODORO",
             years: [
-              { id: "m-y85", year: 1985, engines: [engine("e2", 41)] },
-              { id: "m-y86", year: 1986, engines: [engine("e3", 41)] },
+              { id: "m-y85", year: 1985, lastYear: 1985, engines: [engine("e2", 41)] },
+              { id: "m-y86", year: 1986, lastYear: 1986, engines: [engine("e3", 41)] },
             ],
           },
           { id: "m-diplomata", name: "Diplomata", years: [] },

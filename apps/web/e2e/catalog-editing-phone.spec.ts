@@ -35,8 +35,8 @@ test("Web: on a phone a brand is filled down to an engine sheet, renamed and del
     await dialog(page, "Primeira geração").button("Nova versão").click();
     await dialog(page, "Nova versão em Primeira geração").field("Nome").fill("RT");
     await page.keyboard.press("Enter");
-    await tab.action("Novo ano em RT").click();
-    await dialog(page, "Novo ano em RT").field("Ano").fill("1994");
+    await tab.action("Novo período em RT").click();
+    await dialog(page, "Novo período em RT").field("De").fill("1994");
     await page.keyboard.press("Enter");
   });
 

@@ -6,7 +6,7 @@ import type { Locator, Page } from "@playwright/test";
 
 /**
  * What every dialog and form has inside: a button, a field and a choice by name. Names given as text are matched
- * whole, so "Excluir" is never "Excluir…", "Salvar" never "Salvar ficha", and the field "Ano" never the form "Novo ano
+ * whole, so "Excluir" is never "Excluir…", "Salvar" never "Salvar ficha", and the field "De" never the form "Novo período
  * em RT" around it.
  * @param root The dialog or the form.
  * @returns Its root and its parts by name.

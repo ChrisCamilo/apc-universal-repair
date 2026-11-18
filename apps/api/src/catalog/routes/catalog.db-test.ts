@@ -139,9 +139,9 @@ test("API: a brand is deleted from the catalog with its models' trees", async ()
 });
 
 // Adds a brand of this run, and checks it joins the lists and ends the rail with its letters, and that adding it again
-// is refused; adds a model under it, then a generation, a version and a year down from it, and checks a second model
-// or year of the same name or number is refused, a generation whose last year comes first is rejected, and a parent
-// that isn't there is not found.
+// is refused; adds a model under it, then a generation, a version and a period down from it, and checks a second model
+// of the same name or the same period again is refused while an overlapping period is taken, a generation or a period
+// whose last year comes first is rejected, and a parent that isn't there is not found.
 test("API: a brand and the levels of its tree are added", async () => {
   const added = await call("POST", "/catalog/brands", { name: `renault ${RUN}` });
   assert.equal(added.statusCode, 201);
@@ -162,16 +162,19 @@ test("API: a brand and the levels of its tree are added", async () => {
   assert.deepEqual([generation.name, generation.firstYear, generation.lastYear], ["Primeira geração", 1990, null]);
   const withVersion = await call("POST", `/catalog/generations/${generation.id}/versions`, { name: "RT" });
   const version = catalogSchema.parse(withVersion.json()).brands.at(-1)!.models[0].generations[0].versions[0];
-  const year = await call("POST", `/catalog/versions/${version.id}/years`, { year: 1996 });
+  const year = await call("POST", `/catalog/versions/${version.id}/years`, { year: 1996, lastYear: 1999 });
   assert.equal(year.statusCode, 201);
-  assert.equal(catalogSchema.parse(year.json()).brands.at(-1)!.models[0].generations[0].versions[0].years[0].year, 1996);
-  assert.equal((await call("POST", `/catalog/versions/${version.id}/years`, { year: 1996 })).statusCode, 409);
-  assert.equal((await call("POST", `/catalog/versions/${randomUUID()}/years`, { year: 1997 })).statusCode, 404);
+  const period = catalogSchema.parse(year.json()).brands.at(-1)!.models[0].generations[0].versions[0].years[0];
+  assert.deepEqual([period.year, period.lastYear], [1996, 1999]);
+  assert.equal((await call("POST", `/catalog/versions/${version.id}/years`, { year: 1996, lastYear: 1999 })).statusCode, 409);
+  assert.equal((await call("POST", `/catalog/versions/${version.id}/years`, { year: 1996, lastYear: 1997 })).statusCode, 201);
+  assert.equal((await call("POST", `/catalog/versions/${version.id}/years`, { year: 2000, lastYear: 1999 })).statusCode, 400);
+  assert.equal((await call("POST", `/catalog/versions/${randomUUID()}/years`, { year: 1997, lastYear: 1997 })).statusCode, 404);
 });
 
-// Builds a model with three generations, then renames the model, a generation with its years, a version and a year,
+// Builds a model with three generations, then renames the model, a generation with its years, a version and a period,
 // moves the last generation up twice and once more past the top, and checks each change and the order the catalog
-// answers; a rename to another model's name, or to a year the version has, is refused.
+// answers; a rename to another model's name, or to a period the version has, is refused.
 test("API: the levels of a tree are renamed and moved", async () => {
   const brand = await addedBrand(`Peugeot ${RUN}`);
   const tree = async () => catalogSchema.parse((await call("GET", "/catalog")).json()).brands.find((each) => each.id === brand)!;
@@ -202,13 +205,19 @@ test("API: the levels of a tree are renamed and moved", async () => {
   await call("POST", `/catalog/generations/${generations[1].id}/versions`, { name: "GTI" });
   const version = (await tree()).models[0].generations[2].versions[0];
   await call("PATCH", `/catalog/versions/${version.id}`, { name: "griffe" });
-  await call("POST", `/catalog/versions/${version.id}/years`, { year: 2001 });
-  await call("POST", `/catalog/versions/${version.id}/years`, { year: 2002 });
+  await call("POST", `/catalog/versions/${version.id}/years`, { year: 2001, lastYear: 2001 });
+  await call("POST", `/catalog/versions/${version.id}/years`, { year: 2002, lastYear: 2002 });
   const years = (await tree()).models[0].generations[2].versions[0].years;
-  assert.equal((await call("PATCH", `/catalog/years/${years[1].id}`, { year: 2001 })).statusCode, 409);
-  await call("PATCH", `/catalog/years/${years[1].id}`, { year: 2003 });
+  assert.equal((await call("PATCH", `/catalog/years/${years[1].id}`, { year: 2001, lastYear: 2001 })).statusCode, 409);
+  await call("PATCH", `/catalog/years/${years[1].id}`, { year: 2003, lastYear: 2005 });
   const changed = (await tree()).models[0].generations[2].versions[0];
-  assert.deepEqual([changed.name, changed.years.map((each) => each.year)], ["Griffe", [2001, 2003]]);
+  assert.deepEqual([changed.name, changed.years.map((each) => [each.year, each.lastYear])], [
+    "Griffe",
+    [
+      [2001, 2001],
+      [2003, 2005],
+    ],
+  ]);
 });
 
 // Deletes a generation with a version and a year under it, and checks they go with it, then deletes the model and
@@ -222,7 +231,7 @@ test("API: deleting a level of a tree takes what is under it", async () => {
   const generation = (await tree()).models[0].generations[0];
   await call("POST", `/catalog/generations/${generation.id}/versions`, { name: "VTS" });
   const version = (await tree()).models[0].generations[0].versions[0];
-  await call("POST", `/catalog/versions/${version.id}/years`, { year: 2000 });
+  await call("POST", `/catalog/versions/${version.id}/years`, { year: 2000, lastYear: 2000 });
 
   const deleted = await call("DELETE", `/catalog/generations/${generation.id}`);
   assert.equal(deleted.statusCode, 200);
@@ -246,7 +255,7 @@ test("API: an engine is added with its sheet, and its sheet is saved again", asy
   await call("POST", `/catalog/brands/${brand}/models`, { name: `Niva ${RUN}` });
   await call("POST", `/catalog/models/${(await tree()).models[0].id}/generations`, { name: "Primeira", firstYear: 1977, lastYear: null });
   await call("POST", `/catalog/generations/${(await tree()).models[0].generations[0].id}/versions`, { name: "4x4" });
-  await call("POST", `/catalog/versions/${(await tree()).models[0].generations[0].versions[0].id}/years`, { year: 1991 });
+  await call("POST", `/catalog/versions/${(await tree()).models[0].generations[0].versions[0].id}/years`, { year: 1991, lastYear: 1991 });
   const year = (await tree()).models[0].generations[0].versions[0].years[0];
 
   const sheet = { displacementDl: 16, cylinders: 4, drive: "ALL", summary: "  Tração integral permanente.  " };
