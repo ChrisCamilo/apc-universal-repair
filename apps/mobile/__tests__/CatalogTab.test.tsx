@@ -6,7 +6,7 @@ import React from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { CATALOG_PARTS_ONLY_KEY, NO_SHEET_MESSAGE, type CatalogData, type InventoryLink } from '@apc/domain/catalog';
+import { CATALOG_PARTS_ONLY_KEY, CATALOG_YEAR_MESSAGE, NO_SHEET_MESSAGE, type CatalogData, type InventoryLink } from '@apc/domain/catalog';
 import { EMPTY_ITEM_FILTERS } from '@apc/domain/item-filters';
 import type { Item } from '@apc/domain/items';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
@@ -438,6 +438,42 @@ test('Mobile: the Catalog adds a period with De and Até and copies an engine in
   await pressText(tree, 'Colar motor');
   expect(shows(tree, '1985 · Chevrolet Opala Diplomata 4.1')).toBe(true);
 });
+// Narrows Terceira geração (1980–1992) past its periods (1985 and 1986) from its "⋯" and checks it is refused; then
+// adds a period to Diplomata: its year fields show AAAA and keep only four digits, a year of two digits is refused
+// asking for four, and one outside the generation's years (1979–1993) under both fields; 1980–1992, the generation's
+// own years, is added.
+test("Mobile: a period stays inside its generation's years, written with four digits", async () => {
+  answerChanges();
+  const tree = await mount('eighties', 'night');
+  await press(tree, 'Chevrolet, 3 modelos · 2 fichas técnicas');
+  await press(tree, 'Abrir Opala');
+  await press(tree, 'Ações de Terceira geração');
+  await pressText(tree, 'Renomear e mudar os anos');
+  await fill(tree, 'De', '1986');
+  await pressText(tree, 'Salvar');
+  expect(shows(tree, 'Os períodos desta geração vão de 1985 a 1986.')).toBe(true);
+  await fill(tree, 'De', '1980');
+  await pressText(tree, 'Salvar');
+  expect(shows(tree, 'Os períodos desta geração vão de 1985 a 1986.')).toBe(false);
+
+  await press(tree, 'Terceira geração 1980–1992');
+  await press(tree, 'Ações de Diplomata');
+  await pressText(tree, 'Novo período');
+  expect(field(tree, 'De').props.placeholder).toBe('AAAA');
+  await fill(tree, 'De', '86');
+  await pressText(tree, 'Adicionar');
+  expect(shows(tree, CATALOG_YEAR_MESSAGE)).toBe(true);
+  await fill(tree, 'De', '1979a');
+  await fill(tree, 'Até', '19932');
+  expect([field(tree, 'De').props.value, field(tree, 'Até').props.value]).toEqual(['1979', '1993']);
+  await pressText(tree, 'Adicionar');
+  expect(textNodes(tree, 'O período tem de ficar dentro dos anos da geração: de 1980 a 1992.')).toHaveLength(2);
+  await fill(tree, 'De', '1980');
+  await fill(tree, 'Até', '1992');
+  await pressText(tree, 'Adicionar');
+  expect(treeLabels(tree)).toContain('1980–1992');
+});
+
 /**
  * Answers the API's requests: the catalog with the test catalog, unless a test gives its own reply, and the inventory
  * with a test's own.
@@ -467,8 +503,8 @@ function answerChanges() {
     const change = catalogChangeOf(init?.method ?? 'GET', url.slice(at + '/catalog'.length), body, id);
     if (change) {
       const result = applyCatalogChange(catalog, change.change);
-      if (result === 'missing' || result === 'taken') {
-        return Promise.resolve({ ok: false, status: result === 'missing' ? 404 : 409, json: () => Promise.resolve({}) });
+      if (typeof result === 'string') {
+        return Promise.resolve({ ok: false, status: { missing: 404, taken: 409, invalid: 400 }[result], json: () => Promise.resolve({}) });
       }
       catalog = result;
     }
