@@ -6,8 +6,8 @@ import { TextField } from '../../components/TextField'
 import { nodeForm } from './NodeForm.styles.ts'
 
 // The row that adds or renames a node of the Catalog's tree, or a brand: a brand, a model or a version by its name, a
-// generation by its name and its first and last years (the last one empty while it is still made), and a year by its
-// number. ✓ or Enter saves what is typed, once it is filled in right; ✕ or Escape gives up. It opens on its first
+// generation by its name and its first and last years (the last one empty while it is still made), and a period by its
+// first and last years (De and Até, the last one empty for a single year). ✓ or Enter saves what is typed, once it is filled in right; ✕ or Escape gives up. It opens on its first
 // field, and shows under each field why it can't be saved, or the owner's error, such as a name another node has. In a
 // phone's bottom sheet the form goes without ✓ and ✕: the sheet's own buttons send it, by its id.
 
@@ -79,9 +79,14 @@ export function NodeForm({ id, buttons = true, level, label, initial = {}, error
         </>
       )}
       {level === 'year' && (
-        <div className={classes.year()} data-testid={ids.year}>
-          <TextField label="Ano" kind="number" value={year} onValueChange={setYear} error={problems.year ?? error} autoFocus />
-        </div>
+        <>
+          <div className={classes.year()} data-testid={ids.year}>
+            <TextField label="De" kind="number" value={year} onValueChange={setYear} error={problems.year ?? error} autoFocus />
+          </div>
+          <div className={classes.year()} data-testid={ids.year}>
+            <TextField label="Até" kind="number" placeholder="Mesmo ano" value={lastYear} onValueChange={setLastYear} error={problems.lastYear} />
+          </div>
+        </>
       )}
       {buttons && (
         <div className={classes.buttons()} data-testid={ids.buttons}>

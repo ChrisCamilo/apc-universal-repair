@@ -381,12 +381,12 @@ test('Web: the levels under a model are added, by keyboard too, and their fields
   await expect.element(monza.getByText('SL/E', { exact: true })).toBeVisible()
 
   await rowOf(screen, 'Diplomata').hover()
-  await screen.getByRole('button', { name: 'Novo ano em Diplomata' }).click()
-  await screen.getByRole('form', { name: 'Novo ano em Diplomata' }).getByLabelText('Ano').fill('1986')
+  await screen.getByRole('button', { name: 'Novo período em Diplomata' }).click()
+  await screen.getByRole('form', { name: 'Novo período em Diplomata' }).getByLabelText('De').fill('1986')
   await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByText('Essa versão já tem esse ano.')).toBeVisible()
+  await expect.element(screen.getByText('Essa versão já tem esse período.')).toBeVisible()
   await userEvent.keyboard('{Escape}')
-  await expect.element(screen.getByRole('form', { name: 'Novo ano em Diplomata' })).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('form', { name: 'Novo período em Diplomata' })).not.toBeInTheDocument()
 })
 
 // Renames a version from its row, moves another up and checks the order, the first's "up" turned off, and deletes a
@@ -411,7 +411,7 @@ test('Web: branches are renamed, moved and deleted after confirming', async () =
   await rowOf(screen, 'Terceira geração').hover()
   await screen.getByRole('button', { name: 'Excluir Terceira geração' }).click()
   const confirm = screen.getByRole('dialog', { name: 'Excluir “Terceira geração”?' })
-  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 anos, 2 motores com ficha\./)
+  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 períodos, 2 motores com ficha\./)
   await confirm.getByRole('button', { name: 'Excluir' }).click()
   await expect.element(screen.getByText('Terceira geração', { exact: true })).not.toBeInTheDocument()
   await expect.element(screen.getByText('“Terceira geração” saiu do catálogo.')).toBeVisible()
@@ -425,7 +425,7 @@ test('Web: an engine is added to a year from an empty sheet and chosen in the tr
   const screen = await renderCatalog()
   await screen.getByRole('button', { name: 'Novo motor em 1985' }).click()
   const sheet = screen.getByRole('form', { name: 'Novo motor em 1985' })
-  await expect.element(sheet.getByText('Ano 1985, do galho de cima')).toBeVisible()
+  await expect.element(sheet.getByText('Período 1985, do galho de cima')).toBeVisible()
   await sheet.getByRole('button', { name: 'Salvar ficha' }).click()
   await expect.element(sheet.getByText('Use uma cilindrada de 0,1 a 15,0 L.')).toBeVisible()
   await expect.element(sheet.getByText('Use de 1 a 16 cilindros.')).toBeVisible()
@@ -705,7 +705,7 @@ test('Web: on a phone the Catalog goes from a brand to an engine sheet and back'
   await expect.element(screen.getByRole('heading', { name: OPALA_41.title })).toBeVisible()
   await expect.element(screen.getByText('Opala › Terceira geração › Diplomata › 1986')).toBeVisible()
   const readouts = screen.getByTestId('catalog.catalog-tab.screen.readouts.readout')
-  expect(readouts.elements().map((readout) => readout.textContent)).toEqual(['Ano1986', 'Motor4.1 L', 'Cilindros6 CIL', 'TraçãoTRASEIRA'])
+  expect(readouts.elements().map((readout) => readout.textContent)).toEqual(['Período1986', 'Motor4.1 L', 'Cilindros6 CIL', 'TraçãoTRASEIRA'])
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
 
   await screen.getByRole('button', { name: 'Voltar aos modelos' }).click()
@@ -794,7 +794,7 @@ test('Web: a brand is deleted from the catalog after confirming', async () => {
   const screen = await renderCatalog()
   await screen.getByRole('button', { name: 'Excluir marca' }).click()
   const confirm = screen.getByRole('dialog', { name: 'Excluir “Chevrolet”?' })
-  await expect.element(confirm).toMatchTextContent(/Vão junto 3 modelos, 4 gerações, 3 versões, 2 anos, 2 motores com ficha\./)
+  await expect.element(confirm).toMatchTextContent(/Vão junto 3 modelos, 4 gerações, 3 versões, 2 períodos, 2 motores com ficha\./)
   await confirm.getByRole('button', { name: 'Excluir' }).click()
   await expect.element(screen.getByRole('radio', { name: 'Chevrolet' })).not.toBeInTheDocument()
   await expect.element(screen.getByRole('radio', { name: 'Volkswagen' })).toBeChecked()
@@ -838,7 +838,7 @@ test('Web: on a phone branches are renamed, moved and deleted from their actions
   await screen.getByRole('button', { name: 'Ações de Comodoro' }).click()
   const actions = screen.getByRole('dialog', { name: 'Comodoro' })
   expect(actions.getByRole('button').elements().map((button) => button.textContent)).toEqual([
-    'Novo ano',
+    'Novo período',
     'Renomear',
     'Mover para baixo',
     'Excluir…',
@@ -858,7 +858,7 @@ test('Web: on a phone branches are renamed, moved and deleted from their actions
   await screen.getByRole('button', { name: 'Ações de Terceira geração' }).click()
   await screen.getByRole('dialog', { name: 'Terceira geração' }).getByRole('button', { name: 'Excluir…' }).click()
   const confirm = screen.getByRole('dialog', { name: 'Excluir “Terceira geração”?' })
-  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 anos, 2 motores com ficha\./)
+  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 períodos, 2 motores com ficha\./)
   await confirm.getByRole('button', { name: 'Excluir' }).click()
   await expect.element(screen.getByText('Terceira geração', { exact: true })).not.toBeInTheDocument()
 })

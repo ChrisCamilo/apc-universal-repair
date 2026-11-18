@@ -14,6 +14,7 @@ import {
   catalogNodes,
   catalogSiblings,
   catalogValuesOf,
+  ENGINE_CLIPBOARD,
   catalogWithParts,
   engineSheetNames,
   ENGINE_SPEC_LABELS,
@@ -36,7 +37,7 @@ import {
   type FoundPart,
 } from '@apc/domain/catalog'
 import type { Item } from '@apc/domain/items'
-import { chevronIcon, closeIcon, ICON_SIZES, moreIcon, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/tokens/icons'
+import { chevronIcon, closeIcon, copyIcon, ICON_SIZES, importIcon, moreIcon, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/tokens/icons'
 import { ActionSheet } from '../../components/ActionSheet'
 import { BottomSheet } from '../../components/BottomSheet'
 import { Button } from '../../components/Button'
@@ -81,10 +82,13 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // move it up or down and delete it. What is added or renamed is typed in a row inside the tree (see NodeForm), and an
 // empty branch shows a dashed button to add its first. "Excluir marca" beside "Novo modelo" deletes the brand from the
 // catalog with its models' trees, its vehicle brand staying in the lists, and opens the next brand. Deleting asks first,
-// saying what goes with it. A catalog with no brand says so and adds the first with "Nova marca". A year's "+",
-// "Novo motor", opens an empty sheet in the detail column instead (see EngineSheetForm), and the engine joins the tree,
+// saying what goes with it. A catalog with no brand says so and adds the first with "Nova marca". A period (De and Até,
+// "2007–2012") holds a version's engines for all its years. A period's "+", "Novo motor", opens an empty sheet in the detail column instead (see EngineSheetForm), and the engine joins the tree,
 // chosen, once its sheet is saved; an engine's sheet has "Editar ficha", which turns it into the same form. Every change
-// answers the whole catalog, which the tab takes as it is; a name or year another node has is said under the field.
+// answers the whole catalog, which the tab takes as it is; a name or period another node has is said under the field.
+// An engine's row has "Copiar motor", and Ctrl+C on it does the same; while an engine is copied, each period's row has
+// "Colar motor", and Ctrl+V on it does the same, adding a copy of the engine and its sheet there, in any version, model
+// or brand; a toast says each.
 // On a phone (below `card:`) the tab is a stack of screens, as in the "Catálogo no celular" mockup (see
 // CatalogScreen in @apc/domain/catalog): the brands, each on a line with how many models and sheets it has; a brand's
 // models, as a tree whose engines say "Ver ficha"; and an engine's sheet under the path to it. A screen past the
@@ -96,8 +100,9 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
 // A phone edits the catalog in sheets, with the same changes as above (see useCatalogEditing): "Nova marca" beside the
 // brands' heading and "Novo modelo" beside the models' open a bottom sheet with the new node's fields, Cancelar and
 // Adicionar. Each branch has a "⋯", always in view, opening an action sheet with its name: add the level under it,
-// rename it (a generation, with its years), move it up or down (only where it can go), delete it after confirming, or
-// close. A year's engines end with "Novo motor em <ano>", and an empty branch with the button adding its first, and a
+// rename it (a generation, with its years; a period, with De and Até), move it up or down (only where it can go), delete
+// it after confirming, or close, and a period's has "Colar motor" while an engine is copied; an engine's "⋯" has
+// "Copiar motor". A period's engines end with "Novo motor em <período>", and an empty branch with the button adding its first, and a
 // brand's models end with "Excluir marca", which deletes the brand from the catalog and goes back to the brands. A new
 // engine's sheet, and "Editar ficha" under an engine's sheet, open the sheet's form in a full-screen dialog with
 // Cancelar and Salvar ficha at its foot; a new brand opens its models, and a new engine its sheet.
@@ -282,11 +287,17 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
     />
   )
 
-  /** A row's buttons: add the level under it, rename it, move it up or down, delete it; none for an engine. */
+  /**
+   * A row's buttons: add the level under it, paste the engine copied into a period, rename it, move it up or down,
+   * delete it; an engine's copies it.
+   */
   const rowActions = (id: string) => {
     const node = nodes.get(id)
-    if (!node || node.level === 'engine') {
+    if (!node) {
       return null
+    }
+    if (node.level === 'engine') {
+      return <RowAction icon={copyIcon} label={`${ENGINE_CLIPBOARD.copy} ${node.label}`} onClick={() => editor.copyEngine(node)} />
     }
     const siblings = catalogSiblings(brand.models, id)
     const at = siblings.findIndex((each) => each.id === id)
@@ -294,7 +305,14 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
     return (
       <>
         <RowAction icon={plusIcon} label={`${child.add} em ${node.label}`} onClick={() => editor.addUnder(node)} />
-        <RowAction icon={pencilIcon} label={`Renomear ${node.label}`} onClick={() => editor.edit({ kind: 'rename', node })} />
+        {node.level === 'year' && editor.copied && (
+          <RowAction icon={importIcon} label={`${ENGINE_CLIPBOARD.paste} em ${node.label}`} onClick={() => void editor.pasteEngine(node)} />
+        )}
+        <RowAction
+          icon={pencilIcon}
+          label={node.level === 'year' ? `Mudar os anos de ${node.label}` : `Renomear ${node.label}`}
+          onClick={() => editor.edit({ kind: 'rename', node })}
+        />
         <RowAction
           icon={chevronIcon}
           iconClassName={classes.up()}
@@ -397,6 +415,19 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
                 highlighted={location?.modelId}
                 defaultExpanded={location?.modelId && !location.engineId ? [location.modelId] : undefined}
                 rowActions={rowActions}
+                onRowKey={(id, event) => {
+                  const node = nodes.get(id)
+                  const key = (event.ctrlKey || event.metaKey) && !event.altKey ? event.key.toLowerCase() : ''
+                  if (key === 'c' && node?.level === 'engine') {
+                    editor.copyEngine(node)
+                    return true
+                  }
+                  if (key === 'v' && node?.level === 'year' && editor.copied) {
+                    void editor.pasteEngine(node)
+                    return true
+                  }
+                  return false
+                }}
                 editing={
                   editing?.kind === 'rename'
                     ? {
@@ -547,16 +578,30 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
     }
   }
 
-  /** The actions of the node whose sheet is open: add under it, rename it, move it up or down, delete it, close. */
+  /**
+   * The actions of the node whose sheet is open: add under it, paste the engine copied into a period, rename it, move it
+   * up or down, delete it, close; an engine's copy it.
+   */
   const actions = () => {
     if (!acting || !brand) {
       return []
+    }
+    if (acting.level === 'engine') {
+      return [
+        { icon: copyIcon, label: ENGINE_CLIPBOARD.copy, onSelect: () => editor.copyEngine(acting) },
+        { icon: closeIcon, label: 'Fechar', onSelect: () => {} },
+      ]
     }
     const siblings = catalogSiblings(brand.models, acting.id)
     const at = siblings.findIndex((each) => each.id === acting.id)
     return [
       { icon: plusIcon, label: CATALOG_CHILDREN[acting.level as CatalogEditLevel].add, onSelect: () => editor.addUnder(acting) },
-      { icon: pencilIcon, label: acting.level === 'generation' ? 'Renomear e mudar os anos' : 'Renomear', onSelect: () => editor.edit({ kind: 'rename', node: acting }) },
+      ...(acting.level === 'year' && editor.copied ? [{ icon: importIcon, label: ENGINE_CLIPBOARD.paste, onSelect: () => void editor.pasteEngine(acting) }] : []),
+      {
+        icon: pencilIcon,
+        label: acting.level === 'generation' ? 'Renomear e mudar os anos' : acting.level === 'year' ? 'Mudar os anos' : 'Renomear',
+        onSelect: () => editor.edit({ kind: 'rename', node: acting }),
+      },
       ...(at > 0 ? [{ icon: sortIcon, label: 'Mover para cima', onSelect: () => void editor.move(acting, 'up') }] : []),
       ...(at < siblings.length - 1 ? [{ icon: sortIcon, label: 'Mover para baixo', onSelect: () => void editor.move(acting, 'down') }] : []),
       { icon: trashIcon, label: 'Excluir…', onSelect: () => editor.askRemove(acting) },
@@ -688,7 +733,7 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
               leafTag="Ver ficha"
               rowActions={(id) => {
                 const node = nodes.get(id)
-                return node && node.level !== 'engine' ? <RowAction icon={moreIcon} label={`Ações de ${node.label}`} onClick={() => setActing(node)} /> : null
+                return node ? <RowAction icon={moreIcon} label={`Ações de ${node.label}`} onClick={() => setActing(node)} /> : null
               }}
               after={after}
               reveal={editing?.kind === 'add' && editing.parent.level !== 'brand' ? editing.parent.id : undefined}
