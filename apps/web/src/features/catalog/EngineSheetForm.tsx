@@ -17,8 +17,8 @@ import { TextField } from '../../components/TextField'
 import { Heading, NumericReadout, Text } from '../../components/Typography'
 import { engineSheetForm } from './EngineSheetForm.styles.ts'
 
-// An engine's sheet as a form, in the Catalog's detail column, to add an engine under a year or save its sheet again:
-// the displacement in litres (a comma or a dot), the cylinders, the drive and a summary. The year comes from the tree
+// An engine's sheet as a form, in the Catalog's detail column, to add an engine under a period or save its sheet again:
+// the displacement in litres (a comma or a dot), the cylinders, the drive and a summary. The period comes from the tree
 // and isn't typed. While what is typed makes a sheet, the form shows the title it will have, the engine's name in the
 // tree and its readouts as they will look. Salvar ficha checks each field and says under it what to fix; Cancelar
 // gives up. On a phone the form fills a full-screen dialog, whose own Cancelar and Salvar ficha send it by its id.
@@ -71,7 +71,7 @@ export function EngineSheetForm({ id, actions = true, label, names, initial, sav
         <Heading level={3}>{preview?.title ?? `${names.year} · ${names.brand} ${names.model} ${names.version}`}</Heading>
       </div>
       <p className={classes.fromTree()} data-testid={ids.fromTree}>
-        Ano {names.year}, do galho de cima
+        Período {names.year}, do galho de cima
       </p>
       <div className={classes.pair()} data-testid={ids.pair}>
         <TextField label="Cilindrada (L)" kind="decimal" value={litres} onValueChange={setLitres} error={problems.litres} autoFocus />

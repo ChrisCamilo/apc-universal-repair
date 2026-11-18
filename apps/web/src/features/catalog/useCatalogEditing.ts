@@ -4,6 +4,8 @@ import {
   CATALOG_FAILED,
   catalogAddUnder,
   catalogEditRequest,
+  ENGINE_CLIPBOARD,
+  engineCopyRequest,
   catalogNodePath,
   catalogSheetRequest,
   changeCatalog,
@@ -46,6 +48,8 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
   const [removing, setRemoving] = useState<CatalogNode>()
   const [removingBrand, setRemovingBrand] = useState<CatalogBrand>()
   const [sheet, setSheet] = useState<CatalogSheetEditing | null>(null)
+  // The engine copied, to paste into a period, until another is copied.
+  const [copied, setCopied] = useState<CatalogNode>()
 
   /**
    * Sends a change of the catalog and takes the catalog it answers, or says why it couldn't be made.
@@ -91,7 +95,25 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
     removing,
     removingBrand,
     sheet,
+    copied,
     edit,
+    /** Copies an engine, with its sheet, to paste into a period; it says so. */
+    copyEngine: (engine: CatalogNode) => {
+      setCopied(engine)
+      toast.info(ENGINE_CLIPBOARD.copied(engine.label))
+    },
+    /** Adds a copy of the engine copied, with its sheet, at the end of a period's engines, chosen as a new engine is; it says so. */
+    pasteEngine: async (period: CatalogNode) => {
+      if (!copied) {
+        return
+      }
+      const { method, path, body } = engineCopyRequest(copied, period)
+      const changed = await change(method, path, body)
+      if (changed) {
+        toast.success(ENGINE_CLIPBOARD.pasted(copied.label, period.label))
+        onEngineAdded?.(changed, period.id)
+      }
+    },
     editSheet,
     /** Asks to confirm deleting a node, or gives up on it. */
     askRemove: setRemoving,

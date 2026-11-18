@@ -21,7 +21,8 @@ import { treeView } from './TreeView.styles.ts'
 // field to rename it (editing); a branch can end with one more line under its children (after), such as a field to
 // add one more, which also shows under an empty branch; and a branch can be opened from outside, with the ones above
 // it (reveal), e.g. the one something is being added to. The keys inside those keep their own meaning. A row is named
-// by its label and detail alone, so the buttons it ends with don't join its name.
+// by its label and detail alone, so the buttons it ends with don't join its name. A key pressed on a row goes to the
+// owner first (onRowKey), e.g. Ctrl+C to copy what the row holds; one it takes doesn't move the tree.
 // The owner can also let some branches be selected (selectable), such as a model whose sheet it shows: a click, Enter
 // or Space on one hands it to onSelect as well as opening or closing it, and once selected it looks like a selected
 // leaf. A click on its chevron only opens or closes it, so a phone, where choosing it may lead to another screen, can
@@ -82,6 +83,8 @@ type TreeViewProps = {
   reveal?: string
   /** Height of the tree, which scrolls inside it, e.g. "max-h-96". */
   className?: string
+  /** Takes a key pressed on a row, by its node's id, before the tree does, e.g. Ctrl+C; true when it took the key. */
+  onRowKey?: (id: string, event: KeyboardEvent) => boolean
 }
 
 export function TreeView({
@@ -98,6 +101,7 @@ export function TreeView({
   after,
   reveal,
   className,
+  onRowKey,
 }: TreeViewProps) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(defaultExpanded ?? (selected ? ancestors(nodes, selected) : [])),
@@ -153,6 +157,10 @@ export function TreeView({
     }
     const index = rows.findIndex((row) => row.node.id === tabbable)
     const node = rows[index]?.node
+    if (node && onRowKey?.(node.id, event)) {
+      event.preventDefault()
+      return
+    }
     if (node && !isLeaf(node) && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault()
       activate(node)

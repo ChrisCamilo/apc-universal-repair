@@ -193,7 +193,7 @@ test('Mobile: the Catalog goes from a brand to an engine sheet and back', async 
   await openOpala41(tree);
   expect(shows(tree, OPALA_41.title)).toBe(true);
   expect(shows(tree, 'Opala › Terceira geração › Diplomata › 1986')).toBe(true);
-  expect(['Ano', 'Motor', 'Cilindros', 'Tração'].every((label) => shows(tree, label))).toBe(true);
+  expect(['Período', 'Motor', 'Cilindros', 'Tração'].every((label) => shows(tree, label))).toBe(true);
   expect(title(tree)).toBe('Chevrolet');
 
   await press(tree, 'Voltar aos modelos');
@@ -407,9 +407,36 @@ test('Mobile: the Catalog renames, moves and deletes branches and adds and edits
   await press(tree, 'Ações de Terceira geração');
   await pressText(tree, 'Excluir…');
   expect(shows(tree, 'Excluir “Terceira geração”?')).toBe(true);
-  expect(showsPart(tree, 'Vão junto 3 versões, 2 anos, 3 motores com ficha.')).toBe(true);
+  expect(showsPart(tree, 'Vão junto 3 versões, 2 períodos, 3 motores com ficha.')).toBe(true);
   await pressText(tree, 'Excluir');
   expect(treeLabels(tree).some((label) => label.startsWith('Terceira geração'))).toBe(false);
+});
+
+// Adds a period to Diplomata with De and Até from its "⋯" and checks it shows by its years; then copies the 4.1 from its
+// "⋯", which only copies it, and pastes it into 1985 from that period's "⋯", which offers Colar motor once an engine is
+// copied and calls its pencil Mudar os anos; the copy's sheet opens, titled by 1985.
+test('Mobile: the Catalog adds a period with De and Até and copies an engine into another period', async () => {
+  answerChanges();
+  const tree = await mount('eighties', 'night');
+  await press(tree, 'Chevrolet, 3 modelos · 2 fichas técnicas');
+  await press(tree, 'Abrir Opala');
+  await press(tree, 'Terceira geração 1980–1992');
+  await press(tree, 'Ações de Diplomata');
+  await pressText(tree, 'Novo período');
+  await fill(tree, 'De', '1990');
+  await fill(tree, 'Até', '1992');
+  await pressText(tree, 'Adicionar');
+  // Diplomata opened as the period was added under it.
+  expect(treeLabels(tree)).toContain('1990–1992');
+
+  await press(tree, '1986');
+  await press(tree, 'Ações de 4.1 L 6 cilindros');
+  expect(shows(tree, 'Novo motor')).toBe(false);
+  await pressText(tree, 'Copiar motor');
+  await press(tree, 'Ações de 1985');
+  expect(shows(tree, 'Mudar os anos')).toBe(true);
+  await pressText(tree, 'Colar motor');
+  expect(shows(tree, '1985 · Chevrolet Opala Diplomata 4.1')).toBe(true);
 });
 /**
  * Answers the API's requests: the catalog with the test catalog, unless a test gives its own reply, and the inventory

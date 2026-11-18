@@ -272,6 +272,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 | Editing | the tree: add, rename, move, delete | `catalog-tree-editing` | desktop |  |
 |  | deleting a brand after confirming | `catalog-tree-editing` | desktop |  |
 |  | an engine and its sheet | `catalog-engine-sheet` | desktop |  |
+|  | an engine copied to another period, by buttons and keys | `catalog-engine-sheet` | desktop |  |
 |  | the phone: a brand down to a sheet, rename, delete | `catalog-editing-phone` | mobile |  |
 |  | the phone: deleting a brand | `catalog-editing-phone` | mobile |  |
 |  | the demo merges a brand into another | `demo` | both | `@demo` |
@@ -717,6 +718,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 | Edição | a árvore: adicionar, renomear, mover, excluir | `catalog-tree-editing` | desktop |  |
 |  | excluir uma marca após confirmar | `catalog-tree-editing` | desktop |  |
 |  | um motor e sua ficha | `catalog-engine-sheet` | desktop |  |
+|  | um motor copiado para outro período, por botões e teclas | `catalog-engine-sheet` | desktop |  |
 |  | o celular: uma marca até a ficha, renomear, excluir | `catalog-editing-phone` | mobile |  |
 |  | o celular: excluir uma marca | `catalog-editing-phone` | mobile |  |
 |  | a demo mescla uma marca em outra | `demo` | ambos | `@demo` |

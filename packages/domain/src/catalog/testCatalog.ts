@@ -68,10 +68,11 @@ export const TEST_CATALOG_DATA: CatalogData = {
                 id: id(),
                 name: "Diplomata",
                 years: [
-                  { id: id(), year: 1985, engines: [] },
+                  { id: id(), year: 1985, lastYear: 1985, engines: [] },
                   {
                     id: id(),
                     year: 1986,
+                    lastYear: 1986,
                     engines: [
                       engine({
                         displacementDl: 25,
@@ -120,6 +121,7 @@ export const TEST_CATALOG_DATA: CatalogData = {
                   {
                     id: id(),
                     year: 1989,
+                    lastYear: 1989,
                     engines: [
                       engine({
                         displacementDl: 18,
@@ -159,6 +161,7 @@ export const TEST_CATALOG_DATA: CatalogData = {
                   {
                     id: id(),
                     year: 1991,
+                    lastYear: 1991,
                     engines: [
                       engine({
                         displacementDl: 10,
@@ -227,11 +230,11 @@ const LEVEL_SEGMENTS: Record<string, CatalogLevel> = Object.fromEntries(
   Object.entries({ ...CATALOG_LEVEL_PATHS, engine: CATALOG_ENGINES_PATH }).map(([level, path]) => [path.split("/").at(-1)!, level as CatalogLevel]),
 );
 /** A node of any level as the API sends it, by its id and what tells it from its siblings. */
-type RawNode = { id: string; name?: string; year?: number };
+type RawNode = { id: string; name?: string; year?: number; lastYear?: number | null };
 
 /**
  * Makes one of the API's changes on a catalog held in memory, under the API's rules: a brand, a model of a brand, or a
- * year of a version, only once each; a node added at the end of its siblings; a move past the ends leaving them as they
+ * period of a version, only once each; a node added at the end of its siblings; a move past the ends leaving them as they
  * are; and a delete taking what is under the node, or a brand's delete its models with their trees.
  * @param data The catalog as the API sends it.
  * @param change The change.
@@ -353,24 +356,24 @@ function nodeOf(level: CatalogLevel, id: string, values: CatalogValues): RawNode
     case "version":
       return { id, name, years: [] } as RawNode;
     case "year":
-      return { id, year: values.year, engines: [] } as RawNode;
+      return { id, year: values.year, lastYear: values.lastYear, engines: [] } as RawNode;
     case "engine":
       return { id, displacementDl: values.displacementDl, cylinders: values.cylinders, drive: values.drive, summary: values.summary?.trim() ?? "" } as RawNode;
   }
 }
 
 /**
- * Tells whether two siblings would be the same: two models of one name, or two years of one number.
+ * Tells whether two siblings would be the same: two models of one name, or two periods of the same first and last year.
  * @param level Their level.
  * @param a One node.
  * @param b The other.
- * @returns True for models and years that clash; generations, versions and engines never do.
+ * @returns True for models and periods that clash; generations, versions and engines never do.
  */
 function sameNode(level: CatalogLevel, a: RawNode, b: RawNode): boolean {
   if (level === "model") {
     return optionKey(a.name ?? "") === optionKey(b.name ?? "");
   }
-  return level === "year" && a.year === b.year;
+  return level === "year" && a.year === b.year && a.lastYear === b.lastYear;
 }
 
 /**

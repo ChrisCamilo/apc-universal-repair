@@ -381,12 +381,12 @@ test('Web: the levels under a model are added, by keyboard too, and their fields
   await expect.element(monza.getByText('SL/E', { exact: true })).toBeVisible()
 
   await rowOf(screen, 'Diplomata').hover()
-  await screen.getByRole('button', { name: 'Novo ano em Diplomata' }).click()
-  await screen.getByRole('form', { name: 'Novo ano em Diplomata' }).getByLabelText('Ano').fill('1986')
+  await screen.getByRole('button', { name: 'Novo período em Diplomata' }).click()
+  await screen.getByRole('form', { name: 'Novo período em Diplomata' }).getByLabelText('De').fill('1986')
   await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByText('Essa versão já tem esse ano.')).toBeVisible()
+  await expect.element(screen.getByText('Essa versão já tem esse período.')).toBeVisible()
   await userEvent.keyboard('{Escape}')
-  await expect.element(screen.getByRole('form', { name: 'Novo ano em Diplomata' })).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('form', { name: 'Novo período em Diplomata' })).not.toBeInTheDocument()
 })
 
 // Renames a version from its row, moves another up and checks the order, the first's "up" turned off, and deletes a
@@ -411,7 +411,7 @@ test('Web: branches are renamed, moved and deleted after confirming', async () =
   await rowOf(screen, 'Terceira geração').hover()
   await screen.getByRole('button', { name: 'Excluir Terceira geração' }).click()
   const confirm = screen.getByRole('dialog', { name: 'Excluir “Terceira geração”?' })
-  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 anos, 2 motores com ficha\./)
+  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 períodos, 2 motores com ficha\./)
   await confirm.getByRole('button', { name: 'Excluir' }).click()
   await expect.element(screen.getByText('Terceira geração', { exact: true })).not.toBeInTheDocument()
   await expect.element(screen.getByText('“Terceira geração” saiu do catálogo.')).toBeVisible()
@@ -425,7 +425,7 @@ test('Web: an engine is added to a year from an empty sheet and chosen in the tr
   const screen = await renderCatalog()
   await screen.getByRole('button', { name: 'Novo motor em 1985' }).click()
   const sheet = screen.getByRole('form', { name: 'Novo motor em 1985' })
-  await expect.element(sheet.getByText('Ano 1985, do galho de cima')).toBeVisible()
+  await expect.element(sheet.getByText('Período 1985, do galho de cima')).toBeVisible()
   await sheet.getByRole('button', { name: 'Salvar ficha' }).click()
   await expect.element(sheet.getByText('Use uma cilindrada de 0,1 a 15,0 L.')).toBeVisible()
   await expect.element(sheet.getByText('Use de 1 a 16 cilindros.')).toBeVisible()
@@ -466,6 +466,86 @@ test("Web: an engine's sheet is edited, its name and title following", async () 
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByRole('treeitem', { name: /^2\.8 L 6 cilindros/ })).toHaveAttribute('aria-selected', 'true')
   await expect.element(screen.getByRole('heading', { name: '1986 · Chevrolet Opala Diplomata 2.8' })).toBeVisible()
+})
+
+// Adds a period to Diplomata with De and Até and checks it shows by its years, an Até before De refused under its field;
+// then changes a period's years from its pencil, which opens on the years it has, and checks the tree follows.
+test("Web: a period is added with De and Até, and its pencil changes its years", async () => {
+  answerChanges()
+  const screen = await renderCatalog()
+  await rowOf(screen, 'Diplomata').hover()
+  await screen.getByRole('button', { name: 'Novo período em Diplomata' }).click()
+  const add = screen.getByRole('form', { name: 'Novo período em Diplomata' })
+  await add.getByLabelText('De').fill('1990')
+  await add.getByLabelText('Até').fill('1987')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(add.getByText('O último ano não pode vir antes do primeiro.')).toBeVisible()
+  await add.getByLabelText('Até').fill('1992')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByText('1990–1992', { exact: true })).toBeVisible()
+
+  await rowOf(screen, '1985').hover()
+  await screen.getByRole('button', { name: 'Mudar os anos de 1985' }).click()
+  const change = screen.getByRole('form', { name: 'Renomear 1985' })
+  await expect.element(change.getByLabelText('De')).toHaveValue('1985')
+  await change.getByLabelText('Até').fill('1988')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByText('1985–1988', { exact: true })).toBeVisible()
+})
+
+// Copies the 4.1 with its row's Copiar motor and checks 1985's Colar motor, missing until then, pastes a copy there,
+// chosen with its sheet, each said in a toast; then copies the 2.5 with Ctrl+C and pastes it into 1985 with Ctrl+V.
+test('Web: an engine is copied to another period, by its buttons and by Ctrl+C and Ctrl+V', async () => {
+  answerChanges()
+  const screen = await renderCatalog()
+  await rowOf(screen, '1985').hover()
+  await expect.element(screen.getByRole('button', { name: 'Colar motor em 1985' })).not.toBeInTheDocument()
+  await rowOf(screen, '4.1 L 6 cilindros').hover()
+  await screen.getByRole('button', { name: 'Copiar motor 4.1 L 6 cilindros' }).click()
+  await expect.element(screen.getByText('Motor 4.1 L 6 cilindros copiado. Cole-o num período com Colar motor ou Ctrl+V.')).toBeVisible()
+  await rowOf(screen, '1985').hover()
+  await screen.getByRole('button', { name: 'Colar motor em 1985' }).click()
+  await expect.element(screen.getByText('Motor 4.1 L 6 cilindros colado em 1985.')).toBeVisible()
+  await expect.element(screen.getByRole('treeitem', { selected: true })).toMatchTextContent(/^4\.1 L 6 cilindros/)
+  await expect.element(screen.getByRole('heading', { name: '1985 · Chevrolet Opala Diplomata 4.1' })).toBeVisible()
+
+  await rowOf(screen, '1986').click()
+  ;(screen.getByRole('treeitem', { name: '2.5 L 4 cilindros' }).element() as HTMLElement).focus()
+  await userEvent.keyboard('{Control>}c{/Control}')
+  await expect.element(screen.getByText('Motor 2.5 L 4 cilindros copiado. Cole-o num período com Colar motor ou Ctrl+V.')).toBeVisible()
+  ;(screen.getByRole('treeitem', { name: '1985', exact: true }).element() as HTMLElement).focus()
+  await userEvent.keyboard('{Control>}v{/Control}')
+  await expect.element(screen.getByText('Motor 2.5 L 4 cilindros colado em 1985.')).toBeVisible()
+  await expect.element(screen.getByRole('heading', { name: '1985 · Chevrolet Opala Diplomata 2.5' })).toBeVisible()
+})
+
+// On a phone, copies the 4.1 from its "⋯", whose sheet only copies it, then pastes it from 1985's "⋯", which offers
+// Colar motor once an engine is copied and calls its pencil Mudar os anos; the copy's sheet opens.
+test('Web: on a phone an engine is copied to another period from their actions', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  answerChanges()
+  const screen = await renderCatalog(true)
+  await screen.getByRole('button', { name: /^Chevrolet/ }).click()
+  for (const name of ['Opala', 'Terceira geração', 'Diplomata', '1986']) {
+    await openBranch(screen, name)
+  }
+  await screen.getByRole('button', { name: 'Ações de 4.1 L 6 cilindros' }).click()
+  const engine = screen.getByRole('dialog', { name: '4.1 L 6 cilindros' })
+  expect(engine.getByRole('button').elements().map((button) => button.textContent)).toEqual(['Copiar motor', 'Fechar'])
+  await engine.getByRole('button', { name: 'Copiar motor' }).click()
+  await screen.getByRole('button', { name: 'Ações de 1985' }).click()
+  const period = screen.getByRole('dialog', { name: '1985' })
+  expect(period.getByRole('button').elements().map((button) => button.textContent)).toEqual([
+    'Novo motor',
+    'Colar motor',
+    'Mudar os anos',
+    'Mover para baixo',
+    'Excluir…',
+    'Fechar',
+  ])
+  await period.getByRole('button', { name: 'Colar motor' }).click()
+  await expect.element(screen.getByText('Motor 4.1 L 6 cilindros colado em 1985.')).toBeVisible()
+  await expect.element(screen.getByRole('heading', { name: '1985 · Chevrolet Opala Diplomata 4.1' })).toBeVisible()
 })
 
 // Types a brand search in another case and checks only the matching tile is left, then clears it and checks every
@@ -705,7 +785,7 @@ test('Web: on a phone the Catalog goes from a brand to an engine sheet and back'
   await expect.element(screen.getByRole('heading', { name: OPALA_41.title })).toBeVisible()
   await expect.element(screen.getByText('Opala › Terceira geração › Diplomata › 1986')).toBeVisible()
   const readouts = screen.getByTestId('catalog.catalog-tab.screen.readouts.readout')
-  expect(readouts.elements().map((readout) => readout.textContent)).toEqual(['Ano1986', 'Motor4.1 L', 'Cilindros6 CIL', 'TraçãoTRASEIRA'])
+  expect(readouts.elements().map((readout) => readout.textContent)).toEqual(['Período1986', 'Motor4.1 L', 'Cilindros6 CIL', 'TraçãoTRASEIRA'])
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
 
   await screen.getByRole('button', { name: 'Voltar aos modelos' }).click()
@@ -794,7 +874,7 @@ test('Web: a brand is deleted from the catalog after confirming', async () => {
   const screen = await renderCatalog()
   await screen.getByRole('button', { name: 'Excluir marca' }).click()
   const confirm = screen.getByRole('dialog', { name: 'Excluir “Chevrolet”?' })
-  await expect.element(confirm).toMatchTextContent(/Vão junto 3 modelos, 4 gerações, 3 versões, 2 anos, 2 motores com ficha\./)
+  await expect.element(confirm).toMatchTextContent(/Vão junto 3 modelos, 4 gerações, 3 versões, 2 períodos, 2 motores com ficha\./)
   await confirm.getByRole('button', { name: 'Excluir' }).click()
   await expect.element(screen.getByRole('radio', { name: 'Chevrolet' })).not.toBeInTheDocument()
   await expect.element(screen.getByRole('radio', { name: 'Volkswagen' })).toBeChecked()
@@ -838,7 +918,7 @@ test('Web: on a phone branches are renamed, moved and deleted from their actions
   await screen.getByRole('button', { name: 'Ações de Comodoro' }).click()
   const actions = screen.getByRole('dialog', { name: 'Comodoro' })
   expect(actions.getByRole('button').elements().map((button) => button.textContent)).toEqual([
-    'Novo ano',
+    'Novo período',
     'Renomear',
     'Mover para baixo',
     'Excluir…',
@@ -858,7 +938,7 @@ test('Web: on a phone branches are renamed, moved and deleted from their actions
   await screen.getByRole('button', { name: 'Ações de Terceira geração' }).click()
   await screen.getByRole('dialog', { name: 'Terceira geração' }).getByRole('button', { name: 'Excluir…' }).click()
   const confirm = screen.getByRole('dialog', { name: 'Excluir “Terceira geração”?' })
-  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 anos, 2 motores com ficha\./)
+  await expect.element(confirm).toMatchTextContent(/Vão junto 3 versões, 2 períodos, 2 motores com ficha\./)
   await confirm.getByRole('button', { name: 'Excluir' }).click()
   await expect.element(screen.getByText('Terceira geração', { exact: true })).not.toBeInTheDocument()
 })

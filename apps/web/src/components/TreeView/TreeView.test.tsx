@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
 import { pencilIcon } from '@apc/tokens/icons'
 import { MODES, STYLES, themes } from '@apc/tokens/theme'
@@ -184,6 +184,20 @@ test('Web: the keyboard moves, opens, closes and selects', async () => {
   await expect.element(item('1986')).toHaveFocus()
   await userEvent.keyboard('{Home}')
   await expect.element(item('Chevette')).toHaveFocus()
+})
+
+// Hands the owner the keys pressed on a row first: one it takes, on the focused engine, reaches it with the row's id and
+// leaves the focus where it was; one it leaves moves the tree as usual.
+test('Web: a key pressed on a row goes to the owner first', async () => {
+  const onRowKey = vi.fn((id: string, event: KeyboardEvent) => event.key === 'ArrowDown' && id === LEAF)
+  const screen = await render(<Sample onRowKey={onRowKey} />)
+  const item = (name: string) => screen.getByRole('treeitem', { name, exact: true })
+  ;(item('4.1 L 6 cilindros').element() as HTMLElement).focus()
+  await userEvent.keyboard('{ArrowDown}')
+  expect(onRowKey).toHaveBeenLastCalledWith(LEAF, expect.objectContaining({ key: 'ArrowDown' }))
+  await expect.element(item('4.1 L 6 cilindros')).toHaveFocus()
+  await userEvent.keyboard('{ArrowUp}')
+  await expect.element(item('2.5 L 4 cilindros')).toHaveFocus()
 })
 
 // Opens a branch and checks its children show at once, so the keyboard can move into them, and its chevron turns
@@ -372,11 +386,13 @@ test('Web: a row keeps its height when its buttons show', async () => {
 function Sample({
   onSelect,
   selectable,
+  onRowKey,
   ...props
 }: {
   onSelect?: (id: string) => void
   selected?: string
   selectable?: (id: string) => boolean
+  onRowKey?: (id: string, event: KeyboardEvent) => boolean
 }) {
   const [selected, setSelected] = useState<string | undefined>('selected' in props ? props.selected : LEAF)
   return (
@@ -385,6 +401,7 @@ function Sample({
       nodes={MODELS}
       selected={selected}
       selectable={selectable}
+      onRowKey={onRowKey}
       onSelect={(id) => {
         setSelected(id)
         onSelect?.(id)
