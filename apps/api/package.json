@@ -2,7 +2,7 @@
   "name": "@apc/api",
   "private": true,
   "license": "UNLICENSED",
-  "version": "0.8.6",
+  "version": "0.8.7",
   "type": "module",
   "scripts": {
     "predev": "pnpm run db:generate",
