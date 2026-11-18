@@ -7,6 +7,7 @@ import {
   brandPlaceText,
   changedVehicle,
   codesInput,
+  colorInput,
   codeTakenError,
   codeTakenMessage,
   descriptionInput,
@@ -66,11 +67,11 @@ const PADS = item({
   vehicleModel: "Opala",
   minQuantity: 2,
   brands: [
-    { id: "b1", partBrand: "Bosch", code: "FRA-1000", color: "Preto", location: null, quantity: 1, unitPriceCents: 3990, photos: [] },
+    { id: "b1", partBrand: "Bosch", code: "FRA-1000", color: "PRETO", location: null, quantity: 1, unitPriceCents: 3990, photos: [] },
     { id: "b2", partBrand: "Fras-le", code: "PD-1000", color: "N/A", location: "B-10", quantity: 3, unitPriceCents: 4990, photos: [] },
   ],
 });
-const ITEMS = [FILTER, PADS, item({ id: "c", code: "X-1", name: "Junta", vehicleBrand: "volkswagen", vehicleModel: "Santana", color: "Azul" })];
+const ITEMS = [FILTER, PADS, item({ id: "c", code: "X-1", name: "Junta", vehicleBrand: "volkswagen", vehicleModel: "Santana", color: "AZUL" })];
 // The lists the API keeps: what the items use, plus the category and the brand of a new spark plug.
 const LISTS: ItemLists = {
   categories: [{ id: "ignicao", name: "Ignição" }, { id: "motor", name: "Motor" }],
@@ -378,6 +379,15 @@ test("Shared: an original code is checked against every code of the other items"
   assert.equal(codeTakenError("fra 1000", ITEMS), codeTakenMessage("Pastilha"));
 });
 
+// Reads colors as they are saved: trimmed and uppercase, with the accents of a color the stock already has when it
+// is the same but for them, and empty when nothing was typed.
+test("Shared: a brand's color is saved in uppercase", () => {
+  assert.equal(colorInput(" preto ", []), "PRETO");
+  assert.equal(colorInput("bordo", ["AZUL", "BORDÔ"]), "BORDÔ");
+  assert.equal(colorInput("Cinza Grafite", ["AZUL"]), "CINZA GRAFITE");
+  assert.equal(colorInput("  ", ["AZUL"]), "");
+});
+
 // Splits codes pasted at once at commas, semicolons and line breaks, trimmed and uppercase, without empty ones.
 test("Shared: codes typed or pasted at once are split", () => {
   assert.deepEqual(splitCodes("5u0 698 151; 5U0-698-151-A,\r\n  ,x"), ["5U0 698 151", "5U0-698-151-A", "X"]);
@@ -418,12 +428,12 @@ test("Shared: an original code is refused when a brand of the item or another it
   assert.equal(hasFormErrors({ originalCodes: [undefined] }), false);
 });
 
-// Builds the body of a filled-in form and checks the writing rule: capitals on every text, uppercase codes, an
-// existing color in its own spelling, an empty color as N/A, blank quantities as zero, the price in cents, and an
+// Builds the body of a filled-in form and checks the writing rule: capitals on every text, uppercase codes and
+// colors, an empty color as N/A, blank quantities as zero, the price in cents, and an
 // edited brand sent with its id.
 test("Shared: the item body follows the writing rule", () => {
   const form = withFormValues({ ...VALID, originalCodes: ["5u0 698 151 "] }, { color: "preto", location: "a-2", quantity: "3" });
-  assert.deepEqual(itemFormBody(form, ["Azul", "Preto"]), {
+  assert.deepEqual(itemFormBody(form, ["AZUL", "PRETO"]), {
     name: "Vela de ignição",
     category: "Ignição",
     vehicles: [{ vehicleBrand: "Chevrolet", vehicleModel: "" }],
@@ -433,7 +443,7 @@ test("Shared: the item body follows the writing rule", () => {
     originalCodes: ["5U0 698 151"],
     material: "",
     description: "",
-    brands: [{ partBrand: "NGK", code: "NGK-B7", quantity: 3, unitPriceCents: 3490, color: "Preto", location: "A-2" }],
+    brands: [{ partBrand: "NGK", code: "NGK-B7", quantity: 3, unitPriceCents: 3490, color: "PRETO", location: "A-2" }],
   });
   assert.equal(itemFormBody(VALID, []).brands[0].color, "N/A");
   assert.deepEqual(
@@ -458,7 +468,7 @@ test("Shared: an item fills the form and saves back unchanged", () => {
     side: "N/A",
     originalCodes: [],
     brands: [
-      { id: PADS.brands[0].id, partBrand: "Bosch", code: "FRA-1000", quantity: "1", price: "R$ 39,90", color: "Preto", location: "" },
+      { id: PADS.brands[0].id, partBrand: "Bosch", code: "FRA-1000", quantity: "1", price: "R$ 39,90", color: "PRETO", location: "" },
       { id: PADS.brands[1].id, partBrand: "Fras-le", code: "PD-1000", quantity: "3", price: "R$ 49,90", color: "", location: "B-10" },
     ],
   });
@@ -486,7 +496,7 @@ test("Shared: a duplicated item keeps every field but the codes, with no stock",
     side: "N/A",
     originalCodes: [],
     brands: [
-      { partBrand: "Bosch", code: "", quantity: "0", price: "R$ 39,90", color: "Preto", location: "" },
+      { partBrand: "Bosch", code: "", quantity: "0", price: "R$ 39,90", color: "PRETO", location: "" },
       { partBrand: "Fras-le", code: "", quantity: "0", price: "R$ 49,90", color: "", location: "B-10" },
     ],
   });
@@ -513,7 +523,7 @@ test("Shared: the form's options come from the lists", () => {
     categories: ["Ignição", "Motor"],
     partBrands: ["Bosch", "NGK"],
     vehicleBrands: ["Chevrolet", "Volkswagen"],
-    colors: ["Azul", "Preto"],
+    colors: ["AZUL", "PRETO"],
   });
   assert.deepEqual(modelsOfBrand(LISTS, "VOLKSWAGEN"), ["Gol", "Santana"]);
   assert.deepEqual(modelsOfBrand(LISTS, "Fiat"), []);
@@ -539,7 +549,7 @@ test("Shared: an item's details are written out field by field", () => {
     code: "FRA-1000",
     quantity: "1",
     price: "R$ 1.234,56",
-    color: "Preto",
+    color: "PRETO",
     location: "B-10",
   });
   assert.deepEqual(Object.keys(brand), Object.keys(BRAND_FIELD_LABELS));

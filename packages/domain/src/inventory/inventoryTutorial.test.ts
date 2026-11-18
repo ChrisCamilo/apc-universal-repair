@@ -27,7 +27,7 @@ const SAVED: Item = testItem({
   vehicleModel: "Gol",
   position: "D",
   side: "LD",
-  color: "Preto",
+  color: "PRETO",
   location: "T-1",
   quantity: 5,
   minQuantity: 2,
@@ -103,7 +103,7 @@ test("Shared: the tutorial has three parts, opening the item from its row", () =
 test("Shared: the tutorial reads the form and the filters loosely", () => {
   assert.equal(formHas(withFormValues(TUTORIAL_ITEM, { category: " motor ", price: "49,9" }), { category: "Motor", price: "49,90" }), true);
   assert.equal(formHas(TUTORIAL_ITEM, { quantity: "4" }), false);
-  assert.equal(filtersHave({ ...TUTORIAL_FILTERS, color: ["Azul", "Preto"] }, TUTORIAL_FILTERS), true);
+  assert.equal(filtersHave({ ...TUTORIAL_FILTERS, color: ["AZUL", "PRETO"] }, TUTORIAL_FILTERS), true);
   assert.equal(filtersHave(EMPTY_ITEM_FILTERS, TUTORIAL_FILTERS), false);
 });
 

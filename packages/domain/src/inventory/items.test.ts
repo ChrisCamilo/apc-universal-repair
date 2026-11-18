@@ -5,6 +5,7 @@ import {
   brandsValue,
   capitalizeFirst,
   codeKey,
+  colorText,
   findOption,
   formatPrice,
   formatPriceRange,
@@ -57,6 +58,14 @@ test("Shared: text values start with a capital letter and keep the rest", () => 
   assert.equal(capitalizeFirst("l"), "L");
   assert.equal(capitalizeFirst("ngk XR3"), "Ngk XR3");
   assert.equal(capitalizeFirst("NGK"), "NGK");
+});
+
+// Writes colors in uppercase, accents kept, leaving the spaces as typed.
+test("Shared: a color is written in uppercase", () => {
+  assert.equal(colorText("preto"), "PRETO");
+  assert.equal(colorText("bordô"), "BORDÔ");
+  assert.equal(colorText("cinza "), "CINZA ");
+  assert.equal(colorText("N/A"), "N/A");
 });
 
 // Matches names ignoring case and accents, and part codes ignoring spaces and separators.
