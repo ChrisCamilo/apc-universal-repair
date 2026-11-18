@@ -298,16 +298,17 @@ test('Web: names not in their lists are refused on save', async () => {
 })
 
 // Leaves the name, the color, the location and the price after typing them loosely, and checks each is written
-// back: capitals, an existing color in its own spelling, and the price in reais.
+// back: capitals, the color in uppercase as it is typed and trimmed after, and the price in reais.
 test('Web: leaving a field writes it back by the rules', async () => {
   const screen = await render(<Sample />)
   await screen.getByLabelText('Nome').fill('vela de ignição')
-  await screen.getByLabelText('Cor').fill('preto')
+  await screen.getByLabelText('Cor').fill('preto ')
+  await expect.element(screen.getByLabelText('Cor')).toHaveValue('PRETO ')
   await screen.getByLabelText('Local').fill('a-2')
   await screen.getByLabelText('Valor unitário (R$)').fill('1234,5')
   await userEvent.click(screen.getByRole('heading', { name: 'Novo item' }))
   await expect.element(screen.getByLabelText('Nome')).toHaveValue('Vela de ignição')
-  await expect.element(screen.getByLabelText('Cor')).toHaveValue('Preto')
+  await expect.element(screen.getByLabelText('Cor')).toHaveValue('PRETO')
   await expect.element(screen.getByLabelText('Local')).toHaveValue('A-2')
   await expect.element(screen.getByLabelText('Valor unitário (R$)')).toHaveValue('R$ 1.234,50')
 })

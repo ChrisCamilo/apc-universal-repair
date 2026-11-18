@@ -86,7 +86,7 @@ test("Web: on a phone an item's details fill the screen", { tag: [TEST_TAGS.inve
     const brand = details.root.getByRole("group", { name: "Cofap" });
     await expect(brand).toContainText("AM-501");
     await expect(brand).toContainText(/R\$\s249,00/);
-    await expect(brand).toContainText("Local A-10 · Preto");
+    await expect(brand).toContainText("Local A-10 · PRETO");
     const halves = await Promise.all([details.duplicate, details.edit].map(async (button) => (await button.boundingBox())!));
     expect(Math.abs(halves[0].width - halves[1].width)).toBeLessThanOrEqual(1);
     expect(halves[0].y + halves[0].height).toBeLessThanOrEqual(height);
