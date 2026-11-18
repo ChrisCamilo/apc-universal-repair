@@ -5,6 +5,7 @@ import { addCodes, ITEM_FORM_MESSAGES, parsePrice, priceInput } from "./itemForm
 import {
   capitalizeFirst,
   codeKey,
+  colorText,
   generationText,
   ITEM_DESCRIPTION_MAX,
   itemCreateSchema,
@@ -37,7 +38,7 @@ import {
 // ("Chevrolet / Monza / 1985-1990 / 1.6 GLX"), or the brand alone for any model; a file with the "vehicle_brand" and "vehicle_model"
 // columns of before still reads, as the item's one vehicle. The "original_codes" column holds the vehicle maker's
 // codes, separated by "|". The "material" and "description" columns hold the part's material and its short
-// description, up to 30 characters, both optional. Text follows the writing rule, codes are uppercase, and a category, brand or model
+// description, up to 30 characters, both optional. Text follows the writing rule, codes and colors are uppercase, and a category, brand or model
 // already in the lists takes its spelling there; the names not in the lists yet are listed, to be created by the
 // import. The valid items go to the API in one request, checked with the item schema, and come back as how many items
 // were created and updated; an item with a row in error is left out whole. The export writes the items of the list as
@@ -255,7 +256,7 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
         quantity,
         location: value("location") && capitalizeFirst(value("location")),
         unitPriceCents: price ?? 0,
-        color: value("color") ? capitalizeFirst(value("color")) : NOT_APPLICABLE,
+        color: value("color") ? colorText(value("color").trim()) : NOT_APPLICABLE,
       },
     ],
   };
