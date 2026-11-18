@@ -222,6 +222,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 |  | the panel fills the window in each state | `inventory-list` | desktop | `@layout` |
 |  | only the list scrolls, also on a notebook | `inventory-list` | desktop | `@layout` |
 |  | sorting through the API | `inventory-list` | both |  |
+|  | the Colunas menu: columns shown and hidden, kept on the device | `inventory-list` | desktop |  |
 |  | loading, error and empty states | `inventory-list` | both |  |
 |  | paging: page, size, search, delete, new item | `inventory-list` | desktop |  |
 |  | loads more as it scrolls, keeps its place | `inventory-list` | mobile |  |
@@ -665,6 +666,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 |  | o painel ocupa a janela em cada estado | `inventory-list` | desktop | `@layout` |
 |  | só a lista rola, também num notebook | `inventory-list` | desktop | `@layout` |
 |  | ordenar pela API | `inventory-list` | ambos |  |
+|  | o menu Colunas: colunas mostradas e ocultas, guardadas no dispositivo | `inventory-list` | desktop |  |
 |  | estados de carregando, erro e vazio | `inventory-list` | ambos |  |
 |  | paginação: página, tamanho, busca, exclusão, item novo | `inventory-list` | desktop |  |
 |  | carrega mais ao rolar, mantém o lugar | `inventory-list` | mobile |  |
