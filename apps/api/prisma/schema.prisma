@@ -83,13 +83,17 @@ model CatalogVersion {
   @@index([generationId])
 }
 
-/// A model year of a catalog version.
+/// A period of a catalog version: its first and last model year, the same for a single year, with the engines it had.
+/// Its level keeps the name "year" in the API (/catalog/years), as before periods.
 model CatalogYear {
   id        String          @id @default(uuid())
   versionId String
   version   CatalogVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
   position  Int
+  /// The period's first year.
   year      Int
+  /// The period's last year, not before the first.
+  lastYear  Int
   engines   CatalogEngine[]
 
   @@index([versionId])
