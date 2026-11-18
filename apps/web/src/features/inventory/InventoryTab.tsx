@@ -33,6 +33,7 @@ import {
   stockTint,
   type Item,
   type ItemBrand,
+  type ItemSortKey,
   type ItemStatus,
 } from '@apc/domain/items'
 import { activeFilterCount, type FilterValues } from '@apc/ui-spec/filters'
@@ -69,6 +70,7 @@ import { Spinner } from '../../components/Spinner'
 import { SearchField } from '../../components/TextField'
 import { ToolButton } from '../../components/ToolButton'
 import { usePhone } from '../../components/usePhone.ts'
+import { ColumnsMenu } from './ColumnsMenu.tsx'
 import { DeleteItemDialog } from './DeleteItemDialog.tsx'
 import { ExportItemsDialog } from './ExportItemsDialog.tsx'
 import { ImportItemsDialog } from './ImportItemsDialog.tsx'
@@ -77,6 +79,7 @@ import { ManageListsDialog } from './ManageListsDialog.tsx'
 import { savePhotos } from './savePhotos.ts'
 import { useItemLists } from './useItemLists.ts'
 import { useItemPages } from './useItemPages.ts'
+import { useHiddenColumns } from './useHiddenColumns.ts'
 import { useItems } from './useItems.ts'
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts.ts'
 import { useCatalog } from '../catalog/useCatalog.ts'
@@ -95,7 +98,9 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // Esgotado chips, one at a time, by stock status; and "Limpar filtros" turns them all off. The filters go to the API
 // as the list query with the search, and the list shows one page of what matches, newest first: 25, 50 or 100 items,
 // the default set in the user menu. A click on a column header (or the "Ordenar" select at phone width) sorts the
-// list by that column in the API, a second click the other way. Changing the search, a filter or the sort goes back
+// list by that column in the API, a second click the other way. The "Colunas" menu beside Filtros shows and hides
+// each column after the name, a choice the device keeps (see useHiddenColumns): Material shows and Local hides until
+// turned on. Changing the search, a filter or the sort goes back
 // to the first page, a new item shows first on the first page, and deleting the last item of a page goes to the one
 // before. While the items load, skeleton rows hold their place; when nothing is in stock, the empty state offers
 // "Novo item", and when the search or the filters leave nothing, it offers to clear them; when the API fails, the
@@ -122,7 +127,7 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // status off (see inventoryLinkContext.ts).
 // On a phone (below `card:`) the tab follows the Estoque mockup: no panel around it, and the page scrolls as a whole.
 // Each card shows the item's name, its first code with its part brand or how many brands make it, and where it fits,
-// where it is and its price; its quantity has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
+// what it is made of and its price; its quantity has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
 // tap on a card opens the item's details, an item of several brands too. The stock status chips name their counts
 // ("Baixo · 5"), and "Novo item" is a round "+" at the bottom right, above the bottom bar. In place of the pagination
 // and "Itens por página", the list loads its next SCROLL_PAGE_SIZE items once it scrolls within a screen of its end,
@@ -169,6 +174,17 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
       const color = brandsValue(rowItem(row), 'color')!
       return <Coded value={color} name={color === NOT_APPLICABLE ? 'Cor não se aplica' : color} />
     },
+  },
+  {
+    key: 'material',
+    sortable: true,
+    header: 'Material',
+    // The item's, the same on each of its brands' rows; a dash, muted, when it has none.
+    cell: ({ item }) => (
+      <span className={inventoryTab({ muted: !item.material }).classes.coded()} data-testid={CELLS.ids.coded}>
+        {item.material ?? '—'}
+      </span>
+    ),
   },
   {
     key: 'location',
@@ -264,6 +280,8 @@ export function InventoryTab() {
   const { lists, create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists()
   // The catalog, for the generations and versions the item form offers for a vehicle.
   const catalog = useCatalog()
+  // The table's columns this device hides, which the "Colunas" menu changes.
+  const [hidden, setHidden] = useHiddenColumns()
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false)
   // Whether a phone's sheet of the other actions, which the header's "⋯" opens, is open.
@@ -575,15 +593,18 @@ export function InventoryTab() {
               />
             </>
           ) : (
-            <FilterMenu
-              label="Filtros do estoque"
-              title="Filtrar estoque"
-              rows={(draft) => itemFilterRows(items, draft)}
-              values={filters}
-              onApply={(values) => narrow(() => setFilters(values))}
-              open={filtering}
-              onOpenChange={setFiltering}
-            />
+            <>
+              <FilterMenu
+                label="Filtros do estoque"
+                title="Filtrar estoque"
+                rows={(draft) => itemFilterRows(items, draft)}
+                values={filters}
+                onApply={(values) => narrow(() => setFilters(values))}
+                open={filtering}
+                onOpenChange={setFiltering}
+              />
+              <ColumnsMenu hidden={hidden} onHiddenChange={setHidden} />
+            </>
           )}
           <FilterChipGroup
             label="Situação do estoque"
@@ -672,7 +693,8 @@ export function InventoryTab() {
                       </span>
                     ),
                 },
-                ...COLUMNS,
+                // A phone's cards show no columns but the quantity, which hiding them on the desktop leaves there.
+                ...(phone ? COLUMNS : COLUMNS.filter((column) => !hidden.includes(column.key as ItemSortKey))),
                 {
                   key: 'actions',
                   header: 'Ações',
