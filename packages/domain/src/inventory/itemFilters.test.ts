@@ -7,7 +7,10 @@ import {
   itemFilterRows,
   itemListQuery,
   itemMatchesQuery,
+  hiddenColumns,
+  ITEM_HIDDEN_COLUMNS_DEFAULT,
   ITEM_SORT_OPTIONS,
+  ITEM_TABLE_COLUMNS,
   matchingCount,
   POSITION_FILTERS,
   SIDE_FILTERS,
@@ -229,13 +232,25 @@ test("Shared: the filter sheet counts the items its filters would show", () => {
 // Lists the sorts a phone offers: "Ordem de cadastro" first, then each column ascending and descending, by text or by
 // number.
 test("Shared: the inventory's sorts list every column both ways", () => {
-  assert.equal(ITEM_SORT_OPTIONS.length, 21);
+  assert.equal(ITEM_SORT_OPTIONS.length, 23);
   assert.deepEqual(ITEM_SORT_OPTIONS.slice(0, 3), [
     { value: "", label: "Ordem de cadastro" },
     { value: "name:asc", label: "Item (A → Z)" },
     { value: "name:desc", label: "Item (Z → A)" },
   ]);
   assert.deepEqual(ITEM_SORT_OPTIONS.at(-1), { value: "quantity:desc", label: "Quantidade (maior → menor)" });
+});
+
+// Reads the columns a device hides: Local when it keeps nothing or something that doesn't read, and otherwise the
+// table's columns it names, in the table's order, without the item's name or keys it doesn't know.
+test("Shared: a device hides Local until it keeps another choice", () => {
+  assert.deepEqual(ITEM_TABLE_COLUMNS.map((column) => column.label).slice(5, 8), ["Cor", "Material", "Local"]);
+  assert.equal(ITEM_TABLE_COLUMNS.some((column) => column.key === "name"), false);
+  assert.deepEqual(hiddenColumns(null), [...ITEM_HIDDEN_COLUMNS_DEFAULT]);
+  assert.deepEqual(hiddenColumns("not json"), ["location"]);
+  assert.deepEqual(hiddenColumns('{"location":true}'), ["location"]);
+  assert.deepEqual(hiddenColumns("[]"), []);
+  assert.deepEqual(hiddenColumns('["quantity","name","photo","category"]'), ["category", "quantity"]);
 });
 
 // Renames and merges entries the filters name, in another spelling, and checks each value follows, a vehicle brand
