@@ -5,8 +5,8 @@ import { apiUrl } from "../support/api.ts";
 
 // A stand-in for the catalog's routes, so the Catalog tab works the same on every run without a database: GET answers
 // the catalog a new server starts with, and the changes (a brand or a node added, renamed, moved or deleted) are made on
-// a copy of it kept for the test, under the API's rules (applyCatalogChange), each answering the whole catalog, or 404
-// or 409 as the API does.
+// a copy of it kept for the test, under the API's rules (applyCatalogChange), each answering the whole catalog, or 404,
+// 409 or 400 as the API does.
 
 /**
  * Answers the catalog's routes under /api/catalog from a copy of the test catalog, which the test's changes change.
@@ -27,8 +27,8 @@ export async function serveCatalog(page: Page): Promise<void> {
         return route.fallback();
       }
       const result = applyCatalogChange(catalog, made.change);
-      if (result === "missing" || result === "taken") {
-        const status = result === "missing" ? 404 : 409;
+      if (typeof result === "string") {
+        const status = { missing: 404, taken: 409, invalid: 400 }[result];
         return route.fulfill({ status, json: { statusCode: status, message: result } });
       }
       catalog = result;

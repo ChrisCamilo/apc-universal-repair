@@ -14,6 +14,7 @@ import {
   catalogNodes,
   catalogSiblings,
   catalogValuesOf,
+  catalogYearLimits,
   ENGINE_CLIPBOARD,
   catalogWithParts,
   engineSheetNames,
@@ -280,6 +281,7 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
       level={level}
       label={label}
       initial={initial}
+      limits={editing ? catalogYearLimits(brand.models, editing) : undefined}
       error={editor.error}
       saving={editor.saving}
       onSave={(values) => void editor.save(values)}
@@ -828,6 +830,7 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
               level={editing.kind === 'rename' ? (editing.node.level as CatalogEditLevel) : editing.level}
               label={editTitle()}
               initial={editing.kind === 'rename' ? catalogValuesOf(editing.node) : undefined}
+              limits={catalogYearLimits(brand?.models ?? [], editing)}
               error={editor.error}
               saving={editor.saving}
               onSave={(values) => void editor.save(values)}

@@ -6,6 +6,8 @@ import {
   CATALOG_ENGINES_PATH,
   CATALOG_LEVEL_PATHS,
   catalogFrom,
+  periodInGeneration,
+  periodsSpan,
   type CatalogData,
   type CatalogEditLevel,
   type CatalogLevel,
@@ -230,17 +232,21 @@ const LEVEL_SEGMENTS: Record<string, CatalogLevel> = Object.fromEntries(
   Object.entries({ ...CATALOG_LEVEL_PATHS, engine: CATALOG_ENGINES_PATH }).map(([level, path]) => [path.split("/").at(-1)!, level as CatalogLevel]),
 );
 /** A node of any level as the API sends it, by its id and what tells it from its siblings. */
-type RawNode = { id: string; name?: string; year?: number; lastYear?: number | null };
+type RawNode = { id: string; name?: string; firstYear?: number; year?: number; lastYear?: number | null };
+/** A generation as the API sends it, with its versions and their periods. */
+type RawGeneration = CatalogData["brands"][number]["models"][number]["generations"][number];
 
 /**
  * Makes one of the API's changes on a catalog held in memory, under the API's rules: a brand, a model of a brand, or a
  * period of a version, only once each; a node added at the end of its siblings; a move past the ends leaving them as they
- * are; and a delete taking what is under the node, or a brand's delete its models with their trees.
+ * are; a period inside its generation's years, and a generation's years keeping its periods'; and a delete taking what
+ * is under the node, or a brand's delete its models with their trees.
  * @param data The catalog as the API sends it.
  * @param change The change.
- * @returns The catalog after it, "taken" when the name or year is another's, or "missing" when its node isn't there.
+ * @returns The catalog after it, "taken" when the name or year is another's, "invalid" for years outside the
+ * generation's or its periods', or "missing" when its node isn't there.
  */
-export function applyCatalogChange(data: CatalogData, change: CatalogChange): CatalogData | "taken" | "missing" {
+export function applyCatalogChange(data: CatalogData, change: CatalogChange): CatalogData | "taken" | "invalid" | "missing" {
   const next: CatalogData = JSON.parse(JSON.stringify(data));
   if (change.kind === "addBrand") {
     const name = listName(change.name);
@@ -265,6 +271,9 @@ export function applyCatalogChange(data: CatalogData, change: CatalogChange): Ca
     const twin = group.list.find((each, at) => at !== index && sameNode(change.level, each, node));
     if (twin) {
       return "taken";
+    }
+    if (!keepsYears(next, change.level, group.parentId, change.kind === "add" ? null : group.list[index], node)) {
+      return "invalid";
     }
     if (change.kind === "add") {
       group.list.push(node);
@@ -323,6 +332,29 @@ export function catalogChangeOf(
     return { status: 200, change: { kind: "move", level, id, direction: body.direction as "up" | "down" } };
   }
   return method === "DELETE" ? { status: 200, change: { kind: "delete", level, id } } : null;
+}
+
+/**
+ * Tells whether a period added or changed stays inside its generation's years, and a generation's years changed keep
+ * the ones its periods cover (see periodInGeneration).
+ * @param data The catalog.
+ * @param level The node's level.
+ * @param parentId Its parent's id: a period's version.
+ * @param held The node as it was, null when it is added.
+ * @param node The node as it is saved.
+ * @returns False for years outside them; true for the other levels.
+ */
+function keepsYears(data: CatalogData, level: CatalogLevel, parentId: string, held: RawNode | null, node: RawNode): boolean {
+  const generations = data.brands.flatMap((brand) => brand.models.flatMap((model) => model.generations));
+  if (level === "year") {
+    const generation = generations.find((each) => each.versions.some((version) => version.id === parentId))!;
+    return periodInGeneration({ year: node.year!, lastYear: node.lastYear! }, generation);
+  }
+  if (level !== "generation" || !held) {
+    return true;
+  }
+  const span = periodsSpan((held as unknown as RawGeneration).versions.flatMap((version) => version.years));
+  return !span || periodInGeneration(span, { firstYear: node.firstYear!, lastYear: node.lastYear ?? null });
 }
 
 /**

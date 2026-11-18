@@ -12,6 +12,7 @@ import {
   catalogNodes,
   catalogSiblings,
   catalogValuesOf,
+  catalogYearLimits,
   ENGINE_CLIPBOARD,
   catalogWithParts,
   engineSheetNames,
@@ -498,6 +499,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
           title={editTitle(shownEditing)}
           level={shownEditing.kind === 'rename' ? (shownEditing.node.level as CatalogEditLevel) : shownEditing.level}
           initial={shownEditing.kind === 'rename' ? catalogValuesOf(shownEditing.node) : undefined}
+          limits={catalogYearLimits(brand?.models ?? [], shownEditing)}
           submitLabel={shownEditing.kind === 'rename' ? 'Salvar' : 'Adicionar'}
           error={editor.error}
           saving={editor.saving}

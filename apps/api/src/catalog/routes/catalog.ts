@@ -13,8 +13,11 @@ import {
   catalogNameSchema,
   catalogSchema,
   catalogYearInputSchema,
+  periodInGeneration,
+  periodsSpan,
   type CatalogData,
   type CatalogEditLevel,
+  type GenerationYears,
 } from "@apc/domain/catalog";
 import { optionKey } from "@apc/domain/items";
 import { listName } from "@apc/domain/lists";
@@ -38,8 +41,12 @@ import { CATALOG_GENERATIONS } from "../catalogTree.js";
 // the period's, and its sheet is saved again; its name and its sheet's title come from the sheet and the tree. A node or parent
 // that isn't there answers 404. Item vehicles point at generations and versions, so a brand or node an item uses, or
 // one with such a node under it, isn't deleted (409): the item's vehicle changes first. Renaming a version or changing a
-// generation's years shows on the items that use them.
+// generation's years shows on the items that use them. A period stays inside its generation's years, which count as
+// inside, and a generation's years keep the ones its periods cover: a period added or changed outside them, or a
+// generation's years changed past its periods', answers 400 (see periodInGeneration).
 
+/** The years of a generation, which its periods keep to. */
+const GENERATION_YEARS = { firstYear: true, lastYear: true } as const;
 /** Orders a level of the catalog by its place among its siblings. */
 const IN_ORDER = { orderBy: { position: "asc" } } as const;
 /** Orders siblings by their place, and those that share one by id, so a move always finds the same order. */
@@ -53,6 +60,27 @@ const SIBLING_ORDER = { orderBy: [{ position: "asc" as const }, { id: "asc" as c
  */
 function conflict(reply: FastifyReply, message: string) {
   return reply.status(409).send({ statusCode: 409, error: "Conflict", message });
+}
+
+/**
+ * Answers 400 for years the tree can't take.
+ * @param reply Reply to send.
+ * @param message What is wrong.
+ * @returns The sent reply.
+ */
+function badRequest(reply: FastifyReply, message: string) {
+  return reply.status(400).send({ statusCode: 400, error: "Bad Request", message });
+}
+
+/**
+ * Answers 400 for a period outside its generation's years.
+ * @param reply Reply to send.
+ * @param generation The generation's years.
+ * @returns The sent reply.
+ */
+function outsideGeneration(reply: FastifyReply, generation: GenerationYears) {
+  const years = `${generation.firstYear}–${generation.lastYear ?? ""}`;
+  return badRequest(reply, `A period must stay inside its generation's years, ${years}.`);
 }
 
 /**
@@ -292,10 +320,14 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     { schema: { params, body: catalogYearInputSchema, response: added } },
     async (request, reply) => {
       const versionId = request.params.id;
-      if (!(await prisma.catalogVersion.findUnique({ where: { id: versionId }, select: { id: true } }))) {
+      const version = await prisma.catalogVersion.findUnique({ where: { id: versionId }, select: { generation: { select: GENERATION_YEARS } } });
+      if (!version) {
         return notFound(reply);
       }
       const { year, lastYear } = request.body;
+      if (!periodInGeneration({ year, lastYear }, version.generation)) {
+        return outsideGeneration(reply, version.generation);
+      }
       if (await prisma.catalogYear.findFirst({ where: { versionId, year, lastYear }, select: { id: true } })) {
         return conflict(reply, `${year}-${lastYear} is a period of this version already.`);
       }
@@ -361,6 +393,10 @@ export function registerCatalogRoutes(app: FastifyInstance) {
         return notFound(reply);
       }
       const { name, firstYear, lastYear } = request.body;
+      const span = periodsSpan(await prisma.catalogYear.findMany({ where: { version: { generationId: id } }, select: { year: true, lastYear: true } }));
+      if (span && !periodInGeneration(span, { firstYear, lastYear })) {
+        return badRequest(reply, `This generation's periods cover ${span.year}–${span.lastYear}, which its years must keep.`);
+      }
       await prisma.catalogGeneration.update({ where: { id }, data: { name: listName(name), firstYear, lastYear } });
       return readCatalog();
     },
@@ -384,11 +420,14 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     { schema: { params, body: catalogYearInputSchema, response: changed } },
     async (request, reply) => {
       const { id } = request.params;
-      const node = await prisma.catalogYear.findUnique({ where: { id }, select: { versionId: true } });
+      const node = await prisma.catalogYear.findUnique({ where: { id }, select: { versionId: true, version: { select: { generation: { select: GENERATION_YEARS } } } } });
       if (!node) {
         return notFound(reply);
       }
       const { year, lastYear } = request.body;
+      if (!periodInGeneration({ year, lastYear }, node.version.generation)) {
+        return outsideGeneration(reply, node.version.generation);
+      }
       if (await prisma.catalogYear.findFirst({ where: { versionId: node.versionId, year, lastYear, id: { not: id } }, select: { id: true } })) {
         return conflict(reply, `${year}-${lastYear} is a period of this version already.`);
       }

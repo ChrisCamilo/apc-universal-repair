@@ -14,6 +14,7 @@ import {
   carSheet,
   CATALOG_HOME,
   CATALOG_TAKEN,
+  CATALOG_YEAR_MESSAGE,
   catalogAddUnder,
   catalogEditRequest,
   catalogFrom,
@@ -22,6 +23,7 @@ import {
   catalogSheetRequest,
   catalogSiblings,
   catalogValuesOf,
+  catalogYearLimits,
   engineLabel,
   enginePath,
   engineSheet,
@@ -36,6 +38,7 @@ import {
   modelsNamed,
   partFit,
   partScreen,
+  periodsSpan,
   readCatalogFields,
   readEngineFields,
   revealedVehicle,
@@ -43,6 +46,7 @@ import {
   screenHeader,
   treePath,
   vehicleSuggestions,
+  yearInput,
   type CatalogData,
   type CatalogNode,
 } from "./catalog.ts";
@@ -516,7 +520,8 @@ test("Shared: what a screen adds or renames is sent to the right route", () => {
   assert.deepEqual(engineSheetNames(TEST_CATALOG, CHEVROLET, engine.id), { year: "1986", brand: "Chevrolet", model: "Opala", version: "Diplomata" });
 });
 
-// Reads the fields of a node as typed: a name required, a period's years of four digits in the catalog's range, its last
+// Reads the fields of a node as typed: a name required, a period's years of four digits in the catalog's range (the
+// message saying so, and a field keeping only four digits as it is typed), its last
 // year empty for a single year or not before the first, a generation's last year empty or not before the first; and an engine's sheet: litres with a comma or a dot, cylinders in range,
 // a drive chosen and the summary trimmed.
 test("Shared: what is typed into a node or an engine sheet is checked before it is saved", () => {
@@ -528,8 +533,10 @@ test("Shared: what is typed into a node or an engine sheet is checked before it 
   assert.deepEqual(readCatalogFields("year", { ...empty, year: "2007", lastYear: "2004" }), {
     problems: { lastYear: "O último ano não pode vir antes do primeiro." },
   });
-  assert.deepEqual(readCatalogFields("year", { ...empty, year: "2007", lastYear: "12" }), { problems: { lastYear: "Use um ano de 1900 a 2100." } });
-  assert.deepEqual(readCatalogFields("year", { ...empty, year: "1890" }), { problems: { year: "Use um ano de 1900 a 2100." } });
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "2007", lastYear: "12" }), { problems: { lastYear: CATALOG_YEAR_MESSAGE } });
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "1890" }), { problems: { year: CATALOG_YEAR_MESSAGE } });
+  assert.equal(CATALOG_YEAR_MESSAGE, "Use o ano com 4 dígitos, de 1900 a 2100, como 1968.");
+  assert.deepEqual(["19a68", "196855", "68", ""].map(yearInput), ["1968", "1968", "68", ""]);
   assert.deepEqual(readCatalogFields("generation", { ...empty, name: "G2", firstYear: "1995" }), {
     values: { name: "G2", firstYear: 1995, lastYear: null },
   });
@@ -537,7 +544,7 @@ test("Shared: what is typed into a node or an engine sheet is checked before it 
     problems: { lastYear: "O último ano não pode vir antes do primeiro." },
   });
   assert.deepEqual(readCatalogFields("generation", { name: "", firstYear: "95", lastYear: "x", year: "" }), {
-    problems: { name: "Informe o nome.", firstYear: "Use um ano de 1900 a 2100.", lastYear: "Use um ano de 1900 a 2100." },
+    problems: { name: "Informe o nome.", firstYear: CATALOG_YEAR_MESSAGE, lastYear: CATALOG_YEAR_MESSAGE },
   });
 
   assert.deepEqual(readEngineFields({ litres: "4,1", cylinders: "6", drive: "REAR", summary: "  Seis em linha. " }), {
@@ -550,6 +557,60 @@ test("Shared: what is typed into a node or an engine sheet is checked before it 
     problems: { litres: "Use uma cilindrada de 0,1 a 15,0 L.", cylinders: "Use de 1 a 16 cilindros.", drive: "Escolha a tração." },
   });
   assert.equal(litresText(41), "4,1");
+});
+
+// Keeps a period inside its generation's years, which count as inside: in the Opala's first generation (1968–1974) a
+// period of 1968–1974, 1970 or 1970–1972 is saved, and one of 1967–1975, 1975 or 1972–1975 is refused under the field
+// outside; a generation still made takes any period from its first year on. A generation keeps the years its periods
+// cover. The form finds those limits for a period added or renamed (its generation's) and a generation renamed (its
+// periods'), none for a version; and the stand-in refuses the same as the API.
+test("Shared: a period stays inside its generation's years, and a generation keeps its periods'", () => {
+  const empty = { name: "", firstYear: "", lastYear: "", year: "" };
+  const first = { generation: { firstYear: 1968, lastYear: 1974 } };
+  const outside = "O período tem de ficar dentro dos anos da geração: de 1968 a 1974.";
+  /** Reads a period typed under the first generation. */
+  const period = (year: string, lastYear = "") => readCatalogFields("year", { ...empty, year, lastYear }, first);
+  assert.deepEqual(period("1968", "1974"), { values: { year: 1968, lastYear: 1974 } });
+  assert.deepEqual(period("1970"), { values: { year: 1970, lastYear: 1970 } });
+  assert.deepEqual(period("1970", "1972"), { values: { year: 1970, lastYear: 1972 } });
+  assert.deepEqual(period("1967", "1975"), { problems: { year: outside, lastYear: outside } });
+  assert.deepEqual(period("1975"), { problems: { year: outside } });
+  assert.deepEqual(period("1972", "1975"), { problems: { lastYear: outside } });
+  const stillMade = { generation: { firstYear: 2019, lastYear: null } };
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "2030" }, stillMade), { values: { year: 2030, lastYear: 2030 } });
+  assert.deepEqual(readCatalogFields("year", { ...empty, year: "2018", lastYear: "2020" }, stillMade), {
+    problems: { year: "O período tem de ficar dentro dos anos da geração: de 2019 em diante." },
+  });
+
+  const periods = { periods: { year: 1969, lastYear: 1974 } };
+  const around = "Os períodos desta geração vão de 1969 a 1974.";
+  /** Reads the first generation's years as typed, its periods covering 1969–1974. */
+  const generation = (firstYear: string, lastYear: string) => readCatalogFields("generation", { ...empty, name: "G1", firstYear, lastYear }, periods);
+  assert.deepEqual(generation("1969", "1974"), { values: { name: "G1", firstYear: 1969, lastYear: 1974 } });
+  assert.deepEqual(generation("1968", ""), { values: { name: "G1", firstYear: 1968, lastYear: null } });
+  assert.deepEqual(generation("1970", "1973"), { problems: { firstYear: around, lastYear: around } });
+  assert.deepEqual(readCatalogFields("generation", { ...empty, name: "G1", firstYear: "1971" }, { periods: { year: 1970, lastYear: 1970 } }), {
+    problems: { firstYear: "Os períodos desta geração são de 1970." },
+  });
+  assert.deepEqual(periodsSpan([{ year: 1986, lastYear: 1986 }, { year: 1980, lastYear: 1984 }]), { year: 1980, lastYear: 1986 });
+  assert.equal(periodsSpan([]), null);
+
+  const models = TEST_CATALOG.brands[0].models;
+  const nodes = catalogNodes(models);
+  const third = { generation: { firstYear: 1980, lastYear: 1992 } };
+  assert.deepEqual(catalogYearLimits(models, { kind: "add", level: "year", parent: { level: "version", id: DIPLOMATA } }), third);
+  const period1986 = nodes.get(DIPLOMATA)!.children![1];
+  assert.deepEqual(catalogYearLimits(models, { kind: "rename", node: period1986 }), third);
+  assert.deepEqual(catalogYearLimits(models, { kind: "rename", node: nodes.get(GENERATION_3)! }), { periods: { year: 1985, lastYear: 1986 } });
+  assert.deepEqual(catalogYearLimits(models, { kind: "rename", node: nodes.get(DIPLOMATA)! }), {});
+  assert.deepEqual(catalogYearLimits(models, { kind: "add", level: "version", parent: { level: "generation", id: GENERATION_3 } }), {});
+
+  const added = { kind: "add" as const, level: "year" as const, parentId: DIPLOMATA, id: FIAT };
+  assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { ...added, values: { year: 1979, lastYear: 1985 } }), "invalid");
+  assert.notEqual(applyCatalogChange(TEST_CATALOG_DATA, { ...added, values: { year: 1980, lastYear: 1992 } }), "invalid");
+  const narrowed = { name: "Terceira geração", firstYear: 1986, lastYear: 1992 };
+  assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "edit", level: "generation", id: GENERATION_3, values: narrowed }), "invalid");
+  assert.equal(applyCatalogChange(TEST_CATALOG_DATA, { kind: "edit", level: "year", id: period1986.id, values: { year: 1986, lastYear: 1993 } }), "invalid");
 });
 
 // Offers a vehicle's generations and versions in the item form: the Opala's in the catalog, its model found as a part's

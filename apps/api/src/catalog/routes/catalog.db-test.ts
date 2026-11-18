@@ -13,8 +13,8 @@ import { testDevice, testProof } from "../../devices/testDevices.js";
 // The catalog against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded, on PostgreSQL or
 // SQLite: it holds the catalog a new database starts with, which its migrations inserted, and the vehicle brands and
 // models it has are kept in the Inventory's lists, where deleting one takes it out of the catalog; a brand is added and
-// deleted, and the levels of its tree are added, renamed, moved and deleted. Each run uses its own names, removed at the
-// end.
+// deleted, and the levels of its tree are added, renamed, moved and deleted, a period kept inside its generation's years.
+// Each run uses its own names, removed at the end.
 
 const app = buildApp();
 /** Tells this run's list names apart from the seed's and other runs'. */
@@ -218,6 +218,43 @@ test("API: the levels of a tree are renamed and moved", async () => {
       [2003, 2005],
     ],
   ]);
+});
+
+// Adds a generation of 1968–1974 with a version, and checks its periods stay inside its years, which count as inside:
+// 1968–1974 and 1970 are added, while 1967–1975, 1975 and 1972–1975 are refused with 400, and so is a period changed to
+// 1967–1970. Then changing the generation's years past its periods' (1969–1974, 1968–1973) is refused, while widening
+// them, or leaving the last one empty, is taken.
+test("API: a period stays inside its generation's years, and a generation keeps its periods'", async () => {
+  const brand = await addedBrand(`Simca ${RUN}`);
+  const tree = async () => catalogSchema.parse((await call("GET", "/catalog")).json()).brands.find((each) => each.id === brand)!;
+  await call("POST", `/catalog/brands/${brand}/models`, { name: `Esplanada ${RUN}` });
+  await call("POST", `/catalog/models/${(await tree()).models[0].id}/generations`, { name: "Primeira", firstYear: 1968, lastYear: 1974 });
+  const generation = (await tree()).models[0].generations[0];
+  await call("POST", `/catalog/generations/${generation.id}/versions`, { name: "GTX" });
+  const version = (await tree()).models[0].generations[0].versions[0];
+  /** Adds a period to the version and answers its status. */
+  const add = async (year: number, lastYear: number) => (await call("POST", `/catalog/versions/${version.id}/years`, { year, lastYear })).statusCode;
+  assert.deepEqual([await add(1968, 1974), await add(1970, 1970)], [201, 201]);
+  const refused = await call("POST", `/catalog/versions/${version.id}/years`, { year: 1967, lastYear: 1975 });
+  assert.deepEqual([refused.statusCode, refused.json().message], [400, "A period must stay inside its generation's years, 1968–1974."]);
+  assert.deepEqual([await add(1975, 1975), await add(1972, 1975)], [400, 400]);
+  const [whole] = (await tree()).models[0].generations[0].versions[0].years;
+  assert.equal((await call("PATCH", `/catalog/years/${whole.id}`, { year: 1967, lastYear: 1970 })).statusCode, 400);
+  assert.deepEqual(
+    (await tree()).models[0].generations[0].versions[0].years.map((each) => [each.year, each.lastYear]),
+    [
+      [1968, 1974],
+      [1970, 1970],
+    ],
+  );
+
+  /** Changes the generation's years and answers its status. */
+  const years = async (firstYear: number, lastYear: number | null) =>
+    (await call("PATCH", `/catalog/generations/${generation.id}`, { name: "Primeira", firstYear, lastYear })).statusCode;
+  assert.deepEqual([await years(1969, 1974), await years(1968, 1973)], [400, 400]);
+  assert.deepEqual([await years(1966, 1976), await years(1968, null)], [200, 200]);
+  const kept = (await tree()).models[0].generations[0];
+  assert.deepEqual([kept.firstYear, kept.lastYear], [1968, null]);
 });
 
 // Deletes a generation with a version and a year under it, and checks they go with it, then deletes the model and

@@ -68,6 +68,10 @@ export const CATALOG_LEVEL_PATHS: Record<CatalogEditLevel, string> = {
 export const CATALOG_PARTS_ONLY_KEY = "apc.catalog.partsOnly";
 /** The years a generation or a period can have. */
 export const CATALOG_YEARS = { min: 1900, max: 2100 } as const;
+/** What a catalog year field says when it isn't a year of four digits in the catalog's range. */
+export const CATALOG_YEAR_MESSAGE = `Use o ano com 4 dígitos, de ${CATALOG_YEARS.min} a ${CATALOG_YEARS.max}, como 1968.`;
+/** What a catalog year field shows while it is empty: a year is written with four digits. */
+export const CATALOG_YEAR_PLACEHOLDER = "AAAA";
 /** What deleting a brand or a node of the catalog says when an item of the stock uses it, or something under it. */
 export const CATALOG_IN_USE = "Não dá para excluir: há peças do estoque nesse veículo. Troque o veículo delas antes.";
 /** What a change of the catalog that failed says. */
@@ -135,7 +139,7 @@ export const catalogSchema = z.object({ brands: z.array(catalogBrandSchema) });
 export const catalogIdParamsSchema = z.object({ id: z.uuid() });
 /** A brand, model or version added or renamed: its name. */
 export const catalogNameSchema = z.object({ name: z.string().trim().min(1, "Required.") });
-const catalogYear = z.int(`Use a year from ${CATALOG_YEARS.min} to ${CATALOG_YEARS.max}.`).min(CATALOG_YEARS.min).max(CATALOG_YEARS.max);
+const catalogYear = z.int(`Use a four-digit year from ${CATALOG_YEARS.min} to ${CATALOG_YEARS.max}.`).min(CATALOG_YEARS.min).max(CATALOG_YEARS.max);
 /** A generation added or renamed: its name and years, the last one null while it is still made. */
 export const catalogGenerationInputSchema = z
   .object({ name: z.string().trim().min(1, "Required."), firstYear: catalogYear, lastYear: catalogYear.nullable() })
@@ -209,6 +213,15 @@ export type CatalogEditing =
   | { kind: "rename"; node: CatalogNode };
 /** The engine sheet a screen is filling in: a new engine's under a period, or an engine's own. */
 export type CatalogSheetEditing = { kind: "add"; year: CatalogNode } | { kind: "edit"; engine: CatalogNode };
+/** A generation's years, the last one null while it is still made. */
+export type GenerationYears = { firstYear: number; lastYear: number | null };
+/** A period's first and last year, the same for a single year. */
+export type PeriodYears = { year: number; lastYear: number };
+/**
+ * The years a node's form keeps to: a period's, its generation's; a generation's, the years its periods cover. Either is
+ * left out when there is nothing to keep to.
+ */
+export type CatalogYearLimits = { generation?: GenerationYears; periods?: PeriodYears };
 /** The text of the fields that add or rename a node, as typed: a period's are year and lastYear, a generation's firstYear and lastYear. */
 export type CatalogFields = { name: string; firstYear: string; lastYear: string; year: string };
 /** The text of an engine sheet's fields, as typed, and the drive chosen, or empty. */
@@ -523,17 +536,21 @@ export function engineSheetNames(catalog: Catalog, brandId: string, nodeId: stri
 
 /**
  * Reads the fields of a node being added or renamed, as typed: a name, a generation's years, or a period's first year
- * and last year, the last one left empty for a single year.
+ * and last year, the last one left empty for a single year. Each year is four digits. A period stays inside its
+ * generation's years, which count as inside (a generation of 1968–1974 takes any period from 1968 to 1974), and a
+ * generation keeps the years its periods cover; a year outside is refused under its own field.
  * @param level What is added or renamed.
  * @param fields The fields' text.
+ * @param limits The years it keeps to (see catalogYearLimits).
  * @returns What is saved, or what to fix under each field.
  */
 export function readCatalogFields(
   level: CatalogEditLevel | "brand",
   fields: CatalogFields,
+  limits: CatalogYearLimits = {},
 ): { values: CatalogValues } | { problems: Partial<Record<keyof CatalogFields, string>> } {
   const problems: Partial<Record<keyof CatalogFields, string>> = {};
-  const yearsMessage = `Use um ano de ${CATALOG_YEARS.min} a ${CATALOG_YEARS.max}.`;
+  const yearsMessage = CATALOG_YEAR_MESSAGE;
   if (level === "year") {
     const year = readYear(fields.year);
     const last = fields.lastYear.trim() ? readYear(fields.lastYear) : year;
@@ -544,6 +561,17 @@ export function readCatalogFields(
       problems.lastYear = yearsMessage;
     } else if (year !== null && last !== null && last < year) {
       problems.lastYear = "O último ano não pode vir antes do primeiro.";
+    }
+    const { generation } = limits;
+    if (Object.keys(problems).length === 0 && generation && !periodInGeneration({ year: year!, lastYear: last! }, generation)) {
+      /** Whether a year falls outside the generation's. */
+      const outside = (each: number) => each < generation.firstYear || (generation.lastYear !== null && each > generation.lastYear);
+      if (outside(year!)) {
+        problems.year = periodOutsideMessage(generation);
+      }
+      if (fields.lastYear.trim() && outside(last!)) {
+        problems.lastYear = periodOutsideMessage(generation);
+      }
     }
     return Object.keys(problems).length > 0 ? { problems } : { values: { year: year!, lastYear: last! } };
   }
@@ -563,7 +591,81 @@ export function readCatalogFields(
   } else if (first !== null && last !== null && last < first) {
     problems.lastYear = "O último ano não pode vir antes do primeiro.";
   }
+  const { periods } = limits;
+  if (!problems.firstYear && !problems.lastYear && periods) {
+    if (first! > periods.year) {
+      problems.firstYear = generationAroundMessage(periods);
+    }
+    if (last !== null && last < periods.lastYear) {
+      problems.lastYear = generationAroundMessage(periods);
+    }
+  }
   return Object.keys(problems).length > 0 ? { problems } : { values: { name: fields.name, firstYear: first!, lastYear: last } };
+}
+
+/**
+ * Finds the years the form of a node being added or renamed keeps to: a period's, its generation's (the generation of
+ * the version a period is added under, or of the period renamed); a generation renamed, the years its periods cover.
+ * @param models The brand's models.
+ * @param editing What is added or renamed.
+ * @returns The limits, empty for the other levels or a generation with no period.
+ */
+export function catalogYearLimits(models: readonly CatalogNode[], editing: CatalogEditing): CatalogYearLimits {
+  const node = editing.kind === "rename" ? editing.node : null;
+  if (node?.level === "generation") {
+    const span = periodsSpan(
+      (node.children ?? []).flatMap((version) => version.children ?? []).map((period) => ({ year: period.firstYear!, lastYear: period.lastYear! })),
+    );
+    return span ? { periods: span } : {};
+  }
+  const under = node?.level === "year" ? node.id : editing.kind === "add" && editing.level === "year" ? editing.parent.id : null;
+  const generation = under
+    ? [...catalogNodes(models).values()].find((each) => each.level === "generation" && catalogNodes(each.children ?? []).has(under))
+    : undefined;
+  return generation ? { generation: { firstYear: generation.firstYear!, lastYear: generation.lastYear ?? null } } : {};
+}
+
+/**
+ * Tells whether a period stays inside its generation's years, which count as inside.
+ * @param period The period's years.
+ * @param generation Its generation's.
+ * @returns True when it starts in or after the generation's first year and ends in or before its last, if any.
+ */
+export function periodInGeneration(period: PeriodYears, generation: GenerationYears): boolean {
+  return period.year >= generation.firstYear && (generation.lastYear === null || period.lastYear <= generation.lastYear);
+}
+
+/**
+ * Finds the years some periods cover, from the first one's first year to the last one's last.
+ * @param periods The periods.
+ * @returns Those years, or null without a period.
+ */
+export function periodsSpan(periods: readonly PeriodYears[]): PeriodYears | null {
+  return periods.length === 0
+    ? null
+    : { year: Math.min(...periods.map((period) => period.year)), lastYear: Math.max(...periods.map((period) => period.lastYear)) };
+}
+
+/**
+ * Says a period must stay inside its generation's years.
+ * @param generation The generation's years.
+ * @returns E.g. "O período tem de ficar dentro dos anos da geração: de 1968 a 1974.", or "de 2019 em diante." while it
+ * is still made.
+ */
+export function periodOutsideMessage(generation: GenerationYears): string {
+  const years = generation.lastYear === null ? `de ${generation.firstYear} em diante` : `de ${generation.firstYear} a ${generation.lastYear}`;
+  return `O período tem de ficar dentro dos anos da geração: ${years}.`;
+}
+
+/**
+ * Says which years a generation's periods cover, which its own years must keep.
+ * @param periods The years its periods cover (see periodsSpan).
+ * @returns E.g. "Os períodos desta geração vão de 1969 a 1974.", or "são de 1970." for a single year.
+ */
+export function generationAroundMessage(periods: PeriodYears): string {
+  return periods.year === periods.lastYear
+    ? `Os períodos desta geração são de ${periods.year}.`
+    : `Os períodos desta geração vão de ${periods.year} a ${periods.lastYear}.`;
 }
 
 /**
@@ -599,6 +701,15 @@ export function readEngineFields(fields: EngineFields): { sheet: CatalogEngineIn
  */
 export function litresText(displacementDl: number): string {
   return (displacementDl / 10).toFixed(1).replace(".", ",");
+}
+
+/**
+ * Keeps what a catalog year field takes as it is typed: digits only, at most the four of a year.
+ * @param text The field's text.
+ * @returns E.g. "1968" for "1968a", or "1968" for "19685".
+ */
+export function yearInput(text: string): string {
+  return text.replace(/\D/g, "").slice(0, 4);
 }
 
 /**
