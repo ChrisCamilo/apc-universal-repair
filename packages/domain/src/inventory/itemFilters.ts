@@ -33,7 +33,9 @@ import {
 // the filters follow an entry renamed or merged, so they keep showing its items. itemMatchesQuery reads a list query
 // on an item in memory with the rules the API's query applies in the database (itemWhere), for the web app's demo,
 // which has no server, and for a phone's filter sheet, which counts the items its filters would show before they are
-// applied. The sheet chooses the position and the side as segments, one at a time, and lists the list's sorts.
+// applied. The sheet chooses the position and the side as segments, one at a time, and lists the list's sorts. The
+// desktop table's columns after the name can each be hidden, a choice each device keeps (see hiddenColumns); Local
+// starts hidden, the material in its place.
 
 /** Every filter of the Filtros menu, none chosen. */
 export const EMPTY_ITEM_FILTERS: ItemFilters = {
@@ -92,6 +94,15 @@ const ITEM_SORT_COLUMNS: (SortColumn & { key: ItemSortKey })[] = [
 ];
 /** The inventory's sorts, as a phone lists them: "Ordem de cadastro", then each column both ways. */
 export const ITEM_SORT_OPTIONS = sortOptions(ITEM_SORT_COLUMNS, "Ordem de cadastro");
+/** The desktop table's columns after the item's name, which the "Colunas" menu shows and hides, in their order. */
+export const ITEM_TABLE_COLUMNS = ITEM_SORT_COLUMNS.slice(1);
+/** The columns the table hides until they are turned on: the location, whose place the material takes. */
+export const ITEM_HIDDEN_COLUMNS_DEFAULT: readonly ItemSortKey[] = ["location"];
+/**
+ * Where a device keeps the columns it hides, as a JSON list of their keys: the hidden ones rather than the shown, so a
+ * column added later shows from the start.
+ */
+export const ITEM_HIDDEN_COLUMNS_KEY = "apc.inventory.hiddenColumns";
 // Between the brand and the model in a vehicle model filter value; no brand or model name holds it.
 const VEHICLE_MODEL_SEPARATOR = "|";
 
@@ -157,6 +168,23 @@ export function followEntryChange(filters: FilterValues, change: ListEntryChange
   const field = ITEM_LIST_FIELDS[kind];
   const named = (filters[field] ?? []).map((value) => (kind !== "vehicleModels" && same(value, from) ? to : value));
   return { ...filters, [field]: [...new Set(named)], vehicleModel: [...new Set((filters.vehicleModel ?? []).map(model))] };
+}
+
+/**
+ * Reads the columns a device hides from what it keeps under ITEM_HIDDEN_COLUMNS_KEY.
+ * @param stored What the device keeps, or null when it keeps nothing.
+ * @returns The keys of the table's columns it hides, ITEM_HIDDEN_COLUMNS_DEFAULT when it keeps nothing that reads.
+ */
+export function hiddenColumns(stored: string | null): ItemSortKey[] {
+  try {
+    const keys: unknown = JSON.parse(stored ?? "null");
+    if (Array.isArray(keys)) {
+      return ITEM_TABLE_COLUMNS.map((column) => column.key).filter((key) => keys.includes(key));
+    }
+  } catch {
+    // Not JSON: as if nothing were kept.
+  }
+  return [...ITEM_HIDDEN_COLUMNS_DEFAULT];
 }
 
 /**
