@@ -46,6 +46,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 📚 Vehicle catalog organized by brand, model, generation, version, period of years (2007–2012) and engine, kept in the API's database, which starts with sample brands ✅
 - 🔎 Catalog search by brand, model or the code of a part in stock ✅
 - ✏️ The catalog edited in place, on desktop and on phones: brands, models, generations, versions, periods and engines with their sheets, an engine copied to another period with *Copiar motor* and *Colar motor* or Ctrl+C and Ctrl+V ✅
+- 🔗 The stock and the Catalog share their vehicles: a part's generation, shown numbered ("G1 - 68/74"), and its version are picked from the Catalog's, only the chosen generation's versions offered, and a new one joins the Catalog ✅
 
 **Phase 3**
 
@@ -314,6 +315,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 📚 Catálogo de veículos organizado por marca, modelo, geração, versão, período de anos (2007–2012) e motor, guardado no banco da API, que começa com marcas de exemplo ✅
 - 🔎 Busca no catálogo por marca, modelo ou código de uma peça do estoque ✅
 - ✏️ O catálogo editado no lugar, no desktop e no celular: marcas, modelos, gerações, versões, períodos e motores com suas fichas, e um motor copiado para outro período com *Copiar motor* e *Colar motor* ou Ctrl+C e Ctrl+V ✅
+- 🔗 O estoque e o Catálogo compartilham os veículos: a geração de uma peça, mostrada numerada ("G1 - 68/74"), e a versão dela são escolhidas entre as do Catálogo, oferecendo só as versões da geração escolhida, e uma nova entra no Catálogo ✅
 
 **Fase 3**
 
