@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
-import { codeKey, generationLabel, generationText, optionKey, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
+import { codeKey, generationLabel, generationText, optionKey, readGeneration, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
 import { EMPTY_ITEM_FILTERS, vehicleModelValue, type ItemFilters } from "../inventory/itemFilters.ts";
 import { distinct, generationInput } from "../inventory/itemForm.ts";
 
@@ -68,6 +68,8 @@ export const CATALOG_LEVEL_PATHS: Record<CatalogEditLevel, string> = {
 export const CATALOG_PARTS_ONLY_KEY = "apc.catalog.partsOnly";
 /** The years a generation or a period can have. */
 export const CATALOG_YEARS = { min: 1900, max: 2100 } as const;
+/** What deleting a brand or a node of the catalog says when an item of the stock uses it, or something under it. */
+export const CATALOG_IN_USE = "Não dá para excluir: há peças do estoque nesse veículo. Troque o veículo delas antes.";
 /** What a change of the catalog that failed says. */
 export const CATALOG_FAILED = "Não foi possível salvar no catálogo. Tente de novo.";
 /** What is said under the field when the API refuses a name or year another node has, by what is added or renamed. */
@@ -613,7 +615,7 @@ function readYear(text: string): number | null {
  * parent's, or a node dropped once what was under it joined its twin's. */
 export type CatalogJoinStep =
   | { kind: "move"; level: "generation" | "version" | "year" | "engine"; id: string; parentId: string }
-  | { kind: "drop"; level: "generation" | "version" | "year"; id: string };
+  | { kind: "drop"; level: "generation" | "version" | "year"; id: string; into: string };
 
 /** The levels of a model's tree, from the top: what makes two nodes the same, and where their children are. */
 const JOIN_LEVELS = [
@@ -646,7 +648,7 @@ export function joinCatalogTrees(
       const twin = level.key && joined.find((each) => level.key(each) === level.key(node));
       if (twin && level.children) {
         twin[level.children] = join(depth + 1, twin.id, twin[level.children] as JoinNode[], node[level.children] as JoinNode[]);
-        steps.push({ kind: "drop", level: level.level as "generation" | "version" | "year", id: node.id });
+        steps.push({ kind: "drop", level: level.level as "generation" | "version" | "year", id: node.id, into: twin.id });
       } else {
         steps.push({ kind: "move", level: level.level, id: node.id, parentId });
         joined.push(node);
@@ -1062,18 +1064,18 @@ function vehicleFits(catalog: Catalog, path: readonly CatalogNode[], vehicle: It
 }
 
 /**
- * Lists what a vehicle's generation and version fields offer in the item form: the generations, oldest first, and the
- * versions of its model in the catalog (found as locatePart finds it) and of the same brand and model in stock.
+ * Lists what a vehicle's generation and version fields offer in the item form: the generations of its model in the
+ * catalog (found as locatePart finds it), each with its number among them ("G1 - 68/74"), oldest first; and the
+ * versions of the generation typed, matched by its years, none before one is. The catalog holds every generation and
+ * version an item uses, since an item's vehicle points at them.
  * @param catalog The catalog.
- * @param items Every item in stock.
- * @param vehicle The vehicle's brand and model as typed.
- * @returns The generations as their field writes them ("85/90") and the versions in alphabetical order; none without
- * a model.
+ * @param vehicle The vehicle's brand, model and generation as typed.
+ * @returns The generations as their field writes them ("G1 - 85/90") and the versions in alphabetical order; none
+ * without a model.
  */
 export function vehicleSuggestions(
   catalog: Catalog,
-  items: readonly Item[],
-  vehicle: { vehicleBrand: string; vehicleModel: string },
+  vehicle: { vehicleBrand: string; vehicleModel: string; generation?: string },
 ): { generations: string[]; versions: string[] } {
   if (!vehicle.vehicleModel.trim()) {
     return { generations: [], versions: [] };
@@ -1082,22 +1084,18 @@ export function vehicleSuggestions(
   const model = location?.modelId
     ? catalog.brands.find((brand) => brand.id === location.brandId)?.models.find((each) => each.id === location.modelId)
     : undefined;
-  const catalogGenerations = model?.children ?? [];
-  const held = items
-    .flatMap((item) => item.vehicles)
-    .filter((each) => optionKey(each.vehicleBrand) === optionKey(vehicle.vehicleBrand) && optionKey(each.vehicleModel ?? "") === optionKey(vehicle.vehicleModel));
-  const years = [
-    ...catalogGenerations.map((generation) => ({ firstYear: generation.firstYear!, lastYear: generation.lastYear ?? null })),
-    ...held.flatMap((each) => (each.firstYear == null ? [] : [{ firstYear: each.firstYear, lastYear: each.lastYear ?? null }])),
-  ];
-  const generations = new Map(years.map((each) => [generationText(each), each]));
+  const numbered = (model?.children ?? []).map((generation, index) => ({
+    generation,
+    firstYear: generation.firstYear!,
+    lastYear: generation.lastYear ?? null,
+    generationNumber: index + 1,
+  }));
+  const typed = readGeneration(vehicle.generation ?? "");
+  const chosen = typed?.firstYear == null ? [] : numbered.filter((each) => each.firstYear === typed.firstYear && each.lastYear === typed.lastYear);
   return {
-    generations: [...generations.values()]
+    generations: [...numbered]
       .sort((a, b) => a.firstYear - b.firstYear || (a.lastYear ?? Infinity) - (b.lastYear ?? Infinity))
       .map(generationInput),
-    versions: distinct([
-      ...catalogGenerations.flatMap((generation) => (generation.children ?? []).map((version) => version.label)),
-      ...held.flatMap((each) => (each.version ? [each.version] : [])),
-    ]),
+    versions: distinct(chosen.flatMap((each) => (each.generation.children ?? []).map((version) => version.label))),
   };
 }
