@@ -530,7 +530,7 @@ test("Web: a period stays inside its generation's years, written with four digit
   await add.getByLabelText('De').fill('1980')
   await add.getByLabelText('Até').fill('1992')
   await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByText('1980–1992', { exact: true })).toBeVisible()
+  await expect.element(screen.getByRole('treeitem', { name: '1980–1992' })).toBeVisible()
 })
 
 // Copies the 4.1 with its row's Copiar motor and checks 1985's Colar motor, missing until then, pastes a copy there,
