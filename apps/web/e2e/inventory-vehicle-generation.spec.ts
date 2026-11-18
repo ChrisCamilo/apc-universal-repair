@@ -7,7 +7,8 @@ import { filtersMenu, inventory, itemDetails, itemForm } from "./locators/invent
 import { savedItem, serveItems } from "./stubs/items.ts";
 import { item } from "./data/items.ts";
 
-// The API answers GET /items with these items, newest first: two filters for the Gol, one of them for its G5 only.
+// The API answers GET /items with these items, newest first: two filters for the Gol, one of them for its first
+// generation's GTS only, the generation numbered as in the Catalog (the test catalog's Gol has that one).
 const ITEMS: Item[] = [
   item({ code: "W 712/95", name: "Filtro de óleo", category: "Motor", partBrand: "Mann", vehicleBrand: "Volkswagen", vehicleModel: "Gol" }),
   item({
@@ -17,19 +18,19 @@ const ITEMS: Item[] = [
     partBrand: "Mann",
     vehicleBrand: "Volkswagen",
     vehicleModel: "Gol",
-    firstYear: 2008,
-    lastYear: 2012,
-    version: "1.0 G5",
+    vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Gol", firstYear: 1980, lastYear: 1994, generationNumber: 1, version: "GTS" }],
   }),
 ];
 
-// Adds an item for one generation and version of the Gol and filters by them: they are the vehicle's, kept apart from
-// the item's name and row, and the Geração and Versão do veículo filters each wait for the filters before them (the
-// vehicle's brand, then its model, then its generation).
+// Adds an item for the Catalog's generation and version of the Gol, picked in the form, and filters by them: they are
+// the vehicle's, kept apart from the item's name and row, and the Geração and Versão do veículo filters each wait for
+// the filters before them (the vehicle's brand, then its model, then its generation).
 test("Web: a vehicle's generation and version are saved, shown in the details and filtered", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   const stock = [...ITEMS];
   await page.route("**/api/items", async (route) => {
     const saved = savedItem(route.request().postDataJSON());
+    // The API numbers the generation by its place in the Catalog's Gol, the first.
+    saved.vehicles = saved.vehicles.map((vehicle) => ({ ...vehicle, generationNumber: vehicle.firstYear == null ? null : 1 }));
     stock.unshift(saved);
     return route.fulfill({ status: 201, json: saved });
   });
@@ -39,7 +40,7 @@ test("Web: a vehicle's generation and version are saved, shown in the details an
   await expect(rows).toHaveCount(2);
 
   const phone = (page.viewportSize()?.width ?? 0) < TABLE_CARD_BREAKPOINT;
-  await test.step("the item is saved with a generation picked from the stock's and a typed version, both out of its name and row", async () => {
+  await test.step("the item is saved with the Catalog's numbered generation and its version, both out of its name and row", async () => {
     const form = itemForm(page, "Novo item");
     await inventory(page).newItem.click();
     await form.code.fill("ba-30");
@@ -55,25 +56,25 @@ test("Web: a vehicle's generation and version are saved, shown in the details an
     await form.vehicleModel.fill("Gol");
     await form.vehicleModel.press("Escape");
     await form.generation.click();
-    await options(page).named("08/12", true).click();
-    await form.version.fill("1.0 G5");
-    await form.version.press("Escape");
+    await options(page).named("G1 - 80/94", true).click();
+    await form.version.click();
+    await options(page).named("GTS", true).click();
     if (phone) {
       await form.confirmVehicle.click();
-      await expect(form.vehicle("Volkswagen Gol 08/12 1.0 G5")).toBeVisible();
+      await expect(form.vehicle("Volkswagen Gol G1 - 80/94 GTS")).toBeVisible();
     }
     await form.unitPrice.fill("49,9");
     await form.save.click();
     await expect(toasts(page).named("Item “Bieleta” cadastrado.")).toBeVisible();
     await expect(rows).toHaveCount(3);
     await expect(rows.first()).toContainText("Bieleta");
-    await expect(rows.first()).not.toContainText("08/12");
+    await expect(rows.first()).not.toContainText("80/94");
   });
 
   await test.step("its details show the generation and the version", async () => {
     await rows.first().getByText("Bieleta").click();
     const details = itemDetails(page);
-    await expect(details.root.getByText("Volkswagen Gol 08/12 1.0 G5")).toBeVisible();
+    await expect(details.root.getByText("Volkswagen Gol G1 - 80/94 GTS")).toBeVisible();
     await (phone ? details.back : details.closeText).click();
   });
 
@@ -93,13 +94,13 @@ test("Web: a vehicle's generation and version are saved, shown in the details an
     const gol: [string, string][] = [
       ["Marca do veículo", "Volkswagen"],
       ["Modelo do veículo", "Gol · Volkswagen"],
-      ["Geração", "08/12"],
+      ["Geração", "G1 - 80/94"],
     ];
     await filterBy(gol);
     await expect(rows).toHaveCount(2);
     await expect(rows.filter({ hasText: "Filtro de óleo" })).toHaveCount(0);
     await inventory(page).clearFilters.click();
-    await filterBy([...gol, ["Versão do veículo", "1.0 G5"]]);
+    await filterBy([...gol, ["Versão do veículo", "GTS"]]);
     await expect(rows).toHaveCount(2);
   });
 });

@@ -246,7 +246,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 |  | names created with + Criar | `inventory-form` | both |  |
 |  | photos copied from other items in the photo picker | `inventory-form` | both |  |
 |  | the phone's form: chips, touch choices, two brands | `inventory-form` | mobile |  |
-|  | a vehicle's generation and version: saved, shown, filtered | `inventory-vehicle-generation` | both |  |
+|  | a vehicle's generation and version, picked from the Catalog: saved, shown, filtered | `inventory-vehicle-generation` | both |  |
 | Details | a row's details, editable after Editar | `inventory-details` | desktop |  |
 |  | the phone's details: layout and their actions | `inventory-details` | mobile |  |
 |  | duplicating, with or without the photos | `inventory-details` | both |  |
@@ -692,7 +692,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 |  | nomes criados com + Criar | `inventory-form` | ambos |  |
 |  | fotos copiadas de outras peças no seletor de fotos | `inventory-form` | ambos |  |
 |  | o formulário do celular: chips, escolhas por toque, duas marcas | `inventory-form` | mobile |  |
-|  | geração e versão do veículo: salvas, mostradas, filtradas | `inventory-vehicle-generation` | ambos |  |
+|  | geração e versão do veículo, escolhidas no Catálogo: salvas, mostradas, filtradas | `inventory-vehicle-generation` | ambos |  |
 | Detalhes | os detalhes da linha, editáveis após Editar | `inventory-details` | desktop |  |
 |  | os detalhes do celular: layout e as ações | `inventory-details` | mobile |  |
 |  | duplicar, com ou sem as fotos | `inventory-details` | ambos |  |

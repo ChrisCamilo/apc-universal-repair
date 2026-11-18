@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import type { Catalog } from '@apc/domain/catalog'
+import { TEST_CATALOG } from '@apc/domain/test-catalog'
 import { codeTakenMessage, duplicateForm, ITEM_FORM_MESSAGES, ITEM_UNCHANGED_MESSAGE, type ItemForm } from '@apc/domain/item-form'
 import type { Item, ItemBrand, ItemCreate } from '@apc/domain/items'
 import { withEntry, type ItemLists } from '@apc/domain/lists'
@@ -337,12 +339,13 @@ test('Web: a new item is posted, announced and handed over', async () => {
   await expect.element(screen.getByText('Item “Vela” cadastrado.')).toBeVisible()
 })
 
-// Gives a vehicle a generation and a version, picking the generation the stock already has for that model, and checks
-// a generation that isn't years is refused on its field; then that the item is posted with the years and the version.
+// Gives a vehicle a generation and a version, picking the catalog's numbered generation for that model and the version
+// it holds, and checks a generation that isn't years is refused on its field; then that the item is posted with the
+// years and the version.
 test('Web: a vehicle takes an optional generation and version, sent as years', async () => {
   const fetch = answerSave()
   const onSaved = vi.fn()
-  const screen = await render(<Sample items={[...ITEMS, DISC]} onSaved={onSaved} />)
+  const screen = await render(<Sample items={[...ITEMS, DISC]} catalog={TEST_CATALOG} onSaved={onSaved} />)
   await fill(screen, { code: 'ngk-b7', name: 'vela', category: 'ignição', partBrand: 'NGK', vehicleBrand: 'volkswagen', price: '34,9' })
   await screen.getByRole('combobox', { name: 'Modelo do veículo' }).fill('gol')
   await screen.getByRole('combobox', { name: 'Geração' }).fill('12/08')
@@ -351,13 +354,14 @@ test('Web: a vehicle takes an optional generation and version, sent as years', a
   expect(fetch).not.toHaveBeenCalled()
   // Clearing the field lists every generation it offers.
   await screen.getByRole('combobox', { name: 'Geração' }).clear()
-  await screen.getByRole('option', { name: '08/12' }).click()
-  await screen.getByRole('combobox', { name: 'Versão' }).fill('1.0 G5')
+  await screen.getByRole('option', { name: 'G1 - 80/94' }).click()
+  await screen.getByRole('combobox', { name: 'Versão' }).clear()
+  await screen.getByRole('option', { name: 'GTS' }).click()
   await screen.getByRole('button', { name: 'Salvar' }).click()
   await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
   expect(sent(fetch).body).toMatchObject({
     name: 'Vela',
-    vehicles: [{ vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', firstYear: 2008, lastYear: 2012, version: '1.0 G5' }],
+    vehicles: [{ vehicleBrand: 'Volkswagen', vehicleModel: 'Gol', firstYear: 1980, lastYear: 1994, version: 'GTS' }],
   })
 })
 
@@ -1121,6 +1125,7 @@ function Sample({
   details,
   scrollToBrand,
   items = ITEMS,
+  catalog,
   onSaved = () => {},
   onCreateEntry,
   initialForm,
@@ -1133,6 +1138,8 @@ function Sample({
   scrollToBrand?: string
   /** Every item in stock; ITEMS when left out. */
   items?: Item[]
+  /** The vehicle catalog; none when left out. */
+  catalog?: Catalog
   onSaved?: (item: Item) => void
   initialForm?: ItemForm
   initialPhotos?: UploadPhoto[][]
@@ -1162,6 +1169,7 @@ function Sample({
         details={details}
         scrollToBrand={scrollToBrand}
         items={items}
+        catalog={catalog}
         lists={lists}
         onCreateEntry={create}
         onClose={() => setOpen(false)}
