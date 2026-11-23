@@ -50,6 +50,7 @@ import {
   type ListEntry,
 } from '@apc/domain/lists'
 import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_PARTS } from '@apc/domain/photos'
+import { SYNC_CHANGES_PATH } from '@apc/domain/sync'
 import { applyCatalogChange, TEST_CATALOG_DATA, type CatalogChange } from '@apc/domain/test-catalog'
 import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
@@ -68,7 +69,7 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // The demo authorizes no devices: its logins and sign-ups go through without checking the device's proof, which the
 // demo doesn't make (see demoDevice.ts), and the routes that list, authorize, rename and remove devices, hand out an
 // entry code for a phone and log one in with it answer 501 with DEMO_UNAVAILABLE (DEMO_UNAVAILABLE_ROUTES), which the
-// screens show.
+// screens show. So does the change feed a phone's copy of the inventory follows, as no phone pairs with the demo.
 
 /** What adds or renames each level of the catalog's tree, or saves an engine's sheet, as the API reads it. */
 const CATALOG_INPUTS = {
@@ -90,6 +91,7 @@ export const DEMO_UNAVAILABLE_ROUTES = [
   'DELETE /devices/:id',
   'POST /pairings',
   'POST /sessions/pairing',
+  `GET ${SYNC_CHANGES_PATH}`,
 ]
 /** The items using an entry of each list. */
 const ITEMS_USING: Record<ItemListKind, (item: StoredItem, id: string) => boolean> = {
@@ -241,7 +243,15 @@ export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; han
   joinCatalog(db)
   DEMO_ITEMS.forEach((input, index) => createItem(db, input, new Date(start + index * DAY_MS).toISOString()))
   addSamplePhotos(db)
-  const routes = [...sessionRoutes(db), ...deviceRoutes(), ...itemRoutes(db), ...photoRoutes(db), ...listRoutes(db), ...catalogRoutes(db)]
+  const routes = [
+    ...sessionRoutes(db),
+    ...deviceRoutes(),
+    ...itemRoutes(db),
+    ...photoRoutes(db),
+    ...listRoutes(db),
+    ...catalogRoutes(db),
+    ...unavailableRoutes(),
+  ]
 
   return {
     routes: routes.map(({ method, path }) => ({ method, path })),
@@ -1296,21 +1306,27 @@ function read<Value>(schema: Schema<Value>, value: unknown): { ok: true; value: 
 }
 
 /**
- * Lists the devices' routes: a nonce to sign, which nothing checks, every device authorized, and the rest answered 501
- * with DEMO_UNAVAILABLE, as the demo authorizes no devices.
+ * Lists the devices' routes the demo does: a nonce to sign, which nothing checks, and every device authorized.
  * @returns The routes.
  */
 function deviceRoutes(): Route[] {
-  const unavailable = () => json(501, { statusCode: 501, error: 'Not Implemented', message: DEMO_UNAVAILABLE })
   return [
     { method: 'GET', path: '/devices/challenge', open: true, answer: () => json(200, { nonce: crypto.randomUUID() }) },
     { method: 'POST', path: '/devices/status', open: true, answer: () => json(200, { status: 'authorized' }) },
-    ...DEMO_UNAVAILABLE_ROUTES.map((route) => {
-      const [method, path] = route.split(' ')
-      // A phone logs in with an entry code before it has a session, as on the API.
-      return { method, path, open: path === '/sessions/pairing', answer: unavailable }
-    }),
   ]
+}
+
+/**
+ * Lists the routes the demo doesn't do (DEMO_UNAVAILABLE_ROUTES), each answered 501 with DEMO_UNAVAILABLE.
+ * @returns The routes.
+ */
+function unavailableRoutes(): Route[] {
+  const unavailable = () => json(501, { statusCode: 501, error: 'Not Implemented', message: DEMO_UNAVAILABLE })
+  return DEMO_UNAVAILABLE_ROUTES.map((route) => {
+    const [method, path] = route.split(' ')
+    // A phone logs in with an entry code before it has a session, as on the API.
+    return { method, path, open: path === '/sessions/pairing', answer: unavailable }
+  })
 }
 
 /**

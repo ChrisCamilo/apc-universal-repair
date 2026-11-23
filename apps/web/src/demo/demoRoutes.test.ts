@@ -11,8 +11,8 @@ import { DEMO_DEVICE_STAND_IN } from './demoDevice.ts'
 // The demo's routes against @apc/domain/api-routes, the list the API's server is checked against too (see
 // apps/api/src/apiRoutes.test.ts): a route the API has and the demo doesn't, or the other way around, fails,
 // and so does an answer of the demo that the API's schema for it doesn't read, as when the API gains a field. Each
-// route of the list has a call here that it answers with success, so a new route needs one too; the device routes
-// the demo doesn't do answer 501 saying so (DEMO_UNAVAILABLE_ROUTES).
+// route of the list has a call here that it answers with success, so a new route needs one too; the routes the demo
+// doesn't do, of devices and the change feed, answer 501 saying so (DEMO_UNAVAILABLE_ROUTES).
 
 /** What the demo's logins send in place of a device's proof (see demoDevice.ts). */
 const DEVICE = { publicKey: DEMO_DEVICE_STAND_IN, nonce: DEMO_DEVICE_STAND_IN, signature: DEMO_DEVICE_STAND_IN }
@@ -29,6 +29,7 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
   'GET /devices/challenge': ({ call }) => call('GET', '/devices/challenge'),
   'POST /devices/status': ({ call }) => call('POST', '/devices/status', DEVICE),
   'GET /devices': ({ call }) => call('GET', '/devices'),
+  'GET /sync/changes': ({ call }) => call('GET', '/sync/changes'),
   'POST /devices/:id/authorize': ({ call }) => call('POST', '/devices/d1/authorize', {}),
   'PATCH /devices/:id': ({ call }) => call('PATCH', '/devices/d1', { name: 'Celular' }),
   'DELETE /devices/:id': ({ call }) => call('DELETE', '/devices/d1'),
@@ -182,7 +183,7 @@ test('Web: the demo answers the routes of the shared list, as the API does', () 
 })
 
 // Makes each route's call on a fresh demo and checks it succeeds, and that the body, for a status the shared list
-// gives a schema to, is read by the API's own schema; the device routes the demo doesn't do answer 501, saying so.
+// gives a schema to, is read by the API's own schema; the routes the demo doesn't do answer 501, saying so.
 test("Web: the demo answers each route with the API's bodies", async () => {
   for (const route of API_ROUTES) {
     const answer = await CALLS[named(route)](await startDemo())
