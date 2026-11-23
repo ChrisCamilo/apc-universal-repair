@@ -12,6 +12,7 @@ import { registerItemRoutes } from "./inventory/routes/items.js";
 import { registerListRoutes } from "./inventory/routes/lists.js";
 import { registerPhotoRoutes } from "./inventory/routes/photos.js";
 import { registerSyncRoutes } from "./sync/routes/changes.js";
+import { registerOperationRoutes } from "./sync/routes/operations.js";
 import { registerUserRoutes } from "./auth/routes/users.js";
 import { SESSIONS, type SessionLookup } from "./auth/sessions.js";
 
@@ -55,6 +56,7 @@ export function buildApp({
   registerListRoutes(app);
   registerPhotoRoutes(app, sessions);
   registerSyncRoutes(app);
+  registerOperationRoutes(app);
   registerUserRoutes(app);
 
   return app;
