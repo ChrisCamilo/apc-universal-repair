@@ -22,6 +22,7 @@ erDiagram
     User ||--o{ Device : "logs in from · entra por"
     User ||--o{ Session : "logs in · entra"
     Device ||--o{ Session : "holds · tem"
+    Device ||--o{ SyncOperation : "sent · enviou"
     Brand ||--o| CatalogBrand : "in the catalog · no catálogo"
     VehicleModel ||--o| CatalogModel : "in the catalog · no catálogo"
     CatalogModel ||--o{ CatalogGeneration : "has · tem"
@@ -197,6 +198,12 @@ erDiagram
         string rowId "the deleted row"
         datetime deletedAt "dropped after 90 days"
     }
+    SyncOperation {
+        string deviceId PK "Device.id, cascade"
+        string id PK "the phone's own id"
+        string result "its answer, as JSON"
+        datetime appliedAt
+    }
 ```
 
 ---
@@ -225,6 +232,7 @@ erDiagram
 | `Session` | A user logged in on one device, from a login or sign-up until "Sair" or 7 days without use: the device, the hash of the token the device sends, and when it was last used and expires. |
 | `SyncState` | The change feed's state, in one row: this database's id, which every cursor carries, the last version given to a changed row or a deletion, and the version of the last tombstone dropped. |
 | `SyncTombstone` | A row deleted from the inventory, its lists or the catalog, kept for the change feed: its kind as the feed names it (`itemBrand`), its id, the version of the deletion and when, dropped after 90 days. |
+| `SyncOperation` | An operation a phone sent to `POST /sync/operations` that was applied: the device that sent it and the id the phone gave it, and its answer, so the same operation sent again answers the same and changes nothing. Removing the device deletes them. |
 
 ### Relationships
 
@@ -271,6 +279,7 @@ erDiagram
 - **Merging catalog entries joins their trees.** Merging a vehicle model of the catalog into another (`POST /vehicle-models/:id/merge`) moves its catalog model to the kept model when that one has none, or joins the two trees: a generation joins the one of the same name and years, a version the one of the same name, a year the one of the same number, and the rest, engines included, goes after the kept model's own (`joinCatalogTrees` in `@apc/domain/catalog`). Merging a vehicle brand of the catalog gives its place in the rail to the kept brand when the Catalog doesn't have it; when it has both, the merged brand's models go after the kept brand's own, a model of the same name joining its tree, and the merged brand leaves the rail. The items move as in any merge, all in one transaction, and the confirmation says what goes along (`catalogMergeNote`).
 - **Item vehicles link to the Catalog in a migration.** `20261119000000_item_vehicle_catalog_links` points each item vehicle with years at its model's catalog generation of the same years, and its version at the generation's version of the same name, adding to the Catalog what it lacks (the brand and model, then a generation named after its years, "1985–1990", then the version), so nothing typed is lost. A version saved without a generation links to the model's one version of that name when the Catalog has exactly one, taking its generation; otherwise its name goes to the end of the item's short description. Then the old year and version columns are dropped.
 - **The change feed starts in a migration.** `20261123000000_change_feed` adds `syncVersion` to the 13 tables the feed sends, creates `SyncState` with a random id for the database and `SyncTombstone`, the triggers that keep them (`<table>_sync_insert`, `_update` and `_delete`, and those of `ItemVehicle` and `ItemOriginalCode`, which give their item a new version), and gives the rows already saved their first versions, the lists and the catalog before the items. On SQLite the column is added in place, since redefining a table would delete the rows that cascade from it. A later migration that redefines one of these tables drops its triggers with it and must create them again; `changeFeed.db-test.ts` fails while a table lacks them.
+- **The phone's operations are kept in a migration.** `20261124000000_sync_operations` creates `SyncOperation`, keyed by the device and the operation's id, each operation's answer kept in the transaction that applies it.
 - **An applied migration never changes.** A fix goes into a new migration. Even one dated between older ones is applied on a database that has the later ones, as long as it is harmless there.
 - **A copy before migrating.** The server the desktop app ships copies its SQLite file before applying pending migrations (`src/db/backup.ts`): WAL checkpointed, the file copied to `backups/apc-before-<version>-<date>.db` beside it, with the same key, out of WAL mode and checked with `quick_check`, keeping the last 3. A migration that fails rolls back on its own; the copy is for one that succeeds and harms the data. A copy that can't be made stops the server before migrating. PostgreSQL isn't copied: the log asks for a `pg_dump`.
 
@@ -331,6 +340,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | `Session` | Um usuário logado num aparelho, de um login ou cadastro até o "Sair" ou 7 dias sem uso: o dispositivo, o hash do token que o aparelho envia, e quando foi usada pela última vez e quando expira. |
 | `SyncState` | O estado do feed de mudanças, numa linha: o id deste banco, que todo cursor leva, a última versão dada a uma linha alterada ou a uma exclusão, e a versão do último registro de exclusão descartado. |
 | `SyncTombstone` | Uma linha excluída do estoque, das listas ou do catálogo, guardada para o feed de mudanças: o tipo, com o nome que o feed usa (`itemBrand`), o id, a versão da exclusão e quando foi, descartada depois de 90 dias. |
+| `SyncOperation` | Uma operação que um celular enviou ao `POST /sync/operations` e que foi aplicada: o dispositivo que a enviou e o id que o celular deu a ela, e a resposta dela, então a mesma operação enviada de novo responde igual e não muda nada. Remover o dispositivo as apaga. |
 
 ### Relacionamentos
 
@@ -377,6 +387,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 - **Juntar entradas do catálogo junta as árvores.** Juntar um modelo de veículo do catálogo a outro (`POST /vehicle-models/:id/merge`) passa o modelo do catálogo dele para o modelo mantido quando este não tem um, ou junta as duas árvores: uma geração se junta à de mesmo nome e anos, uma versão à de mesmo nome, um ano ao de mesmo número, e o resto, motores incluídos, vai depois dos do modelo mantido (`joinCatalogTrees` do `@apc/domain/catalog`). Juntar uma marca de veículo do catálogo dá o lugar dela na barra à marca mantida quando o Catálogo não a tem; quando tem as duas, os modelos da marca juntada vão depois dos da mantida, um modelo de mesmo nome juntando a árvore, e a marca juntada sai da barra. Os itens passam como em toda junção, tudo numa transação, e a confirmação diz o que vai junto (`catalogMergeNote`).
 - **Os veículos dos itens se ligam ao Catálogo numa migração.** A `20261119000000_item_vehicle_catalog_links` aponta cada veículo de item com anos para a geração do catálogo do modelo dele com os mesmos anos, e a versão para a versão de mesmo nome dessa geração, adicionando ao Catálogo o que ele não tem (a marca e o modelo, depois uma geração com o nome dos anos, "1985–1990", depois a versão), então nada do que foi digitado se perde. Uma versão gravada sem geração se liga à única versão com esse nome no modelo quando o Catálogo tem exatamente uma, ficando com a geração dela; se não, o nome dela vai para o fim da descrição curta do item. Depois as colunas antigas de anos e versão são removidas.
 - **O feed de mudanças começa numa migração.** A `20261123000000_change_feed` adiciona o `syncVersion` às 13 tabelas que o feed envia, cria o `SyncState`, com um id aleatório para o banco, e o `SyncTombstone`, os triggers que os mantêm (`<tabela>_sync_insert`, `_update` e `_delete`, e os do `ItemVehicle` e do `ItemOriginalCode`, que dão uma versão nova ao item deles), e dá às linhas já gravadas as primeiras versões, as listas e o catálogo antes dos itens. No SQLite a coluna é adicionada no lugar, porque redefinir uma tabela apagaria as linhas que dependem dela em cascata. Uma migração futura que redefinir uma dessas tabelas perde os triggers junto e precisa criá-los de novo; o `changeFeed.db-test.ts` falha enquanto uma tabela estiver sem eles.
+- **As operações do celular ficam guardadas numa migração.** A `20261124000000_sync_operations` cria o `SyncOperation`, com a chave do dispositivo e do id da operação, a resposta de cada operação guardada na transação que a aplica.
 - **Uma migração aplicada nunca muda.** Uma correção vai numa migração nova. Mesmo uma com data entre as antigas é aplicada num banco que já tem as seguintes, desde que não faça mal ali.
 - **Uma cópia antes de migrar.** O servidor que o app desktop traz copia o arquivo SQLite antes de aplicar as migrações pendentes (`src/db/backup.ts`): o WAL juntado ao arquivo, o arquivo copiado para `backups/apc-before-<versão>-<data>.db` ao lado dele, com a mesma chave, fora do modo WAL e conferido com o `quick_check`, mantendo as 3 últimas. Uma migração que falha se desfaz sozinha; a cópia é para uma que dá certo e estraga os dados. Uma cópia que não pode ser feita para o servidor antes de migrar. O PostgreSQL não é copiado: o log pede um `pg_dump`.
 
