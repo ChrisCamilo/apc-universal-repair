@@ -2,14 +2,13 @@ import type { ComponentProps } from 'react';
 import { Text as RNText, View } from 'react-native';
 import { carSheet, type Catalog } from '@apc/domain/catalog';
 import { itemCardCode, itemCardDetails, stockTint, type Item } from '@apc/domain/items';
-import { photoAddress } from '@apc/domain/photos';
 import { filterIcon } from '@apc/tokens/icons';
-import { apiUrl } from '../../app/api';
 import { Button } from '../../components/Button';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
 import { EmptyState } from '../../components/EmptyState';
 import { Heading } from '../../components/Typography';
 import { CardTitle, StockQuantity } from '../inventory/ItemCard';
+import { photoSource } from '../inventory/photoCache';
 import { useStyles } from './CarSheet.styles';
 
 // A model's or a version's sheet in the Catalog, the same as the web on a phone (see carSheet in @apc/domain/catalog):
@@ -27,7 +26,7 @@ const PART_COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
     card: 'thumb',
     cell: (item) => {
       const photo = item.brands.flatMap((brand) => brand.photos)[0];
-      return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, apiUrl())} label={`Foto de ${item.name}`} />;
+      return <TableThumbnail src={photo && photoSource(photo, 'thumb')} label={`Foto de ${item.name}`} />;
     },
   },
   {

@@ -26,10 +26,11 @@ export const PHOTO_QUALITY = 80;
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 /**
- * A photo as the photo fields hold it: a saved one has only its URL; one just chosen also has its file; one of another
- * item to be copied also has that photo's id.
+ * A photo as the photo fields hold it: a saved one has its URL and its id, which keeps it when saved, so the URL can be
+ * another copy of it, such as the phone's cached file; one just chosen also has its file; one of another item to be
+ * copied also has that photo's id.
  */
-export type HeldPhoto<Picked> = { url: string; file?: Picked; copyOf?: string };
+export type HeldPhoto<Picked> = { url: string; keeps?: string; file?: Picked; copyOf?: string };
 /**
  * One part of the request that sets the photos of an item's brand: a saved photo kept by its id, a copy of another
  * photo by its id, or a new file.
@@ -62,13 +63,14 @@ export function fitPhoto(width: number, height: number): { width: number; height
 }
 
 /**
- * Turns an item's saved photos into what the photo fields hold: their URLs, reached through the API's address.
+ * Turns an item's saved photos into what the photo fields hold: their URLs, reached through the API's address, and
+ * their ids.
  * @param saved The item's photos, in order.
  * @param apiBase Where the API is reached: "/api" on the web, API_URL on the phone.
  * @returns One held photo per saved photo.
  */
 export function heldPhotos(saved: readonly ItemPhoto[], apiBase: string): HeldPhoto<never>[] {
-  return saved.map((photo) => ({ url: photoAddress(photo.url, apiBase) }));
+  return saved.map((photo) => ({ url: photoAddress(photo.url, apiBase), keeps: photo.id }));
 }
 
 /**
@@ -108,8 +110,8 @@ export function pickPhoto(picked: readonly ItemPhoto[], photo: ItemPhoto, room: 
 
 /**
  * Lists the parts that set an item's photos to the ones a field holds, in its order: each saved photo still held is
- * kept by its id, found by its URL, each photo of another item is copied by its id, and each photo just chosen is sent
- * as a file.
+ * kept by its id (by its URL for one held without it), each photo of another item is copied by its id, and each photo
+ * just chosen is sent as a file.
  * @param photos Photos the field holds, in order.
  * @param saved The item's saved photos.
  * @param apiBase Where the API is reached, as given to heldPhotos.
@@ -127,7 +129,7 @@ export function photoParts<Picked>(
     if (photo.copyOf) {
       return [{ copy: photo.copyOf }];
     }
-    const kept = saved.find((savedPhoto) => photoAddress(savedPhoto.url, apiBase) === photo.url);
+    const kept = saved.find((savedPhoto) => (photo.keeps ? savedPhoto.id === photo.keeps : photoAddress(savedPhoto.url, apiBase) === photo.url));
     return kept ? [{ keep: kept.id }] : [];
   });
 }

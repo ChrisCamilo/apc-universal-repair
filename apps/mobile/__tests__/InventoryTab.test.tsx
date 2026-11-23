@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { AppState, Image, Modal, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { AppState, Image, Modal, NativeModules, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import {
@@ -304,14 +304,16 @@ function Preferences({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Checks a card's thumbnail shows the item's cover from the API and opens its photos large; removing the photo there
-// sends the set left, empty, to the item's brand, and the phone's copy is brought up to date.
+// Checks a card's thumbnail shows the item's cover kept on the phone, downloaded from the API's thumbnail, and opens its
+// photos large; removing the photo there sends the set left, empty, to the item's brand, and the phone's copy is
+// brought up to date.
 test('Mobile: the thumbnail opens the item photos, saved as they change', async () => {
   const tree = await mount();
   const thumbnail = tree.root.find(
     (n) => n.props.accessibilityLabel === 'Ver fotos de Filtro de óleo' && typeof n.props.onPress === 'function',
   );
-  expect(thumbnail.findByType(Image).props.source.uri).toMatch(/\/photos\/aa-thumb\.webp$/);
+  expect(NativeModules.PhotoCache.save).toHaveBeenCalledWith('thumb', COVER.id, expect.stringMatching(/\/photos\/aa-thumb\.webp$/));
+  expect(thumbnail.findByType(Image).props.source.uri).toBe(`file:///photos/thumb/${COVER.id}`);
   await ReactTestRenderer.act(async () => thumbnail.props.onPress());
   const pressable = (name: string) =>
     tree.root.findAll(
@@ -408,8 +410,9 @@ test('Mobile: the inventory shows loading, then the error state with a retry', a
   expect(tree!.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string')).toHaveLength(3);
 });
 
-// Loads the copy, turns the server off and pulls the list down, and checks every item still shows, searchable, under a
-// notice that says the list is the phone's copy and from when; with the server back, pulling again drops the notice.
+// Loads the copy, turns the server off and pulls the list down, and checks every item still shows, with its thumbnail
+// from the phone, searchable, under a notice that says the list is the phone's copy and from when; with the server
+// back, pulling again drops the notice.
 test('Mobile: away from the server, the list shows the copy and says from when', async () => {
   const tree = await mount();
   const scroll = () => tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
@@ -420,6 +423,8 @@ test('Mobile: away from the server, the list shows the copy and says from when',
   (fetch as jest.Mock).mockImplementation(() => Promise.reject(new TypeError('Network request failed')));
   await ReactTestRenderer.act(async () => scroll().props.refreshControl.props.onRefresh());
   expect(cards()).toHaveLength(3);
+  const thumbnail = tree.root.find((n) => n.props.accessibilityLabel === 'Ver fotos de Filtro de óleo' && typeof n.props.onPress === 'function');
+  expect(thumbnail.findByType(Image).props.source.uri).toBe(`file:///photos/thumb/${COVER.id}`);
   expect(notice()).toMatch(/^Sem conexão com o servidor\. Mostrando a cópia de \d{2}\/\d{2} às \d{2}:\d{2}\.$/);
   await ReactTestRenderer.act(async () => tree.root.findByType(TextInput).props.onChangeText('w712'));
   expect(cards()).toHaveLength(1);

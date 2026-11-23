@@ -64,6 +64,26 @@ require('react-native').NativeModules.InventoryCopy = {
   }),
 };
 
+// The photos the phone keeps are files the native side downloads (PhotoCacheModule.kt); tests keep each one's address,
+// "file:///photos/<kind>/<id>", in memory, as if downloaded at once, and every test starts with none.
+const photoFiles = { thumb: new Map(), full: new Map() };
+require('react-native').NativeModules.PhotoCache = {
+  list: jest.fn(async () => ({ thumb: Object.fromEntries(photoFiles.thumb), full: Object.fromEntries(photoFiles.full) })),
+  save: jest.fn(async (kind, id) => {
+    photoFiles[kind].set(id, `file:///photos/${kind}/${id}`);
+    return `file:///photos/${kind}/${id}`;
+  }),
+  touch: jest.fn(),
+  remove: jest.fn(async (kind, ids) => {
+    ids.forEach((id) => photoFiles[kind].delete(id));
+  }),
+  trim: jest.fn(async () => []),
+  clear: jest.fn(async () => {
+    photoFiles.thumb.clear();
+    photoFiles.full.clear();
+  }),
+};
+
 // The camera is native: the scanner draws nothing and reads no code unless a test calls its onBarcodeScanned, and
 // the camera's permission is granted.
 jest.mock('react-native-vision-camera', () => ({

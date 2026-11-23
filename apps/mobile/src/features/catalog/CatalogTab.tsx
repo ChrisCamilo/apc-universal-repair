@@ -52,6 +52,7 @@ import { SearchField } from '../../components/TextField';
 import { useTheme } from '../../app/theme';
 import { TreeView } from '../../components/TreeView';
 import { Heading, NumericReadout, Text } from '../../components/Typography';
+import { usePhotoCache } from '../inventory/photoCache';
 import { useItems } from '../inventory/useItems';
 import { CarParts, CarSheet } from './CarSheet';
 import { useStyles } from './CatalogTab.styles';
@@ -107,6 +108,8 @@ type CatalogProps = {
 export function CatalogTab() {
   const state = useCatalog();
   const stock = useItems();
+  // The photos kept on the phone, which the parts' thumbnails show once kept.
+  usePhotoCache();
   const [partsOnly, setPartsOnly] = usePartsOnly();
   const { styles, ids } = useStyles();
   const waiting = partsOnly === null || (partsOnly && stock.status === 'loading');

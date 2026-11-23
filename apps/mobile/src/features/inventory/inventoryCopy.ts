@@ -3,6 +3,7 @@ import { apiFetch } from '@apc/domain/auth';
 import { SYNC_CHANGES_PATH, syncChangesSchema, type SyncChanges } from '@apc/domain/sync';
 import { applyChanges, emptyCopy, type SyncCopy } from '@apc/domain/sync-copy';
 import { apiUrl } from '../../app/api';
+import { clearPhotos, keepThumbnails } from './photoCache';
 
 // The phone's copy of the paired server's inventory (see @apc/domain/sync-copy), which the Inventory reads, so it works
 // away from the server. It is kept on disk by the native side (InventoryCopyModule.kt), encrypted with a key held in the
@@ -11,7 +12,8 @@ import { apiUrl } from '../../app/api';
 // the copy waited longer than the deletions it keeps); the pages are applied all at once, once the last one is in, and
 // written to disk, so the copy never shows a sync caught halfway. A sync that can't reach the server leaves the copy as
 // it was and says so. One sync runs at a time: asking again while one runs gets that one. Logging out and pairing with
-// another server clear the copy, on disk and its key; a sync still running then keeps nothing of what it brought.
+// another server clear the copy, on disk and its key; a sync still running then keeps nothing of what it brought. The
+// photos' thumbnails are kept after each sync, and cleared with the copy (see photoCache.ts).
 
 /** The native side that keeps the copy encrypted on disk (InventoryCopyModule.kt). */
 const native = NativeModules.InventoryCopy as {
@@ -101,18 +103,21 @@ async function sync(): Promise<SyncResult> {
   held = next;
   await native.write(JSON.stringify(next)).catch(() => {});
   listeners.forEach((listener) => listener());
+  // The photos' thumbnails follow in the background, and the ones of photos gone are dropped (see photoCache.ts).
+  keepThumbnails(Object.values(next.rows.itemPhoto)).catch(() => {});
   return 'synced';
 }
 
 /**
- * Deletes the copy, on disk and in memory, as logging out or pairing with another server does.
+ * Deletes the copy, on disk and in memory, and the photos kept with it, as logging out or pairing with another server
+ * does.
  */
 export async function clearCopy(): Promise<void> {
   generation += 1;
   // A sync still running keeps nothing; the next one starts over.
   running = null;
   held = emptyCopy();
-  await native.clear().catch(() => {});
+  await Promise.all([native.clear().catch(() => {}), clearPhotos()]);
   listeners.forEach((listener) => listener());
 }
 

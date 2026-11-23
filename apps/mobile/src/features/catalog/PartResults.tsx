@@ -2,11 +2,10 @@ import { Text as RNText, View } from 'react-native';
 import type { ComponentProps } from 'react';
 import { type FoundPart, type PartResults as Results } from '@apc/domain/catalog';
 import { itemCardDetails, stockTint } from '@apc/domain/items';
-import { photoAddress } from '@apc/domain/photos';
-import { apiUrl } from '../../app/api';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
 import { Text } from '../../components/Typography';
 import { CardTitle, StockQuantity } from '../inventory/ItemCard';
+import { photoSource } from '../inventory/photoCache';
 import { useStyles } from './PartResults.styles';
 
 // The inventory parts a Catalog search by code found, the same as the web on a phone (the "Catálogo no celular"
@@ -23,7 +22,7 @@ const CARD_COLUMNS: ComponentProps<typeof DataTable<FoundPart>>['columns'] = [
     card: 'thumb',
     cell: (part) => {
       const photo = partBrand(part).photos[0];
-      return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, apiUrl())} label={`Foto de ${part.item.name}`} />;
+      return <TableThumbnail src={photo && photoSource(photo, 'thumb')} label={`Foto de ${part.item.name}`} />;
     },
   },
   {

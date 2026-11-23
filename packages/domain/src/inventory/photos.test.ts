@@ -68,7 +68,10 @@ test("Shared: photo counts read in pt-BR", () => {
 // keeps both in order and sends nothing; swapped, one removed, or one replaced by a new file each send the change.
 test("Shared: a field's photos become the parts that save them, only when changed", () => {
   const held = heldPhotos(SAVED, "/api");
-  assert.deepEqual(held, [{ url: "/api/photos/a.jpg" }, { url: "/api/photos/b.jpg" }]);
+  assert.deepEqual(held, [
+    { url: "/api/photos/a.jpg", keeps: SAVED[0].id },
+    { url: "/api/photos/b.jpg", keeps: SAVED[1].id },
+  ]);
 
   const same = photoParts(held, SAVED, "/api");
   assert.deepEqual(same, [{ keep: "a" }, { keep: "b" }]);
@@ -119,6 +122,13 @@ test("Shared: a photo is reached under the API's address, or at its own whole ad
   assert.equal(photoAddress("https://chriscamilo.github.io/demo/disco.svg", "/api"), "https://chriscamilo.github.io/demo/disco.svg");
   const demo: ItemPhoto[] = [{ id: "d", url: "blob:https://site/1", thumbUrl: "blob:https://site/1" }];
   const held = heldPhotos(demo, "/api");
-  assert.deepEqual(held, [{ url: "blob:https://site/1" }]);
+  assert.deepEqual(held, [{ url: "blob:https://site/1", keeps: "d" }]);
   assert.deepEqual(photoParts(held, demo, "/api"), [{ keep: "d" }]);
+});
+
+// Holds a saved photo at another address, as the phone's cached file, and checks it is still kept by its id.
+test("Shared: a saved photo held at another address is still kept by its id", () => {
+  const held = heldPhotos(SAVED, "/api").map((photo) => ({ ...photo, url: `file:///cache/${photo.keeps}` }));
+  assert.deepEqual(photoParts(held, SAVED, "/api"), [{ keep: SAVED[0].id }, { keep: SAVED[1].id }]);
+  assert.equal(photosChanged(photoParts(held, SAVED, "/api"), SAVED), false);
 });
