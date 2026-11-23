@@ -33,7 +33,7 @@ import type { ActiveSession } from "../auth/sessions.js";
 /** The order of an item's brands: by their position, the cover's first. */
 export const BRAND_ORDER = [{ position: "asc" }, { id: "asc" }] satisfies Prisma.ItemBrandOrderByWithRelationInput[];
 /** The order of an item's vehicles: by their position, the first one the row shows. */
-const VEHICLE_ORDER = [{ position: "asc" }, { id: "asc" }] satisfies Prisma.ItemVehicleOrderByWithRelationInput[];
+export const VEHICLE_ORDER = [{ position: "asc" }, { id: "asc" }] satisfies Prisma.ItemVehicleOrderByWithRelationInput[];
 /** The names of a vehicle's brand and model, all sorting reads of it. */
 const VEHICLE_NAMES = { vehicleBrand: { select: { name: true } }, vehicleModel: { select: { name: true } } } satisfies Prisma.ItemVehicleSelect;
 /**
@@ -203,7 +203,7 @@ export function itemWhere(query: ItemListQuery, minQuantity: Prisma.FieldRef<"It
  * @param value The database's value.
  * @returns The API's value, e.g. "D" for FRONT.
  */
-function labelOf<Label extends string, Value extends string>(values: Record<Label, Value>, value: Value): Label {
+export function labelOf<Label extends string, Value extends string>(values: Record<Label, Value>, value: Value): Label {
   return (Object.keys(values) as Label[]).find((label) => values[label] === value)!;
 }
 

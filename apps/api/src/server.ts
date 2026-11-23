@@ -3,7 +3,8 @@
 // refuses to start when the key doesn't open it (see db/cipher.ts). With APC_MIGRATE_ON_START=1, as the desktop app
 // runs the server it ships, the API then applies the pending migrations of its database (see db/migrate.ts), so it
 // migrates itself on every update, after copying a SQLite file to backups/ (see db/backup.ts); in development
-// `db:migrate` does. Then it turns WAL on for SQLite and listens on PORT, or else on DEV_SERVER_PORT when started for
+// `db:migrate` does. Then it turns WAL on for SQLite, drops the deletions the change feed no longer keeps (see
+// sync/changes.ts) and listens on PORT, or else on DEV_SERVER_PORT when started for
 // development (`pnpm dev`, which passes --dev) and on SERVER_PORT otherwise, as the desktop app and `pnpm start` run it,
 // on the address APC_HOST names, or on every one (NETWORK_HOST), as development, the emulator and a phone need.
 // With HTTPS_CERT and HTTPS_KEY, a certificate and its private key in PEM, as the desktop app sets them while the
@@ -18,6 +19,7 @@ import { ensureEncrypted, WRONG_KEY_ERROR } from "./db/cipher.js";
 import { prepareDatabase } from "./db/client.js";
 import { migrate } from "./db/migrate.js";
 import { databaseUrl } from "./db/provider.js";
+import { pruneTombstones } from "./sync/changes.js";
 import { API_VERSION } from "./health/routes/health.js";
 
 const { HTTPS_CERT: cert, HTTPS_KEY: key } = process.env;
@@ -44,6 +46,12 @@ Promise.resolve()
     await migrate(databaseUrl(), (name) => app.log.info(`Applied the migration ${name}`));
   })
   .then(prepareDatabase)
+  .then(async () => {
+    const dropped = await pruneTombstones();
+    if (dropped > 0) {
+      app.log.info(`Dropped ${dropped} deletion(s) older than the change feed keeps.`);
+    }
+  })
   .then(() => app.listen({ port, host }))
   .catch((error) => {
     app.log.error(error);
