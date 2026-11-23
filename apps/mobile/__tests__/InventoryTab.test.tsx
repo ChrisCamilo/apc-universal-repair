@@ -443,8 +443,8 @@ test('Mobile: the tab scrolls as a whole, with no pagination', async () => {
   expect(texts(empty)).not.toContain('Fim da lista');
 });
 
-// Checks the tab has no Gerenciar listas, Importar CSV or Exportar CSV of its own, and hands the header a "⋯" that opens
-// them, with Tutorial do estoque, in the "Mais ações" sheet; Exportar CSV closes the sheet and opens its dialog. The
+// Checks the tab has no Gerenciar listas, Importar Peças or Exportar Peças of its own, and hands the header a "⋯" that opens
+// them, with Tutorial do estoque, in the "Mais ações" sheet; Exportar Peças closes the sheet and opens its dialog. The
 // "⋯" goes when the tab does.
 test('Mobile: the other actions open from the "⋯" the tab hands the header', async () => {
   const handMore = jest.fn();
@@ -469,12 +469,12 @@ test('Mobile: the other actions open from the "⋯" the tab hands the header', a
   expect(texts(tree!)).not.toContain('Gerenciar listas');
   const open = handMore.mock.calls.at(-1)[0];
   await ReactTestRenderer.act(async () => open());
-  expect(texts(tree!)).toEqual(expect.arrayContaining(['Mais ações', 'Gerenciar listas', 'Importar CSV', 'Exportar CSV', 'Tutorial do estoque']));
+  expect(texts(tree!)).toEqual(expect.arrayContaining(['Mais ações', 'Gerenciar listas', 'Importar Peças', 'Exportar Peças', 'Tutorial do estoque']));
   const exporter = tree!.root.findAll(
-    (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Exportar CSV').length > 0,
+    (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Exportar Peças').length > 0,
   )[0];
   await ReactTestRenderer.act(async () => exporter.props.onPress());
-  expect(visible().some((modal) => modal.findAll((n) => n.props.accessibilityLabel === 'Exportar CSV').length > 0)).toBe(true);
+  expect(visible().some((modal) => modal.findAll((n) => n.props.accessibilityLabel === 'Exportar Peças').length > 0)).toBe(true);
   expect(visible().some((modal) => modal.findAll((n) => n.props.testID === 'common.action-sheet.action').length > 0)).toBe(false);
   await ReactTestRenderer.act(async () => tree!.unmount());
   mounted.splice(mounted.indexOf(tree!), 1);

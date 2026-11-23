@@ -8,7 +8,7 @@ import { ITEMS } from "./data/items.ts";
 
 // Importing items from a CSV file.
 
-// Imports a spreadsheet through "Importar CSV" against an API that keeps what it is sent. The file is checked before
+// Imports a spreadsheet through "Importar Peças" against an API that keeps what it is sent. The file is checked before
 // anything is sent, so a row with an error is left out and a part code in use updates its item rather than adding a
 // second one.
 test("Web: items are imported from a CSV file", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
@@ -36,8 +36,8 @@ test("Web: items are imported from a CSV file", { tag: [TEST_TAGS.inventory] }, 
   await expect(rows).toHaveCount(4);
 
   const importer = importDialog(page);
-  await test.step("Importar CSV downloads the template", async () => {
-    await inventory(page).importCsv.click();
+  await test.step("Importar Peças downloads the template", async () => {
+    await inventory(page).importParts.click();
     const download = page.waitForEvent("download");
     await importer.template.click();
     expect((await download).suggestedFilename()).toBe("modelo-estoque.csv");

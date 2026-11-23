@@ -29,6 +29,38 @@ test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS
   }
 });
 
+// On the desktop, checks the toolbar holds only the search, "Mais ações" and "Novo item", and the menu lists Gerenciar
+// listas, Importar Peças and Exportar Peças in that order: by mouse, the first opens its dialog, and by keyboard,
+// End and Enter open the last, the export, after Escape closes the menu back onto its trigger.
+test("Web: the toolbar's Mais ações menu holds the lists and the parts' files", { tag: [TEST_TAGS.inventory, TEST_TAGS.desktopOnly] }, async ({ page }) => {
+  await openInventory(page);
+  const inv = inventory(page);
+  await expect(inv.toolbar.getByRole("button")).toHaveText(["Mais ações", "Novo item"]);
+
+  await test.step("the menu lists the three actions and opens Gerenciar listas", async () => {
+    await inv.more.click();
+    await expect(inv.moreMenu.getByRole("menuitem")).toHaveText(["Gerenciar listas", "Importar Peças", "Exportar Peças"]);
+    await expect(inv.moreMenu.getByRole("menuitem", { name: "Gerenciar listas" })).toBeFocused();
+    await inv.moreMenu.getByRole("menuitem", { name: "Gerenciar listas" }).click();
+    await expect(inv.moreMenu).toBeHidden();
+    const lists = dialog(page, "Gerenciar listas");
+    await lists.close.click();
+    await expect(lists.root).toBeHidden();
+  });
+
+  await test.step("Escape closes the menu onto its trigger, and the keyboard opens Exportar Peças", async () => {
+    await inv.more.click();
+    await page.keyboard.press("Escape");
+    await expect(inv.moreMenu).toBeHidden();
+    await expect(inv.more).toBeFocused();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("End");
+    await expect(inv.moreMenu.getByRole("menuitem", { name: "Exportar Peças" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(dialog(page, "Exportar Peças").root).toBeVisible();
+  });
+});
+
 // On a phone, with more items than fit the screen, checks the Inventory scrolls as a whole, the bottom bar staying at
 // the bottom, and "Novo item" is a round 56px "+" at the bottom right, 16px above the bar, which stays put while the page
 // scrolls and opens a new item's form; nothing scrolls sideways.
@@ -54,18 +86,18 @@ test("Web: on a phone the Inventory scrolls as a whole under a round + for a new
   await expect(itemForm(page, "Novo item").root).toBeVisible();
 });
 
-// On a phone, checks the toolbar has no Gerenciar listas, Importar CSV or Exportar CSV, and the header's "⋯" opens
+// On a phone, checks the toolbar has no Gerenciar listas, Importar Peças or Exportar Peças, and the header's "⋯" opens
 // them, with Tutorial do estoque, in a "Mais ações" sheet, a 56px row each; Escape closes it, and the tutorial's row
 // closes it and starts the tutorial over the tab. (Each action's own test opens it from the sheet.)
 test("Web: on a phone the other actions open from the header's ⋯", { tag: [TEST_TAGS.inventory, TEST_TAGS.mobileOnly] }, async ({ page }) => {
   await openInventory(page);
   const inv = inventory(page);
-  for (const name of ["Gerenciar listas", "Importar CSV", "Exportar CSV"]) {
+  for (const name of ["Gerenciar listas", "Importar Peças", "Exportar Peças"]) {
     await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
   }
   await inv.more.click();
   const actions = inv.moreSheet.getByRole("button");
-  await expect(actions).toHaveText(["Gerenciar listas", "Importar CSV", "Exportar CSV", "Tutorial do estoque"]);
+  await expect(actions).toHaveText(["Gerenciar listas", "Importar Peças", "Exportar Peças", "Tutorial do estoque"]);
   for (const height of await actions.evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height))) {
     expect(height).toBe(56);
   }
@@ -80,7 +112,7 @@ test("Web: on a phone the other actions open from the header's ⋯", { tag: [TES
   await expect(tour(page).card).toBeHidden();
 });
 
-// On a phone, opens Gerenciar listas, Importar CSV and Exportar CSV from the "Mais ações" sheet, and Sobre esta versão
+// On a phone, opens Gerenciar listas, Importar Peças and Exportar Peças from the "Mais ações" sheet, and Sobre esta versão
 // from Conta: each fills the screen, its × on top and its actions at the bottom in view, and the × closes it; the
 // lists' pencils and trashes are 44px. Excluir item, a confirmation, stays a window centered on the screen, 16px from
 // its sides.
@@ -91,8 +123,8 @@ test("Web: on a phone the lists, CSV and About dialogs fill the screen", { tag: 
   const { width, height } = page.viewportSize()!;
   const openers = [
     { name: "Gerenciar listas", open: () => inv.manageLists.click(), action: "Fechar" },
-    { name: "Importar CSV", open: () => inv.importCsv.click(), action: "Importar 0 itens" },
-    { name: "Exportar CSV", open: () => inv.exportCsv.click(), action: "Exportar" },
+    { name: "Importar Peças", open: () => inv.importParts.click(), action: "Importar 0 itens" },
+    { name: "Exportar Peças", open: () => inv.exportParts.click(), action: "Exportar" },
     {
       name: "Sobre esta versão",
       open: async () => {

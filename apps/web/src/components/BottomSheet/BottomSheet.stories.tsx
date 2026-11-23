@@ -9,7 +9,7 @@ import { Text } from '../Typography/Typography.tsx'
 // and a footer, whose choices scroll once the sheet is as tall as it gets. The stories open at the phone's design size;
 // drag the handle down, click the backdrop or press Escape to close, and switch Style and Mode in the toolbar.
 
-const ACTIONS = ['Gerenciar listas', 'Importar CSV', 'Exportar CSV', 'Tutorial do estoque']
+const ACTIONS = ['Gerenciar listas', 'Importar Peças', 'Exportar Peças', 'Tutorial do estoque']
 const CATEGORIES = ['Todas', 'Arrefecimento', 'Carroceria', 'Direção', 'Elétrica', 'Escapamento', 'Freios', 'Ignição', 'Iluminação', 'Injeção', 'Motor', 'Suspensão', 'Transmissão', 'Vidros']
 const meta = {
   title: 'Components/BottomSheet',

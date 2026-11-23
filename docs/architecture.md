@@ -58,6 +58,7 @@ flowchart TB
             itemForm["item-form<br/>form checks · price in reais"]
             itemFilters["item-filters<br/>filters · list query"]
             itemCsv["item-csv<br/>CSV template · reading · import · export"]
+            mercadoLivreCsv["mercado-livre-csv<br/>Mercado Livre listings · photo names"]
             lists["lists<br/>categories · brands · models"]
             photos["photos<br/>photo rules · upload parts"]
             tutorial["inventory-tutorial<br/>tutorial steps · test item"]
@@ -86,6 +87,8 @@ flowchart TB
     itemForm --> lists
     itemFilters --> lists
     itemCsv --> lists
+    mercadoLivreCsv --> itemCsv
+    mercadoLivreCsv --> items
     catalog --> items
     tutorial --> itemForm
     tutorial --> itemFilters
@@ -331,10 +334,10 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 
 | Part | What it does | Main technologies |
 |---|---|---|
-| `packages/domain` | The contract and the rules: Zod schemas of every request and response, the writing rule, search and sort, form checks, CSV reading and writing, the API's route list. No UI, so web, mobile and the API behave the same. | TypeScript, Zod 4 |
+| `packages/domain` | The contract and the rules: Zod schemas of every request and response, the writing rule, search and sort, form checks, CSV reading and writing, the Mercado Livre listings, the API's route list. No UI, so web, mobile and the API behave the same. | TypeScript, Zod 4 |
 | `packages/ui-spec` | The component contracts: what a button, a dialog, a table, a tree or a tour does, the same on web and mobile. | TypeScript |
 | `packages/tokens` | The design tokens of the 4 styles and 2 modes, the typography, the icons, the style ids and the style guard. | TypeScript |
-| `apps/web` | The web app: login and sign-up, Dashboard with the Inventory and Catalog tabs, design system components. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
+| `apps/web` | The web app: login and sign-up, Dashboard with the Inventory and Catalog tabs, design system components. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10, fflate (the Mercado Livre zip) |
 | `apps/mobile` | The phone app, the same screens with React Native components. | React Native 0.88, AsyncStorage, react-native-keychain, react-native-svg, image and document pickers |
 | `apps/desktop` | The Windows desktop app: the web build in an Electron window, the API forwarded through `app://apc`, and the local API started when it doesn't answer. | Electron 44, electron-builder (NSIS and portable) |
 | `apps/api` | The REST API: users (sign-up and login), items, item lists, photos, CSV import. Validates every request with the shared schemas. | Fastify 5, Prisma 7 (PostgreSQL with adapter-pg, or SQLite with adapter-better-sqlite3), sharp, @fastify/multipart |
@@ -377,10 +380,10 @@ Um id é `<escopo>.<componente>[.<slot>…]`, ex.: `common.dialog.header.close`,
 
 | Parte | O que faz | Principais tecnologias |
 |---|---|---|
-| `packages/domain` | O contrato e as regras: schemas Zod de cada requisição e resposta, a regra de escrita, busca e ordenação, as validações do formulário, a leitura e a escrita do CSV e a lista de rotas da API. Sem interface, para web, celular e API funcionarem igual. | TypeScript, Zod 4 |
+| `packages/domain` | O contrato e as regras: schemas Zod de cada requisição e resposta, a regra de escrita, busca e ordenação, as validações do formulário, a leitura e a escrita do CSV, os anúncios do Mercado Livre e a lista de rotas da API. Sem interface, para web, celular e API funcionarem igual. | TypeScript, Zod 4 |
 | `packages/ui-spec` | Os contratos dos componentes: o que um botão, um diálogo, uma tabela, uma árvore ou um tour fazem, igual na web e no celular. | TypeScript |
 | `packages/tokens` | Os tokens de design dos 4 estilos e 2 modos, a tipografia, os ícones, os ids de estilo e a guarda de estilos. | TypeScript |
-| `apps/web` | O app web: login e cadastro, Dashboard com as abas Estoque e Catálogo, componentes do design system. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10 |
+| `apps/web` | O app web: login e cadastro, Dashboard com as abas Estoque e Catálogo, componentes do design system. | React 19, Vite 8, Tailwind CSS 4, React Router 8, Storybook 10, fflate (o zip do Mercado Livre) |
 | `apps/mobile` | O app para celular, com as mesmas telas em componentes React Native. | React Native 0.88, AsyncStorage, react-native-keychain, react-native-svg, seletores de imagem e de documentos |
 | `apps/desktop` | O app desktop para Windows: o build da web numa janela do Electron, a API encaminhada pelo `app://apc` e a API local ligada quando não responde. | Electron 44, electron-builder (NSIS e portátil) |
 | `apps/api` | A API REST: usuários (cadastro e login), itens, listas, fotos e importação de CSV. Valida cada requisição com os schemas compartilhados. | Fastify 5, Prisma 7 (PostgreSQL com adapter-pg, ou SQLite com adapter-better-sqlite3), sharp, @fastify/multipart |

@@ -42,7 +42,7 @@ test('Web: an action sheet lists its actions as rows, as tall as they need', asy
   await screen.getByRole('button', { name: 'Mais ações' }).click()
   const sheet = screen.getByRole('dialog', { name: 'Mais ações' })
   const rows = sheet.getByRole('button')
-  expect(rows.elements().map((row) => row.textContent)).toEqual(['Gerenciar listas', 'Importar CSV', 'Exportar CSV', 'Tutorial do estoque'])
+  expect(rows.elements().map((row) => row.textContent)).toEqual(['Gerenciar listas', 'Importar Peças', 'Exportar Peças', 'Tutorial do estoque'])
   await expect.element(rows.first()).toHaveFocus()
   for (const row of rows.elements()) {
     const box = row.getBoundingClientRect()
@@ -61,7 +61,7 @@ test('Web: an action sheet closes and runs the action pressed', async () => {
   const onImport = vi.fn()
   const screen = await render(<Opener onImport={onImport} />)
   await screen.getByRole('button', { name: 'Mais ações' }).click()
-  await screen.getByRole('button', { name: 'Importar CSV' }).click()
+  await screen.getByRole('button', { name: 'Importar Peças' }).click()
   expect(onImport).toHaveBeenCalledOnce()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
 
@@ -82,8 +82,8 @@ function Opener({ onImport }: { onImport: () => void }) {
         title="Mais ações"
         actions={[
           { icon: listIcon, label: 'Gerenciar listas', onSelect: () => {} },
-          { icon: importIcon, label: 'Importar CSV', onSelect: onImport },
-          { icon: exportIcon, label: 'Exportar CSV', onSelect: () => {} },
+          { icon: importIcon, label: 'Importar Peças', onSelect: onImport },
+          { icon: exportIcon, label: 'Exportar Peças', onSelect: () => {} },
           { icon: playIcon, label: 'Tutorial do estoque', onSelect: () => {} },
         ]}
       />
