@@ -333,6 +333,20 @@ function csvVehicles(text: string, lists: ItemLists, errors: string[]): ItemVehi
 }
 
 /**
+ * Fetches every item of the list as it is, across all its pages, for an export.
+ * @param base Where the API is reached, e.g. "/api" on the web.
+ * @param query The list query from itemListQuery, with the search, filters, status and sort but no page.
+ * @returns The items, or null when they couldn't be fetched.
+ */
+export async function exportedItems(base: string, query: string): Promise<Item[] | null> {
+  const response = await apiFetch(query ? `${base}/items?${query}` : `${base}/items`).catch(() => null);
+  if (!response?.ok) {
+    return null;
+  }
+  return itemListResponseSchema.parse(await response.json()).items;
+}
+
+/**
  * Words an export's result for its toast.
  * @param count How many items the file holds.
  * @returns E.g. "12 itens exportados."
@@ -349,12 +363,8 @@ export function exportedSummary(count: number): string {
  * @returns The file's text and how many items it holds, or null when the items couldn't be fetched.
  */
 export async function exportItems(base: string, query: string, options: { photos: boolean }): Promise<{ csv: string; count: number } | null> {
-  const response = await apiFetch(query ? `${base}/items?${query}` : `${base}/items`).catch(() => null);
-  if (!response?.ok) {
-    return null;
-  }
-  const { items } = itemListResponseSchema.parse(await response.json());
-  return { csv: itemsCsv(items, options), count: items.length };
+  const items = await exportedItems(base, query);
+  return items && { csv: itemsCsv(items, options), count: items.length };
 }
 
 /**
