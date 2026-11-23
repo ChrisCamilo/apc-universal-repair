@@ -1,14 +1,15 @@
 import { scales } from '@apc/tokens/theme';
 import { createStyles } from '../../styles/createStyles';
 import { displayLabel, glow } from '../../styles/shared';
-import { fontFamily } from '../../app/theme';
+import { fontFamily, softHairline } from '../../app/theme';
 
 // The look of the Inventory tab, the same as the web on a phone (the Estoque mockup): on the canvas, with no panel
 // around it, one column that scrolls as a whole (the toolbar, the filters and the cards), ending clear
 // of the round "+" at the bottom right, with "Fim da lista" once every item is in; the filters in a wrapping row; each card's
 // quantity at 20px with its stock status under it in the 11px display face, muted for "un.", in the warn or danger
 // color for Baixo or Esgotado; and, while the list loads, skeleton rows in the cards' shape. The list takes the room
-// left, with the error and the empty states centered in it. The skeletons keep their own ids.
+// left, with the error and the empty states centered in it. The skeletons keep their own ids. Away from the server, a
+// soft tile above the list says it shows the phone's copy, and from when, as the device notice's tile.
 
 /** The skeleton's line widths: the name, then the details. */
 export const LOADING_LINES = ['40%', '20%'] as const;
@@ -23,13 +24,14 @@ const QUANTITY_SIZE = scales.fontSize.xl;
 /** A card's stock status under its quantity, in px (11px on the web). */
 const TAG_SIZE = 11;
 
-/** The Inventory tab: its column, the filters, each card's quantity, the "+" and the loading rows. */
+/** The Inventory tab: its column, the filters, the copy's notice, each card's quantity, the "+" and the loading rows. */
 export const useStyles = createStyles(
   'inventory.inventory-tab',
   {
     panel: '',
     tab: 'scroll',
     filters: 'filters',
+    copy: 'copy',
     list: 'list',
     end: 'list.end',
     name: 'name',
@@ -55,6 +57,13 @@ export const useStyles = createStyles(
     },
     fabButtonPressed: { transform: [{ translateY: 1 }] },
     // "Fim da lista", as on the web.
+    copy: {
+      padding: scales.space.s3,
+      borderRadius: theme.radiusTile,
+      borderWidth: 1,
+      borderColor: softHairline(theme),
+      backgroundColor: theme.colors.panelRaised,
+    },
     end: {
       paddingVertical: scales.space.s4,
       textAlign: 'center',
