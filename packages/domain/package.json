@@ -111,6 +111,10 @@
     "./sync-copy": {
       "apc-dist": "./dist/sync/copy.js",
       "default": "./src/sync/copy.ts"
+    },
+    "./test-sync": {
+      "apc-dist": "./dist/sync/testSync.js",
+      "default": "./src/sync/testSync.ts"
     }
   },
   "scripts": {
