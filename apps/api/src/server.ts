@@ -3,10 +3,11 @@
 // refuses to start when the key doesn't open it (see db/cipher.ts). With APC_MIGRATE_ON_START=1, as the desktop app
 // runs the server it ships, the API then applies the pending migrations of its database (see db/migrate.ts), so it
 // migrates itself on every update, after copying a SQLite file to backups/ (see db/backup.ts); in development
-// `db:migrate` does. Then it turns WAL on for SQLite, drops the deletions the change feed no longer keeps (see
-// sync/changes.ts) and listens on PORT, or else on DEV_SERVER_PORT when started for
+// `db:migrate` does. Then it turns WAL on for SQLite and listens on PORT, or else on DEV_SERVER_PORT when started for
 // development (`pnpm dev`, which passes --dev) and on SERVER_PORT otherwise, as the desktop app and `pnpm start` run it,
 // on the address APC_HOST names, or on every one (NETWORK_HOST), as development, the emulator and a phone need.
+// Once listening, it drops the deletions the change feed no longer keeps (see sync/changes.ts); a failure there only
+// warns, so the server also starts with no database, as the web's E2E tests run it, every call answered by a stand-in.
 // With HTTPS_CERT and HTTPS_KEY, a certificate and its private key in PEM, as the desktop app sets them while the
 // phone's access is on, it answers HTTPS on that port; without them, plain HTTP, as in development.
 // A port another program holds exits with PORT_IN_USE_EXIT_CODE, a SQLite key that doesn't open the file with
@@ -46,15 +47,16 @@ Promise.resolve()
     await migrate(databaseUrl(), (name) => app.log.info(`Applied the migration ${name}`));
   })
   .then(prepareDatabase)
-  .then(async () => {
-    const dropped = await pruneTombstones();
-    if (dropped > 0) {
-      app.log.info(`Dropped ${dropped} deletion(s) older than the change feed keeps.`);
-    }
-  })
   .then(() => app.listen({ port, host }))
-  .catch((error) => {
-    app.log.error(error);
-    const { code } = error as NodeJS.ErrnoException;
-    process.exit(code === "EADDRINUSE" ? PORT_IN_USE_EXIT_CODE : code === WRONG_KEY_ERROR ? WRONG_KEY_EXIT_CODE : 1);
-  });
+  .then(
+    () =>
+      pruneTombstones().then(
+        (dropped) => dropped > 0 && app.log.info(`Dropped ${dropped} deletion(s) older than the change feed keeps.`),
+        (error: Error) => app.log.warn(`Couldn't drop the change feed's old deletions: ${error.message}`),
+      ),
+    (error) => {
+      app.log.error(error);
+      const { code } = error as NodeJS.ErrnoException;
+      process.exit(code === "EADDRINUSE" ? PORT_IN_USE_EXIT_CODE : code === WRONG_KEY_ERROR ? WRONG_KEY_EXIT_CODE : 1);
+    },
+  );
