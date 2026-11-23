@@ -74,7 +74,8 @@ function sqliteUrl(name: string): string {
 }
 
 /**
- * Reads every copied table of a database, each row by id, with its dates as ISO text, so two databases compare.
+ * Reads every copied table of a database, each row by id, with its dates as ISO text and without its change feed
+ * version, which each database gives on its own, so two databases compare.
  * @param client The database.
  * @returns The rows, by table.
  */
@@ -84,14 +85,16 @@ async function rowsOf(client: PrismaClient): Promise<Record<string, unknown[]>> 
       const rows = (await (client[name] as unknown as { findMany: () => Promise<{ id: string }[]> }).findMany()).sort((a, b) =>
         a.id < b.id ? -1 : 1,
       );
-      return [name, JSON.parse(JSON.stringify(rows))] as const;
+      return [name, JSON.parse(JSON.stringify(rows), (key, value) => (key === "syncVersion" ? undefined : value))] as const;
     }),
   );
   return Object.fromEntries(tables);
 }
 
 // Copies the seeded database, with a photo and a user who has seen the tutorial, to a new SQLite file, and checks
-// every row of every table is equal, ids, dates and keys included, and the sessions were left out.
+// every row of every table is equal, ids, dates and keys included, and the sessions were left out. The target keeps a
+// change feed of its own: a database id apart from the source's, so a phone's cursor makes it copy again, and versions
+// it gives the rows.
 test("API: the data copies to a new SQLite file, every row equal, without the sessions", async () => {
   const target = migrated(sqliteUrl("copy"));
   assert.deepEqual(await copyProblems({ client: prisma, url: SOURCE_URL }, { client: target, url: sqliteUrl("copy") }), []);
@@ -100,6 +103,10 @@ test("API: the data copies to a new SQLite file, every row equal, without the se
   assert.deepEqual(await rowsOf(target), await rowsOf(prisma));
   assert.ok((await prisma.session.count()) > 0);
   assert.equal(await target.session.count(), 0);
+  const [source, copied] = await Promise.all([prisma, target].map((client) => client.syncState.findUniqueOrThrow({ where: { id: 1 } })));
+  assert.notEqual(copied.databaseId, source.databaseId);
+  const items = await target.item.findMany({ select: { syncVersion: true } });
+  assert.ok(items.every((row) => row.syncVersion > 0 && row.syncVersion <= copied.version));
 });
 
 // Copies the seeded database to a new SQLite file and on to a new PostgreSQL database, and checks the second holds the
