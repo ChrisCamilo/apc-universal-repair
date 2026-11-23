@@ -37,7 +37,8 @@ import {
   type NoteField,
 } from '@apc/domain/item-form';
 import { ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/domain/lists';
-import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/domain/photos';
+import { copiedPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/domain/photos';
+import { heldPhotos } from './photoCache';
 import { apiUrl } from '../../app/api';
 import { Button } from '../../components/Button';
 import { Combobox } from '../../components/Combobox';
@@ -167,7 +168,7 @@ export function ItemFormDialog({
   const [form, setForm] = useState<ItemForm>(() => initialForm ?? (item ? itemFormOf(item) : EMPTY_ITEM_FORM));
   // Each brand's photos, in the order of the form's brands; a brand the form fills in for the item keeps its own.
   const [photos, setPhotos] = useState<UploadPhoto[][]>(
-    () => initialPhotos ?? form.brands.map((brand) => heldPhotos(item?.brands.find((held) => held.id === brand.id)?.photos ?? [], apiUrl())),
+    () => initialPhotos ?? form.brands.map((brand) => heldPhotos(item?.brands.find((held) => held.id === brand.id)?.photos ?? [])),
   );
   const [errors, setErrors] = useState<ItemFormErrors>({});
   const [saving, setSaving] = useState(false);

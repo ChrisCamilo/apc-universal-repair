@@ -37,7 +37,7 @@ import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type Ite
 import { isTestItem, TUTORIAL_CODE } from '@apc/domain/inventory-tutorial';
 import type { InventoryLink } from '@apc/domain/catalog';
 import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
-import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/domain/photos';
+import { copiedPhotos, ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
 import { copyNotice } from '@apc/domain/sync-copy';
 import { ActionSheet } from '../../components/ActionSheet';
 import { apiUrl } from '../../app/api';
@@ -56,6 +56,7 @@ import { ImportItemsDialog } from './ImportItemsDialog';
 import { ItemFormDialog } from './ItemFormDialog';
 import { ManageListsDialog } from './ManageListsDialog';
 import { pickPhotos, savePhotos } from './photos';
+import { heldPhotos, keepFullPhotos, photoSource, usePhotoCache } from './photoCache';
 import { useCopyPages, useInventoryCopy } from './useInventoryCopy';
 import { useItemLists } from './useItemLists';
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts';
@@ -157,7 +158,7 @@ function photoColumn(onOpen: (item: Item, brand: ItemBrand) => void): ComponentP
       const [brand] = item.brands;
       return (
         <TableThumbnail
-          src={brand.photos[0] && photoAddress(brand.photos[0].thumbUrl, apiUrl())}
+          src={brand.photos[0] && photoSource(brand.photos[0], 'thumb')}
           label={`Ver fotos de ${item.name}`}
           onOpen={() => onOpen(item, brand)}
         />
@@ -187,6 +188,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // The phone's copy of the inventory, which the list reads: every item, for the counter, the filter options and the
   // form; and the pages shown of the items the search and the filters let through.
   const copy = useInventoryCopy();
+  // The photos kept on the phone, which the cards and the viewer show once kept.
+  usePhotoCache();
   const state = copy.items ? { status: 'ready' as const, items: copy.items } : { status: copy.offline ? ('error' as const) : ('loading' as const) };
   const listed = useCopyPages(copy, itemListQuery(filters, status, { search, pageSize: SCROLL_PAGE_SIZE, sort }), pages);
   // Each time the stock loads, warn about the items newly at or below their minimum.
@@ -289,7 +292,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       return false;
     }
     const brand = saved.brands.find((each) => each.id === viewer.brand.id) ?? viewer.brand;
-    setViewer((current) => current && { item: saved, brand, photos: heldPhotos(brand.photos, apiUrl()) });
+    setViewer((current) => current && { item: saved, brand, photos: heldPhotos(brand.photos) });
     reload();
     return true;
   };
@@ -299,6 +302,10 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     // What the last form held goes with it, so the tutorial reads the new one as opened until it says otherwise.
     setTyped(undefined);
     setForm((current) => ({ open: true, item, details, brand, initial, photos, session: current.session + 1 }));
+    // An item opened keeps its full photos on the phone.
+    if (item) {
+      keepFullPhotos(item.brands.flatMap((each) => each.photos));
+    }
   };
 
   /**
@@ -469,7 +476,10 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
               <DataTable
                 label="Itens do estoque"
                 columns={[
-                  photoColumn((item, brand) => setViewer({ item, brand, photos: heldPhotos(brand.photos, apiUrl()) })),
+                  photoColumn((item, brand) => {
+                    keepFullPhotos(brand.photos);
+                    setViewer({ item, brand, photos: heldPhotos(brand.photos) });
+                  }),
                   nameColumn(),
                   ...COLUMNS,
                 ]}
