@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { strFromU8, unzipSync } from "fflate";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
@@ -6,14 +7,18 @@ import { dataTable, dialog, toasts } from "./locators/common.ts";
 import { inventory } from "./locators/inventory.ts";
 import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from "@apc/domain/item-csv";
 import type { Item } from "@apc/domain/items";
+import { MERCADO_LIVRE_COLUMNS } from "@apc/domain/mercado-livre-csv";
 import { item } from "./data/items.ts";
 
-// 30 parts the search finds, over two pages of 25, the first with a photo, and 5 filters it leaves out.
+// 30 parts the search finds, over two pages of 25, the first with a photo and the last with no stock, and 5 filters it
+// leaves out.
 const STOCK: Item[] = [
   ...Array.from({ length: 30 }, (_, index) =>
     item({
       code: `P-${index + 1}`,
       name: `Peça ${index + 1}`,
+      unitPriceCents: 1990,
+      quantity: index === 29 ? 0 : 1,
       photos: index === 0 ? [{ id: crypto.randomUUID(), url: "/photos/p1.jpg", thumbUrl: "/photos/p1-thumb.webp" }] : [],
     }),
   ),
@@ -74,4 +79,31 @@ test("Web: the CSV export takes every page of the list as it is", { tag: [TEST_T
   const withPhotos = await exportList(page, true);
   expect(withPhotos.lines[0]).toBe(`${CSV_COLUMNS.join(",")},${CSV_PHOTOS_COLUMN}`);
   expect(withPhotos.lines.find((line) => line.split(",")[1] === "P-1")).toMatch(/,\/photos\/p1\.jpg$/);
+});
+
+// Searches for the parts and exports them for Mercado Livre, and checks the download is a zip named after the day,
+// with the listings' CSV, a row for each part with stock from both pages in Mercado Livre's columns, and the first
+// part's photo named after its code; the toast says the part with no stock was left out.
+test("Web: the Mercado Livre export downloads the listings and their photos in a zip", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+  await page.route("**/api/photos/*", (route) => route.fulfill({ body: PNG, contentType: "image/png" }));
+  await page.goto("/inventory");
+  await inventory(page).search.fill("Peça");
+  await expect(dataTable(page).rows.first()).toBeVisible();
+  await inventory(page).exportParts.click();
+  const exporter = dialog(page, "Exportar Peças");
+  await exporter.root.getByRole("switch", { name: "Exportar para o Mercado Livre" }).click();
+  await expect(exporter.root.getByRole("switch", { name: "Incluir o caminho das fotos" })).toHaveCount(0);
+  const download = page.waitForEvent("download");
+  await exporter.button("Exportar").click();
+  const file = await download;
+  await expect(toasts(page).named("29 anúncios exportados · 1 marca ficou de fora (sem estoque ou preço abaixo de R$ 8,00).")).toBeVisible();
+  await expect(exporter.root).toBeHidden();
+  expect(file.suggestedFilename()).toMatch(/^mercado-livre-\d{4}-\d{2}-\d{2}\.zip$/);
+  const files = unzipSync(new Uint8Array(await readFile(await file.path())));
+  expect(Object.keys(files).filter((name) => !name.endsWith("/"))).toEqual(["anuncios.csv", "fotos/P-1-1.jpg"]);
+  expect(Buffer.from(files["fotos/P-1-1.jpg"])).toEqual(PNG);
+  const [header, ...rows] = strFromU8(files["anuncios.csv"]).replace(/^﻿/, "").split("\r\n");
+  expect(header).toBe(MERCADO_LIVRE_COLUMNS.join(";"));
+  const skus = rows.filter(Boolean).map((row) => row.split(";")[MERCADO_LIVRE_COLUMNS.indexOf("SKU")]);
+  expect(skus.sort()).toEqual(Array.from({ length: 29 }, (_, index) => `P-${index + 1}`).sort());
 });

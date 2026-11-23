@@ -232,6 +232,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 |  | the demo opens logged in, with its notice | `demo` | both | `@demo` `@layout` |
 | Toolbar | the buttons at the panel's right edge | `inventory-toolbar` | desktop | `@layout` |
 |  | the round + over a page that scrolls | `inventory-toolbar` | mobile | `@layout` |
+|  | the Mais ações menu: its actions, by mouse and keyboard | `inventory-toolbar` | desktop |  |
 |  | the header's ⋯ and its sheet | `inventory-toolbar` | mobile |  |
 |  | the lists, CSV and About dialogs fill the screen | `inventory-toolbar` | mobile |  |
 |  | the item dialogs close on the ×, sending nothing | `inventory-toolbar` | both |  |
@@ -257,6 +258,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 |  | a merged name keeps its items' filters | `inventory-lists` | both |  |
 | CSV | importing: preview, errors, updates | `inventory-import` | both |  |
 |  | exporting every page of the list as it is | `inventory-export` | both |  |
+|  | exporting for Mercado Livre: the zip with the listings and photos | `inventory-export` | both |  |
 | Tutorial | the guided tutorial, start to replay | `inventory-tutorial` | both |  |
 | Demo | the demo's find, filter, add, edit, delete | `demo` | both | `@demo` |
 
@@ -678,6 +680,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 |  | a demo abre logada, com o aviso | `demo` | ambos | `@demo` `@layout` |
 | Barra de ferramentas | os botões na borda direita do painel | `inventory-toolbar` | desktop | `@layout` |
 |  | o + redondo sobre a página que rola | `inventory-toolbar` | mobile | `@layout` |
+|  | o menu Mais ações: suas ações, pelo mouse e pelo teclado | `inventory-toolbar` | desktop |  |
 |  | o ⋯ do cabeçalho e sua folha | `inventory-toolbar` | mobile |  |
 |  | os diálogos de listas, CSV e Sobre ocupam a tela | `inventory-toolbar` | mobile |  |
 |  | os diálogos do item fecham no ×, sem enviar nada | `inventory-toolbar` | ambos |  |
@@ -703,6 +706,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 |  | um nome mesclado mantém os filtros dos itens | `inventory-lists` | ambos |  |
 | CSV | importar: prévia, erros, atualizações | `inventory-import` | ambos |  |
 |  | exportar todas as páginas da lista como está | `inventory-export` | ambos |  |
+|  | exportar para o Mercado Livre: o zip com os anúncios e as fotos | `inventory-export` | ambos |  |
 | Tutorial | o tutorial guiado, do início à repetição | `inventory-tutorial` | ambos |  |
 | Demo | buscar, filtrar, cadastrar, editar, excluir na demo | `demo` | ambos | `@demo` |
 
