@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { activeFilterCount, type FilterValues } from '@apc/ui-spec/filters'
-import { cubeIcon, documentIcon, pencilIcon, trashIcon } from '@apc/tokens/icons'
+import { cubeIcon, documentIcon, exportIcon, importIcon, listIcon, pencilIcon, trashIcon } from '@apc/tokens/icons'
 import {
   brandsValue,
   formatPriceRange,
@@ -359,7 +359,17 @@ function InventoryTab() {
           <SearchField label="Procure pelo nome ou código da peça" value={search} onValueChange={setSearch} />
         </div>
         <div className={classes.buttons()} data-testid={ids.buttons}>
-          <Button variant="secondary">Importar Peças</Button>
+          <Menu label="Mais ações" variant="secondary" trigger="Mais ações">
+            <MenuItem icon={listIcon} onSelect={() => {}}>
+              Gerenciar listas
+            </MenuItem>
+            <MenuItem icon={importIcon} onSelect={() => {}}>
+              Importar Peças
+            </MenuItem>
+            <MenuItem icon={exportIcon} onSelect={() => {}}>
+              Exportar Peças
+            </MenuItem>
+          </Menu>
           <Button>Novo item</Button>
         </div>
       </div>

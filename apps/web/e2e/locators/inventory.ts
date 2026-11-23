@@ -6,22 +6,17 @@ import { dataTable, dialog, pagination } from "./common.ts";
 // lists, the filters, the import and the delete confirmation).
 
 /**
- * One of the Inventory's other actions: a button of the desktop's toolbar, or on a phone a row of the sheet the
- * header's "⋯" opens. Its click opens the sheet first when the "⋯" is there.
+ * One of the Inventory's other actions: an item of the desktop toolbar's "Mais ações" menu, or on a phone a row of the
+ * "Mais ações" sheet the header's "⋯" opens. Its click opens the menu or the sheet first.
  * @param page The test's page.
  * @param name The action, e.g. "Importar Peças".
  * @returns The action, to click.
  */
 function otherAction(page: Page, name: string) {
-  const button = page.getByRole("button", { name, exact: true });
-  const more = page.getByRole("button", { name: "Mais ações" });
   return {
     async click() {
-      await button.or(more).first().waitFor();
-      if (await more.isVisible()) {
-        await more.click();
-      }
-      await button.click();
+      await page.getByRole("button", { name: "Mais ações" }).click();
+      await page.getByRole("menuitem", { name, exact: true }).or(page.getByRole("button", { name, exact: true })).click();
     },
   };
 }
@@ -80,12 +75,13 @@ export function inventory(page: Page) {
     outOfStock: page.getByRole("button", { name: /^Esgotado( · \d+)?$/ }),
     // A phone's card: the stock status under its quantity ("un.", "Baixo", "Esgotado").
     status: (row: Locator) => row.getByTestId("inventory.inventory-tab.quantity.tag"),
-    // The toolbar's, or on a phone the "⋯" sheet's, which opens first.
+    // The toolbar's "Mais ações" menu's, or on a phone the "⋯" sheet's, which opens first.
     manageLists: otherAction(page, "Gerenciar listas"),
     importParts: otherAction(page, "Importar Peças"),
     exportParts: otherAction(page, "Exportar Peças"),
-    // A phone's "⋯" in the header and the sheet it opens.
+    // The desktop toolbar's "Mais ações" menu trigger, or a phone's "⋯" in the header; the menu and the sheet they open.
     more: page.getByRole("button", { name: "Mais ações" }),
+    moreMenu: page.getByRole("menu", { name: "Mais ações" }),
     moreSheet: dialog(page, "Mais ações").root,
     count: page.getByTestId("inventory.inventory-tab.filters.count"),
     // The desktop's "Colunas" menu: its trigger, a column's switch and "Restaurar padrão".

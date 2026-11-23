@@ -63,6 +63,7 @@ import { ClearFilters, FilterMenu } from '../../components/FilterMenu'
 import { FilterSheet, SortSheet } from '../../components/FilterSheet'
 import type { UploadPhoto } from '../../components/ImageUpload'
 import { ImageViewer } from '../../components/ImageViewer'
+import { Menu, MenuItem } from '../../components/Menu'
 import { Pagination } from '../../components/Pagination'
 import { Panel } from '../../components/Panel'
 import { Skeleton } from '../../components/Skeleton'
@@ -111,7 +112,8 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // with a chevron at its left, in the accent: a click anywhere on it (or Enter on it) opens a row for each brand under
 // it, with the brand's own values, its photos and no tint, since the stock status is the item's, and closes them
 // again. A click on a brand's row opens the item's details scrolled to that brand, and one on an item of one brand
-// opens its details. "Gerenciar listas" renames,
+// opens its details. The toolbar's "Mais ações" menu holds "Gerenciar listas", "Importar Peças" and "Exportar Peças".
+// "Gerenciar listas" renames,
 // merges and deletes the categories, brands and models the form picks from; the list loads again after each change,
 // the filters following a name renamed or merged, and a name in use leads to its items. "Importar Peças" adds and updates many items at once from a spreadsheet, and the list
 // and the lists load again; "Exportar Peças" saves every item of the list as it is, on every page, in the same format.
@@ -558,15 +560,17 @@ export function InventoryTab() {
           </div>
           {!phone && (
             <div className={classes.buttons()} data-testid={ids.buttons}>
-              <Button variant="secondary" onClick={() => setManaging(true)}>
-                Gerenciar listas
-              </Button>
-              <Button variant="secondary" onClick={openImporter}>
-                Importar Peças
-              </Button>
-              <Button variant="secondary" onClick={openExporter}>
-                Exportar Peças
-              </Button>
+              <Menu label="Mais ações" variant="secondary" trigger="Mais ações">
+                <MenuItem icon={listIcon} onSelect={() => setManaging(true)}>
+                  Gerenciar listas
+                </MenuItem>
+                <MenuItem icon={importIcon} onSelect={openImporter}>
+                  Importar Peças
+                </MenuItem>
+                <MenuItem icon={exportIcon} onSelect={openExporter}>
+                  Exportar Peças
+                </MenuItem>
+              </Menu>
               <Button data-tour="new-item" onClick={() => openForm()}>
                 Novo item
               </Button>

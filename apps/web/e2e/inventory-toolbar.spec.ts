@@ -29,6 +29,38 @@ test("Web: the toolbar buttons sit at the panel's right edge", { tag: [TEST_TAGS
   }
 });
 
+// On the desktop, checks the toolbar holds only the search, "Mais ações" and "Novo item", and the menu lists Gerenciar
+// listas, Importar Peças and Exportar Peças in that order: by mouse, the first opens its dialog, and by keyboard,
+// End and Enter open the last, the export, after Escape closes the menu back onto its trigger.
+test("Web: the toolbar's Mais ações menu holds the lists and the parts' files", { tag: [TEST_TAGS.inventory, TEST_TAGS.desktopOnly] }, async ({ page }) => {
+  await openInventory(page);
+  const inv = inventory(page);
+  await expect(inv.toolbar.getByRole("button")).toHaveText(["Mais ações", "Novo item"]);
+
+  await test.step("the menu lists the three actions and opens Gerenciar listas", async () => {
+    await inv.more.click();
+    await expect(inv.moreMenu.getByRole("menuitem")).toHaveText(["Gerenciar listas", "Importar Peças", "Exportar Peças"]);
+    await expect(inv.moreMenu.getByRole("menuitem", { name: "Gerenciar listas" })).toBeFocused();
+    await inv.moreMenu.getByRole("menuitem", { name: "Gerenciar listas" }).click();
+    await expect(inv.moreMenu).toBeHidden();
+    const lists = dialog(page, "Gerenciar listas");
+    await lists.close.click();
+    await expect(lists.root).toBeHidden();
+  });
+
+  await test.step("Escape closes the menu onto its trigger, and the keyboard opens Exportar Peças", async () => {
+    await inv.more.click();
+    await page.keyboard.press("Escape");
+    await expect(inv.moreMenu).toBeHidden();
+    await expect(inv.more).toBeFocused();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("End");
+    await expect(inv.moreMenu.getByRole("menuitem", { name: "Exportar Peças" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(dialog(page, "Exportar Peças").root).toBeVisible();
+  });
+});
+
 // On a phone, with more items than fit the screen, checks the Inventory scrolls as a whole, the bottom bar staying at
 // the bottom, and "Novo item" is a round 56px "+" at the bottom right, 16px above the bar, which stays put while the page
 // scrolls and opens a new item's form; nothing scrolls sideways.
