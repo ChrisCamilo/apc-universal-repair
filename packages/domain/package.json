@@ -60,6 +60,10 @@
       "apc-dist": "./dist/inventory/itemCsv.js",
       "default": "./src/inventory/itemCsv.ts"
     },
+    "./mercado-livre-csv": {
+      "apc-dist": "./dist/inventory/mercadoLivreCsv.js",
+      "default": "./src/inventory/mercadoLivreCsv.ts"
+    },
     "./lists": {
       "apc-dist": "./dist/inventory/lists.js",
       "default": "./src/inventory/lists.ts"
