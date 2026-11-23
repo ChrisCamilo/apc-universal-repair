@@ -1,20 +1,21 @@
 import { DISPLAY_LABEL, menuItem as menuItemClasses, POPOVER_MOTION } from '../../styles/shared.ts'
 import { recipe, tv } from '../../styles/tv.ts'
 
-// The look of the dropdown menu: a pill trigger that lights up in the accent on hover and while open, its chevron
-// turning, and a panel with the sheen under it, lined up with the trigger's start or end, or with the container's when
-// the menu leaves the positioning to it. Inside it: a header, small
-// section labels, action items, and the user badge the user menu's trigger shows.
+// The look of the dropdown menu: a pill trigger that lights up in the accent on hover and while open, or one drawn as
+// a secondary button (its name in the display face, its frame and name turning to the accent), its chevron turning,
+// and a panel with the sheen under it, lined up with the trigger's start or end, or with the container's when the menu
+// leaves the positioning to it. Inside it: a header, small section labels, action items, and the user badge the user
+// menu's trigger shows.
 
-/** A menu: the wrapper, the trigger with its chevron, and the popover, by side. */
+/** A menu: the wrapper, the trigger with its chevron, and the popover, by side and by the trigger's look. */
 export const menu = recipe(
   'common.menu',
   tv({
     slots: {
       base: 'relative inline-block h-fit',
       trigger: [
-        'inline-flex cursor-pointer items-center gap-2 rounded-pill border border-hairline-soft py-1 pr-2.5 pl-1 text-text outline-none max-card:min-h-11',
-        'transition-[background-color,border-color,box-shadow] hover:border-accent hover:bg-accent-soft focus-visible:shadow-ring',
+        'inline-flex cursor-pointer items-center gap-2 rounded-pill border text-text outline-none',
+        'transition-[background-color,border-color,color,box-shadow] hover:border-accent focus-visible:shadow-ring',
       ],
       chevron: 'text-text-muted transition-transform rotate-90',
       popover: [
@@ -26,9 +27,18 @@ export const menu = recipe(
     variants: {
       align: { start: { popover: 'left-0' }, end: { popover: 'right-0' } },
       anchor: { trigger: {}, container: { base: 'static' } },
-      open: { true: { trigger: 'border-accent bg-accent-soft', chevron: '-rotate-90' } },
+      // A secondary button is as tall as one, 52px on a phone.
+      variant: {
+        pill: { trigger: 'border-hairline-soft py-1 pr-2.5 pl-1 hover:bg-accent-soft max-card:min-h-11' },
+        secondary: { trigger: `${DISPLAY_LABEL} border-hairline py-3 pr-5 pl-6 text-sm hover:text-accent max-card:min-h-13` },
+      },
+      open: { true: { trigger: 'border-accent', chevron: '-rotate-90' } },
     },
-    defaultVariants: { align: 'end', anchor: 'trigger', open: false },
+    compoundVariants: [
+      { variant: 'pill', open: true, class: { trigger: 'bg-accent-soft' } },
+      { variant: 'secondary', open: true, class: { trigger: 'text-accent' } },
+    ],
+    defaultVariants: { align: 'end', anchor: 'trigger', variant: 'pill', open: false },
   }),
   { base: '', trigger: 'trigger', chevron: 'trigger.chevron', popover: 'popover' },
 )

@@ -19,7 +19,7 @@ import { Heading, NumericReadout, Text } from '../../components/Typography';
 import { pickCsv, shareTemplate } from './csv';
 import { useStyles } from './ImportItemsDialog.styles';
 
-// The "Importar CSV" dialog of the Inventory tab, the same as the web: it explains the file, shares the template
+// The "Importar Peças" dialog of the Inventory tab, the same as the web: it explains the file, shares the template
 // (to save it or send it to a computer) and reads the file picked from the phone's files. The preview counts the items
 // ready and the rows with errors, lists the categories, brands and models the import creates, and shows each row as it
 // will be saved, the rows with errors marked with their reasons; rows with the same "item" are the brands of one item.
@@ -88,7 +88,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
     <Dialog
       open={open}
       onClose={onClose}
-      title="Importar CSV"
+      title="Importar Peças"
       closable
       actions={
         <>

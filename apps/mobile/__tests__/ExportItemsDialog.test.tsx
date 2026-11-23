@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from '@apc/domain/item-csv';
 import type { Item } from '@apc/domain/items';
+import { MERCADO_LIVRE_COLUMNS } from '@apc/domain/mercado-livre-csv';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { apiUrl } from '../src/app/api';
@@ -133,14 +134,14 @@ afterEach(async () => {
 
 for (const style of STYLES) {
   for (const mode of MODES) {
-    // Opens the export in one style and mode and checks it says which items go, offers the photo paths switched off,
-    // and "Exportar" is filled with the accent.
+    // Opens the export in one style and mode and checks it says which items go, offers Mercado Livre and the photo
+    // paths switched off, and "Exportar" is filled with the accent.
     test(`Mobile: the CSV export follows the ${style}/${mode} theme`, async () => {
       await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
       const tree = await mount();
       expect(shows(tree, '12 itens, com a busca e os filtros atuais.')).toBe(true);
-      const toggle = tree.root.find((n) => n.props.accessibilityRole === 'switch' && typeof n.props.onPress === 'function');
-      expect(toggle.props.accessibilityState).toMatchObject({ checked: false });
+      const toggles = tree.root.findAll((n) => n.props.accessibilityRole === 'switch' && typeof n.props.onPress === 'function');
+      expect(toggles.map((toggle) => toggle.props.accessibilityState.checked)).toEqual([false, false]);
       const exportar = button(tree, 'Exportar');
       expect(StyleSheet.flatten(exportar.props.style({ pressed: false })).backgroundColor).toBe(themes[style][mode].colors.accent);
     });
@@ -188,6 +189,27 @@ test('Mobile: without the switch the file has no photos column, and a closed sha
   expect(message.replace(/^﻿/, '').split('\r\n')[0]).toBe(CSV_COLUMNS.join(','));
   expect(shows(tree, '1 item exportado.')).toBe(false);
   expect(onClose).not.toHaveBeenCalled();
+});
+
+// Turns on Exportar para o Mercado Livre and checks the photo paths' switch hides, then exports: the share sheet gets
+// the listings' CSV in Mercado Livre's columns, named after the day, a toast counts the listings and the dialog closes.
+test('Mobile: Exportar para o Mercado Livre shares the listings CSV', async () => {
+  answerList([ITEM]);
+  const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction', activityType: undefined });
+  const onClose = jest.fn();
+  const tree = await mount({ count: 1, onClose });
+  await press(tree, 'Exportar para o Mercado Livre');
+  expect(shows(tree, 'Incluir o caminho das fotos')).toBe(false);
+  expect(shows(tree, 'Todas as páginas vão no arquivo, um anúncio por marca, nas palavras do Mercado Livre.')).toBe(true);
+  await press(tree, 'Exportar');
+  expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toBe(`${apiUrl()}/items?status=low&sort=price&order=desc`);
+  const { title, message } = share.mock.calls[0][0] as { title: string; message: string };
+  expect(title).toMatch(/^mercado-livre-\d{4}-\d{2}-\d{2}\.csv$/);
+  const [header, row] = message.replace(/^﻿/, '').split('\r\n');
+  expect(header).toBe(MERCADO_LIVRE_COLUMNS.join(';'));
+  expect(row.startsWith('Vela de ignição NGK BKR6E Volkswagen;Novo;NGK;BKR6E;BKR6E;;24;24,90;')).toBe(true);
+  expect(shows(tree, '1 anúncio exportado.')).toBe(true);
+  expect(onClose).toHaveBeenCalledTimes(1);
 });
 
 // Makes the items fail to come, and checks a toast says so, nothing is shared and the dialog stays open.

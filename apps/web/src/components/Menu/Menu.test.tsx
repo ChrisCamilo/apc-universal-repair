@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
-import { themes } from '@apc/tokens/theme'
+import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { beforeAll, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -8,6 +8,7 @@ import '../../index.css'
 import { expectOverlayAtOnce, expectOverlayMotion } from '../../test-motion.ts'
 import { themeCss } from '../../app/theme.ts'
 import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from './Menu.tsx'
+import { Button } from '../Button/Button.tsx'
 import { Segmented } from '../Segmented/Segmented.tsx'
 import { Switch } from '../Switch/Switch.tsx'
 
@@ -170,6 +171,52 @@ test('Web: a menu can line up with its container and reports opening and closing
   expect(menu.right).toBeGreaterThan(trigger.element().getBoundingClientRect().right + 100)
   await userEvent.keyboard('{Escape}')
   expect(changes).toEqual([true, false])
+})
+
+// Puts a secondary menu beside a secondary button, as in a toolbar, and checks in every style and mode its trigger
+// reads as the button (height, frame, face, case and tracking) and turns its frame and name to the accent while open;
+// on a 360×780 phone both are 52px tall.
+test('Web: a secondary menu reads as the secondary button beside it', async () => {
+  const screen = await render(
+    <div style={{ display: 'flex', gap: 8 }}>
+      <Button variant="secondary">Novo item</Button>
+      <Menu label="Mais ações" variant="secondary" trigger="Mais ações">
+        <MenuItem onSelect={() => {}}>Gerenciar listas</MenuItem>
+      </Menu>
+    </div>,
+  )
+  const trigger = screen.getByRole('button', { name: 'Mais ações' })
+  const button = screen.getByRole('button', { name: 'Novo item' }).element()
+  const looks = (element: Element) => {
+    const { borderColor, fontFamily, textTransform, letterSpacing } = getComputedStyle(element)
+    return { height: element.getBoundingClientRect().height, borderColor, fontFamily, textTransform, letterSpacing }
+  }
+  try {
+    for (const style of STYLES) {
+      for (const mode of MODES) {
+        root.dataset.style = style
+        root.dataset.mode = mode
+        // Both fade to the new theme's colors, so they are read together until they match.
+        await expect
+          .poll(() => [looks(trigger.element()), looks(button)], { message: `${style}/${mode}` })
+          .toSatisfy(([menuLooks, buttonLooks]) => JSON.stringify(menuLooks) === JSON.stringify(buttonLooks))
+        // Opened by the keyboard, so no hover lights the frame once it closes.
+        trigger.element().focus()
+        await userEvent.keyboard('{Enter}')
+        const { accent } = themes[style][mode].colors
+        await expect.poll(() => getComputedStyle(trigger.element()).borderColor, { message: `${style}/${mode} open` }).toBe(rgb(accent))
+        await expect.poll(() => getComputedStyle(trigger.element()).color, { message: `${style}/${mode} open` }).toBe(rgb(accent))
+        await userEvent.keyboard('{Escape}')
+      }
+    }
+    await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+    await expect.poll(() => trigger.element().getBoundingClientRect().height).toBe(52)
+    expect(button.getBoundingClientRect().height).toBe(52)
+  } finally {
+    root.dataset.style = 'eighties'
+    root.dataset.mode = 'night'
+    await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+  }
 })
 
 // Opens the menu on a 360×780 phone and checks the four themes sit below the "Tema" label, all inside the menu.

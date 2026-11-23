@@ -11,7 +11,7 @@ import { themeCss } from '../../app/theme.ts'
 import { BottomSheet } from './BottomSheet.tsx'
 import { Button } from '../Button/Button.tsx'
 
-const OPTIONS = ['Gerenciar listas', 'Importar CSV', 'Exportar CSV', 'Tutorial do estoque']
+const OPTIONS = ['Gerenciar listas', 'Importar Peças', 'Exportar Peças', 'Tutorial do estoque']
 const root = document.documentElement
 
 /**

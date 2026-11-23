@@ -119,7 +119,7 @@ test('Mobile: the tabs sit in the bottom bar in their saved order, then the user
 });
 
 // Opens the Inventory and checks its "⋯" sits at the right of the tab's name, 44px round, and opens the "Mais ações"
-// sheet with the tab's other actions in order; Importar CSV closes it and opens its dialog, and Tutorial do estoque
+// sheet with the tab's other actions in order; Importar Peças closes it and opens its dialog, and Tutorial do estoque
 // starts the tutorial. The Catalog has no "⋯".
 test('Mobile: the Inventory puts its other actions in a sheet behind the header\'s "⋯"', async () => {
   const tree = await mount('eighties', 'night', <Dashboard userMenu={<Text>christian.camilo</Text>} />);
@@ -141,12 +141,12 @@ test('Mobile: the Inventory puts its other actions in a sheet behind the header\
   const sheet = visible()[0];
   expect(sheet.findAll((n) => n.props.testID === 'common.action-sheet.action.label' && typeof n.type === 'string').map((n) => n.props.children)).toEqual([
     'Gerenciar listas',
-    'Importar CSV',
-    'Exportar CSV',
+    'Importar Peças',
+    'Exportar Peças',
     'Tutorial do estoque',
   ]);
-  await press('Importar CSV');
-  expect(visible().some((modal) => modal.findAll((n) => n.props.accessibilityLabel === 'Importar CSV').length > 0)).toBe(true);
+  await press('Importar Peças');
+  expect(visible().some((modal) => modal.findAll((n) => n.props.accessibilityLabel === 'Importar Peças').length > 0)).toBe(true);
   expect(sheet.props.visible).toBe(false);
 
   await ReactTestRenderer.act(async () => visible()[0].props.onRequestClose());

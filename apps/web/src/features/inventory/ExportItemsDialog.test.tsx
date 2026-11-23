@@ -1,5 +1,7 @@
+import { strFromU8, unzipSync } from 'fflate'
 import { CSV_COLUMNS, CSV_PHOTOS_COLUMN } from '@apc/domain/item-csv'
 import type { Item } from '@apc/domain/items'
+import { MERCADO_LIVRE_COLUMNS } from '@apc/domain/mercado-livre-csv'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH } from '@apc/ui-spec/screens'
 import { MODES, STYLES, themes } from '@apc/tokens/theme'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
@@ -32,6 +34,8 @@ const ITEM: Item = testItem({
   createdAt: '2026-10-03T12:00:00.000Z',
   updatedAt: '2026-10-03T12:00:00.000Z',
 })
+// The bytes the stand-in answers the item's photo with.
+const PHOTO_BYTES = new Uint8Array([255, 216, 255, 224, 1, 2, 3])
 const root = document.documentElement
 
 /**
@@ -59,16 +63,36 @@ async function open(props: { count?: number; narrowed?: boolean; onClose?: () =>
 
 /**
  * Catches the download the export starts, reading the file it would save.
- * @returns The file's name and text, once the download starts.
+ * @returns The file's name, text and bytes, once the download starts.
  */
-function catchDownload(): Promise<{ name: string; text: string }> {
+function catchDownload(): Promise<{ name: string; text: string; bytes: Uint8Array }> {
   return new Promise((resolve) => {
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       const name = this.download
       void fetch(this.href)
-        .then((response) => response.text())
-        .then((text) => resolve({ name, text }))
+        .then((response) => response.arrayBuffer())
+        .then((buffer) => resolve({ name, text: new TextDecoder().decode(buffer), bytes: new Uint8Array(buffer) }))
     })
+  })
+}
+
+/**
+ * Stands in for the API: the list answers with the item, and its photo with a few bytes, or fails when asked. Any
+ * other request, such as the test's own reading of the download, goes through.
+ * @param photo Whether the photo comes, or fails.
+ * @returns The stand-in for fetch, to read its calls to the API.
+ */
+function serveItemAndPhoto(photo: 'ok' | 'fail' = 'ok') {
+  const passThrough = globalThis.fetch.bind(globalThis)
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const url = String(input)
+    if (url.startsWith('/api/items')) {
+      return new Response(JSON.stringify({ items: [ITEM], total: 1 }), { status: 200 })
+    }
+    if (url.startsWith('/api/photos/')) {
+      return new Response(photo === 'ok' ? PHOTO_BYTES : null, { status: photo === 'ok' ? 200 : 404 })
+    }
+    return passThrough(input, init)
   })
 }
 
@@ -94,6 +118,7 @@ for (const style of STYLES) {
       const screen = await open()
       await expect.element(screen.getByText('12 itens, com a busca e os filtros atuais.')).toBeVisible()
       await expect.element(screen.getByRole('switch', { name: 'Incluir o caminho das fotos' })).toHaveAttribute('aria-checked', 'false')
+      await expect.element(screen.getByRole('switch', { name: 'Exportar para o Mercado Livre' })).toHaveAttribute('aria-checked', 'false')
       expect(getComputedStyle(screen.getByRole('button', { name: 'Exportar' }).element()).backgroundColor).toBe(rgb(colors.accent))
     })
   }
@@ -133,6 +158,45 @@ test('Web: a failed export says so and keeps the dialog open', async () => {
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   const onClose = vi.fn()
   const screen = await open({ onClose })
+  await screen.getByRole('button', { name: 'Exportar' }).click()
+  await expect.element(screen.getByText('Não foi possível exportar os itens. Tente de novo.')).toBeVisible()
+  expect(click).not.toHaveBeenCalled()
+  expect(onClose).not.toHaveBeenCalled()
+})
+
+// Turns on Exportar para o Mercado Livre and checks the photo paths' switch hides, then exports: the download is a zip
+// named after the day, with the listings' CSV in Mercado Livre's columns and the item's photo, fetched from the API and
+// named after its code; the toast counts the listings, and the dialog closes.
+test('Web: Exportar para o Mercado Livre downloads a zip with the listings and their photos', async () => {
+  const fetch = serveItemAndPhoto()
+  const onClose = vi.fn()
+  const screen = await open({ count: 1, onClose })
+  await expect.element(screen.getByText(/Para copiar na planilha baixada do Anunciador em massa/)).toBeVisible()
+  await screen.getByRole('switch', { name: 'Exportar para o Mercado Livre' }).click()
+  await expect.element(screen.getByRole('switch', { name: 'Incluir o caminho das fotos' })).not.toBeInTheDocument()
+  await expect.element(screen.getByText('Todas as páginas vão no arquivo, um anúncio por marca, nas palavras do Mercado Livre.')).toBeVisible()
+  const downloaded = catchDownload()
+  await screen.getByRole('button', { name: 'Exportar' }).click()
+  const { name, bytes } = await downloaded
+  expect(fetch.mock.calls.map(([input]) => String(input)).filter((url) => url.startsWith('/api/'))).toEqual(['/api/items?status=low&sort=price&order=desc', '/api/photos/a1.jpg'])
+  expect(name).toMatch(/^mercado-livre-\d{4}-\d{2}-\d{2}\.zip$/)
+  const files = unzipSync(bytes)
+  expect(Object.keys(files).filter((file) => !file.endsWith('/'))).toEqual(['anuncios.csv', 'fotos/BKR6E-1.jpg'])
+  const [header, row] = strFromU8(files['anuncios.csv']).replace(/^﻿/, '').split('\r\n')
+  expect(header).toBe(MERCADO_LIVRE_COLUMNS.join(';'))
+  expect(row.startsWith('Vela de ignição NGK BKR6E Volkswagen;Novo;NGK;BKR6E;BKR6E;;24;24,90;')).toBe(true)
+  expect(files['fotos/BKR6E-1.jpg']).toEqual(PHOTO_BYTES)
+  await expect.element(screen.getByText('1 anúncio exportado.')).toBeVisible()
+  expect(onClose).toHaveBeenCalledTimes(1)
+})
+
+// Makes the item's photo fail to come, and checks a toast says so, nothing downloads and the dialog stays open.
+test('Web: a Mercado Livre export whose photo fails says so and keeps the dialog open', async () => {
+  serveItemAndPhoto('fail')
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  const onClose = vi.fn()
+  const screen = await open({ count: 1, onClose })
+  await screen.getByRole('switch', { name: 'Exportar para o Mercado Livre' }).click()
   await screen.getByRole('button', { name: 'Exportar' }).click()
   await expect.element(screen.getByText('Não foi possível exportar os itens. Tente de novo.')).toBeVisible()
   expect(click).not.toHaveBeenCalled()

@@ -86,8 +86,8 @@ import { useMoreActions } from '../dashboard/moreActionsContext';
 // its quantity, added up over its brands, has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
 // tap on a card opens the item's details. "Gerenciar listas" renames, merges and deletes the
 // categories, brands and models the form picks from; the list loads again after each change, the filters following a
-// name renamed or merged, and a name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list and the lists load again;
-// "Exportar CSV" hands every item of the list as it is, on every page, to the share sheet in the same format.
+// name renamed or merged, and a name in use leads to its items. "Importar Peças" adds and updates many items at once from a spreadsheet, and the list and the lists load again;
+// "Exportar Peças" hands every item of the list as it is, on every page, to the share sheet in the same format.
 // The details' Duplicar opens a new item's form filled in as a copy of it, with copies of its photos or without them. The
 // round Filtros opens "Filtrar e ordenar" in a bottom sheet (the filters and the sort, applied together on "Ver n
 // itens", which counts the items they would show), and the round Ordenar the sorts alone, by any of the web's columns,
@@ -102,7 +102,7 @@ import { useMoreActions } from '../dashboard/moreActionsContext';
 // follows. The Inventory tutorial runs over the tab by itself the first time, and again from the user menu: it starts
 // and ends with the test item deleted and the search, filters and sort off. The Catalog can open the tab on a part's
 // details, or with the filters that list the parts that fit a car, the search and the stock status off (see
-// inventoryLinkContext.ts). Gerenciar listas, Importar CSV, Exportar CSV
+// inventoryLinkContext.ts). Gerenciar listas, Importar Peças, Exportar Peças
 // and Tutorial do estoque sit in a bottom sheet the header's "⋯" opens (the Mais ações mockup), as the web does on a
 // phone.
 
@@ -198,9 +198,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // Whether the sheet of the other actions, which the header's "⋯" opens, is open.
   const [moreOpen, setMoreOpen] = useState(false);
   const handMore = useMoreActions();
-  // Whether "Importar CSV" is open; each opening starts with no file.
+  // Whether "Importar Peças" is open; each opening starts with no file.
   const [importer, setImporter] = useState({ open: false, session: 0 });
-  // Whether "Exportar CSV" is open; each opening starts without the photo paths.
+  // Whether "Exportar Peças" is open; each opening starts without the photo paths.
   const [exporter, setExporter] = useState({ open: false, session: 0 });
   // The item form: closed, open on a new item, an item to edit or an item's details (maybe scrolled to a brand),
   // maybe with values and photos filled in. Each opening starts a new form.
@@ -537,8 +537,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         title="Mais ações"
         actions={[
           { icon: listIcon, label: 'Gerenciar listas', onSelect: () => setManaging(true) },
-          { icon: importIcon, label: 'Importar CSV', onSelect: () => setImporter((current) => ({ open: true, session: current.session + 1 })) },
-          { icon: exportIcon, label: 'Exportar CSV', onSelect: () => setExporter((current) => ({ open: true, session: current.session + 1 })) },
+          { icon: importIcon, label: 'Importar Peças', onSelect: () => setImporter((current) => ({ open: true, session: current.session + 1 })) },
+          { icon: exportIcon, label: 'Exportar Peças', onSelect: () => setExporter((current) => ({ open: true, session: current.session + 1 })) },
           { icon: playIcon, label: 'Tutorial do estoque', onSelect: tutorial.replay },
         ]}
       />
