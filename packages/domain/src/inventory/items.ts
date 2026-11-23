@@ -290,6 +290,7 @@ export type ItemBrand = z.infer<typeof itemBrandSchema>;
 export type ItemBrandCreate = z.infer<typeof itemBrandCreateSchema>;
 export type ItemCreate = z.infer<typeof itemCreateSchema>;
 export type ItemListQuery = z.infer<typeof itemListQuerySchema>;
+export type ItemListResponse = z.infer<typeof itemListResponseSchema>;
 export type ItemPhoto = z.infer<typeof itemPhotoSchema>;
 /** A column the inventory list sorts by. */
 export type ItemSortKey = (typeof ITEM_SORT_KEYS)[number];

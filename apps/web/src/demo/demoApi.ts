@@ -19,7 +19,7 @@ import {
   type CatalogValues,
 } from '@apc/domain/catalog'
 import { IMPORT_CONFLICTS, itemImportSchema } from '@apc/domain/item-csv'
-import { itemMatchesQuery } from '@apc/domain/item-filters'
+import { listItems } from '@apc/domain/item-filters'
 import {
   capitalizeFirst,
   codeKey,
@@ -31,8 +31,6 @@ import {
   itemUpdateSchema,
   NOT_APPLICABLE,
   optionKey,
-  sortableOf,
-  sortItems,
   type Item,
   type ItemBrandCreate,
   type ItemCreate,
@@ -58,7 +56,7 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // The API of the web app's demo, answered in the browser: the demo has no server (it runs on GitHub Pages), so its
 // requests to /api never leave the page (see installDemoApi.ts). It answers every route of apps/api with the API's
 // statuses and bodies, under the API's rules: the shared schemas check what comes in, the list chooses its items with
-// the shared matcher (itemMatchesQuery) and sorts them with sortItems, codes are unique across the stock, the lists'
+// the shared matcher and sorts them as the API does (listItems), codes are unique across the stock, the lists'
 // names follow the writing rule and stay apart ignoring case and accents, and the CSV import goes in whole or not at
 // all, refused with the API's own reasons (IMPORT_CONFLICTS). A photo sent stays in the browser as an object URL, which
 // the item carries as its whole address (see photoAddress in @apc/domain/photos), and is let go once the photo is
@@ -650,15 +648,13 @@ function itemRoutes(db: Db): Route[] {
         if (!asked.ok) {
           return asked.answer
         }
-        const { page = 1, pageSize, sort, order = 'asc' } = asked.value
-        const matched = db.items.map((item) => toItem(db, item)).filter((item) => itemMatchesQuery(item, asked.value))
-        const ordered = sort
-          ? sortItems(
-              matched.map((item) => ({ ...sortableOf(item), item })),
-              { key: sort, dir: order },
-            ).map((row) => row.item)
-          : matched.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
-        return json(200, { items: pageSize ? ordered.slice((page - 1) * pageSize, page * pageSize) : ordered, total: ordered.length })
+        return json(
+          200,
+          listItems(
+            db.items.map((item) => toItem(db, item)),
+            asked.value,
+          ),
+        )
       },
     },
     {

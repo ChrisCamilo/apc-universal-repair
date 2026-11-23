@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
-import { Pressable, Text as RNText, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Pressable, RefreshControl, Text as RNText, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { apiFetch } from '@apc/domain/auth';
 import {
   exportIcon,
@@ -32,11 +32,13 @@ import {
   itemListQuery,
   matchingCount,
 } from '@apc/domain/item-filters';
+import { EMPTY_ITEM_LISTS } from '@apc/domain/lists';
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form';
 import { isTestItem, TUTORIAL_CODE } from '@apc/domain/inventory-tutorial';
 import type { InventoryLink } from '@apc/domain/catalog';
 import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/domain/photos';
+import { copyNotice } from '@apc/domain/sync-copy';
 import { ActionSheet } from '../../components/ActionSheet';
 import { apiUrl } from '../../app/api';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
@@ -54,9 +56,8 @@ import { ImportItemsDialog } from './ImportItemsDialog';
 import { ItemFormDialog } from './ItemFormDialog';
 import { ManageListsDialog } from './ManageListsDialog';
 import { pickPhotos, savePhotos } from './photos';
+import { useCopyPages, useInventoryCopy } from './useInventoryCopy';
 import { useItemLists } from './useItemLists';
-import { useItemPages } from './useItemPages';
-import { useItems } from './useItems';
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts';
 import { useCatalog } from '../catalog/useCatalog';
 import { Skeleton } from '../../components/Skeleton';
@@ -65,7 +66,7 @@ import { SearchField } from '../../components/TextField';
 import { useTheme } from '../../app/theme';
 import { ToolButton } from '../../components/ToolButton';
 import { tourTarget } from '../../components/Tour';
-import { NumericReadout } from '../../components/Typography';
+import { NumericReadout, Text } from '../../components/Typography';
 import { useInventoryTutorial } from './inventoryTutorialContext';
 import { CardTitle, StockQuantity } from './ItemCard';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
@@ -183,14 +184,16 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const narrowed = search.trim() !== '' || itemListQuery(filters, status) !== '';
   const filterCount = activeFilterCount(filters);
   const sortLabel = ITEM_SORT_OPTIONS.find((option) => option.value === sortValue(sort))?.label;
-  // Every item, for the counter, the filter options and the form; and the pages loaded so far of the items the search
-  // and the filters let through.
-  const state = useItems();
-  const listed = useItemPages(itemListQuery(filters, status, { search, pageSize: SCROLL_PAGE_SIZE, sort }), pages);
+  // The phone's copy of the inventory, which the list reads: every item, for the counter, the filter options and the
+  // form; and the pages shown of the items the search and the filters let through.
+  const copy = useInventoryCopy();
+  const state = copy.items ? { status: 'ready' as const, items: copy.items } : { status: copy.offline ? ('error' as const) : ('loading' as const) };
+  const listed = useCopyPages(copy, itemListQuery(filters, status, { search, pageSize: SCROLL_PAGE_SIZE, sort }), pages);
   // Each time the stock loads, warn about the items newly at or below their minimum.
   useLowStockAlerts(state.status === 'ready' ? state.items : null, userId);
-  // The lists the item form picks from and creates names in.
-  const { lists, create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists();
+  // The lists the item form picks from and creates names in: the server's, or the copy's while the server can't load them.
+  const { lists: loadedLists, create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists();
+  const lists = loadedLists === EMPTY_ITEM_LISTS ? copy.lists : loadedLists;
   // The catalog, for the generations and versions the item form offers for a vehicle.
   const catalog = useCatalog();
   // Whether "Gerenciar listas" is open.
@@ -265,10 +268,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       setStatus(null);
     });
 
-  /** Loads every item and the pages on screen again, after one was saved or deleted. */
+  /** Brings the copy up to date with the server, after an item was saved or deleted, or as the list is pulled down. */
   const reload = () => {
-    state.reload();
-    listed.reload();
+    copy.sync();
   };
 
   /**
@@ -404,6 +406,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         contentContainerStyle={styles.tab}
         keyboardShouldPersistTaps="handled"
         onScroll={scrolled}
+        refreshControl={<RefreshControl refreshing={copy.syncing && copy.items !== null} onRefresh={reload} />}
         testID={ids.tab}
       >
         <View ref={tourTarget('search')} collapsable={false}>
@@ -446,6 +449,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             }
           />
         </View>
+        {copy.offline && copy.syncedAt && (
+          <View accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
+            <Text size="sm">{copyNotice(copy.syncedAt)}</Text>
+          </View>
+        )}
         <View style={[styles.list, centered && styles.listCentered]} testID={ids.list}>
           {failed && (
             <ErrorState

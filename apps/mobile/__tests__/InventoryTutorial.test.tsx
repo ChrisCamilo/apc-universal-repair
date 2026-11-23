@@ -9,6 +9,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { INVENTORY_TUTORIAL_STORAGE_KEY, TUTORIAL_CODE } from '@apc/domain/inventory-tutorial';
 import { matchesSearch, type Item } from '@apc/domain/items';
 import { ITEM_LIST_PATHS } from '@apc/domain/lists';
+import { syncAnswer } from '@apc/domain/test-sync';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { InventoryTab } from '../src/features/inventory/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
@@ -33,6 +34,9 @@ function answerApi(stock: Item[]): string[] {
     const { pathname, searchParams } = new URL(url);
     const method = init?.method ?? 'GET';
     const reply = (body: unknown, status = 200) => ({ ok: true, status, json: () => Promise.resolve(body) });
+    if (pathname === '/sync/changes') {
+      return syncAnswer(searchParams, stock);
+    }
     if (Object.values(ITEM_LIST_PATHS).includes(pathname)) {
       return reply([]);
     }

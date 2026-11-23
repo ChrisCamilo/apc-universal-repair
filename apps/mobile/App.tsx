@@ -16,6 +16,7 @@ import { LoginScreen } from './src/features/auth/LoginScreen';
 import { PASSWORD_LOGIN } from './src/features/auth/passwordLogin';
 import { RegisterScreen } from './src/features/auth/RegisterScreen';
 import { Dashboard } from './src/features/dashboard/Dashboard';
+import { clearCopy } from './src/features/inventory/inventoryCopy';
 import { UserMenu } from './src/features/dashboard/UserMenu';
 import { NotificationsMenu } from './src/features/notifications/NotificationsMenu';
 import { ThemeProvider, useTheme } from './src/app/theme';
@@ -35,8 +36,10 @@ const SCREEN_STYLE = { flex: 1 };
 // Dashboard once the AuthService accepts the login or a sign-up, and back to the login after "Sair". The login and
 // the sign-up lead to each other. Nothing but the canvas shows while the saved session is read, so neither screen
 // flashes before the right one. When the API refuses the session's token, the session is cleared and the login says
-// it expired, until someone logs in again. A release with no server paired starts on Conectar ao servidor, which the
-// login and the user menu also open to pair again, as after the computer's address changes; a development build talks
+// it expired, until someone logs in again. Logging out, an expired session and pairing with another server clear the
+// phone's copy of the inventory (see inventoryCopy.ts). A release with no server paired starts on Conectar ao
+// servidor, which the login and the user menu also open to pair again, as after the computer's address changes; a
+// development build talks
 // to the computer's development API until it pairs. The screen ends where the keyboard starts, so a form under it
 // scrolls to every field: Android 15 and later draw the app edge to edge, under the keyboard, and no longer resize it.
 // A release says, over any screen, when a newer version is out (see UpdatePrompt).
@@ -76,6 +79,7 @@ function Screen() {
     () =>
       onSessionExpired(() => {
         auth.logout().catch(() => {});
+        clearCopy();
         setRegistering(false);
         setUser(null);
         setExpired(true);
@@ -104,6 +108,9 @@ function Screen() {
    * @param loggedIn The user, when pairing logged in.
    */
   const connected = (paired: Pairing, loggedIn?: SessionUser) => {
+    if (paired.url !== server?.url || paired.fingerprint !== server?.fingerprint) {
+      clearCopy();
+    }
     setServer(paired);
     setPairing(false);
     if (loggedIn) {
@@ -114,6 +121,7 @@ function Screen() {
   /** Ends the session and goes back to the login. */
   const logout = async () => {
     await auth.logout();
+    await clearCopy();
     setRegistering(false);
     setUser(null);
   };

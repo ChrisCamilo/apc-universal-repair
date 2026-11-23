@@ -18,12 +18,17 @@ jest.mock('react-native-keychain', () => {
   };
 });
 
-// No API runs during tests: the catalog answers with the catalog a new server starts with, and every other request with
-// an empty inventory, unless a test sets its own reply.
+// No API runs during tests: the catalog answers with the catalog a new server starts with, the change feed with an empty
+// inventory's full copy, and every other request with an empty inventory, unless a test sets its own reply.
 const { TEST_CATALOG_DATA } = require('@apc/domain/test-catalog');
-global.fetch = jest.fn((url) =>
-  Promise.resolve({ ok: true, json: () => Promise.resolve(String(url).endsWith('/catalog') ? TEST_CATALOG_DATA : { items: [], total: 0 }) }),
-);
+const { syncAnswer } = require('@apc/domain/test-sync');
+global.fetch = jest.fn((url) => {
+  const { pathname, searchParams } = new URL(String(url));
+  if (pathname === '/sync/changes') {
+    return Promise.resolve(syncAnswer(searchParams, []));
+  }
+  return Promise.resolve({ ok: true, json: () => Promise.resolve(pathname.endsWith('/catalog') ? TEST_CATALOG_DATA : { items: [], total: 0 }) });
+});
 
 // The photo library is a native screen; tests pick nothing unless they set their own result.
 jest.mock('react-native-image-picker', () => ({
@@ -45,6 +50,19 @@ require('react-native').NativeModules.ServerPin = { pin: jest.fn() };
 
 // The device key is the Android Keystore's; tests get a fixed public key, and a "signature" that names the nonce.
 require('react-native').NativeModules.DeviceKey = { publicKey: jest.fn(async () => 'pk-test'), sign: jest.fn(async (nonce) => `sig-${nonce}`) };
+
+// The inventory's copy is kept encrypted by the native side (InventoryCopyModule.kt); tests keep it in memory, and each
+// test starts with none, as after logging out (see jest.afterEnv.js).
+const copyFile = { saved: null };
+require('react-native').NativeModules.InventoryCopy = {
+  read: jest.fn(async () => copyFile.saved),
+  write: jest.fn(async (copy) => {
+    copyFile.saved = copy;
+  }),
+  clear: jest.fn(async () => {
+    copyFile.saved = null;
+  }),
+};
 
 // The camera is native: the scanner draws nothing and reads no code unless a test calls its onBarcodeScanned, and
 // the camera's permission is granted.

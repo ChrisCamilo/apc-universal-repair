@@ -17,8 +17,11 @@ import {
   optionKey,
   POSITION_NAMES,
   SIDE_NAMES,
+  sortableOf,
+  sortItems,
   type Item,
   type ItemListQuery,
+  type ItemListResponse,
   type ItemSortKey,
   type ItemStatus,
 } from "./items.ts";
@@ -337,6 +340,26 @@ export function itemMatchesQuery(item: Item, query: ItemListQuery): boolean {
       )) &&
     status
   );
+}
+
+/**
+ * Answers a list query from the items held, as the API's GET /items answers it: the matching items (itemMatchesQuery),
+ * the newest first or sorted by a column (sortItems), one page of them when a page size is asked, with how many match
+ * in all. The web's demo answers its list with it, and the phone its copy of the inventory.
+ * @param items Every item held.
+ * @param query The list query, as itemListQuerySchema reads it.
+ * @returns The page of items and how many match.
+ */
+export function listItems(items: readonly Item[], query: ItemListQuery): ItemListResponse {
+  const { page = 1, pageSize, sort, order = "asc" } = query;
+  const matched = items.filter((item) => itemMatchesQuery(item, query));
+  const ordered = sort
+    ? sortItems(
+        matched.map((item) => ({ ...sortableOf(item), item })),
+        { key: sort, dir: order },
+      ).map((row) => row.item)
+    : matched.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+  return { items: pageSize ? ordered.slice((page - 1) * pageSize, page * pageSize) : ordered, total: ordered.length };
 }
 
 /**

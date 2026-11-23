@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Text, TextInput } from 'react-native';
+import { NativeModules, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { createAsyncStorage } from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
@@ -175,8 +175,8 @@ test('Mobile: nothing but the canvas shows while the session is read', async () 
 });
 
 // Starts on the Dashboard with a saved session and a saved theme, picks "Sair" in the user menu, and checks the
-// login takes the Dashboard's place, the session is ended on the API with its token and gone from the keychain, and
-// the theme stays on the device.
+// login takes the Dashboard's place, the session is ended on the API with its token and gone from the keychain, the
+// phone's copy of the inventory is deleted, and the theme stays on the device.
 test('Mobile: Sair goes back to the login and keeps the preferences', async () => {
   await Keychain.setGenericPassword('session', JSON.stringify(SESSION), { service: SESSION_STORAGE_KEY });
   await STORAGE.setItem(THEME_STORAGE_KEYS.style, 'fiat90');
@@ -184,9 +184,11 @@ test('Mobile: Sair goes back to the login and keeps the preferences', async () =
   const pressable = (name: string) =>
     tree.root.find((n) => typeof n.type !== 'string' && typeof n.props.onPress === 'function' && n.props.accessibilityLabel === name);
   await ReactTestRenderer.act(async () => pressable('Conta').props.onPress());
+  NativeModules.InventoryCopy.clear.mockClear();
   await ReactTestRenderer.act(async () => pressable('Sair').props.onPress());
   expect(showsLogin(tree)).toBe(true);
   expect(showsDashboard(tree)).toBe(false);
+  expect(NativeModules.InventoryCopy.clear).toHaveBeenCalled();
   const logout = (globalThis.fetch as jest.Mock).mock.calls.find(([url]) => /\/sessions\/current$/.test(String(url)));
   expect(logout[1].method).toBe('DELETE');
   expect(new Headers(logout[1].headers).get('Authorization')).toBe('Bearer t1');
@@ -205,15 +207,18 @@ test('Mobile: a session saved before the token opens on the login', async () => 
 });
 
 // Starts on the Dashboard with a saved session whose token the API refuses, and checks the login takes its place,
-// saying the session expired, with the session gone from the keychain; logging in again takes the notice away.
+// saying the session expired, with the session gone from the keychain and the phone's copy of the inventory deleted;
+// logging in again takes the notice away.
 test('Mobile: an expired session goes back to the login, which says so', async () => {
   await Keychain.setGenericPassword('session', JSON.stringify(SESSION), { service: SESSION_STORAGE_KEY });
   globalThis.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) } as Response)) as typeof fetch;
+  NativeModules.InventoryCopy.clear.mockClear();
   const tree = await mountApp();
   const says = (text: string) => tree.root.findAll((n) => n.type === Text && n.props.children === text).length > 0;
   expect(showsLogin(tree)).toBe(true);
   expect(says(LOGIN_MESSAGES.expired)).toBe(true);
   expect(await savedSession()).toBeNull();
+  expect(NativeModules.InventoryCopy.clear).toHaveBeenCalled();
 
   serveUser({ id: USER.id, username: USER.username, displayName: USER.displayName, initials: initials(USER.displayName), inventoryTutorialSeen: true });
   const input = (label: string) => tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === label);

@@ -102,7 +102,8 @@ afterEach(() => {
 
 // Opens the app with no session and checks it starts on Conectar ao servidor, with no login, sign-up or way back;
 // reads the computer's QR code and checks the phone logs in with its entry code and the device's proof, keeps the
-// server and its session, and goes on to the Dashboard.
+// server and its session, starts its copy of the inventory over, as the copy of another server is no use with this one,
+// and goes on to the Dashboard.
 test('Mobile: with no session the app opens on the QR code, which logs the phone in', async () => {
   const api = serveEntry();
   const tree = await mountApp();
@@ -110,7 +111,9 @@ test('Mobile: with no session the app opens on the QR code, which logs the phone
   expect(tree.root.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Usuário')).toHaveLength(0);
   expect(tree.root.findAll((n) => n.props.testID === 'common.back-button')).toHaveLength(0);
 
+  NativeModules.InventoryCopy.clear.mockClear();
   await scan(pairingLink({ ...SERVER, entry: 'K7Q2ZD9M' }));
+  expect(NativeModules.InventoryCopy.clear).toHaveBeenCalled();
   const entry = api.mock.calls.find(([url]) => String(url) === `${SERVER.url}/sessions/pairing`)!;
   expect(JSON.parse(String(entry[1]!.body))).toEqual({ code: 'K7Q2ZD9M', device: { publicKey: 'pk-test', nonce: 'n1', signature: 'sig-n1' } });
   expect(NativeModules.ServerPin.pin).toHaveBeenLastCalledWith('192.168.0.10', SERVER.fingerprint);
