@@ -204,7 +204,7 @@ test("Web: items reaching their minimum stock are warned about once", { tag: [TE
   await saveQuantity("1");
   await expect(toasts(page).named("Item “Filtro de óleo” salvo.").last()).toBeVisible();
 
-  await inventory(page).importCsv.click();
+  await inventory(page).importParts.click();
   const importer = importDialog(page);
   const file = [
     "code;name;category;part_brand;vehicle_brand;vehicle_model;quantity;minimum;location;unit_price;color;position;side",

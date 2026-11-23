@@ -64,7 +64,7 @@ const CASES: Case[] = [
     name: 'a bottom sheet',
     render: (open) => (
       <BottomSheet open={open} onClose={() => {}} title="Mais ações">
-        <Text>Importar CSV</Text>
+        <Text>Importar Peças</Text>
       </BottomSheet>
     ),
     toggle: reopen((open) => CASES[2].render(open)),

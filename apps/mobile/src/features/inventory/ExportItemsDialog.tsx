@@ -8,7 +8,7 @@ import { useToast } from '../../components/Toast';
 import { Text } from '../../components/Typography';
 import { shareCsv } from './csv';
 
-// The "Exportar CSV" dialog of the Inventory tab, the same as the web: it says which items go into the file, the whole
+// The "Exportar Peças" dialog of the Inventory tab, the same as the web: it says which items go into the file, the whole
 // list as it is (the search, the filters, the stock status and the sort) across all its pages, and offers to add each
 // item's photo paths, off by default. "Exportar" fetches every item of the list and hands the CSV, in the import's
 // format, to the phone's share sheet, to save it or send it to a computer; once shared, the dialog closes and a toast
@@ -53,7 +53,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
     <Dialog
       open={open}
       onClose={onClose}
-      title="Exportar CSV"
+      title="Exportar Peças"
       closable
       actions={
         <>

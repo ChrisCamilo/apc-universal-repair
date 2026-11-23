@@ -29,8 +29,8 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
  * @returns The file's name and its lines.
  */
 async function exportList(page: Page, photos: boolean): Promise<{ name: string; lines: string[] }> {
-  await inventory(page).exportCsv.click();
-  const exporter = dialog(page, "Exportar CSV");
+  await inventory(page).exportParts.click();
+  const exporter = dialog(page, "Exportar Peças");
   await expect(exporter.root).toContainText("30 itens, com a busca e os filtros atuais.");
   if (photos) {
     await exporter.root.getByRole("switch", { name: "Incluir o caminho das fotos" }).click();

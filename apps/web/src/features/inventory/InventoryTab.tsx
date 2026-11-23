@@ -113,8 +113,8 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // again. A click on a brand's row opens the item's details scrolled to that brand, and one on an item of one brand
 // opens its details. "Gerenciar listas" renames,
 // merges and deletes the categories, brands and models the form picks from; the list loads again after each change,
-// the filters following a name renamed or merged, and a name in use leads to its items. "Importar CSV" adds and updates many items at once from a spreadsheet, and the list
-// and the lists load again; "Exportar CSV" saves every item of the list as it is, on every page, in the same format.
+// the filters following a name renamed or merged, and a name in use leads to its items. "Importar Peças" adds and updates many items at once from a spreadsheet, and the list
+// and the lists load again; "Exportar Peças" saves every item of the list as it is, on every page, in the same format.
 // The details' Duplicar opens a new item's form filled in as a copy of it, with copies
 // of its photos or without them, its codes left blank and its stock at 0. Each row's thumbnail shows the item's cover and opens its photos in the
 // ImageViewer (a brand's row, that brand's photos), where each photo removed, changed or added is saved at once and
@@ -135,7 +135,7 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // starts it over, and a save or a delete loads what it shows again, so it stays where it was. Two round buttons take the
 // place of the Filtros menu and the "Ordenar" select: Filtros opens "Filtrar e ordenar" in a bottom sheet (the filters
 // and the sort, applied together on "Ver n itens", which counts the items they would show), and Ordenar the sorts
-// alone, each in the accent while a filter or a sort is on. Gerenciar listas, Importar CSV, Exportar CSV and Tutorial
+// alone, each in the accent while a filter or a sort is on. Gerenciar listas, Importar Peças, Exportar Peças and Tutorial
 // do estoque leave the toolbar for the header's "⋯", which opens them in a bottom sheet (the Mais ações mockup). A
 // card has no pencil or trash: its details fill the screen (the Detalhes mockup), with Editar and Duplicar at the
 // bottom and Excluir at the top right, which asks to confirm and, once the item is gone, closes the details too.
@@ -287,9 +287,9 @@ export function InventoryTab() {
   // Whether a phone's sheet of the other actions, which the header's "⋯" opens, is open.
   const [moreOpen, setMoreOpen] = useState(false)
   const handMore = useMoreActions()
-  // Whether "Importar CSV" is open; each opening starts with no file.
+  // Whether "Importar Peças" is open; each opening starts with no file.
   const [importer, setImporter] = useState({ open: false, session: 0 })
-  // Whether "Exportar CSV" is open; each opening starts without the photo paths.
+  // Whether "Exportar Peças" is open; each opening starts without the photo paths.
   const [exporter, setExporter] = useState({ open: false, session: 0 })
   // The item form: closed, open on a new item, an item to edit or an item's details (maybe scrolled to a brand),
   // maybe with values and photos filled in. Each opening starts a new form.
@@ -377,10 +377,10 @@ export function InventoryTab() {
     return true
   }
 
-  /** Opens "Importar CSV", with no file. */
+  /** Opens "Importar Peças", with no file. */
   const openImporter = () => setImporter((current) => ({ open: true, session: current.session + 1 }))
 
-  /** Opens "Exportar CSV", without the photo paths. */
+  /** Opens "Exportar Peças", without the photo paths. */
   const openExporter = () => setExporter((current) => ({ open: true, session: current.session + 1 }))
 
   /** Opens an item into its brands' rows, or closes it. */
@@ -562,10 +562,10 @@ export function InventoryTab() {
                 Gerenciar listas
               </Button>
               <Button variant="secondary" onClick={openImporter}>
-                Importar CSV
+                Importar Peças
               </Button>
               <Button variant="secondary" onClick={openExporter}>
-                Exportar CSV
+                Exportar Peças
               </Button>
               <Button data-tour="new-item" onClick={() => openForm()}>
                 Novo item
@@ -804,8 +804,8 @@ export function InventoryTab() {
             title="Mais ações"
             actions={[
               { icon: listIcon, label: 'Gerenciar listas', onSelect: () => setManaging(true) },
-              { icon: importIcon, label: 'Importar CSV', onSelect: openImporter },
-              { icon: exportIcon, label: 'Exportar CSV', onSelect: openExporter },
+              { icon: importIcon, label: 'Importar Peças', onSelect: openImporter },
+              { icon: exportIcon, label: 'Exportar Peças', onSelect: openExporter },
               { icon: playIcon, label: 'Tutorial do estoque', onSelect: tutorial.replay },
             ]}
           />

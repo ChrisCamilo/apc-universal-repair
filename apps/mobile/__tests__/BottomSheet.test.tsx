@@ -113,7 +113,7 @@ test('Mobile: a bottom sheet closes on a tap on the backdrop and on the back but
 test('Mobile: a closed bottom sheet shows nothing', async () => {
   const tree = await mount(<Sheet open={false} />);
   expect(tree.root.findByType(Modal).props.visible).toBe(false);
-  expect(tree.root.findAll((node) => node.props.children === 'Importar CSV')).toHaveLength(0);
+  expect(tree.root.findAll((node) => node.props.children === 'Importar Peças')).toHaveLength(0);
 });
 
 function Sheet({ open, onClose = () => {} }: { open: boolean; onClose?: () => void }) {
@@ -129,7 +129,7 @@ function Sheet({ open, onClose = () => {} }: { open: boolean; onClose?: () => vo
       }
       footer={<Button onPress={() => {}}>Ver itens</Button>}
     >
-      <Text>Importar CSV</Text>
+      <Text>Importar Peças</Text>
     </BottomSheet>
   );
 }

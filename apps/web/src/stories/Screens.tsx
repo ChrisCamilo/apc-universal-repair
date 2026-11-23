@@ -359,7 +359,7 @@ function InventoryTab() {
           <SearchField label="Procure pelo nome ou código da peça" value={search} onValueChange={setSearch} />
         </div>
         <div className={classes.buttons()} data-testid={ids.buttons}>
-          <Button variant="secondary">Importar CSV</Button>
+          <Button variant="secondary">Importar Peças</Button>
           <Button>Novo item</Button>
         </div>
       </div>

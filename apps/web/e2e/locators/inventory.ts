@@ -9,7 +9,7 @@ import { dataTable, dialog, pagination } from "./common.ts";
  * One of the Inventory's other actions: a button of the desktop's toolbar, or on a phone a row of the sheet the
  * header's "⋯" opens. Its click opens the sheet first when the "⋯" is there.
  * @param page The test's page.
- * @param name The action, e.g. "Importar CSV".
+ * @param name The action, e.g. "Importar Peças".
  * @returns The action, to click.
  */
 function otherAction(page: Page, name: string) {
@@ -82,8 +82,8 @@ export function inventory(page: Page) {
     status: (row: Locator) => row.getByTestId("inventory.inventory-tab.quantity.tag"),
     // The toolbar's, or on a phone the "⋯" sheet's, which opens first.
     manageLists: otherAction(page, "Gerenciar listas"),
-    importCsv: otherAction(page, "Importar CSV"),
-    exportCsv: otherAction(page, "Exportar CSV"),
+    importParts: otherAction(page, "Importar Peças"),
+    exportParts: otherAction(page, "Exportar Peças"),
     // A phone's "⋯" in the header and the sheet it opens.
     more: page.getByRole("button", { name: "Mais ações" }),
     moreSheet: dialog(page, "Mais ações").root,
@@ -314,7 +314,7 @@ export function filtersMenu(page: Page) {
  * @returns The dialog's elements.
  */
 export function importDialog(page: Page) {
-  const root = page.getByRole("dialog", { name: "Importar CSV" });
+  const root = page.getByRole("dialog", { name: "Importar Peças" });
   return {
     root,
     file: root.getByLabel("Arquivo CSV"),

@@ -20,7 +20,7 @@ import { Heading, Text } from '../../components/Typography'
 import { usePhone } from '../../components/usePhone.ts'
 import { importItemsDialog } from './ImportItemsDialog.styles.ts'
 
-// The "Importar CSV" dialog of the Inventory tab: it explains the file, downloads the template and reads the file
+// The "Importar Peças" dialog of the Inventory tab: it explains the file, downloads the template and reads the file
 // chosen, UTF-8, comma or semicolon separated. The preview counts the items ready and the rows with errors, lists the
 // categories, brands and models the import creates, and shows each row as it will be saved, the rows with errors
 // marked with their reasons; rows with the same "item" are the brands of one item. "Importar" sends the valid items
@@ -97,7 +97,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
     <Dialog
       open={open}
       onClose={onClose}
-      title="Importar CSV"
+      title="Importar Peças"
       closable={phone}
       actions={
         <>
