@@ -12,7 +12,7 @@ import { DEMO_DEVICE_STAND_IN } from './demoDevice.ts'
 // apps/api/src/apiRoutes.test.ts): a route the API has and the demo doesn't, or the other way around, fails,
 // and so does an answer of the demo that the API's schema for it doesn't read, as when the API gains a field. Each
 // route of the list has a call here that it answers with success, so a new route needs one too; the routes the demo
-// doesn't do, of devices and the change feed, answer 501 saying so (DEMO_UNAVAILABLE_ROUTES).
+// doesn't do, of devices and the phone's sync, answer 501 saying so (DEMO_UNAVAILABLE_ROUTES).
 
 /** What the demo's logins send in place of a device's proof (see demoDevice.ts). */
 const DEVICE = { publicKey: DEMO_DEVICE_STAND_IN, nonce: DEMO_DEVICE_STAND_IN, signature: DEMO_DEVICE_STAND_IN }
@@ -30,6 +30,7 @@ const CALLS: Record<string, (demo: Demo) => Promise<Response>> = {
   'POST /devices/status': ({ call }) => call('POST', '/devices/status', DEVICE),
   'GET /devices': ({ call }) => call('GET', '/devices'),
   'GET /sync/changes': ({ call }) => call('GET', '/sync/changes'),
+  'POST /sync/operations': ({ call }) => call('POST', '/sync/operations', { operations: [] }),
   'POST /devices/:id/authorize': ({ call }) => call('POST', '/devices/d1/authorize', {}),
   'PATCH /devices/:id': ({ call }) => call('PATCH', '/devices/d1', { name: 'Celular' }),
   'DELETE /devices/:id': ({ call }) => call('DELETE', '/devices/d1'),
