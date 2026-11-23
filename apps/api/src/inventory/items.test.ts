@@ -165,9 +165,10 @@ test("API: items carry their entries' names and their brands' photos", () => {
     location: "A-2",
     quantity: 2,
     unitPriceCents: 3990,
-    photos: photos.map((photo, position) => ({ ...photo, brandId: id, position })),
+    photos: photos.map((photo, position) => ({ ...photo, brandId: id, position, syncVersion: 0 })),
     createdAt: date,
     updatedAt: date,
+    syncVersion: 0,
   });
   const item = toItem(
     {
@@ -196,6 +197,7 @@ test("API: items carry their entries' names and their brands' photos", () => {
       brands: [brand("b1", "W712", "Mann", [{ id: "p1", file: "p1.jpg", thumbFile: "p1-thumb.webp" }]), brand("b2", "C2433", "Tecfil", [])],
       createdAt: date,
       updatedAt: date,
+      syncVersion: 0,
     },
     TEST_SESSION,
   );

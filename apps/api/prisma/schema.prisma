@@ -10,25 +10,33 @@ datasource db {
 /// A vehicle brand, the list the item form picks the vehicle brand from. nameKey holds the name in lowercase
 /// without accents or extra spaces, so names that differ only in those are the same brand (see @apc/domain/lists).
 model Brand {
-  id       String         @id @default(uuid())
-  name     String         @unique
-  nameKey  String         @unique
-  models   VehicleModel[]
-  vehicles ItemVehicle[]
+  id          String         @id @default(uuid())
+  name        String         @unique
+  nameKey     String         @unique
+  models      VehicleModel[]
+  vehicles    ItemVehicle[]
   /// Set when the Catalog tab has the brand.
-  catalog  CatalogBrand?
+  catalog     CatalogBrand?
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion Int            @default(0)
+
+  @@index([syncVersion])
 }
 
 /// A brand of the Catalog tab: a vehicle brand of the lists, which then can't be deleted or merged away, with the
 /// letters on its line on a phone and its place in the rail, from 0. The catalog a new database starts with comes in
 /// its migration (20261106000000_catalog).
 model CatalogBrand {
-  id       String @id @default(uuid())
-  brandId  String @unique
-  brand    Brand  @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  id          String @id @default(uuid())
+  brandId     String @unique
+  brand       Brand  @relation(fields: [brandId], references: [id], onDelete: Restrict)
   /// E.g. "CH" for Chevrolet.
-  mark     String
-  position Int
+  mark        String
+  position    Int
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion Int    @default(0)
+
+  @@index([syncVersion])
 }
 
 /// An engine of a catalog year, with its sheet. Its name in the tree comes from the sheet ("4.1 L 6 cilindros") and its
@@ -43,24 +51,30 @@ model CatalogEngine {
   cylinders      Int
   drive          EngineDrive
   summary        String
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion    Int         @default(0)
 
   @@index([yearId])
+  @@index([syncVersion])
 }
 
 /// A generation of a catalog model and its years; lastYear is null while it is still made.
 model CatalogGeneration {
-  id        String           @id @default(uuid())
-  modelId   String
-  model     CatalogModel     @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  position  Int
-  name      String
-  firstYear Int
-  lastYear  Int?
-  versions  CatalogVersion[]
+  id          String           @id @default(uuid())
+  modelId     String
+  model       CatalogModel     @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  position    Int
+  name        String
+  firstYear   Int
+  lastYear    Int?
+  versions    CatalogVersion[]
   /// The item vehicles of this generation, which keep it from being deleted.
-  vehicles  ItemVehicle[]
+  vehicles    ItemVehicle[]
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion Int              @default(0)
 
   @@index([modelId])
+  @@index([syncVersion])
 }
 
 /// A model of the Catalog tab: a vehicle model of the lists, of a catalog brand, which then can't be deleted or merged
@@ -71,6 +85,10 @@ model CatalogModel {
   vehicleModel   VehicleModel        @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
   position       Int
   generations    CatalogGeneration[]
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion    Int                 @default(0)
+
+  @@index([syncVersion])
 }
 
 /// A version of a catalog generation, e.g. Diplomata.
@@ -83,32 +101,42 @@ model CatalogVersion {
   years        CatalogYear[]
   /// The item vehicles of this version, which keep it from being deleted.
   vehicles     ItemVehicle[]
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion  Int               @default(0)
 
   @@index([generationId])
+  @@index([syncVersion])
 }
 
 /// A period of a catalog version: its first and last model year, the same for a single year, with the engines it had.
 /// Its level keeps the name "year" in the API (/catalog/years), as before periods.
 model CatalogYear {
-  id        String          @id @default(uuid())
-  versionId String
-  version   CatalogVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
-  position  Int
+  id          String          @id @default(uuid())
+  versionId   String
+  version     CatalogVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  position    Int
   /// The period's first year.
-  year      Int
+  year        Int
   /// The period's last year, not before the first.
-  lastYear  Int
-  engines   CatalogEngine[]
+  lastYear    Int
+  engines     CatalogEngine[]
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion Int             @default(0)
 
   @@index([versionId])
+  @@index([syncVersion])
 }
 
 /// An item category, the list the item form picks the category from; nameKey as in Brand.
 model Category {
-  id      String @id @default(uuid())
-  name    String
-  nameKey String @unique
-  items   Item[]
+  id          String @id @default(uuid())
+  name        String
+  nameKey     String @unique
+  items       Item[]
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion Int    @default(0)
+
+  @@index([syncVersion])
 }
 
 /// A device a user logs in from (see @apc/domain/devices): only its public key, the name the approver gave it and its
@@ -174,8 +202,11 @@ model Item {
   originalCodes ItemOriginalCode[]
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion   Int                @default(0)
 
   @@index([categoryId])
+  @@index([syncVersion])
 }
 
 /// A brand that makes an item's part, with its own part code, stock and price. codeKey holds the code with letters
@@ -203,9 +234,12 @@ model ItemBrand {
   photos         ItemPhoto[]
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion    Int         @default(0)
 
   @@unique([itemId, partBrandId])
   @@index([partBrandId])
+  @@index([syncVersion])
 }
 
 /// A code the vehicle maker gave an item's part (OEM), the same for every brand of the item.
@@ -254,25 +288,32 @@ model ItemVehicle {
 /// A photo of an item's brand. The photo, reduced to WebP, and its thumbnail are stored by the API under PHOTOS_DIR,
 /// named after the photo's id; position orders the brand's photos from 0, the cover.
 model ItemPhoto {
-  id        String    @id @default(uuid())
-  brandId   String
-  brand     ItemBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  position  Int
+  id          String    @id @default(uuid())
+  brandId     String
+  brand       ItemBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  position    Int
   /// Name of the reduced photo, e.g. "<id>.webp" (photos stored before the reduction may still be "<id>.jpg" until
   /// `pnpm --filter @apc/api photos:compress` runs).
-  file      String
+  file        String
   /// Name of the thumbnail, e.g. "<id>-thumb.webp".
-  thumbFile String
+  thumbFile   String
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion Int       @default(0)
 
   @@unique([brandId, position])
+  @@index([syncVersion])
 }
 
 /// A part brand, the list the item form picks each brand of an item from; nameKey as in Brand.
 model PartBrand {
-  id      String      @id @default(uuid())
-  name    String
-  nameKey String      @unique
-  brands  ItemBrand[]
+  id          String      @id @default(uuid())
+  name        String
+  nameKey     String      @unique
+  brands      ItemBrand[]
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion Int         @default(0)
+
+  @@index([syncVersion])
 }
 
 /// Where a part fits, front to back: not applicable (the API's "N/A"), front ("D"), rear ("T") or both ("Ambos").
@@ -311,6 +352,31 @@ enum Side {
   BOTH
 }
 
+/// The change feed's state, in its one row (id 1). Triggers on every synced table (each model with a syncVersion) give a
+/// row the next version on each insert and update, and keep a tombstone of each delete, so every write reaches the
+/// feed whatever makes it; a change to an item's vehicles or original codes gives the item a new version. The version
+/// is taken by updating this row, which holds its lock until the write's transaction ends, so versions are seen
+/// in the order they were given.
+model SyncState {
+  id            Int    @id
+  /// Made when the feed's migration runs, and carried by every cursor, so a cursor of the database this one was
+  /// copied or imported from isn't read here.
+  databaseId    String
+  /// The last version given.
+  version       Int    @default(0)
+  /// The version of the last tombstone dropped: a cursor before it can't learn every deletion.
+  prunedVersion Int    @default(0)
+}
+
+/// A row deleted from a synced table, kept so the feed can say so: its kind as the feed names it ("itemBrand"), its
+/// id, the version of its deletion and when, so the old ones can be dropped (see SyncState.prunedVersion).
+model SyncTombstone {
+  version   Int      @id
+  kind      String
+  rowId     String
+  deletedAt DateTime @default(now())
+}
+
 /// Someone who logs in. The username is kept in lowercase (see @apc/domain/auth), so names that differ only in case
 /// are the same user. The password is kept only as its salted scrypt hash, which the API never sends.
 model User {
@@ -338,6 +404,9 @@ model VehicleModel {
   vehicles     ItemVehicle[]
   /// Set when the Catalog tab has the model.
   catalogModel CatalogModel?
+  /// Grows with every change of the row, as the change feed sends it (see SyncState).
+  syncVersion  Int           @default(0)
 
   @@unique([brandId, nameKey])
+  @@index([syncVersion])
 }

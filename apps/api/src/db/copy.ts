@@ -10,6 +10,8 @@ import { databaseProvider } from "./provider.js";
 // transaction on the target, so a failure keeps nothing there. A target just migrated already holds the catalog a new
 // database starts with, which its migration inserts with the vehicle brands and models it names (see STARTING_TABLES):
 // that doesn't count as data, and the copy takes it out first, so the source's catalog and lists come over as they are.
+// The change feed isn't copied: the target's triggers give the rows versions of its own, under the database id its
+// migration made, so a phone that followed the source makes its copy again (see sync/changes.ts).
 
 /** How long the copy may take, in milliseconds: ten minutes, for a large inventory. */
 const COPY_TIMEOUT_MS = 10 * 60 * 1000;

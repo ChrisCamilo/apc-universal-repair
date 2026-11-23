@@ -82,7 +82,8 @@ function open(url: string): PrismaClient {
 }
 
 /**
- * Reads every copied table of a database, each row by id, with its dates as ISO text, so two databases compare.
+ * Reads every copied table of a database, each row by id, with its dates as ISO text and without its change feed
+ * version, which each database gives on its own, so two databases compare.
  * @param client The database.
  * @returns The rows, by table.
  */
@@ -92,7 +93,7 @@ async function rowsOf(client: PrismaClient): Promise<Record<string, unknown[]>> 
       const rows = (await (client[name] as unknown as { findMany: () => Promise<{ id: string }[]> }).findMany()).sort((a, b) =>
         a.id < b.id ? -1 : 1,
       );
-      return [name, JSON.parse(JSON.stringify(rows))] as const;
+      return [name, JSON.parse(JSON.stringify(rows), (key, value) => (key === "syncVersion" ? undefined : value))] as const;
     }),
   );
   return Object.fromEntries(tables);
