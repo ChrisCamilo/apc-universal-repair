@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Image, Modal, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { AppState, Image, Modal, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import {
@@ -23,6 +23,7 @@ import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/fea
 import { MoreActionsContext } from '../src/features/dashboard/moreActionsContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
+import { syncAnswer } from '@apc/domain/test-sync';
 
 // A photo the API saved, as items carry it.
 const COVER = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.jpg', thumbUrl: '/photos/aa-thumb.webp' };
@@ -38,11 +39,13 @@ const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOB
 
 /**
  * Fills in an item with the fields the list doesn't look at.
- * @param n Number of the item, which sets its id.
+ * @param n Number of the item, which sets its id, and its date: an hour before the item numbered before it, so the
+ * stocks, listed in their numbers' order, are newest first, as the list shows them.
  * @param fields The fields that matter for the test.
  * @returns A complete item.
  */
 function item(n: number, fields: FlatItem & Required<Pick<FlatItem, 'code' | 'name'>>): Item {
+  const date = new Date(Date.UTC(2026, 9, 3, 12) - n * 3_600_000).toISOString();
   return testItem({
     id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
     category: 'Motor',
@@ -57,8 +60,8 @@ function item(n: number, fields: FlatItem & Required<Pick<FlatItem, 'code' | 'na
     minQuantity: 0,
     unitPriceCents: 3990,
     photos: [],
-    createdAt: '2026-10-03T12:00:00.000Z',
-    updatedAt: '2026-10-03T12:00:00.000Z',
+    createdAt: date,
+    updatedAt: date,
     ...fields,
   });
 }
@@ -73,6 +76,9 @@ function answerItems(stock: Item[]) {
   const lists = itemListsOf(stock);
   (fetch as jest.Mock).mockImplementation(async (url: string) => {
     const { pathname, searchParams: query } = new URL(url);
+    if (pathname === '/sync/changes') {
+      return syncAnswer(query, stock);
+    }
     const list = (Object.keys(ITEM_LIST_PATHS) as ItemListKind[]).find((kind) => pathname === ITEM_LIST_PATHS[kind]);
     if (list) {
       return { ok: true, json: () => Promise.resolve(lists[list]) };
@@ -146,7 +152,7 @@ beforeEach(async () => {
 // "Baixo", "Esgotado".
 test('Mobile: the inventory lists every item with its stock alerts', async () => {
   const tree = await mount();
-  expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/items$/), expect.anything());
+  expect((fetch as jest.Mock).mock.calls.some(([url]) => /\/sync\/changes$/.test(url))).toBe(true);
   const shown = texts(tree);
   expect(shown).toContain('3 de 3 itens · 1 baixo · 1 esgotado');
   expect(shown).toEqual(expect.arrayContaining(['Pastilha de freio', 'BP-1020 · Cobreq', 'Baixo · 1', 'Esgotado · 1']));
@@ -191,8 +197,8 @@ test('Mobile: the search finds items by name or part code', async () => {
 });
 
 // Presses "Novo item" and checks the empty form opens, then closes it, opens a card's details, which the card has no
-// pencil for, and presses Editar there, and checks the form opens on that item; saving it with a quantity changed loads
-// the list again.
+// pencil for, and presses Editar there, and checks the form opens on that item; saving it with a quantity changed brings
+// the phone's copy up to date, from a full copy when the server answers its cursor with 410.
 test('Mobile: "Novo item" and the details\' Editar open the item form, and a save reloads the list', async () => {
   const tree = await mount();
   const card = (name: string) =>
@@ -226,10 +232,10 @@ test('Mobile: "Novo item" and the details\' Editar open the item form, and a sav
   (fetch as jest.Mock).mockClear();
   (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(ITEMS[0]) });
   await ReactTestRenderer.act(async () => pressable('Salvar alterações').props.onPress());
-  expect((fetch as jest.Mock).mock.calls.map(([url]) => url.replace(/^.*\/items/, '/items'))).toEqual([
+  expect((fetch as jest.Mock).mock.calls.map(([url]) => url.replace(/^https?:\/\/[^/]+/, ''))).toEqual([
     `/items/${ITEMS[0].id}`,
-    '/items',
-    '/items?page=1&pageSize=25',
+    '/sync/changes?since=test-database.1',
+    '/sync/changes',
   ]);
   expect(dialog()).toBeUndefined();
 });
@@ -299,7 +305,7 @@ function Preferences({ children }: { children: React.ReactNode }) {
 }
 
 // Checks a card's thumbnail shows the item's cover from the API and opens its photos large; removing the photo there
-// sends the set left, empty, to the item's brand, and the list loads again.
+// sends the set left, empty, to the item's brand, and the phone's copy is brought up to date.
 test('Mobile: the thumbnail opens the item photos, saved as they change', async () => {
   const tree = await mount();
   const thumbnail = tree.root.find(
@@ -322,14 +328,14 @@ test('Mobile: the thumbnail opens the item photos, saved as they change', async 
   expect(photosUrl).toMatch(new RegExp(`/items/${ITEMS[0].id}/brands/${ITEMS[0].brands[0].id}/photos$`));
   expect(photosInit.method).toBe('PUT');
   expect(photosInit.body.getParts()).toEqual([]);
-  expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items$/);
+  expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/sync\/changes\?since=/);
   expect(texts(tree)).toContain('Foto removida');
 });
 
-// Picks a category in the filter sheet and applies it, then turns on Esgotado, and checks each goes to the API as the
-// list query and the cards follow, the round Filtros counting the filter in the accent; "Limpar filtros" brings every
-// item back.
-test('Mobile: the filters narrow the list through the API query', async () => {
+// Picks a category in the filter sheet and applies it, then turns on Esgotado, and checks the cards follow, answered
+// from the phone's copy with no request, the round Filtros counting the filter in the accent; "Limpar filtros" brings
+// every item back.
+test('Mobile: the filters narrow the list from the copy', async () => {
   const tree = await mount();
   const pressable = (name: string) =>
     tree.root.find(
@@ -345,7 +351,7 @@ test('Mobile: the filters narrow the list through the API query', async () => {
   await ReactTestRenderer.act(async () => pressable('Freios').props.onPress());
   (fetch as jest.Mock).mockClear();
   await ReactTestRenderer.act(async () => pressable('Ver 1 item').props.onPress());
-  expect((fetch as jest.Mock).mock.calls[0][0]).toMatch(/\/items\?category=Freios&page=1&pageSize=25$/);
+  expect(fetch).not.toHaveBeenCalled();
   expect(cards()).toHaveLength(1);
   expect(texts(tree)).toContain('1 de 3 itens · 1 baixo · 1 esgotado');
   const filters = tree.root.find((n) => n.props.accessibilityLabel === 'Filtros, 1 ativo' && typeof n.type === 'string');
@@ -353,7 +359,7 @@ test('Mobile: the filters narrow the list through the API query', async () => {
   expect(filters.findAll((n) => n.props.testID === 'common.tool-button.dot' && typeof n.type === 'string')).toHaveLength(1);
 
   await ReactTestRenderer.act(async () => pressable('Esgotado · 1').props.onPress());
-  expect((fetch as jest.Mock).mock.calls[1][0]).toMatch(/\/items\?category=Freios&status=out&page=1&pageSize=25$/);
+  expect(fetch).not.toHaveBeenCalled();
   expect(texts(tree)).toContain('Nenhum item encontrado');
 
   // The link in the filter bar, ahead of the empty state's own "Limpar filtros".
@@ -400,6 +406,51 @@ test('Mobile: the inventory shows loading, then the error state with a retry', a
   );
   await ReactTestRenderer.act(async () => retry.props.onPress());
   expect(tree!.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string')).toHaveLength(3);
+});
+
+// Loads the copy, turns the server off and pulls the list down, and checks every item still shows, searchable, under a
+// notice that says the list is the phone's copy and from when; with the server back, pulling again drops the notice.
+test('Mobile: away from the server, the list shows the copy and says from when', async () => {
+  const tree = await mount();
+  const scroll = () => tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
+  const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
+  const notice = () => texts(tree).find((text) => text.startsWith('Sem conexão com o servidor.'));
+  expect(notice()).toBeUndefined();
+
+  (fetch as jest.Mock).mockImplementation(() => Promise.reject(new TypeError('Network request failed')));
+  await ReactTestRenderer.act(async () => scroll().props.refreshControl.props.onRefresh());
+  expect(cards()).toHaveLength(3);
+  expect(notice()).toMatch(/^Sem conexão com o servidor\. Mostrando a cópia de \d{2}\/\d{2} às \d{2}:\d{2}\.$/);
+  await ReactTestRenderer.act(async () => tree.root.findByType(TextInput).props.onChangeText('w712'));
+  expect(cards()).toHaveLength(1);
+
+  answerItems(ITEMS);
+  await ReactTestRenderer.act(async () => scroll().props.refreshControl.props.onRefresh());
+  expect(notice()).toBeUndefined();
+});
+
+// Brings the app back to the foreground and checks the copy asks the server for what changed since, so an item added on
+// the computer meanwhile shows.
+test('Mobile: coming back to the foreground brings the copy up to date', async () => {
+  // The listeners the app gives React Native's AppState, whose stand-in the preset makes; put back as it was after.
+  const listeners: ((state: string) => void)[] = [];
+  const addListener = AppState.addEventListener as jest.Mock;
+  const preset = addListener.getMockImplementation();
+  addListener.mockImplementation((_event, listener) => {
+    listeners.push(listener);
+    return { remove: () => {} };
+  });
+  try {
+    const stock = [...ITEMS];
+    const tree = await mount(stock);
+    stock.unshift(item(4, { code: 'VL-9', name: 'Vela de ignição' }));
+    (fetch as jest.Mock).mockClear();
+    await ReactTestRenderer.act(async () => listeners.forEach((listener) => listener('active')));
+    expect((fetch as jest.Mock).mock.calls[0][0]).toMatch(/\/sync\/changes\?since=/);
+    expect(texts(tree)).toContain('Vela de ignição');
+  } finally {
+    addListener.mockImplementation(preset);
+  }
 });
 
 // Searches for something that isn't there and checks the empty state offers "Limpar filtros", which clears the
@@ -501,9 +552,9 @@ test('Mobile: the round + at the bottom right opens a new item', async () => {
   expect(tree.root.findAllByType(Modal).some((modal) => modal.props.visible)).toBe(true);
 });
 
-// Lists 30 items and checks the first 25 show. Scrolling far from the end asks for nothing; within a screen of it, the
-// API is asked for the next 25, skeleton cards showing until they come, then the other 5 join the list and "Fim da
-// lista" ends it, and scrolling on asks for nothing more. A search starts over from the first 25.
+// Lists 30 items and checks the first 25 show. Scrolling far from the end shows nothing more; within a screen of it,
+// the other 5 join the list from the phone's copy, with no request, and "Fim da lista" ends it. A search starts over
+// from the first 25 of what it finds.
 test('Mobile: the list loads the next items as it scrolls near its end', async () => {
   const stock = Array.from({ length: 30 }, (_, index) =>
     item(index + 10, { code: `P-${String(index + 1).padStart(3, '0')}`, name: `Peça ${index + 1}`, quantity: 5 }),
@@ -520,37 +571,27 @@ test('Mobile: the list loads the next items as it scrolls near its end', async (
       }),
     );
   expect(cards()).toHaveLength(25);
-  expect((fetch as jest.Mock).mock.calls.some(([url]) => /\/items\?page=1&pageSize=25$/.test(url))).toBe(true);
   expect(texts(tree)).not.toContain('Fim da lista');
 
   const fetchMock = fetch as jest.Mock;
   fetchMock.mockClear();
   await scrollTo(1000);
-  expect(fetchMock).not.toHaveBeenCalled();
+  expect(cards()).toHaveLength(25);
 
-  const answer = fetchMock.getMockImplementation()!;
-  let release = () => {};
-  fetchMock.mockImplementationOnce((url: string) => new Promise((resolve) => (release = () => resolve(answer(url)))));
   await scrollTo(1900);
-  expect(fetchMock.mock.calls[0][0]).toMatch(/\/items\?page=2&pageSize=25$/);
-  expect(skeletons()).toHaveLength(5);
-  await ReactTestRenderer.act(async () => release());
   expect(cards()).toHaveLength(30);
   expect(skeletons()).toHaveLength(0);
   expect(texts(tree)).toContain('Fim da lista');
-
-  fetchMock.mockClear();
-  await scrollTo(2400);
   expect(fetchMock).not.toHaveBeenCalled();
 
   await ReactTestRenderer.act(async () => tree.root.findByType(TextInput).props.onChangeText('Peça 3'));
-  expect(fetchMock.mock.calls.at(-1)[0]).toMatch(/\/items\?q=Pe%C3%A7a\+3&page=1&pageSize=25$/);
+  expect(texts(tree).filter((text) => /^Peça \d+$/.test(text))).toEqual(['Peça 3', 'Peça 30']);
 });
 
-// Sorts by unit price from the round Ordenar, with no "Ordenar" select on the list, and checks the sort goes to the
-// API, the list starts over from its first items and the cards follow the price, highest first, ties in part code
-// order; the button names the sort, and the filter sheet's "Ordenar por" shows it.
-test('Mobile: the round Ordenar sorts the list through the API', async () => {
+// Sorts by unit price from the round Ordenar, with no "Ordenar" select on the list, and checks the phone's copy sorts
+// it with no request, the list starts over from its first items and the cards follow the price, highest first, ties in
+// part code order; the button names the sort, and the filter sheet's "Ordenar por" shows it.
+test('Mobile: the round Ordenar sorts the list from the copy', async () => {
   const stock = Array.from({ length: 30 }, (_, index) =>
     item(index + 10, { code: `P-${index + 1}`, name: `Peça ${index + 1}`, unitPriceCents: ((index % 7) + 1) * 100 }),
   );
@@ -568,7 +609,7 @@ test('Mobile: the round Ordenar sorts the list through the API', async () => {
   await press('Ordenar');
   expect(texts(tree)).toEqual(expect.arrayContaining(['Veículo (A → Z)', 'Local (Z → A)', 'Quantidade (maior → menor)']));
   await press('Valor unitário (maior → menor)');
-  expect((fetch as jest.Mock).mock.calls.at(-1)[0]).toMatch(/\/items\?page=1&pageSize=25&sort=price&order=desc$/);
+  expect(fetch).not.toHaveBeenCalled();
   const names = texts(tree).filter((text) => /^Peça \d+$/.test(text));
   expect(names.slice(0, 3)).toEqual(['Peça 7', 'Peça 14', 'Peça 21']);
   expect(tree.root.findAllByType(Modal).some((modal) => modal.props.visible)).toBe(false);
