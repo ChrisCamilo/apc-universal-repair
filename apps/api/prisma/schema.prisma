@@ -143,19 +143,21 @@ model Category {
 /// dates, nothing else about the device or its owner. Pending until the server's computer authorizes it; deleting it
 /// ends its sessions.
 model Device {
-  id         String       @id @default(uuid())
+  id         String          @id @default(uuid())
   userId     String
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// The device's ECDSA P-256 public key, SPKI in base64url; its private key never leaves the device.
   publicKey  String
-  status     DeviceStatus @default(PENDING)
+  status     DeviceStatus    @default(PENDING)
   /// The name the approver gave it; empty until then, when the apps show "Dispositivo <code>".
-  name       String       @default("")
-  createdAt  DateTime     @default(now())
+  name       String          @default("")
+  createdAt  DateTime        @default(now())
   approvedAt DateTime?
   /// When it last logged in.
   lastUsedAt DateTime?
   sessions   Session[]
+  /// The operations it sent that were applied (see SyncOperation).
+  operations SyncOperation[]
 
   @@unique([userId, publicKey])
 }
@@ -350,6 +352,20 @@ enum Side {
   RIGHT
   LEFT
   BOTH
+}
+
+/// An operation a phone sent to POST /sync/operations, kept once applied, so the same operation sent again, as after a
+/// dropped connection, answers what it answered and changes nothing: the device that sent it and the id the phone gave
+/// it, and its answer, as JSON. Removing the device deletes them.
+model SyncOperation {
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  id        String
+  /// The operation's answer, as POST /sync/operations sent it, in JSON.
+  result    String
+  appliedAt DateTime @default(now())
+
+  @@id([deviceId, id])
 }
 
 /// The change feed's state, in its one row (id 1). Triggers on every synced table (each model with a syncVersion) give a

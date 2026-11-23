@@ -6,7 +6,7 @@ import { itemImportResultSchema } from "../../inventory/itemCsv.ts";
 import { itemListResponseSchema, itemSchema } from "../../inventory/items.ts";
 import { ITEM_LIST_PATHS, listEntriesSchema, listEntryMergedSchema, listEntrySchema, vehicleModelSchema, vehicleModelsSchema } from "../../inventory/lists.ts";
 import { healthResponseSchema } from "../schemas/health.ts";
-import { SYNC_CHANGES_PATH, syncChangesSchema } from "../../sync/sync.ts";
+import { SYNC_CHANGES_PATH, SYNC_OPERATIONS_PATH, syncChangesSchema, syncOperationsResultSchema } from "../../sync/sync.ts";
 
 // The API's routes, each with the shared schema of the body it answers with, by status: what the API's server
 // registers, and what the web app's demo answers in the browser (apps/web/src/demo/demoApi.ts). A test on each side
@@ -58,6 +58,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   ...NAME_LIST_PATHS.flatMap((path) => listRoutes(path, listEntriesSchema, listEntrySchema)),
   ...listRoutes(ITEM_LIST_PATHS.vehicleModels, vehicleModelsSchema, vehicleModelSchema),
   { method: "GET", path: SYNC_CHANGES_PATH, responses: { 200: syncChangesSchema } },
+  { method: "POST", path: SYNC_OPERATIONS_PATH, responses: { 200: syncOperationsResultSchema } },
 ];
 
 /** A route of the API: its method, its path and the schema of the body of each status it answers with one. */

@@ -48,7 +48,7 @@ import {
   type ListEntry,
 } from '@apc/domain/lists'
 import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_PARTS } from '@apc/domain/photos'
-import { SYNC_CHANGES_PATH } from '@apc/domain/sync'
+import { SYNC_CHANGES_PATH, SYNC_OPERATIONS_PATH } from '@apc/domain/sync'
 import { applyCatalogChange, TEST_CATALOG_DATA, type CatalogChange } from '@apc/domain/test-catalog'
 import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
@@ -67,7 +67,8 @@ import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 // The demo authorizes no devices: its logins and sign-ups go through without checking the device's proof, which the
 // demo doesn't make (see demoDevice.ts), and the routes that list, authorize, rename and remove devices, hand out an
 // entry code for a phone and log one in with it answer 501 with DEMO_UNAVAILABLE (DEMO_UNAVAILABLE_ROUTES), which the
-// screens show. So does the change feed a phone's copy of the inventory follows, as no phone pairs with the demo.
+// screens show. So do the change feed a phone's copy of the inventory follows and the operations it sends back, as no
+// phone pairs with the demo.
 
 /** What adds or renames each level of the catalog's tree, or saves an engine's sheet, as the API reads it. */
 const CATALOG_INPUTS = {
@@ -90,6 +91,7 @@ export const DEMO_UNAVAILABLE_ROUTES = [
   'POST /pairings',
   'POST /sessions/pairing',
   `GET ${SYNC_CHANGES_PATH}`,
+  `POST ${SYNC_OPERATIONS_PATH}`,
 ]
 /** The items using an entry of each list. */
 const ITEMS_USING: Record<ItemListKind, (item: StoredItem, id: string) => boolean> = {
