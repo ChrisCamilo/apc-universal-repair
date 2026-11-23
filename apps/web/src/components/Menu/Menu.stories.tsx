@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { documentIcon } from '@apc/tokens/icons'
+import { documentIcon, exportIcon, importIcon, listIcon } from '@apc/tokens/icons'
 import { userEvent, within } from 'storybook/test'
 import { Menu, MenuHeader, MenuItem, MenuLabel, UserBadge } from './Menu.tsx'
+import { Button } from '../Button/Button.tsx'
 import { Segmented } from '../Segmented/Segmented.tsx'
 import { Switch } from '../Switch/Switch.tsx'
 
 // The Dashboard's user menu: header, section labels, switches, segmented choices and a plain action. The
 // Open story opens it; switches and choices keep it open, the action closes it. Switch Style and Mode in the
-// toolbar to see each combination, and the mobile viewport to see it at 360px.
+// toolbar to see each combination, and the mobile viewport to see it at 360px. Secondary is a toolbar's menu drawn as
+// a secondary button, as the Inventory's "Mais ações".
 
 const meta = {
   title: 'Components/Menu',
@@ -22,6 +24,28 @@ export const Open: Story = {
   render: () => <UserMenu />,
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: 'Menu do usuário' }))
+  },
+}
+// A toolbar's menu, drawn as the secondary button beside it, as the Inventory's "Mais ações".
+export const Secondary: Story = {
+  render: () => (
+    <div className="flex min-h-[calc(var(--spacing)*60)] justify-end gap-2 p-6">
+      <Menu label="Mais ações" variant="secondary" trigger="Mais ações">
+        <MenuItem icon={listIcon} onSelect={() => {}}>
+          Gerenciar listas
+        </MenuItem>
+        <MenuItem icon={importIcon} onSelect={() => {}}>
+          Importar Peças
+        </MenuItem>
+        <MenuItem icon={exportIcon} onSelect={() => {}}>
+          Exportar Peças
+        </MenuItem>
+      </Menu>
+      <Button>Novo item</Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Mais ações' }))
   },
 }
 
