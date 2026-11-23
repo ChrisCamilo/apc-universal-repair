@@ -13,7 +13,7 @@ APC Universal Repair is all rights reserved ([LICENSE](../LICENSE), `UNLICENSED`
 - **Permissive** (MIT, ISC, BSD, Apache-2.0, 0BSD, BlueOak, Unlicense, CC0, WTFPL, Python-2.0, CC-BY-4.0, and OFL-1.1 for the fonts): fine in a closed, sold product. They ask to keep their notice, which [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) does, shipped with the installer and the APK. OFL fonts can't be sold on their own, only inside the product.
 - **Weak copyleft** (LGPL, MPL, EPL): only as reviewed below, unchanged and as separate libraries, or in tools that don't ship.
 - **Strong copyleft** (GPL, AGPL, SSPL): none is installed. One in what ships would ask to open the project's code, so CI refuses any new one.
-- **Shipped:** 393 npm packages, the 179 Android libraries of the phone app's release, and Electron with Chromium, which ship their own notices.
+- **Shipped:** 394 npm packages, the 179 Android libraries of the phone app's release, and Electron with Chromium, which ship their own notices.
 
 ### Every installed package, by license
 
@@ -92,7 +92,7 @@ O APC Universal Repair tem todos os direitos reservados ([LICENSE](../LICENSE), 
 - **Permissivas** (MIT, ISC, BSD, Apache-2.0, 0BSD, BlueOak, Unlicense, CC0, WTFPL, Python-2.0, CC-BY-4.0, e a OFL-1.1 das fontes): servem num produto fechado e vendido. Elas pedem que o aviso delas seja mantido, o que o [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) faz, levado com o instalador e o APK. As fontes OFL não podem ser vendidas sozinhas, só dentro do produto.
 - **Copyleft fraco** (LGPL, MPL, EPL): só como revisado abaixo, sem mudanças e como bibliotecas separadas, ou em ferramentas que não vão junto.
 - **Copyleft forte** (GPL, AGPL, SSPL): nenhuma está instalada. Uma no que vai junto pediria para abrir o código do projeto, então o CI recusa qualquer nova.
-- **O que vai junto:** 393 pacotes npm, as 179 bibliotecas Android do release do app do celular, e o Electron com o Chromium, que levam os próprios avisos.
+- **O que vai junto:** 394 pacotes npm, as 179 bibliotecas Android do release do app do celular, e o Electron com o Chromium, que levam os próprios avisos.
 
 ### Todos os pacotes instalados, por licença
 
