@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   CATALOG_BRANDS_PATH,
   CATALOG_FAILED,
+  CATALOG_NEEDS_SERVER,
   CATALOG_IN_USE,
   catalogAddUnder,
   catalogEditRequest,
@@ -24,7 +25,8 @@ import { useToast } from '../../components/Toast';
 // The Catalog's editing, the same as the web's: what is being added or renamed and why it couldn't
 // be saved, the engine sheet being filled in, the node or brand whose deletion is being confirmed, and the changes themselves,
 // each sent to the API and answered with the whole catalog, which the owner takes. A name or year another node has is
-// said under the field; any other failure, in a toast.
+// said under the field; any other failure, in a toast, which says the catalog needs the server while it can't be
+// reached.
 
 type CatalogEditingOptions = {
   /** Takes the catalog a change answered. */
@@ -35,6 +37,8 @@ type CatalogEditingOptions = {
   onEngineAdded?: (catalog: Catalog, yearId: string) => void;
   /** Called with a catalog where a brand was just deleted. */
   onBrandRemoved?: (catalog: Catalog) => void;
+  /** Whether the server couldn't be reached at the last sync, which a change that fails then says. */
+  offline?: boolean;
 };
 
 /**
@@ -42,7 +46,7 @@ type CatalogEditingOptions = {
  * @param options What to do with the catalog after a change.
  * @returns What is being edited, and the ways to start, save and give up on each edit.
  */
-export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBrandRemoved }: CatalogEditingOptions) {
+export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBrandRemoved, offline = false }: CatalogEditingOptions) {
   const toast = useToast();
   const [editing, setEditing] = useState<CatalogEditing | null>(null);
   const [error, setError] = useState<string>();
@@ -75,7 +79,7 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
       return null;
     }
     if (!result) {
-      toast.error(CATALOG_FAILED);
+      toast.error(offline ? CATALOG_NEEDS_SERVER : CATALOG_FAILED);
       return null;
     }
     onChanged(result);
