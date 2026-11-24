@@ -5,10 +5,12 @@ import { itemListQuerySchema, type Item } from '@apc/domain/items';
 import { EMPTY_ITEM_LISTS, type ItemLists } from '@apc/domain/lists';
 import type { CatalogData } from '@apc/domain/catalog';
 import { copyCatalog, copyItems, copyLists, type SyncCopy } from '@apc/domain/sync-copy';
-import { loadCopy, onCopyChanged, syncCopy, type SyncResult } from './inventoryCopy';
+import { withQueue } from '@apc/domain/sync-queue';
+import { loadCopy, loadQueue, onCopyChanged, syncCopy, type SyncResult } from './inventoryCopy';
 
-// The Inventory's and the Catalog's view of the phone's copy of the inventory (see inventoryCopy.ts): its items, lists
-// and catalog, as the API answers them, and whether the last sync reached the server. The copy syncs when either tab
+// The Inventory's and the Catalog's view of the phone's copy of the inventory (see inventoryCopy.ts), with the changes
+// waiting to be sent applied over it (see @apc/domain/sync-queue): its items, lists and catalog, as the API answers
+// them, how many changes wait, and whether the last sync reached the server. The copy syncs when either tab
 // opens, when the app comes back to the foreground and when the Inventory's list is pulled down, and again after each
 // change the user sends. A list query is answered from the copy the way GET /items answers it (listItems), its pages up
 // to the ones the list shows.
@@ -27,6 +29,8 @@ export type InventoryCopy = {
   offline: boolean;
   /** Whether a sync is running. */
   syncing: boolean;
+  /** How many changes made on the phone wait to be sent. */
+  waiting: number;
   /** Brings the copy up to date with the server, saying how it went. */
   sync: () => Promise<SyncResult>;
 };
@@ -42,6 +46,7 @@ export type ItemPagesState = { status: 'loading' } | { status: 'ready'; items: I
  */
 export function useInventoryCopy(): InventoryCopy {
   const [copy, setCopy] = useState<SyncCopy>();
+  const [waiting, setWaiting] = useState(0);
   const [offline, setOffline] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const live = useRef(true);
@@ -59,7 +64,13 @@ export function useInventoryCopy(): InventoryCopy {
   useEffect(() => {
     live.current = true;
     // A new object each time, as a sync changes the copy's rows in place.
-    const read = () => loadCopy().then((held) => live.current && setCopy({ ...held }));
+    const read = () =>
+      Promise.all([loadCopy(), loadQueue()]).then(([held, queue]) => {
+        if (live.current) {
+          setCopy(withQueue({ ...held }, queue));
+          setWaiting(queue.filter((operation) => !operation.sent).length);
+        }
+      });
     const stop = onCopyChanged(read);
     read();
     sync();
@@ -78,7 +89,7 @@ export function useInventoryCopy(): InventoryCopy {
   const items = useMemo(() => (copy?.syncedAt ? copyItems(copy) : null), [copy]);
   const lists = useMemo(() => (copy ? copyLists(copy) : EMPTY_ITEM_LISTS), [copy]);
   const catalog = useMemo(() => (copy?.syncedAt ? copyCatalog(copy) : null), [copy]);
-  return { items, lists, catalog, syncedAt: copy?.syncedAt ? new Date(copy.syncedAt) : null, offline, syncing, sync };
+  return { items, lists, catalog, syncedAt: copy?.syncedAt ? new Date(copy.syncedAt) : null, offline, syncing, waiting, sync };
 }
 
 /**

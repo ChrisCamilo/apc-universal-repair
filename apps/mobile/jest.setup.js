@@ -19,13 +19,19 @@ jest.mock('react-native-keychain', () => {
 });
 
 // No API runs during tests: the catalog answers with the catalog a new server starts with, the change feed with an empty
-// inventory's full copy, and every other request with an empty inventory, unless a test sets its own reply.
+// inventory's full copy, a phone's operations as applied, and every other request with an empty inventory, unless a
+// test sets its own reply.
 const { TEST_CATALOG_DATA } = require('@apc/domain/test-catalog');
 const { syncAnswer } = require('@apc/domain/test-sync');
-global.fetch = jest.fn((url) => {
+global.fetch = jest.fn((url, init) => {
   const { pathname, searchParams } = new URL(String(url));
   if (pathname === '/sync/changes') {
     return Promise.resolve(syncAnswer(searchParams, []));
+  }
+  if (pathname === '/sync/operations') {
+    const { operations } = JSON.parse(String(init.body));
+    const results = operations.map((operation) => ({ id: operation.id, status: 'applied', statusCode: 200 }));
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ results }) });
   }
   return Promise.resolve({ ok: true, json: () => Promise.resolve(pathname.endsWith('/catalog') ? TEST_CATALOG_DATA : { items: [], total: 0 }) });
 });
@@ -65,8 +71,9 @@ require('react-native').NativeModules.InventoryCopy = {
 };
 
 // The photos the phone keeps are files the native side downloads (PhotoCacheModule.kt); tests keep each one's address,
-// "file:///photos/<kind>/<id>", in memory, as if downloaded at once, and every test starts with none.
-const photoFiles = { thumb: new Map(), full: new Map() };
+// "file:///photos/<kind>/<id>", in memory, as if downloaded at once, and every test starts with none. A photo picked
+// is held at "file:///held/<id>" until released.
+const photoFiles = { thumb: new Map(), full: new Map(), held: new Map() };
 require('react-native').NativeModules.PhotoCache = {
   list: jest.fn(async () => ({ thumb: Object.fromEntries(photoFiles.thumb), full: Object.fromEntries(photoFiles.full) })),
   save: jest.fn(async (kind, id) => {
@@ -78,6 +85,13 @@ require('react-native').NativeModules.PhotoCache = {
     ids.forEach((id) => photoFiles[kind].delete(id));
   }),
   trim: jest.fn(async () => []),
+  hold: jest.fn(async (id, uri) => {
+    photoFiles.held.set(id, uri);
+    return `file:///held/${id}`;
+  }),
+  release: jest.fn(async (keep) => {
+    [...photoFiles.held.keys()].filter((id) => !keep.includes(id)).forEach((id) => photoFiles.held.delete(id));
+  }),
   clear: jest.fn(async () => {
     photoFiles.thumb.clear();
     photoFiles.full.clear();
