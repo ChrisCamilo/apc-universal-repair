@@ -13,6 +13,7 @@ import { pairingLink } from '@apc/domain/pairing';
 import { TEST_USERS } from '@apc/domain/test-users';
 import App from '../App';
 import { applyServer, SERVER_STORAGE_KEY } from '../src/app/api';
+import { enqueue } from '../src/features/inventory/inventoryCopy';
 
 // The app while pairing is the login (PASSWORD_LOGIN off, see src/features/auth/passwordLogin.ts): it opens on Conectar ao
 // servidor, whose QR code from the computer logs the phone in; App.test.tsx covers the password login set aside.
@@ -121,6 +122,30 @@ test('Mobile: with no session the app opens on the QR code, which logs the phone
   const saved = await Keychain.getGenericPassword({ service: SESSION_STORAGE_KEY });
   expect(saved && JSON.parse(saved.password).token).toBe('t1');
   expect(JSON.parse((await STORAGE.getItem(SERVER_STORAGE_KEY))!)).toEqual(SERVER);
+  await ReactTestRenderer.act(async () => tree.unmount());
+});
+
+// Starts on the Dashboard with a saved session and a change waiting, whose phone the computer removed: the API refuses
+// the token and no longer knows the device's key. Checks Conectar ao servidor says the phone was removed, not that the
+// session expired, and that the change made on it is kept.
+test('Mobile: a phone the computer removed is told so, and that its changes are kept', async () => {
+  await Keychain.setGenericPassword('session', JSON.stringify({ ...LOGGED_IN, token: 't1' }), { service: SESSION_STORAGE_KEY });
+  await enqueue([
+    { id: '20000000-0000-4000-8000-000000000001', type: 'deleteItem', itemId: '00000000-0000-4000-8000-000000000001', at: '2026-11-24T12:00:00.000Z', label: 'Filtro de óleo' },
+  ]);
+  const answer = (status: number, body: unknown) => Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve(body) } as Response);
+  globalThis.fetch = jest.fn((url: RequestInfo) =>
+    String(url).endsWith('/devices/challenge')
+      ? answer(200, { nonce: 'n1' })
+      : String(url).endsWith('/devices/status')
+        ? answer(200, { status: 'unknown' })
+        : answer(401, {}),
+  ) as typeof fetch;
+  const tree = await mountApp();
+  expect(showsConnect(tree)).toBe(true);
+  expect(tree.root.findAll((n) => n.type === Text).map((n) => n.props.children)).toContain(
+    'Este celular foi removido no computador. Leia o código do computador para pedir acesso de novo. As alterações feitas no celular continuam guardadas e vão para o servidor quando você entrar.',
+  );
   await ReactTestRenderer.act(async () => tree.unmount());
 });
 

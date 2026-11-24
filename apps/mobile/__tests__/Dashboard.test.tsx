@@ -11,6 +11,7 @@ import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { Dashboard } from '../src/features/dashboard/Dashboard';
 import { BOTTOM_BAR_HEIGHT } from '../src/features/dashboard/Dashboard.styles';
+import { enqueue } from '../src/features/inventory/inventoryCopy';
 import { InventoryTutorial } from '../src/features/inventory/InventoryTutorial';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
@@ -78,6 +79,26 @@ for (const style of STYLES) {
     });
   }
 }
+
+// Opens the Dashboard with a change waiting while the server can't be reached, and checks the header says so beside
+// the tab's name; then, with the server back, pulls the list, and checks the change goes out and the header says
+// nothing.
+test('Mobile: the header says whether changes wait and whether the server answers', async () => {
+  const setup = (fetch as jest.Mock).getMockImplementation()!;
+  await enqueue([
+    { id: '20000000-0000-4000-8000-000000000001', type: 'deleteItem', itemId: '00000000-0000-4000-8000-000000000001', at: '2026-11-24T12:00:00.000Z', label: 'Filtro de óleo' },
+  ]);
+  (fetch as jest.Mock).mockImplementation(() => Promise.reject(new TypeError('Network request failed')));
+  const tree = await mount('eighties', 'night', <Dashboard />);
+  const badge = () => tree.root.findAll((n) => n.props.testID === 'dashboard.dashboard.header.sync.text' && typeof n.type === 'string')[0]?.props.children;
+  expect(badge()).toBe('Sem conexão · 1 alteração');
+
+  (fetch as jest.Mock).mockImplementation(setup);
+  const scroll = tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
+  await ReactTestRenderer.act(async () => scroll.props.refreshControl.props.onRefresh());
+  expect(badge()).toBeUndefined();
+  await ReactTestRenderer.act(async () => tree.unmount());
+});
 
 // With the Catalog saved first in the tab order and a stale saved tab, checks the Dashboard falls back to the Inventory
 // and the tabs sit in the bar at the bottom of the screen, 80px tall, in the saved order, each at least 44px, then the
