@@ -472,6 +472,27 @@ export function itemOperations(
   return { operations: [edit, ...moves], itemId: shown.id, brandIds };
 }
 
+/**
+ * What the Inventory says, while the server can't be reached, of what still needs it: renaming, merging and deleting a
+ * list's names (a merge moves items on the server, which the phone can't foresee), the CSV import and export, and the
+ * tutorial.
+ */
+export const INVENTORY_NEEDS_SERVER = {
+  lists: "Sem conexão com o servidor. Renomear, juntar e excluir nomes só pode ser feito com ele.",
+  import: "Sem conexão com o servidor. A importação só pode ser feita com ele.",
+  export: "Sem conexão com o servidor. A exportação só pode ser feita com ele.",
+  tutorial: "Sem conexão com o servidor. O tutorial do estoque só pode ser feito com ele.",
+} as const;
+
+/**
+ * Says how many changes made on the phone wait to be sent.
+ * @param count How many.
+ * @returns E.g. "1 alteração esperando o servidor." or "3 alterações esperando o servidor."
+ */
+export function waitingNotice(count: number): string {
+  return `${count} ${count === 1 ? "alteração" : "alterações"} esperando o servidor.`;
+}
+
 /** What each kind of operation is, to say which the server refused. */
 const REFUSED_WHAT: Record<QueuedOperation["type"], string> = {
   createItem: "o cadastro de",
