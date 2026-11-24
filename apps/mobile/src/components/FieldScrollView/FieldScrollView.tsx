@@ -7,7 +7,9 @@ import { scales } from '@apc/tokens/theme';
 // sits FIELD_CLEARANCE above the keyboard and below the view's top; a field taller than the room left shows its top.
 // When the keyboard covers the view's bottom, as in a dialog, whose window Android doesn't resize for it, the content
 // grows by that much, so the last field can rise above it. It measures again once the keyboard is up and whenever the
-// view or its content changes size, as the screen shrinks for the keyboard.
+// view or its content changes size, as the screen shrinks for the keyboard. A tap on something that takes it, such as
+// a combobox's option or "+ Criar", lands on the first try with the keyboard up, which stays; a tap anywhere else
+// closes the keyboard, as a plain ScrollView's does.
 
 /** How far above the keyboard, and below the view's top, a focused field stays, in px. */
 export const FIELD_CLEARANCE = scales.space.s4;
@@ -86,6 +88,7 @@ export function FieldScrollView({ ref, onScroll, onLayout, onContentSizeChange, 
     <RevealFieldContext.Provider value={reveal}>
       <ScrollView
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
         {...rest}
         ref={(view) => {
           scroll.current = view;

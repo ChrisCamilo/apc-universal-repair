@@ -444,7 +444,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       <FieldScrollView
         style={styles.scroll}
         contentContainerStyle={styles.tab}
-        keyboardShouldPersistTaps="handled"
         onScroll={scrolled}
         refreshControl={<RefreshControl refreshing={copy.syncing && copy.items !== null} onRefresh={reload} />}
         testID={ids.tab}
