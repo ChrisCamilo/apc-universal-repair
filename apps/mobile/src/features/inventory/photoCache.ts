@@ -11,7 +11,9 @@ import { apiUrl } from '../../app/api';
 // part's photo says no more than the copy does and the screens show them straight from their files. A photo is kept
 // by its id, not its path, as the paths are signed for the session. A photo the copy no longer has, its item or brand
 // deleted, is dropped at the next sync, and clearing the copy clears them all (see inventoryCopy.ts). Where the screens
-// show a photo, they take its kept file when there is one, and the server's address otherwise.
+// show a photo, they take its kept file when there is one, and the server's address otherwise. A photo picked while its
+// change waits in the queue (see inventoryCopy.ts) is held by the native side, apart from the ones kept, until it is
+// sent, as the picker's own files can be cleaned up meanwhile; clearing the photos kept leaves it.
 
 /** How much the full photos may take, in bytes: a few hundred photos at 1600px. */
 export const FULL_PHOTOS_MAX_BYTES = 100 * 1024 * 1024;
@@ -28,6 +30,8 @@ const native = NativeModules.PhotoCache as {
   remove: (kind: Kind, ids: string[]) => Promise<void>;
   trim: (kind: Kind, maxBytes: number) => Promise<string[]>;
   clear: () => Promise<void>;
+  hold: (id: string, uri: string) => Promise<string>;
+  release: (keep: string[]) => Promise<void>;
 };
 
 /** The photos kept, by kind: each photo's id and its file's address. */
@@ -128,6 +132,24 @@ export async function clearPhotos(): Promise<void> {
   kept.full.clear();
   await native.clear().catch(() => {});
   changed();
+}
+
+/**
+ * Holds a copy of a photo picked on the phone until its change is sent.
+ * @param id The id the queue gives the photo.
+ * @param url Where the picker handed it over.
+ * @returns The held copy's address.
+ */
+export function holdPhoto(id: string, url: string): Promise<string> {
+  return native.hold(id, url);
+}
+
+/**
+ * Drops the photos held but the ones still waiting to be sent.
+ * @param keep The ids of the photos still waiting.
+ */
+export async function releasePhotos(keep: readonly string[]): Promise<void> {
+  await native.release([...keep]).catch(() => {});
 }
 
 /**
