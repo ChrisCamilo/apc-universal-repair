@@ -2,7 +2,7 @@
  * @format
  */
 
-import { NativeModules } from 'react-native';
+import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { testItem } from '@apc/domain/test-items';
 import { syncPageOf } from '@apc/domain/test-sync';
 import type { SyncChanges } from '@apc/domain/sync';
@@ -292,6 +292,23 @@ test('Mobile: an expired session keeps the queue, which goes out once logged in 
   expect(await loadQueue()).toEqual([]);
   expect(native.clear).toHaveBeenCalled();
   expect(NativeModules.PhotoCache.release).toHaveBeenLastCalledWith([]);
+});
+
+// On Android 17 without the access to the local network, syncs with a change waiting, and checks the sync says the
+// phone is blocked without asking the server anything, the change still waiting.
+test('Mobile: a sync without the local network access asks nothing, and says so', async () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  jest.spyOn(Platform, 'Version', 'get').mockReturnValue(37);
+  jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(false);
+  try {
+    await enqueue([queued(1, { type: 'deleteItem', itemId: ITEMS[1].id })]);
+    (fetch as jest.Mock).mockClear();
+    expect(await syncCopy()).toBe('blocked');
+    expect(fetch).not.toHaveBeenCalled();
+    expect((await loadQueue()).map((each) => each.sent)).toEqual([undefined]);
+  } finally {
+    jest.restoreAllMocks();
+  }
 });
 
 // Clears the copy while a sync is on its way, as logging out does, and checks the copy and its file are gone and the

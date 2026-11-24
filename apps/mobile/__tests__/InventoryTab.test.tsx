@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { AppState, Image, Modal, NativeModules, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { AppState, Image, Modal, NativeModules, PermissionsAndroid, Platform, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import {
@@ -475,6 +475,34 @@ test('Mobile: away from the server, a delete shows at once and waits to be sent'
   expect(stock.map((each) => each.name)).toEqual(['Filtro de óleo', 'Pastilha de freio']);
   expect(cards()).toHaveLength(2);
   expect(notice()).toBeUndefined();
+});
+
+// Takes the local network access away, as Android 17 does when refused, and checks pulling the list says the phone
+// can't reach the server without it, asking nothing, with Permitir acesso; then gives it there, and checks the list
+// syncs at once and the notice goes.
+test('Mobile: without the local network access, the list says so and asks for it', async () => {
+  const tree = await mount();
+  const scroll = () => tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
+  const allow = () =>
+    tree.root.findAll((n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Permitir acesso').length > 0)[0];
+  jest.replaceProperty(Platform, 'OS', 'android');
+  jest.spyOn(Platform, 'Version', 'get').mockReturnValue(37);
+  const check = jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(false);
+  const ask = jest.spyOn(PermissionsAndroid, 'request').mockResolvedValue('granted');
+  try {
+    (fetch as jest.Mock).mockClear();
+    await ReactTestRenderer.act(async () => scroll().props.refreshControl.props.onRefresh());
+    expect(texts(tree)).toContain('O APC não tem acesso à rede local, por onde chega ao servidor no computador de casa.');
+    expect(fetch).not.toHaveBeenCalled();
+
+    check.mockResolvedValue(true);
+    await ReactTestRenderer.act(async () => allow().props.onPress());
+    expect(ask).not.toHaveBeenCalled();
+    expect((fetch as jest.Mock).mock.calls[0][0]).toMatch(/\/sync\/changes/);
+    expect(allow()).toBeUndefined();
+  } finally {
+    jest.restoreAllMocks();
+  }
 });
 
 // Brings the app back to the foreground and checks the copy asks the server for what changed since, so an item added on
