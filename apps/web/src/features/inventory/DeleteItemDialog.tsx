@@ -8,7 +8,8 @@ import { Text } from '../../components/Typography'
 
 // The confirmation that removes an item from the inventory, naming it and its code. Excluir sends the delete to
 // the API, shows a toast and hands the removal over; Cancel and Escape close it with nothing changed. A failed
-// delete keeps the dialog open and says so in a toast, so it can be tried again.
+// delete keeps the dialog open and says so in a toast, so it can be tried again; an item another device already deleted
+// is taken as deleted, the toast saying so.
 
 type DeleteItemDialogProps = {
   open: boolean
@@ -31,6 +32,11 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
     setDeleting(true)
     const response = await apiFetch(`/api/items/${item.id}`, { method: 'DELETE' }).catch(() => null)
     setDeleting(false)
+    if (response?.status === 404) {
+      toast.info(`Item “${item.name}” já tinha sido excluído em outro dispositivo.`)
+      onDeleted(item)
+      return
+    }
     if (!response?.ok) {
       toast.error('Não foi possível excluir o item. Tente de novo.')
       return

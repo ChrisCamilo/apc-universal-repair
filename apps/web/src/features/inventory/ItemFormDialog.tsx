@@ -18,6 +18,7 @@ import {
   ITEM_FIELD_LABELS,
   ITEM_NOTE_LABELS,
   ITEM_UNCHANGED_MESSAGE,
+  itemGoneMessage,
   itemDetailTexts,
   itemFormBody,
   itemFormChanged,
@@ -96,7 +97,7 @@ import { VehiclesField } from './VehiclesField.tsx'
 // saved item over, then sends each brand's photos when they changed: up to 3 a brand, the first the cover, as its
 // ImageUpload field holds them; while a brand has room, "Usar fotos de outra peça" under them adds copies of other items'
 // photos, checked in the photo picker (see PhotoPickerDialog). When the item is saved but its photos aren't, a warning toast says so; an edit that
-// changes nothing isn't sent, and an info toast says so. Opened on an item's details, the same dialog shows each field
+// changes nothing isn't sent, and an info toast says so; an item another device deleted meanwhile says so and closes. Opened on an item's details, the same dialog shows each field
 // as text in the form's layout, a section for each brand (scrolled to one when opened on it, as a brand's row in the
 // list does), with Fechar and Editar: nothing can be changed or saved
 // until Editar unlocks the fields in place, on the first one, and the buttons turn into Cancelar and Salvar
@@ -136,6 +137,8 @@ type ItemFormDialogProps = {
   onClose: () => void
   /** Called with the item as the API saved it. */
   onSaved: (item: Item) => void
+  /** Called when the item edited is gone, deleted on another device meanwhile; a toast already said so. */
+  onGone?: (item: Item) => void
   /** Values the form opens with instead of the item's own, e.g. filled in by the tutorial. */
   initialForm?: ItemForm
   /** Each brand's photos the form opens with instead of the item's own, e.g. a duplicated item's copies. */
@@ -169,6 +172,7 @@ export function ItemFormDialog({
   onCreateEntry,
   onClose,
   onSaved,
+  onGone,
   initialForm,
   initialPhotos,
   onDuplicate,
@@ -385,6 +389,12 @@ export function ItemFormDialog({
         form.brands.findIndex((brand) => codeKey(brand.code) === codeKey(taken.code)),
       )
       brandError(index, 'code', codeTakenMessage(taken.itemName))
+      return
+    }
+    if (item && response?.status === 404) {
+      setSaving(false)
+      toast.warning(itemGoneMessage(item.name))
+      onGone?.(item)
       return
     }
     if (!response?.ok) {

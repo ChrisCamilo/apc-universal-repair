@@ -608,6 +608,15 @@ function listedMessage(text: string, entries: ItemLists["categories"], required:
 }
 
 /**
+ * Says an item open in the form was deleted on another device meanwhile, as saving it finds.
+ * @param name The item's name.
+ * @returns E.g. "O item “Farol” foi excluído em outro dispositivo e não foi salvo."
+ */
+export function itemGoneMessage(name: string): string {
+  return `O item “${name}” foi excluído em outro dispositivo e não foi salvo.`;
+}
+
+/**
  * Lists the vehicle models of a vehicle brand, for the form's model combobox.
  * @param lists The lists the API keeps.
  * @param vehicleBrand The chosen vehicle brand, matched ignoring case, accents and extra spaces.
