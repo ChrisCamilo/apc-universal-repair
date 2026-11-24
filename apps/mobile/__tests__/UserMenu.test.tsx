@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Text } from 'react-native';
+import { NativeModules, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { SessionUser } from '@apc/domain/auth';
@@ -13,7 +13,7 @@ import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/ui-s
 import { THEME_STORAGE_KEYS } from '@apc/tokens/theme';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
 import { TabReorderContext, useReorderChoice } from '../src/features/dashboard/tabReorderContext';
-import { UserMenu } from '../src/features/dashboard/UserMenu';
+import { NO_LOCK_TEXT, UserMenu } from '../src/features/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { InventoryCopyProvider } from '../src/features/inventory/useInventoryCopy';
@@ -253,3 +253,19 @@ function Preferences({ children }: { children: React.ReactNode }) {
     </TabReorderContext.Provider>
   );
 }
+
+// Opens the menu on a phone with a screen lock and checks it says nothing of one; then on a phone without, and checks
+// "Definir bloqueio de tela" says a lock would protect the inventory, under Segurança, and opens Android's settings.
+test('Mobile: a phone with no screen lock is told one would protect the inventory', async () => {
+  const native = NativeModules.InventoryCopy as { hasLock: jest.Mock; openLockSettings: jest.Mock };
+  let tree = await openMenu();
+  expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Segurança')).toHaveLength(0);
+  await ReactTestRenderer.act(async () => mounted.splice(0).forEach((each) => each.unmount()));
+
+  native.hasLock.mockResolvedValueOnce(false);
+  tree = await openMenu();
+  expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Segurança')).not.toHaveLength(0);
+  expect(byName(tree, 'Definir bloqueio de tela').props.accessibilityHint).toBe(NO_LOCK_TEXT);
+  await press(tree, 'Definir bloqueio de tela');
+  expect(native.openLockSettings).toHaveBeenCalledTimes(1);
+});
