@@ -11,6 +11,7 @@ import { withEntry, withoutEntry, type ItemLists, type ListEntryChange } from '@
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { itemListsOf } from '@apc/domain/test-lists';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
+import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
 import { ManageListsDialog } from '../src/features/inventory/ManageListsDialog';
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/features/inventory/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
@@ -71,12 +72,15 @@ async function mount({
   onRemove,
   onChanged = () => {},
   onShowItems = () => {},
+  offline = false,
 }: {
   onRename?: RenameListEntry;
   onMerge?: MergeListEntries;
   onRemove?: RemoveListEntry;
   onChanged?: (change?: ListEntryChange) => void;
   onShowItems?: () => void;
+  /** Whether the server can't be reached. */
+  offline?: boolean;
 } = {}) {
   /** Holds the lists and changes them as the API would. */
   function Owner() {
@@ -116,6 +120,7 @@ async function mount({
         onChanged={onChanged}
         onShowItems={onShowItems}
         onClose={() => {}}
+        offline={offline}
       />
     );
   }
@@ -227,6 +232,17 @@ test('Mobile: a name is renamed in place', async () => {
   await press(tree, 'Renomear Freios');
   await press(tree, 'Cancelar');
   expect(tree.root.findAll((n) => n.type === TextInput)).toHaveLength(0);
+});
+
+// Renames a category while the server can't be reached and checks the rename that fails says it needs the server,
+// as the lists' names change only with it.
+test('Mobile: away from the server, a rename says it needs it', async () => {
+  const onRename = jest.fn<ReturnType<RenameListEntry>, Parameters<RenameListEntry>>(async () => null);
+  const tree = await mount({ onRename, offline: true });
+  await press(tree, 'Renomear Freios');
+  await ReactTestRenderer.act(async () => tree.root.find((n) => n.type === TextInput).props.onChangeText('Freio a disco'));
+  await press(tree, 'Salvar');
+  expect(texts(tree.root)).toContain(INVENTORY_NEEDS_SERVER.lists);
 });
 
 // Renames to a blank name and checks it is refused under the field without sending anything; a name the API says is

@@ -12,6 +12,7 @@ import { MERCADO_LIVRE_COLUMNS } from '@apc/domain/mercado-livre-csv';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { apiUrl } from '../src/app/api';
+import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
 import { ExportItemsDialog } from '../src/features/inventory/ExportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
@@ -67,7 +68,7 @@ function button(tree: ReactTestRenderer.ReactTestRenderer, label: string): React
  * @param props What the list holds, and what the dialog does on close.
  * @returns The rendered tree.
  */
-async function mount(props: { count?: number; narrowed?: boolean; onClose?: () => void } = {}) {
+async function mount(props: { count?: number; narrowed?: boolean; onClose?: () => void; offline?: boolean } = {}) {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
@@ -80,6 +81,7 @@ async function mount(props: { count?: number; narrowed?: boolean; onClose?: () =
               count={props.count ?? 12}
               narrowed={props.narrowed ?? true}
               onClose={props.onClose ?? (() => {})}
+              offline={props.offline}
             />
           </ToastProvider>
         </ThemeProvider>
@@ -222,6 +224,16 @@ test('Mobile: a failed export says so and keeps the dialog open', async () => {
   expect(shows(tree, 'Não foi possível exportar os itens. Tente de novo.')).toBe(true);
   expect(share).not.toHaveBeenCalled();
   expect(onClose).not.toHaveBeenCalled();
+});
+
+// Exports while the server can't be reached and checks the toast says the export needs it, and nothing is shared.
+test('Mobile: away from the server, the export says it needs it', async () => {
+  (fetch as jest.Mock).mockRejectedValueOnce(new TypeError('Network request failed'));
+  const share = jest.spyOn(Share, 'share');
+  const tree = await mount({ offline: true });
+  await press(tree, 'Exportar');
+  expect(shows(tree, INVENTORY_NEEDS_SERVER.export)).toBe(true);
+  expect(share).not.toHaveBeenCalled();
 });
 
 // Opens the export with the whole inventory and then with an empty list, and checks it says which items go and, with
