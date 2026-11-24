@@ -232,7 +232,7 @@ erDiagram
 | `Session` | A user logged in on one device, from a login or sign-up until "Sair" or 7 days without use: the device, the hash of the token the device sends, and when it was last used and expires. |
 | `SyncState` | The change feed's state, in one row: this database's id, which every cursor carries, the last version given to a changed row or a deletion, and the version of the last tombstone dropped. |
 | `SyncTombstone` | A row deleted from the inventory, its lists or the catalog, kept for the change feed: its kind as the feed names it (`itemBrand`), its id, the version of the deletion and when, dropped after 90 days. |
-| `SyncOperation` | An operation a phone sent to `POST /sync/operations` that was applied: the device that sent it and the id the phone gave it, and its answer, so the same operation sent again answers the same and changes nothing. Removing the device deletes them. |
+| `SyncOperation` | An operation a phone sent to `POST /sync/operations` that was applied: the device that sent it and the id the phone gave it, and its answer, so the same operation sent again answers the same and changes nothing; one in conflict with what changed on the computer isn't kept, as it comes again once settled. Removing the device deletes them. |
 
 ### Relationships
 
@@ -340,7 +340,7 @@ The same database also runs on SQLite, chosen by `DATABASE_URL`: `file:./data/ap
 | `Session` | Um usuário logado num aparelho, de um login ou cadastro até o "Sair" ou 7 dias sem uso: o dispositivo, o hash do token que o aparelho envia, e quando foi usada pela última vez e quando expira. |
 | `SyncState` | O estado do feed de mudanças, numa linha: o id deste banco, que todo cursor leva, a última versão dada a uma linha alterada ou a uma exclusão, e a versão do último registro de exclusão descartado. |
 | `SyncTombstone` | Uma linha excluída do estoque, das listas ou do catálogo, guardada para o feed de mudanças: o tipo, com o nome que o feed usa (`itemBrand`), o id, a versão da exclusão e quando foi, descartada depois de 90 dias. |
-| `SyncOperation` | Uma operação que um celular enviou ao `POST /sync/operations` e que foi aplicada: o dispositivo que a enviou e o id que o celular deu a ela, e a resposta dela, então a mesma operação enviada de novo responde igual e não muda nada. Remover o dispositivo as apaga. |
+| `SyncOperation` | Uma operação que um celular enviou ao `POST /sync/operations` e que foi aplicada: o dispositivo que a enviou e o id que o celular deu a ela, e a resposta dela, então a mesma operação enviada de novo responde igual e não muda nada; uma em conflito com o que mudou no computador não fica guardada, já que vem de novo depois de resolvida. Remover o dispositivo as apaga. |
 
 ### Relacionamentos
 
