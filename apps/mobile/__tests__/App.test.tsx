@@ -12,6 +12,7 @@ import { THEME_STORAGE_KEYS } from '@apc/tokens/theme';
 import { TEST_USERS } from '@apc/domain/test-users';
 import App from '../App';
 import { auth } from '../src/features/auth/auth';
+import { enqueue, loadCopy, loadQueue } from '../src/features/inventory/inventoryCopy';
 
 // The safe area waits for the native insets before drawing anything; the package's mock hands them over at once.
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
@@ -204,6 +205,22 @@ test('Mobile: a session saved before the token opens on the login', async () => 
   await Keychain.setGenericPassword('session', JSON.stringify(older), { service: SESSION_STORAGE_KEY });
   const tree = await mountApp();
   expect(showsLogin(tree)).toBe(true);
+});
+
+// Queues a change made on the phone, then starts on the Dashboard with a saved session whose token the API refuses,
+// and checks the login takes its place with the copy of the inventory cleared but the change kept, unsent, on disk, to
+// go out once logged in again, as a week's work away from the server would be lost.
+test('Mobile: an expired session keeps the changes waiting on the phone', async () => {
+  const waiting = { id: '20000000-0000-4000-8000-000000000001', type: 'deleteItem', itemId: '00000000-0000-4000-8000-000000000001', at: '2026-11-23T12:00:00.000Z', label: 'Filtro de óleo' } as const;
+  await enqueue([waiting]);
+  await Keychain.setGenericPassword('session', JSON.stringify(SESSION), { service: SESSION_STORAGE_KEY });
+  globalThis.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) } as Response)) as typeof fetch;
+  const tree = await mountApp();
+  expect(showsLogin(tree)).toBe(true);
+  expect((await loadCopy()).cursor).toBeNull();
+  expect(await loadQueue()).toEqual([waiting]);
+  expect(JSON.parse(NativeModules.InventoryCopy.write.mock.calls.at(-1)[0]).queue).toEqual([waiting]);
+  await ReactTestRenderer.act(async () => tree.unmount());
 });
 
 // Starts on the Dashboard with a saved session whose token the API refuses, and checks the login takes its place,
