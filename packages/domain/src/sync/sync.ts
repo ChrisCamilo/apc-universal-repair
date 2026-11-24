@@ -12,8 +12,9 @@ import { itemCreateSchema, itemPhotoSchema, itemUpdateSchema, MAX_QUANTITY, POSI
 // the caller's session, as the item routes send them. A cursor the server can't follow (older than the deletions it
 // keeps, or of another database, as after moving the server to another one) answers 410: the copy is made again.
 // A phone sends the changes it made away from the server as a batch of operations (POST /sync/operations), each with
-// an id of its own: creating an item (with the ids the phone gave it and its brands), editing it, deleting it, and a
-// stock move on one of its brands. They take the shape of the item routes' bodies, list entries by name, and are
+// an id of its own: creating an item (with the ids the phone gave it and its brands), editing it (a brand it adds with
+// the id the phone gave it, and one it keeps without a quantity keeping its own), deleting it, and a stock move on one
+// of its brands. They take the shape of the item routes' bodies, list entries by name, and are
 // applied in order, each once, with the item routes' rules; each one answers whether it was applied, or why not, with
 // the status the item route would answer. The phone then reads the feed from its cursor, which brings back what changed.
 
