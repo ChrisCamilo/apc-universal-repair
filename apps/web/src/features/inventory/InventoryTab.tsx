@@ -82,6 +82,7 @@ import { useItemLists } from './useItemLists.ts'
 import { useItemPages } from './useItemPages.ts'
 import { useHiddenColumns } from './useHiddenColumns.ts'
 import { useItems } from './useItems.ts'
+import { useAutoReload } from './useAutoReload.ts'
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts.ts'
 import { useCatalog } from '../catalog/useCatalog.ts'
 import { useInventoryTutorial } from './inventoryTutorialContext.ts'
@@ -126,7 +127,9 @@ import { tutorialTarget } from './tutorialTarget.ts'
 // show as one line under the name. The Inventory tutorial runs over the tab by itself the first time, and again from
 // the user menu: it starts and ends with the test item deleted and the search, filters and sort off. The Catalog can
 // open the tab on a part's details, or with the filters that list the parts that fit a car, the search and the stock
-// status off (see inventoryLinkContext.ts).
+// status off (see inventoryLinkContext.ts). What another device changes shows by itself: the list and the lists load
+// again when the window comes back to the foreground and every 30 seconds, while nothing is open over the list (see
+// useAutoReload.ts); an item another device deleted says so when it is saved or deleted.
 // On a phone (below `card:`) the tab follows the Estoque mockup: no panel around it, and the page scrolls as a whole.
 // Each card shows the item's name, its first code with its part brand or how many brands make it, and where it fits,
 // what it is made of and its price; its quantity has its stock status under it (un., Baixo or Esgotado) in the card's tone. A
@@ -357,6 +360,24 @@ export function InventoryTab() {
     state.reload()
     listed.reload()
   }
+  // What another device changed shows by itself: the items and the lists load again when the window comes back and
+  // every 30 seconds, keeping the search, filters, sort, page and scroll, while nothing is open over the list.
+  useAutoReload(
+    () => {
+      reload()
+      reloadLists()
+    },
+    form.open ||
+      managing ||
+      moreOpen ||
+      importer.open ||
+      exporter.open ||
+      filtering ||
+      sorting ||
+      removing !== undefined ||
+      viewer !== undefined ||
+      touring,
+  )
 
   /**
    * Saves the photos the viewer changed, showing them at once and going back to the saved ones if they can't be saved.
@@ -831,6 +852,10 @@ export function InventoryTab() {
         onDelete={setRemoving}
         onFormChange={followForm}
         onClose={() => setForm((current) => ({ ...current, open: false }))}
+        onGone={() => {
+          setForm((current) => ({ ...current, open: false }))
+          reload()
+        }}
         onSaved={() => {
           // A new item is the newest, first on the first page.
           if (!form.item) {
