@@ -12,6 +12,7 @@ import { useTheme } from '../../app/theme';
 import { useToastDuration } from '../../components/Toast';
 import { useSettingsStyles, useStyles } from './NotificationsMenu.styles';
 import { useNotifications } from './useNotifications';
+import { useSystemNotifications } from './systemNotifications';
 
 // The notifications, the same as the web's on a phone: Alertas in the Dashboard's bottom bar, the bell in its pill with
 // a badge counting the unread, opens a full screen listing the latest toasts, newest first, each with its kind's icon
@@ -19,7 +20,8 @@ import { useNotifications } from './useNotifications';
 // read, which clears the badge; the ones that were unread stay lit until it closes. "Limpar notificações", at the
 // bottom, empties it. Each user has their own, kept on the device; the app gives each user a fresh one (key = user id).
 // "Tempo do aviso", on top, sets how long a toast stays (2 s to 15 s, 5 s by default) with − and + buttons; each press
-// applies at once.
+// applies at once. What the copy's sync brings in the background reaches the Android shade, and a tap on one opens this
+// screen (see systemNotifications.ts).
 
 /** What the screen shows since it opened: the notifications that were unread then, and the time to count from. */
 type Opened = { fresh: readonly number[]; now: Date };
@@ -39,6 +41,8 @@ export function NotificationsMenu({ userId }: { userId: string }) {
     markRead();
     setOpen(true);
   };
+
+  useSystemNotifications(show);
 
   return (
     <>

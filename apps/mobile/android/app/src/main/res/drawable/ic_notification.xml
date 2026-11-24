@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The small icon of the app's notifications in the Android shade: the bell of the app's Alertas (bellIcon in
+     @apc/tokens/icons), drawn as Android tints it, one color on a clear background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+    <path
+        android:pathData="M4.2 11.2V7.4a3.8 3.8 0 0 1 7.6 0v3.8l1.3 1.4H2.9z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.4"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M6.6 14a1.5 1.5 0 0 0 2.8 0"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round" />
+</vector>
