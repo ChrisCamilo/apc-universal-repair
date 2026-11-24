@@ -225,6 +225,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 |  | the Colunas menu: columns shown and hidden, kept on the device | `inventory-list` | desktop |  |
 |  | loading, error and empty states | `inventory-list` | both |  |
 |  | paging: page, size, search, delete, new item | `inventory-list` | desktop |  |
+|  | another device's change shows when the window comes back, not under a form | `inventory-list` | both |  |
 |  | loads more as it scrolls, keeps its place | `inventory-list` | mobile |  |
 |  | an item of several brands: a row per brand | `inventory-list` | desktop |  |
 |  | a card of several brands opens its details | `inventory-list` | mobile |  |
