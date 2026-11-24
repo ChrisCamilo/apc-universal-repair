@@ -6,6 +6,8 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- Reaches the home server on the Wi-Fi, which Android 17 asks the user for (see src/app/localNetwork.ts). -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <!-- Asks for the fingerprint, the face or the screen lock before the inventory's copy opens (see InventoryCopyModule.kt). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <application
       android:name=".MainApplication"

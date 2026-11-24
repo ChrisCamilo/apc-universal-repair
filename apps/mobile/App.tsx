@@ -10,6 +10,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LOGIN_MESSAGES, onSessionExpired, type SessionUser } from '@apc/domain/auth';
 import type { Pairing } from '@apc/domain/pairing';
 import { loadServer } from './src/app/api';
+import { AppLock } from './src/features/auth/AppLock';
 import { auth } from './src/features/auth/auth';
 import { ConnectScreen } from './src/features/auth/ConnectScreen';
 import { LoginScreen } from './src/features/auth/LoginScreen';
@@ -52,7 +53,8 @@ const SCREEN_STYLE = { flex: 1 };
 // development build talks
 // to the computer's development API until it pairs. The screen ends where the keyboard starts, so a form under it
 // scrolls to every field: Android 15 and later draw the app edge to edge, under the keyboard, and no longer resize it.
-// A release says, over any screen, when a newer version is out (see UpdatePrompt).
+// A release says, over any screen, when a newer version is out (see UpdatePrompt). The whole app opens once the
+// phone's copy of the inventory does, behind the phone's own lock (see AppLock.tsx).
 function Screen() {
   const theme = useTheme();
   // The logged user: undefined while the saved session is read, null when nobody is logged in.
@@ -189,7 +191,9 @@ function App() {
       <ThemeProvider>
         <ToastProvider>
           <TourProvider>
-            <Screen />
+            <AppLock>
+              <Screen />
+            </AppLock>
           </TourProvider>
         </ToastProvider>
       </ThemeProvider>
