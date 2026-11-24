@@ -1,24 +1,25 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { apiFetch } from '@apc/domain/auth';
 import { itemCodes, type Item } from '@apc/domain/items';
-import { apiUrl } from '../../app/api';
+import { newId } from '../../app/ids';
 import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { useToast } from '../../components/Toast';
 import { tourTarget } from '../../components/Tour';
 import { Text } from '../../components/Typography';
+import { enqueue } from './inventoryCopy';
 
 // The confirmation that removes an item from the inventory, the same as the web: it names the item and its codes.
-// Excluir sends the delete to the API, shows a toast and hands the removal over; Cancel and the back button close
-// it with nothing changed. A failed delete keeps the dialog open and says so in a toast, so it can be tried again.
+// Excluir queues the delete (see @apc/domain/sync-queue), which takes the item out of the Inventory at once and goes to
+// the server as soon as it can be reached, shows a toast and hands the removal over; Cancel and the back button close
+// it with nothing changed.
 
 type DeleteItemDialogProps = {
   open: boolean;
   /** The item to delete. */
   item?: Item;
   onClose: () => void;
-  /** Called once the API removed the item. */
+  /** Called once the delete is queued. */
   onDeleted: (item: Item) => void;
 };
 
@@ -26,18 +27,14 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
   const toast = useToast();
   const [deleting, setDeleting] = useState(false);
 
-  /** Sends the delete, then announces it and hands it over, or says it failed. */
+  /** Queues the delete, then announces it and hands it over. */
   const remove = async () => {
     if (!item) {
       return;
     }
     setDeleting(true);
-    const response = await apiFetch(`${apiUrl()}/items/${item.id}`, { method: 'DELETE' }).catch(() => null);
+    await enqueue([{ id: newId(), type: 'deleteItem', itemId: item.id, at: new Date().toISOString(), label: item.name }]);
     setDeleting(false);
-    if (!response?.ok) {
-      toast.error('Não foi possível excluir o item. Tente de novo.');
-      return;
-    }
     toast.success(`Item “${item.name}” excluído.`);
     onDeleted(item);
   };

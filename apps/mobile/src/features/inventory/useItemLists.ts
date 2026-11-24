@@ -1,25 +1,23 @@
-import { useEffect, useState } from 'react';
 import {
-  createListEntry,
   deleteListEntry,
-  EMPTY_ITEM_LISTS,
-  loadItemLists,
+  listName,
   mergeListEntries,
   renameListEntry,
-  withEntry,
-  withoutEntry,
   type ItemListKind,
   type ItemLists,
   type ListEntry,
 } from '@apc/domain/lists';
 import { apiUrl } from '../../app/api';
+import { newId } from '../../app/ids';
+import { enqueue } from './inventoryCopy';
 
-// Loads the lists the item form picks from (categories, part brands, vehicle brands and vehicle models), creates
-// new names in them, renames, merges and deletes, keeping each change in the lists at once, and loads them again on
-// reload, e.g. after a CSV import created names, the same as the web. Lists that can't be loaded stay empty: the form then
-// offers to create each name, and creating one the API already holds gives that one back.
+// Changes the lists the item form picks from (categories, part brands, vehicle brands and vehicle models), which the
+// Inventory reads from the phone's copy (see useInventoryCopy.ts). A new name is queued (see @apc/domain/sync-queue),
+// so it joins its list at once, also away from the server, and goes to it as soon as it can be reached. Renaming,
+// merging and deleting go to the server, which moves the items along, as the phone can't foresee them: they need it,
+// and the Inventory syncs after each one, so the lists follow.
 
-/** Creates a name in a list, or finds it there; a vehicle model goes under its vehicle brand. */
+/** Adds a name to a list, giving it as the list writes it; a vehicle model goes under its vehicle brand. */
 export type CreateListEntry = (kind: ItemListKind, name: string, vehicleBrandId?: string) => Promise<ListEntry | null>;
 /** Deletes an entry, telling whether it was deleted. */
 export type RemoveListEntry = (kind: ItemListKind, id: string) => Promise<boolean>;
@@ -29,60 +27,26 @@ export type MergeListEntries = (kind: ItemListKind, id: string, into: string) =>
 export type RenameListEntry = (kind: ItemListKind, id: string, name: string) => Promise<ListEntry | 'taken' | null>;
 
 /**
- * Fetches the four lists, and again on reload, keeping the changes made since.
- * @returns The lists, create, merge, rename and remove to change them, and reload to fetch them again.
+ * Gives what changes the lists.
+ * @param lists The lists as the Inventory shows them, to find a new vehicle model's brand.
+ * @returns create, merge, rename and remove.
  */
-export function useItemLists(): {
-  lists: ItemLists;
+export function useItemLists(lists: ItemLists): {
   create: CreateListEntry;
   merge: MergeListEntries;
   rename: RenameListEntry;
   remove: RemoveListEntry;
-  reload: () => void;
 } {
-  const [lists, setLists] = useState<ItemLists>(EMPTY_ITEM_LISTS);
-  // Bumped to fetch the lists again.
-  const [version, setVersion] = useState(0);
-
-  useEffect(() => {
-    const request = new AbortController();
-    loadItemLists(apiUrl(), request.signal)
-      .then(setLists)
-      .catch(() => {});
-    return () => request.abort();
-  }, [version]);
-
   return {
-    lists,
     create: async (kind, name, vehicleBrandId) => {
-      const entry = await createListEntry(apiUrl(), kind, name, vehicleBrandId);
-      if (entry) {
-        setLists((held) => withEntry(held, kind, entry));
-      }
-      return entry;
+      const written = listName(name);
+      const vehicleBrand = lists.vehicleBrands.find((brand) => brand.id === vehicleBrandId)?.name;
+      const id = newId();
+      await enqueue([{ id, type: 'addName', kind, name: written, vehicleBrand, at: new Date().toISOString(), label: written }]);
+      return { id, name: written };
     },
-    merge: async (kind, id, into) => {
-      const moved = await mergeListEntries(apiUrl(), kind, id, into);
-      // The entry leaves its list, and a vehicle brand's models go to the other brand: the lists load again.
-      if (moved !== null) {
-        setVersion((count) => count + 1);
-      }
-      return moved;
-    },
-    rename: async (kind, id, name) => {
-      const renamed = await renameListEntry(apiUrl(), kind, id, name);
-      if (renamed && renamed !== 'taken') {
-        setLists((held) => withEntry(held, kind, renamed));
-      }
-      return renamed;
-    },
-    remove: async (kind, id) => {
-      const removed = await deleteListEntry(apiUrl(), kind, id);
-      if (removed) {
-        setLists((held) => withoutEntry(held, kind, id));
-      }
-      return removed;
-    },
-    reload: () => setVersion((count) => count + 1),
+    merge: (kind, id, into) => mergeListEntries(apiUrl(), kind, id, into),
+    rename: (kind, id, name) => renameListEntry(apiUrl(), kind, id, name),
+    remove: (kind, id) => deleteListEntry(apiUrl(), kind, id),
   };
 }

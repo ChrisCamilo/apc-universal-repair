@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { catalogFrom, type Catalog } from '@apc/domain/catalog';
 import type { InventoryCopy } from '../inventory/useInventoryCopy';
-import type { CatalogState } from './useCatalog';
 
 // The Catalog tab's catalog, read from the phone's copy of the inventory (see useInventoryCopy.ts), so it shows with the
 // server off: loading while the phone holds no copy yet, failed when it has none and the server can't be reached, and
 // otherwise the copy's catalog. A change, made on the server, answers the whole catalog, which shows at once while the
 // copy syncs to bring it in, and gives way to the copy's own once that sync is in.
+
+/** Where the catalog stands: still loading, ready with the catalog, or failed. */
+export type CatalogState = { status: 'loading' } | { status: 'ready'; catalog: Catalog } | { status: 'error' };
 
 /**
  * Reads the catalog from the copy, and takes the one a change answered until the copy brings it in.

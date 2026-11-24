@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
-import { apiFetch } from '@apc/domain/auth';
 import { EMPTY_CATALOG, vehicleSuggestions, type Catalog } from '@apc/domain/catalog';
 import { copyIcon, pencilIcon, plusIcon } from '@apc/tokens/icons';
-import { capitalizeFirst, codeKey, colorText, itemSchema, MAX_QUANTITY, type Item, type ItemBrand } from '@apc/domain/items';
+import { capitalizeFirst, colorText, MAX_QUANTITY, type Item } from '@apc/domain/items';
 import {
   BRAND_FIELD_LABELS,
   codeTakenError,
-  codeTakenMessage,
   colorInput,
   descriptionInput,
   EMPTY_BRAND_FORM,
@@ -38,8 +36,10 @@ import {
 } from '@apc/domain/item-form';
 import { ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/domain/lists';
 import { copiedPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/domain/photos';
+import { itemOperations, type QueuedOperation } from '@apc/domain/sync-queue';
 import { heldPhotos } from './photoCache';
 import { apiUrl } from '../../app/api';
+import { newId } from '../../app/ids';
 import { Button } from '../../components/Button';
 import { Combobox } from '../../components/Combobox';
 import { Dialog } from '../../components/Dialog';
@@ -54,7 +54,9 @@ import { CodeListField } from './CodeListField';
 import { DeleteItemDialog } from './DeleteItemDialog';
 import { ItemDetails, RemoveItemButton } from './ItemDetails';
 import { useStyles } from './ItemFormDialog.styles';
-import { pickPhotos, savePhotos, takePhoto } from './photos';
+import { enqueue } from './inventoryCopy';
+import { pickPhotos, takePhoto } from './photos';
+import { photosOperation } from './queuedPhotos';
 import { DuplicateItemDialog } from './DuplicateItemDialog';
 import { PhotoPickerDialog } from './PhotoPickerDialog';
 import type { CreateListEntry } from './useItemLists';
@@ -78,11 +80,12 @@ import { VehiclesField } from './VehiclesField';
 // capital letter when leaving the field and again on save; the quantities take whole numbers only, up to a million,
 // and a pasted fraction or text is refused, saying so; and the price always shows in reais, digits filling from the
 // cents, a pasted price read with a dot or a comma alike, up to a million (see priceMask). Saving checks the required
-// fields, a part brand or code repeated in the item and a code another item uses, then sends the item with its brands
-// to the API, shows a toast and hands the saved item over, then sends each brand's photos when they changed: up to 3
+// fields, a part brand or code repeated in the item and a code another item uses, then queues the item with its brands
+// and each brand's photos when they changed (see @apc/domain/sync-queue), which show in the Inventory at once and go to
+// the server as soon as it can be reached, shows a toast and says so: up to 3
 // a brand, the first the cover, picked from the phone's library; while a brand has room, "Usar fotos de outra peça" under
-// them adds copies of other items' photos, checked in the photo picker (see PhotoPickerDialog). When the item is saved but its photos aren't, a
-// warning toast says so; an edit that changes nothing isn't sent, and an info toast says so. Opened on an item's
+// them adds copies of other items' photos, checked in the photo picker (see PhotoPickerDialog). An edit that changes
+// nothing isn't queued, and an info toast says so. Opened on an item's
 // details, the same dialog shows the item (scrolled to a brand's card when opened on it, as a brand's card in the list
 // does), with Editar: nothing can be changed or saved until Editar unlocks the fields in place, no field started on so
 // the keyboard doesn't rise, and the bottom turns into Salvar alterações, which saves like the edit form. The details
@@ -114,8 +117,8 @@ type ItemFormDialogProps = {
   /** Creates a name in one of the lists. */
   onCreateEntry: CreateListEntry;
   onClose: () => void;
-  /** Called with the item as the API saved it. */
-  onSaved: (item: Item) => void;
+  /** Called once the item's change is queued. */
+  onSaved: () => void;
   /** Values the form opens with instead of the item's own, e.g. filled in by the tutorial. */
   initialForm?: ItemForm;
   /** Each brand's photos the form opens with instead of the item's own, e.g. a duplicated item's copies. */
@@ -301,26 +304,8 @@ export function ItemFormDialog({
     });
 
   /**
-   * Sends each brand's photos when they changed, finding the saved brand by its code.
-   * @param saved The item as the API saved it.
-   * @returns The item with its photos saved, or null when some couldn't be.
-   */
-  const saveBrandPhotos = async (saved: Item): Promise<Item | null> => {
-    let current = saved;
-    for (const [index, typed] of form.brands.entries()) {
-      const brand: ItemBrand | undefined = current.brands.find((each) => codeKey(each.code) === codeKey(typed.code));
-      const next = brand && (await savePhotos(current, brand, photos[index]));
-      if (brand && !next) {
-        return null;
-      }
-      current = next ?? current;
-    }
-    return current;
-  };
-
-  /**
-   * Checks the form and sends the item, or shows what keeps it from being saved; an edit that changes nothing isn't
-   * sent, and an info toast says so.
+   * Checks the form and queues the item with its brands' photos, or shows what keeps it from being saved; an edit that
+   * changes nothing isn't queued, and an info toast says so.
    */
   const save = async () => {
     const found = itemFormErrors(form, items, lists, item?.id);
@@ -334,36 +319,26 @@ export function ItemFormDialog({
       return;
     }
     setSaving(true);
-    const response = await apiFetch(item ? `${apiUrl()}/items/${item.id}` : `${apiUrl()}/items`, {
-      method: item ? 'PATCH' : 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(itemFormBody(form, options.colors)),
-    }).catch(() => null);
-    if (response?.status === 409) {
-      setSaving(false);
-      const [taken] = (await response.json()).details;
-      const index = Math.max(
-        0,
-        form.brands.findIndex((brand) => codeKey(brand.code) === codeKey(taken.code)),
-      );
-      brandError(index, 'code', codeTakenMessage(taken.itemName));
-      return;
-    }
-    if (!response?.ok) {
+    const { operations, itemId, brandIds } = itemOperations(itemFormBody(form, options.colors), item, { newId, at: new Date().toISOString() });
+    const { label } = operations[0];
+    try {
+      const changes: QueuedOperation[] = [...operations];
+      for (const [index, brandId] of brandIds.entries()) {
+        const held = item?.brands.find((each) => each.id === brandId)?.photos ?? [];
+        const photosChange = await photosOperation({ itemId, brandId, label }, held, photos[index]);
+        if (photosChange) {
+          changes.push(photosChange);
+        }
+      }
+      await enqueue(changes);
+    } catch {
       setSaving(false);
       toast.error('Não foi possível salvar o item. Tente de novo.');
       return;
     }
-    const saved = itemSchema.parse(await response.json());
-    const withPhotos = await saveBrandPhotos(saved);
     setSaving(false);
-    if (!withPhotos) {
-      toast.warning(`Item “${saved.name}” salvo, mas as fotos não foram salvas. Tente de novo.`);
-      onSaved(saved);
-      return;
-    }
-    toast.success(item ? `Item “${saved.name}” salvo.` : `Item “${saved.name}” cadastrado.`);
-    onSaved(withPhotos);
+    toast.success(item ? `Item “${label}” salvo.` : `Item “${label}” cadastrado.`);
+    onSaved();
   };
 
   return (
