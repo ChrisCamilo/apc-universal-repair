@@ -4,7 +4,7 @@ import { itemFormBody, itemFormOf } from "../inventory/itemForm.ts";
 import type { Item } from "../inventory/items.ts";
 import { testItem } from "../inventory/testItems.ts";
 import { applyChanges, copyItems, copyLists, emptyCopy, type SyncCopy } from "./copy.ts";
-import { itemOperations, refusedNotice, sentOperation, withQueue, type QueuedOperation } from "./queue.ts";
+import { itemOperations, refusedNotice, sentOperation, waitingNotice, withQueue, type QueuedOperation } from "./queue.ts";
 import { syncPageOf } from "./testSync.ts";
 
 // The changes a phone keeps to send, applied over its copy of the server's rows as the server would apply them: a new
@@ -186,7 +186,7 @@ test("Shared: a name in the queue joins its list, a model under its brand", () =
 });
 
 // Turns a queued operation into what the server is sent, and checks only the operation's own fields go; then says the
-// server refused a new item over a code and a move on an item gone.
+// server refused a new item over a code and a move on an item gone, and how many changes wait.
 test("Shared: an operation is sent without the queue's fields, and a refusal says why", () => {
   const move: QueuedOperation = {
     id: "20000000-0000-4000-8000-000000000001",
@@ -205,4 +205,5 @@ test("Shared: an operation is sent without the queue's fields, and a refusal say
     refusedNotice(operations[0], { statusCode: 409, details: [{ code: "N-123", itemName: "Pastilha traseira" }] }),
     "O servidor recusou o cadastro de “Pastilha de freio”: o código N-123 já é usado por “Pastilha traseira”.",
   );
+  assert.deepEqual([waitingNotice(1), waitingNotice(3)], ["1 alteração esperando o servidor.", "3 alterações esperando o servidor."]);
 });
