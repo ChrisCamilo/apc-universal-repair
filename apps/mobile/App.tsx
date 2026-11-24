@@ -16,7 +16,7 @@ import { LoginScreen } from './src/features/auth/LoginScreen';
 import { PASSWORD_LOGIN } from './src/features/auth/passwordLogin';
 import { RegisterScreen } from './src/features/auth/RegisterScreen';
 import { Dashboard } from './src/features/dashboard/Dashboard';
-import { clearCopy } from './src/features/inventory/inventoryCopy';
+import { clearCopy, loadQueue } from './src/features/inventory/inventoryCopy';
 import { UserMenu } from './src/features/dashboard/UserMenu';
 import { NotificationsMenu } from './src/features/notifications/NotificationsMenu';
 import { ThemeProvider, useTheme } from './src/app/theme';
@@ -24,13 +24,22 @@ import { ToastProvider } from './src/components/Toast';
 import { TourProvider } from './src/components/Tour';
 import { UpdatePrompt } from './src/features/updates/UpdatePrompt';
 
-/** What Conectar ao servidor says when the API refused the session's token, while pairing is the login. */
-const PAIR_AGAIN = 'Sua sessão expirou. Leia o código do computador de novo.';
+/**
+ * What Conectar ao servidor says when the API refused the session's token, while pairing is the login: the session
+ * ended, or the phone was removed on the computer; and, when changes made on the phone wait, that they are kept.
+ */
+const ENDED = {
+  expired: 'Sua sessão expirou. Leia o código do computador de novo.',
+  removed: 'Este celular foi removido no computador. Leia o código do computador para pedir acesso de novo.',
+  kept: 'As alterações feitas no celular continuam guardadas e vão para o servidor quando você entrar.',
+} as const;
 const SCREEN_STYLE = { flex: 1 };
 
 // While pairing is the login (PASSWORD_LOGIN off, see passwordLogin.ts), starts on the Dashboard when a session is
 // saved on the device and on Conectar ao servidor otherwise, whose QR code from the computer pairs the phone and logs it
-// into the account open there; "Sair" and an expired session, which it says, go back to it, and the user menu opens it
+// into the account open there; "Sair" and an expired session, which it says, telling a phone the computer removed
+// from a session that ended (POST /devices/status no longer knows its key) and saying the changes waiting are kept, go
+// back to it, and the user menu opens it
 // to pair again, as the account open on the computer. The rest of this comment is the flow with PASSWORD_LOGIN on:
 // Starts on the Dashboard when a session is saved on the device and on the login otherwise, going on to the
 // Dashboard once the AuthService accepts the login or a sign-up, and back to the login after "Sair". The login and
@@ -50,8 +59,9 @@ function Screen() {
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
   // Whether the sign-up shows in place of the login.
   const [registering, setRegistering] = useState(false);
-  // Whether the API refused the last session's token.
-  const [expired, setExpired] = useState(false);
+  // Whether the API refused the last session's token, and what Conectar ao servidor says of it: whether the computer
+  // removed the phone, and whether changes made on it wait.
+  const [expired, setExpired] = useState<{ removed: boolean; kept: boolean } | null>(null);
   // The paired server: undefined while it is read, null when the phone hasn't paired with one.
   const [server, setServer] = useState<Pairing | null | undefined>(undefined);
   // Whether Conectar ao servidor shows, to pair again.
@@ -83,7 +93,10 @@ function Screen() {
         clearCopy({ keepQueue: true });
         setRegistering(false);
         setUser(null);
-        setExpired(true);
+        setExpired({ removed: false, kept: false });
+        Promise.all([auth.deviceStatus().catch(() => 'pending' as const), loadQueue()]).then(([status, queue]) =>
+          setExpired((shown) => shown && { removed: status === 'unknown', kept: queue.some((operation) => !operation.sent) }),
+        );
       }),
     [],
   );
@@ -91,7 +104,7 @@ function Screen() {
   /** Takes the user who just logged in or signed up, dropping the expired notice. */
   const logIn = (loggedIn: SessionUser) => {
     setUser(loggedIn);
-    setExpired(false);
+    setExpired(null);
   };
 
   /** Marks the Inventory tutorial seen on the logged user, at once, then on the device and the API. */
@@ -135,7 +148,7 @@ function Screen() {
         {user === undefined || server === undefined ? null : !PASSWORD_LOGIN && (!user || pairing) ? (
           <ConnectScreen
             auth={auth}
-            notice={!user && expired ? PAIR_AGAIN : undefined}
+            notice={!user && expired ? [expired.removed ? ENDED.removed : ENDED.expired, expired.kept && ENDED.kept].filter(Boolean).join(' ') : undefined}
             onConnected={connected}
             onCancel={user ? () => setPairing(false) : undefined}
           />
