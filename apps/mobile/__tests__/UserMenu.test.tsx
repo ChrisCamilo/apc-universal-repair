@@ -15,6 +15,8 @@ import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/fea
 import { TabReorderContext, useReorderChoice } from '../src/features/dashboard/tabReorderContext';
 import { UserMenu } from '../src/features/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/app/theme';
+import { ToastProvider } from '../src/components/Toast';
+import { InventoryCopyProvider } from '../src/features/inventory/useInventoryCopy';
 
 // A phone's screen with no notch, for the bottom sheet.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
@@ -42,20 +44,28 @@ function byName(tree: ReactTestRenderer.ReactTestRenderer, name: string): ReactT
  * @param onConnect Called when "Conectar ao servidor" is picked.
  * @returns The rendered tree.
  */
+/** Trees the tests rendered, unmounted after each so the copy's syncs and the toasts don't outlive it. */
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
+
 async function mount(onLogout: () => void = () => {}, onConnect: () => void = () => {}) {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
-          <Preferences>
-            <UserMenu user={USER} onLogout={onLogout} onConnect={onConnect} />
-          </Preferences>
+          <ToastProvider>
+            <Preferences>
+              <InventoryCopyProvider>
+                <UserMenu user={USER} onLogout={onLogout} onConnect={onConnect} />
+              </InventoryCopyProvider>
+            </Preferences>
+          </ToastProvider>
           <ActiveTheme />
         </ThemeProvider>
       </SafeAreaProvider>,
     );
   });
+  mounted.push(tree!);
   return tree!;
 }
 
@@ -102,6 +112,10 @@ function readout(tree: ReactTestRenderer.ReactTestRenderer): string {
 beforeEach(async () => {
   await themeStorage.clear();
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
+});
+
+afterEach(async () => {
+  await ReactTestRenderer.act(async () => mounted.splice(0).forEach((tree) => tree.unmount()));
 });
 
 // Checks the user menu is Conta, at least 44px tall, with the user's initials in its pill, hidden from screen readers,
@@ -189,6 +203,29 @@ test('Mobile: Conectar ao servidor opens the pairing from the user menu', async 
   await press(tree, 'Conectar ao servidor');
   expect(onConnect).toHaveBeenCalledTimes(1);
   expect(sheetOpen(tree)).toBe(false);
+});
+
+// Opens the menu after the copy caught up and checks "Sincronizar agora" says when, under Sincronização; then picks it
+// while the server can't be reached and checks a toast says why, and again with the server back and checks it says
+// the copy caught up.
+test('Mobile: Sincronizar agora syncs and says how it went', async () => {
+  // The setup's stand-in for the API, put back once the server is back.
+  const setupFetch = (fetch as jest.Mock).getMockImplementation()!;
+  const tree = await openMenu();
+  const texts = () => tree.root.findAll((n) => n.type === Text).map((n) => n.props.children);
+  expect(texts()).toContain('Sincronização');
+  expect(byName(tree, 'Sincronizar agora').props.accessibilityHint).toMatch(/^Última sincronização hoje às \d{2}:\d{2}$/);
+
+  (fetch as jest.Mock).mockImplementation(() => Promise.reject(new TypeError('Network request failed')));
+  await press(tree, 'Sincronizar agora');
+  expect(texts()).toContain(
+    'Não foi possível sincronizar: o servidor não respondeu. Confira se o celular está no Wi-Fi de casa e se o computador está ligado.',
+  );
+
+  (fetch as jest.Mock).mockImplementation(setupFetch);
+  await press(tree, 'Conta');
+  await press(tree, 'Sincronizar agora');
+  expect(texts()).toContain('Estoque sincronizado com o servidor.');
 });
 
 // Picks "Sair" and checks it is the last item, set apart from the preferences by a divider, and hands the logout

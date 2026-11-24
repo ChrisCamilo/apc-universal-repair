@@ -22,6 +22,7 @@ import { InventoryTab } from '../src/features/inventory/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
 import { MoreActionsContext } from '../src/features/dashboard/moreActionsContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
+import { InventoryCopyProvider } from '../src/features/inventory/useInventoryCopy';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
 import { syncAnswer } from '@apc/domain/test-sync';
 
@@ -127,7 +128,7 @@ async function mount(stock: Item[] = ITEMS) {
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
           <Preferences>
-            <InventoryTab />
+            <InventoryCopyProvider><InventoryTab /></InventoryCopyProvider>
           </Preferences>
         </ThemeProvider>
       </SafeAreaProvider>,
@@ -396,7 +397,7 @@ test('Mobile: the inventory shows loading, then the error state with a retry', a
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
           <Preferences>
-            <InventoryTab />
+            <InventoryCopyProvider><InventoryTab /></InventoryCopyProvider>
           </Preferences>
         </ThemeProvider>
       </SafeAreaProvider>,
@@ -583,7 +584,7 @@ test('Mobile: the other actions open from the "⋯" the tab hands the header', a
         <ThemeProvider>
           <Preferences>
             <MoreActionsContext.Provider value={handMore}>
-              <InventoryTab />
+              <InventoryCopyProvider><InventoryTab /></InventoryCopyProvider>
             </MoreActionsContext.Provider>
           </Preferences>
         </ThemeProvider>

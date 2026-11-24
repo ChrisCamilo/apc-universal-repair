@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 import { listItems } from '@apc/domain/item-filters';
 import { itemListQuerySchema, type Item } from '@apc/domain/items';
@@ -9,13 +9,15 @@ import { withQueue } from '@apc/domain/sync-queue';
 import { askLocalNetwork, openAppSettings } from '../../app/localNetwork';
 import { loadCopy, loadQueue, onCopyChanged, syncCopy, type SyncResult } from './inventoryCopy';
 
-// The Inventory's and the Catalog's view of the phone's copy of the inventory (see inventoryCopy.ts), with the changes
-// waiting to be sent applied over it (see @apc/domain/sync-queue): its items, lists and catalog, as the API answers
-// them, how many changes wait, and whether the last sync reached the server, or found the phone without the access to
-// the local network, which allowNetwork asks for, or opens Android's settings for once it was refused for good (see
-// localNetwork.ts); coming back from them to the foreground syncs again. The copy syncs when either tab
-// opens, when the app comes back to the foreground and when the Inventory's list is pulled down, and again after each
-// change the user sends. A list query is answered from the copy the way GET /items answers it (listItems), its pages up
+// The phone's copy of the inventory as the Dashboard holds it (see inventoryCopy.ts), with the changes waiting to be
+// sent applied over it (see @apc/domain/sync-queue): one InventoryCopyProvider on the Dashboard, which the Inventory,
+// the Catalog, the header and the user menu read (useInventoryCopy), so the copy keeps syncing whatever tab is open.
+// It gives the copy's items, lists and catalog, as the API answers them, when it last caught up, how many changes
+// wait, whether a sync is running, and whether the last one reached the server, or found the phone without the access
+// to the local network, which allowNetwork asks for, or opens Android's settings for once it was refused for good (see
+// localNetwork.ts); coming back from them to the foreground syncs again. The copy syncs when the Dashboard opens,
+// when the app comes back to the foreground, when the Inventory's list is pulled down or the user menu asks, and
+// again after each change the user sends. A list query is answered from the copy the way GET /items answers it (listItems), its pages up
 // to the ones the list shows.
 
 /** The phone's copy, as the Inventory reads it. */
@@ -47,25 +49,53 @@ export type InventoryCopy = {
  */
 export type ItemPagesState = { status: 'loading' } | { status: 'ready'; items: Item[]; total: number; more: boolean } | { status: 'error' };
 
+/** The copy the Dashboard holds, or null outside an InventoryCopyProvider. */
+const InventoryCopyContext = createContext<InventoryCopy | null>(null);
+
+/**
+ * Holds the phone's copy for the screens under it: reads it, keeps it up to date with the server and follows its
+ * changes.
+ */
+export function InventoryCopyProvider({ children }: { children: ReactNode }) {
+  const copy = useCopyState();
+  return <InventoryCopyContext.Provider value={copy}>{children}</InventoryCopyContext.Provider>;
+}
+
+/**
+ * Reads the copy the Dashboard holds.
+ * @returns The copy's items, lists and state, and sync to bring it up to date.
+ */
+export function useInventoryCopy(): InventoryCopy {
+  const copy = useContext(InventoryCopyContext);
+  if (!copy) {
+    throw new Error('useInventoryCopy needs an InventoryCopyProvider.');
+  }
+  return copy;
+}
+
 /**
  * Reads the copy, keeps it up to date with the server and follows its changes.
  * @returns The copy's items, lists and state, and sync to bring it up to date.
  */
-export function useInventoryCopy(): InventoryCopy {
+function useCopyState(): InventoryCopy {
   const [copy, setCopy] = useState<SyncCopy>();
   const [waiting, setWaiting] = useState(0);
   const [offline, setOffline] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const live = useRef(true);
+  // How many syncs were asked for and haven't ended, so syncing holds until the last one does.
+  const running = useRef(0);
 
   const sync = useCallback(async () => {
+    running.current += 1;
     setSyncing(true);
     const result = await syncCopy();
+    running.current -= 1;
     if (live.current) {
       setOffline(result !== 'synced');
       setBlocked(result === 'blocked');
-      setSyncing(false);
+      setSyncing(running.current > 0);
     }
     return result;
   }, []);
@@ -106,7 +136,11 @@ export function useInventoryCopy(): InventoryCopy {
       sync();
     }
   }, [sync]);
-  return { items, lists, catalog, syncedAt: copy?.syncedAt ? new Date(copy.syncedAt) : null, offline, blocked, syncing, waiting, sync, allowNetwork };
+  const syncedAt = copy?.syncedAt;
+  return useMemo(
+    () => ({ items, lists, catalog, syncedAt: syncedAt ? new Date(syncedAt) : null, offline, blocked, syncing, waiting, sync, allowNetwork }),
+    [items, lists, catalog, syncedAt, offline, blocked, syncing, waiting, sync, allowNetwork],
+  );
 }
 
 /**

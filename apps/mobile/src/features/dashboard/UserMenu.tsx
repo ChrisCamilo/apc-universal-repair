@@ -13,7 +13,11 @@ import { useTheme } from '../../app/theme';
 import { BottomBarItem } from './BottomBarItem';
 import { useBarStyles } from './Dashboard.styles';
 import { useStyles } from './UserMenu.styles';
+import { useToast } from '../../components/Toast';
+import { loadQueue } from '../inventory/inventoryCopy';
 import { useInventoryTutorial } from '../inventory/inventoryTutorialContext';
+import { lastSync, syncBadge, syncOutcome } from '../inventory/syncStatus';
+import { useInventoryCopy } from '../inventory/useInventoryCopy';
 import { useTabReorder } from './tabReorderContext';
 
 // The user menu, the same as the web's on a phone: Conta at the end of the Dashboard's bottom bar, the logged user's
@@ -22,7 +26,10 @@ import { useTabReorder } from './tabReorderContext';
 // (TabReorderContext), which saves it and makes the tabs reorderable while it is on. There is no "Itens por página", as
 // the Inventory loads more as it scrolls. Every choice keeps the menu open, so several can be changed in a row; an
 // action closes the sheet. "Tutorial do estoque", with a play icon, goes to the Inventory tab and runs its tutorial again.
-// "Conectar ao servidor" opens the pairing with the home server, to pair again, as after the computer's address changes.
+// "Sincronizar agora", under when the phone's copy last caught up with the server and what waits, syncs it, and a toast
+// says how it went, or why it failed: the server out of reach, or the phone without the local network access (see
+// syncStatus.ts). "Conectar ao servidor" opens the pairing with the home server, to pair again, as after the computer's
+// address changes.
 // "Sair", at the end and set apart from the preferences, hands the logout to the owner, which ends the session and
 // goes back to the login; the preferences stay on the device for the next login.
 
@@ -40,9 +47,23 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
   const { style, mode, setStyle, setMode } = useTheme();
   const { reorderable, setReorderable } = useTabReorder();
   const tutorial = useInventoryTutorial();
+  const copy = useInventoryCopy();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const bar = useBarStyles();
   const { styles, ids } = useStyles();
+
+  /** Syncs the copy now, and says how it went. */
+  const syncNow = async () => {
+    const result = await copy.sync();
+    const waiting = (await loadQueue()).filter((operation) => !operation.sent).length;
+    const { ok, message } = syncOutcome(result, waiting);
+    if (ok) {
+      toast.success(message);
+    } else {
+      toast.error(message);
+    }
+  };
 
   return (
     <>
@@ -73,6 +94,10 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
             <MenuLabel>Estoque</MenuLabel>
             <MenuItem icon={playIcon} onSelect={tutorial.replay}>
               Tutorial do estoque
+            </MenuItem>
+            <MenuLabel>Sincronização</MenuLabel>
+            <MenuItem description={[lastSync(copy.syncedAt), syncBadge(copy)].filter(Boolean).join(' · ')} onSelect={syncNow}>
+              Sincronizar agora
             </MenuItem>
             <MenuLabel>Servidor</MenuLabel>
             <MenuItem onSelect={onConnect}>Conectar ao servidor</MenuItem>

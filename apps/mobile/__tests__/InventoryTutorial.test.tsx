@@ -18,6 +18,7 @@ import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/fea
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { TourProvider } from '../src/components/Tour';
+import { InventoryCopyProvider } from '../src/features/inventory/useInventoryCopy';
 
 // A phone's screen with no notch, so the tour card and the toast have their insets.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
@@ -97,7 +98,7 @@ async function mount() {
           <ToastProvider>
             <TourProvider>
               <Preferences>
-                <InventoryTab />
+                <InventoryCopyProvider><InventoryTab /></InventoryCopyProvider>
               </Preferences>
             </TourProvider>
           </ToastProvider>

@@ -6,7 +6,8 @@ import { fontFamily, softHairline } from '../../app/theme';
 // The look of the Dashboard, the same as the web's on a phone (the Estoque mockup): the page on the canvas; on top, the
 // open tab's header, with the compact APC mark, the tab's name and the tab's "⋯", a bare 44px circle that fills in while
 // pressed; the tab's content under it, filling the screen down
-// to the bottom bar; and the bar on the panel's fill over a soft hairline, 80px tall, with the tabs, then Alertas and
+// to the bottom bar, the copy's sync status, while one is worth saying, a small pill on the raised panel under the
+// tab's name, which keeps its room; and the bar on the panel's fill over a soft hairline, 80px tall, with the tabs, then Alertas and
 // Conta, each an equal share (see barItemStyles). Alertas shows the unread count in a badge on its pill's corner; Conta
 // shows the user's initials on the accent in its pill. A deeper screen's header has its ← in place of the mark, closer
 // to the screen's edge and to the title.
@@ -25,7 +26,17 @@ const BADGE_TEXT_SIZE = 11;
 /** The Dashboard: the page, the header with the mark, the tab's name and its "⋯", the content and the bottom bar. */
 export const useStyles = createStyles(
   'dashboard.dashboard',
-  { page: '', header: 'header', mark: 'header.brand', title: 'header.title', more: 'header.more', content: 'main' },
+  {
+    page: '',
+    header: 'header',
+    mark: 'header.brand',
+    heading: 'header.heading',
+    title: 'header.title',
+    sync: 'header.sync',
+    syncText: 'header.sync.text',
+    more: 'header.more',
+    content: 'main',
+  },
   (theme) => ({
     content: { flex: 1, paddingHorizontal: scales.space.s4, paddingTop: scales.space.s1 },
     header: {
@@ -43,8 +54,18 @@ export const useStyles = createStyles(
     more: { width: scales.touch.icon, height: scales.touch.icon, alignItems: 'center', justifyContent: 'center', borderRadius: scales.radiusPill },
     morePressed: { backgroundColor: theme.colors.panelRaised },
     page: { flex: 1, backgroundColor: theme.colors.canvas },
+    heading: { flex: 1, gap: scales.space.s1 },
+    sync: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: scales.space.s2,
+      paddingVertical: scales.space.s1,
+      borderRadius: scales.radiusPill,
+      borderWidth: scales.hairline,
+      borderColor: softHairline(theme),
+      backgroundColor: theme.colors.panelRaised,
+    },
+    syncText: { fontFamily: fontFamily(scales.bodyFont), fontSize: scales.fontSize.xs, color: theme.colors.textMuted },
     title: {
-      flex: 1,
       fontFamily: fontFamily(theme.displayFont, 700),
       fontSize: TITLE_SIZE,
       letterSpacing: theme.displayTracking * TITLE_SIZE,

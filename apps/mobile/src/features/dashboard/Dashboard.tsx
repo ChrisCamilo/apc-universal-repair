@@ -13,6 +13,8 @@ import { CatalogTab } from '../catalog/CatalogTab';
 import { MARK_SIZE, useBarStyles, useStyles } from './Dashboard.styles';
 import { InventoryTab } from '../inventory/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../inventory/inventoryTutorialContext';
+import { syncBadge } from '../inventory/syncStatus';
+import { InventoryCopyProvider, useInventoryCopy } from '../inventory/useInventoryCopy';
 import { InventoryLinkContext, type InventoryLinks } from './inventoryLinkContext';
 import { MoreActionsContext } from './moreActionsContext';
 import { PhoneHeaderContext, type PhoneHeader } from './phoneHeaderContext';
@@ -30,7 +32,10 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 // which opens what the tab hands over (see moreActionsContext.ts), such as the Inventory's other actions. A tab gone a
 // screen deeper, such as the Catalog's models of a brand, puts that screen's title there, with a ← in place of the mark
 // (see phoneHeaderContext.ts). A tab can open the Inventory on what it shows, such as a part the Catalog lists, which
-// the Dashboard holds until the Inventory takes it (see inventoryLinkContext.ts).
+// the Dashboard holds until the Inventory takes it (see inventoryLinkContext.ts). The Dashboard also holds the phone's
+// copy of the inventory (see useInventoryCopy.tsx), which the tabs and the user menu read and which keeps syncing
+// whatever tab is open; the header says, under the tab's name, while a sync runs, while the server can't be reached or
+// the phone lacks the local network access, and how many changes wait to be sent (see syncStatus.ts).
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id);
 // Each tab as the tab bar draws it, by id.
@@ -92,68 +97,89 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
   };
 
   return (
-    <TabReorderContext.Provider value={reorder}>
-      <InventoryTutorialContext.Provider
-        value={{
-          ...tutorial,
-          // A replay from the user menu happens on the Inventory tab.
-          replay: () => {
-            setTab('inventory');
-            tutorial.replay();
-          },
-        }}
-      >
-        <MoreActionsContext.Provider value={handMore}>
-          <PhoneHeaderContext.Provider value={setHeader}>
-            <InventoryLinkContext.Provider value={links}>
-              <View style={styles.page} testID={ids.page}>
-                <View style={[styles.header, header && styles.headerBack]} testID={ids.header}>
-                  {header ? (
-                    <BackButton label={header.back.label} onPress={header.back.onPress} />
-                  ) : (
-                    // The heading names the screen, so screen readers skip the mark.
-                    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.mark} testID={ids.mark}>
-                      <BrandMark variant="compact" size={MARK_SIZE} />
+    <InventoryCopyProvider>
+      <TabReorderContext.Provider value={reorder}>
+        <InventoryTutorialContext.Provider
+          value={{
+            ...tutorial,
+            // A replay from the user menu happens on the Inventory tab.
+            replay: () => {
+              setTab('inventory');
+              tutorial.replay();
+            },
+          }}
+        >
+          <MoreActionsContext.Provider value={handMore}>
+            <PhoneHeaderContext.Provider value={setHeader}>
+              <InventoryLinkContext.Provider value={links}>
+                <View style={styles.page} testID={ids.page}>
+                  <View style={[styles.header, header && styles.headerBack]} testID={ids.header}>
+                    {header ? (
+                      <BackButton label={header.back.label} onPress={header.back.onPress} />
+                    ) : (
+                      // The heading names the screen, so screen readers skip the mark.
+                      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.mark} testID={ids.mark}>
+                        <BrandMark variant="compact" size={MARK_SIZE} />
+                      </View>
+                    )}
+                    <View style={styles.heading} testID={ids.heading}>
+                      <Text accessibilityRole="header" numberOfLines={1} style={styles.title} testID={ids.title}>
+                        {header?.title ?? TABS[tab].label}
+                      </Text>
+                      <SyncBadge />
                     </View>
-                  )}
-                  <Text accessibilityRole="header" numberOfLines={1} style={styles.title} testID={ids.title}>
-                    {header?.title ?? TABS[tab].label}
-                  </Text>
-                  {more && (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Mais ações"
-                      onPress={more}
-                      style={({ pressed }) => [styles.more, pressed && styles.morePressed]}
-                      testID={ids.more}
-                    >
-                      {({ pressed }) => <Icon icon={moreIcon} size={ICON_SIZES.fab} color={pressed ? colors.accent : colors.text} />}
-                    </Pressable>
-                  )}
+                    {more && (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Mais ações"
+                        onPress={more}
+                        style={({ pressed }) => [styles.more, pressed && styles.morePressed]}
+                        testID={ids.more}
+                      >
+                        {({ pressed }) => <Icon icon={moreIcon} size={ICON_SIZES.fab} color={pressed ? colors.accent : colors.text} />}
+                      </Pressable>
+                    )}
+                  </View>
+                  <View style={styles.content} testID={ids.content}>
+                    {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{screens[tab]}</WorkInProgress> : screens[tab]}
+                  </View>
+                  <View style={bar.styles.bar} testID={bar.ids.bar}>
+                    <Tabs
+                      label="Seções do Dashboard"
+                      tabs={order.map((id) => TABS[id])}
+                      selected={tab}
+                      onSelect={setTab}
+                      reorderable={reorder.reorderable}
+                      onReorder={(next) => {
+                        setOrder(next);
+                        save(TAB_ORDER_STORAGE_KEY, JSON.stringify(next));
+                      }}
+                      variant="bar"
+                    />
+                    {userMenu}
+                  </View>
                 </View>
-                <View style={styles.content} testID={ids.content}>
-                  {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{screens[tab]}</WorkInProgress> : screens[tab]}
-                </View>
-                <View style={bar.styles.bar} testID={bar.ids.bar}>
-                  <Tabs
-                    label="Seções do Dashboard"
-                    tabs={order.map((id) => TABS[id])}
-                    selected={tab}
-                    onSelect={setTab}
-                    reorderable={reorder.reorderable}
-                    onReorder={(next) => {
-                      setOrder(next);
-                      save(TAB_ORDER_STORAGE_KEY, JSON.stringify(next));
-                    }}
-                    variant="bar"
-                  />
-                  {userMenu}
-                </View>
-              </View>
-            </InventoryLinkContext.Provider>
-          </PhoneHeaderContext.Provider>
-        </MoreActionsContext.Provider>
-      </InventoryTutorialContext.Provider>
-    </TabReorderContext.Provider>
+              </InventoryLinkContext.Provider>
+            </PhoneHeaderContext.Provider>
+          </MoreActionsContext.Provider>
+        </InventoryTutorialContext.Provider>
+      </TabReorderContext.Provider>
+    </InventoryCopyProvider>
+  );
+}
+
+/** The copy's sync status under the tab's name, while one is worth saying. */
+function SyncBadge() {
+  const { styles, ids } = useStyles();
+  const status = syncBadge(useInventoryCopy());
+  if (!status) {
+    return null;
+  }
+  return (
+    <View accessibilityLiveRegion="polite" style={styles.sync} testID={ids.sync}>
+      <Text numberOfLines={1} style={styles.syncText} testID={ids.syncText}>
+        {status}
+      </Text>
+    </View>
   );
 }

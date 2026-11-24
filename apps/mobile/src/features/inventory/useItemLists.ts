@@ -12,7 +12,7 @@ import { newId } from '../../app/ids';
 import { enqueue } from './inventoryCopy';
 
 // Changes the lists the item form picks from (categories, part brands, vehicle brands and vehicle models), which the
-// Inventory reads from the phone's copy (see useInventoryCopy.ts). A new name is queued (see @apc/domain/sync-queue),
+// Inventory reads from the phone's copy (see useInventoryCopy.tsx). A new name is queued (see @apc/domain/sync-queue),
 // so it joins its list at once, also away from the server, and goes to it as soon as it can be reached. Renaming,
 // merging and deleting go to the server, which moves the items along, as the phone can't foresee them: they need it,
 // and the Inventory syncs after each one, so the lists follow.
