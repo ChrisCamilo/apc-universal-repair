@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { BackHandler, NativeModules, StyleSheet, TextInput } from 'react-native';
+import { BackHandler, Linking, NativeModules, PermissionsAndroid, Platform, StyleSheet, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { CodeScanner } from 'react-native-vision-camera-barcode-scanner';
@@ -14,6 +14,7 @@ import { TEST_USERS } from '@apc/domain/test-users';
 import { isStyleId } from '@apc/tokens/style-ids';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { apiUrl, applyServer, SERVER_STORAGE_KEY } from '../src/app/api';
+import { LOCAL_NETWORK_TEXTS } from '../src/app/localNetwork';
 import { ConnectScreen } from '../src/features/auth/ConnectScreen';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 
@@ -150,6 +151,45 @@ test('Mobile: the camera reads the QR code and the phone pairs with the server',
   expect(JSON.parse((await themeStorage.getItem(SERVER_STORAGE_KEY))!)).toEqual(SERVER);
   expect(onConnected).toHaveBeenCalledWith(SERVER);
   expect(shows(tree, UNREACHABLE)).toBe(false);
+});
+
+// On Android 17, without the access to the local network: checks the screen says why it will be asked; reads the QR
+// code, and checks the access is asked for before any server, and refused, says the server can't be reached without
+// it and asks nothing; refused for good, says to allow it in Android's settings, which its button opens; and given,
+// the phone pairs.
+test('Mobile: on Android 17 the local network is asked for before the server, and refused says so', async () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  jest.spyOn(Platform, 'Version', 'get').mockReturnValue(37);
+  jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(false);
+  const ask = jest.spyOn(PermissionsAndroid, 'request');
+  const settings = jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
+  const onConnected = jest.fn();
+  try {
+    const tree = await mount({ onConnected });
+    expect(shows(tree, LOCAL_NETWORK_TEXTS.why)).toBe(true);
+
+    ask.mockResolvedValueOnce('denied');
+    await scan(pairingLink(SERVER));
+    expect(ask).toHaveBeenCalledWith(PermissionsAndroid.PERMISSIONS.ACCESS_LOCAL_NETWORK);
+    expect(shows(tree, LOCAL_NETWORK_TEXTS.denied)).toBe(true);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(button(tree, LOCAL_NETWORK_TEXTS.settings)).toBeUndefined();
+
+    ask.mockResolvedValueOnce('never_ask_again');
+    await scan(pairingLink(SERVER));
+    expect(shows(tree, LOCAL_NETWORK_TEXTS.blocked)).toBe(true);
+    await press(tree, LOCAL_NETWORK_TEXTS.settings);
+    expect(settings).toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+
+    ask.mockResolvedValueOnce('granted');
+    answer(true);
+    await scan(pairingLink(SERVER));
+    expect((fetch as jest.Mock).mock.calls[0][0]).toBe(`${SERVER.url}/health`);
+    expect(onConnected).toHaveBeenCalledWith(SERVER);
+  } finally {
+    jest.restoreAllMocks();
+  }
 });
 
 // Given the AuthService, as while pairing is the login: shows a notice until a code is read, and asks to log in on the
