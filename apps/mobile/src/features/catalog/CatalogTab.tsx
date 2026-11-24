@@ -36,6 +36,7 @@ import {
   type FoundPart,
 } from '@apc/domain/catalog';
 import type { Item } from '@apc/domain/items';
+import { copyNotice } from '@apc/domain/sync-copy';
 import { chevronIcon, closeIcon, copyIcon, ICON_SIZES, importIcon, moreIcon, pencilIcon, plusIcon, sortIcon, trashIcon } from '@apc/tokens/icons';
 import { ActionSheet } from '../../components/ActionSheet';
 import { Button } from '../../components/Button';
@@ -53,13 +54,13 @@ import { useTheme } from '../../app/theme';
 import { TreeView } from '../../components/TreeView';
 import { Heading, NumericReadout, Text } from '../../components/Typography';
 import { usePhotoCache } from '../inventory/photoCache';
-import { useItems } from '../inventory/useItems';
+import { useInventoryCopy } from '../inventory/useInventoryCopy';
 import { CarParts, CarSheet } from './CarSheet';
 import { useStyles } from './CatalogTab.styles';
 import { EngineSheetForm } from './EngineSheetForm';
 import { NodeForm } from './NodeForm';
 import { PartResults } from './PartResults';
-import { useCatalog } from './useCatalog';
+import { useCopyCatalog } from './useCopyCatalog';
 import { useCatalogEditing } from './useCatalogEditing';
 import { usePartsOnly } from './usePartsOnly';
 import { useInventoryLink } from '../dashboard/inventoryLinkContext';
@@ -73,8 +74,10 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 // inventory parts with that code (3+ letters or digits), listed as the Inventory's cards, and a press on one clears it
 // and opens the part's engine sheet, or its brand's models with its model pointed out and a note when the catalog has
 // no sheet for it. Otherwise it narrows the brands to the ones with a model of that name, and the tree to those models.
-// The catalog comes from the API (useCatalog): while it loads the tab shows a spinner, and when it can't be loaded, why,
-// with a button to try again.
+// The catalog and the parts come from the phone's copy of the inventory (useInventoryCopy, useCopyCatalog), so the tab
+// works with the server off, saying then that it shows the copy, and from when: while the phone has no copy yet the
+// tab shows a spinner, and when it can't get one, why, with a button to try again. Editing needs the server, and a
+// change made while it can't be reached says so.
 // The catalog is edited in sheets, the same as the web on a phone (see useCatalogEditing): "Nova marca" beside the
 // brands' heading and "Novo modelo" beside the models' open a bottom sheet with the new node's fields (see NodeForm).
 // Each row has a "⋯", always in view, opening an action sheet with its name: add the level under it, rename it (a
@@ -86,28 +89,36 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 // lists, and goes back to the brands. A catalog with no brand says so and adds the first with "Nova marca". A new engine's
 // sheet, and "Editar ficha" under an engine's sheet, open the sheet's form in a full-screen dialog (see
 // EngineSheetForm); a new brand opens its models, and a new engine its sheet. Every change answers the whole catalog,
-// which the tab takes as it is.
+// which the tab takes as it is, while the copy syncs to bring it in.
 // A press on a model's or a version's name opens its sheet (see CarSheet) under the path to it, whose engines open
 // their sheets, and under it the parts in stock that fit it: a press on one opens its details in the Inventory tab, and
 // "Ver todas as peças" opens the Inventory with the filters that list them (see inventoryLinkContext.ts). ← goes back
 // to the models, open on it.
 // "Só com peças", under the brands' search, shows only the models some part in stock fits, and the brands with
 // one (catalogWithParts), as on the web; the device remembers it (usePartsOnly). It can't be turned on while no part
-// fits a vehicle, and adding a brand or a model turns it off, so the new one, with no part yet, shows. The tab loads the
-// items once, for this and for the parts the search and the sheets list, and waits for them when it is on.
+// fits a vehicle, and adding a brand or a model turns it off, so the new one, with no part yet, shows. The tab reads the
+// items from the copy, for this and for the parts the search and the sheets list, and waits for them when it is on.
 
-/** What the screens take: the whole catalog, the items in stock, whether to show only the vehicles they fit, and the change handlers. */
+/**
+ * What the screens take: the whole catalog, the items in stock, whether to show only the vehicles they fit, the change
+ * handlers, and, away from the server, the copy's notice.
+ */
 type CatalogProps = {
   catalog: Catalog;
   items: readonly Item[];
   partsOnly: boolean;
   onPartsOnly: (on: boolean) => void;
   onChanged: (catalog: Catalog) => void;
+  /** Whether the server couldn't be reached at the last sync. */
+  offline: boolean;
+  /** What the tab says while it shows the copy, from when. */
+  notice?: string;
 };
 
 export function CatalogTab() {
-  const state = useCatalog();
-  const stock = useItems();
+  const copy = useInventoryCopy();
+  const state = useCopyCatalog(copy);
+  const stock = copy.items ? { status: 'ready' as const, items: copy.items } : { status: 'loading' as const };
   // The photos kept on the phone, which the parts' thumbnails show once kept.
   usePhotoCache();
   const [partsOnly, setPartsOnly] = usePartsOnly();
@@ -121,6 +132,8 @@ export function CatalogTab() {
         partsOnly={partsOnly}
         onPartsOnly={setPartsOnly}
         onChanged={state.replace}
+        offline={copy.offline}
+        notice={copy.offline && copy.syncedAt ? copyNotice(copy.syncedAt) : undefined}
       />
     );
   }
@@ -134,14 +147,14 @@ export function CatalogTab() {
           action={{ label: 'Tentar de novo', onPress: state.reload }}
         />
       )}
-      {state.status === 'ready' && !waiting && <EmptyCatalog onChanged={state.replace} />}
+      {state.status === 'ready' && !waiting && <EmptyCatalog onChanged={state.replace} offline={copy.offline} />}
     </View>
   );
 }
 
 /** A catalog with no brand: says so, and adds the first. */
-function EmptyCatalog({ onChanged }: { onChanged: (catalog: Catalog) => void }) {
-  const editor = useCatalogEditing({ onChanged });
+function EmptyCatalog({ onChanged, offline }: { onChanged: (catalog: Catalog) => void; offline: boolean }) {
+  const editor = useCatalogEditing({ onChanged, offline });
   return (
     <>
       <EmptyState
@@ -180,7 +193,7 @@ function useShown<T>(value: T | null): { last: T | null; session: number } {
 }
 
 /** The Catalog's screens, one at a time: the brands, a brand's models or an engine's sheet, edited in sheets. */
-function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged }: CatalogProps) {
+function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged, offline, notice }: CatalogProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   const setHeader = usePhoneHeader();
@@ -195,6 +208,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
   const [acting, setActing] = useState<CatalogNode>();
   const editor = useCatalogEditing({
     onChanged,
+    offline,
     onBrandAdded: (changed) => setScreen({ view: 'models', brandId: changed.brands.at(-1)!.id }),
     onEngineAdded: (changed, yearId) => {
       if (screen.view !== 'brands') {
@@ -492,6 +506,11 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
   return (
     <>
       <FieldScrollView ref={scroll} style={styles.scroll} contentContainerStyle={styles.tab} testID={ids.tab}>
+        {notice && (
+          <View accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
+            <Text size="sm">{notice}</Text>
+          </View>
+        )}
         {content()}
       </FieldScrollView>
       <ActionSheet open={acting !== undefined} onClose={() => setActing(undefined)} title={acting?.label ?? ''} actions={actions()} />
