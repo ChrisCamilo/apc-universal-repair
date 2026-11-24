@@ -119,6 +119,33 @@ test("API: a batch applies its operations in order, a new item keeping the phone
   assert.equal(await prisma.item.count({ where: { id: itemId } }), 0);
 });
 
+// Edits an item's brands as a phone sends them, its brand kept without a quantity and a new one with the id the phone
+// gave it, and checks the kept brand keeps its stock, the new one takes its id and quantity, and the item adds them up;
+// then adds a brand with an id another brand has, and checks it is refused with 409.
+test("API: an edit keeps a brand's stock sent without one, and adds a brand with the phone's id", async () => {
+  const { operation, itemId, brandId } = creation("OP-7", 5);
+  const kept = { ...operation.item.brands[0], quantity: undefined };
+  const added = { id: randomUUID(), code: `OP-8-${RUN}`, partBrand: `Nakata ${RUN}`, quantity: 2, unitPriceCents: 9990 };
+  const edit = { id: randomUUID(), type: "updateItem", itemId, changes: { brands: [kept, added] } };
+  const results = await send([operation, edit]);
+  assert.deepEqual(
+    results.map((result) => [result.status, result.statusCode]),
+    [
+      ["applied", 201],
+      ["applied", 200],
+    ],
+  );
+  assert.deepEqual(await quantities(brandId), { brand: 5, item: 7 });
+  assert.deepEqual(await quantities(added.id), { brand: 2, item: 7 });
+
+  const other = creation("OP-9");
+  await send([other.operation]);
+  const clash = { ...added, id: other.brandId, code: `OP-10-${RUN}` };
+  const [refused] = await send([{ id: randomUUID(), type: "updateItem", itemId, changes: { brands: [kept, clash] } }]);
+  assert.deepEqual([refused.status, refused.statusCode], ["refused", 409]);
+  assert.deepEqual(await quantities(other.brandId), { brand: 5, item: 5 });
+});
+
 // Sends a batch, then the same batch again, one after the other and then twice at once, as a phone does after a
 // dropped connection, and checks each operation was applied once: the stock moved once, and every answer the same.
 test("API: the same batch sent again changes nothing", async () => {
