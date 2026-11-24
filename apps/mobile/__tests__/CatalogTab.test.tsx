@@ -6,7 +6,14 @@ import React from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { CATALOG_PARTS_ONLY_KEY, CATALOG_YEAR_MESSAGE, NO_SHEET_MESSAGE, type CatalogData, type InventoryLink } from '@apc/domain/catalog';
+import {
+  CATALOG_NEEDS_SERVER,
+  CATALOG_PARTS_ONLY_KEY,
+  CATALOG_YEAR_MESSAGE,
+  NO_SHEET_MESSAGE,
+  type CatalogData,
+  type InventoryLink,
+} from '@apc/domain/catalog';
 import { EMPTY_ITEM_FILTERS } from '@apc/domain/item-filters';
 import type { Item } from '@apc/domain/items';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
@@ -14,13 +21,17 @@ import { CatalogTab } from '../src/features/catalog/CatalogTab';
 import { PhoneHeaderContext, type PhoneHeader } from '../src/features/dashboard/phoneHeaderContext';
 import { InventoryLinkContext } from '../src/features/dashboard/inventoryLinkContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
+import { ToastProvider } from '../src/components/Toast';
 import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
+import { syncAnswer } from '@apc/domain/test-sync';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 
 const OPALA_41 = TEST_CATALOG.sheets[TEST_ENGINES.opala41];
 // A phone's screen with no insets, for the sheets and dialogs.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
+// A reply the stand-in API gives, as fetch would.
+type Reply = { ok: boolean; json: () => Promise<unknown> };
 // What Android's back button calls.
 type BackListener = Parameters<typeof BackHandler.addEventListener>[1];
 // Parts in the inventory, for the code search: an engine the catalog has and one it lacks.
@@ -131,8 +142,10 @@ function shows(tree: ReactTestRenderer.ReactTestRenderer, text: string): boolean
   return tree.root.findAll((n) => n.type === Text && n.props.children === text).length > 0;
 }
 
+// Each test starts with the server's starting catalog and no parts, unless it answers otherwise.
 beforeEach(async () => {
   await themeStorage.clear();
+  answer(() => ({ ok: true, json: () => Promise.resolve({ items: [], total: 0 }) }));
 });
 
 afterEach(() => {
@@ -168,6 +181,39 @@ test('Mobile: the Catalog says when it fails to load and tries again', async () 
   failing = false;
   await ReactTestRenderer.act(async () => pressable(textNode(tree, 'Tentar de novo')).props.onPress());
   expect(shows(tree, 'Marcas · 4')).toBe(true);
+});
+
+// Opens the Catalog, turns the server off and opens it again, and checks the brands still show from the phone's copy,
+// under a notice that says so and from when, and the code search still finds a part; adding a brand then says the
+// catalog needs the server.
+test('Mobile: away from the server, the Catalog shows the copy and its editing needs the server', async () => {
+  answer(() => ({ ok: true, json: () => Promise.resolve({ items: PARTS, total: PARTS.length }) }));
+  const first = await mount('eighties', 'night');
+  await ReactTestRenderer.act(async () => first.unmount());
+  (fetch as jest.Mock).mockImplementation(() => Promise.reject(new TypeError('Network request failed')));
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>
+          <ToastProvider>
+            <Harness open={() => {}} />
+          </ToastProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>,
+    );
+  });
+  expect(shows(tree!, 'Marcas · 4')).toBe(true);
+  expect(tree!.root.findAll((n) => n.type === Text && /^Sem conexão com o servidor\. Mostrando a cópia de \d{2}\/\d{2} às \d{2}:\d{2}\.$/.test(n.props.children))).not.toHaveLength(0);
+  await fill(tree!, 'Procure modelo ou código da peça', 'FRA-1000');
+  expect(shows(tree!, 'Pastilha de freio dianteira')).toBe(true);
+  await fill(tree!, 'Procure modelo ou código da peça', '');
+
+  await pressText(tree!, 'Nova marca');
+  await fill(tree!, 'Nome', 'Renault');
+  await pressText(tree!, 'Adicionar');
+  expect(shows(tree!, CATALOG_NEEDS_SERVER)).toBe(true);
+  await ReactTestRenderer.act(async () => tree!.unmount());
 });
 
 // Checks the Catalog opens on the brand lines, each with its letters and its models and sheets, with no brand search,
@@ -475,13 +521,35 @@ test("Mobile: a period stays inside its generation's years, written with four di
 });
 
 /**
- * Answers the API's requests: the catalog with the test catalog, unless a test gives its own reply, and the inventory
- * with a test's own.
+ * Answers the API's requests: the catalog with the test catalog, unless a test gives its own reply, the inventory with a
+ * test's own, and the change feed the phone's copy follows with both.
  * @param items The inventory's reply.
  * @param catalog The catalog's reply.
  */
 function answer(items: () => object, catalog: () => object = () => ({ ok: true, json: () => Promise.resolve(TEST_CATALOG_DATA) })) {
-  (fetch as jest.Mock).mockImplementation((url: string) => Promise.resolve(url.endsWith('/catalog') ? catalog() : items()));
+  (fetch as jest.Mock).mockImplementation(async (url: string) => {
+    const { pathname, searchParams } = new URL(url);
+    if (pathname === '/sync/changes') {
+      return feedOf(searchParams, items() as Reply, catalog() as Reply);
+    }
+    return pathname.endsWith('/catalog') ? catalog() : items();
+  });
+}
+
+/**
+ * Answers the change feed with the inventory's and the catalog's replies, as the server's feed holds both: a full copy
+ * of them, 410 to a cursor so the copy is made again, and a failure when either fails.
+ * @param query The feed's query.
+ * @param items The inventory's reply.
+ * @param catalog The catalog's reply.
+ * @returns The feed's reply.
+ */
+async function feedOf(query: URLSearchParams, items: Reply, catalog: Reply) {
+  if (!items.ok || !catalog.ok) {
+    return { ok: false, status: 500, json: () => Promise.resolve({}) };
+  }
+  const stock = (await items.json()) as { items: Item[] };
+  return syncAnswer(query, stock.items, (await catalog.json()) as CatalogData);
 }
 
 /**
@@ -493,6 +561,10 @@ function answerChanges() {
   let catalog: CatalogData = JSON.parse(JSON.stringify(TEST_CATALOG_DATA));
   let made = 0;
   (fetch as jest.Mock).mockImplementation((url: string, init?: RequestInit) => {
+    const { pathname, searchParams } = new URL(url);
+    if (pathname === '/sync/changes') {
+      return Promise.resolve(syncAnswer(searchParams, [], catalog));
+    }
     const at = url.indexOf('/catalog');
     if (at < 0) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: [], total: 0 }) });
