@@ -35,8 +35,8 @@ class ServerPinModule(context: ReactApplicationContext) : ReactContextBaseJavaMo
 
 /**
  * Registers the app's own modules, which autolinking doesn't find: [ServerPinModule], [DeviceKeyModule],
- * [InventoryCopyModule] and [PhotoCacheModule]. All are classic modules, not TurboModules, which React Native's New Architecture serves
- * through its interop layer; each is made when JavaScript first asks for it.
+ * [InventoryCopyModule], [PhotoCacheModule] and [SystemNotificationsModule]. All are classic modules, not TurboModules,
+ * which React Native's New Architecture serves through its interop layer; each is made when JavaScript first asks for it.
  */
 class ServerPinPackage : BaseReactPackage() {
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? =
@@ -45,6 +45,7 @@ class ServerPinPackage : BaseReactPackage() {
       DeviceKeyModule.NAME -> DeviceKeyModule(reactContext)
       InventoryCopyModule.NAME -> InventoryCopyModule(reactContext)
       PhotoCacheModule.NAME -> PhotoCacheModule(reactContext)
+      SystemNotificationsModule.NAME -> SystemNotificationsModule(reactContext)
       else -> null
     }
 
@@ -54,6 +55,7 @@ class ServerPinPackage : BaseReactPackage() {
       DeviceKeyModule.NAME to DeviceKeyModule::class.java,
       InventoryCopyModule.NAME to InventoryCopyModule::class.java,
       PhotoCacheModule.NAME to PhotoCacheModule::class.java,
+      SystemNotificationsModule.NAME to SystemNotificationsModule::class.java,
     )
       .mapValues { (name, type) ->
         ReactModuleInfo(

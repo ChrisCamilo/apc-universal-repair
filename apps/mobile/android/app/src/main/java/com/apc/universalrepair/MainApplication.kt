@@ -15,7 +15,7 @@ class MainApplication : Application(), ReactApplication {
       packageList =
         PackageList(this).packages.apply {
           // The app's own modules: pinning the paired server's certificate (see ServerPin), the device key, the
-          // inventory's copy and its photos.
+          // inventory's copy and its photos, and the notifications in the shade.
           add(ServerPinPackage())
         },
     )
@@ -25,5 +25,7 @@ class MainApplication : Application(), ReactApplication {
     super.onCreate()
     ServerPin.install(this)
     loadReactNative(this)
+    // The copy syncs every 15 minutes or so while the app is out of sight (see BackgroundSyncJob).
+    BackgroundSyncJob.schedule(this)
   }
 }

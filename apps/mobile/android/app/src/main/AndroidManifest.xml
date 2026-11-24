@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- Asks for the fingerprint, the face or the screen lock before the inventory's copy opens (see InventoryCopyModule.kt). -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Shows the errors and warnings raised in the background in the shade, which Android 13 asks the user for (see
+         src/features/notifications/systemNotifications.ts). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
       android:name=".MainApplication"
@@ -18,6 +21,11 @@
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
+      <!-- Syncs the inventory's copy while the app is out of sight (see BackgroundSyncJob.kt). -->
+      <service
+        android:name=".BackgroundSyncJob"
+        android:exported="false"
+        android:permission="android.permission.BIND_JOB_SERVICE" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
