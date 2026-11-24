@@ -42,7 +42,9 @@ import { INVENTORY_NEEDS_SERVER, waitingNotice } from '@apc/domain/sync-queue';
 import { ActionSheet } from '../../components/ActionSheet';
 import { apiUrl } from '../../app/api';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
+import { Button } from '../../components/Button';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
+import { LOCAL_NETWORK_TEXTS } from '../../app/localNetwork';
 import { FieldScrollView } from '../../components/FieldScrollView';
 import { FilterChipGroup } from '../../components/FilterChip';
 import { ClearFilters } from '../../components/FilterMenu';
@@ -483,16 +485,26 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         {((copy.offline && copy.syncedAt) || copy.waiting > 0) && (
           <View accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
             <Text size="sm">
-              {[copy.offline && copy.syncedAt && copyNotice(copy.syncedAt), copy.waiting > 0 && waitingNotice(copy.waiting)].filter(Boolean).join(' ')}
+              {[
+                copy.blocked ? LOCAL_NETWORK_TEXTS.missing : copy.offline && copy.syncedAt && copyNotice(copy.syncedAt),
+                copy.waiting > 0 && waitingNotice(copy.waiting),
+              ]
+                .filter(Boolean)
+                .join(' ')}
             </Text>
+            {copy.blocked && (
+              <Button variant="secondary" size="sm" align="start" onPress={copy.allowNetwork}>
+                {LOCAL_NETWORK_TEXTS.allow}
+              </Button>
+            )}
           </View>
         )}
         <View style={[styles.list, centered && styles.listCentered]} testID={ids.list}>
           {failed && (
             <ErrorState
               title="Não foi possível carregar o estoque"
-              message="Verifique a conexão com o servidor e tente de novo."
-              action={{ label: 'Tentar de novo', onPress: reload }}
+              message={copy.blocked ? LOCAL_NETWORK_TEXTS.missing : 'Verifique a conexão com o servidor e tente de novo.'}
+              action={copy.blocked ? { label: LOCAL_NETWORK_TEXTS.allow, onPress: copy.allowNetwork } : { label: 'Tentar de novo', onPress: reload }}
             />
           )}
           {!failed && listed.status === 'loading' && <LoadingRows />}

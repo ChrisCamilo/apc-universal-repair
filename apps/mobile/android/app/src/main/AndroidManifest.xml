@@ -4,6 +4,8 @@
     <!-- Reads the server's QR code on Conectar ao servidor; a phone without a camera types the code in. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Reaches the home server on the Wi-Fi, which Android 17 asks the user for (see src/app/localNetwork.ts). -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
     <application
       android:name=".MainApplication"

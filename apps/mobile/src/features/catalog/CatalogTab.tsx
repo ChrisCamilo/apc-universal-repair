@@ -43,6 +43,7 @@ import { Button } from '../../components/Button';
 import { RowAction } from '../../components/DataTable';
 import { Dialog } from '../../components/Dialog';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
+import { LOCAL_NETWORK_TEXTS } from '../../app/localNetwork';
 import { FieldScrollView } from '../../components/FieldScrollView';
 import { Icon } from '../../components/Icon';
 import { ImageFrame } from '../../components/ImageFrame';
@@ -101,7 +102,8 @@ import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
 
 /**
  * What the screens take: the whole catalog, the items in stock, whether to show only the vehicles they fit, the change
- * handlers, and, away from the server, the copy's notice.
+ * handlers, and, away from the server, the copy's notice, with what gives the phone the access to the local network
+ * when it lacks it.
  */
 type CatalogProps = {
   catalog: Catalog;
@@ -113,6 +115,8 @@ type CatalogProps = {
   offline: boolean;
   /** What the tab says while it shows the copy, from when. */
   notice?: string;
+  /** Asks for the access to the local network, when the phone lacks it, which the notice then says. */
+  onAllowNetwork?: () => void;
 };
 
 export function CatalogTab() {
@@ -133,7 +137,8 @@ export function CatalogTab() {
         onPartsOnly={setPartsOnly}
         onChanged={state.replace}
         offline={copy.offline}
-        notice={copy.offline && copy.syncedAt ? copyNotice(copy.syncedAt) : undefined}
+        notice={copy.blocked ? LOCAL_NETWORK_TEXTS.missing : copy.offline && copy.syncedAt ? copyNotice(copy.syncedAt) : undefined}
+        onAllowNetwork={copy.blocked ? copy.allowNetwork : undefined}
       />
     );
   }
@@ -143,8 +148,8 @@ export function CatalogTab() {
       {state.status === 'error' && (
         <ErrorState
           title="Não foi possível carregar o catálogo"
-          message="Verifique a conexão com o servidor e tente de novo."
-          action={{ label: 'Tentar de novo', onPress: state.reload }}
+          message={copy.blocked ? LOCAL_NETWORK_TEXTS.missing : 'Verifique a conexão com o servidor e tente de novo.'}
+          action={copy.blocked ? { label: LOCAL_NETWORK_TEXTS.allow, onPress: copy.allowNetwork } : { label: 'Tentar de novo', onPress: state.reload }}
         />
       )}
       {state.status === 'ready' && !waiting && <EmptyCatalog onChanged={state.replace} offline={copy.offline} />}
@@ -193,7 +198,7 @@ function useShown<T>(value: T | null): { last: T | null; session: number } {
 }
 
 /** The Catalog's screens, one at a time: the brands, a brand's models or an engine's sheet, edited in sheets. */
-function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged, offline, notice }: CatalogProps) {
+function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged, offline, notice, onAllowNetwork }: CatalogProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   const setHeader = usePhoneHeader();
@@ -509,6 +514,11 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
         {notice && (
           <View accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
             <Text size="sm">{notice}</Text>
+            {onAllowNetwork && (
+              <Button variant="secondary" size="sm" align="start" onPress={onAllowNetwork}>
+                {LOCAL_NETWORK_TEXTS.allow}
+              </Button>
+            )}
           </View>
         )}
         {content()}

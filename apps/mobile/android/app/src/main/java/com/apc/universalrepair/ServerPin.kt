@@ -7,6 +7,7 @@ import com.facebook.react.modules.network.OkHttpClientProvider
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
@@ -19,9 +20,14 @@ import okhttp3.OkHttpClient
  * (src/app/api.ts hands it here), and trusts, for that server's address, only a certificate with that fingerprint, whatever
  * address the certificate names, so a new address only needs the code scanned again. Every other address, GitHub's
  * among them, is checked as Android checks it. React Native's requests and images all go through the OkHttp client
- * this installs, before React Native starts.
+ * this installs, before React Native starts. A connection gives up after CONNECT_TIMEOUT_SECONDS, as React Native's own
+ * client waits forever, and one the network drops, as Android 17 does without the local network access or a home
+ * address does away from home, would leave the screen waiting with no word; the transfer itself has no limit.
  */
 object ServerPin {
+  /** How long a connection may take to open, in seconds: a server on the Wi-Fi answers well within it. */
+  private const val CONNECT_TIMEOUT_SECONDS = 10L
+
   /** The paired server's host, e.g. "192.168.0.10", or null before pairing. */
   @Volatile private var host: String? = null
   /** Its certificate's fingerprint: the SHA-256 of its DER, in base64url without padding. */
@@ -71,6 +77,7 @@ object ServerPin {
       OkHttpClientFactory {
         val tls = SSLContext.getInstance("TLS").apply { init(null, arrayOf(trust), null) }
         OkHttpClientProvider.createClientBuilder(context)
+          .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
           .sslSocketFactory(tls.socketFactory, trust)
           .hostnameVerifier(hostnames)
           .build()
