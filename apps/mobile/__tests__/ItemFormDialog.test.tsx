@@ -541,8 +541,9 @@ test('Mobile: a new item is queued, announced and handed over', async () => {
 });
 
 // Opens the form on an item and checks it is titled with the item's name and its fields are filled in, its vehicle a
-// chip; then changes the quantity and saves, and checks the edit is queued by its id, the brand sent without its
-// quantity and the change as a stock move after it, and the toast says it was saved.
+// chip; then changes the code and the quantity and saves, and checks the edit is queued by its id with only the brands,
+// the brand sent without its quantity, with what the phone saw of it, and the change as a stock move after it, and the
+// toast says it was saved.
 test('Mobile: an item opens filled in and its edit is queued on save, the stock as a move', async () => {
   const tree = await mount(FILTER);
   expect(shows(tree, 'Filtro de óleo')).toBe(true);
@@ -553,9 +554,16 @@ test('Mobile: an item opens filled in and its edit is queued on save, the stock 
   await type(tree, 'Quantidade', '7');
   await type(tree, 'Quantidade', '7a');
   expect(value(tree, 'Quantidade')).toBe('7');
+  await type(tree, 'Código da peça', 'W 712/96');
   await press(tree, 'Salvar alterações');
   const [edit, move] = await queued();
-  expect(edit).toMatchObject({ type: 'updateItem', itemId: FILTER.id, changes: { brands: [{ id: FILTER.brands[0].id, quantity: undefined }] } });
+  expect(edit).toMatchObject({
+    type: 'updateItem',
+    itemId: FILTER.id,
+    changes: { brands: [{ id: FILTER.brands[0].id, code: 'W 712/96', quantity: undefined }] },
+    seen: { brands: { [FILTER.brands[0].id]: { code: 'W 712/95' } } },
+  });
+  expect(edit.type === 'updateItem' && Object.keys(edit.changes)).toEqual(['brands']);
   expect(move).toMatchObject({ type: 'moveStock', itemId: FILTER.id, brandId: FILTER.brands[0].id, delta: 6 });
   expect(shows(tree, 'Item “Filtro de óleo” salvo.')).toBe(true);
 });
@@ -641,7 +649,8 @@ test('Mobile: Excluir in the details asks to confirm and deletes the item', asyn
 });
 
 // Opens the details, presses Editar and checks the fields unlock filled in, under the × and the item's name, with only
-// Salvar alterações at the bottom, then changes the quantity and checks it is queued like an edit.
+// Salvar alterações at the bottom, then changes the quantity and checks it is queued like an edit, the stock alone as a
+// move.
 test('Mobile: Editar unlocks the details and saves like an edit', async () => {
   const onSaved = jest.fn();
   const tree = await mount(FILTER, { onSaved, details: true });
@@ -651,7 +660,7 @@ test('Mobile: Editar unlocks the details and saves like an edit', async () => {
   expect(shows(tree, 'Cancelar')).toBe(false);
   await type(tree, 'Quantidade', '7');
   await press(tree, 'Salvar alterações');
-  expect((await queued()).map((operation) => operation.type)).toEqual(['updateItem', 'moveStock']);
+  expect((await queued()).map((operation) => operation.type)).toEqual(['moveStock']);
   expect(onSaved).toHaveBeenCalledTimes(1);
 });
 
