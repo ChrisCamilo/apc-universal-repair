@@ -37,7 +37,8 @@ const SCREEN_STYLE = { flex: 1 };
 // the sign-up lead to each other. Nothing but the canvas shows while the saved session is read, so neither screen
 // flashes before the right one. When the API refuses the session's token, the session is cleared and the login says
 // it expired, until someone logs in again. Logging out, an expired session and pairing with another server clear the
-// phone's copy of the inventory (see inventoryCopy.ts). A release with no server paired starts on Conectar ao
+// phone's copy of the inventory (see inventoryCopy.ts); the changes made on the phone and not sent yet stay, to go
+// out once logged in again, unless the server changed, as a week's work away from it would be lost. A release with no server paired starts on Conectar ao
 // servidor, which the login and the user menu also open to pair again, as after the computer's address changes; a
 // development build talks
 // to the computer's development API until it pairs. The screen ends where the keyboard starts, so a form under it
@@ -79,7 +80,7 @@ function Screen() {
     () =>
       onSessionExpired(() => {
         auth.logout().catch(() => {});
-        clearCopy();
+        clearCopy({ keepQueue: true });
         setRegistering(false);
         setUser(null);
         setExpired(true);
@@ -109,7 +110,8 @@ function Screen() {
    */
   const connected = (paired: Pairing, loggedIn?: SessionUser) => {
     if (paired.url !== server?.url || paired.fingerprint !== server?.fingerprint) {
-      clearCopy();
+      // The same server at a new address keeps the changes waiting; another server can't take them.
+      clearCopy({ keepQueue: paired.fingerprint === server?.fingerprint });
     }
     setServer(paired);
     setPairing(false);
@@ -121,7 +123,7 @@ function Screen() {
   /** Ends the session and goes back to the login. */
   const logout = async () => {
     await auth.logout();
-    await clearCopy();
+    await clearCopy({ keepQueue: true });
     setRegistering(false);
     setUser(null);
   };
