@@ -402,6 +402,38 @@ test('Mobile: "+ Criar" creates the name in its list and picks it', async () => 
   expect(shows(tree, 'Modelo “XR3” criado.')).toBe(true);
 });
 
+// Types a new category, and a vehicle brand in the vehicle's fields, and checks every scroll view around "+ Criar" and
+// around a listed option keeps a tap that lands on them while the keyboard is up, so the first tap creates or picks
+// instead of only closing the keyboard; a tap anywhere else still closes it, as "handled" lets through only the taps
+// something takes.
+test('Mobile: "+ Criar" and the options take the first tap with the keyboard up', async () => {
+  const tree = await mount();
+  /** Lists the scroll views a row sits in, from the inside out. */
+  const scrollsAround = (label: string) => {
+    let node: ReactTestRenderer.ReactTestInstance | null = tree.root.find(
+      (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === label).length > 0,
+    );
+    const scrolls: ReactTestRenderer.ReactTestInstance[] = [];
+    while (node) {
+      if (node.type === ScrollView) {
+        scrolls.push(node);
+      }
+      node = node.parent;
+    }
+    return scrolls;
+  };
+  await type(tree, 'Categoria', 'motor  diesel');
+  const around = scrollsAround('+ Criar categoria “Motor diesel”');
+  expect(around.length).toBeGreaterThanOrEqual(2);
+  expect(around.map((scroll) => scroll.props.keyboardShouldPersistTaps)).toEqual(around.map(() => 'handled'));
+
+  await press(tree, 'Adicionar veículo');
+  await type(tree, 'Marca do veículo', 'Volks');
+  const option = scrollsAround('Volkswagen');
+  expect(option.length).toBeGreaterThanOrEqual(2);
+  expect(option.map((scroll) => scroll.props.keyboardShouldPersistTaps)).toEqual(option.map(() => 'handled'));
+});
+
 // Creates a part brand that can't be created, and checks a toast says so and the field keeps the typed name, which
 // saving then refuses, pointing to "+ Criar".
 test("Mobile: a name that couldn't be created is reported and not saved", async () => {
