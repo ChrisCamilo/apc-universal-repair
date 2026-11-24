@@ -22,6 +22,7 @@ import {
   type QueuedOperation,
 } from '@apc/domain/sync-queue';
 import { apiUrl } from '../../app/api';
+import { hasLocalNetwork } from '../../app/localNetwork';
 import { clearPhotos, keepThumbnails, releasePhotos } from './photoCache';
 
 // The phone's copy of the paired server's inventory (see @apc/domain/sync-copy), which the Inventory reads, so it works
@@ -35,7 +36,8 @@ import { clearPhotos, keepThumbnails, releasePhotos } from './photoCache';
 // moved, or the copy waited longer than the deletions it keeps); the pages are applied all at once, once the last one is
 // in, and written to disk, so the copy never shows a sync caught halfway, and the operations sent leave the queue, as
 // the copy now holds them. A sync that can't reach the server leaves the copy and what is still waiting as they were,
-// and says so. One sync runs at a time: asking again while one runs gets another after it, as a change made meanwhile
+// and says so; one on a phone without the access to the local network, where the server is (see localNetwork.ts),
+// doesn't try, and says that instead. One sync runs at a time: asking again while one runs gets another after it, as a change made meanwhile
 // may have missed the one running. Logging out and an expired session clear the copy and keep the queue, which goes out
 // once logged in again; pairing with another server clears both, on disk with their key. A sync still running then
 // keeps nothing of what it brought. The photos' thumbnails are kept after each sync, and cleared with the copy; a photo
@@ -48,8 +50,11 @@ const native = NativeModules.InventoryCopy as {
   clear: () => Promise<void>;
 };
 
-/** How a sync ended: the copy caught up with the server, or the server couldn't be reached and the copy stayed. */
-export type SyncResult = 'synced' | 'offline';
+/**
+ * How a sync ended: the copy caught up with the server, or the server couldn't be reached and the copy stayed, or the
+ * phone hasn't the access to the local network to reach it.
+ */
+export type SyncResult = 'synced' | 'offline' | 'blocked';
 /** What the server answered each operation sent: accepted, or refused with why. */
 type Answers = Map<string, { refused?: string }>;
 
@@ -151,6 +156,9 @@ export function syncCopy(): Promise<SyncResult> {
 async function sync(): Promise<SyncResult> {
   const started = generation;
   const copy = await loadCopy();
+  if (!(await hasLocalNetwork())) {
+    return 'blocked';
+  }
   // An answer that isn't one, as one that never came, leaves what waits for the next sync.
   if (!(await send(started).catch(() => false))) {
     return 'offline';

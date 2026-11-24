@@ -6,11 +6,14 @@ import { EMPTY_ITEM_LISTS, type ItemLists } from '@apc/domain/lists';
 import type { CatalogData } from '@apc/domain/catalog';
 import { copyCatalog, copyItems, copyLists, type SyncCopy } from '@apc/domain/sync-copy';
 import { withQueue } from '@apc/domain/sync-queue';
+import { askLocalNetwork, openAppSettings } from '../../app/localNetwork';
 import { loadCopy, loadQueue, onCopyChanged, syncCopy, type SyncResult } from './inventoryCopy';
 
 // The Inventory's and the Catalog's view of the phone's copy of the inventory (see inventoryCopy.ts), with the changes
 // waiting to be sent applied over it (see @apc/domain/sync-queue): its items, lists and catalog, as the API answers
-// them, how many changes wait, and whether the last sync reached the server. The copy syncs when either tab
+// them, how many changes wait, and whether the last sync reached the server, or found the phone without the access to
+// the local network, which allowNetwork asks for, or opens Android's settings for once it was refused for good (see
+// localNetwork.ts); coming back from them to the foreground syncs again. The copy syncs when either tab
 // opens, when the app comes back to the foreground and when the Inventory's list is pulled down, and again after each
 // change the user sends. A list query is answered from the copy the way GET /items answers it (listItems), its pages up
 // to the ones the list shows.
@@ -27,12 +30,16 @@ export type InventoryCopy = {
   syncedAt: Date | null;
   /** Whether the last sync couldn't reach the server. */
   offline: boolean;
+  /** Whether the last sync found the phone without the access to the local network, where the server is. */
+  blocked: boolean;
   /** Whether a sync is running. */
   syncing: boolean;
   /** How many changes made on the phone wait to be sent. */
   waiting: number;
   /** Brings the copy up to date with the server, saying how it went. */
   sync: () => Promise<SyncResult>;
+  /** Asks for the access to the local network and syncs once given, or opens Android's settings when refused for good. */
+  allowNetwork: () => Promise<void>;
 };
 /**
  * Where the list's pages stand: the copy still loading; loaded, with the items of the pages shown, how many match in
@@ -48,6 +55,7 @@ export function useInventoryCopy(): InventoryCopy {
   const [copy, setCopy] = useState<SyncCopy>();
   const [waiting, setWaiting] = useState(0);
   const [offline, setOffline] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const live = useRef(true);
 
@@ -55,7 +63,8 @@ export function useInventoryCopy(): InventoryCopy {
     setSyncing(true);
     const result = await syncCopy();
     if (live.current) {
-      setOffline(result === 'offline');
+      setOffline(result !== 'synced');
+      setBlocked(result === 'blocked');
       setSyncing(false);
     }
     return result;
@@ -89,7 +98,15 @@ export function useInventoryCopy(): InventoryCopy {
   const items = useMemo(() => (copy?.syncedAt ? copyItems(copy) : null), [copy]);
   const lists = useMemo(() => (copy ? copyLists(copy) : EMPTY_ITEM_LISTS), [copy]);
   const catalog = useMemo(() => (copy?.syncedAt ? copyCatalog(copy) : null), [copy]);
-  return { items, lists, catalog, syncedAt: copy?.syncedAt ? new Date(copy.syncedAt) : null, offline, syncing, waiting, sync };
+  const allowNetwork = useCallback(async () => {
+    const access = await askLocalNetwork();
+    if (access === 'blocked') {
+      openAppSettings();
+    } else if (access === 'granted') {
+      sync();
+    }
+  }, [sync]);
+  return { items, lists, catalog, syncedAt: copy?.syncedAt ? new Date(copy.syncedAt) : null, offline, blocked, syncing, waiting, sync, allowNetwork };
 }
 
 /**
