@@ -75,6 +75,10 @@ require('react-native').NativeModules.InventoryCopy = {
   openLockSettings: jest.fn(),
 };
 
+// The notifications in the Android shade are the native side's (SystemNotificationsModule.kt); tests see what it is asked
+// to show.
+require('react-native').NativeModules.SystemNotifications = { show: jest.fn(async () => {}) };
+
 // The photos the phone keeps are files the native side downloads (PhotoCacheModule.kt); tests keep each one's address,
 // "file:///photos/<kind>/<id>", in memory, as if downloaded at once, and every test starts with none. A photo picked
 // is held at "file:///held/<id>" until released.
