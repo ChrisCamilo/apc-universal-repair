@@ -118,7 +118,7 @@ function useCopyState(): InventoryCopy {
           setWaiting(queue.filter((operation) => !operation.sent && !operation.conflicts).length);
           setConflicts(conflictCards(queue));
         }
-      });
+      }, () => {}); // A copy behind the phone's lock is read once AppLock opens it.
     const stop = onCopyChanged(read);
     read();
     sync();

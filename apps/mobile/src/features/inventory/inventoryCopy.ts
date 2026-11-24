@@ -46,14 +46,20 @@ import { clearPhotos, keepThumbnails, releasePhotos } from './photoCache';
 // doesn't try, and says that instead. One sync runs at a time: asking again while one runs gets another after it, as a change made meanwhile
 // may have missed the one running. Logging out and an expired session clear the copy and keep the queue, which goes out
 // once logged in again; pairing with another server clears both, on disk with their key. A sync still running then
-// keeps nothing of what it brought. The photos' thumbnails are kept after each sync, and cleared with the copy; a photo
-// picked for the queue is held until its change leaves it (see photoCache.ts).
+// keeps nothing of what it brought. On a phone with a screen lock, the file opens only once the lock is confirmed
+// (unlockCopy, see AppLock.tsx); while it isn't, reading and writing it are refused, and nothing is taken for no copy.
+// The photos' thumbnails are kept after each sync, and cleared with the copy; a photo picked for the queue is held until
+// its change leaves it (see photoCache.ts).
 
-/** The native side that keeps the copy encrypted on disk (InventoryCopyModule.kt). */
+/** The native side that keeps the copy encrypted on disk (InventoryCopyModule.kt), behind the phone's lock. */
 const native = NativeModules.InventoryCopy as {
   read: () => Promise<string | null>;
   write: (copy: string) => Promise<void>;
   clear: () => Promise<void>;
+  unlock: (title: string, subtitle: string) => Promise<UnlockResult>;
+  lock: () => Promise<void>;
+  hasLock: () => Promise<boolean>;
+  openLockSettings: () => void;
 };
 
 /**
@@ -61,6 +67,8 @@ const native = NativeModules.InventoryCopy as {
  * phone hasn't the access to the local network to reach it.
  */
 export type SyncResult = 'synced' | 'offline' | 'blocked';
+/** How unlocking the copy ended: it can be read, or the phone's lock wasn't confirmed. */
+export type UnlockResult = 'open' | 'cancelled';
 /** What the server answered an operation sent: accepted, refused with why, or in conflict with what changed there. */
 type Answer = { refused?: string; conflicts?: SyncConflict[] };
 /** What the server answered each operation sent. */
@@ -87,7 +95,13 @@ const refusalListeners = new Set<(notices: string[]) => void>();
  */
 export async function loadCopy(): Promise<SyncCopy> {
   if (!held) {
-    const saved = await native.read().catch(() => null);
+    // A copy behind the phone's lock isn't read as none, which the next write would put in its place.
+    const saved = await native.read().catch((error: { code?: string }) => {
+      if (error?.code === 'locked') {
+        throw error;
+      }
+      return null;
+    });
     if (!held) {
       const { queue: kept, ...copy } = saved ? (JSON.parse(saved) as SyncCopy & { queue?: QueuedOperation[] }) : { ...emptyCopy(), queue: [] };
       held = copy;
@@ -425,6 +439,34 @@ export async function clearCopy(options: { keepQueue?: boolean } = {}): Promise<
     options.keepQueue ? Promise.resolve() : releasePhotos([]),
   ]);
   changed();
+}
+
+/**
+ * Opens the copy behind the phone's lock: asks for it (fingerprint, face or screen lock) when the copy is kept behind
+ * one, and keeps the copy's key in memory until lockCopy (see InventoryCopyModule.kt).
+ * @param prompt The prompt's title and what it says under it.
+ * @returns Whether the copy can be read now.
+ */
+export function unlockCopy(prompt: { title: string; subtitle: string }): Promise<UnlockResult> {
+  return native.unlock(prompt.title, prompt.subtitle);
+}
+
+/** Drops the copy's key from memory, so reading or writing the copy waits for unlockCopy. */
+export function lockCopy(): Promise<void> {
+  return native.lock();
+}
+
+/**
+ * Tells whether the phone has a screen lock to keep the copy behind.
+ * @returns True when it has one.
+ */
+export function hasScreenLock(): Promise<boolean> {
+  return native.hasLock();
+}
+
+/** Opens Android's settings for the screen lock. */
+export function openLockSettings(): void {
+  native.openLockSettings();
 }
 
 /**
