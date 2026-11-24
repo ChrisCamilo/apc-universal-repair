@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useMemo, useState, type ComponentProps } from 'react';
-import { Pressable, RefreshControl, Text as RNText, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { AppState, Pressable, RefreshControl, Text as RNText, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { apiFetch } from '@apc/domain/auth';
 import {
   exportIcon,
@@ -89,7 +89,9 @@ import { useMoreActions } from '../dashboard/moreActionsContext';
 // photo changed are queued on the phone (see @apc/domain/sync-queue): they show at once, also away from the server, and
 // go to it as soon as it can be reached, the tile above the list saying how many wait; a change the server refuses
 // says so in a toast, and one that conflicts with what changed on the computer waits for the user to settle it, the
-// tile's "Resolver conflitos" listing each (see ConflictsDialog.tsx). Gerenciar listas, Importar Peças, Exportar Peças and the tutorial need the server, and say so
+// tile's "Resolver conflitos" listing each (see ConflictsDialog.tsx). What another device changed shows by itself: the
+// copy syncs when the app comes back to the foreground, at a pull down on the list, and every AUTO_SYNC_MS while the tab
+// is on screen and nothing is open over the list. Gerenciar listas, Importar Peças, Exportar Peças and the tutorial need the server, and say so
 // while it can't be reached, the tutorial not starting by itself then. A card has no pencil or trash: its details fill the screen (the Detalhes mockup), with Editar
 // and Duplicar at the bottom and Excluir at the top right, which asks to confirm over them and, once the item is gone,
 // closes them too. A card is an item: its
@@ -117,6 +119,8 @@ import { useMoreActions } from '../dashboard/moreActionsContext';
 // and Tutorial do estoque sit in a bottom sheet the header's "⋯" opens (the Mais ações mockup), as the web does on a
 // phone.
 
+/** How often the copy syncs while the tab is on screen, in ms. */
+export const AUTO_SYNC_MS = 30_000;
 // The column after the item's name: its quantity, at the card's end.
 const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
   { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (row) => <StockQuantity {...row.item} /> },
@@ -290,6 +294,33 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const reload = () => {
     copy.sync();
   };
+  // What another device changed shows by itself: besides when the app comes back to the foreground and at a pull down,
+  // the copy syncs every AUTO_SYNC_MS while the tab is on screen, the app in the foreground and nothing open over the
+  // list.
+  const overlaid =
+    form.open ||
+    managing ||
+    moreOpen ||
+    importer.open ||
+    exporter.open ||
+    filtering ||
+    sorting ||
+    removing !== undefined ||
+    viewer !== undefined ||
+    settling ||
+    touring;
+  const { sync } = copy;
+  useEffect(() => {
+    if (overlaid) {
+      return;
+    }
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        sync();
+      }
+    }, AUTO_SYNC_MS);
+    return () => clearInterval(timer);
+  }, [overlaid, sync]);
 
   /**
    * Queues the photos the viewer changed, showing them at once and going back to the ones before if they can't be queued.
