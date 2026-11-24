@@ -319,8 +319,7 @@ export function ItemFormDialog({
       return;
     }
     setSaving(true);
-    const { operations, itemId, brandIds } = itemOperations(itemFormBody(form, options.colors), item, { newId, at: new Date().toISOString() });
-    const { label } = operations[0];
+    const { operations, itemId, brandIds, label } = itemOperations(itemFormBody(form, options.colors), item, { newId, at: new Date().toISOString() });
     try {
       const changes: QueuedOperation[] = [...operations];
       for (const [index, brandId] of brandIds.entries()) {

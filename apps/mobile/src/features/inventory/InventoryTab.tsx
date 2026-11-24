@@ -38,7 +38,7 @@ import { catalogFrom, type InventoryLink } from '@apc/domain/catalog';
 import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
 import { copiedPhotos, ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
 import { copyNotice } from '@apc/domain/sync-copy';
-import { INVENTORY_NEEDS_SERVER, waitingNotice } from '@apc/domain/sync-queue';
+import { conflictsNotice, INVENTORY_NEEDS_SERVER, waitingNotice } from '@apc/domain/sync-queue';
 import { ActionSheet } from '../../components/ActionSheet';
 import { apiUrl } from '../../app/api';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
@@ -52,6 +52,7 @@ import { FilterSheet, SortSheet } from '../../components/FilterSheet';
 import { Icon } from '../../components/Icon';
 import type { UploadPhoto } from '../../components/ImageUpload';
 import { ImageViewer } from '../../components/ImageViewer';
+import { ConflictsDialog } from './ConflictsDialog';
 import { DeleteItemDialog } from './DeleteItemDialog';
 import { ExportItemsDialog } from './ExportItemsDialog';
 import { ImportItemsDialog } from './ImportItemsDialog';
@@ -87,7 +88,8 @@ import { useMoreActions } from '../dashboard/moreActionsContext';
 // The round "+" at the bottom right, above the bottom bar, opens the item form. A save, a delete, a new name and a
 // photo changed are queued on the phone (see @apc/domain/sync-queue): they show at once, also away from the server, and
 // go to it as soon as it can be reached, the tile above the list saying how many wait; a change the server refuses
-// says so in a toast. Gerenciar listas, Importar Peças, Exportar Peças and the tutorial need the server, and say so
+// says so in a toast, and one that conflicts with what changed on the computer waits for the user to settle it, the
+// tile's "Resolver conflitos" listing each (see ConflictsDialog.tsx). Gerenciar listas, Importar Peças, Exportar Peças and the tutorial need the server, and say so
 // while it can't be reached, the tutorial not starting by itself then. A card has no pencil or trash: its details fill the screen (the Detalhes mockup), with Editar
 // and Duplicar at the bottom and Excluir at the top right, which asks to confirm over them and, once the item is gone,
 // closes them too. A card is an item: its
@@ -246,6 +248,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const [removingShown, setRemovingShown] = useState(false);
   // The brand of an item whose photos the viewer shows, while it is open, with the photos on screen.
   const [viewer, setViewer] = useState<{ item: Item; brand: ItemBrand; photos: UploadPhoto[] }>();
+  // Whether the conflicts with the computer are open; they close once the last is settled.
+  const [settling, setSettling] = useState(false);
+  if (settling && copy.conflicts.length === 0) {
+    setSettling(false);
+  }
   const items = state.status === 'ready' ? state.items : [];
   const shown = listed.status === 'ready' ? listed.items : [];
   const rows = shown.map((item): InventoryRow => ({ item }));
@@ -482,12 +489,13 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             }
           />
         </View>
-        {((copy.offline && copy.syncedAt) || copy.waiting > 0) && (
+        {((copy.offline && copy.syncedAt) || copy.waiting > 0 || copy.conflicts.length > 0) && (
           <View accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
             <Text size="sm">
               {[
                 copy.blocked ? LOCAL_NETWORK_TEXTS.missing : copy.offline && copy.syncedAt && copyNotice(copy.syncedAt),
                 copy.waiting > 0 && waitingNotice(copy.waiting),
+                copy.conflicts.length > 0 && conflictsNotice(copy.conflicts.length),
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -495,6 +503,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             {copy.blocked && (
               <Button variant="secondary" size="sm" align="start" onPress={copy.allowNetwork}>
                 {LOCAL_NETWORK_TEXTS.allow}
+              </Button>
+            )}
+            {copy.conflicts.length > 0 && (
+              <Button variant="secondary" size="sm" align="start" onPress={() => setSettling(true)}>
+                Resolver conflitos
               </Button>
             )}
           </View>
@@ -725,6 +738,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         offline={copy.offline}
         onClose={() => setExporter((current) => ({ ...current, open: false }))}
       />
+      <ConflictsDialog open={settling} conflicts={copy.conflicts} onSettle={copy.settle} onClose={() => setSettling(false)} />
       <DeleteItemDialog
         open={removing !== undefined}
         item={removing}
