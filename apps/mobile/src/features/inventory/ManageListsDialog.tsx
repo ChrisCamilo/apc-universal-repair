@@ -16,6 +16,7 @@ import {
   type ListEntryChange,
   type VehicleModel,
 } from '@apc/domain/lists';
+import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
 import { Button } from '../../components/Button';
 import { RowAction } from '../../components/DataTable';
 import { Dialog } from '../../components/Dialog';
@@ -34,7 +35,7 @@ import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useIt
 // models); a name items use can't be deleted, and the dialog says how many items use it, with "Ver itens" to show
 // them in the list. Deleting a vehicle brand or model of the catalog takes it out of the catalog too, which the
 // question says. A toast confirms each rename, merge and delete, and the owner hears of each rename and merge, for its
-// filters.
+// filters. They need the server: while it can't be reached, a change that fails says so.
 
 const KINDS: ItemListKind[] = ['categories', 'partBrands', 'vehicleBrands', 'vehicleModels'];
 
@@ -53,10 +54,13 @@ type ManageListsDialogProps = {
   /** Shows the items using a name in the list, with the filters given. */
   onShowItems: (filters: ItemFilters) => void;
   onClose: () => void;
+  /** Whether the server can't be reached, which a change that fails then says. */
+  offline?: boolean;
 };
 
 export function ManageListsDialog({
   open,
+  offline = false,
   lists,
   items,
   onRename,
@@ -104,7 +108,7 @@ export function ManageListsDialog({
       return;
     }
     if (!renamed) {
-      toast.error(texts.renameFailed);
+      toast.error(offline ? INVENTORY_NEEDS_SERVER.lists : texts.renameFailed);
       return;
     }
     setEditing(undefined);
@@ -123,7 +127,7 @@ export function ManageListsDialog({
     const moved = await onMerge(kind, entry.id, into.id);
     setJoining(false);
     if (moved === null) {
-      toast.error(texts.mergeFailed);
+      toast.error(offline ? INVENTORY_NEEDS_SERVER.lists : texts.mergeFailed);
       return;
     }
     setMerging(undefined);
@@ -142,7 +146,7 @@ export function ManageListsDialog({
     const removed = await onRemove(removing.kind, removing.entry.id);
     setDeleting(false);
     if (!removed) {
-      toast.error(texts.deleteFailed);
+      toast.error(offline ? INVENTORY_NEEDS_SERVER.lists : texts.deleteFailed);
       return;
     }
     setRemoving(undefined);

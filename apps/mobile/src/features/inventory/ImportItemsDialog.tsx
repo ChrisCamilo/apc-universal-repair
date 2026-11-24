@@ -1,3 +1,4 @@
+import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
 import { useState } from 'react';
 import { View } from 'react-native';
 import {
@@ -24,7 +25,7 @@ import { useStyles } from './ImportItemsDialog.styles';
 // ready and the rows with errors, lists the categories, brands and models the import creates, and shows each row as it
 // will be saved, the rows with errors marked with their reasons; rows with the same "item" are the brands of one item.
 // "Importar" sends the valid items only, and a toast says how many items were created and updated; a file that can't
-// be read says why, and another can be picked. It fills the screen, as every form does, with the × at the left of its
+// be read says why, and another can be picked. The import needs the server: while it can't be reached, it says so. It fills the screen, as every form does, with the × at the left of its
 // title.
 
 /** How each list's new names are worded in the preview, e.g. "Categorias: Ignição, Turbo". */
@@ -41,9 +42,11 @@ type ImportItemsDialogProps = {
   onClose: () => void;
   /** Called once the items are imported, so the inventory and the lists load again. */
   onImported: () => void;
+  /** Whether the server can't be reached, which an import that fails then says. */
+  offline?: boolean;
 };
 
-export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportItemsDialogProps) {
+export function ImportItemsDialog({ open, lists, onClose, onImported, offline = false }: ImportItemsDialogProps) {
   const { styles, ids } = useStyles();
   const toast = useToast();
   // The file read, with its name.
@@ -77,7 +80,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
     const result = await importItems(apiUrl(), rows);
     setImporting(false);
     if (!result) {
-      toast.error('Não foi possível importar os itens. Tente de novo.');
+      toast.error(offline ? INVENTORY_NEEDS_SERVER.import : 'Não foi possível importar os itens. Tente de novo.');
       return;
     }
     toast.success(importedSummary(result));
