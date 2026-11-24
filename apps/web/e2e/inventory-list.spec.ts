@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { rgb } from "./support/expect.ts";
@@ -12,8 +13,8 @@ import { item, ITEMS } from "./data/items.ts";
 import { openInventory, layout } from "./support/inventory.ts";
 import { apiUrl } from "./support/api.ts";
 
-// The Inventory's list: its rows, stock alerts and states, its layout in the window, sorting, pages, and an item of
-// several brands.
+// The Inventory's list: its rows, stock alerts and states, its layout in the window, sorting, pages, an item of
+// several brands, and a change made on another device showing when the window comes back.
 
 // Lists every item with the counter of the total and the stock alerts, the price in reais, "qualquer
 // modelo" for an item without a vehicle model, N/A muted with its full name as a tooltip, and the low and
@@ -457,4 +458,42 @@ test("Web: on a phone a card of several brands opens the item's details", { tag:
   await rows.nth(0).getByText("Pastilha dianteira").click();
   await expect(itemDetails(page).root).toBeVisible();
   await expect(rows).toHaveCount(1);
+});
+
+/**
+ * Brings the window back to the foreground, as the browser and the desktop app tell the page.
+ * @param page The test's page.
+ */
+async function comeBack(page: Page) {
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+
+// Searches the list, then adds an item that matches the search, as another device would, and brings the window back
+// with the item form open over the list, and checks nothing loads under it; then closes the form, brings the window
+// back again, and checks the new item shows with the search kept.
+test("Web: a change made on another device shows when the window comes back", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+  const stock = [...ITEMS];
+  await serveItems(page, stock);
+  await page.goto("/inventory");
+  const { search, newItem } = inventory(page);
+  const { rows } = dataTable(page);
+  await search.fill("freio");
+  await expect(rows).toHaveCount(1);
+
+  stock.unshift(item({ code: "DF-300", name: "Disco de freio", category: "Freios", partBrand: "Fremax", vehicleBrand: "Fiat", vehicleModel: "Uno", quantity: 3, minQuantity: 1, unitPriceCents: 15990 }));
+  await newItem.click();
+  const form = itemForm(page, "Novo item");
+  await expect(form.root).toBeVisible();
+  await comeBack(page);
+  await form.cancel.click();
+  await expect(form.root).toBeHidden();
+  await expect(rows).toHaveCount(1);
+
+  await comeBack(page);
+  await expect(rows).toHaveCount(2);
+  await expect(rows.first()).toContainText("Disco de freio");
+  await expect(search).toHaveValue("freio");
 });
