@@ -22,6 +22,7 @@ import { PhoneHeaderContext, type PhoneHeader } from '../src/features/dashboard/
 import { InventoryLinkContext } from '../src/features/dashboard/inventoryLinkContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
+import { InventoryCopyProvider } from '../src/features/inventory/useInventoryCopy';
 import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
 import { syncAnswer } from '@apc/domain/test-sync';
@@ -60,6 +61,9 @@ const PARTS: Item[] = [
  * @param open Takes the link the Catalog opens the Inventory on.
  * @returns The rendered tree.
  */
+/** Trees the tests rendered, unmounted after each so the copy's syncs don't outlive it. */
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
+
 async function mount(style: Style, mode: Mode, open: (link: InventoryLink) => void = () => {}) {
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
@@ -72,6 +76,7 @@ async function mount(style: Style, mode: Mode, open: (link: InventoryLink) => vo
       </SafeAreaProvider>,
     );
   });
+  mounted.push(tree!);
   return tree!;
 }
 
@@ -148,7 +153,8 @@ beforeEach(async () => {
   answer(() => ({ ok: true, json: () => Promise.resolve({ items: [], total: 0 }) }));
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await ReactTestRenderer.act(async () => mounted.splice(0).forEach((tree) => tree.unmount()));
   jest.restoreAllMocks();
 });
 
@@ -710,7 +716,9 @@ function Harness({ open }: { open: (link: InventoryLink) => void }) {
         <Text accessibilityRole="header" testID="harness.title">
           {header?.title ?? 'Catálogo'}
         </Text>
-        <CatalogTab />
+        <InventoryCopyProvider>
+          <CatalogTab />
+        </InventoryCopyProvider>
       </InventoryLinkContext.Provider>
     </PhoneHeaderContext.Provider>
   );
