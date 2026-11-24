@@ -1,7 +1,7 @@
 import type { SyncOperation, SyncOperationResult } from "@apc/domain/sync";
 import type { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../db/client.js";
-import { createItem, deleteItem, moveStock, updateItem, type ItemChange } from "../inventory/itemChanges.js";
+import { createItem, deleteItem, ID_TAKEN, moveStock, updateItem, type ItemChange } from "../inventory/itemChanges.js";
 import { removePhotoFiles } from "../inventory/photos.js";
 
 // Applies a phone's batch of operations (POST /sync/operations, see @apc/domain/sync), in order, each once: an
@@ -10,7 +10,8 @@ import { removePhotoFiles } from "../inventory/photos.js";
 // and changes nothing, even when both arrive at once (the second finds the first's answer once it is in). Each one
 // follows the item routes' rules (see inventory/itemChanges.ts) and answers the status the route would: an operation
 // refused (a code another item uses, an item that isn't there) is kept as refused, and the ones after it still run. A
-// new item takes the ids the phone gave it and its brands, refused with 409 when one is already taken. The photo
+// new item takes the ids the phone gave it and its brands, as does a brand an edit adds, refused with 409 when one is
+// already taken; a brand an edit keeps without a quantity keeps its own, as the phone sends stock as moves. The photo
 // files an operation leaves behind are removed once it is in.
 
 /** The status the item route answers each kind of operation applied with. */
@@ -76,12 +77,12 @@ async function changeOf(tx: Prisma.TransactionClient, operation: SyncOperation):
       const brandIds = operation.item.brands.flatMap((brand) => (brand.id ? [brand.id] : []));
       const taken = (await tx.item.count({ where: { id: operation.itemId } })) + (await tx.itemBrand.count({ where: { id: { in: brandIds } } }));
       if (taken > 0) {
-        return { ok: false, rejection: { statusCode: 409, error: "Conflict", message: "The id of the item or of one of its brands is already taken." } };
+        return { ok: false, rejection: ID_TAKEN };
       }
       return createItem(tx, operation.item, { itemId: operation.itemId });
     }
     case "updateItem":
-      return updateItem(tx, operation.itemId, operation.changes);
+      return updateItem(tx, operation.itemId, operation.changes, { newBrandIds: true });
     case "deleteItem":
       return deleteItem(tx, operation.itemId);
     case "moveStock":
