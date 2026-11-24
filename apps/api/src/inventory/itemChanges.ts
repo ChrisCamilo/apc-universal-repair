@@ -9,7 +9,9 @@ import { listIds } from "./listIds.js";
 // another item uses is refused with 409, naming that item and the code, and one used twice in the item with 400. An
 // edit that sends original codes, or vehicles, sends the whole new list. An edit that sends brands sends the whole new
 // set: a brand with its id is kept and changed, one without is added, and one left out is deleted with its photos'
-// files; an item keeps at least one. The item's quantity is its brands' sum. A stock move adds to a brand's quantity,
+// files; an item keeps at least one. A brand kept without a quantity keeps its own, as a phone sends its stock as moves.
+// A phone's edit may add a brand with the id it gave it, refused with 409 when a brand already has it. The item's
+// quantity is its brands' sum. A stock move adds to a brand's quantity,
 // which stops at 0. Each change runs on the client it is given, in a transaction the caller opens, and answers the item
 // as saved, or why it was refused, as the route answers it; the photo files a change leaves behind are removed by the
 // caller once the transaction is in.
@@ -27,6 +29,8 @@ type SentCode = { code: string; field: string };
 export const ITEM_NOT_FOUND: ItemRejection = { statusCode: 404, error: "Not Found", message: "Item not found." };
 /** Refuses a brand sent with the id of a brand that isn't the item's. */
 const FOREIGN_BRAND: ItemRejection = { statusCode: 400, error: "Bad Request", message: "A brand sent with an id must be one of this item's." };
+/** Refuses an id a phone gave an item or a brand that another one already has. */
+export const ID_TAKEN: ItemRejection = { statusCode: 409, error: "Conflict", message: "The id of the item or of one of its brands is already taken." };
 
 /**
  * Refuses a change.
@@ -99,8 +103,9 @@ function sentCodes(body: { brands?: readonly { code: string }[]; originalCodes?:
 }
 
 /**
- * Saves an item's new set of brands: the ones left out are deleted, the ones with an id changed and the others added,
- * each at its place in the set, and the item's quantity becomes their sum.
+ * Saves an item's new set of brands: the ones left out are deleted, the item's ones changed, keeping their quantity
+ * when sent without one, and the others added, with the id a phone gave them, each at its place in the set; the item's
+ * quantity becomes their sum.
  * @param tx Database client, in the edit's transaction.
  * @param itemId The item.
  * @param brands The whole new set, as sent.
@@ -111,10 +116,11 @@ async function saveBrands(tx: Prisma.TransactionClient, itemId: string, brands: 
   await tx.itemBrand.deleteMany({ where: { itemId, id: { in: heldIds.filter((id) => !kept.has(id)) } } });
   for (const [position, brand] of brands.entries()) {
     const data = brandData(brand, (await listIds(tx, { partBrand: brand.partBrand })).partBrandId!, position);
-    if (brand.id) {
-      await tx.itemBrand.update({ where: { id: brand.id }, data });
+    if (brand.id && heldIds.includes(brand.id)) {
+      const { quantity, ...rest } = data;
+      await tx.itemBrand.update({ where: { id: brand.id }, data: brand.quantity === undefined ? rest : { ...rest, quantity } });
     } else {
-      await tx.itemBrand.create({ data: { ...data, itemId } });
+      await tx.itemBrand.create({ data: { ...data, itemId, ...(brand.id && { id: brand.id }) } });
     }
   }
   await syncQuantity(tx, itemId);
@@ -156,9 +162,16 @@ export async function createItem(tx: Prisma.TransactionClient, body: ItemCreate,
  * @param tx Database client, in a transaction.
  * @param id The item.
  * @param body The edit as sent.
+ * @param ids Whether a brand may come with an id the phone gave it, which it is added with; otherwise a brand's id must
+ * be one of the item's.
  * @returns The item as saved, with the files of the photos of the brands it deleted, or why it was refused.
  */
-export async function updateItem(tx: Prisma.TransactionClient, id: string, body: ItemUpdate): Promise<ItemChange<ItemRow>> {
+export async function updateItem(
+  tx: Prisma.TransactionClient,
+  id: string,
+  body: ItemUpdate,
+  ids: { newBrandIds?: boolean } = {},
+): Promise<ItemChange<ItemRow>> {
   const held = await tx.item.findUnique({
     where: { id },
     select: { originalCodes: { select: { code: true } }, brands: { select: { id: true, code: true, photos: true } } },
@@ -168,8 +181,12 @@ export async function updateItem(tx: Prisma.TransactionClient, id: string, body:
   }
   const { brands, originalCodes, vehicles } = body;
   const heldIds = held.brands.map((brand) => brand.id);
-  if (brands?.some((brand) => brand.id && !heldIds.includes(brand.id))) {
+  const newIds = (brands ?? []).flatMap((brand) => (brand.id && !heldIds.includes(brand.id) ? [brand.id] : []));
+  if (newIds.length > 0 && !ids.newBrandIds) {
     return refused(FOREIGN_BRAND);
+  }
+  if (newIds.length > 0 && (await tx.itemBrand.count({ where: { id: { in: newIds } } })) > 0) {
+    return refused(ID_TAKEN);
   }
   // The codes the item holds after the edit: the ones sent, or the ones it keeps.
   const repeated = repeatedCode([

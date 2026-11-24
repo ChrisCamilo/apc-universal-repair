@@ -7,10 +7,12 @@ import { Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import { INVENTORY_TUTORIAL_STORAGE_KEY, TUTORIAL_CODE } from '@apc/domain/inventory-tutorial';
+import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
 import { matchesSearch, type Item } from '@apc/domain/items';
 import { ITEM_LIST_PATHS } from '@apc/domain/lists';
 import { syncAnswer } from '@apc/domain/test-sync';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
+import { syncCopy } from '../src/features/inventory/inventoryCopy';
 import { InventoryTab } from '../src/features/inventory/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
@@ -24,9 +26,9 @@ const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 
 /**
  * Answers the API as it would, keeping what is sent: the items (narrowed by the search), empty lists, and new,
- * changed (taking the item's place) and deleted items.
+ * changed (taking the item's place) and deleted items, a delete also as a phone's operation.
  * @param stock The items in stock, changed as requests come.
- * @returns The requests that changed the stock, e.g. "POST /items".
+ * @returns The requests that changed the stock, e.g. "POST /items", and each operation, e.g. "deleteItem".
  */
 function answerApi(stock: Item[]): string[] {
   const changes: string[] = [];
@@ -43,6 +45,16 @@ function answerApi(stock: Item[]): string[] {
     if (method === 'GET') {
       const matching = stock.filter((held) => matchesSearch(held, searchParams.get('q') ?? ''));
       return reply({ items: matching, total: matching.length });
+    }
+    if (pathname === '/sync/operations') {
+      const { operations } = JSON.parse(String(init?.body)) as { operations: { id: string; type: string; itemId: string }[] };
+      for (const operation of operations) {
+        changes.push(operation.type);
+        if (operation.type === 'deleteItem') {
+          stock.splice(0, stock.length, ...stock.filter((held) => held.id !== operation.itemId));
+        }
+      }
+      return reply({ results: operations.map((operation) => ({ id: operation.id, status: 'applied', statusCode: 200 })) });
     }
     changes.push(`${method} ${pathname.replace(/[0-9a-f-]{36}$/, ':id')}`);
     if (method === 'POST' || method === 'PATCH') {
@@ -182,7 +194,8 @@ test('Mobile: the Inventory tutorial starts by itself and creates the test item'
 
 // Runs the tutorial to part 3 and checks the steps name the phone's layout; then, as the cards have no pencil or
 // trash, the second edit opens the test item's details from its card and Editar there, and the delete opens them again
-// and asks with Excluir item, whose confirmation deletes the test item and ends the tutorial.
+// and asks with Excluir item, whose confirmation queues the test item's delete, which goes out at once, and ends the
+// tutorial.
 test('Mobile: the Inventory tutorial edits and deletes the test item through its details', async () => {
   const stock: Item[] = [];
   const changes = answerApi(stock);
@@ -206,7 +219,7 @@ test('Mobile: the Inventory tutorial edits and deletes the test item through its
   await press(tree, 'Excluir');
   await wait(1000);
   expect(texts(tree)).toContain('Pronto!');
-  expect(changes).toEqual(['POST /items', 'PATCH /items/:id', 'PATCH /items/:id', 'DELETE /items/:id']);
+  expect(changes).toEqual(['POST /items', 'PATCH /items/:id', 'PATCH /items/:id', 'deleteItem']);
   expect(stock).toEqual([]);
 });
 
@@ -229,6 +242,20 @@ test('Mobile: skipping the Inventory tutorial deletes the test item, and it can 
   await ReactTestRenderer.act(async () => replay?.());
   await wait(500);
   expect(texts(tree)).toContain('Abra o cadastro');
+});
+
+// Opens the Inventory tab on the user's first login with a copy on the phone and the server away, and checks the
+// tutorial doesn't start by itself, as it needs the server; asked for from the user menu, it says so.
+test('Mobile: away from the server, the Inventory tutorial waits, and asked for says it needs it', async () => {
+  answerApi([]);
+  await syncCopy();
+  (fetch as jest.Mock).mockImplementation(() => Promise.reject(new TypeError('Network request failed')));
+  const tree = await mount();
+  expect(texts(tree)).not.toContain('Abra o cadastro');
+  await ReactTestRenderer.act(async () => replay?.());
+  await wait(500);
+  expect(texts(tree)).not.toContain('Abra o cadastro');
+  expect(texts(tree)).toContain(INVENTORY_NEEDS_SERVER.tutorial);
 });
 
 // The replay of the tutorial, as the user menu asks for it.

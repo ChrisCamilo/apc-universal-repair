@@ -69,15 +69,24 @@ function item(n: number, fields: FlatItem & Required<Pick<FlatItem, 'code' | 'na
 /**
  * Answers every items request from a list of items, as the API would: narrowed by the search, the categories and the
  * stock status, sorted by a column when asked, one page at a time when a page size is asked, with how many match in all; and the item lists, with
- * what the items use at first. Requests a test answers itself, with mockResolvedValueOnce, come first.
+ * what the items use at first; and a phone's operations as applied, a delete taking its item out of the stock. Requests a test answers itself,
+ * with mockResolvedValueOnce, come first.
  * @param stock The items in stock, newest first; read on every request.
  */
 function answerItems(stock: Item[]) {
   const lists = itemListsOf(stock);
-  (fetch as jest.Mock).mockImplementation(async (url: string) => {
+  (fetch as jest.Mock).mockImplementation(async (url: string, init?: RequestInit) => {
     const { pathname, searchParams: query } = new URL(url);
     if (pathname === '/sync/changes') {
       return syncAnswer(query, stock);
+    }
+    if (pathname === '/sync/operations') {
+      const { operations } = JSON.parse(String(init?.body)) as { operations: { id: string; type: string; itemId: string }[] };
+      for (const operation of operations.filter((each) => each.type === 'deleteItem')) {
+        stock.splice(0, stock.length, ...stock.filter((held) => held.id !== operation.itemId));
+      }
+      const results = operations.map((operation) => ({ id: operation.id, status: 'applied', statusCode: 200 }));
+      return { ok: true, status: 200, json: () => Promise.resolve({ results }) };
     }
     const list = (Object.keys(ITEM_LIST_PATHS) as ItemListKind[]).find((kind) => pathname === ITEM_LIST_PATHS[kind]);
     if (list) {
@@ -197,8 +206,8 @@ test('Mobile: the search finds items by name or part code', async () => {
 });
 
 // Presses "Novo item" and checks the empty form opens, then closes it, opens a card's details, which the card has no
-// pencil for, and presses Editar there, and checks the form opens on that item; saving it with a quantity changed brings
-// the phone's copy up to date, from a full copy when the server answers its cursor with 410.
+// pencil for, and presses Editar there, and checks the form opens on that item; saving it with a quantity changed sends
+// the edit queued, then brings the phone's copy up to date, from a full copy when the server answers its cursor with 410.
 test('Mobile: "Novo item" and the details\' Editar open the item form, and a save reloads the list', async () => {
   const tree = await mount();
   const card = (name: string) =>
@@ -230,10 +239,9 @@ test('Mobile: "Novo item" and the details\' Editar open the item form, and a sav
   const quantity = dialog()!.findAll((n) => n.type === TextInput && n.props.accessibilityLabel === 'Quantidade')[0];
   await ReactTestRenderer.act(async () => quantity.props.onChangeText('7'));
   (fetch as jest.Mock).mockClear();
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(ITEMS[0]) });
   await ReactTestRenderer.act(async () => pressable('Salvar alterações').props.onPress());
   expect((fetch as jest.Mock).mock.calls.map(([url]) => url.replace(/^https?:\/\/[^/]+/, ''))).toEqual([
-    `/items/${ITEMS[0].id}`,
+    '/sync/operations',
     '/sync/changes?since=test-database.1',
     '/sync/changes',
   ]);
@@ -241,8 +249,8 @@ test('Mobile: "Novo item" and the details\' Editar open the item form, and a sav
 });
 
 // Opens a card's details, which the card has no trash for, and presses Excluir there, and checks the confirmation names
-// the item and its code, then confirms and checks the item is deleted by its id, the list loads again without it, and
-// the confirmation and the details close.
+// the item and its code, then confirms and checks the item's delete is sent by its id, the list loads again without it,
+// and the confirmation and the details close.
 test('Mobile: Excluir in the details asks to confirm, and a delete reloads the list', async () => {
   const stock = [...ITEMS];
   const tree = await mount(stock);
@@ -267,15 +275,13 @@ test('Mobile: Excluir in the details asks to confirm, and a delete reloads the l
   expect(texts(tree)).toContain('Excluir item?');
   expect(texts(tree)).toContain("Bomba d'água (BA-77) sai do estoque. Essa ação não pode ser desfeita.");
   (fetch as jest.Mock).mockClear();
-  (fetch as jest.Mock).mockImplementationOnce(async () => {
-    stock.splice(2, 1);
-    return { ok: true, status: 204 };
-  });
   const confirm = dialog()!.findAll(
     (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Excluir').length > 0,
   )[0];
   await ReactTestRenderer.act(async () => confirm.props.onPress());
-  expect(fetch).toHaveBeenNthCalledWith(1, expect.stringMatching(new RegExp(`/items/${ITEMS[2].id}$`)), { method: 'DELETE' });
+  const [url, init] = (fetch as jest.Mock).mock.calls[0];
+  expect(url).toMatch(/\/sync\/operations$/);
+  expect(JSON.parse(init.body).operations).toEqual([{ id: expect.any(String), type: 'deleteItem', itemId: ITEMS[2].id }]);
   expect(dialog()).toBeUndefined();
   expect(texts(tree)).toContain('2 de 2 itens · 1 baixo · 0 esgotados');
 });
@@ -431,6 +437,43 @@ test('Mobile: away from the server, the list shows the copy and says from when',
 
   answerItems(ITEMS);
   await ReactTestRenderer.act(async () => scroll().props.refreshControl.props.onRefresh());
+  expect(notice()).toBeUndefined();
+});
+
+// Takes the server away, then deletes an item, and checks the card leaves at once and the tile says the copy is shown
+// and one change waits; with the server back, pulling the list sends the delete and the tile goes.
+test('Mobile: away from the server, a delete shows at once and waits to be sent', async () => {
+  const stock = [...ITEMS];
+  const tree = await mount(stock);
+  const scroll = () => tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
+  const cards = () => tree.root.findAll((n) => n.props.testID === 'common.data-table.table.row' && typeof n.type === 'string');
+  const notice = () => texts(tree).find((text) => text.startsWith('Sem conexão com o servidor.') || text.endsWith('esperando o servidor.'));
+  const pressable = (name: string) =>
+    tree.root.findAll(
+      (n) =>
+        typeof n.props.onPress === 'function' &&
+        (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+    )[0];
+  (fetch as jest.Mock).mockImplementation(() => Promise.reject(new TypeError('Network request failed')));
+  await ReactTestRenderer.act(async () => scroll().props.refreshControl.props.onRefresh());
+
+  const card = tree.root.findAll(
+    (n) => typeof n.type !== 'string' && n.props.testID === 'common.data-table.table.row' && n.findAll((c) => c.type === Text && c.props.children === "Bomba d'água").length > 0,
+  )[0];
+  await ReactTestRenderer.act(async () => card.props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Excluir item').props.onPress());
+  const confirm = tree.root
+    .findAllByType(Modal)
+    .find((modal) => modal.props.visible)!
+    .findAll((n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Excluir').length > 0)[0];
+  await ReactTestRenderer.act(async () => confirm.props.onPress());
+  expect(cards()).toHaveLength(2);
+  expect(notice()).toMatch(/^Sem conexão com o servidor\. Mostrando a cópia de .+\. 1 alteração esperando o servidor\.$/);
+
+  answerItems(stock);
+  await ReactTestRenderer.act(async () => scroll().props.refreshControl.props.onRefresh());
+  expect(stock.map((each) => each.name)).toEqual(['Filtro de óleo', 'Pastilha de freio']);
+  expect(cards()).toHaveLength(2);
   expect(notice()).toBeUndefined();
 });
 

@@ -12,6 +12,7 @@ import type { ItemCreate } from '@apc/domain/items';
 import type { ItemLists } from '@apc/domain/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
+import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
 import { ImportItemsDialog } from '../src/features/inventory/ImportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
@@ -53,16 +54,17 @@ function answerPick(text: string) {
  * Renders the dialog inside the theme and toast providers.
  * @param onImported Called once the items are imported.
  * @param onClose Called when the dialog asks to close.
+ * @param offline Whether the server can't be reached.
  * @returns The rendered tree.
  */
-async function mount(onImported = () => {}, onClose = () => {}) {
+async function mount(onImported = () => {}, onClose = () => {}, offline = false) {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
           <ToastProvider>
-            <ImportItemsDialog open lists={LISTS} onClose={onClose} onImported={onImported} />
+            <ImportItemsDialog open lists={LISTS} onClose={onClose} onImported={onImported} offline={offline} />
           </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>,
@@ -174,6 +176,19 @@ test('Mobile: the valid rows are imported', async () => {
   ]);
   expect(texts(tree.root)).toContain('Importação concluída: 1 item criado, 1 atualizado.');
   expect(onImported).toHaveBeenCalledTimes(1);
+});
+
+// Imports a file while the server can't be reached and checks the toast says the import needs it, and nothing is
+// handed over.
+test('Mobile: away from the server, the import says it needs it', async () => {
+  const onImported = jest.fn();
+  const tree = await mount(onImported, () => {}, true);
+  answerPick(FILE);
+  await press(tree, 'Escolher arquivo');
+  (fetch as jest.Mock).mockRejectedValueOnce(new TypeError('Network request failed'));
+  await press(tree, 'Importar 3 itens');
+  expect(texts(tree.root)).toContain(INVENTORY_NEEDS_SERVER.import);
+  expect(onImported).not.toHaveBeenCalled();
 });
 
 // Picks a file without the required columns and checks it says why with nothing to import; a canceled pick changes

@@ -1,3 +1,4 @@
+import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
 import { useState } from 'react';
 import { csvExportName, exportedSummary, exportItems, exportScope } from '@apc/domain/item-csv';
 import { exportMercadoLivre, mercadoLivreExportName, mercadoLivreSummary } from '@apc/domain/mercado-livre-csv';
@@ -14,7 +15,8 @@ import { shareCsv } from './csv';
 // item's photo paths, off by default. "Exportar" fetches every item of the list and hands the CSV, in the import's
 // format, to the phone's share sheet, to save it or send it to a computer; once shared, the dialog closes and a toast
 // says how many items went into the file. When the items can't be fetched, a toast says so and the dialog stays open,
-// as it does when the share sheet is closed without sharing. "Exportar para o Mercado Livre", off by default, shares
+// as it does when the share sheet is closed without sharing; while the server can't be reached, it says the export
+// needs it. "Exportar para o Mercado Livre", off by default, shares
 // instead the listings' CSV in Mercado Livre's words, one for each brand with stock and a price it takes, to copy into
 // the spreadsheet of its Anunciador em massa; the phone has no zip for the photos, which the computer's export brings.
 // The photo paths' switch hides meanwhile, and the toast also says how many brands were left out. With nothing in the
@@ -30,6 +32,8 @@ type ExportItemsDialogProps = {
   /** Whether the search, the filters or the stock status narrow the list. */
   narrowed: boolean;
   onClose: () => void;
+  /** Whether the server can't be reached, which an export that fails then says. */
+  offline?: boolean;
 };
 
 /**
@@ -48,7 +52,7 @@ async function exportFile(query: string, { photos, mercadoLivre }: { photos: boo
   return exported && { name: csvExportName(new Date()), csv: exported.csv, summary: exportedSummary(exported.count) };
 }
 
-export function ExportItemsDialog({ open, query, count, narrowed, onClose }: ExportItemsDialogProps) {
+export function ExportItemsDialog({ open, query, count, narrowed, onClose, offline = false }: ExportItemsDialogProps) {
   const toast = useToast();
   const [photos, setPhotos] = useState(false);
   const [mercadoLivre, setMercadoLivre] = useState(false);
@@ -60,7 +64,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
     const file = await exportFile(query, { photos, mercadoLivre });
     if (!file) {
       setExporting(false);
-      toast.error('Não foi possível exportar os itens. Tente de novo.');
+      toast.error(offline ? INVENTORY_NEEDS_SERVER.export : 'Não foi possível exportar os itens. Tente de novo.');
       return;
     }
     const shared = await shareCsv(file.name, file.csv);

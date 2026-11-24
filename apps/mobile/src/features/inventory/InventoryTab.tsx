@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useState, type ComponentProps } from 'react';
 import { Pressable, RefreshControl, Text as RNText, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { apiFetch } from '@apc/domain/auth';
 import {
@@ -32,13 +32,13 @@ import {
   itemListQuery,
   matchingCount,
 } from '@apc/domain/item-filters';
-import { EMPTY_ITEM_LISTS } from '@apc/domain/lists';
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form';
 import { isTestItem, TUTORIAL_CODE } from '@apc/domain/inventory-tutorial';
-import type { InventoryLink } from '@apc/domain/catalog';
+import { catalogFrom, type InventoryLink } from '@apc/domain/catalog';
 import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
 import { copiedPhotos, ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
 import { copyNotice } from '@apc/domain/sync-copy';
+import { INVENTORY_NEEDS_SERVER, waitingNotice } from '@apc/domain/sync-queue';
 import { ActionSheet } from '../../components/ActionSheet';
 import { apiUrl } from '../../app/api';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
@@ -55,14 +55,16 @@ import { ExportItemsDialog } from './ExportItemsDialog';
 import { ImportItemsDialog } from './ImportItemsDialog';
 import { ItemFormDialog } from './ItemFormDialog';
 import { ManageListsDialog } from './ManageListsDialog';
-import { pickPhotos, savePhotos } from './photos';
+import { enqueue, onRefused } from './inventoryCopy';
+import { pickPhotos } from './photos';
+import { photosOperation } from './queuedPhotos';
 import { heldPhotos, keepFullPhotos, photoSource, usePhotoCache } from './photoCache';
 import { useCopyPages, useInventoryCopy } from './useInventoryCopy';
 import { useItemLists } from './useItemLists';
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts';
-import { useCatalog } from '../catalog/useCatalog';
 import { Skeleton } from '../../components/Skeleton';
 import { Spinner } from '../../components/Spinner';
+import { useToast } from '../../components/Toast';
 import { SearchField } from '../../components/TextField';
 import { useTheme } from '../../app/theme';
 import { ToolButton } from '../../components/ToolButton';
@@ -80,8 +82,11 @@ import { useMoreActions } from '../dashboard/moreActionsContext';
 // counter of the items shown, the total and the stock alerts, and every item as a card, all scrolling together. Low
 // and out-of-stock cards are tinted by the table, and an item that reaches its minimum raises a warning in Alertas,
 // once while it stays there (a toast too when a save or an import brought it there).
-// The round "+" at the bottom right, above the bottom bar, opens the item form, and the list loads again once an item
-// is saved or deleted. A card has no pencil or trash: its details fill the screen (the Detalhes mockup), with Editar
+// The round "+" at the bottom right, above the bottom bar, opens the item form. A save, a delete, a new name and a
+// photo changed are queued on the phone (see @apc/domain/sync-queue): they show at once, also away from the server, and
+// go to it as soon as it can be reached, the tile above the list saying how many wait; a change the server refuses
+// says so in a toast. Gerenciar listas, Importar Peças, Exportar Peças and the tutorial need the server, and say so
+// while it can't be reached, the tutorial not starting by itself then. A card has no pencil or trash: its details fill the screen (the Detalhes mockup), with Editar
 // and Duplicar at the bottom and Excluir at the top right, which asks to confirm over them and, once the item is gone,
 // closes them too. A card is an item: its
 // name, its first code with its part brand or how many brands make it, and where it fits, what it is made of and its price;
@@ -194,11 +199,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const listed = useCopyPages(copy, itemListQuery(filters, status, { search, pageSize: SCROLL_PAGE_SIZE, sort }), pages);
   // Each time the stock loads, warn about the items newly at or below their minimum.
   useLowStockAlerts(state.status === 'ready' ? state.items : null, userId);
-  // The lists the item form picks from and creates names in: the server's, or the copy's while the server can't load them.
-  const { lists: loadedLists, create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry, reload: reloadLists } = useItemLists();
-  const lists = loadedLists === EMPTY_ITEM_LISTS ? copy.lists : loadedLists;
-  // The catalog, for the generations and versions the item form offers for a vehicle.
-  const catalog = useCatalog();
+  // The lists the item form picks from and creates names in, from the copy, with the names queued.
+  const { lists } = copy;
+  const { create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry } = useItemLists(lists);
+  // The catalog, from the copy, for the generations and versions the item form offers for a vehicle.
+  const catalog = useMemo(() => (copy.catalog ? catalogFrom(copy.catalog) : undefined), [copy.catalog]);
+  const toast = useToast();
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false);
   // Whether the sheet of the other actions, which the header's "⋯" opens, is open.
@@ -277,22 +283,25 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   };
 
   /**
-   * Saves the photos the viewer changed, showing them at once and going back to the saved ones if they can't be saved.
+   * Queues the photos the viewer changed, showing them at once and going back to the ones before if they can't be queued.
    * @param photos The brand's photos after the change.
-   * @returns Whether they were saved.
+   * @returns Whether they were queued.
    */
   const changePhotos = async (photos: UploadPhoto[]) => {
     if (!viewer) {
       return false;
     }
     setViewer({ ...viewer, photos });
-    const saved = await savePhotos(viewer.item, viewer.brand, photos);
-    if (!saved) {
+    const queued = await photosOperation({ itemId: viewer.item.id, brandId: viewer.brand.id, label: viewer.item.name }, viewer.brand.photos, photos)
+      .then((change) => change && enqueue([change]))
+      .then(
+        () => true,
+        () => false,
+      );
+    if (!queued) {
       setViewer((current) => current && { ...current, photos: viewer.photos });
       return false;
     }
-    const brand = saved.brands.find((each) => each.id === viewer.brand.id) ?? viewer.brand;
-    setViewer((current) => current && { item: saved, brand, photos: heldPhotos(brand.photos) });
     reload();
     return true;
   };
@@ -328,7 +337,6 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     const json = body === undefined ? {} : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
     await apiFetch(url, { method, ...json }).catch(() => null);
     reload();
-    reloadLists();
   };
 
   /** Deletes the tutorial's test item, if one is left from a run that didn't end, and loads the list again. */
@@ -363,8 +371,10 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     return () => handMore(null);
   }, [handMore]);
 
-  // Run the tutorial by itself the first time, once the items are in, and again when the user menu asks.
-  if (!touring && ((tutorial.seen === false && state.status === 'ready') || tutorial.replayAsked)) {
+  // Run the tutorial by itself the first time, once the items are in and the server answered, and again when the user
+  // menu asks, while the server can be reached.
+  const reachable = !copy.offline && !copy.syncing;
+  if (!touring && reachable && ((tutorial.seen === false && state.status === 'ready') || tutorial.replayAsked)) {
     setTouring(true);
     clearForTutorial();
   }
@@ -380,6 +390,20 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       tutorialStarted();
     }
   }, [touring]);
+
+  // Asked for while the server can't be reached, the tutorial says it needs it.
+  const replayRefused = useEffectEvent(() => {
+    tutorial.replayStarted();
+    toast.error(INVENTORY_NEEDS_SERVER.tutorial);
+  });
+  useEffect(() => {
+    if (tutorial.replayAsked && copy.offline) {
+      replayRefused();
+    }
+  }, [tutorial.replayAsked, copy.offline]);
+
+  // The server's refusals of changes queued are said in toasts.
+  useEffect(() => onRefused((notices) => notices.forEach((notice) => toast.error(notice))), [toast]);
 
   // Another tab's link: the filters it sets, with the search and the stock status off, or an item's details once the
   // items are in; then it is let go.
@@ -456,9 +480,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             }
           />
         </View>
-        {copy.offline && copy.syncedAt && (
+        {((copy.offline && copy.syncedAt) || copy.waiting > 0) && (
           <View accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
-            <Text size="sm">{copyNotice(copy.syncedAt)}</Text>
+            <Text size="sm">
+              {[copy.offline && copy.syncedAt && copyNotice(copy.syncedAt), copy.waiting > 0 && waitingNotice(copy.waiting)].filter(Boolean).join(' ')}
+            </Text>
           </View>
         )}
         <View style={[styles.list, centered && styles.listCentered]} testID={ids.list}>
@@ -568,7 +594,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         scrollToBrand={form.brand}
         items={items}
         lists={lists}
-        catalog={catalog.status === 'ready' ? catalog.catalog : undefined}
+        catalog={catalog}
         onCreateEntry={createEntry}
         initialForm={form.initial}
         initialPhotos={form.photos}
@@ -595,11 +621,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         onImported={() => {
           setImporter((current) => ({ ...current, open: false }));
           reload();
-          reloadLists();
         }}
+        offline={copy.offline}
       />
       <ManageListsDialog
         open={managing}
+        offline={copy.offline}
         lists={lists}
         items={items}
         onRename={renameEntry}
@@ -683,6 +710,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         query={itemListQuery(filters, status, { search, sort })}
         count={listed.status === 'ready' ? listed.total : 0}
         narrowed={narrowed}
+        offline={copy.offline}
         onClose={() => setExporter((current) => ({ ...current, open: false }))}
       />
       <DeleteItemDialog

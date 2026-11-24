@@ -1,5 +1,6 @@
 package com.apc.universalrepair
 
+import android.net.Uri
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -20,7 +21,9 @@ import okhttp3.Response
  * storage, out of reach of other apps, each file named after its photo's id, as a photo's id never changes while its
  * file doesn't. A photo is downloaded through React Native's OkHttp client, which pins the paired server's certificate
  * (see ServerPin.kt), off JavaScript's thread, into a temporary file renamed once complete. A file's last change is its
- * last use, so the oldest are dropped first when a kind keeps more than its limit.
+ * last use, so the oldest are dropped first when a kind keeps more than its limit. A photo picked on the phone while
+ * its change waits to be sent is held apart, in a folder of its own that clearing the cache leaves, as the picker's
+ * own files can be cleaned up before it is sent.
  */
 class PhotoCacheModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   override fun getName() = NAME
@@ -139,6 +142,50 @@ class PhotoCacheModule(private val context: ReactApplicationContext) : ReactCont
     promise.resolve(null)
   }
 
+  /**
+   * Holds a copy of a photo picked on the phone until its change is sent, off JavaScript's thread.
+   * @param id The id the photo is held by, which names its file.
+   * @param uri Where the picker handed it over, a file: or content: address.
+   * @param promise Resolved with the held file's address, or rejected when it couldn't be copied.
+   */
+  @ReactMethod
+  fun hold(id: String, uri: String, promise: Promise) {
+    if (!ID.matches(id)) {
+      promise.reject("photo_cache", "Not a photo: $id")
+      return
+    }
+    Thread {
+      try {
+        val file = File(heldFolder(), id)
+        val part = File(file.parentFile, "$id.part")
+        val input = context.contentResolver.openInputStream(Uri.parse(uri)) ?: throw IOException("Couldn't read $uri")
+        input.use { source -> part.outputStream().use { out -> source.copyTo(out) } }
+        if (!part.renameTo(file)) {
+          part.delete()
+          throw IOException("Couldn't hold $id")
+        }
+        promise.resolve(file.toURI().toString())
+      } catch (error: Exception) {
+        promise.reject("photo_cache", error)
+      }
+    }.start()
+  }
+
+  /**
+   * Drops the photos held but the ones still waiting to be sent.
+   * @param keep The ids of the photos still waiting.
+   * @param promise Resolved once the others are gone.
+   */
+  @ReactMethod
+  fun release(keep: ReadableArray, promise: Promise) {
+    val kept = (0 until keep.size()).mapNotNull { keep.getString(it) }.toSet()
+    heldFolder().listFiles()?.filter { it.name !in kept }?.forEach { it.delete() }
+    promise.resolve(null)
+  }
+
+  /** The folder of the photos held until sent, made the first time. */
+  private fun heldFolder(): File = File(context.noBackupFilesDir, HELD_FOLDER).apply { mkdirs() }
+
   /** The folder of a kind of photo, made the first time; null for anything but the kinds kept. */
   private fun folder(kind: String): File? =
     if (kind in KINDS) File(File(context.noBackupFilesDir, FOLDER), kind).apply { mkdirs() } else null
@@ -155,6 +202,8 @@ class PhotoCacheModule(private val context: ReactApplicationContext) : ReactCont
 
     /** The folder the photos are kept in, under the no-backup storage. */
     private const val FOLDER = "photos"
+    /** The folder the photos picked are held in until sent, apart from the ones kept. */
+    private const val HELD_FOLDER = "held-photos"
     /** The kinds of photos kept, each in its own folder. */
     private val KINDS = listOf("thumb", "full")
     /** What a photo's id is made of, so it names a file in its folder and nothing else. */
