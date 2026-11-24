@@ -282,7 +282,9 @@ test('Mobile: Excluir in the details asks to confirm, and a delete reloads the l
   await ReactTestRenderer.act(async () => confirm.props.onPress());
   const [url, init] = (fetch as jest.Mock).mock.calls[0];
   expect(url).toMatch(/\/sync\/operations$/);
-  expect(JSON.parse(init.body).operations).toEqual([{ id: expect.any(String), type: 'deleteItem', itemId: ITEMS[2].id }]);
+  expect(JSON.parse(init.body).operations).toEqual([
+    { id: expect.any(String), type: 'deleteItem', itemId: ITEMS[2].id, seen: expect.objectContaining({ name: ITEMS[2].name }) },
+  ]);
   expect(dialog()).toBeUndefined();
   expect(texts(tree)).toContain('2 de 2 itens · 1 baixo · 0 esgotados');
 });
@@ -476,6 +478,59 @@ test('Mobile: away from the server, a delete shows at once and waits to be sent'
   expect(stock.map((each) => each.name)).toEqual(['Filtro de óleo', 'Pastilha de freio']);
   expect(cards()).toHaveLength(2);
   expect(notice()).toBeUndefined();
+});
+
+// Deletes an item the computer changed meanwhile, the server answering the delete in conflict, and checks the item stays
+// out, the tile says a conflict waits, not a change, and its Resolver conflitos lists it; then keeps the phone's side,
+// and checks the delete goes again without what the phone saw, the item leaves the stock and the tile goes.
+test('Mobile: a delete in conflict with the computer is listed and settled on the phone', async () => {
+  const stock = [...ITEMS];
+  const tree = await mount(stock);
+  const sent: { type: string; seen?: object }[] = [];
+  const answer = (fetch as jest.Mock).getMockImplementation()!;
+  (fetch as jest.Mock).mockImplementation(async (url: string, init?: RequestInit) => {
+    if (new URL(url).pathname !== '/sync/operations') {
+      return answer(url, init);
+    }
+    const { operations } = JSON.parse(String(init?.body)) as { operations: { id: string; type: string; seen?: object }[] };
+    sent.push(...operations);
+    if (operations.some((operation) => operation.seen)) {
+      const results = operations.map((operation) => ({ id: operation.id, status: 'conflict', statusCode: 409, conflicts: [{ kind: 'itemChanged' }] }));
+      return { ok: true, status: 200, json: () => Promise.resolve({ results }) };
+    }
+    return answer(url, init);
+  });
+  const pressable = (name: string) =>
+    tree.root.findAll(
+      (n) =>
+        typeof n.props.onPress === 'function' &&
+        (n.props.accessibilityLabel === name || n.findAll((c) => c.type === Text && c.props.children === name).length > 0),
+    )[0];
+  const card = tree.root.findAll(
+    (n) => typeof n.type !== 'string' && n.props.testID === 'common.data-table.table.row' && n.findAll((c) => c.type === Text && c.props.children === "Bomba d'água").length > 0,
+  )[0];
+  await ReactTestRenderer.act(async () => card.props.onPress());
+  await ReactTestRenderer.act(async () => pressable('Excluir item').props.onPress());
+  const confirm = tree.root
+    .findAllByType(Modal)
+    .find((modal) => modal.props.visible)!
+    .findAll((n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Excluir').length > 0)[0];
+  await ReactTestRenderer.act(async () => confirm.props.onPress());
+  expect(sent.map((operation) => [operation.type, operation.seen !== undefined])).toEqual([['deleteItem', true]]);
+  expect(texts(tree)).toContain('1 conflito com o computador para resolver.');
+
+  await ReactTestRenderer.act(async () => pressable('Resolver conflitos').props.onPress());
+  const dialog = () => tree.root.findAllByType(Modal).find((modal) => modal.props.visible);
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Conflitos com o computador', '“Bomba d\'água”', 'Foi alterado no computador e excluído no celular.']));
+  const keepMine = dialog()!.findAll((n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Excluir').length > 0)[0];
+  await ReactTestRenderer.act(async () => keepMine.props.onPress());
+  expect(sent.map((operation) => [operation.type, operation.seen !== undefined])).toEqual([
+    ['deleteItem', true],
+    ['deleteItem', false],
+  ]);
+  expect(stock.map((each) => each.name)).toEqual(['Filtro de óleo', 'Pastilha de freio']);
+  expect(dialog()).toBeUndefined();
+  expect(texts(tree).some((text) => text.includes('conflito'))).toBe(false);
 });
 
 // Takes the local network access away, as Android 17 does when refused, and checks pulling the list says the phone

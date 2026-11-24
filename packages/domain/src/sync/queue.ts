@@ -12,7 +12,8 @@ import {
 } from "../inventory/items.ts";
 import { listName, type ItemListKind } from "../inventory/lists.ts";
 import type { SyncCopy, SyncRow, SyncRows } from "./copy.ts";
-import type { SyncOperation, SyncOperationResult } from "./sync.ts";
+import { editOf } from "./conflicts.ts";
+import type { SyncConflict, SyncOperation, SyncOperationResult } from "./sync.ts";
 
 // The changes a phone makes to the inventory, kept in order to send to the server (see sync.ts), apart from the copy of
 // the server's rows (see copy.ts), so a sync never wipes one not sent yet. Besides the item operations the server takes
@@ -24,6 +25,9 @@ import type { SyncOperation, SyncOperationResult } from "./sync.ts";
 // is kept by until sent, and a name or a Catalog entry an id drawn from the operation's, the same each time it is
 // applied. An operation the server accepted stays in the queue, marked sent, until a sync brings its change into the
 // copy. A stock change is sent as a move on a brand (itemOperations), never as its new total, so two phones' moves add up.
+// An edit sends only the fields it changes, with what the phone saw of them, and a delete what the phone saw of the item,
+// so the server can tell what it changed meanwhile; one in conflict with that stays in the queue, unsent, until each of
+// its conflicts is settled on the phone (see conflicts.ts), and over the copy it shows the phone's side meanwhile.
 
 /** A photo of a brand as the queue sets it: a saved photo kept, a copy of another saved photo, or a new file. */
 export type QueuedPhoto =
@@ -38,6 +42,10 @@ type Queued<Operation> = Operation & {
   label: string;
   /** Set once the server accepted it: it stays over the copy until a sync brings its change in. */
   sent?: true;
+  /** Why the server answered it in conflict: it waits, unsent, until each is settled (see conflicts.ts). */
+  conflicts?: SyncConflict[];
+  /** The item as the phone showed it when the conflicts came, to make it again or to name its brands. */
+  snapshot?: Item;
 };
 /** Sets a brand's photos, as PUT /items/:id/brands/:brandId/photos does. */
 export type PhotosOperation = { id: string; type: "savePhotos"; itemId: string; brandId: string; photos: QueuedPhoto[] };
@@ -72,6 +80,8 @@ export function sentOperation(operation: QueuedItemOperation): SyncOperation {
   delete sent.at;
   delete sent.label;
   delete sent.sent;
+  delete sent.conflicts;
+  delete sent.snapshot;
   return sent as SyncOperation;
 }
 
@@ -374,14 +384,20 @@ function applyOperation(rows: SyncRows, operation: QueuedOperation) {
       if (changes.brands) {
         const before = new Map(brandsOf(rows, itemId).map((brand) => [brand.id, brand]));
         const kept = new Set(changes.brands.flatMap((brand) => (brand.id ? [brand.id] : [])));
+        const seen = operation.seen?.brands;
+        // A brand the phone never saw, added on the server since, stays, after the ones sent.
+        const unseen = [...before.values()].filter((brand) => !kept.has(brand.id) && seen && !(brand.id in seen));
         for (const id of before.keys()) {
-          if (!kept.has(id)) {
+          if (!kept.has(id) && !unseen.some((brand) => brand.id === id)) {
             deleteBrand(rows, id);
           }
         }
         changes.brands.forEach((brand, position) => {
           const id = brand.id ?? next();
           rows.itemBrand[id] = brandRow(rows, brand, { id, itemId, position, at }, before.get(id), next);
+        });
+        unseen.forEach((brand, index) => {
+          rows.itemBrand[brand.id] = { ...brand, position: changes.brands!.length + index };
         });
       }
       sumQuantity(rows, itemId, at);
@@ -439,18 +455,20 @@ function applyOperation(rows: SyncRows, operation: QueuedOperation) {
 
 /**
  * Turns a saved item form into the operations that make it: a new item, with the ids the phone gives it and its
- * brands; or an edit of the item as shown, sending the brands it keeps without their quantity, a new brand with the id
- * the phone gives it, and each kept brand's change of quantity as a stock move after it.
+ * brands; or an edit of the item as shown, sending only the fields it changes, with what the phone saw of each (see
+ * conflicts.ts), the brands it keeps without their quantity, a new brand with the id the phone gives it, and each kept
+ * brand's change of quantity as a stock move after it; an edit of nothing but quantities is only the moves.
  * @param body The item as the form sends it (itemFormBody).
  * @param shown The item edited, as the Inventory shows it; none for a new item.
  * @param made The id of each new item, brand and operation, and when they were made.
- * @returns The operations, in order, the item's id and each brand's, in the order of the body's.
+ * @returns The operations, in order, the item's id and each brand's, in the order of the body's, and the item's name
+ * as the operations say it.
  */
 export function itemOperations(
   body: ItemCreate,
   shown: Item | undefined,
   made: { newId: () => string; at: string },
-): { operations: QueuedItemOperation[]; itemId: string; brandIds: string[] } {
+): { operations: QueuedItemOperation[]; itemId: string; brandIds: string[]; label: string } {
   const { newId, at } = made;
   const label = capitalizeFirst(body.name);
   const held = new Map((shown?.brands ?? []).map((brand) => [brand.id, brand]));
@@ -461,15 +479,16 @@ export function itemOperations(
   const brandIds = brands.map((brand) => brand.id!);
   if (!shown) {
     const itemId = newId();
-    return { operations: [{ id: newId(), type: "createItem", itemId, item: { ...body, brands }, at, label }], itemId, brandIds };
+    return { operations: [{ id: newId(), type: "createItem", itemId, item: { ...body, brands }, at, label }], itemId, brandIds, label };
   }
+  const changed = editOf({ ...body, brands }, shown);
+  const edits: QueuedItemOperation[] = changed ? [{ id: newId(), type: "updateItem", itemId: shown.id, ...changed, at, label }] : [];
   const moves = body.brands.flatMap((brand): QueuedItemOperation[] => {
     const before = brand.id === undefined ? undefined : held.get(brand.id);
     const delta = (brand.quantity ?? 0) - (before?.quantity ?? 0);
     return before && delta !== 0 ? [{ id: newId(), type: "moveStock", itemId: shown.id, brandId: before.id, delta, at, label }] : [];
   });
-  const edit: QueuedItemOperation = { id: newId(), type: "updateItem", itemId: shown.id, changes: { ...body, brands }, at, label };
-  return { operations: [edit, ...moves], itemId: shown.id, brandIds };
+  return { operations: [...edits, ...moves], itemId: shown.id, brandIds, label };
 }
 
 /**
@@ -491,6 +510,15 @@ export const INVENTORY_NEEDS_SERVER = {
  */
 export function waitingNotice(count: number): string {
   return `${count} ${count === 1 ? "alteração" : "alterações"} esperando o servidor.`;
+}
+
+/**
+ * Says how many conflicts with the computer wait to be settled.
+ * @param count How many.
+ * @returns E.g. "1 conflito com o computador para resolver."
+ */
+export function conflictsNotice(count: number): string {
+  return `${count} ${count === 1 ? "conflito" : "conflitos"} com o computador para resolver.`;
 }
 
 /** What each kind of operation is, to say which the server refused. */
@@ -518,4 +546,14 @@ export function refusedNotice(operation: QueuedOperation, result: Pick<SyncOpera
         ? `o código ${String(detail.code)} já é usado por “${detail.itemName}”`
         : "ele não aceitou a mudança";
   return `O servidor recusou ${REFUSED_WHAT[operation.type]} “${operation.label}”: ${reason}.`;
+}
+
+/**
+ * Says an operation the phone made conflicts with what changed on the computer, and where it is settled.
+ * @param operation The operation.
+ * @returns E.g. "A alteração de “Filtro de óleo” conflita com o que mudou no computador. Escolha o que manter no Estoque."
+ */
+export function conflictNotice(operation: QueuedOperation): string {
+  const what = REFUSED_WHAT[operation.type];
+  return `${what.charAt(0).toUpperCase()}${what.slice(1)} “${operation.label}” conflita com o que mudou no computador. Escolha o que manter no Estoque.`;
 }

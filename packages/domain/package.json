@@ -112,6 +112,10 @@
       "apc-dist": "./dist/sync/copy.js",
       "default": "./src/sync/copy.ts"
     },
+    "./sync-conflicts": {
+      "apc-dist": "./dist/sync/conflicts.js",
+      "default": "./src/sync/conflicts.ts"
+    },
     "./sync-queue": {
       "apc-dist": "./dist/sync/queue.js",
       "default": "./src/sync/queue.ts"

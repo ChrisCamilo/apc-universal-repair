@@ -3,8 +3,8 @@ import { LOCAL_NETWORK_TEXTS } from '../../app/localNetwork';
 import type { SyncResult } from './inventoryCopy';
 
 // What the phone says of its copy's sync (see useInventoryCopy.tsx), in Portuguese: in the Dashboard's header, a short
-// status while one is worth saying (syncing, away from the server, without the local network access, or changes
-// waiting), nothing once all is sent; in the user menu, when the copy last caught up; and, after "Sincronizar agora",
+// status while one is worth saying (syncing, away from the server, without the local network access, conflicts with
+// the computer to settle, or changes waiting), nothing once all is sent; in the user menu, when the copy last caught up; and, after "Sincronizar agora",
 // how it went and why it failed.
 
 /** The copy's sync as the screens read it. */
@@ -14,6 +14,8 @@ export type SyncStatus = {
   blocked: boolean;
   /** How many changes wait to be sent. */
   waiting: number;
+  /** The conflicts with the computer waiting to be settled. */
+  conflicts: readonly unknown[];
 };
 
 /**
@@ -28,8 +30,8 @@ function changes(count: number): string {
 /**
  * Writes the header's status.
  * @param status The sync.
- * @returns E.g. "Sincronizando…", "Sem conexão · 2 alterações", "Sem acesso à rede", "1 alteração a enviar", or null once
- * all is sent and the server answered.
+ * @returns E.g. "Sincronizando…", "Sem conexão · 2 alterações", "Sem acesso à rede", "1 conflito a resolver", "1
+ * alteração a enviar", or null once all is sent and the server answered.
  */
 export function syncBadge(status: SyncStatus): string | null {
   const waiting = status.waiting > 0 ? changes(status.waiting) : null;
@@ -38,6 +40,10 @@ export function syncBadge(status: SyncStatus): string | null {
   }
   if (status.blocked || status.offline) {
     return [status.blocked ? 'Sem acesso à rede' : 'Sem conexão', waiting].filter(Boolean).join(' · ');
+  }
+  const conflicts = status.conflicts.length;
+  if (conflicts > 0) {
+    return `${conflicts} ${conflicts === 1 ? 'conflito' : 'conflitos'} a resolver`;
   }
   return waiting && `${waiting} a enviar`;
 }

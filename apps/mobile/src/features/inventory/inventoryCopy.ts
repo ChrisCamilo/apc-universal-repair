@@ -10,9 +10,12 @@ import {
   syncChangesSchema,
   syncOperationsResultSchema,
   type SyncChanges,
+  type SyncConflict,
 } from '@apc/domain/sync';
-import { applyChanges, emptyCopy, type SyncCopy } from '@apc/domain/sync-copy';
+import { settleConflict, type ConflictCard, type ConflictSide } from '@apc/domain/sync-conflicts';
+import { applyChanges, copyItems, emptyCopy, type SyncCopy } from '@apc/domain/sync-copy';
 import {
+  conflictNotice,
   isItemOperation,
   refusedNotice,
   sentOperation,
@@ -20,6 +23,7 @@ import {
   type PhotosOperation,
   type QueuedItemOperation,
   type QueuedOperation,
+  withQueue,
 } from '@apc/domain/sync-queue';
 import { apiUrl } from '../../app/api';
 import { hasLocalNetwork } from '../../app/localNetwork';
@@ -31,8 +35,10 @@ import { clearPhotos, keepThumbnails, releasePhotos } from './photoCache';
 // a key held in the Android Keystore, and read once into memory. Syncing first sends the queue, in order: the item
 // operations in batches to POST /sync/operations, a brand's photos to the photo route and a new name to its list's
 // route. An operation the server accepted is marked sent, and one it refused leaves the queue, with the operations of a
-// new item it refused, and the listeners hear why. Then syncing asks the server's change feed (GET /sync/changes) for
-// every page after the copy's cursor, or for a full copy when it has none, or when the server answers 410 (its database
+// new item it refused, and the listeners hear why; one in conflict with what changed on the computer stays, unsent,
+// with its conflicts and the item as the phone showed it, until the user settles each (settle, see
+// @apc/domain/sync-conflicts), and the listeners hear of it. Then syncing asks the server's change feed
+// (GET /sync/changes) for every page after the copy's cursor, or for a full copy when it has none, or when the server answers 410 (its database
 // moved, or the copy waited longer than the deletions it keeps); the pages are applied all at once, once the last one is
 // in, and written to disk, so the copy never shows a sync caught halfway, and the operations sent leave the queue, as
 // the copy now holds them. A sync that can't reach the server leaves the copy and what is still waiting as they were,
@@ -55,8 +61,10 @@ const native = NativeModules.InventoryCopy as {
  * phone hasn't the access to the local network to reach it.
  */
 export type SyncResult = 'synced' | 'offline' | 'blocked';
-/** What the server answered each operation sent: accepted, or refused with why. */
-type Answers = Map<string, { refused?: string }>;
+/** What the server answered an operation sent: accepted, refused with why, or in conflict with what changed there. */
+type Answer = { refused?: string; conflicts?: SyncConflict[] };
+/** What the server answered each operation sent. */
+type Answers = Map<string, Answer>;
 
 /** The copy in memory, once read. */
 let held: SyncCopy | null = null;
@@ -213,7 +221,8 @@ async function sync(): Promise<SyncResult> {
  */
 async function send(started: number): Promise<boolean> {
   for (;;) {
-    const waiting = queue.filter((operation) => !operation.sent);
+    // An operation in conflict waits until it is settled.
+    const waiting = queue.filter((operation) => !operation.sent && !operation.conflicts);
     if (waiting.length === 0) {
       return true;
     }
@@ -235,12 +244,15 @@ async function send(started: number): Promise<boolean> {
 
 /**
  * Takes the server's answers into the queue: an operation accepted marked sent, one refused dropped, with what waits
- * on a new item refused, and the listeners told why.
+ * on a new item refused, and the listeners told why; one in conflict kept with its conflicts and the item as the phone
+ * shows it now, to settle (see @apc/domain/sync-conflicts), and the listeners told so.
  * @param answers Each operation's answer.
  */
 function take(answers: Answers) {
   const notices: string[] = [];
   const refusedItems = new Set<string>();
+  const conflicted = [...answers.values()].some((answer) => answer.conflicts);
+  const shown = conflicted && held ? copyItems(withQueue(held, queue)) : [];
   queue = queue.flatMap((operation): QueuedOperation[] => {
     const answer = answers.get(operation.id);
     if ('itemId' in operation && refusedItems.has(operation.itemId) && !operation.sent) {
@@ -248,6 +260,11 @@ function take(answers: Answers) {
     }
     if (!answer) {
       return [operation];
+    }
+    if (answer.conflicts) {
+      notices.push(conflictNotice(operation));
+      const snapshot = 'itemId' in operation ? shown.find((item) => item.id === operation.itemId) : undefined;
+      return [{ ...operation, conflicts: answer.conflicts, ...(snapshot && { snapshot }) }];
     }
     if (answer.refused === undefined) {
       return [{ ...operation, sent: true }];
@@ -292,8 +309,11 @@ async function sendItems(operations: QueuedItemOperation[]): Promise<Answers | n
   }
   const { results } = syncOperationsResultSchema.parse(await response.json());
   return new Map(
-    results.map((result) => {
+    results.map((result): [string, Answer] => {
       const operation = operations.find((each) => each.id === result.id)!;
+      if (result.status === 'conflict') {
+        return [result.id, { conflicts: result.conflicts ?? [] }];
+      }
       return [result.id, result.status === 'applied' ? {} : { refused: refusedNotice(operation, result) }];
     }),
   );
@@ -357,6 +377,20 @@ function answerOf(operation: QueuedOperation, response: Response | null): Answer
     return new Map([[operation.id, {}]]);
   }
   return response && refuses(response.status) ? new Map([[operation.id, { refused: refusedNotice(operation, { statusCode: response.status }) }]]) : null;
+}
+
+/**
+ * Settles a conflict of an operation waiting, keeping the computer's side or the phone's (see
+ * @apc/domain/sync-conflicts), and keeps the queue on disk; once its last conflict is settled, the next sync sends it.
+ * @param card The conflict.
+ * @param keep The side to keep.
+ */
+export async function settle(card: Pick<ConflictCard, 'operationId' | 'index'>, keep: ConflictSide): Promise<void> {
+  await loadCopy();
+  queue = settleConflict(queue, card, keep);
+  await save();
+  changed();
+  releasePhotos(heldPhotos(queue));
 }
 
 /**

@@ -5,9 +5,10 @@ import { itemListQuerySchema, type Item } from '@apc/domain/items';
 import { EMPTY_ITEM_LISTS, type ItemLists } from '@apc/domain/lists';
 import type { CatalogData } from '@apc/domain/catalog';
 import { copyCatalog, copyItems, copyLists, type SyncCopy } from '@apc/domain/sync-copy';
+import { conflictCards, type ConflictCard, type ConflictSide } from '@apc/domain/sync-conflicts';
 import { withQueue } from '@apc/domain/sync-queue';
 import { askLocalNetwork, openAppSettings } from '../../app/localNetwork';
-import { loadCopy, loadQueue, onCopyChanged, syncCopy, type SyncResult } from './inventoryCopy';
+import { loadCopy, loadQueue, onCopyChanged, settle as settleQueued, syncCopy, type SyncResult } from './inventoryCopy';
 
 // The phone's copy of the inventory as the Dashboard holds it (see inventoryCopy.ts), with the changes waiting to be
 // sent applied over it (see @apc/domain/sync-queue): one InventoryCopyProvider on the Dashboard, which the Inventory,
@@ -17,7 +18,8 @@ import { loadCopy, loadQueue, onCopyChanged, syncCopy, type SyncResult } from '.
 // to the local network, which allowNetwork asks for, or opens Android's settings for once it was refused for good (see
 // localNetwork.ts); coming back from them to the foreground syncs again. The copy syncs when the Dashboard opens,
 // when the app comes back to the foreground, when the Inventory's list is pulled down or the user menu asks, and
-// again after each change the user sends. A list query is answered from the copy the way GET /items answers it (listItems), its pages up
+// again after each change the user sends, or each conflict with the computer the user settles, which it lists (see
+// @apc/domain/sync-conflicts). A list query is answered from the copy the way GET /items answers it (listItems), its pages up
 // to the ones the list shows.
 
 /** The phone's copy, as the Inventory reads it. */
@@ -36,8 +38,12 @@ export type InventoryCopy = {
   blocked: boolean;
   /** Whether a sync is running. */
   syncing: boolean;
-  /** How many changes made on the phone wait to be sent. */
+  /** How many changes made on the phone wait to be sent, besides the ones in conflict. */
   waiting: number;
+  /** The conflicts with what changed on the computer, waiting to be settled. */
+  conflicts: ConflictCard[];
+  /** Settles a conflict, keeping the computer's side or the phone's, then syncs. */
+  settle: (card: ConflictCard, keep: ConflictSide) => Promise<void>;
   /** Brings the copy up to date with the server, saying how it went. */
   sync: () => Promise<SyncResult>;
   /** Asks for the access to the local network and syncs once given, or opens Android's settings when refused for good. */
@@ -80,6 +86,7 @@ export function useInventoryCopy(): InventoryCopy {
 function useCopyState(): InventoryCopy {
   const [copy, setCopy] = useState<SyncCopy>();
   const [waiting, setWaiting] = useState(0);
+  const [conflicts, setConflicts] = useState<ConflictCard[]>([]);
   const [offline, setOffline] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -107,7 +114,9 @@ function useCopyState(): InventoryCopy {
       Promise.all([loadCopy(), loadQueue()]).then(([held, queue]) => {
         if (live.current) {
           setCopy(withQueue({ ...held }, queue));
-          setWaiting(queue.filter((operation) => !operation.sent).length);
+          // An operation in conflict counts as a conflict, not as a change waiting.
+          setWaiting(queue.filter((operation) => !operation.sent && !operation.conflicts).length);
+          setConflicts(conflictCards(queue));
         }
       });
     const stop = onCopyChanged(read);
@@ -136,10 +145,30 @@ function useCopyState(): InventoryCopy {
       sync();
     }
   }, [sync]);
+  const settle = useCallback(
+    async (card: ConflictCard, keep: ConflictSide) => {
+      await settleQueued(card, keep);
+      sync();
+    },
+    [sync],
+  );
   const syncedAt = copy?.syncedAt;
   return useMemo(
-    () => ({ items, lists, catalog, syncedAt: syncedAt ? new Date(syncedAt) : null, offline, blocked, syncing, waiting, sync, allowNetwork }),
-    [items, lists, catalog, syncedAt, offline, blocked, syncing, waiting, sync, allowNetwork],
+    () => ({
+      items,
+      lists,
+      catalog,
+      syncedAt: syncedAt ? new Date(syncedAt) : null,
+      offline,
+      blocked,
+      syncing,
+      waiting,
+      conflicts,
+      settle,
+      sync,
+      allowNetwork,
+    }),
+    [items, lists, catalog, syncedAt, offline, blocked, syncing, waiting, conflicts, settle, sync, allowNetwork],
   );
 }
 

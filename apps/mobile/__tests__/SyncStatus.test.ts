@@ -8,13 +8,14 @@ import { lastSync, syncBadge, syncOutcome } from '../src/features/inventory/sync
 // What the phone says of its copy's sync: the header's status in each state, when the copy last caught up, and how a
 // sync the user asked for went.
 
-const IDLE = { syncing: false, offline: false, blocked: false, waiting: 0 };
+const IDLE = { syncing: false, offline: false, blocked: false, waiting: 0, conflicts: [] };
 
-// Checks the header says nothing once all is sent, what waits while the server answers, that a sync runs, and that the
-// server can't be reached or the phone lacks the local network access, with what waits.
-test('Mobile: the header says syncing, offline, blocked or how many changes wait', () => {
+// Checks the header says nothing once all is sent, what waits while the server answers, the conflicts to settle, that a
+// sync runs, and that the server can't be reached or the phone lacks the local network access, with what waits.
+test('Mobile: the header says syncing, offline, blocked, the conflicts or how many changes wait', () => {
   expect(syncBadge(IDLE)).toBeNull();
   expect(syncBadge({ ...IDLE, waiting: 1 })).toBe('1 alteração a enviar');
+  expect(syncBadge({ ...IDLE, waiting: 3, conflicts: [{}, {}] })).toBe('2 conflitos a resolver');
   expect(syncBadge({ ...IDLE, waiting: 3, syncing: true })).toBe('Sincronizando…');
   expect(syncBadge({ ...IDLE, offline: true })).toBe('Sem conexão');
   expect(syncBadge({ ...IDLE, offline: true, waiting: 2 })).toBe('Sem conexão · 2 alterações');
