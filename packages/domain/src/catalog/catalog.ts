@@ -76,6 +76,8 @@ export const CATALOG_YEAR_PLACEHOLDER = "AAAA";
 export const CATALOG_IN_USE = "Não dá para excluir: há peças do estoque nesse veículo. Troque o veículo delas antes.";
 /** What a change of the catalog that failed says. */
 export const CATALOG_FAILED = "Não foi possível salvar no catálogo. Tente de novo.";
+/** What a change of the catalog says while the server can't be reached, as the phone shows its copy. */
+export const CATALOG_NEEDS_SERVER = "Sem conexão com o servidor. O catálogo só pode ser editado com ele.";
 /** What is said under the field when the API refuses a name or year another node has, by what is added or renamed. */
 export const CATALOG_TAKEN: Record<CatalogEditLevel | "brand", string> = {
   brand: "Essa marca já está no catálogo.",

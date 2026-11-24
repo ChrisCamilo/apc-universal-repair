@@ -8,8 +8,9 @@ import { fontFamily, softHairline } from '../../app/theme';
 // Each brand is a line across the screen, 72px tall, over a soft hairline: its letters in a raised square in the
 // accent, its name over its line of models and sheets, and a chevron. The tree spans the screen too, and grows to its
 // full height, since the screen scrolls as a whole. The sheet's readouts sit two to a row, each in a box with its name
-// above it. "Nova marca" and "Novo modelo" sit at the right of their screen's heading. While the catalog loads, or when it can't be loaded, the tab is one box with the spinner or the message in
-// its middle.
+// above it. "Nova marca" and "Novo modelo" sit at the right of their screen's heading. While the catalog loads, or when it
+// can't be loaded, the tab is one box with the spinner or the message in its middle. Away from the server, a soft tile on
+// top says the tab shows the phone's copy, and from when, as the Inventory's does.
 
 /** A brand line's height, in px (min-h-18 on the web). */
 export const BRAND_LINE_HEIGHT = scales.space.s8;
@@ -19,7 +20,7 @@ const BRAND_NAME_SIZE = 17;
 const META_SIZE = 13;
 
 /**
- * The Catalog tab: the box of its loading and error states, the screen with its headings, the brand lines with their letters, text and chevron, the path to an
+ * The Catalog tab: the box of its loading and error states, the copy's notice, the screen with its headings, the brand lines with their letters, text and chevron, the path to an
  * engine and the sheet's readouts.
  */
 export const useStyles = createStyles(
@@ -27,6 +28,7 @@ export const useStyles = createStyles(
   {
     status: 'status',
     tab: '',
+    copy: 'copy',
     screenHead: 'screen.head',
     heading: 'screen.head.heading',
     brandList: 'screen.brands',
@@ -61,6 +63,13 @@ export const useStyles = createStyles(
       brandPressed: { backgroundColor: colors.panelRaised },
       brandText: { flex: 1, gap: scales.space.s1 / 2 },
       chevron: {},
+      copy: {
+        padding: scales.space.s3,
+        borderRadius: theme.radiusTile,
+        borderWidth: 1,
+        borderColor: softHairline(theme),
+        backgroundColor: colors.panelRaised,
+      },
       heading: { ...displayLabel(theme, 'sm'), color: colors.textMuted },
       screenHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: scales.space.s2, paddingTop: scales.space.s2 },
       mark: {

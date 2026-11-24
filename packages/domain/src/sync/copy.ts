@@ -1,3 +1,4 @@
+import type { CatalogData } from "../catalog/catalog.ts";
 import type { Item } from "../inventory/items.ts";
 import type { ItemLists, ListEntry, VehicleModel } from "../inventory/lists.ts";
 import type { SYNC_ROWS, SyncChanges, SyncKind } from "./sync.ts";
@@ -9,7 +10,8 @@ import type { z } from "zod";
 // lists the Inventory shows, with the same shape the API answers them in: an item with its category's name, its
 // vehicles' brand, model, generation (its years and its number in its model, as the Catalog orders them) and version,
 // and its brands with their part brand's name and their photos, in order. A row whose references haven't arrived is
-// left out, as is an item with no brand or no vehicle yet, which only a copy caught halfway can hold.
+// left out, as is an item with no brand or no vehicle yet, which only a copy caught halfway can hold. The copy also
+// turns into the catalog, as GET /catalog answers it, for the Catalog tab.
 
 /** A row of a kind, as the feed sends it. */
 export type SyncRow<Kind extends SyncKind> = z.infer<(typeof SYNC_ROWS)[Kind]>;
@@ -167,6 +169,71 @@ export function copyItems(copy: SyncCopy): Item[] {
       },
     ];
   });
+}
+
+/**
+ * Turns the copy into the catalog, as GET /catalog answers it: the catalog brands in the rail's order, each with its
+ * vehicle brand's id and name and its letters, and their models, by their vehicle models' names, with their trees,
+ * each level in its order. A brand or model whose vehicle brand or model hasn't arrived is left out.
+ * @param copy The copy.
+ * @returns The catalog.
+ */
+export function copyCatalog(copy: SyncCopy): CatalogData {
+  const { rows } = copy;
+  const engines = groupBy(Object.values(rows.catalogEngine), (engine) => engine.yearId);
+  const years = groupBy(Object.values(rows.catalogYear), (year) => year.versionId);
+  const versions = groupBy(Object.values(rows.catalogVersion), (version) => version.generationId);
+  const generations = groupBy(Object.values(rows.catalogGeneration), (generation) => generation.modelId);
+  const models = byPosition(Object.values(rows.catalogModel));
+  return {
+    brands: byPosition(Object.values(rows.catalogBrand)).flatMap((catalogBrand) => {
+      const brand = rows.vehicleBrand[catalogBrand.brandId];
+      if (!brand) {
+        return [];
+      }
+      return [
+        {
+          id: brand.id,
+          name: brand.name,
+          mark: catalogBrand.mark,
+          models: models.flatMap((model) => {
+            const vehicleModel = rows.vehicleModel[model.vehicleModelId];
+            if (vehicleModel?.brandId !== brand.id) {
+              return [];
+            }
+            return [
+              {
+                id: model.id,
+                name: vehicleModel.name,
+                generations: (generations.get(model.id) ?? []).map(({ id, name, firstYear, lastYear }) => ({
+                  id,
+                  name,
+                  firstYear,
+                  lastYear,
+                  versions: (versions.get(id) ?? []).map((version) => ({
+                    id: version.id,
+                    name: version.name,
+                    years: (years.get(version.id) ?? []).map((year) => ({
+                      id: year.id,
+                      year: year.year,
+                      lastYear: year.lastYear,
+                      engines: (engines.get(year.id) ?? []).map(({ id: engineId, displacementDl, cylinders, drive, summary }) => ({
+                        id: engineId,
+                        displacementDl,
+                        cylinders,
+                        drive,
+                        summary,
+                      })),
+                    })),
+                  })),
+                })),
+              },
+            ];
+          }),
+        },
+      ];
+    }),
+  };
 }
 
 /**

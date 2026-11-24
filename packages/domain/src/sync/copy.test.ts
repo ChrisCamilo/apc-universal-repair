@@ -4,7 +4,9 @@ import { listItems } from "../inventory/itemFilters.ts";
 import { itemListQuerySchema, type Item } from "../inventory/items.ts";
 import { testItem } from "../inventory/testItems.ts";
 import { itemListsOf } from "../inventory/testLists.ts";
-import { applyChanges, copyItems, copyLists, emptyCopy } from "./copy.ts";
+import { catalogSchema } from "../catalog/catalog.ts";
+import { TEST_CATALOG_DATA } from "../catalog/testCatalog.ts";
+import { applyChanges, copyCatalog, copyItems, copyLists, emptyCopy } from "./copy.ts";
 import { syncChangesSchema } from "./sync.ts";
 import { syncPageOf } from "./testSync.ts";
 
@@ -103,4 +105,12 @@ test("Shared: a list query is answered from the items held, as GET /items answer
   assert.deepEqual(listItems(items, query({ category: "Freios" })).items.map((item) => item.name), ["Pastilha de freio"]);
   assert.deepEqual(listItems(items, query({ sort: "name", order: "asc" })).items.map((item) => item.name), ["Filtro de óleo", "Pastilha de freio"]);
   assert.deepEqual(listItems(items, query({ sort: "name", order: "asc", page: "2", pageSize: "25" })), { items: [], total: 2 });
+});
+
+// Copies the test catalog with items whose vehicles have generations of their own, and checks the copy turns back into
+// the same catalog GET /catalog answers, every level in its order, the items' own catalog rows left out of its tree.
+test("Shared: a full copy turns into the catalog it was made from", () => {
+  const copy = applyChanges(emptyCopy(), syncChangesSchema.parse(syncPageOf(ITEMS, "test-database.1", TEST_CATALOG_DATA)));
+  assert.deepEqual(copyCatalog(copy), catalogSchema.parse(TEST_CATALOG_DATA));
+  assert.deepEqual(copyCatalog(applyChanges(emptyCopy(), syncPageOf(ITEMS))), { brands: [] });
 });

@@ -107,6 +107,29 @@ test('Mobile: a copy on disk is read back as the app starts again', async () => 
   });
 });
 
+// Asks for a sync while one is on its way, as after a change made on the server meanwhile, and checks a second sync
+// follows the first, bringing the change, and that asking a third time before it starts gets that same one.
+test('Mobile: a sync asked for while one runs gets another after it', async () => {
+  let answer = (_page: unknown) => {};
+  const asked: string[] = [];
+  (fetch as jest.Mock).mockImplementation((url: string) => {
+    asked.push(url);
+    return asked.length === 1
+      ? new Promise((resolve) => (answer = (page) => resolve({ ok: true, status: 200, json: async () => page })))
+      : Promise.resolve({ ok: true, status: 200, json: async () => syncPageOf([ITEMS[0]], 'db.20') });
+  });
+  const first = syncCopy();
+  const second = syncCopy();
+  const third = syncCopy();
+  expect(third).toBe(second);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  answer(syncPageOf(ITEMS, 'db.10'));
+  expect(await first).toBe('synced');
+  expect(await second).toBe('synced');
+  expect(asked.map((url) => url.replace(/^.*\/sync/, '/sync'))).toEqual(['/sync/changes', '/sync/changes?since=db.10']);
+  expect((await loadCopy()).cursor).toBe('db.20');
+});
+
 // Clears the copy while a sync is on its way, as logging out does, and checks the copy and its file are gone and the
 // sync that comes back afterwards keeps nothing.
 test('Mobile: clearing the copy deletes it, and a sync still running keeps nothing', async () => {

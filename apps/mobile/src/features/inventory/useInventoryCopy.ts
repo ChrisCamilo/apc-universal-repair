@@ -3,13 +3,15 @@ import { AppState } from 'react-native';
 import { listItems } from '@apc/domain/item-filters';
 import { itemListQuerySchema, type Item } from '@apc/domain/items';
 import { EMPTY_ITEM_LISTS, type ItemLists } from '@apc/domain/lists';
-import { copyItems, copyLists, type SyncCopy } from '@apc/domain/sync-copy';
-import { loadCopy, onCopyChanged, syncCopy } from './inventoryCopy';
+import type { CatalogData } from '@apc/domain/catalog';
+import { copyCatalog, copyItems, copyLists, type SyncCopy } from '@apc/domain/sync-copy';
+import { loadCopy, onCopyChanged, syncCopy, type SyncResult } from './inventoryCopy';
 
-// The Inventory's view of the phone's copy of the inventory (see inventoryCopy.ts): its items and lists, as the API
-// answers them, and whether the last sync reached the server. The copy syncs when the Inventory opens, when the app
-// comes back to the foreground and when the list is pulled down, and again after each change the user sends. A list
-// query is answered from the copy the way GET /items answers it (listItems), its pages up to the ones the list shows.
+// The Inventory's and the Catalog's view of the phone's copy of the inventory (see inventoryCopy.ts): its items, lists
+// and catalog, as the API answers them, and whether the last sync reached the server. The copy syncs when either tab
+// opens, when the app comes back to the foreground and when the Inventory's list is pulled down, and again after each
+// change the user sends. A list query is answered from the copy the way GET /items answers it (listItems), its pages up
+// to the ones the list shows.
 
 /** The phone's copy, as the Inventory reads it. */
 export type InventoryCopy = {
@@ -17,14 +19,16 @@ export type InventoryCopy = {
   items: Item[] | null;
   /** The lists the form and the filters pick from. */
   lists: ItemLists;
+  /** The catalog, as GET /catalog answers it, or null while the phone holds no copy yet. */
+  catalog: CatalogData | null;
   /** When the copy last caught up with the server, or null. */
   syncedAt: Date | null;
   /** Whether the last sync couldn't reach the server. */
   offline: boolean;
   /** Whether a sync is running. */
   syncing: boolean;
-  /** Brings the copy up to date with the server. */
-  sync: () => Promise<void>;
+  /** Brings the copy up to date with the server, saying how it went. */
+  sync: () => Promise<SyncResult>;
 };
 /**
  * Where the list's pages stand: the copy still loading; loaded, with the items of the pages shown, how many match in
@@ -49,6 +53,7 @@ export function useInventoryCopy(): InventoryCopy {
       setOffline(result === 'offline');
       setSyncing(false);
     }
+    return result;
   }, []);
 
   useEffect(() => {
@@ -72,7 +77,8 @@ export function useInventoryCopy(): InventoryCopy {
 
   const items = useMemo(() => (copy?.syncedAt ? copyItems(copy) : null), [copy]);
   const lists = useMemo(() => (copy ? copyLists(copy) : EMPTY_ITEM_LISTS), [copy]);
-  return { items, lists, syncedAt: copy?.syncedAt ? new Date(copy.syncedAt) : null, offline, syncing, sync };
+  const catalog = useMemo(() => (copy?.syncedAt ? copyCatalog(copy) : null), [copy]);
+  return { items, lists, catalog, syncedAt: copy?.syncedAt ? new Date(copy.syncedAt) : null, offline, syncing, sync };
 }
 
 /**

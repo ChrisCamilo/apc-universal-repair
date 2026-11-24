@@ -1,31 +1,36 @@
+import type { CatalogData } from "../catalog/catalog.ts";
 import { optionKey, type Item } from "../inventory/items.ts";
 import { itemListsOf } from "../inventory/testLists.ts";
 import type { SyncChange, SyncChanges } from "./sync.ts";
 
 // The change feed of a stock of test items, as the server would send it for a full copy, so a test answers
-// GET /sync/changes from the same items it answers the other routes with. The lists' entries keep the ids itemListsOf
-// gives them; a vehicle with years gets a catalog model, with generations up to its number, and its version.
+// GET /sync/changes from the same items, and catalog, it answers the other routes with. The lists' entries keep the ids
+// itemListsOf gives them; a vehicle with years gets a catalog model, with generations up to its number, and its version,
+// which the catalog's tree doesn't show, as its brand isn't a catalog brand. A catalog, as GET /catalog answers it,
+// comes with its own vehicle brands, under its brands' ids, and a vehicle model for each of its models.
 
 /**
  * Answers a request to the change feed from a stock of test items, as a fetch stub returns it: a full copy of the stock
  * as it is now, and 410 to a cursor, so a copy made before is made again with every change in it.
  * @param query The request's query.
  * @param items The items in stock.
+ * @param catalog The catalog, as GET /catalog answers it, if the test has one.
  * @returns The answer.
  */
-export function syncAnswer(query: URLSearchParams, items: readonly Item[]) {
+export function syncAnswer(query: URLSearchParams, items: readonly Item[], catalog?: CatalogData) {
   return query.has("since")
     ? { ok: false, status: 410, json: () => Promise.resolve({ statusCode: 410, error: "Gone", message: "Make a full copy." }) }
-    : { ok: true, status: 200, json: () => Promise.resolve(syncPageOf(items)) };
+    : { ok: true, status: 200, json: () => Promise.resolve(syncPageOf(items, undefined, catalog)) };
 }
 
 /**
  * Builds the one page of a full copy of some items.
  * @param items The items in stock.
  * @param cursor The cursor the page ends at.
+ * @param catalog The catalog, as GET /catalog answers it, if the test has one.
  * @returns The page: every row, nothing more waiting.
  */
-export function syncPageOf(items: readonly Item[], cursor = "test-database.1"): SyncChanges {
+export function syncPageOf(items: readonly Item[], cursor = "test-database.1", catalog?: CatalogData): SyncChanges {
   const lists = itemListsOf(items);
   const changes: SyncChange[] = [];
   /** Adds the change of a row, with the next version. */
@@ -106,6 +111,27 @@ export function syncPageOf(items: readonly Item[], cursor = "test-database.1"): 
       });
       for (const [place, photo] of photos.entries()) {
         add({ kind: "itemPhoto", id: photo.id, row: { ...photo, brandId: brand.id, position: place } });
+      }
+    }
+  }
+  for (const [position, brand] of (catalog?.brands ?? []).entries()) {
+    add({ kind: "vehicleBrand", id: brand.id, row: { id: brand.id, name: brand.name } });
+    add({ kind: "catalogBrand", id: `catalog-brand-${brand.id}`, row: { id: `catalog-brand-${brand.id}`, brandId: brand.id, mark: brand.mark, position } });
+    for (const [modelAt, model] of brand.models.entries()) {
+      const vehicleModelId = `vehicle-model-${model.id}`;
+      add({ kind: "vehicleModel", id: vehicleModelId, row: { id: vehicleModelId, name: model.name, brandId: brand.id } });
+      add({ kind: "catalogModel", id: model.id, row: { id: model.id, vehicleModelId, position: modelAt } });
+      for (const [generationAt, { versions, ...generation }] of model.generations.entries()) {
+        add({ kind: "catalogGeneration", id: generation.id, row: { ...generation, modelId: model.id, position: generationAt } });
+        for (const [versionAt, { years, ...version }] of versions.entries()) {
+          add({ kind: "catalogVersion", id: version.id, row: { ...version, generationId: generation.id, position: versionAt } });
+          for (const [yearAt, { engines, ...year }] of years.entries()) {
+            add({ kind: "catalogYear", id: year.id, row: { ...year, versionId: version.id, position: yearAt } });
+            for (const [engineAt, engine] of engines.entries()) {
+              add({ kind: "catalogEngine", id: engine.id, row: { ...engine, yearId: year.id, position: engineAt } });
+            }
+          }
+        }
       }
     }
   }

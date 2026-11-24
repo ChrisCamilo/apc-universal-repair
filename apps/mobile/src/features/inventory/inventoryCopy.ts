@@ -11,9 +11,10 @@ import { clearPhotos, keepThumbnails } from './photoCache';
 // after the copy's cursor, or for a full copy when it has none, or when the server answers 410 (its database moved, or
 // the copy waited longer than the deletions it keeps); the pages are applied all at once, once the last one is in, and
 // written to disk, so the copy never shows a sync caught halfway. A sync that can't reach the server leaves the copy as
-// it was and says so. One sync runs at a time: asking again while one runs gets that one. Logging out and pairing with
-// another server clear the copy, on disk and its key; a sync still running then keeps nothing of what it brought. The
-// photos' thumbnails are kept after each sync, and cleared with the copy (see photoCache.ts).
+// it was and says so. One sync runs at a time: asking again while one runs gets another after it, as a change made
+// meanwhile may have missed the one running. Logging out and pairing with another server clear the copy, on disk and
+// its key; a sync still running then keeps nothing of what it brought. The photos' thumbnails are kept after each
+// sync, and cleared with the copy (see photoCache.ts).
 
 /** The native side that keeps the copy encrypted on disk (InventoryCopyModule.kt). */
 const native = NativeModules.InventoryCopy as {
@@ -29,6 +30,8 @@ export type SyncResult = 'synced' | 'offline';
 let held: SyncCopy | null = null;
 /** The sync running, if any. */
 let running: Promise<SyncResult> | null = null;
+/** The sync asked for while one runs, to start once it ends, if any. */
+let following: Promise<SyncResult> | null = null;
 /** Bumped by each clear, so a sync started before it keeps nothing. */
 let generation = 0;
 /** What to call when the copy changes. */
@@ -47,7 +50,8 @@ export async function loadCopy(): Promise<SyncCopy> {
 }
 
 /**
- * Brings the copy up to date with the server, unless a sync is already running.
+ * Brings the copy up to date with the server, as it is now: a sync starts, or, while one runs, another follows it, as a
+ * change made meanwhile may have missed the one running; asking again before that one starts gets it too.
  * @returns How the sync ended.
  */
 export function syncCopy(): Promise<SyncResult> {
@@ -58,8 +62,19 @@ export function syncCopy(): Promise<SyncResult> {
       }
     });
     running = started;
+    return started;
   }
-  return running;
+  if (!following) {
+    const after = running;
+    const next: Promise<SyncResult> = after.then(() => {
+      if (following === next) {
+        following = null;
+      }
+      return syncCopy();
+    });
+    following = next;
+  }
+  return following;
 }
 
 /**
@@ -116,6 +131,7 @@ export async function clearCopy(): Promise<void> {
   generation += 1;
   // A sync still running keeps nothing; the next one starts over.
   running = null;
+  following = null;
   held = emptyCopy();
   await Promise.all([native.clear().catch(() => {}), clearPhotos()]);
   listeners.forEach((listener) => listener());
