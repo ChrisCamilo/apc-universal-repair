@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { engineDriveSchema } from "../catalog/catalog.ts";
-import { itemCreateSchema, itemPhotoSchema, itemUpdateSchema, MAX_QUANTITY, POSITIONS, SIDES } from "../inventory/items.ts";
+import { itemBrandSchema, itemCreateSchema, itemPhotoSchema, itemSchema, itemUpdateSchema, MAX_QUANTITY, POSITIONS, SIDES } from "../inventory/items.ts";
 
 // The server's change feed, which a phone's copy of the inventory follows (GET /sync/changes): every row of the
 // inventory, its lists and the catalog, as its table keeps it, each with a version that grows with every change of it,
@@ -17,6 +17,11 @@ import { itemCreateSchema, itemPhotoSchema, itemUpdateSchema, MAX_QUANTITY, POSI
 // of its brands. They take the shape of the item routes' bodies, list entries by name, and are
 // applied in order, each once, with the item routes' rules; each one answers whether it was applied, or why not, with
 // the status the item route would answer. The phone then reads the feed from its cursor, which brings back what changed.
+// An edit carries what the phone saw of each field it changes, and a delete what it saw of the item, so the server can
+// tell a field it changed meanwhile apart from one the phone left alone: such a field, changed to another value than
+// the phone's, conflicts, as does an operation on an item deleted on the server, or a delete of an item changed there;
+// stock moves add up and never do. An operation in conflict is answered with why, nothing of it applied and nothing
+// kept, for the phone to settle, keeping the server's value or its own, and send again (see sync/conflicts.ts).
 
 /** The feed's path. */
 export const SYNC_CHANGES_PATH = "/sync/changes";
@@ -131,13 +136,48 @@ export const syncChangesQuerySchema = z.object({
 /** A page of the feed: its changes, oldest first, the cursor to ask from next, and whether more are waiting. */
 export const syncChangesSchema = z.object({ changes: z.array(syncChangeSchema), cursor: z.string(), more: z.boolean() });
 
+/** An item's own fields an edit compares one by one; its vehicles and its original codes are each one, replaced whole. */
+export const SYNC_ITEM_FIELDS = ["name", "category", "vehicles", "position", "side", "minQuantity", "originalCodes", "material", "description"] as const;
+/** A brand's fields an edit compares one by one; its quantity moves, which never conflict. */
+export const SYNC_BRAND_FIELDS = ["partBrand", "code", "color", "location", "unitPriceCents"] as const;
+/**
+ * What the phone saw of an item, as the item routes send it: the fields an edit changes, or every field for a delete,
+ * and its brands by id, each with its fields. A brand the edit leaves out that the phone saw is one it removes; a brand
+ * the phone never saw, added on the server since, is kept.
+ */
+export const itemSeenSchema = itemSchema
+  .pick(Object.fromEntries(SYNC_ITEM_FIELDS.map((field) => [field, true])) as Record<(typeof SYNC_ITEM_FIELDS)[number], true>)
+  .partial()
+  .extend({
+    brands: z
+      .record(
+        z.uuid(),
+        itemBrandSchema.pick(Object.fromEntries(SYNC_BRAND_FIELDS.map((field) => [field, true])) as Record<(typeof SYNC_BRAND_FIELDS)[number], true>).partial(),
+      )
+      .optional(),
+  });
+/**
+ * Why an operation conflicts with the server: the item deleted there (an edit or a stock move on it), or changed there
+ * (a delete of it); a field the server changed since the phone saw it, to another value than the phone's, with the
+ * server's value; a brand the phone changed that the server deleted; or one the phone removed that the server changed.
+ */
+export const syncConflictSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("itemDeleted") }),
+  z.object({ kind: z.literal("itemChanged") }),
+  z.object({ kind: z.literal("field"), field: z.enum(SYNC_ITEM_FIELDS), theirs: z.unknown() }),
+  z.object({ kind: z.literal("brandField"), brandId: z.uuid(), field: z.enum(SYNC_BRAND_FIELDS), theirs: z.unknown() }),
+  z.object({ kind: z.literal("brandDeleted"), brandId: z.uuid() }),
+  z.object({ kind: z.literal("brandChanged"), brandId: z.uuid() }),
+]);
+
 /** An operation a phone made away from the server, with the id it gave it. */
 export const syncOperationSchema = z.discriminatedUnion("type", [
   /** A new item, with the id the phone gave it, and the ones it gave its brands. */
   z.object({ id: z.uuid(), type: z.literal("createItem"), itemId: z.uuid(), item: itemCreateSchema }),
-  /** An edit of an item, as PATCH /items/:id takes it. */
-  z.object({ id: z.uuid(), type: z.literal("updateItem"), itemId: z.uuid(), changes: itemUpdateSchema }),
-  z.object({ id: z.uuid(), type: z.literal("deleteItem"), itemId: z.uuid() }),
+  /** An edit of an item, as PATCH /items/:id takes it, with what the phone saw of the fields it changes. */
+  z.object({ id: z.uuid(), type: z.literal("updateItem"), itemId: z.uuid(), changes: itemUpdateSchema, seen: itemSeenSchema.optional() }),
+  /** A delete of an item, with what the phone saw of it. */
+  z.object({ id: z.uuid(), type: z.literal("deleteItem"), itemId: z.uuid(), seen: itemSeenSchema.optional() }),
   /** A stock move on a brand of an item: how many came in (positive) or went out (negative). */
   z.object({
     id: z.uuid(),
@@ -154,15 +194,17 @@ export const syncOperationSchema = z.discriminatedUnion("type", [
 /** What POST /sync/operations is sent: the operations, in the order they were made. */
 export const syncOperationsSchema = z.object({ operations: z.array(syncOperationSchema).min(1).max(SYNC_OPERATIONS_MAX) });
 /**
- * What an operation answered: applied, or refused, with the status and the body's message and details the item route
- * would answer (409 for a code another item uses, 404 for an item that isn't there).
+ * What an operation answered: applied; refused, with the status and the body's message and details the item route
+ * would answer (409 for a code another item uses, 404 for an item that isn't there); or in conflict with what changed
+ * on the server, with 409 and why, nothing of it applied, for the phone to settle and send again.
  */
 export const syncOperationResultSchema = z.object({
   id: z.uuid(),
-  status: z.enum(["applied", "refused"]),
+  status: z.enum(["applied", "refused", "conflict"]),
   statusCode: z.int(),
   message: z.string().optional(),
   details: z.array(z.record(z.string(), z.unknown())).optional(),
+  conflicts: z.array(syncConflictSchema).optional(),
 });
 /** What POST /sync/operations answers: each operation's result, in the order they were sent. */
 export const syncOperationsResultSchema = z.object({ results: z.array(syncOperationResultSchema) });
@@ -173,3 +215,7 @@ export type SyncChanges = z.infer<typeof syncChangesSchema>;
 export type SyncChangesQuery = z.infer<typeof syncChangesQuerySchema>;
 export type SyncOperation = z.infer<typeof syncOperationSchema>;
 export type SyncOperationResult = z.infer<typeof syncOperationResultSchema>;
+export type SyncConflict = z.infer<typeof syncConflictSchema>;
+export type ItemSeen = z.infer<typeof itemSeenSchema>;
+export type SyncItemField = (typeof SYNC_ITEM_FIELDS)[number];
+export type SyncBrandField = (typeof SYNC_BRAND_FIELDS)[number];
