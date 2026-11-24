@@ -11,6 +11,7 @@ import type { Item } from '@apc/domain/items';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { DeleteItemDialog } from '../src/features/inventory/DeleteItemDialog';
+import { loadQueue } from '../src/features/inventory/inventoryCopy';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { testItem } from '@apc/domain/test-items';
@@ -151,24 +152,15 @@ test('Mobile: the confirmation stays a centered window sized to the phone', asyn
   }
 });
 
-// Confirms and checks the item is deleted by its id, a toast names it and the removal is handed over.
+// Confirms and checks the item's delete is queued by its id, with nothing sent from the dialog itself, a toast names
+// it and the removal is handed over.
 test('Mobile: confirming deletes the item, announces it and hands it over', async () => {
   const onDeleted = jest.fn();
   const tree = await mount({ onDeleted });
   (fetch as jest.Mock).mockClear();
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 204 });
   await press(tree, 'Excluir');
-  expect(fetch).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`/items/${FILTER.id}$`)), { method: 'DELETE' });
+  expect(await loadQueue()).toEqual([expect.objectContaining({ type: 'deleteItem', itemId: FILTER.id, label: 'Filtro de óleo' })]);
+  expect(fetch).not.toHaveBeenCalled();
   expect(onDeleted).toHaveBeenCalledWith(FILTER);
   expect(shows(tree, 'Item “Filtro de óleo” excluído.')).toBe(true);
-});
-
-// Confirms while the API fails and checks a toast says so and nothing is handed over.
-test('Mobile: a failed delete says so and hands nothing over', async () => {
-  const onDeleted = jest.fn();
-  const tree = await mount({ onDeleted });
-  (fetch as jest.Mock).mockResolvedValueOnce({ ok: false, status: 500 });
-  await press(tree, 'Excluir');
-  expect(onDeleted).not.toHaveBeenCalled();
-  expect(shows(tree, 'Não foi possível excluir o item. Tente de novo.')).toBe(true);
 });
