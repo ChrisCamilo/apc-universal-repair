@@ -6,6 +6,7 @@ import { waitForDevice, type AuthService, type SessionUser } from '@apc/domain/a
 import { pencilIcon, qrIcon } from '@apc/tokens/icons';
 import { readEntryCode, readFingerprint, readPairingLink, readServerAddress, type Pairing, type PairingInvite } from '@apc/domain/pairing';
 import { applyServer, currentServer, saveServer } from '../../app/api';
+import { askLocalNetwork, hasLocalNetwork, LOCAL_NETWORK_TEXTS, openAppSettings } from '../../app/localNetwork';
 import { BackButton } from '../../components/BackButton';
 import { Button } from '../../components/Button';
 import { FieldScrollView } from '../../components/FieldScrollView';
@@ -22,7 +23,10 @@ import { DevicePending } from './DevicePending';
 // that fingerprint (see ServerPin.kt), and keeps the server once it answers; when it doesn't, the server in use before
 // stays, and the screen says what to check. A code that isn't the APC's says so. The camera asks for its permission at
 // a tap; once refused for good, the screen says to allow it in Android's settings, and a phone without a camera opens
-// on the fields alone. The ← beside the title, or Android's back button, leaves the server as it was, when one is
+// on the fields alone. On Android 17 and later the phone also needs the access to the local network to reach the
+// server (see localNetwork.ts): until it has it, the screen says why it will be asked, and asks right before reaching
+// the server; refused, it says the server can't be reached without it, and refused for good, it opens Android's
+// settings to allow it. The ← beside the title, or Android's back button, leaves the server as it was, when one is
 // paired.
 // Given the AuthService, as while the phone's password login is set aside (PASSWORD_LOGIN), pairing is also the login:
 // the QR code carries an entry code for the account open on the computer, typed in as a third field otherwise, and
@@ -107,6 +111,9 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
   const [tried, setTried] = useState(false);
   const [cameraFailed, setCameraFailed] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  // Whether the phone still has to be given the local network access, and whether it was refused for good.
+  const [needsNetwork, setNeedsNetwork] = useState(false);
+  const [networkBlocked, setNetworkBlocked] = useState(false);
   // The entry the server's computer hasn't authorized yet, which the screen waits on.
   const [waiting, setWaiting] = useState<Waiting>();
   // The latest owner's callback, so a new one doesn't start the wait over.
@@ -124,6 +131,15 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
   const codeInput = useRef<ComponentRef<typeof TextInput>>(null);
   const entryInput = useRef<ComponentRef<typeof TextInput>>(null);
   const { styles, ids } = useStyles();
+
+  // Say why the local network will be asked for, when the phone doesn't have it yet.
+  useEffect(() => {
+    let live = true;
+    hasLocalNetwork().then((granted) => live && setNeedsNetwork(!granted));
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // Wait for the server's computer to authorize the phone, then log in with the same entry code; or say it was refused,
   // going back to the server in use before.
@@ -190,7 +206,18 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
     asking.current = true;
     setConnecting(true);
     setRefused(undefined);
+    setNetworkBlocked(false);
     setTried(true);
+    const access = await askLocalNetwork();
+    setNeedsNetwork(access !== 'granted');
+    if (access !== 'granted') {
+      setRefused(LOCAL_NETWORK_TEXTS[access]);
+      setNetworkBlocked(access === 'blocked');
+      refusedLink.current = undefined;
+      asking.current = false;
+      setConnecting(false);
+      return;
+    }
     const before = currentServer();
     applyServer(pairing);
     const user = !(await answers(pairing.url))
@@ -295,6 +322,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
           </RNText>
         </View>
         {!waiting && <Text tone="muted">{manual ? (auth ? INTRO.typeLogin : INTRO.type) : auth ? INTRO.scanLogin : INTRO.scan}</Text>}
+        {!waiting && needsNetwork && !refused && <Text tone="muted">{LOCAL_NETWORK_TEXTS.why}</Text>}
       </View>
       {notice && !tried && (
         <View accessibilityLiveRegion="polite" style={styles.notice} testID={ids.notice}>
@@ -362,6 +390,11 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
         </View>
       )}
       <View style={styles.actions} testID={ids.actions}>
+        {networkBlocked && (
+          <Button align="stretch" onPress={openAppSettings}>
+            {LOCAL_NETWORK_TEXTS.settings}
+          </Button>
+        )}
         {waiting && (
           <Button variant="secondary" align="stretch" onPress={stopWaiting}>
             Cancelar
