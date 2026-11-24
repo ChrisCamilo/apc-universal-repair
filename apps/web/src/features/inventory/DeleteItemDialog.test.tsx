@@ -110,6 +110,17 @@ test('Web: a failed delete says so and keeps the confirmation open', async () =>
   expect(onDeleted).not.toHaveBeenCalled()
 })
 
+// Confirms the delete of an item another device already deleted, the API answering 404, and checks it is taken as
+// deleted: a toast says so and the removal is handed over.
+test('Web: an item another device already deleted is taken as deleted', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }))
+  const onDeleted = vi.fn()
+  const screen = await render(<Sample onDeleted={onDeleted} />)
+  await screen.getByRole('button', { name: 'Excluir' }).click()
+  await vi.waitFor(() => expect(onDeleted).toHaveBeenCalledWith(FILTER))
+  await expect.element(screen.getByText('Item “Filtro de óleo” já tinha sido excluído em outro dispositivo.')).toBeVisible()
+})
+
 // Opens the confirmation at 1280×720 and on a 360×780 phone and checks Excluir is on screen without scrolling and
 // the page doesn't scroll sideways.
 test('Web: Excluir is on screen at both minimum sizes', async () => {

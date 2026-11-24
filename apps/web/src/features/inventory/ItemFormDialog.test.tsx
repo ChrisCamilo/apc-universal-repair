@@ -578,6 +578,20 @@ test('Web: Editar unlocks the details in place and saves like an edit', async ()
   await expect.element(screen.getByText('Item “Filtro de óleo” salvo.')).toBeVisible()
 })
 
+// Edits an item another device deleted meanwhile, the API answering 404, and checks a toast says it was deleted and
+// not saved, and the form hands it over as gone instead of saved.
+test('Web: saving an item another device deleted says so', async () => {
+  answerSave(404, { statusCode: 404, error: 'Not Found', message: 'Item not found.' })
+  const onSaved = vi.fn()
+  const onGone = vi.fn()
+  const screen = await render(<Sample item={FILTER} onSaved={onSaved} onGone={onGone} />)
+  await screen.getByLabelText('Quantidade', { exact: true }).fill('7')
+  await screen.getByRole('button', { name: 'Salvar alterações' }).click()
+  await vi.waitFor(() => expect(onGone).toHaveBeenCalledWith(FILTER))
+  await expect.element(screen.getByText('O item “Filtro de óleo” foi excluído em outro dispositivo e não foi salvo.')).toBeVisible()
+  expect(onSaved).not.toHaveBeenCalled()
+})
+
 // Saves a new item with two photos chosen, and checks the item is posted first, then its brand's photos are sent to
 // the brand in order as files, and the item handed over carries the photos the API saved.
 test('Web: a new item is saved with its photos', async () => {
@@ -1132,6 +1146,7 @@ function Sample({
   initialPhotos,
   onDuplicate,
   onDelete,
+  onGone,
 }: {
   item?: Item
   details?: boolean
@@ -1145,6 +1160,7 @@ function Sample({
   initialPhotos?: UploadPhoto[][]
   onDuplicate?: (item: Item, withPhotos: boolean) => void
   onDelete?: (item: Item) => void
+  onGone?: (item: Item) => void
   /** Called with each name to create; the name is created as asked unless it returns null. */
   onCreateEntry?: CreateListEntry
 }) {
@@ -1174,6 +1190,7 @@ function Sample({
         onCreateEntry={create}
         onClose={() => setOpen(false)}
         onSaved={onSaved}
+        onGone={onGone}
         initialForm={initialForm}
         initialPhotos={initialPhotos}
         onDuplicate={onDuplicate}

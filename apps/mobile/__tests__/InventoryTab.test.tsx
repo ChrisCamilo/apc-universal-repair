@@ -18,7 +18,7 @@ import { ITEM_LIST_PATHS, type ItemListKind } from '@apc/domain/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { itemListsOf } from '@apc/domain/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
-import { InventoryTab } from '../src/features/inventory/InventoryTab';
+import { AUTO_SYNC_MS, InventoryTab } from '../src/features/inventory/InventoryTab';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
 import { MoreActionsContext } from '../src/features/dashboard/moreActionsContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
@@ -582,6 +582,43 @@ test('Mobile: coming back to the foreground brings the copy up to date', async (
     expect(texts(tree)).toContain('Vela de ignição');
   } finally {
     addListener.mockImplementation(preset);
+  }
+});
+
+// Leaves the list on screen and checks the copy syncs every 30 seconds, so an item added on the computer shows; then
+// opens the filter sheet and checks no sync waits to run under it, and that they start again once it closes.
+test('Mobile: the list syncs every 30 seconds while it is on screen, and not under a sheet', async () => {
+  const intervals = jest.spyOn(globalThis, 'setInterval');
+  const cleared = jest.spyOn(globalThis, 'clearInterval');
+  // The app in the foreground, which the preset's AppState, a stand-in function there, doesn't say.
+  const preset = AppState.currentState;
+  Object.assign(AppState, { currentState: 'active' });
+  try {
+    const stock = [...ITEMS];
+    const tree = await mount(stock);
+    /** The 30-second syncs set and not stopped. */
+    const running = () =>
+      intervals.mock.calls.flatMap(([run, ms], index) => {
+        const timer = intervals.mock.results[index].value;
+        return ms === AUTO_SYNC_MS && !cleared.mock.calls.some(([each]) => each === timer) ? [run as () => void] : [];
+      });
+    expect(running()).toHaveLength(1);
+    stock.unshift(item(4, { code: 'VL-9', name: 'Vela de ignição' }));
+    (fetch as jest.Mock).mockClear();
+    await ReactTestRenderer.act(async () => running()[0]());
+    expect((fetch as jest.Mock).mock.calls[0][0]).toMatch(/\/sync\/changes\?since=/);
+    expect(texts(tree)).toContain('Vela de ignição');
+
+    const filters = tree.root.find((n) => n.props.accessibilityLabel === 'Filtros' && typeof n.type !== 'string' && typeof n.props.onPress === 'function');
+    await ReactTestRenderer.act(async () => filters.props.onPress());
+    expect(running()).toHaveLength(0);
+    const sheet = tree.root.findAllByType(Modal).find((modal) => modal.props.visible)!;
+    await ReactTestRenderer.act(async () => sheet.props.onRequestClose());
+    expect(running()).toHaveLength(1);
+  } finally {
+    intervals.mockRestore();
+    cleared.mockRestore();
+    Object.assign(AppState, { currentState: preset });
   }
 });
 
