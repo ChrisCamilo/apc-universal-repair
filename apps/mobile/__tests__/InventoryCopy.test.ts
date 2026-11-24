@@ -14,8 +14,8 @@ import { withQueue, type QueuedOperation } from '@apc/domain/sync-queue';
 // full copy again when the server answers 410, the copy kept as it was while the server can't be reached, and nothing
 // left of it once cleared. And the queue of the changes made on the phone: sent in order before the copy syncs, kept
 // while the server can't be reached and sent again later, shown over the copy until a sync brings them in, dropped
-// when refused, saying why, and kept across an expired session. The native side's encrypted file is the setup's
-// in-memory stand-in.
+// when refused, saying why, and kept across an expired session; and a copy behind the phone's lock, not taken for none
+// while it is locked. The native side's encrypted file is the setup's in-memory stand-in.
 
 /** When the queued changes of the tests were made. */
 const AT = '2026-11-23T12:00:00.000Z';
@@ -327,4 +327,21 @@ test('Mobile: clearing the copy deletes it, and a sync still running keeps nothi
   const copy = await loadCopy();
   expect(copy.cursor).toBeNull();
   expect(copyItems(copy)).toEqual([]);
+});
+
+// Starts the app again with the copy on disk behind the phone's lock, not yet confirmed, and checks reading it is
+// refused rather than taken for no copy, so nothing is written over it; then, once open, that it reads back whole.
+test('Mobile: a copy behind the phone\'s lock isn\'t taken for no copy until it opens', async () => {
+  answerFeed({ '': syncPageOf(ITEMS, 'db.10') });
+  await syncCopy();
+  const writes = native.write.mock.calls.length;
+  await jest.isolateModulesAsync(async () => {
+    const again = require('../src/features/inventory/inventoryCopy') as typeof import('../src/features/inventory/inventoryCopy');
+    native.read.mockRejectedValueOnce(Object.assign(new Error('The copy is locked.'), { code: 'locked' }));
+    await expect(again.loadCopy()).rejects.toMatchObject({ code: 'locked' });
+    expect(native.write.mock.calls).toHaveLength(writes);
+    const copy = await again.loadCopy();
+    expect(copy.cursor).toBe('db.10');
+    expect(copyItems(copy)).toHaveLength(2);
+  });
 });

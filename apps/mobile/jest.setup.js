@@ -68,6 +68,11 @@ require('react-native').NativeModules.InventoryCopy = {
   clear: jest.fn(async () => {
     copyFile.saved = null;
   }),
+  // The phone's lock opens it at once, as on a phone with none, unless a test answers otherwise.
+  unlock: jest.fn(async () => 'open'),
+  lock: jest.fn(async () => {}),
+  hasLock: jest.fn(async () => true),
+  openLockSettings: jest.fn(),
 };
 
 // The photos the phone keeps are files the native side downloads (PhotoCacheModule.kt); tests keep each one's address,

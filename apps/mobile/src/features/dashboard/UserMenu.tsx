@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import type { SessionUser } from '@apc/domain/auth';
 import { playIcon } from '@apc/tokens/icons';
@@ -14,7 +14,7 @@ import { BottomBarItem } from './BottomBarItem';
 import { useBarStyles } from './Dashboard.styles';
 import { useStyles } from './UserMenu.styles';
 import { useToast } from '../../components/Toast';
-import { loadQueue } from '../inventory/inventoryCopy';
+import { hasScreenLock, loadQueue, openLockSettings } from '../inventory/inventoryCopy';
 import { useInventoryTutorial } from '../inventory/inventoryTutorialContext';
 import { lastSync, syncBadge, syncOutcome } from '../inventory/syncStatus';
 import { useInventoryCopy } from '../inventory/useInventoryCopy';
@@ -29,10 +29,13 @@ import { useTabReorder } from './tabReorderContext';
 // "Sincronizar agora", under when the phone's copy last caught up with the server and what waits, syncs it, and a toast
 // says how it went, or why it failed: the server out of reach, or the phone without the local network access (see
 // syncStatus.ts). "Conectar ao servidor" opens the pairing with the home server, to pair again, as after the computer's
-// address changes.
+// address changes. On a phone with no screen lock, "Definir bloqueio de tela" says one would protect the inventory kept
+// on it (see AppLock.tsx) and opens Android's settings to set it.
 // "Sair", at the end and set apart from the preferences, hands the logout to the owner, which ends the session and
 // goes back to the login; the preferences stay on the device for the next login.
 
+/** What the menu says on a phone with no screen lock. */
+export const NO_LOCK_TEXT = 'Este celular não tem bloqueio de tela. Defina uma digital, o rosto ou um PIN para proteger o estoque guardado nele.';
 const STYLE_OPTIONS = STYLES.map((style) => ({ value: style, label: STYLE_LABELS[style] }));
 
 type UserMenuProps = {
@@ -50,7 +53,15 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
   const copy = useInventoryCopy();
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  // Whether the phone has a screen lock, read each time the menu opens, as it may have been set meanwhile.
+  const [locked, setLocked] = useState(true);
   const bar = useBarStyles();
+
+  useEffect(() => {
+    if (open) {
+      hasScreenLock().then(setLocked, () => setLocked(true));
+    }
+  }, [open]);
   const { styles, ids } = useStyles();
 
   /** Syncs the copy now, and says how it went. */
@@ -99,6 +110,14 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
             <MenuItem description={[lastSync(copy.syncedAt), syncBadge(copy)].filter(Boolean).join(' · ')} onSelect={syncNow}>
               Sincronizar agora
             </MenuItem>
+            {!locked && (
+              <>
+                <MenuLabel>Segurança</MenuLabel>
+                <MenuItem description={NO_LOCK_TEXT} onSelect={openLockSettings}>
+                  Definir bloqueio de tela
+                </MenuItem>
+              </>
+            )}
             <MenuLabel>Servidor</MenuLabel>
             <MenuItem onSelect={onConnect}>Conectar ao servidor</MenuItem>
             <Divider />
