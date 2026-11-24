@@ -1,7 +1,9 @@
-import type { SyncOperation, SyncOperationResult } from "@apc/domain/sync";
+import type { SyncConflict, SyncOperation, SyncOperationResult } from "@apc/domain/sync";
+import { deleteConflicts, mergeEdit } from "@apc/domain/sync-conflicts";
 import type { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../db/client.js";
 import { createItem, deleteItem, ID_TAKEN, moveStock, updateItem, type ItemChange } from "../inventory/itemChanges.js";
+import { ITEM_INCLUDE, toItemValues } from "../inventory/items.js";
 import { removePhotoFiles } from "../inventory/photos.js";
 
 // Applies a phone's batch of operations (POST /sync/operations, see @apc/domain/sync), in order, each once: an
@@ -12,7 +14,10 @@ import { removePhotoFiles } from "../inventory/photos.js";
 // refused (a code another item uses, an item that isn't there) is kept as refused, and the ones after it still run. A
 // new item takes the ids the phone gave it and its brands, as does a brand an edit adds, refused with 409 when one is
 // already taken; a brand an edit keeps without a quantity keeps its own, as the phone sends stock as moves. The photo
-// files an operation leaves behind are removed once it is in.
+// files an operation leaves behind are removed once it is in. An edit is merged with the item as it is now, field by
+// field, from what the phone saw (see @apc/domain/sync-conflicts); an edit or a move on an item deleted here, an edit of
+// a field changed here to another value, or a delete of an item changed here, answers its conflicts instead, with 409,
+// nothing applied and nothing kept, so the phone sends it again once settled.
 
 /** The status the item route answers each kind of operation applied with. */
 const APPLIED_STATUS: Record<SyncOperation["type"], number> = { createItem: 201, updateItem: 200, deleteItem: 204, moveStock: 200 };
@@ -46,6 +51,10 @@ async function applyOperation(deviceId: string, operation: SyncOperation): Promi
   try {
     const { result, files } = await prisma.$transaction(async (tx) => {
       const change = await changeOf(tx, operation);
+      if ("conflicts" in change) {
+        // Nothing of it applied, and nothing kept: settled on the phone, it comes again.
+        return { result: { id: operation.id, status: "conflict", statusCode: 409, conflicts: change.conflicts } satisfies SyncOperationResult, files: [] };
+      }
       const { rejection } = change.ok ? { rejection: undefined } : change;
       const result: SyncOperationResult = rejection
         ? { id: operation.id, status: "refused", statusCode: rejection.statusCode, message: rejection.message, details: rejection.details }
@@ -66,25 +75,36 @@ async function applyOperation(deviceId: string, operation: SyncOperation): Promi
 }
 
 /**
- * Makes an operation's change, with the item routes' rules.
+ * Makes an operation's change, with the item routes' rules, unless it conflicts with what changed on the server since
+ * the phone saw it (see @apc/domain/sync-conflicts): an edit or a stock move on an item deleted here, an edit of a
+ * field changed here, or a delete of an item changed here.
  * @param tx Database client, in the operation's transaction.
  * @param operation The operation.
- * @returns The change made, or why it was refused.
+ * @returns The change made, why it was refused, or its conflicts.
  */
-async function changeOf(tx: Prisma.TransactionClient, operation: SyncOperation): Promise<ItemChange<unknown>> {
-  switch (operation.type) {
-    case "createItem": {
-      const brandIds = operation.item.brands.flatMap((brand) => (brand.id ? [brand.id] : []));
-      const taken = (await tx.item.count({ where: { id: operation.itemId } })) + (await tx.itemBrand.count({ where: { id: { in: brandIds } } }));
-      if (taken > 0) {
-        return { ok: false, rejection: ID_TAKEN };
-      }
-      return createItem(tx, operation.item, { itemId: operation.itemId });
+async function changeOf(tx: Prisma.TransactionClient, operation: SyncOperation): Promise<ItemChange<unknown> | { conflicts: SyncConflict[] }> {
+  if (operation.type === "createItem") {
+    const brandIds = operation.item.brands.flatMap((brand) => (brand.id ? [brand.id] : []));
+    const taken = (await tx.item.count({ where: { id: operation.itemId } })) + (await tx.itemBrand.count({ where: { id: { in: brandIds } } }));
+    if (taken > 0) {
+      return { ok: false, rejection: ID_TAKEN };
     }
-    case "updateItem":
-      return updateItem(tx, operation.itemId, operation.changes, { newBrandIds: true });
-    case "deleteItem":
-      return deleteItem(tx, operation.itemId);
+    return createItem(tx, operation.item, { itemId: operation.itemId });
+  }
+  const row = await tx.item.findUnique({ where: { id: operation.itemId }, include: ITEM_INCLUDE });
+  if (!row) {
+    // A delete of an item already gone is refused as the route refuses it.
+    return operation.type === "deleteItem" ? deleteItem(tx, operation.itemId) : { conflicts: [{ kind: "itemDeleted" }] };
+  }
+  switch (operation.type) {
+    case "updateItem": {
+      const merged = mergeEdit(toItemValues(row), operation.changes, operation.seen);
+      return merged.conflicts.length > 0 ? { conflicts: merged.conflicts } : updateItem(tx, operation.itemId, merged.changes, { newBrandIds: true });
+    }
+    case "deleteItem": {
+      const conflicts = deleteConflicts(toItemValues(row), operation.seen);
+      return conflicts.length > 0 ? { conflicts } : deleteItem(tx, operation.itemId);
+    }
     case "moveStock":
       return moveStock(tx, operation.itemId, operation.brandId, operation.delta);
   }

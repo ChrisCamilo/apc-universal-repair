@@ -1,4 +1,4 @@
-import { codeKey, MAX_QUANTITY, type ItemBrandCreate, type ItemCreate, type ItemUpdate } from "@apc/domain/items";
+import { codeKey, MAX_QUANTITY, optionKey, type ItemBrandCreate, type ItemCreate, type ItemUpdate } from "@apc/domain/items";
 import type { Prisma } from "../generated/prisma/client.js";
 import { brandData, createData, ITEM_INCLUDE, originalCodesData, syncQuantity, updateData, vehiclesData, type ListIds } from "./items.js";
 import { listIds } from "./listIds.js";
@@ -195,6 +195,12 @@ export async function updateItem(
   ]);
   if (repeated) {
     return refused(codeRepeated(repeated));
+  }
+  // A phone's edit merged with a brand added here may name a part brand twice, which the schema can't see.
+  const partBrands = (brands ?? []).map((brand) => optionKey(brand.partBrand));
+  const partBrand = (brands ?? []).find((_, index) => partBrands.indexOf(partBrands[index]) !== index);
+  if (partBrand) {
+    return refused({ statusCode: 400, error: "Bad Request", message: `Part brand "${partBrand.partBrand}" is repeated in the item.` });
   }
   const taken = await findTakenCode(tx, sentCodes(body), id);
   if (taken) {

@@ -6,6 +6,7 @@ import {
   NOT_APPLICABLE,
   searchKey,
   type Item,
+  type ItemBrand,
   type ItemBrandCreate,
   type ItemCreate,
   type ItemListQuery,
@@ -266,6 +267,17 @@ export async function vehiclesData(tx: Prisma.TransactionClient, vehicles: reado
  * @returns The item as described by itemSchema.
  */
 export function toItem(row: ItemRow, session: ActiveSession): Item {
+  const values = toItemValues(row);
+  return { ...values, brands: values.brands.map((brand, index) => ({ ...brand, photos: row.brands[index].photos.map((photo) => photoOf(photo, session)) })) };
+}
+
+/**
+ * Turns a database row into the item the API sends, as toItem does, without its brands' photos, as a phone's operation
+ * compares it with what the phone saw (see @apc/domain/sync-conflicts).
+ * @param row Item row, read with ITEM_INCLUDE.
+ * @returns The item, its brands without photos.
+ */
+export function toItemValues(row: ItemRow): Omit<Item, "brands"> & { brands: Omit<ItemBrand, "photos">[] } {
   return {
     id: row.id,
     name: row.name,
@@ -293,7 +305,6 @@ export function toItem(row: ItemRow, session: ActiveSession): Item {
       location: brand.location,
       quantity: brand.quantity,
       unitPriceCents: brand.unitPriceCents,
-      photos: brand.photos.map((photo) => photoOf(photo, session)),
     })),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
