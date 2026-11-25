@@ -1,6 +1,7 @@
 import { QUANTITY_UNIT, STOCK_STATUS_SHORT, stockStatus } from '@apc/domain/items'
 import { usePhone } from '../../../components/usePhone.ts'
 import { inventoryTab } from '../InventoryTab.styles.ts'
+import { useLocale } from '../../../app/useLocale.ts'
 
 // An item's quantity in a list: the number on a desktop row; on a phone's card, with its stock status under it in its
 // tone, "un.", "Baixo" or "Esgotado". The Inventory's list and the Catalog's parts found by code show it.
@@ -13,6 +14,7 @@ type StockQuantityProps = {
 }
 
 export function StockQuantity({ quantity, minQuantity, tinted = true }: StockQuantityProps) {
+  const { locale } = useLocale()
   const phone = usePhone()
   const status = tinted ? stockStatus(quantity, minQuantity) : null
   const { classes, ids } = inventoryTab({ stock: status ?? 'ok' })
@@ -25,7 +27,7 @@ export function StockQuantity({ quantity, minQuantity, tinted = true }: StockQua
         {quantity}
       </span>
       <span className={classes.quantityTag()} data-testid={ids.quantityTag}>
-        {status ? STOCK_STATUS_SHORT[status] : QUANTITY_UNIT}
+        {status ? STOCK_STATUS_SHORT[locale][status] : QUANTITY_UNIT[locale]}
       </span>
     </span>
   )

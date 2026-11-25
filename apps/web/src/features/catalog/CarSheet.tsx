@@ -4,6 +4,7 @@ import { itemCardCode, itemCardDetails, stockTint, type Item } from '@apc/domain
 import { photoAddress } from '@apc/domain/photos'
 import { filterIcon } from '@apc/tokens/icons'
 import { API_BASE } from '../../app/api.ts'
+import { useLocale } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
 import { DataTable, TableThumbnail, TableTitle } from '../../components/DataTable'
 import { EmptyState } from '../../components/EmptyState'
@@ -31,7 +32,7 @@ const PART_COLUMNS = [
       return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, API_BASE)} label={`Foto de ${item.name}`} />
     },
   },
-  { key: 'name', header: 'Item', card: 'main' as const, cell: (item: Item) => <TableTitle title={item.name} code={itemCardCode(item)} details={itemCardDetails(item)} /> },
+  { key: 'name', header: 'Item', card: 'main' as const, cell: (item: Item) => <PartTitle item={item} /> },
   { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end' as const, cell: (item: Item) => <StockQuantity {...item} /> },
 ]
 
@@ -127,6 +128,7 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
 
 export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
   const { classes, ids } = carSheetStyles()
+  const { locale } = useLocale()
   const headingId = useId()
   return (
     <section aria-labelledby={headingId} className={classes.parts()} data-testid={ids.parts}>
@@ -140,7 +142,7 @@ export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
             columns={PART_COLUMNS}
             rows={parts}
             rowKey={(item) => item.id}
-            rowStatus={stockTint}
+            rowStatus={(item) => stockTint(item, locale)}
             sort={null}
             onSortChange={() => {}}
             unsortedLabel=""
@@ -157,4 +159,10 @@ export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
       )}
     </section>
   )
+}
+
+/** A part's name, with its code and details in the language chosen. */
+function PartTitle({ item }: { item: Item }) {
+  const { locale } = useLocale()
+  return <TableTitle title={item.name} code={itemCardCode(item, locale)} details={itemCardDetails(item, locale)} />
 }

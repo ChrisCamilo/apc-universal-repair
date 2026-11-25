@@ -60,7 +60,7 @@ test("Web: an expired session goes back to the login, which says so", { tag: [TE
   });
   await page.goto("/inventory");
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("status").filter({ hasText: LOGIN_MESSAGES.expired })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: LOGIN_MESSAGES["pt-BR"].expired })).toBeVisible();
   expect(sent[0]).toBe(`Bearer token-${USER.id}`);
   // The saved session is put back on every load; it is gone until then.
   expect(await page.evaluate((key) => localStorage.getItem(key), SESSION_STORAGE_KEY)).toBeNull();
@@ -68,5 +68,5 @@ test("Web: an expired session goes back to the login, which says so", { tag: [TE
   await page.unroute("**/api/items*");
   await logIn(page, USER);
   await expect(page).toHaveURL(/\/inventory$/);
-  await expect(page.getByText(LOGIN_MESSAGES.expired)).toBeHidden();
+  await expect(page.getByText(LOGIN_MESSAGES["pt-BR"].expired)).toBeHidden();
 });

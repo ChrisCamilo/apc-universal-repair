@@ -60,10 +60,10 @@ export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetai
         <Tile label="Mínimo" value={item.minQuantity} />
       </div>
       <dl className={classes.list()} data-testid={ids.list}>
-        <Detail term="Veículos" value={vehiclesText(item)} />
-        {item.material && <Detail term={ITEM_NOTE_LABELS.material} value={item.material} />}
-        <Detail term="Posição · Lado" value={positionSideText(item)} none={noPlace} />
-        <Detail term="Códigos originais" value={originalCodesText(item)} none={noCodes} />
+        <Detail term="Veículos" value={vehiclesText(item, locale)} />
+        {item.material && <Detail term={ITEM_NOTE_LABELS[locale].material} value={item.material} />}
+        <Detail term="Posição · Lado" value={positionSideText(item, locale)} none={noPlace} />
+        <Detail term="Códigos originais" value={originalCodesText(item, locale)} none={noCodes} />
       </dl>
       <Heading level={3} className={classes.brands()}>
         {`Marcas · ${item.brands.length}`}
@@ -83,7 +83,7 @@ export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetai
           <span className={classes.brandQuantity()} data-testid={ids.brandQuantity}>
             {brand.quantity}{' '}
             <span className={classes.unit()} data-testid={ids.unit}>
-              {QUANTITY_UNIT}
+              {QUANTITY_UNIT[locale]}
             </span>
           </span>
           <span className={classes.code()} data-testid={ids.code}>
@@ -93,7 +93,7 @@ export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetai
             {formatPrice(brand.unitPriceCents, locale)}
           </span>
           <span className={classes.place()} data-testid={ids.place}>
-            {brandPlaceText(brand)}
+            {brandPlaceText(brand, locale)}
           </span>
         </div>
       ))}
@@ -121,6 +121,7 @@ export function RemoveItemButton({ onClick }: { onClick: () => void }) {
 /** A tile of the stock: its label over its number and unit. */
 function Tile({ label, value }: { label: string; value: number }) {
   const { classes, ids } = itemDetails()
+  const { locale } = useLocale()
   return (
     <div className={classes.tile()} data-testid={ids.tile}>
       <span className={classes.tileLabel()} data-testid={ids.tileLabel}>
@@ -129,7 +130,7 @@ function Tile({ label, value }: { label: string; value: number }) {
       <span className={classes.tileValue()} data-testid={ids.tileValue}>
         {value}{' '}
         <span className={classes.unit()} data-testid={ids.unit}>
-          {QUANTITY_UNIT}
+          {QUANTITY_UNIT[locale]}
         </span>
       </span>
     </div>

@@ -6,6 +6,7 @@ import { imageUpload } from './ImageUpload.styles.ts'
 import { shrinkPhoto } from './shrinkPhoto.ts'
 import { Label, Text } from '../Typography/Typography.tsx'
 import { usePhone } from '../usePhone.ts'
+import { useLocale } from '../../app/useLocale.ts'
 
 // The photo field of the item form. Photos show as thumbnails, the first one marked as the cover, each with
 // an × to remove it. Under them, a drop area that is also clickable takes several files at once and says how
@@ -38,12 +39,13 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
   const [dragging, setDragging] = useState(false)
   const phone = usePhone()
   const { classes, ids } = imageUpload()
+  const { locale } = useLocale()
   const left = limit - photos.length
 
   /** Reduces the files, takes the ones that pass the rules and fit, and says which were left out and why. */
   const add = async (files: File[]) => {
     const reduced = await Promise.all(files.map(shrinkPhoto))
-    const { accepted, problems: leftOut } = takePhotos(reduced, photos.length, limit)
+    const { accepted, problems: leftOut } = takePhotos(reduced, photos.length, limit, locale)
     setProblems(leftOut)
     if (accepted.length > 0) {
       onPhotosChange([...photos, ...accepted.map((file) => ({ url: URL.createObjectURL(file), file }))])
@@ -157,8 +159,8 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
           <span className={classes.text()} data-testid={ids.text}>
             <span>
               {photos.length > 0
-                ? `Arraste mais ${photoCount(left)} ou clique para escolher`
-                : `Arraste até ${photoCount(limit)} ou clique para escolher`}
+                ? `Arraste mais ${photoCount(left, locale)} ou clique para escolher`
+                : `Arraste até ${photoCount(limit, locale)} ou clique para escolher`}
             </span>
             <small className={classes.hint()} data-testid={ids.hint}>
               JPG, PNG ou WebP, até 3 MB cada. A primeira vira a capa na lista.

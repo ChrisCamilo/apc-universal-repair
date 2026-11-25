@@ -20,6 +20,7 @@ import { Combobox } from '../../../components/Combobox'
 import { Icon } from '../../../components/Icon'
 import { Label, Text } from '../../../components/Typography'
 import { vehiclesField } from './VehiclesField.styles.ts'
+import { useLocale } from '../../../app/useLocale.ts'
 
 // The vehicles an item fits in a phone's item form, as in the Novo item mockup: each vehicle a chip with its × (see
 // vehicleText), then a dashed "Adicionar veículo" that opens a new vehicle's brand and model, the comboboxes of the
@@ -47,6 +48,7 @@ type VehiclesFieldProps = {
 }
 
 export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, onVehiclesChange, onCreate }: VehiclesFieldProps) {
+  const { locale } = useLocale()
   const labelId = useId()
   // The vehicle being added, open under the chips, and its messages.
   const [draft, setDraft] = useState<ItemVehicleForm | null>(null)
@@ -61,7 +63,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
   const notes = vehicles.flatMap((vehicle, index) =>
     Object.values(errors[index] ?? {})
       .filter(Boolean)
-      .map((message) => (vehicle.vehicleBrand.trim() ? `${vehicleText(vehicleOfForm(vehicle))}: ${message}` : message)),
+      .map((message) => (vehicle.vehicleBrand.trim() ? `${vehicleText(vehicleOfForm(vehicle), locale)}: ${message}` : message)),
   )
   const { classes, ids } = vehiclesField()
 
@@ -94,11 +96,11 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
     if (!draft) {
       return
     }
-    const lines = vehicleFormErrors([...filled, draft], lists)
+    const lines = vehicleFormErrors([...filled, draft], lists, locale)
     const found = lines[lines.length - 1]
     // Universal already among the chips is refused on its own line; the new vehicle says so.
-    const universal = lines.slice(0, -1).some((line) => line.vehicleBrand === ITEM_FORM_MESSAGES.universalAlone)
-    const shown = Object.keys(found).length > 0 ? found : universal ? { vehicleBrand: ITEM_FORM_MESSAGES.universalAlone } : {}
+    const universal = lines.slice(0, -1).some((line) => line.vehicleBrand === ITEM_FORM_MESSAGES[locale].universalAlone)
+    const shown = Object.keys(found).length > 0 ? found : universal ? { vehicleBrand: ITEM_FORM_MESSAGES[locale].universalAlone } : {}
     setDraftErrors(shown)
     if (Object.keys(shown).length === 0) {
       onVehiclesChange([...filled, draft])
@@ -114,16 +116,16 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
 
   return (
     <div role="group" aria-labelledby={labelId} className={classes.base()} data-testid={ids.base}>
-      <Label id={labelId}>{VEHICLES_LABEL}</Label>
+      <Label id={labelId}>{VEHICLES_LABEL[locale]}</Label>
       {filled.length > 0 && (
         <ul className={classes.chips()} data-testid={ids.chips}>
           {vehicles.map((vehicle, index) =>
             vehicle.vehicleBrand.trim() ? (
               <li key={index} className={classes.chip()} data-testid={ids.chip}>
-                {vehicleText(vehicleOfForm(vehicle))}
+                {vehicleText(vehicleOfForm(vehicle), locale)}
                 <button
                   type="button"
-                  aria-label={`Remover ${vehicleText(vehicleOfForm(vehicle))}`}
+                  aria-label={`Remover ${vehicleText(vehicleOfForm(vehicle), locale)}`}
                   className={classes.remove()}
                   data-testid={ids.remove}
                   onClick={() => remove(index)}
@@ -138,7 +140,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
       {draft ? (
         <div ref={draftBox} role="group" aria-label="Novo veículo" className={classes.draft()} data-testid={ids.draft}>
           <Combobox
-            label={VEHICLE_FIELD_LABELS.vehicleBrand}
+            label={VEHICLE_FIELD_LABELS[locale].vehicleBrand}
             value={draft.vehicleBrand}
             onValueChange={(value) => change('vehicleBrand', value)}
             options={brands}
@@ -149,7 +151,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
             error={draftErrors.vehicleBrand}
           />
           <Combobox
-            label={VEHICLE_FIELD_LABELS.vehicleModel}
+            label={VEHICLE_FIELD_LABELS[locale].vehicleModel}
             value={draft.vehicleModel}
             onValueChange={(value) => change('vehicleModel', value)}
             options={modelsOfBrand(lists, draft.vehicleBrand)}
@@ -163,7 +165,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
           />
           <div className={classes.pair()} data-testid={ids.pair}>
             <Combobox
-              label={VEHICLE_FIELD_LABELS.generation}
+              label={VEHICLE_FIELD_LABELS[locale].generation}
               value={draft.generation ?? ''}
               onValueChange={(value) => change('generation', value)}
               options={suggested.generations}
@@ -175,7 +177,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
               disabled={!draft.vehicleModel.trim()}
             />
             <Combobox
-              label={VEHICLE_FIELD_LABELS.version}
+              label={VEHICLE_FIELD_LABELS[locale].version}
               value={draft.version ?? ''}
               onValueChange={(value) => change('version', value)}
               options={suggested.versions}

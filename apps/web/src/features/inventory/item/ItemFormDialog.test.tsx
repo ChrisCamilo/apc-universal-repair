@@ -158,7 +158,7 @@ for (const style of STYLES) {
       const screen = await render(<Sample />)
       expect(getComputedStyle(screen.getByRole('button', { name: 'Salvar' }).element()).backgroundColor).toBe(rgb(colors.accent))
       await screen.getByRole('button', { name: 'Salvar' }).click()
-      expect(getComputedStyle(screen.getByText(ITEM_FORM_MESSAGES.name).element()).color).toBe(rgb(colors.danger))
+      expect(getComputedStyle(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].name).element()).color).toBe(rgb(colors.danger))
     })
   }
 }
@@ -170,19 +170,19 @@ test('Web: the required fields say what is missing and nothing is sent', async (
   const screen = await render(<Sample />)
   await screen.getByRole('button', { name: 'Salvar' }).click()
   const required = [
-    ITEM_FORM_MESSAGES.code,
-    ITEM_FORM_MESSAGES.name,
-    ITEM_FORM_MESSAGES.category,
-    ITEM_FORM_MESSAGES.partBrand,
-    ITEM_FORM_MESSAGES.vehicleBrand,
-    ITEM_FORM_MESSAGES.price,
+    ITEM_FORM_MESSAGES['pt-BR'].code,
+    ITEM_FORM_MESSAGES['pt-BR'].name,
+    ITEM_FORM_MESSAGES['pt-BR'].category,
+    ITEM_FORM_MESSAGES['pt-BR'].partBrand,
+    ITEM_FORM_MESSAGES['pt-BR'].vehicleBrand,
+    ITEM_FORM_MESSAGES['pt-BR'].price,
   ]
   for (const message of required) {
     await expect.element(screen.getByText(message)).toBeVisible()
   }
   expect(fetch).not.toHaveBeenCalled()
   await screen.getByLabelText('Nome').fill('Vela')
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.name)).not.toBeInTheDocument()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].name)).not.toBeInTheDocument()
 })
 
 // Types a code another item uses, in lowercase, and checks it turns uppercase while typing and is refused naming that
@@ -192,12 +192,12 @@ test('Web: the code turns uppercase and a code in use names its item', async () 
   await screen.getByLabelText('Código da peça').fill('fra-1000')
   await expect.element(screen.getByLabelText('Código da peça')).toHaveValue('FRA-1000')
   await screen.getByRole('button', { name: 'Salvar' }).click()
-  await expect.element(screen.getByText(codeTakenMessage('Pastilha de freio'))).toBeVisible()
+  await expect.element(screen.getByText(codeTakenMessage('Pastilha de freio', 'pt-BR'))).toBeVisible()
 
   answerSave(409, { details: [{ field: 'brands/0/code', code: 'NOVA-1', itemName: 'Correia dentada' }] })
   await fill(screen, { code: 'nova-1', name: 'Vela', category: 'Ignição', partBrand: 'NGK', vehicleBrand: 'Fiat', price: '10' })
   await screen.getByRole('button', { name: 'Salvar' }).click()
-  await expect.element(screen.getByText(codeTakenMessage('Correia dentada'))).toBeVisible()
+  await expect.element(screen.getByText(codeTakenMessage('Correia dentada', 'pt-BR'))).toBeVisible()
 })
 
 // Types a code another item uses, key by key, and checks the field names that item at once, before Save, and drops
@@ -208,7 +208,7 @@ test('Web: a code in use is named while it is typed', async () => {
   const fetch = vi.spyOn(globalThis, 'fetch')
   const screen = await render(<Sample />)
   const code = screen.getByLabelText('Código da peça')
-  const taken = screen.getByText(codeTakenMessage('Pastilha de freio'))
+  const taken = screen.getByText(codeTakenMessage('Pastilha de freio', 'pt-BR'))
   await userEvent.type(code, 'fra-1000')
   await expect.element(taken).toBeVisible()
   await userEvent.type(code, '1')
@@ -216,15 +216,15 @@ test('Web: a code in use is named while it is typed', async () => {
   await code.fill('fra 1000')
   await expect.element(taken).toBeVisible()
   await code.fill('')
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.code)).not.toBeInTheDocument()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].code)).not.toBeInTheDocument()
   expect(fetch).not.toHaveBeenCalled()
   await screen.unmount()
 
   const editing = await render(<Sample item={PADS} />)
   await editing.getByLabelText('Código da peça').fill('fra-1000')
-  await expect.element(editing.getByText(codeTakenMessage('Pastilha de freio'))).not.toBeInTheDocument()
+  await expect.element(editing.getByText(codeTakenMessage('Pastilha de freio', 'pt-BR'))).not.toBeInTheDocument()
   await editing.getByLabelText('Código da peça').fill('w 712/95')
-  await expect.element(editing.getByText(codeTakenMessage('Filtro de óleo'))).toBeVisible()
+  await expect.element(editing.getByText(codeTakenMessage('Filtro de óleo', 'pt-BR'))).toBeVisible()
 })
 
 // Checks the vehicle model is locked until a vehicle brand is chosen, then lists only that brand's models, and clears
@@ -276,7 +276,7 @@ test('Web: a name that couldn\'t be created is reported and not saved', async ()
   await expect.element(screen.getByText('Não foi possível criar a marca de peça. Tente de novo.')).toBeVisible()
   await expect.element(screen.getByRole('combobox', { name: 'Marca da peça' })).toHaveValue('Cofap')
   await screen.getByRole('button', { name: 'Salvar' }).click()
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.partBrandNotListed)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].partBrandNotListed)).toBeVisible()
   expect(fetch).not.toHaveBeenCalled()
 })
 
@@ -288,14 +288,14 @@ test('Web: names not in their lists are refused on save', async () => {
   await fill(screen, { code: 'c-1', name: 'Amortecedor', category: 'Suspensão', partBrand: 'Cofap', vehicleBrand: 'Renault', price: '10' })
   await expect.element(screen.getByRole('combobox', { name: 'Modelo do veículo' })).toBeDisabled()
   await screen.getByRole('button', { name: 'Salvar' }).click()
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.categoryNotListed)).toBeVisible()
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.partBrandNotListed)).toBeVisible()
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.vehicleBrandNotListed)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].categoryNotListed)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].partBrandNotListed)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].vehicleBrandNotListed)).toBeVisible()
 
   await screen.getByRole('combobox', { name: 'Marca do veículo' }).fill('Fiat')
   await screen.getByRole('combobox', { name: 'Modelo do veículo' }).fill('Uno')
   await screen.getByRole('button', { name: 'Salvar' }).click()
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.vehicleModelNotListed)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].vehicleModelNotListed)).toBeVisible()
   expect(fetch).not.toHaveBeenCalled()
 })
 
@@ -350,7 +350,7 @@ test('Web: a vehicle takes an optional generation and version, sent as years', a
   await screen.getByRole('combobox', { name: 'Modelo do veículo' }).fill('gol')
   await screen.getByRole('combobox', { name: 'Geração' }).fill('12/08')
   await screen.getByRole('button', { name: 'Salvar' }).click()
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.generationInvalid)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].generationInvalid)).toBeVisible()
   expect(fetch).not.toHaveBeenCalled()
   // Clearing the field lists every generation it offers.
   await screen.getByRole('combobox', { name: 'Geração' }).clear()
@@ -478,16 +478,16 @@ test('Web: the quantities take whole numbers only, up to a million', async () =>
   await quantity.fill('12')
   await userEvent.keyboard(',')
   await expect.element(quantity).toHaveValue('12')
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.quantityInvalid)).not.toBeInTheDocument()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].quantityInvalid)).not.toBeInTheDocument()
   await quantity.fill('1,5')
   await expect.element(quantity).toHaveValue('12')
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.quantityInvalid)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].quantityInvalid)).toBeVisible()
   await quantity.fill('1.000')
   await expect.element(quantity).toHaveValue('1000')
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.quantityInvalid)).not.toBeInTheDocument()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].quantityInvalid)).not.toBeInTheDocument()
   await screen.getByLabelText('Quantidade mínima').fill('2000000')
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.quantityTooHigh)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].quantityTooHigh)).toBeVisible()
   expect(fetch).not.toHaveBeenCalled()
 })
 
@@ -507,7 +507,7 @@ test('Web: the price always shows in reais, a dot and a comma alike', async () =
   await expect.element(price).toHaveValue('R$ 7,50')
   await price.fill('abc')
   await expect.element(price).toHaveValue('R$ 7,50')
-  await expect.element(screen.getByText(ITEM_FORM_MESSAGES.priceInvalid)).toBeVisible()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['pt-BR'].priceInvalid)).toBeVisible()
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   await vi.waitFor(() => expect(sent(fetch)).toMatchObject({ method: 'PATCH', body: { brands: [{ unitPriceCents: 750 }] } }))
 })
@@ -662,7 +662,7 @@ test('Web: an unchanged edit is not sent, and photos that fail to save are repor
   const unchanged = await render(<Sample item={withPhoto} onSaved={onSaved} />)
   await expect.element(unchanged.getByRole('img', { name: 'Foto 1, capa' })).toHaveAttribute('src', '/api/photos/aa.png')
   await unchanged.getByRole('button', { name: 'Salvar alterações' }).click()
-  await expect.element(unchanged.getByRole('status')).toHaveTextContent(ITEM_UNCHANGED_MESSAGE)
+  await expect.element(unchanged.getByRole('status')).toHaveTextContent(ITEM_UNCHANGED_MESSAGE['pt-BR'])
   expect(fetch).not.toHaveBeenCalled()
   expect(onSaved).not.toHaveBeenCalled()
 
@@ -726,8 +726,8 @@ test('Web: a part brand and a code appear once in an item', async () => {
   await second.getByLabelText('Código da peça').fill('W712-95')
   await second.getByLabelText('Valor unitário (R$)').fill('10')
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
-  await expect.element(second.getByText(ITEM_FORM_MESSAGES.partBrandRepeated)).toBeVisible()
-  await expect.element(second.getByText(ITEM_FORM_MESSAGES.codeRepeated)).toBeVisible()
+  await expect.element(second.getByText(ITEM_FORM_MESSAGES['pt-BR'].partBrandRepeated)).toBeVisible()
+  await expect.element(second.getByText(ITEM_FORM_MESSAGES['pt-BR'].codeRepeated)).toBeVisible()
   expect(fetch).not.toHaveBeenCalled()
 })
 
@@ -916,11 +916,11 @@ test('Web: on a phone vehicles are chips, checked before they join', async () =>
   await draft.getByRole('combobox', { name: 'Modelo do veículo' }).fill(' gol ')
   await userEvent.keyboard('{Escape}')
   await draft.getByRole('button', { name: 'Adicionar', exact: true }).click()
-  await expect.element(draft.getByText(ITEM_FORM_MESSAGES.vehicleRepeated)).toBeVisible()
+  await expect.element(draft.getByText(ITEM_FORM_MESSAGES['pt-BR'].vehicleRepeated)).toBeVisible()
   await draft.getByRole('combobox', { name: 'Marca do veículo' }).fill('Renault')
   await userEvent.keyboard('{Escape}')
   await draft.getByRole('button', { name: 'Adicionar', exact: true }).click()
-  await expect.element(draft.getByText(ITEM_FORM_MESSAGES.vehicleBrandNotListed)).toBeVisible()
+  await expect.element(draft.getByText(ITEM_FORM_MESSAGES['pt-BR'].vehicleBrandNotListed)).toBeVisible()
   await draft.getByRole('button', { name: 'Cancelar' }).click()
   await expect.element(add).toHaveFocus()
   expect(chips()).toEqual(['Volkswagen Gol'])
@@ -928,7 +928,7 @@ test('Web: on a phone vehicles are chips, checked before they join', async () =>
   await vehicles.getByRole('button', { name: 'Remover Volkswagen Gol' }).click()
   expect(chips()).toEqual([])
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
-  await expect.element(vehicles.getByText(ITEM_FORM_MESSAGES.vehicleBrand)).toBeVisible()
+  await expect.element(vehicles.getByText(ITEM_FORM_MESSAGES['pt-BR'].vehicleBrand)).toBeVisible()
   expect(fetch).not.toHaveBeenCalled()
 
   for (const [brand, model] of [
@@ -944,7 +944,7 @@ test('Web: on a phone vehicles are chips, checked before they join', async () =>
     await draft.getByRole('button', { name: 'Adicionar', exact: true }).click()
   }
   expect(chips()).toEqual(['Chevrolet Opala 4.1', 'Fiat (qualquer modelo)'])
-  await expect.element(vehicles.getByText(ITEM_FORM_MESSAGES.vehicleBrand)).not.toBeInTheDocument()
+  await expect.element(vehicles.getByText(ITEM_FORM_MESSAGES['pt-BR'].vehicleBrand)).not.toBeInTheDocument()
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
   expect(sent(fetch).body.vehicles).toEqual([
@@ -1014,8 +1014,8 @@ test('Web: an original code another item or a brand of the item has is refused, 
   const screen = await render(<Sample item={FILTER} />)
   await userEvent.type(screen.getByLabelText('Códigos originais'), 'fra 1000,w712/95,')
   const alert = screen.getByRole('alert')
-  await expect.element(alert.getByText(`FRA 1000: ${codeTakenMessage('Pastilha de freio')}`)).toBeVisible()
-  await expect.element(alert.getByText(`W712/95: ${ITEM_FORM_MESSAGES.originalCodeInBrand}`)).toBeVisible()
+  await expect.element(alert.getByText(`FRA 1000: ${codeTakenMessage('Pastilha de freio', 'pt-BR')}`)).toBeVisible()
+  await expect.element(alert.getByText(`W712/95: ${ITEM_FORM_MESSAGES['pt-BR'].originalCodeInBrand}`)).toBeVisible()
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
   expect(fetch).not.toHaveBeenCalled()
 })
@@ -1037,7 +1037,7 @@ test('Web: vehicles are added, refused when repeated, and removed', async () => 
   await third.getByRole('combobox', { name: 'Marca do veículo' }).fill('VOLKSWAGEN')
   await third.getByRole('combobox', { name: 'Modelo do veículo' }).fill(' gol ')
   await screen.getByRole('button', { name: 'Salvar alterações' }).click()
-  await expect.element(third.getByText(ITEM_FORM_MESSAGES.vehicleRepeated)).toBeVisible()
+  await expect.element(third.getByText(ITEM_FORM_MESSAGES['pt-BR'].vehicleRepeated)).toBeVisible()
   expect(fetch).not.toHaveBeenCalled()
 
   await screen.getByRole('button', { name: 'Remover veículo 3' }).click()

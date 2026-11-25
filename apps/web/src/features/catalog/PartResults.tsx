@@ -9,6 +9,7 @@ import { Text } from '../../components/Typography'
 import { usePhone } from '../../components/usePhone.ts'
 import { partResults } from './PartResults.styles.ts'
 import { StockQuantity } from '../inventory/browse/StockQuantity.tsx'
+import { useLocale } from '../../app/useLocale.ts'
 
 // The inventory parts a Catalog search by code found, in a tinted box above the tree: each brand of an item whose code
 // matched, or its original code, with the code, the item's name and which vehicle it fits (of several, the one the
@@ -35,9 +36,7 @@ const CARD_COLUMNS = [
     key: 'name',
     header: 'Item',
     card: 'main' as const,
-    cell: (part: FoundPart) => (
-      <TableTitle title={part.item.name} code={`${part.code} · ${partBrand(part).partBrand}`} details={itemCardDetails(part.item)} />
-    ),
+    cell: (part: FoundPart) => <FoundTitle part={part} />,
   },
   { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end' as const, cell: (part: FoundPart) => <StockQuantity {...part.item} /> },
 ]
@@ -61,6 +60,7 @@ function partBrand({ id, item }: FoundPart) {
 }
 
 export function PartResults({ catalog, results, chosen, onChoose }: PartResultsProps) {
+  const { locale } = useLocale()
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
   const { parts, more } = results
   const phone = usePhone()
@@ -92,7 +92,7 @@ export function PartResults({ catalog, results, chosen, onChoose }: PartResultsP
           columns={CARD_COLUMNS}
           rows={parts}
           rowKey={(part) => part.id}
-          rowStatus={(part) => stockTint(part.item)}
+          rowStatus={(part) => stockTint(part.item, locale)}
           sort={null}
           onSortChange={() => {}}
           unsortedLabel=""
@@ -133,7 +133,7 @@ export function PartResults({ catalog, results, chosen, onChoose }: PartResultsP
               <code className={classes.code()} data-testid={ids.code}>{part.code}</code>
               <span className={classes.name()} data-testid={ids.name}>{part.item.name}</span>
             </span>
-            <span className={classes.fit()} data-testid={ids.fit}>{itemFit(catalog, part.item)}</span>
+            <span className={classes.fit()} data-testid={ids.fit}>{itemFit(catalog, part.item, locale)}</span>
           </button>
         ))}
       </div>
@@ -144,4 +144,10 @@ export function PartResults({ catalog, results, chosen, onChoose }: PartResultsP
       )}
     </div>
   )
+}
+
+/** A found part's name, with its code and details in the language chosen. */
+function FoundTitle({ part }: { part: FoundPart }) {
+  const { locale } = useLocale()
+  return <TableTitle title={part.item.name} code={`${part.code} · ${partBrand(part).partBrand}`} details={itemCardDetails(part.item, locale)} />
 }

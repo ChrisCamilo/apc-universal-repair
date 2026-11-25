@@ -520,7 +520,7 @@ test("Web: a period stays inside its generation's years, written with four digit
   await expect.element(add.getByLabelText('De')).toHaveAttribute('placeholder', 'AAAA')
   await add.getByLabelText('De').fill('86')
   await userEvent.keyboard('{Enter}')
-  await expect.element(add.getByText(CATALOG_YEAR_MESSAGE)).toBeVisible()
+  await expect.element(add.getByText(CATALOG_YEAR_MESSAGE['pt-BR'])).toBeVisible()
   await add.getByLabelText('De').fill('1979a')
   await add.getByLabelText('Até').fill('19932')
   await expect.element(add.getByLabelText('De')).toHaveValue('1979')

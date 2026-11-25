@@ -6,6 +6,7 @@ import { dataTable, rowAction, tableThumbnail, tableTitle } from './DataTable.st
 import { Icon } from '../Icon/Icon.tsx'
 import { Select } from '../Select/Select.tsx'
 import { Label } from '../Typography/Typography.tsx'
+import { useLocale } from '../../app/useLocale.ts'
 
 // A list of rows with sortable columns, for the inventory and later data screens. The owner sorts the rows
 // (sortRows in @apc/ui-spec/table) and the table shows the sort: a click on a header sorts ascending, a second
@@ -126,6 +127,7 @@ export function DataTable<Row>({
   rowExpanded,
   sortSelect = true,
 }: DataTableProps<Row>) {
+  const { locale } = useLocale()
   const sortId = useId()
   const sortable = columns.filter((column) => column.sortable)
   const { classes, ids } = dataTable({ fill })
@@ -172,7 +174,7 @@ export function DataTable<Row>({
               id={sortId}
               options={sortOptions(
                 sortable.map((column) => ({ key: column.key, label: column.sortLabel ?? column.header, numeric: column.numeric })),
-                unsortedLabel,
+                unsortedLabel, locale,
               )}
               value={sortValue(sort)}
               onValueChange={(value) => onSortChange(sortFromValue(value))}

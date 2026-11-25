@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEVICE_MESSAGES, type Device } from '@apc/domain/devices'
+import { useMessages } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { TextField } from '../../components/TextField'
@@ -26,6 +27,7 @@ export function DeviceApprovals() {
   // The devices a notification was shown for.
   const notified = useRef(new Set<string>())
   const { classes, ids } = devicesRecipe()
+  const messages = useMessages(DEVICE_MESSAGES)
 
   // List the waiting devices now and every APPROVALS_POLL_MS, until the API says this isn't the server's computer.
   useEffect(() => {
@@ -76,7 +78,7 @@ export function DeviceApprovals() {
     <Dialog
       open={device !== undefined}
       onClose={() => {}}
-      title={DEVICE_MESSAGES.approveTitle}
+      title={messages.approveTitle}
       size="confirm"
       actions={
         <>

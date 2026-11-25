@@ -5,6 +5,7 @@ import {
 } from '@apc/domain/inventory-tutorial'
 import { Tour } from '../../../components/Tour'
 import { BOTTOM_BAR_HEIGHT } from '../../dashboard/DashboardLayout.styles.ts'
+import { useLocale } from '../../../app/useLocale.ts'
 
 // The Inventory tutorial on the web: the shared steps (see inventoryTutorialSteps) run by the Tour over the Inventory
 // tab, which hands its screen over on every render; the Tour checks the latest steps, so they read the screen as it
@@ -19,14 +20,15 @@ type InventoryTutorialProps = {
 }
 
 export function InventoryTutorial({ open, onClose, screen }: InventoryTutorialProps) {
-  const steps = inventoryTutorialSteps(() => screen)
+  const { locale } = useLocale()
+  const steps = inventoryTutorialSteps(() => screen, locale)
   const covered = screen.form !== null || screen.filtersOpen || screen.removing !== undefined
   return (
     <Tour
       open={open}
       onClose={onClose}
       steps={steps}
-      parts={INVENTORY_TUTORIAL_PARTS}
+      parts={INVENTORY_TUTORIAL_PARTS[locale]}
       bottomInset={screen.phone && !covered ? BOTTOM_BAR_HEIGHT : 0}
     />
   )

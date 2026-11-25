@@ -42,15 +42,15 @@ test("Web: the login checks the fields and the user, and saves the session", { t
   const form = loginForm(page);
   await page.goto("/login");
   await form.submit.click();
-  await expect(page.getByText(LOGIN_MESSAGES.username)).toBeVisible();
-  await expect(page.getByText(LOGIN_MESSAGES.password)).toBeVisible();
+  await expect(page.getByText(LOGIN_MESSAGES["pt-BR"].username)).toBeVisible();
+  await expect(page.getByText(LOGIN_MESSAGES["pt-BR"].password)).toBeVisible();
   await expect(form.username).toBeFocused();
 
   await form.username.fill(USER.username);
-  await expect(page.getByText(LOGIN_MESSAGES.username)).toBeHidden();
+  await expect(page.getByText(LOGIN_MESSAGES["pt-BR"].username)).toBeHidden();
   await form.password.fill("errada");
   await form.password.press("Enter");
-  await expect(form.error).toHaveText(LOGIN_MESSAGES.failed);
+  await expect(form.error).toHaveText(LOGIN_MESSAGES["pt-BR"].failed);
   await expect(form.password).toHaveValue("");
   await expect(form.password).toBeFocused();
   await expect(page).toHaveURL(/\/login$/);
@@ -72,7 +72,7 @@ test("Web: the forgotten-password notice opens from the link and closes", { tag:
   const link = loginForm(page).forgotPassword;
   const { root: notice, button } = dialog(page, "Esqueceu a senha?");
   await link.click();
-  await expect(notice).toContainText(LOGIN_MESSAGES.forgotPassword);
+  await expect(notice).toContainText(LOGIN_MESSAGES["pt-BR"].forgotPassword);
   const box = (await notice.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);

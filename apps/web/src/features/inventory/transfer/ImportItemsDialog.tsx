@@ -12,6 +12,7 @@ import {
   type CsvItems,
 } from '@apc/domain/item-csv'
 import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/domain/lists'
+import { perLocale } from '@apc/domain/locale'
 import { API_BASE } from '../../../app/api.ts'
 import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
@@ -19,6 +20,7 @@ import { useToast } from '../../../components/Toast'
 import { Heading, Text } from '../../../components/Typography'
 import { usePhone } from '../../../components/usePhone.ts'
 import { importItemsDialog } from './ImportItemsDialog.styles.ts'
+import { useLocale } from '../../../app/useLocale.ts'
 
 // The "Importar Peças" dialog of the Inventory tab: it explains the file, downloads the template and reads the file
 // chosen, UTF-8, comma or semicolon separated. The preview counts the items ready and the rows with errors, lists the
@@ -29,11 +31,14 @@ import { importItemsDialog } from './ImportItemsDialog.styles.ts'
 // the left of its title.
 
 /** How each list's new names are worded in the preview, e.g. "Categorias: Ignição, Turbo". */
-const NEW_NAMES = [
-  ['categories', ITEM_LIST_TEXTS.categories.title],
-  ['partBrands', ITEM_LIST_TEXTS.partBrands.title],
-  ['vehicleBrands', ITEM_LIST_TEXTS.vehicleBrands.title],
-] as const
+const NEW_NAMES = perLocale(
+  (locale) =>
+    [
+      ['categories', ITEM_LIST_TEXTS[locale].categories.title],
+      ['partBrands', ITEM_LIST_TEXTS[locale].partBrands.title],
+      ['vehicleBrands', ITEM_LIST_TEXTS[locale].vehicleBrands.title],
+    ] as const,
+)
 
 type ImportItemsDialogProps = {
   open: boolean
@@ -45,6 +50,7 @@ type ImportItemsDialogProps = {
 }
 
 export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportItemsDialogProps) {
+  const { locale } = useLocale()
   const toast = useToast()
   const { classes, ids } = importItemsDialog()
   const picker = useRef<HTMLInputElement>(null)
@@ -57,9 +63,9 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
   const valid = importedItems(rows).length
   const created = newListNames(rows, lists)
   const creates = [
-    ...NEW_NAMES.filter(([kind]) => created[kind].length > 0).map(([kind, title]) => `${title}: ${created[kind].join(', ')}`),
+    ...NEW_NAMES[locale].filter(([kind]) => created[kind].length > 0).map(([kind, title]) => `${title}: ${created[kind].join(', ')}`),
     ...(created.vehicleModels.length > 0
-      ? [`${ITEM_LIST_TEXTS.vehicleModels.title}: ${created.vehicleModels.map((model) => `${model.name} (${model.vehicleBrand})`).join(', ')}`]
+      ? [`${ITEM_LIST_TEXTS[locale].vehicleModels.title}: ${created.vehicleModels.map((model) => `${model.name} (${model.vehicleBrand})`).join(', ')}`]
       : []),
   ]
 
@@ -76,7 +82,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
   /** Reads the file chosen into the preview. */
   const choose = async (file: File | undefined) => {
     if (file) {
-      setRead({ name: file.name, result: readItemsCsv(await file.text(), lists) })
+      setRead({ name: file.name, result: readItemsCsv(await file.text(), lists, locale) })
     }
   }
 
@@ -89,7 +95,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
       toast.error('Não foi possível importar os itens. Tente de novo.')
       return
     }
-    toast.success(importedSummary(result))
+    toast.success(importedSummary(result, locale))
     onImported()
   }
 
@@ -144,7 +150,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
       {read && 'rows' in read.result && (
         <section aria-label="Prévia da importação" className={classes.preview()} data-testid={ids.preview}>
           <Text size="sm">
-            {read.name} · {rowsSummary(rows)}
+            {read.name} · {rowsSummary(rows, locale)}
           </Text>
           {creates.length > 0 && (
             <div className={classes.creates()} data-testid={ids.creates}>
@@ -176,7 +182,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
                   </span>
                 </span>
                 <Text size="sm" tone="muted">
-                  {importedDetails(item)}
+                  {importedDetails(item, locale)}
                 </Text>
                 {errors.map((error) => (
                   <p key={error} className={classes.error()} data-testid={ids.error}>

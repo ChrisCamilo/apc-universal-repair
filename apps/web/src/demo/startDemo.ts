@@ -27,6 +27,6 @@ export async function startDemo(): Promise<{ login: Credentials; Notice: typeof 
   }
   replaceDevice(demoDevice)
   const login = { username: DEMO_USER.username, password: DEMO_USER.password }
-  await auth.login(login)
+  await auth.login(login, 'pt-BR')
   return { login, Notice: DemoNotice }
 }

@@ -16,6 +16,7 @@ import { Segmented } from '../../components/Segmented'
 import { TextField } from '../../components/TextField'
 import { Heading, NumericReadout, Text } from '../../components/Typography'
 import { engineSheetForm } from './EngineSheetForm.styles.ts'
+import { useLocale } from '../../app/useLocale.ts'
 
 // An engine's sheet as a form, in the Catalog's detail column, to add an engine under a period or save its sheet again:
 // the displacement in litres (a comma or a dot), the cylinders, the drive and a summary. The period comes from the tree
@@ -41,15 +42,16 @@ type EngineSheetFormProps = {
 }
 
 export function EngineSheetForm({ id, actions = true, label, names, initial, saving = false, onSave, onCancel }: EngineSheetFormProps) {
+  const { locale } = useLocale()
   const { classes, ids } = engineSheetForm()
   const [litres, setLitres] = useState(initial ? litresText(initial.displacementDl) : '')
   const [cylinders, setCylinders] = useState(initial?.cylinders.toString() ?? '')
   const [drive, setDrive] = useState<string>(initial?.drive ?? '')
   const [summary, setSummary] = useState(initial?.summary ?? '')
   const [problems, setProblems] = useState<Partial<Record<keyof EngineFields, string>>>({})
-  const read = readEngineFields({ litres, cylinders, drive, summary })
+  const read = readEngineFields({ litres, cylinders, drive, summary }, locale)
   const sheet = 'sheet' in read ? read.sheet : null
-  const preview = sheet && engineSheet(names, sheet)
+  const preview = sheet && engineSheet(names, sheet, locale)
 
   /** Checks the fields and saves the sheet, or says what to fix under each field. */
   const save = (event: FormEvent) => {
@@ -80,7 +82,7 @@ export function EngineSheetForm({ id, actions = true, label, names, initial, sav
       <div className={classes.drive()} data-testid={ids.drive}>
         <Segmented
           label="Tração"
-          options={ENGINE_DRIVES.map((value) => ({ value, label: capitalizeFirst(ENGINE_DRIVE_LABELS[value].toLowerCase()) }))}
+          options={ENGINE_DRIVES.map((value) => ({ value, label: capitalizeFirst(ENGINE_DRIVE_LABELS[locale][value].toLowerCase()) }))}
           value={drive}
           onValueChange={setDrive}
         />
@@ -94,7 +96,7 @@ export function EngineSheetForm({ id, actions = true, label, names, initial, sav
       {sheet && preview && (
         <div className={classes.preview()} data-testid={ids.preview}>
           <Text size="sm" tone="muted">
-            Na árvore: {engineLabel(sheet)}
+            Na árvore: {engineLabel(sheet, locale)}
           </Text>
           <div className={classes.readouts()} data-testid={ids.readouts}>
             {preview.specs.map((spec) => (

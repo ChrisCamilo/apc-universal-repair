@@ -64,15 +64,15 @@ test('Web: empty fields are not sent and the cursor goes to the first one', asyn
   const login = vi.spyOn(AUTH, 'login')
   const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />)
   await screen.getByRole('button', { name: 'Entrar' }).click()
-  await expect.element(screen.getByText(LOGIN_MESSAGES.username)).toBeVisible()
-  await expect.element(screen.getByText(LOGIN_MESSAGES.password)).toBeVisible()
+  await expect.element(screen.getByText(LOGIN_MESSAGES['pt-BR'].username)).toBeVisible()
+  await expect.element(screen.getByText(LOGIN_MESSAGES['pt-BR'].password)).toBeVisible()
   await expect.element(screen.getByLabelText('Usuário')).toHaveAttribute('aria-invalid', 'true')
   await expect.element(screen.getByLabelText('Usuário')).toHaveFocus()
 
   await userEvent.type(screen.getByLabelText('Usuário'), 'christian.camilo')
-  await expect.element(screen.getByText(LOGIN_MESSAGES.username)).not.toBeInTheDocument()
+  await expect.element(screen.getByText(LOGIN_MESSAGES['pt-BR'].username)).not.toBeInTheDocument()
   await screen.getByRole('button', { name: 'Entrar' }).click()
-  await expect.element(screen.getByText(LOGIN_MESSAGES.password)).toBeVisible()
+  await expect.element(screen.getByText(LOGIN_MESSAGES['pt-BR'].password)).toBeVisible()
   await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveFocus()
   expect(login).not.toHaveBeenCalled()
   login.mockRestore()
@@ -86,13 +86,13 @@ test('Web: Enter sends the filled-in login and hands over the user', async () =>
   const screen = await render(<LoginScreen auth={AUTH} onLoggedIn={onLoggedIn} onRegister={() => {}} />)
   await userEvent.type(screen.getByLabelText('Usuário'), '   ')
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
-  await expect.element(screen.getByText(LOGIN_MESSAGES.username)).toBeVisible()
+  await expect.element(screen.getByText(LOGIN_MESSAGES['pt-BR'].username)).toBeVisible()
   expect(login).not.toHaveBeenCalled()
 
   await userEvent.fill(screen.getByLabelText('Usuário'), USER.username)
   await userEvent.click(screen.getByLabelText('Senha', { exact: true }))
   await userEvent.keyboard('{Enter}')
-  expect(login).toHaveBeenCalledWith({ username: USER.username, password: USER.password })
+  expect(login).toHaveBeenCalledWith({ username: USER.username, password: USER.password }, 'pt-BR')
   await expect.poll(() => onLoggedIn.mock.calls.length).toBe(1)
   expect(onLoggedIn).toHaveBeenCalledWith(expect.objectContaining({ username: USER.username, initials: 'CC' }))
   login.mockRestore()
@@ -107,7 +107,7 @@ test('Web: a login opened filled in sends what it shows', async () => {
   await expect.element(screen.getByLabelText('Usuário')).toHaveValue(USER.username)
   await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveValue(USER.password)
   await screen.getByRole('button', { name: 'Entrar' }).click()
-  expect(login).toHaveBeenCalledWith(filled)
+  expect(login).toHaveBeenCalledWith(filled, 'pt-BR')
   login.mockRestore()
 })
 
@@ -119,7 +119,7 @@ test('Web: a refused login says so above the form and empties the password', asy
   await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), 'errada{Enter}')
   const alert = screen.getByRole('alert')
-  await expect.element(alert).toHaveTextContent(LOGIN_MESSAGES.failed)
+  await expect.element(alert).toHaveTextContent(LOGIN_MESSAGES['pt-BR'].failed)
   const form = screen.getByTestId('auth.login-screen.form').element()
   expect(form.firstElementChild).toBe(alert.element())
   await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveValue('')
@@ -132,14 +132,14 @@ test('Web: a refused login says so above the form and empties the password', asy
 // Opens the login after the session expired, and checks the notice heads the form as a status until a login is
 // sent, which a refused one then replaces with its own message.
 test('Web: the login says the session expired until a login is sent', async () => {
-  const screen = await render(<LoginScreen auth={AUTH} notice={LOGIN_MESSAGES.expired} onLoggedIn={() => {}} onRegister={() => {}} />)
+  const screen = await render(<LoginScreen auth={AUTH} notice={LOGIN_MESSAGES['pt-BR'].expired} onLoggedIn={() => {}} onRegister={() => {}} />)
   const status = screen.getByRole('status')
-  await expect.element(status).toHaveTextContent(LOGIN_MESSAGES.expired)
+  await expect.element(status).toHaveTextContent(LOGIN_MESSAGES['pt-BR'].expired)
   expect(screen.getByTestId('auth.login-screen.form').element().firstElementChild).toBe(status.element())
   await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), 'errada{Enter}')
-  await expect.element(screen.getByRole('alert')).toHaveTextContent(LOGIN_MESSAGES.failed)
-  expect(screen.container.textContent).not.toContain(LOGIN_MESSAGES.expired)
+  await expect.element(screen.getByRole('alert')).toHaveTextContent(LOGIN_MESSAGES['pt-BR'].failed)
+  expect(screen.container.textContent).not.toContain(LOGIN_MESSAGES['pt-BR'].expired)
 })
 
 // Checks the parts of the screen carry their style ids, the same as on mobile: the page, the badge's heading, the
@@ -182,7 +182,7 @@ test('Web: a login that can\'t be checked says the API is out of reach', async (
   const screen = await render(<LoginScreen auth={offline} onLoggedIn={() => {}} onRegister={() => {}} />)
   await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
-  await expect.element(screen.getByRole('alert')).toHaveTextContent(LOGIN_MESSAGES.unreachable)
+  await expect.element(screen.getByRole('alert')).toHaveTextContent(LOGIN_MESSAGES['pt-BR'].unreachable)
   await expect.element(screen.getByLabelText('Senha', { exact: true })).toHaveValue(USER.password)
 })
 
@@ -197,27 +197,27 @@ test('Web: a device waiting for authorization shows its code and logs in once au
   const screen = await render(<LoginScreen auth={waiting} onLoggedIn={onLoggedIn} onRegister={() => {}} />)
   await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
-  await expect.element(screen.getByText(DEVICE_MESSAGES.pending)).toBeVisible()
+  await expect.element(screen.getByText(DEVICE_MESSAGES['pt-BR'].pending)).toBeVisible()
   await expect.element(screen.getByText('K7Q2ZD', { exact: true })).toBeVisible()
   expect(screen.getByText('K7Q2ZD', { exact: true }).element().closest('[role=status]')).not.toBeNull()
   expect(onLoggedIn).not.toHaveBeenCalled()
   await expect.poll(() => onLoggedIn.mock.calls.length, { timeout: 10_000 }).toBe(1)
   expect(onLoggedIn).toHaveBeenCalledWith(SESSION_USER)
-  expect(login).toHaveBeenLastCalledWith({ username: USER.username, password: USER.password })
+  expect(login).toHaveBeenLastCalledWith({ username: USER.username, password: USER.password }, 'pt-BR')
 
   await screen.unmount()
   const refused: AuthService = { ...AUTH, login: async () => ({ pending: 'K7Q2ZD' }), deviceStatus: async () => 'unknown' }
   const again = await render(<LoginScreen auth={refused} onLoggedIn={() => {}} onRegister={() => {}} />)
   await userEvent.type(again.getByLabelText('Usuário'), USER.username)
   await userEvent.type(again.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
-  await expect.element(again.getByRole('alert'), { timeout: 10_000 }).toHaveTextContent(DEVICE_MESSAGES.refused)
+  await expect.element(again.getByRole('alert'), { timeout: 10_000 }).toHaveTextContent(DEVICE_MESSAGES['pt-BR'].refused)
 })
 
 // Has the login refused after too many attempts, and checks the screen says how many minutes to wait, keeping the
 // password typed and "Entrar" enabled, and hands nothing over.
 test('Web: too many attempts say how many minutes to wait', async () => {
   const onLoggedIn = vi.fn()
-  const limited: AuthService = { ...AUTH, login: vi.fn(async () => ({ refused: tooManyAttempts('840') })) }
+  const limited: AuthService = { ...AUTH, login: vi.fn(async () => ({ refused: tooManyAttempts('840', 'pt-BR') })) }
   const screen = await render(<LoginScreen auth={limited} onLoggedIn={onLoggedIn} onRegister={() => {}} />)
   await userEvent.type(screen.getByLabelText('Usuário'), USER.username)
   await userEvent.type(screen.getByLabelText('Senha', { exact: true }), `${USER.password}{Enter}`)
@@ -273,7 +273,7 @@ test('Web: the forgotten-password notice says whom to ask and closes three ways'
   const dialog = screen.getByRole('dialog', { name: 'Esqueceu a senha?' })
 
   await link.click()
-  await expect.element(dialog).toMatchTextContent(LOGIN_MESSAGES.forgotPassword)
+  await expect.element(dialog).toMatchTextContent(LOGIN_MESSAGES['pt-BR'].forgotPassword)
   await expect.element(screen.getByRole('button', { name: 'Entendi' })).toHaveFocus()
   await screen.getByRole('button', { name: 'Entendi' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
@@ -299,7 +299,7 @@ test('Web: on the desktop the badge sits beside the form', async () => {
   const mark = screen.getByRole('img', { name: 'APC Universal Repair' }).element().getBoundingClientRect()
   expect(screen.getByLabelText('Usuário').element().getBoundingClientRect().left).toBeGreaterThan(mark.right)
   await expect.element(screen.getByRole('heading', { level: 1 })).toContainElement(screen.getByRole('img', { name: 'APC Universal Repair' }).element() as HTMLElement)
-  await expect.element(screen.getByText(LOGIN_INTRO)).not.toBeVisible()
+  await expect.element(screen.getByText(LOGIN_INTRO['pt-BR'])).not.toBeVisible()
   await expect.element(screen.getByText('Ainda não tem conta?')).not.toBeVisible()
   const register = screen.getByRole('button', { name: 'Criar conta' })
   await expect.element(register).toBeVisible()
@@ -324,7 +324,7 @@ test('Web: on a phone the login is one column, the brand on top and Criar conta 
   expect(getComputedStyle(screen.getByTestId('auth.login-screen.heading.title.name').element()).fontSize).toBe(`${LOGIN_BRAND.name}px`)
   expect(getComputedStyle(screen.getByTestId('auth.login-screen.heading.title.tagline').element()).fontSize).toBe(`${LOGIN_BRAND.tagline}px`)
 
-  const intro = box(screen.getByText(LOGIN_INTRO).element())
+  const intro = box(screen.getByText(LOGIN_INTRO['pt-BR']).element())
   const username = box(screen.getByLabelText('Usuário').element().parentElement!)
   const password = box(screen.getByLabelText('Senha', { exact: true }).element().parentElement!)
   const forgot = box(screen.getByRole('button', { name: 'Esqueceu a senha?' }).element())

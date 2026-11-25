@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/domain/auth'
 import { DEVICE_MESSAGES } from '@apc/domain/devices'
+import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { lockIcon, userIcon } from '@apc/tokens/icons'
 import { BackButton } from '../../components/BackButton'
 import { BrandMark } from '../../components/BrandMark'
@@ -38,13 +39,15 @@ type RegisterScreenProps = {
 }
 
 export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenProps) {
+  const { locale } = useLocale()
   const [registration, setRegistration] = useState<Registration>(EMPTY)
   const [errors, setErrors] = useState<RegisterErrors>({})
   const [sending, setSending] = useState(false)
   const [refused, setRefused] = useState<string>()
   const inputs = useRef<Partial<Record<keyof Registration, HTMLInputElement | null>>>({})
   const { classes, ids } = registerScreen()
-  const device = useDeviceWait(auth, onRegistered, () => setRefused(DEVICE_MESSAGES.refused))
+  const deviceMessages = useMessages(DEVICE_MESSAGES)
+  const device = useDeviceWait(auth, onRegistered, () => setRefused(deviceMessages.refused))
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Registration, value: string) => {
@@ -55,7 +58,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
   /** Sends the sign-up, or shows the message of each field that breaks a rule and moves to the first one. */
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    const found = registerErrors(registration)
+    const found = registerErrors(registration, locale)
     setErrors(found)
     const wrong = FIELD_ORDER.find((field) => found[field])
     if (wrong) {
@@ -65,7 +68,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
     setRefused(undefined)
     setSending(true)
     const { displayName, username, email, password } = registration
-    const result = await auth.register({ displayName, username, email, password })
+    const result = await auth.register({ displayName, username, email, password }, locale)
     setSending(false)
     if ('refused' in result) {
       setRefused(result.refused)

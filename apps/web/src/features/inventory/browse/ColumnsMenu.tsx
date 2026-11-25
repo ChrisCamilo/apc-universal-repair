@@ -5,6 +5,7 @@ import { Icon } from '../../../components/Icon'
 import { Menu, MenuItem } from '../../../components/Menu'
 import { Switch } from '../../../components/Switch'
 import { columnsMenu } from './ColumnsMenu.styles.ts'
+import { useLocale } from '../../../app/useLocale.ts'
 
 // The Inventory toolbar's "Colunas" menu, on the desktop: a switch for each of the table's columns after the item's
 // name, on while it shows, which keeps the menu open, and "Restaurar padrão", which brings the default columns back
@@ -18,11 +19,12 @@ type ColumnsMenuProps = {
 }
 
 export function ColumnsMenu({ hidden, onHiddenChange }: ColumnsMenuProps) {
+  const { locale } = useLocale()
   const { classes, ids } = columnsMenu()
 
   /** Shows or hides a column, keeping the others as they are. */
   const toggle = (key: ItemSortKey, shown: boolean) =>
-    onHiddenChange(ITEM_TABLE_COLUMNS.map((column) => column.key).filter((each) => (each === key ? !shown : hidden.includes(each))))
+    onHiddenChange(ITEM_TABLE_COLUMNS[locale].map((column) => column.key).filter((each) => (each === key ? !shown : hidden.includes(each))))
 
   return (
     <Menu
@@ -35,7 +37,7 @@ export function ColumnsMenu({ hidden, onHiddenChange }: ColumnsMenuProps) {
         </span>
       }
     >
-      {ITEM_TABLE_COLUMNS.map((column) => (
+      {ITEM_TABLE_COLUMNS[locale].map((column) => (
         <Switch key={column.key} checked={!hidden.includes(column.key)} onCheckedChange={(shown) => toggle(column.key, shown)}>
           {column.label}
         </Switch>

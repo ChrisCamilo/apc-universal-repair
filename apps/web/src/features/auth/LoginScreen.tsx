@@ -10,6 +10,7 @@ import {
   type SessionUser,
 } from '@apc/domain/auth'
 import { DEVICE_MESSAGES } from '@apc/domain/devices'
+import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { lockIcon, userIcon } from '@apc/tokens/icons'
 import { BrandMark } from '../../components/BrandMark'
 import { Button } from '../../components/Button'
@@ -58,6 +59,7 @@ type LoginScreenProps = {
 }
 
 export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSettings, initialCredentials }: LoginScreenProps) {
+  const { locale } = useLocale()
   const [credentials, setCredentials] = useState<Credentials>(initialCredentials ?? { username: '', password: '' })
   const [errors, setErrors] = useState<LoginErrors>({})
   const [sending, setSending] = useState(false)
@@ -69,7 +71,8 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
   const usernameInput = useRef<HTMLInputElement>(null)
   const passwordInput = useRef<HTMLInputElement>(null)
   const { classes, ids } = loginScreen()
-  const device = useDeviceWait(auth, onLoggedIn, () => setRefused(DEVICE_MESSAGES.refused))
+  const deviceMessages = useMessages(DEVICE_MESSAGES)
+  const device = useDeviceWait(auth, onLoggedIn, () => setRefused(deviceMessages.refused))
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Credentials, value: string) => {
@@ -80,7 +83,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
   /** Sends the login, or shows the message of each empty field and moves to the first one. */
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    const found = loginErrors(credentials)
+    const found = loginErrors(credentials, locale)
     setErrors(found)
     const empty = FIELD_ORDER.find((field) => found[field])
     if (empty) {
@@ -92,14 +95,14 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
     device.stop()
     setSent(true)
     setSending(true)
-    const user = await auth.login(credentials).catch(() => undefined)
+    const user = await auth.login(credentials, locale).catch(() => undefined)
     setSending(false)
     if (user === undefined) {
-      setRefused(LOGIN_MESSAGES.unreachable)
+      setRefused(LOGIN_MESSAGES[locale].unreachable)
       return
     }
     if (!user) {
-      setRefused(LOGIN_MESSAGES.failed)
+      setRefused(LOGIN_MESSAGES[locale].failed)
       setCredentials((typed) => ({ ...typed, password: '' }))
       passwordInput.current?.focus()
       return
@@ -136,7 +139,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
             </span>
           </h1>
           <Text tone="muted" className={classes.intro()}>
-            {LOGIN_INTRO}
+            {LOGIN_INTRO[locale]}
           </Text>
         </div>
         <form noValidate className={classes.form()} data-testid={ids.form} onSubmit={submit}>
@@ -201,7 +204,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
         dismissible
         actions={<Button onClick={() => setForgot(false)}>Entendi</Button>}
       >
-        <Text>{LOGIN_MESSAGES.forgotPassword}</Text>
+        <Text>{LOGIN_MESSAGES[locale].forgotPassword}</Text>
       </Dialog>
     </main>
   )
