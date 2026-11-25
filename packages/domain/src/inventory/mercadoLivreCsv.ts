@@ -1,3 +1,4 @@
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 import { exportedItems } from "./itemCsv.ts";
 import { NOT_APPLICABLE, UNIVERSAL_BRAND, type Item, type ItemBrand, type ItemVehicle } from "./items.ts";
 
@@ -8,8 +9,26 @@ import { NOT_APPLICABLE, UNIVERSAL_BRAND, type Item, type ItemBrand, type ItemVe
 // quoted. The title is the name, the part brand, the code and the first vehicle, up to 60 characters, dropping the
 // vehicle and then the code when it doesn't fit, never cutting a word. A brand with no stock, or priced under Mercado
 // Livre's minimum, is left out. Each brand's photos get file names after its code and their order, the cover first,
-// for the web to put beside the CSV in a zip, for Mercado Livre's photo manager (Gestor de fotos).
+// for the web to put beside the CSV in a zip, for Mercado Livre's photo manager (Gestor de fotos). The file stays in
+// Portuguese, as Mercado Livre reads it; only the toast that says how the export went follows the language chosen.
 
+/** What the export's toast says: how many listings went into the file, and how many brands were left out. */
+export const MERCADO_LIVRE_MESSAGES = catalog(
+  {
+    summary: (count: number, skipped: number) => {
+      const exported = count === 1 ? "1 anúncio exportado" : `${count} anúncios exportados`;
+      const left = skipped === 1 ? "1 marca ficou de fora" : `${skipped} marcas ficaram de fora`;
+      return skipped === 0 ? `${exported}.` : `${exported} · ${left} (sem estoque ou preço abaixo de R$ 8,00).`;
+    },
+  },
+  {
+    summary: (count, skipped) => {
+      const exported = count === 1 ? "1 listing exported" : `${count} listings exported`;
+      const left = skipped === 1 ? "1 brand was left out" : `${skipped} brands were left out`;
+      return skipped === 0 ? `${exported}.` : `${exported} · ${left} (no stock, or priced under R$ 8.00).`;
+    },
+  },
+);
 /** The columns of the listings' CSV, in Mercado Livre's words. */
 export const MERCADO_LIVRE_COLUMNS = [
   "Título",
@@ -170,15 +189,11 @@ export function mercadoLivrePhotoName(code: string, index: number, url: string):
 /**
  * Words the export's result for its toast: how many listings went into the file, and how many brands were left out.
  * @param listings How many listings and left-out brands.
+ * @param locale The language.
  * @returns E.g. "12 anúncios exportados · 3 marcas ficaram de fora (sem estoque ou preço abaixo de R$ 8,00)."
  */
-export function mercadoLivreSummary({ count, skipped }: Pick<MercadoLivreListings, "count" | "skipped">): string {
-  const exported = count === 1 ? "1 anúncio exportado" : `${count} anúncios exportados`;
-  if (skipped === 0) {
-    return `${exported}.`;
-  }
-  const left = skipped === 1 ? "1 marca ficou de fora" : `${skipped} marcas ficaram de fora`;
-  return `${exported} · ${left} (sem estoque ou preço abaixo de R$ 8,00).`;
+export function mercadoLivreSummary({ count, skipped }: Pick<MercadoLivreListings, "count" | "skipped">, locale: Locale): string {
+  return MERCADO_LIVRE_MESSAGES[locale].summary(count, skipped);
 }
 
 /**
