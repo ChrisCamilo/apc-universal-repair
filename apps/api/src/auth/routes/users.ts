@@ -1,13 +1,15 @@
 import { randomBytes } from "node:crypto";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { initials, loggedInSchema, loginRequestSchema, pairingLoginRequestSchema, userCreateRequestSchema, type SessionUser } from "@apc/domain/auth";
 import { DEVICE_MESSAGES } from "@apc/domain/devices";
 import { prisma } from "../../db/client.js";
-import { checkProof, deviceForLogin, isLoopback } from "../../devices/devices.js";
+import { checkProof, DEVICE_REFUSED, deviceForLogin, isLoopback } from "../../devices/devices.js";
 import { entryCodeUser, holdEntryCode, useEntryCode } from "../../devices/entryCodes.js";
+import { limitByAddress, tooManyAttempts } from "../../http/limits.js";
+import { conflict, forbidden, refuse, unauthorized, type Rejection } from "../../http/replies.js";
 import { createSession, endSession } from "../sessions.js";
-import { createLimiter, type Limiter } from "../attempts.js";
+import { createLimiter } from "../attempts.js";
 import { hashPassword, verifyPassword } from "../passwords.js";
 
 // Sign-up, login and logout. POST /users creates a user under the rules of the sign-up form (see @apc/domain/auth), with
@@ -40,61 +42,22 @@ const LOGIN_LIMIT = 30;
 const PAIRING_LIMIT = 10;
 /** How many sign-ups an address gets in a window. */
 const SIGN_UP_LIMIT = 10;
+/** Refuses an entry code never handed out, used or ended. */
+const ENTRY_REFUSED = unauthorized("The entry code isn't valid. Read the one the computer shows now.");
+/** Refuses a username and password that don't match, without saying which was wrong. */
+const LOGIN_REFUSED = unauthorized("Wrong username or password.");
 /** The columns a user is answered with. */
 const USER = { id: true, username: true, displayName: true, inventoryTutorialSeenAt: true } as const;
 /** A hash no password matches, checked when the username is unknown. */
 const UNKNOWN_USER_HASH = hashPassword(randomBytes(32).toString("hex"));
 
 /**
- * Answers 401 for a device whose proof doesn't hold.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-function deviceRefused(reply: FastifyReply) {
-  return reply.status(401).send({ statusCode: 401, error: "Unauthorized", message: "The device's signature doesn't hold. Ask for a new challenge." });
-}
-
-/**
- * Answers 403 for a device the server's computer hasn't authorized, with its short code.
- * @param reply Reply to send.
+ * Refuses a device the server's computer hasn't authorized, with its short code.
  * @param code The device's short code.
- * @returns The sent reply.
+ * @returns The refusal.
  */
-function devicePending(reply: FastifyReply, code: string) {
-  return reply.status(403).send({ statusCode: 403, error: "device_pending", message: DEVICE_MESSAGES.pending, code });
-}
-
-/**
- * Answers 401 for an entry code never handed out, used or ended.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-function entryRefused(reply: FastifyReply) {
-  return reply.status(401).send({ statusCode: 401, error: "Unauthorized", message: "The entry code isn't valid. Read the one the computer shows now." });
-}
-
-/**
- * Answers 401 for a username and password that don't match, without saying which was wrong.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-function loginRefused(reply: FastifyReply) {
-  return reply.status(401).send({ statusCode: 401, error: "Unauthorized", message: "Wrong username or password." });
-}
-
-/**
- * Counts each call of a route per address, answering 429 once the address reached its limit.
- * @param limiter The route's attempts, by address.
- * @returns The route's onRequest hook.
- */
-function limitByAddress(limiter: Limiter) {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
-    const wait = limiter.wait(request.ip);
-    if (wait > 0) {
-      return tooManyAttempts(reply, wait);
-    }
-    limiter.count(request.ip);
-  };
+function devicePending(code: string): Rejection {
+  return { ...forbidden(DEVICE_MESSAGES.pending), error: "device_pending", code };
 }
 
 /**
@@ -117,28 +80,13 @@ export function sessionOf({
 }
 
 /**
- * Answers 429 for attempts past a limit, saying when to try again, and nothing about the username.
- * @param reply Reply to send.
- * @param wait How long until the next attempt, in milliseconds.
- * @returns The sent reply.
- */
-function tooManyAttempts(reply: FastifyReply, wait: number) {
-  const seconds = Math.ceil(wait / 1000);
-  return reply
-    .status(429)
-    .header("retry-after", String(seconds))
-    .send({ statusCode: 429, error: "Too Many Requests", message: `Too many attempts. Try again in ${Math.ceil(seconds / 60)} min.` });
-}
-
-/**
- * Answers 409 for a username another user has.
- * @param reply Reply to send.
+ * Refuses a username another user has.
  * @param username The username that clashes.
- * @returns The sent reply.
+ * @returns The refusal.
  */
-function usernameTaken(reply: FastifyReply, username: string) {
+function usernameTaken(username: string): Rejection {
   const message = `Username "${username}" is already taken.`;
-  return reply.status(409).send({ statusCode: 409, error: "Conflict", message, details: [{ field: "username", message }] });
+  return conflict(message, [{ field: "username", message }]);
 }
 
 /**
@@ -158,10 +106,10 @@ export function registerUserRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { displayName, username, email, password, device } = request.body;
       if (!(await checkProof(device))) {
-        return deviceRefused(reply);
+        return refuse(reply, DEVICE_REFUSED);
       }
       if (await prisma.user.findUnique({ where: { username }, select: { id: true } })) {
-        return usernameTaken(reply, username);
+        return refuse(reply, usernameTaken(username));
       }
       const user = await prisma.user.create({
         data: { displayName, username, email, passwordHash: await hashPassword(password) },
@@ -169,7 +117,7 @@ export function registerUserRoutes(app: FastifyInstance) {
       });
       const found = await deviceForLogin(user.id, device.publicKey, isLoopback(request.ip));
       if ("pending" in found) {
-        return devicePending(reply, found.pending);
+        return refuse(reply, devicePending(found.pending));
       }
       return reply.status(201).send({ ...sessionOf(user), token: await createSession(user.id, found.id) });
     },
@@ -189,15 +137,15 @@ export function registerUserRoutes(app: FastifyInstance) {
       const matches = await verifyPassword(password, user?.passwordHash ?? (await UNKNOWN_USER_HASH));
       if (!user || !matches) {
         failedLogins.count(key);
-        return loginRefused(reply);
+        return refuse(reply, LOGIN_REFUSED);
       }
       failedLogins.clear(key);
       if (!(await checkProof(device))) {
-        return deviceRefused(reply);
+        return refuse(reply, DEVICE_REFUSED);
       }
       const found = await deviceForLogin(user.id, device.publicKey, isLoopback(request.ip));
       if ("pending" in found) {
-        return devicePending(reply, found.pending);
+        return refuse(reply, devicePending(found.pending));
       }
       return { ...sessionOf(user), token: await createSession(user.id, found.id) };
     },
@@ -209,17 +157,17 @@ export function registerUserRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { code, device } = request.body;
       if (!(await checkProof(device))) {
-        return deviceRefused(reply);
+        return refuse(reply, DEVICE_REFUSED);
       }
       const userId = entryCodeUser(code, device.publicKey);
       const user = userId && (await prisma.user.findUnique({ where: { id: userId }, select: USER }));
       if (!user) {
-        return entryRefused(reply);
+        return refuse(reply, ENTRY_REFUSED);
       }
       const found = await deviceForLogin(user.id, device.publicKey, isLoopback(request.ip));
       if ("pending" in found) {
         holdEntryCode(code, device.publicKey);
-        return devicePending(reply, found.pending);
+        return refuse(reply, devicePending(found.pending));
       }
       useEntryCode(code);
       return { ...sessionOf(user), token: await createSession(user.id, found.id) };

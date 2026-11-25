@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { optionKey } from "@apc/domain/items";
 import {
@@ -19,6 +19,7 @@ import {
 import type { Prisma } from "../../generated/prisma/client.js";
 import { mergeCatalogModel } from "../../catalog/catalogTree.js";
 import { prisma } from "../../db/client.js";
+import { conflict, notFound, refuse, type Rejection } from "../../http/replies.js";
 
 // The lists the item form picks from: categories, part brands, vehicle brands and vehicle models. GET sends a list
 // sorted by name; POST creates a name with the writing rule applied, unless the list already holds it ignoring
@@ -42,6 +43,10 @@ import { prisma } from "../../db/client.js";
 const ENTRY = { id: true, name: true } as const;
 /** The columns a vehicle brand is read with: an entry's, and whether the catalog has it. */
 const BRAND = { ...ENTRY, catalog: { select: { brandId: true } } } as const;
+/** Refuses a vehicle brand id that doesn't exist. */
+const BRAND_NOT_FOUND = notFound("Vehicle brand not found.");
+/** Refuses a list entry id that doesn't exist. */
+const ENTRY_NOT_FOUND = notFound("List entry not found.");
 /** The items using an entry of each list: by their category, or through any of their brands or vehicles. */
 const ITEMS_USING: Record<ItemListKind, (id: string) => Prisma.ItemWhereInput> = {
   categories: (id) => ({ categoryId: id }),
@@ -97,15 +102,6 @@ const NAME_LISTS: Record<"categories" | "partBrands" | "vehicleBrands", NameList
 };
 
 /**
- * Answers 404 for a vehicle brand id that doesn't exist.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-function brandNotFound(reply: FastifyReply) {
-  return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "Vehicle brand not found." });
-}
-
-/**
  * Sorts a list by name the way the form shows it, accents in their alphabetical place.
  * @param entries Entries in any order.
  * @returns The entries sorted by name.
@@ -115,23 +111,13 @@ function byName<Entry extends ListEntry>(entries: Entry[]): Entry[] {
 }
 
 /**
- * Answers 409 for a change the list can't take.
- * @param reply Reply to send.
+ * Refuses a change the list can't take.
  * @param message What keeps it from being done.
  * @param reason How many items use the entry, or the entry that has the name, when that is the reason.
- * @returns The sent reply.
+ * @returns The refusal.
  */
-function conflict(reply: FastifyReply, message: string, reason: { itemCount?: number; entryId?: string } = {}) {
-  return reply.status(409).send({ statusCode: 409, error: "Conflict", message, details: [{ field: "id", message, ...reason }] });
-}
-
-/**
- * Answers 404 for a list entry id that doesn't exist.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-function entryNotFound(reply: FastifyReply) {
-  return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "List entry not found." });
+function entryConflict(message: string, reason: { itemCount?: number; entryId?: string } = {}): Rejection {
+  return conflict(message, [{ field: "id", message, ...reason }]);
 }
 
 /**
@@ -281,13 +267,13 @@ export function registerListRoutes(app: FastifyInstance) {
         const { id } = request.params;
         const held = await list.byId(id);
         if (!held) {
-          return entryNotFound(reply);
+          return refuse(reply, ENTRY_NOT_FOUND);
         }
         const name = listName(request.body.name);
         const nameKey = optionKey(name);
         const other = await list.find(nameKey);
         if (other && other.id !== id) {
-          return conflict(reply, `"${other.name}" is already in the list.`, { entryId: other.id });
+          return refuse(reply, entryConflict(`"${other.name}" is already in the list.`, { entryId: other.id }));
         }
         return list.rename(id, name, nameKey);
       },
@@ -301,15 +287,15 @@ export function registerListRoutes(app: FastifyInstance) {
         const { into } = request.body;
         const [held, kept] = await Promise.all([list.byId(id), list.byId(into)]);
         if (!held || !kept) {
-          return entryNotFound(reply);
+          return refuse(reply, ENTRY_NOT_FOUND);
         }
         if (id === into) {
-          return conflict(reply, "An entry can't be merged into itself.");
+          return refuse(reply, entryConflict("An entry can't be merged into itself."));
         }
         // A part brand makes an item once: an item with both brands would hold the same part brand twice.
         const both = kind === "partBrands" ? await prisma.item.count({ where: { AND: [ITEMS_USING.partBrands(id), ITEMS_USING.partBrands(into)] } }) : 0;
         if (both > 0) {
-          return conflict(reply, `${both} items have both "${held.name}" and "${kept.name}".`, { itemCount: both });
+          return refuse(reply, entryConflict(`${both} items have both "${held.name}" and "${kept.name}".`, { itemCount: both }));
         }
         return { moved: await mergeEntries(kind, id, into) };
       },
@@ -319,11 +305,11 @@ export function registerListRoutes(app: FastifyInstance) {
       const { id } = request.params;
       const held = await list.byId(id);
       if (!held) {
-        return entryNotFound(reply);
+        return refuse(reply, ENTRY_NOT_FOUND);
       }
       const itemCount = await prisma.item.count({ where: ITEMS_USING[kind](id) });
       if (itemCount > 0) {
-        return conflict(reply, `"${held.name}" is used by ${itemCount} items.`, { itemCount });
+        return refuse(reply, entryConflict(`"${held.name}" is used by ${itemCount} items.`, { itemCount }));
       }
       await list.remove(id);
       return reply.status(204).send();
@@ -342,7 +328,7 @@ export function registerListRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const brandId = request.body.vehicleBrandId;
       if (!(await prisma.brand.findUnique({ where: { id: brandId }, select: { id: true } }))) {
-        return brandNotFound(reply);
+        return refuse(reply, BRAND_NOT_FOUND);
       }
       const name = listName(request.body.name);
       const nameKey = optionKey(name);
@@ -362,7 +348,7 @@ export function registerListRoutes(app: FastifyInstance) {
       const { id } = request.params;
       const held = await prisma.vehicleModel.findUnique({ where: { id }, select: MODEL });
       if (!held) {
-        return entryNotFound(reply);
+        return refuse(reply, ENTRY_NOT_FOUND);
       }
       const name = listName(request.body.name);
       const nameKey = optionKey(name);
@@ -371,7 +357,7 @@ export function registerListRoutes(app: FastifyInstance) {
         select: MODEL,
       });
       if (other && other.id !== id) {
-        return conflict(reply, `"${other.name}" is already a model of this brand.`, { entryId: other.id });
+        return refuse(reply, entryConflict(`"${other.name}" is already a model of this brand.`, { entryId: other.id }));
       }
       const renamed = await prisma.vehicleModel.update({ where: { id }, data: { name, nameKey }, select: MODEL });
       return toVehicleModel(renamed);
@@ -389,13 +375,13 @@ export function registerListRoutes(app: FastifyInstance) {
         prisma.vehicleModel.findUnique({ where: { id: into }, select: MODEL }),
       ]);
       if (!held || !kept) {
-        return entryNotFound(reply);
+        return refuse(reply, ENTRY_NOT_FOUND);
       }
       if (id === into) {
-        return conflict(reply, "An entry can't be merged into itself.");
+        return refuse(reply, entryConflict("An entry can't be merged into itself."));
       }
       if (held.brandId !== kept.brandId) {
-        return conflict(reply, "A model can only be merged into a model of its brand.");
+        return refuse(reply, entryConflict("A model can only be merged into a model of its brand."));
       }
       return { moved: await mergeEntries("vehicleModels", id, into) };
     },
@@ -405,11 +391,11 @@ export function registerListRoutes(app: FastifyInstance) {
     const { id } = request.params;
     const held = await prisma.vehicleModel.findUnique({ where: { id }, select: MODEL });
     if (!held) {
-      return entryNotFound(reply);
+      return refuse(reply, ENTRY_NOT_FOUND);
     }
     const itemCount = await prisma.item.count({ where: ITEMS_USING.vehicleModels(id) });
     if (itemCount > 0) {
-      return conflict(reply, `"${held.name}" is used by ${itemCount} items.`, { itemCount });
+      return refuse(reply, entryConflict(`"${held.name}" is used by ${itemCount} items.`, { itemCount }));
     }
     // Its place in the catalog goes with it, with its tree.
     await prisma.$transaction([prisma.catalogModel.deleteMany({ where: { vehicleModelId: id } }), prisma.vehicleModel.delete({ where: { id } })]);

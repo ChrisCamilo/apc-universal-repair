@@ -1,5 +1,6 @@
 import { codeKey, MAX_QUANTITY, optionKey, type ItemBrandCreate, type ItemCreate, type ItemUpdate } from "@apc/domain/items";
 import type { Prisma } from "../generated/prisma/client.js";
+import { badRequest, conflict, notFound, type Rejection } from "../http/replies.js";
 import { brandData, createData, ITEM_INCLUDE, originalCodesData, syncQuantity, updateData, vehiclesData, type ListIds } from "./items.js";
 import { listIds } from "./listIds.js";
 
@@ -16,28 +17,26 @@ import { listIds } from "./listIds.js";
 // as saved, or why it was refused, as the route answers it; the photo files a change leaves behind are removed by the
 // caller once the transaction is in.
 
-/** Why a change was refused, as the item routes answer it. */
-export type ItemRejection = { statusCode: number; error: string; message: string; details?: Record<string, unknown>[] };
 /** What a change gave: the item as saved, with the photo files it left behind, or why it was refused. */
-export type ItemChange<Value> = { ok: true; value: Value; files: string[] } | { ok: false; rejection: ItemRejection };
+export type ItemChange<Value> = { ok: true; value: Value; files: string[] } | { ok: false; rejection: Rejection };
 /** An item row with what ITEM_INCLUDE reads. */
 export type ItemRow = Prisma.ItemGetPayload<{ include: typeof ITEM_INCLUDE }>;
 /** A code sent, with the field of the request it came in, e.g. "brands/0/code" or "originalCodes/1". */
 type SentCode = { code: string; field: string };
 
 /** Refuses an item id that doesn't exist. */
-export const ITEM_NOT_FOUND: ItemRejection = { statusCode: 404, error: "Not Found", message: "Item not found." };
+export const ITEM_NOT_FOUND = notFound("Item not found.");
 /** Refuses a brand sent with the id of a brand that isn't the item's. */
-const FOREIGN_BRAND: ItemRejection = { statusCode: 400, error: "Bad Request", message: "A brand sent with an id must be one of this item's." };
+const FOREIGN_BRAND = badRequest("A brand sent with an id must be one of this item's.");
 /** Refuses an id a phone gave an item or a brand that another one already has. */
-export const ID_TAKEN: ItemRejection = { statusCode: 409, error: "Conflict", message: "The id of the item or of one of its brands is already taken." };
+export const ID_TAKEN = conflict("The id of the item or of one of its brands is already taken.");
 
 /**
  * Refuses a change.
  * @param rejection Why.
  * @returns The refused change.
  */
-function refused(rejection: ItemRejection): { ok: false; rejection: ItemRejection } {
+function refused(rejection: Rejection): { ok: false; rejection: Rejection } {
   return { ok: false, rejection };
 }
 
@@ -46,8 +45,8 @@ function refused(rejection: ItemRejection): { ok: false; rejection: ItemRejectio
  * @param code The code.
  * @returns Why.
  */
-function codeRepeated(code: string): ItemRejection {
-  return { statusCode: 400, error: "Bad Request", message: `Code "${code}" is repeated in the item.` };
+function codeRepeated(code: string): Rejection {
+  return badRequest(`Code "${code}" is repeated in the item.`);
 }
 
 /**
@@ -55,14 +54,9 @@ function codeRepeated(code: string): ItemRejection {
  * @param taken The code that clashes, its field in the request and the item that uses it.
  * @returns Why, naming the item, so the form can say which.
  */
-function codeTaken(taken: SentCode & { owner: { id: string; name: string } }): ItemRejection {
+function codeTaken(taken: SentCode & { owner: { id: string; name: string } }): Rejection {
   const message = `Code "${taken.code}" is already used by "${taken.owner.name}".`;
-  return {
-    statusCode: 409,
-    error: "Conflict",
-    message,
-    details: [{ field: taken.field, message, code: taken.code, itemId: taken.owner.id, itemName: taken.owner.name }],
-  };
+  return conflict(message, [{ field: taken.field, message, code: taken.code, itemId: taken.owner.id, itemName: taken.owner.name }]);
 }
 
 /**
@@ -200,7 +194,7 @@ export async function updateItem(
   const partBrands = (brands ?? []).map((brand) => optionKey(brand.partBrand));
   const partBrand = (brands ?? []).find((_, index) => partBrands.indexOf(partBrands[index]) !== index);
   if (partBrand) {
-    return refused({ statusCode: 400, error: "Bad Request", message: `Part brand "${partBrand.partBrand}" is repeated in the item.` });
+    return refused(badRequest(`Part brand "${partBrand.partBrand}" is repeated in the item.`));
   }
   const taken = await findTakenCode(tx, sentCodes(body), id);
   if (taken) {

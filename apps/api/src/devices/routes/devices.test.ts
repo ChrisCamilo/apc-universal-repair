@@ -76,6 +76,34 @@ test("API: devices are managed only from the server's computer", async () => {
   );
 });
 
+// Calls each route of one device from the server's computer, with a session, at an id that isn't a UUID, and checks
+// each is refused with 400 before the database is asked.
+test("API: a device's routes refuse an id that isn't a UUID", async () => {
+  const calls = [
+    { method: "POST", url: "/devices/d1/authorize", payload: {} },
+    { method: "PATCH", url: "/devices/d1", payload: { name: "Celular" } },
+    { method: "DELETE", url: "/devices/d1" },
+  ] as const;
+  for (const call of calls) {
+    const response = await app.inject({ ...call, headers: AUTHORIZED, remoteAddress: "127.0.0.1" });
+    assert.equal(response.statusCode, 400, call.url);
+    assert.equal(response.json().details[0].field, "id", call.url);
+  }
+});
+
+// Asks one address for every nonce it gets in a window, and checks the next is refused with 429, saying in Retry-After
+// and in the message when to try again, as a login past its limit is.
+test("API: a device's challenges stop at their limit, saying when to try again", async () => {
+  const ask = () => app.inject({ method: "GET", url: "/devices/challenge", remoteAddress: "10.0.0.9" });
+  for (let call = 0; call < 300; call++) {
+    assert.equal((await ask()).statusCode, 200);
+  }
+  const refused = await ask();
+  assert.equal(refused.statusCode, 429);
+  assert.equal(refused.headers["retry-after"], "900");
+  assert.equal(refused.json().message, "Too many attempts. Try again in 15 min.");
+});
+
 // Sends a login and a sign-up without the device's proof, and checks both are refused before anything else.
 test("API: a login and a sign-up need the device's proof", async () => {
   const login = await app.inject({ method: "POST", url: "/sessions", payload: { username: "ana.souza", password: "freio1234" } });

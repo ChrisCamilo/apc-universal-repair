@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import {
   brandMark,
@@ -22,6 +22,7 @@ import {
 import { optionKey } from "@apc/domain/items";
 import { listName } from "@apc/domain/lists";
 import { prisma } from "../../db/client.js";
+import { badRequest, conflict, notFound, refuse, type Rejection } from "../../http/replies.js";
 import { CATALOG_GENERATIONS } from "../catalogTree.js";
 
 // The vehicle catalog of the Catalog tab (see @apc/domain/catalog). GET sends every catalog brand in the rail's order,
@@ -49,38 +50,19 @@ import { CATALOG_GENERATIONS } from "../catalogTree.js";
 const GENERATION_YEARS = { firstYear: true, lastYear: true } as const;
 /** Orders a level of the catalog by its place among its siblings. */
 const IN_ORDER = { orderBy: { position: "asc" } } as const;
+/** Refuses a node, or a parent to add under, that isn't there. */
+const NODE_NOT_FOUND = notFound("Catalog node not found.");
 /** Orders siblings by their place, and those that share one by id, so a move always finds the same order. */
 const SIBLING_ORDER = { orderBy: [{ position: "asc" as const }, { id: "asc" as const }] };
 
 /**
- * Answers 409 for a name or year another node has, or a brand or model the catalog has already.
- * @param reply Reply to send.
- * @param message What clashes.
- * @returns The sent reply.
- */
-function conflict(reply: FastifyReply, message: string) {
-  return reply.status(409).send({ statusCode: 409, error: "Conflict", message });
-}
-
-/**
- * Answers 400 for years the tree can't take.
- * @param reply Reply to send.
- * @param message What is wrong.
- * @returns The sent reply.
- */
-function badRequest(reply: FastifyReply, message: string) {
-  return reply.status(400).send({ statusCode: 400, error: "Bad Request", message });
-}
-
-/**
- * Answers 400 for a period outside its generation's years.
- * @param reply Reply to send.
+ * Refuses a period outside its generation's years.
  * @param generation The generation's years.
- * @returns The sent reply.
+ * @returns The refusal.
  */
-function outsideGeneration(reply: FastifyReply, generation: GenerationYears) {
+function outsideGeneration(generation: GenerationYears): Rejection {
   const years = `${generation.firstYear}–${generation.lastYear ?? ""}`;
-  return badRequest(reply, `A period must stay inside its generation's years, ${years}.`);
+  return badRequest(`A period must stay inside its generation's years, ${years}.`);
 }
 
 /**
@@ -90,15 +72,6 @@ function outsideGeneration(reply: FastifyReply, generation: GenerationYears) {
  */
 function nextPosition(last: { _max: { position: number | null } }): number {
   return (last._max.position ?? -1) + 1;
-}
-
-/**
- * Answers 404 for a node, or a parent to add under, that isn't there.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-function notFound(reply: FastifyReply) {
-  return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "Catalog node not found." });
 }
 
 /**
@@ -142,13 +115,12 @@ async function itemsUsing(level: CatalogEditLevel | "brand", id: string): Promis
 }
 
 /**
- * Answers 409 for a node, or a brand, some items' vehicles use.
- * @param reply Reply to send.
+ * Refuses deleting a node, or a brand, some items' vehicles use.
  * @param count How many items use it.
- * @returns The sent reply.
+ * @returns The refusal.
  */
-function inUse(reply: FastifyReply, count: number) {
-  return conflict(reply, `${count} ${count === 1 ? "item uses" : "items use"} it in the stock.`);
+function inUse(count: number): Rejection {
+  return conflict(`${count} ${count === 1 ? "item uses" : "items use"} it in the stock.`);
 }
 
 /**
@@ -240,7 +212,7 @@ export function registerCatalogRoutes(app: FastifyInstance) {
       (await prisma.brand.findUnique({ where: { nameKey }, select: { id: true, name: true, catalog: { select: { id: true } } } })) ??
       (await prisma.brand.create({ data: { name, nameKey }, select: { id: true, name: true, catalog: { select: { id: true } } } }));
     if (brand.catalog) {
-      return conflict(reply, `"${brand.name}" is in the catalog already.`);
+      return refuse(reply, conflict(`"${brand.name}" is in the catalog already.`));
     }
     const position = nextPosition(await prisma.catalogBrand.aggregate({ _max: { position: true } }));
     await prisma.catalogBrand.create({ data: { brandId: brand.id, mark: brandMark(brand.name), position } });
@@ -250,11 +222,11 @@ export function registerCatalogRoutes(app: FastifyInstance) {
   routes.delete(`${CATALOG_BRANDS_PATH}/:id`, { schema: { params, response: changed } }, async (request, reply) => {
     const brandId = request.params.id;
     if (!(await prisma.catalogBrand.findUnique({ where: { brandId }, select: { id: true } }))) {
-      return notFound(reply);
+      return refuse(reply, NODE_NOT_FOUND);
     }
     const using = await itemsUsing("brand", brandId);
     if (using > 0) {
-      return inUse(reply, using);
+      return refuse(reply, inUse(using));
     }
     await prisma.$transaction([
       prisma.catalogModel.deleteMany({ where: { vehicleModel: { brandId } } }),
@@ -269,7 +241,7 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const brandId = request.params.id;
       if (!(await prisma.catalogBrand.findUnique({ where: { brandId }, select: { id: true } }))) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const name = listName(request.body.name);
       const nameKey = optionKey(name);
@@ -278,7 +250,7 @@ export function registerCatalogRoutes(app: FastifyInstance) {
         (await prisma.vehicleModel.findUnique({ where: { brandId_nameKey: { brandId, nameKey } }, select })) ??
         (await prisma.vehicleModel.create({ data: { name, nameKey, brandId }, select }));
       if (vehicleModel.catalogModel) {
-        return conflict(reply, `"${vehicleModel.name}" is in the catalog already.`);
+        return refuse(reply, conflict(`"${vehicleModel.name}" is in the catalog already.`));
       }
       const position = nextPosition(await prisma.catalogModel.aggregate({ where: { vehicleModel: { brandId } }, _max: { position: true } }));
       await prisma.catalogModel.create({ data: { vehicleModelId: vehicleModel.id, position } });
@@ -292,7 +264,7 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const modelId = request.params.id;
       if (!(await prisma.catalogModel.findUnique({ where: { id: modelId }, select: { id: true } }))) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const { name, firstYear, lastYear } = request.body;
       const position = nextPosition(await prisma.catalogGeneration.aggregate({ where: { modelId }, _max: { position: true } }));
@@ -307,7 +279,7 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const generationId = request.params.id;
       if (!(await prisma.catalogGeneration.findUnique({ where: { id: generationId }, select: { id: true } }))) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const position = nextPosition(await prisma.catalogVersion.aggregate({ where: { generationId }, _max: { position: true } }));
       await prisma.catalogVersion.create({ data: { generationId, position, name: listName(request.body.name) } });
@@ -322,14 +294,14 @@ export function registerCatalogRoutes(app: FastifyInstance) {
       const versionId = request.params.id;
       const version = await prisma.catalogVersion.findUnique({ where: { id: versionId }, select: { generation: { select: GENERATION_YEARS } } });
       if (!version) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const { year, lastYear } = request.body;
       if (!periodInGeneration({ year, lastYear }, version.generation)) {
-        return outsideGeneration(reply, version.generation);
+        return refuse(reply, outsideGeneration(version.generation));
       }
       if (await prisma.catalogYear.findFirst({ where: { versionId, year, lastYear }, select: { id: true } })) {
-        return conflict(reply, `${year}-${lastYear} is a period of this version already.`);
+        return refuse(reply, conflict(`${year}-${lastYear} is a period of this version already.`));
       }
       const position = nextPosition(await prisma.catalogYear.aggregate({ where: { versionId }, _max: { position: true } }));
       await prisma.catalogYear.create({ data: { versionId, position, year, lastYear } });
@@ -343,7 +315,7 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const yearId = request.params.id;
       if (!(await prisma.catalogYear.findUnique({ where: { id: yearId }, select: { id: true } }))) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const position = nextPosition(await prisma.catalogEngine.aggregate({ where: { yearId }, _max: { position: true } }));
       await prisma.catalogEngine.create({ data: { yearId, position, ...request.body } });
@@ -357,7 +329,7 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { id } = request.params;
       if (!(await prisma.catalogEngine.findUnique({ where: { id }, select: { id: true } }))) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       await prisma.catalogEngine.update({ where: { id }, data: request.body });
       return readCatalog();
@@ -370,14 +342,14 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const node = await prisma.catalogModel.findUnique({ where: { id: request.params.id }, select: { vehicleModel: { select: { id: true, brandId: true } } } });
       if (!node) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const name = listName(request.body.name);
       const nameKey = optionKey(name);
       const { id, brandId } = node.vehicleModel;
       const other = await prisma.vehicleModel.findUnique({ where: { brandId_nameKey: { brandId, nameKey } }, select: { id: true, name: true } });
       if (other && other.id !== id) {
-        return conflict(reply, `"${other.name}" is already a model of this brand.`);
+        return refuse(reply, conflict(`"${other.name}" is already a model of this brand.`));
       }
       await prisma.vehicleModel.update({ where: { id }, data: { name, nameKey } });
       return readCatalog();
@@ -390,12 +362,12 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { id } = request.params;
       if (!(await prisma.catalogGeneration.findUnique({ where: { id }, select: { id: true } }))) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const { name, firstYear, lastYear } = request.body;
       const span = periodsSpan(await prisma.catalogYear.findMany({ where: { version: { generationId: id } }, select: { year: true, lastYear: true } }));
       if (span && !periodInGeneration(span, { firstYear, lastYear })) {
-        return badRequest(reply, `This generation's periods cover ${span.year}–${span.lastYear}, which its years must keep.`);
+        return refuse(reply, badRequest(`This generation's periods cover ${span.year}–${span.lastYear}, which its years must keep.`));
       }
       await prisma.catalogGeneration.update({ where: { id }, data: { name: listName(name), firstYear, lastYear } });
       return readCatalog();
@@ -408,7 +380,7 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { id } = request.params;
       if (!(await prisma.catalogVersion.findUnique({ where: { id }, select: { id: true } }))) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       await prisma.catalogVersion.update({ where: { id }, data: { name: listName(request.body.name) } });
       return readCatalog();
@@ -422,14 +394,14 @@ export function registerCatalogRoutes(app: FastifyInstance) {
       const { id } = request.params;
       const node = await prisma.catalogYear.findUnique({ where: { id }, select: { versionId: true, version: { select: { generation: { select: GENERATION_YEARS } } } } });
       if (!node) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const { year, lastYear } = request.body;
       if (!periodInGeneration({ year, lastYear }, node.version.generation)) {
-        return outsideGeneration(reply, node.version.generation);
+        return refuse(reply, outsideGeneration(node.version.generation));
       }
       if (await prisma.catalogYear.findFirst({ where: { versionId: node.versionId, year, lastYear, id: { not: id } }, select: { id: true } })) {
-        return conflict(reply, `${year}-${lastYear} is a period of this version already.`);
+        return refuse(reply, conflict(`${year}-${lastYear} is a period of this version already.`));
       }
       await prisma.catalogYear.update({ where: { id }, data: { year, lastYear } });
       return readCatalog();
@@ -441,7 +413,7 @@ export function registerCatalogRoutes(app: FastifyInstance) {
       const { id } = request.params;
       const siblings = await siblingsOf(level, id);
       if (!siblings) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const index = siblings.indexOf(id);
       const target = request.body.direction === "up" ? index - 1 : index + 1;
@@ -455,11 +427,11 @@ export function registerCatalogRoutes(app: FastifyInstance) {
     routes.delete(`${path}/:id`, { schema: { params, response: changed } }, async (request, reply) => {
       const { id } = request.params;
       if (!(await siblingsOf(level, id))) {
-        return notFound(reply);
+        return refuse(reply, NODE_NOT_FOUND);
       }
       const using = await itemsUsing(level, id);
       if (using > 0) {
-        return inUse(reply, using);
+        return refuse(reply, inUse(using));
       }
       await removeNode(level, id);
       return readCatalog();

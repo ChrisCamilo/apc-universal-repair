@@ -298,7 +298,7 @@ The API's `src` (`apps/api/src`) has one folder per feature, named as in `packag
 - **`auth/`:** sessions, passwords and login attempts (`sessions.ts`, `passwords.ts`, `attempts.ts`); `routes/users.ts`.
 - **`devices/`:** the devices, their authorization and the entry codes; `routes/devices.ts`.
 - **`health/`:** `routes/health.ts`, `GET /health`.
-- **The rest:** `db/` and `plugins/` (Fastify's plugins) stay apart. `db/` keeps at its root what every request uses (the client, the provider, the SQLite file's cipher and the schemas' check), in `tasks/` the database tasks (`migrate`, `backup`, `copy`, `import` and `tasks`, which the desktop app runs), and in `migrations/` the database tests of data migrations. `app.ts`, which registers every route, has `apiRoutes.test.ts` beside it.
+- **The rest:** `db/` and `http/` stay apart. `http/` keeps Fastify's plugins (the allowed hosts, the session check and the error handler), `replies.ts`, which every refusal goes through (a `Rejection` built by `notFound()`, `conflict()` and the rest, answered with `refuse()`, so a rule can refuse without knowing Fastify), and `limits.ts`, the 429 of every route that limits attempts. `db/` keeps at its root what every request uses (the client, the provider, the SQLite file's cipher and the schemas' check), in `tasks/` the database tasks (`migrate`, `backup`, `copy`, `import` and `tasks`, which the desktop app runs), and in `migrations/` the database tests of data migrations. `app.ts`, which registers every route, has `apiRoutes.test.ts` beside it.
 
 The desktop app (`apps/desktop`, see [`docs/architecture.md`](docs/architecture.md)) keeps its own layout.
 

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { bearerToken, type ActiveSession, type SessionLookup } from "../auth/sessions.js";
+import { refuse, unauthorized } from "./replies.js";
 
 // Every route asks who is calling, before the body is read: a request without "Authorization: Bearer <token>", or
 // with a token of no session or of an expired one, is answered 401, unknown paths included. A route opts out with
@@ -17,6 +18,9 @@ declare module "fastify" {
   }
 }
 
+/** What a request without a live session is refused with. */
+const LOGGED_OUT = unauthorized("Log in to use the API.");
+
 /**
  * Makes every route that isn't public need a session.
  * @param app The Fastify app, before its routes are registered.
@@ -31,7 +35,7 @@ export function registerAuthentication(app: FastifyInstance, sessions: SessionLo
     const token = bearerToken(request.headers.authorization);
     const session = token ? await sessions.byToken(token) : null;
     if (!session) {
-      return reply.status(401).send({ statusCode: 401, error: "Unauthorized", message: "Log in to use the API." });
+      return refuse(reply, LOGGED_OUT);
     }
     request.session = session;
   });
