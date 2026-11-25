@@ -1,6 +1,6 @@
 import { codeKey, MAX_QUANTITY, optionKey, type ItemBrandCreate, type ItemCreate, type ItemUpdate } from "@apc/domain/items";
 import type { Prisma } from "../generated/prisma/client.js";
-import { badRequest, conflict, notFound, type Rejection } from "../http/replies.js";
+import { badRequest, conflict, notFound, refused, type Rejection } from "../http/replies.js";
 import { brandData, createData, ITEM_INCLUDE, originalCodesData, syncQuantity, updateData, vehiclesData, type ListIds } from "./items.js";
 import { listIds } from "./listIds.js";
 
@@ -30,15 +30,6 @@ export const ITEM_NOT_FOUND = notFound("Item not found.");
 const FOREIGN_BRAND = badRequest("A brand sent with an id must be one of this item's.");
 /** Refuses an id a phone gave an item or a brand that another one already has. */
 export const ID_TAKEN = conflict("The id of the item or of one of its brands is already taken.");
-
-/**
- * Refuses a change.
- * @param rejection Why.
- * @returns The refused change.
- */
-function refused(rejection: Rejection): { ok: false; rejection: Rejection } {
-  return { ok: false, rejection };
-}
 
 /**
  * Refuses a code an item would hold twice, as an original code and a brand's.

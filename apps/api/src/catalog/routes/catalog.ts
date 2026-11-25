@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import {
-  brandMark,
   CATALOG_BRANDS_PATH,
   CATALOG_ENGINES_PATH,
   CATALOG_LEVEL_PATHS,
@@ -13,190 +12,35 @@ import {
   catalogNameSchema,
   catalogSchema,
   catalogYearInputSchema,
-  periodInGeneration,
-  periodsSpan,
-  type CatalogData,
   type CatalogEditLevel,
-  type GenerationYears,
 } from "@apc/domain/catalog";
-import { optionKey } from "@apc/domain/items";
-import { listName } from "@apc/domain/lists";
-import { prisma } from "../../db/client.js";
-import { badRequest, conflict, notFound, refuse, type Rejection } from "../../http/replies.js";
-import { CATALOG_GENERATIONS } from "../catalogTree.js";
+import { answer } from "../../http/replies.js";
+import {
+  addBrand,
+  addEngine,
+  addGeneration,
+  addModel,
+  addPeriod,
+  addVersion,
+  changeGeneration,
+  changePeriod,
+  moveNode,
+  readCatalog,
+  removeBrand,
+  removeNode,
+  renameModel,
+  renameVersion,
+  saveEngine,
+} from "../catalog.js";
 
-// The vehicle catalog of the Catalog tab (see @apc/domain/catalog). GET sends every catalog brand in the rail's order,
-// by its vehicle brand's id and name, each with its models by their vehicle model's name, and under them the
-// generations, versions, periods (the "year" level: a first and a last year) and engines with their sheets, each level in
-// its order.
-// The tree is edited here, and every change answers the whole catalog (201 for something added). A brand is added by
-// name: the vehicle brand of that name, added to the lists when they don't hold it, becomes a catalog brand at the end of
-// the rail, refused when it is one already (409), and deleted with its models' trees, its vehicle brand and models
-// staying in the lists, so no item loses a vehicle. A model is added under a catalog brand the same way, from its
-// vehicle models, refused when the brand has it in the catalog already. A generation (with its years), a version and a
-// period are added at the end of their parent's; a version can't have the same period twice (409), though its periods
-// may overlap. Each of these is renamed (a
-// model by renaming its vehicle model, refused when another model of the brand has the name), moved up or down among
-// its siblings (past the ends it stays put), and deleted with everything under it; a model's vehicle model stays in the
-// lists. An engine is added under a period with its sheet (displacement, cylinders, drive and summary), at the end of
-// the period's, and its sheet is saved again; its name and its sheet's title come from the sheet and the tree. A node or parent
-// that isn't there answers 404. Item vehicles point at generations and versions, so a brand or node an item uses, or
-// one with such a node under it, isn't deleted (409): the item's vehicle changes first. Renaming a version or changing a
-// generation's years shows on the items that use them. A period stays inside its generation's years, which count as
-// inside, and a generation's years keep the ones its periods cover: a period added or changed outside them, or a
-// generation's years changed past its periods', answers 400 (see periodInGeneration).
-
-/** The years of a generation, which its periods keep to. */
-const GENERATION_YEARS = { firstYear: true, lastYear: true } as const;
-/** Orders a level of the catalog by its place among its siblings. */
-const IN_ORDER = { orderBy: { position: "asc" } } as const;
-/** Refuses a node, or a parent to add under, that isn't there. */
-const NODE_NOT_FOUND = notFound("Catalog node not found.");
-/** Orders siblings by their place, and those that share one by id, so a move always finds the same order. */
-const SIBLING_ORDER = { orderBy: [{ position: "asc" as const }, { id: "asc" as const }] };
+// The vehicle catalog's routes (see ../catalog.ts for its rules). GET sends the whole catalog, and every edit answers
+// it again, 201 for something added, or its refusal: 404 for a node or parent that isn't there, 409 for a clash or a
+// node items use, 400 for years the tree can't take.
 
 /**
- * Refuses a period outside its generation's years.
- * @param generation The generation's years.
- * @returns The refusal.
+ * Registers the catalog's routes.
+ * @param app The Fastify app.
  */
-function outsideGeneration(generation: GenerationYears): Rejection {
-  const years = `${generation.firstYear}–${generation.lastYear ?? ""}`;
-  return badRequest(`A period must stay inside its generation's years, ${years}.`);
-}
-
-/**
- * Finds the next place at the end of some siblings.
- * @param last The last sibling's place, if any.
- * @returns The place after it, or 0 for the first.
- */
-function nextPosition(last: { _max: { position: number | null } }): number {
-  return (last._max.position ?? -1) + 1;
-}
-
-/**
- * Reads the whole catalog as the API sends it.
- * @returns The catalog brands in the rail's order, with their trees.
- */
-async function readCatalog(): Promise<CatalogData> {
-  const [brands, models] = await Promise.all([
-    prisma.catalogBrand.findMany({ ...IN_ORDER, select: { mark: true, brand: { select: { id: true, name: true } } } }),
-    prisma.catalogModel.findMany({
-      ...IN_ORDER,
-      select: { id: true, vehicleModel: { select: { name: true, brandId: true } }, generations: CATALOG_GENERATIONS },
-    }),
-  ]);
-  return {
-    brands: brands.map(({ mark, brand }) => ({
-      id: brand.id,
-      name: brand.name,
-      mark,
-      models: models
-        .filter((model) => model.vehicleModel.brandId === brand.id)
-        .map(({ id, vehicleModel, generations }) => ({ id, name: vehicleModel.name, generations })),
-    })),
-  };
-}
-
-/**
- * Counts the items with a vehicle of a catalog node, or of something under it, which keep it from being deleted.
- * @param level A brand, or a level of the tree that has generations or versions under it or is one.
- * @param id The node, or the brand's vehicle brand.
- * @returns How many items, 0 for a period.
- */
-async function itemsUsing(level: CatalogEditLevel | "brand", id: string): Promise<number> {
-  const vehicles: Record<Exclude<CatalogEditLevel, "year"> | "brand", object> = {
-    brand: { generation: { model: { vehicleModel: { brandId: id } } } },
-    model: { generation: { modelId: id } },
-    generation: { generationId: id },
-    version: { versionId: id },
-  };
-  return level === "year" ? 0 : prisma.item.count({ where: { vehicles: { some: vehicles[level] } } });
-}
-
-/**
- * Refuses deleting a node, or a brand, some items' vehicles use.
- * @param count How many items use it.
- * @returns The refusal.
- */
-function inUse(count: number): Rejection {
-  return conflict(`${count} ${count === 1 ? "item uses" : "items use"} it in the stock.`);
-}
-
-/**
- * Deletes a node of a level, and everything under it.
- * @param level The node's level.
- * @param id The node.
- */
-async function removeNode(level: CatalogEditLevel, id: string): Promise<void> {
-  const where = { where: { id } };
-  switch (level) {
-    case "model":
-      await prisma.catalogModel.delete(where);
-      return;
-    case "generation":
-      await prisma.catalogGeneration.delete(where);
-      return;
-    case "version":
-      await prisma.catalogVersion.delete(where);
-      return;
-    case "year":
-      await prisma.catalogYear.delete(where);
-  }
-}
-
-/**
- * Writes the places of some siblings in their new order, in one transaction.
- * @param level Their level.
- * @param ids Their ids, in order.
- */
-async function reorder(level: CatalogEditLevel, ids: readonly string[]): Promise<void> {
-  await prisma.$transaction(
-    ids.map((id, position) => {
-      const update = { where: { id }, data: { position } };
-      switch (level) {
-        case "model":
-          return prisma.catalogModel.update(update);
-        case "generation":
-          return prisma.catalogGeneration.update(update);
-        case "version":
-          return prisma.catalogVersion.update(update);
-        case "year":
-          return prisma.catalogYear.update(update);
-      }
-    }),
-  );
-}
-
-/**
- * Lists a node's siblings, itself included, in their order.
- * @param level The node's level.
- * @param id The node.
- * @returns Their ids, or null when the node isn't there.
- */
-async function siblingsOf(level: CatalogEditLevel, id: string): Promise<string[] | null> {
-  const ids = (rows: { id: string }[]) => rows.map((row) => row.id);
-  const select = { ...SIBLING_ORDER, select: { id: true } };
-  switch (level) {
-    case "model": {
-      const node = await prisma.catalogModel.findUnique({ where: { id }, select: { vehicleModel: { select: { brandId: true } } } });
-      return node && ids(await prisma.catalogModel.findMany({ where: { vehicleModel: { brandId: node.vehicleModel.brandId } }, ...select }));
-    }
-    case "generation": {
-      const node = await prisma.catalogGeneration.findUnique({ where: { id }, select: { modelId: true } });
-      return node && ids(await prisma.catalogGeneration.findMany({ where: { modelId: node.modelId }, ...select }));
-    }
-    case "version": {
-      const node = await prisma.catalogVersion.findUnique({ where: { id }, select: { generationId: true } });
-      return node && ids(await prisma.catalogVersion.findMany({ where: { generationId: node.generationId }, ...select }));
-    }
-    case "year": {
-      const node = await prisma.catalogYear.findUnique({ where: { id }, select: { versionId: true } });
-      return node && ids(await prisma.catalogYear.findMany({ where: { versionId: node.versionId }, ...select }));
-    }
-  }
-}
-
 export function registerCatalogRoutes(app: FastifyInstance) {
   const routes = app.withTypeProvider<ZodTypeProvider>();
   const params = catalogIdParamsSchema;
@@ -205,236 +49,71 @@ export function registerCatalogRoutes(app: FastifyInstance) {
 
   routes.get(CATALOG_PATH, { schema: { response: changed } }, () => readCatalog());
 
-  routes.post(CATALOG_BRANDS_PATH, { schema: { body: catalogNameSchema, response: added } }, async (request, reply) => {
-    const name = listName(request.body.name);
-    const nameKey = optionKey(name);
-    const brand =
-      (await prisma.brand.findUnique({ where: { nameKey }, select: { id: true, name: true, catalog: { select: { id: true } } } })) ??
-      (await prisma.brand.create({ data: { name, nameKey }, select: { id: true, name: true, catalog: { select: { id: true } } } }));
-    if (brand.catalog) {
-      return refuse(reply, conflict(`"${brand.name}" is in the catalog already.`));
-    }
-    const position = nextPosition(await prisma.catalogBrand.aggregate({ _max: { position: true } }));
-    await prisma.catalogBrand.create({ data: { brandId: brand.id, mark: brandMark(brand.name), position } });
-    return reply.status(201).send(await readCatalog());
-  });
+  routes.post(CATALOG_BRANDS_PATH, { schema: { body: catalogNameSchema, response: added } }, async (request, reply) =>
+    answer(reply, await addBrand(request.body.name), 201),
+  );
 
-  routes.delete(`${CATALOG_BRANDS_PATH}/:id`, { schema: { params, response: changed } }, async (request, reply) => {
-    const brandId = request.params.id;
-    if (!(await prisma.catalogBrand.findUnique({ where: { brandId }, select: { id: true } }))) {
-      return refuse(reply, NODE_NOT_FOUND);
-    }
-    const using = await itemsUsing("brand", brandId);
-    if (using > 0) {
-      return refuse(reply, inUse(using));
-    }
-    await prisma.$transaction([
-      prisma.catalogModel.deleteMany({ where: { vehicleModel: { brandId } } }),
-      prisma.catalogBrand.delete({ where: { brandId } }),
-    ]);
-    return readCatalog();
-  });
+  routes.delete(`${CATALOG_BRANDS_PATH}/:id`, { schema: { params, response: changed } }, async (request, reply) =>
+    answer(reply, await removeBrand(request.params.id)),
+  );
 
-  routes.post(
-    `${CATALOG_BRANDS_PATH}/:id/models`,
-    { schema: { params, body: catalogNameSchema, response: added } },
-    async (request, reply) => {
-      const brandId = request.params.id;
-      if (!(await prisma.catalogBrand.findUnique({ where: { brandId }, select: { id: true } }))) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const name = listName(request.body.name);
-      const nameKey = optionKey(name);
-      const select = { id: true, name: true, catalogModel: { select: { id: true } } };
-      const vehicleModel =
-        (await prisma.vehicleModel.findUnique({ where: { brandId_nameKey: { brandId, nameKey } }, select })) ??
-        (await prisma.vehicleModel.create({ data: { name, nameKey, brandId }, select }));
-      if (vehicleModel.catalogModel) {
-        return refuse(reply, conflict(`"${vehicleModel.name}" is in the catalog already.`));
-      }
-      const position = nextPosition(await prisma.catalogModel.aggregate({ where: { vehicleModel: { brandId } }, _max: { position: true } }));
-      await prisma.catalogModel.create({ data: { vehicleModelId: vehicleModel.id, position } });
-      return reply.status(201).send(await readCatalog());
-    },
+  routes.post(`${CATALOG_BRANDS_PATH}/:id/models`, { schema: { params, body: catalogNameSchema, response: added } }, async (request, reply) =>
+    answer(reply, await addModel(request.params.id, request.body.name), 201),
   );
 
   routes.post(
     `${CATALOG_LEVEL_PATHS.model}/:id/generations`,
     { schema: { params, body: catalogGenerationInputSchema, response: added } },
-    async (request, reply) => {
-      const modelId = request.params.id;
-      if (!(await prisma.catalogModel.findUnique({ where: { id: modelId }, select: { id: true } }))) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const { name, firstYear, lastYear } = request.body;
-      const position = nextPosition(await prisma.catalogGeneration.aggregate({ where: { modelId }, _max: { position: true } }));
-      await prisma.catalogGeneration.create({ data: { modelId, position, name: listName(name), firstYear, lastYear } });
-      return reply.status(201).send(await readCatalog());
-    },
+    async (request, reply) => answer(reply, await addGeneration(request.params.id, request.body), 201),
   );
 
   routes.post(
     `${CATALOG_LEVEL_PATHS.generation}/:id/versions`,
     { schema: { params, body: catalogNameSchema, response: added } },
-    async (request, reply) => {
-      const generationId = request.params.id;
-      if (!(await prisma.catalogGeneration.findUnique({ where: { id: generationId }, select: { id: true } }))) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const position = nextPosition(await prisma.catalogVersion.aggregate({ where: { generationId }, _max: { position: true } }));
-      await prisma.catalogVersion.create({ data: { generationId, position, name: listName(request.body.name) } });
-      return reply.status(201).send(await readCatalog());
-    },
+    async (request, reply) => answer(reply, await addVersion(request.params.id, request.body.name), 201),
   );
 
   routes.post(
     `${CATALOG_LEVEL_PATHS.version}/:id/years`,
     { schema: { params, body: catalogYearInputSchema, response: added } },
-    async (request, reply) => {
-      const versionId = request.params.id;
-      const version = await prisma.catalogVersion.findUnique({ where: { id: versionId }, select: { generation: { select: GENERATION_YEARS } } });
-      if (!version) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const { year, lastYear } = request.body;
-      if (!periodInGeneration({ year, lastYear }, version.generation)) {
-        return refuse(reply, outsideGeneration(version.generation));
-      }
-      if (await prisma.catalogYear.findFirst({ where: { versionId, year, lastYear }, select: { id: true } })) {
-        return refuse(reply, conflict(`${year}-${lastYear} is a period of this version already.`));
-      }
-      const position = nextPosition(await prisma.catalogYear.aggregate({ where: { versionId }, _max: { position: true } }));
-      await prisma.catalogYear.create({ data: { versionId, position, year, lastYear } });
-      return reply.status(201).send(await readCatalog());
-    },
+    async (request, reply) => answer(reply, await addPeriod(request.params.id, request.body), 201),
   );
 
   routes.post(
     `${CATALOG_LEVEL_PATHS.year}/:id/engines`,
     { schema: { params, body: catalogEngineInputSchema, response: added } },
-    async (request, reply) => {
-      const yearId = request.params.id;
-      if (!(await prisma.catalogYear.findUnique({ where: { id: yearId }, select: { id: true } }))) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const position = nextPosition(await prisma.catalogEngine.aggregate({ where: { yearId }, _max: { position: true } }));
-      await prisma.catalogEngine.create({ data: { yearId, position, ...request.body } });
-      return reply.status(201).send(await readCatalog());
-    },
+    async (request, reply) => answer(reply, await addEngine(request.params.id, request.body), 201),
   );
 
-  routes.patch(
-    `${CATALOG_ENGINES_PATH}/:id`,
-    { schema: { params, body: catalogEngineInputSchema, response: changed } },
-    async (request, reply) => {
-      const { id } = request.params;
-      if (!(await prisma.catalogEngine.findUnique({ where: { id }, select: { id: true } }))) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      await prisma.catalogEngine.update({ where: { id }, data: request.body });
-      return readCatalog();
-    },
+  routes.patch(`${CATALOG_ENGINES_PATH}/:id`, { schema: { params, body: catalogEngineInputSchema, response: changed } }, async (request, reply) =>
+    answer(reply, await saveEngine(request.params.id, request.body)),
   );
 
-  routes.patch(
-    `${CATALOG_LEVEL_PATHS.model}/:id`,
-    { schema: { params, body: catalogNameSchema, response: changed } },
-    async (request, reply) => {
-      const node = await prisma.catalogModel.findUnique({ where: { id: request.params.id }, select: { vehicleModel: { select: { id: true, brandId: true } } } });
-      if (!node) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const name = listName(request.body.name);
-      const nameKey = optionKey(name);
-      const { id, brandId } = node.vehicleModel;
-      const other = await prisma.vehicleModel.findUnique({ where: { brandId_nameKey: { brandId, nameKey } }, select: { id: true, name: true } });
-      if (other && other.id !== id) {
-        return refuse(reply, conflict(`"${other.name}" is already a model of this brand.`));
-      }
-      await prisma.vehicleModel.update({ where: { id }, data: { name, nameKey } });
-      return readCatalog();
-    },
+  routes.patch(`${CATALOG_LEVEL_PATHS.model}/:id`, { schema: { params, body: catalogNameSchema, response: changed } }, async (request, reply) =>
+    answer(reply, await renameModel(request.params.id, request.body.name)),
   );
 
   routes.patch(
     `${CATALOG_LEVEL_PATHS.generation}/:id`,
     { schema: { params, body: catalogGenerationInputSchema, response: changed } },
-    async (request, reply) => {
-      const { id } = request.params;
-      if (!(await prisma.catalogGeneration.findUnique({ where: { id }, select: { id: true } }))) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const { name, firstYear, lastYear } = request.body;
-      const span = periodsSpan(await prisma.catalogYear.findMany({ where: { version: { generationId: id } }, select: { year: true, lastYear: true } }));
-      if (span && !periodInGeneration(span, { firstYear, lastYear })) {
-        return refuse(reply, badRequest(`This generation's periods cover ${span.year}–${span.lastYear}, which its years must keep.`));
-      }
-      await prisma.catalogGeneration.update({ where: { id }, data: { name: listName(name), firstYear, lastYear } });
-      return readCatalog();
-    },
+    async (request, reply) => answer(reply, await changeGeneration(request.params.id, request.body)),
   );
 
-  routes.patch(
-    `${CATALOG_LEVEL_PATHS.version}/:id`,
-    { schema: { params, body: catalogNameSchema, response: changed } },
-    async (request, reply) => {
-      const { id } = request.params;
-      if (!(await prisma.catalogVersion.findUnique({ where: { id }, select: { id: true } }))) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      await prisma.catalogVersion.update({ where: { id }, data: { name: listName(request.body.name) } });
-      return readCatalog();
-    },
+  routes.patch(`${CATALOG_LEVEL_PATHS.version}/:id`, { schema: { params, body: catalogNameSchema, response: changed } }, async (request, reply) =>
+    answer(reply, await renameVersion(request.params.id, request.body.name)),
   );
 
-  routes.patch(
-    `${CATALOG_LEVEL_PATHS.year}/:id`,
-    { schema: { params, body: catalogYearInputSchema, response: changed } },
-    async (request, reply) => {
-      const { id } = request.params;
-      const node = await prisma.catalogYear.findUnique({ where: { id }, select: { versionId: true, version: { select: { generation: { select: GENERATION_YEARS } } } } });
-      if (!node) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const { year, lastYear } = request.body;
-      if (!periodInGeneration({ year, lastYear }, node.version.generation)) {
-        return refuse(reply, outsideGeneration(node.version.generation));
-      }
-      if (await prisma.catalogYear.findFirst({ where: { versionId: node.versionId, year, lastYear, id: { not: id } }, select: { id: true } })) {
-        return refuse(reply, conflict(`${year}-${lastYear} is a period of this version already.`));
-      }
-      await prisma.catalogYear.update({ where: { id }, data: { year, lastYear } });
-      return readCatalog();
-    },
+  routes.patch(`${CATALOG_LEVEL_PATHS.year}/:id`, { schema: { params, body: catalogYearInputSchema, response: changed } }, async (request, reply) =>
+    answer(reply, await changePeriod(request.params.id, request.body)),
   );
 
   for (const [level, path] of Object.entries(CATALOG_LEVEL_PATHS) as [CatalogEditLevel, string][]) {
-    routes.post(`${path}/:id/move`, { schema: { params, body: catalogMoveSchema, response: changed } }, async (request, reply) => {
-      const { id } = request.params;
-      const siblings = await siblingsOf(level, id);
-      if (!siblings) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const index = siblings.indexOf(id);
-      const target = request.body.direction === "up" ? index - 1 : index + 1;
-      if (target >= 0 && target < siblings.length) {
-        [siblings[index], siblings[target]] = [siblings[target], siblings[index]];
-        await reorder(level, siblings);
-      }
-      return readCatalog();
-    });
+    routes.post(`${path}/:id/move`, { schema: { params, body: catalogMoveSchema, response: changed } }, async (request, reply) =>
+      answer(reply, await moveNode(level, request.params.id, request.body.direction)),
+    );
 
-    routes.delete(`${path}/:id`, { schema: { params, response: changed } }, async (request, reply) => {
-      const { id } = request.params;
-      if (!(await siblingsOf(level, id))) {
-        return refuse(reply, NODE_NOT_FOUND);
-      }
-      const using = await itemsUsing(level, id);
-      if (using > 0) {
-        return refuse(reply, inUse(using));
-      }
-      await removeNode(level, id);
-      return readCatalog();
-    });
+    routes.delete(`${path}/:id`, { schema: { params, response: changed } }, async (request, reply) =>
+      answer(reply, await removeNode(level, request.params.id)),
+    );
   }
 }

@@ -3,7 +3,8 @@ import type { FastifyReply } from "fastify";
 // How the API refuses a request: a status with { statusCode, error, message }, and details naming the fields or the
 // entries at fault when there are any. A route or a rule builds the refusal here, as data, and the route answers it
 // with refuse(), so every refusal has the same shape. A rule can refuse without knowing Fastify, as the item changes
-// do for the item routes and a phone's batch of operations alike (see inventory/itemChanges.ts).
+// do for the item routes and a phone's batch of operations alike (see inventory/itemChanges.ts): it gives a Result,
+// its value (done) or its refusal (refused), which the route answers with answer().
 
 /** The name each status the API refuses with is sent with. */
 const ERRORS = {
@@ -26,6 +27,19 @@ export type Rejection = {
   /** The short code of a device waiting for authorization. */
   code?: string;
 };
+/** What a rule gave: its value, or why it refused. */
+export type Result<Value> = { ok: true; value: Value } | { ok: false; rejection: Rejection };
+
+/**
+ * Answers what a rule gave: its value with the status, or its refusal.
+ * @param reply Reply to send.
+ * @param result What the rule gave.
+ * @param statusCode The status of a value, 200 unless something was created (201).
+ * @returns The sent reply.
+ */
+export function answer<Value>(reply: FastifyReply, result: Result<Value>, statusCode = 200) {
+  return result.ok ? reply.status(statusCode).send(result.value) : refuse(reply, result.rejection);
+}
 
 /**
  * Refuses a request the API can't take as it is sent.
@@ -45,6 +59,15 @@ export function badRequest(message: string, details?: Record<string, unknown>[])
  */
 export function conflict(message: string, details?: Record<string, unknown>[]): Rejection {
   return rejection(409, message, details);
+}
+
+/**
+ * Gives a rule's value.
+ * @param value The value.
+ * @returns The result.
+ */
+export function done<Value>(value: Value): { ok: true; value: Value } {
+  return { ok: true, value };
 }
 
 /**
@@ -82,6 +105,15 @@ export function notFound(message: string): Rejection {
  */
 export function refuse(reply: FastifyReply, refusal: Rejection) {
   return reply.status(refusal.statusCode).send(refusal);
+}
+
+/**
+ * Gives a rule's refusal.
+ * @param rejection Why.
+ * @returns The result.
+ */
+export function refused(rejection: Rejection): { ok: false; rejection: Rejection } {
+  return { ok: false, rejection };
 }
 
 /**

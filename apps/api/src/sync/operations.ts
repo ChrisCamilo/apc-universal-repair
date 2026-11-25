@@ -2,6 +2,7 @@ import type { SyncConflict, SyncOperation, SyncOperationResult } from "@apc/doma
 import { deleteConflicts, mergeEdit } from "@apc/domain/sync-conflicts";
 import type { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../db/client.js";
+import { refused } from "../http/replies.js";
 import { createItem, deleteItem, ID_TAKEN, moveStock, updateItem, type ItemChange } from "../inventory/itemChanges.js";
 import { ITEM_INCLUDE, toItemValues } from "../inventory/items.js";
 import { removePhotoFiles } from "../inventory/photos.js";
@@ -87,7 +88,7 @@ async function changeOf(tx: Prisma.TransactionClient, operation: SyncOperation):
     const brandIds = operation.item.brands.flatMap((brand) => (brand.id ? [brand.id] : []));
     const taken = (await tx.item.count({ where: { id: operation.itemId } })) + (await tx.itemBrand.count({ where: { id: { in: brandIds } } }));
     if (taken > 0) {
-      return { ok: false, rejection: ID_TAKEN };
+      return refused(ID_TAKEN);
     }
     return createItem(tx, operation.item, { itemId: operation.itemId });
   }
