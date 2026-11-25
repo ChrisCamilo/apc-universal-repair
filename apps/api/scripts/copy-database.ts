@@ -2,11 +2,11 @@ import "dotenv/config";
 import { parseArgs } from "node:util";
 import { DEV_SERVER_PORT, SERVER_PORT } from "@apc/domain/server";
 import { createPrisma } from "../src/db/client.js";
-import { copyDatabase, copyProblems, serverAnswers } from "../src/db/copy.js";
+import { copyDatabase, copyProblems, serverAnswers } from "../src/db/tasks/copy.js";
 import { databaseProvider, sqliteFile } from "../src/db/provider.js";
 
 // `pnpm --filter @apc/api db:copy --from <DATABASE_URL> --to <DATABASE_URL> [--force]`: copies the data from one
-// database to another (see src/db/copy.ts), e.g. from the PostgreSQL in use to a new SQLite file made with db:migrate.
+// database to another (see src/db/tasks/copy.ts), e.g. from the PostgreSQL in use to a new SQLite file made with db:migrate.
 // It refuses while a server answers on this computer, on PORT or else on the development or the finished server's
 // port, as it would keep writing to the source, unless --force.
 

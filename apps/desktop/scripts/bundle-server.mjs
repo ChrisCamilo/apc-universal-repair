@@ -1,7 +1,7 @@
 // Bundles the API into server/ for the desktop app to run (see src/server/bundledServer.ts), and electron-builder
 // ships the folder as resources/server:
 // - server.mjs: the API with its JavaScript dependencies, built by esbuild from apps/api/src, and tasks.mjs, the
-//   database tasks the app runs beside it (apps/api/src/db/tasks.ts), sharing their code through chunks/;
+//   database tasks the app runs beside it (apps/api/src/db/tasks/tasks.ts), sharing their code through chunks/;
 // - migrations/: its SQL files, one folder per database, which the API applies on start (APC_MIGRATIONS_DIR);
 // - node_modules/: the two native modules esbuild can't bundle: better-sqlite3, which the workspace installs as
 //   better-sqlite3-multiple-ciphers to encrypt the SQLite file (pnpm-workspace.yaml), compiled for this Electron by
@@ -46,7 +46,7 @@ function versionOf(from, name) {
 mkdirSync(OUT, { recursive: true });
 rmSync(path.join(OUT, "chunks"), { recursive: true, force: true });
 await build({
-  entryPoints: { server: path.join(API, "src", "server.ts"), tasks: path.join(API, "src", "db", "tasks.ts") },
+  entryPoints: { server: path.join(API, "src", "server.ts"), tasks: path.join(API, "src", "db", "tasks", "tasks.ts") },
   bundle: true,
   splitting: true,
   platform: "node",

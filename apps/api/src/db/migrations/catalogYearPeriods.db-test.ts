@@ -6,10 +6,10 @@ import path from "node:path";
 import { after, test } from "node:test";
 import Database from "better-sqlite3";
 import pg from "pg";
-import type { PrismaClient } from "../generated/prisma/client.js";
-import { createPrisma } from "./client.js";
-import { migrate, migrationNames, migrationsFolder } from "./migrate.js";
-import type { DatabaseProvider } from "./provider.js";
+import type { PrismaClient } from "../../generated/prisma/client.js";
+import { createPrisma } from "../client.js";
+import { migrate, migrationNames, migrationsFolder } from "../tasks/migrate.js";
+import type { DatabaseProvider } from "../provider.js";
 
 // The migration that turns a catalog version's years into periods (20261118000000_catalog_year_periods), on new SQLite
 // files and, when TEST_POSTGRES_URL names a PostgreSQL server whose user can create databases, on a new PostgreSQL

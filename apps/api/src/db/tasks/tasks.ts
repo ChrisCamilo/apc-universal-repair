@@ -1,4 +1,4 @@
-import { changeKey, keyOpens, setSqliteKey } from "./cipher.js";
+import { changeKey, keyOpens, setSqliteKey } from "../cipher.js";
 import { holdsAnyData, importProblem, importServer, type ImportSetup } from "./import.js";
 import { checkDatabase, migrate } from "./migrate.js";
 

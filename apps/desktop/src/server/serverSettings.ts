@@ -48,7 +48,7 @@ import { phoneAddress } from "../system/tray.js";
 // phone's access on, kept in config.json, which restarts it on the network, and back off; while it is on, the page asks
 // whether the network or the firewall leaves the server public (see network.ts), which app.log records. From there the
 // page also moves the server to PostgreSQL, at an address checked and migrated first and kept sealed (see database.ts),
-// or back to SQLite, which restarts the server; and imports an old server (see apps/api/src/db/import.ts) into the
+// or back to SQLite, which restarts the server; and imports an old server (see apps/api/src/db/tasks/import.ts) into the
 // database in use, with the server off meanwhile. The database tasks run beside the server (see serverTasks.ts). With
 // PostgreSQL chosen at install and no address yet, the server waits for the page to ask for it. On SQLite the file is
 // encrypted with a key made the first time (see database.ts): the dialog shows its recovery copy until the user says it
