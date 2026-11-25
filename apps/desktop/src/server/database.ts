@@ -30,9 +30,9 @@ const KEY_FORMAT = /^[0-9a-f]{64}$/;
 /** How every plain SQLite file starts; an encrypted one starts with random bytes. */
 const SQLITE_HEADER = "SQLite format 3\0";
 
-/** What a database holds, as the server's checkDatabase task answers (apps/api/src/db/migrate.ts). */
+/** What a database holds, as the server's checkDatabase task answers (apps/api/src/db/tasks/migrate.ts). */
 export type DatabaseCheck = { missing: string[]; newer: string[]; foreign: boolean };
-/** Why an import can't start, as the server's importProblem task answers (apps/api/src/db/import.ts). */
+/** Why an import can't start, as the server's importProblem task answers (apps/api/src/db/tasks/import.ts). */
 export type ImportProblem = "sourceBehind" | "sourceNewer" | "sourceNotApc" | "targetHasData";
 /** Seals and opens text for this Windows user, as Electron's safeStorage does. */
 export type Sealer = { encryptString: (text: string) => Buffer; decryptString: (sealed: Buffer) => string };

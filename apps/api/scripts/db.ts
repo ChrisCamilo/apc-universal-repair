@@ -4,12 +4,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { sqliteKey } from "../src/db/cipher.js";
-import { checkDatabase, migrate } from "../src/db/migrate.js";
+import { checkDatabase, migrate } from "../src/db/tasks/migrate.js";
 import { databaseProvider, databaseUrl, sqliteFile } from "../src/db/provider.js";
 
 // The database commands of the API, on the database DATABASE_URL names, or the default SQLite file (see
 // src/db/provider.ts), so they work the same on both: `pnpm --filter @apc/api db:migrate` applies the pending
-// migrations with the API's own runner (src/db/migrate.ts), the one the desktop app runs too, and `db:check` fails when
+// migrations with the API's own runner (src/db/tasks/migrate.ts), the one the desktop app runs too, and `db:check` fails when
 // the database doesn't match its schema, through the Prisma CLI. The CLI can't open an encrypted SQLite file (see
 // src/db/cipher.ts), so for one `db:check` checks the file has every migration applied, and diffs a plain copy built
 // from the same migrations instead.

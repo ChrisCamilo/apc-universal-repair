@@ -1,6 +1,6 @@
-import type { PrismaClient } from "../generated/prisma/client.js";
+import type { PrismaClient } from "../../generated/prisma/client.js";
 import { migrationNames } from "./migrate.js";
-import { databaseProvider } from "./provider.js";
+import { databaseProvider } from "../provider.js";
 
 // Copies the data from one database to another, PostgreSQL or SQLite in either direction (`pnpm --filter @apc/api
 // db:copy`), to move the server from one to the other. Every table is copied as it is, ids, dates and keys included, in

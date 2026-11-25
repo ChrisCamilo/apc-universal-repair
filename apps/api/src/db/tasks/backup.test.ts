@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, afterEach, before, test } from "node:test";
 import { backupBeforeMigrating, KEPT_BACKUPS } from "./backup.js";
-import { setSqliteKey } from "./cipher.js";
-import { createPrisma } from "./client.js";
+import { setSqliteKey } from "../cipher.js";
+import { createPrisma } from "../client.js";
 import { checkDatabase, migrate, migrationsFolder } from "./migrate.js";
 
 // The copy the server makes before applying new migrations, on encrypted SQLite files in a temporary folder: a

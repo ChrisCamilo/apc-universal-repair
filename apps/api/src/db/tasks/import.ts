@@ -1,10 +1,10 @@
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
-import type { PrismaClient } from "../generated/prisma/client.js";
-import { createPrisma } from "./client.js";
+import type { PrismaClient } from "../../generated/prisma/client.js";
+import { createPrisma } from "../client.js";
 import { copyDatabase, holdsData, type TableName } from "./copy.js";
 import { checkDatabase, migrationNames } from "./migrate.js";
-import { databaseProvider } from "./provider.js";
+import { databaseProvider } from "../provider.js";
 
 // Imports a server from before into the one the desktop app runs: the data of an old clone's PostgreSQL database or
 // SQLite file, copied by copyDatabase (see copy.ts) into the database in use, and the photo files its rows name,

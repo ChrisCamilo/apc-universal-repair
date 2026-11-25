@@ -10,10 +10,10 @@ import { brandMark, catalogIdParamsSchema } from "@apc/domain/catalog";
 import { optionKey } from "@apc/domain/items";
 import { TEST_CATALOG_DATA } from "@apc/domain/test-catalog";
 import { STARTING_VEHICLE_BRANDS } from "@apc/domain/vehicle-lists";
-import type { PrismaClient } from "../generated/prisma/client.js";
-import { createPrisma } from "./client.js";
-import { migrate, migrationNames, migrationsFolder } from "./migrate.js";
-import type { DatabaseProvider } from "./provider.js";
+import type { PrismaClient } from "../../generated/prisma/client.js";
+import { createPrisma } from "../client.js";
+import { migrate, migrationNames, migrationsFolder } from "../tasks/migrate.js";
+import type { DatabaseProvider } from "../provider.js";
 
 // The migration that puts the starting vehicle brands and models in the Catalog (20261113000000_catalog_starting_brands),
 // on new SQLite files and, when TEST_POSTGRES_URL names a PostgreSQL server whose user can create databases, on a new

@@ -8,7 +8,7 @@ import Database from "better-sqlite3";
 import { WRONG_KEY_EXIT_CODE } from "@apc/domain/server";
 import { changeKey, ensureEncrypted, keyOpens, keyScript, readKey, REKEY_COPY, setSqliteKey } from "./cipher.js";
 import { createPrisma } from "./client.js";
-import { migrate, migrationNames } from "./migrate.js";
+import { migrate, migrationNames } from "./tasks/migrate.js";
 import { API_DIR } from "./provider.js";
 
 // The SQLite file encrypted at rest, on files in a temporary folder, so it runs without a database server: what an
