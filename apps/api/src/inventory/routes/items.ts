@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import {
   itemCreateSchema,
@@ -11,8 +11,9 @@ import {
 } from "@apc/domain/items";
 import { itemImportResultSchema, itemImportSchema } from "@apc/domain/item-csv";
 import { prisma } from "../../db/client.js";
+import { conflict, refuse } from "../../http/replies.js";
 import { importItems, ImportConflict } from "../import.js";
-import { createItem, deleteItem, ITEM_NOT_FOUND, updateItem, type ItemRejection } from "../itemChanges.js";
+import { createItem, deleteItem, updateItem } from "../itemChanges.js";
 import { ITEM_INCLUDE, itemWhere, SORT_SELECT, toItem, toSortable } from "../items.js";
 import { removePhotoFiles } from "../photos.js";
 
@@ -23,35 +24,6 @@ import { removePhotoFiles } from "../photos.js";
 // the rules a phone's batch of operations follows too (see itemChanges.ts), each in one transaction, the photo files a
 // change leaves behind removed once it is in. POST /items/import saves the items of a CSV file at once (see
 // importItems).
-
-/**
- * Answers 409 for an import that can't be saved as it is.
- * @param reply Reply to send.
- * @param message Why, from ImportConflict.
- * @returns The sent reply.
- */
-function importConflict(reply: FastifyReply, message: string) {
-  return reply.status(409).send({ statusCode: 409, error: "Conflict", message });
-}
-
-/**
- * Answers 404 for an item id that doesn't exist.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-export function notFound(reply: FastifyReply) {
-  return refuse(reply, ITEM_NOT_FOUND);
-}
-
-/**
- * Answers a refused change with its status and body.
- * @param reply Reply to send.
- * @param rejection Why the change was refused.
- * @returns The sent reply.
- */
-function refuse(reply: FastifyReply, rejection: ItemRejection) {
-  return reply.status(rejection.statusCode).send(rejection);
-}
 
 export function registerItemRoutes(app: FastifyInstance) {
   const routes = app.withTypeProvider<ZodTypeProvider>();
@@ -101,7 +73,7 @@ export function registerItemRoutes(app: FastifyInstance) {
         return await importItems(request.body.items);
       } catch (error) {
         if (error instanceof ImportConflict) {
-          return importConflict(reply, error.message);
+          return refuse(reply, conflict(error.message));
         }
         throw error;
       }

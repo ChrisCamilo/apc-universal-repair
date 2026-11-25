@@ -1,16 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { z } from "zod";
 import { itemBrandIdParamsSchema, itemSchema } from "@apc/domain/items";
 import { ITEM_PHOTO_LIMIT, PHOTO_PARTS } from "@apc/domain/photos";
 import { prisma } from "../../db/client.js";
+import { badRequest, notFound, refuse, unauthorized, type Rejection } from "../../http/replies.js";
+import { ITEM_NOT_FOUND } from "../itemChanges.js";
 import { ITEM_INCLUDE, toItem } from "../items.js";
 import { checkPhoto, copyStoredPhoto, photosDir, removePhotoFiles, storePhoto } from "../photos.js";
 import { validPhotoSignature, type SessionLookup } from "../../auth/sessions.js";
-import { notFound } from "./items.js";
 
 // The photos of an item's brand. PUT /items/:id/brands/:brandId/photos sets them all at once, in the order of the request's parts: a "keep" part
 // keeps a saved photo by its id, a "copy" part copies a saved photo of any brand, as a duplicated item's do, into a new
@@ -21,14 +22,20 @@ import { notFound } from "./items.js";
 // open without a session, as <img> can't send one, but only at a path the API signed for a live session (see
 // sessions.ts), answering 401 otherwise; the browser keeps the file only for this device, until the path changes.
 
+/** Refuses a brand that isn't one of the item's. */
+const BRAND_NOT_FOUND = notFound("Brand not found on this item.");
 /** Content type of each stored file, by extension. */
 const CONTENT_TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
 // A stored file's name: a photo id, "-thumb" for the thumbnail, and its extension; nothing else is served.
 const photoFileParamsSchema = z.object({
   file: z.string().regex(/^[0-9a-f-]{36}(-thumb)?\.(jpg|png|webp)$/, "Not a photo file."),
 });
+/** Refuses a stored file that isn't there. */
+const PHOTO_NOT_FOUND = notFound("Photo not found.");
 /** The session a photo path is signed for, and its signature; a path without them is answered 401. */
 const photoSignatureQuerySchema = z.object({ session: z.string().optional(), signature: z.string().optional() });
+/** Refuses a photo path the API didn't sign for a live session. */
+const UNSIGNED = unauthorized("This photo path isn't signed for a session.");
 
 const uuidSchema = z.uuid();
 
@@ -36,27 +43,12 @@ const uuidSchema = z.uuid();
 type PhotoEntry = { keep: string } | { copy: string } | { buffer: Buffer };
 
 /**
- * Answers 400 naming what keeps the photos from being saved.
- * @param reply Reply to send.
+ * Refuses photos that can't be saved, naming what keeps them from it.
  * @param messages One message per problem, e.g. "Photo 2 is larger than 3 MB."
- * @returns The sent reply.
+ * @returns The refusal.
  */
-function badPhotos(reply: FastifyReply, messages: string[]) {
-  return reply.status(400).send({
-    statusCode: 400,
-    error: "Bad Request",
-    message: "The photos can't be saved.",
-    details: messages.map((message) => ({ field: "photos", message })),
-  });
-}
-
-/**
- * Answers 404 for a brand that isn't one of the item's.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-function brandNotFound(reply: FastifyReply) {
-  return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "Brand not found on this item." });
+function badPhotos(messages: string[]): Rejection {
+  return badRequest("The photos can't be saved.", messages.map((message) => ({ field: "photos", message })));
 }
 
 /**
@@ -104,28 +96,28 @@ export function registerPhotoRoutes(app: FastifyInstance, sessions: SessionLooku
         problems.push(`A brand of an item holds at most ${ITEM_PHOTO_LIMIT} photos.`);
       }
       if (problems.length > 0) {
-        return badPhotos(reply, problems);
+        return refuse(reply, badPhotos(problems));
       }
 
       const { id, brandId } = request.params;
       if (!(await prisma.item.findUnique({ where: { id }, select: { id: true } }))) {
-        return notFound(reply);
+        return refuse(reply, ITEM_NOT_FOUND);
       }
       const brand = await prisma.itemBrand.findFirst({ where: { id: brandId, itemId: id }, include: { photos: true } });
       if (!brand) {
-        return brandNotFound(reply);
+        return refuse(reply, BRAND_NOT_FOUND);
       }
       const saved = new Map(brand.photos.map((photo) => [photo.id, photo]));
       const kept = entries.flatMap((entry) => ("keep" in entry ? [entry.keep] : []));
       if (kept.some((photoId) => !saved.has(photoId)) || new Set(kept).size < kept.length) {
-        return badPhotos(reply, ["Kept photos must be this brand's photos, each kept once."]);
+        return refuse(reply, badPhotos(["Kept photos must be this brand's photos, each kept once."]));
       }
       const copied = entries.flatMap((entry) => ("copy" in entry ? [entry.copy] : []));
       const sources = new Map(
         (await prisma.itemPhoto.findMany({ where: { id: { in: copied } } })).map((photo) => [photo.id, photo]),
       );
       if (copied.some((photoId) => !sources.has(photoId))) {
-        return badPhotos(reply, ["Copied photos must be saved photos."]);
+        return refuse(reply, badPhotos(["Copied photos must be saved photos."]));
       }
 
       const photos = await Promise.all(
@@ -167,11 +159,11 @@ export function registerPhotoRoutes(app: FastifyInstance, sessions: SessionLooku
       const { session: sessionId, signature } = request.query;
       const session = sessionId && signature ? await sessions.byId(sessionId) : null;
       if (!session || !validPhotoSignature(session, file, signature!)) {
-        return reply.status(401).send({ statusCode: 401, error: "Unauthorized", message: "This photo path isn't signed for a session." });
+        return refuse(reply, UNSIGNED);
       }
       const content = await readFile(path.join(photosDir(), file)).catch(() => null);
       if (!content) {
-        return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "Photo not found." });
+        return refuse(reply, PHOTO_NOT_FOUND);
       }
       return reply
         .header("cache-control", "private, max-age=31536000, immutable")
