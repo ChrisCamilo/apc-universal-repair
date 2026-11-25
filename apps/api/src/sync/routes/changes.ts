@@ -10,7 +10,7 @@ import { readChanges } from "../changes.js";
 /** What a cursor the feed can't follow is answered with. */
 export const CURSOR_GONE = "The cursor is of another database or older than the deletions kept: make a full copy.";
 
-export function registerSyncRoutes(app: FastifyInstance) {
+export function registerChangeRoutes(app: FastifyInstance) {
   const routes = app.withTypeProvider<ZodTypeProvider>();
 
   routes.get(
