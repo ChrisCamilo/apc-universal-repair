@@ -13,7 +13,7 @@ import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens'
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { apiUrl } from '../src/app/api';
 import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
-import { ExportItemsDialog } from '../src/features/inventory/ExportItemsDialog';
+import { ExportItemsDialog } from '../src/features/inventory/transfer/ExportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { testItem } from '@apc/domain/test-items';

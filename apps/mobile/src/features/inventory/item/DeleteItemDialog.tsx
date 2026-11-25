@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { itemCodes, type Item } from '@apc/domain/items';
 import { seenOf } from '@apc/domain/sync-conflicts';
-import { newId } from '../../app/ids';
-import { Button } from '../../components/Button';
-import { Dialog } from '../../components/Dialog';
-import { useToast } from '../../components/Toast';
-import { tourTarget } from '../../components/Tour';
-import { Text } from '../../components/Typography';
-import { enqueue } from './inventoryCopy';
+import { newId } from '../../../app/ids';
+import { Button } from '../../../components/Button';
+import { Dialog } from '../../../components/Dialog';
+import { useToast } from '../../../components/Toast';
+import { tourTarget } from '../../../components/Tour';
+import { Text } from '../../../components/Typography';
+import { enqueue } from '../../sync/inventoryCopy';
 
 // The confirmation that removes an item from the inventory, the same as the web: it names the item and its codes.
 // Excluir queues the delete (see @apc/domain/sync-queue), which takes the item out of the Inventory at once and goes to

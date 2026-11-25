@@ -13,7 +13,7 @@ import { pairingLink } from '@apc/domain/pairing';
 import { TEST_USERS } from '@apc/domain/test-users';
 import App from '../App';
 import { applyServer, SERVER_STORAGE_KEY } from '../src/app/api';
-import { enqueue } from '../src/features/inventory/inventoryCopy';
+import { enqueue } from '../src/features/sync/inventoryCopy';
 
 // The app while pairing is the login (PASSWORD_LOGIN off, see src/features/auth/passwordLogin.ts): it opens on Conectar ao
 // servidor, whose QR code from the computer logs the phone in; App.test.tsx covers the password login set aside.

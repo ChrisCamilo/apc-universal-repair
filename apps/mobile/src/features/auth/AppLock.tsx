@@ -5,7 +5,7 @@ import { LOGIN_BRAND } from '@apc/domain/auth';
 import { BrandMark } from '../../components/BrandMark';
 import { Button } from '../../components/Button';
 import { Heading, Text } from '../../components/Typography';
-import { lockCopy, unlockCopy, type UnlockResult } from '../inventory/inventoryCopy';
+import { lockCopy, unlockCopy, type UnlockResult } from '../sync/inventoryCopy';
 import { useStyles } from './AppLock.styles';
 
 // The phone's copy of the inventory behind the phone's own lock (see InventoryCopyModule.kt): the app opens only once

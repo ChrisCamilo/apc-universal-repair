@@ -12,8 +12,8 @@ import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens'
 import { itemListsOf } from '@apc/domain/test-lists';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
-import { ManageListsDialog } from '../src/features/inventory/ManageListsDialog';
-import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/features/inventory/useItemLists';
+import { ManageListsDialog } from '../src/features/inventory/lists/ManageListsDialog';
+import type { MergeListEntries, RemoveListEntry, RenameListEntry } from '../src/features/inventory/lists/useItemLists';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { testItem, type FlatItem } from '@apc/domain/test-items';

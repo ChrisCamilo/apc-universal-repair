@@ -7,8 +7,8 @@ import { Button } from '../../components/Button';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
 import { EmptyState } from '../../components/EmptyState';
 import { Heading } from '../../components/Typography';
-import { CardTitle, StockQuantity } from '../inventory/ItemCard';
-import { photoSource } from '../inventory/photoCache';
+import { CardTitle, StockQuantity } from '../inventory/browse/ItemCard';
+import { photoSource } from '../sync/photoCache';
 import { useStyles } from './CarSheet.styles';
 
 // A model's or a version's sheet in the Catalog, the same as the web on a phone (see carSheet in @apc/domain/catalog):

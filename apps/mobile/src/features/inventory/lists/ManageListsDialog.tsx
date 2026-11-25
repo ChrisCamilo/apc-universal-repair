@@ -17,12 +17,12 @@ import {
   type VehicleModel,
 } from '@apc/domain/lists';
 import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
-import { Button } from '../../components/Button';
-import { RowAction } from '../../components/DataTable';
-import { Dialog } from '../../components/Dialog';
-import { TextField } from '../../components/TextField';
-import { useToast } from '../../components/Toast';
-import { Heading, Text } from '../../components/Typography';
+import { Button } from '../../../components/Button';
+import { RowAction } from '../../../components/DataTable';
+import { Dialog } from '../../../components/Dialog';
+import { TextField } from '../../../components/TextField';
+import { useToast } from '../../../components/Toast';
+import { Heading, Text } from '../../../components/Typography';
 import { useStyles } from './ManageListsDialog.styles';
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists';
 

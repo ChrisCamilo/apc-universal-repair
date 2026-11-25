@@ -4,12 +4,12 @@ import { checkIcon, chevronIcon, ICON_SIZES } from '@apc/tokens/icons';
 import { PHOTO_PICKER, photoPickerTexts, photoSources } from '@apc/domain/item-form';
 import { itemCardCode, type Item, type ItemPhoto } from '@apc/domain/items';
 import { photoAddress, photoCount, pickPhoto } from '@apc/domain/photos';
-import { apiUrl } from '../../app/api';
-import { useTheme } from '../../app/theme';
-import { Button } from '../../components/Button';
-import { Dialog } from '../../components/Dialog';
-import { Icon } from '../../components/Icon';
-import { SearchField } from '../../components/TextField';
+import { apiUrl } from '../../../app/api';
+import { useTheme } from '../../../app/theme';
+import { Button } from '../../../components/Button';
+import { Dialog } from '../../../components/Dialog';
+import { Icon } from '../../../components/Icon';
+import { SearchField } from '../../../components/TextField';
 import { useStyles } from './PhotoPickerDialog.styles';
 
 // The photo picker, the same as the web: opened from "Usar fotos de outra peça" under a brand's photos in the item

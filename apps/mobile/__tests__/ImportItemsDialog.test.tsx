@@ -13,7 +13,7 @@ import type { ItemLists } from '@apc/domain/lists';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
-import { ImportItemsDialog } from '../src/features/inventory/ImportItemsDialog';
+import { ImportItemsDialog } from '../src/features/inventory/transfer/ImportItemsDialog';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 

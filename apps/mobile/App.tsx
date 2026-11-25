@@ -17,7 +17,7 @@ import { LoginScreen } from './src/features/auth/LoginScreen';
 import { PASSWORD_LOGIN } from './src/features/auth/passwordLogin';
 import { RegisterScreen } from './src/features/auth/RegisterScreen';
 import { Dashboard } from './src/features/dashboard/Dashboard';
-import { clearCopy, loadQueue } from './src/features/inventory/inventoryCopy';
+import { clearCopy, loadQueue } from './src/features/sync/inventoryCopy';
 import { UserMenu } from './src/features/dashboard/UserMenu';
 import { NotificationsMenu } from './src/features/notifications/NotificationsMenu';
 import { ThemeProvider, useTheme } from './src/app/theme';

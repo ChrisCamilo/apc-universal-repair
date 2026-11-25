@@ -19,10 +19,10 @@ import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens'
 import { itemListsOf } from '@apc/domain/test-lists';
 import { THEME_STORAGE_KEYS, themes } from '@apc/tokens/theme';
 import { AUTO_SYNC_MS, InventoryTab } from '../src/features/inventory/InventoryTab';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
+import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/tutorial/inventoryTutorialContext';
 import { MoreActionsContext } from '../src/features/dashboard/moreActionsContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { InventoryCopyProvider } from '../src/features/inventory/useInventoryCopy';
+import { InventoryCopyProvider } from '../src/features/sync/useInventoryCopy';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
 import { syncAnswer } from '@apc/domain/test-sync';
 

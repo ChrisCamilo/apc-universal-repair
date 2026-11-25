@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { catalogFrom, type Catalog } from '@apc/domain/catalog';
-import type { InventoryCopy } from '../inventory/useInventoryCopy';
+import type { InventoryCopy } from '../sync/useInventoryCopy';
 
 // The Catalog tab's catalog, read from the phone's copy of the inventory (see useInventoryCopy.tsx), so it shows with the
 // server off: loading while the phone holds no copy yet, failed when it has none and the server can't be reached, and

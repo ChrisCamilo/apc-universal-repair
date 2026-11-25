@@ -1,7 +1,7 @@
 import { scales } from '@apc/tokens/theme';
-import { createStyles } from '../../styles/createStyles';
-import { glow } from '../../styles/shared';
-import { fontFamily, softHairline } from '../../app/theme';
+import { createStyles } from '../../../styles/createStyles';
+import { glow } from '../../../styles/shared';
+import { fontFamily, softHairline } from '../../../app/theme';
 
 // The look of the photo picker, the same as the web on a phone: the search on top, then the items found, each a framed
 // line at least 56px tall with its cover, name and code and a chevron in the accent that turns down while it is open,

@@ -12,13 +12,13 @@ import { matchesSearch, type Item } from '@apc/domain/items';
 import { ITEM_LIST_PATHS } from '@apc/domain/lists';
 import { syncAnswer } from '@apc/domain/test-sync';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
-import { syncCopy } from '../src/features/inventory/inventoryCopy';
+import { syncCopy } from '../src/features/sync/inventoryCopy';
 import { InventoryTab } from '../src/features/inventory/InventoryTab';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
+import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/tutorial/inventoryTutorialContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
 import { TourProvider } from '../src/components/Tour';
-import { InventoryCopyProvider } from '../src/features/inventory/useInventoryCopy';
+import { InventoryCopyProvider } from '../src/features/sync/useInventoryCopy';
 
 // A phone's screen with no notch, so the tour card and the toast have their insets.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };

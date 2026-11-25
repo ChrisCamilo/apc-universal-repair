@@ -3,11 +3,11 @@ import { ICON_SIZES, imageIcon, trashIcon } from '@apc/tokens/icons';
 import { formatPrice, NOT_APPLICABLE, QUANTITY_UNIT, type Item } from '@apc/domain/items';
 import { brandPlaceText, ITEM_NOTE_LABELS, originalCodesText, positionSideText, vehiclesText } from '@apc/domain/item-form';
 import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
-import { Icon } from '../../components/Icon';
-import { ImageUpload, type UploadPhoto } from '../../components/ImageUpload';
-import { useTheme } from '../../app/theme';
+import { Icon } from '../../../components/Icon';
+import { ImageUpload, type UploadPhoto } from '../../../components/ImageUpload';
+import { useTheme } from '../../../app/theme';
 import { useStyles } from './ItemDetails.styles';
-import { pickPhotos, takePhoto } from './photos';
+import { pickPhotos, takePhoto } from '../photos/photos';
 
 // An item's details, the same as the web on a phone (the Detalhes mockup), inside the item dialog that fills the
 // screen: the photos of every brand, or "Sem fotos"; the category as a chip over the item's name, and its short

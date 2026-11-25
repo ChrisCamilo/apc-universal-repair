@@ -7,9 +7,9 @@ import {
   type ItemLists,
   type ListEntry,
 } from '@apc/domain/lists';
-import { apiUrl } from '../../app/api';
-import { newId } from '../../app/ids';
-import { enqueue } from './inventoryCopy';
+import { apiUrl } from '../../../app/api';
+import { newId } from '../../../app/ids';
+import { enqueue } from '../../sync/inventoryCopy';
 
 // Changes the lists the item form picks from (categories, part brands, vehicle brands and vehicle models), which the
 // Inventory reads from the phone's copy (see useInventoryCopy.tsx). A new name is queued (see @apc/domain/sync-queue),

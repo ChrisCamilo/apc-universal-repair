@@ -12,7 +12,7 @@ import { testItem } from '@apc/domain/test-items';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
-import { PhotoPickerDialog } from '../src/features/inventory/PhotoPickerDialog';
+import { PhotoPickerDialog } from '../src/features/inventory/photos/PhotoPickerDialog';
 
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };

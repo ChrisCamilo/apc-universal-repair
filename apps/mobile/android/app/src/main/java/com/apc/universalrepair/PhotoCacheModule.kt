@@ -16,7 +16,7 @@ import okhttp3.Request
 import okhttp3.Response
 
 /**
- * The item photos the phone keeps to show away from the server (see src/features/inventory/photoCache.ts, as
+ * The item photos the phone keeps to show away from the server (see src/features/sync/photoCache.ts, as
  * NativeModules.PhotoCache): thumbnails and full photos, each kind in a folder of its own under the app's no-backup
  * storage, out of reach of other apps, each file named after its photo's id, as a photo's id never changes while its
  * file doesn't. A photo is downloaded through React Native's OkHttp client, which pins the paired server's certificate

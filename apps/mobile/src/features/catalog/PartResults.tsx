@@ -4,8 +4,8 @@ import { type FoundPart, type PartResults as Results } from '@apc/domain/catalog
 import { itemCardDetails, stockTint } from '@apc/domain/items';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
 import { Text } from '../../components/Typography';
-import { CardTitle, StockQuantity } from '../inventory/ItemCard';
-import { photoSource } from '../inventory/photoCache';
+import { CardTitle, StockQuantity } from '../inventory/browse/ItemCard';
+import { photoSource } from '../sync/photoCache';
 import { useStyles } from './PartResults.styles';
 
 // The inventory parts a Catalog search by code found, the same as the web on a phone (the "Catálogo no celular"

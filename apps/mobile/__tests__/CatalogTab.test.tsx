@@ -22,7 +22,7 @@ import { PhoneHeaderContext, type PhoneHeader } from '../src/features/dashboard/
 import { InventoryLinkContext } from '../src/features/dashboard/inventoryLinkContext';
 import { themeStorage, ThemeProvider } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
-import { InventoryCopyProvider } from '../src/features/inventory/useInventoryCopy';
+import { InventoryCopyProvider } from '../src/features/sync/useInventoryCopy';
 import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
 import { syncAnswer } from '@apc/domain/test-sync';
