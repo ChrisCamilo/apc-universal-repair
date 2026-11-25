@@ -1,7 +1,7 @@
 import { Text as RNText, View } from 'react-native';
 import { QUANTITY_UNIT, STOCK_STATUS_SHORT, stockStatus } from '@apc/domain/items';
-import { NumericReadout, Text } from '../../components/Typography';
-import { useStyles } from './InventoryTab.styles';
+import { NumericReadout, Text } from '../../../components/Typography';
+import { useStyles } from '../InventoryTab.styles';
 
 // The parts of an item's card in a list, the Inventory's look: its title, with the item's name, a code and a line of
 // details, and its quantity with its stock status under it in its tone, "un.", "Baixo" or "Esgotado". The Inventory's

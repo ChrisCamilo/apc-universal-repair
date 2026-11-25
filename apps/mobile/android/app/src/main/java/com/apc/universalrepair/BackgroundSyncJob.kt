@@ -16,7 +16,7 @@ import com.facebook.react.jstasks.HeadlessJsTaskContext
 import com.facebook.react.jstasks.HeadlessJsTaskEventListener
 
 /**
- * Syncs the phone's copy of the inventory while the app is out of sight (see src/features/inventory/backgroundSync.ts):
+ * Syncs the phone's copy of the inventory while the app is out of sight (see src/features/sync/backgroundSync.ts):
  * every 15 minutes or so, with a network, Android's JobScheduler runs this job, which starts the BACKGROUND_SYNC_TASK
  * in the app's JavaScript as a headless task, as React Native's HeadlessJsTaskService does, so its timers and requests
  * run with no screen. The task syncs the copy and shows in the shade what it brought that needs the user. It doesn't

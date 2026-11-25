@@ -12,7 +12,7 @@ import { THEME_STORAGE_KEYS } from '@apc/tokens/theme';
 import { TEST_USERS } from '@apc/domain/test-users';
 import App from '../App';
 import { auth } from '../src/features/auth/auth';
-import { enqueue, loadCopy, loadQueue } from '../src/features/inventory/inventoryCopy';
+import { enqueue, loadCopy, loadQueue } from '../src/features/sync/inventoryCopy';
 
 // The safe area waits for the native insets before drawing anything; the package's mock hands them over at once.
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);

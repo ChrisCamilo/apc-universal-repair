@@ -6,7 +6,7 @@ import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { testItem } from '@apc/domain/test-items';
 import { syncPageOf } from '@apc/domain/test-sync';
 import type { SyncChanges } from '@apc/domain/sync';
-import { clearCopy, enqueue, loadCopy, loadQueue, onRefused, syncCopy } from '../src/features/inventory/inventoryCopy';
+import { clearCopy, enqueue, loadCopy, loadQueue, onRefused, syncCopy } from '../src/features/sync/inventoryCopy';
 import { copyItems } from '@apc/domain/sync-copy';
 import { withQueue, type QueuedOperation } from '@apc/domain/sync-queue';
 
@@ -107,7 +107,7 @@ test('Mobile: a copy on disk is read back as the app starts again', async () => 
   answerFeed({ '': syncPageOf(ITEMS, 'db.10') });
   await syncCopy();
   await jest.isolateModulesAsync(async () => {
-    const again = require('../src/features/inventory/inventoryCopy') as typeof import('../src/features/inventory/inventoryCopy');
+    const again = require('../src/features/sync/inventoryCopy') as typeof import('../src/features/sync/inventoryCopy');
     const copy = await again.loadCopy();
     expect(copy.cursor).toBe('db.10');
     expect(copyItems(copy)).toHaveLength(2);
@@ -279,7 +279,7 @@ test('Mobile: an expired session keeps the queue, which goes out once logged in 
   expect(copyItems(await loadCopy())).toEqual([]);
   expect(JSON.parse(native.write.mock.calls.at(-1)[0]).queue).toEqual([waiting]);
   await jest.isolateModulesAsync(async () => {
-    const again = require('../src/features/inventory/inventoryCopy') as typeof import('../src/features/inventory/inventoryCopy');
+    const again = require('../src/features/sync/inventoryCopy') as typeof import('../src/features/sync/inventoryCopy');
     expect(await again.loadQueue()).toEqual([waiting]);
   });
   const server = answerServer({ '': syncPageOf(ITEMS, 'db.12') });
@@ -336,7 +336,7 @@ test('Mobile: a copy behind the phone\'s lock isn\'t taken for no copy until it 
   await syncCopy();
   const writes = native.write.mock.calls.length;
   await jest.isolateModulesAsync(async () => {
-    const again = require('../src/features/inventory/inventoryCopy') as typeof import('../src/features/inventory/inventoryCopy');
+    const again = require('../src/features/sync/inventoryCopy') as typeof import('../src/features/sync/inventoryCopy');
     native.read.mockRejectedValueOnce(Object.assign(new Error('The copy is locked.'), { code: 'locked' }));
     await expect(again.loadCopy()).rejects.toMatchObject({ code: 'locked' });
     expect(native.write.mock.calls).toHaveLength(writes);

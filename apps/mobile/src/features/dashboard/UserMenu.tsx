@@ -14,10 +14,10 @@ import { BottomBarItem } from './BottomBarItem';
 import { useBarStyles } from './Dashboard.styles';
 import { useStyles } from './UserMenu.styles';
 import { useToast } from '../../components/Toast';
-import { hasScreenLock, loadQueue, openLockSettings } from '../inventory/inventoryCopy';
-import { useInventoryTutorial } from '../inventory/inventoryTutorialContext';
-import { lastSync, syncBadge, syncOutcome } from '../inventory/syncStatus';
-import { useInventoryCopy } from '../inventory/useInventoryCopy';
+import { hasScreenLock, loadQueue, openLockSettings } from '../sync/inventoryCopy';
+import { useInventoryTutorial } from '../inventory/tutorial/inventoryTutorialContext';
+import { lastSync, syncBadge, syncOutcome } from '../sync/syncStatus';
+import { useInventoryCopy } from '../sync/useInventoryCopy';
 import { useTabReorder } from './tabReorderContext';
 
 // The user menu, the same as the web's on a phone: Conta at the end of the Dashboard's bottom bar, the logged user's

@@ -2,12 +2,12 @@ import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
 import { useState } from 'react';
 import { csvExportName, exportedSummary, exportItems, exportScope } from '@apc/domain/item-csv';
 import { exportMercadoLivre, mercadoLivreExportName, mercadoLivreSummary } from '@apc/domain/mercado-livre-csv';
-import { apiUrl } from '../../app/api';
-import { Button } from '../../components/Button';
-import { Dialog } from '../../components/Dialog';
-import { Switch } from '../../components/Switch';
-import { useToast } from '../../components/Toast';
-import { Text } from '../../components/Typography';
+import { apiUrl } from '../../../app/api';
+import { Button } from '../../../components/Button';
+import { Dialog } from '../../../components/Dialog';
+import { Switch } from '../../../components/Switch';
+import { useToast } from '../../../components/Toast';
+import { Text } from '../../../components/Typography';
 import { shareCsv } from './csv';
 
 // The "Exportar Peças" dialog of the Inventory tab, the same as the web: it says which items go into the file, the whole

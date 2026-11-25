@@ -3,7 +3,7 @@
  */
 
 import { LOCAL_NETWORK_TEXTS } from '../src/app/localNetwork';
-import { lastSync, syncBadge, syncOutcome } from '../src/features/inventory/syncStatus';
+import { lastSync, syncBadge, syncOutcome } from '../src/features/sync/syncStatus';
 
 // What the phone says of its copy's sync: the header's status in each state, when the copy last caught up, and how a
 // sync the user asked for went.

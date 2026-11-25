@@ -37,7 +37,7 @@ import javax.crypto.spec.PSource
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * The phone's copy of the server's inventory on disk (see src/features/inventory/inventoryCopy.ts, as
+ * The phone's copy of the server's inventory on disk (see src/features/sync/inventoryCopy.ts, as
  * NativeModules.InventoryCopy), behind the phone's own lock (see src/features/auth/AppLock.tsx). The copy is one file
  * in the app's own storage, out of reach of other apps and backups, encrypted with AES-256-GCM under a random key of
  * its own; that key is kept beside it, encrypted under an RSA key pair made in the Android Keystore, which never leaves

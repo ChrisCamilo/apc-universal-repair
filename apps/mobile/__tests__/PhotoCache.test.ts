@@ -5,14 +5,14 @@
 import { NativeModules } from 'react-native';
 import type { ItemPhoto } from '@apc/domain/items';
 import { photoParts } from '@apc/domain/photos';
-import { clearCopy } from '../src/features/inventory/inventoryCopy';
+import { clearCopy } from '../src/features/sync/inventoryCopy';
 import {
   FULL_PHOTOS_MAX_BYTES,
   heldPhotos,
   keepFullPhotos,
   keepThumbnails,
   photoSource,
-} from '../src/features/inventory/photoCache';
+} from '../src/features/sync/photoCache';
 
 // The photos the phone keeps, against the setup's stand-in for the native side, which "downloads" each photo at once:
 // every thumbnail after a sync, the full photos of the items opened within their limit, the photos gone dropped, and
@@ -97,7 +97,7 @@ test('Mobile: clearing the copy drops the photos, and a download still running k
 test('Mobile: the photos kept are read back as the app starts again', async () => {
   native.list.mockResolvedValueOnce({ thumb: { [PHOTOS[0].id]: 'file:///kept/thumb' }, full: {} });
   await jest.isolateModulesAsync(async () => {
-    const again = require('../src/features/inventory/photoCache') as typeof import('../src/features/inventory/photoCache');
+    const again = require('../src/features/sync/photoCache') as typeof import('../src/features/sync/photoCache');
     await again.keepFullPhotos([]);
     expect(again.photoSource(PHOTOS[0], 'thumb')).toBe('file:///kept/thumb');
   });

@@ -10,8 +10,8 @@ import { syncPageOf } from '@apc/domain/test-sync';
 import type { Item } from '@apc/domain/items';
 import { themeStorage } from '../src/app/theme';
 import { auth } from '../src/features/auth/auth';
-import { backgroundSync } from '../src/features/inventory/backgroundSync';
-import { enqueue } from '../src/features/inventory/inventoryCopy';
+import { backgroundSync } from '../src/features/sync/backgroundSync';
+import { enqueue } from '../src/features/sync/inventoryCopy';
 
 // The copy's sync while the app is out of sight: it syncs the copy and shows in the Android shade the items newly at
 // their minimum, once while they stay there and never the ones the bell already said, and why the server refused a
@@ -85,7 +85,7 @@ test('Mobile: with no session, or the copy behind the phone\'s lock, the backgro
   await jest.isolateModulesAsync(async () => {
     jest.spyOn(require('../src/features/auth/auth').auth, 'currentUser').mockResolvedValue(USER);
     native.InventoryCopy.read.mockRejectedValueOnce(Object.assign(new Error('The copy is locked.'), { code: 'locked' }));
-    const isolated = require('../src/features/inventory/backgroundSync') as typeof import('../src/features/inventory/backgroundSync');
+    const isolated = require('../src/features/sync/backgroundSync') as typeof import('../src/features/sync/backgroundSync');
     await isolated.backgroundSync();
   });
   expect(fetch).not.toHaveBeenCalled();

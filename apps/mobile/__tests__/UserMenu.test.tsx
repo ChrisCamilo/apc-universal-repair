@@ -11,12 +11,12 @@ import { playIcon } from '@apc/tokens/icons';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/ui-spec/tabs';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/ui-spec/screens';
 import { THEME_STORAGE_KEYS } from '@apc/tokens/theme';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/inventoryTutorialContext';
+import { InventoryTutorialContext, useInventoryTutorialChoice } from '../src/features/inventory/tutorial/inventoryTutorialContext';
 import { TabReorderContext, useReorderChoice } from '../src/features/dashboard/tabReorderContext';
 import { NO_LOCK_TEXT, UserMenu } from '../src/features/dashboard/UserMenu';
 import { themeStorage, ThemeProvider, useTheme } from '../src/app/theme';
 import { ToastProvider } from '../src/components/Toast';
-import { InventoryCopyProvider } from '../src/features/inventory/useInventoryCopy';
+import { InventoryCopyProvider } from '../src/features/sync/useInventoryCopy';
 
 // A phone's screen with no notch, for the bottom sheet.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
