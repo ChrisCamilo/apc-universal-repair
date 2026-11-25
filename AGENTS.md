@@ -163,7 +163,7 @@ All web tests are written in TypeScript. Each kind of test has one tool:
 | Component (web) | Vitest Browser Mode, in Chromium through the Playwright provider | Next to the component, `*.test.tsx` |
 | End-to-end (web) | Playwright Test, `desktop` (1280×720) and `mobile` (360×780) projects | `apps/web/e2e/*.spec.ts` |
 | End-to-end (web demo) | Playwright Test, the same projects, on the GitHub Pages site as Pages serves it | `apps/web/e2e-demo/*.spec.ts` |
-| Mobile | Jest with `react-test-renderer` | `apps/mobile/__tests__/` |
+| Mobile | Jest with `react-test-renderer` | `apps/mobile/src/**/*.test.tsx`, beside the file |
 | Desktop | Node test runner for the main process, Playwright's Electron support for the smoke test | `apps/desktop/src/**/*.test.ts`, `apps/desktop/e2e/*.spec.ts` |
 
 How the suites are laid out, how to run them, where their reports and traces are and how to keep them up is in [docs/testing.md](docs/testing.md).
@@ -283,7 +283,7 @@ The web and the phone app lay out `src` the same way, so a file lives in the sam
   - **A feature past about 12 modules** (a module is a file with its style file, test and story) splits into folders by what each part does, its main screen staying at its root. The `inventory/` of both apps keeps `InventoryTab` at its root and its parts in `browse/` (finding and viewing the stock: the columns, the pages, the refresh), `item/` (the form, the details, duplicating and deleting, and the form's fields), `lists/` (the names the form picks from, and *Gerenciar listas*), `photos/`, `transfer/` (importing and exporting) and `tutorial/`.
 - **`styles/`:** the style tools and the shared recipes.
 - **Only on the web:** `demo/` (the demo's stand-in for the API) and `stories/` (Storybook's pages).
-- **Tests:** on the web a file's test and story sit beside it; the phone's tests are in `apps/mobile/__tests__/`.
+- **Tests:** a file's test sits beside it on both apps, and on the web its story too (`components/Button/Button.test.tsx`, `features/inventory/item/ItemFormDialog.test.tsx`), named after the file. The tests that cover every component (`TouchSizes`, `Feedback`, and on the phone `Filters` and `OverlayMotion`) are at the root of `components/`; the phone's `App.test.tsx` and `AppPairing.test.tsx` beside `App.tsx`. A component's test on the phone imports its folder (`./index`).
 
 What the apps share is in three packages under `packages/`. The `exports` map in each `package.json` gives each module its `@apc/<package>/<name>` subpath, so an import never names the folder:
 

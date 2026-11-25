@@ -1,0 +1,186 @@
+/**
+ * @format
+ */
+
+import React from 'react';
+import { Modal, ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import ReactTestRenderer from 'react-test-renderer';
+import { MIN_TOUCH_TARGET, MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
+import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, TAB_ORDER_STORAGE_KEY } from '@apc/ui-spec/tabs';
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
+import { Dashboard } from './Dashboard';
+import { BOTTOM_BAR_HEIGHT } from './Dashboard.styles';
+import { enqueue } from '../sync/inventoryCopy';
+import { InventoryTutorial } from '../inventory/tutorial/InventoryTutorial';
+import { themeStorage, ThemeProvider } from '../../app/theme';
+
+// The Inventory tab holds bottom sheets, which pad their end for the screen's insets.
+const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
+// The first tab still being built, if any.
+const WIP_TAB = DASHBOARD_TABS.find((tab) => tab.wip);
+
+/**
+ * Saves a style and mode, renders the element inside a ThemeProvider and waits for it, and the saved tab, to load.
+ * @param style Style to start on.
+ * @param mode Mode to start on.
+ * @param element Element to render.
+ * @returns The rendered tree.
+ */
+async function mount(style: Style, mode: Mode, element: React.ReactElement) {
+  await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <ThemeProvider>{element}</ThemeProvider>
+      </SafeAreaProvider>,
+    );
+  });
+  return tree!;
+}
+
+/**
+ * Tells whether a text is on screen.
+ * @param tree Rendered tree.
+ * @param text Exact text.
+ * @returns True when a Text shows it.
+ */
+function shows(tree: ReactTestRenderer.ReactTestRenderer, text: string): boolean {
+  return tree.root.findAll((n) => n.type === Text && n.props.children === text).length > 0;
+}
+
+beforeEach(async () => {
+  await themeStorage.clear();
+  // The Inventory tutorial counts as seen, so it doesn't start by itself over what the test looks at.
+});
+
+for (const style of STYLES) {
+  for (const mode of MODES) {
+    // Opens the Dashboard in one style and mode and checks the page sits on the canvas and fills the screen without
+    // scrolling as a whole, the compact APC mark, hidden from screen readers, beside the open tab's name, which heads
+    // it, and the Inventory tab is open, with its search, and selected by default.
+    test(`Mobile: the Dashboard opens on the Inventory tab in ${style}/${mode}`, async () => {
+      const tree = await mount(style, mode, <Dashboard />);
+      const page = tree.root.find((n) => n.props.testID === 'dashboard.dashboard' && typeof n.type !== 'string');
+      expect(page.type).not.toBe(ScrollView);
+      const pageStyle = StyleSheet.flatten(page.props.style);
+      expect([pageStyle.backgroundColor, pageStyle.flex]).toEqual([themes[style][mode].colors.canvas, 1]);
+      const mark = tree.root.find((n) => n.props.accessibilityLabel === 'APC Universal Repair' && n.props.viewBox !== undefined);
+      expect([mark.props.viewBox, mark.props.width]).toEqual(['0 0 48 48', 32]);
+      const hidden = tree.root.find((n) => n.props.testID === 'dashboard.dashboard.header.brand' && typeof n.type === 'string');
+      expect(hidden.props.importantForAccessibility).toBe('no-hide-descendants');
+      const title = tree.root.find((n) => n.props.testID === 'dashboard.dashboard.header.title' && typeof n.type === 'string');
+      expect([title.props.accessibilityRole, title.props.children]).toEqual(['header', 'Estoque']);
+      const tabs = tree.root.findAll((n) => n.props.accessibilityRole === 'tab' && typeof n.type === 'string');
+      expect(tabs.map((tab) => tab.props.accessibilityState)).toEqual([{ selected: true }, { selected: false }]);
+      expect(shows(tree, 'Estoque')).toBe(true);
+      expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Procure pelo nome ou código da peça').length).toBeGreaterThan(0);
+    });
+  }
+}
+
+// Opens the Dashboard with a change waiting while the server can't be reached, and checks the header says so beside
+// the tab's name; then, with the server back, pulls the list, and checks the change goes out and the header says
+// nothing.
+test('Mobile: the header says whether changes wait and whether the server answers', async () => {
+  const setup = (fetch as jest.Mock).getMockImplementation()!;
+  await enqueue([
+    { id: '20000000-0000-4000-8000-000000000001', type: 'deleteItem', itemId: '00000000-0000-4000-8000-000000000001', at: '2026-11-24T12:00:00.000Z', label: 'Filtro de óleo' },
+  ]);
+  (fetch as jest.Mock).mockImplementation(() => Promise.reject(new TypeError('Network request failed')));
+  const tree = await mount('eighties', 'night', <Dashboard />);
+  const badge = () => tree.root.findAll((n) => n.props.testID === 'dashboard.dashboard.header.sync.text' && typeof n.type === 'string')[0]?.props.children;
+  expect(badge()).toBe('Sem conexão · 1 alteração');
+
+  (fetch as jest.Mock).mockImplementation(setup);
+  const scroll = tree.root.find((n) => n.props.testID === 'inventory.inventory-tab.scroll' && n.type === ScrollView);
+  await ReactTestRenderer.act(async () => scroll.props.refreshControl.props.onRefresh());
+  expect(badge()).toBeUndefined();
+  await ReactTestRenderer.act(async () => tree.unmount());
+});
+
+// With the Catalog saved first in the tab order and a stale saved tab, checks the Dashboard falls back to the Inventory
+// and the tabs sit in the bar at the bottom of the screen, 80px tall, in the saved order, each at least 44px, then the
+// user menu slot with what the Dashboard is given. Choosing the Catalog in the bar opens it and puts its name on top.
+test('Mobile: the tabs sit in the bottom bar in their saved order, then the user menu slot', async () => {
+  await themeStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, 'specs');
+  await themeStorage.setItem(TAB_ORDER_STORAGE_KEY, JSON.stringify(['catalog', 'inventory']));
+  const tree = await mount('gt4', 'night', <Dashboard userMenu={<Text>christian.camilo</Text>} />);
+  expect(shows(tree, 'Nenhum item cadastrado')).toBe(true);
+  const page = tree.root.find((n) => n.props.testID === 'dashboard.dashboard' && typeof n.type === 'string');
+  const bar = tree.root.find((n) => n.props.testID === 'dashboard.bottom-bar' && typeof n.type === 'string');
+  expect(page.props.children[page.props.children.length - 1].props.testID).toBe('dashboard.bottom-bar');
+  expect(StyleSheet.flatten(bar.props.style).minHeight).toBe(BOTTOM_BAR_HEIGHT);
+  const tabs = bar.findAll((n) => n.props.accessibilityRole === 'tab' && typeof n.type === 'string');
+  expect(tabs.map((tab) => tab.findAll((n) => n.type === Text).map((n) => n.props.children))).toEqual([['Catálogo'], ['Estoque']]);
+  for (const tab of tabs) {
+    expect(StyleSheet.flatten(tab.props.style).minHeight).toBe(MIN_TOUCH_TARGET);
+  }
+  expect(bar.findAll((n) => n.type === Text && n.props.children === 'christian.camilo')).toHaveLength(1);
+
+  const catalog = tree.root.findAll(
+    (n) => n.props.accessibilityRole === 'tab' && typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === 'Catálogo').length > 0,
+  )[0];
+  await ReactTestRenderer.act(async () => catalog.props.onPress());
+  const title = tree.root.find((n) => n.props.testID === 'dashboard.dashboard.header.title' && typeof n.type === 'string');
+  expect(title.props.children).toBe('Catálogo');
+});
+
+// Opens the Dashboard on the tab still being built and checks it is read out as "em construção" and opens behind
+// the notice naming it, with its screen out of reach. Skipped once no tab is being built.
+(WIP_TAB ? test : test.skip)('Mobile: a tab still being built opens behind the work-in-progress notice', async () => {
+  await themeStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, WIP_TAB!.id);
+  const tree = await mount('fiat90', 'night', <Dashboard />);
+  const tab = tree.root.find((n) => n.props.accessibilityRole === 'tab' && n.props.accessibilityLabel === `${WIP_TAB!.label}, em construção`);
+  expect(tab.props.accessibilityState).toEqual({ selected: true });
+  expect(shows(tree, `A aba ${WIP_TAB!.label} ainda não está pronta`)).toBe(true);
+  const content = tree.root.find((n) => n.props.testID === 'common.work-in-progress.content' && typeof n.type === 'string');
+  expect(content.props.pointerEvents).toBe('none');
+});
+
+// Opens the Inventory and checks its "⋯" sits at the right of the tab's name, 44px round, and opens the "Mais ações"
+// sheet with the tab's other actions in order; Importar Peças closes it and opens its dialog, and Tutorial do estoque
+// starts the tutorial. The Catalog has no "⋯".
+test('Mobile: the Inventory puts its other actions in a sheet behind the header\'s "⋯"', async () => {
+  const tree = await mount('eighties', 'night', <Dashboard userMenu={<Text>christian.camilo</Text>} />);
+  const header = tree.root.find((n) => n.props.testID === 'dashboard.dashboard.header' && typeof n.type === 'string');
+  const more = () => header.findAll((n) => n.props.accessibilityLabel === 'Mais ações' && typeof n.props.onPress === 'function');
+  expect(more()).toHaveLength(1);
+  const round = header.find((n) => n.props.testID === 'dashboard.dashboard.header.more' && typeof n.type === 'string');
+  expect(StyleSheet.flatten(round.props.style)).toMatchObject({ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET });
+  expect(header.props.children.at(-1).props.accessibilityLabel).toBe('Mais ações');
+  const visible = () => tree.root.findAllByType(Modal).filter((modal) => modal.props.visible);
+  const press = async (label: string) => {
+    const node = tree.root.findAll(
+      (n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === label).length > 0,
+    )[0];
+    await ReactTestRenderer.act(async () => node.props.onPress());
+  };
+
+  await ReactTestRenderer.act(async () => more()[0].props.onPress());
+  const sheet = visible()[0];
+  expect(sheet.findAll((n) => n.props.testID === 'common.action-sheet.action.label' && typeof n.type === 'string').map((n) => n.props.children)).toEqual([
+    'Gerenciar listas',
+    'Importar Peças',
+    'Exportar Peças',
+    'Tutorial do estoque',
+  ]);
+  await press('Importar Peças');
+  expect(visible().some((modal) => modal.findAll((n) => n.props.accessibilityLabel === 'Importar Peças').length > 0)).toBe(true);
+  expect(sheet.props.visible).toBe(false);
+
+  await ReactTestRenderer.act(async () => visible()[0].props.onRequestClose());
+  await ReactTestRenderer.act(async () => more()[0].props.onPress());
+  await press('Tutorial do estoque');
+  expect(tree.root.findByType(InventoryTutorial).props.open).toBe(true);
+  // The tutorial's timers stop with it.
+  await ReactTestRenderer.act(async () => tree.unmount());
+});
+
+// Opens the Catalog, which hands the header nothing, and checks it has no "⋯".
+test('Mobile: a tab with no other actions has no "⋯"', async () => {
+  await themeStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, 'catalog');
+  const tree = await mount('eighties', 'night', <Dashboard userMenu={<Text>christian.camilo</Text>} />);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Mais ações')).toHaveLength(0);
+});
