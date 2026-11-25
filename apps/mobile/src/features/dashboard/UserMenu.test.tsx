@@ -7,6 +7,7 @@ import { NativeModules, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { SessionUser } from '@apc/domain/auth';
+import { LOCALE_STORAGE_KEY } from '@apc/domain/locale';
 import { playIcon } from '@apc/tokens/icons';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/ui-spec/tabs';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/ui-spec/screens';
@@ -14,6 +15,7 @@ import { THEME_STORAGE_KEYS } from '@apc/tokens/theme';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../inventory/tutorial/inventoryTutorialContext';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 import { NO_LOCK_TEXT, UserMenu } from './UserMenu';
+import { loadLocale, LocaleProvider } from '../../app/locale';
 import { themeStorage, ThemeProvider, useTheme } from '../../app/theme';
 import { ToastProvider } from '../../components/Toast';
 import { InventoryCopyProvider } from '../sync/useInventoryCopy';
@@ -53,14 +55,16 @@ async function mount(onLogout: () => void = () => {}, onConnect: () => void = ()
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
-          <ToastProvider>
-            <Preferences>
-              <InventoryCopyProvider>
-                <UserMenu user={USER} onLogout={onLogout} onConnect={onConnect} />
-              </InventoryCopyProvider>
-            </Preferences>
-          </ToastProvider>
-          <ActiveTheme />
+          <LocaleProvider>
+            <ToastProvider>
+              <Preferences>
+                <InventoryCopyProvider>
+                  <UserMenu user={USER} onLogout={onLogout} onConnect={onConnect} />
+                </InventoryCopyProvider>
+              </Preferences>
+            </ToastProvider>
+            <ActiveTheme />
+          </LocaleProvider>
         </ThemeProvider>
       </SafeAreaProvider>,
     );
@@ -176,6 +180,21 @@ test('Mobile: dark mode and the theme apply and are saved at once, keeping the m
     [THEME_STORAGE_KEYS.style]: 'gt4',
     [THEME_STORAGE_KEYS.mode]: 'day',
   });
+});
+
+// Picks English under "Idioma", Português chosen until then, and checks it is saved on the phone, where the background
+// sync reads it too, keeping the menu open, and comes back chosen when the app starts again.
+test('Mobile: the language is saved at once and comes back after a restart', async () => {
+  const tree = await openMenu();
+  expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Idioma').length).toBeGreaterThan(0);
+  expect(byName(tree, 'Português').props.accessibilityState).toMatchObject({ checked: true });
+  await press(tree, 'English');
+  expect(byName(tree, 'English').props.accessibilityState).toMatchObject({ checked: true });
+  expect(sheetOpen(tree)).toBe(true);
+  expect(await themeStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en-US');
+  expect(await loadLocale()).toBe('en-US');
+  const again = await openMenu();
+  expect(byName(again, 'English').props.accessibilityState).toMatchObject({ checked: true });
 });
 
 // Turns tab reordering on and checks it is saved on the device and comes back on when the menu is drawn again.

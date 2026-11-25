@@ -29,14 +29,15 @@ export function pageForSize(page: number, pageSize: number, nextSize: number): n
 }
 
 /**
- * Writes which items the page shows out of the whole list, in pt-BR.
+ * Writes which items the page shows out of the whole list, its numbers in a language's way.
  * @param page Current page, from 1.
  * @param pageSize Items per page.
  * @param total Number of items in the list.
+ * @param locale The language the numbers are written in, e.g. "en-US"; Portuguese (Brasil) unless given.
  * @returns E.g. "1–25 de 64", or "0 de 0" for an empty list.
  */
-export function pageRange(page: number, pageSize: number, total: number): string {
-  const format = new Intl.NumberFormat("pt-BR");
+export function pageRange(page: number, pageSize: number, total: number, locale = "pt-BR"): string {
+  const format = new Intl.NumberFormat(locale);
   if (total === 0) {
     return "0 de 0";
   }

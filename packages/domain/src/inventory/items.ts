@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_LOCALE, type Locale } from "../platform/locale/locale.ts";
 import { PAGE_SIZES, sortRows, type Sort } from "../platform/query/listQuery.ts";
 import { ITEM_PHOTO_LIMIT } from "./photos.ts";
 
@@ -373,22 +374,24 @@ export function findOption(options: readonly string[], text: string): string | u
 }
 
 /**
- * Writes a price in cents as Brazilian reais.
+ * Writes a price in cents in reais, in a language's way.
  * @param cents Price in cents.
- * @returns E.g. "R$ 1.234,56".
+ * @param locale The language; Portuguese unless given.
+ * @returns E.g. "R$ 1.234,56", or "R$1,234.56" in English.
  */
-export function formatPrice(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export function formatPrice(cents: number, locale: Locale = DEFAULT_LOCALE): string {
+  return (cents / 100).toLocaleString(locale, { style: "currency", currency: "BRL" });
 }
 
 /**
  * Writes an item's unit price: its one price, or the range from its lowest to its highest brand's.
  * @param item The item.
+ * @param locale The language; Portuguese unless given.
  * @returns E.g. "R$ 89,90", or "R$ 80,00 – R$ 120,00".
  */
-export function formatPriceRange(item: { brands: readonly Pick<ItemBrand, "unitPriceCents">[] }): string {
+export function formatPriceRange(item: { brands: readonly Pick<ItemBrand, "unitPriceCents">[] }, locale: Locale = DEFAULT_LOCALE): string {
   const { lowest, highest } = priceRange(item);
-  return lowest === highest ? formatPrice(lowest) : `${formatPrice(lowest)} – ${formatPrice(highest)}`;
+  return lowest === highest ? formatPrice(lowest, locale) : `${formatPrice(lowest, locale)} – ${formatPrice(highest, locale)}`;
 }
 
 /**

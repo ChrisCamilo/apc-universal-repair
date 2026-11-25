@@ -6,6 +6,7 @@ import { scales } from '@apc/tokens/theme';
 import { Icon } from '../Icon/Icon';
 import { useStyles } from './Pagination.styles';
 import { Segmented } from '../Segmented/Segmented';
+import { useLocale } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { Label, NumericReadout } from '../Typography/Typography';
 
@@ -43,6 +44,7 @@ type PageButtonProps = {
 
 export function Pagination({ label, page, pageSize, total, pageSizes, onPageChange, onPageSizeChange }: PaginationProps) {
   const { styles, ids } = useStyles();
+  const { locale } = useLocale();
   const pages = pageCount(total, pageSize);
 
   return (
@@ -65,7 +67,7 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
         </View>
       </View>
       <View accessibilityLiveRegion="polite" style={styles.range} testID={ids.range}>
-        <NumericReadout tone="muted">{pageRange(page, pageSize, total)}</NumericReadout>
+        <NumericReadout tone="muted">{pageRange(page, pageSize, total, locale)}</NumericReadout>
       </View>
       <View accessibilityLabel={label} style={styles.pages} testID={ids.pages}>
         <PageButton target={page - 1} disabled={page === 1} label="Página anterior" onPageChange={onPageChange}>

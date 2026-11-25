@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { DEVICE_MESSAGES, type Device } from '@apc/domain/devices'
+import { formatDateTime } from '@apc/domain/locale'
+import { useLocale } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { TextField } from '../../components/TextField'
@@ -13,9 +15,6 @@ import { devices as devicesRecipe } from './Devices.styles.ts'
 // marked and can't be removed from here. Opened in the web app's demo, or off the server's computer, the dialog says
 // why it can't list them.
 
-/** How a device's last login is written, e.g. "4 de nov. de 2026, 21:30". */
-const LAST_USE = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' })
-
 type DevicesDialogProps = {
   open: boolean
   onClose: () => void
@@ -28,6 +27,7 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
   const [renaming, setRenaming] = useState<{ id: string; name: string }>()
   const [removing, setRemoving] = useState<string>()
   const { classes, ids } = devicesRecipe()
+  const { locale } = useLocale()
 
   // List the devices each time the dialog opens.
   useEffect(() => {
@@ -94,7 +94,7 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
                   <div className={classes.about()} data-testid={ids.about}>
                     <Text>{device.current ? `${device.name} (este dispositivo)` : device.name}</Text>
                     <Text size="sm" tone="muted">
-                      {device.displayName} · {device.lastUsedAt ? `último uso em ${LAST_USE.format(new Date(device.lastUsedAt))}` : 'ainda não entrou'}
+                      {device.displayName} · {device.lastUsedAt ? `último uso em ${formatDateTime(new Date(device.lastUsedAt), locale)}` : 'ainda não entrou'}
                     </Text>
                   </div>
                 )}

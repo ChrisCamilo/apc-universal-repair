@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { pageCount, pageForSize, pageRange, pageSlots } from '@apc/ui-spec/pagination'
+import { useLocale } from '../../app/useLocale.ts'
 import { Icon } from '../Icon/Icon.tsx'
 import { pagination } from './Pagination.styles.ts'
 import { Segmented } from '../Segmented/Segmented.tsx'
@@ -43,6 +44,7 @@ type PageButtonProps = {
 export function Pagination({ label, page, pageSize, total, pageSizes, onPageChange, onPageSizeChange }: PaginationProps) {
   const pages = pageCount(total, pageSize)
   const { classes, ids } = pagination()
+  const { locale } = useLocale()
 
   return (
     <div className={classes.base()} data-testid={ids.base}>
@@ -59,7 +61,7 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
         />
       </div>
       <NumericReadout tone="muted" aria-live="polite" className={classes.range()}>
-        {pageRange(page, pageSize, total)}
+        {pageRange(page, pageSize, total, locale)}
       </NumericReadout>
       <nav aria-label={label} className={classes.pages()} data-testid={ids.pages}>
         <PageButton target={page - 1} disabled={page === 1} label="Página anterior" onPageChange={onPageChange}>

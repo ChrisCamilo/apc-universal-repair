@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import type { SessionUser } from '@apc/domain/auth';
+import { isLocale, LOCALE_MESSAGES, LOCALE_NAMES, LOCALES } from '@apc/domain/locale';
 import { playIcon } from '@apc/tokens/icons';
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/tokens/theme';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -9,6 +10,7 @@ import { MenuContext } from '../../components/Menu';
 import { Divider } from '../../components/Panel';
 import { Segmented } from '../../components/Segmented';
 import { Switch } from '../../components/Switch';
+import { useLocale, useMessages } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { BottomBarItem } from './BottomBarItem';
 import { useBarStyles } from './Dashboard.styles';
@@ -22,7 +24,8 @@ import { useTabReorder } from './tabReorderContext';
 
 // The user menu, the same as the web's on a phone: Conta at the end of the Dashboard's bottom bar, the logged user's
 // initials in its pill, opening the display preferences in a bottom sheet, as a menu. Dark mode and the theme go through the
-// ThemeProvider, which applies and saves them at once; "Arrastar para reordenar" goes through the Dashboard
+// ThemeProvider, which applies and saves them at once, and "Idioma" (Português · English) through the LocaleProvider the
+// same way, shown in development builds only until every screen follows it; "Arrastar para reordenar" goes through the Dashboard
 // (TabReorderContext), which saves it and makes the tabs reorderable while it is on. There is no "Itens por página", as
 // the Inventory loads more as it scrolls. Every choice keeps the menu open, so several can be changed in a row; an
 // action closes the sheet. "Tutorial do estoque", with a play icon, goes to the Inventory tab and runs its tutorial again.
@@ -34,6 +37,9 @@ import { useTabReorder } from './tabReorderContext';
 // "Sair", at the end and set apart from the preferences, hands the logout to the owner, which ends the session and
 // goes back to the login; the preferences stay on the device for the next login.
 
+/** Whether "Idioma" shows: in development builds only, until every screen reads its texts in the language chosen. */
+const LANGUAGE_SWITCH = __DEV__;
+const LOCALE_OPTIONS = LOCALES.map((value) => ({ value, label: LOCALE_NAMES[value] }));
 /** What the menu says on a phone with no screen lock. */
 export const NO_LOCK_TEXT = 'Este celular não tem bloqueio de tela. Defina uma digital, o rosto ou um PIN para proteger o estoque guardado nele.';
 const STYLE_OPTIONS = STYLES.map((style) => ({ value: style, label: STYLE_LABELS[style] }));
@@ -48,6 +54,8 @@ type UserMenuProps = {
 
 export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
   const { style, mode, setStyle, setMode } = useTheme();
+  const { locale, setLocale } = useLocale();
+  const messages = useMessages(LOCALE_MESSAGES);
   const { reorderable, setReorderable } = useTabReorder();
   const tutorial = useInventoryTutorial();
   const copy = useInventoryCopy();
@@ -94,6 +102,9 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
               Modo escuro
             </Switch>
             <Segmented label="Tema" options={STYLE_OPTIONS} value={style} onValueChange={(next) => isStyle(next) && setStyle(next)} />
+            {LANGUAGE_SWITCH && (
+              <Segmented label={messages.language} options={LOCALE_OPTIONS} value={locale} onValueChange={(next) => isLocale(next) && setLocale(next)} />
+            )}
             <MenuLabel>Abas</MenuLabel>
             <Switch
               checked={reorderable}

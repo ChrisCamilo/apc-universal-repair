@@ -5,6 +5,7 @@ import { beforeAll, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
+import { LocaleContext } from '../../app/useLocale.ts'
 import { Pagination } from './Pagination.tsx'
 
 const root = document.documentElement
@@ -110,6 +111,21 @@ test('Web: an empty list shows a single page with the arrows off', async () => {
   await expect.element(pages.getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page')
   await expect.element(pages.getByRole('button', { name: 'Página anterior' })).toHaveAttribute('aria-disabled', 'true')
   await expect.element(pages.getByRole('button', { name: 'Próxima página' })).toHaveAttribute('aria-disabled', 'true')
+})
+
+// Renders a list of thousands in Portuguese and in English and checks the range writes its numbers in each language's
+// way.
+test('Web: the range writes its numbers in the language chosen', async () => {
+  const screen = await render(
+    <>
+      <Sample total={1234} />
+      <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+        <Sample total={1234} />
+      </LocaleContext.Provider>
+    </>,
+  )
+  await expect.element(screen.getByText('1–25 de 1.234')).toBeVisible()
+  await expect.element(screen.getByText('1–25 de 1,234')).toBeVisible()
 })
 
 // Fits a long list in the width a 360px phone leaves inside its gutters and checks nothing overflows: the
