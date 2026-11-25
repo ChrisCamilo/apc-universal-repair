@@ -5,7 +5,9 @@ import { entryCodeSchema } from "@apc/domain/auth";
 import { deviceCode } from "@apc/domain/device-crypto";
 import { deviceChallengeSchema, deviceListSchema, deviceNameSchema, deviceProofSchema, deviceSchema, deviceStatusSchema } from "@apc/domain/devices";
 import { prisma } from "../../db/client.js";
-import { checkProof, deviceOf, isLoopback, issueChallenge } from "../devices.js";
+import { limitByAddress } from "../../http/limits.js";
+import { forbidden, notFound, refuse } from "../../http/replies.js";
+import { checkProof, DEVICE_REFUSED, deviceOf, isLoopback, issueChallenge } from "../devices.js";
 import { issueEntryCode } from "../entryCodes.js";
 import { createLimiter } from "../../auth/attempts.js";
 
@@ -23,8 +25,12 @@ import { createLimiter } from "../../auth/attempts.js";
 const CHALLENGE_LIMIT = 300;
 /** How many times an address asks for a device's status in a window: one every 3 seconds. */
 const STATUS_LIMIT = 300;
+/** Refuses a device id that doesn't exist. */
+const DEVICE_NOT_FOUND = notFound("Device not found.");
 /** A device's id in a path. */
 const deviceParamsSchema = z.object({ id: z.string() });
+/** Refuses managing devices from any address but the server's computer. */
+const NOT_HERE = forbidden("Devices are managed only on the server's computer.");
 /** What a device row is read with. */
 const ROW = { include: { user: { select: { username: true, displayName: true } } } } as const;
 
@@ -39,24 +45,6 @@ async function deviceName(name: string | undefined, publicKey: string): Promise<
 }
 
 /**
- * Answers 401 for a device whose proof doesn't hold.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-function deviceRefused(reply: FastifyReply) {
-  return reply.status(401).send({ statusCode: 401, error: "Unauthorized", message: "The device's signature doesn't hold. Ask for a new challenge." });
-}
-
-/**
- * Answers 404 for a device id that doesn't exist.
- * @param reply Reply to send.
- * @returns The sent reply.
- */
-function deviceNotFound(reply: FastifyReply) {
-  return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "Device not found." });
-}
-
-/**
  * Answers 403 for a request from any address but the server's computer.
  * @param request The request.
  * @param reply Reply to send.
@@ -64,7 +52,7 @@ function deviceNotFound(reply: FastifyReply) {
  */
 async function onlyHere(request: FastifyRequest, reply: FastifyReply) {
   if (!isLoopback(request.ip)) {
-    return reply.status(403).send({ statusCode: 403, error: "Forbidden", message: "Devices are managed only on the server's computer." });
+    return refuse(reply, NOT_HERE);
   }
 }
 
@@ -76,27 +64,19 @@ export function registerDeviceRoutes(app: FastifyInstance) {
   const routes = app.withTypeProvider<ZodTypeProvider>();
   const challenges = createLimiter(CHALLENGE_LIMIT);
   const asks = createLimiter(STATUS_LIMIT);
-  /** Counts a call per address, answering 429 once it reached the limit. */
-  const limited = (limiter: ReturnType<typeof createLimiter>) => async (request: FastifyRequest, reply: FastifyReply) => {
-    const wait = limiter.wait(request.ip);
-    if (wait > 0) {
-      return reply.status(429).header("retry-after", String(Math.ceil(wait / 1000))).send({ statusCode: 429, error: "Too Many Requests", message: "Too many attempts." });
-    }
-    limiter.count(request.ip);
-  };
 
   routes.get(
     "/devices/challenge",
-    { config: { public: true }, onRequest: limited(challenges), schema: { response: { 200: deviceChallengeSchema } } },
+    { config: { public: true }, onRequest: limitByAddress(challenges), schema: { response: { 200: deviceChallengeSchema } } },
     async () => ({ nonce: issueChallenge() }),
   );
 
   routes.post(
     "/devices/status",
-    { config: { public: true }, onRequest: limited(asks), schema: { body: deviceProofSchema, response: { 200: deviceStatusSchema } } },
+    { config: { public: true }, onRequest: limitByAddress(asks), schema: { body: deviceProofSchema, response: { 200: deviceStatusSchema } } },
     async (request, reply) => {
       if (!(await checkProof(request.body))) {
-        return deviceRefused(reply);
+        return refuse(reply, DEVICE_REFUSED);
       }
       const statuses = (await prisma.device.findMany({ where: { publicKey: request.body.publicKey }, select: { status: true } })).map(({ status }) => status);
       return { status: statuses.includes("AUTHORIZED") ? ("authorized" as const) : statuses.length ? ("pending" as const) : ("unknown" as const) };
@@ -119,7 +99,7 @@ export function registerDeviceRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const device = await prisma.device.findUnique({ where: { id: request.params.id } });
       if (!device) {
-        return deviceNotFound(reply);
+        return refuse(reply, DEVICE_NOT_FOUND);
       }
       const row = await prisma.device.update({
         where: { id: device.id },
@@ -136,7 +116,7 @@ export function registerDeviceRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const device = await prisma.device.findUnique({ where: { id: request.params.id } });
       if (!device) {
-        return deviceNotFound(reply);
+        return refuse(reply, DEVICE_NOT_FOUND);
       }
       const row = await prisma.device.update({ where: { id: device.id }, data: { name: await deviceName(request.body.name, device.publicKey) }, ...ROW });
       return deviceOf(row, request.session.deviceId);
@@ -145,6 +125,6 @@ export function registerDeviceRoutes(app: FastifyInstance) {
 
   routes.delete("/devices/:id", { onRequest: onlyHere, schema: { params: deviceParamsSchema } }, async (request, reply) => {
     const { count } = await prisma.device.deleteMany({ where: { id: request.params.id } });
-    return count ? reply.status(204).send() : deviceNotFound(reply);
+    return count ? reply.status(204).send() : refuse(reply, DEVICE_NOT_FOUND);
   });
 }

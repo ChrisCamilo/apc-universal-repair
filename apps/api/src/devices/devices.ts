@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { deviceCode, verifyDevice } from "@apc/domain/device-crypto";
 import type { Device, DeviceProof } from "@apc/domain/devices";
 import { prisma } from "../db/client.js";
+import { unauthorized } from "../http/replies.js";
 
 // The devices users log in from (see @apc/domain/devices). A login or sign-up proves the device holds its key by
 // signing a nonce from GET /devices/challenge, which lives CHALLENGE_MS and works once; the nonces live in memory, as
@@ -13,6 +14,8 @@ import { prisma } from "../db/client.js";
 
 /** How long a nonce lives: 2 minutes, in milliseconds. */
 const CHALLENGE_MS = 2 * 60 * 1000;
+/** Refuses a device whose proof doesn't hold, at a login, a sign-up or when it asks for its status. */
+export const DEVICE_REFUSED = unauthorized("The device's signature doesn't hold. Ask for a new challenge.");
 /** How many nonces are held before the ones that ended are dropped. */
 const SWEEP_SIZE = 1000;
 
