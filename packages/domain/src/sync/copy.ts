@@ -3,6 +3,7 @@ import type { Item } from "../inventory/items.ts";
 import type { ItemLists, ListEntry, VehicleModel } from "../inventory/lists.ts";
 import type { SYNC_ROWS, SyncChanges, SyncKind } from "./sync.ts";
 import type { z } from "zod";
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 
 // A copy of the server's inventory, as a phone keeps it to work away from the server: every row the change feed sent
 // (see sync.ts), by kind and id, the cursor to ask for the changes after, and when it last caught up with the server.
@@ -12,6 +13,12 @@ import type { z } from "zod";
 // and its brands with their part brand's name and their photos, in order. A row whose references haven't arrived is
 // left out, as is an item with no brand or no vehicle yet, which only a copy caught halfway can hold. The copy also
 // turns into the catalog, as GET /catalog answers it, for the Catalog tab.
+
+/** What the Inventory and the Catalog say while they show the copy: from which day and time. */
+export const COPY_MESSAGES = catalog(
+  { offline: (day: string, month: string, time: string) => `Sem conexão com o servidor. Mostrando a cópia de ${day}/${month} às ${time}.` },
+  { offline: (day, month, time) => `No connection to the server. Showing the copy from ${month}/${day} at ${time}.` },
+);
 
 /** A row of a kind, as the feed sends it. */
 export type SyncRow<Kind extends SyncKind> = z.infer<(typeof SYNC_ROWS)[Kind]>;
@@ -46,12 +53,12 @@ const KINDS: readonly SyncKind[] = [
 /**
  * Says the Inventory shows the copy, as it does while the server can't be reached, and from when.
  * @param syncedAt When the copy last caught up with the server.
+ * @param locale The language.
  * @returns E.g. "Sem conexão com o servidor. Mostrando a cópia de 23/11 às 14:05.", in the phone's own time.
  */
-export function copyNotice(syncedAt: Date): string {
+export function copyNotice(syncedAt: Date, locale: Locale): string {
   const two = (value: number) => String(value).padStart(2, "0");
-  const day = `${two(syncedAt.getDate())}/${two(syncedAt.getMonth() + 1)}`;
-  return `Sem conexão com o servidor. Mostrando a cópia de ${day} às ${two(syncedAt.getHours())}:${two(syncedAt.getMinutes())}.`;
+  return COPY_MESSAGES[locale].offline(two(syncedAt.getDate()), two(syncedAt.getMonth() + 1), `${two(syncedAt.getHours())}:${two(syncedAt.getMinutes())}`);
 }
 
 /**

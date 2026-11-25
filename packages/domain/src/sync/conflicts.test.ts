@@ -185,7 +185,7 @@ test("Shared: a field's conflict is settled keeping the computer's value or the 
     ],
     snapshot: SAW,
   };
-  const cards = conflictCards([conflicted]);
+  const cards = conflictCards([conflicted], "pt-BR");
   assert.deepEqual(
     cards.map((card) => [card.title, card.theirs, card.mine]),
     [
@@ -227,7 +227,7 @@ test("Shared: an item deleted on the computer stays deleted, or is made again as
     other,
     { ...move, conflicts: [{ kind: "itemDeleted" }], snapshot },
   ];
-  const cards = conflictCards(queue);
+  const cards = conflictCards(queue, "pt-BR");
   assert.deepEqual(
     cards.map((card) => [card.title, card.keepTheirs, card.keepMine]),
     [["“Farol esquerdo”", "Manter excluído", "Recriar o item"]],
@@ -274,7 +274,7 @@ test("Shared: a delete, a brand deleted and a brand changed on the computer are 
     },
   ];
   assert.deepEqual(
-    conflictCards(queue).map((card) => [card.title, card.keepTheirs, card.keepMine]),
+    conflictCards(queue, "pt-BR").map((card) => [card.title, card.keepTheirs, card.keepMine]),
     [
       ["“Farol” · Arteb (AR-1)", "Manter removida", "Adicionar de volta"],
       ["“Farol” · Cibié (CB-1)", "Manter a marca", "Remover"],

@@ -8,6 +8,8 @@ import {
   POSITION_NAMES,
   SIDE_NAMES,
   vehicleKey,
+  type POSITIONS,
+  type SIDES,
   vehicleLabel,
   type Item,
   type ItemBrand,
@@ -16,6 +18,7 @@ import {
   type ItemUpdate,
   type ItemVehicleCreate,
 } from "../inventory/items.ts";
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 import type { QueuedItemOperation, QueuedOperation } from "./queue.ts";
 import {
   SYNC_BRAND_FIELDS,
@@ -39,14 +42,72 @@ import {
 // out again.
 
 
-/** Each brand field's name. */
-const BRAND_FIELD_NAMES: Record<SyncBrandField, string> = {
-  partBrand: "Marca",
-  code: "Código",
-  color: "Cor",
-  location: "Localização",
-  unitPriceCents: "Preço",
-};
+/** What a conflict's card says: the fields' names, the values, what happened on each side and the choices. */
+export const CONFLICT_MESSAGES = catalog(
+  {
+    brandFields: { partBrand: "Marca", code: "Código", color: "Cor", location: "Localização", unitPriceCents: "Preço" } satisfies Record<
+      SyncBrandField,
+      string
+    >,
+    itemFields: {
+      name: "Nome",
+      category: "Categoria",
+      vehicles: "Veículos",
+      position: "Posição",
+      side: "Lado",
+      minQuantity: "Estoque mínimo",
+      originalCodes: "Códigos originais",
+      material: "Material",
+      description: "Descrição",
+    } satisfies Record<SyncItemField, string>,
+    empty: "Vazio",
+    none: "Nenhum",
+    itemDeleted: "Foi excluído no computador e alterado no celular. Recriado, ele volta sem as fotos.",
+    keepDeleted: "Manter excluído",
+    recreate: "Recriar o item",
+    itemChanged: "Foi alterado no computador e excluído no celular.",
+    keepItem: "Manter o item",
+    delete: "Excluir",
+    keepTheirs: "Manter do computador",
+    keepMine: "Manter do celular",
+    brandDeleted: "A marca foi removida no computador e alterada no celular.",
+    keepRemoved: "Manter removida",
+    addBack: "Adicionar de volta",
+    brandChanged: "A marca foi alterada no computador e removida no celular.",
+    keepBrand: "Manter a marca",
+    remove: "Remover",
+  },
+  {
+    brandFields: { partBrand: "Brand", code: "Code", color: "Color", location: "Location", unitPriceCents: "Price" },
+    itemFields: {
+      name: "Name",
+      category: "Category",
+      vehicles: "Vehicles",
+      position: "Position",
+      side: "Side",
+      minQuantity: "Minimum stock",
+      originalCodes: "Original codes",
+      material: "Material",
+      description: "Description",
+    },
+    empty: "Empty",
+    none: "None",
+    itemDeleted: "It was deleted on the computer and changed on the phone. Recreated, it comes back without its photos.",
+    keepDeleted: "Keep it deleted",
+    recreate: "Recreate the item",
+    itemChanged: "It was changed on the computer and deleted on the phone.",
+    keepItem: "Keep the item",
+    delete: "Delete",
+    keepTheirs: "Keep the computer's",
+    keepMine: "Keep the phone's",
+    brandDeleted: "The brand was removed on the computer and changed on the phone.",
+    keepRemoved: "Keep it removed",
+    addBack: "Add it back",
+    brandChanged: "The brand was changed on the computer and removed on the phone.",
+    keepBrand: "Keep the brand",
+    remove: "Remove",
+  },
+);
 /** What an edit sends for an optional field the form left empty, which clears it or sets it back to its default. */
 const EMPTY_VALUES: Partial<Record<SyncItemField, unknown>> = {
   position: NOT_APPLICABLE,
@@ -55,18 +116,6 @@ const EMPTY_VALUES: Partial<Record<SyncItemField, unknown>> = {
   originalCodes: [],
   material: "",
   description: "",
-};
-/** Each item field's name, as the form and the details say it. */
-const ITEM_FIELD_NAMES: Record<SyncItemField, string> = {
-  name: "Nome",
-  category: "Categoria",
-  vehicles: "Veículos",
-  position: "Posição",
-  side: "Lado",
-  minQuantity: "Estoque mínimo",
-  originalCodes: "Códigos originais",
-  material: "Material",
-  description: "Descrição",
 };
 
 /** An item's values the conflicts look at, as the item routes send them. */
@@ -480,9 +529,11 @@ function settled(operation: QueuedOperation, index: number): QueuedOperation {
  * Writes an item field's value for a conflict's card.
  * @param field The field.
  * @param value The value, sent or saved.
+ * @param locale The language.
  * @returns E.g. "Volkswagen Gol 85/90, Fiat Uno", "Dianteiro", or "Vazio".
  */
-function itemText(field: SyncItemField, value: unknown): string {
+function itemText(field: SyncItemField, value: unknown, locale: Locale): string {
+  const messages = CONFLICT_MESSAGES[locale];
   switch (field) {
     case "vehicles": {
       const vehicles = (value ?? []) as ItemVehicleCreate[];
@@ -500,16 +551,16 @@ function itemText(field: SyncItemField, value: unknown): string {
     }
     case "originalCodes": {
       const codes = (value ?? []) as string[];
-      return codes.length > 0 ? codes.join(", ") : "Nenhum";
+      return codes.length > 0 ? codes.join(", ") : messages.none;
     }
     case "position":
-      return POSITION_NAMES[(value ?? NOT_APPLICABLE) as keyof typeof POSITION_NAMES];
+      return POSITION_NAMES[locale][(value ?? NOT_APPLICABLE) as (typeof POSITIONS)[number]];
     case "side":
-      return SIDE_NAMES[(value ?? NOT_APPLICABLE) as keyof typeof SIDE_NAMES];
+      return SIDE_NAMES[locale][(value ?? NOT_APPLICABLE) as (typeof SIDES)[number]];
     case "minQuantity":
       return String(value ?? 0);
     default:
-      return textKey(value) || "Vazio";
+      return textKey(value) || messages.empty;
   }
 }
 
@@ -517,22 +568,25 @@ function itemText(field: SyncItemField, value: unknown): string {
  * Writes a brand field's value for a conflict's card.
  * @param field The field.
  * @param value The value, sent or saved.
+ * @param locale The language.
  * @returns E.g. "R$ 89,90", "PRETO", or "Vazio".
  */
-function brandText(field: SyncBrandField, value: unknown): string {
+function brandText(field: SyncBrandField, value: unknown, locale: Locale): string {
   if (field === "unitPriceCents") {
-    return formatPrice(Number(value));
+    return formatPrice(Number(value), locale);
   }
-  return field === "color" ? brandKey(field, value) : textKey(value) || "Vazio";
+  return field === "color" ? brandKey(field, value) : textKey(value) || CONFLICT_MESSAGES[locale].empty;
 }
 
 /**
  * Lists the conflicts of the queue as the phone shows them, in its order: an item deleted on the computer once, for
  * every change to it waiting.
  * @param queue The queue.
+ * @param locale The language of the cards.
  * @returns A card per conflict.
  */
-export function conflictCards(queue: readonly QueuedOperation[]): ConflictCard[] {
+export function conflictCards(queue: readonly QueuedOperation[], locale: Locale): ConflictCard[] {
+  const messages = CONFLICT_MESSAGES[locale];
   const deleted = new Set<string>();
   return queue.flatMap((operation) =>
     (operation.conflicts ?? []).flatMap((conflict, index): ConflictCard[] => {
@@ -554,23 +608,23 @@ export function conflictCards(queue: readonly QueuedOperation[]): ConflictCard[]
             {
               ...base,
               title: item,
-              text: "Foi excluído no computador e alterado no celular. Recriado, ele volta sem as fotos.",
-              keepTheirs: "Manter excluído",
-              keepMine: "Recriar o item",
+              text: messages.itemDeleted,
+              keepTheirs: messages.keepDeleted,
+              keepMine: messages.recreate,
             },
           ];
         }
         case "itemChanged":
-          return [{ ...base, title: item, text: "Foi alterado no computador e excluído no celular.", keepTheirs: "Manter o item", keepMine: "Excluir" }];
+          return [{ ...base, title: item, text: messages.itemChanged, keepTheirs: messages.keepItem, keepMine: messages.delete }];
         case "field":
           return [
             {
               ...base,
-              title: `${item} · ${ITEM_FIELD_NAMES[conflict.field]}`,
-              theirs: itemText(conflict.field, conflict.theirs),
-              mine: itemText(conflict.field, changes[conflict.field]),
-              keepTheirs: "Manter do computador",
-              keepMine: "Manter do celular",
+              title: `${item} · ${messages.itemFields[conflict.field]}`,
+              theirs: itemText(conflict.field, conflict.theirs, locale),
+              mine: itemText(conflict.field, changes[conflict.field], locale),
+              keepTheirs: messages.keepTheirs,
+              keepMine: messages.keepMine,
             },
           ];
         case "brandField": {
@@ -578,11 +632,11 @@ export function conflictCards(queue: readonly QueuedOperation[]): ConflictCard[]
           return [
             {
               ...base,
-              title: `${item} · ${brandOf(conflict.brandId)} · ${BRAND_FIELD_NAMES[conflict.field]}`,
-              theirs: brandText(conflict.field, conflict.theirs),
-              mine: brandText(conflict.field, brand?.[conflict.field]),
-              keepTheirs: "Manter do computador",
-              keepMine: "Manter do celular",
+              title: `${item} · ${brandOf(conflict.brandId)} · ${messages.brandFields[conflict.field]}`,
+              theirs: brandText(conflict.field, conflict.theirs, locale),
+              mine: brandText(conflict.field, brand?.[conflict.field], locale),
+              keepTheirs: messages.keepTheirs,
+              keepMine: messages.keepMine,
             },
           ];
         }
@@ -591,9 +645,9 @@ export function conflictCards(queue: readonly QueuedOperation[]): ConflictCard[]
             {
               ...base,
               title: `${item} · ${brandOf(conflict.brandId)}`,
-              text: "A marca foi removida no computador e alterada no celular.",
-              keepTheirs: "Manter removida",
-              keepMine: "Adicionar de volta",
+              text: messages.brandDeleted,
+              keepTheirs: messages.keepRemoved,
+              keepMine: messages.addBack,
             },
           ];
         case "brandChanged":
@@ -601,9 +655,9 @@ export function conflictCards(queue: readonly QueuedOperation[]): ConflictCard[]
             {
               ...base,
               title: `${item} · ${brandOf(conflict.brandId)}`,
-              text: "A marca foi alterada no computador e removida no celular.",
-              keepTheirs: "Manter a marca",
-              keepMine: "Remover",
+              text: messages.brandChanged,
+              keepTheirs: messages.keepBrand,
+              keepMine: messages.remove,
             },
           ];
       }
