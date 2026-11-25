@@ -9,10 +9,10 @@ import pg from "pg";
 import { optionKey } from "@apc/domain/items";
 import { listEntriesSchema, vehicleModelsSchema } from "@apc/domain/lists";
 import { STARTING_VEHICLE_BRANDS, VEHICLE_BRAND_ALIASES } from "@apc/domain/vehicle-lists";
-import type { PrismaClient } from "../generated/prisma/client.js";
-import { createPrisma } from "./client.js";
-import { migrate, migrationNames, migrationsFolder } from "./migrate.js";
-import type { DatabaseProvider } from "./provider.js";
+import type { PrismaClient } from "../../generated/prisma/client.js";
+import { createPrisma } from "../client.js";
+import { migrate, migrationNames, migrationsFolder } from "../tasks/migrate.js";
+import type { DatabaseProvider } from "../provider.js";
 
 // The migration that starts the vehicle lists (20261112000000_vehicle_lists), against a server's lists from before it,
 // on new SQLite files and, when TEST_POSTGRES_URL names a PostgreSQL server whose user can create databases, on a new

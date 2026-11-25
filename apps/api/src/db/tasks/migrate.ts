@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import pg from "pg";
-import { keyScript, sqliteKey } from "./cipher.js";
-import { API_DIR, databaseProvider, sqliteFile, type DatabaseProvider } from "./provider.js";
+import { keyScript, sqliteKey } from "../cipher.js";
+import { API_DIR, databaseProvider, sqliteFile, type DatabaseProvider } from "../provider.js";
 
 // Applies the migrations of the database DATABASE_URL names, without the Prisma CLI, so the desktop app can migrate
 // the server it ships (which has no CLI) and `db:migrate` does the same. Each pending migration's migration.sql runs

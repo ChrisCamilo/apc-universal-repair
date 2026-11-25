@@ -1,9 +1,9 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
-import { keyScript, sqliteKey } from "./cipher.js";
+import { keyScript, sqliteKey } from "../cipher.js";
 import { checkDatabase } from "./migrate.js";
-import { databaseProvider, sqliteFile } from "./provider.js";
+import { databaseProvider, sqliteFile } from "../provider.js";
 
 // A copy of the SQLite file made before the server applies new migrations, as after the desktop app updates (see
 // server.ts): a migration runs in a transaction, so one that fails leaves the database as it was, but one that does

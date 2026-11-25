@@ -6,11 +6,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import { TEST_USERS } from "@apc/domain/test-users";
-import type { PrismaClient } from "../generated/prisma/client.js";
-import { createSession } from "../auth/sessions.js";
-import { createPrisma, prisma } from "./client.js";
+import type { PrismaClient } from "../../generated/prisma/client.js";
+import { createSession } from "../../auth/sessions.js";
+import { createPrisma, prisma } from "../client.js";
 import { copyDatabase, copyProblems, STARTING_TABLES, TABLES } from "./copy.js";
-import { API_DIR } from "./provider.js";
+import { API_DIR } from "../provider.js";
 
 // Copying between databases (`pnpm --filter @apc/api test:db`), from the seeded database of DATABASE_URL, PostgreSQL
 // or SQLite, to new SQLite files and, when TEST_POSTGRES_URL names a PostgreSQL server whose user can create

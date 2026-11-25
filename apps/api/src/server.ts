@@ -1,8 +1,8 @@
 // Reads apps/api/.env (DATABASE_URL, PORT, PHOTOS_DIR) before anything uses it; variables already set win. With
 // APC_SQLITE_KEY, as the desktop app sets it, the SQLite file is encrypted first if it is still plain, and the server
 // refuses to start when the key doesn't open it (see db/cipher.ts). With APC_MIGRATE_ON_START=1, as the desktop app
-// runs the server it ships, the API then applies the pending migrations of its database (see db/migrate.ts), so it
-// migrates itself on every update, after copying a SQLite file to backups/ (see db/backup.ts); in development
+// runs the server it ships, the API then applies the pending migrations of its database (see db/tasks/migrate.ts), so it
+// migrates itself on every update, after copying a SQLite file to backups/ (see db/tasks/backup.ts); in development
 // `db:migrate` does. Then it turns WAL on for SQLite and listens on PORT, or else on DEV_SERVER_PORT when started for
 // development (`pnpm dev`, which passes --dev) and on SERVER_PORT otherwise, as the desktop app and `pnpm start` run it,
 // on the address APC_HOST names, or on every one (NETWORK_HOST), as development, the emulator and a phone need.
@@ -15,10 +15,10 @@
 import "dotenv/config";
 import { DEV_SERVER_PORT, NETWORK_HOST, PORT_IN_USE_EXIT_CODE, SERVER_PORT, WRONG_KEY_EXIT_CODE } from "@apc/domain/server";
 import { buildApp } from "./app.js";
-import { backupBeforeMigrating } from "./db/backup.js";
+import { backupBeforeMigrating } from "./db/tasks/backup.js";
 import { ensureEncrypted, WRONG_KEY_ERROR } from "./db/cipher.js";
 import { prepareDatabase } from "./db/client.js";
-import { migrate } from "./db/migrate.js";
+import { migrate } from "./db/tasks/migrate.js";
 import { databaseUrl } from "./db/provider.js";
 import { pruneTombstones } from "./sync/changes.js";
 import { API_VERSION } from "./health/routes/health.js";

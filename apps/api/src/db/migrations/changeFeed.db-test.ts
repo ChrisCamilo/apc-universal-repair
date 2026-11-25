@@ -6,8 +6,8 @@ import path from "node:path";
 import { after, test } from "node:test";
 import Database from "better-sqlite3";
 import pg from "pg";
-import { migrate, migrationNames, migrationsFolder } from "./migrate.js";
-import type { DatabaseProvider } from "./provider.js";
+import { migrate, migrationNames, migrationsFolder } from "../tasks/migrate.js";
+import type { DatabaseProvider } from "../provider.js";
 
 // The migration that starts the change feed (20261123000000_change_feed), on a new SQLite file and, when
 // TEST_POSTGRES_URL names a PostgreSQL server whose user can create databases, on a new PostgreSQL database
