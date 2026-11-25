@@ -52,6 +52,16 @@ export function formatNumber(value: number, locale: Locale): string {
 }
 
 /**
+ * Builds a value for each language from that language's texts, such as the options of a filter made from a catalog's
+ * labels.
+ * @param build Builds the value of one language.
+ * @returns The value of each language.
+ */
+export function perLocale<Value>(build: (locale: Locale) => Value): Catalog<Value> {
+  return { "pt-BR": build("pt-BR"), "en-US": build("en-US") };
+}
+
+/**
  * Tells whether a value is a language the apps speak, such as one read back from storage.
  * @param value The value.
  * @returns True for "pt-BR" or "en-US".
