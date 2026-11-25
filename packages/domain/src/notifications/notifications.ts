@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { stockStatus, type Item } from "../inventory/items.ts";
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 
 // The notifications history behind the Dashboard's bell, the same on web and mobile: every toast shown is kept, newest
 // first, up to NOTIFICATIONS_LIMIT, on the device under a key for each user, so it survives a reload and another user
@@ -13,6 +14,27 @@ const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 /** The kinds of a notification, those of the toast it keeps (`TOAST_KINDS` of @apc/ui-spec/toast). */
 export const NOTIFICATION_KINDS = ["success", "error", "info", "warning"] as const;
+/** What the notifications say: the low-stock warning, and how long ago one was shown. */
+export const NOTIFICATION_MESSAGES = catalog(
+  {
+    lowStockItem: (name: string, quantity: number, minQuantity: number) => `Estoque baixo: “${name}” (${quantity} de ${minQuantity})`,
+    lowStockItems: (count: number) => `Estoque baixo em ${count} itens`,
+    now: "agora",
+    minutesAgo: (minutes: number) => `há ${minutes} min`,
+    hoursAgo: (hours: number) => `há ${hours} h`,
+    yesterday: "ontem",
+    day: (day: string, month: string) => `${day}/${month}`,
+  },
+  {
+    lowStockItem: (name, quantity, minQuantity) => `Low stock: “${name}” (${quantity} of ${minQuantity})`,
+    lowStockItems: (count) => `Low stock on ${count} items`,
+    now: "now",
+    minutesAgo: (minutes) => `${minutes} min ago`,
+    hoursAgo: (hours) => `${hours} h ago`,
+    yesterday: "yesterday",
+    day: (day, month) => `${month}/${day}`,
+  },
+);
 /** How many notifications are kept; older ones drop off. */
 export const NOTIFICATIONS_LIMIT = 20;
 const notificationSchema = z.object({
@@ -67,11 +89,13 @@ export function lowStockKey(userId: string): string {
 /**
  * Writes the low-stock warning, one item by name or several at once by count.
  * @param alerts The items to warn about, at least one.
+ * @param locale The language.
  * @returns E.g. "Estoque baixo: “Filtro de óleo” (2 de 3)" or "Estoque baixo em 4 itens".
  */
-export function lowStockMessage(alerts: readonly StockItem[]): string {
+export function lowStockMessage(alerts: readonly StockItem[], locale: Locale): string {
   const [item] = alerts;
-  return alerts.length === 1 ? `Estoque baixo: “${item.name}” (${item.quantity} de ${item.minQuantity})` : `Estoque baixo em ${alerts.length} itens`;
+  const messages = NOTIFICATION_MESSAGES[locale];
+  return alerts.length === 1 ? messages.lowStockItem(item.name, item.quantity, item.minQuantity) : messages.lowStockItems(alerts.length);
 }
 
 /**
@@ -119,29 +143,32 @@ export function readLowStockWarned(saved: string | null): string[] {
 }
 
 /**
- * Writes how long ago a notification was shown, in Portuguese, as the bell's menu lists it.
+ * Writes how long ago a notification was shown, as the bell's menu lists it.
  * @param at When it was shown, as an ISO date.
  * @param now The current time.
- * @returns "agora" under a minute, "há 5 min" under an hour, "há 3 h" earlier today, "ontem", or the day, e.g. "12/10".
+ * @param locale The language.
+ * @returns "agora" under a minute, "há 5 min" under an hour, "há 3 h" earlier today, "ontem", or the day, e.g. "12/10"
+ * ("now", "5 min ago", "3 h ago", "yesterday" and "10/12" in English).
  */
-export function timeAgo(at: string, now: Date): string {
+export function timeAgo(at: string, now: Date, locale: Locale): string {
+  const messages = NOTIFICATION_MESSAGES[locale];
   const then = new Date(at);
   const elapsed = now.getTime() - then.getTime();
   if (elapsed < MINUTE_MS) {
-    return "agora";
+    return messages.now;
   }
   if (elapsed < HOUR_MS) {
-    return `há ${Math.floor(elapsed / MINUTE_MS)} min`;
+    return messages.minutesAgo(Math.floor(elapsed / MINUTE_MS));
   }
   const day = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   const days = Math.round((day(now) - day(then)) / (24 * HOUR_MS));
   if (days === 0) {
-    return `há ${Math.floor(elapsed / HOUR_MS)} h`;
+    return messages.hoursAgo(Math.floor(elapsed / HOUR_MS));
   }
   if (days === 1) {
-    return "ontem";
+    return messages.yesterday;
   }
-  return `${String(then.getDate()).padStart(2, "0")}/${String(then.getMonth() + 1).padStart(2, "0")}`;
+  return messages.day(String(then.getDate()).padStart(2, "0"), String(then.getMonth() + 1).padStart(2, "0"));
 }
 
 /**
