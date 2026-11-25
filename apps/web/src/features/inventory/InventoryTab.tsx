@@ -52,6 +52,7 @@ import { pageForSize } from '@apc/ui-spec/pagination'
 import { PAGE_SIZES, SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query'
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/domain/photos'
 import { API_BASE } from '../../app/api.ts'
+import { useLocale } from '../../app/useLocale.ts'
 import { useSession } from '../auth/sessionContext.ts'
 import { ActionSheet } from '../../components/ActionSheet'
 import { Button } from '../../components/Button'
@@ -207,11 +208,7 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
     sortLabel: 'Valor unitário',
     sortable: true,
     numeric: true,
-    cell: (row) => (
-      <span className={CELLS.classes.price()} data-testid={CELLS.ids.price}>
-        {formatPriceRange(rowItem(row))}
-      </span>
-    ),
+    cell: (row) => <PriceRange item={rowItem(row)} />,
   },
   {
     key: 'quantity',
@@ -1020,6 +1017,16 @@ function Coded({ value, name }: { value: string; name: string }) {
   return (
     <span title={name} className={classes.coded()} data-testid={ids.coded}>
       {value}
+    </span>
+  )
+}
+
+/** An item's unit price, or the range of its brands' prices, in the language chosen. */
+function PriceRange({ item }: { item: Item }) {
+  const { locale } = useLocale()
+  return (
+    <span className={CELLS.classes.price()} data-testid={CELLS.ids.price}>
+      {formatPriceRange(item, locale)}
     </span>
   )
 }

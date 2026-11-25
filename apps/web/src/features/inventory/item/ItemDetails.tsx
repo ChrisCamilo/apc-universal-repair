@@ -3,6 +3,7 @@ import { ICON_SIZES, imageIcon, trashIcon } from '@apc/tokens/icons'
 import { formatPrice, NOT_APPLICABLE, QUANTITY_UNIT, type Item } from '@apc/domain/items'
 import { brandPlaceText, ITEM_NOTE_LABELS, originalCodesText, positionSideText, vehiclesText } from '@apc/domain/item-form'
 import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos'
+import { useLocale } from '../../../app/useLocale.ts'
 import { Icon } from '../../../components/Icon'
 import { ImageUpload, type UploadPhoto } from '../../../components/ImageUpload'
 import { Heading } from '../../../components/Typography'
@@ -27,6 +28,7 @@ type ItemDetailsProps = {
 
 export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetailsProps) {
   const { classes, ids } = itemDetails()
+  const { locale } = useLocale()
   const all = photos.flat()
   const noCodes = item.originalCodes.length === 0
   const noPlace = item.position === NOT_APPLICABLE && item.side === NOT_APPLICABLE
@@ -88,7 +90,7 @@ export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetai
             {brand.code}
           </span>
           <span className={classes.price()} data-testid={ids.price}>
-            {formatPrice(brand.unitPriceCents)}
+            {formatPrice(brand.unitPriceCents, locale)}
           </span>
           <span className={classes.place()} data-testid={ids.place}>
             {brandPlaceText(brand)}
