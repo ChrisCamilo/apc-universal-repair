@@ -5,6 +5,7 @@ import { brandPlaceText, ITEM_NOTE_LABELS, originalCodesText, positionSideText, 
 import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
 import { Icon } from '../../../components/Icon';
 import { ImageUpload, type UploadPhoto } from '../../../components/ImageUpload';
+import { useLocale } from '../../../app/locale';
 import { useTheme } from '../../../app/theme';
 import { useStyles } from './ItemDetails.styles';
 import { pickPhotos, takePhoto } from '../photos/photos';
@@ -28,6 +29,7 @@ type ItemDetailsProps = {
 
 export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemDetailsProps) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const all = photos.flat();
   /** Tells the owner where a part laid out, when the details open on a brand. */
@@ -109,7 +111,7 @@ export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemD
                 {brand.code}
               </Text>
               <Text style={styles.price} testID={ids.price}>
-                {formatPrice(brand.unitPriceCents)}
+                {formatPrice(brand.unitPriceCents, locale)}
               </Text>
             </View>
             <Text style={styles.place} testID={ids.place}>

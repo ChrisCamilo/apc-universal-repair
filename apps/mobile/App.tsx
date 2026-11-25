@@ -20,6 +20,7 @@ import { Dashboard } from './src/features/dashboard/Dashboard';
 import { clearCopy, loadQueue } from './src/features/sync/inventoryCopy';
 import { UserMenu } from './src/features/dashboard/UserMenu';
 import { NotificationsMenu } from './src/features/notifications/NotificationsMenu';
+import { LocaleProvider } from './src/app/locale';
 import { ThemeProvider, useTheme } from './src/app/theme';
 import { ToastProvider } from './src/components/Toast';
 import { TourProvider } from './src/components/Tour';
@@ -189,13 +190,15 @@ function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <ToastProvider>
-          <TourProvider>
-            <AppLock>
-              <Screen />
-            </AppLock>
-          </TourProvider>
-        </ToastProvider>
+        <LocaleProvider>
+          <ToastProvider>
+            <TourProvider>
+              <AppLock>
+                <Screen />
+              </AppLock>
+            </TourProvider>
+          </ToastProvider>
+        </LocaleProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
