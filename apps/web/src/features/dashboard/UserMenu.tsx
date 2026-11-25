@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { RELEASE_NOTES, RELEASE_VERSION } from 'virtual:apc-release'
 import { gearIcon, infoIcon, lockIcon, playIcon } from '@apc/tokens/icons'
 import { PAGE_SIZES } from '@apc/domain/list-query'
+import { isLocale, LOCALE_MESSAGES, LOCALE_NAMES, LOCALES } from '@apc/domain/locale'
 import { isStyle, STYLE_LABELS, STYLES } from '@apc/tokens/theme'
 import { auth } from '../auth/auth.ts'
 import { useSession } from '../auth/sessionContext.ts'
@@ -16,6 +17,7 @@ import { usePhone } from '../../components/usePhone.ts'
 import { desktopBridge } from '../desktop/desktopBridge.ts'
 import { DevicesDialog } from '../desktop/DevicesDialog.tsx'
 import { useOpenServerSettings } from '../desktop/serverSettingsContext.ts'
+import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { useTheme } from '../../app/useTheme.ts'
 import { AboutDialog } from './AboutDialog.tsx'
 import { BottomBarItem } from './BottomBarItem.tsx'
@@ -26,7 +28,8 @@ import { useTabReorder } from './tabReorderContext.ts'
 
 // The user menu at the right of the Dashboard header: the logged user's initials and username on the trigger
 // (initials only on phones), and the display preferences. Dark mode and the theme go through the ThemeProvider,
-// which applies and saves them at once; "Arrastar para reordenar" goes through the Dashboard (TabReorderContext),
+// which applies and saves them at once, and "Idioma" (Português · English) through the LocaleProvider the same way, shown
+// in development builds only until every screen follows it; "Arrastar para reordenar" goes through the Dashboard (TabReorderContext),
 // which saves it and makes the tabs reorderable while it is on; "Itens por página" sets how many items the Inventory
 // list shows, now and each time it opens. Every choice keeps the menu open, so several can be changed in a row. "Tutorial do estoque",
 // with a play icon, goes to the Inventory tab and runs its tutorial again. In the desktop app, "Servidor e banco de
@@ -39,6 +42,9 @@ import { useTabReorder } from './tabReorderContext.ts'
 // sheet, as a menu, without "Itens por página", since the Inventory loads more as it scrolls there; an action closes
 // it, as it closes the menu.
 
+/** Whether "Idioma" shows: in development builds only, until every screen reads its texts in the language chosen. */
+const LANGUAGE_SWITCH = import.meta.env.DEV
+const LOCALE_OPTIONS = LOCALES.map((value) => ({ value, label: LOCALE_NAMES[value] }))
 const PAGE_SIZE_OPTIONS = PAGE_SIZES.map((size) => ({ value: String(size), label: String(size) }))
 const STYLE_OPTIONS = STYLES.map((style) => ({ value: style, label: STYLE_LABELS[style] }))
 
@@ -46,6 +52,8 @@ export function UserMenu() {
   const { user, setUser } = useSession()
   const navigate = useNavigate()
   const { style, mode, setStyle, setMode } = useTheme()
+  const { locale, setLocale } = useLocale()
+  const messages = useMessages(LOCALE_MESSAGES)
   const { reorderable, setReorderable } = useTabReorder()
   const { pageSize, setPageSize } = usePageSize()
   const tutorial = useInventoryTutorial()
@@ -67,6 +75,9 @@ export function UserMenu() {
         Modo escuro
       </Switch>
       <Segmented label="Tema" options={STYLE_OPTIONS} value={style} onValueChange={(next) => isStyle(next) && setStyle(next)} />
+      {LANGUAGE_SWITCH && (
+        <Segmented label={messages.language} options={LOCALE_OPTIONS} value={locale} onValueChange={(next) => isLocale(next) && setLocale(next)} />
+      )}
       <MenuLabel>Abas</MenuLabel>
       <Switch
         checked={reorderable}

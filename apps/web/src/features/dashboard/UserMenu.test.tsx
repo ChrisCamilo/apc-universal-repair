@@ -1,4 +1,5 @@
 import { SESSION_STORAGE_KEY, type SessionUser } from '@apc/domain/auth'
+import { LOCALE_STORAGE_KEY } from '@apc/domain/locale'
 import { playIcon } from '@apc/tokens/icons'
 import { PAGE_SIZE_STORAGE_KEY } from '@apc/ui-spec/pagination'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
@@ -15,6 +16,7 @@ import { SessionContext } from '../auth/sessionContext.ts'
 import type { DesktopBridge } from '../desktop/desktopBridge.ts'
 import { ServerSettingsContext } from '../desktop/serverSettingsContext.ts'
 import { themeCss } from '../../app/theme.ts'
+import { LocaleProvider } from '../../app/LocaleProvider.tsx'
 import { ThemeProvider } from '../../app/ThemeProvider.tsx'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
 import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
@@ -49,6 +51,7 @@ beforeEach(() => {
   localStorage.clear()
   root.dataset.style = 'eighties'
   root.dataset.mode = 'night'
+  root.lang = 'pt-BR'
 })
 
 // Opens the menu and checks the trigger and the header show the logged user, and the menu holds dark mode (on, at
@@ -91,6 +94,25 @@ test('Web: dark mode and the theme apply and are saved at once, keeping the menu
   expect(localStorage.getItem(THEME_STORAGE_KEYS.style)).toBe('gt4')
   await expect.element(screen.getByRole('menuitemradio', { name: 'GT4' })).toHaveAttribute('aria-checked', 'true')
   await expect.element(screen.getByRole('menu')).toBeVisible()
+})
+
+// Picks English under "Idioma", Português chosen until then, and checks the page is marked English and the choice is
+// saved on the device, keeping the menu open, and comes back chosen when the menu is drawn again.
+test('Web: the language applies and is saved at once, and comes back', async () => {
+  const screen = await render(<Sample />)
+  await screen.getByRole('button', { name: 'Menu do usuário' }).click()
+  await expect.element(screen.getByRole('menu').getByText('Idioma')).toBeVisible()
+  await expect.element(screen.getByRole('menuitemradio', { name: 'Português' })).toHaveAttribute('aria-checked', 'true')
+  expect(root.lang).toBe('pt-BR')
+  await screen.getByRole('menuitemradio', { name: 'English' }).click()
+  await expect.poll(() => root.lang).toBe('en-US')
+  expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en-US')
+  await expect.element(screen.getByRole('menu')).toBeVisible()
+  await userEvent.keyboard('{Escape}')
+
+  const again = await render(<Sample />)
+  await again.getByRole('button', { name: 'Menu do usuário' }).last().click()
+  await expect.element(again.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute('aria-checked', 'true')
 })
 
 // Turns tab reordering on and checks it is saved on the device and comes back on when the menu is drawn again.
@@ -204,22 +226,24 @@ function Sample({ openServerSettings = () => {} }: { openServerSettings?: () => 
     <ServerSettingsContext.Provider value={openServerSettings}>
       <MemoryRouter initialEntries={['/inventory']}>
         <ThemeProvider>
-          <SessionContext.Provider value={{ user, expired: false, setUser, markInventoryTutorialSeen: () => {} }}>
-            <Routes>
-              <Route
-                path="/inventory"
-                element={
-                  // At the right of the page, as in the Dashboard header, so the menu opens on screen.
-                  <div className="flex justify-end">
-                    <Preferences>
-                      <UserMenu />
-                    </Preferences>
-                  </div>
-                }
-              />
-              <Route path="/login" element={<p>Tela de login, {user ? 'alguém logado' : 'ninguém logado'}</p>} />
-            </Routes>
-          </SessionContext.Provider>
+          <LocaleProvider>
+            <SessionContext.Provider value={{ user, expired: false, setUser, markInventoryTutorialSeen: () => {} }}>
+              <Routes>
+                <Route
+                  path="/inventory"
+                  element={
+                    // At the right of the page, as in the Dashboard header, so the menu opens on screen.
+                    <div className="flex justify-end">
+                      <Preferences>
+                        <UserMenu />
+                      </Preferences>
+                    </div>
+                  }
+                />
+                <Route path="/login" element={<p>Tela de login, {user ? 'alguém logado' : 'ninguém logado'}</p>} />
+              </Routes>
+            </SessionContext.Provider>
+          </LocaleProvider>
         </ThemeProvider>
       </MemoryRouter>
     </ServerSettingsContext.Provider>
