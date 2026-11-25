@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEFAULT_LOCALE, type Locale } from "../platform/locale/locale.ts";
+import { catalog, DEFAULT_LOCALE, type Locale } from "../platform/locale/locale.ts";
 import { PAGE_SIZES, sortRows, type Sort } from "../platform/query/listQuery.ts";
 import { ITEM_PHOTO_LIMIT } from "./photos.ts";
 
@@ -47,25 +47,21 @@ export const MAX_PRICE_CENTS = 100_000_000;
 /** The most an item's quantity, or its minimum, can be: far above any stock, and well within the database's column. */
 export const MAX_QUANTITY = 1_000_000;
 /** What a column of the list shows for the brands of an item when they differ, e.g. in color. */
-export const MIXED_VALUES = "Várias";
+export const MIXED_VALUES = catalog("Várias", "Mixed");
 const optionalText = z.string().trim().optional();
 /** Full names of the positions, for tooltips and screen readers. */
-export const POSITION_NAMES: Record<(typeof POSITIONS)[number], string> = {
-  "N/A": "Posição não se aplica",
-  D: "Dianteiro",
-  T: "Traseiro",
-  Ambos: "Dianteiro e traseiro",
-};
+export const POSITION_NAMES = catalog<Record<(typeof POSITIONS)[number], string>>(
+  { "N/A": "Posição não se aplica", D: "Dianteiro", T: "Traseiro", Ambos: "Dianteiro e traseiro" },
+  { "N/A": "Position doesn't apply", D: "Front", T: "Rear", Ambos: "Front and rear" },
+);
 /** Positions an item fits: not applicable, front, rear, or both. */
 export const POSITIONS = ["N/A", "D", "T", "Ambos"] as const;
 const requiredText = z.string().trim().min(1, "Required.");
 /** Full names of the sides, for tooltips and screen readers. */
-export const SIDE_NAMES: Record<(typeof SIDES)[number], string> = {
-  "N/A": "Lado não se aplica",
-  LD: "Lado direito",
-  LE: "Lado esquerdo",
-  Ambos: "Os dois lados",
-};
+export const SIDE_NAMES = catalog<Record<(typeof SIDES)[number], string>>(
+  { "N/A": "Lado não se aplica", LD: "Lado direito", LE: "Lado esquerdo", Ambos: "Os dois lados" },
+  { "N/A": "Side doesn't apply", LD: "Right side", LE: "Left side", Ambos: "Both sides" },
+);
 /** Sides an item fits: not applicable, right, left, or both. */
 export const SIDES = ["N/A", "LD", "LE", "Ambos"] as const;
 /** The vehicle brand of the parts that fit any vehicle, alone in an item's vehicles. */
@@ -76,11 +72,26 @@ export const VEHICLE_VERSION_MAX = 30;
 export const VEHICLE_YEARS = { min: 1900, max: 2100 } as const;
 const vehicleYear = z.int().min(VEHICLE_YEARS.min).max(VEHICLE_YEARS.max);
 /** What each stock status is called on screen and read out. */
-export const STOCK_STATUS_LABELS: Record<(typeof ITEM_STATUSES)[number], string> = { low: "Estoque baixo", out: "Esgotado" };
+export const STOCK_STATUS_LABELS = catalog<Record<(typeof ITEM_STATUSES)[number], string>>(
+  { low: "Estoque baixo", out: "Esgotado" },
+  { low: "Low stock", out: "Out of stock" },
+);
 /** The stock statuses in short, as a phone's card and quick filters show them: "Baixo · 5". */
-export const STOCK_STATUS_SHORT: Record<(typeof ITEM_STATUSES)[number], string> = { low: "Baixo", out: "Esgotado" };
+export const STOCK_STATUS_SHORT = catalog<Record<(typeof ITEM_STATUSES)[number], string>>({ low: "Baixo", out: "Esgotado" }, { low: "Low", out: "Out" });
 /** What a phone's card shows under the quantity of an item in stock. */
-export const QUANTITY_UNIT = "un.";
+export const QUANTITY_UNIT = catalog("un.", "pcs");
+/** What the item cards and the result counter say. */
+export const ITEM_MESSAGES = catalog(
+  {
+    brands: (count: number) => `${count} marcas`,
+    summary: (shown: number, total: number, low: number, out: number) =>
+      `${shown} de ${total} ${total === 1 ? "item" : "itens"} · ${low} ${low === 1 ? "baixo" : "baixos"} · ${out} ${out === 1 ? "esgotado" : "esgotados"}`,
+  },
+  {
+    brands: (count) => `${count} brands`,
+    summary: (shown, total, low, out) => `${shown} of ${total} ${total === 1 ? "item" : "items"} · ${low} low · ${out} out of stock`,
+  },
+);
 /** A brand of an item as it is sent: on an edit, with the id of the brand it keeps; without one, a new brand. */
 export const itemBrandCreateSchema = z.object({
   id: z.uuid().optional(),
@@ -323,11 +334,16 @@ export function allCodes(item: { originalCodes: readonly string[]; brands: reado
  * when they differ.
  * @param item The item.
  * @param field The brands' field, e.g. "color".
+ * @param locale The language of "Várias".
  * @returns E.g. "Preto", or null for a location none of them has.
  */
-export function brandsValue(item: { brands: readonly Pick<ItemBrand, "color" | "location">[] }, field: "color" | "location"): string | null {
+export function brandsValue(
+  item: { brands: readonly Pick<ItemBrand, "color" | "location">[] },
+  field: "color" | "location",
+  locale: Locale,
+): string | null {
   const values = new Set(item.brands.map((brand) => brand[field]));
-  return values.size === 1 ? [...values][0] : MIXED_VALUES;
+  return values.size === 1 ? [...values][0] : MIXED_VALUES[locale];
 }
 
 /**
@@ -468,6 +484,7 @@ export function itemVehiclesText(item: { vehicles: readonly ItemVehicle[] }): st
 /**
  * Writes an item's details in one line, such as an import's preview, leaving out what doesn't apply.
  * @param item Inventory item.
+ * @param locale The language.
  * @returns E.g. "Freios · Cobreq · Volkswagen Gol · D · A-2 · R$ 89,90", or "… · Volkswagen Gol +1 · …".
  */
 export function itemDetails(
@@ -475,6 +492,7 @@ export function itemDetails(
     vehicles: readonly ItemVehicle[];
     brands: readonly Pick<ItemBrand, "partBrand" | "color" | "location" | "unitPriceCents">[];
   },
+  locale: Locale,
 ): string {
   return [
     item.category,
@@ -482,9 +500,9 @@ export function itemDetails(
     itemVehiclesLabel(item),
     item.position,
     item.side,
-    brandsValue(item, "color"),
-    brandsValue(item, "location"),
-    formatPriceRange(item),
+    brandsValue(item, "color", locale),
+    brandsValue(item, "location", locale),
+    formatPriceRange(item, locale),
   ]
     .filter((value) => value && value !== NOT_APPLICABLE)
     .join(" · ");
@@ -495,14 +513,18 @@ export function itemDetails(
  * leaving out what doesn't apply or isn't given; the material takes the place of the location, as in the desktop
  * table's default columns.
  * @param item Inventory item.
+ * @param locale The language of the price.
  * @returns E.g. "Volkswagen Gol · Alumínio · R$ 89,90", or "Volkswagen Gol +1 · R$ 79,90 – R$ 112,90".
  */
-export function itemCardDetails(item: {
-  vehicles: readonly ItemVehicle[];
-  material?: string | null;
-  brands: readonly Pick<ItemBrand, "unitPriceCents">[];
-}): string {
-  return [itemVehiclesLabel(item), item.material, formatPriceRange(item)]
+export function itemCardDetails(
+  item: {
+    vehicles: readonly ItemVehicle[];
+    material?: string | null;
+    brands: readonly Pick<ItemBrand, "unitPriceCents">[];
+  },
+  locale: Locale,
+): string {
+  return [itemVehiclesLabel(item), item.material, formatPriceRange(item, locale)]
     .filter((value) => value && value !== NOT_APPLICABLE)
     .join(" · ");
 }
@@ -511,11 +533,12 @@ export function itemCardDetails(item: {
  * Writes an item's code for the phone card under its name: the first brand's code, then its part brand, or how many
  * brands make it.
  * @param item Inventory item.
+ * @param locale The language.
  * @returns E.g. "JH-1260 · Albarus", or "620 3001 00 · 2 marcas".
  */
-export function itemCardCode(item: { brands: readonly Pick<ItemBrand, "code" | "partBrand">[] }): string {
+export function itemCardCode(item: { brands: readonly Pick<ItemBrand, "code" | "partBrand">[] }, locale: Locale): string {
   const [first] = item.brands;
-  return `${first.code} · ${item.brands.length > 1 ? `${item.brands.length} marcas` : first.partBrand}`;
+  return `${first.code} · ${item.brands.length > 1 ? ITEM_MESSAGES[locale].brands(item.brands.length) : first.partBrand}`;
 }
 
 /**
@@ -628,12 +651,12 @@ export function readGeneration(text: string): { firstYear: number | null; lastYe
  * are low and out of stock.
  * @param shown How many items the search and filters leave.
  * @param items Every item in stock.
+ * @param locale The language.
  * @returns E.g. "3 de 12 itens · 2 baixos · 1 esgotado".
  */
-export function resultSummary(shown: number, items: readonly Pick<Item, "quantity" | "minQuantity">[]): string {
+export function resultSummary(shown: number, items: readonly Pick<Item, "quantity" | "minQuantity">[], locale: Locale): string {
   const { low, out } = stockCounts(items);
-  const total = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
-  return `${shown} de ${total} · ${low} ${low === 1 ? "baixo" : "baixos"} · ${out} ${out === 1 ? "esgotado" : "esgotados"}`;
+  return ITEM_MESSAGES[locale].summary(shown, items.length, low, out);
 }
 
 /**
@@ -702,11 +725,12 @@ export function stockStatus(quantity: number, minQuantity: number): ItemStatus |
 /**
  * Tells how a list tints an item's row or card by its stock status, and the status read out with it.
  * @param item The item's quantity and minimum.
+ * @param locale The language of the status's name.
  * @returns "danger" when out of stock and "warn" when low, with the status's name; undefined when stock is fine.
  */
-export function stockTint(item: { quantity: number; minQuantity: number }): { tone: "warn" | "danger"; label: string } | undefined {
+export function stockTint(item: { quantity: number; minQuantity: number }, locale: Locale): { tone: "warn" | "danger"; label: string } | undefined {
   const status = stockStatus(item.quantity, item.minQuantity);
-  return status ? { tone: status === "out" ? "danger" : "warn", label: STOCK_STATUS_LABELS[status] } : undefined;
+  return status ? { tone: status === "out" ? "danger" : "warn", label: STOCK_STATUS_LABELS[locale][status] } : undefined;
 }
 
 /**

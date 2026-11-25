@@ -28,6 +28,7 @@ import {
   type POSITIONS,
   type SIDES,
 } from "./items.ts";
+import { catalog, DEFAULT_LOCALE, formatNumber, perLocale, type Locale } from "../platform/locale/locale.ts";
 import { findEntry, type ItemLists } from "./lists.ts";
 import { photoCount } from "./photos.ts";
 
@@ -63,94 +64,171 @@ export const EMPTY_ITEM_FORM: ItemForm = {
   brands: [EMPTY_BRAND_FORM],
 };
 /** Label of each field of a brand's section, in the order the form shows them. */
-export const BRAND_FIELD_LABELS: Record<BrandField, string> = {
-  partBrand: "Marca da peça",
-  code: "Código da peça",
-  quantity: "Quantidade",
-  price: "Valor unitário (R$)",
-  color: "Cor",
-  location: "Local",
-};
+export const BRAND_FIELD_LABELS = catalog<Record<BrandField, string>>(
+  { partBrand: "Marca da peça", code: "Código da peça", quantity: "Quantidade", price: "Valor unitário (R$)", color: "Cor", location: "Local" },
+  { partBrand: "Part brand", code: "Part code", quantity: "Quantity", price: "Unit price (R$)", color: "Color", location: "Location" },
+);
 /** Label of each field the item's brands share, in the order the form shows them. */
-export const ITEM_FIELD_LABELS: Record<ItemField, string> = {
-  name: "Nome",
-  category: "Categoria",
-  position: "Posição",
-  side: "Lado",
-  minQuantity: "Quantidade mínima",
-};
+export const ITEM_FIELD_LABELS = catalog<Record<ItemField, string>>(
+  { name: "Nome", category: "Categoria", position: "Posição", side: "Lado", minQuantity: "Quantidade mínima" },
+  { name: "Name", category: "Category", position: "Position", side: "Side", minQuantity: "Minimum quantity" },
+);
 /** Label of each optional note of the item, in the order the details show them. */
-export const ITEM_NOTE_LABELS: Record<NoteField, string> = {
-  description: "Descrição curta",
-  material: "Material",
-};
+export const ITEM_NOTE_LABELS = catalog<Record<NoteField, string>>(
+  { description: "Descrição curta", material: "Material" },
+  { description: "Short description", material: "Material" },
+);
 /** The positions as a phone's form chooses them, in full words: not applicable, front, rear or both. */
-export const POSITION_CHOICES: { value: (typeof POSITIONS)[number]; label: string }[] = [
-  { value: NOT_APPLICABLE, label: NOT_APPLICABLE },
-  { value: "D", label: "Dianteira" },
-  { value: "T", label: "Traseira" },
-  { value: "Ambos", label: "Ambas" },
-];
+export const POSITION_CHOICES = catalog<{ value: (typeof POSITIONS)[number]; label: string }[]>(
+  [
+    { value: NOT_APPLICABLE, label: NOT_APPLICABLE },
+    { value: "D", label: "Dianteira" },
+    { value: "T", label: "Traseira" },
+    { value: "Ambos", label: "Ambas" },
+  ],
+  [
+    { value: NOT_APPLICABLE, label: NOT_APPLICABLE },
+    { value: "D", label: "Front" },
+    { value: "T", label: "Rear" },
+    { value: "Ambos", label: "Both" },
+  ],
+);
 /** The sides as a phone's form chooses them, in full words: not applicable, left, right or both. */
-export const SIDE_CHOICES: { value: (typeof SIDES)[number]; label: string }[] = [
-  { value: NOT_APPLICABLE, label: NOT_APPLICABLE },
-  { value: "LE", label: "Esquerdo" },
-  { value: "LD", label: "Direito" },
-  { value: "Ambos", label: "Ambos" },
-];
+export const SIDE_CHOICES = catalog<{ value: (typeof SIDES)[number]; label: string }[]>(
+  [
+    { value: NOT_APPLICABLE, label: NOT_APPLICABLE },
+    { value: "LE", label: "Esquerdo" },
+    { value: "LD", label: "Direito" },
+    { value: "Ambos", label: "Ambos" },
+  ],
+  [
+    { value: NOT_APPLICABLE, label: NOT_APPLICABLE },
+    { value: "LE", label: "Left" },
+    { value: "LD", label: "Right" },
+    { value: "Ambos", label: "Both" },
+  ],
+);
 /** Label of each field of a vehicle's line. */
-export const VEHICLE_FIELD_LABELS: Record<VehicleField, string> = {
-  vehicleBrand: "Marca do veículo",
-  vehicleModel: "Modelo do veículo",
-  generation: "Geração",
-  version: "Versão",
-};
+export const VEHICLE_FIELD_LABELS = catalog<Record<VehicleField, string>>(
+  { vehicleBrand: "Marca do veículo", vehicleModel: "Modelo do veículo", generation: "Geração", version: "Versão" },
+  { vehicleBrand: "Vehicle brand", vehicleModel: "Vehicle model", generation: "Generation", version: "Version" },
+);
 /** Label of the item's vehicles, in the form and the details. */
-export const VEHICLES_LABEL = "Veículos";
+export const VEHICLES_LABEL = catalog("Veículos", "Vehicles");
 /** What splits codes typed or pasted at once: commas, semicolons and line breaks. */
 const CODE_SEPARATORS = /[,;\r\n]/;
 /** Message under each field that can't be saved as it is. */
-export const ITEM_FORM_MESSAGES = {
-  code: "Informe o código da peça.",
-  codeRepeated: "Esse código já está em outra marca deste item.",
-  name: "Informe o nome do item.",
-  category: "Informe a categoria.",
-  categoryNotListed: "Categoria não cadastrada. Escolha “+ Criar categoria” na lista.",
-  partBrand: "Informe a marca da peça.",
-  partBrandNotListed: "Marca de peça não cadastrada. Escolha “+ Criar marca” na lista.",
-  partBrandRepeated: "Essa marca já está neste item.",
-  originalCodeInBrand: "Esse código já está numa marca deste item.",
-  vehicleBrand: "Informe a marca do veículo.",
-  vehicleBrandNotListed: "Marca de veículo não cadastrada. Escolha “+ Criar marca” na lista.",
-  vehicleModelNotListed: "Modelo não cadastrado para essa marca. Escolha “+ Criar modelo” na lista.",
-  vehicleRepeated: "Esse veículo já está neste item.",
-  generationInvalid: "Use os anos da geração, como 85/90 ou 1985-1990.",
-  versionTooLong: `Use no máximo ${VEHICLE_VERSION_MAX} caracteres.`,
-  versionNeedsGeneration: "Informe a geração antes da versão.",
-  universalAlone: "Universal serve em qualquer veículo: deixe só ele na lista.",
-  quantityInvalid: "Use um número inteiro, de 0 em diante.",
-  quantityTooHigh: `Informe no máximo ${MAX_QUANTITY.toLocaleString("pt-BR")}.`,
-  price: "Informe o valor unitário.",
-  priceInvalid: "Informe um valor maior que zero, como 89,90.",
-  priceTooHigh: `Informe no máximo ${formatPrice(MAX_PRICE_CENTS).replace(/\s/, " ")}.`,
-  descriptionTooLong: `Use no máximo ${ITEM_DESCRIPTION_MAX} caracteres.`,
-} as const;
+export const ITEM_FORM_MESSAGES = perLocale((locale) =>
+  catalog(
+    {
+      code: "Informe o código da peça.",
+      codeRepeated: "Esse código já está em outra marca deste item.",
+      name: "Informe o nome do item.",
+      category: "Informe a categoria.",
+      categoryNotListed: "Categoria não cadastrada. Escolha “+ Criar categoria” na lista.",
+      partBrand: "Informe a marca da peça.",
+      partBrandNotListed: "Marca de peça não cadastrada. Escolha “+ Criar marca” na lista.",
+      partBrandRepeated: "Essa marca já está neste item.",
+      originalCodeInBrand: "Esse código já está numa marca deste item.",
+      vehicleBrand: "Informe a marca do veículo.",
+      vehicleBrandNotListed: "Marca de veículo não cadastrada. Escolha “+ Criar marca” na lista.",
+      vehicleModelNotListed: "Modelo não cadastrado para essa marca. Escolha “+ Criar modelo” na lista.",
+      vehicleRepeated: "Esse veículo já está neste item.",
+      generationInvalid: "Use os anos da geração, como 85/90 ou 1985-1990.",
+      versionTooLong: `Use no máximo ${VEHICLE_VERSION_MAX} caracteres.`,
+      versionNeedsGeneration: "Informe a geração antes da versão.",
+      universalAlone: "Universal serve em qualquer veículo: deixe só ele na lista.",
+      quantityInvalid: "Use um número inteiro, de 0 em diante.",
+      quantityTooHigh: `Informe no máximo ${formatNumber(MAX_QUANTITY, locale)}.`,
+      price: "Informe o valor unitário.",
+      priceInvalid: "Informe um valor maior que zero, como 89,90.",
+      priceTooHigh: `Informe no máximo ${formatPrice(MAX_PRICE_CENTS, locale).replace(/\s/, " ")}.`,
+      descriptionTooLong: `Use no máximo ${ITEM_DESCRIPTION_MAX} caracteres.`,
+    },
+    {
+      code: "Enter the part code.",
+      codeRepeated: "This code is already on another brand of this item.",
+      name: "Enter the item's name.",
+      category: "Enter the category.",
+      categoryNotListed: "Category not on the list. Choose “+ Create category” in the list.",
+      partBrand: "Enter the part brand.",
+      partBrandNotListed: "Part brand not on the list. Choose “+ Create brand” in the list.",
+      partBrandRepeated: "This brand is already on this item.",
+      originalCodeInBrand: "This code is already on a brand of this item.",
+      vehicleBrand: "Enter the vehicle brand.",
+      vehicleBrandNotListed: "Vehicle brand not on the list. Choose “+ Create brand” in the list.",
+      vehicleModelNotListed: "Model not on the list for this brand. Choose “+ Create model” in the list.",
+      vehicleRepeated: "This vehicle is already on this item.",
+      generationInvalid: "Use the generation's years, such as 85/90 or 1985-1990.",
+      versionTooLong: `Use ${VEHICLE_VERSION_MAX} characters at most.`,
+      versionNeedsGeneration: "Enter the generation before the version.",
+      universalAlone: "Universal fits any vehicle: leave it alone on the list.",
+      quantityInvalid: "Use a whole number, from 0 up.",
+      quantityTooHigh: `Enter ${formatNumber(MAX_QUANTITY, locale)} at most.`,
+      price: "Enter the unit price.",
+      priceInvalid: "Enter a price above zero, such as 89,90.",
+      priceTooHigh: `Enter ${formatPrice(MAX_PRICE_CENTS, locale)} at most.`,
+      descriptionTooLong: `Use ${ITEM_DESCRIPTION_MAX} characters at most.`,
+    },
+  )[locale],
+);
 /** The info toast of an edit saved with nothing changed, which isn't sent. */
-export const ITEM_UNCHANGED_MESSAGE = "Nenhuma alteração para salvar.";
+export const ITEM_UNCHANGED_MESSAGE = catalog("Nenhuma alteração para salvar.", "Nothing changed to save.");
 /** Label of the item's original codes, in the form and the details. */
-export const ORIGINAL_CODES_LABEL = "Códigos originais";
+export const ORIGINAL_CODES_LABEL = catalog("Códigos originais", "Original codes");
 /**
  * What the photo picker says: the button under a brand's photos that opens it (also its title), its search, what it
  * says before a search, when nothing is found and when more was found than it lists, and its Cancelar.
  */
-export const PHOTO_PICKER = {
-  open: "Usar fotos de outra peça",
-  search: "Código da peça",
-  hint: "Digite o código de uma peça com fotos.",
-  none: "Nenhuma peça com fotos tem esse código.",
-  more: (count: number) => `Digite mais do código para ver ${count === 1 ? "a outra" : `as outras ${count}`}.`,
-  cancel: "Cancelar",
-} as const;
+export const PHOTO_PICKER = catalog(
+  {
+    open: "Usar fotos de outra peça",
+    search: "Código da peça",
+    hint: "Digite o código de uma peça com fotos.",
+    none: "Nenhuma peça com fotos tem esse código.",
+    more: (count: number) => `Digite mais do código para ver ${count === 1 ? "a outra" : `as outras ${count}`}.`,
+    cancel: "Cancelar",
+    picked: (picked: number, room: string, one: boolean) => `${picked} de ${room} ${one ? "escolhida" : "escolhidas"}`,
+    full: (count: string) => `${count}: desmarque uma para trocar.`,
+    use: (photos: string) => `Usar ${photos}`,
+    useNone: "Usar fotos",
+  },
+  {
+    open: "Use photos of another part",
+    search: "Part code",
+    hint: "Type the code of a part with photos.",
+    none: "No part with photos has this code.",
+    more: (count) => `Type more of the code to see ${count === 1 ? "the other one" : `the other ${count}`}.`,
+    cancel: "Cancel",
+    picked: (picked, room) => `${picked} of ${room} chosen`,
+    full: (count) => `${count}: uncheck one to swap it.`,
+    use: (photos) => `Use ${photos}`,
+    useNone: "Use photos",
+  },
+);
+/** What the item's details write for what doesn't apply or wasn't given, and what a code another item uses says. */
+export const ITEM_FORM_TEXTS = catalog(
+  {
+    notApplicable: "Não se aplica",
+    notGiven: "Não informado",
+    none: "Nenhum",
+    location: (location: string) => `Local ${location}`,
+    noLocation: "Sem local",
+    anyModel: (vehicleBrand: string) => `${vehicleBrand} (qualquer modelo)`,
+    codeTaken: (name: string) => `Código já usado em “${name}”.`,
+    itemGone: (name: string) => `O item “${name}” foi excluído em outro dispositivo e não foi salvo.`,
+  },
+  {
+    notApplicable: "Doesn't apply",
+    notGiven: "Not given",
+    none: "None",
+    location: (location) => `Location ${location}`,
+    noLocation: "No location",
+    anyModel: (vehicleBrand) => `${vehicleBrand} (any model)`,
+    codeTaken: (name) => `Code already used in “${name}”.`,
+    itemGone: (name) => `The item “${name}” was deleted on another device and wasn't saved.`,
+  },
+);
 /** The most items the photo picker lists for a search; a longer code finds the others. */
 export const PHOTO_SOURCES_LIMIT = 8;
 /** What the empty price field shows. */
@@ -238,26 +316,30 @@ export type VehicleField = keyof ItemVehicleForm;
  * Writes out each field of a brand for an item's details, read-only: what doesn't apply or wasn't filled in is said
  * in words, and the unit price in reais.
  * @param brand The brand.
+ * @param locale The language.
  * @returns The text of each field of a brand's section.
  */
-export function brandDetailTexts(brand: ItemBrand): Record<BrandField, string> {
+export function brandDetailTexts(brand: ItemBrand, locale: Locale): Record<BrandField, string> {
+  const texts = ITEM_FORM_TEXTS[locale];
   return {
     partBrand: brand.partBrand,
     code: brand.code,
     quantity: String(brand.quantity),
-    price: formatPrice(brand.unitPriceCents),
-    color: brand.color === NOT_APPLICABLE ? "Não se aplica" : brand.color,
-    location: brand.location ?? "Não informado",
+    price: formatPrice(brand.unitPriceCents, locale),
+    color: brand.color === NOT_APPLICABLE ? texts.notApplicable : brand.color,
+    location: brand.location ?? texts.notGiven,
   };
 }
 
 /**
  * Words where a brand is kept, for its card in a phone's details.
  * @param brand The brand.
+ * @param locale The language.
  * @returns E.g. "Local E-1 · Preto", the color left out when it doesn't apply, or "Sem local" when it has none.
  */
-export function brandPlaceText(brand: Pick<ItemBrand, "location" | "color">): string {
-  const place = brand.location ? `Local ${brand.location}` : "Sem local";
+export function brandPlaceText(brand: Pick<ItemBrand, "location" | "color">, locale: Locale): string {
+  const texts = ITEM_FORM_TEXTS[locale];
+  const place = brand.location ? texts.location(brand.location) : texts.noLocation;
   return brand.color === NOT_APPLICABLE ? place : `${place} · ${brand.color}`;
 }
 
@@ -284,22 +366,24 @@ export function changedVehicle(vehicle: ItemVehicleForm, field: VehicleField, va
  * nothing when it is free or still empty.
  * @param code The code as typed.
  * @param items Every item in stock.
+ * @param locale The language.
  * @param editingId The id of the item being edited, which may keep its own codes.
  * @returns E.g. "Código já usado em “Filtro de óleo”.", or undefined.
  */
-export function codeTakenError(code: string, items: readonly Item[], editingId?: string): string | undefined {
+export function codeTakenError(code: string, items: readonly Item[], locale: Locale, editingId?: string): string | undefined {
   const typed = codeKey(code);
   const owner = typed ? items.find((item) => item.id !== editingId && allCodes(item).some((held) => codeKey(held) === typed)) : undefined;
-  return owner && codeTakenMessage(owner.name);
+  return owner && codeTakenMessage(owner.name, locale);
 }
 
 /**
  * Says a part code is already used, naming the item that uses it.
  * @param name The other item's name.
+ * @param locale The language.
  * @returns E.g. "Código já usado em “Filtro de óleo”."
  */
-export function codeTakenMessage(name: string): string {
-  return `Código já usado em “${name}”.`;
+export function codeTakenMessage(name: string, locale: Locale): string {
+  return ITEM_FORM_TEXTS[locale].codeTaken(name);
 }
 
 /**
@@ -370,10 +454,10 @@ export function duplicateForm(item: Item): ItemForm {
  * @returns Its value as typed.
  */
 export function formValue(form: ItemForm, field: FormField): string {
-  if (field in BRAND_FIELD_LABELS) {
+  if (field in BRAND_FIELD_LABELS[DEFAULT_LOCALE]) {
     return form.brands[0][field as BrandField];
   }
-  return field in VEHICLE_FIELD_LABELS ? (form.vehicles[0][field as VehicleField] ?? "") : form[field as ItemField];
+  return field in VEHICLE_FIELD_LABELS[DEFAULT_LOCALE] ? (form.vehicles[0][field as VehicleField] ?? "") : form[field as ItemField];
 }
 
 /**
@@ -409,15 +493,16 @@ export function hasFormErrors(errors: ItemFormErrors): boolean {
  * is said in words, and the position and side by their full names; the vehicles come from vehiclesText, and each
  * brand's fields from brandDetailTexts.
  * @param item The item.
+ * @param locale The language.
  * @returns The text of each field of the item.
  */
-export function itemDetailTexts(item: Item): Record<ItemField, string> {
-  const notApplicable = "Não se aplica";
+export function itemDetailTexts(item: Item, locale: Locale): Record<ItemField, string> {
+  const { notApplicable } = ITEM_FORM_TEXTS[locale];
   return {
     name: item.name,
     category: item.category,
-    position: item.position === NOT_APPLICABLE ? notApplicable : POSITION_NAMES[item.position],
-    side: item.side === NOT_APPLICABLE ? notApplicable : SIDE_NAMES[item.side],
+    position: item.position === NOT_APPLICABLE ? notApplicable : POSITION_NAMES[locale][item.position],
+    side: item.side === NOT_APPLICABLE ? notApplicable : SIDE_NAMES[locale][item.side],
     minQuantity: String(item.minQuantity),
   };
 }
@@ -425,26 +510,28 @@ export function itemDetailTexts(item: Item): Record<ItemField, string> {
 /**
  * Lists an item's optional notes for its details, the description first: only those it has.
  * @param item The item.
+ * @param locale The language of the labels.
  * @returns Each note's field, label and text, e.g. [{ field: "material", label: "Material", text: "Alumínio" }].
  */
-export function itemNoteTexts(item: Pick<Item, "material" | "description">): { field: NoteField; label: string; text: string }[] {
+export function itemNoteTexts(item: Pick<Item, "material" | "description">, locale: Locale): { field: NoteField; label: string; text: string }[] {
   return (["description", "material"] as const).flatMap((field) => {
     const text = item[field];
-    return text ? [{ field, label: ITEM_NOTE_LABELS[field], text }] : [];
+    return text ? [{ field, label: ITEM_NOTE_LABELS[locale][field], text }] : [];
   });
 }
 
 /**
  * Words an item's position and side on one line, for a phone's details.
  * @param item The item.
+ * @param locale The language.
  * @returns E.g. "Dianteiro · Lado direito", one of them alone when the other doesn't apply, or "Não se aplica".
  */
-export function positionSideText(item: Pick<Item, "position" | "side">): string {
+export function positionSideText(item: Pick<Item, "position" | "side">, locale: Locale): string {
   const parts = [
-    ...(item.position === NOT_APPLICABLE ? [] : [POSITION_NAMES[item.position]]),
-    ...(item.side === NOT_APPLICABLE ? [] : [SIDE_NAMES[item.side]]),
+    ...(item.position === NOT_APPLICABLE ? [] : [POSITION_NAMES[locale][item.position]]),
+    ...(item.side === NOT_APPLICABLE ? [] : [SIDE_NAMES[locale][item.side]]),
   ];
-  return parts.length > 0 ? parts.join(" · ") : "Não se aplica";
+  return parts.length > 0 ? parts.join(" · ") : ITEM_FORM_TEXTS[locale].notApplicable;
 }
 
 /**
@@ -500,47 +587,49 @@ export function itemFormChanged(form: ItemForm, item: Item, colors: readonly str
  * @param form The form as typed.
  * @param items Every item in stock.
  * @param lists The lists the API keeps.
+ * @param locale The language of the messages.
  * @param editingId The id of the item being edited, whose brands may keep their own codes.
  * @returns The message of each field that can't be saved, in form order; without any when the item can be saved.
  */
-export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: ItemLists, editingId?: string): ItemFormErrors {
-  const category = listedMessage(form.category, lists.categories, ITEM_FORM_MESSAGES.category, ITEM_FORM_MESSAGES.categoryNotListed);
-  const vehicles = vehicleFormErrors(form.vehicles, lists);
+export function itemFormErrors(form: ItemForm, items: readonly Item[], lists: ItemLists, locale: Locale, editingId?: string): ItemFormErrors {
+  const messages = ITEM_FORM_MESSAGES[locale];
+  const category = listedMessage(form.category, lists.categories, messages.category, messages.categoryNotListed);
+  const vehicles = vehicleFormErrors(form.vehicles, lists, locale);
   /** Whether an earlier brand of the form has the same value, compared by a key. */
   const repeated = (index: number, key: (brand: ItemBrandForm) => string) =>
     key(form.brands[index]) !== "" && form.brands.slice(0, index).some((other) => key(other) === key(form.brands[index]));
   const brands = form.brands.map((each, index): ItemBrandFormErrors => {
     const price = parsePrice(each.price);
-    const codeTaken = codeTakenError(each.code, items, editingId);
+    const codeTaken = codeTakenError(each.code, items, locale, editingId);
     const partBrand = repeated(index, (other) => optionKey(other.partBrand))
-      ? ITEM_FORM_MESSAGES.partBrandRepeated
-      : listedMessage(each.partBrand, lists.partBrands, ITEM_FORM_MESSAGES.partBrand, ITEM_FORM_MESSAGES.partBrandNotListed);
+      ? messages.partBrandRepeated
+      : listedMessage(each.partBrand, lists.partBrands, messages.partBrand, messages.partBrandNotListed);
     return {
       ...(partBrand && { partBrand }),
       ...(!each.code.trim()
-        ? { code: ITEM_FORM_MESSAGES.code }
+        ? { code: messages.code }
         : repeated(index, (other) => codeKey(other.code))
-          ? { code: ITEM_FORM_MESSAGES.codeRepeated }
+          ? { code: messages.codeRepeated }
           : codeTaken
             ? { code: codeTaken }
             : {}),
-      ...(Number(each.quantity) > MAX_QUANTITY && { quantity: ITEM_FORM_MESSAGES.quantityTooHigh }),
+      ...(Number(each.quantity) > MAX_QUANTITY && { quantity: messages.quantityTooHigh }),
       ...(!each.price.trim()
-        ? { price: ITEM_FORM_MESSAGES.price }
+        ? { price: messages.price }
         : price === null || price <= 0
-          ? { price: ITEM_FORM_MESSAGES.priceInvalid }
+          ? { price: messages.priceInvalid }
           : price > MAX_PRICE_CENTS
-            ? { price: ITEM_FORM_MESSAGES.priceTooHigh }
+            ? { price: messages.priceTooHigh }
             : {}),
     };
   });
-  const originalCodes = originalCodeMessages(form, items, editingId);
+  const originalCodes = originalCodeMessages(form, items, locale, editingId);
   return {
-    ...(!form.name.trim() && { name: ITEM_FORM_MESSAGES.name }),
+    ...(!form.name.trim() && { name: messages.name }),
     ...(category && { category }),
     ...(vehicles.some((each) => Object.keys(each).length > 0) && { vehicles }),
-    ...(Number(form.minQuantity) > MAX_QUANTITY && { minQuantity: ITEM_FORM_MESSAGES.quantityTooHigh }),
-    ...((form.description ?? "").trim().length > ITEM_DESCRIPTION_MAX && { description: ITEM_FORM_MESSAGES.descriptionTooLong }),
+    ...(Number(form.minQuantity) > MAX_QUANTITY && { minQuantity: messages.quantityTooHigh }),
+    ...((form.description ?? "").trim().length > ITEM_DESCRIPTION_MAX && { description: messages.descriptionTooLong }),
     ...(originalCodes.some(Boolean) && { originalCodes }),
     ...(brands.some((each) => Object.keys(each).length > 0) && { brands }),
   };
@@ -610,10 +699,11 @@ function listedMessage(text: string, entries: ItemLists["categories"], required:
 /**
  * Says an item open in the form was deleted on another device meanwhile, as saving it finds.
  * @param name The item's name.
+ * @param locale The language.
  * @returns E.g. "O item “Farol” foi excluído em outro dispositivo e não foi salvo."
  */
-export function itemGoneMessage(name: string): string {
-  return `O item “${name}” foi excluído em outro dispositivo e não foi salvo.`;
+export function itemGoneMessage(name: string, locale: Locale): string {
+  return ITEM_FORM_TEXTS[locale].itemGone(name);
 }
 
 /**
@@ -632,24 +722,26 @@ export function modelsOfBrand(lists: ItemLists, vehicleBrand: string): string[] 
  * when another item uses it (see codeTakenError).
  * @param form The form as typed.
  * @param items Every item in stock.
+ * @param locale The language.
  * @param editingId The id of the item being edited, which may keep its own codes.
  * @returns The message of each original code, in their order, undefined for a code that is fine.
  */
-export function originalCodeMessages(form: ItemForm, items: readonly Item[], editingId?: string): (string | undefined)[] {
+export function originalCodeMessages(form: ItemForm, items: readonly Item[], locale: Locale, editingId?: string): (string | undefined)[] {
   return form.originalCodes.map((code) =>
     form.brands.some((brand) => codeKey(brand.code) !== "" && codeKey(brand.code) === codeKey(code))
-      ? ITEM_FORM_MESSAGES.originalCodeInBrand
-      : codeTakenError(code, items, editingId),
+      ? ITEM_FORM_MESSAGES[locale].originalCodeInBrand
+      : codeTakenError(code, items, locale, editingId),
   );
 }
 
 /**
  * Writes an item's original codes for its details.
  * @param item The item.
+ * @param locale The language.
  * @returns E.g. "5U0 698 151, 5U0 698 151 A", or "Nenhum" when it has none.
  */
-export function originalCodesText(item: Pick<Item, "originalCodes">): string {
-  return item.originalCodes.length > 0 ? item.originalCodes.join(", ") : "Nenhum";
+export function originalCodesText(item: Pick<Item, "originalCodes">, locale: Locale): string {
+  return item.originalCodes.length > 0 ? item.originalCodes.join(", ") : ITEM_FORM_TEXTS[locale].none;
 }
 
 /**
@@ -674,14 +766,16 @@ export function parsePrice(text: string): number | null {
  * is full, and "Usar n fotos".
  * @param picked How many photos are checked.
  * @param room How many photos the brand still takes.
+ * @param locale The language.
  * @returns The count, e.g. "1 de 3 fotos escolhidas" or "3 de 3 fotos escolhidas: desmarque uma para trocar.", and the
  * button, "Usar 1 foto", "Usar 2 fotos", or "Usar fotos" with none checked.
  */
-export function photoPickerTexts(picked: number, room: number): { count: string; use: string } {
-  const count = `${picked} de ${photoCount(room)} ${room === 1 ? "escolhida" : "escolhidas"}`;
+export function photoPickerTexts(picked: number, room: number, locale: Locale): { count: string; use: string } {
+  const texts = PHOTO_PICKER[locale];
+  const count = texts.picked(picked, photoCount(room, locale), room === 1);
   return {
-    count: picked >= room ? `${count}: desmarque uma para trocar.` : count,
-    use: picked > 0 ? `Usar ${photoCount(picked)}` : "Usar fotos",
+    count: picked >= room ? texts.full(count) : count,
+    use: picked > 0 ? texts.use(photoCount(picked, locale)) : texts.useNone,
   };
 }
 
@@ -723,9 +817,10 @@ export function priceInput(cents: number): string {
  * a paste is refused, saying so, as is a paste that isn't a price; the field keeps what it held.
  * @param held What the field holds, e.g. "R$ 7,50", or empty.
  * @param typed The field's text after the change.
+ * @param locale The language of the message.
  * @returns What the field takes, empty for a price of zero, and why the change was refused, if it was.
  */
-export function priceMask(held: string, typed: string): { value: string; message?: string } {
+export function priceMask(held: string, typed: string, locale: Locale): { value: string; message?: string } {
   const text = (cents: number) => (cents ? priceText(cents) : "");
   // One character typed or erased: taking one character out of the longer text gives the shorter.
   const [longer, shorter] = typed.length > held.length ? [typed, held] : [held, typed];
@@ -740,9 +835,9 @@ export function priceMask(held: string, typed: string): { value: string; message
   }
   const cents = parsePrice(typed);
   if (cents === null) {
-    return { value: held, message: ITEM_FORM_MESSAGES.priceInvalid };
+    return { value: held, message: ITEM_FORM_MESSAGES[locale].priceInvalid };
   }
-  return cents > MAX_PRICE_CENTS ? { value: held, message: ITEM_FORM_MESSAGES.priceTooHigh } : { value: text(cents) };
+  return cents > MAX_PRICE_CENTS ? { value: held, message: ITEM_FORM_MESSAGES[locale].priceTooHigh } : { value: text(cents) };
 }
 
 /**
@@ -771,16 +866,17 @@ export function descriptionInput(typed: string): { value: string; counter?: stri
  * any other paste (a fraction, a sign, text) is refused with a message, the field keeping what it held.
  * @param held What the field holds, digits only.
  * @param typed The field's text after the change.
+ * @param locale The language of the message.
  * @returns What the field takes, and why the change was refused, if it was.
  */
-export function quantityInput(held: string, typed: string): { value: string; message?: string } {
+export function quantityInput(held: string, typed: string, locale: Locale): { value: string; message?: string } {
   const text = typed.trim();
   if (/^(\d*|\d{1,3}(\.\d{3})+)$/.test(text)) {
     return { value: text.replace(/\./g, "").replace(/^0+(?=\d)/, "") };
   }
   // One character typed among the digits held, e.g. "12," from "12".
   const oneTyped = typed.length === held.length + 1 && typed.replace(/\D/g, "") === held;
-  return oneTyped ? { value: held } : { value: held, message: ITEM_FORM_MESSAGES.quantityInvalid };
+  return oneTyped ? { value: held } : { value: held, message: ITEM_FORM_MESSAGES[locale].quantityInvalid };
 }
 
 /**
@@ -801,29 +897,30 @@ export function splitCodes(text: string): string[] {
  * VEHICLE_VERSION_MAX; a vehicle appears once, and Universal alone.
  * @param vehicles The vehicles as typed.
  * @param lists The lists the API keeps.
+ * @param locale The language of the messages.
  * @returns The message of each line's fields that can't be saved, in the lines' order.
  */
-export function vehicleFormErrors(vehicles: readonly ItemVehicleForm[], lists: ItemLists): ItemVehicleFormErrors[] {
+export function vehicleFormErrors(vehicles: readonly ItemVehicleForm[], lists: ItemLists, locale: Locale): ItemVehicleFormErrors[] {
   return vehicles.map((each, index) => {
     const brand = findEntry(lists.vehicleBrands, each.vehicleBrand);
     const universal = vehicles.length > 1 && optionKey(each.vehicleBrand) === optionKey(UNIVERSAL_BRAND);
     const vehicleBrand = universal
-      ? ITEM_FORM_MESSAGES.universalAlone
-      : listedMessage(each.vehicleBrand, lists.vehicleBrands, ITEM_FORM_MESSAGES.vehicleBrand, ITEM_FORM_MESSAGES.vehicleBrandNotListed);
+      ? ITEM_FORM_MESSAGES[locale].universalAlone
+      : listedMessage(each.vehicleBrand, lists.vehicleBrands, ITEM_FORM_MESSAGES[locale].vehicleBrand, ITEM_FORM_MESSAGES[locale].vehicleBrandNotListed);
     // A model is checked within a listed brand; without one, the brand's message says what to do first.
     const brandModels = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
     const key = vehicleKey(vehicleOfForm(each));
     const repeated = each.vehicleBrand.trim() !== "" && vehicles.slice(0, index).some((other) => vehicleKey(vehicleOfForm(other)) === key);
     const vehicleModel = repeated
-      ? ITEM_FORM_MESSAGES.vehicleRepeated
-      : brand && listedMessage(each.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES.vehicleModelNotListed);
-    const generation = readGeneration(each.generation ?? "") ? undefined : ITEM_FORM_MESSAGES.generationInvalid;
+      ? ITEM_FORM_MESSAGES[locale].vehicleRepeated
+      : brand && listedMessage(each.vehicleModel, brandModels, undefined, ITEM_FORM_MESSAGES[locale].vehicleModelNotListed);
+    const generation = readGeneration(each.generation ?? "") ? undefined : ITEM_FORM_MESSAGES[locale].generationInvalid;
     const typedVersion = (each.version ?? "").trim();
     const version =
       typedVersion.length > VEHICLE_VERSION_MAX
-        ? ITEM_FORM_MESSAGES.versionTooLong
+        ? ITEM_FORM_MESSAGES[locale].versionTooLong
         : typedVersion && !(each.generation ?? "").trim()
-          ? ITEM_FORM_MESSAGES.versionNeedsGeneration
+          ? ITEM_FORM_MESSAGES[locale].versionNeedsGeneration
           : undefined;
     return {
       ...(vehicleBrand && { vehicleBrand }),
@@ -855,24 +952,27 @@ export function vehicleOfForm(vehicle: ItemVehicleForm): ItemVehicleCreate {
  * Writes out a vehicle an item fits, as its details list it and the form's chip names it on a phone: its brand and
  * model, then its generation and version when it has them.
  * @param vehicle The vehicle, its model empty or null for any model.
+ * @param locale The language.
  * @returns E.g. "Volkswagen Gol G5", "Chevrolet Monza 85/90 1.6 GLX", or "Volkswagen (qualquer modelo)".
  */
 export function vehicleText(
   vehicle: Pick<ItemVehicle, "vehicleBrand" | "firstYear" | "lastYear"> & { vehicleModel?: string | null; version?: string | null },
+  locale: Locale,
 ): string {
   const named = vehicle.vehicleModel
     ? vehicleLabel({ vehicleBrand: vehicle.vehicleBrand, vehicleModel: vehicle.vehicleModel })
-    : `${vehicle.vehicleBrand} (qualquer modelo)`;
+    : ITEM_FORM_TEXTS[locale].anyModel(vehicle.vehicleBrand);
   return [named, generationLabel(vehicle), vehicle.version].filter(Boolean).join(" ");
 }
 
 /**
  * Writes out each vehicle an item fits for its details.
  * @param item The item.
+ * @param locale The language.
  * @returns E.g. "Volkswagen Gol G5, Chevrolet Monza 85/90 1.6 GLX, Volkswagen (qualquer modelo)".
  */
-export function vehiclesText(item: Pick<Item, "vehicles">): string {
-  return item.vehicles.map(vehicleText).join(", ");
+export function vehiclesText(item: Pick<Item, "vehicles">, locale: Locale): string {
+  return item.vehicles.map((vehicle) => vehicleText(vehicle, locale)).join(", ");
 }
 
 /**
@@ -885,13 +985,15 @@ export function withFormValues(form: ItemForm, values: Partial<Record<FormField,
   const entries = Object.entries(values) as [FormField, string][];
   /** The values of one kind of field. */
   const of = (labels: object) => Object.fromEntries(entries.filter(([field]) => field in labels));
-  const item = Object.fromEntries(entries.filter(([field]) => !(field in BRAND_FIELD_LABELS) && !(field in VEHICLE_FIELD_LABELS)));
+  const item = Object.fromEntries(
+    entries.filter(([field]) => !(field in BRAND_FIELD_LABELS[DEFAULT_LOCALE]) && !(field in VEHICLE_FIELD_LABELS[DEFAULT_LOCALE])),
+  );
   const [first, ...others] = form.brands;
   const [vehicle, ...moreVehicles] = form.vehicles;
   return {
     ...form,
     ...item,
-    vehicles: [{ ...vehicle, ...of(VEHICLE_FIELD_LABELS) }, ...moreVehicles],
-    brands: [{ ...first, ...of(BRAND_FIELD_LABELS) }, ...others],
+    vehicles: [{ ...vehicle, ...of(VEHICLE_FIELD_LABELS[DEFAULT_LOCALE]) }, ...moreVehicles],
+    brands: [{ ...first, ...of(BRAND_FIELD_LABELS[DEFAULT_LOCALE]) }, ...others],
   };
 }

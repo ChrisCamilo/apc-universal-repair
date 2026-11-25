@@ -25,7 +25,7 @@ test("Shared: rows sort text naturally and numbers by value", () => {
 // Lists the "Sort by" options and checks the unsorted option comes first, each column has both directions
 // in words that fit text or numbers, and every value reads back as the same sort.
 test("Shared: the sort select lists both directions of each column", () => {
-  const options = sortOptions([{ key: "name", label: "Item" }, { key: "qty", label: "Quantidade", numeric: true }], "Ordem de cadastro");
+  const options = sortOptions([{ key: "name", label: "Item" }, { key: "qty", label: "Quantidade", numeric: true }], "Ordem de cadastro", "pt-BR");
   assert.deepEqual(
     options.map((o) => o.label),
     ["Ordem de cadastro", "Item (A → Z)", "Item (Z → A)", "Quantidade (menor → maior)", "Quantidade (maior → menor)"],
