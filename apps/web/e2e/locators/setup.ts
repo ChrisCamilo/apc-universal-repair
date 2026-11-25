@@ -104,7 +104,7 @@ export function updateNotice(page: Page) {
  * @returns The approval's dialog and parts, and the authorized devices' list.
  */
 export function devices(page: Page) {
-  const approval = dialog(page, DEVICE_MESSAGES.approveTitle);
+  const approval = dialog(page, DEVICE_MESSAGES["pt-BR"].approveTitle);
   return {
     approval: {
       ...approval,

@@ -3,6 +3,7 @@ import type { Item } from '@apc/domain/items'
 import { lowStockAlerts, lowStockKey, lowStockMessage, readLowStockWarned } from '@apc/domain/notifications'
 import { useNotify, useToast } from '../../components/Toast'
 import { readStored, writeStored } from '../../app/storage.ts'
+import { useLocale } from '../../app/useLocale.ts'
 
 /**
  * Warns about the items that reach their minimum stock, once while they stay there: each time the stock loads, the
@@ -14,6 +15,7 @@ import { readStored, writeStored } from '../../app/storage.ts'
 export function useLowStockAlerts(items: readonly Item[] | null, userId: string): void {
   const toast = useToast()
   const notify = useNotify()
+  const { locale } = useLocale()
   // Whether the stock already loaded once since the Inventory opened.
   const loaded = useRef(false)
 
@@ -26,7 +28,7 @@ export function useLowStockAlerts(items: readonly Item[] | null, userId: string)
     const { alerts, warned } = lowStockAlerts(items, readLowStockWarned(readStored(key)))
     writeStored(key, JSON.stringify(warned))
     if (alerts.length > 0) {
-      const message = lowStockMessage(alerts)
+      const message = lowStockMessage(alerts, locale)
       if (loaded.current) {
         toast.warning(message)
       } else {
@@ -34,5 +36,5 @@ export function useLowStockAlerts(items: readonly Item[] | null, userId: string)
       }
     }
     loaded.current = true
-  }, [items, userId, toast, notify])
+  }, [items, userId, toast, notify, locale])
 }

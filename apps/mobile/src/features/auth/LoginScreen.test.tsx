@@ -125,14 +125,14 @@ test('Mobile: empty fields are not sent and the cursor goes to the first one', a
   const focus = jest.spyOn(TextInput.prototype, 'focus');
   const tree = await mount('eighties', 'night', <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} onConnect={() => {}} />);
   await press(tree, 'Entrar');
-  expect(shows(tree, LOGIN_MESSAGES.username)).toBe(true);
-  expect(shows(tree, LOGIN_MESSAGES.password)).toBe(true);
+  expect(shows(tree, LOGIN_MESSAGES['pt-BR'].username)).toBe(true);
+  expect(shows(tree, LOGIN_MESSAGES['pt-BR'].password)).toBe(true);
   expect(focus.mock.contexts.at(-1)).toBe(field(tree, 'Usuário').instance);
 
   await type(tree, 'Usuário', 'christian.camilo');
-  expect(shows(tree, LOGIN_MESSAGES.username)).toBe(false);
+  expect(shows(tree, LOGIN_MESSAGES['pt-BR'].username)).toBe(false);
   await press(tree, 'Entrar');
-  expect(shows(tree, LOGIN_MESSAGES.password)).toBe(true);
+  expect(shows(tree, LOGIN_MESSAGES['pt-BR'].password)).toBe(true);
   expect(focus.mock.contexts.at(-1)).toBe(field(tree, 'Senha').instance);
   expect(login).not.toHaveBeenCalled();
   login.mockRestore();
@@ -167,7 +167,7 @@ test('Mobile: a refused login says so above the form and empties the password', 
   await press(tree, 'Entrar');
   const alert = byId(tree, 'auth.login-screen.form.alert');
   expect(alert.props.accessibilityRole).toBe('alert');
-  expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES.failed)).not.toHaveLength(0);
+  expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES['pt-BR'].failed)).not.toHaveLength(0);
   expect(field(tree, 'Senha').props.value).toBe('');
   expect(field(tree, 'Usuário').props.value).toBe(USER.username);
   expect(focus.mock.contexts.at(-1)).toBe(field(tree, 'Senha').instance);
@@ -178,13 +178,13 @@ test('Mobile: a refused login says so above the form and empties the password', 
 // Opens the login after the session expired, and checks the notice heads the form until a login is sent, which a
 // refused one then replaces with its own message.
 test('Mobile: the login says the session expired until a login is sent', async () => {
-  const tree = await mount('fiat90', 'night', <LoginScreen auth={AUTH} notice={LOGIN_MESSAGES.expired} onLoggedIn={() => {}} onRegister={() => {}} onConnect={() => {}} />);
+  const tree = await mount('fiat90', 'night', <LoginScreen auth={AUTH} notice={LOGIN_MESSAGES['pt-BR'].expired} onLoggedIn={() => {}} onRegister={() => {}} onConnect={() => {}} />);
   const form = byId(tree, 'auth.login-screen.form');
   const notice = byId(tree, 'auth.login-screen.form.notice');
   const parts = form.findAll((n) => typeof n.type === 'string' && typeof n.props.testID === 'string').map((n) => n.props.testID);
   expect(parts.filter((id) => id.startsWith('auth.login-screen.form.'))[0]).toBe('auth.login-screen.form.notice');
   expect(notice.props.accessibilityLiveRegion).toBe('polite');
-  expect(notice.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES.expired)).not.toHaveLength(0);
+  expect(notice.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES['pt-BR'].expired)).not.toHaveLength(0);
   await type(tree, 'Usuário', USER.username);
   await type(tree, 'Senha', 'errada');
   await press(tree, 'Entrar');
@@ -222,7 +222,7 @@ test('Mobile: the login is one column, the brand on top and Criar conta at the b
   expect(hidden.some((view) => view.findAll((n) => n === mark).length > 0)).toBe(true);
   expect(StyleSheet.flatten(byId(tree, 'auth.login-screen.heading.title.name').props.style).fontSize).toBe(LOGIN_BRAND.name);
   expect(StyleSheet.flatten(byId(tree, 'auth.login-screen.heading.title.tagline').props.style).fontSize).toBe(LOGIN_BRAND.tagline);
-  expect(shows(tree, LOGIN_INTRO)).toBe(true);
+  expect(shows(tree, LOGIN_INTRO['pt-BR'])).toBe(true);
 
   const actions = byId(tree, 'auth.login-screen.form.actions');
   const rings = actions.findAll((n) => n.props.testID === 'common.button.ring' && typeof n.type === 'string');
@@ -284,14 +284,14 @@ test('Mobile: a phone waiting for authorization shows its code and logs in once 
     await type(tree, 'Usuário', USER.username);
     await type(tree, 'Senha', USER.password);
     await press(tree, 'Entrar');
-    expect(shows(tree, DEVICE_MESSAGES.pending)).toBe(true);
+    expect(shows(tree, DEVICE_MESSAGES['pt-BR'].pending)).toBe(true);
     expect(byId(tree, 'auth.device-pending.code').props.children).toBe('K7Q2ZD');
     await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
     expect(onLoggedIn).not.toHaveBeenCalled();
     await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
     expect(onLoggedIn).toHaveBeenCalledWith(sessionUser);
-    expect(login).toHaveBeenLastCalledWith({ username: USER.username, password: USER.password });
-    expect(shows(tree, DEVICE_MESSAGES.pending)).toBe(false);
+    expect(login).toHaveBeenLastCalledWith({ username: USER.username, password: USER.password }, 'pt-BR');
+    expect(shows(tree, DEVICE_MESSAGES['pt-BR'].pending)).toBe(false);
 
     const refused: AuthService = { ...AUTH, login: async () => ({ pending: 'K7Q2ZD' }), deviceStatus: async () => 'unknown' };
     const again = await mount('gt4', 'day', <LoginScreen auth={refused} onLoggedIn={() => {}} onRegister={() => {}} onConnect={() => {}} />);
@@ -299,7 +299,7 @@ test('Mobile: a phone waiting for authorization shows its code and logs in once 
     await type(again, 'Senha', USER.password);
     await press(again, 'Entrar');
     await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
-    expect(shows(again, DEVICE_MESSAGES.refused)).toBe(true);
+    expect(shows(again, DEVICE_MESSAGES['pt-BR'].refused)).toBe(true);
   } finally {
     jest.useRealTimers();
   }
@@ -314,7 +314,7 @@ test('Mobile: a login that can\'t be checked says the API is out of reach', asyn
   await type(tree, 'Senha', USER.password);
   await press(tree, 'Entrar');
   const alert = byId(tree, 'auth.login-screen.form.alert');
-  expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES.unreachable)).not.toHaveLength(0);
+  expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === LOGIN_MESSAGES['pt-BR'].unreachable)).not.toHaveLength(0);
   expect(field(tree, 'Senha').props.value).toBe(USER.password);
 });
 
@@ -322,7 +322,7 @@ test('Mobile: a login that can\'t be checked says the API is out of reach', asyn
 // password typed and "Entrar" free to press, and hands nothing over.
 test('Mobile: too many attempts say how many minutes to wait', async () => {
   const onLoggedIn = jest.fn();
-  const limited: AuthService = { ...AUTH, login: jest.fn(async () => ({ refused: tooManyAttempts('840') })) };
+  const limited: AuthService = { ...AUTH, login: jest.fn(async () => ({ refused: tooManyAttempts('840', 'pt-BR') })) };
   const tree = await mount('gt4', 'day', <LoginScreen auth={limited} onLoggedIn={onLoggedIn} onRegister={() => {}} onConnect={() => {}} />);
   await type(tree, 'Usuário', USER.username);
   await type(tree, 'Senha', USER.password);
@@ -354,7 +354,7 @@ test('Mobile: the forgotten-password notice says whom to ask and closes three wa
 
   await press(tree, 'Esqueceu a senha?');
   expect(notice().props.visible).toBe(true);
-  expect(shows(tree, LOGIN_MESSAGES.forgotPassword)).toBe(true);
+  expect(shows(tree, LOGIN_MESSAGES['pt-BR'].forgotPassword)).toBe(true);
   await press(tree, 'Entendi');
   expect(notice().props.visible).toBe(false);
 

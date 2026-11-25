@@ -70,7 +70,7 @@ test('Web: a waiting device is asked about on the server\'s computer and authori
   window.apcDesktop = { notify, onOpenNotifications: () => () => {}, onUpdateReady: () => () => {}, restartToUpdate: () => {} }
   const api = serveDevices([DEVICE])
   const screen = await render(<DeviceApprovals />)
-  const dialog = screen.getByRole('dialog', { name: DEVICE_MESSAGES.approveTitle })
+  const dialog = screen.getByRole('dialog', { name: DEVICE_MESSAGES['pt-BR'].approveTitle })
   await expect.element(dialog).toBeVisible()
   await expect.element(dialog.getByText('Ana Souza (ana.souza) quer entrar por um dispositivo novo.', { exact: false })).toBeVisible()
   await expect.element(dialog.getByText('K7Q2ZD', { exact: true })).toBeVisible()

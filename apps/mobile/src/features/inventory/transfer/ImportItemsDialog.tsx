@@ -1,4 +1,5 @@
 import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
+import { useLocale, useMessages } from '../../../app/locale';
 import { useState } from 'react';
 import { View } from 'react-native';
 import {
@@ -12,6 +13,7 @@ import {
   type CsvItems,
 } from '@apc/domain/item-csv';
 import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/domain/lists';
+import { perLocale } from '@apc/domain/locale';
 import { apiUrl } from '../../../app/api';
 import { Button } from '../../../components/Button';
 import { Dialog } from '../../../components/Dialog';
@@ -29,11 +31,14 @@ import { useStyles } from './ImportItemsDialog.styles';
 // title.
 
 /** How each list's new names are worded in the preview, e.g. "Categorias: Ignição, Turbo". */
-const NEW_NAMES = [
-  ['categories', ITEM_LIST_TEXTS.categories.title],
-  ['partBrands', ITEM_LIST_TEXTS.partBrands.title],
-  ['vehicleBrands', ITEM_LIST_TEXTS.vehicleBrands.title],
-] as const;
+const NEW_NAMES = perLocale(
+  (locale) =>
+    [
+      ['categories', ITEM_LIST_TEXTS[locale].categories.title],
+      ['partBrands', ITEM_LIST_TEXTS[locale].partBrands.title],
+      ['vehicleBrands', ITEM_LIST_TEXTS[locale].vehicleBrands.title],
+    ] as const,
+);
 
 type ImportItemsDialogProps = {
   open: boolean;
@@ -47,8 +52,10 @@ type ImportItemsDialogProps = {
 };
 
 export function ImportItemsDialog({ open, lists, onClose, onImported, offline = false }: ImportItemsDialogProps) {
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const toast = useToast();
+  const needsServer = useMessages(INVENTORY_NEEDS_SERVER);
   // The file read, with its name.
   const [read, setRead] = useState<{ name: string; result: CsvItems }>();
   const [importing, setImporting] = useState(false);
@@ -57,9 +64,9 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
   const valid = importedItems(rows).length;
   const created = newListNames(rows, lists);
   const creates = [
-    ...NEW_NAMES.filter(([kind]) => created[kind].length > 0).map(([kind, title]) => `${title}: ${created[kind].join(', ')}`),
+    ...NEW_NAMES[locale].filter(([kind]) => created[kind].length > 0).map(([kind, title]) => `${title}: ${created[kind].join(', ')}`),
     ...(created.vehicleModels.length > 0
-      ? [`${ITEM_LIST_TEXTS.vehicleModels.title}: ${created.vehicleModels.map((model) => `${model.name} (${model.vehicleBrand})`).join(', ')}`]
+      ? [`${ITEM_LIST_TEXTS[locale].vehicleModels.title}: ${created.vehicleModels.map((model) => `${model.name} (${model.vehicleBrand})`).join(', ')}`]
       : []),
   ];
 
@@ -70,7 +77,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
       return null;
     });
     if (file) {
-      setRead({ name: file.name, result: readItemsCsv(file.text, lists) });
+      setRead({ name: file.name, result: readItemsCsv(file.text, lists, locale) });
     }
   };
 
@@ -80,10 +87,10 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
     const result = await importItems(apiUrl(), rows);
     setImporting(false);
     if (!result) {
-      toast.error(offline ? INVENTORY_NEEDS_SERVER.import : 'Não foi possível importar os itens. Tente de novo.');
+      toast.error(offline ? needsServer.import : 'Não foi possível importar os itens. Tente de novo.');
       return;
     }
-    toast.success(importedSummary(result));
+    toast.success(importedSummary(result, locale));
     onImported();
   };
 
@@ -125,7 +132,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
       )}
       {read && 'rows' in read.result && (
         <View style={styles.preview} testID={ids.preview} accessibilityLabel="Prévia da importação">
-          <Text size="sm">{`${read.name} · ${rowsSummary(rows)}`}</Text>
+          <Text size="sm">{`${read.name} · ${rowsSummary(rows, locale)}`}</Text>
           {creates.length > 0 && (
             <View style={styles.creates} testID={ids.creates}>
               <Heading level={4}>Serão criados</Heading>
@@ -144,7 +151,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
                 <Text size="sm">{item.name || '—'}</Text>
               </View>
               <Text size="sm" tone="muted">
-                {importedDetails(item)}
+                {importedDetails(item, locale)}
               </Text>
               {errors.map((error) => (
                 <Text key={error} size="sm" tone="danger">

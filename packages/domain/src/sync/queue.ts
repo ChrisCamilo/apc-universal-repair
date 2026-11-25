@@ -11,6 +11,7 @@ import {
   type ItemVehicleCreate,
 } from "../inventory/items.ts";
 import { listName, type ItemListKind } from "../inventory/lists.ts";
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 import type { SyncCopy, SyncRow, SyncRows } from "./copy.ts";
 import { editOf } from "./conflicts.ts";
 import type { SyncConflict, SyncOperation, SyncOperationResult } from "./sync.ts";
@@ -496,64 +497,109 @@ export function itemOperations(
  * list's names (a merge moves items on the server, which the phone can't foresee), the CSV import and export, and the
  * tutorial.
  */
-export const INVENTORY_NEEDS_SERVER = {
-  lists: "Sem conexão com o servidor. Renomear, juntar e excluir nomes só pode ser feito com ele.",
-  import: "Sem conexão com o servidor. A importação só pode ser feita com ele.",
-  export: "Sem conexão com o servidor. A exportação só pode ser feita com ele.",
-  tutorial: "Sem conexão com o servidor. O tutorial do estoque só pode ser feito com ele.",
-} as const;
+export const INVENTORY_NEEDS_SERVER = catalog(
+  {
+    lists: "Sem conexão com o servidor. Renomear, juntar e excluir nomes só pode ser feito com ele.",
+    import: "Sem conexão com o servidor. A importação só pode ser feita com ele.",
+    export: "Sem conexão com o servidor. A exportação só pode ser feita com ele.",
+    tutorial: "Sem conexão com o servidor. O tutorial do estoque só pode ser feito com ele.",
+  },
+  {
+    lists: "No connection to the server. Renaming, joining and deleting names can only be done with it.",
+    import: "No connection to the server. Importing can only be done with it.",
+    export: "No connection to the server. Exporting can only be done with it.",
+    tutorial: "No connection to the server. The Inventory tutorial can only be done with it.",
+  },
+);
+/**
+ * What the phone says of its changes: how many wait, how many conflict, and why the server refused one or what it
+ * conflicts with. Each operation is named by what it does, in each language's own sentence.
+ */
+export const QUEUE_MESSAGES = catalog(
+  {
+    waiting: (count: number) => `${count} ${count === 1 ? "alteração" : "alterações"} esperando o servidor.`,
+    conflicts: (count: number) => `${count} ${count === 1 ? "conflito" : "conflitos"} com o computador para resolver.`,
+    operations: {
+      createItem: "o cadastro de",
+      updateItem: "a alteração de",
+      deleteItem: "a exclusão de",
+      moveStock: "a mudança de estoque de",
+      savePhotos: "as fotos de",
+      addName: "o nome",
+    } satisfies Record<QueuedOperation["type"], string>,
+    gone: "o item não existe mais no servidor",
+    codeTaken: (code: string, itemName: string) => `o código ${code} já é usado por “${itemName}”`,
+    notAccepted: "ele não aceitou a mudança",
+    refused: (operation: string, label: string, reason: string) => `O servidor recusou ${operation} “${label}”: ${reason}.`,
+    conflict: (operation: string, label: string) =>
+      `${operation.charAt(0).toUpperCase()}${operation.slice(1)} “${label}” conflita com o que mudou no computador. Escolha o que manter no Estoque.`,
+  },
+  {
+    waiting: (count) => `${count} ${count === 1 ? "change" : "changes"} waiting for the server.`,
+    conflicts: (count) => `${count} ${count === 1 ? "conflict" : "conflicts"} with the computer to settle.`,
+    operations: {
+      createItem: "the creation of",
+      updateItem: "the change to",
+      deleteItem: "the deletion of",
+      moveStock: "the stock move of",
+      savePhotos: "the photos of",
+      addName: "the name",
+    },
+    gone: "the item no longer exists on the server",
+    codeTaken: (code, itemName) => `code ${code} is already used by “${itemName}”`,
+    notAccepted: "it didn't accept the change",
+    refused: (operation, label, reason) => `The server refused ${operation} “${label}”: ${reason}.`,
+    conflict: (operation, label) =>
+      `${operation.charAt(0).toUpperCase()}${operation.slice(1)} “${label}” conflicts with what changed on the computer. Choose what to keep in the Inventory.`,
+  },
+);
 
 /**
  * Says how many changes made on the phone wait to be sent.
  * @param count How many.
+ * @param locale The language.
  * @returns E.g. "1 alteração esperando o servidor." or "3 alterações esperando o servidor."
  */
-export function waitingNotice(count: number): string {
-  return `${count} ${count === 1 ? "alteração" : "alterações"} esperando o servidor.`;
+export function waitingNotice(count: number, locale: Locale): string {
+  return QUEUE_MESSAGES[locale].waiting(count);
 }
 
 /**
  * Says how many conflicts with the computer wait to be settled.
  * @param count How many.
+ * @param locale The language.
  * @returns E.g. "1 conflito com o computador para resolver."
  */
-export function conflictsNotice(count: number): string {
-  return `${count} ${count === 1 ? "conflito" : "conflitos"} com o computador para resolver.`;
+export function conflictsNotice(count: number, locale: Locale): string {
+  return QUEUE_MESSAGES[locale].conflicts(count);
 }
-
-/** What each kind of operation is, to say which the server refused. */
-const REFUSED_WHAT: Record<QueuedOperation["type"], string> = {
-  createItem: "o cadastro de",
-  updateItem: "a alteração de",
-  deleteItem: "a exclusão de",
-  moveStock: "a mudança de estoque de",
-  savePhotos: "as fotos de",
-  addName: "o nome",
-};
 
 /**
  * Says the server refused an operation the phone made, and why.
  * @param operation The operation.
  * @param result What the server answered.
+ * @param locale The language.
  * @returns E.g. "O servidor recusou o cadastro de “Filtro de óleo”: o código W 712 já é usado por “Filtro de ar”."
  */
-export function refusedNotice(operation: QueuedOperation, result: Pick<SyncOperationResult, "statusCode" | "details">): string {
+export function refusedNotice(operation: QueuedOperation, result: Pick<SyncOperationResult, "statusCode" | "details">, locale: Locale): string {
+  const messages = QUEUE_MESSAGES[locale];
   const [detail] = result.details ?? [];
   const reason =
     result.statusCode === 404
-      ? "o item não existe mais no servidor"
+      ? messages.gone
       : result.statusCode === 409 && typeof detail?.itemName === "string"
-        ? `o código ${String(detail.code)} já é usado por “${detail.itemName}”`
-        : "ele não aceitou a mudança";
-  return `O servidor recusou ${REFUSED_WHAT[operation.type]} “${operation.label}”: ${reason}.`;
+        ? messages.codeTaken(String(detail.code), detail.itemName)
+        : messages.notAccepted;
+  return messages.refused(messages.operations[operation.type], operation.label, reason);
 }
 
 /**
  * Says an operation the phone made conflicts with what changed on the computer, and where it is settled.
  * @param operation The operation.
+ * @param locale The language.
  * @returns E.g. "A alteração de “Filtro de óleo” conflita com o que mudou no computador. Escolha o que manter no Estoque."
  */
-export function conflictNotice(operation: QueuedOperation): string {
-  const what = REFUSED_WHAT[operation.type];
-  return `${what.charAt(0).toUpperCase()}${what.slice(1)} “${operation.label}” conflita com o que mudou no computador. Escolha o que manter no Estoque.`;
+export function conflictNotice(operation: QueuedOperation, locale: Locale): string {
+  const messages = QUEUE_MESSAGES[locale];
+  return messages.conflict(messages.operations[operation.type], operation.label);
 }

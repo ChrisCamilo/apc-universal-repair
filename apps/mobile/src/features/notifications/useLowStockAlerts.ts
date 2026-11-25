@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Item } from '@apc/domain/items';
 import { lowStockAlerts, lowStockKey, lowStockMessage, readLowStockWarned } from '@apc/domain/notifications';
+import { useLocale } from '../../app/locale';
 import { save, themeStorage } from '../../app/theme';
 import { useNotify, useToast } from '../../components/Toast';
 
@@ -15,6 +16,7 @@ import { useNotify, useToast } from '../../components/Toast';
 export function useLowStockAlerts(items: readonly Item[] | null, userId: string): void {
   const toast = useToast();
   const notify = useNotify();
+  const { locale } = useLocale();
   // Whether the stock already loaded once since the Inventory opened.
   const loaded = useRef(false);
 
@@ -35,7 +37,7 @@ export function useLowStockAlerts(items: readonly Item[] | null, userId: string)
         const { alerts, warned } = lowStockAlerts(items, readLowStockWarned(saved));
         save(key, JSON.stringify(warned));
         if (alerts.length > 0) {
-          const message = lowStockMessage(alerts);
+          const message = lowStockMessage(alerts, locale);
           if (loaded.current) {
             toast.warning(message);
           } else {
@@ -47,5 +49,5 @@ export function useLowStockAlerts(items: readonly Item[] | null, userId: string)
     return () => {
       live = false;
     };
-  }, [items, userId, toast, notify]);
+  }, [items, userId, toast, notify, locale]);
 }

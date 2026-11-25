@@ -50,7 +50,7 @@ test("Web: a new user signs up, lands on the Dashboard and logs in again", { tag
 
   await fillIn(page, { ...NEW_USER, username: TEST_USERS[0].username });
   await form.submit.click();
-  await expect(form.error).toHaveText(REGISTER_MESSAGES.taken);
+  await expect(form.error).toHaveText(REGISTER_MESSAGES["pt-BR"].taken);
 
   await form.username.fill(NEW_USER.username);
   await form.confirm.press("Enter");
@@ -77,7 +77,7 @@ test("Web: the sign-up checks its fields and leads back to the login", { tag: [T
   const form = registerForm(page);
   await page.goto("/register");
   await form.submit.click();
-  for (const message of [REGISTER_MESSAGES.displayName, REGISTER_MESSAGES.username, REGISTER_MESSAGES.email, REGISTER_MESSAGES.password, REGISTER_MESSAGES.confirm]) {
+  for (const message of [REGISTER_MESSAGES["pt-BR"].displayName, REGISTER_MESSAGES["pt-BR"].username, REGISTER_MESSAGES["pt-BR"].email, REGISTER_MESSAGES["pt-BR"].password, REGISTER_MESSAGES["pt-BR"].confirm]) {
     await expect(page.getByText(message)).toBeVisible();
   }
   await expect(form.displayName).toBeFocused();

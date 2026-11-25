@@ -23,6 +23,7 @@ import { useToast } from '../../../components/Toast'
 import { Heading, Text } from '../../../components/Typography'
 import { manageListsDialog } from './ManageListsDialog.styles.ts'
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists.ts'
+import { useLocale } from '../../../app/useLocale.ts'
 
 // The "Gerenciar listas" dialog of the Inventory tab, for fixing typos and cleaning up the lists the item form picks
 // from: a section for categories, part brands, vehicle brands and vehicle models, the models grouped by their brand.
@@ -66,6 +67,7 @@ export function ManageListsDialog({
   onShowItems,
   onClose,
 }: ManageListsDialogProps) {
+  const { locale } = useLocale()
   const toast = useToast()
   const { classes, ids } = manageListsDialog()
   // The entry being renamed, with the name typed and its message.
@@ -84,7 +86,7 @@ export function ManageListsDialog({
       return
     }
     const { kind, entry, name } = editing
-    const texts = ITEM_LIST_TEXTS[kind]
+    const texts = ITEM_LIST_TEXTS[locale][kind]
     const siblings: ListEntry[] =
       'vehicleBrandId' in entry ? lists.vehicleModels.filter((model) => model.vehicleBrandId === entry.vehicleBrandId) : lists[kind]
     if (!name.trim()) {
@@ -118,7 +120,7 @@ export function ManageListsDialog({
       return
     }
     const { kind, entry, into } = merging
-    const texts = ITEM_LIST_TEXTS[kind]
+    const texts = ITEM_LIST_TEXTS[locale][kind]
     setJoining(true)
     const moved = await onMerge(kind, entry.id, into.id)
     setJoining(false)
@@ -137,7 +139,7 @@ export function ManageListsDialog({
     if (!removing) {
       return
     }
-    const texts = ITEM_LIST_TEXTS[removing.kind]
+    const texts = ITEM_LIST_TEXTS[locale][removing.kind]
     setDeleting(true)
     const removed = await onRemove(removing.kind, removing.entry.id)
     setDeleting(false)
@@ -180,7 +182,7 @@ export function ManageListsDialog({
 
   const removingUses = removing ? itemsUsing(items, removing.kind, removing.entry, lists) : 0
   const blocked = removingUses > 0
-  const leavesCatalog = removing ? catalogDeleteNote(removing.kind, removing.entry) : null
+  const leavesCatalog = removing ? catalogDeleteNote(removing.kind, removing.entry, locale) : null
 
   return (
     <Dialog
@@ -195,8 +197,8 @@ export function ManageListsDialog({
       }
     >
       {KINDS.map((kind) => (
-        <section key={kind} aria-label={ITEM_LIST_TEXTS[kind].title} className={classes.section()} data-testid={ids.section}>
-          <Heading level={4}>{ITEM_LIST_TEXTS[kind].title}</Heading>
+        <section key={kind} aria-label={ITEM_LIST_TEXTS[locale][kind].title} className={classes.section()} data-testid={ids.section}>
+          <Heading level={4}>{ITEM_LIST_TEXTS[locale][kind].title}</Heading>
           {lists[kind].length === 0 ? (
             <Text size="sm" tone="muted">
               Nada cadastrado.
@@ -262,8 +264,8 @@ export function ManageListsDialog({
         {removing && (
           <Text size="sm" tone="muted">
             {removingUses > 0
-              ? ITEM_LIST_TEXTS[removing.kind].inUse(removing.entry.name, removingUses)
-              : [ITEM_LIST_TEXTS[removing.kind].confirmDelete(removing.entry.name), leavesCatalog].filter(Boolean).join(' ')}
+              ? ITEM_LIST_TEXTS[locale][removing.kind].inUse(removing.entry.name, removingUses)
+              : [ITEM_LIST_TEXTS[locale][removing.kind].confirmDelete(removing.entry.name), leavesCatalog].filter(Boolean).join(' ')}
           </Text>
         )}
       </Dialog>
@@ -286,8 +288,8 @@ export function ManageListsDialog({
         {merging && (
           <Text size="sm" tone="muted">
             {[
-              ITEM_LIST_TEXTS[merging.kind].confirmMerge(merging.entry.name, merging.into.name, itemsUsing(items, merging.kind, merging.entry, lists)),
-              catalogMergeNote(merging.kind, merging.entry, merging.into),
+              ITEM_LIST_TEXTS[locale][merging.kind].confirmMerge(merging.entry.name, merging.into.name, itemsUsing(items, merging.kind, merging.entry, lists)),
+              catalogMergeNote(merging.kind, merging.entry, merging.into, locale),
             ]
               .filter(Boolean)
               .join(' ')}

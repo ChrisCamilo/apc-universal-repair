@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
+import { catalog, formatNumber, type Locale } from "../platform/locale/locale.ts";
 import { findEntry, listName, type ItemLists, type ListEntry } from "./lists.ts";
 import { addCodes, ITEM_FORM_MESSAGES, parsePrice, priceInput } from "./itemForm.ts";
 import {
@@ -96,6 +97,64 @@ export const IMPORT_CONFLICTS = {
 };
 /** Most rows one import takes. */
 export const ITEM_IMPORT_LIMIT = 1000;
+/** What the import says of a file and its rows, and what the export says of the items it takes. The file keeps its columns. */
+export const CSV_MESSAGES = catalog(
+  {
+    quantity: "Quantidade",
+    minimum: "Quantidade mínima",
+    integer: (label: string) => `${label} deve ser um número inteiro, como 4.`,
+    atMost: (label: string, most: string) => `${label} deve ser no máximo ${most}.`,
+    descriptionTooLong: `Descrição deve ter no máximo ${ITEM_DESCRIPTION_MAX} caracteres.`,
+    position: "Posição deve ser D, T ou Ambos, ou ficar vazia.",
+    side: "Lado deve ser LD, LE ou Ambos, ou ficar vazio.",
+    generation: (typed: string, message: string) => `Geração “${typed}”: ${message.toLowerCase()}`,
+    version: (version: string, message: string) => `Versão “${version}”: ${message.toLowerCase()}`,
+    vehicleRepeated: (vehicle: string) => `Veículo repetido: ${vehicle}.`,
+    describedOtherwise: (group: string, line: number) => `O item ${group} está descrito de outro jeito na linha ${line}.`,
+    brandRepeated: (group: string, line: number) => `Marca repetida no item ${group}: já está na linha ${line}.`,
+    otherRowError: (group: string) => `Outra linha do item ${group} tem erro.`,
+    codeRepeated: (line: number) => `Código repetido: já está na linha ${line}.`,
+    empty: "O arquivo está vazio.",
+    missingColumns: (columns: string) => `Faltam colunas no arquivo: ${columns}. Use o modelo.`,
+    headerOnly: "O arquivo não tem itens, só o cabeçalho.",
+    tooMany: (count: number) => `O arquivo tem ${count} itens; importe até ${ITEM_IMPORT_LIMIT} de cada vez.`,
+    rows: (valid: number, invalid: number) =>
+      `${valid} ${valid === 1 ? "item pronto" : "itens prontos"} para importar · ${invalid} ${invalid === 1 ? "linha" : "linhas"} com erro`,
+    imported: (created: number, updated: number) =>
+      `Importação concluída: ${created} ${created === 1 ? "item criado" : "itens criados"}, ${updated} ${updated === 1 ? "atualizado" : "atualizados"}.`,
+    exported: (count: number) => (count === 1 ? "1 item exportado." : `${count} itens exportados.`),
+    nothingToExport: "Nenhum item na lista para exportar.",
+    narrowed: (count: number) => `${count === 1 ? "1 item" : `${count} itens`}, com a busca e os filtros atuais.`,
+    everything: (count: number) => (count === 1 ? "O único item do estoque." : `Todos os ${count} itens do estoque.`),
+  },
+  {
+    quantity: "Quantity",
+    minimum: "Minimum quantity",
+    integer: (label) => `${label} must be a whole number, such as 4.`,
+    atMost: (label, most) => `${label} must be ${most} at most.`,
+    descriptionTooLong: `Description must have ${ITEM_DESCRIPTION_MAX} characters at most.`,
+    position: "Position must be D, T or Ambos, or stay empty.",
+    side: "Side must be LD, LE or Ambos, or stay empty.",
+    generation: (typed, message) => `Generation “${typed}”: ${message.charAt(0).toLowerCase()}${message.slice(1)}`,
+    version: (version, message) => `Version “${version}”: ${message.charAt(0).toLowerCase()}${message.slice(1)}`,
+    vehicleRepeated: (vehicle) => `Repeated vehicle: ${vehicle}.`,
+    describedOtherwise: (group, line) => `Item ${group} is described otherwise on line ${line}.`,
+    brandRepeated: (group, line) => `Repeated brand in item ${group}: it is already on line ${line}.`,
+    otherRowError: (group) => `Another row of item ${group} has an error.`,
+    codeRepeated: (line) => `Repeated code: it is already on line ${line}.`,
+    empty: "The file is empty.",
+    missingColumns: (columns) => `The file is missing columns: ${columns}. Use the template.`,
+    headerOnly: "The file has no items, only the header.",
+    tooMany: (count) => `The file has ${count} items; import up to ${ITEM_IMPORT_LIMIT} at a time.`,
+    rows: (valid, invalid) =>
+      `${valid} ${valid === 1 ? "item" : "items"} ready to import · ${invalid} ${invalid === 1 ? "row" : "rows"} with errors`,
+    imported: (created, updated) => `Import done: ${created} ${created === 1 ? "item" : "items"} created, ${updated} updated.`,
+    exported: (count) => (count === 1 ? "1 item exported." : `${count} items exported.`),
+    nothingToExport: "No item on the list to export.",
+    narrowed: (count) => `${count === 1 ? "1 item" : `${count} items`}, with the current search and filters.`,
+    everything: (count) => (count === 1 ? "The only item in stock." : `All ${count} items in stock.`),
+  },
+);
 /** What POST /items/import answers: how many items were created, and how many updated for a code in use. */
 export const itemImportResultSchema = z.object({ created: z.int().min(0), updated: z.int().min(0) });
 /** What POST /items/import takes: the valid rows' items, each with its brands. */
@@ -127,8 +186,10 @@ export type NewListNames = {
  * first row (name, category, vehicle, position, side, minimum, original codes, material or description), a part brand a row before already has, and, once
  * any row of an item has an error, every other row of it, since the item is left out whole.
  * @param rows The rows read, changed in place.
+ * @param locale The language of the errors.
  */
-function checkGroups(rows: readonly CsvItemRow[]): void {
+function checkGroups(rows: readonly CsvItemRow[], locale: Locale): void {
+  const messages = CSV_MESSAGES[locale];
   /** What a row says the item is, compared ignoring case, accents and extra spaces. */
   const described = ({ item }: CsvItemRow) =>
     [
@@ -152,17 +213,17 @@ function checkGroups(rows: readonly CsvItemRow[]): void {
     const [first] = members;
     members.forEach((row, index) => {
       if (index > 0 && described(row) !== described(first)) {
-        row.errors.push(`O item ${group} está descrito de outro jeito na linha ${first.line}.`);
+        row.errors.push(messages.describedOtherwise(group, first.line));
       }
       const brand = optionKey(row.item.brands[0].partBrand);
       const before = members.slice(0, index).find((other) => brand && optionKey(other.item.brands[0].partBrand) === brand);
       if (before) {
-        row.errors.push(`Marca repetida no item ${group}: já está na linha ${before.line}.`);
+        row.errors.push(messages.brandRepeated(group, before.line));
       }
     });
     if (members.some((row) => row.errors.length > 0)) {
       for (const row of members.filter((each) => each.errors.length === 0)) {
-        row.errors.push(`Outra linha do item ${group} tem erro.`);
+        row.errors.push(messages.otherRowError(group));
       }
     }
   }
@@ -193,7 +254,9 @@ export function csvExportName(day: Date): string {
  * @param lists The lists the API keeps.
  * @returns The item as it would be saved, and why it can't be, if it can't.
  */
-function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item: ItemCreate; errors: string[] } {
+function csvItem(value: (column: CsvColumn) => string, lists: ItemLists, locale: Locale): { item: ItemCreate; errors: string[] } {
+  const messages = CSV_MESSAGES[locale];
+  const formMessages = ITEM_FORM_MESSAGES[locale];
   const errors: string[] = [];
   /** Checks a required value, saying what is missing. */
   const required = (column: CsvColumn, message: string) => {
@@ -205,9 +268,9 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
   /** Reads a quantity, a whole number up to MAX_QUANTITY; zero when empty. */
   const count = (column: CsvColumn, label: string) => {
     if (value(column) && !/^\d+$/.test(value(column))) {
-      errors.push(`${label} deve ser um número inteiro, como 4.`);
+      errors.push(messages.integer(label));
     } else if (Number(value(column)) > MAX_QUANTITY) {
-      errors.push(`${label} deve ser no máximo ${MAX_QUANTITY.toLocaleString("pt-BR")}.`);
+      errors.push(messages.atMost(label, formatNumber(MAX_QUANTITY, locale)));
     }
     return Number(value(column)) || 0;
   };
@@ -220,32 +283,32 @@ function csvItem(value: (column: CsvColumn) => string, lists: ItemLists): { item
     return picked ?? options[0];
   };
 
-  const code = required("code", ITEM_FORM_MESSAGES.code).toUpperCase();
-  const name = required("name", ITEM_FORM_MESSAGES.name);
-  const category = required("category", ITEM_FORM_MESSAGES.category);
-  const partBrand = required("part_brand", ITEM_FORM_MESSAGES.partBrand);
-  const vehicles = csvVehicles(value("vehicles"), lists, errors);
-  const priceText = required("unit_price", ITEM_FORM_MESSAGES.price);
+  const code = required("code", formMessages.code).toUpperCase();
+  const name = required("name", formMessages.name);
+  const category = required("category", formMessages.category);
+  const partBrand = required("part_brand", formMessages.partBrand);
+  const vehicles = csvVehicles(value("vehicles"), lists, errors, locale);
+  const priceText = required("unit_price", formMessages.price);
   const price = priceText ? parsePrice(priceText) : null;
   if (priceText && (price === null || price <= 0)) {
-    errors.push(ITEM_FORM_MESSAGES.priceInvalid);
+    errors.push(formMessages.priceInvalid);
   } else if (price !== null && price > MAX_PRICE_CENTS) {
-    errors.push(ITEM_FORM_MESSAGES.priceTooHigh);
+    errors.push(formMessages.priceTooHigh);
   }
   /** Takes a name's spelling in its list, or writes a new one by the rule. */
   const listed = (entries: readonly ListEntry[], text: string) => (text ? (findEntry(entries, text)?.name ?? listName(text)) : "");
-  const quantity = count("quantity", "Quantidade");
-  const minQuantity = count("minimum", "Quantidade mínima");
+  const quantity = count("quantity", messages.quantity);
+  const minQuantity = count("minimum", messages.minimum);
   if (value("description").length > ITEM_DESCRIPTION_MAX) {
-    errors.push(`Descrição deve ter no máximo ${ITEM_DESCRIPTION_MAX} caracteres.`);
+    errors.push(messages.descriptionTooLong);
   }
   const item: ItemCreate = {
     name: name && capitalizeFirst(name),
     category: listed(lists.categories, category),
     vehicles,
     minQuantity,
-    position: choice("position", POSITIONS, "Posição deve ser D, T ou Ambos, ou ficar vazia."),
-    side: choice("side", SIDES, "Lado deve ser LD, LE ou Ambos, ou ficar vazio."),
+    position: choice("position", POSITIONS, messages.position),
+    side: choice("side", SIDES, messages.side),
     originalCodes: addCodes([], value("original_codes").split("|")),
     ...(value("material") && { material: capitalizeFirst(value("material")) }),
     ...(value("description") && { description: capitalizeFirst(value("description")) }),
@@ -287,7 +350,9 @@ function csvVehicle(vehicle: ItemVehicle): string {
  * @param errors The row's errors, added to.
  * @returns The vehicles as they would be saved.
  */
-function csvVehicles(text: string, lists: ItemLists, errors: string[]): ItemVehicleCreate[] {
+function csvVehicles(text: string, lists: ItemLists, errors: string[], locale: Locale): ItemVehicleCreate[] {
+  const messages = CSV_MESSAGES[locale];
+  const formMessages = ITEM_FORM_MESSAGES[locale];
   const vehicles = text
     .split("|")
     .map((part) => part.trim())
@@ -304,12 +369,12 @@ function csvVehicles(text: string, lists: ItemLists, errors: string[]): ItemVehi
       const models = brand ? lists.vehicleModels.filter((model) => model.vehicleBrandId === brand.id) : [];
       const model = modelText && (findEntry(models, modelText)?.name ?? listName(modelText));
       if (!readGeneration(generationTyped)) {
-        errors.push(`Geração “${generationTyped}”: ${ITEM_FORM_MESSAGES.generationInvalid.toLowerCase()}`);
+        errors.push(messages.generation(generationTyped, formMessages.generationInvalid));
       }
       if (version.length > VEHICLE_VERSION_MAX) {
-        errors.push(`Versão “${version}”: ${ITEM_FORM_MESSAGES.versionTooLong.toLowerCase()}`);
+        errors.push(messages.version(version, formMessages.versionTooLong));
       } else if (version && !generationTyped) {
-        errors.push(`Versão “${version}”: ${ITEM_FORM_MESSAGES.versionNeedsGeneration.toLowerCase()}`);
+        errors.push(messages.version(version, formMessages.versionNeedsGeneration));
       }
       const generation = readGeneration(generationTyped);
       return {
@@ -320,14 +385,14 @@ function csvVehicles(text: string, lists: ItemLists, errors: string[]): ItemVehi
       };
     });
   if (vehicles.length === 0) {
-    errors.push(ITEM_FORM_MESSAGES.vehicleBrand);
+    errors.push(formMessages.vehicleBrand);
   }
   const repeated = vehicles.find((vehicle, index) => vehicles.slice(0, index).some((other) => vehicleKey(other) === vehicleKey(vehicle)));
   if (repeated) {
-    errors.push(`Veículo repetido: ${csvVehicle({ ...repeated, vehicleModel: repeated.vehicleModel || null })}.`);
+    errors.push(messages.vehicleRepeated(csvVehicle({ ...repeated, vehicleModel: repeated.vehicleModel || null })));
   }
   if (vehicles.length > 1 && vehicles.some((vehicle) => optionKey(vehicle.vehicleBrand) === optionKey(UNIVERSAL_BRAND))) {
-    errors.push(ITEM_FORM_MESSAGES.universalAlone);
+    errors.push(formMessages.universalAlone);
   }
   return vehicles;
 }
@@ -349,10 +414,11 @@ export async function exportedItems(base: string, query: string): Promise<Item[]
 /**
  * Words an export's result for its toast.
  * @param count How many items the file holds.
+ * @param locale The language.
  * @returns E.g. "12 itens exportados."
  */
-export function exportedSummary(count: number): string {
-  return count === 1 ? "1 item exportado." : `${count} itens exportados.`;
+export function exportedSummary(count: number, locale: Locale): string {
+  return CSV_MESSAGES[locale].exported(count);
 }
 
 /**
@@ -371,32 +437,31 @@ export async function exportItems(base: string, query: string, options: { photos
  * Says which items an export takes, for its dialog.
  * @param count How many items the list holds, across all its pages.
  * @param narrowed Whether the search, the filters or the stock status narrow the list.
+ * @param locale The language.
  * @returns E.g. "12 itens, com a busca e os filtros atuais." or "Todos os 40 itens do estoque."
  */
-export function exportScope(count: number, narrowed: boolean): string {
+export function exportScope(count: number, narrowed: boolean, locale: Locale): string {
+  const messages = CSV_MESSAGES[locale];
   if (count === 0) {
-    return "Nenhum item na lista para exportar.";
+    return messages.nothingToExport;
   }
-  const items = count === 1 ? "1 item" : `${count} itens`;
-  if (narrowed) {
-    return `${items}, com a busca e os filtros atuais.`;
-  }
-  return count === 1 ? "O único item do estoque." : `Todos os ${items} do estoque.`;
+  return narrowed ? messages.narrowed(count) : messages.everything(count);
 }
 
 /**
  * Writes an imported item's details in one line, as the inventory card does under the name.
  * @param item The item of a row.
+ * @param locale The language.
  * @returns E.g. "Motor · Mann · Volkswagen Gol · A-2 · R$ 39,90".
  */
-export function importedDetails(item: ItemCreate): string {
+export function importedDetails(item: ItemCreate, locale: Locale): string {
   return itemDetails({
     ...item,
     vehicles: item.vehicles.map((vehicle) => ({ ...vehicle, vehicleModel: vehicle.vehicleModel || null })),
     position: item.position ?? NOT_APPLICABLE,
     side: item.side ?? NOT_APPLICABLE,
     brands: item.brands.map((brand) => ({ ...brand, location: brand.location || null, color: brand.color ?? NOT_APPLICABLE })),
-  });
+  }, locale);
 }
 
 /**
@@ -430,11 +495,11 @@ export function importedItems(rows: readonly CsvItemRow[]): ItemCreate[] {
 /**
  * Words an import's result for its toast.
  * @param result How many items were created and updated.
+ * @param locale The language.
  * @returns E.g. "Importação concluída: 3 itens criados, 1 atualizado."
  */
-export function importedSummary({ created, updated }: ItemImportResult): string {
-  const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-  return `Importação concluída: ${plural(created, "item criado", "itens criados")}, ${plural(updated, "atualizado", "atualizados")}.`;
+export function importedSummary({ created, updated }: ItemImportResult, locale: Locale): string {
+  return CSV_MESSAGES[locale].imported(created, updated);
 }
 
 /**
@@ -584,28 +649,30 @@ export function parseCsv(text: string, separator: string): { line: number; cells
  * Blank rows are skipped.
  * @param text The file's text, UTF-8.
  * @param lists The lists the API keeps, whose spelling the names take.
+ * @param locale The language of the errors.
  * @returns The rows with their items and errors, or why the file can't be read.
  */
-export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
+export function readItemsCsv(text: string, lists: ItemLists, locale: Locale): CsvItems {
+  const messages = CSV_MESSAGES[locale];
   const content = text.replace(/^﻿/, "");
   const header = content.slice(0, content.search(/\r|\n|$/));
   const separator = header.split(";").length > header.split(",").length ? ";" : ",";
   const [names, ...records] = parseCsv(content, separator).filter((record) => record.cells.some((cell) => cell.trim()));
   if (!names) {
-    return { error: "O arquivo está vazio." };
+    return { error: messages.empty };
   }
   const columns = names.cells.map((name) => name.trim().toLowerCase());
   // A file of before names the one vehicle in two columns, read as the vehicles column.
   const legacy = !columns.includes("vehicles") && columns.includes("vehicle_brand");
   const missing = REQUIRED_COLUMNS.filter((column) => !columns.includes(column) && !(column === "vehicles" && legacy));
   if (missing.length > 0) {
-    return { error: `Faltam colunas no arquivo: ${missing.join(", ")}. Use o modelo.` };
+    return { error: messages.missingColumns(missing.join(", ")) };
   }
   if (records.length === 0) {
-    return { error: "O arquivo não tem itens, só o cabeçalho." };
+    return { error: messages.headerOnly };
   }
   if (records.length > ITEM_IMPORT_LIMIT) {
-    return { error: `O arquivo tem ${records.length} itens; importe até ${ITEM_IMPORT_LIMIT} de cada vez.` };
+    return { error: messages.tooMany(records.length) };
   }
   // Where each code was first seen: its line, and the item group of an original code, which its other rows repeat.
   const firstSeen = new Map<string, { line: number; originalOf?: string }>();
@@ -615,14 +682,14 @@ export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
     /** Reads a column, the vehicles of a file of before from its brand and model columns. */
     const value = (column: CsvColumn) =>
       column === "vehicles" && legacy ? [cell("vehicle_brand"), cell("vehicle_model")].filter(Boolean).join(CSV_MODEL_SEPARATOR) : cell(column);
-    const { item, errors } = csvItem(value, lists);
+    const { item, errors } = csvItem(value, lists, locale);
     const group = value("item");
     /** Notes a code, or says it repeats, as the search compares codes (see codeKey): "CB4500" is "CB-4500". */
     const see = (code: string, originalOf?: string) => {
       const key = codeKey(code);
       const seen = firstSeen.get(key);
       if (key && seen && !(originalOf && seen.originalOf === originalOf)) {
-        errors.push(`Código repetido: já está na linha ${seen.line}.`);
+        errors.push(messages.codeRepeated(seen.line));
       } else if (key && !seen) {
         firstSeen.set(key, { line, originalOf });
       }
@@ -633,7 +700,7 @@ export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
     }
     return { line, item, group, errors };
   });
-  checkGroups(rows);
+  checkGroups(rows, locale);
   return { rows };
 }
 
@@ -641,10 +708,10 @@ export function readItemsCsv(text: string, lists: ItemLists): CsvItems {
  * Counts a file for the preview: how many items will be imported, the rows of one item counted once, and how many
  * rows have errors.
  * @param rows The rows read from the file.
+ * @param locale The language.
  * @returns E.g. "12 itens prontos para importar · 2 linhas com erro".
  */
-export function rowsSummary(rows: readonly CsvItemRow[]): string {
+export function rowsSummary(rows: readonly CsvItemRow[], locale: Locale): string {
   const invalid = rows.filter((row) => row.errors.length > 0).length;
-  const valid = importedItems(rows).length;
-  return `${valid} ${valid === 1 ? "item pronto" : "itens prontos"} para importar · ${invalid} ${invalid === 1 ? "linha" : "linhas"} com erro`;
+  return CSV_MESSAGES[locale].rows(importedItems(rows).length, invalid);
 }

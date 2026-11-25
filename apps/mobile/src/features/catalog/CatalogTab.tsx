@@ -7,7 +7,7 @@ import {
   carFilters,
   carParts,
   carSheet,
-  CATALOG_CHILDREN,
+  CATALOG_ADD,
   CATALOG_HOME,
   catalogNodes,
   catalogSiblings,
@@ -51,6 +51,7 @@ import { Panel } from '../../components/Panel';
 import { Spinner } from '../../components/Spinner';
 import { Switch } from '../../components/Switch';
 import { SearchField } from '../../components/TextField';
+import { useLocale } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { TreeView } from '../../components/TreeView';
 import { Heading, NumericReadout, Text } from '../../components/Typography';
@@ -121,6 +122,7 @@ type CatalogProps = {
 
 export function CatalogTab() {
   const copy = useInventoryCopy();
+  const { locale } = useLocale();
   const state = useCopyCatalog(copy);
   const stock = copy.items ? { status: 'ready' as const, items: copy.items } : { status: 'loading' as const };
   // The photos kept on the phone, which the parts' thumbnails show once kept.
@@ -137,7 +139,7 @@ export function CatalogTab() {
         onPartsOnly={setPartsOnly}
         onChanged={state.replace}
         offline={copy.offline}
-        notice={copy.blocked ? LOCAL_NETWORK_TEXTS.missing : copy.offline && copy.syncedAt ? copyNotice(copy.syncedAt) : undefined}
+        notice={copy.blocked ? LOCAL_NETWORK_TEXTS.missing : copy.offline && copy.syncedAt ? copyNotice(copy.syncedAt, locale) : undefined}
         onAllowNetwork={copy.blocked ? copy.allowNetwork : undefined}
       />
     );
@@ -199,6 +201,7 @@ function useShown<T>(value: T | null): { last: T | null; session: number } {
 
 /** The Catalog's screens, one at a time: the brands, a brand's models or an engine's sheet, edited in sheets. */
 function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged, offline, notice, onAllowNetwork }: CatalogProps) {
+  const { locale } = useLocale();
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   const setHeader = usePhoneHeader();
@@ -237,7 +240,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
   // brands keep the tab's name and let the back button leave.
   useEffect(() => {
     scroll.current?.scrollTo({ y: 0, animated: false });
-    const { title, back } = screenHeader(catalog, screen);
+    const { title, back } = screenHeader(catalog, screen, locale);
     const before = screenBack(screen);
     if (!back || !before) {
       setHeader(null);
@@ -252,7 +255,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
       subscription.remove();
       setHeader(null);
     };
-  }, [catalog, screen, setHeader]);
+  }, [catalog, screen, setHeader, locale]);
 
   /** Opens the screen a part leads to, its engine's sheet or its brand's models, done with the search. */
   const choosePart = (part: FoundPart) => {
@@ -273,15 +276,15 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
     }
     if (acting.level === 'engine') {
       return [
-        { icon: copyIcon, label: ENGINE_CLIPBOARD.copy, onSelect: () => editor.copyEngine(acting) },
+        { icon: copyIcon, label: ENGINE_CLIPBOARD[locale].copy, onSelect: () => editor.copyEngine(acting) },
         { icon: closeIcon, label: 'Fechar', onSelect: () => {} },
       ];
     }
     const siblings = catalogSiblings(brand.models, acting.id);
     const at = siblings.findIndex((each) => each.id === acting.id);
     return [
-      { icon: plusIcon, label: CATALOG_CHILDREN[acting.level as CatalogEditLevel].add, onSelect: () => editor.addUnder(acting) },
-      ...(acting.level === 'year' && editor.copied ? [{ icon: importIcon, label: ENGINE_CLIPBOARD.paste, onSelect: () => editor.pasteEngine(acting) }] : []),
+      { icon: plusIcon, label: CATALOG_ADD[locale][acting.level as CatalogEditLevel], onSelect: () => editor.addUnder(acting) },
+      ...(acting.level === 'year' && editor.copied ? [{ icon: importIcon, label: ENGINE_CLIPBOARD[locale].paste, onSelect: () => editor.pasteEngine(acting) }] : []),
       {
         icon: pencilIcon,
         label: acting.level === 'generation' ? 'Renomear e mudar os anos' : acting.level === 'year' ? 'Mudar os anos' : 'Renomear',
@@ -308,7 +311,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
     }
     return (
       <Button variant="dashed" size="sm" icon={plusIcon} onPress={() => editor.addUnder(node)}>
-        {`${CATALOG_CHILDREN[node.level].add} em ${node.label}`}
+        {`${CATALOG_ADD[locale][node.level]} em ${node.label}`}
       </Button>
     );
   };
@@ -322,7 +325,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
       return `Renomear ${shown.node.label}`;
     }
     const parent = shown.parent.level === 'brand' ? undefined : nodes.get(shown.parent.id);
-    const add = shown.level === 'brand' ? 'Nova marca' : CATALOG_CHILDREN[shown.parent.level].add;
+    const add = shown.level === 'brand' ? 'Nova marca' : CATALOG_ADD[locale][shown.parent.level];
     return parent ? `${add} em ${parent.label}` : shown.level === 'model' && brand ? `${add} em ${brand.name}` : add;
   };
 
@@ -374,9 +377,9 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
           <Heading level={2}>{sheet.title}</Heading>
           <View style={styles.readouts} testID={ids.readouts}>
             {sheet.specs.map((spec, index) => (
-              <View key={ENGINE_SPEC_LABELS[index]} style={styles.readout} testID={ids.readout}>
+              <View key={ENGINE_SPEC_LABELS[locale][index]} style={styles.readout} testID={ids.readout}>
                 <RNText style={styles.readoutLabel} testID={ids.readoutLabel}>
-                  {ENGINE_SPEC_LABELS[index]}
+                  {ENGINE_SPEC_LABELS[locale][index]}
                 </RNText>
                 <NumericReadout tone="accent">{spec}</NumericReadout>
               </View>
@@ -398,7 +401,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
           {search}
           {missing && (
             <Panel>
-              <EmptyState title={missing} message={NO_SHEET_MESSAGE} />
+              <EmptyState title={missing} message={NO_SHEET_MESSAGE[locale]} />
             </Panel>
           )}
           <View style={styles.screenHead} testID={ids.screenHead}>
@@ -473,7 +476,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
               <Pressable
                 key={each.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${each.name}, ${brandSummary(catalog, each)}`}
+                accessibilityLabel={`${each.name}, ${brandSummary(catalog, each, locale)}`}
                 onPress={() => setScreen({ view: 'models', brandId: each.id })}
                 style={({ pressed }) => [styles.brand, pressed && styles.brandPressed]}
                 testID={ids.brand}
@@ -488,7 +491,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
                     {each.name}
                   </RNText>
                   <RNText style={styles.brandMeta} testID={ids.brandMeta}>
-                    {brandSummary(catalog, each)}
+                    {brandSummary(catalog, each, locale)}
                   </RNText>
                 </View>
                 <View style={styles.chevron} testID={ids.chevron}>
@@ -554,7 +557,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
       <DeleteDialog
         open={editor.removing !== undefined}
         name={removing.last?.label ?? ''}
-        below={removing.last && belowNode(removing.last)}
+        below={removing.last && belowNode(removing.last, locale)}
         saving={editor.saving}
         onCancel={() => editor.askRemove(undefined)}
         onConfirm={editor.remove}
@@ -562,7 +565,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
       <DeleteDialog
         open={editor.removingBrand !== undefined}
         name={removingBrand.last?.name ?? ''}
-        below={removingBrand.last && belowBrand(removingBrand.last)}
+        below={removingBrand.last && belowBrand(removingBrand.last, locale)}
         saving={editor.saving}
         onCancel={() => editor.askRemoveBrand(undefined)}
         onConfirm={editor.removeBrand}

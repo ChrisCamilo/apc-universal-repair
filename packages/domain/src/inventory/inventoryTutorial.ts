@@ -1,3 +1,4 @@
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 import type { FilterValues } from "../platform/query/listQuery.ts";
 import { EMPTY_ITEM_FILTERS } from "./itemFilters.ts";
 import { formValue, itemFormOf, parsePrice, withFormValues, type FormField, type ItemForm } from "./itemForm.ts";
@@ -21,77 +22,146 @@ const FILL_FIELDS: Record<"identity" | "stock", FormField[]> = {
   stock: ["quantity", "minQuantity", "position", "side", "color", "location", "price"],
 };
 /** Names of the tutorial's parts, for the card header. */
-export const INVENTORY_TUTORIAL_PARTS = ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir"];
+export const INVENTORY_TUTORIAL_PARTS = catalog<readonly string[]>(
+  ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir"],
+  ["Add an item", "Search and filter", "Edit and delete"],
+);
 /**
  * Where localStorage (web) and AsyncStorage (mobile) used to tell the tutorial was shown on the device. It is now kept
  * on the user (SessionUser.inventoryTutorialSeen), and the apps remove this old key.
  */
 export const INVENTORY_TUTORIAL_STORAGE_KEY = "apc-inventory-tutorial-seen";
 /** The title, text and part of each step. */
-const STEP_TEXTS: Record<TutorialStepId, { part?: number; title: string; text: string }> = {
-  new: { part: 1, title: "Abra o cadastro", text: "Clique em Novo item para cadastrar uma peça de teste." },
-  identity: {
-    part: 1,
-    title: "Diga que peça é",
-    text: "Preencha o código TUTORIAL-001, o nome “Item de teste do tutorial”, a categoria Motor, a marca Bosch e o veículo Volkswagen Gol. Use “+ Criar” para um nome que ainda não existe.",
+const STEP_TEXTS = catalog<Record<TutorialStepId, { part?: number; title: string; text: string }>>(
+  {
+    new: { part: 1, title: "Abra o cadastro", text: "Clique em Novo item para cadastrar uma peça de teste." },
+    identity: {
+      part: 1,
+      title: "Diga que peça é",
+      text: "Preencha o código TUTORIAL-001, o nome “Item de teste do tutorial”, a categoria Motor, a marca Bosch e o veículo Volkswagen Gol. Use “+ Criar” para um nome que ainda não existe.",
+    },
+    stock: {
+      part: 1,
+      title: "Diga onde e quantas",
+      text: "Quantidade 5, mínima 2, posição D, lado LD, cor PRETO, local T-1 e valor 49,90. A foto é opcional.",
+    },
+    save: { part: 1, title: "Salve o item", text: "Clique em Salvar. O item novo aparece no topo da lista." },
+    search: { part: 2, title: "Procure pelo nome", text: "Digite “tutorial” na busca: a lista fica só com o que combina." },
+    filters: { part: 2, title: "Abra os filtros", text: "Clique em Filtros para filtrar por mais de um campo de uma vez." },
+    filter: {
+      part: 2,
+      title: "Filtre o estoque",
+      text: "Escolha a categoria Motor, a marca da peça Bosch, a posição D e a cor PRETO, e clique em Aplicar.",
+    },
+    found: { part: 2, title: "Achou", text: "A busca e os filtros juntos deixaram na lista o item de teste." },
+    details: { part: 3, title: "Abra o item", text: "Clique na linha do item de teste para ver os detalhes dele." },
+    unlock: { part: 3, title: "Libere a edição", text: "Os detalhes só mostram o item. Clique em Editar para liberar os campos." },
+    rename: {
+      part: 3,
+      title: "Mude o nome e a quantidade",
+      text: "Mude o nome para “Item de teste do tutorial editado” e a quantidade para 1, abaixo da mínima.",
+    },
+    "save-low": { part: 3, title: "Salve as alterações", text: "Clique em Salvar alterações." },
+    low: { part: 3, title: "Estoque baixo", text: "Na quantidade mínima ou abaixo, a linha fica marcada como estoque baixo." },
+    pencil: { part: 3, title: "Edite pelo lápis", text: "Agora clique no lápis: ele abre direto a edição, sem os detalhes." },
+    zero: { part: 3, title: "Zere a quantidade", text: "Mude a quantidade para 0 e clique em Salvar alterações." },
+    out: { part: 3, title: "Esgotado", text: "Sem nenhuma unidade, a linha fica marcada como esgotada." },
+    delete: { part: 3, title: "Exclua o item", text: "Clique na lixeira do item de teste." },
+    confirm: { part: 3, title: "Confirme", text: "Clique em Excluir. O item sai do estoque." },
+    end: {
+      title: "Pronto!",
+      text: "Você cadastrou, encontrou, editou e excluiu um item. Para rever este tutorial, abra o menu do usuário.",
+    },
   },
-  stock: {
-    part: 1,
-    title: "Diga onde e quantas",
-    text: "Quantidade 5, mínima 2, posição D, lado LD, cor PRETO, local T-1 e valor 49,90. A foto é opcional.",
+  {
+    new: { part: 1, title: "Open the form", text: "Click New item to add a test part." },
+    identity: {
+      part: 1,
+      title: "Say which part it is",
+      text: "Fill in the code TUTORIAL-001, the name “Item de teste do tutorial”, the category Motor, the brand Bosch and the vehicle Volkswagen Gol. Use “+ Create” for a name that doesn't exist yet.",
+    },
+    stock: {
+      part: 1,
+      title: "Say where and how many",
+      text: "Quantity 5, minimum 2, position D, side LD, color PRETO, location T-1 and price 49,90. The photo is optional.",
+    },
+    save: { part: 1, title: "Save the item", text: "Click Save. The new item shows at the top of the list." },
+    search: { part: 2, title: "Search by name", text: "Type “tutorial” in the search: the list keeps only what matches." },
+    filters: { part: 2, title: "Open the filters", text: "Click Filters to filter by more than one field at once." },
+    filter: {
+      part: 2,
+      title: "Filter the stock",
+      text: "Choose the category Motor, the part brand Bosch, the position D and the color PRETO, and click Apply.",
+    },
+    found: { part: 2, title: "Found it", text: "The search and the filters together left the test item on the list." },
+    details: { part: 3, title: "Open the item", text: "Click the test item's row to see its details." },
+    unlock: { part: 3, title: "Unlock editing", text: "The details only show the item. Click Edit to unlock the fields." },
+    rename: {
+      part: 3,
+      title: "Change the name and the quantity",
+      text: "Change the name to “Item de teste do tutorial editado” and the quantity to 1, below the minimum.",
+    },
+    "save-low": { part: 3, title: "Save the changes", text: "Click Save changes." },
+    low: { part: 3, title: "Low stock", text: "At the minimum quantity or below, the row is marked as low stock." },
+    pencil: { part: 3, title: "Edit with the pencil", text: "Now click the pencil: it opens editing straight away, without the details." },
+    zero: { part: 3, title: "Zero the quantity", text: "Change the quantity to 0 and click Save changes." },
+    out: { part: 3, title: "Out of stock", text: "With no unit left, the row is marked as out of stock." },
+    delete: { part: 3, title: "Delete the item", text: "Click the test item's trash can." },
+    confirm: { part: 3, title: "Confirm", text: "Click Delete. The item leaves the stock." },
+    end: {
+      title: "Done!",
+      text: "You added, found, edited and deleted an item. To see this tutorial again, open the user menu.",
+    },
   },
-  save: { part: 1, title: "Salve o item", text: "Clique em Salvar. O item novo aparece no topo da lista." },
-  search: { part: 2, title: "Procure pelo nome", text: "Digite “tutorial” na busca: a lista fica só com o que combina." },
-  filters: { part: 2, title: "Abra os filtros", text: "Clique em Filtros para filtrar por mais de um campo de uma vez." },
-  filter: {
-    part: 2,
-    title: "Filtre o estoque",
-    text: "Escolha a categoria Motor, a marca da peça Bosch, a posição D e a cor PRETO, e clique em Aplicar.",
-  },
-  found: { part: 2, title: "Achou", text: "A busca e os filtros juntos deixaram na lista o item de teste." },
-  details: { part: 3, title: "Abra o item", text: "Clique na linha do item de teste para ver os detalhes dele." },
-  unlock: { part: 3, title: "Libere a edição", text: "Os detalhes só mostram o item. Clique em Editar para liberar os campos." },
-  rename: {
-    part: 3,
-    title: "Mude o nome e a quantidade",
-    text: "Mude o nome para “Item de teste do tutorial editado” e a quantidade para 1, abaixo da mínima.",
-  },
-  "save-low": { part: 3, title: "Salve as alterações", text: "Clique em Salvar alterações." },
-  low: { part: 3, title: "Estoque baixo", text: "Na quantidade mínima ou abaixo, a linha fica marcada como estoque baixo." },
-  pencil: { part: 3, title: "Edite pelo lápis", text: "Agora clique no lápis: ele abre direto a edição, sem os detalhes." },
-  zero: { part: 3, title: "Zere a quantidade", text: "Mude a quantidade para 0 e clique em Salvar alterações." },
-  out: { part: 3, title: "Esgotado", text: "Sem nenhuma unidade, a linha fica marcada como esgotada." },
-  delete: { part: 3, title: "Exclua o item", text: "Clique na lixeira do item de teste." },
-  confirm: { part: 3, title: "Confirme", text: "Clique em Excluir. O item sai do estoque." },
-  end: {
-    title: "Pronto!",
-    text: "Você cadastrou, encontrou, editou e excluiu um item. Para rever este tutorial, abra o menu do usuário.",
-  },
-};
+);
 
 /** What a step says on a phone, where the desktop's words name something the phone layout shows another way. */
-const PHONE_TEXTS: Partial<Record<TutorialStepId, { title?: string; text: string }>> = {
-  new: { text: "Toque no + para cadastrar uma peça de teste." },
-  identity: {
-    text: "Preencha o nome “Item de teste do tutorial”, a categoria Motor, o veículo Volkswagen Gol em Adicionar veículo, a marca Bosch e o código TUTORIAL-001. Use “+ Criar” para um nome que ainda não existe.",
+const PHONE_TEXTS = catalog<Partial<Record<TutorialStepId, { title?: string; text: string }>>>(
+  {
+    new: { text: "Toque no + para cadastrar uma peça de teste." },
+    identity: {
+      text: "Preencha o nome “Item de teste do tutorial”, a categoria Motor, o veículo Volkswagen Gol em Adicionar veículo, a marca Bosch e o código TUTORIAL-001. Use “+ Criar” para um nome que ainda não existe.",
+    },
+    stock: {
+      text: "Quantidade 5, mínima 2, posição Dianteira, lado Direito, cor PRETO, local T-1 e valor 49,90. A foto é opcional.",
+    },
+    save: { text: "Toque em Salvar item. O item novo aparece no topo da lista." },
+    filters: { text: "Toque no funil para filtrar por mais de um campo de uma vez." },
+    filter: { text: "Escolha a marca da peça Bosch, a posição Dianteira e a cor PRETO, e toque em Ver itens." },
+    details: { text: "Toque no item de teste para ver os detalhes dele." },
+    unlock: { text: "Os detalhes só mostram o item. Toque em Editar para liberar os campos." },
+    "save-low": { text: "Toque em Salvar alterações." },
+    low: { text: "Na quantidade mínima ou abaixo, o item fica marcado como estoque baixo." },
+    pencil: { title: "Edite de novo", text: "Toque no item de teste e, nos detalhes, em Editar." },
+    zero: { text: "Mude a quantidade para 0 e toque em Salvar alterações." },
+    out: { text: "Sem nenhuma unidade, o item fica marcado como esgotado." },
+    delete: { text: "Toque no item de teste e, nos detalhes, em Excluir item." },
+    confirm: { text: "Toque em Excluir. O item sai do estoque." },
+    end: { text: "Você cadastrou, encontrou, editou e excluiu um item. Para rever este tutorial, toque no ⋯ do Estoque." },
   },
-  stock: {
-    text: "Quantidade 5, mínima 2, posição Dianteira, lado Direito, cor PRETO, local T-1 e valor 49,90. A foto é opcional.",
+  {
+    new: { text: "Tap the + to add a test part." },
+    identity: {
+      text: "Fill in the name “Item de teste do tutorial”, the category Motor, the vehicle Volkswagen Gol under Add vehicle, the brand Bosch and the code TUTORIAL-001. Use “+ Create” for a name that doesn't exist yet.",
+    },
+    stock: {
+      text: "Quantity 5, minimum 2, position Front, side Right, color PRETO, location T-1 and price 49,90. The photo is optional.",
+    },
+    save: { text: "Tap Save item. The new item shows at the top of the list." },
+    filters: { text: "Tap the funnel to filter by more than one field at once." },
+    filter: { text: "Choose the part brand Bosch, the position Front and the color PRETO, and tap See items." },
+    details: { text: "Tap the test item to see its details." },
+    unlock: { text: "The details only show the item. Tap Edit to unlock the fields." },
+    "save-low": { text: "Tap Save changes." },
+    low: { text: "At the minimum quantity or below, the item is marked as low stock." },
+    pencil: { title: "Edit again", text: "Tap the test item and, in the details, Edit." },
+    zero: { text: "Change the quantity to 0 and tap Save changes." },
+    out: { text: "With no unit left, the item is marked as out of stock." },
+    delete: { text: "Tap the test item and, in the details, Delete item." },
+    confirm: { text: "Tap Delete. The item leaves the stock." },
+    end: { text: "You added, found, edited and deleted an item. To see this tutorial again, tap the Inventory's ⋯." },
   },
-  save: { text: "Toque em Salvar item. O item novo aparece no topo da lista." },
-  filters: { text: "Toque no funil para filtrar por mais de um campo de uma vez." },
-  filter: { text: "Escolha a marca da peça Bosch, a posição Dianteira e a cor PRETO, e toque em Ver itens." },
-  details: { text: "Toque no item de teste para ver os detalhes dele." },
-  unlock: { text: "Os detalhes só mostram o item. Toque em Editar para liberar os campos." },
-  "save-low": { text: "Toque em Salvar alterações." },
-  low: { text: "Na quantidade mínima ou abaixo, o item fica marcado como estoque baixo." },
-  pencil: { title: "Edite de novo", text: "Toque no item de teste e, nos detalhes, em Editar." },
-  zero: { text: "Mude a quantidade para 0 e toque em Salvar alterações." },
-  out: { text: "Sem nenhuma unidade, o item fica marcado como esgotado." },
-  delete: { text: "Toque no item de teste e, nos detalhes, em Excluir item." },
-  confirm: { text: "Toque em Excluir. O item sai do estoque." },
-  end: { text: "Você cadastrou, encontrou, editou e excluiu um item. Para rever este tutorial, toque no ⋯ do Estoque." },
-};
+);
 /** The edits of part 3: a new name, and a quantity under the minimum, for the low-stock row. */
 export const TUTORIAL_EDIT = { name: "Item de teste do tutorial editado", quantity: "1" } satisfies Partial<Record<FormField, string>>;
 /** The filters part 2 applies, which the test item matches. */
@@ -239,9 +309,10 @@ export function formHas(form: ItemForm, values: Partial<Record<FormField, string
  * Lists the tutorial's steps for a screen: each with its texts, target, check, the step to go back to and what
  * "Fazer por mim" does. The texts follow the screen's layout as it is when they are listed.
  * @param screen Reads the screen as it is now.
+ * @param locale The language of the texts.
  * @returns The steps in order.
  */
-export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Target>): TutorialStep<Target>[] {
+export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Target>, locale: Locale): TutorialStep<Target>[] {
   /** The test item, while it is in stock. */
   const testItem = () => screen().items.find(isTestItem);
   /** Whether the form is open on the test item, on the edit when `viewing` is false. */
@@ -406,7 +477,7 @@ export function inventoryTutorialSteps<Target>(screen: () => TutorialScreen<Targ
   const phone = screen().phone;
   return order.map((id) => {
     const { lost, ...binding } = bindings[id];
-    const texts = { ...STEP_TEXTS[id], ...(phone && PHONE_TEXTS[id]) };
+    const texts = { ...STEP_TEXTS[locale][id], ...(phone && PHONE_TEXTS[locale][id]) };
     return { id, ...texts, ...binding, ...(lost && { lost: () => (screen().busy ? null : lost()) }) };
   });
 }

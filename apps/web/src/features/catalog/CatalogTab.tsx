@@ -9,6 +9,7 @@ import {
   carParts,
   carSheet,
   hasCarSheet,
+  CATALOG_ADD,
   CATALOG_CHILDREN,
   CATALOG_HOME,
   catalogNodes,
@@ -66,6 +67,7 @@ import { useCatalogEditing } from './useCatalogEditing.ts'
 import { usePartsOnly } from './usePartsOnly.ts'
 import { useInventoryLink } from '../dashboard/inventoryLinkContext.ts'
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext.ts'
+import { useLocale } from '../../app/useLocale.ts'
 
 // The Catalog tab (/catalog): the brand tiles in a rail, the chosen brand's model tree, and the detail column with
 // the chosen engine's sheet. A brand opens on its first engine; one with no engine yet says so in the detail
@@ -184,6 +186,7 @@ function EmptyCatalog({ onChanged }: { onChanged: (catalog: Catalog) => void }) 
 
 /** The Catalog from a tablet up: the rail, the tree and the detail column, with the tree edited in place. */
 function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged }: CatalogProps) {
+  const { locale } = useLocale()
   const { classes, ids } = catalogTab()
   const withParts = catalogWithParts(all, items)
   const partsOnly = wanted && withParts.brands.length > 0
@@ -299,16 +302,15 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
       return null
     }
     if (node.level === 'engine') {
-      return <RowAction icon={copyIcon} label={`${ENGINE_CLIPBOARD.copy} ${node.label}`} onClick={() => editor.copyEngine(node)} />
+      return <RowAction icon={copyIcon} label={`${ENGINE_CLIPBOARD[locale].copy} ${node.label}`} onClick={() => editor.copyEngine(node)} />
     }
     const siblings = catalogSiblings(brand.models, id)
     const at = siblings.findIndex((each) => each.id === id)
-    const child = CATALOG_CHILDREN[node.level]
     return (
       <>
-        <RowAction icon={plusIcon} label={`${child.add} em ${node.label}`} onClick={() => editor.addUnder(node)} />
+        <RowAction icon={plusIcon} label={`${CATALOG_ADD[locale][node.level]} em ${node.label}`} onClick={() => editor.addUnder(node)} />
         {node.level === 'year' && editor.copied && (
-          <RowAction icon={importIcon} label={`${ENGINE_CLIPBOARD.paste} em ${node.label}`} onClick={() => void editor.pasteEngine(node)} />
+          <RowAction icon={importIcon} label={`${ENGINE_CLIPBOARD[locale].paste} em ${node.label}`} onClick={() => void editor.pasteEngine(node)} />
         )}
         <RowAction
           icon={pencilIcon}
@@ -342,11 +344,11 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
     }
     const child = CATALOG_CHILDREN[node.level]
     if (node.level !== 'year' && editing?.kind === 'add' && editing.level !== 'brand' && editing.parent.id === id) {
-      return form(child.level as CatalogEditLevel, `${child.add} em ${node.label}`)
+      return form(child.level as CatalogEditLevel, `${CATALOG_ADD[locale][node.level]} em ${node.label}`)
     }
     return node.children?.length === 0 ? (
       <Button variant="dashed" size="sm" icon={plusIcon} onClick={() => editor.addUnder(node)}>
-        {`${child.add} em ${node.label}`}
+        {`${CATALOG_ADD[locale][node.level]} em ${node.label}`}
       </Button>
     ) : null
   }
@@ -475,7 +477,7 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
                   }}
                 />
               ) : missingVehicle ? (
-                <EmptyState title={missingVehicle} message={NO_SHEET_MESSAGE} />
+                <EmptyState title={missingVehicle} message={NO_SHEET_MESSAGE[locale]} />
               ) : sheet ? (
                 <>
                   <div className={classes.sheetHead()} data-testid={ids.sheetHead}>
@@ -516,14 +518,14 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
       </div>
       <DeleteDialog
         name={removing?.label}
-        below={removing && belowNode(removing)}
+        below={removing && belowNode(removing, locale)}
         saving={editor.saving}
         onCancel={() => editor.askRemove(undefined)}
         onConfirm={() => void editor.remove()}
       />
       <DeleteDialog
         name={editor.removingBrand?.name}
-        below={editor.removingBrand && belowBrand(editor.removingBrand)}
+        below={editor.removingBrand && belowBrand(editor.removingBrand, locale)}
         saving={editor.saving}
         onCancel={() => editor.askRemoveBrand(undefined)}
         onConfirm={() => void editor.removeBrand()}
@@ -534,6 +536,7 @@ function WideCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onCh
 
 /** The Catalog on a phone: one screen at a time, the brands, a brand's models or an engine's sheet, edited in sheets. */
 function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged }: CatalogProps) {
+  const { locale } = useLocale()
   const setHeader = usePhoneHeader()
   const { classes, ids } = catalogTab()
   const withParts = catalogWithParts(all, items)
@@ -565,11 +568,11 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
   // Each screen opens at its top, with its title and ← in the page's header; the brands keep the tab's name.
   useEffect(() => {
     window.scrollTo(0, 0)
-    const { title, back } = screenHeader(catalog, screen)
+    const { title, back } = screenHeader(catalog, screen, locale)
     const before = screenBack(screen)
     setHeader(back && before ? { title, back: { label: back, onClick: () => setScreen(before) } } : null)
     return () => setHeader(null)
-  }, [catalog, screen, setHeader])
+  }, [catalog, screen, setHeader, locale])
 
   /** Opens the screen a part leads to, its engine's sheet or its brand's models, done with the search. */
   const choosePart = (part: FoundPart) => {
@@ -590,15 +593,15 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
     }
     if (acting.level === 'engine') {
       return [
-        { icon: copyIcon, label: ENGINE_CLIPBOARD.copy, onSelect: () => editor.copyEngine(acting) },
+        { icon: copyIcon, label: ENGINE_CLIPBOARD[locale].copy, onSelect: () => editor.copyEngine(acting) },
         { icon: closeIcon, label: 'Fechar', onSelect: () => {} },
       ]
     }
     const siblings = catalogSiblings(brand.models, acting.id)
     const at = siblings.findIndex((each) => each.id === acting.id)
     return [
-      { icon: plusIcon, label: CATALOG_CHILDREN[acting.level as CatalogEditLevel].add, onSelect: () => editor.addUnder(acting) },
-      ...(acting.level === 'year' && editor.copied ? [{ icon: importIcon, label: ENGINE_CLIPBOARD.paste, onSelect: () => void editor.pasteEngine(acting) }] : []),
+      { icon: plusIcon, label: CATALOG_ADD[locale][acting.level as CatalogEditLevel], onSelect: () => editor.addUnder(acting) },
+      ...(acting.level === 'year' && editor.copied ? [{ icon: importIcon, label: ENGINE_CLIPBOARD[locale].paste, onSelect: () => void editor.pasteEngine(acting) }] : []),
       {
         icon: pencilIcon,
         label: acting.level === 'generation' ? 'Renomear e mudar os anos' : acting.level === 'year' ? 'Mudar os anos' : 'Renomear',
@@ -619,7 +622,7 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
     }
     return (
       <Button variant="dashed" size="sm" icon={plusIcon} onClick={() => editor.addUnder(node)}>
-        {`${CATALOG_CHILDREN[node.level].add} em ${node.label}`}
+        {`${CATALOG_ADD[locale][node.level]} em ${node.label}`}
       </Button>
     )
   }
@@ -633,7 +636,7 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
       return `Renomear ${editing.node.label}`
     }
     const parent = editing.parent.level === 'brand' ? undefined : nodes.get(editing.parent.id)
-    const add = editing.level === 'brand' ? 'Nova marca' : CATALOG_CHILDREN[editing.parent.level].add
+    const add = editing.level === 'brand' ? 'Nova marca' : CATALOG_ADD[locale][editing.parent.level]
     return parent ? `${add} em ${parent.label}` : editing.level === 'model' && brand ? `${add} em ${brand.name}` : add
   }
 
@@ -677,9 +680,9 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
           <Heading level={2}>{sheet.title}</Heading>
           <dl className={classes.readouts()} data-testid={ids.readouts}>
             {sheet.specs.map((spec, index) => (
-              <div key={ENGINE_SPEC_LABELS[index]} className={classes.readout()} data-testid={ids.readout}>
+              <div key={ENGINE_SPEC_LABELS[locale][index]} className={classes.readout()} data-testid={ids.readout}>
                 <dt className={classes.readoutLabel()} data-testid={ids.readoutLabel}>
-                  {ENGINE_SPEC_LABELS[index]}
+                  {ENGINE_SPEC_LABELS[locale][index]}
                 </dt>
                 <dd className={classes.readoutValue()} data-testid={ids.readoutValue}>
                   <NumericReadout tone="accent">{spec}</NumericReadout>
@@ -703,7 +706,7 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
           {search}
           {missing && (
             <Panel>
-              <EmptyState title={missing} message={NO_SHEET_MESSAGE} />
+              <EmptyState title={missing} message={NO_SHEET_MESSAGE[locale]} />
             </Panel>
           )}
           <div className={classes.screenHead()} data-testid={ids.screenHead}>
@@ -788,7 +791,7 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
                       {each.name}
                     </span>
                     <span className={classes.brandMeta()} data-testid={ids.brandMeta}>
-                      {brandSummary(catalog, each)}
+                      {brandSummary(catalog, each, locale)}
                     </span>
                   </span>
                   <Icon icon={chevronIcon} size={ICON_SIZES.prominent} className={classes.chevron()} />
@@ -870,14 +873,14 @@ function PhoneCatalog({ catalog: all, items, partsOnly: wanted, onPartsOnly, onC
       </Dialog>
       <DeleteDialog
         name={editor.removing?.label}
-        below={editor.removing && belowNode(editor.removing)}
+        below={editor.removing && belowNode(editor.removing, locale)}
         saving={editor.saving}
         onCancel={() => editor.askRemove(undefined)}
         onConfirm={() => void editor.remove()}
       />
       <DeleteDialog
         name={editor.removingBrand?.name}
-        below={editor.removingBrand && belowBrand(editor.removingBrand)}
+        below={editor.removingBrand && belowBrand(editor.removingBrand, locale)}
         saving={editor.saving}
         onCancel={() => editor.askRemoveBrand(undefined)}
         onConfirm={() => void editor.removeBrand()}

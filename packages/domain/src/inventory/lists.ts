@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 import { capitalizeFirst, optionKey, type Item } from "./items.ts";
 
 // The lists an item's category, part brand, vehicle brand and vehicle model are picked from, kept by the API, grown
@@ -28,76 +29,107 @@ export const ITEM_LIST_PATHS: Record<ItemListKind, string> = {
   vehicleModels: "/vehicle-models",
 };
 /** What the screens say about each list: its title, and the toasts and messages of each change made to it. */
-export const ITEM_LIST_TEXTS: Record<ItemListKind, ItemListTexts> = {
-  categories: {
-    title: "Categorias",
-    created: (name) => `Categoria “${name}” criada.`,
-    createFailed: "Não foi possível criar a categoria. Tente de novo.",
-    renamed: (name) => `Categoria renomeada para “${name}”.`,
-    renameFailed: "Não foi possível renomear a categoria. Tente de novo.",
-    taken: "Já existe uma categoria com esse nome.",
-    deleted: (name) => `Categoria “${name}” excluída.`,
-    deleteFailed: "Não foi possível excluir a categoria. Tente de novo.",
-    confirmDelete: (name) => `“${name}” sai da lista de categorias. Essa ação não pode ser desfeita.`,
-    inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque a categoria desses itens antes de excluir.`,
-    confirmMerge: (from, into, count) =>
-      `${movedItems(from, into, count)}, e “${from}” sai da lista de categorias.`,
-    merged: (from, into, count) =>
-      `Categoria “${from}” juntada a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
-    mergeFailed: "Não foi possível juntar a categoria. Tente de novo.",
+export const ITEM_LIST_TEXTS = catalog<Record<ItemListKind, ItemListTexts>>(
+  {
+    categories: {
+      title: "Categorias",
+      created: (name) => `Categoria “${name}” criada.`,
+      createFailed: "Não foi possível criar a categoria. Tente de novo.",
+      renamed: (name) => `Categoria renomeada para “${name}”.`,
+      renameFailed: "Não foi possível renomear a categoria. Tente de novo.",
+      taken: "Já existe uma categoria com esse nome.",
+      deleted: (name) => `Categoria “${name}” excluída.`,
+      deleteFailed: "Não foi possível excluir a categoria. Tente de novo.",
+      confirmDelete: (name) => `“${name}” sai da lista de categorias. Essa ação não pode ser desfeita.`,
+      inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque a categoria desses itens antes de excluir.`,
+      confirmMerge: (from, into, count) =>
+        `${movedItems(from, into, count)}, e “${from}” sai da lista de categorias.`,
+      merged: (from, into, count) =>
+        `Categoria “${from}” juntada a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
+      mergeFailed: "Não foi possível juntar a categoria. Tente de novo.",
+    },
+    partBrands: {
+      title: "Marcas de peça",
+      created: (name) => `Marca de peça “${name}” criada.`,
+      createFailed: "Não foi possível criar a marca de peça. Tente de novo.",
+      renamed: (name) => `Marca de peça renomeada para “${name}”.`,
+      renameFailed: "Não foi possível renomear a marca de peça. Tente de novo.",
+      taken: "Já existe uma marca de peça com esse nome.",
+      deleted: (name) => `Marca de peça “${name}” excluída.`,
+      deleteFailed: "Não foi possível excluir a marca de peça. Tente de novo.",
+      confirmDelete: (name) => `“${name}” sai da lista de marcas de peça. Essa ação não pode ser desfeita.`,
+      inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque a marca da peça desses itens antes de excluir.`,
+      confirmMerge: (from, into, count) =>
+        `${movedItems(from, into, count)}, e “${from}” sai da lista de marcas de peça.`,
+      merged: (from, into, count) =>
+        `Marca de peça “${from}” juntada a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
+      mergeFailed: "Não foi possível juntar a marca de peça. Tente de novo.",
+    },
+    vehicleBrands: {
+      title: "Marcas de veículo",
+      created: (name) => `Marca de veículo “${name}” criada.`,
+      createFailed: "Não foi possível criar a marca de veículo. Tente de novo.",
+      renamed: (name) => `Marca de veículo renomeada para “${name}”.`,
+      renameFailed: "Não foi possível renomear a marca de veículo. Tente de novo.",
+      taken: "Já existe uma marca de veículo com esse nome.",
+      deleted: (name) => `Marca de veículo “${name}” excluída.`,
+      deleteFailed: "Não foi possível excluir a marca de veículo. Tente de novo.",
+      confirmDelete: (name) => `“${name}” e os modelos dela saem da lista de marcas de veículo. Essa ação não pode ser desfeita.`,
+      inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque a marca do veículo desses itens antes de excluir.`,
+      confirmMerge: (from, into, count) =>
+        `${movedItems(from, into, count)}, os modelos dela também (os de mesmo nome viram um só), e “${from}” sai da lista de marcas de veículo.`,
+      merged: (from, into, count) =>
+        `Marca de veículo “${from}” juntada a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
+      mergeFailed: "Não foi possível juntar a marca de veículo. Tente de novo.",
+    },
+    vehicleModels: {
+      title: "Modelos de veículo",
+      created: (name) => `Modelo “${name}” criado.`,
+      createFailed: "Não foi possível criar o modelo. Tente de novo.",
+      renamed: (name) => `Modelo renomeado para “${name}”.`,
+      renameFailed: "Não foi possível renomear o modelo. Tente de novo.",
+      taken: "Já existe um modelo com esse nome nessa marca.",
+      deleted: (name) => `Modelo “${name}” excluído.`,
+      deleteFailed: "Não foi possível excluir o modelo. Tente de novo.",
+      confirmDelete: (name) => `“${name}” sai da lista de modelos. Essa ação não pode ser desfeita.`,
+      inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque o modelo do veículo desses itens antes de excluir.`,
+      confirmMerge: (from, into, count) =>
+        `${movedItems(from, into, count)}, e “${from}” sai da lista de modelos.`,
+      merged: (from, into, count) =>
+        `Modelo “${from}” juntado a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
+      mergeFailed: "Não foi possível juntar o modelo. Tente de novo.",
+    },
   },
-  partBrands: {
-    title: "Marcas de peça",
-    created: (name) => `Marca de peça “${name}” criada.`,
-    createFailed: "Não foi possível criar a marca de peça. Tente de novo.",
-    renamed: (name) => `Marca de peça renomeada para “${name}”.`,
-    renameFailed: "Não foi possível renomear a marca de peça. Tente de novo.",
-    taken: "Já existe uma marca de peça com esse nome.",
-    deleted: (name) => `Marca de peça “${name}” excluída.`,
-    deleteFailed: "Não foi possível excluir a marca de peça. Tente de novo.",
-    confirmDelete: (name) => `“${name}” sai da lista de marcas de peça. Essa ação não pode ser desfeita.`,
-    inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque a marca da peça desses itens antes de excluir.`,
-    confirmMerge: (from, into, count) =>
-      `${movedItems(from, into, count)}, e “${from}” sai da lista de marcas de peça.`,
-    merged: (from, into, count) =>
-      `Marca de peça “${from}” juntada a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
-    mergeFailed: "Não foi possível juntar a marca de peça. Tente de novo.",
+  {
+    categories: englishListTexts({ title: "Categories", one: "Category", list: "categories", field: "category" }),
+    partBrands: englishListTexts({ title: "Part brands", one: "Part brand", list: "part brands", field: "part brand" }),
+    vehicleBrands: {
+      ...englishListTexts({ title: "Vehicle brands", one: "Vehicle brand", list: "vehicle brands", field: "vehicle brand" }),
+      confirmDelete: (name) => `“${name}” and its models leave the list of vehicle brands. This can't be undone.`,
+      confirmMerge: (from, into, count) =>
+        `${englishMovedItems(from, into, count)}, its models too (those of the same name become one), and “${from}” leaves the list of vehicle brands.`,
+    },
+    vehicleModels: {
+      ...englishListTexts({ title: "Vehicle models", one: "Model", list: "models", field: "vehicle model" }),
+      taken: "A model with this name already exists in this brand.",
+    },
   },
-  vehicleBrands: {
-    title: "Marcas de veículo",
-    created: (name) => `Marca de veículo “${name}” criada.`,
-    createFailed: "Não foi possível criar a marca de veículo. Tente de novo.",
-    renamed: (name) => `Marca de veículo renomeada para “${name}”.`,
-    renameFailed: "Não foi possível renomear a marca de veículo. Tente de novo.",
-    taken: "Já existe uma marca de veículo com esse nome.",
-    deleted: (name) => `Marca de veículo “${name}” excluída.`,
-    deleteFailed: "Não foi possível excluir a marca de veículo. Tente de novo.",
-    confirmDelete: (name) => `“${name}” e os modelos dela saem da lista de marcas de veículo. Essa ação não pode ser desfeita.`,
-    inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque a marca do veículo desses itens antes de excluir.`,
-    confirmMerge: (from, into, count) =>
-      `${movedItems(from, into, count)}, os modelos dela também (os de mesmo nome viram um só), e “${from}” sai da lista de marcas de veículo.`,
-    merged: (from, into, count) =>
-      `Marca de veículo “${from}” juntada a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
-    mergeFailed: "Não foi possível juntar a marca de veículo. Tente de novo.",
+);
+/** What else merging or deleting an entry of the catalog does: its models' trees, or its own, go along. */
+const CATALOG_NOTES = catalog(
+  {
+    mergeModel: (name: string, into: string) => `As gerações e fichas de “${name}” vão para “${into}”.`,
+    mergeBrand: (name: string, into: string) => `Os modelos e fichas de “${name}” vão para “${into}”.`,
+    deleteModel: (name: string) => `“${name}” também sai do Catálogo, com as gerações e as fichas dele.`,
+    deleteBrand: (name: string) => `“${name}” também sai do Catálogo, com os modelos e as fichas dela.`,
   },
-  vehicleModels: {
-    title: "Modelos de veículo",
-    created: (name) => `Modelo “${name}” criado.`,
-    createFailed: "Não foi possível criar o modelo. Tente de novo.",
-    renamed: (name) => `Modelo renomeado para “${name}”.`,
-    renameFailed: "Não foi possível renomear o modelo. Tente de novo.",
-    taken: "Já existe um modelo com esse nome nessa marca.",
-    deleted: (name) => `Modelo “${name}” excluído.`,
-    deleteFailed: "Não foi possível excluir o modelo. Tente de novo.",
-    confirmDelete: (name) => `“${name}” sai da lista de modelos. Essa ação não pode ser desfeita.`,
-    inUse: (name, count) => `${itemCount(count)} ${count === 1 ? "usa" : "usam"} “${name}”. Troque o modelo do veículo desses itens antes de excluir.`,
-    confirmMerge: (from, into, count) =>
-      `${movedItems(from, into, count)}, e “${from}” sai da lista de modelos.`,
-    merged: (from, into, count) =>
-      `Modelo “${from}” juntado a “${into}”: ${itemCount(count)} ${count === 1 ? "mudou" : "mudaram"}.`,
-    mergeFailed: "Não foi possível juntar o modelo. Tente de novo.",
+  {
+    mergeModel: (name, into) => `The generations and sheets of “${name}” go to “${into}”.`,
+    mergeBrand: (name, into) => `The models and sheets of “${name}” go to “${into}”.`,
+    deleteModel: (name) => `“${name}” also leaves the Catalog, with its generations and sheets.`,
+    deleteBrand: (name) => `“${name}” also leaves the Catalog, with its models and sheets.`,
   },
-};
+);
 /** An entry of a list; a vehicle brand or model says whether the catalog has it, which keeps it in the list. */
 export const listEntrySchema = z.object({ id: z.uuid(), name: z.string(), inCatalog: z.boolean().optional() });
 export const listEntriesSchema = z.array(listEntrySchema);
@@ -215,31 +247,79 @@ export function findEntry<Entry extends ListEntry>(entries: readonly Entry[], te
  * @param kind The entry's list.
  * @param entry The entry merged away.
  * @param into The entry it is merged into.
+ * @param locale The language.
  * @returns E.g. "Os modelos e fichas de “GM” vão para “Chevrolet”.", or null when the catalog doesn't have it.
  */
-export function catalogMergeNote(kind: ItemListKind, entry: ListEntry, into: ListEntry): string | null {
+export function catalogMergeNote(kind: ItemListKind, entry: ListEntry, into: ListEntry, locale: Locale): string | null {
   if (!entry.inCatalog) {
     return null;
   }
-  return kind === "vehicleModels"
-    ? `As gerações e fichas de “${entry.name}” vão para “${into.name}”.`
-    : `Os modelos e fichas de “${entry.name}” vão para “${into.name}”.`;
+  const notes = CATALOG_NOTES[locale];
+  return kind === "vehicleModels" ? notes.mergeModel(entry.name, into.name) : notes.mergeBrand(entry.name, into.name);
 }
 
 /**
  * Says what else deleting an entry of the catalog takes: it leaves the catalog, with its models' trees or its own.
  * @param kind The entry's list.
  * @param entry The entry.
+ * @param locale The language.
  * @returns E.g. "“Ford” também sai do Catálogo, com os modelos e as fichas dela.", or null when the catalog doesn't
  *   have it.
  */
-export function catalogDeleteNote(kind: ItemListKind, entry: ListEntry): string | null {
+export function catalogDeleteNote(kind: ItemListKind, entry: ListEntry, locale: Locale): string | null {
   if (!entry.inCatalog) {
     return null;
   }
-  return kind === "vehicleModels"
-    ? `“${entry.name}” também sai do Catálogo, com as gerações e as fichas dele.`
-    : `“${entry.name}” também sai do Catálogo, com os modelos e as fichas dela.`;
+  const notes = CATALOG_NOTES[locale];
+  return kind === "vehicleModels" ? notes.deleteModel(entry.name) : notes.deleteBrand(entry.name);
+}
+
+/**
+ * Words a number of items in English.
+ * @param count How many items.
+ * @returns E.g. "1 item", "3 items".
+ */
+function englishItemCount(count: number): string {
+  return `${count} ${count === 1 ? "item" : "items"}`;
+}
+
+/**
+ * Writes what the screens say about a list in English, which writes each list's texts the same way.
+ * @param names The list's title, one entry ("Category"), the list in a sentence ("categories") and an item's field.
+ * @returns The list's texts.
+ */
+function englishListTexts(names: { title: string; one: string; list: string; field: string }): ItemListTexts {
+  const { title, one, list, field } = names;
+  const lower = one.toLowerCase();
+  return {
+    title,
+    created: (name) => `${one} “${name}” created.`,
+    createFailed: `Couldn't create the ${lower}. Try again.`,
+    renamed: (name) => `${one} renamed to “${name}”.`,
+    renameFailed: `Couldn't rename the ${lower}. Try again.`,
+    taken: `A ${lower} with this name already exists.`,
+    deleted: (name) => `${one} “${name}” deleted.`,
+    deleteFailed: `Couldn't delete the ${lower}. Try again.`,
+    confirmDelete: (name) => `“${name}” leaves the list of ${list}. This can't be undone.`,
+    inUse: (name, count) => `${englishItemCount(count)} ${count === 1 ? "uses" : "use"} “${name}”. Change the ${field} of these items before deleting it.`,
+    confirmMerge: (from, into, count) => `${englishMovedItems(from, into, count)}, and “${from}” leaves the list of ${list}.`,
+    merged: (from, into, count) => `${one} “${from}” joined into “${into}”: ${englishItemCount(count)} moved.`,
+    mergeFailed: `Couldn't join the ${lower}. Try again.`,
+  };
+}
+
+/**
+ * Words where the items of a merged entry go, in English.
+ * @param from The entry merged away.
+ * @param into The entry it is merged into.
+ * @param count How many items use it.
+ * @returns E.g. "The 12 items of “Parachoque” move to “Para-choque”", or that no item uses it.
+ */
+function englishMovedItems(from: string, into: string, count: number): string {
+  if (count === 0) {
+    return `No item uses “${from}”`;
+  }
+  return count === 1 ? `The item of “${from}” moves to “${into}”` : `The ${count} items of “${from}” move to “${into}”`;
 }
 
 /**

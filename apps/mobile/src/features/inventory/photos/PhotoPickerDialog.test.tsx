@@ -60,7 +60,7 @@ async function mount(props: Partial<React.ComponentProps<typeof PhotoPickerDialo
  * @param text Text to type.
  */
 async function search(tree: ReactTestRenderer.ReactTestRenderer, text: string) {
-  const input = tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === PHOTO_PICKER.search);
+  const input = tree.root.find((n) => n.type === TextInput && n.props.accessibilityLabel === PHOTO_PICKER['pt-BR'].search);
   await ReactTestRenderer.act(async () => input.props.onChangeText(text));
 }
 
@@ -113,13 +113,13 @@ afterEach(async () => {
 // the exact original code first, leaves out the item being edited, and says when nothing is found.
 test('Mobile: the picker finds the items with photos by code', async () => {
   const tree = await mount();
-  expect(texts(tree)).toContain(PHOTO_PICKER.hint);
+  expect(texts(tree)).toContain(PHOTO_PICKER['pt-BR'].hint);
   await search(tree, 'bd33');
   const names = () => tree.root.findAll((n) => n.props.testID === 'inventory.photo-picker.list.source.head.text.name' && typeof n.type === 'string');
   expect(names().map((name) => name.props.children)).toEqual(['Pastilha', 'Disco de freio']);
   expect(texts(tree)).toContain('BD-3377 · Fremax · 2 fotos');
   await search(tree, 'bd-9000');
-  expect(texts(tree)).toContain(PHOTO_PICKER.none);
+  expect(texts(tree)).toContain(PHOTO_PICKER['pt-BR'].none);
   const editing = await mount({ editingId: DISC.id });
   await search(editing, 'bd');
   expect(() => pressable(editing, 'Disco de freio')).toThrow();
@@ -142,7 +142,7 @@ test('Mobile: photos are checked from several items up to the room, and handed o
   expect(texts(tree)).toContain('2 de 2 fotos escolhidas: desmarque uma para trocar.');
   await press(tree, 'Usar 2 fotos');
   expect(onPick).toHaveBeenCalledWith([photo('d2'), photo('p1')]);
-  await press(tree, PHOTO_PICKER.cancel);
+  await press(tree, PHOTO_PICKER['pt-BR'].cancel);
   expect(onClose).toHaveBeenCalled();
 });
 

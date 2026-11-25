@@ -2,6 +2,7 @@ import { useRef, useState, type ComponentRef } from 'react';
 import { Text as RNText, TextInput, View } from 'react-native';
 import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/domain/auth';
 import { DEVICE_MESSAGES } from '@apc/domain/devices';
+import { useMessages } from '../../app/locale';
 import type { FieldKind } from '@apc/ui-spec/field';
 import { lockIcon, userIcon, type IconShape } from '@apc/tokens/icons';
 import { BackButton } from '../../components/BackButton';
@@ -12,6 +13,7 @@ import { Text } from '../../components/Typography';
 import { DevicePending } from './DevicePending';
 import { useStyles } from './RegisterScreen.styles';
 import { useDeviceWait } from './useDeviceWait';
+import { useLocale } from '../../app/locale';
 
 // The sign-up screen, the same as the web's /register on a phone: a header with the back arrow to the login and
 // "Criar conta" as the screen's heading, then the form, which asks for the name, the username, the e-mail (only kept
@@ -45,13 +47,15 @@ type RegisterScreenProps = {
 };
 
 export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenProps) {
+  const { locale } = useLocale();
   const [registration, setRegistration] = useState<Registration>(EMPTY);
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [sending, setSending] = useState(false);
   const [refused, setRefused] = useState<string>();
   const inputs = useRef<Partial<Record<keyof Registration, ComponentRef<typeof TextInput> | null>>>({});
   const { styles, ids } = useStyles();
-  const device = useDeviceWait(auth, onRegistered, () => setRefused(DEVICE_MESSAGES.refused));
+  const deviceMessages = useMessages(DEVICE_MESSAGES);
+  const device = useDeviceWait(auth, onRegistered, () => setRefused(deviceMessages.refused));
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Registration, value: string) => {
@@ -64,7 +68,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
     if (sending) {
       return;
     }
-    const found = registerErrors(registration);
+    const found = registerErrors(registration, locale);
     setErrors(found);
     const wrong = FIELDS.find(({ name }) => found[name]);
     if (wrong) {
@@ -74,7 +78,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
     setRefused(undefined);
     setSending(true);
     const { displayName, username, email, password } = registration;
-    const result = await auth.register({ displayName, username, email, password });
+    const result = await auth.register({ displayName, username, email, password }, locale);
     setSending(false);
     if ('refused' in result) {
       setRefused(result.refused);

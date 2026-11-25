@@ -9,6 +9,7 @@ import type { UploadPhoto } from '../ImageUpload/ImageUpload.tsx'
 import { imageViewer, viewerBox } from './ImageViewer.styles.ts'
 import { ToastProvider } from '../Toast/Toast.tsx'
 import { useToast } from '../Toast/toastContext.ts'
+import { useLocale } from '../../app/useLocale.ts'
 import { Heading, NumericReadout, Text } from '../Typography/Typography.tsx'
 import { usePresence } from '../usePresence.ts'
 
@@ -101,6 +102,7 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
 
 function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosChange, limit }: ViewerBodyProps) {
   const toast = useToast()
+  const { locale } = useLocale()
   const input = useRef<HTMLInputElement>(null)
   const { classes, ids } = imageViewer()
   const [index, setIndex] = useState(0)
@@ -146,7 +148,7 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
 
   /** Checks the chosen file and adds it, or puts it in place of the photo on screen. */
   const take = (file: File) => {
-    const { accepted, problems: leftOut } = replacing ? takePhotos([file], 0, 1) : takePhotos([file], count, limit)
+    const { accepted, problems: leftOut } = replacing ? takePhotos([file], 0, 1, locale) : takePhotos([file], count, limit, locale)
     setProblems(leftOut)
     if (accepted.length === 0) {
       return
@@ -200,7 +202,7 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
               <Icon icon={imageIcon} size={ICON_SIZES.viewer} />
               <Heading level={4}>Este item ainda não tem fotos</Heading>
               <Text size="sm" tone="muted">
-                Adicione até {photoCount(limit)}. A primeira vira a capa na lista.
+                Adicione até {photoCount(limit, locale)}. A primeira vira a capa na lista.
               </Text>
             </div>
           )}
@@ -258,8 +260,8 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
       <div className={classes.footer()} data-testid={ids.footer}>
         <Text size="sm" tone="muted">
           {full
-            ? `Limite de ${photoCount(limit)} atingido. Troque ou remova uma para adicionar outra.`
-            : `JPG, PNG ou WebP, até 3 MB · ${count} de ${photoCount(limit)}`}
+            ? `Limite de ${photoCount(limit, locale)} atingido. Troque ou remova uma para adicionar outra.`
+            : `JPG, PNG ou WebP, até 3 MB · ${count} de ${photoCount(limit, locale)}`}
         </Text>
         <span className={classes.buttons()} data-testid={ids.buttons}>
           {count > 0 && (

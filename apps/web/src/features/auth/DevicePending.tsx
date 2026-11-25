@@ -1,4 +1,5 @@
 import { DEVICE_MESSAGES } from '@apc/domain/devices'
+import { useMessages } from '../../app/useLocale.ts'
 import { Text } from '../../components/Typography'
 import { devicePending } from './DevicePending.styles.ts'
 
@@ -8,14 +9,15 @@ import { devicePending } from './DevicePending.styles.ts'
 
 export function DevicePending({ code }: { code: string }) {
   const { classes, ids } = devicePending()
+  const messages = useMessages(DEVICE_MESSAGES)
   return (
     <div role="status" className={classes.base()} data-testid={ids.base}>
-      <Text>{DEVICE_MESSAGES.pending}</Text>
+      <Text>{messages.pending}</Text>
       <p className={classes.code()} data-testid={ids.code}>
         {code}
       </p>
       <Text size="sm" tone="muted">
-        {DEVICE_MESSAGES.pendingHelp}
+        {messages.pendingHelp}
       </Text>
     </div>
   )

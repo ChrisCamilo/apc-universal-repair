@@ -76,7 +76,7 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
   const syncNow = async () => {
     const result = await copy.sync();
     const waiting = (await loadQueue()).filter((operation) => !operation.sent).length;
-    const { ok, message } = syncOutcome(result, waiting);
+    const { ok, message } = syncOutcome(result, waiting, locale);
     if (ok) {
       toast.success(message);
     } else {

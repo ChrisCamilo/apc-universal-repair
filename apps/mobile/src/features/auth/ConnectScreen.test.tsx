@@ -209,7 +209,7 @@ test('Mobile: given the AuthService, the QR code logs the phone in with its entr
 
   answer(true);
   await scan(pairingLink({ ...SERVER, entry: 'K7Q2ZD9M' }));
-  expect(pair).toHaveBeenCalledWith('K7Q2ZD9M');
+  expect(pair).toHaveBeenCalledWith('K7Q2ZD9M', 'pt-BR');
   expect(JSON.parse((await themeStorage.getItem(SERVER_STORAGE_KEY))!)).toEqual(SERVER);
   expect(onConnected).toHaveBeenCalledWith(SERVER, LOGGED_IN);
 });
@@ -219,20 +219,20 @@ test('Mobile: given the AuthService, the QR code logs the phone in with its entr
 // sent.
 test('Mobile: a refused entry code says so, and the camera doesn’t send it again', async () => {
   applyServer(BEFORE);
-  const pair = jest.fn(async () => ({ refused: PAIRING_REFUSED }));
+  const pair = jest.fn(async () => ({ refused: PAIRING_REFUSED['pt-BR'] }));
   const onConnected = jest.fn();
   const tree = await mount({ auth: { ...AUTH, pair }, onConnected });
   const used = pairingLink({ ...SERVER, entry: 'K7Q2ZD9M' });
   answer(true);
   await scan(used);
-  expect(shows(tree, PAIRING_REFUSED)).toBe(true);
+  expect(shows(tree, PAIRING_REFUSED['pt-BR'])).toBe(true);
   expect(apiUrl()).toBe(BEFORE.url);
   expect(await themeStorage.getItem(SERVER_STORAGE_KEY)).toBeNull();
   await scan(used);
   expect(pair).toHaveBeenCalledTimes(1);
   answer(true);
   await scan(pairingLink({ ...SERVER, entry: 'H4XW8RTC' }));
-  expect(pair).toHaveBeenLastCalledWith('H4XW8RTC');
+  expect(pair).toHaveBeenLastCalledWith('H4XW8RTC', 'pt-BR');
   expect(onConnected).not.toHaveBeenCalled();
 });
 
@@ -259,7 +259,10 @@ test('Mobile: a phone the computer hasn’t authorized waits, then logs in with 
     await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
     expect(onConnected).not.toHaveBeenCalled();
     await ReactTestRenderer.act(async () => jest.advanceTimersByTimeAsync(DEVICE_POLL_MS));
-    expect(pair.mock.calls).toEqual([['K7Q2ZD9M'], ['K7Q2ZD9M']]);
+    expect(pair.mock.calls).toEqual([
+      ['K7Q2ZD9M', 'pt-BR'],
+      ['K7Q2ZD9M', 'pt-BR'],
+    ]);
     expect(JSON.parse((await themeStorage.getItem(SERVER_STORAGE_KEY))!)).toEqual(SERVER);
     expect(onConnected).toHaveBeenCalledWith(SERVER, LOGGED_IN);
 
@@ -304,7 +307,7 @@ test('Mobile: typed in, the entry code is a third field', async () => {
   await type(tree, 'Código de entrada', 'k7q2 zd9m');
   answer(true);
   await press(tree, 'Conectar');
-  expect(pair).toHaveBeenCalledWith('K7Q2ZD9M');
+  expect(pair).toHaveBeenCalledWith('K7Q2ZD9M', 'pt-BR');
   expect(onConnected).toHaveBeenCalledWith(SERVER, LOGGED_IN);
 });
 

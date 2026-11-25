@@ -56,7 +56,7 @@ function Toolbar() {
   const [sort, setSort] = useState<Sort | null>(null)
   const [open, setOpen] = useState<'filters' | 'sort' | null>(null)
   const count = activeFilterCount(filters)
-  const sortLabel = ITEM_SORT_OPTIONS.find((option) => option.value === sortValue(sort))?.label
+  const sortLabel = ITEM_SORT_OPTIONS['pt-BR'].find((option) => option.value === sortValue(sort))?.label
   return (
     <div className="flex gap-2 p-4">
       <ToolButton
@@ -69,10 +69,10 @@ function Toolbar() {
       <FilterSheet
         open={open === 'filters'}
         onClose={() => setOpen(null)}
-        rows={(draft) => itemFilterRows(ITEMS, draft)}
+        rows={(draft) => itemFilterRows(ITEMS, draft, 'pt-BR')}
         values={filters}
         sort={sort}
-        sortOptions={ITEM_SORT_OPTIONS}
+        sortOptions={ITEM_SORT_OPTIONS['pt-BR']}
         count={(draft) => matchingCount(ITEMS, draft, null, '')}
         onApply={(values, next) => {
           setFilters(values)
@@ -80,7 +80,7 @@ function Toolbar() {
           setOpen(null)
         }}
       />
-      <SortSheet open={open === 'sort'} onClose={() => setOpen(null)} sort={sort} options={ITEM_SORT_OPTIONS} onSortChange={setSort} />
+      <SortSheet open={open === 'sort'} onClose={() => setOpen(null)} sort={sort} options={ITEM_SORT_OPTIONS['pt-BR']} onSortChange={setSort} />
     </div>
   )
 }

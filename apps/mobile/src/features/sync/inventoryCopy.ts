@@ -25,7 +25,9 @@ import {
   type QueuedOperation,
   withQueue,
 } from '@apc/domain/sync-queue';
+import type { Locale } from '@apc/domain/locale';
 import { apiUrl } from '../../app/api';
+import { loadLocale } from '../../app/locale';
 import { hasLocalNetwork } from '../../app/localNetwork';
 import { clearPhotos, keepThumbnails, releasePhotos } from './photoCache';
 
@@ -234,6 +236,8 @@ async function sync(): Promise<SyncResult> {
  * @returns Whether every operation got its answer; false when the server couldn't be reached.
  */
 async function send(started: number): Promise<boolean> {
+  // The notices are written in the language chosen on the phone when the sync runs.
+  const locale = await loadLocale();
   for (;;) {
     // An operation in conflict waits until it is settled.
     const waiting = queue.filter((operation) => !operation.sent && !operation.conflicts);
@@ -243,14 +247,14 @@ async function send(started: number): Promise<boolean> {
     const [first] = waiting;
     const firstOther = waiting.findIndex((operation) => !isItemOperation(operation));
     const answers = isItemOperation(first)
-      ? await sendItems(waiting.slice(0, firstOther < 0 ? SYNC_OPERATIONS_MAX : Math.min(firstOther, SYNC_OPERATIONS_MAX)) as QueuedItemOperation[])
+      ? await sendItems(waiting.slice(0, firstOther < 0 ? SYNC_OPERATIONS_MAX : Math.min(firstOther, SYNC_OPERATIONS_MAX)) as QueuedItemOperation[], locale)
       : first.type === 'savePhotos'
-        ? await sendPhotos(first)
-        : await sendName(first as NameOperation & QueuedOperation);
+        ? await sendPhotos(first, locale)
+        : await sendName(first as NameOperation & QueuedOperation, locale);
     if (!answers || generation !== started) {
       return false;
     }
-    take(answers);
+    take(answers, locale);
     await save();
     changed();
   }
@@ -261,8 +265,9 @@ async function send(started: number): Promise<boolean> {
  * on a new item refused, and the listeners told why; one in conflict kept with its conflicts and the item as the phone
  * shows it now, to settle (see @apc/domain/sync-conflicts), and the listeners told so.
  * @param answers Each operation's answer.
+ * @param locale The language of the notices.
  */
-function take(answers: Answers) {
+function take(answers: Answers, locale: Locale) {
   const notices: string[] = [];
   const refusedItems = new Set<string>();
   const conflicted = [...answers.values()].some((answer) => answer.conflicts);
@@ -276,7 +281,7 @@ function take(answers: Answers) {
       return [operation];
     }
     if (answer.conflicts) {
-      notices.push(conflictNotice(operation));
+      notices.push(conflictNotice(operation, locale));
       const snapshot = 'itemId' in operation ? shown.find((item) => item.id === operation.itemId) : undefined;
       return [{ ...operation, conflicts: answer.conflicts, ...(snapshot && { snapshot }) }];
     }
@@ -308,9 +313,10 @@ function refuses(status: number): boolean {
 /**
  * Sends a batch of item operations.
  * @param operations The operations, in order.
+ * @param locale The language of the notices.
  * @returns Each one's answer, or null when the server couldn't be reached.
  */
-async function sendItems(operations: QueuedItemOperation[]): Promise<Answers | null> {
+async function sendItems(operations: QueuedItemOperation[], locale: Locale): Promise<Answers | null> {
   const response = await apiFetch(`${apiUrl()}${SYNC_OPERATIONS_PATH}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -318,7 +324,7 @@ async function sendItems(operations: QueuedItemOperation[]): Promise<Answers | n
   }).catch(() => null);
   if (!response?.ok) {
     return response && refuses(response.status)
-      ? new Map(operations.map((operation) => [operation.id, { refused: refusedNotice(operation, { statusCode: response.status }) }]))
+      ? new Map(operations.map((operation) => [operation.id, { refused: refusedNotice(operation, { statusCode: response.status }, locale) }]))
       : null;
   }
   const { results } = syncOperationsResultSchema.parse(await response.json());
@@ -328,7 +334,7 @@ async function sendItems(operations: QueuedItemOperation[]): Promise<Answers | n
       if (result.status === 'conflict') {
         return [result.id, { conflicts: result.conflicts ?? [] }];
       }
-      return [result.id, result.status === 'applied' ? {} : { refused: refusedNotice(operation, result) }];
+      return [result.id, result.status === 'applied' ? {} : { refused: refusedNotice(operation, result, locale) }];
     }),
   );
 }
@@ -336,9 +342,10 @@ async function sendItems(operations: QueuedItemOperation[]): Promise<Answers | n
 /**
  * Sends a brand's photos, as the photo route takes them: the saved ones kept, the copies and the new files.
  * @param operation The photos.
+ * @param locale The language of the notice.
  * @returns Its answer, or null when the server couldn't be reached.
  */
-async function sendPhotos(operation: PhotosOperation & QueuedOperation): Promise<Answers | null> {
+async function sendPhotos(operation: PhotosOperation & QueuedOperation, locale: Locale): Promise<Answers | null> {
   const body = new FormData();
   for (const photo of operation.photos) {
     if ('keep' in photo) {
@@ -353,44 +360,46 @@ async function sendPhotos(operation: PhotosOperation & QueuedOperation): Promise
   const response = await apiFetch(`${apiUrl()}/items/${operation.itemId}/brands/${operation.brandId}/photos`, { method: 'PUT', body }).catch(
     () => null,
   );
-  return answerOf(operation, response);
+  return answerOf(operation, response, locale);
 }
 
 /**
  * Sends a name to its list; a vehicle model goes under its brand, found in the copy by name, or added first.
  * @param operation The name.
+ * @param locale The language of the notice.
  * @returns Its answer, or null when the server couldn't be reached.
  */
-async function sendName(operation: NameOperation & QueuedOperation): Promise<Answers | null> {
+async function sendName(operation: NameOperation & QueuedOperation, locale: Locale): Promise<Answers | null> {
   /** Adds a name to a list, or finds it there. */
   const post = (path: string, body: object) =>
     apiFetch(`${apiUrl()}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
   if (operation.kind !== 'vehicleModels') {
-    return answerOf(operation, await post(ITEM_LIST_PATHS[operation.kind], { name: operation.name }));
+    return answerOf(operation, await post(ITEM_LIST_PATHS[operation.kind], { name: operation.name }), locale);
   }
   const brandName = operation.vehicleBrand ?? '';
   let vehicleBrandId = Object.values(held?.rows.vehicleBrand ?? {}).find((brand) => optionKey(brand.name) === optionKey(brandName))?.id;
   if (!vehicleBrandId) {
     const brand = await post(ITEM_LIST_PATHS.vehicleBrands, { name: brandName });
     if (!brand?.ok) {
-      return answerOf(operation, brand);
+      return answerOf(operation, brand, locale);
     }
     vehicleBrandId = listEntrySchema.parse(await brand.json()).id;
   }
-  return answerOf(operation, await post(ITEM_LIST_PATHS.vehicleModels, { name: operation.name, vehicleBrandId }));
+  return answerOf(operation, await post(ITEM_LIST_PATHS.vehicleModels, { name: operation.name, vehicleBrandId }), locale);
 }
 
 /**
  * Reads the answer to an operation sent on its own.
  * @param operation The operation.
  * @param response What the server answered, or null when it couldn't be reached.
+ * @param locale The language of the notice.
  * @returns Accepted or refused, or null when the server couldn't be reached or didn't take it now.
  */
-function answerOf(operation: QueuedOperation, response: Response | null): Answers | null {
+function answerOf(operation: QueuedOperation, response: Response | null, locale: Locale): Answers | null {
   if (response?.ok) {
     return new Map([[operation.id, {}]]);
   }
-  return response && refuses(response.status) ? new Map([[operation.id, { refused: refusedNotice(operation, { statusCode: response.status }) }]]) : null;
+  return response && refuses(response.status) ? new Map([[operation.id, { refused: refusedNotice(operation, { statusCode: response.status }, locale) }]]) : null;
 }
 
 /**

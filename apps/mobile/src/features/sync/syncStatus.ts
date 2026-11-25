@@ -1,3 +1,4 @@
+import type { Locale } from '@apc/domain/locale';
 import { waitingNotice } from '@apc/domain/sync-queue';
 import { LOCAL_NETWORK_TEXTS } from '../../app/localNetwork';
 import type { SyncResult } from './inventoryCopy';
@@ -68,14 +69,15 @@ export function lastSync(syncedAt: Date | null, now = new Date()): string {
  * Says how a sync the user asked for went.
  * @param result How it ended.
  * @param waiting How many changes still wait afterwards.
+ * @param locale The language of how many wait.
  * @returns The message, and whether it went well.
  */
-export function syncOutcome(result: SyncResult, waiting: number): { ok: boolean; message: string } {
+export function syncOutcome(result: SyncResult, waiting: number, locale: Locale): { ok: boolean; message: string } {
   if (result === 'blocked') {
     return { ok: false, message: LOCAL_NETWORK_TEXTS.missing };
   }
   if (result === 'offline') {
-    const kept = waiting > 0 ? ` ${waitingNotice(waiting)}` : '';
+    const kept = waiting > 0 ? ` ${waitingNotice(waiting, locale)}` : '';
     return {
       ok: false,
       message: `Não foi possível sincronizar: o servidor não respondeu. Confira se o celular está no Wi-Fi de casa e se o computador está ligado.${kept}`,

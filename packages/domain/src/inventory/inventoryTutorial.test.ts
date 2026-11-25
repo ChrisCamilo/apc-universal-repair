@@ -87,7 +87,7 @@ function fakeScreen() {
 // Lists the steps and checks their order, the test item opened from its row into its details before the edit, that
 // every step but the last belongs to a part, and where a step falls: the fifth of 19, in part 2 of 3.
 test("Shared: the tutorial has three parts, opening the item from its row", () => {
-  const steps = inventoryTutorialSteps(() => fakeScreen().screen);
+  const steps = inventoryTutorialSteps(() => fakeScreen().screen, "pt-BR");
   assert.deepEqual(steps.map((step) => step.id).slice(7, 11), ["found", "details", "unlock", "rename"]);
   assert.deepEqual(
     steps.filter((step) => !step.part).map((step) => step.id),
@@ -95,7 +95,7 @@ test("Shared: the tutorial has three parts, opening the item from its row", () =
   );
   assert.equal(steps.length, 19);
   assert.equal(steps[4].part, 2);
-  assert.deepEqual(INVENTORY_TUTORIAL_PARTS, ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir"]);
+  assert.deepEqual(INVENTORY_TUTORIAL_PARTS["pt-BR"], ["Cadastrar um item", "Procurar e filtrar", "Editar e excluir"]);
 });
 
 // Checks a form matches typed values ignoring case, accents and spaces and the price by its value, and that applied
@@ -111,7 +111,7 @@ test("Shared: the tutorial reads the form and the filters loosely", () => {
 // but not while a save is on its way, and saves the test item.
 test("Shared: part 1 fills and saves the test item, going back when the form closes", () => {
   const { screen, calls } = fakeScreen();
-  const [create, identity, stock, save] = inventoryTutorialSteps(() => screen);
+  const [create, identity, stock, save] = inventoryTutorialSteps(() => screen, "pt-BR");
   assert.equal(create.target?.(), "new");
   assert.equal(create.done?.(), false);
   create.auto?.();
@@ -138,7 +138,7 @@ test("Shared: part 1 fills and saves the test item, going back when the form clo
 test("Shared: part 2 searches and filters for the test item", () => {
   const { screen } = fakeScreen();
   screen.items = [SAVED];
-  const steps = inventoryTutorialSteps(() => screen);
+  const steps = inventoryTutorialSteps(() => screen, "pt-BR");
   const step = (id: string) => steps.find((each) => each.id === id)!;
   step("search").auto?.();
   assert.equal(step("search").done?.(), true);
@@ -156,7 +156,7 @@ test("Shared: part 2 searches and filters for the test item", () => {
 test("Shared: part 3 edits the test item twice, then deletes it", () => {
   const { screen, calls } = fakeScreen();
   screen.items = [SAVED];
-  const steps = inventoryTutorialSteps(() => screen);
+  const steps = inventoryTutorialSteps(() => screen, "pt-BR");
   const step = (id: string) => steps.find((each) => each.id === id)!;
   step("details").auto?.();
   assert.equal(calls.at(-1), "open TUTORIAL-001 details");
@@ -190,9 +190,9 @@ test("Shared: part 3 edits the test item twice, then deletes it", () => {
 test("Shared: on a phone the tutorial names the phone layout and goes through the details", () => {
   const { screen } = fakeScreen();
   screen.items = [SAVED];
-  const desktop = inventoryTutorialSteps(() => screen);
+  const desktop = inventoryTutorialSteps(() => screen, "pt-BR");
   screen.phone = true;
-  const steps = inventoryTutorialSteps(() => screen);
+  const steps = inventoryTutorialSteps(() => screen, "pt-BR");
   const step = (id: string) => steps.find((each) => each.id === id)!;
   assert.equal(desktop[0].text, "Clique em Novo item para cadastrar uma peça de teste.");
   assert.equal(step("new").text, "Toque no + para cadastrar uma peça de teste.");

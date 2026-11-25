@@ -19,6 +19,7 @@ import {
   type CatalogValues,
 } from '@apc/domain/catalog'
 import { useToast } from '../../components/Toast'
+import { useLocale } from '../../app/useLocale.ts'
 
 // The Catalog's editing, the same from the tablet up and on a phone: what is being added or renamed and why it couldn't
 // be saved, the engine sheet being filled in, the node or brand whose deletion is being confirmed, and the changes themselves,
@@ -42,6 +43,7 @@ type CatalogEditingOptions = {
  * @returns What is being edited, and the ways to start, save and give up on each edit.
  */
 export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBrandRemoved }: CatalogEditingOptions) {
+  const { locale } = useLocale()
   const toast = useToast()
   const [editing, setEditing] = useState<CatalogEditing | null>(null)
   const [error, setError] = useState<string>()
@@ -63,18 +65,18 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
    */
   const change = async (method: 'POST' | 'PATCH' | 'DELETE', path: string, body?: object, taken?: string): Promise<Catalog | null> => {
     setSaving(true)
-    const result = await changeCatalog('/api', method, path, body)
+    const result = await changeCatalog('/api', method, path, locale, body)
     setSaving(false)
     if (result === 'taken' && method === 'DELETE') {
-      toast.error(CATALOG_IN_USE)
+      toast.error(CATALOG_IN_USE[locale])
       return null
     }
     if (result === 'taken') {
-      setError(taken ?? CATALOG_FAILED)
+      setError(taken ?? CATALOG_FAILED[locale])
       return null
     }
     if (!result) {
-      toast.error(CATALOG_FAILED)
+      toast.error(CATALOG_FAILED[locale])
       return null
     }
     onChanged(result)
@@ -106,7 +108,7 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
     /** Copies an engine, with its sheet, to paste into a period; it says so. */
     copyEngine: (engine: CatalogNode) => {
       setCopied(engine)
-      toast.info(ENGINE_CLIPBOARD.copied(engine.label))
+      toast.info(ENGINE_CLIPBOARD[locale].copied(engine.label))
     },
     /** Adds a copy of the engine copied, with its sheet, at the end of a period's engines, chosen as a new engine is; it says so. */
     pasteEngine: async (period: CatalogNode) => {
@@ -116,7 +118,7 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
       const { method, path, body } = engineCopyRequest(copied, period)
       const changed = await change(method, path, body)
       if (changed) {
-        toast.success(ENGINE_CLIPBOARD.pasted(copied.label, period.label))
+        toast.success(ENGINE_CLIPBOARD[locale].pasted(copied.label, period.label))
         onEngineAdded?.(changed, period.id)
       }
     },
@@ -151,7 +153,7 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
       if (!editing) {
         return
       }
-      const { method, path, taken } = catalogEditRequest(editing)
+      const { method, path, taken } = catalogEditRequest(editing, locale)
       const changed = await change(method, path, values, taken)
       if (changed) {
         setEditing(null)

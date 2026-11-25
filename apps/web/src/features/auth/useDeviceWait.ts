@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { waitForDevice, type AuthService, type Credentials, type SessionUser } from '@apc/domain/auth'
+import { useLocale } from '../../app/useLocale.ts'
 
 // A login or sign-up from a device the server's computer hasn't authorized waits here (see @apc/domain/devices): the
 // screen shows the device's code while waitForDevice asks whether it was authorized, then logs in with what was typed.
@@ -16,6 +17,7 @@ export type DeviceWait = { code: string; credentials: Credentials }
  * @returns The wait shown, if any, and the ways to start and stop it.
  */
 export function useDeviceWait(auth: AuthService, onLoggedIn: (user: SessionUser) => void, onRefused: () => void) {
+  const { locale } = useLocale()
   const [waiting, setWaiting] = useState<DeviceWait>()
   // The latest callbacks, so a new one from the owner doesn't start the wait over.
   const done = useRef({ onLoggedIn, onRefused })
@@ -28,7 +30,7 @@ export function useDeviceWait(auth: AuthService, onLoggedIn: (user: SessionUser)
       return
     }
     const stop = new AbortController()
-    void waitForDevice(auth, () => auth.login(waiting.credentials), stop.signal).then((user) => {
+    void waitForDevice(auth, () => auth.login(waiting.credentials, locale), stop.signal).then((user) => {
       if (user === undefined) {
         return
       }
@@ -40,7 +42,7 @@ export function useDeviceWait(auth: AuthService, onLoggedIn: (user: SessionUser)
       }
     })
     return () => stop.abort()
-  }, [auth, waiting])
+  }, [auth, waiting, locale])
 
   return { waiting, wait: setWaiting, stop: () => setWaiting(undefined) }
 }

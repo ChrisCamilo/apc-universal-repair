@@ -131,7 +131,7 @@ function createOf(item: Item): ItemCreate {
  * @returns The rows.
  */
 function rows(text: string): CsvItemRow[] {
-  const read = readItemsCsv(text, LISTS);
+  const read = readItemsCsv(text, LISTS, "pt-BR");
   assert.ok("rows" in read, "error" in read ? read.error : "");
   return read.rows;
 }
@@ -148,7 +148,7 @@ test("Shared: CSV prices take a decimal comma or point, up to a million", () => 
   );
   assert.deepEqual(
     read.map((row) => row.errors),
-    [[], [], [], [], [], [], [], [ITEM_FORM_MESSAGES.priceTooHigh]],
+    [[], [], [], [], [], [], [], [ITEM_FORM_MESSAGES["pt-BR"].priceTooHigh]],
   );
 });
 
@@ -231,14 +231,14 @@ test("Shared: invalid CSV rows say why", () => {
   const [missing, wrong, repeated, spaced] = rows(text);
   assert.equal(missing.line, 3);
   assert.deepEqual(missing.errors, [
-    ITEM_FORM_MESSAGES.code,
-    ITEM_FORM_MESSAGES.priceInvalid,
+    ITEM_FORM_MESSAGES["pt-BR"].code,
+    ITEM_FORM_MESSAGES["pt-BR"].priceInvalid,
     "Quantidade deve ser um número inteiro, como 4.",
     "Quantidade mínima deve ser um número inteiro, como 4.",
     "Posição deve ser D, T ou Ambos, ou ficar vazia.",
     "Lado deve ser LD, LE ou Ambos, ou ficar vazio.",
   ]);
-  assert.deepEqual(wrong.errors, [ITEM_FORM_MESSAGES.priceInvalid]);
+  assert.deepEqual(wrong.errors, [ITEM_FORM_MESSAGES["pt-BR"].priceInvalid]);
   assert.deepEqual(repeated.errors, ["Código repetido: já está na linha 4."]);
   assert.deepEqual(spaced.errors, ["Código repetido: já está na linha 4."]);
 });
@@ -272,7 +272,7 @@ test("Shared: the rows of one item describe it the same way, each with its part 
     importedItems(read).map((item) => [item.name, item.brands.map((brand) => brand.code)]),
     [["Junta", ["C-1", "C-2"]]],
   );
-  assert.equal(rowsSummary(read), "1 item pronto para importar · 4 linhas com erro");
+  assert.equal(rowsSummary(read, "pt-BR"), "1 item pronto para importar · 4 linhas com erro");
 });
 
 // Reads the original codes of an item of two rows and of an item of its own, and checks they are split at "|",
@@ -335,9 +335,9 @@ test("Shared: CSV vehicles are split at a bar, each a brand and maybe a model", 
     read.map((row) => row.errors),
     [
       [],
-      [ITEM_FORM_MESSAGES.vehicleBrand],
+      [ITEM_FORM_MESSAGES["pt-BR"].vehicleBrand],
       ["Veículo repetido: Volkswagen / Gol."],
-      [ITEM_FORM_MESSAGES.universalAlone],
+      [ITEM_FORM_MESSAGES["pt-BR"].universalAlone],
       ["Outra linha do item 1 tem erro."],
       ["O item 1 está descrito de outro jeito na linha 6."],
     ],
@@ -366,8 +366,8 @@ test("Shared: CSV vehicles may carry their generation and version", () => {
     [
       [],
       [],
-      [`Geração “1990-1985”: ${ITEM_FORM_MESSAGES.generationInvalid.toLowerCase()}`],
-      [`Versão “G5”: ${ITEM_FORM_MESSAGES.versionNeedsGeneration.toLowerCase()}`],
+      [`Geração “1990-1985”: ${ITEM_FORM_MESSAGES["pt-BR"].generationInvalid.toLowerCase()}`],
+      [`Versão “G5”: ${ITEM_FORM_MESSAGES["pt-BR"].versionNeedsGeneration.toLowerCase()}`],
     ],
   );
   const exported = itemsCsv([testItem({ vehicles: read[0].item.vehicles.map((vehicle) => ({ ...vehicle, vehicleModel: vehicle.vehicleModel || null })) })], {
@@ -411,11 +411,11 @@ test("Shared: CSV quantities can't pass the limit", () => {
 
 // Checks a file that can't be read at all says why: empty, missing columns, or only the header.
 test("Shared: a CSV file without items or columns is refused", () => {
-  assert.deepEqual(readItemsCsv("", LISTS), { error: "O arquivo está vazio." });
-  assert.deepEqual(readItemsCsv("code,name\nA,B", LISTS), {
+  assert.deepEqual(readItemsCsv("", LISTS, "pt-BR"), { error: "O arquivo está vazio." });
+  assert.deepEqual(readItemsCsv("code,name\nA,B", LISTS, "pt-BR"), {
     error: "Faltam colunas no arquivo: category, part_brand, vehicles, unit_price. Use o modelo.",
   });
-  assert.deepEqual(readItemsCsv(`${HEADER}\n`, LISTS), { error: "O arquivo não tem itens, só o cabeçalho." });
+  assert.deepEqual(readItemsCsv(`${HEADER}\n`, LISTS, "pt-BR"), { error: "O arquivo não tem itens, só o cabeçalho." });
 });
 
 // Lists the names the valid rows use that the lists don't hold, each once, leaving out invalid rows and the names
@@ -469,11 +469,11 @@ test("Shared: an import takes from one item up to the limit", () => {
 test("Shared: the import is worded for the preview and the toast", () => {
   const read = rows(`${CSV_TEMPLATE},,,,,,,,,,0,,,
 `);
-  assert.equal(rowsSummary(read), "2 itens prontos para importar · 1 linha com erro");
-  assert.equal(rowsSummary(read.slice(0, 1)), "1 item pronto para importar · 0 linhas com erro");
-  assert.equal(importedDetails(read[0].item).replace(/\s/g, " "), "Motor · Mann · Volkswagen Gol +1 · A-2 · R$ 39,90");
-  assert.equal(importedSummary({ created: 3, updated: 1 }), "Importação concluída: 3 itens criados, 1 atualizado.");
-  assert.equal(importedSummary({ created: 1, updated: 0 }), "Importação concluída: 1 item criado, 0 atualizados.");
+  assert.equal(rowsSummary(read, "pt-BR"), "2 itens prontos para importar · 1 linha com erro");
+  assert.equal(rowsSummary(read.slice(0, 1), "pt-BR"), "1 item pronto para importar · 0 linhas com erro");
+  assert.equal(importedDetails(read[0].item, "pt-BR").replace(/\s/g, " "), "Motor · Mann · Volkswagen Gol +1 · A-2 · R$ 39,90");
+  assert.equal(importedSummary({ created: 3, updated: 1 }, "pt-BR"), "Importação concluída: 3 itens criados, 1 atualizado.");
+  assert.equal(importedSummary({ created: 1, updated: 0 }, "pt-BR"), "Importação concluída: 1 item criado, 0 atualizados.");
 });
 
 // Writes the items without and with photos, and checks the header follows the template's columns, the photos column
@@ -530,11 +530,11 @@ test("Shared: an export fetches every item of the list and writes them", async (
 // Words the export's file name, scope and toast for none, one and many items, narrowed or not.
 test("Shared: the export is worded for its file, dialog and toast", () => {
   assert.equal(csvExportName(new Date(2026, 9, 9, 23, 30)), "estoque-2026-10-09.csv");
-  assert.equal(exportScope(0, true), "Nenhum item na lista para exportar.");
-  assert.equal(exportScope(1, false), "O único item do estoque.");
-  assert.equal(exportScope(40, false), "Todos os 40 itens do estoque.");
-  assert.equal(exportScope(12, true), "12 itens, com a busca e os filtros atuais.");
-  assert.equal(exportScope(1, true), "1 item, com a busca e os filtros atuais.");
-  assert.equal(exportedSummary(1), "1 item exportado.");
-  assert.equal(exportedSummary(12), "12 itens exportados.");
+  assert.equal(exportScope(0, true, "pt-BR"), "Nenhum item na lista para exportar.");
+  assert.equal(exportScope(1, false, "pt-BR"), "O único item do estoque.");
+  assert.equal(exportScope(40, false, "pt-BR"), "Todos os 40 itens do estoque.");
+  assert.equal(exportScope(12, true, "pt-BR"), "12 itens, com a busca e os filtros atuais.");
+  assert.equal(exportScope(1, true, "pt-BR"), "1 item, com a busca e os filtros atuais.");
+  assert.equal(exportedSummary(1, "pt-BR"), "1 item exportado.");
+  assert.equal(exportedSummary(12, "pt-BR"), "12 itens exportados.");
 });

@@ -233,7 +233,7 @@ test('Mobile: an expired session goes back to the login, which says so', async (
   const tree = await mountApp();
   const says = (text: string) => tree.root.findAll((n) => n.type === Text && n.props.children === text).length > 0;
   expect(showsLogin(tree)).toBe(true);
-  expect(says(LOGIN_MESSAGES.expired)).toBe(true);
+  expect(says(LOGIN_MESSAGES['pt-BR'].expired)).toBe(true);
   expect(await savedSession()).toBeNull();
   expect(NativeModules.InventoryCopy.clear).toHaveBeenCalled();
 

@@ -47,18 +47,18 @@ beforeAll(async () => {
 // the exact original code first, and says when nothing is found.
 test('Web: the picker finds the items with photos by code', async () => {
   const screen = await render(<PhotoPickerDialog open onClose={() => {}} items={ITEMS} room={3} onPick={() => {}} />)
-  await expect.element(screen.getByText(PHOTO_PICKER.hint)).toBeVisible()
-  await screen.getByRole('searchbox', { name: PHOTO_PICKER.search }).fill('bd33')
+  await expect.element(screen.getByText(PHOTO_PICKER['pt-BR'].hint)).toBeVisible()
+  await screen.getByRole('searchbox', { name: PHOTO_PICKER['pt-BR'].search }).fill('bd33')
   const heads = () => screen.getByRole('button', { expanded: false }).elements().map((head) => head.textContent)
   expect(heads()).toEqual(['PastilhaN-1 · 2 marcas · 1 foto', 'Disco de freioBD-3377 · Fremax · 2 fotos'])
-  await screen.getByRole('searchbox', { name: PHOTO_PICKER.search }).fill('bd-9000')
-  await expect.element(screen.getByText(PHOTO_PICKER.none)).toBeVisible()
+  await screen.getByRole('searchbox', { name: PHOTO_PICKER['pt-BR'].search }).fill('bd-9000')
+  await expect.element(screen.getByText(PHOTO_PICKER['pt-BR'].none)).toBeVisible()
 })
 
 // Opens the picker while the brake disc is edited and checks its photos aren't offered.
 test('Web: the picker leaves out the item being edited', async () => {
   const editing = await render(<PhotoPickerDialog open onClose={() => {}} items={ITEMS} editingId={DISC.id} room={3} onPick={() => {}} />)
-  await editing.getByRole('searchbox', { name: PHOTO_PICKER.search }).fill('bd')
+  await editing.getByRole('searchbox', { name: PHOTO_PICKER['pt-BR'].search }).fill('bd')
   await expect.element(editing.getByRole('button', { name: /Pastilha/ })).toBeVisible()
   await expect.element(editing.getByRole('button', { name: /Disco de freio/ })).not.toBeInTheDocument()
 })
@@ -69,7 +69,7 @@ test('Web: the picker leaves out the item being edited', async () => {
 test('Web: photos are checked from several items up to the room, and handed over in order', async () => {
   const onPick = vi.fn()
   const screen = await render(<PhotoPickerDialog open onClose={() => {}} items={ITEMS} room={2} onPick={onPick} />)
-  await screen.getByRole('searchbox', { name: PHOTO_PICKER.search }).fill('bd')
+  await screen.getByRole('searchbox', { name: PHOTO_PICKER['pt-BR'].search }).fill('bd')
   await screen.getByRole('button', { name: /Pastilha/ }).click()
   await screen.getByRole('button', { name: /Disco de freio/ }).click()
   await screen.getByRole('checkbox', { name: 'Foto 1 de Pastilha · Fras-le' }).click()
@@ -91,7 +91,7 @@ test('Web: Cancelar closes the picker with nothing added', async () => {
   const onPick = vi.fn()
   const screen = await render(<PhotoPickerDialog open onClose={onClose} items={ITEMS} room={3} onPick={onPick} />)
   await expect.element(screen.getByRole('button', { name: 'Usar fotos' })).toBeDisabled()
-  await screen.getByRole('button', { name: PHOTO_PICKER.cancel }).click()
+  await screen.getByRole('button', { name: PHOTO_PICKER['pt-BR'].cancel }).click()
   expect(onClose).toHaveBeenCalled()
   expect(onPick).not.toHaveBeenCalled()
 })
@@ -100,7 +100,7 @@ test('Web: Cancelar closes the picker with nothing added', async () => {
 test('Web: the picker works from the keyboard', async () => {
   const onPick = vi.fn()
   const screen = await render(<PhotoPickerDialog open onClose={() => {}} items={ITEMS} room={3} onPick={onPick} />)
-  await screen.getByRole('searchbox', { name: PHOTO_PICKER.search }).fill('3377')
+  await screen.getByRole('searchbox', { name: PHOTO_PICKER['pt-BR'].search }).fill('3377')
   screen.getByRole('button', { name: /Disco de freio/ }).element().focus()
   await userEvent.keyboard('{Enter}')
   await userEvent.tab()
@@ -118,7 +118,7 @@ for (const style of STYLES) {
       root.dataset.style = style
       root.dataset.mode = mode
       const screen = await render(<PhotoPickerDialog open onClose={() => {}} items={ITEMS} room={1} onPick={() => {}} />)
-      await screen.getByRole('searchbox', { name: PHOTO_PICKER.search }).fill('3377')
+      await screen.getByRole('searchbox', { name: PHOTO_PICKER['pt-BR'].search }).fill('3377')
       await screen.getByRole('button', { name: /Disco de freio/ }).click()
       const tile = screen.getByRole('checkbox', { name: 'Foto 1 de Disco de freio · Fremax' })
       await tile.click()

@@ -1,3 +1,4 @@
+import { catalog, DEFAULT_LOCALE, perLocale, type Locale } from "../platform/locale/locale.ts";
 import { sortOptions, type FilterValues, type Sort, type SortColumn } from "../platform/query/listQuery.ts";
 import {
   ITEM_LIST_FIELDS,
@@ -57,48 +58,107 @@ export const EMPTY_ITEM_FILTERS: ItemFilters = {
  * What the vehicle filters say while the one before them has nothing chosen: the model waits for a brand, the
  * generation for a model, and the version for a generation.
  */
-export const VEHICLE_FILTER_WAITING = {
-  vehicleModel: "Escolha a marca do veículo",
-  generation: "Escolha o modelo do veículo",
-  version: "Escolha a geração",
-} as const;
+export const VEHICLE_FILTER_WAITING = catalog(
+  { vehicleModel: "Escolha a marca do veículo", generation: "Escolha o modelo do veículo", version: "Escolha a geração" },
+  { vehicleModel: "Choose the vehicle brand", generation: "Choose the vehicle model", version: "Choose the generation" },
+);
+/** What the filters and the sorts are called: each filter, "Todas" and "Todos" for no choice, and each column. */
+export const FILTER_LABELS = catalog(
+  {
+    category: "Categoria",
+    partBrand: "Marca da peça",
+    vehicleBrand: "Marca do veículo",
+    vehicleModel: "Modelo do veículo",
+    generation: "Geração",
+    version: "Versão do veículo",
+    positionSide: "Posição · Lado",
+    position: "Posição",
+    side: "Lado",
+    color: "Cor",
+    location: "Local",
+    allFeminine: "Todas",
+    allMasculine: "Todos",
+    unsorted: "Ordem de cadastro",
+    columns: {
+      name: "Item",
+      category: "Categoria",
+      partBrand: "Marca",
+      vehicle: "Veículo",
+      position: "Posição",
+      side: "Lado",
+      color: "Cor",
+      material: "Material",
+      location: "Local",
+      price: "Valor unitário",
+      quantity: "Quantidade",
+    } satisfies Record<ItemSortKey, string>,
+  },
+  {
+    category: "Category",
+    partBrand: "Part brand",
+    vehicleBrand: "Vehicle brand",
+    vehicleModel: "Vehicle model",
+    generation: "Generation",
+    version: "Vehicle version",
+    positionSide: "Position · Side",
+    position: "Position",
+    side: "Side",
+    color: "Color",
+    location: "Location",
+    allFeminine: "All",
+    allMasculine: "All",
+    unsorted: "Order added",
+    columns: {
+      name: "Item",
+      category: "Category",
+      partBrand: "Brand",
+      vehicle: "Vehicle",
+      position: "Position",
+      side: "Side",
+      color: "Color",
+      material: "Material",
+      location: "Location",
+      price: "Unit price",
+      quantity: "Quantity",
+    },
+  },
+);
 /** The position chips: front, rear and not applicable; "Ambos" items match front and rear. */
-export const POSITION_FILTERS = (["D", "T", NOT_APPLICABLE] as const).map((value) => ({
-  value,
-  label: value,
-  title: POSITION_NAMES[value],
-}));
+export const POSITION_FILTERS = perLocale((locale) =>
+  (["D", "T", NOT_APPLICABLE] as const).map((value) => ({ value, label: value, title: POSITION_NAMES[locale][value] })),
+);
 /** The side chips: right, left and not applicable; "Ambos" items match either side. */
-export const SIDE_FILTERS = (["LD", "LE", NOT_APPLICABLE] as const).map((value) => ({
-  value,
-  label: value,
-  title: SIDE_NAMES[value],
-}));
+export const SIDE_FILTERS = perLocale((locale) =>
+  (["LD", "LE", NOT_APPLICABLE] as const).map((value) => ({ value, label: value, title: SIDE_NAMES[locale][value] })),
+);
 /**
  * The position as a phone's filter sheet chooses it, one at a time: every position (""), front, rear or both; front
  * and rear also match "Ambos" items, as the chips do.
  */
-export const POSITION_SEGMENTS = [{ value: "", label: "Todas" }, ...POSITION_CHOICES.slice(1)];
+export const POSITION_SEGMENTS = perLocale((locale) => [{ value: "", label: FILTER_LABELS[locale].allFeminine }, ...POSITION_CHOICES[locale].slice(1)]);
 /** The side as a phone's filter sheet chooses it, one at a time: every side (""), left, right or both. */
-export const SIDE_SEGMENTS = [{ value: "", label: "Todos" }, ...SIDE_CHOICES.slice(1)];
+export const SIDE_SEGMENTS = perLocale((locale) => [{ value: "", label: FILTER_LABELS[locale].allMasculine }, ...SIDE_CHOICES[locale].slice(1)]);
 /** The columns the inventory list sorts by, in the desktop table's order, with the names its sort lists them by. */
-const ITEM_SORT_COLUMNS: (SortColumn & { key: ItemSortKey })[] = [
-  { key: "name", label: "Item" },
-  { key: "category", label: "Categoria" },
-  { key: "partBrand", label: "Marca" },
-  { key: "vehicle", label: "Veículo" },
-  { key: "position", label: "Posição" },
-  { key: "side", label: "Lado" },
-  { key: "color", label: "Cor" },
-  { key: "material", label: "Material" },
-  { key: "location", label: "Local" },
-  { key: "price", label: "Valor unitário", numeric: true },
-  { key: "quantity", label: "Quantidade", numeric: true },
-];
+const ITEM_SORT_COLUMNS = perLocale((locale): (SortColumn & { key: ItemSortKey })[] => {
+  const columns = FILTER_LABELS[locale].columns;
+  return [
+    { key: "name", label: columns.name },
+    { key: "category", label: columns.category },
+    { key: "partBrand", label: columns.partBrand },
+    { key: "vehicle", label: columns.vehicle },
+    { key: "position", label: columns.position },
+    { key: "side", label: columns.side },
+    { key: "color", label: columns.color },
+    { key: "material", label: columns.material },
+    { key: "location", label: columns.location },
+    { key: "price", label: columns.price, numeric: true },
+    { key: "quantity", label: columns.quantity, numeric: true },
+  ];
+});
 /** The inventory's sorts, as a phone lists them: "Ordem de cadastro", then each column both ways. */
-export const ITEM_SORT_OPTIONS = sortOptions(ITEM_SORT_COLUMNS, "Ordem de cadastro");
+export const ITEM_SORT_OPTIONS = perLocale((locale) => sortOptions(ITEM_SORT_COLUMNS[locale], FILTER_LABELS[locale].unsorted, locale));
 /** The desktop table's columns after the item's name, which the "Colunas" menu shows and hides, in their order. */
-export const ITEM_TABLE_COLUMNS = ITEM_SORT_COLUMNS.slice(1);
+export const ITEM_TABLE_COLUMNS = perLocale((locale) => ITEM_SORT_COLUMNS[locale].slice(1));
 /** The columns the table hides until they are turned on: the location, whose place the material takes. */
 export const ITEM_HIDDEN_COLUMNS_DEFAULT: readonly ItemSortKey[] = ["location"];
 /**
@@ -182,7 +242,7 @@ export function hiddenColumns(stored: string | null): ItemSortKey[] {
   try {
     const keys: unknown = JSON.parse(stored ?? "null");
     if (Array.isArray(keys)) {
-      return ITEM_TABLE_COLUMNS.map((column) => column.key).filter((key) => keys.includes(key));
+      return ITEM_TABLE_COLUMNS[DEFAULT_LOCALE].map((column) => column.key).filter((key) => keys.includes(key));
     }
   } catch {
     // Not JSON: as if nothing were kept.
@@ -241,32 +301,34 @@ export function itemFilterOptions(
  * the choice once that one is cleared.
  * @param items Every item in stock.
  * @param draft Values chosen in the menu so far.
+ * @param locale The language of the rows' labels.
  * @returns The rows, in menu order.
  */
-export function itemFilterRows(items: readonly Item[], draft: FilterValues): ItemFilterRow[] {
+export function itemFilterRows(items: readonly Item[], draft: FilterValues, locale: Locale): ItemFilterRow[] {
+  const labels = FILTER_LABELS[locale];
   const options = itemFilterOptions(items, draft.vehicleBrand ?? [], draft.vehicleModel ?? [], draft.generation ?? []);
   const plain = (values: string[]) => values.map((value) => ({ value, label: value }));
   /** A vehicle row that waits for another: off, offering nothing and saying what to choose, until that one has a choice. */
   const after = (
     before: keyof ItemFilters,
-    row: { key: keyof typeof VEHICLE_FILTER_WAITING; label: string; allLabel: string; options: { value: string; label: string }[] },
-  ) => ((draft[before] ?? []).length === 0 ? { ...row, allLabel: VEHICLE_FILTER_WAITING[row.key], options: [], disabled: true } : row);
+    row: { key: keyof (typeof VEHICLE_FILTER_WAITING)[Locale]; label: string; allLabel: string; options: { value: string; label: string }[] },
+  ) => ((draft[before] ?? []).length === 0 ? { ...row, allLabel: VEHICLE_FILTER_WAITING[locale][row.key], options: [], disabled: true } : row);
   return [
-    { key: "category", label: "Categoria", allLabel: "Todas", options: plain(options.categories) },
-    { key: "partBrand", label: "Marca da peça", allLabel: "Todas", options: plain(options.partBrands) },
-    { key: "vehicleBrand", label: "Marca do veículo", allLabel: "Todas", options: plain(options.vehicleBrands) },
-    after("vehicleBrand", { key: "vehicleModel", label: "Modelo do veículo", allLabel: "Todos", options: options.vehicleModels }),
-    after("vehicleModel", { key: "generation", label: "Geração", allLabel: "Todas", options: options.generations }),
-    after("generation", { key: "version", label: "Versão do veículo", allLabel: "Todas", options: plain(options.versions) }),
+    { key: "category", label: labels.category, allLabel: labels.allFeminine, options: plain(options.categories) },
+    { key: "partBrand", label: labels.partBrand, allLabel: labels.allFeminine, options: plain(options.partBrands) },
+    { key: "vehicleBrand", label: labels.vehicleBrand, allLabel: labels.allFeminine, options: plain(options.vehicleBrands) },
+    after("vehicleBrand", { key: "vehicleModel", label: labels.vehicleModel, allLabel: labels.allMasculine, options: options.vehicleModels }),
+    after("vehicleModel", { key: "generation", label: labels.generation, allLabel: labels.allFeminine, options: options.generations }),
+    after("generation", { key: "version", label: labels.version, allLabel: labels.allFeminine, options: plain(options.versions) }),
     {
-      label: "Posição · Lado",
+      label: labels.positionSide,
       groups: [
-        { key: "position", label: "Posição", options: POSITION_FILTERS, segments: POSITION_SEGMENTS },
-        { key: "side", label: "Lado", options: SIDE_FILTERS, segments: SIDE_SEGMENTS },
+        { key: "position", label: labels.position, options: POSITION_FILTERS[locale], segments: POSITION_SEGMENTS[locale] },
+        { key: "side", label: labels.side, options: SIDE_FILTERS[locale], segments: SIDE_SEGMENTS[locale] },
       ],
     },
-    { key: "color", label: "Cor", allLabel: "Todas", options: plain(options.colors) },
-    { key: "location", label: "Local", allLabel: "Todos", options: plain(options.locations) },
+    { key: "color", label: labels.color, allLabel: labels.allFeminine, options: plain(options.colors) },
+    { key: "location", label: labels.location, allLabel: labels.allMasculine, options: plain(options.locations) },
   ];
 }
 

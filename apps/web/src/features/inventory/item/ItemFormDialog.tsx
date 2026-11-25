@@ -70,6 +70,7 @@ import { itemFormDialog } from './ItemFormDialog.styles.ts'
 import { savePhotos } from '../photos/savePhotos.ts'
 import type { CreateListEntry } from '../lists/useItemLists.ts'
 import { VehiclesField } from './VehiclesField.tsx'
+import { useLocale } from '../../../app/useLocale.ts'
 
 // The form that creates a new item or edits one, in a dialog whose content scrolls while Cancel and Save stay at the
 // bottom: first what the item's brands share (name, category, a short description of up to 30 characters, cut there
@@ -179,6 +180,7 @@ export function ItemFormDialog({
   onFormChange,
   onDelete,
 }: ItemFormDialogProps) {
+  const { locale } = useLocale()
   const toast = useToast()
   const phone = usePhone()
   const [viewing, setViewing] = useState(details && item !== undefined)
@@ -254,26 +256,26 @@ export function ItemFormDialog({
   /** Takes a brand's code in uppercase and says at once when another item uses it. */
   const changeCode = (index: number, value: string) => {
     changeBrand(index, 'code', value.toUpperCase())
-    brandError(index, 'code', codeTakenError(value, items, item?.id))
+    brandError(index, 'code', codeTakenError(value, items, locale, item?.id))
   }
 
   /** Takes a brand's whole quantity, leaving out what isn't one; a paste that isn't one is refused, saying so. */
   const changeQuantity = (index: number, value: string) => {
-    const read = quantityInput(form.brands[index].quantity, value)
+    const read = quantityInput(form.brands[index].quantity, value, locale)
     changeBrand(index, 'quantity', read.value)
     brandError(index, 'quantity', read.message)
   }
 
   /** Takes the minimum, a whole quantity, as changeQuantity does a brand's. */
   const changeMinimum = (value: string) => {
-    const read = quantityInput(form.minQuantity, value)
+    const read = quantityInput(form.minQuantity, value, locale)
     change('minQuantity', read.value)
     setErrors((shown) => ({ ...shown, minQuantity: read.message }))
   }
 
   /** Takes a brand's price through the BRL mask; a paste that isn't a price, or passes the limit, is refused, saying so. */
   const changePrice = (index: number, value: string) => {
-    const read = priceMask(form.brands[index].price, value)
+    const read = priceMask(form.brands[index].price, value, locale)
     changeBrand(index, 'price', read.value)
     brandError(index, 'price', read.message)
   }
@@ -328,11 +330,11 @@ export function ItemFormDialog({
     const entry = await onCreateEntry(kind, typed, vehicleBrandId)
     setCreating((count) => count - 1)
     if (!entry) {
-      toast.error(ITEM_LIST_TEXTS[kind].createFailed)
+      toast.error(ITEM_LIST_TEXTS[locale][kind].createFailed)
       return
     }
     fill(entry.name)
-    toast.success(ITEM_LIST_TEXTS[kind].created(entry.name))
+    toast.success(ITEM_LIST_TEXTS[locale][kind].created(entry.name))
   }
 
   /** Tells whether any brand's photos differ from what the item holds. */
@@ -365,13 +367,13 @@ export function ItemFormDialog({
    * sent, and an info toast says so.
    */
   const save = async () => {
-    const found = itemFormErrors(form, items, lists, item?.id)
+    const found = itemFormErrors(form, items, lists, locale, item?.id)
     setErrors(found)
     if (hasFormErrors(found)) {
       return
     }
     if (item && !itemFormChanged(form, item, options.colors) && !photosEdited()) {
-      toast.info(ITEM_UNCHANGED_MESSAGE)
+      toast.info(ITEM_UNCHANGED_MESSAGE[locale])
       onClose()
       return
     }
@@ -388,12 +390,12 @@ export function ItemFormDialog({
         0,
         form.brands.findIndex((brand) => codeKey(brand.code) === codeKey(taken.code)),
       )
-      brandError(index, 'code', codeTakenMessage(taken.itemName))
+      brandError(index, 'code', codeTakenMessage(taken.itemName, locale))
       return
     }
     if (item && response?.status === 404) {
       setSaving(false)
-      toast.warning(itemGoneMessage(item.name))
+      toast.warning(itemGoneMessage(item.name, locale))
       onGone?.(item)
       return
     }
@@ -471,17 +473,17 @@ export function ItemFormDialog({
         ) : viewing && item ? (
           <div className={classes.fields()} data-testid={ids.fields}>
             {/* The notes the item has follow its name and category, the description right under the name. */}
-            {Object.entries(itemDetailTexts(item))
-              .map(([field, text]) => ({ field, label: ITEM_FIELD_LABELS[field as ItemField], text }))
-              .toSpliced(2, 0, ...itemNoteTexts(item))
+            {Object.entries(itemDetailTexts(item, locale))
+              .map(([field, text]) => ({ field, label: ITEM_FIELD_LABELS[locale][field as ItemField], text }))
+              .toSpliced(2, 0, ...itemNoteTexts(item, locale))
               .map(({ field, label, text }) => (
                 <FieldValue key={field} label={label} value={text} />
               ))}
             <div className={classes.codes()} data-testid={ids.codes}>
-              <FieldValue label={VEHICLES_LABEL} value={vehiclesText(item)} />
+              <FieldValue label={VEHICLES_LABEL[locale]} value={vehiclesText(item, locale)} />
             </div>
             <div className={classes.codes()} data-testid={ids.codes}>
-              <FieldValue label={ORIGINAL_CODES_LABEL} value={originalCodesText(item)} />
+              <FieldValue label={ORIGINAL_CODES_LABEL[locale]} value={originalCodesText(item, locale)} />
             </div>
             <div className={classes.brands()} data-testid={ids.brands}>
               {item.brands.map((brand, index) => (
@@ -505,8 +507,8 @@ export function ItemFormDialog({
                       readOnly
                     />
                   </div>
-                  {Object.entries(brandDetailTexts(brand)).map(([field, text]) => (
-                    <FieldValue key={field} label={BRAND_FIELD_LABELS[field as BrandField]} value={text} />
+                  {Object.entries(brandDetailTexts(brand, locale)).map(([field, text]) => (
+                    <FieldValue key={field} label={BRAND_FIELD_LABELS[locale][field as BrandField]} value={text} />
                   ))}
                 </div>
               ))}
@@ -517,7 +519,7 @@ export function ItemFormDialog({
             <TextField
               ref={name}
               data-tour="form-name"
-              label={ITEM_FIELD_LABELS.name}
+              label={ITEM_FIELD_LABELS[locale].name}
               placeholder={phone ? 'Ex.: Pastilha de freio' : undefined}
               value={form.name}
               onValueChange={(value) => change('name', value)}
@@ -525,7 +527,7 @@ export function ItemFormDialog({
               error={errors.name}
             />
             <Combobox
-              label={ITEM_FIELD_LABELS.category}
+              label={ITEM_FIELD_LABELS[locale].category}
               value={form.category}
               onValueChange={(value) => change('category', value)}
               options={options.categories}
@@ -536,7 +538,7 @@ export function ItemFormDialog({
               error={errors.category}
             />
             <TextField
-              label={ITEM_NOTE_LABELS.description}
+              label={ITEM_NOTE_LABELS[locale].description}
               placeholder={phone ? 'Ex.: Lado do motorista' : undefined}
               value={form.description ?? ''}
               onValueChange={(value) => changeNote('description', value)}
@@ -544,7 +546,7 @@ export function ItemFormDialog({
               error={errors.description}
             />
             <TextField
-              label={ITEM_NOTE_LABELS.material}
+              label={ITEM_NOTE_LABELS[locale].material}
               placeholder={phone ? 'Ex.: Alumínio' : undefined}
               value={form.material ?? ''}
               onValueChange={(value) => changeNote('material', value)}
@@ -563,7 +565,7 @@ export function ItemFormDialog({
                 onCreate={create}
               />
             ) : (
-            <div role="group" aria-label={VEHICLES_LABEL} className={classes.vehicles()} data-testid={ids.vehicles}>
+            <div role="group" aria-label={VEHICLES_LABEL[locale]} className={classes.vehicles()} data-testid={ids.vehicles}>
               <Text size="sm" tone="muted">
                 Os veículos em que a peça serve. Deixe o modelo vazio se serve em qualquer modelo da marca; a geração e a
                 versão são opcionais.
@@ -576,7 +578,7 @@ export function ItemFormDialog({
                 return (
                   <div key={index} role="group" aria-label={line} className={classes.vehicle()} data-testid={ids.vehicle}>
                     <Combobox
-                      label={VEHICLE_FIELD_LABELS.vehicleBrand}
+                      label={VEHICLE_FIELD_LABELS[locale].vehicleBrand}
                       value={vehicle.vehicleBrand}
                       onValueChange={(value) => changeVehicleBrand(index, value)}
                       options={options.vehicleBrands}
@@ -587,7 +589,7 @@ export function ItemFormDialog({
                       error={shown.vehicleBrand}
                     />
                     <Combobox
-                      label={VEHICLE_FIELD_LABELS.vehicleModel}
+                      label={VEHICLE_FIELD_LABELS[locale].vehicleModel}
                       value={vehicle.vehicleModel}
                       onValueChange={(value) => changeVehicle(index, 'vehicleModel', value)}
                       options={modelsOfBrand(lists, vehicle.vehicleBrand)}
@@ -600,7 +602,7 @@ export function ItemFormDialog({
                       disabled={!brand}
                     />
                     <Combobox
-                      label={VEHICLE_FIELD_LABELS.generation}
+                      label={VEHICLE_FIELD_LABELS[locale].generation}
                       value={vehicle.generation ?? ''}
                       onValueChange={(value) => changeVehicle(index, 'generation', value)}
                       options={suggested.generations}
@@ -612,7 +614,7 @@ export function ItemFormDialog({
                       disabled={!vehicle.vehicleModel.trim()}
                     />
                     <Combobox
-                      label={VEHICLE_FIELD_LABELS.version}
+                      label={VEHICLE_FIELD_LABELS[locale].version}
                       value={vehicle.version ?? ''}
                       onValueChange={(value) => changeVehicle(index, 'version', value)}
                       options={suggested.versions}
@@ -639,20 +641,20 @@ export function ItemFormDialog({
             </div>
             )}
             <div className={classes.choice()} data-testid={ids.choice}>
-              <Label>{ITEM_FIELD_LABELS.position}</Label>
+              <Label>{ITEM_FIELD_LABELS[locale].position}</Label>
               <Segmented
-                label={ITEM_FIELD_LABELS.position}
-                options={phone ? POSITION_CHOICES : POSITION_OPTIONS}
+                label={ITEM_FIELD_LABELS[locale].position}
+                options={phone ? POSITION_CHOICES[locale] : POSITION_OPTIONS}
                 fill={phone}
                 value={form.position}
                 onValueChange={(value) => change('position', value)}
               />
             </div>
             <div className={classes.choice()} data-testid={ids.choice}>
-              <Label>{ITEM_FIELD_LABELS.side}</Label>
+              <Label>{ITEM_FIELD_LABELS[locale].side}</Label>
               <Segmented
-                label={ITEM_FIELD_LABELS.side}
-                options={phone ? SIDE_CHOICES : SIDE_OPTIONS}
+                label={ITEM_FIELD_LABELS[locale].side}
+                options={phone ? SIDE_CHOICES[locale] : SIDE_OPTIONS}
                 fill={phone}
                 value={form.side}
                 onValueChange={(value) => change('side', value)}
@@ -660,7 +662,7 @@ export function ItemFormDialog({
             </div>
             {phone ? (
               <Stepper
-                label={ITEM_FIELD_LABELS.minQuantity}
+                label={ITEM_FIELD_LABELS[locale].minQuantity}
                 value={form.minQuantity}
                 onValueChange={changeMinimum}
                 max={MAX_QUANTITY}
@@ -669,7 +671,7 @@ export function ItemFormDialog({
               />
             ) : (
               <TextField
-                label={ITEM_FIELD_LABELS.minQuantity}
+                label={ITEM_FIELD_LABELS[locale].minQuantity}
                 kind="number"
                 value={form.minQuantity}
                 onValueChange={changeMinimum}
@@ -679,10 +681,10 @@ export function ItemFormDialog({
             )}
             <div className={classes.codes()} data-testid={ids.codes}>
               <CodeListField
-                label={ORIGINAL_CODES_LABEL}
+                label={ORIGINAL_CODES_LABEL[locale]}
                 codes={form.originalCodes}
                 onCodesChange={(codes) => setForm((typed) => ({ ...typed, originalCodes: codes }))}
-                messages={originalCodeMessages(form, items, item?.id)}
+                messages={originalCodeMessages(form, items, locale, item?.id)}
                 helper={
                   phone
                     ? 'Os da montadora. Separe com vírgula.'
@@ -721,17 +723,17 @@ export function ItemFormDialog({
                           <Button
                             variant="secondary"
                             size="sm"
-                            aria-label={`${PHOTO_PICKER.open} para a ${names.section.toLowerCase()}`}
+                            aria-label={`${PHOTO_PICKER[locale].open} para a ${names.section.toLowerCase()}`}
                             onClick={() => setPicker((current) => ({ brand: index, session: current.session + 1 }))}
                           >
-                            {PHOTO_PICKER.open}
+                            {PHOTO_PICKER[locale].open}
                           </Button>
                         </span>
                       )}
                     </div>
                     <div className={classes.wide()} data-testid={ids.wide}>
                       <Combobox
-                        label={BRAND_FIELD_LABELS.partBrand}
+                        label={BRAND_FIELD_LABELS[locale].partBrand}
                         value={brand.partBrand}
                         onValueChange={(value) => changeBrand(index, 'partBrand', value)}
                         options={options.partBrands}
@@ -745,7 +747,7 @@ export function ItemFormDialog({
                     <div className={classes.wide()} data-testid={ids.wide}>
                       <TextField
                         data-tour={tour('form-code')}
-                        label={BRAND_FIELD_LABELS.code}
+                        label={BRAND_FIELD_LABELS[locale].code}
                         value={brand.code}
                         onValueChange={(value) => changeCode(index, value)}
                         error={shown.code}
@@ -753,14 +755,14 @@ export function ItemFormDialog({
                     </div>
                     <TextField
                       data-tour={tour('form-quantity')}
-                      label={BRAND_FIELD_LABELS.quantity}
+                      label={BRAND_FIELD_LABELS[locale].quantity}
                       kind="number"
                       value={brand.quantity}
                       onValueChange={(value) => changeQuantity(index, value)}
                       error={shown.quantity}
                     />
                     <TextField
-                      label={BRAND_FIELD_LABELS.price}
+                      label={BRAND_FIELD_LABELS[locale].price}
                       kind="number"
                       value={brand.price}
                       onValueChange={(value) => changePrice(index, value)}
@@ -768,7 +770,7 @@ export function ItemFormDialog({
                       error={shown.price}
                     />
                     <TextField
-                      label={BRAND_FIELD_LABELS.color}
+                      label={BRAND_FIELD_LABELS[locale].color}
                       value={brand.color}
                       onValueChange={(value) => changeBrand(index, 'color', colorText(value))}
                       onBlur={() => changeBrand(index, 'color', colorInput(brand.color, options.colors))}
@@ -776,7 +778,7 @@ export function ItemFormDialog({
                       helper={phone ? undefined : 'Deixe vazio se a cor não se aplica.'}
                     />
                     <TextField
-                      label={BRAND_FIELD_LABELS.location}
+                      label={BRAND_FIELD_LABELS[locale].location}
                       placeholder={phone ? 'Ex.: E-1' : undefined}
                       value={brand.location}
                       onValueChange={(value) => changeBrand(index, 'location', value)}

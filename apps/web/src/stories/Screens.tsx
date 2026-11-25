@@ -128,8 +128,8 @@ const ITEMS: Item[] = [
 ]
 const NO_FILTERS: FilterValues = { cat: [], part: [] }
 const STATUS_OPTIONS = [
-  { value: 'low', label: STOCK_STATUS_LABELS.low },
-  { value: 'out', label: STOCK_STATUS_LABELS.out },
+  { value: 'low', label: STOCK_STATUS_LABELS['pt-BR'].low },
+  { value: 'out', label: STOCK_STATUS_LABELS['pt-BR'].out },
 ]
 const STYLE_OPTIONS = [
   { value: 'eighties', label: 'Anos 80' },
@@ -200,7 +200,7 @@ function options(...labels: string[]) {
  */
 function rowStatus(row: Item): { tone: 'warn' | 'danger'; label: string } | undefined {
   const status = stockStatus(row.quantity, row.minQuantity)
-  return status ? { tone: status === 'out' ? 'danger' : 'warn', label: STOCK_STATUS_LABELS[status] } : undefined
+  return status ? { tone: status === 'out' ? 'danger' : 'warn', label: STOCK_STATUS_LABELS['pt-BR'][status] } : undefined
 }
 
 export function DashboardScreen({ initialTab }: { initialTab: DashboardTab }) {
@@ -384,7 +384,7 @@ function InventoryTab() {
           }}
         />
         <NumericReadout tone="muted" className={classes.summary()}>
-          {resultSummary(shown.length, ITEMS)}
+          {resultSummary(shown.length, ITEMS, 'pt-BR')}
         </NumericReadout>
       </div>
       <DataTable
@@ -402,12 +402,12 @@ function InventoryTab() {
             header: 'Item',
             sortable: true,
             card: 'main',
-            cell: (row) => <TableTitle title={row.name} code={itemCodes(row)} details={itemDetails(row)} />,
+            cell: (row) => <TableTitle title={row.name} code={itemCodes(row)} details={itemDetails(row, 'pt-BR')} />,
           },
           { key: 'category', header: 'Categoria', sortable: true, cell: (row) => row.category },
           { key: 'partBrand', header: 'Marca', sortable: true, cell: (row) => partBrandsLabel(row) },
           { key: 'vehicleBrand', header: 'Veículo', cell: (row) => itemVehiclesLabel(row) },
-          { key: 'location', header: 'Local', cell: (row) => brandsValue(row, 'location') },
+          { key: 'location', header: 'Local', cell: (row) => brandsValue(row, 'location', 'pt-BR') },
           {
             key: 'unitPriceCents',
             header: 'Valor unit.',

@@ -75,7 +75,7 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
     <Dialog
       open={open}
       onClose={onClose}
-      title={DEVICE_MESSAGES.devices}
+      title={DEVICE_MESSAGES[locale].devices}
       closable
       actions={
         <Button variant="secondary" size="sm" onClick={onClose}>

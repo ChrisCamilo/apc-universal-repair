@@ -17,6 +17,7 @@ import { ServerSettingsProvider } from '../features/desktop/ServerSettings.tsx'
 import { useEntryScreen, useOpenServerSettings } from '../features/desktop/serverSettingsContext.ts'
 import { UpdateNotice } from '../features/desktop/UpdateNotice.tsx'
 import { NotificationsMenu } from '../features/notifications/NotificationsMenu.tsx'
+import { useLocale } from './useLocale.ts'
 
 // The app's routes. /login is the login screen and /register the sign-up; the Dashboard, behind them, frames every
 // tab at its own path. "/" opens the last tab used (the Inventory tab the first time) and any unknown path goes back
@@ -68,6 +69,7 @@ export default function App({ login }: { login?: Credentials }) {
 // that sent the user here, or to the Dashboard. After the API refused the session, it says the session expired. In the
 // desktop app it also opens the Servidor dialog. The demo fills in its user.
 function LoginPage({ login }: { login?: Credentials }) {
+  const { locale } = useLocale()
   useEntryScreen()
   const { user, expired, setUser } = useSession()
   const openServerSettings = useOpenServerSettings()
@@ -82,7 +84,7 @@ function LoginPage({ login }: { login?: Credentials }) {
   return (
     <LoginScreen
       auth={auth}
-      notice={expired ? LOGIN_MESSAGES.expired : undefined}
+      notice={expired ? LOGIN_MESSAGES[locale].expired : undefined}
       onLoggedIn={(loggedIn) => {
         setUser(loggedIn)
         navigate(from, { replace: true })

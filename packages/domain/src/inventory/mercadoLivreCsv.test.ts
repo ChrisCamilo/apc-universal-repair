@@ -192,7 +192,7 @@ test("Shared: the Mercado Livre export fetches every item of the list", async ()
 test("Shared: the Mercado Livre export is worded for its file and toast", () => {
   assert.equal(mercadoLivreExportName(new Date(2026, 10, 23, 23, 30), "zip"), "mercado-livre-2026-11-23.zip");
   assert.equal(mercadoLivreExportName(new Date(2026, 0, 5), "csv"), "mercado-livre-2026-01-05.csv");
-  assert.equal(mercadoLivreSummary({ count: 12, skipped: 0 }), "12 anúncios exportados.");
-  assert.equal(mercadoLivreSummary({ count: 1, skipped: 1 }), "1 anúncio exportado · 1 marca ficou de fora (sem estoque ou preço abaixo de R$ 8,00).");
-  assert.equal(mercadoLivreSummary({ count: 12, skipped: 3 }), "12 anúncios exportados · 3 marcas ficaram de fora (sem estoque ou preço abaixo de R$ 8,00).");
+  assert.equal(mercadoLivreSummary({ count: 12, skipped: 0 }, "pt-BR"), "12 anúncios exportados.");
+  assert.equal(mercadoLivreSummary({ count: 1, skipped: 1 }, "pt-BR"), "1 anúncio exportado · 1 marca ficou de fora (sem estoque ou preço abaixo de R$ 8,00).");
+  assert.equal(mercadoLivreSummary({ count: 12, skipped: 3 }, "pt-BR"), "12 anúncios exportados · 3 marcas ficaram de fora (sem estoque ou preço abaixo de R$ 8,00).");
 });

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { csvExportName, exportedSummary, exportItems, exportScope } from '@apc/domain/item-csv'
+import type { Locale } from '@apc/domain/locale'
 import { exportMercadoLivre, mercadoLivreExportName, mercadoLivreSummary } from '@apc/domain/mercado-livre-csv'
 import { API_BASE } from '../../../app/api.ts'
 import { Button } from '../../../components/Button'
@@ -9,6 +10,7 @@ import { useToast } from '../../../components/Toast'
 import { Text } from '../../../components/Typography'
 import { usePhone } from '../../../components/usePhone.ts'
 import { mercadoLivreZip } from './mercadoLivreZip.ts'
+import { useLocale } from '../../../app/useLocale.ts'
 
 // The "Exportar Peças" dialog of the Inventory tab: it says which items go into the file, the whole list as it is (the
 // search, the filters, the stock status and the sort) across all its pages, and offers to add each item's photo
@@ -50,19 +52,21 @@ function download(name: string, blob: Blob) {
  * Mercado Livre.
  * @param query The list query, with no page.
  * @param options Whether to add the photo paths, and whether the file is for Mercado Livre.
+ * @param locale The language of the toast.
  * @returns The file, its name and the toast's text, or null when the items or a photo couldn't be fetched.
  */
-async function exportFile(query: string, { photos, mercadoLivre }: { photos: boolean; mercadoLivre: boolean }) {
+async function exportFile(query: string, { photos, mercadoLivre }: { photos: boolean; mercadoLivre: boolean }, locale: Locale) {
   if (!mercadoLivre) {
     const exported = await exportItems(API_BASE, query, { photos })
-    return exported && { name: csvExportName(new Date()), blob: new Blob([exported.csv], { type: 'text/csv;charset=utf-8' }), summary: exportedSummary(exported.count) }
+    return exported && { name: csvExportName(new Date()), blob: new Blob([exported.csv], { type: 'text/csv;charset=utf-8' }), summary: exportedSummary(exported.count, locale) }
   }
   const listings = await exportMercadoLivre(API_BASE, query)
   const zip = listings && (await mercadoLivreZip(listings, API_BASE))
-  return zip && { name: mercadoLivreExportName(new Date(), 'zip'), blob: new Blob([zip as BlobPart], { type: 'application/zip' }), summary: mercadoLivreSummary(listings) }
+  return zip && { name: mercadoLivreExportName(new Date(), 'zip'), blob: new Blob([zip as BlobPart], { type: 'application/zip' }), summary: mercadoLivreSummary(listings, locale) }
 }
 
 export function ExportItemsDialog({ open, query, count, narrowed, onClose }: ExportItemsDialogProps) {
+  const { locale } = useLocale()
   const toast = useToast()
   const [photos, setPhotos] = useState(false)
   const [mercadoLivre, setMercadoLivre] = useState(false)
@@ -72,7 +76,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
   /** Fetches every item of the list, downloads the file and says what it holds, or that it failed. */
   const submit = async () => {
     setExporting(true)
-    const file = await exportFile(query, { photos, mercadoLivre })
+    const file = await exportFile(query, { photos, mercadoLivre }, locale)
     setExporting(false)
     if (!file) {
       toast.error('Não foi possível exportar os itens. Tente de novo.')
@@ -101,7 +105,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
         </>
       }
     >
-      <Text size="sm">{exportScope(count, narrowed)}</Text>
+      <Text size="sm">{exportScope(count, narrowed, locale)}</Text>
       <Text size="sm" tone="muted">
         {mercadoLivre
           ? 'Todas as páginas vão no arquivo, um anúncio por marca, nas palavras do Mercado Livre.'

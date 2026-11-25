@@ -53,12 +53,20 @@ test("Shared: the badge counts the unread, and marking them read clears it", () 
 
 // Writes how long ago a notification was shown: now, minutes, hours earlier today, yesterday, then the day.
 test("Shared: notifications say how long ago they were shown", () => {
-  const ago = (ms: number) => timeAgo(new Date(NOW.getTime() - ms).toISOString(), NOW);
+  const ago = (ms: number) => timeAgo(new Date(NOW.getTime() - ms).toISOString(), NOW, "pt-BR");
   assert.equal(ago(30_000), "agora");
   assert.equal(ago(5 * 60_000), "há 5 min");
   assert.equal(ago(3 * 3_600_000), "há 3 h");
-  assert.equal(timeAgo(new Date(2026, 9, 13, 23, 0).toISOString(), NOW), "ontem");
-  assert.equal(timeAgo(new Date(2026, 9, 2, 9, 0).toISOString(), NOW), "02/10");
+  assert.equal(timeAgo(new Date(2026, 9, 13, 23, 0).toISOString(), NOW, "pt-BR"), "ontem");
+  assert.equal(timeAgo(new Date(2026, 9, 2, 9, 0).toISOString(), NOW, "pt-BR"), "02/10");
+});
+
+// Writes the same moments in English, the day as month/day.
+test("Shared: notifications say how long ago they were shown, in English", () => {
+  const ago = (ms: number) => timeAgo(new Date(NOW.getTime() - ms).toISOString(), NOW, "en-US");
+  assert.deepEqual([ago(30_000), ago(5 * 60_000), ago(3 * 3_600_000)], ["now", "5 min ago", "3 h ago"]);
+  assert.equal(timeAgo(new Date(2026, 9, 13, 23, 0).toISOString(), NOW, "en-US"), "yesterday");
+  assert.equal(timeAgo(new Date(2026, 9, 2, 9, 0).toISOString(), NOW, "en-US"), "10/02");
 });
 
 // Reads the history back from storage, and anything unreadable (nothing saved, broken JSON, a wrong shape) as none.
@@ -89,8 +97,10 @@ test("Shared: an item low on stock is warned about once while it stays low", () 
   assert.deepEqual(restocked, { alerts: [], warned: ["c"] });
   assert.deepEqual(lowStockAlerts([filter, pads, pump], restocked.warned).alerts, [filter]);
 
-  assert.equal(lowStockMessage([filter]), "Estoque baixo: “Filtro de óleo” (2 de 2)");
-  assert.equal(lowStockMessage([filter, pump, pads, pads]), "Estoque baixo em 4 itens");
+  assert.equal(lowStockMessage([filter], "pt-BR"), "Estoque baixo: “Filtro de óleo” (2 de 2)");
+  assert.equal(lowStockMessage([filter, pump, pads, pads], "pt-BR"), "Estoque baixo em 4 itens");
+  assert.equal(lowStockMessage([filter], "en-US"), "Low stock: “Filtro de óleo” (2 of 2)");
+  assert.equal(lowStockMessage([filter, pump, pads, pads], "en-US"), "Low stock on 4 items");
 });
 
 // Reads back the items already warned about, and anything unreadable as none; each user has their own key.

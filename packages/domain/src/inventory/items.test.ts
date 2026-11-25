@@ -95,9 +95,9 @@ test("Shared: stock status follows the quantity and the minimum", () => {
 
 // Tints an item out of stock as danger and a low one as a warning, each with its status's name, and a stocked one not.
 test("Shared: the stock tint follows the stock status", () => {
-  assert.deepEqual(stockTint({ quantity: 0, minQuantity: 2 }), { tone: "danger", label: "Esgotado" });
-  assert.deepEqual(stockTint({ quantity: 2, minQuantity: 2 }), { tone: "warn", label: "Estoque baixo" });
-  assert.equal(stockTint({ quantity: 3, minQuantity: 2 }), undefined);
+  assert.deepEqual(stockTint({ quantity: 0, minQuantity: 2 }, "pt-BR"), { tone: "danger", label: "Esgotado" });
+  assert.deepEqual(stockTint({ quantity: 2, minQuantity: 2 }, "pt-BR"), { tone: "warn", label: "Estoque baixo" });
+  assert.equal(stockTint({ quantity: 3, minQuantity: 2 }, "pt-BR"), undefined);
 });
 
 // Reads a filter given once or repeated as a list, and leaves missing filters empty.
@@ -245,8 +245,8 @@ test("Shared: the result counter shows totals and stock alerts", () => {
     { quantity: 1, minQuantity: 3 },
     { quantity: 9, minQuantity: 2 },
   ];
-  assert.equal(resultSummary(3, items), "3 de 4 itens · 2 baixos · 1 esgotado");
-  assert.equal(resultSummary(1, [{ quantity: 5, minQuantity: 1 }]), "1 de 1 item · 0 baixos · 0 esgotados");
+  assert.equal(resultSummary(3, items, "pt-BR"), "3 de 4 itens · 2 baixos · 1 esgotado");
+  assert.equal(resultSummary(1, [{ quantity: 5, minQuantity: 1 }], "pt-BR"), "1 de 1 item · 0 baixos · 0 esgotados");
   assert.deepEqual(stockCounts(items), { low: 2, out: 1 });
 });
 
@@ -259,9 +259,9 @@ test("Shared: item details fit in one line without what doesn't apply", () => {
     position: "D",
     side: "N/A",
     brands: [{ partBrand: "Cobreq", color: "N/A", location: null, unitPriceCents: 8990 }],
-  });
+  }, "pt-BR");
   assert.equal(details.replace(/\s/g, " "), "Freios · Cobreq · Chevrolet · D · R$ 89,90");
-  assert.equal(itemDetails(PADS).replace(/\s/g, " "), "Freios · Cobreq +2 · Volkswagen Gol · D · Várias · Várias · R$ 79,90 – R$ 112,90");
+  assert.equal(itemDetails(PADS, "pt-BR").replace(/\s/g, " "), "Freios · Cobreq +2 · Volkswagen Gol · D · Várias · Várias · R$ 79,90 – R$ 112,90");
   const both = { vehicles: [{ vehicleBrand: "Volkswagen", vehicleModel: "Gol G5" }, { vehicleBrand: "Volkswagen", vehicleModel: null }] };
   assert.equal(itemVehiclesLabel(both), "Volkswagen Gol G5 +1");
   assert.equal(itemVehiclesText(both), "Volkswagen Gol G5, Volkswagen");
@@ -276,10 +276,10 @@ test("Shared: a phone card's code and details fit in one line each", () => {
     material: "Cerâmica",
     brands: [{ code: "PD-120", partBrand: "Cobreq", color: "N/A", location: null, unitPriceCents: 8990 }],
   };
-  assert.equal(itemCardCode(item), "PD-120 · Cobreq");
-  assert.equal(itemCardDetails(item).replace(/\s/g, " "), "Chevrolet · Cerâmica · R$ 89,90");
-  assert.equal(itemCardCode(PADS), `${PADS.brands[0].code} · 3 marcas`);
-  assert.equal(itemCardDetails(PADS).replace(/\s/g, " "), "Volkswagen Gol · R$ 79,90 – R$ 112,90");
+  assert.equal(itemCardCode(item, "pt-BR"), "PD-120 · Cobreq");
+  assert.equal(itemCardDetails(item, "pt-BR").replace(/\s/g, " "), "Chevrolet · Cerâmica · R$ 89,90");
+  assert.equal(itemCardCode(PADS, "pt-BR"), `${PADS.brands[0].code} · 3 marcas`);
+  assert.equal(itemCardDetails(PADS, "pt-BR").replace(/\s/g, " "), "Volkswagen Gol · R$ 79,90 – R$ 112,90");
 });
 
 // Reads an item of three brands for its row: the first code and part brand with how many more, a value the brands
@@ -287,8 +287,8 @@ test("Shared: a phone card's code and details fit in one line each", () => {
 test("Shared: an item's brands read as one value for its row", () => {
   assert.equal(itemCodes(PADS), "N-1210 +2");
   assert.equal(partBrandsLabel(PADS), "Cobreq +2");
-  assert.equal(brandsValue(PADS, "color"), MIXED_VALUES);
-  assert.equal(brandsValue({ brands: PADS.brands.slice(0, 2) }, "location"), "B-12");
+  assert.equal(brandsValue(PADS, "color", "pt-BR"), MIXED_VALUES["pt-BR"]);
+  assert.equal(brandsValue({ brands: PADS.brands.slice(0, 2) }, "location", "pt-BR"), "B-12");
   assert.equal(formatPriceRange(PADS).replace(/\s/g, " "), "R$ 79,90 – R$ 112,90");
   const one = testItem({ code: "W 712/95", partBrand: "Mann", unitPriceCents: 3990 });
   assert.deepEqual([itemCodes(one), partBrandsLabel(one), formatPriceRange(one).replace(/\s/g, " ")], ["W 712/95", "Mann", "R$ 39,90"]);

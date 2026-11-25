@@ -5,6 +5,7 @@ import { PHOTO_PICKER, photoPickerTexts, photoSources } from '@apc/domain/item-f
 import { itemCardCode, type Item, type ItemPhoto } from '@apc/domain/items';
 import { photoAddress, photoCount, pickPhoto } from '@apc/domain/photos';
 import { apiUrl } from '../../../app/api';
+import { useLocale } from '../../../app/locale';
 import { useTheme } from '../../../app/theme';
 import { Button } from '../../../components/Button';
 import { Dialog } from '../../../components/Dialog';
@@ -35,13 +36,14 @@ type PhotoPickerDialogProps = {
 
 export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPick }: PhotoPickerDialogProps) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const [query, setQuery] = useState('');
   // The items opened to their photos, by id.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   const [picked, setPicked] = useState<ItemPhoto[]>([]);
   const found = photoSources(items, query, editingId);
-  const texts = photoPickerTexts(picked.length, room);
+  const texts = photoPickerTexts(picked.length, room, locale);
   const full = picked.length >= room;
 
   /** Opens an item to its photos, or closes it. */
@@ -58,11 +60,11 @@ export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPic
     <Dialog
       open={open}
       onClose={onClose}
-      title={PHOTO_PICKER.open}
+      title={PHOTO_PICKER[locale].open}
       actions={
         <>
           <Button variant="secondary" size="sm" onPress={onClose}>
-            {PHOTO_PICKER.cancel}
+            {PHOTO_PICKER[locale].cancel}
           </Button>
           <Button size="sm" disabled={picked.length === 0} onPress={() => onPick(picked)}>
             {texts.use}
@@ -71,7 +73,7 @@ export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPic
       }
     >
       <View style={styles.base} testID={ids.base}>
-        <SearchField label={PHOTO_PICKER.search} value={query} onValueChange={setQuery} />
+        <SearchField label={PHOTO_PICKER[locale].search} value={query} onValueChange={setQuery} />
         {found.items.length > 0 ? (
           <View style={styles.list} testID={ids.list}>
             {found.items.map((item) => {
@@ -93,7 +95,7 @@ export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPic
                         {item.name}
                       </NativeText>
                       <NativeText numberOfLines={1} style={styles.code} testID={ids.code}>
-                        {`${itemCardCode(item)} · ${photoCount(photos.length)}`}
+                        {`${itemCardCode(item, locale)} · ${photoCount(photos.length, locale)}`}
                       </NativeText>
                     </View>
                     <View style={[styles.chevron, shown && styles.chevronOpen]} testID={ids.chevron}>
@@ -133,12 +135,12 @@ export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPic
           </View>
         ) : (
           <NativeText style={styles.note} testID={ids.note}>
-            {query.trim() ? PHOTO_PICKER.none : PHOTO_PICKER.hint}
+            {query.trim() ? PHOTO_PICKER[locale].none : PHOTO_PICKER[locale].hint}
           </NativeText>
         )}
         {found.more > 0 && (
           <NativeText style={styles.note} testID={ids.note}>
-            {PHOTO_PICKER.more(found.more)}
+            {PHOTO_PICKER[locale].more(found.more)}
           </NativeText>
         )}
         <NativeText accessibilityLiveRegion="polite" style={[styles.count, full && styles.countFull]} testID={ids.count}>

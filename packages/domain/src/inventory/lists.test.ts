@@ -137,21 +137,21 @@ test("Shared: the catalog's vehicle brands and models take their sheets along wh
   );
   const volkswagen = findEntry(lists.vehicleBrands, "volkswagen")!;
   const renault = findEntry(lists.vehicleBrands, "Renault")!;
-  assert.equal(catalogMergeNote("vehicleBrands", volkswagen, renault), "Os modelos e fichas de “Volkswagen” vão para “Renault”.");
-  assert.equal(catalogDeleteNote("vehicleBrands", volkswagen), "“Volkswagen” também sai do Catálogo, com os modelos e as fichas dela.");
-  assert.equal(catalogMergeNote("vehicleBrands", renault, volkswagen), null);
-  assert.equal(catalogDeleteNote("vehicleBrands", renault), null);
+  assert.equal(catalogMergeNote("vehicleBrands", volkswagen, renault, "pt-BR"), "Os modelos e fichas de “Volkswagen” vão para “Renault”.");
+  assert.equal(catalogDeleteNote("vehicleBrands", volkswagen, "pt-BR"), "“Volkswagen” também sai do Catálogo, com os modelos e as fichas dela.");
+  assert.equal(catalogMergeNote("vehicleBrands", renault, volkswagen, "pt-BR"), null);
+  assert.equal(catalogDeleteNote("vehicleBrands", renault, "pt-BR"), null);
   const gol = findEntry(lists.vehicleModels, "Gol")!;
   const kombi = findEntry(lists.vehicleModels, "Kombi")!;
-  assert.equal(catalogMergeNote("vehicleModels", gol, kombi), "As gerações e fichas de “Gol” vão para “Kombi”.");
-  assert.equal(catalogDeleteNote("vehicleModels", gol), "“Gol” também sai do Catálogo, com as gerações e as fichas dele.");
-  assert.equal(catalogMergeNote("vehicleModels", kombi, gol), null);
+  assert.equal(catalogMergeNote("vehicleModels", gol, kombi, "pt-BR"), "As gerações e fichas de “Gol” vão para “Kombi”.");
+  assert.equal(catalogDeleteNote("vehicleModels", gol, "pt-BR"), "“Gol” também sai do Catálogo, com as gerações e as fichas dele.");
+  assert.equal(catalogMergeNote("vehicleModels", kombi, gol, "pt-BR"), null);
 });
 
 // Words the message of an entry in use for one item and for several.
 test("Shared: an entry in use says how many items use it", () => {
-  assert.equal(ITEM_LIST_TEXTS.categories.inUse("Motor", 1), "1 item usa “Motor”. Troque a categoria desses itens antes de excluir.");
-  assert.match(ITEM_LIST_TEXTS.vehicleModels.inUse("Gol", 3), /^3 itens usam “Gol”/);
+  assert.equal(ITEM_LIST_TEXTS["pt-BR"].categories.inUse("Motor", 1), "1 item usa “Motor”. Troque a categoria desses itens antes de excluir.");
+  assert.match(ITEM_LIST_TEXTS["pt-BR"].vehicleModels.inUse("Gol", 3), /^3 itens usam “Gol”/);
 });
 
 // Renames an entry and checks the request, then a name another entry has and a failure; deletes one and checks the
@@ -195,12 +195,12 @@ test("Shared: merging reaches the entry by its id, naming the one it goes into",
 // a vehicle model's brand.
 test("Shared: a merge says where the items go, and the filters follow it", () => {
   assert.equal(
-    ITEM_LIST_TEXTS.categories.confirmMerge("Parachoque", "Para-choque", 12),
+    ITEM_LIST_TEXTS["pt-BR"].categories.confirmMerge("Parachoque", "Para-choque", 12),
     "Os 12 itens de “Parachoque” passam para “Para-choque”, e “Parachoque” sai da lista de categorias.",
   );
-  assert.match(ITEM_LIST_TEXTS.vehicleModels.confirmMerge("Opala", "Opala 4.1", 1), /^O item de “Opala” passa para “Opala 4.1”/);
-  assert.match(ITEM_LIST_TEXTS.partBrands.confirmMerge("Mann", "Mann-Filter", 0), /^Nenhum item usa “Mann”/);
-  assert.equal(ITEM_LIST_TEXTS.vehicleModels.merged("Opala", "Opala 4.1", 1), "Modelo “Opala” juntado a “Opala 4.1”: 1 item mudou.");
+  assert.match(ITEM_LIST_TEXTS["pt-BR"].vehicleModels.confirmMerge("Opala", "Opala 4.1", 1), /^O item de “Opala” passa para “Opala 4.1”/);
+  assert.match(ITEM_LIST_TEXTS["pt-BR"].partBrands.confirmMerge("Mann", "Mann-Filter", 0), /^Nenhum item usa “Mann”/);
+  assert.equal(ITEM_LIST_TEXTS["pt-BR"].vehicleModels.merged("Opala", "Opala 4.1", 1), "Modelo “Opala” juntado a “Opala 4.1”: 1 item mudou.");
   const lists = { ...LISTS, vehicleBrands: [{ id: BRAND_ID, name: "Chevrolet" }] };
   const opala = { id: "00000000-0000-4000-8000-0000000000b1", name: "Opala", vehicleBrandId: BRAND_ID };
   assert.deepEqual(entryChange("vehicleModels", opala, "Opala 4.1", lists), {

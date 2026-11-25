@@ -232,7 +232,7 @@ test('Mobile: away from the server, the export says it needs it', async () => {
   const share = jest.spyOn(Share, 'share');
   const tree = await mount({ offline: true });
   await press(tree, 'Exportar');
-  expect(shows(tree, INVENTORY_NEEDS_SERVER.export)).toBe(true);
+  expect(shows(tree, INVENTORY_NEEDS_SERVER['pt-BR'].export)).toBe(true);
   expect(share).not.toHaveBeenCalled();
 });
 

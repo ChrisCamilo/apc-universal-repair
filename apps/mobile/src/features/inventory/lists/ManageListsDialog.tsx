@@ -17,6 +17,7 @@ import {
   type VehicleModel,
 } from '@apc/domain/lists';
 import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
+import { useMessages } from '../../../app/locale';
 import { Button } from '../../../components/Button';
 import { RowAction } from '../../../components/DataTable';
 import { Dialog } from '../../../components/Dialog';
@@ -25,6 +26,7 @@ import { useToast } from '../../../components/Toast';
 import { Heading, Text } from '../../../components/Typography';
 import { useStyles } from './ManageListsDialog.styles';
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists';
+import { useLocale } from '../../../app/locale';
 
 // The "Gerenciar listas" dialog of the Inventory tab, the same as the web: a section for categories, part brands,
 // vehicle brands and vehicle models, the models grouped by their brand, each name with how many items use it. The
@@ -70,8 +72,10 @@ export function ManageListsDialog({
   onShowItems,
   onClose,
 }: ManageListsDialogProps) {
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const toast = useToast();
+  const needsServer = useMessages(INVENTORY_NEEDS_SERVER);
   // The entry being renamed, with the name typed and its message.
   const [editing, setEditing] = useState<Entry & { name: string; error?: string }>();
   const [saving, setSaving] = useState(false);
@@ -88,7 +92,7 @@ export function ManageListsDialog({
       return;
     }
     const { kind, entry, name } = editing;
-    const texts = ITEM_LIST_TEXTS[kind];
+    const texts = ITEM_LIST_TEXTS[locale][kind];
     const siblings: ListEntry[] =
       'vehicleBrandId' in entry ? lists.vehicleModels.filter((model) => model.vehicleBrandId === entry.vehicleBrandId) : lists[kind];
     if (!name.trim()) {
@@ -108,7 +112,7 @@ export function ManageListsDialog({
       return;
     }
     if (!renamed) {
-      toast.error(offline ? INVENTORY_NEEDS_SERVER.lists : texts.renameFailed);
+      toast.error(offline ? needsServer.lists : texts.renameFailed);
       return;
     }
     setEditing(undefined);
@@ -122,12 +126,12 @@ export function ManageListsDialog({
       return;
     }
     const { kind, entry, into } = merging;
-    const texts = ITEM_LIST_TEXTS[kind];
+    const texts = ITEM_LIST_TEXTS[locale][kind];
     setJoining(true);
     const moved = await onMerge(kind, entry.id, into.id);
     setJoining(false);
     if (moved === null) {
-      toast.error(offline ? INVENTORY_NEEDS_SERVER.lists : texts.mergeFailed);
+      toast.error(offline ? needsServer.lists : texts.mergeFailed);
       return;
     }
     setMerging(undefined);
@@ -141,12 +145,12 @@ export function ManageListsDialog({
     if (!removing) {
       return;
     }
-    const texts = ITEM_LIST_TEXTS[removing.kind];
+    const texts = ITEM_LIST_TEXTS[locale][removing.kind];
     setDeleting(true);
     const removed = await onRemove(removing.kind, removing.entry.id);
     setDeleting(false);
     if (!removed) {
-      toast.error(offline ? INVENTORY_NEEDS_SERVER.lists : texts.deleteFailed);
+      toast.error(offline ? needsServer.lists : texts.deleteFailed);
       return;
     }
     setRemoving(undefined);
@@ -186,7 +190,7 @@ export function ManageListsDialog({
 
   const removingUses = removing ? itemsUsing(items, removing.kind, removing.entry, lists) : 0;
   const blocked = removingUses > 0;
-  const leavesCatalog = removing ? catalogDeleteNote(removing.kind, removing.entry) : null;
+  const leavesCatalog = removing ? catalogDeleteNote(removing.kind, removing.entry, locale) : null;
 
   return (
     <Dialog
@@ -202,7 +206,7 @@ export function ManageListsDialog({
     >
       {KINDS.map((kind) => (
         <View key={kind} style={styles.section} testID={ids.section}>
-          <Heading level={4}>{ITEM_LIST_TEXTS[kind].title}</Heading>
+          <Heading level={4}>{ITEM_LIST_TEXTS[locale][kind].title}</Heading>
           {lists[kind].length === 0 ? (
             <Text size="sm" tone="muted">
               Nada cadastrado.
@@ -262,8 +266,8 @@ export function ManageListsDialog({
         {removing && (
           <Text size="sm" tone="muted">
             {removingUses > 0
-              ? ITEM_LIST_TEXTS[removing.kind].inUse(removing.entry.name, removingUses)
-              : [ITEM_LIST_TEXTS[removing.kind].confirmDelete(removing.entry.name), leavesCatalog].filter(Boolean).join(' ')}
+              ? ITEM_LIST_TEXTS[locale][removing.kind].inUse(removing.entry.name, removingUses)
+              : [ITEM_LIST_TEXTS[locale][removing.kind].confirmDelete(removing.entry.name), leavesCatalog].filter(Boolean).join(' ')}
           </Text>
         )}
       </Dialog>
@@ -286,8 +290,8 @@ export function ManageListsDialog({
         {merging && (
           <Text size="sm" tone="muted">
             {[
-              ITEM_LIST_TEXTS[merging.kind].confirmMerge(merging.entry.name, merging.into.name, itemsUsing(items, merging.kind, merging.entry, lists)),
-              catalogMergeNote(merging.kind, merging.entry, merging.into),
+              ITEM_LIST_TEXTS[locale][merging.kind].confirmMerge(merging.entry.name, merging.into.name, itemsUsing(items, merging.kind, merging.entry, lists)),
+              catalogMergeNote(merging.kind, merging.entry, merging.into, locale),
             ]
               .filter(Boolean)
               .join(' ')}

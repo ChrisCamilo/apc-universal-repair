@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useState } from 'react'
 import { bellIcon, gearIcon, ICON_SIZES, minusIcon, plusIcon } from '@apc/tokens/icons'
 import { timeAgo, unreadBadge, type Notification } from '@apc/domain/notifications'
 import { stepToastDuration, TOAST_DURATION, TOAST_KIND_LOOKS, toastDurationLabel } from '@apc/ui-spec/toast'
+import { useLocale } from '../../app/useLocale.ts'
 import { useSession } from '../auth/sessionContext.ts'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
@@ -205,6 +206,7 @@ function DurationSetting() {
 /** A notification in the list: its kind's icon in the kind's color, the message and how long ago it was shown. */
 function NotificationEntry({ notification, fresh, now }: { notification: Notification; fresh: boolean; now: Date }) {
   const { classes, ids } = notificationsMenu({ kind: notification.kind, fresh })
+  const { locale } = useLocale()
   return (
     <li className={classes.item()} data-testid={ids.item} data-kind={notification.kind} data-fresh={fresh || undefined}>
       <span className={classes.icon()} data-testid={ids.icon}>
@@ -215,7 +217,7 @@ function NotificationEntry({ notification, fresh, now }: { notification: Notific
           {notification.message}
         </span>
         <time dateTime={notification.at} className={classes.time()} data-testid={ids.time}>
-          {timeAgo(notification.at, now)}
+          {timeAgo(notification.at, now, locale)}
         </time>
       </span>
     </li>

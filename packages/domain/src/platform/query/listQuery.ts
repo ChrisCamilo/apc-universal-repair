@@ -2,8 +2,12 @@
 // lists: the sort and how a header click or the "Sort by" select changes it, how rows are compared, the page sizes,
 // and the values the filters carry.
 
+import { catalog, type Locale } from "../locale/locale.ts";
+
 /** Page sizes the inventory offers; the first is the default. */
 export const PAGE_SIZES = [25, 50, 100] as const;
+/** How a numeric column's sorts say their direction; text columns go "A → Z" and "Z → A" in both languages. */
+const SORT_DIRECTIONS = catalog({ lowToHigh: "menor → maior", highToLow: "maior → menor" }, { lowToHigh: "low → high", highToLow: "high → low" });
 /** How many items a phone's list loads at a time as it scrolls, in place of pages. */
 export const SCROLL_PAGE_SIZE = PAGE_SIZES[0];
 
@@ -40,14 +44,16 @@ export function sortFromValue(value: string): Sort | null {
  * option, with the value written by sortValue.
  * @param columns Sortable columns, in table order.
  * @param unsortedLabel Label of the option with no sort, e.g. "Ordem de cadastro".
+ * @param locale The language of the directions.
  * @returns Select options, e.g. "Quantidade (menor → maior)".
  */
-export function sortOptions(columns: readonly SortColumn[], unsortedLabel: string): { value: string; label: string }[] {
+export function sortOptions(columns: readonly SortColumn[], unsortedLabel: string, locale: Locale): { value: string; label: string }[] {
+  const directions = SORT_DIRECTIONS[locale];
   return [
     { value: "", label: unsortedLabel },
     ...columns.flatMap((column) => [
-      { value: sortValue({ key: column.key, dir: "asc" }), label: `${column.label} (${column.numeric ? "menor → maior" : "A → Z"})` },
-      { value: sortValue({ key: column.key, dir: "desc" }), label: `${column.label} (${column.numeric ? "maior → menor" : "Z → A"})` },
+      { value: sortValue({ key: column.key, dir: "asc" }), label: `${column.label} (${column.numeric ? directions.lowToHigh : "A → Z"})` },
+      { value: sortValue({ key: column.key, dir: "desc" }), label: `${column.label} (${column.numeric ? directions.highToLow : "Z → A"})` },
     ]),
   ];
 }

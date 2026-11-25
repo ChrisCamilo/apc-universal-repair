@@ -7,6 +7,7 @@ import { Text } from '../../components/Typography';
 import { CardTitle, StockQuantity } from '../inventory/browse/ItemCard';
 import { photoSource } from '../sync/photoCache';
 import { useStyles } from './PartResults.styles';
+import { useLocale } from '../../app/locale';
 
 // The inventory parts a Catalog search by code found, the same as the web on a phone (the "Catálogo no celular"
 // mockup): the Inventory's cards under a heading, each brand of an item whose code matched, or its original code, with
@@ -29,11 +30,7 @@ const CARD_COLUMNS: ComponentProps<typeof DataTable<FoundPart>>['columns'] = [
     key: 'name',
     header: 'Item',
     card: 'main',
-    cell: (part) => (
-      <View>
-        <CardTitle name={part.item.name} code={`${part.code} · ${partBrand(part).partBrand}`} details={itemCardDetails(part.item)} />
-      </View>
-    ),
+    cell: (part) => <FoundTitle part={part} />,
   },
   { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (part) => <StockQuantity {...part.item} /> },
 ];
@@ -53,6 +50,7 @@ function partBrand({ id, item }: FoundPart) {
 }
 
 export function PartResults({ results, onChoose }: PartResultsProps) {
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const { parts, more } = results;
   return (
@@ -68,7 +66,7 @@ export function PartResults({ results, onChoose }: PartResultsProps) {
         columns={CARD_COLUMNS}
         rows={parts}
         rowKey={(part) => part.id}
-        rowStatus={(part) => stockTint(part.item)}
+        rowStatus={(part) => stockTint(part.item, locale)}
         onRowOpen={onChoose}
         sort={null}
         onSortChange={() => {}}
@@ -81,6 +79,16 @@ export function PartResults({ results, onChoose }: PartResultsProps) {
           {`Mais ${more}. Digite mais do código para afinar.`}
         </Text>
       )}
+    </View>
+  );
+}
+
+/** A found part's name, with its code and details in the language chosen. */
+function FoundTitle({ part }: { part: FoundPart }) {
+  const { locale } = useLocale();
+  return (
+    <View>
+      <CardTitle name={part.item.name} code={`${part.code} · ${partBrand(part).partBrand}`} details={itemCardDetails(part.item, locale)} />
     </View>
   );
 }

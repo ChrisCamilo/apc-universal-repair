@@ -39,6 +39,7 @@ import {
 import { activeFilterCount, type FilterValues } from '@apc/ui-spec/filters'
 import {
   EMPTY_ITEM_FILTERS,
+  FILTER_LABELS,
   followEntryChange,
   ITEM_SORT_OPTIONS,
   itemFilterRows,
@@ -49,6 +50,7 @@ import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type Ite
 import { TUTORIAL_CODE, type TutorialScreen } from '@apc/domain/inventory-tutorial'
 import type { InventoryLink } from '@apc/domain/catalog'
 import { pageForSize } from '@apc/ui-spec/pagination'
+import { perLocale, type Locale } from '@apc/domain/locale'
 import { PAGE_SIZES, SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query'
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/domain/photos'
 import { API_BASE } from '../../app/api.ts'
@@ -170,16 +172,13 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
       )
     },
   },
-  { key: 'position', sortable: true, header: 'Posição', cell: ({ item }) => <Coded value={item.position} name={POSITION_NAMES[item.position]} /> },
-  { key: 'side', sortable: true, header: 'Lado', cell: ({ item }) => <Coded value={item.side} name={SIDE_NAMES[item.side]} /> },
+  { key: 'position', sortable: true, header: 'Posição', cell: ({ item }) => <PositionCell item={item} /> },
+  { key: 'side', sortable: true, header: 'Lado', cell: ({ item }) => <SideCell item={item} /> },
   {
     key: 'color',
     sortable: true,
     header: 'Cor',
-    cell: (row) => {
-      const color = brandsValue(rowItem(row), 'color')!
-      return <Coded value={color} name={color === NOT_APPLICABLE ? 'Cor não se aplica' : color} />
-    },
+    cell: (row) => <ColorCell item={rowItem(row)} />,
   },
   {
     key: 'material',
@@ -196,11 +195,7 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
     key: 'location',
     sortable: true,
     header: 'Local',
-    cell: (row) => (
-      <span className={CELLS.classes.location()} data-testid={CELLS.ids.location}>
-        {brandsValue(rowItem(row), 'location')}
-      </span>
-    ),
+    cell: (row) => <LocationCell item={rowItem(row)} />,
   },
   {
     key: 'price',
@@ -222,16 +217,17 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
   },
 ]
 // The stock status chips, outside the menu: one at a time, none for every item.
-const STATUS_OPTIONS = ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[value] }))
+const STATUS_OPTIONS = perLocale((locale) => ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[locale][value] })))
 
 /**
  * Names the stock status chips on a phone in short, each with how many items it finds.
  * @param items Every item in stock.
+ * @param locale The language.
  * @returns The chips' options, e.g. "Baixo · 5" and "Esgotado · 4".
  */
-function phoneStatusOptions(items: readonly Item[]) {
+function phoneStatusOptions(items: readonly Item[], locale: Locale) {
   const counts = stockCounts(items)
-  return ITEM_STATUSES.map((value) => ({ value, label: `${STOCK_STATUS_SHORT[value]} · ${counts[value]}` }))
+  return ITEM_STATUSES.map((value) => ({ value, label: `${STOCK_STATUS_SHORT[locale][value]} · ${counts[value]}` }))
 }
 
 /** A row of the list: an item, or one of its brands, under it once the item is opened. */
@@ -247,6 +243,7 @@ function rowItem(row: InventoryRow): Item {
 }
 
 export function InventoryTab() {
+  const { locale } = useLocale()
   const { classes, ids } = inventoryTab()
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS)
   const [status, setStatus] = useState<ItemStatus | null>(null)
@@ -265,7 +262,7 @@ export function InventoryTab() {
   }
   const narrowed = search.trim() !== '' || itemListQuery(filters, status) !== ''
   const filterCount = activeFilterCount(filters)
-  const sortLabel = ITEM_SORT_OPTIONS.find((option) => option.value === sortValue(sort))?.label
+  const sortLabel = ITEM_SORT_OPTIONS[locale].find((option) => option.value === sortValue(sort))?.label
   const phone = usePhone()
   // On a phone, how many pages the list shows, loading the next as it scrolls to its end.
   const [pages, setPages] = useState(1)
@@ -619,7 +616,7 @@ export function InventoryTab() {
               <FilterMenu
                 label="Filtros do estoque"
                 title="Filtrar estoque"
-                rows={(draft) => itemFilterRows(items, draft)}
+                rows={(draft) => itemFilterRows(items, draft, locale)}
                 values={filters}
                 onApply={(values) => narrow(() => setFilters(values))}
                 open={filtering}
@@ -630,7 +627,7 @@ export function InventoryTab() {
           )}
           <FilterChipGroup
             label="Situação do estoque"
-            options={phone ? phoneStatusOptions(state.status === 'ready' ? state.items : []) : STATUS_OPTIONS}
+            options={phone ? phoneStatusOptions(state.status === 'ready' ? state.items : [], locale) : STATUS_OPTIONS[locale]}
             value={status}
             onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
           />
@@ -645,7 +642,7 @@ export function InventoryTab() {
           />
           {state.status === 'ready' && listed.status === 'ready' && (
             <p className={classes.count()} data-testid={ids.count}>
-              {resultSummary(listed.status === 'ready' ? listed.total : 0, items)}
+              {resultSummary(listed.status === 'ready' ? listed.total : 0, items, locale)}
             </p>
           )}
         </div>
@@ -701,12 +698,12 @@ export function InventoryTab() {
                   card: 'main',
                   cell: (row) =>
                     row.brand ? (
-                      <TableTitle title={row.brand.partBrand} code={row.brand.code} details={itemDetails(rowItem(row))} />
+                      <TableTitle title={row.brand.partBrand} code={row.brand.code} details={itemDetails(rowItem(row), locale)} />
                     ) : phone ? (
-                      <TableTitle title={row.item.name} code={itemCardCode(row.item)} details={itemCardDetails(row.item)} />
+                      <TableTitle title={row.item.name} code={itemCardCode(row.item, locale)} details={itemCardDetails(row.item, locale)} />
                     ) : (
                       <span className={classes.title()} data-testid={ids.title}>
-                        <TableTitle title={row.item.name} code={itemCodes(row.item)} details={itemDetails(row.item)} />
+                        <TableTitle title={row.item.name} code={itemCodes(row.item)} details={itemDetails(row.item, locale)} />
                         {row.item.brands.length > 1 && (
                           <span className={classes.brands()} data-testid={ids.brands}>
                             {row.item.brands.length} marcas
@@ -742,13 +739,13 @@ export function InventoryTab() {
               rows={rows}
               rowKey={(row) => (row.brand ? `${row.item.id}:${row.brand.id}` : row.item.id)}
               // A brand's row is never tinted (see DataTable's rowNested).
-              rowStatus={({ item }) => stockTint(item)}
+              rowStatus={({ item }) => stockTint(item, locale)}
               rowNested={(row) => row.brand !== undefined}
               rowExpanded={(row) => (!phone && !row.brand && row.item.brands.length > 1 ? opened.has(row.item.id) : undefined)}
               onRowOpen={openRow}
               sort={sort}
               onSortChange={(next) => narrow(() => setSort(next))}
-              unsortedLabel="Ordem de cadastro"
+              unsortedLabel={FILTER_LABELS[locale].unsorted}
               sortSelect={!phone}
               empty={
                 narrowed ? (
@@ -800,10 +797,10 @@ export function InventoryTab() {
           <FilterSheet
             open={filtering}
             onClose={() => setFiltering(false)}
-            rows={(draft) => itemFilterRows(items, draft)}
+            rows={(draft) => itemFilterRows(items, draft, locale)}
             values={filters}
             sort={sort}
-            sortOptions={ITEM_SORT_OPTIONS}
+            sortOptions={ITEM_SORT_OPTIONS[locale]}
             count={(draft) => matchingCount(items, draft, status, search)}
             onApply={(values, next) => {
               setFiltering(false)
@@ -817,7 +814,7 @@ export function InventoryTab() {
             open={sorting}
             onClose={() => setSorting(false)}
             sort={sort}
-            options={ITEM_SORT_OPTIONS}
+            options={ITEM_SORT_OPTIONS[locale]}
             onSortChange={(next) => narrow(() => setSort(next))}
           />
           <ActionSheet
@@ -1017,6 +1014,35 @@ function Coded({ value, name }: { value: string; name: string }) {
   return (
     <span title={name} className={classes.coded()} data-testid={ids.coded}>
       {value}
+    </span>
+  )
+}
+
+/** An item's position, its full name in the language chosen as the cell's title. */
+function PositionCell({ item }: { item: Item }) {
+  const { locale } = useLocale()
+  return <Coded value={item.position} name={POSITION_NAMES[locale][item.position]} />
+}
+
+/** An item's side, its full name in the language chosen as the cell's title. */
+function SideCell({ item }: { item: Item }) {
+  const { locale } = useLocale()
+  return <Coded value={item.side} name={SIDE_NAMES[locale][item.side]} />
+}
+
+/** An item's color, or "Várias" in the language chosen when its brands differ. */
+function ColorCell({ item }: { item: Item }) {
+  const { locale } = useLocale()
+  const color = brandsValue(item, 'color', locale)!
+  return <Coded value={color} name={color === NOT_APPLICABLE ? 'Cor não se aplica' : color} />
+}
+
+/** An item's location, or "Várias" in the language chosen when its brands differ. */
+function LocationCell({ item }: { item: Item }) {
+  const { locale } = useLocale()
+  return (
+    <span className={CELLS.classes.location()} data-testid={CELLS.ids.location}>
+      {brandsValue(item, 'location', locale)}
     </span>
   )
 }

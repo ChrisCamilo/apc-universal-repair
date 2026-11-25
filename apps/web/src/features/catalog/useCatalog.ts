@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { loadCatalog, type Catalog } from '@apc/domain/catalog'
+import { useLocale } from '../../app/useLocale.ts'
 
 // Loads the vehicle catalog from the API for the Catalog tab, and again on reload, after a failure; a change made to it
 // hands over the catalog the API answered, which replaces the one loaded.
@@ -13,13 +14,14 @@ export type CatalogState = { status: 'loading' } | { status: 'ready'; catalog: C
  * change answered.
  */
 export function useCatalog(): CatalogState & { reload: () => void; replace: (catalog: Catalog) => void } {
+  const { locale } = useLocale()
   const [state, setState] = useState<CatalogState>({ status: 'loading' })
   // Bumped to fetch the catalog again.
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
     const request = new AbortController()
-    loadCatalog('/api', request.signal)
+    loadCatalog('/api', locale, request.signal)
       .then((catalog) => setState({ status: 'ready', catalog }))
       .catch(() => {
         if (!request.signal.aborted) {
@@ -27,7 +29,7 @@ export function useCatalog(): CatalogState & { reload: () => void; replace: (cat
         }
       })
     return () => request.abort()
-  }, [version])
+  }, [version, locale])
 
   return {
     ...state,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
+import { catalog, perLocale, type Locale } from "../platform/locale/locale.ts";
 import { codeKey, generationLabel, generationText, optionKey, readGeneration, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
 import { EMPTY_ITEM_FILTERS, vehicleModelValue, type ItemFilters } from "../inventory/itemFilters.ts";
 import { distinct, generationInput } from "../inventory/itemForm.ts";
@@ -45,14 +46,19 @@ export const CATALOG_HOME: CatalogScreen = { view: "brands" };
 /** The API path of the catalog, and of its brands. */
 export const CATALOG_PATH = "/catalog";
 export const CATALOG_BRANDS_PATH = "/catalog/brands";
-/** What each level below the brands adds under its parent: the level, its path under the parent's, and its button. */
-export const CATALOG_CHILDREN: Record<"brand" | CatalogEditLevel, { level: CatalogLevel; segment: string; add: string }> = {
-  brand: { level: "model", segment: "models", add: "Novo modelo" },
-  model: { level: "generation", segment: "generations", add: "Nova geração" },
-  generation: { level: "version", segment: "versions", add: "Nova versão" },
-  version: { level: "year", segment: "years", add: "Novo período" },
-  year: { level: "engine", segment: "engines", add: "Novo motor" },
+/** What each level below the brands adds under its parent: the level, and its path under the parent's. */
+export const CATALOG_CHILDREN: Record<"brand" | CatalogEditLevel, { level: CatalogLevel; segment: string }> = {
+  brand: { level: "model", segment: "models" },
+  model: { level: "generation", segment: "generations" },
+  generation: { level: "version", segment: "versions" },
+  version: { level: "year", segment: "years" },
+  year: { level: "engine", segment: "engines" },
 };
+/** The button that adds the level under each level of the tree. */
+export const CATALOG_ADD = catalog<Record<"brand" | CatalogEditLevel, string>>(
+  { brand: "Novo modelo", model: "Nova geração", generation: "Nova versão", version: "Novo período", year: "Novo motor" },
+  { brand: "New model", model: "New generation", generation: "New version", version: "New period", year: "New engine" },
+);
 /** The API path of the engines, whose sheets are saved there. */
 export const CATALOG_ENGINES_PATH = "/catalog/engines";
 /** The engines a sheet can describe: displacement in decilitres and cylinders. */
@@ -69,43 +75,131 @@ export const CATALOG_PARTS_ONLY_KEY = "apc.catalog.partsOnly";
 /** The years a generation or a period can have. */
 export const CATALOG_YEARS = { min: 1900, max: 2100 } as const;
 /** What a catalog year field says when it isn't a year of four digits in the catalog's range. */
-export const CATALOG_YEAR_MESSAGE = `Use o ano com 4 dígitos, de ${CATALOG_YEARS.min} a ${CATALOG_YEARS.max}, como 1968.`;
+export const CATALOG_YEAR_MESSAGE = catalog(
+  `Use o ano com 4 dígitos, de ${CATALOG_YEARS.min} a ${CATALOG_YEARS.max}, como 1968.`,
+  `Use the year with 4 digits, from ${CATALOG_YEARS.min} to ${CATALOG_YEARS.max}, such as 1968.`,
+);
 /** What a catalog year field shows while it is empty: a year is written with four digits. */
-export const CATALOG_YEAR_PLACEHOLDER = "AAAA";
+export const CATALOG_YEAR_PLACEHOLDER = catalog("AAAA", "YYYY");
 /** What deleting a brand or a node of the catalog says when an item of the stock uses it, or something under it. */
-export const CATALOG_IN_USE = "Não dá para excluir: há peças do estoque nesse veículo. Troque o veículo delas antes.";
+export const CATALOG_IN_USE = catalog(
+  "Não dá para excluir: há peças do estoque nesse veículo. Troque o veículo delas antes.",
+  "It can't be deleted: parts in stock fit this vehicle. Change their vehicle first.",
+);
 /** What a change of the catalog that failed says. */
-export const CATALOG_FAILED = "Não foi possível salvar no catálogo. Tente de novo.";
+export const CATALOG_FAILED = catalog("Não foi possível salvar no catálogo. Tente de novo.", "Couldn't save to the catalog. Try again.");
 /** What a change of the catalog says while the server can't be reached, as the phone shows its copy. */
-export const CATALOG_NEEDS_SERVER = "Sem conexão com o servidor. O catálogo só pode ser editado com ele.";
+export const CATALOG_NEEDS_SERVER = catalog(
+  "Sem conexão com o servidor. O catálogo só pode ser editado com ele.",
+  "No connection to the server. The catalog can only be edited with it.",
+);
 /** What is said under the field when the API refuses a name or year another node has, by what is added or renamed. */
-export const CATALOG_TAKEN: Record<CatalogEditLevel | "brand", string> = {
-  brand: "Essa marca já está no catálogo.",
-  model: "Já existe um modelo com esse nome nessa marca.",
-  generation: CATALOG_FAILED,
-  version: CATALOG_FAILED,
-  year: "Essa versão já tem esse período.",
-};
+export const CATALOG_TAKEN = perLocale(
+  (locale): Record<CatalogEditLevel | "brand", string> => ({
+    ...catalog(
+      { brand: "Essa marca já está no catálogo.", model: "Já existe um modelo com esse nome nessa marca.", year: "Essa versão já tem esse período." },
+      { brand: "This brand is already in the catalog.", model: "A model with this name already exists in this brand.", year: "This version already has this period." },
+    )[locale],
+    generation: CATALOG_FAILED[locale],
+    version: CATALOG_FAILED[locale],
+  }),
+);
 /** What each drive reads as on an engine's sheet. */
-export const ENGINE_DRIVE_LABELS: Record<EngineDrive, string> = { FRONT: "DIANTEIRA", REAR: "TRASEIRA", ALL: "INTEGRAL" };
+export const ENGINE_DRIVE_LABELS = catalog<Record<EngineDrive, string>>(
+  { FRONT: "DIANTEIRA", REAR: "TRASEIRA", ALL: "INTEGRAL" },
+  { FRONT: "FRONT", REAR: "REAR", ALL: "ALL-WHEEL" },
+);
 /** The drives an engine's sheet chooses from, in their order. */
 export const ENGINE_DRIVES: readonly EngineDrive[] = ["FRONT", "REAR", "ALL"];
 /**
  * What copying an engine to another period says: the engine's action, the period's while an engine is copied, and the
  * toasts once copied and once pasted.
  */
-export const ENGINE_CLIPBOARD = {
-  copy: "Copiar motor",
-  paste: "Colar motor",
-  copied: (engine: string) => `Motor ${engine} copiado. Cole-o num período com Colar motor ou Ctrl+V.`,
-  pasted: (engine: string, period: string) => `Motor ${engine} colado em ${period}.`,
-} as const;
+export const ENGINE_CLIPBOARD = catalog(
+  {
+    copy: "Copiar motor",
+    paste: "Colar motor",
+    copied: (engine: string) => `Motor ${engine} copiado. Cole-o num período com Colar motor ou Ctrl+V.`,
+    pasted: (engine: string, period: string) => `Motor ${engine} colado em ${period}.`,
+  },
+  {
+    copy: "Copy engine",
+    paste: "Paste engine",
+    copied: (engine) => `Engine ${engine} copied. Paste it into a period with Paste engine or Ctrl+V.`,
+    pasted: (engine, period) => `Engine ${engine} pasted into ${period}.`,
+  },
+);
 /** A displacement as typed: digits with one decimal at most, after a comma or a dot. */
 const LITRES = /^\d{1,2}([.,]\d)?$/;
 /** What each of an engine sheet's readouts is, in their order, named above them on a phone. */
-export const ENGINE_SPEC_LABELS = ["Período", "Motor", "Cilindros", "Tração"] as const;
+export const ENGINE_SPEC_LABELS = catalog<readonly string[]>(["Período", "Motor", "Cilindros", "Tração"], ["Period", "Engine", "Cylinders", "Drive"]);
 /** What a part's vehicle says when the catalog has no sheet for it. */
-export const NO_SHEET_MESSAGE = "Este veículo ainda não tem ficha técnica no catálogo. A peça continua cadastrada no estoque.";
+export const NO_SHEET_MESSAGE = catalog(
+  "Este veículo ainda não tem ficha técnica no catálogo. A peça continua cadastrada no estoque.",
+  "This vehicle has no sheet in the catalog yet. The part stays in stock.",
+);
+/** What the catalog's screens write: what a brand or a node holds, its form's problems, the engines and the fits. */
+export const CATALOG_TEXTS = catalog(
+  {
+    models: (count: number) => (count === 1 ? "1 modelo" : `${count} modelos`),
+    sheets: (count: number) => (count === 0 ? "sem ficha técnica ainda" : count === 1 ? "1 ficha técnica" : `${count} fichas técnicas`),
+    below: {
+      model: ["modelo", "modelos"],
+      generation: ["geração", "gerações"],
+      version: ["versão", "versões"],
+      year: ["período", "períodos"],
+      engine: ["motor com ficha", "motores com ficha"],
+    } satisfies Record<CatalogLevel, [string, string]>,
+    lastBeforeFirst: "O último ano não pode vir antes do primeiro.",
+    name: "Informe o nome.",
+    periodOutside: (from: number, to: number | null) =>
+      `O período tem de ficar dentro dos anos da geração: ${to === null ? `de ${from} em diante` : `de ${from} a ${to}`}.`,
+    periods: (from: number, to: number) => (from === to ? `Os períodos desta geração são de ${from}.` : `Os períodos desta geração vão de ${from} a ${to}.`),
+    litres: (min: string, max: string) => `Use uma cilindrada de ${min} a ${max} L.`,
+    cylinders: (min: number, max: number) => `Use de ${min} a ${max} cilindros.`,
+    drive: "Escolha a tração.",
+    engine: (litres: string, cylinders: number) => `${litres} L ${cylinders} cilindros`,
+    cylindersShort: (cylinders: number) => `${cylinders} CIL`,
+    anyVehicle: "Serve em qualquer veículo",
+    notInCatalog: (brand: string) => `${brand} não está no catálogo`,
+    anyOfBrand: (brand: string) => `Serve em qualquer ${brand}`,
+    modelWithoutSheet: (vehicle: string) => `${vehicle} (modelo ainda sem ficha no catálogo)`,
+    fits: (vehicle: string) => `Serve no ${vehicle}`,
+    engineWithoutSheet: (vehicle: string) => `${vehicle} (motor ainda sem ficha no catálogo)`,
+    title: "Catálogo",
+    backToBrands: "Voltar às marcas",
+    backToModels: "Voltar aos modelos",
+  },
+  {
+    models: (count) => (count === 1 ? "1 model" : `${count} models`),
+    sheets: (count) => (count === 0 ? "no sheet yet" : count === 1 ? "1 sheet" : `${count} sheets`),
+    below: {
+      model: ["model", "models"],
+      generation: ["generation", "generations"],
+      version: ["version", "versions"],
+      year: ["period", "periods"],
+      engine: ["engine with a sheet", "engines with a sheet"],
+    },
+    lastBeforeFirst: "The last year can't come before the first.",
+    name: "Enter the name.",
+    periodOutside: (from, to) => `The period has to stay within the generation's years: ${to === null ? `from ${from} on` : `from ${from} to ${to}`}.`,
+    periods: (from, to) => (from === to ? `This generation's periods are from ${from}.` : `This generation's periods go from ${from} to ${to}.`),
+    litres: (min, max) => `Use a displacement from ${min} to ${max} L.`,
+    cylinders: (min, max) => `Use ${min} to ${max} cylinders.`,
+    drive: "Choose the drive.",
+    engine: (litres, cylinders) => `${litres} L ${cylinders} cylinders`,
+    cylindersShort: (cylinders) => `${cylinders} CYL`,
+    anyVehicle: "Fits any vehicle",
+    notInCatalog: (brand) => `${brand} isn't in the catalog`,
+    anyOfBrand: (brand) => `Fits any ${brand}`,
+    modelWithoutSheet: (vehicle) => `${vehicle} (model without a sheet in the catalog yet)`,
+    fits: (vehicle) => `Fits the ${vehicle}`,
+    engineWithoutSheet: (vehicle) => `${vehicle} (engine without a sheet in the catalog yet)`,
+    title: "Catalog",
+    backToBrands: "Back to the brands",
+    backToModels: "Back to the models",
+  },
+);
 /** Least letters and digits of a part code before the search looks for parts. */
 export const PART_CODE_MIN_LENGTH = 3;
 /** Most parts the code search lists at once. */
@@ -271,14 +365,13 @@ export function brandsNamed(catalog: Catalog, query: string): CatalogBrand[] {
  * Says how many models and sheets a brand has, on its line of a phone's brand screen.
  * @param catalog The catalog.
  * @param brand A brand of the catalog.
+ * @param locale The language.
  * @returns E.g. "3 modelos · 2 fichas técnicas", or "3 modelos · sem ficha técnica ainda".
  */
-export function brandSummary(catalog: Catalog, brand: CatalogBrand): string {
-  const models = brand.models.length;
+export function brandSummary(catalog: Catalog, brand: CatalogBrand, locale: Locale): string {
+  const texts = CATALOG_TEXTS[locale];
   const sheets = brand.models.flatMap(leaves).filter((leaf) => catalog.sheets[leaf.id]).length;
-  const modelText = models === 1 ? "1 modelo" : `${models} modelos`;
-  const sheetText = sheets === 0 ? "sem ficha técnica ainda" : sheets === 1 ? "1 ficha técnica" : `${sheets} fichas técnicas`;
-  return `${modelText} · ${sheetText}`;
+  return `${texts.models(brand.models.length)} · ${texts.sheets(sheets)}`;
 }
 
 /**
@@ -313,19 +406,21 @@ export function brandMark(name: string): string {
 /**
  * Says what deleting a catalog brand takes with it: its models and everything under them.
  * @param brand The brand.
+ * @param locale The language.
  * @returns E.g. "3 modelos, 2 gerações, 1 versão", or null when it has no model.
  */
-export function belowBrand(brand: CatalogBrand): string | null {
-  return belowNode({ id: brand.id, label: brand.name, level: "model", children: brand.models });
+export function belowBrand(brand: CatalogBrand, locale: Locale): string | null {
+  return belowNode({ id: brand.id, label: brand.name, level: "model", children: brand.models }, locale);
 }
 
 /**
  * Says what deleting a node takes with it: how many models, generations, versions, periods and engines with their sheets
  * are under it.
  * @param node A node of the tree.
+ * @param locale The language.
  * @returns E.g. "3 versões, 2 períodos, 2 motores com ficha", or null when nothing is under it.
  */
-export function belowNode(node: CatalogNode): string | null {
+export function belowNode(node: CatalogNode, locale: Locale): string | null {
   const counts: Record<CatalogLevel, number> = { model: 0, generation: 0, version: 0, year: 0, engine: 0 };
   /** Counts every node under some nodes. */
   const count = (nodes: readonly CatalogNode[]) => {
@@ -335,14 +430,11 @@ export function belowNode(node: CatalogNode): string | null {
     }
   };
   count(node.children ?? []);
-  const words: [CatalogLevel, string, string][] = [
-    ["model", "modelo", "modelos"],
-    ["generation", "geração", "gerações"],
-    ["version", "versão", "versões"],
-    ["year", "período", "períodos"],
-    ["engine", "motor com ficha", "motores com ficha"],
-  ];
-  const parts = words.filter(([level]) => counts[level] > 0).map(([level, one, many]) => `${counts[level]} ${counts[level] === 1 ? one : many}`);
+  const words = CATALOG_TEXTS[locale].below;
+  const levels: CatalogLevel[] = ["model", "generation", "version", "year", "engine"];
+  const parts = levels
+    .filter((level) => counts[level] > 0)
+    .map((level) => `${counts[level]} ${counts[level] === 1 ? words[level][0] : words[level][1]}`);
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
@@ -427,17 +519,18 @@ export function catalogAddUnder(node: CatalogNode): { sheet: CatalogSheetEditing
 /**
  * Builds the request that saves what a screen adds or renames.
  * @param editing What is added, and under which parent, or renamed.
+ * @param locale The language of what the API's refusal says.
  * @returns Its method and path, and what to say when the API refuses a name or year another node has.
  */
-export function catalogEditRequest(editing: CatalogEditing): { method: "POST" | "PATCH"; path: string; taken: string } {
+export function catalogEditRequest(editing: CatalogEditing, locale: Locale): { method: "POST" | "PATCH"; path: string; taken: string } {
   if (editing.kind === "rename") {
     const level = editing.node.level as CatalogEditLevel;
-    return { method: "PATCH", path: catalogNodePath(editing.node), taken: CATALOG_TAKEN[level] };
+    return { method: "PATCH", path: catalogNodePath(editing.node), taken: CATALOG_TAKEN[locale][level] };
   }
   const { parent } = editing;
   const parentPath = parent.level === "brand" ? CATALOG_BRANDS_PATH : CATALOG_LEVEL_PATHS[parent.level];
   const path = editing.level === "brand" ? CATALOG_BRANDS_PATH : `${parentPath}/${parent.id}/${CATALOG_CHILDREN[parent.level].segment}`;
-  return { method: "POST", path, taken: CATALOG_TAKEN[editing.level] };
+  return { method: "POST", path, taken: CATALOG_TAKEN[locale][editing.level] };
 }
 
 /**
@@ -543,16 +636,19 @@ export function engineSheetNames(catalog: Catalog, brandId: string, nodeId: stri
  * generation keeps the years its periods cover; a year outside is refused under its own field.
  * @param level What is added or renamed.
  * @param fields The fields' text.
+ * @param locale The language of the problems.
  * @param limits The years it keeps to (see catalogYearLimits).
  * @returns What is saved, or what to fix under each field.
  */
 export function readCatalogFields(
   level: CatalogEditLevel | "brand",
   fields: CatalogFields,
+  locale: Locale,
   limits: CatalogYearLimits = {},
 ): { values: CatalogValues } | { problems: Partial<Record<keyof CatalogFields, string>> } {
   const problems: Partial<Record<keyof CatalogFields, string>> = {};
-  const yearsMessage = CATALOG_YEAR_MESSAGE;
+  const texts = CATALOG_TEXTS[locale];
+  const yearsMessage = CATALOG_YEAR_MESSAGE[locale];
   if (level === "year") {
     const year = readYear(fields.year);
     const last = fields.lastYear.trim() ? readYear(fields.lastYear) : year;
@@ -562,23 +658,23 @@ export function readCatalogFields(
     if (fields.lastYear.trim() && last === null) {
       problems.lastYear = yearsMessage;
     } else if (year !== null && last !== null && last < year) {
-      problems.lastYear = "O último ano não pode vir antes do primeiro.";
+      problems.lastYear = texts.lastBeforeFirst;
     }
     const { generation } = limits;
     if (Object.keys(problems).length === 0 && generation && !periodInGeneration({ year: year!, lastYear: last! }, generation)) {
       /** Whether a year falls outside the generation's. */
       const outside = (each: number) => each < generation.firstYear || (generation.lastYear !== null && each > generation.lastYear);
       if (outside(year!)) {
-        problems.year = periodOutsideMessage(generation);
+        problems.year = periodOutsideMessage(generation, locale);
       }
       if (fields.lastYear.trim() && outside(last!)) {
-        problems.lastYear = periodOutsideMessage(generation);
+        problems.lastYear = periodOutsideMessage(generation, locale);
       }
     }
     return Object.keys(problems).length > 0 ? { problems } : { values: { year: year!, lastYear: last! } };
   }
   if (!fields.name.trim()) {
-    problems.name = "Informe o nome.";
+    problems.name = texts.name;
   }
   if (level !== "generation") {
     return problems.name ? { problems } : { values: { name: fields.name } };
@@ -591,15 +687,15 @@ export function readCatalogFields(
   if (fields.lastYear.trim() && last === null) {
     problems.lastYear = yearsMessage;
   } else if (first !== null && last !== null && last < first) {
-    problems.lastYear = "O último ano não pode vir antes do primeiro.";
+    problems.lastYear = texts.lastBeforeFirst;
   }
   const { periods } = limits;
   if (!problems.firstYear && !problems.lastYear && periods) {
     if (first! > periods.year) {
-      problems.firstYear = generationAroundMessage(periods);
+      problems.firstYear = generationAroundMessage(periods, locale);
     }
     if (last !== null && last < periods.lastYear) {
-      problems.lastYear = generationAroundMessage(periods);
+      problems.lastYear = generationAroundMessage(periods, locale);
     }
   }
   return Object.keys(problems).length > 0 ? { problems } : { values: { name: fields.name, firstYear: first!, lastYear: last } };
@@ -651,44 +747,49 @@ export function periodsSpan(periods: readonly PeriodYears[]): PeriodYears | null
 /**
  * Says a period must stay inside its generation's years.
  * @param generation The generation's years.
+ * @param locale The language.
  * @returns E.g. "O período tem de ficar dentro dos anos da geração: de 1968 a 1974.", or "de 2019 em diante." while it
  * is still made.
  */
-export function periodOutsideMessage(generation: GenerationYears): string {
-  const years = generation.lastYear === null ? `de ${generation.firstYear} em diante` : `de ${generation.firstYear} a ${generation.lastYear}`;
-  return `O período tem de ficar dentro dos anos da geração: ${years}.`;
+export function periodOutsideMessage(generation: GenerationYears, locale: Locale): string {
+  return CATALOG_TEXTS[locale].periodOutside(generation.firstYear, generation.lastYear);
 }
 
 /**
  * Says which years a generation's periods cover, which its own years must keep.
  * @param periods The years its periods cover (see periodsSpan).
+ * @param locale The language.
  * @returns E.g. "Os períodos desta geração vão de 1969 a 1974.", or "são de 1970." for a single year.
  */
-export function generationAroundMessage(periods: PeriodYears): string {
-  return periods.year === periods.lastYear
-    ? `Os períodos desta geração são de ${periods.year}.`
-    : `Os períodos desta geração vão de ${periods.year} a ${periods.lastYear}.`;
+export function generationAroundMessage(periods: PeriodYears, locale: Locale): string {
+  return CATALOG_TEXTS[locale].periods(periods.year, periods.lastYear);
 }
 
 /**
  * Reads an engine sheet's fields, as typed, into the sheet.
  * @param fields The fields' text, the displacement in litres with a comma or a dot, and the drive chosen or empty.
+ * @param locale The language of the problems.
  * @returns The sheet, or what to fix in each field.
  */
-export function readEngineFields(fields: EngineFields): { sheet: CatalogEngineInput } | { problems: Partial<Record<keyof EngineFields, string>> } {
+export function readEngineFields(
+  fields: EngineFields,
+  locale: Locale,
+): { sheet: CatalogEngineInput } | { problems: Partial<Record<keyof EngineFields, string>> } {
+  const texts = CATALOG_TEXTS[locale];
   const { displacementDl: dl, cylinders: count } = CATALOG_ENGINE_LIMITS;
   const problems: Partial<Record<keyof EngineFields, string>> = {};
   const litres = fields.litres.trim();
   const displacementDl = Math.round(Number(litres.replace(",", ".")) * 10);
   if (!LITRES.test(litres) || displacementDl < dl.min || displacementDl > dl.max) {
-    problems.litres = `Use uma cilindrada de ${litresText(dl.min)} a ${litresText(dl.max)} L.`;
+    const litresIn = new Intl.NumberFormat(locale, { minimumFractionDigits: 1 });
+    problems.litres = texts.litres(litresIn.format(dl.min / 10), litresIn.format(dl.max / 10));
   }
   const cylinders = Number(fields.cylinders.trim());
   if (!/^\d+$/.test(fields.cylinders.trim()) || cylinders < count.min || cylinders > count.max) {
-    problems.cylinders = `Use de ${count.min} a ${count.max} cilindros.`;
+    problems.cylinders = texts.cylinders(count.min, count.max);
   }
   if (!fields.drive) {
-    problems.drive = "Escolha a tração.";
+    problems.drive = texts.drive;
   }
   if (Object.keys(problems).length > 0) {
     return { problems };
@@ -778,6 +879,7 @@ export function joinCatalogTrees(
  * @param base Where the API is reached, e.g. "/api" on the web.
  * @param method The change's method.
  * @param path The change's path, e.g. "/catalog/models/<id>/generations".
+ * @param locale The language of the engines' names.
  * @param body What it sends, if anything.
  * @returns The catalog as it is after the change, "taken" when the API refuses a name or year another node has, or
  * null when the change couldn't be made.
@@ -786,6 +888,7 @@ export async function changeCatalog(
   base: string,
   method: "POST" | "PATCH" | "DELETE",
   path: string,
+  locale: Locale,
   body?: object,
 ): Promise<Catalog | "taken" | null> {
   const response = await apiFetch(`${base}${path}`, {
@@ -795,7 +898,7 @@ export async function changeCatalog(
   if (response?.status === 409) {
     return "taken";
   }
-  return response?.ok ? catalogFrom(catalogSchema.parse(await response.json())) : null;
+  return response?.ok ? catalogFrom(catalogSchema.parse(await response.json()), locale) : null;
 }
 
 /**
@@ -803,9 +906,10 @@ export async function changeCatalog(
  * as the muted text after its name, a period by its years ("2007–2012", or "1986"), and an engine by the name its sheet
  * gives it.
  * @param data The catalog as GET /catalog answers it.
+ * @param locale The language of the engines' names.
  * @returns The catalog the screens use.
  */
-export function catalogFrom(data: CatalogData): Catalog {
+export function catalogFrom(data: CatalogData, locale: Locale): Catalog {
   const sheets: Record<string, EngineSheet> = {};
   const brands = data.brands.map((brand) => ({
     id: brand.id,
@@ -834,8 +938,8 @@ export function catalogFrom(data: CatalogData): Catalog {
             lastYear: period.lastYear,
             children: period.engines.map(({ id, ...sheet }) => {
               const years = periodLabel(period.year, period.lastYear);
-              sheets[id] = engineSheet({ year: years, brand: brand.name, model: model.name, version: version.name }, sheet);
-              return { id, label: engineLabel(sheet), level: "engine" as const, sheet };
+              sheets[id] = engineSheet({ year: years, brand: brand.name, model: model.name, version: version.name }, sheet, locale);
+              return { id, label: engineLabel(sheet, locale), level: "engine" as const, sheet };
             }),
           })),
         })),
@@ -858,23 +962,25 @@ export function engineCopyRequest(engine: CatalogNode, period: CatalogNode): { m
 /**
  * Names an engine in the tree by its sheet, so its name is never typed apart from it.
  * @param engine The engine's displacement and cylinders.
+ * @param locale The language.
  * @returns E.g. "4.1 L 6 cilindros".
  */
-export function engineLabel(engine: Pick<CatalogEngine, "displacementDl" | "cylinders">): string {
-  return `${engineLitres(engine)} L ${engine.cylinders} cilindros`;
+export function engineLabel(engine: Pick<CatalogEngine, "displacementDl" | "cylinders">, locale: Locale): string {
+  return CATALOG_TEXTS[locale].engine(engineLitres(engine), engine.cylinders);
 }
 
 /**
  * Builds the sheet an engine shows: its title from the tree and its displacement, its readouts and its summary.
  * @param names The engine's period, brand, model and version.
  * @param engine Its sheet as kept.
+ * @param locale The language.
  * @returns E.g. "1986 · Chevrolet Opala Diplomata 4.1", with ["1986", "4.1 L", "6 CIL", "TRASEIRA"].
  */
-export function engineSheet(names: EngineSheetNames, engine: CatalogEngineInput): EngineSheet {
+export function engineSheet(names: EngineSheetNames, engine: CatalogEngineInput, locale: Locale): EngineSheet {
   const litres = engineLitres(engine);
   return {
     title: `${names.year} · ${names.brand} ${names.model} ${names.version} ${litres}`,
-    specs: [names.year, `${litres} L`, `${engine.cylinders} CIL`, ENGINE_DRIVE_LABELS[engine.drive]],
+    specs: [names.year, `${litres} L`, CATALOG_TEXTS[locale].cylindersShort(engine.cylinders), ENGINE_DRIVE_LABELS[locale][engine.drive]],
     summary: engine.summary,
   };
 }
@@ -966,11 +1072,12 @@ export function hasCarSheet(node: CatalogNode | undefined): boolean {
  * how many more it fits.
  * @param catalog The catalog.
  * @param item The part's item.
+ * @param locale The language.
  * @returns E.g. "Serve no Chevrolet Opala 4.1", or "Serve no Chevrolet Opala 4.1 +2".
  */
-export function itemFit(catalog: Catalog, item: Pick<Item, "vehicles">): string {
+export function itemFit(catalog: Catalog, item: Pick<Item, "vehicles">, locale: Locale): string {
   const others = item.vehicles.length - 1;
-  const fit = partFit(catalog, revealedVehicle(catalog, item));
+  const fit = partFit(catalog, revealedVehicle(catalog, item), locale);
   return others > 0 ? `${fit} +${others}` : fit;
 }
 
@@ -986,15 +1093,16 @@ function leaves(node: CatalogNode): CatalogNode[] {
 /**
  * Loads the catalog from the API.
  * @param base Where the API is reached, e.g. "/api" on the web.
+ * @param locale The language of the engines' names.
  * @param signal Cancels the request.
  * @returns The catalog the screens use; the request fails when it can't be loaded.
  */
-export async function loadCatalog(base: string, signal?: AbortSignal): Promise<Catalog> {
+export async function loadCatalog(base: string, locale: Locale, signal?: AbortSignal): Promise<Catalog> {
   const response = await apiFetch(`${base}${CATALOG_PATH}`, { signal });
   if (!response.ok) {
     throw new Error(String(response.status));
   }
-  return catalogFrom(catalogSchema.parse(await response.json()));
+  return catalogFrom(catalogSchema.parse(await response.json()), locale);
 }
 
 /**
@@ -1034,25 +1142,27 @@ export function modelsNamed(models: readonly CatalogNode[], query: string): Cata
  * the catalog has its engine, or what the catalog is still missing.
  * @param catalog The catalog.
  * @param part The part's vehicle brand and model.
+ * @param locale The language.
  * @returns E.g. "Serve no Chevrolet Opala 4.1" or "Ford Escort (modelo ainda sem ficha no catálogo)".
  */
-export function partFit(catalog: Catalog, part: ItemVehicle): string {
+export function partFit(catalog: Catalog, part: ItemVehicle, locale: Locale): string {
+  const texts = CATALOG_TEXTS[locale];
   if (searchKey(part.vehicleBrand) === searchKey(UNIVERSAL_BRAND)) {
-    return "Serve em qualquer veículo";
+    return texts.anyVehicle;
   }
   const location = locatePart(catalog, part);
   if (!location) {
-    return `${part.vehicleBrand} não está no catálogo`;
+    return texts.notInCatalog(part.vehicleBrand);
   }
   if (!part.vehicleModel) {
-    return `Serve em qualquer ${part.vehicleBrand}`;
+    return texts.anyOfBrand(part.vehicleBrand);
   }
   const vehicle = `${part.vehicleBrand} ${part.vehicleModel}`;
   const model = catalog.brands.find((b) => b.id === location.brandId)!.models.find((m) => m.id === location.modelId);
   if (!model || !firstSheet(catalog, [model])) {
-    return `${vehicle} (modelo ainda sem ficha no catálogo)`;
+    return texts.modelWithoutSheet(vehicle);
   }
-  return location.engineId ? `Serve no ${vehicle}` : `${vehicle} (motor ainda sem ficha no catálogo)`;
+  return location.engineId ? texts.fits(vehicle) : texts.engineWithoutSheet(vehicle);
 }
 
 /**
@@ -1113,17 +1223,19 @@ export function screenBack(screen: CatalogScreen): CatalogScreen | null {
  * Names a phone screen's title row: the tab on the brands, the brand on the others, and where its ← goes.
  * @param catalog The catalog.
  * @param screen The screen on show.
+ * @param locale The language.
  * @returns Its title and its ←'s name, none on the brands.
  */
-export function screenHeader(catalog: Catalog, screen: CatalogScreen): { title: string; back?: string } {
+export function screenHeader(catalog: Catalog, screen: CatalogScreen, locale: Locale): { title: string; back?: string } {
+  const texts = CATALOG_TEXTS[locale];
   switch (screen.view) {
     case "brands":
-      return { title: "Catálogo" };
+      return { title: texts.title };
     case "models":
-      return { title: catalog.brands.find((brand) => brand.id === screen.brandId)?.name ?? "Catálogo", back: "Voltar às marcas" };
+      return { title: catalog.brands.find((brand) => brand.id === screen.brandId)?.name ?? texts.title, back: texts.backToBrands };
     case "sheet":
     case "car":
-      return { title: catalog.brands.find((brand) => brand.id === screen.brandId)?.name ?? "Catálogo", back: "Voltar aos modelos" };
+      return { title: catalog.brands.find((brand) => brand.id === screen.brandId)?.name ?? texts.title, back: texts.backToModels };
   }
 }
 

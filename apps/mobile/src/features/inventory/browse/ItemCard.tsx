@@ -2,6 +2,7 @@ import { Text as RNText, View } from 'react-native';
 import { QUANTITY_UNIT, STOCK_STATUS_SHORT, stockStatus } from '@apc/domain/items';
 import { NumericReadout, Text } from '../../../components/Typography';
 import { useStyles } from '../InventoryTab.styles';
+import { useLocale } from '../../../app/locale';
 
 // The parts of an item's card in a list, the Inventory's look: its title, with the item's name, a code and a line of
 // details, and its quantity with its stock status under it in its tone, "un.", "Baixo" or "Esgotado". The Inventory's
@@ -34,6 +35,7 @@ export function CardTitle({ name, code, details }: CardTitleProps) {
 
 /** A card's quantity, with its stock status under it in its tone. */
 export function StockQuantity({ quantity, minQuantity }: { quantity: number; minQuantity: number }) {
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const status = stockStatus(quantity, minQuantity);
   const tone = status === 'out' ? styles.quantityOut : status === 'low' ? styles.quantityLow : undefined;
@@ -43,7 +45,7 @@ export function StockQuantity({ quantity, minQuantity }: { quantity: number; min
         {quantity}
       </RNText>
       <RNText style={[styles.quantityTag, tone]} testID={ids.quantityTag}>
-        {status ? STOCK_STATUS_SHORT[status] : QUANTITY_UNIT}
+        {status ? STOCK_STATUS_SHORT[locale][status] : QUANTITY_UNIT[locale]}
       </RNText>
     </View>
   );

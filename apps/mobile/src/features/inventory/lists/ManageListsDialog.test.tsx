@@ -242,7 +242,7 @@ test('Mobile: away from the server, a rename says it needs it', async () => {
   await press(tree, 'Renomear Freios');
   await ReactTestRenderer.act(async () => tree.root.find((n) => n.type === TextInput).props.onChangeText('Freio a disco'));
   await press(tree, 'Salvar');
-  expect(texts(tree.root)).toContain(INVENTORY_NEEDS_SERVER.lists);
+  expect(texts(tree.root)).toContain(INVENTORY_NEEDS_SERVER['pt-BR'].lists);
 });
 
 // Renames to a blank name and checks it is refused under the field without sending anything; a name the API says is

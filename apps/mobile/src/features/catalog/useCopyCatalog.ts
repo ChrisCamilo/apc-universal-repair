@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { catalogFrom, type Catalog } from '@apc/domain/catalog';
 import type { InventoryCopy } from '../sync/useInventoryCopy';
+import { useLocale } from '../../app/locale';
 
 // The Catalog tab's catalog, read from the phone's copy of the inventory (see useInventoryCopy.tsx), so it shows with the
 // server off: loading while the phone holds no copy yet, failed when it has none and the server can't be reached, and
@@ -16,8 +17,9 @@ export type CatalogState = { status: 'loading' } | { status: 'ready'; catalog: C
  * @returns The catalog's state, reload to sync the copy again, and replace to take the catalog a change answered.
  */
 export function useCopyCatalog(copy: InventoryCopy): CatalogState & { reload: () => void; replace: (catalog: Catalog) => void } {
+  const { locale } = useLocale();
   const [answered, setAnswered] = useState<Catalog>();
-  const fromCopy = useMemo(() => copy.catalog && catalogFrom(copy.catalog), [copy.catalog]);
+  const fromCopy = useMemo(() => copy.catalog && catalogFrom(copy.catalog, locale), [copy.catalog, locale]);
   const catalog = answered ?? fromCopy;
   const state: CatalogState = catalog ? { status: 'ready', catalog } : { status: copy.offline ? 'error' : 'loading' };
   return {

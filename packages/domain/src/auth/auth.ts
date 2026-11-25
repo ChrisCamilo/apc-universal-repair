@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 import {
   DEVICE_POLL_MS,
   deviceChallengeSchema,
@@ -33,39 +34,70 @@ export const LOGIN_BRAND = { mark: 72, name: 44, tagline: 17, taglineTracking: 0
 /** The sign-up's title on a phone, beside the back arrow, in px, in the display face. */
 export const REGISTER_TITLE = 22;
 /** What the login asks for, under the brand on a phone. */
-export const LOGIN_INTRO = "Use o usuário e a senha da sua oficina.";
+export const LOGIN_INTRO = catalog("Use o usuário e a senha da sua oficina.", "Use your workshop's username and password.");
 /**
  * Messages of the login form: under each field left empty, above the form when the login is refused or the session
- * expired, and in the dialog "Esqueceu a senha?" opens while there is no password reset (EP-10).
+ * expired, and in the dialog "Esqueceu a senha?" opens while there is no password reset (EP-10); and, for the login,
+ * the entry with a code and the sign-up alike, how long to wait after too many attempts.
  */
-export const LOGIN_MESSAGES = {
-  username: "Informe o usuário.",
-  password: "Informe a senha.",
-  failed: "Usuário ou senha incorretos.",
-  expired: "Sua sessão expirou. Entre de novo.",
-  unreachable: "Não foi possível entrar. Verifique a conexão e tente de novo.",
-  forgotPassword: "Peça ao administrador da oficina para redefinir sua senha.",
-} as const;
+export const LOGIN_MESSAGES = catalog(
+  {
+    username: "Informe o usuário.",
+    password: "Informe a senha.",
+    failed: "Usuário ou senha incorretos.",
+    expired: "Sua sessão expirou. Entre de novo.",
+    unreachable: "Não foi possível entrar. Verifique a conexão e tente de novo.",
+    forgotPassword: "Peça ao administrador da oficina para redefinir sua senha.",
+    attempts: (minutes: number) => `Muitas tentativas. Tente de novo em ${minutes} min.`,
+  },
+  {
+    username: "Enter the username.",
+    password: "Enter the password.",
+    failed: "Wrong username or password.",
+    expired: "Your session expired. Log in again.",
+    unreachable: "Couldn't log in. Check the connection and try again.",
+    forgotPassword: "Ask the workshop's administrator to reset your password.",
+    attempts: (minutes) => `Too many attempts. Try again in ${minutes} min.`,
+  },
+);
 /** How long the mocked login takes to answer, so the screens show their loading state as with a real server. */
 export const MOCK_LOGIN_DELAY_MS = 400;
 /** Why a phone's entry through the computer's code was refused: the code used, ended or never handed out. */
-export const PAIRING_REFUSED = "Esse código de entrada não vale mais. Leia o código que aparece no computador agora.";
+export const PAIRING_REFUSED = catalog(
+  "Esse código de entrada não vale mais. Leia o código que aparece no computador agora.",
+  "This entry code no longer works. Read the code the computer shows now.",
+);
 /** The fewest characters a new password takes. */
 export const PASSWORD_MIN_LENGTH = 8;
 /** Messages of the sign-up form: under each field that breaks a rule, and above the form when the API refuses it. */
-export const REGISTER_MESSAGES = {
-  displayName: "Informe seu nome.",
-  username: "Informe o usuário.",
-  usernameFormat: "Use de 3 a 32 letras minúsculas, números, pontos ou hífens.",
-  email: "Informe o e-mail.",
-  emailFormat: "Informe um e-mail válido, como nome@exemplo.com.",
-  password: "Informe a senha.",
-  passwordShort: `A senha precisa ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`,
-  confirm: "Repita a senha.",
-  confirmMismatch: "As senhas não conferem.",
-  taken: "Esse usuário já existe.",
-  failed: "Não foi possível criar a conta. Verifique a conexão e tente de novo.",
-} as const;
+export const REGISTER_MESSAGES = catalog(
+  {
+    displayName: "Informe seu nome.",
+    username: "Informe o usuário.",
+    usernameFormat: "Use de 3 a 32 letras minúsculas, números, pontos ou hífens.",
+    email: "Informe o e-mail.",
+    emailFormat: "Informe um e-mail válido, como nome@exemplo.com.",
+    password: "Informe a senha.",
+    passwordShort: `A senha precisa ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`,
+    confirm: "Repita a senha.",
+    confirmMismatch: "As senhas não conferem.",
+    taken: "Esse usuário já existe.",
+    failed: "Não foi possível criar a conta. Verifique a conexão e tente de novo.",
+  },
+  {
+    displayName: "Enter your name.",
+    username: "Enter the username.",
+    usernameFormat: "Use 3 to 32 lowercase letters, digits, dots or hyphens.",
+    email: "Enter the e-mail.",
+    emailFormat: "Enter a valid e-mail, such as name@example.com.",
+    password: "Enter the password.",
+    passwordShort: `The password needs at least ${PASSWORD_MIN_LENGTH} characters.`,
+    confirm: "Repeat the password.",
+    confirmMismatch: "The passwords don't match.",
+    taken: "This username already exists.",
+    failed: "Couldn't create the account. Check the connection and try again.",
+  },
+);
 /** Storage key of the saved session. */
 export const SESSION_STORAGE_KEY = "apc-session";
 /** A username: 3 to 32 lowercase letters, digits, dots or hyphens, e.g. "christian.camilo". */
@@ -97,10 +129,10 @@ export const loginRequestSchema = credentialsSchema.extend({ device: deviceProof
 export const pairingLoginRequestSchema = z.object({ code: z.string(), device: deviceProofSchema });
 /** What POST /users takes: the sign-up fields, under the same rules as the form. The e-mail is only kept for now. */
 export const userCreateSchema = z.object({
-  displayName: z.string().trim().min(1, REGISTER_MESSAGES.displayName),
-  username: z.string().trim().toLowerCase().regex(USERNAME_PATTERN, REGISTER_MESSAGES.usernameFormat),
-  email: z.string().trim().pipe(z.email(REGISTER_MESSAGES.emailFormat)),
-  password: z.string().min(PASSWORD_MIN_LENGTH, REGISTER_MESSAGES.passwordShort),
+  displayName: z.string().trim().min(1, REGISTER_MESSAGES["pt-BR"].displayName),
+  username: z.string().trim().toLowerCase().regex(USERNAME_PATTERN, REGISTER_MESSAGES["pt-BR"].usernameFormat),
+  email: z.string().trim().pipe(z.email(REGISTER_MESSAGES["pt-BR"].emailFormat)),
+  password: z.string().min(PASSWORD_MIN_LENGTH, REGISTER_MESSAGES["pt-BR"].passwordShort),
 });
 /** A sign-up as the apps send it: the user to create, and the device's proof that it holds its key. */
 export const userCreateRequestSchema = userCreateSchema.extend({ device: deviceProofSchema });
@@ -112,18 +144,18 @@ export type AuthService = {
    * why else it was refused (too many attempts), or the device's short code while the server's computer hasn't
    * authorized it, and rejects when the check can't be made (e.g. the API is out of reach).
    */
-  login: (credentials: Credentials) => Promise<SessionUser | null | { refused: string } | { pending: string }>;
+  login: (credentials: Credentials, locale: Locale) => Promise<SessionUser | null | { refused: string } | { pending: string }>;
   /**
    * Logs in with an entry code from the server's computer, into the account open there; resolves with the logged user,
    * the message saying why it was refused, or the device's short code while the server's computer hasn't authorized
    * it, and rejects when the API is out of reach.
    */
-  pair: (code: string) => Promise<SessionUser | { refused: string } | { pending: string }>;
+  pair: (code: string, locale: Locale) => Promise<SessionUser | { refused: string } | { pending: string }>;
   /**
    * Creates a user and logs them in; resolves with the user, the message saying why it was refused, or the device's
    * short code while it waits to be authorized, the user created meanwhile.
    */
-  register: (user: UserCreate) => Promise<RegisterResult>;
+  register: (user: UserCreate, locale: Locale) => Promise<RegisterResult>;
   /** Asks whether this device was authorized, while it waits; rejects when the API can't be asked. */
   deviceStatus: () => Promise<DeviceStatus>;
   /** Ends the session, on the device and on the API; a failed request is ignored. */
@@ -210,7 +242,7 @@ export function createApiAuth(
     return sessionUserSchema.parse(loggedIn);
   };
   return {
-    login: async (credentials) => {
+    login: async (credentials, locale) => {
       const response = await post("/sessions", { ...credentials, device: await prove() });
       if (response.status === 401) {
         return null;
@@ -219,44 +251,44 @@ export function createApiAuth(
         return pending(response);
       }
       if (response.status === 429) {
-        return { refused: tooManyAttempts(response.headers.get("Retry-After")) };
+        return { refused: tooManyAttempts(response.headers.get("Retry-After"), locale) };
       }
       if (!response.ok) {
         throw new Error(`The login answered ${response.status}.`);
       }
       return start(loggedInSchema.parse(await response.json()));
     },
-    pair: async (code) => {
+    pair: async (code, locale) => {
       const response = await post("/sessions/pairing", { code, device: await prove() });
       if (response.status === 401) {
-        return { refused: PAIRING_REFUSED };
+        return { refused: PAIRING_REFUSED[locale] };
       }
       if (response.status === 403) {
         return pending(response);
       }
       if (response.status === 429) {
-        return { refused: tooManyAttempts(response.headers.get("Retry-After")) };
+        return { refused: tooManyAttempts(response.headers.get("Retry-After"), locale) };
       }
       if (!response.ok) {
         throw new Error(`The entry answered ${response.status}.`);
       }
       return start(loggedInSchema.parse(await response.json()));
     },
-    register: async (user) => {
+    register: async (user, locale) => {
       const response = await prove()
         .then((proof) => post("/users", { ...user, device: proof }))
         .catch(() => null);
       if (response?.status === 409) {
-        return { refused: REGISTER_MESSAGES.taken };
+        return { refused: REGISTER_MESSAGES[locale].taken };
       }
       if (response?.status === 403) {
         return pending(response);
       }
       if (response?.status === 429) {
-        return { refused: tooManyAttempts(response.headers.get("Retry-After")) };
+        return { refused: tooManyAttempts(response.headers.get("Retry-After"), locale) };
       }
       if (!response?.ok) {
-        return { refused: REGISTER_MESSAGES.failed };
+        return { refused: REGISTER_MESSAGES[locale].failed };
       }
       return { user: await start(loggedInSchema.parse(await response.json())) };
     },
@@ -313,11 +345,11 @@ export function createMockAuth(store: SessionStore, users: readonly TestUser[], 
       await wait();
       return keepSession(store, sessionOf(known[0], seen.has(known[0].id)));
     },
-    register: async (create) => {
+    register: async (create, locale) => {
       await wait();
       const { displayName, username, password } = userCreateSchema.parse(create);
       if (known.some((test) => test.username === username)) {
-        return { refused: REGISTER_MESSAGES.taken };
+        return { refused: REGISTER_MESSAGES[locale].taken };
       }
       const user = { id: `user-${username}`, username, displayName, password };
       known.push(user);
@@ -392,12 +424,13 @@ async function keepSession(store: SessionStore, user: SessionUser): Promise<Sess
  * Checks the login fields before sending them: the user can't be empty or only spaces, and the password can't
  * be empty (spaces may be part of a password).
  * @param credentials The fields as typed.
+ * @param locale The language of the messages.
  * @returns The message of each empty field, in form order; empty when the login can be sent.
  */
-export function loginErrors({ username, password }: Credentials): LoginErrors {
+export function loginErrors({ username, password }: Credentials, locale: Locale): LoginErrors {
   return {
-    ...(username.trim() === "" && { username: LOGIN_MESSAGES.username }),
-    ...(password === "" && { password: LOGIN_MESSAGES.password }),
+    ...(username.trim() === "" && { username: LOGIN_MESSAGES[locale].username }),
+    ...(password === "" && { password: LOGIN_MESSAGES[locale].password }),
   };
 }
 
@@ -426,23 +459,19 @@ function readSession<T>(saved: string | null, schema: z.ZodType<T>): T | null {
  * case), the e-mail must look like one, the password needs PASSWORD_MIN_LENGTH characters and the confirmation must
  * repeat it.
  * @param registration The fields as typed.
+ * @param locale The language of the messages.
  * @returns The message of each field that breaks a rule, in form order; empty when the sign-up can be sent.
  */
-export function registerErrors({ displayName, username, email, password, confirm }: Registration): RegisterErrors {
+export function registerErrors({ displayName, username, email, password, confirm }: Registration, locale: Locale): RegisterErrors {
+  const messages = REGISTER_MESSAGES[locale];
   const typedUsername = username.trim().toLowerCase();
   const typedEmail = email.trim();
   return {
-    ...(displayName.trim() === "" && { displayName: REGISTER_MESSAGES.displayName }),
-    ...(typedUsername === ""
-      ? { username: REGISTER_MESSAGES.username }
-      : !USERNAME_PATTERN.test(typedUsername) && { username: REGISTER_MESSAGES.usernameFormat }),
-    ...(typedEmail === ""
-      ? { email: REGISTER_MESSAGES.email }
-      : !z.email().safeParse(typedEmail).success && { email: REGISTER_MESSAGES.emailFormat }),
-    ...(password === ""
-      ? { password: REGISTER_MESSAGES.password }
-      : password.length < PASSWORD_MIN_LENGTH && { password: REGISTER_MESSAGES.passwordShort }),
-    ...(confirm === "" ? { confirm: REGISTER_MESSAGES.confirm } : confirm !== password && { confirm: REGISTER_MESSAGES.confirmMismatch }),
+    ...(displayName.trim() === "" && { displayName: messages.displayName }),
+    ...(typedUsername === "" ? { username: messages.username } : !USERNAME_PATTERN.test(typedUsername) && { username: messages.usernameFormat }),
+    ...(typedEmail === "" ? { email: messages.email } : !z.email().safeParse(typedEmail).success && { email: messages.emailFormat }),
+    ...(password === "" ? { password: messages.password } : password.length < PASSWORD_MIN_LENGTH && { password: messages.passwordShort }),
+    ...(confirm === "" ? { confirm: messages.confirm } : confirm !== password && { confirm: messages.confirmMismatch }),
   };
 }
 
@@ -459,9 +488,9 @@ function sessionOf({ id, username, displayName }: TestUser, inventoryTutorialSee
 /**
  * Says how long to wait after too many login or sign-up attempts.
  * @param retryAfter The 429's Retry-After, in seconds; a minute when it is missing.
+ * @param locale The language.
  * @returns The message, e.g. "Muitas tentativas. Tente de novo em 15 min."
  */
-export function tooManyAttempts(retryAfter: string | null): string {
-  const minutes = Math.max(1, Math.ceil((Number(retryAfter) || 60) / 60));
-  return `Muitas tentativas. Tente de novo em ${minutes} min.`;
+export function tooManyAttempts(retryAfter: string | null, locale: Locale): string {
+  return LOGIN_MESSAGES[locale].attempts(Math.max(1, Math.ceil((Number(retryAfter) || 60) / 60)));
 }
