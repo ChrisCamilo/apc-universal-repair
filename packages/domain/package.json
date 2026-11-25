@@ -88,6 +88,10 @@
       "apc-dist": "./dist/inventory/photos.js",
       "default": "./src/inventory/photos.ts"
     },
+    "./locale": {
+      "apc-dist": "./dist/platform/locale/locale.js",
+      "default": "./src/platform/locale/locale.ts"
+    },
     "./server": {
       "apc-dist": "./dist/platform/server/ports.js",
       "default": "./src/platform/server/ports.ts"
