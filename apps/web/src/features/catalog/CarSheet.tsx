@@ -10,7 +10,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { Heading } from '../../components/Typography'
 import { usePhone } from '../../components/usePhone.ts'
 import { carSheet as carSheetStyles } from './CarSheet.styles.ts'
-import { StockQuantity } from '../inventory/StockQuantity.tsx'
+import { StockQuantity } from '../inventory/browse/StockQuantity.tsx'
 
 // A model's or a version's sheet in the Catalog (see carSheet in @apc/domain/catalog): its title; a model's brand and
 // its generations, each with its years ("85/90") and versions; a version's generation and years; and its engines with
