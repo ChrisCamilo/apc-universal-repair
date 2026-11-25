@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { catalog } from "../platform/locale/locale.ts";
 
 // Each device that logs in is authorized once on the server's computer. Every app makes, on its first run, a key pair
 // of its own, ECDSA P-256, whose private key never leaves the device: the phone keeps it in the Android Keystore, the
@@ -18,14 +19,23 @@ export const DEVICE_CODE_LENGTH = 6;
 export const DEVICE_NAME_MAX_LENGTH = 60;
 /** How often a device waiting for approval asks whether it was approved, in milliseconds. */
 export const DEVICE_POLL_MS = 3_000;
-/** What the apps say about devices, in Portuguese. */
-export const DEVICE_MESSAGES = {
-  pending: "Este dispositivo precisa ser autorizado no computador do servidor.",
-  pendingHelp: "No computador do servidor, abra o APC e autorize o dispositivo com este código. Este aviso some sozinho quando ele for autorizado.",
-  refused: "Este dispositivo não foi autorizado. Entre de novo para pedir outra vez.",
-  approveTitle: "Autorizar este dispositivo?",
-  devices: "Dispositivos",
-} as const;
+/** What the apps say about devices. */
+export const DEVICE_MESSAGES = catalog(
+  {
+    pending: "Este dispositivo precisa ser autorizado no computador do servidor.",
+    pendingHelp: "No computador do servidor, abra o APC e autorize o dispositivo com este código. Este aviso some sozinho quando ele for autorizado.",
+    refused: "Este dispositivo não foi autorizado. Entre de novo para pedir outra vez.",
+    approveTitle: "Autorizar este dispositivo?",
+    devices: "Dispositivos",
+  },
+  {
+    pending: "This device needs to be authorized on the server's computer.",
+    pendingHelp: "On the server's computer, open APC and authorize the device with this code. This notice goes away by itself once it is authorized.",
+    refused: "This device wasn't authorized. Log in again to ask once more.",
+    approveTitle: "Authorize this device?",
+    devices: "Devices",
+  },
+);
 
 /** base64url without padding, as keys, nonces and signatures travel. */
 const BASE64URL = /^[A-Za-z0-9_-]+$/;

@@ -24,11 +24,11 @@ const SAVED: ItemPhoto[] = ["a", "b"].map((id) => ({ id, url: `/photos/${id}.jpg
 // the reason, the size written in pt-BR.
 test("Shared: photos must be JPG, PNG or WebP up to 3 MB once reduced", () => {
   for (const type of ["image/jpeg", "image/png", "image/webp"]) {
-    assert.equal(photoProblem({ name: "a", type, size: PHOTO_MAX_BYTES }), null);
+    assert.equal(photoProblem({ name: "a", type, size: PHOTO_MAX_BYTES }, "pt-BR"), null);
   }
-  assert.equal(photoProblem({ name: "a.gif", type: "image/gif", size: MB }), "não é JPG, PNG ou WebP");
-  assert.equal(photoProblem({ name: "a.pdf", type: "application/pdf", size: MB }), "não é JPG, PNG ou WebP");
-  assert.equal(photoProblem({ name: "a.jpg", type: "image/jpeg", size: 4.2 * MB }), "tem 4,2 MB mesmo reduzida, e o limite é 3 MB");
+  assert.equal(photoProblem({ name: "a.gif", type: "image/gif", size: MB }, "pt-BR"), "não é JPG, PNG ou WebP");
+  assert.equal(photoProblem({ name: "a.pdf", type: "application/pdf", size: MB }, "pt-BR"), "não é JPG, PNG ou WebP");
+  assert.equal(photoProblem({ name: "a.jpg", type: "image/jpeg", size: 4.2 * MB }, "pt-BR"), "tem 4,2 MB mesmo reduzida, e o limite é 3 MB");
 });
 
 // Picks five files with one photo already held and checks the good ones are taken in order until the limit,
@@ -41,7 +41,7 @@ test("Shared: taking photos stops at the limit and names each file left out", ()
     { name: "traseira.webp", type: "image/webp", size: MB },
     { name: "painel.jpg", type: "image/jpeg", size: MB },
   ];
-  const { accepted, problems } = takePhotos(files, 1, ITEM_PHOTO_LIMIT);
+  const { accepted, problems } = takePhotos(files, 1, ITEM_PHOTO_LIMIT, "pt-BR");
   assert.deepEqual(accepted.map((f) => f.name), ["frente.jpg", "traseira.webp"]);
   assert.deepEqual(problems, [
     "motor.gif: não é JPG, PNG ou WebP",
@@ -60,8 +60,8 @@ test("Shared: a photo is reduced to the largest size, never enlarged", () => {
 
 // Counts photos in the singular and the plural.
 test("Shared: photo counts read in pt-BR", () => {
-  assert.equal(photoCount(1), "1 foto");
-  assert.equal(photoCount(3), "3 fotos");
+  assert.equal(photoCount(1, "pt-BR"), "1 foto");
+  assert.equal(photoCount(3, "pt-BR"), "3 fotos");
 });
 
 // Holds an item's two saved photos through the API's address, then checks the parts that save a field: unchanged

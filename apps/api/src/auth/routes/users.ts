@@ -57,7 +57,7 @@ const UNKNOWN_USER_HASH = hashPassword(randomBytes(32).toString("hex"));
  * @returns The refusal.
  */
 function devicePending(code: string): Rejection {
-  return { ...forbidden(DEVICE_MESSAGES.pending), error: "device_pending", code };
+  return { ...forbidden(DEVICE_MESSAGES["pt-BR"].pending), error: "device_pending", code };
 }
 
 /**

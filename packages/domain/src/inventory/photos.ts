@@ -1,3 +1,4 @@
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 import type { ItemPhoto } from "./items.ts";
 
 // Photo rules shared by the web and mobile ImageUpload and the API: which files are accepted, how many photos an
@@ -14,6 +15,21 @@ export const ITEM_PHOTO_LIMIT = 3;
 export const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
 /** Longest side a stored photo keeps, in px: a phone photo of 4000×3000 is stored at 1600×1200. */
 export const PHOTO_MAX_DIMENSION = 1600;
+/** What the photo rules say: how many photos, and why a file was left out. */
+export const PHOTO_MESSAGES = catalog(
+  {
+    count: (count: number) => `${count} ${count === 1 ? "foto" : "fotos"}`,
+    wrongType: "não é JPG, PNG ou WebP",
+    tooLarge: (megabytes: string) => `tem ${megabytes} MB mesmo reduzida, e o limite é 3 MB`,
+    pastLimit: (limit: string) => `passou do limite de ${limit}`,
+  },
+  {
+    count: (count) => `${count} ${count === 1 ? "photo" : "photos"}`,
+    wrongType: "isn't a JPG, PNG or WebP",
+    tooLarge: (megabytes) => `is ${megabytes} MB even reduced, and the limit is 3 MB`,
+    pastLimit: (limit) => `goes past the limit of ${limit}`,
+  },
+);
 /**
  * Parts of the request that sets the photos of an item's brand (PUT /items/:id/brands/:brandId/photos), in the order
  * the photos go: a saved photo of the brand kept, by its id, a copy of another brand's saved photo, by its id, or a
@@ -85,12 +101,13 @@ export function photoAddress(url: string, apiBase: string): string {
 }
 
 /**
- * Counts photos in pt-BR, e.g. for "Arraste até 3 fotos".
+ * Counts photos, e.g. for "Arraste até 3 fotos".
  * @param count Number of photos.
- * @returns "1 foto" or "3 fotos".
+ * @param locale The language.
+ * @returns "1 foto" or "3 fotos" ("1 photo" or "3 photos" in English).
  */
-export function photoCount(count: number): string {
-  return `${count} ${count === 1 ? "foto" : "fotos"}`;
+export function photoCount(count: number, locale: Locale): string {
+  return PHOTO_MESSAGES[locale].count(count);
 }
 
 /**
@@ -138,15 +155,16 @@ export function photoParts<Picked>(
  * Says why a file can't be a photo: not JPG, PNG or WebP, or still larger than 3 MB after the web or the phone
  * reduced it.
  * @param file Chosen file, as reduced.
+ * @param locale The language.
  * @returns The reason, or null when the file is accepted.
  */
-export function photoProblem(file: PhotoFile): string | null {
+export function photoProblem(file: PhotoFile, locale: Locale): string | null {
+  const messages = PHOTO_MESSAGES[locale];
   if (!(PHOTO_TYPES as readonly string[]).includes(file.type)) {
-    return "não é JPG, PNG ou WebP";
+    return messages.wrongType;
   }
   if (file.size > PHOTO_MAX_BYTES) {
-    const mb = (file.size / 1024 / 1024).toFixed(1).replace(".", ",");
-    return `tem ${mb} MB mesmo reduzida, e o limite é 3 MB`;
+    return messages.tooLarge(new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(file.size / 1024 / 1024));
   }
   return null;
 }
@@ -167,17 +185,19 @@ export function photosChanged(parts: readonly PhotoPart<unknown>[], saved: reado
  * @param files Chosen files, in order.
  * @param held Photos already held.
  * @param limit Most photos allowed.
+ * @param locale The language of the messages.
  * @returns The accepted files and one message per file left out, e.g. "motor.gif: não é JPG, PNG ou WebP".
  */
 export function takePhotos<Picked extends PhotoFile>(
   files: readonly Picked[],
   held: number,
   limit: number,
+  locale: Locale,
 ): { accepted: Picked[]; problems: string[] } {
   const accepted: Picked[] = [];
   const problems: string[] = [];
   for (const file of files) {
-    const problem = held + accepted.length >= limit ? `passou do limite de ${photoCount(limit)}` : photoProblem(file);
+    const problem = held + accepted.length >= limit ? PHOTO_MESSAGES[locale].pastLimit(photoCount(limit, locale)) : photoProblem(file, locale);
     if (problem) {
       problems.push(`${file.name}: ${problem}`);
     } else {
