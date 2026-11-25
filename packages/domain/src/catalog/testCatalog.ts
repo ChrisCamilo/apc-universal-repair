@@ -188,7 +188,7 @@ export const TEST_CATALOG_DATA: CatalogData = {
 };
 
 /** The same catalog as the screens use it. */
-export const TEST_CATALOG = catalogFrom(TEST_CATALOG_DATA);
+export const TEST_CATALOG = catalogFrom(TEST_CATALOG_DATA, "pt-BR");
 
 /**
  * Finds the id of a brand or a node of the test catalog by its names.
