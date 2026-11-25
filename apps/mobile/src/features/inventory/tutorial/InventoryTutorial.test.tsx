@@ -256,7 +256,7 @@ test('Mobile: away from the server, the Inventory tutorial waits, and asked for 
   await ReactTestRenderer.act(async () => replay?.());
   await wait(500);
   expect(texts(tree)).not.toContain('Abra o cadastro');
-  expect(texts(tree)).toContain(INVENTORY_NEEDS_SERVER.tutorial);
+  expect(texts(tree)).toContain(INVENTORY_NEEDS_SERVER['pt-BR'].tutorial);
 });
 
 // The replay of the tutorial, as the user menu asks for it.

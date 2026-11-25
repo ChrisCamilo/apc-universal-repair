@@ -9,11 +9,13 @@ import { Dialog } from '../../components/Dialog';
 import { FieldScrollView } from '../../components/FieldScrollView';
 import { Icon } from '../../components/Icon';
 import { TextField } from '../../components/TextField';
+import { useMessages } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { Text } from '../../components/Typography';
 import { DevicePending } from './DevicePending';
 import { useStyles } from './LoginScreen.styles';
 import { useDeviceWait } from './useDeviceWait';
+import { useLocale } from '../../app/locale';
 
 // The first screen of the app, the same as the web's /login on a phone: one column with the APC mark over the name
 // and the tagline, which head the screen as "APC Universal Repair", and what the login asks for, then the form, with
@@ -50,6 +52,7 @@ type LoginScreenProps = {
 };
 
 export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }: LoginScreenProps) {
+  const { locale } = useLocale();
   const [credentials, setCredentials] = useState<Credentials>({ username: '', password: '' });
   const [errors, setErrors] = useState<LoginErrors>({});
   const [sending, setSending] = useState(false);
@@ -62,7 +65,8 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
   const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
   const { styles, ids } = useStyles();
   const theme = useTheme();
-  const device = useDeviceWait(auth, onLoggedIn, () => setRefused(DEVICE_MESSAGES.refused));
+  const deviceMessages = useMessages(DEVICE_MESSAGES);
+  const device = useDeviceWait(auth, onLoggedIn, () => setRefused(deviceMessages.refused));
 
   /** Takes a field's new value and drops its message. */
   const change = (field: keyof Credentials, value: string) => {
@@ -75,7 +79,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
     if (sending) {
       return;
     }
-    const found = loginErrors(credentials);
+    const found = loginErrors(credentials, locale);
     setErrors(found);
     const empty = FIELD_ORDER.find((field) => found[field]);
     if (empty) {
@@ -87,14 +91,14 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
     device.stop();
     setSent(true);
     setSending(true);
-    const user = await auth.login(credentials).catch(() => undefined);
+    const user = await auth.login(credentials, locale).catch(() => undefined);
     setSending(false);
     if (user === undefined) {
-      setRefused(LOGIN_MESSAGES.unreachable);
+      setRefused(LOGIN_MESSAGES[locale].unreachable);
       return;
     }
     if (!user) {
-      setRefused(LOGIN_MESSAGES.failed);
+      setRefused(LOGIN_MESSAGES[locale].failed);
       setCredentials((typed) => ({ ...typed, password: '' }));
       passwordInput.current?.focus();
       return;
@@ -127,7 +131,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
         </View>
         <View style={styles.intro} testID={ids.intro}>
           <Text tone="muted" align="center">
-            {LOGIN_INTRO}
+            {LOGIN_INTRO[locale]}
           </Text>
         </View>
       </View>
@@ -213,7 +217,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
         dismissible
         actions={<Button onPress={() => setForgot(false)}>Entendi</Button>}
       >
-        <Text>{LOGIN_MESSAGES.forgotPassword}</Text>
+        <Text>{LOGIN_MESSAGES[locale].forgotPassword}</Text>
       </Dialog>
     </FieldScrollView>
   );

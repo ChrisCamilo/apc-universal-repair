@@ -187,7 +187,7 @@ test('Mobile: away from the server, the import says it needs it', async () => {
   await press(tree, 'Escolher arquivo');
   (fetch as jest.Mock).mockRejectedValueOnce(new TypeError('Network request failed'));
   await press(tree, 'Importar 3 itens');
-  expect(texts(tree.root)).toContain(INVENTORY_NEEDS_SERVER.import);
+  expect(texts(tree.root)).toContain(INVENTORY_NEEDS_SERVER['pt-BR'].import);
   expect(onImported).not.toHaveBeenCalled();
 });
 

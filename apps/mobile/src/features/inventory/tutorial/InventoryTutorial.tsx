@@ -3,6 +3,7 @@ import { INVENTORY_TUTORIAL_PARTS, inventoryTutorialSteps, type TutorialScreen, 
 import { Tour } from '../../../components/Tour';
 import { findTourTarget } from '../../../components/Tour';
 import { BOTTOM_BAR_HEIGHT } from '../../dashboard/Dashboard.styles';
+import { useLocale } from '../../../app/locale';
 
 // The Inventory tutorial on mobile, the same as the web: the shared steps (see inventoryTutorialSteps) run by the
 // Tour over the Inventory tab, which hands its screen over on every render; the Tour checks the latest steps, so
@@ -36,9 +37,10 @@ type InventoryTutorialProps = {
 };
 
 export function InventoryTutorial({ open, onClose, screen }: InventoryTutorialProps) {
-  const steps = inventoryTutorialSteps(() => ({ ...screen, target: (name) => findTourTarget(TARGET_VIEWS[name]) }));
+  const { locale } = useLocale();
+  const steps = inventoryTutorialSteps(() => ({ ...screen, target: (name) => findTourTarget(TARGET_VIEWS[name]) }), locale);
   const covered = screen.form !== null || screen.filtersOpen || screen.removing !== undefined;
   return (
-    <Tour open={open} onClose={onClose} steps={steps} parts={INVENTORY_TUTORIAL_PARTS} bottomInset={covered ? 0 : BOTTOM_BAR_HEIGHT} />
+    <Tour open={open} onClose={onClose} steps={steps} parts={INVENTORY_TUTORIAL_PARTS[locale]} bottomInset={covered ? 0 : BOTTOM_BAR_HEIGHT} />
   );
 }

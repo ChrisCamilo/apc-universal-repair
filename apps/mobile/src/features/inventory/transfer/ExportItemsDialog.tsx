@@ -1,6 +1,8 @@
 import { INVENTORY_NEEDS_SERVER } from '@apc/domain/sync-queue';
+import { useLocale, useMessages } from '../../../app/locale';
 import { useState } from 'react';
 import { csvExportName, exportedSummary, exportItems, exportScope } from '@apc/domain/item-csv';
+import type { Locale } from '@apc/domain/locale';
 import { exportMercadoLivre, mercadoLivreExportName, mercadoLivreSummary } from '@apc/domain/mercado-livre-csv';
 import { apiUrl } from '../../../app/api';
 import { Button } from '../../../components/Button';
@@ -41,19 +43,22 @@ type ExportItemsDialogProps = {
  * for Mercado Livre.
  * @param query The list query, with no page.
  * @param options Whether to add the photo paths, and whether the file is for Mercado Livre.
+ * @param locale The language of the toast.
  * @returns The file's name and text and the toast's text, or null when the items couldn't be fetched.
  */
-async function exportFile(query: string, { photos, mercadoLivre }: { photos: boolean; mercadoLivre: boolean }) {
+async function exportFile(query: string, { photos, mercadoLivre }: { photos: boolean; mercadoLivre: boolean }, locale: Locale) {
   if (mercadoLivre) {
     const listings = await exportMercadoLivre(apiUrl(), query);
-    return listings && { name: mercadoLivreExportName(new Date(), 'csv'), csv: listings.csv, summary: mercadoLivreSummary(listings) };
+    return listings && { name: mercadoLivreExportName(new Date(), 'csv'), csv: listings.csv, summary: mercadoLivreSummary(listings, locale) };
   }
   const exported = await exportItems(apiUrl(), query, { photos });
-  return exported && { name: csvExportName(new Date()), csv: exported.csv, summary: exportedSummary(exported.count) };
+  return exported && { name: csvExportName(new Date()), csv: exported.csv, summary: exportedSummary(exported.count, locale) };
 }
 
 export function ExportItemsDialog({ open, query, count, narrowed, onClose, offline = false }: ExportItemsDialogProps) {
+  const { locale } = useLocale();
   const toast = useToast();
+  const needsServer = useMessages(INVENTORY_NEEDS_SERVER);
   const [photos, setPhotos] = useState(false);
   const [mercadoLivre, setMercadoLivre] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -61,10 +66,10 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose, offli
   /** Fetches every item of the list, shares the file and says what it holds, or that it failed. */
   const submit = async () => {
     setExporting(true);
-    const file = await exportFile(query, { photos, mercadoLivre });
+    const file = await exportFile(query, { photos, mercadoLivre }, locale);
     if (!file) {
       setExporting(false);
-      toast.error(offline ? INVENTORY_NEEDS_SERVER.export : 'Não foi possível exportar os itens. Tente de novo.');
+      toast.error(offline ? needsServer.export : 'Não foi possível exportar os itens. Tente de novo.');
       return;
     }
     const shared = await shareCsv(file.name, file.csv);
@@ -92,7 +97,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose, offli
         </>
       }
     >
-      <Text size="sm">{exportScope(count, narrowed)}</Text>
+      <Text size="sm">{exportScope(count, narrowed, locale)}</Text>
       <Text size="sm" tone="muted">
         {mercadoLivre
           ? 'Todas as páginas vão no arquivo, um anúncio por marca, nas palavras do Mercado Livre.'

@@ -10,6 +10,7 @@ import { Icon } from '../Icon/Icon';
 import type { PickedPhoto, UploadPhoto } from '../ImageUpload/ImageUpload';
 import { FRAME_MAX_SHARE, useStyles, viewerBox } from './ImageViewer.styles';
 import { useOverlayMotion } from '../../app/motion';
+import { useLocale } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { ToastProvider, useToast } from '../Toast/Toast';
 import { Heading, NumericReadout, Text } from '../Typography/Typography';
@@ -71,6 +72,7 @@ function ViewerBody({
   moved,
 }: Omit<ImageViewerProps, 'open'> & { moved: ReturnType<typeof useOverlayMotion>['moved'] }) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
   const toast = useToast();
@@ -101,7 +103,7 @@ function ViewerBody({
     if (!file) {
       return;
     }
-    const { accepted, problems: leftOut } = replace ? takePhotos([file], 0, 1) : takePhotos([file], count, limit);
+    const { accepted, problems: leftOut } = replace ? takePhotos([file], 0, 1, locale) : takePhotos([file], count, limit, locale);
     setProblems(leftOut);
     if (accepted.length === 0) {
       return;
@@ -153,7 +155,7 @@ function ViewerBody({
                 <Icon icon={imageIcon} size={ICON_SIZES.viewer} color={colors.textMuted} />
                 <Heading level={4}>Este item ainda não tem fotos</Heading>
                 <Text size="sm" tone="muted">
-                  {`Adicione até ${photoCount(limit)}. A primeira vira a capa na lista.`}
+                  {`Adicione até ${photoCount(limit, locale)}. A primeira vira a capa na lista.`}
                 </Text>
               </View>
             )}
@@ -208,8 +210,8 @@ function ViewerBody({
         )}
         <Text size="sm" tone="muted">
           {full
-            ? `Limite de ${photoCount(limit)} atingido. Troque ou remova uma para adicionar outra.`
-            : `JPG, PNG ou WebP, até 3 MB · ${count} de ${photoCount(limit)}`}
+            ? `Limite de ${photoCount(limit, locale)} atingido. Troque ou remova uma para adicionar outra.`
+            : `JPG, PNG ou WebP, até 3 MB · ${count} de ${photoCount(limit, locale)}`}
         </Text>
         <View style={styles.buttons} testID={ids.buttons}>
           {count > 0 && (

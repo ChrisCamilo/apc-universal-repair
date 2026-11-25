@@ -26,6 +26,7 @@ import {
 import { activeFilterCount, type FilterValues } from '@apc/ui-spec/filters';
 import {
   EMPTY_ITEM_FILTERS,
+  FILTER_LABELS,
   followEntryChange,
   ITEM_SORT_OPTIONS,
   itemFilterRows,
@@ -69,6 +70,8 @@ import { Skeleton } from '../../components/Skeleton';
 import { Spinner } from '../../components/Spinner';
 import { useToast } from '../../components/Toast';
 import { SearchField } from '../../components/TextField';
+import type { Locale } from '@apc/domain/locale';
+import { useLocale } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { ToolButton } from '../../components/ToolButton';
 import { tourTarget } from '../../components/Tour';
@@ -131,9 +134,9 @@ const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
  * @param items Every item in stock.
  * @returns The chips' options, e.g. "Baixo · 5" and "Esgotado · 4".
  */
-function statusOptions(items: readonly Item[]) {
+function statusOptions(items: readonly Item[], locale: Locale) {
   const counts = stockCounts(items);
-  return ITEM_STATUSES.map((value) => ({ value, label: `${STOCK_STATUS_SHORT[value]} · ${counts[value]}` }));
+  return ITEM_STATUSES.map((value) => ({ value, label: `${STOCK_STATUS_SHORT[locale][value]} · ${counts[value]}` }));
 }
 
 /** A card of the list: an item. */
@@ -151,7 +154,7 @@ function nameColumn(): ComponentProps<typeof DataTable<InventoryRow>>['columns']
     card: 'main',
     cell: ({ item }) => (
       <View ref={isTestItem(item) ? tourTarget('tutorial-row') : undefined} collapsable={false}>
-        <CardTitle name={item.name} code={itemCardCode(item)} details={itemCardDetails(item)} />
+        <ItemTitle item={item} />
       </View>
     ),
   };
@@ -186,6 +189,7 @@ type InventoryTabProps = {
 };
 
 export function InventoryTab({ userId = '' }: InventoryTabProps) {
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const { colors } = useTheme();
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS);
@@ -197,7 +201,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const [pages, setPages] = useState(1);
   const narrowed = search.trim() !== '' || itemListQuery(filters, status) !== '';
   const filterCount = activeFilterCount(filters);
-  const sortLabel = ITEM_SORT_OPTIONS.find((option) => option.value === sortValue(sort))?.label;
+  const sortLabel = ITEM_SORT_OPTIONS[locale].find((option) => option.value === sortValue(sort))?.label;
   // The phone's copy of the inventory, which the list reads: every item, for the counter, the filter options and the
   // form; and the pages shown of the items the search and the filters let through.
   const copy = useInventoryCopy();
@@ -211,7 +215,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const { lists } = copy;
   const { create: createEntry, merge: mergeEntry, rename: renameEntry, remove: removeEntry } = useItemLists(lists);
   // The catalog, from the copy, for the generations and versions the item form offers for a vehicle.
-  const catalog = useMemo(() => (copy.catalog ? catalogFrom(copy.catalog) : undefined), [copy.catalog]);
+  const catalog = useMemo(() => (copy.catalog ? catalogFrom(copy.catalog, locale) : undefined), [copy.catalog, locale]);
   const toast = useToast();
   // Whether "Gerenciar listas" is open.
   const [managing, setManaging] = useState(false);
@@ -434,7 +438,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // Asked for while the server can't be reached, the tutorial says it needs it.
   const replayRefused = useEffectEvent(() => {
     tutorial.replayStarted();
-    toast.error(INVENTORY_NEEDS_SERVER.tutorial);
+    toast.error(INVENTORY_NEEDS_SERVER[locale].tutorial);
   });
   useEffect(() => {
     if (tutorial.replayAsked && copy.offline) {
@@ -505,7 +509,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           />
           <FilterChipGroup
             label="Situação do estoque"
-            options={statusOptions(items)}
+            options={statusOptions(items, locale)}
             value={status}
             onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
           />
@@ -523,9 +527,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           <View accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
             <Text size="sm">
               {[
-                copy.blocked ? LOCAL_NETWORK_TEXTS.missing : copy.offline && copy.syncedAt && copyNotice(copy.syncedAt),
-                copy.waiting > 0 && waitingNotice(copy.waiting),
-                copy.conflicts.length > 0 && conflictsNotice(copy.conflicts.length),
+                copy.blocked ? LOCAL_NETWORK_TEXTS.missing : copy.offline && copy.syncedAt && copyNotice(copy.syncedAt, locale),
+                copy.waiting > 0 && waitingNotice(copy.waiting, locale),
+                copy.conflicts.length > 0 && conflictsNotice(copy.conflicts.length, locale),
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -553,7 +557,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           {!failed && listed.status === 'loading' && <LoadingRows />}
           {!failed && state.status === 'ready' && listed.status === 'ready' && (
             <>
-              <NumericReadout tone="muted">{resultSummary(listed.status === 'ready' ? listed.total : 0, items)}</NumericReadout>
+              <NumericReadout tone="muted">{resultSummary(listed.status === 'ready' ? listed.total : 0, items, locale)}</NumericReadout>
               <DataTable
                 label="Itens do estoque"
                 columns={[
@@ -566,11 +570,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
                 ]}
                 rows={rows}
                 rowKey={(row) => row.item.id}
-                rowStatus={({ item }) => stockTint(item)}
+                rowStatus={({ item }) => stockTint(item, locale)}
                 onRowOpen={openRow}
                 sort={sort}
                 onSortChange={(next) => narrow(() => setSort(next))}
-                unsortedLabel="Ordem de cadastro"
+                unsortedLabel={FILTER_LABELS[locale].unsorted}
                 sortSelect={false}
                 empty={
                   narrowed ? (
@@ -609,10 +613,10 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       <FilterSheet
         open={filtering}
         onClose={() => setFiltering(false)}
-        rows={(draft) => itemFilterRows(items, draft)}
+        rows={(draft) => itemFilterRows(items, draft, locale)}
         values={filters}
         sort={sort}
-        sortOptions={ITEM_SORT_OPTIONS}
+        sortOptions={ITEM_SORT_OPTIONS[locale]}
         count={(draft) => matchingCount(items, draft, status, search)}
         onApply={(values, next) => {
           setFiltering(false);
@@ -627,7 +631,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         open={sorting}
         onClose={() => setSorting(false)}
         sort={sort}
-        options={ITEM_SORT_OPTIONS}
+        options={ITEM_SORT_OPTIONS[locale]}
         onSortChange={(next) => narrow(() => setSort(next))}
       />
       <ActionSheet
@@ -817,4 +821,10 @@ function LoadingRows() {
       ))}
     </View>
   );
+}
+
+/** An item's name on its card, with its code and details in the language chosen. */
+function ItemTitle({ item }: { item: Item }) {
+  const { locale } = useLocale();
+  return <CardTitle name={item.name} code={itemCardCode(item, locale)} details={itemCardDetails(item, locale)} />;
 }

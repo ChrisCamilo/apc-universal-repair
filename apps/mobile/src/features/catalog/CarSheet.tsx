@@ -7,6 +7,7 @@ import { Button } from '../../components/Button';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
 import { EmptyState } from '../../components/EmptyState';
 import { Heading } from '../../components/Typography';
+import { useLocale } from '../../app/locale';
 import { CardTitle, StockQuantity } from '../inventory/browse/ItemCard';
 import { photoSource } from '../sync/photoCache';
 import { useStyles } from './CarSheet.styles';
@@ -33,11 +34,7 @@ const PART_COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
     key: 'name',
     header: 'Item',
     card: 'main',
-    cell: (item) => (
-      <View>
-        <CardTitle name={item.name} code={itemCardCode(item)} details={itemCardDetails(item)} />
-      </View>
-    ),
+    cell: (item) => <PartTitle item={item} />,
   },
   { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (item) => <StockQuantity {...item} /> },
 ];
@@ -127,6 +124,7 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
 
 export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
   const { styles, ids } = useStyles();
+  const { locale } = useLocale();
   return (
     <View style={styles.parts} testID={ids.parts}>
       <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
@@ -139,7 +137,7 @@ export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
             columns={PART_COLUMNS}
             rows={parts}
             rowKey={(item) => item.id}
-            rowStatus={stockTint}
+            rowStatus={(item) => stockTint(item, locale)}
             onRowOpen={onPart}
             sort={null}
             onSortChange={() => {}}
@@ -154,6 +152,16 @@ export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
       ) : (
         <EmptyState title="Nenhuma peça no estoque" message="As peças cadastradas para esse carro aparecem aqui." />
       )}
+    </View>
+  );
+}
+
+/** A part's name, with its code and details in the language chosen. */
+function PartTitle({ item }: { item: Item }) {
+  const { locale } = useLocale();
+  return (
+    <View>
+      <CardTitle name={item.name} code={itemCardCode(item, locale)} details={itemCardDetails(item, locale)} />
     </View>
   );
 }

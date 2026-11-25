@@ -5,6 +5,7 @@ import { takePhotos, type PhotoFile } from '@apc/domain/photos';
 import { scales } from '@apc/tokens/theme';
 import { Icon } from '../Icon/Icon';
 import { useStyles } from './ImageUpload.styles';
+import { useLocale } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { Label, Text } from '../Typography/Typography';
 
@@ -37,6 +38,7 @@ type ImageUploadProps = {
 
 export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTake, readOnly = false }: ImageUploadProps) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const [problems, setProblems] = useState<string[]>([]);
   const left = limit - photos.length;
@@ -50,7 +52,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTa
     if (picked.length === 0) {
       return;
     }
-    const { accepted, problems: leftOut } = takePhotos(picked, photos.length, limit);
+    const { accepted, problems: leftOut } = takePhotos(picked, photos.length, limit, locale);
     setProblems(leftOut);
     if (accepted.length > 0) {
       onPhotosChange([...photos, ...accepted.map((file) => ({ url: file.url, file }))]);

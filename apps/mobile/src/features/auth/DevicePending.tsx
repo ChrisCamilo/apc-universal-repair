@@ -1,5 +1,6 @@
 import { Text as RNText, View } from 'react-native';
 import { DEVICE_MESSAGES } from '@apc/domain/devices';
+import { useMessages } from '../../app/locale';
 import { Text } from '../../components/Typography';
 import { useStyles } from './DevicePending.styles';
 
@@ -9,14 +10,15 @@ import { useStyles } from './DevicePending.styles';
 
 export function DevicePending({ code }: { code: string }) {
   const { styles, ids } = useStyles();
+  const messages = useMessages(DEVICE_MESSAGES);
   return (
     <View accessibilityLiveRegion="polite" style={styles.base} testID={ids.base}>
-      <Text>{DEVICE_MESSAGES.pending}</Text>
+      <Text>{messages.pending}</Text>
       <RNText selectable style={styles.code} testID={ids.code}>
         {code}
       </RNText>
       <Text size="sm" tone="muted">
-        {DEVICE_MESSAGES.pendingHelp}
+        {messages.pendingHelp}
       </Text>
     </View>
   );

@@ -25,6 +25,7 @@ import { ThemeProvider, useTheme } from './src/app/theme';
 import { ToastProvider } from './src/components/Toast';
 import { TourProvider } from './src/components/Tour';
 import { UpdatePrompt } from './src/features/updates/UpdatePrompt';
+import { useLocale } from './src/app/locale';
 
 /**
  * What Conectar ao servidor says when the API refused the session's token, while pairing is the login: the session
@@ -57,6 +58,7 @@ const SCREEN_STYLE = { flex: 1 };
 // A release says, over any screen, when a newer version is out (see UpdatePrompt). The whole app opens once the
 // phone's copy of the inventory does, behind the phone's own lock (see AppLock.tsx).
 function Screen() {
+  const { locale } = useLocale();
   const theme = useTheme();
   // The logged user: undefined while the saved session is read, null when nobody is logged in.
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
@@ -174,7 +176,7 @@ function Screen() {
         ) : (
           <LoginScreen
             auth={auth}
-            notice={expired ? LOGIN_MESSAGES.expired : undefined}
+            notice={expired ? LOGIN_MESSAGES[locale].expired : undefined}
             onLoggedIn={logIn}
             onRegister={() => setRegistering(true)}
             onConnect={() => setPairing(true)}

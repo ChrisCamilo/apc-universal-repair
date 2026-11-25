@@ -73,14 +73,14 @@ export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemD
         <Tile label="Mínimo" value={item.minQuantity} />
       </View>
       <View style={styles.list} testID={ids.list}>
-        <Detail term="Veículos" value={vehiclesText(item)} />
-        {item.material && <Detail term={ITEM_NOTE_LABELS.material} value={item.material} />}
+        <Detail term="Veículos" value={vehiclesText(item, locale)} />
+        {item.material && <Detail term={ITEM_NOTE_LABELS[locale].material} value={item.material} />}
         <Detail
           term="Posição · Lado"
-          value={positionSideText(item)}
+          value={positionSideText(item, locale)}
           none={item.position === NOT_APPLICABLE && item.side === NOT_APPLICABLE}
         />
-        <Detail term="Códigos originais" value={originalCodesText(item)} none={item.originalCodes.length === 0} />
+        <Detail term="Códigos originais" value={originalCodesText(item, locale)} none={item.originalCodes.length === 0} />
       </View>
       <Text accessibilityRole="header" style={styles.brandsTitle} testID={ids.brandsTitle}>
         {`Marcas · ${item.brands.length}`}
@@ -102,7 +102,7 @@ export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemD
               <Text style={styles.brandQuantity} testID={ids.brandQuantity}>
                 {brand.quantity}{' '}
                 <Text style={styles.unit} testID={ids.unit}>
-                  {QUANTITY_UNIT}
+                  {QUANTITY_UNIT[locale]}
                 </Text>
               </Text>
             </View>
@@ -115,7 +115,7 @@ export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemD
               </Text>
             </View>
             <Text style={styles.place} testID={ids.place}>
-              {brandPlaceText(brand)}
+              {brandPlaceText(brand, locale)}
             </Text>
           </View>
         ))}
@@ -144,6 +144,7 @@ export function RemoveItemButton({ onPress }: { onPress: () => void }) {
 /** A tile of the stock: its label over its number and unit. */
 function Tile({ label, value }: { label: string; value: number }) {
   const { styles, ids } = useStyles();
+  const { locale } = useLocale();
   return (
     <View style={styles.tile} testID={ids.tile}>
       <Text style={styles.tileLabel} testID={ids.tileLabel}>
@@ -152,7 +153,7 @@ function Tile({ label, value }: { label: string; value: number }) {
       <Text style={styles.tileValue} testID={ids.tileValue}>
         {value}{' '}
         <Text style={styles.unit} testID={ids.unit}>
-          {QUANTITY_UNIT}
+          {QUANTITY_UNIT[locale]}
         </Text>
       </Text>
     </View>

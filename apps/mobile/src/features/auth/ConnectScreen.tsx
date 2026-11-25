@@ -14,6 +14,7 @@ import { TextField } from '../../components/TextField';
 import { Heading, Text } from '../../components/Typography';
 import { useStyles } from './ConnectScreen.styles';
 import { DevicePending } from './DevicePending';
+import { useLocale } from '../../app/locale';
 
 // Conectar ao servidor: how the phone pairs with the home server (see @apc/domain/pairing), before the login of a
 // phone with no server yet, and from the login or the user menu to pair again, as after the computer's address
@@ -100,6 +101,7 @@ async function answers(url: string): Promise<boolean> {
 }
 
 export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectScreenProps) {
+  const { locale } = useLocale();
   const camera = useCameraPermission();
   const device = useCameraDevice('back');
   const [address, setAddress] = useState('');
@@ -148,7 +150,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
       return;
     }
     const stop = new AbortController();
-    waitForDevice(auth, () => auth.pair(waiting.entry), stop.signal).then(async (user) => {
+    waitForDevice(auth, () => auth.pair(waiting.entry, locale), stop.signal).then(async (user) => {
       if (user) {
         await saveServer(waiting.pairing);
         connected.current(waiting.pairing, user);
@@ -159,7 +161,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
       }
     });
     return () => stop.abort();
-  }, [auth, waiting]);
+  }, [auth, waiting, locale]);
 
   /** Stops waiting for the authorization, going back to the server in use before. */
   const stopWaiting = () => {
@@ -223,7 +225,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
     const user = !(await answers(pairing.url))
       ? undefined
       : auth && entryCode
-        ? await auth.pair(entryCode).catch(() => undefined)
+        ? await auth.pair(entryCode, locale).catch(() => undefined)
         : null;
     if (user && 'pending' in user) {
       setWaiting({ code: user.pending, entry: entryCode!, pairing, before });

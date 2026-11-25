@@ -33,11 +33,11 @@ test('Mobile: the last sync says when, today or another day', () => {
 // Checks a sync that caught up says so, one that couldn't reach the server says why and what still waits, and one
 // without the local network access says that.
 test('Mobile: a sync asked for says how it went, and why it failed', () => {
-  expect(syncOutcome('synced', 0)).toEqual({ ok: true, message: 'Estoque sincronizado com o servidor.' });
-  expect(syncOutcome('offline', 2)).toEqual({
+  expect(syncOutcome('synced', 0, 'pt-BR')).toEqual({ ok: true, message: 'Estoque sincronizado com o servidor.' });
+  expect(syncOutcome('offline', 2, 'pt-BR')).toEqual({
     ok: false,
     message:
       'Não foi possível sincronizar: o servidor não respondeu. Confira se o celular está no Wi-Fi de casa e se o computador está ligado. 2 alterações esperando o servidor.',
   });
-  expect(syncOutcome('blocked', 0)).toEqual({ ok: false, message: LOCAL_NETWORK_TEXTS.missing });
+  expect(syncOutcome('blocked', 0, 'pt-BR')).toEqual({ ok: false, message: LOCAL_NETWORK_TEXTS.missing });
 });

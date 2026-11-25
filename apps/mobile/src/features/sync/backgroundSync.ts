@@ -3,6 +3,7 @@ import { copyItems } from '@apc/domain/sync-copy';
 import { withQueue } from '@apc/domain/sync-queue';
 import { TOAST_KIND_LOOKS } from '@apc/ui-spec/toast';
 import { loadServer } from '../../app/api';
+import { loadLocale } from '../../app/locale';
 import { save, themeStorage } from '../../app/theme';
 import { auth } from '../auth/auth';
 import { showSystemNotification } from '../notifications/systemNotifications';
@@ -33,7 +34,7 @@ export function lowStockNotifiedKey(userId: string): string {
  * Syncs the copy with no screen, and shows in the shade what it brought that needs the user.
  */
 export async function backgroundSync(): Promise<void> {
-  const [user] = await Promise.all([auth.currentUser().catch(() => null), loadServer()]);
+  const [user, locale] = await Promise.all([auth.currentUser().catch(() => null), loadLocale(), loadServer()]);
   if (!user) {
     return;
   }
@@ -59,6 +60,6 @@ export async function backgroundSync(): Promise<void> {
   const { alerts, warned: low } = lowStockAlerts(items, [...readLowStockWarned(warned), ...readLowStockWarned(notified)]);
   save(lowStockNotifiedKey(user.id), JSON.stringify(low));
   if (alerts.length > 0) {
-    await showSystemNotification(TOAST_KIND_LOOKS.warning.title, lowStockMessage(alerts));
+    await showSystemNotification(TOAST_KIND_LOOKS.warning.title, lowStockMessage(alerts, locale));
   }
 }

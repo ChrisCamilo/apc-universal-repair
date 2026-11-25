@@ -135,16 +135,16 @@ test('Mobile: a sign-up breaking a rule is not sent and the cursor goes to the f
   const focus = jest.spyOn(TextInput.prototype, 'focus');
   const tree = await mount('eighties', 'night', <RegisterScreen auth={auth} onRegistered={() => {}} onLogin={() => {}} />);
   await press(tree, 'Criar conta');
-  for (const message of [REGISTER_MESSAGES.displayName, REGISTER_MESSAGES.username, REGISTER_MESSAGES.email, REGISTER_MESSAGES.password, REGISTER_MESSAGES.confirm]) {
+  for (const message of [REGISTER_MESSAGES['pt-BR'].displayName, REGISTER_MESSAGES['pt-BR'].username, REGISTER_MESSAGES['pt-BR'].email, REGISTER_MESSAGES['pt-BR'].password, REGISTER_MESSAGES['pt-BR'].confirm]) {
     expect(shows(tree, message)).toBe(true);
   }
   expect(focus.mock.contexts.at(-1)).toBe(field(tree, 'Nome').instance);
 
   await fillIn(tree, { ...NEW_USER, Senha: 'curta', 'Confirmar senha': 'outra' });
-  expect(shows(tree, REGISTER_MESSAGES.confirm)).toBe(false);
+  expect(shows(tree, REGISTER_MESSAGES['pt-BR'].confirm)).toBe(false);
   await press(tree, 'Criar conta');
-  expect(shows(tree, REGISTER_MESSAGES.passwordShort)).toBe(true);
-  expect(shows(tree, REGISTER_MESSAGES.confirmMismatch)).toBe(true);
+  expect(shows(tree, REGISTER_MESSAGES['pt-BR'].passwordShort)).toBe(true);
+  expect(shows(tree, REGISTER_MESSAGES['pt-BR'].confirmMismatch)).toBe(true);
   expect(focus.mock.contexts.at(-1)).toBe(field(tree, 'Senha').instance);
   expect(register).not.toHaveBeenCalled();
   focus.mockRestore();
@@ -167,7 +167,7 @@ test('Mobile: the keyboard keys move through the fields and send the sign-up', a
   }
   expect(field(tree, 'Confirmar senha').props.returnKeyType).toBe('go');
   await ReactTestRenderer.act(async () => field(tree, 'Confirmar senha').props.onSubmitEditing());
-  expect(register).toHaveBeenCalledWith({ displayName: 'Ana Souza', username: 'Ana.Souza', email: 'ana@oficina.com', password: 'freio1234' });
+  expect(register).toHaveBeenCalledWith({ displayName: 'Ana Souza', username: 'Ana.Souza', email: 'ana@oficina.com', password: 'freio1234' }, 'pt-BR');
   expect(onRegistered).toHaveBeenCalledWith({ id: 'user-ana.souza', username: 'ana.souza', displayName: 'Ana Souza', initials: 'AS', inventoryTutorialSeen: false });
   focus.mockRestore();
 });
@@ -180,7 +180,7 @@ test('Mobile: a taken username is refused above the form', async () => {
   await press(tree, 'Criar conta');
   const alert = byId(tree, 'auth.register-screen.form.alert');
   expect(alert.props.accessibilityRole).toBe('alert');
-  expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === REGISTER_MESSAGES.taken)).not.toHaveLength(0);
+  expect(alert.findAll((n) => typeof n.type === 'string' && n.props.children === REGISTER_MESSAGES['pt-BR'].taken)).not.toHaveLength(0);
   expect(field(tree, 'Usuário').props.value).toBe(TEST_USERS[0].username);
   expect(onRegistered).not.toHaveBeenCalled();
 });
@@ -199,8 +199,8 @@ test('Mobile: Criar conta shows it is busy and the sign-up is sent only once', a
   expect(button(tree, 'Criar conta').props.accessibilityState).toMatchObject({ busy: true, disabled: true });
   await ReactTestRenderer.act(async () => field(tree, 'Confirmar senha').props.onSubmitEditing());
   expect(slow.register).toHaveBeenCalledTimes(1);
-  await ReactTestRenderer.act(async () => answer({ refused: REGISTER_MESSAGES.failed }));
-  expect(shows(tree, REGISTER_MESSAGES.failed)).toBe(true);
+  await ReactTestRenderer.act(async () => answer({ refused: REGISTER_MESSAGES['pt-BR'].failed }));
+  expect(shows(tree, REGISTER_MESSAGES['pt-BR'].failed)).toBe(true);
   expect(button(tree, 'Criar conta').props.accessibilityState).toMatchObject({ busy: false });
 });
 

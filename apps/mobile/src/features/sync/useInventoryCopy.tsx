@@ -6,9 +6,10 @@ import { EMPTY_ITEM_LISTS, type ItemLists } from '@apc/domain/lists';
 import type { CatalogData } from '@apc/domain/catalog';
 import { copyCatalog, copyItems, copyLists, type SyncCopy } from '@apc/domain/sync-copy';
 import { conflictCards, type ConflictCard, type ConflictSide } from '@apc/domain/sync-conflicts';
-import { withQueue } from '@apc/domain/sync-queue';
+import { withQueue, type QueuedOperation } from '@apc/domain/sync-queue';
 import { askLocalNetwork, openAppSettings } from '../../app/localNetwork';
 import { loadCopy, loadQueue, onCopyChanged, settle as settleQueued, syncCopy, type SyncResult } from './inventoryCopy';
+import { useLocale } from '../../app/locale';
 
 // The phone's copy of the inventory as the Dashboard holds it (see inventoryCopy.ts), with the changes waiting to be
 // sent applied over it (see @apc/domain/sync-queue): one InventoryCopyProvider on the Dashboard, which the Inventory,
@@ -84,9 +85,12 @@ export function useInventoryCopy(): InventoryCopy {
  * @returns The copy's items, lists and state, and sync to bring it up to date.
  */
 function useCopyState(): InventoryCopy {
+  const { locale } = useLocale();
   const [copy, setCopy] = useState<SyncCopy>();
   const [waiting, setWaiting] = useState(0);
-  const [conflicts, setConflicts] = useState<ConflictCard[]>([]);
+  // The queue as last read, whose conflicts are written as cards in the language chosen.
+  const [queued, setQueued] = useState<QueuedOperation[]>([]);
+  const conflicts = useMemo(() => conflictCards(queued, locale), [queued, locale]);
   const [offline, setOffline] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -116,7 +120,7 @@ function useCopyState(): InventoryCopy {
           setCopy(withQueue({ ...held }, queue));
           // An operation in conflict counts as a conflict, not as a change waiting.
           setWaiting(queue.filter((operation) => !operation.sent && !operation.conflicts).length);
-          setConflicts(conflictCards(queue));
+          setQueued(queue);
         }
       }, () => {}); // A copy behind the phone's lock is read once AppLock opens it.
     const stop = onCopyChanged(read);

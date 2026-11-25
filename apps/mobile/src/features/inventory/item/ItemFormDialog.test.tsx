@@ -300,19 +300,19 @@ test('Mobile: the required fields say what is missing and nothing is sent', asyn
   (fetch as jest.Mock).mockClear();
   await press(tree, 'Salvar item');
   const required = [
-    ITEM_FORM_MESSAGES.code,
-    ITEM_FORM_MESSAGES.name,
-    ITEM_FORM_MESSAGES.category,
-    ITEM_FORM_MESSAGES.partBrand,
-    ITEM_FORM_MESSAGES.vehicleBrand,
-    ITEM_FORM_MESSAGES.price,
+    ITEM_FORM_MESSAGES['pt-BR'].code,
+    ITEM_FORM_MESSAGES['pt-BR'].name,
+    ITEM_FORM_MESSAGES['pt-BR'].category,
+    ITEM_FORM_MESSAGES['pt-BR'].partBrand,
+    ITEM_FORM_MESSAGES['pt-BR'].vehicleBrand,
+    ITEM_FORM_MESSAGES['pt-BR'].price,
   ];
   for (const message of required) {
     expect(shows(tree, message)).toBe(true);
   }
   expect(fetch).not.toHaveBeenCalled();
   await type(tree, 'Nome', 'Vela');
-  expect(shows(tree, ITEM_FORM_MESSAGES.name)).toBe(false);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].name)).toBe(false);
 });
 
 // Types a code another item uses, in lowercase, and checks it turns uppercase and is refused naming that item.
@@ -321,7 +321,7 @@ test('Mobile: the code turns uppercase and a code in use names its item', async 
   await type(tree, 'Código da peça', 'fra-1000');
   expect(value(tree, 'Código da peça')).toBe('FRA-1000');
   await press(tree, 'Salvar item');
-  expect(shows(tree, codeTakenMessage('Pastilha de freio'))).toBe(true);
+  expect(shows(tree, codeTakenMessage('Pastilha de freio', 'pt-BR'))).toBe(true);
 });
 
 // Types a code another item uses and checks the field names that item at once, before Save, and drops the message
@@ -332,20 +332,20 @@ test('Mobile: a code in use is named while it is typed', async () => {
   const tree = await mount();
   (fetch as jest.Mock).mockClear();
   await type(tree, 'Código da peça', 'fra-1000');
-  expect(shows(tree, codeTakenMessage('Pastilha de freio'))).toBe(true);
+  expect(shows(tree, codeTakenMessage('Pastilha de freio', 'pt-BR'))).toBe(true);
   await type(tree, 'Código da peça', 'fra-10001');
-  expect(shows(tree, codeTakenMessage('Pastilha de freio'))).toBe(false);
+  expect(shows(tree, codeTakenMessage('Pastilha de freio', 'pt-BR'))).toBe(false);
   await type(tree, 'Código da peça', 'fra1000');
-  expect(shows(tree, codeTakenMessage('Pastilha de freio'))).toBe(true);
+  expect(shows(tree, codeTakenMessage('Pastilha de freio', 'pt-BR'))).toBe(true);
   await type(tree, 'Código da peça', '');
-  expect(shows(tree, ITEM_FORM_MESSAGES.code)).toBe(false);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].code)).toBe(false);
   expect(fetch).not.toHaveBeenCalled();
 
   const editing = await mount(ITEMS[1]);
   await type(editing, 'Código da peça', 'fra-1000');
-  expect(shows(editing, codeTakenMessage('Pastilha de freio'))).toBe(false);
+  expect(shows(editing, codeTakenMessage('Pastilha de freio', 'pt-BR'))).toBe(false);
   await type(editing, 'Código da peça', 'w 712/95');
-  expect(shows(editing, codeTakenMessage('Filtro de óleo'))).toBe(true);
+  expect(shows(editing, codeTakenMessage('Filtro de óleo', 'pt-BR'))).toBe(true);
 });
 
 // Opens a new vehicle and checks its model is locked until a vehicle brand is chosen, and clears when the brand changes
@@ -444,7 +444,7 @@ test("Mobile: a name that couldn't be created is reported and not saved", async 
   expect(value(tree, 'Marca da peça')).toBe('Cofap');
   (fetch as jest.Mock).mockClear();
   await press(tree, 'Salvar item');
-  expect(shows(tree, ITEM_FORM_MESSAGES.partBrandNotListed)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].partBrandNotListed)).toBe(true);
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -459,17 +459,17 @@ test('Mobile: names not in their lists are refused on save', async () => {
   await type(tree, 'Marca do veículo', 'Renault');
   expect(field(tree, 'Modelo do veículo').props.editable).toBe(false);
   await press(tree, 'Adicionar');
-  expect(shows(tree, ITEM_FORM_MESSAGES.vehicleBrandNotListed)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].vehicleBrandNotListed)).toBe(true);
   await type(tree, 'Marca do veículo', 'Fiat');
   await type(tree, 'Modelo do veículo', 'Uno');
   await press(tree, 'Adicionar');
-  expect(shows(tree, ITEM_FORM_MESSAGES.vehicleModelNotListed)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].vehicleModelNotListed)).toBe(true);
   expect(chips(tree)).toEqual([]);
 
   (fetch as jest.Mock).mockClear();
   await press(tree, 'Salvar item');
-  expect(shows(tree, ITEM_FORM_MESSAGES.categoryNotListed)).toBe(true);
-  expect(shows(tree, ITEM_FORM_MESSAGES.partBrandNotListed)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].categoryNotListed)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].partBrandNotListed)).toBe(true);
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -529,7 +529,7 @@ test('Mobile: a vehicle takes an optional generation and version, sent as years'
   await type(tree, 'Modelo do veículo', 'Gol');
   await type(tree, 'Geração', '12/08');
   await press(tree, 'Adicionar');
-  expect(shows(tree, ITEM_FORM_MESSAGES.generationInvalid)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].generationInvalid)).toBe(true);
   expect(chips(tree)).toEqual([]);
   await type(tree, 'Geração', '08/12');
   await type(tree, 'Versão', '1.0 G5');
@@ -614,7 +614,7 @@ test('Mobile: the price always shows in reais, a dot and a comma alike', async (
   expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 7,50');
   await type(tree, 'Valor unitário (R$)', '2.000.000');
   expect(value(tree, 'Valor unitário (R$)')).toBe('R$ 7,50');
-  expect(shows(tree, ITEM_FORM_MESSAGES.priceTooHigh)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].priceTooHigh)).toBe(true);
   await press(tree, 'Salvar alterações');
   expect((await sentItem()).brands?.[0].unitPriceCents).toBe(750);
 });
@@ -627,13 +627,13 @@ test('Mobile: the quantities take whole numbers only, up to a million', async ()
   (fetch as jest.Mock).mockClear();
   await type(tree, 'Quantidade', '1,5');
   expect(value(tree, 'Quantidade')).toBe('1');
-  expect(shows(tree, ITEM_FORM_MESSAGES.quantityInvalid)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].quantityInvalid)).toBe(true);
   await type(tree, 'Quantidade', '1.000');
   expect(value(tree, 'Quantidade')).toBe('1000');
-  expect(shows(tree, ITEM_FORM_MESSAGES.quantityInvalid)).toBe(false);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].quantityInvalid)).toBe(false);
   await type(tree, 'Quantidade mínima', '2000000');
   await press(tree, 'Salvar alterações');
-  expect(shows(tree, ITEM_FORM_MESSAGES.quantityTooHigh)).toBe(true);
+  expect(shows(tree, ITEM_FORM_MESSAGES['pt-BR'].quantityTooHigh)).toBe(true);
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -805,7 +805,7 @@ test('Mobile: an unchanged edit is not sent, and an info toast says so', async (
   (fetch as jest.Mock).mockClear();
   await press(tree, 'Salvar alterações');
   expect(fetch).not.toHaveBeenCalled();
-  expect(shows(tree, ITEM_UNCHANGED_MESSAGE)).toBe(true);
+  expect(shows(tree, ITEM_UNCHANGED_MESSAGE['pt-BR'])).toBe(true);
   expect(onSaved).not.toHaveBeenCalled();
 });
 
@@ -869,8 +869,8 @@ test('Mobile: a part brand and a code appear once in an item', async () => {
   (fetch as jest.Mock).mockClear();
   await press(tree, 'Salvar alterações');
   const inSecond = (message: string) => second.findAll((n) => typeof n.type === 'string' && n.props.children === message).length > 0;
-  expect(inSecond(ITEM_FORM_MESSAGES.partBrandRepeated)).toBe(true);
-  expect(inSecond(ITEM_FORM_MESSAGES.codeRepeated)).toBe(true);
+  expect(inSecond(ITEM_FORM_MESSAGES['pt-BR'].partBrandRepeated)).toBe(true);
+  expect(inSecond(ITEM_FORM_MESSAGES['pt-BR'].codeRepeated)).toBe(true);
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -929,8 +929,8 @@ test('Mobile: original codes are typed as chips and sent with the item', async (
 test('Mobile: an original code another item or a brand of the item has is refused, saying so', async () => {
   const tree = await mount(FILTER);
   await type(tree, 'Códigos originais', 'fra 1000,w712/95,');
-  expect(shows(tree, `FRA 1000: ${codeTakenMessage('Pastilha de freio')}`)).toBe(true);
-  expect(shows(tree, `W712/95: ${ITEM_FORM_MESSAGES.originalCodeInBrand}`)).toBe(true);
+  expect(shows(tree, `FRA 1000: ${codeTakenMessage('Pastilha de freio', 'pt-BR')}`)).toBe(true);
+  expect(shows(tree, `W712/95: ${ITEM_FORM_MESSAGES['pt-BR'].originalCodeInBrand}`)).toBe(true);
   (fetch as jest.Mock).mockClear();
   await press(tree, 'Salvar alterações');
   expect(fetch).not.toHaveBeenCalled();
@@ -953,7 +953,7 @@ test('Mobile: vehicles are added as chips, refused when repeated, and removed', 
   expect(chips(tree)).toEqual(['Volkswagen Gol', 'Volkswagen Santana']);
   await addVehicle(tree, 'VOLKSWAGEN', ' gol ');
   const draft = section(tree, 'Novo veículo');
-  expect(draft.findAll((n) => typeof n.type === 'string' && n.props.children === ITEM_FORM_MESSAGES.vehicleRepeated).length).toBeGreaterThan(0);
+  expect(draft.findAll((n) => typeof n.type === 'string' && n.props.children === ITEM_FORM_MESSAGES['pt-BR'].vehicleRepeated).length).toBeGreaterThan(0);
   await press(tree, 'Cancelar');
   expect(section(tree, 'Novo veículo')).toBeUndefined();
   expect(chips(tree)).toEqual(['Volkswagen Gol', 'Volkswagen Santana']);
@@ -969,7 +969,7 @@ test('Mobile: vehicles are added as chips, refused when repeated, and removed', 
   expect(chips(again)).toEqual([]);
   (fetch as jest.Mock).mockClear();
   await press(again, 'Salvar alterações');
-  expect(shows(again, ITEM_FORM_MESSAGES.vehicleBrand)).toBe(true);
+  expect(shows(again, ITEM_FORM_MESSAGES['pt-BR'].vehicleBrand)).toBe(true);
   expect(fetch).not.toHaveBeenCalled();
 });
 

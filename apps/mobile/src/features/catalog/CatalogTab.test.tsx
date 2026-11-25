@@ -218,7 +218,7 @@ test('Mobile: away from the server, the Catalog shows the copy and its editing n
   await pressText(tree!, 'Nova marca');
   await fill(tree!, 'Nome', 'Renault');
   await pressText(tree!, 'Adicionar');
-  expect(shows(tree!, CATALOG_NEEDS_SERVER)).toBe(true);
+  expect(shows(tree!, CATALOG_NEEDS_SERVER['pt-BR'])).toBe(true);
   await ReactTestRenderer.act(async () => tree!.unmount());
 });
 
@@ -286,7 +286,7 @@ test('Mobile: the Catalog search narrows the brands and opens a part found by co
   expect(title(tree)).toBe('Chevrolet');
   expect(byRole(tree, 'treeitem', 'Opala').props.accessibilityValue).toEqual({ text: 'em destaque' });
   expect(shows(tree, 'Chevrolet Opala 3.8')).toBe(true);
-  expect(shows(tree, NO_SHEET_MESSAGE)).toBe(true);
+  expect(shows(tree, NO_SHEET_MESSAGE['pt-BR'])).toBe(true);
 });
 
 // Turns on "Só com peças" and checks only Chevrolet is listed, with its one model, and the device saves it;
@@ -514,7 +514,7 @@ test("Mobile: a period stays inside its generation's years, written with four di
   expect(field(tree, 'De').props.placeholder).toBe('AAAA');
   await fill(tree, 'De', '86');
   await pressText(tree, 'Adicionar');
-  expect(shows(tree, CATALOG_YEAR_MESSAGE)).toBe(true);
+  expect(shows(tree, CATALOG_YEAR_MESSAGE['pt-BR'])).toBe(true);
   await fill(tree, 'De', '1979a');
   await fill(tree, 'Até', '19932');
   expect([field(tree, 'De').props.value, field(tree, 'Até').props.value]).toEqual(['1979', '1993']);

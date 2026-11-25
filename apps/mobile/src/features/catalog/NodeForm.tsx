@@ -13,6 +13,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { Button } from '../../components/Button';
 import { TextField } from '../../components/TextField';
 import { useStyles } from './NodeForm.styles';
+import { useLocale } from '../../app/locale';
 
 // The sheet that adds or renames a node of the Catalog's tree, or a brand, the same as the web on a phone: a brand, a
 // model or a version by its name, a generation by its name and its first and last years (the last one empty while it
@@ -44,6 +45,7 @@ type NodeFormProps = {
 };
 
 export function NodeForm({ open, title, level, initial = {}, limits, submitLabel, error, saving = false, onSave, onClose }: NodeFormProps) {
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const [name, setName] = useState(initial.name ?? '');
   const [firstYear, setFirstYear] = useState(initial.firstYear?.toString() ?? '');
@@ -53,7 +55,7 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
 
   /** Checks what is typed and hands it over, or says what to fix under each field. */
   const save = () => {
-    const read = readCatalogFields(level, { name, firstYear, lastYear, year }, limits);
+    const read = readCatalogFields(level, { name, firstYear, lastYear, year }, locale, limits);
     setProblems('problems' in read ? read.problems : {});
     if ('values' in read) {
       onSave(read.values);
@@ -87,7 +89,7 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
               <TextField
                 label="De"
                 kind="number"
-                placeholder={CATALOG_YEAR_PLACEHOLDER}
+                placeholder={CATALOG_YEAR_PLACEHOLDER[locale]}
                 value={year}
                 onValueChange={(typed) => setYear(yearInput(typed))}
                 error={problems.year ?? error}
@@ -117,7 +119,7 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
               <TextField
                 label="De"
                 kind="number"
-                placeholder={CATALOG_YEAR_PLACEHOLDER}
+                placeholder={CATALOG_YEAR_PLACEHOLDER[locale]}
                 value={firstYear}
                 onValueChange={(typed) => setFirstYear(yearInput(typed))}
                 error={problems.firstYear}
@@ -127,7 +129,7 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
               <TextField
                 label="Até"
                 kind="number"
-                placeholder={CATALOG_YEAR_PLACEHOLDER}
+                placeholder={CATALOG_YEAR_PLACEHOLDER[locale]}
                 value={lastYear}
                 onValueChange={(typed) => setLastYear(yearInput(typed))}
                 error={problems.lastYear}

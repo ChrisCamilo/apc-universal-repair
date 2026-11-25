@@ -8,6 +8,7 @@ import { BottomBarItem } from '../dashboard/BottomBarItem';
 import { useBarStyles } from '../dashboard/Dashboard.styles';
 import { Dialog } from '../../components/Dialog';
 import { Icon } from '../../components/Icon';
+import { useLocale } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { useToastDuration } from '../../components/Toast';
 import { useSettingsStyles, useStyles } from './NotificationsMenu.styles';
@@ -127,6 +128,7 @@ function DurationSetting() {
 /** A notification in the list: its kind's icon in the kind's color, the message and how long ago it was shown. */
 function NotificationEntry({ notification, fresh, now }: { notification: Notification; fresh: boolean; now: Date }) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
   const { styles, ids } = useStyles();
   const look = TOAST_KIND_LOOKS[notification.kind];
   return (
@@ -139,7 +141,7 @@ function NotificationEntry({ notification, fresh, now }: { notification: Notific
           {notification.message}
         </Text>
         <Text style={styles.time} testID={ids.time}>
-          {timeAgo(notification.at, now)}
+          {timeAgo(notification.at, now, locale)}
         </Text>
       </View>
     </View>
