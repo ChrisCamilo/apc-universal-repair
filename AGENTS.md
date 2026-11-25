@@ -294,7 +294,7 @@ What the apps share is in three packages under `packages/`. The `exports` map in
 
 The API's `src` (`apps/api/src`) has one folder per feature, named as in `packages/domain/src/`. Each keeps its routes, with their tests, in its own `routes/`, apart from the feature's logic:
 
-- **`inventory/`:** the item and photo code and the CSV import; `routes/` has `items.ts`, `lists.ts` and `photos.ts`.
+- **`inventory/`:** the item code (`items.ts`, `itemChanges.ts`), the item lists' rules (`lists.ts`), a brand's set of photos (`brandPhotos.ts`) and their files on disk (`photos.ts`), and the CSV import; `routes/` has `items.ts`, `lists.ts` and `photos.ts`, which only declare the routes and answer what the rules give.
 - **`catalog/`:** the catalog's rules (`catalog.ts`: reading it and each edit), how each level of a model's tree is reached (`catalogLevels.ts`, one entry per level) and the merge of two trees (`catalogTree.ts`); `routes/catalog.ts` only declares the routes and answers what the rules give.
 - **`auth/`:** sessions, passwords and login attempts (`sessions.ts`, `passwords.ts`, `attempts.ts`); `routes/users.ts`.
 - **`devices/`:** the devices, their authorization and the entry codes; `routes/devices.ts`.

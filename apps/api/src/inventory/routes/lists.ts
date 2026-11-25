@@ -1,6 +1,5 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import { optionKey } from "@apc/domain/items";
 import {
   ITEM_LIST_PATHS,
   listEntriesSchema,
@@ -9,396 +8,108 @@ import {
   listEntryMergedSchema,
   listEntryMergeSchema,
   listEntrySchema,
-  listName,
   vehicleModelCreateSchema,
   vehicleModelSchema,
   vehicleModelsSchema,
-  type ItemListKind,
-  type ListEntry,
 } from "@apc/domain/lists";
-import type { Prisma } from "../../generated/prisma/client.js";
-import { mergeCatalogModel } from "../../catalog/catalogTree.js";
-import { prisma } from "../../db/client.js";
-import { conflict, notFound, refuse, type Rejection } from "../../http/replies.js";
+import { answer, refuse, type Result } from "../../http/replies.js";
+import {
+  addEntry,
+  addVehicleModel,
+  listEntries,
+  listVehicleModels,
+  mergeEntry,
+  mergeVehicleModel,
+  NAME_LIST_KINDS,
+  removeEntry,
+  removeVehicleModel,
+  renameEntry,
+  renameVehicleModel,
+  type Added,
+} from "../lists.js";
 
-// The lists the item form picks from: categories, part brands, vehicle brands and vehicle models. GET sends a list
-// sorted by name; POST creates a name with the writing rule applied, unless the list already holds it ignoring
-// case, accents and extra spaces, and then sends back the one it holds (200) instead of a duplicate (201 for a new
-// one). A vehicle model is created under its vehicle brand, and is only the same as a model of that brand.
-// PATCH renames an entry, with the same rule, refusing a name another entry has (409, naming that entry, so the screen
-// can offer to merge them); the items that use it refer to it, so they show the new name. POST .../:id/merge merges an
-// entry into another of its list (a model into one of its brand) in one transaction: its items move there and it is
-// deleted, a vehicle brand's models moving along, those of a name the other brand has joining that model; it answers
-// how many items moved, and refuses a merge into itself, or of two part brands an item has both of (409); an item that
-// ends up with a vehicle twice keeps it once. A vehicle brand or model of the catalog takes its place and trees there to
-// the entry merged into: a brand's place in the rail goes to a brand the catalog doesn't have, or its models join the
-// other's after its own; a model's tree moves to a model with none, or joins its tree (see catalog/catalogTree.ts). DELETE removes an
-// entry no item uses, a vehicle brand with its models; an entry items use is refused naming how many (409). Deleting a
-// vehicle brand or model of the catalog takes it out of the catalog too, a brand with its models' trees and a model with
-// its own. A part brand is used by the items it makes a brand of, and a vehicle brand or model by the items with a
-// vehicle of it. Vehicle brands and models are sent saying whether the catalog has them (inCatalog), so the screens can
-// say why one can't be merged, and what else a delete takes.
-
-/** The columns a list entry is sent with. */
-const ENTRY = { id: true, name: true } as const;
-/** The columns a vehicle brand is read with: an entry's, and whether the catalog has it. */
-const BRAND = { ...ENTRY, catalog: { select: { brandId: true } } } as const;
-/** Refuses a vehicle brand id that doesn't exist. */
-const BRAND_NOT_FOUND = notFound("Vehicle brand not found.");
-/** Refuses a list entry id that doesn't exist. */
-const ENTRY_NOT_FOUND = notFound("List entry not found.");
-/** The items using an entry of each list: by their category, or through any of their brands or vehicles. */
-const ITEMS_USING: Record<ItemListKind, (id: string) => Prisma.ItemWhereInput> = {
-  categories: (id) => ({ categoryId: id }),
-  partBrands: (id) => ({ brands: { some: { partBrandId: id } } }),
-  vehicleBrands: (id) => ({ vehicles: { some: { vehicleBrandId: id } } }),
-  vehicleModels: (id) => ({ vehicles: { some: { vehicleModelId: id } } }),
-};
-/** The columns a vehicle model is read with, and whether the catalog has it. */
-const MODEL = { id: true, name: true, brandId: true, catalogModel: { select: { id: true } } } as const;
-
-/** How the routes reach one of the lists of plain names. */
-type NameList = {
-  all: () => Promise<ListEntry[]>;
-  byId: (id: string) => Promise<ListEntry | null>;
-  find: (nameKey: string) => Promise<ListEntry | null>;
-  create: (name: string, nameKey: string) => Promise<ListEntry>;
-  rename: (id: string, name: string, nameKey: string) => Promise<ListEntry>;
-  remove: (id: string) => Promise<unknown>;
-};
-
-/** The lists of plain names, by their key in ITEM_LIST_PATHS; vehicle brands are the Brand table. */
-const NAME_LISTS: Record<"categories" | "partBrands" | "vehicleBrands", NameList> = {
-  categories: {
-    all: () => prisma.category.findMany({ select: ENTRY }),
-    byId: (id) => prisma.category.findUnique({ where: { id }, select: ENTRY }),
-    find: (nameKey) => prisma.category.findUnique({ where: { nameKey }, select: ENTRY }),
-    create: (name, nameKey) => prisma.category.create({ data: { name, nameKey }, select: ENTRY }),
-    rename: (id, name, nameKey) => prisma.category.update({ where: { id }, data: { name, nameKey }, select: ENTRY }),
-    remove: (id) => prisma.category.delete({ where: { id } }),
-  },
-  partBrands: {
-    all: () => prisma.partBrand.findMany({ select: ENTRY }),
-    byId: (id) => prisma.partBrand.findUnique({ where: { id }, select: ENTRY }),
-    find: (nameKey) => prisma.partBrand.findUnique({ where: { nameKey }, select: ENTRY }),
-    create: (name, nameKey) => prisma.partBrand.create({ data: { name, nameKey }, select: ENTRY }),
-    rename: (id, name, nameKey) => prisma.partBrand.update({ where: { id }, data: { name, nameKey }, select: ENTRY }),
-    remove: (id) => prisma.partBrand.delete({ where: { id } }),
-  },
-  vehicleBrands: {
-    all: async () => (await prisma.brand.findMany({ select: BRAND })).map(toBrandEntry),
-    byId: async (id) => toFoundBrand(await prisma.brand.findUnique({ where: { id }, select: BRAND })),
-    find: async (nameKey) => toFoundBrand(await prisma.brand.findUnique({ where: { nameKey }, select: BRAND })),
-    create: async (name, nameKey) => toBrandEntry(await prisma.brand.create({ data: { name, nameKey }, select: BRAND })),
-    rename: async (id, name, nameKey) => toBrandEntry(await prisma.brand.update({ where: { id }, data: { name, nameKey }, select: BRAND })),
-    // Its models go with it (onDelete: Cascade), and so does its place in the catalog, with its models' trees.
-    remove: (id) =>
-      prisma.$transaction([
-        prisma.catalogModel.deleteMany({ where: { vehicleModel: { brandId: id } } }),
-        prisma.catalogBrand.deleteMany({ where: { brandId: id } }),
-        prisma.brand.delete({ where: { id } }),
-      ]),
-  },
-};
+// The routes of the lists the item form picks from (see ../lists.ts for their rules). GET sends a list sorted by name;
+// POST answers the entry the list held (200) or the one added (201); PATCH answers the entry renamed; POST .../:id/merge
+// answers how many items moved; DELETE answers 204. A refusal answers its status: 404 for an entry or vehicle brand
+// that isn't there, 409 for a name another entry has, a merge the list can't take or an entry items use.
 
 /**
- * Sorts a list by name the way the form shows it, accents in their alphabetical place.
- * @param entries Entries in any order.
- * @returns The entries sorted by name.
+ * Answers an entry the list held (200) or the one added (201).
+ * @param reply Reply to send.
+ * @param added The entry, and whether it was added.
+ * @returns The entry, or the sent reply.
  */
-function byName<Entry extends ListEntry>(entries: Entry[]): Entry[] {
-  return entries.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+function answerAdded<Entry>(reply: FastifyReply, { entry, created }: Added<Entry>) {
+  return created ? reply.status(201).send(entry) : entry;
 }
 
 /**
- * Refuses a change the list can't take.
- * @param message What keeps it from being done.
- * @param reason How many items use the entry, or the entry that has the name, when that is the reason.
- * @returns The refusal.
+ * Answers an entry deleted (204), or its refusal.
+ * @param reply Reply to send.
+ * @param result What the deletion gave.
+ * @returns The sent reply.
  */
-function entryConflict(message: string, reason: { itemCount?: number; entryId?: string } = {}): Rejection {
-  return conflict(message, [{ field: "id", message, ...reason }]);
+function answerRemoved(reply: FastifyReply, result: Result<null>) {
+  return result.ok ? reply.status(204).send() : refuse(reply, result.rejection);
 }
 
 /**
- * Takes out the vehicles an item holds twice after a merge, the same brand, model, generation and version, keeping
- * each one's first place.
- * @param tx Database client, in the merge's transaction.
- * @param itemIds The items whose vehicles moved.
+ * Registers the routes of the item lists.
+ * @param app The Fastify app.
  */
-async function dropRepeatedVehicles(tx: Prisma.TransactionClient, itemIds: readonly string[]) {
-  const rows = await tx.itemVehicle.findMany({
-    where: { itemId: { in: [...itemIds] } },
-    orderBy: [{ itemId: "asc" }, { position: "asc" }, { id: "asc" }],
-    select: { id: true, itemId: true, vehicleBrandId: true, vehicleModelId: true, generationId: true, versionId: true },
-  });
-  const seen = new Set<string>();
-  const repeated = [];
-  for (const row of rows) {
-    const key = [row.itemId, row.vehicleBrandId, row.vehicleModelId ?? "", row.generationId ?? "", row.versionId ?? ""].join("|");
-    if (seen.has(key)) {
-      repeated.push(row);
-    }
-    seen.add(key);
-  }
-  await tx.itemVehicle.deleteMany({ where: { id: { in: repeated.map((row) => row.id) } } });
-}
-
-/**
- * Merges an entry into another of its list in one transaction: the items using it move there and it is deleted. A
- * vehicle brand's models move to the other brand, and one whose name that brand already has joins its model instead;
- * an item left with a vehicle twice keeps it once.
- * @param kind The list.
- * @param id The entry merged away.
- * @param into The entry it is merged into.
- * @returns How many items moved.
- */
-function mergeEntries(kind: ItemListKind, id: string, into: string): Promise<number> {
-  return prisma.$transaction(async (tx) => {
-    if (kind === "categories") {
-      const { count } = await tx.item.updateMany({ where: { categoryId: id }, data: { categoryId: into } });
-      await tx.category.delete({ where: { id } });
-      return count;
-    }
-    if (kind === "partBrands") {
-      const { count } = await tx.itemBrand.updateMany({ where: { partBrandId: id }, data: { partBrandId: into } });
-      await tx.partBrand.delete({ where: { id } });
-      return count;
-    }
-    // The items with a vehicle of the entry, before it moves.
-    const rows = await tx.itemVehicle.findMany({
-      where: kind === "vehicleModels" ? { vehicleModelId: id } : { vehicleBrandId: id },
-      distinct: ["itemId"],
-      select: { itemId: true },
-    });
-    const moved = rows.map((row) => row.itemId);
-    if (kind === "vehicleModels") {
-      await mergeCatalogModel(tx, id, into);
-      await tx.itemVehicle.updateMany({ where: { vehicleModelId: id }, data: { vehicleModelId: into } });
-      await dropRepeatedVehicles(tx, moved);
-      await tx.vehicleModel.delete({ where: { id } });
-      return moved.length;
-    }
-    const [fromCatalog, intoCatalog] = await Promise.all([
-      tx.catalogBrand.findUnique({ where: { brandId: id }, select: { id: true } }),
-      tx.catalogBrand.findUnique({ where: { brandId: into }, select: { id: true } }),
-    ]);
-    if (fromCatalog && !intoCatalog) {
-      // The brand merged into takes the other's place in the rail, with its models.
-      await tx.catalogBrand.update({ where: { id: fromCatalog.id }, data: { brandId: into } });
-    }
-    for (const model of await tx.vehicleModel.findMany({ where: { brandId: id }, select: { id: true, nameKey: true } })) {
-      const twin = await tx.vehicleModel.findUnique({
-        where: { brandId_nameKey: { brandId: into, nameKey: model.nameKey } },
-        select: { id: true },
-      });
-      if (twin) {
-        await mergeCatalogModel(tx, model.id, twin.id);
-        await tx.itemVehicle.updateMany({ where: { vehicleModelId: model.id }, data: { vehicleModelId: twin.id } });
-        await tx.vehicleModel.delete({ where: { id: model.id } });
-      } else {
-        await tx.vehicleModel.update({ where: { id: model.id }, data: { brandId: into } });
-        if (fromCatalog && intoCatalog) {
-          // Its place in the catalog goes after the other brand's models.
-          const last = await tx.catalogModel.aggregate({ where: { vehicleModel: { brandId: into }, NOT: { vehicleModelId: model.id } }, _max: { position: true } });
-          await tx.catalogModel.updateMany({ where: { vehicleModelId: model.id }, data: { position: (last._max.position ?? -1) + 1 } });
-        }
-      }
-    }
-    if (fromCatalog && intoCatalog) {
-      await tx.catalogBrand.delete({ where: { id: fromCatalog.id } });
-    }
-    await tx.itemVehicle.updateMany({ where: { vehicleBrandId: id }, data: { vehicleBrandId: into } });
-    await dropRepeatedVehicles(tx, moved);
-    await tx.brand.delete({ where: { id } });
-    return moved.length;
-  });
-}
-
-/**
- * Turns a vehicle brand row into the entry the API sends.
- * @param row Vehicle brand row, with its catalog brand if any.
- * @returns The entry, saying whether the catalog has it.
- */
-function toBrandEntry(row: { id: string; name: string; catalog: object | null }): ListEntry {
-  return { id: row.id, name: row.name, inCatalog: row.catalog !== null };
-}
-
-/**
- * Turns a vehicle brand row found by id or name into the entry the API sends.
- * @param row Vehicle brand row, or null when none was found.
- * @returns The entry, or null.
- */
-function toFoundBrand(row: { id: string; name: string; catalog: object | null } | null): ListEntry | null {
-  return row && toBrandEntry(row);
-}
-
-/**
- * Turns a vehicle model row into the model the API sends.
- * @param row Vehicle model row, with its catalog model if any.
- * @returns The model with its vehicle brand's id, saying whether the catalog has it.
- */
-function toVehicleModel(row: { id: string; name: string; brandId: string; catalogModel: object | null }) {
-  return { id: row.id, name: row.name, vehicleBrandId: row.brandId, inCatalog: row.catalogModel !== null };
-}
-
 export function registerListRoutes(app: FastifyInstance) {
   const routes = app.withTypeProvider<ZodTypeProvider>();
+  const params = listEntryIdParamsSchema;
 
-  for (const [listKind, list] of Object.entries(NAME_LISTS)) {
-    const kind = listKind as keyof typeof NAME_LISTS;
+  for (const kind of NAME_LIST_KINDS) {
     const path = ITEM_LIST_PATHS[kind];
-    routes.get(path, { schema: { response: { 200: listEntriesSchema } } }, async () => byName(await list.all()));
+    routes.get(path, { schema: { response: { 200: listEntriesSchema } } }, () => listEntries(kind));
 
     routes.post(
       path,
       { schema: { body: listEntryCreateSchema, response: { 200: listEntrySchema, 201: listEntrySchema } } },
-      async (request, reply) => {
-        const name = listName(request.body.name);
-        const nameKey = optionKey(name);
-        return (await list.find(nameKey)) ?? reply.status(201).send(await list.create(name, nameKey));
-      },
+      async (request, reply) => answerAdded(reply, await addEntry(kind, request.body.name)),
     );
 
     routes.patch(
       `${path}/:id`,
-      { schema: { params: listEntryIdParamsSchema, body: listEntryCreateSchema, response: { 200: listEntrySchema } } },
-      async (request, reply) => {
-        const { id } = request.params;
-        const held = await list.byId(id);
-        if (!held) {
-          return refuse(reply, ENTRY_NOT_FOUND);
-        }
-        const name = listName(request.body.name);
-        const nameKey = optionKey(name);
-        const other = await list.find(nameKey);
-        if (other && other.id !== id) {
-          return refuse(reply, entryConflict(`"${other.name}" is already in the list.`, { entryId: other.id }));
-        }
-        return list.rename(id, name, nameKey);
-      },
+      { schema: { params, body: listEntryCreateSchema, response: { 200: listEntrySchema } } },
+      async (request, reply) => answer(reply, await renameEntry(kind, request.params.id, request.body.name)),
     );
 
     routes.post(
       `${path}/:id/merge`,
-      { schema: { params: listEntryIdParamsSchema, body: listEntryMergeSchema, response: { 200: listEntryMergedSchema } } },
-      async (request, reply) => {
-        const { id } = request.params;
-        const { into } = request.body;
-        const [held, kept] = await Promise.all([list.byId(id), list.byId(into)]);
-        if (!held || !kept) {
-          return refuse(reply, ENTRY_NOT_FOUND);
-        }
-        if (id === into) {
-          return refuse(reply, entryConflict("An entry can't be merged into itself."));
-        }
-        // A part brand makes an item once: an item with both brands would hold the same part brand twice.
-        const both = kind === "partBrands" ? await prisma.item.count({ where: { AND: [ITEMS_USING.partBrands(id), ITEMS_USING.partBrands(into)] } }) : 0;
-        if (both > 0) {
-          return refuse(reply, entryConflict(`${both} items have both "${held.name}" and "${kept.name}".`, { itemCount: both }));
-        }
-        return { moved: await mergeEntries(kind, id, into) };
-      },
+      { schema: { params, body: listEntryMergeSchema, response: { 200: listEntryMergedSchema } } },
+      async (request, reply) => answer(reply, await mergeEntry(kind, request.params.id, request.body.into)),
     );
 
-    routes.delete(`${path}/:id`, { schema: { params: listEntryIdParamsSchema } }, async (request, reply) => {
-      const { id } = request.params;
-      const held = await list.byId(id);
-      if (!held) {
-        return refuse(reply, ENTRY_NOT_FOUND);
-      }
-      const itemCount = await prisma.item.count({ where: ITEMS_USING[kind](id) });
-      if (itemCount > 0) {
-        return refuse(reply, entryConflict(`"${held.name}" is used by ${itemCount} items.`, { itemCount }));
-      }
-      await list.remove(id);
-      return reply.status(204).send();
-    });
+    routes.delete(`${path}/:id`, { schema: { params } }, async (request, reply) => answerRemoved(reply, await removeEntry(kind, request.params.id)));
   }
 
   const modelsPath = ITEM_LIST_PATHS.vehicleModels;
 
-  routes.get(modelsPath, { schema: { response: { 200: vehicleModelsSchema } } }, async () =>
-    byName((await prisma.vehicleModel.findMany({ select: MODEL })).map(toVehicleModel)),
-  );
+  routes.get(modelsPath, { schema: { response: { 200: vehicleModelsSchema } } }, () => listVehicleModels());
 
   routes.post(
     modelsPath,
     { schema: { body: vehicleModelCreateSchema, response: { 200: vehicleModelSchema, 201: vehicleModelSchema } } },
     async (request, reply) => {
-      const brandId = request.body.vehicleBrandId;
-      if (!(await prisma.brand.findUnique({ where: { id: brandId }, select: { id: true } }))) {
-        return refuse(reply, BRAND_NOT_FOUND);
-      }
-      const name = listName(request.body.name);
-      const nameKey = optionKey(name);
-      const held = await prisma.vehicleModel.findUnique({ where: { brandId_nameKey: { brandId, nameKey } }, select: MODEL });
-      if (held) {
-        return toVehicleModel(held);
-      }
-      const created = await prisma.vehicleModel.create({ data: { name, nameKey, brandId }, select: MODEL });
-      return reply.status(201).send(toVehicleModel(created));
+      const added = await addVehicleModel(request.body.vehicleBrandId, request.body.name);
+      return added.ok ? answerAdded(reply, added.value) : refuse(reply, added.rejection);
     },
   );
 
   routes.patch(
     `${modelsPath}/:id`,
-    { schema: { params: listEntryIdParamsSchema, body: listEntryCreateSchema, response: { 200: vehicleModelSchema } } },
-    async (request, reply) => {
-      const { id } = request.params;
-      const held = await prisma.vehicleModel.findUnique({ where: { id }, select: MODEL });
-      if (!held) {
-        return refuse(reply, ENTRY_NOT_FOUND);
-      }
-      const name = listName(request.body.name);
-      const nameKey = optionKey(name);
-      const other = await prisma.vehicleModel.findUnique({
-        where: { brandId_nameKey: { brandId: held.brandId, nameKey } },
-        select: MODEL,
-      });
-      if (other && other.id !== id) {
-        return refuse(reply, entryConflict(`"${other.name}" is already a model of this brand.`, { entryId: other.id }));
-      }
-      const renamed = await prisma.vehicleModel.update({ where: { id }, data: { name, nameKey }, select: MODEL });
-      return toVehicleModel(renamed);
-    },
+    { schema: { params, body: listEntryCreateSchema, response: { 200: vehicleModelSchema } } },
+    async (request, reply) => answer(reply, await renameVehicleModel(request.params.id, request.body.name)),
   );
 
   routes.post(
     `${modelsPath}/:id/merge`,
-    { schema: { params: listEntryIdParamsSchema, body: listEntryMergeSchema, response: { 200: listEntryMergedSchema } } },
-    async (request, reply) => {
-      const { id } = request.params;
-      const { into } = request.body;
-      const [held, kept] = await Promise.all([
-        prisma.vehicleModel.findUnique({ where: { id }, select: MODEL }),
-        prisma.vehicleModel.findUnique({ where: { id: into }, select: MODEL }),
-      ]);
-      if (!held || !kept) {
-        return refuse(reply, ENTRY_NOT_FOUND);
-      }
-      if (id === into) {
-        return refuse(reply, entryConflict("An entry can't be merged into itself."));
-      }
-      if (held.brandId !== kept.brandId) {
-        return refuse(reply, entryConflict("A model can only be merged into a model of its brand."));
-      }
-      return { moved: await mergeEntries("vehicleModels", id, into) };
-    },
+    { schema: { params, body: listEntryMergeSchema, response: { 200: listEntryMergedSchema } } },
+    async (request, reply) => answer(reply, await mergeVehicleModel(request.params.id, request.body.into)),
   );
 
-  routes.delete(`${modelsPath}/:id`, { schema: { params: listEntryIdParamsSchema } }, async (request, reply) => {
-    const { id } = request.params;
-    const held = await prisma.vehicleModel.findUnique({ where: { id }, select: MODEL });
-    if (!held) {
-      return refuse(reply, ENTRY_NOT_FOUND);
-    }
-    const itemCount = await prisma.item.count({ where: ITEMS_USING.vehicleModels(id) });
-    if (itemCount > 0) {
-      return refuse(reply, entryConflict(`"${held.name}" is used by ${itemCount} items.`, { itemCount }));
-    }
-    // Its place in the catalog goes with it, with its tree.
-    await prisma.$transaction([prisma.catalogModel.deleteMany({ where: { vehicleModelId: id } }), prisma.vehicleModel.delete({ where: { id } })]);
-    return reply.status(204).send();
-  });
+  routes.delete(`${modelsPath}/:id`, { schema: { params } }, async (request, reply) => answerRemoved(reply, await removeVehicleModel(request.params.id)));
 }

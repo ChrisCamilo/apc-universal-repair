@@ -1,29 +1,20 @@
-import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { z } from "zod";
 import { itemBrandIdParamsSchema, itemSchema } from "@apc/domain/items";
-import { ITEM_PHOTO_LIMIT, PHOTO_PARTS } from "@apc/domain/photos";
-import { prisma } from "../../db/client.js";
-import { badRequest, notFound, refuse, unauthorized, type Rejection } from "../../http/replies.js";
-import { ITEM_NOT_FOUND } from "../itemChanges.js";
-import { ITEM_INCLUDE, toItem } from "../items.js";
-import { checkPhoto, copyStoredPhoto, photosDir, removePhotoFiles, storePhoto } from "../photos.js";
+import { answer, notFound, refuse, unauthorized } from "../../http/replies.js";
+import { replaceBrandPhotos, type PhotoPart } from "../brandPhotos.js";
+import { photosDir } from "../photos.js";
 import { validPhotoSignature, type SessionLookup } from "../../auth/sessions.js";
 
-// The photos of an item's brand. PUT /items/:id/brands/:brandId/photos sets them all at once, in the order of the request's parts: a "keep" part
-// keeps a saved photo by its id, a "copy" part copies a saved photo of any brand, as a duplicated item's do, into a new
-// photo with files of its own, and a "photo" part adds a new file, so one request adds, removes, replaces and
-// reorders. Everything sent is checked before anything is stored: at most 3 photos, each new one a JPG, PNG or
-// WebP up to 3 MB by its content, each kept one a photo of this brand and each copied one a saved photo. Photos left
-// out are deleted with their files. GET /photos/:file serves the stored files, which never change, since each new photo gets a new id. It is
-// open without a session, as <img> can't send one, but only at a path the API signed for a live session (see
+// The photo routes. PUT /items/:id/brands/:brandId/photos reads the request's parts and sets the brand's photos to
+// them (see ../brandPhotos.ts), answering the item, or 400 for a set that breaks the rules and 404 for an item or brand
+// that isn't there. GET /photos/:file serves the stored files, which never change, since each new photo gets a new id.
+// It is open without a session, as <img> can't send one, but only at a path the API signed for a live session (see
 // sessions.ts), answering 401 otherwise; the browser keeps the file only for this device, until the path changes.
 
-/** Refuses a brand that isn't one of the item's. */
-const BRAND_NOT_FOUND = notFound("Brand not found on this item.");
 /** Content type of each stored file, by extension. */
 const CONTENT_TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
 // A stored file's name: a photo id, "-thumb" for the thumbnail, and its extension; nothing else is served.
@@ -37,29 +28,6 @@ const photoSignatureQuerySchema = z.object({ session: z.string().optional(), sig
 /** Refuses a photo path the API didn't sign for a live session. */
 const UNSIGNED = unauthorized("This photo path isn't signed for a session.");
 
-const uuidSchema = z.uuid();
-
-/** One photo of the new set: a saved one kept, a saved one copied, or a new file checkPhoto accepted. */
-type PhotoEntry = { keep: string } | { copy: string } | { buffer: Buffer };
-
-/**
- * Refuses photos that can't be saved, naming what keeps them from it.
- * @param messages One message per problem, e.g. "Photo 2 is larger than 3 MB."
- * @returns The refusal.
- */
-function badPhotos(messages: string[]): Rejection {
-  return badRequest("The photos can't be saved.", messages.map((message) => ({ field: "photos", message })));
-}
-
-/**
- * Tells whether a part's value is a photo id.
- * @param value The value of a form part.
- * @returns True for a UUID.
- */
-function isUuid(value: unknown): boolean {
-  return uuidSchema.safeParse(value).success;
-}
-
 /**
  * Registers the item photo routes.
  * @param app The Fastify app.
@@ -72,82 +40,15 @@ export function registerPhotoRoutes(app: FastifyInstance, sessions: SessionLooku
     "/items/:id/brands/:brandId/photos",
     { schema: { params: itemBrandIdParamsSchema, response: { 200: itemSchema } } },
     async (request, reply) => {
-      const entries: PhotoEntry[] = [];
-      const problems: string[] = [];
+      const parts: PhotoPart[] = [];
       for await (const part of request.parts()) {
-        const number = entries.length + problems.length + 1;
-        if (part.type === "file" && part.fieldname === PHOTO_PARTS.file) {
-          const buffer = await part.toBuffer();
-          const problem = part.file.truncated ? "is larger than 3 MB" : await checkPhoto(buffer);
-          if (problem) {
-            problems.push(`Photo ${number} ${problem}.`);
-          } else {
-            entries.push({ buffer });
-          }
-        } else if (part.type === "field" && part.fieldname === PHOTO_PARTS.keep && isUuid(part.value)) {
-          entries.push({ keep: String(part.value) });
-        } else if (part.type === "field" && part.fieldname === PHOTO_PARTS.copy && isUuid(part.value)) {
-          entries.push({ copy: String(part.value) });
-        } else {
-          problems.push(`Part ${number} is neither a "${PHOTO_PARTS.keep}" or "${PHOTO_PARTS.copy}" photo id nor a "${PHOTO_PARTS.file}" file.`);
-        }
+        parts.push(
+          part.type === "file"
+            ? { field: part.fieldname, file: await part.toBuffer(), truncated: part.file.truncated }
+            : { field: part.fieldname, value: part.value },
+        );
       }
-      if (entries.length + problems.length > ITEM_PHOTO_LIMIT) {
-        problems.push(`A brand of an item holds at most ${ITEM_PHOTO_LIMIT} photos.`);
-      }
-      if (problems.length > 0) {
-        return refuse(reply, badPhotos(problems));
-      }
-
-      const { id, brandId } = request.params;
-      if (!(await prisma.item.findUnique({ where: { id }, select: { id: true } }))) {
-        return refuse(reply, ITEM_NOT_FOUND);
-      }
-      const brand = await prisma.itemBrand.findFirst({ where: { id: brandId, itemId: id }, include: { photos: true } });
-      if (!brand) {
-        return refuse(reply, BRAND_NOT_FOUND);
-      }
-      const saved = new Map(brand.photos.map((photo) => [photo.id, photo]));
-      const kept = entries.flatMap((entry) => ("keep" in entry ? [entry.keep] : []));
-      if (kept.some((photoId) => !saved.has(photoId)) || new Set(kept).size < kept.length) {
-        return refuse(reply, badPhotos(["Kept photos must be this brand's photos, each kept once."]));
-      }
-      const copied = entries.flatMap((entry) => ("copy" in entry ? [entry.copy] : []));
-      const sources = new Map(
-        (await prisma.itemPhoto.findMany({ where: { id: { in: copied } } })).map((photo) => [photo.id, photo]),
-      );
-      if (copied.some((photoId) => !sources.has(photoId))) {
-        return refuse(reply, badPhotos(["Copied photos must be saved photos."]));
-      }
-
-      const photos = await Promise.all(
-        entries.map(async (entry) => {
-          if ("keep" in entry) {
-            return saved.get(entry.keep)!;
-          }
-          const photoId = randomUUID();
-          if ("copy" in entry) {
-            return { id: photoId, ...(await copyStoredPhoto(photoId, sources.get(entry.copy)!)) };
-          }
-          return { id: photoId, ...(await storePhoto(photoId, entry.buffer)) };
-        }),
-      );
-      const added = photos.filter((photo) => !saved.has(photo.id));
-      try {
-        await prisma.$transaction([
-          prisma.itemPhoto.deleteMany({ where: { brandId } }),
-          prisma.itemPhoto.createMany({
-            data: photos.map(({ id: photoId, file, thumbFile }, position) => ({ id: photoId, brandId, position, file, thumbFile })),
-          }),
-        ]);
-      } catch (error) {
-        await removePhotoFiles(added.flatMap((photo) => [photo.file, photo.thumbFile]));
-        throw error;
-      }
-      await removePhotoFiles(
-        brand.photos.filter((photo) => !kept.includes(photo.id)).flatMap((photo) => [photo.file, photo.thumbFile]),
-      );
-      return toItem((await prisma.item.findUnique({ where: { id }, include: ITEM_INCLUDE }))!, request.session);
+      return answer(reply, await replaceBrandPhotos(request.params.id, request.params.brandId, parts, request.session));
     },
   );
 
