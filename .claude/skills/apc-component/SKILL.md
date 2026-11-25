@@ -20,5 +20,5 @@ Read these AGENTS.md sections before writing code: "Styles" (Files, `tv()`/`reci
 5. **Phone layout** below `card:` on web and always in the native app: page scrolls as a whole, forms full screen, choices in a bottom sheet, 44px touch targets (`scales.touch`), 16px text inputs.
 6. **Code layout:** imports → constants (A–Z) → types → functions (A–Z, JSDoc) → components.
 7. **Story** in Storybook with its own sample data only (no API, storage or desktop bridge): it is public on GitHub Pages.
-8. **Component test** for every style (`eighties`, `gt4`, `bmw90`, `fiat90`) and mode, keyboard and focus, at the minimum sizes; mobile test in `apps/mobile/__tests__/`. Use the `apc-test` skill for the rules.
+8. **Component test** for every style (`eighties`, `gt4`, `bmw90`, `fiat90`) and mode, keyboard and focus, at the minimum sizes; mobile test beside the component, in its folder (`apps/mobile/src/components/Button/Button.test.tsx`). Use the `apc-test` skill for the rules.
 9. **Check:** `pnpm lint` (includes `lint:styles`), `pnpm typecheck`, `pnpm test`, and the web E2E at 1280×720 and 360×780. Screens that fill the window also at 1360×768 and 1360×689.
