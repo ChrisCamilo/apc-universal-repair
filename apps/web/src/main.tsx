@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './app/fonts.ts'
 import './index.css'
 import { ToastProvider } from './components/Toast'
+import { LocaleProvider } from './app/LocaleProvider.tsx'
 import { ThemeProvider } from './app/ThemeProvider.tsx'
 import App from './app/App.tsx'
 
@@ -13,10 +14,12 @@ const demo = import.meta.env.VITE_DEMO ? await (await import('./demo/startDemo.t
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <ToastProvider>
-        {demo && <demo.Notice />}
-        <App login={demo?.login} />
-      </ToastProvider>
+      <LocaleProvider>
+        <ToastProvider>
+          {demo && <demo.Notice />}
+          <App login={demo?.login} />
+        </ToastProvider>
+      </LocaleProvider>
     </ThemeProvider>
   </StrictMode>,
 )
