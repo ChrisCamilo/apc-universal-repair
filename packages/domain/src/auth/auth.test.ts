@@ -98,17 +98,17 @@ function memoryStore(): { store: SessionStore; saved: Map<string, string> } {
 
 // Leaves each field empty in turn, and checks only the empty ones get their message, in form order.
 test("Shared: each empty login field gets its message", () => {
-  assert.deepEqual(loginErrors({ username: "", password: "" }), { username: LOGIN_MESSAGES.username, password: LOGIN_MESSAGES.password });
-  assert.deepEqual(Object.keys(loginErrors({ username: "", password: "" })), ["username", "password"]);
-  assert.deepEqual(loginErrors({ username: "christian.camilo", password: "" }), { password: LOGIN_MESSAGES.password });
-  assert.deepEqual(loginErrors({ username: "", password: "opala" }), { username: LOGIN_MESSAGES.username });
-  assert.deepEqual(loginErrors({ username: "christian.camilo", password: "opala" }), {});
+  assert.deepEqual(loginErrors({ username: "", password: "" }, "pt-BR"), { username: LOGIN_MESSAGES["pt-BR"].username, password: LOGIN_MESSAGES["pt-BR"].password });
+  assert.deepEqual(Object.keys(loginErrors({ username: "", password: "" }, "pt-BR")), ["username", "password"]);
+  assert.deepEqual(loginErrors({ username: "christian.camilo", password: "" }, "pt-BR"), { password: LOGIN_MESSAGES["pt-BR"].password });
+  assert.deepEqual(loginErrors({ username: "", password: "opala" }, "pt-BR"), { username: LOGIN_MESSAGES["pt-BR"].username });
+  assert.deepEqual(loginErrors({ username: "christian.camilo", password: "opala" }, "pt-BR"), {});
 });
 
 // Types only spaces in each field, and checks a user of spaces counts as empty but a password of spaces doesn't,
 // since spaces can be part of a password.
 test("Shared: a user of only spaces is empty, a password of spaces is not", () => {
-  assert.deepEqual(loginErrors({ username: "   ", password: "   " }), { username: LOGIN_MESSAGES.username });
+  assert.deepEqual(loginErrors({ username: "   ", password: "   " }, "pt-BR"), { username: LOGIN_MESSAGES["pt-BR"].username });
 });
 
 // Logs in as a test user, also typing the user in another case and with spaces around it, and checks the login
@@ -117,9 +117,9 @@ test("Shared: a test user logs in and the session is saved", async () => {
   const { store, saved } = memoryStore();
   const auth = createMockAuth(store, TEST_USERS, 0);
   const expected = { id: USER.id, username: USER.username, displayName: USER.displayName, initials: initials(USER.displayName), inventoryTutorialSeen: false };
-  assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }), expected);
+  assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }, "pt-BR"), expected);
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), expected);
-  assert.deepEqual(await createMockAuth(store, TEST_USERS, 0).login({ username: ` ${USER.username.toUpperCase()} `, password: USER.password }), expected);
+  assert.deepEqual(await createMockAuth(store, TEST_USERS, 0).login({ username: ` ${USER.username.toUpperCase()} `, password: USER.password }, "pt-BR"), expected);
 });
 
 // Tries a wrong password, an unknown user and the password in another case, and checks each is refused with no
@@ -127,9 +127,9 @@ test("Shared: a test user logs in and the session is saved", async () => {
 test("Shared: a wrong user or password is refused and saves nothing", async () => {
   const { store, saved } = memoryStore();
   const auth = createMockAuth(store, TEST_USERS, 0);
-  assert.equal(await auth.login({ username: USER.username, password: "errada" }), null);
-  assert.equal(await auth.login({ username: "fulano", password: USER.password }), null);
-  assert.equal(await auth.login({ username: USER.username, password: USER.password.toUpperCase() }), null);
+  assert.equal(await auth.login({ username: USER.username, password: "errada" }, "pt-BR"), null);
+  assert.equal(await auth.login({ username: "fulano", password: USER.password }, "pt-BR"), null);
+  assert.equal(await auth.login({ username: USER.username, password: USER.password.toUpperCase() }, "pt-BR"), null);
   assert.equal(saved.size, 0);
 });
 
@@ -137,7 +137,7 @@ test("Shared: a wrong user or password is refused and saves nothing", async () =
 // checks nobody is logged in any more.
 test("Shared: the session comes back after a reload and ends with logout", async () => {
   const { store } = memoryStore();
-  const user = await createMockAuth(store, TEST_USERS, 0).login({ username: USER.username, password: USER.password });
+  const user = await createMockAuth(store, TEST_USERS, 0).login({ username: USER.username, password: USER.password }, "pt-BR");
   const reloaded = createMockAuth(store, TEST_USERS, 0);
   assert.deepEqual(await reloaded.currentUser(), user);
   await reloaded.logout();
@@ -166,28 +166,28 @@ test("Shared: initials take the first letters of the first and last words", () =
 test("Shared: the mocked login answers after its delay", async () => {
   const { store } = memoryStore();
   const started = Date.now();
-  await createMockAuth(store, TEST_USERS, 50).login({ username: USER.username, password: USER.password });
+  await createMockAuth(store, TEST_USERS, 50).login({ username: USER.username, password: USER.password }, "pt-BR");
   assert.ok(Date.now() - started >= 45);
 });
 
 // Fills the sign-up with each kind of mistake in turn, and checks each field gets its message in form order, the
 // username typed in uppercase is fine, and a sign-up with every field fine has none.
 test("Shared: each sign-up field that breaks a rule gets its message", () => {
-  assert.deepEqual(registerErrors(NEW_USER), {});
-  const empty = registerErrors({ displayName: " ", username: " ", email: "", password: "", confirm: "" });
+  assert.deepEqual(registerErrors(NEW_USER, "pt-BR"), {});
+  const empty = registerErrors({ displayName: " ", username: " ", email: "", password: "", confirm: "" }, "pt-BR");
   assert.deepEqual(empty, {
-    displayName: REGISTER_MESSAGES.displayName,
-    username: REGISTER_MESSAGES.username,
-    email: REGISTER_MESSAGES.email,
-    password: REGISTER_MESSAGES.password,
-    confirm: REGISTER_MESSAGES.confirm,
+    displayName: REGISTER_MESSAGES["pt-BR"].displayName,
+    username: REGISTER_MESSAGES["pt-BR"].username,
+    email: REGISTER_MESSAGES["pt-BR"].email,
+    password: REGISTER_MESSAGES["pt-BR"].password,
+    confirm: REGISTER_MESSAGES["pt-BR"].confirm,
   });
   assert.deepEqual(Object.keys(empty), ["displayName", "username", "email", "password", "confirm"]);
-  assert.deepEqual(registerErrors({ ...NEW_USER, username: "an" }), { username: REGISTER_MESSAGES.usernameFormat });
-  assert.deepEqual(registerErrors({ ...NEW_USER, username: "ana souza" }), { username: REGISTER_MESSAGES.usernameFormat });
-  assert.deepEqual(registerErrors({ ...NEW_USER, email: "ana@" }), { email: REGISTER_MESSAGES.emailFormat });
-  assert.deepEqual(registerErrors({ ...NEW_USER, password: "curta", confirm: "curta" }), { password: REGISTER_MESSAGES.passwordShort });
-  assert.deepEqual(registerErrors({ ...NEW_USER, confirm: "freio12345" }), { confirm: REGISTER_MESSAGES.confirmMismatch });
+  assert.deepEqual(registerErrors({ ...NEW_USER, username: "an" }, "pt-BR"), { username: REGISTER_MESSAGES["pt-BR"].usernameFormat });
+  assert.deepEqual(registerErrors({ ...NEW_USER, username: "ana souza" }, "pt-BR"), { username: REGISTER_MESSAGES["pt-BR"].usernameFormat });
+  assert.deepEqual(registerErrors({ ...NEW_USER, email: "ana@" }, "pt-BR"), { email: REGISTER_MESSAGES["pt-BR"].emailFormat });
+  assert.deepEqual(registerErrors({ ...NEW_USER, password: "curta", confirm: "curta" }, "pt-BR"), { password: REGISTER_MESSAGES["pt-BR"].passwordShort });
+  assert.deepEqual(registerErrors({ ...NEW_USER, confirm: "freio12345" }, "pt-BR"), { confirm: REGISTER_MESSAGES["pt-BR"].confirmMismatch });
 });
 
 // Reads a sign-up through the API's schema and checks the name and e-mail are trimmed and the username lowercased,
@@ -199,9 +199,9 @@ test("Shared: the API reads a sign-up under the form's rules", () => {
   assert.deepEqual(
     wrong.error.issues.map((issue) => [issue.path[0], issue.message]),
     [
-      ["username", REGISTER_MESSAGES.usernameFormat],
-      ["email", REGISTER_MESSAGES.emailFormat],
-      ["password", REGISTER_MESSAGES.passwordShort],
+      ["username", REGISTER_MESSAGES["pt-BR"].usernameFormat],
+      ["email", REGISTER_MESSAGES["pt-BR"].emailFormat],
+      ["password", REGISTER_MESSAGES["pt-BR"].passwordShort],
     ],
   );
 });
@@ -211,14 +211,14 @@ test("Shared: the API reads a sign-up under the form's rules", () => {
 test("Shared: the mocked sign-up logs the new user in and refuses a taken username", async () => {
   const { store, saved } = memoryStore();
   const auth = createMockAuth(store, TEST_USERS, 0);
-  const created = await auth.register(NEW_USER);
+  const created = await auth.register(NEW_USER, "pt-BR");
   const user = { id: "user-ana.souza", username: "ana.souza", displayName: "Ana Souza", initials: "AS", inventoryTutorialSeen: false };
   assert.deepEqual(created, { user });
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), user);
   await auth.logout();
-  assert.deepEqual(await auth.login({ username: "ana.souza", password: NEW_USER.password }), user);
-  assert.deepEqual(await auth.register({ ...NEW_USER, username: "ANA.SOUZA" }), { refused: REGISTER_MESSAGES.taken });
-  assert.deepEqual(await auth.register({ ...NEW_USER, username: USER.username }), { refused: REGISTER_MESSAGES.taken });
+  assert.deepEqual(await auth.login({ username: "ana.souza", password: NEW_USER.password }, "pt-BR"), user);
+  assert.deepEqual(await auth.register({ ...NEW_USER, username: "ANA.SOUZA" }, "pt-BR"), { refused: REGISTER_MESSAGES["pt-BR"].taken });
+  assert.deepEqual(await auth.register({ ...NEW_USER, username: USER.username }, "pt-BR"), { refused: REGISTER_MESSAGES["pt-BR"].taken });
 });
 
 // Logs in through the API stand-in: an accepted login saves the user it answers with and their token, and answers
@@ -227,15 +227,15 @@ test("Shared: the mocked sign-up logs the new user in and refuses a taken userna
 test("Shared: the API login saves the user and the token, refuses a 401 and rejects otherwise", async () => {
   const accepted = answering(200, LOGGED_IN);
   const { store, saved } = memoryStore();
-  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, accepted.send).login({ username: USER.username, password: USER.password }), SESSION_USER);
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, accepted.send).login({ username: USER.username, password: USER.password }, "pt-BR"), SESSION_USER);
   assert.deepEqual(accepted.sent, [{ url: "/api/sessions", body: { username: USER.username, password: USER.password, device: PROOF } }]);
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), LOGGED_IN);
 
   const refused = memoryStore();
-  assert.equal(await createApiAuth(refused.store, "/api", DEVICE, answering(401).send).login({ username: "x", password: "y" }), null);
+  assert.equal(await createApiAuth(refused.store, "/api", DEVICE, answering(401).send).login({ username: "x", password: "y" }, "pt-BR"), null);
   assert.equal(refused.saved.size, 0);
-  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).login({ username: "x", password: "y" }));
-  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(200, SESSION_USER).send).login({ username: "x", password: "y" }));
+  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).login({ username: "x", password: "y" }, "pt-BR"));
+  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(200, SESSION_USER).send).login({ username: "x", password: "y" }, "pt-BR"));
 });
 
 // Logs in with an entry code through the API stand-in: an accepted code saves the user and the token, sent with the
@@ -244,20 +244,20 @@ test("Shared: the API login saves the user and the token, refuses a 401 and reje
 test("Shared: an entry code logs in through the API, or says why it was refused", async () => {
   const accepted = answering(200, LOGGED_IN);
   const { store, saved } = memoryStore();
-  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, accepted.send).pair("K7Q2ZD9M"), SESSION_USER);
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, accepted.send).pair("K7Q2ZD9M", "pt-BR"), SESSION_USER);
   assert.deepEqual(accepted.sent, [{ url: "/api/sessions/pairing", body: { code: "K7Q2ZD9M", device: PROOF } }]);
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), LOGGED_IN);
 
   const refused = memoryStore();
-  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, answering(401).send).pair("K7Q2ZD9M"), { refused: PAIRING_REFUSED });
+  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, answering(401).send).pair("K7Q2ZD9M", "pt-BR"), { refused: PAIRING_REFUSED["pt-BR"] });
   const waiting = answering(403, { statusCode: 403, error: "device_pending", message: "Device not authorized yet.", code: "K7Q2ZD" });
-  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, waiting.send).pair("K7Q2ZD9M"), { pending: "K7Q2ZD" });
+  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, waiting.send).pair("K7Q2ZD9M", "pt-BR"), { pending: "K7Q2ZD" });
   const limited = withChallenge(async () => new Response("{}", { status: 429, headers: { "Retry-After": "840" } }));
-  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, limited).pair("K7Q2ZD9M"), { refused: "Muitas tentativas. Tente de novo em 14 min." });
+  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, limited).pair("K7Q2ZD9M", "pt-BR"), { refused: "Muitas tentativas. Tente de novo em 14 min." });
   assert.equal(refused.saved.size, 0);
-  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).pair("K7Q2ZD9M"));
+  await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).pair("K7Q2ZD9M", "pt-BR"));
 
-  const mock = await createMockAuth(memoryStore().store, TEST_USERS, 0).pair("K7Q2ZD9M");
+  const mock = await createMockAuth(memoryStore().store, TEST_USERS, 0).pair("K7Q2ZD9M", "pt-BR");
   assert.equal("id" in mock && mock.username, USER.username);
 });
 
@@ -268,15 +268,15 @@ test("Shared: the API sign-up saves the user and the token, or says why it was r
   const { store, saved } = memoryStore();
   const sent = { displayName: NEW_USER.displayName, username: NEW_USER.username, email: NEW_USER.email, password: NEW_USER.password };
   const user = { id: "u1", username: "ana.souza", displayName: "Ana Souza", initials: "AS", inventoryTutorialSeen: false };
-  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, created.send).register(sent), { user });
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, created.send).register(sent, "pt-BR"), { user });
   assert.deepEqual(created.sent, [{ url: "/api/users", body: { ...sent, device: PROOF } }]);
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), { ...user, token: "t2" });
-  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, answering(409).send).register(sent), { refused: REGISTER_MESSAGES.taken });
-  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, answering(400).send).register(sent), { refused: REGISTER_MESSAGES.failed });
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, answering(409).send).register(sent, "pt-BR"), { refused: REGISTER_MESSAGES["pt-BR"].taken });
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, answering(400).send).register(sent, "pt-BR"), { refused: REGISTER_MESSAGES["pt-BR"].failed });
   const offline = (async () => {
     throw new TypeError("fetch failed");
   }) as typeof fetch;
-  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, offline).register(sent), { refused: REGISTER_MESSAGES.failed });
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, offline).register(sent, "pt-BR"), { refused: REGISTER_MESSAGES["pt-BR"].failed });
 });
 
 // Reads a saved session back and marks the tutorial seen through the API stand-in: the saved session says so, keeping
@@ -307,7 +307,7 @@ test("Shared: an address given as a function is read at each request", async () 
   const api = answering(200, LOGGED_IN);
   let server = "https://192.168.0.10:3000";
   const auth = createApiAuth(memoryStore().store, () => server, DEVICE, api.send);
-  await auth.login({ username: USER.username, password: USER.password });
+  await auth.login({ username: USER.username, password: USER.password }, "pt-BR");
   server = "https://192.168.0.11:3000";
   await auth.logout();
   assert.deepEqual(
@@ -334,7 +334,7 @@ test("Shared: the API logout ends the session on the API and on the device", asy
   const { store, saved } = memoryStore();
   const api = answering(200, LOGGED_IN);
   const auth = createApiAuth(store, "/api", DEVICE, api.send);
-  await auth.login({ username: USER.username, password: USER.password });
+  await auth.login({ username: USER.username, password: USER.password }, "pt-BR");
   await auth.logout();
   assert.deepEqual(api.sent.at(-1), { url: "/api/sessions/current", method: "DELETE", body: undefined, authorization: "Bearer t1" });
   assert.equal(saved.size, 0);
@@ -390,21 +390,21 @@ test("Shared: API calls carry the token, and a 401 to one ends the session", asy
 // it was seen while another user's first login still says it wasn't.
 test("Shared: the mocked login remembers who has seen the Inventory tutorial", async () => {
   const auth = createMockAuth(memoryStore().store, TEST_USERS, 0);
-  const first = (await auth.login({ username: USER.username, password: USER.password })) as SessionUser;
+  const first = (await auth.login({ username: USER.username, password: USER.password }, "pt-BR")) as SessionUser;
   assert.equal(first.inventoryTutorialSeen, false);
   await auth.markInventoryTutorialSeen(first);
   await auth.logout();
-  assert.equal(((await auth.login({ username: USER.username, password: USER.password })) as SessionUser).inventoryTutorialSeen, true);
+  assert.equal(((await auth.login({ username: USER.username, password: USER.password }, "pt-BR")) as SessionUser).inventoryTutorialSeen, true);
   const other = TEST_USERS[1];
-  assert.equal(((await auth.login({ username: other.username, password: other.password })) as SessionUser).inventoryTutorialSeen, false);
+  assert.equal(((await auth.login({ username: other.username, password: other.password }, "pt-BR")) as SessionUser).inventoryTutorialSeen, false);
 });
 
 // Turns a 429's Retry-After into the message: whole minutes rounded up, at least one, and a minute when it is missing.
 test("Shared: too many attempts say how many minutes to wait", () => {
-  assert.equal(tooManyAttempts("900"), "Muitas tentativas. Tente de novo em 15 min.");
-  assert.equal(tooManyAttempts("61"), "Muitas tentativas. Tente de novo em 2 min.");
-  assert.equal(tooManyAttempts("5"), "Muitas tentativas. Tente de novo em 1 min.");
-  assert.equal(tooManyAttempts(null), "Muitas tentativas. Tente de novo em 1 min.");
+  assert.equal(tooManyAttempts("900", "pt-BR"), "Muitas tentativas. Tente de novo em 15 min.");
+  assert.equal(tooManyAttempts("61", "pt-BR"), "Muitas tentativas. Tente de novo em 2 min.");
+  assert.equal(tooManyAttempts("5", "pt-BR"), "Muitas tentativas. Tente de novo em 1 min.");
+  assert.equal(tooManyAttempts(null, "pt-BR"), "Muitas tentativas. Tente de novo em 1 min.");
 });
 
 // Has the API answer a login and a sign-up with 429, and checks both are refused saying when to try again, with
@@ -414,9 +414,9 @@ test("Shared: the API login and sign-up say when to try again after too many att
   const { store, saved } = memoryStore();
   const auth = createApiAuth(store, "/api", DEVICE, limited);
   const refused = { refused: "Muitas tentativas. Tente de novo em 14 min." };
-  assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }), refused);
+  assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }, "pt-BR"), refused);
   const sent = { displayName: NEW_USER.displayName, username: NEW_USER.username, email: NEW_USER.email, password: NEW_USER.password };
-  assert.deepEqual(await auth.register(sent), refused);
+  assert.deepEqual(await auth.register(sent, "pt-BR"), refused);
   assert.equal(saved.size, 0);
 });
 
@@ -427,9 +427,9 @@ test("Shared: a device waiting for authorization is told so with its code, and a
   const waiting = answering(403, { statusCode: 403, error: "device_pending", message: "Device not authorized yet.", code: "K7Q2ZD" });
   const { store, saved } = memoryStore();
   const auth = createApiAuth(store, "/api", DEVICE, waiting.send);
-  assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }), { pending: "K7Q2ZD" });
+  assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }, "pt-BR"), { pending: "K7Q2ZD" });
   const sent = { displayName: NEW_USER.displayName, username: NEW_USER.username, email: NEW_USER.email, password: NEW_USER.password };
-  assert.deepEqual(await auth.register(sent), { pending: "K7Q2ZD" });
+  assert.deepEqual(await auth.register(sent, "pt-BR"), { pending: "K7Q2ZD" });
   assert.equal(saved.size, 0);
 
   const status = answering(200, { status: "authorized" });
@@ -458,12 +458,12 @@ test("Shared: a waiting device logs in once it is authorized, and stops when ref
     },
   } as unknown as AuthService;
   const credentials = { username: USER.username, password: USER.password };
-  assert.deepEqual(await waitForDevice(auth, () => auth.login(credentials), new AbortController().signal, 0), SESSION_USER);
+  assert.deepEqual(await waitForDevice(auth, () => auth.login(credentials, "pt-BR"), new AbortController().signal, 0), SESSION_USER);
   assert.deepEqual(logins, [credentials]);
 
   const refused = { deviceStatus: async () => "unknown" } as unknown as AuthService;
-  assert.equal(await waitForDevice(refused, () => refused.login(credentials), new AbortController().signal, 0), null);
+  assert.equal(await waitForDevice(refused, () => refused.login(credentials, "pt-BR"), new AbortController().signal, 0), null);
   const stopped = new AbortController();
   stopped.abort();
-  assert.equal(await waitForDevice(refused, () => refused.login(credentials), stopped.signal, 0), undefined);
+  assert.equal(await waitForDevice(refused, () => refused.login(credentials, "pt-BR"), stopped.signal, 0), undefined);
 });

@@ -22,10 +22,10 @@ after(() => app.close());
 // and that the password typed never comes back in the answer.
 test("API: a sign-up breaking the form's rules is refused per field", async () => {
   const cases = [
-    { field: "displayName", value: "  ", message: REGISTER_MESSAGES.displayName },
-    { field: "username", value: "a b", message: REGISTER_MESSAGES.usernameFormat },
-    { field: "email", value: "ana@", message: REGISTER_MESSAGES.emailFormat },
-    { field: "password", value: "curta", message: REGISTER_MESSAGES.passwordShort },
+    { field: "displayName", value: "  ", message: REGISTER_MESSAGES["pt-BR"].displayName },
+    { field: "username", value: "a b", message: REGISTER_MESSAGES["pt-BR"].usernameFormat },
+    { field: "email", value: "ana@", message: REGISTER_MESSAGES["pt-BR"].emailFormat },
+    { field: "password", value: "curta", message: REGISTER_MESSAGES["pt-BR"].passwordShort },
   ];
   for (const { field, value, message } of cases) {
     const response = await app.inject({ method: "POST", url: "/users", payload: { ...NEW_USER, [field]: value } });
