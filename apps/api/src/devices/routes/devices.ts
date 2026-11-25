@@ -28,7 +28,7 @@ const STATUS_LIMIT = 300;
 /** Refuses a device id that doesn't exist. */
 const DEVICE_NOT_FOUND = notFound("Device not found.");
 /** A device's id in a path. */
-const deviceParamsSchema = z.object({ id: z.string() });
+const deviceParamsSchema = z.object({ id: z.uuid() });
 /** Refuses managing devices from any address but the server's computer. */
 const NOT_HERE = forbidden("Devices are managed only on the server's computer.");
 /** What a device row is read with. */

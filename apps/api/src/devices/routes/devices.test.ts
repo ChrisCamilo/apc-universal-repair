@@ -76,6 +76,21 @@ test("API: devices are managed only from the server's computer", async () => {
   );
 });
 
+// Calls each route of one device from the server's computer, with a session, at an id that isn't a UUID, and checks
+// each is refused with 400 before the database is asked.
+test("API: a device's routes refuse an id that isn't a UUID", async () => {
+  const calls = [
+    { method: "POST", url: "/devices/d1/authorize", payload: {} },
+    { method: "PATCH", url: "/devices/d1", payload: { name: "Celular" } },
+    { method: "DELETE", url: "/devices/d1" },
+  ] as const;
+  for (const call of calls) {
+    const response = await app.inject({ ...call, headers: AUTHORIZED, remoteAddress: "127.0.0.1" });
+    assert.equal(response.statusCode, 400, call.url);
+    assert.equal(response.json().details[0].field, "id", call.url);
+  }
+});
+
 // Asks one address for every nonce it gets in a window, and checks the next is refused with 429, saying in Retry-After
 // and in the message when to try again, as a login past its limit is.
 test("API: a device's challenges stop at their limit, saying when to try again", async () => {
