@@ -1,0 +1,214 @@
+/**
+ * @format
+ */
+
+import React, { useState } from 'react';
+import { Image, StyleSheet, Text, type ViewStyle } from 'react-native';
+import ReactTestRenderer from 'react-test-renderer';
+import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
+import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
+import { ImageUpload, type PickedPhoto, type UploadPhoto } from './index';
+import { themeStorage, ThemeProvider } from '../../app/theme';
+
+const MB = 1024 * 1024;
+const SAVED: UploadPhoto[] = ['a', 'b', 'c'].map((name) => ({ url: `file:///saved/${name}.jpg` }));
+
+/**
+ * Saves a style and mode, renders the element inside a ThemeProvider and waits for it to load them.
+ * @param style Style to start on.
+ * @param mode Mode to start on.
+ * @param element Element to render.
+ * @returns The rendered tree.
+ */
+async function mount(style: Style, mode: Mode, element: React.ReactElement) {
+  await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
+  let tree: ReactTestRenderer.ReactTestRenderer | undefined;
+  await ReactTestRenderer.act(async () => {
+    tree = ReactTestRenderer.create(<ThemeProvider>{element}</ThemeProvider>);
+  });
+  return tree!;
+}
+
+/**
+ * Makes a photo as the picker returns it.
+ * @param name File name.
+ * @param type MIME type.
+ * @param size Size in bytes; defaults to 1 KB.
+ * @returns The picked photo.
+ */
+function picked(name: string, type: string, size = 1024): PickedPhoto {
+  return { url: `file:///picked/${name}`, name, type, size };
+}
+
+/**
+ * Presses the pressable with a testID or an accessible name.
+ * @param tree Rendered tree.
+ * @param id testID or accessibility label.
+ */
+async function press(tree: ReactTestRenderer.ReactTestRenderer, id: string) {
+  const node = tree.root.find(
+    (n) => typeof n.props.style === 'function' && (n.props.testID === id || n.props.accessibilityLabel === id),
+  );
+  await ReactTestRenderer.act(async () => node.props.onPress());
+}
+
+/**
+ * Finds Tirar foto and Galeria.
+ * @param tree Rendered tree.
+ * @returns Their pressables, in order.
+ */
+function pickers(tree: ReactTestRenderer.ReactTestRenderer) {
+  return tree.root.findAll((n) => n.props.testID === 'common.image-upload.pickers.picker' && typeof n.props.style === 'function');
+}
+
+/**
+ * Presses Tirar foto or Galeria.
+ * @param tree Rendered tree.
+ * @param text What the button says.
+ */
+async function pressPicker(tree: ReactTestRenderer.ReactTestRenderer, text: 'Tirar foto' | 'Galeria') {
+  const node = pickers(tree).find((picker) => picker.findAll((n) => n.type === Text && n.props.children === text).length > 0)!;
+  await ReactTestRenderer.act(async () => node.props.onPress());
+}
+
+/**
+ * Lists every text shown.
+ * @param tree Rendered tree.
+ * @returns The texts, in order.
+ */
+function texts(tree: ReactTestRenderer.ReactTestRenderer): string[] {
+  return tree.root.findAllByType(Text).map((t) => [t.props.children].flat().join(''));
+}
+
+/**
+ * Reads the photos shown, by their accessible names.
+ * @param tree Rendered tree.
+ * @returns E.g. ["Foto 1, capa", "Foto 2"].
+ */
+function shown(tree: ReactTestRenderer.ReactTestRenderer): string[] {
+  return tree.root.findAllByType(Image).map((image) => image.props.accessibilityLabel);
+}
+
+beforeEach(async () => {
+  await themeStorage.clear();
+});
+
+for (const style of STYLES) {
+  for (const mode of MODES) {
+    // Renders the field in one style and mode, picks a GIF from the gallery, and checks Tirar foto and Galeria are
+    // framed in the hairline on the panel, in the accent while pressed, and the message is in the danger color.
+    test(`Mobile: the photo field follows the ${style}/${mode} theme`, async () => {
+      const { colors } = themes[style][mode];
+      const tree = await mount(style, mode, <Sample initial={[]} pick={[picked('motor.gif', 'image/gif')]} />);
+      for (const picker of pickers(tree)) {
+        const frame: ViewStyle = StyleSheet.flatten(picker.props.style({ pressed: false }));
+        expect(frame).toMatchObject({ height: 48, borderColor: colors.hairline, backgroundColor: colors.panel });
+        expect(StyleSheet.flatten(picker.props.style({ pressed: true })).borderColor).toBe(colors.accent);
+      }
+      await pressPicker(tree, 'Galeria');
+      const message = tree.root.findAll((n) => n.type === Text && n.props.children === 'motor.gif: não é JPG, PNG ou WebP');
+      expect(StyleSheet.flatten(message[0].props.style).color).toBe(colors.danger);
+    });
+  }
+}
+
+// Picks several photos at once from the gallery on an empty field and checks the good ones become thumbnails in order,
+// the first marked as the cover, while a GIF and a photo over 3 MB are left out and named with their reasons.
+test('Mobile: picking keeps the good photos and names each one left out', async () => {
+  const pick = [
+    picked('frente.jpg', 'image/jpeg'),
+    picked('motor.gif', 'image/gif'),
+    picked('lado.png', 'image/png', 4.2 * MB),
+    picked('traseira.webp', 'image/webp'),
+  ];
+  const tree = await mount('eighties', 'night', <Sample initial={[]} pick={pick} />);
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Fotos do item · até 3', 'Tirar foto', 'Galeria']));
+  await pressPicker(tree, 'Galeria');
+  expect(shown(tree)).toEqual(['Foto 1, capa', 'Foto 2']);
+  expect(texts(tree)).toEqual(
+    expect.arrayContaining(['capa', 'motor.gif: não é JPG, PNG ou WebP', 'lado.png: tem 4,2 MB mesmo reduzida, e o limite é 3 MB']),
+  );
+});
+
+// Takes a photo with the camera and checks it joins the photos after the ones held, through the same rules, and the
+// gallery isn't opened.
+test('Mobile: Tirar foto adds the photo the camera takes', async () => {
+  const pick = jest.fn(async () => [picked('lado.jpg', 'image/jpeg')]);
+  const tree = await mount('gt4', 'day', <Sample initial={SAVED.slice(0, 1)} pick={[]} onPick={pick} take={[picked('frente.jpg', 'image/jpeg')]} />);
+  await pressPicker(tree, 'Tirar foto');
+  expect(shown(tree)).toEqual(['Foto 1, capa', 'Foto 2']);
+  expect(tree.root.findAllByType(Image)[1].props.source).toEqual({ uri: 'file:///picked/frente.jpg' });
+  expect(pick).not.toHaveBeenCalled();
+});
+
+// Picks two photos with two held and checks one is taken, the one past the limit is named, and Tirar foto and Galeria
+// disappear; then removes a photo and checks the message clears and they come back.
+test('Mobile: the field fills up to the limit and frees a place on remove', async () => {
+  const pick = [picked('frente.jpg', 'image/jpeg'), picked('painel.jpg', 'image/jpeg')];
+  const tree = await mount('fiat90', 'day', <Sample initial={SAVED.slice(0, 2)} pick={pick} />);
+  await pressPicker(tree, 'Galeria');
+  expect(shown(tree)).toHaveLength(ITEM_PHOTO_LIMIT);
+  expect(texts(tree)).toContain('painel.jpg: passou do limite de 3 fotos');
+  expect(pickers(tree)).toHaveLength(0);
+
+  await press(tree, 'Remover foto 1');
+  expect(shown(tree)).toEqual(['Foto 1, capa', 'Foto 2']);
+  expect(texts(tree)).not.toContain('painel.jpg: passou do limite de 3 fotos');
+  expect(pickers(tree)).toHaveLength(2);
+});
+
+// Cancels the gallery and the camera and checks nothing changes.
+test('Mobile: canceling the picker or the camera leaves the field as it was', async () => {
+  const onChange = jest.fn();
+  const tree = await mount('gt4', 'night', <Sample initial={SAVED.slice(0, 1)} pick={[]} onChange={onChange} />);
+  await pressPicker(tree, 'Galeria');
+  await pressPicker(tree, 'Tirar foto');
+  expect(onChange).not.toHaveBeenCalled();
+  expect(shown(tree)).toEqual(['Foto 1, capa']);
+});
+
+// Shows the field read-only with two photos and with none, and checks the photos show with the cover marked but
+// nothing can be removed or added, the label says nothing of how many fit, and an empty field says there are no photos.
+test('Mobile: a read-only photo field only shows the photos', async () => {
+  const pick = jest.fn(async () => []);
+  const tree = await mount(
+    'eighties',
+    'night',
+    <>
+      <ImageUpload label="Fotos do item" photos={SAVED.slice(0, 2)} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT} onPick={pick} onTake={pick} readOnly />
+      <ImageUpload label="Fotos vazias" photos={[]} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT} onPick={pick} onTake={pick} readOnly />
+    </>,
+  );
+  expect(shown(tree)).toEqual(['Foto 1, capa', 'Foto 2']);
+  expect(tree.root.findAll((n) => n.props.accessibilityRole === 'button')).toHaveLength(0);
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Fotos do item', 'Sem fotos']));
+});
+
+function Sample({
+  initial,
+  pick,
+  take = [],
+  onPick,
+  onChange,
+}: {
+  initial: UploadPhoto[];
+  pick: PickedPhoto[];
+  take?: PickedPhoto[];
+  onPick?: () => Promise<PickedPhoto[]>;
+  onChange?: () => void;
+}) {
+  const [photos, setPhotos] = useState(initial);
+  return (
+    <ImageUpload
+      label="Fotos do item"
+      photos={photos}
+      onPhotosChange={(next) => {
+        setPhotos(next);
+        onChange?.();
+      }}
+      limit={ITEM_PHOTO_LIMIT}
+      onPick={onPick ?? (async () => pick)}
+      onTake={async () => take}
+    />
+  );
+}
