@@ -1,18 +1,15 @@
 import type { FastifyError, FastifyInstance } from "fastify";
 import { hasZodFastifySchemaValidationErrors } from "@fastify/type-provider-zod";
+import { badRequest, refuse } from "./replies.js";
 
 export function registerErrorHandler(app: FastifyInstance) {
   app.setErrorHandler<FastifyError>((error, request, reply) => {
     if (hasZodFastifySchemaValidationErrors(error)) {
-      reply.status(400).send({
-        statusCode: 400,
-        error: "Bad Request",
-        message: "One or more fields failed validation.",
-        details: error.validation.map((issue) => ({
-          field: issue.instancePath.replace(/^\//, "") || "unknown",
-          message: issue.message ?? "Invalid value",
-        })),
-      });
+      const details = error.validation.map((issue) => ({
+        field: issue.instancePath.replace(/^\//, "") || "unknown",
+        message: issue.message ?? "Invalid value",
+      }));
+      refuse(reply, badRequest("One or more fields failed validation.", details));
       return;
     }
 

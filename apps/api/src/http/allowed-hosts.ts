@@ -1,5 +1,6 @@
 import os from "node:os";
 import type { FastifyInstance } from "fastify";
+import { forbidden, refuse } from "./replies.js";
 
 // The API answers only requests addressed to this computer, closing DNS rebinding: a web page open in a browser here
 // can have its own domain resolve to 127.0.0.1 and reach the API as if it were that domain, but its requests still
@@ -51,11 +52,7 @@ export function registerAllowedHosts(app: FastifyInstance, listed = process.env.
       allowed = new Set([...named, ...interfaceAddresses()]);
     }
     if (!name || !allowed.has(name)) {
-      return reply.status(403).send({
-        statusCode: 403,
-        error: "Forbidden",
-        message: `This server doesn't answer for the host "${name ?? ""}". Add it to APC_ALLOWED_HOSTS to allow it.`,
-      });
+      return refuse(reply, forbidden(`This server doesn't answer for the host "${name ?? ""}". Add it to APC_ALLOWED_HOSTS to allow it.`));
     }
   });
 }
