@@ -117,6 +117,18 @@ test('Web: the language applies and is saved at once, and comes back', async () 
   await expect.element(again.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute('aria-checked', 'true')
 })
 
+// In the desktop app, picks English under "Idioma" and checks the app was told Portuguese on opening and English on
+// the change, for its own dialogs, tray and pages.
+test('Web: the desktop app is told the language on opening and on each change', async () => {
+  const setLocale = vi.fn()
+  window.apcDesktop = { setLocale } as unknown as DesktopBridge
+  const screen = await render(<Sample />)
+  expect(setLocale.mock.calls).toEqual([['pt-BR']])
+  await screen.getByRole('button', { name: 'Menu do usuário' }).click()
+  await screen.getByRole('menuitemradio', { name: 'English' }).click()
+  await expect.poll(() => setLocale.mock.calls).toEqual([['pt-BR'], ['en-US']])
+})
+
 // Turns tab reordering on and checks it is saved on the device and comes back on when the menu is drawn again.
 test('Web: the tab reorder choice is saved and comes back', async () => {
   const screen = await render(<Sample />)
@@ -214,7 +226,7 @@ test('Web: in the desktop app the user menu opens the Servidor dialog', async ()
   await expect.element(plain.getByRole('menuitem', { name: 'Servidor e banco de dados' })).not.toBeInTheDocument()
   plain.unmount()
 
-  window.apcDesktop = { server: {} } as DesktopBridge
+  window.apcDesktop = { server: {}, setLocale: () => {} } as unknown as DesktopBridge
   const openServerSettings = vi.fn()
   const screen = await render(<Sample openServerSettings={openServerSettings} />)
   await screen.getByRole('button', { name: 'Menu do usuário' }).click()

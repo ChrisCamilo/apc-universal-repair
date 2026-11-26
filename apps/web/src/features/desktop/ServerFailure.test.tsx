@@ -29,6 +29,7 @@ function giveServer(failure: Failure | null) {
     onOpenNotifications: () => () => {},
     onUpdateReady: () => () => {},
     restartToUpdate: () => {},
+    setLocale: () => {},
     server: {
       ...calls,
       onFailure: (listener: (found: Failure) => void) => {

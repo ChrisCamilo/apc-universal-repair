@@ -70,6 +70,7 @@ function giveServer(settings: ServerSettings) {
     onOpenNotifications: () => () => {},
     onUpdateReady: () => () => {},
     restartToUpdate: () => {},
+    setLocale: () => {},
     server: {
       ...calls,
       onFailure: () => () => {},

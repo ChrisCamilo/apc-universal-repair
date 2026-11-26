@@ -1,10 +1,12 @@
 import type { DeviceSigner } from '@apc/domain/devices'
+import type { Locale } from '@apc/domain/locale'
 import type { Pairing } from '@apc/domain/pairing'
 
 // What the desktop app's preload hands the page (see apps/desktop/src/preload.cts): asking for a Windows notification
-// and hearing when one was clicked, hearing when a new version is ready and asking to restart into it, and the
-// settings of the server the app runs (see apps/desktop/src/server/serverSettings.ts), and why that server isn't on,
-// when it isn't. In a browser there is none, and the web app shows nothing extra.
+// and hearing when one was clicked, hearing when a new version is ready and asking to restart into it, telling the
+// language chosen, which the app's own dialogs, tray and pages follow (see apps/desktop/src/texts.ts), and the settings
+// of the server the app runs (see apps/desktop/src/server/serverSettings.ts), and why that server isn't on, when it
+// isn't. In a browser there is none, and the web app shows nothing extra.
 
 /** An old server to import: a PostgreSQL address, or a SQLite file with the recovery copy of its key when it is encrypted. */
 export type ImportSource = { kind: 'postgresql'; url: string } | { kind: 'sqlite'; file: string; key?: string }
@@ -99,6 +101,8 @@ export type DesktopBridge = {
   restartToUpdate: () => void
   /** The server the app runs and its settings; without it, the user menu offers no Servidor dialog. */
   server?: ServerBridge
+  /** Tells the language chosen, which the app's own dialogs, tray and pages then follow. */
+  setLocale: (locale: Locale) => void
 }
 
 declare global {

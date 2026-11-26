@@ -23,6 +23,7 @@ function giveBridge(): { ready: (version: string) => void; restartToUpdate: Desk
       return () => {}
     },
     restartToUpdate,
+    setLocale: () => {},
   }
   return { ready: (version) => ready(version), restartToUpdate }
 }

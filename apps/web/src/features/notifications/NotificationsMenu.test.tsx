@@ -195,6 +195,7 @@ test('Web: in the desktop app, errors and warnings ask for a Windows notificatio
     },
     onUpdateReady: () => () => {},
     restartToUpdate: () => {},
+    setLocale: () => {},
   }
   const screen = await render(<Sample />)
   await screen.getByRole('button', { name: 'Sucesso' }).click()
