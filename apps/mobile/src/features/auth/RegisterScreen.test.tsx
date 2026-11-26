@@ -11,6 +11,7 @@ import { TEST_USERS } from '@apc/domain/test-users';
 import { MODES, scales, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { RegisterScreen } from './RegisterScreen';
 import { themeStorage, ThemeProvider } from '../../app/theme';
+import { LocaleContext } from '../../app/locale';
 
 // The fields as a new user fills them in, by label.
 const NEW_USER = { Nome: 'Ana Souza', Usuário: 'Ana.Souza', 'E-mail': 'ana@oficina.com', Senha: 'freio1234', 'Confirmar senha': 'freio1234' };
@@ -248,4 +249,20 @@ test('Mobile: the sign-up screen carries its style ids', async () => {
   }
   const ids = tree.root.findAll((n) => typeof n.type === 'string' && typeof n.props.testID === 'string').map((n) => n.props.testID);
   expect(ids.filter((id) => id.startsWith('auth.') && !isStyleId(id))).toEqual([]);
+});
+
+// Renders the sign-up in English, and checks its title, hint and way back read in English, and that a sign-up sent
+// empty says what is missing in English.
+test('Mobile: the sign-up reads in English', async () => {
+  const tree = await mount(
+    'eighties',
+    'night',
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <RegisterScreen auth={mockAuth()} onRegistered={() => {}} onLogin={() => {}} />
+    </LocaleContext.Provider>,
+  );
+  expect(shows(tree, 'Lowercase letters, numbers, dots or hyphens.')).toBe(true);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Back to login').length).toBeGreaterThan(0);
+  await press(tree, 'Create account');
+  expect(shows(tree, REGISTER_MESSAGES['en-US'].displayName)).toBe(true);
 });

@@ -17,6 +17,8 @@ import {
 } from './appUpdate';
 import { UpdatePrompt } from './UpdatePrompt';
 import { themeStorage, ThemeProvider } from '../../app/theme';
+import { LocaleContext } from '../../app/locale';
+import type { Locale } from '@apc/domain/locale';
 
 const INSTALLED = '0.6.8';
 const NEXT = '0.6.9';
@@ -43,12 +45,14 @@ function answer(release: Release) {
  * Renders the prompt, checking for updates, and waits for the check.
  * @returns The rendered tree.
  */
-async function mount() {
+async function mount(locale: Locale = 'pt-BR') {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <ThemeProvider>
-        <UpdatePrompt enabled installed={INSTALLED} />
+        <LocaleContext.Provider value={{ locale, setLocale: () => {} }}>
+          <UpdatePrompt enabled installed={INSTALLED} />
+        </LocaleContext.Provider>
       </ThemeProvider>,
     );
   });
@@ -165,4 +169,13 @@ test('Mobile: Agora não holds the version until the next day', async () => {
   answer(RELEASE);
   await ReactTestRenderer.act(async () => changes.at(-1)!('active'));
   expect(shows(again, TITLE)).toBe(true);
+});
+
+// Finds a newer version in English, and checks the prompt and its buttons read in English.
+test('Mobile: the update prompt reads in English', async () => {
+  answer(RELEASE);
+  const tree = await mount('en-US');
+  expect(shows(tree, `New version ${NEXT} available`)).toBe(true);
+  expect(shows(tree, 'Not now')).toBe(true);
+  expect(shows(tree, 'Update')).toBe(true);
 });

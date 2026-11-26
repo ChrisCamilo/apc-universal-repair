@@ -7,6 +7,8 @@ import { Button } from '../../components/Button';
 import { Heading, Text } from '../../components/Typography';
 import { lockCopy, unlockCopy, type UnlockResult } from '../sync/inventoryCopy';
 import { useStyles } from './AppLock.styles';
+import { useMessages } from '../../app/locale';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // The phone's copy of the inventory behind the phone's own lock (see InventoryCopyModule.kt): the app opens only once
 // the copy does, which asks for the fingerprint, the face or the screen lock when the phone has one, and asks nothing
@@ -18,20 +20,14 @@ import { useStyles } from './AppLock.styles';
 
 /** How long away from the app asks for the phone's lock again, in ms. */
 export const LOCK_AWAY_MS = 5 * 60_000;
-/** What the lock says: the prompt's title and text, the screen's title and text, and its button. */
-export const APP_LOCK_TEXTS = {
-  title: 'Desbloquear o APC',
-  subtitle: 'Use a digital, o rosto ou o bloqueio de tela do celular para abrir o estoque.',
-  locked: 'Estoque bloqueado',
-  why: 'O estoque deste celular fica protegido pelo bloqueio de tela dele.',
-  unlock: 'Desbloquear',
-} as const;
 
 /** Where the lock stands: asking, refused, or open. */
 type LockState = 'asking' | 'locked' | 'open';
 
 export function AppLock({ children }: { children: ReactNode }) {
   const { styles, ids } = useStyles();
+  // What the lock says: the prompt's title and text, the screen's title and text, and its button.
+  const texts = useMessages(PHONE_TEXTS).appLock;
   const [state, setState] = useState<LockState>('asking');
   // Whether the app opened once: it shows from then on, under the lock when asked again.
   const [opened, setOpened] = useState(false);
@@ -40,12 +36,12 @@ export function AppLock({ children }: { children: ReactNode }) {
 
   const unlock = useCallback(async () => {
     setState('asking');
-    const result: UnlockResult = await unlockCopy(APP_LOCK_TEXTS).catch(() => 'cancelled' as const);
+    const result: UnlockResult = await unlockCopy(texts).catch(() => 'cancelled' as const);
     setState(result === 'open' ? 'open' : 'locked');
     if (result === 'open') {
       setOpened(true);
     }
-  }, []);
+  }, [texts]);
 
   useEffect(() => {
     unlock();
@@ -72,12 +68,12 @@ export function AppLock({ children }: { children: ReactNode }) {
           {state === 'locked' && (
             <View style={styles.column} testID={ids.column}>
               <BrandMark variant="compact" size={LOGIN_BRAND.mark} />
-              <Heading align="center">{APP_LOCK_TEXTS.locked}</Heading>
+              <Heading align="center">{texts.locked}</Heading>
               <Text tone="muted" align="center">
-                {APP_LOCK_TEXTS.why}
+                {texts.why}
               </Text>
               <Button align="stretch" onPress={unlock}>
-                {APP_LOCK_TEXTS.unlock}
+                {texts.unlock}
               </Button>
             </View>
           )}

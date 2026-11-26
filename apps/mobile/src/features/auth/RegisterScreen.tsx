@@ -14,6 +14,8 @@ import { DevicePending } from './DevicePending';
 import { useStyles } from './RegisterScreen.styles';
 import { useDeviceWait } from './useDeviceWait';
 import { useLocale } from '../../app/locale';
+import { AUTH_TEXTS } from '@apc/domain/auth-texts';
+import { perLocale } from '@apc/domain/locale';
 
 // The sign-up screen, the same as the web's /register on a phone: a header with the back arrow to the login and
 // "Criar conta" as the screen's heading, then the form, which asks for the name, the username, the e-mail (only kept
@@ -28,14 +30,17 @@ import { useLocale } from '../../app/locale';
 // login. With the keyboard up, the screen scrolls to reach every field.
 
 const EMPTY: Registration = { displayName: '', username: '', email: '', password: '', confirm: '' };
-/** The fields in form order, with their label, kind and icon. */
-const FIELDS: { name: keyof Registration; label: string; kind: FieldKind; icon?: IconShape[]; helper?: string }[] = [
-  { name: 'displayName', label: 'Nome', kind: 'name' },
-  { name: 'username', label: 'Usuário', kind: 'username', icon: userIcon, helper: 'Letras minúsculas, números, pontos ou hífens.' },
-  { name: 'email', label: 'E-mail', kind: 'email' },
-  { name: 'password', label: 'Senha', kind: 'newPassword', icon: lockIcon },
-  { name: 'confirm', label: 'Confirmar senha', kind: 'newPassword', icon: lockIcon },
-];
+/** The fields in form order, with their label in each language, kind and icon. */
+const FIELDS = perLocale((locale): { name: keyof Registration; label: string; kind: FieldKind; icon?: IconShape[]; helper?: string }[] => {
+  const { login, register } = AUTH_TEXTS[locale];
+  return [
+    { name: 'displayName', label: register.name, kind: 'name' },
+    { name: 'username', label: login.username, kind: 'username', icon: userIcon, helper: register.usernameHint },
+    { name: 'email', label: register.email, kind: 'email' },
+    { name: 'password', label: login.password, kind: 'newPassword', icon: lockIcon },
+    { name: 'confirm', label: register.confirm, kind: 'newPassword', icon: lockIcon },
+  ];
+});
 
 type RegisterScreenProps = {
   /** Creates the user and logs them in. */
@@ -55,6 +60,8 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
   const inputs = useRef<Partial<Record<keyof Registration, ComponentRef<typeof TextInput> | null>>>({});
   const { styles, ids } = useStyles();
   const deviceMessages = useMessages(DEVICE_MESSAGES);
+  const { login, register: texts } = AUTH_TEXTS[locale];
+  const fields = FIELDS[locale];
   const device = useDeviceWait(auth, onRegistered, () => setRefused(deviceMessages.refused));
 
   /** Takes a field's new value and drops its message. */
@@ -70,7 +77,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
     }
     const found = registerErrors(registration, locale);
     setErrors(found);
-    const wrong = FIELDS.find(({ name }) => found[name]);
+    const wrong = fields.find(({ name }) => found[name]);
     if (wrong) {
       inputs.current[wrong.name]?.focus();
       return;
@@ -94,9 +101,9 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
   return (
     <FieldScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
       <View style={styles.header} testID={ids.header}>
-        <BackButton label="Voltar ao login" onPress={onLogin} />
+        <BackButton label={texts.back} onPress={onLogin} />
         <RNText accessibilityRole="header" style={styles.headerTitle} testID={ids.headerTitle}>
-          Criar conta
+          {texts.title}
         </RNText>
       </View>
       <View style={styles.form} testID={ids.form}>
@@ -108,8 +115,8 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
           </View>
         )}
         {device.waiting && <DevicePending code={device.waiting.code} />}
-        {FIELDS.map(({ name, label, kind, icon, helper }, index) => {
-          const next = FIELDS[index + 1];
+        {fields.map(({ name, label, kind, icon, helper }, index) => {
+          const next = fields[index + 1];
           return (
             <TextField
               key={name}
@@ -130,11 +137,11 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
         })}
         <View style={styles.actions} testID={ids.actions}>
           <Button align="stretch" onPress={submit} loading={sending}>
-            Criar conta
+            {texts.title}
           </Button>
-          <Button variant="link" align="stretch" label="Já tem conta? Entrar" onPress={onLogin}>
-            Já tem conta? <RNText style={styles.loginAction} testID={ids.loginAction}>
-              Entrar
+          <Button variant="link" align="stretch" label={`${texts.hasAccount} ${login.logIn}`} onPress={onLogin}>
+            {texts.hasAccount} <RNText style={styles.loginAction} testID={ids.loginAction}>
+              {login.logIn}
             </RNText>
           </Button>
         </View>

@@ -1,9 +1,9 @@
 import type { Locale } from '@apc/domain/locale';
 import { waitingNotice } from '@apc/domain/sync-queue';
-import { LOCAL_NETWORK_TEXTS } from '../../app/localNetwork';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 import type { SyncResult } from './inventoryCopy';
 
-// What the phone says of its copy's sync (see useInventoryCopy.tsx), in Portuguese: in the Dashboard's header, a short
+// What the phone says of its copy's sync (see useInventoryCopy.tsx), in the language chosen: in the Dashboard's header, a short
 // status while one is worth saying (syncing, away from the server, without the local network access, conflicts with
 // the computer to settle, or changes waiting), nothing once all is sent; in the user menu, when the copy last caught up; and, after "Sincronizar agora",
 // how it went and why it failed.
@@ -20,49 +20,47 @@ export type SyncStatus = {
 };
 
 /**
- * Says how many changes wait, in short.
- * @param count How many, more than none.
- * @returns E.g. "1 alteração" or "3 alterações".
- */
-function changes(count: number): string {
-  return `${count} ${count === 1 ? 'alteração' : 'alterações'}`;
-}
-
-/**
  * Writes the header's status.
  * @param status The sync.
+ * @param locale The language.
  * @returns E.g. "Sincronizando…", "Sem conexão · 2 alterações", "Sem acesso à rede", "1 conflito a resolver", "1
  * alteração a enviar", or null once all is sent and the server answered.
  */
-export function syncBadge(status: SyncStatus): string | null {
-  const waiting = status.waiting > 0 ? changes(status.waiting) : null;
+export function syncBadge(status: SyncStatus, locale: Locale): string | null {
+  const texts = PHONE_TEXTS[locale].sync;
+  const waiting = status.waiting > 0 ? texts.changes(status.waiting) : null;
   if (status.syncing) {
-    return 'Sincronizando…';
+    return texts.syncing;
   }
   if (status.blocked || status.offline) {
-    return [status.blocked ? 'Sem acesso à rede' : 'Sem conexão', waiting].filter(Boolean).join(' · ');
+    return [status.blocked ? texts.blocked : texts.offline, waiting].filter(Boolean).join(' · ');
   }
   const conflicts = status.conflicts.length;
   if (conflicts > 0) {
-    return `${conflicts} ${conflicts === 1 ? 'conflito' : 'conflitos'} a resolver`;
+    return texts.conflicts(conflicts);
   }
-  return waiting && `${waiting} a enviar`;
+  return waiting && texts.waiting(waiting);
 }
 
 /**
  * Says when the copy last caught up with the server, in the phone's own time.
  * @param syncedAt When, or null before it first did.
+ * @param locale The language, which also orders the day and the month ("23/11" or "11/23").
  * @param now Today, to say "hoje".
  * @returns E.g. "Última sincronização hoje às 14:05", "… em 23/11 às 09:30", or that it never did.
  */
-export function lastSync(syncedAt: Date | null, now = new Date()): string {
+export function lastSync(syncedAt: Date | null, locale: Locale, now = new Date()): string {
+  const texts = PHONE_TEXTS[locale].sync;
   if (!syncedAt) {
-    return 'Ainda não sincronizado com o servidor';
+    return texts.never;
   }
   const two = (value: number) => String(value).padStart(2, '0');
-  const time = `${two(syncedAt.getHours())}:${two(syncedAt.getMinutes())}`;
-  const today = syncedAt.toDateString() === now.toDateString();
-  return `Última sincronização ${today ? 'hoje' : `em ${two(syncedAt.getDate())}/${two(syncedAt.getMonth() + 1)}`} às ${time}`;
+  const [day, month] = [two(syncedAt.getDate()), two(syncedAt.getMonth() + 1)];
+  return texts.last({
+    today: syncedAt.toDateString() === now.toDateString(),
+    day: locale === 'en-US' ? `${month}/${day}` : `${day}/${month}`,
+    time: `${two(syncedAt.getHours())}:${two(syncedAt.getMinutes())}`,
+  });
 }
 
 /**
@@ -74,14 +72,14 @@ export function lastSync(syncedAt: Date | null, now = new Date()): string {
  */
 export function syncOutcome(result: SyncResult, waiting: number, locale: Locale): { ok: boolean; message: string } {
   if (result === 'blocked') {
-    return { ok: false, message: LOCAL_NETWORK_TEXTS.missing };
+    return { ok: false, message: PHONE_TEXTS[locale].localNetwork.missing };
   }
   if (result === 'offline') {
     const kept = waiting > 0 ? ` ${waitingNotice(waiting, locale)}` : '';
     return {
       ok: false,
-      message: `Não foi possível sincronizar: o servidor não respondeu. Confira se o celular está no Wi-Fi de casa e se o computador está ligado.${kept}`,
+      message: `${PHONE_TEXTS[locale].sync.failed}${kept}`,
     };
   }
-  return { ok: true, message: 'Estoque sincronizado com o servidor.' };
+  return { ok: true, message: PHONE_TEXTS[locale].sync.done };
 }

@@ -6,8 +6,11 @@ import React from 'react';
 import { AppState, Modal, NativeModules, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
-import { APP_LOCK_TEXTS, AppLock, LOCK_AWAY_MS } from './AppLock';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
+import { AppLock, LOCK_AWAY_MS } from './AppLock';
 import { ThemeProvider } from '../../app/theme';
+import { LocaleContext } from '../../app/locale';
+import type { Locale } from '@apc/domain/locale';
 
 // The app behind the phone's own lock: it opens once the lock is confirmed, says the inventory is locked when it is
 // refused, with Desbloquear to ask again, and asks again back from a while away, over the app as it was. The native
@@ -22,15 +25,17 @@ const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
  * Renders the lock over a screen of the app.
  * @returns The rendered tree.
  */
-async function mount() {
+async function mount(locale: Locale = 'pt-BR') {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 360, height: 780 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } }}>
         <ThemeProvider>
-          <AppLock>
-            <Text>Estoque do app</Text>
-          </AppLock>
+          <LocaleContext.Provider value={{ locale, setLocale: () => {} }}>
+            <AppLock>
+              <Text>Estoque do app</Text>
+            </AppLock>
+          </LocaleContext.Provider>
         </ThemeProvider>
       </SafeAreaProvider>,
     );
@@ -68,7 +73,7 @@ test('Mobile: the app opens once the phone\'s lock is confirmed', async () => {
   let confirm: (result: string) => void = () => {};
   native.unlock.mockImplementation(() => new Promise((resolve) => (confirm = resolve)));
   const tree = await mount();
-  expect(native.unlock).toHaveBeenLastCalledWith(APP_LOCK_TEXTS.title, APP_LOCK_TEXTS.subtitle);
+  expect(native.unlock).toHaveBeenLastCalledWith(PHONE_TEXTS['pt-BR'].appLock.title, PHONE_TEXTS['pt-BR'].appLock.subtitle);
   expect(texts(tree)).not.toContain('Estoque do app');
   expect(covered(tree)).toBe(true);
   await ReactTestRenderer.act(async () => confirm('open'));
@@ -81,9 +86,9 @@ test('Mobile: the app opens once the phone\'s lock is confirmed', async () => {
 test('Mobile: a refused lock says the inventory is locked, and Desbloquear asks again', async () => {
   native.unlock.mockImplementationOnce(async () => 'cancelled');
   const tree = await mount();
-  expect(texts(tree)).toEqual(expect.arrayContaining([APP_LOCK_TEXTS.locked, APP_LOCK_TEXTS.why]));
+  expect(texts(tree)).toEqual(expect.arrayContaining([PHONE_TEXTS['pt-BR'].appLock.locked, PHONE_TEXTS['pt-BR'].appLock.why]));
   expect(texts(tree)).not.toContain('Estoque do app');
-  const unlock = tree.root.find((n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === APP_LOCK_TEXTS.unlock).length > 0);
+  const unlock = tree.root.find((n) => typeof n.props.onPress === 'function' && n.findAll((c) => c.type === Text && c.props.children === PHONE_TEXTS['pt-BR'].appLock.unlock).length > 0);
   await ReactTestRenderer.act(async () => unlock.props.onPress());
   expect(texts(tree)).toContain('Estoque do app');
   expect(covered(tree)).toBe(false);
@@ -129,4 +134,12 @@ test('Mobile: back from a while away, the lock is asked again over the app as it
     addListener.mockImplementation(preset);
     now.mockRestore();
   }
+});
+
+// Asks for the phone's lock in English and refuses it, and checks the prompt and the locked screen read in English.
+test('Mobile: the lock reads in English', async () => {
+  native.unlock.mockResolvedValue('cancelled');
+  const tree = await mount('en-US');
+  expect(native.unlock).toHaveBeenLastCalledWith('Unlock APC', "Use the phone's fingerprint, face or screen lock to open the inventory.");
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Inventory locked', "This phone's inventory is protected by its screen lock.", 'Unlock']));
 });

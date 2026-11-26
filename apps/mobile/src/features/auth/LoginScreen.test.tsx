@@ -14,6 +14,7 @@ import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from
 import { LoginScreen } from './LoginScreen';
 import { Icon } from '../../components/Icon';
 import { themeStorage, ThemeProvider } from '../../app/theme';
+import { LocaleContext } from '../../app/locale';
 
 // A login that keeps no session and answers at once.
 const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}, removeItem: async () => {} }, TEST_USERS, 0);
@@ -368,4 +369,21 @@ test('Mobile: the forgotten-password notice says whom to ask and closes three wa
   expect(notice().props.visible).toBe(false);
   expect(login).not.toHaveBeenCalled();
   login.mockRestore();
+});
+
+// Renders the login in English, and checks its fields, buttons and links read in English, and that a login sent empty
+// says what is missing in English.
+test('Mobile: the login reads in English', async () => {
+  const tree = await mount(
+    'eighties',
+    'night',
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} onConnect={() => {}} />
+    </LocaleContext.Provider>,
+  );
+  expect(shows(tree, LOGIN_INTRO['en-US'])).toBe(true);
+  expect(shows(tree, "Don't have an account yet?")).toBe(true);
+  expect(shows(tree, 'Connect to another server')).toBe(true);
+  await press(tree, 'Log in');
+  expect(shows(tree, LOGIN_MESSAGES['en-US'].username)).toBe(true);
 });

@@ -19,6 +19,9 @@ import { InventoryLinkContext, type InventoryLinks } from './inventoryLinkContex
 import { MoreActionsContext } from './moreActionsContext';
 import { PhoneHeaderContext, type PhoneHeader } from './phoneHeaderContext';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
+import { COMMON_TEXTS, DASHBOARD_TEXTS } from '@apc/domain/app-texts';
+import { perLocale } from '@apc/domain/locale';
+import { useLocale } from '../../app/locale';
 
 // The frame of the Dashboard, the same as the web's on a phone: the open tab's header, with the APC mark and the tab's
 // name as the screen's heading, the tab's content under it, scrolling its own content, and a bar at the bottom of the
@@ -39,7 +42,9 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id);
 // Each tab as the tab bar draws it, by id.
-const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon, wip }) => [id, { id, label, icon: ICONS[icon], wip }]));
+const TABS = perLocale((locale) =>
+  Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon, wip }) => [id, { id, label: (DASHBOARD_TEXTS[locale].tabs as Record<string, string>)[id] ?? label, icon: ICONS[icon], wip }])),
+);
 
 type DashboardProps = {
   /** The user menu, at the end of the bottom bar: Alertas and Conta. */
@@ -54,6 +59,10 @@ type DashboardProps = {
 
 export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () => {}, userId }: DashboardProps) {
   const screens: Record<string, ReactNode> = { inventory: <InventoryTab userId={userId} />, catalog: <CatalogTab /> };
+  const { locale } = useLocale();
+  const texts = DASHBOARD_TEXTS[locale];
+  const common = COMMON_TEXTS[locale];
+  const tabsOf = TABS[locale];
   const { styles, ids } = useStyles();
   const bar = useBarStyles();
   const [tab, setTab] = useStoredTab(DASHBOARD_TAB_STORAGE_KEY, TAB_IDS);
@@ -124,14 +133,14 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
                     )}
                     <View style={styles.heading} testID={ids.heading}>
                       <Text accessibilityRole="header" numberOfLines={1} style={styles.title} testID={ids.title}>
-                        {header?.title ?? TABS[tab].label}
+                        {header?.title ?? tabsOf[tab].label}
                       </Text>
                       <SyncBadge />
                     </View>
                     {more && (
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel="Mais ações"
+                        accessibilityLabel={common.moreActions}
                         onPress={more}
                         style={({ pressed }) => [styles.more, pressed && styles.morePressed]}
                         testID={ids.more}
@@ -141,12 +150,12 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
                     )}
                   </View>
                   <View style={styles.content} testID={ids.content}>
-                    {TABS[tab].wip ? <WorkInProgress label={TABS[tab].label}>{screens[tab]}</WorkInProgress> : screens[tab]}
+                    {tabsOf[tab].wip ? <WorkInProgress label={tabsOf[tab].label}>{screens[tab]}</WorkInProgress> : screens[tab]}
                   </View>
                   <View style={bar.styles.bar} testID={bar.ids.bar}>
                     <Tabs
-                      label="Seções do Dashboard"
-                      tabs={order.map((id) => TABS[id])}
+                      label={texts.sections}
+                      tabs={order.map((id) => tabsOf[id])}
                       selected={tab}
                       onSelect={setTab}
                       reorderable={reorder.reorderable}
@@ -171,7 +180,7 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
 /** The copy's sync status under the tab's name, while one is worth saying. */
 function SyncBadge() {
   const { styles, ids } = useStyles();
-  const status = syncBadge(useInventoryCopy());
+  const status = syncBadge(useInventoryCopy(), useLocale().locale);
   if (!status) {
     return null;
   }

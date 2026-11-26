@@ -14,6 +14,8 @@ import {
   type AppUpdate,
   type DismissedUpdate,
 } from './appUpdate';
+import { useMessages } from '../../app/locale';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // Says when a newer version of the phone app is out (see appUpdate.ts). The app asks GitHub when it opens, and again
 // when it comes back to the foreground on a later day; a failed check, such as one without internet, shows nothing.
@@ -43,6 +45,7 @@ async function readDismissed(): Promise<DismissedUpdate | null> {
 }
 
 export function UpdatePrompt({ enabled, installed = app.version }: UpdatePromptProps) {
+  const texts = useMessages(PHONE_TEXTS).update;
   const [update, setUpdate] = useState<AppUpdate | null>(null);
   const [open, setOpen] = useState(false);
   // The day of the last check, so coming back to the app checks again only on another day.
@@ -103,22 +106,22 @@ export function UpdatePrompt({ enabled, installed = app.version }: UpdatePromptP
     <Dialog
       open={open}
       onClose={putOff}
-      title={`Nova versão ${update.version} disponível`}
+      title={texts.title(update.version)}
       size="confirm"
       actions={
         <>
           <Button variant="secondary" size="sm" onPress={putOff}>
-            Agora não
+            {texts.later}
           </Button>
           <Button size="sm" onPress={install}>
-            Atualizar
+            {texts.update}
           </Button>
         </>
       }
     >
-      <Text>Atualizar baixa a versão nova pelo navegador. Abra o arquivo baixado para instalá-la por cima deste app.</Text>
+      <Text>{texts.text}</Text>
       <Text size="sm" tone="muted">
-        Na primeira vez, o Android pede para permitir que o navegador instale apps desconhecidos.
+        {texts.browser}
       </Text>
     </Dialog>
   );
