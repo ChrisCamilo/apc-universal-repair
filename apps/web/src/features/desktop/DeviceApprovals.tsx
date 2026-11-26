@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEVICE_MESSAGES, type Device } from '@apc/domain/devices'
-import { useMessages } from '../../app/useLocale.ts'
+import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { TextField } from '../../components/TextField'
 import { Text } from '../../components/Typography'
 import { desktopBridge } from './desktopBridge.ts'
-import { authorizeDevice, DEVICES_FAILED, listDevices, removeDevice } from './devices.ts'
+import { authorizeDevice, listDevices, removeDevice } from './devices.ts'
+import { DESKTOP_TEXTS } from './desktopTexts.ts'
 import { devices as devicesRecipe } from './Devices.styles.ts'
 
 // On the server's computer, while someone is logged in to the desktop app: a device waiting to be authorized (see
@@ -28,14 +29,16 @@ export function DeviceApprovals() {
   const notified = useRef(new Set<string>())
   const { classes, ids } = devicesRecipe()
   const messages = useMessages(DEVICE_MESSAGES)
+  const { locale } = useLocale()
+  const texts = DESKTOP_TEXTS[locale].approvals
 
   // List the waiting devices now and every APPROVALS_POLL_MS, until the API says this isn't the server's computer.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined
     let live = true
     const ask = async () => {
-      const listed = await listDevices()
-      if (!live || (!listed.ok && listed.message !== DEVICES_FAILED.failed)) {
+      const listed = await listDevices(locale)
+      if (!live || (!listed.ok && listed.message !== DESKTOP_TEXTS[locale].devicesFailed.failed)) {
         return
       }
       if (listed.ok) {
@@ -43,7 +46,7 @@ export function DeviceApprovals() {
         setWaiting(pending)
         for (const device of pending.filter(({ id }) => !notified.current.has(id))) {
           notified.current.add(device.id)
-          desktopBridge()?.notify('Dispositivo novo', `${device.displayName} quer entrar por um dispositivo novo, código ${device.code}.`)
+          desktopBridge()?.notify(texts.notice, texts.noticeText(device.displayName, device.code))
         }
       }
       timer = setTimeout(ask, APPROVALS_POLL_MS)
@@ -53,7 +56,7 @@ export function DeviceApprovals() {
       live = false
       clearTimeout(timer)
     }
-  }, [])
+  }, [locale, texts])
 
   const device = waiting[0]
 
@@ -63,7 +66,7 @@ export function DeviceApprovals() {
    */
   const answer = async (authorize: boolean) => {
     setBusy(true)
-    const outcome = authorize ? await authorizeDevice(device.id, name) : await removeDevice(device.id)
+    const outcome = authorize ? await authorizeDevice(device.id, name, locale) : await removeDevice(device.id, locale)
     setBusy(false)
     if (!outcome.ok) {
       setNote(outcome.message)
@@ -83,10 +86,10 @@ export function DeviceApprovals() {
       actions={
         <>
           <Button variant="secondary" size="sm" disabled={busy} onClick={() => void answer(false)}>
-            Recusar
+            {texts.refuse}
           </Button>
           <Button size="sm" loading={busy} onClick={() => void answer(true)}>
-            Autorizar
+            {texts.authorize}
           </Button>
         </>
       }
@@ -94,17 +97,16 @@ export function DeviceApprovals() {
       {device && (
         <div className={classes.base()} data-testid={ids.base}>
           <Text>
-            {device.displayName} ({device.username}) quer entrar por um dispositivo novo. Autorize só se o código abaixo for
-            o mesmo que aparece nele.
+            {texts.text(device.displayName, device.username)}
           </Text>
           <p className={classes.code()} data-testid={ids.code}>
             {device.code}
           </p>
           <TextField
-            label="Nome do dispositivo"
+            label={texts.name}
             value={name}
             onValueChange={setName}
-            helper={`Opcional. Sem nome, fica “Dispositivo ${device.code}”.`}
+            helper={texts.nameHint(device.code)}
           />
           {note && (
             <p role="alert" className={classes.note()} data-testid={ids.note}>
