@@ -1,8 +1,7 @@
 import { catalog } from "../platform/locale/locale.ts";
 
 // The login's and the sign-up's screens, and the pairing's address and codes, as both apps write them: their fields,
-// buttons and links. The messages the
-// rules give (a wrong password, a field left empty) stay in auth.ts.
+// buttons and links. The messages the rules give (a wrong password, a field left empty) stay in auth.ts.
 
 /** The login's and the sign-up's labels, buttons and links. */
 export const AUTH_TEXTS = catalog(
