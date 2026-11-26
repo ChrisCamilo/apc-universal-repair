@@ -52,7 +52,7 @@ export function registerAllowedHosts(app: FastifyInstance, listed = process.env.
       allowed = new Set([...named, ...interfaceAddresses()]);
     }
     if (!name || !allowed.has(name)) {
-      return refuse(reply, forbidden(`This server doesn't answer for the host "${name ?? ""}". Add it to APC_ALLOWED_HOSTS to allow it.`));
+      return refuse(reply, forbidden("hostNotAllowed", `This server doesn't answer for the host "${name ?? ""}". Add it to APC_ALLOWED_HOSTS to allow it.`));
     }
   });
 }

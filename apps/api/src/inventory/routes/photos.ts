@@ -22,11 +22,11 @@ const photoFileParamsSchema = z.object({
   file: z.string().regex(/^[0-9a-f-]{36}(-thumb)?\.(jpg|png|webp)$/, "Not a photo file."),
 });
 /** Refuses a stored file that isn't there. */
-const PHOTO_NOT_FOUND = notFound("Photo not found.");
+const PHOTO_NOT_FOUND = notFound("photoNotFound", "Photo not found.");
 /** The session a photo path is signed for, and its signature; a path without them is answered 401. */
 const photoSignatureQuerySchema = z.object({ session: z.string().optional(), signature: z.string().optional() });
 /** Refuses a photo path the API didn't sign for a live session. */
-const UNSIGNED = unauthorized("This photo path isn't signed for a session.");
+const UNSIGNED = unauthorized("photoUnsigned", "This photo path isn't signed for a session.");
 
 /**
  * Registers the item photo routes.

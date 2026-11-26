@@ -26,11 +26,11 @@ const CHALLENGE_LIMIT = 300;
 /** How many times an address asks for a device's status in a window: one every 3 seconds. */
 const STATUS_LIMIT = 300;
 /** Refuses a device id that doesn't exist. */
-const DEVICE_NOT_FOUND = notFound("Device not found.");
+const DEVICE_NOT_FOUND = notFound("deviceNotFound", "Device not found.");
 /** A device's id in a path. */
 const deviceParamsSchema = z.object({ id: z.uuid() });
 /** Refuses managing devices from any address but the server's computer. */
-const NOT_HERE = forbidden("Devices are managed only on the server's computer.");
+const NOT_HERE = forbidden("notOnServer", "Devices are managed only on the server's computer.");
 /** What a device row is read with. */
 const ROW = { include: { user: { select: { username: true, displayName: true } } } } as const;
 

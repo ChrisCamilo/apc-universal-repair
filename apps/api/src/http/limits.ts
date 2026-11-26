@@ -30,5 +30,5 @@ export function limitByAddress(limiter: Limiter) {
 export function tooManyAttempts(reply: FastifyReply, wait: number) {
   const seconds = Math.ceil(wait / 1000);
   reply.header("retry-after", String(seconds));
-  return refuse(reply, tooManyRequests(`Too many attempts. Try again in ${Math.ceil(seconds / 60)} min.`));
+  return refuse(reply, tooManyRequests("tooManyAttempts", `Too many attempts. Try again in ${Math.ceil(seconds / 60)} min.`));
 }

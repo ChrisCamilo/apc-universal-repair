@@ -16,6 +16,6 @@ export function registerChangeRoutes(app: FastifyInstance) {
   routes.get(
     SYNC_CHANGES_PATH,
     { schema: { querystring: syncChangesQuerySchema, response: { 200: syncChangesSchema } } },
-    async (request, reply) => (await readChanges(request.query, request.session)) ?? refuse(reply, gone(CURSOR_GONE)),
+    async (request, reply) => (await readChanges(request.query, request.session)) ?? refuse(reply, gone("cursorGone", CURSOR_GONE)),
   );
 }

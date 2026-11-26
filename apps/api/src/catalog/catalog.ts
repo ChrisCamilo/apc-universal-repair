@@ -41,7 +41,7 @@ const GENERATION_YEARS = { firstYear: true, lastYear: true } as const;
 /** Orders a level of the catalog by its place among its siblings. */
 const IN_ORDER = { orderBy: { position: "asc" } } as const;
 /** Refuses a node, or a parent to add under, that isn't there. */
-const NODE_NOT_FOUND = notFound("Catalog node not found.");
+const NODE_NOT_FOUND = notFound("nodeNotFound", "Catalog node not found.");
 
 /** What an edit gives: the whole catalog, or why it was refused. */
 type CatalogEdit = Promise<Result<CatalogData>>;
@@ -58,7 +58,7 @@ export async function addBrand(typed: string): CatalogEdit {
   const select = { id: true, name: true, catalog: { select: { id: true } } };
   const brand = (await prisma.brand.findUnique({ where: { nameKey }, select })) ?? (await prisma.brand.create({ data: { name, nameKey }, select }));
   if (brand.catalog) {
-    return refused(conflict(`"${brand.name}" is in the catalog already.`));
+    return refused(conflict("brandInCatalog", `"${brand.name}" is in the catalog already.`));
   }
   const position = nextPosition(await prisma.catalogBrand.aggregate({ _max: { position: true } }));
   await prisma.catalogBrand.create({ data: { brandId: brand.id, mark: brandMark(brand.name), position } });
@@ -113,7 +113,7 @@ export async function addModel(brandId: string, typed: string): CatalogEdit {
     (await prisma.vehicleModel.findUnique({ where: { brandId_nameKey: { brandId, nameKey } }, select })) ??
     (await prisma.vehicleModel.create({ data: { name, nameKey, brandId }, select }));
   if (vehicleModel.catalogModel) {
-    return refused(conflict(`"${vehicleModel.name}" is in the catalog already.`));
+    return refused(conflict("modelInCatalog", `"${vehicleModel.name}" is in the catalog already.`));
   }
   const position = nextPosition(await prisma.catalogModel.aggregate({ where: { vehicleModel: { brandId } }, _max: { position: true } }));
   await prisma.catalogModel.create({ data: { vehicleModelId: vehicleModel.id, position } });
@@ -170,7 +170,7 @@ export async function changeGeneration(id: string, { name, firstYear, lastYear }
   }
   const span = periodsSpan(await prisma.catalogYear.findMany({ where: { version: { generationId: id } }, select: { year: true, lastYear: true } }));
   if (span && !periodInGeneration(span, { firstYear, lastYear })) {
-    return refused(badRequest(`This generation's periods cover ${span.year}–${span.lastYear}, which its years must keep.`));
+    return refused(badRequest("periodsOutsideYears", `This generation's periods cover ${span.year}–${span.lastYear}, which its years must keep.`));
   }
   await prisma.catalogGeneration.update({ where: { id }, data: { name: listName(name), firstYear, lastYear } });
   return done(await readCatalog());
@@ -204,7 +204,7 @@ export async function changePeriod(id: string, { year, lastYear }: PeriodYears):
  * @returns The refusal.
  */
 function inUse(count: number): Rejection {
-  return conflict(`${count} ${count === 1 ? "item uses" : "items use"} it in the stock.`);
+  return conflict("nodeInUse", `${count} ${count === 1 ? "item uses" : "items use"} it in the stock.`);
 }
 
 /**
@@ -244,7 +244,7 @@ function nextPosition(last: { _max: { position: number | null } }): number {
  */
 function outsideGeneration(generation: GenerationYears): Rejection {
   const years = `${generation.firstYear}–${generation.lastYear ?? ""}`;
-  return badRequest(`A period must stay inside its generation's years, ${years}.`);
+  return badRequest("periodOutside", `A period must stay inside its generation's years, ${years}.`);
 }
 
 /**
@@ -253,7 +253,7 @@ function outsideGeneration(generation: GenerationYears): Rejection {
  * @returns The refusal.
  */
 function periodTaken({ year, lastYear }: PeriodYears): Rejection {
-  return conflict(`${year}-${lastYear} is a period of this version already.`);
+  return conflict("periodTaken", `${year}-${lastYear} is a period of this version already.`);
 }
 
 /**
@@ -334,7 +334,7 @@ export async function renameModel(id: string, typed: string): CatalogEdit {
   const { id: vehicleModelId, brandId } = node.vehicleModel;
   const other = await prisma.vehicleModel.findUnique({ where: { brandId_nameKey: { brandId, nameKey } }, select: { id: true, name: true } });
   if (other && other.id !== vehicleModelId) {
-    return refused(conflict(`"${other.name}" is already a model of this brand.`));
+    return refused(conflict("modelTaken", `"${other.name}" is already a model of this brand.`));
   }
   await prisma.vehicleModel.update({ where: { id: vehicleModelId }, data: { name, nameKey } });
   return done(await readCatalog());

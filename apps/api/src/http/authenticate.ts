@@ -19,7 +19,7 @@ declare module "fastify" {
 }
 
 /** What a request without a live session is refused with. */
-const LOGGED_OUT = unauthorized("Log in to use the API.");
+const LOGGED_OUT = unauthorized("loggedOut", "Log in to use the API.");
 
 /**
  * Makes every route that isn't public need a session.

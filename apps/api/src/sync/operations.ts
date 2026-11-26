@@ -58,7 +58,7 @@ async function applyOperation(deviceId: string, operation: SyncOperation): Promi
       }
       const { rejection } = change.ok ? { rejection: undefined } : change;
       const result: SyncOperationResult = rejection
-        ? { id: operation.id, status: "refused", statusCode: rejection.statusCode, message: rejection.message, details: rejection.details }
+        ? { id: operation.id, status: "refused", statusCode: rejection.statusCode, message: rejection.message, reason: rejection.reason, details: rejection.details }
         : { id: operation.id, status: "applied", statusCode: APPLIED_STATUS[operation.type] };
       await tx.syncOperation.create({ data: { deviceId, id: operation.id, result: JSON.stringify(result) } });
       return { result, files: change.ok ? change.files : [] };

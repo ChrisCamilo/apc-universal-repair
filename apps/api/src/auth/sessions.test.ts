@@ -3,6 +3,7 @@ import { after, test } from "node:test";
 import { buildApp } from "../app.js";
 import { bearerToken, hashToken, signedPhotoPath, validPhotoSignature } from "./sessions.js";
 import { AUTHORIZED, TEST_SESSION, TEST_SESSIONS } from "./testSessions.js";
+import { assertRefused } from "../http/testReplies.js";
 
 // The session check answers before any database call, from the stand-in session, so these run without a database.
 
@@ -67,13 +68,13 @@ test("API: every route but the open ones needs a session's token", async () => {
 // the health check is up, and a login or sign-up missing its fields is refused by validation, not for the session.
 test("API: the health check, the login and the sign-up are open without a session", async () => {
   assert.equal((await app.inject({ method: "GET", url: "/health" })).statusCode, 200);
-  assert.equal((await app.inject({ method: "POST", url: "/sessions", payload: {} })).statusCode, 400);
-  assert.equal((await app.inject({ method: "POST", url: "/users", payload: {} })).statusCode, 400);
+  assertRefused(await app.inject({ method: "POST", url: "/sessions", payload: {} }), 400, "invalid");
+  assertRefused(await app.inject({ method: "POST", url: "/users", payload: {} }), 400, "invalid");
 });
 
 // Sends the stand-in session's token to a route that validates before the database, and checks it goes on to
 // the route, which refuses the body.
 test("API: a session's token lets the request through to the route", async () => {
   const response = await app.inject({ method: "POST", url: "/items/import", payload: { items: [] }, headers: AUTHORIZED });
-  assert.equal(response.statusCode, 400);
+  assertRefused(response, 400, "invalid");
 });

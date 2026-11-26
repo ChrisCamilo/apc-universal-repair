@@ -9,6 +9,7 @@ import { TEST_USERS } from "@apc/domain/test-users";
 import { buildApp } from "../../app.js";
 import { prisma } from "../../db/client.js";
 import { testDevice, testProof } from "../../devices/testDevices.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // The catalog against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded, on PostgreSQL or
 // SQLite: it holds the catalog a new database starts with, which its migrations inserted, and the vehicle brands and
@@ -100,7 +101,7 @@ test("API: the catalog's vehicle brands and models are kept in the lists, and le
   assert.equal(corcel.inCatalog, true);
 
   const fordInUse = await call("DELETE", `/vehicle-brands/${ford.id}`);
-  assert.equal(fordInUse.statusCode, 409);
+  assertRefused(fordInUse, 409, "entryInUse");
   assert.ok(fordInUse.json().details[0].itemCount > 0);
 
   const created = await call("POST", "/vehicle-models", { name: `Pampa ${RUN}`, vehicleBrandId: ford.id });
@@ -135,7 +136,7 @@ test("API: a brand is deleted from the catalog with its models' trees", async ()
   assert.equal(await prisma.catalogGeneration.count({ where: { modelId: model.id } }), 0);
   assert.ok(await prisma.brand.findUnique({ where: { id: brand } }));
   assert.equal(await prisma.vehicleModel.count({ where: { brandId: brand } }), 1);
-  assert.equal((await call("DELETE", `/catalog/brands/${brand}`)).statusCode, 404);
+  assertRefused(await call("DELETE", `/catalog/brands/${brand}`), 404, "nodeNotFound");
 });
 
 // Adds a brand of this run, and checks it joins the lists and ends the rail with its letters, and that adding it again
@@ -148,15 +149,15 @@ test("API: a brand and the levels of its tree are added", async () => {
   const brand = catalogSchema.parse(added.json()).brands.at(-1)!;
   assert.deepEqual([brand.name, brand.mark, brand.models], [`Renault ${RUN}`, `R${RUN[0]}`, []]);
   assert.ok(await prisma.brand.findUnique({ where: { id: brand.id } }));
-  assert.equal((await call("POST", "/catalog/brands", { name: `RENAULT ${RUN}` })).statusCode, 409);
+  assertRefused(await call("POST", "/catalog/brands", { name: `RENAULT ${RUN}` }), 409, "brandInCatalog");
 
   const model = (await call("POST", `/catalog/brands/${brand.id}/models`, { name: `clio ${RUN}` })).json();
   const clio = catalogSchema.parse(model).brands.at(-1)!.models[0];
   assert.equal(clio.name, `Clio ${RUN}`);
-  assert.equal((await call("POST", `/catalog/brands/${brand.id}/models`, { name: `Clio ${RUN}` })).statusCode, 409);
+  assertRefused(await call("POST", `/catalog/brands/${brand.id}/models`, { name: `Clio ${RUN}` }), 409, "modelInCatalog");
 
   const backwards = await call("POST", `/catalog/models/${clio.id}/generations`, { name: "Primeira geração", firstYear: 1999, lastYear: 1990 });
-  assert.equal(backwards.statusCode, 400);
+  assertRefused(backwards, 400, "invalid");
   const withGeneration = await call("POST", `/catalog/models/${clio.id}/generations`, { name: "primeira geração", firstYear: 1990, lastYear: null });
   const generation = catalogSchema.parse(withGeneration.json()).brands.at(-1)!.models[0].generations[0];
   assert.deepEqual([generation.name, generation.firstYear, generation.lastYear], ["Primeira geração", 1990, null]);
@@ -166,10 +167,10 @@ test("API: a brand and the levels of its tree are added", async () => {
   assert.equal(year.statusCode, 201);
   const period = catalogSchema.parse(year.json()).brands.at(-1)!.models[0].generations[0].versions[0].years[0];
   assert.deepEqual([period.year, period.lastYear], [1996, 1999]);
-  assert.equal((await call("POST", `/catalog/versions/${version.id}/years`, { year: 1996, lastYear: 1999 })).statusCode, 409);
+  assertRefused(await call("POST", `/catalog/versions/${version.id}/years`, { year: 1996, lastYear: 1999 }), 409, "periodTaken");
   assert.equal((await call("POST", `/catalog/versions/${version.id}/years`, { year: 1996, lastYear: 1997 })).statusCode, 201);
-  assert.equal((await call("POST", `/catalog/versions/${version.id}/years`, { year: 2000, lastYear: 1999 })).statusCode, 400);
-  assert.equal((await call("POST", `/catalog/versions/${randomUUID()}/years`, { year: 1997, lastYear: 1997 })).statusCode, 404);
+  assertRefused(await call("POST", `/catalog/versions/${version.id}/years`, { year: 2000, lastYear: 1999 }), 400, "invalid");
+  assertRefused(await call("POST", `/catalog/versions/${randomUUID()}/years`, { year: 1997, lastYear: 1997 }), 404, "nodeNotFound");
 });
 
 // Builds a model with three generations, then renames the model, a generation with its years, a version and a period,
@@ -184,7 +185,7 @@ test("API: the levels of a tree are renamed and moved", async () => {
   for (const name of ["Primeira", "Segunda", "Terceira"]) {
     await call("POST", `/catalog/models/${model.id}/generations`, { name, firstYear: 2000, lastYear: 2005 });
   }
-  assert.equal((await call("PATCH", `/catalog/models/${model.id}`, { name: other.name })).statusCode, 409);
+  assertRefused(await call("PATCH", `/catalog/models/${model.id}`, { name: other.name }), 409, "modelTaken");
   await call("PATCH", `/catalog/models/${model.id}`, { name: `207 ${RUN}` });
   const generations = (await tree()).models[0].generations;
   await call("PATCH", `/catalog/generations/${generations[0].id}`, { name: "Fase 1", firstYear: 1998, lastYear: 2004 });
@@ -208,7 +209,7 @@ test("API: the levels of a tree are renamed and moved", async () => {
   await call("POST", `/catalog/versions/${version.id}/years`, { year: 2001, lastYear: 2001 });
   await call("POST", `/catalog/versions/${version.id}/years`, { year: 2002, lastYear: 2002 });
   const years = (await tree()).models[0].generations[2].versions[0].years;
-  assert.equal((await call("PATCH", `/catalog/years/${years[1].id}`, { year: 2001, lastYear: 2001 })).statusCode, 409);
+  assertRefused(await call("PATCH", `/catalog/years/${years[1].id}`, { year: 2001, lastYear: 2001 }), 409, "periodTaken");
   await call("PATCH", `/catalog/years/${years[1].id}`, { year: 2003, lastYear: 2005 });
   const changed = (await tree()).models[0].generations[2].versions[0];
   assert.deepEqual([changed.name, changed.years.map((each) => [each.year, each.lastYear])], [
@@ -239,7 +240,7 @@ test("API: a period stays inside its generation's years, and a generation keeps 
   assert.deepEqual([refused.statusCode, refused.json().message], [400, "A period must stay inside its generation's years, 1968–1974."]);
   assert.deepEqual([await add(1975, 1975), await add(1972, 1975)], [400, 400]);
   const [whole] = (await tree()).models[0].generations[0].versions[0].years;
-  assert.equal((await call("PATCH", `/catalog/years/${whole.id}`, { year: 1967, lastYear: 1970 })).statusCode, 400);
+  assertRefused(await call("PATCH", `/catalog/years/${whole.id}`, { year: 1967, lastYear: 1970 }), 400, "periodOutside");
   assert.deepEqual(
     (await tree()).models[0].generations[0].versions[0].years.map((each) => [each.year, each.lastYear]),
     [
@@ -280,7 +281,7 @@ test("API: deleting a level of a tree takes what is under it", async () => {
   assert.equal((await call("DELETE", `/catalog/models/${model.id}`)).statusCode, 200);
   assert.deepEqual((await tree()).models, []);
   assert.ok(await prisma.vehicleModel.findUnique({ where: { id: vehicleModel } }));
-  assert.equal((await call("DELETE", `/catalog/years/${randomUUID()}`)).statusCode, 404);
+  assertRefused(await call("DELETE", `/catalog/years/${randomUUID()}`), 404, "nodeNotFound");
 });
 
 // Adds an engine with its sheet to a year of this run, and checks it ends the year's engines with its name and sheet as
@@ -306,10 +307,10 @@ test("API: an engine is added with its sheet, and its sheet is saved again", asy
   const engines = (await tree()).models[0].generations[0].versions[0].years[0].engines;
   assert.deepEqual(engines.map((each) => [each.id, each.displacementDl, each.summary]), [[engine.id, 17, ""]]);
 
-  assert.equal((await call("POST", `/catalog/years/${year.id}/engines`, { ...sheet, cylinders: 0 })).statusCode, 400);
-  assert.equal((await call("POST", `/catalog/years/${year.id}/engines`, { displacementDl: 16, cylinders: 4, summary: "" })).statusCode, 400);
-  assert.equal((await call("POST", `/catalog/years/${randomUUID()}/engines`, sheet)).statusCode, 404);
-  assert.equal((await call("PATCH", `/catalog/engines/${randomUUID()}`, sheet)).statusCode, 404);
+  assertRefused(await call("POST", `/catalog/years/${year.id}/engines`, { ...sheet, cylinders: 0 }), 400, "invalid");
+  assertRefused(await call("POST", `/catalog/years/${year.id}/engines`, { displacementDl: 16, cylinders: 4, summary: "" }), 400, "invalid");
+  assertRefused(await call("POST", `/catalog/years/${randomUUID()}/engines`, sheet), 404, "nodeNotFound");
+  assertRefused(await call("PATCH", `/catalog/engines/${randomUUID()}`, sheet), 404, "nodeNotFound");
 });
 
 /**

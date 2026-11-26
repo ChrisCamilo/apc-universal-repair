@@ -9,5 +9,5 @@
     "rewriteRelativeImportExtensions": true
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/testSessions.ts"]
+  "exclude": ["src/**/*.test.ts", "src/**/testSessions.ts", "src/**/testReplies.ts"]
 }
