@@ -124,10 +124,14 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
         return route.fallback();
       }
       const { kind, entry } = found;
-      const conflict = { status: 409, json: { statusCode: 409, error: "Conflict", message: "Conflict." } };
+      /** Refuses the change as the API does, saying why. */
+      const conflict = (reason: "entryInUse" | "entryTaken") => ({
+        status: 409,
+        json: { statusCode: 409, error: "Conflict", message: "Conflict.", reason },
+      });
       if (route.request().method() === "DELETE") {
         if (itemsUsing(stock, kind, entry, lists) > 0) {
-          return route.fulfill(conflict);
+          return route.fulfill(conflict("entryInUse"));
         }
         Object.assign(lists, withoutEntry(lists, kind, entry.id));
         return route.fulfill({ status: 204 });
@@ -153,7 +157,7 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
         (held) => !("vehicleBrandId" in entry) || ("vehicleBrandId" in held && held.vehicleBrandId === entry.vehicleBrandId),
       );
       if (findEntry(siblings, name) && findEntry(siblings, name)!.id !== entry.id) {
-        return route.fulfill(conflict);
+        return route.fulfill(conflict("entryTaken"));
       }
       const field = ITEM_LIST_FIELDS[kind];
       const brand = "vehicleBrandId" in entry ? lists.vehicleBrands.find((held) => held.id === entry.vehicleBrandId) : undefined;
