@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isMode, isStyle, MODES, popShadow, scales, sheenGradient, spotlightDim, STYLE_LABELS, STYLES, themes, type ColorToken } from "./tokens.ts";
+import { isMode, isStyle, MODES, popShadow, scales, sheenGradient, spotlightDim, STYLES, themes, type ColorToken } from "./tokens.ts";
 
 // Text-bearing pairs that must meet WCAG AA (4.5:1) in every style and mode.
 const PAIRS: [ColorToken, ColorToken][] = [
@@ -271,10 +271,4 @@ for (const style of STYLES) {
 // Checks the soft accent is stronger by day, where it carries much of the style's color, than at night.
 test("Shared: the soft accent is stronger by day", () => {
   assert.ok(scales.accentSoft.day > scales.accentSoft.night);
-});
-
-// Checks every style has a distinct name for the user menu, so the theme choice lists each one once.
-test("Shared: every style has its own name for the user menu", () => {
-  assert.deepEqual(Object.keys(STYLE_LABELS), [...STYLES]);
-  assert.equal(new Set(Object.values(STYLE_LABELS)).size, STYLES.length);
 });

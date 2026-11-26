@@ -33,11 +33,11 @@ export function pageForSize(page: number, pageSize: number, nextSize: number): n
  * @param page Current page, from 1.
  * @param pageSize Items per page.
  * @param total Number of items in the list.
- * @param locale The language the numbers are written in, e.g. "en-US"; Portuguese (Brasil) unless given.
- * @param of The word between the range and the total in that language, e.g. "of"; "de" unless given.
+ * @param locale The language the numbers are written in, e.g. "en-US".
+ * @param of The word between the range and the total in that language, e.g. "of".
  * @returns E.g. "1–25 de 64", or "0 de 0" for an empty list.
  */
-export function pageRange(page: number, pageSize: number, total: number, locale = "pt-BR", of = "de"): string {
+export function pageRange(page: number, pageSize: number, total: number, locale: string, of: string): string {
   const format = new Intl.NumberFormat(locale);
   if (total === 0) {
     return `0 ${of} 0`;

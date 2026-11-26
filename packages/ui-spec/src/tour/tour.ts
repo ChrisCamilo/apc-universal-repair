@@ -1,11 +1,6 @@
 // Guided tour behavior shared by the web and mobile Tour: what a step is, where the step card goes next to
 // the target, how far the spotlight reaches around it, and the text of the card's header.
 
-/** The card header's texts in Portuguese, until the phone passes the language chosen. */
-const PORTUGUESE_HEADER: TourHeaderTexts = {
-  done: "Tutorial concluído",
-  part: (part, count, name) => `Parte ${part} de ${count} · ${name}`,
-};
 /** How long a step whose check passed stays on screen before the next one, in ms, so the user sees it worked. */
 export const TOUR_ADVANCE_DELAY_MS = 450;
 /** Room between the card and the target or the screen edges, in px. */
@@ -107,7 +102,7 @@ export function spotlightRect(target: TourRect): TourRect {
  * @param steps Every step of the tour.
  * @param index Index of the current step.
  * @param parts Names of the tour's parts, e.g. ["Criar um item", "Procurar e filtrar"].
- * @param texts How a part and the end are written in the language chosen; in Portuguese unless given.
+ * @param texts How a part and the end are written in the language chosen.
  * @returns E.g. { part: "Parte 1 de 3 · Criar um item", count: "2 / 18" }; the last step without a part reads
  * "Tutorial concluído", any other step without a part has no part text.
  */
@@ -115,7 +110,7 @@ export function stepHeader<Target>(
   steps: readonly TourStep<Target>[],
   index: number,
   parts: readonly string[],
-  texts: TourHeaderTexts = PORTUGUESE_HEADER,
+  texts: TourHeaderTexts,
 ): { part: string; count: string } {
   const { part } = steps[index];
   const last = index === steps.length - 1;

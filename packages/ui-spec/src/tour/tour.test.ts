@@ -79,8 +79,9 @@ test("Shared: the spotlight reaches just past the target", () => {
 // named with its number out of all parts, the count runs over every step, and the last step reads concluded.
 test("Shared: the tour card header names the part and counts the steps", () => {
   const parts = ["Criar um item", "Procurar e filtrar"];
-  assert.deepEqual(stepHeader(STEPS, 0, parts), { part: "Parte 1 de 2 · Criar um item", count: "1 / 3" });
-  assert.deepEqual(stepHeader(STEPS, stepIndex(STEPS, "search"), parts), { part: "Parte 2 de 2 · Procurar e filtrar", count: "2 / 3" });
-  assert.deepEqual(stepHeader(STEPS, 2, parts), { part: "Tutorial concluído", count: "3 / 3" });
+  const texts = { done: "Tutorial concluído", part: (part: number, count: number, name: string) => `Parte ${part} de ${count} · ${name}` };
+  assert.deepEqual(stepHeader(STEPS, 0, parts, texts), { part: "Parte 1 de 2 · Criar um item", count: "1 / 3" });
+  assert.deepEqual(stepHeader(STEPS, stepIndex(STEPS, "search"), parts, texts), { part: "Parte 2 de 2 · Procurar e filtrar", count: "2 / 3" });
+  assert.deepEqual(stepHeader(STEPS, 2, parts, texts), { part: "Tutorial concluído", count: "3 / 3" });
   assert.equal(stepIndex(STEPS, "missing"), 0);
 });

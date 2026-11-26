@@ -42,12 +42,13 @@ test("Shared: an ellipsis always skips two pages or more", () => {
 });
 
 // Writes the range of the first, a middle and the last page, and checks the last one stops at the total,
-// numbers take the pt-BR thousands separator, and an empty list reads "0 de 0".
+// numbers take each language's thousands separator, and an empty list reads "0 de 0".
 test("Shared: the range shows the items on the page out of the total", () => {
-  assert.equal(pageRange(1, 25, 64), "1–25 de 64");
-  assert.equal(pageRange(3, 25, 64), "51–64 de 64");
-  assert.equal(pageRange(11, 100, 1234), "1.001–1.100 de 1.234");
-  assert.equal(pageRange(1, 25, 0), "0 de 0");
+  assert.equal(pageRange(1, 25, 64, "pt-BR", "de"), "1–25 de 64");
+  assert.equal(pageRange(3, 25, 64, "pt-BR", "de"), "51–64 de 64");
+  assert.equal(pageRange(11, 100, 1234, "pt-BR", "de"), "1.001–1.100 de 1.234");
+  assert.equal(pageRange(11, 100, 1234, "en-US", "of"), "1,001–1,100 of 1,234");
+  assert.equal(pageRange(1, 25, 0, "pt-BR", "de"), "0 de 0");
 });
 
 // Changes the page size on a few pages and checks the new page still holds the first item that was showing.
