@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { DEFAULT_LOCALE, isLocale, LOCALE_STORAGE_KEY, type Locale } from '@apc/domain/locale'
+import { desktopBridge } from '../features/desktop/desktopBridge.ts'
 import { readStored, writeStored } from './storage.ts'
 import { LocaleContext, type LocaleState } from './useLocale.ts'
 
-// Holds the language chosen on this device, Portuguese until changed, stamps it on <html lang> and saves every choice
-// (see @apc/domain/locale).
+// Holds the language chosen on this device, Portuguese until changed, stamps it on <html lang>, saves every choice
+// (see @apc/domain/locale) and, in the desktop app, tells it on opening and on each change, for its own dialogs, tray
+// and pages.
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
@@ -14,6 +16,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = locale
+    desktopBridge()?.setLocale(locale)
   }, [locale])
 
   const value: LocaleState = {

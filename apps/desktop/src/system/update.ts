@@ -1,5 +1,6 @@
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { texts } from "../texts.ts";
 
 // The desktop app updating itself from the GitHub Releases the Desktop workflow publishes (see main.ts): when it checks,
 // and the channels through which the main process tells the page a new version is ready and the page asks to restart
@@ -87,11 +88,10 @@ export function readInstallMarker(userData: string): InstallMarker | undefined {
  * Writes the warning about a server on another computer at another version than the app.
  * @param appVersion The desktop app's version, e.g. "0.2.1".
  * @param apiVersion The version /health answers, undefined for an API before 0.2.0.
- * @returns The warning, in Portuguese.
+ * @returns The warning, in the main process's language.
  */
 export function serverVersionWarning(appVersion: string, apiVersion: string | undefined): string {
-  const server = apiVersion ? `na versão ${apiVersion}` : "numa versão anterior à 0.2.0";
-  return `O servidor APC está ${server}, e este app na ${appVersion}. Atualize o servidor no computador onde ele roda para evitar erros.`;
+  return texts().serverVersion(appVersion, apiVersion);
 }
 
 /**

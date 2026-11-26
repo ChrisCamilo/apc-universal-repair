@@ -219,7 +219,7 @@ sequenceDiagram
     Main->>API: GET /health on its port · na porta dele
     alt no answer · sem resposta
         Main->>API: utilityProcess.fork(server.mjs)
-        Note over Main: shows starting.html · mostra "Ligando o servidor"
+        Note over Main: shows its starting page · mostra "Ligando o servidor"
         Note over API: migrates, then listens · migra e escuta
         Main->>API: GET /health until it answers · até responder
     end

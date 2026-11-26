@@ -41,6 +41,8 @@ import { apiAnswers, waitForApi, watchServer } from "./server.js";
 import { serverFailure, type FailureKind, type ServerFailure } from "./serverFailure.js";
 import { runServerTask, type ServerTask } from "./serverTasks.js";
 import { phoneAddress } from "../system/tray.js";
+import { texts } from "../texts.js";
+import { statusPage } from "../window/statusPage.js";
 
 // The server the app runs (see bundledServer.ts) and its settings, which the page shows in its Servidor dialog through
 // the preload's bridge (see preload.cts): the database in use, SQLite with its folder or PostgreSQL with its server,
@@ -99,7 +101,7 @@ const LOG_SETTLE_MS = 500;
 /** The channel the main process tells the page on that the server isn't on, with why. */
 export const SERVER_FAILED_CHANNEL = "apc:server-failed";
 
-/** How a change of database or an import ended: done, or the message saying why not, in Portuguese. */
+/** How a change of database or an import ended: done, or the message saying why not, in the main process's language. */
 type Outcome = { ok: true } | { ok: false; message: string };
 /** The server the app runs, and where it shows. */
 export type ServerHost = {
@@ -114,8 +116,6 @@ export type ServerHost = {
   apiUrl: string;
   /** The certificate the server answers HTTPS with while the phone's access is on, the only one the app trusts there. */
   certificate?: ServerCertificate;
-  /** The "Ligando o servidor" page, static/starting.html. */
-  startingPage: string;
   /** How it runs, but for the database; its port and the phone's access follow a change in the Servidor dialog. */
   setup: Omit<ServerSetup, "databaseUrl">;
 };
@@ -140,10 +140,10 @@ let stopWatching: (() => void) | undefined;
  */
 async function changeKey(host: ServerHost): Promise<Outcome> {
   if (readConfig(host.setup.userData).database === "postgresql") {
-    return { ok: false, message: "Só o banco SQLite tem chave; o PostgreSQL usa a senha do endereço dele." };
+    return { ok: false, message: texts().settings.onlySqliteKey };
   }
   if (!safeStorage.isEncryptionAvailable()) {
-    return { ok: false, message: "O Windows não deixou guardar a chave nova com segurança, então ela não foi trocada." };
+    return { ok: false, message: texts().settings.newKeyNotKept };
   }
   const url = `file:${serverData(host.setup.userData).sqliteFile}`;
   await stopServer?.();
@@ -153,13 +153,13 @@ async function changeKey(host: ServerHost): Promise<Outcome> {
   } catch (error) {
     dropKeyChange(host.setup.userData);
     await runServer(host, undefined);
-    return { ok: false, message: `A chave não foi trocada, e o banco continua com a de antes: ${(error as Error).message}` };
+    return { ok: false, message: texts().settings.keyNotChanged((error as Error).message) };
   }
   finishKeyChange(host.setup.userData);
   console.log("The SQLite key was changed; its new recovery copy is still to be kept.");
   return (await runServer(host, undefined))
     ? { ok: true }
-    : { ok: false, message: failure?.reason ?? `O servidor não ligou. Veja logs\\api.log em ${host.setup.userData}.` };
+    : { ok: false, message: failure?.reason ?? texts().settings.notStarted(host.setup.userData) };
 }
 
 /**
@@ -173,17 +173,17 @@ async function checkImport(host: ServerHost, source: Source): Promise<Outcome | 
   const from = sourceUrl(source);
   const to = databaseUrlInUse(host);
   if (from === to) {
-    return { ok: false, message: "Esse é o banco em uso. Escolha o banco do servidor antigo." };
+    return { ok: false, message: texts().settings.inUse };
   }
   const keys = sourceKeys(source);
   if (keys === null) {
-    return { ok: false, message: "A chave de recuperação tem 64 letras e números, de 0 a 9 e de A a F; os traços não contam." };
+    return { ok: false, message: texts().settings.recoveryKeyShape };
   }
   try {
     const problem = await runTask<ImportProblem | null>(host, { task: "importProblem", from, to, keys });
     return problem ? { ok: false, message: importProblemMessage(problem), problem } : { ok: true };
   } catch (error) {
-    return { ok: false, message: `Não foi possível abrir o banco antigo: ${openError(error as Error)}` };
+    return { ok: false, message: texts().settings.oldNotOpened(openError(error as Error)) };
   }
 }
 
@@ -195,7 +195,7 @@ async function checkImport(host: ServerHost, source: Source): Promise<Outcome | 
  */
 async function chooseFolder(window: BrowserWindow, defaultPath?: string): Promise<string | null> {
   const { canceled, filePaths } = await dialog.showOpenDialog(window, {
-    title: "Pasta das fotos do servidor antigo",
+    title: texts().settings.oldPhotos,
     defaultPath,
     properties: ["openDirectory"],
   });
@@ -209,8 +209,8 @@ async function chooseFolder(window: BrowserWindow, defaultPath?: string): Promis
  */
 async function chooseSqliteFile(window: BrowserWindow): Promise<{ file: string; photos: string } | null> {
   const { canceled, filePaths } = await dialog.showOpenDialog(window, {
-    title: "Arquivo do servidor antigo",
-    filters: [{ name: "Banco SQLite", extensions: ["db"] }],
+    title: texts().settings.oldFile,
+    filters: [{ name: texts().settings.sqliteFiles, extensions: ["db"] }],
     properties: ["openFile"],
   });
   const file = filePaths[0];
@@ -338,7 +338,7 @@ async function importServer(host: ServerHost, source: Source, photosFrom?: strin
     });
     return { ok: true, ...(result as object) };
   } catch (error) {
-    return { ok: false, message: `A importação falhou, e o banco em uso ficou como estava: ${(error as Error).message}` };
+    return { ok: false, message: texts().settings.importFailed((error as Error).message) };
   } finally {
     await runServer(host, to.startsWith("file:") ? undefined : to);
   }
@@ -355,7 +355,7 @@ async function migrateImport(host: ServerHost, source: Source): Promise<Outcome>
     await runTask(host, { task: "migrate", url: sourceUrl(source), keys: sourceKeys(source) ?? undefined });
     return { ok: true };
   } catch (error) {
-    return { ok: false, message: `Não foi possível atualizar o banco antigo: ${openError(error as Error)}` };
+    return { ok: false, message: texts().settings.oldNotMigrated(openError(error as Error)) };
   }
 }
 
@@ -363,7 +363,7 @@ async function migrateImport(host: ServerHost, source: Source): Promise<Outcome>
  * Tells what leaves the server public while the phone's access is on: a network set to Public, or a firewall rule open
  * on public networks, recorded in app.log too.
  * @param host The server.
- * @returns The warnings, in Portuguese; none with the access off, when all is private, or when it can't be read.
+ * @returns The warnings, in the main process's language; none with the access off, when all is private, or when it can't be read.
  */
 async function networkWarningsOf(host: ServerHost): Promise<string[]> {
   if (!host.setup.phoneAccess) {
@@ -384,7 +384,7 @@ async function networkWarningsOf(host: ServerHost): Promise<string[]> {
  */
 function openError(error: Error): string {
   return /file is not a database/.test(error.message)
-    ? "o arquivo é criptografado, e a chave de recuperação dele não veio ou não é a dele; ou ele não é um banco."
+    ? texts().settings.encrypted
     : error.message;
 }
 
@@ -613,7 +613,7 @@ export async function startOwnServer(host: ServerHost): Promise<"started" | "wai
     console.log("PostgreSQL was chosen with no address yet; the page asks for it.");
     return "waiting";
   }
-  await host.window.loadFile(host.startingPage);
+  await host.window.loadURL(statusPage("starting"));
   await runServer(host, openDatabaseUrl(config, safeStorage));
   return "started";
 }
@@ -639,7 +639,7 @@ async function takeOverPort(host: ServerHost): Promise<void> {
   stopWatching = undefined;
   const config = readConfig(host.setup.userData);
   if (!needsDatabaseAddress(config, safeStorage)) {
-    await host.window.loadFile(host.startingPage);
+    await host.window.loadURL(statusPage("starting"));
     await runServer(host, openDatabaseUrl(config, safeStorage));
   }
   await host.window.loadURL(host.appUrl);
@@ -668,7 +668,7 @@ async function usePhoneAccess(host: ServerHost, on: boolean): Promise<Outcome> {
   }
   return (await runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)))
     ? { ok: true }
-    : { ok: false, message: failure?.reason ?? `O servidor não ligou. Veja logs\\api.log em ${host.setup.userData}.` };
+    : { ok: false, message: failure?.reason ?? texts().settings.notStarted(host.setup.userData) };
 }
 
 /**
@@ -680,7 +680,7 @@ async function usePhoneAccess(host: ServerHost, on: boolean): Promise<Outcome> {
  */
 async function usePort(host: ServerHost, port: number): Promise<Outcome> {
   if (!validPort(port)) {
-    return { ok: false, message: `A porta é um número de ${MIN_PORT} a ${MAX_PORT}.` };
+    return { ok: false, message: texts().settings.portRange(MIN_PORT, MAX_PORT) };
   }
   if (port === host.setup.port && ownServerOn() && !portTaken) {
     return { ok: true };
@@ -696,7 +696,7 @@ async function usePort(host: ServerHost, port: number): Promise<Outcome> {
   host.setup.port = port;
   return (await runServer(host, openDatabaseUrl(readConfig(host.setup.userData), safeStorage)))
     ? { ok: true }
-    : { ok: false, message: failure?.reason ?? `O servidor não ligou na porta ${port}. Veja logs\\api.log em ${host.setup.userData}.` };
+    : { ok: false, message: failure?.reason ?? texts().settings.notStartedOnPort(port, host.setup.userData) };
 }
 
 /**
@@ -708,16 +708,16 @@ async function usePort(host: ServerHost, port: number): Promise<Outcome> {
  */
 async function usePostgresql(host: ServerHost, url: string): Promise<Outcome> {
   if (!isPostgresqlUrl(url)) {
-    return { ok: false, message: "O endereço começa com postgresql://, como postgresql://usuário:senha@localhost:5432/apc." };
+    return { ok: false, message: texts().settings.postgresqlAddress };
   }
   if (!safeStorage.isEncryptionAvailable()) {
-    return { ok: false, message: "O Windows não deixou guardar o endereço com segurança, então ele não foi salvo." };
+    return { ok: false, message: texts().settings.addressNotKept };
   }
   let check: DatabaseCheck;
   try {
     check = await runTask<DatabaseCheck>(host, { task: "check", url });
   } catch (error) {
-    return { ok: false, message: `Não foi possível conectar ao PostgreSQL: ${(error as Error).message}` };
+    return { ok: false, message: texts().settings.postgresqlNotConnected((error as Error).message) };
   }
   const refused = databaseCheckMessage(check);
   if (refused) {
@@ -726,12 +726,12 @@ async function usePostgresql(host: ServerHost, url: string): Promise<Outcome> {
   try {
     await runTask(host, { task: "migrate", url });
   } catch (error) {
-    return { ok: false, message: `Não foi possível preparar o banco: ${(error as Error).message}` };
+    return { ok: false, message: texts().settings.databaseNotPrepared((error as Error).message) };
   }
   updateConfig(host.setup.userData, { database: "postgresql", databaseUrl: seal(url, safeStorage) });
   return (await runServer(host, url))
     ? { ok: true }
-    : { ok: false, message: `O servidor não ligou com esse banco. Veja logs\\api.log em ${host.setup.userData}.` };
+    : { ok: false, message: texts().settings.notStartedOnDatabase(host.setup.userData) };
 }
 
 /**
@@ -744,10 +744,10 @@ async function usePostgresql(host: ServerHost, url: string): Promise<Outcome> {
 async function useRecoveryKey(host: ServerHost, text: string): Promise<Outcome> {
   const key = readRecoveryKey(text);
   if (!key) {
-    return { ok: false, message: "A chave de recuperação tem 64 letras e números, de 0 a 9 e de A a F; os traços não contam." };
+    return { ok: false, message: texts().settings.recoveryKeyShape };
   }
   if (!safeStorage.isEncryptionAvailable()) {
-    return { ok: false, message: "O Windows não deixou guardar a chave com segurança, então ela não foi salva." };
+    return { ok: false, message: texts().settings.keyNotKept };
   }
   const url = `file:${serverData(host.setup.userData).sqliteFile}`;
   await stopServer?.();
@@ -755,16 +755,16 @@ async function useRecoveryKey(host: ServerHost, text: string): Promise<Outcome> 
   try {
     opens = await runTask<boolean>(host, { task: "keyOpens", url, keys: { [url]: key } });
   } catch (error) {
-    return { ok: false, message: `Não foi possível conferir a chave: ${(error as Error).message}` };
+    return { ok: false, message: texts().settings.keyNotChecked((error as Error).message) };
   }
   if (!opens) {
-    return { ok: false, message: "Essa chave não abre o banco deste computador. Confira se é a chave de recuperação deste app." };
+    return { ok: false, message: texts().settings.keyNotOpening };
   }
   console.log("The recovery copy opens the SQLite file; it is kept sealed in config.json.");
   updateConfig(host.setup.userData, { database: "sqlite", sqliteKey: seal(key, safeStorage), sqliteKeySaved: true });
   return (await runServer(host, undefined))
     ? { ok: true }
-    : { ok: false, message: failure?.reason ?? `O servidor não ligou. Veja logs\\api.log em ${host.setup.userData}.` };
+    : { ok: false, message: failure?.reason ?? texts().settings.notStarted(host.setup.userData) };
 }
 
 /**
@@ -776,5 +776,5 @@ async function useSqlite(host: ServerHost): Promise<Outcome> {
   updateConfig(host.setup.userData, { database: "sqlite", databaseUrl: undefined });
   return (await runServer(host, undefined))
     ? { ok: true }
-    : { ok: false, message: `O servidor não ligou. Veja logs\\api.log em ${host.setup.userData}.` };
+    : { ok: false, message: texts().settings.notStarted(host.setup.userData) };
 }

@@ -3,6 +3,7 @@ import { closeSync, openSync, readFileSync, readSync, rmSync } from "node:fs";
 import path from "node:path";
 import { serverData } from "./bundledServer.ts";
 import { readConfig, updateConfig, type DatabaseChoice, type DesktopConfig } from "../config.ts";
+import { texts } from "../texts.ts";
 
 // The database the server the app ships runs on (see bundledServer.ts): SQLite, a file in userData, or PostgreSQL, at
 // an address given in the app's server settings (see serverSettings.ts). The installer asks which
@@ -80,14 +81,15 @@ export function beginKeyChange(userData: string, sealer: Sealer): string {
 /**
  * Says why the server can't run on a PostgreSQL database, from what it holds.
  * @param check What it holds.
- * @returns The reason, in Portuguese, or undefined when the server can run on it, migrating it if needed.
+ * @returns The reason, in the main process's language, or undefined when the server can run on it, migrating it if
+ * needed.
  */
 export function databaseCheckMessage(check: DatabaseCheck): string | undefined {
   if (check.newer.length > 0) {
-    return "Esse banco é de uma versão mais nova do APC. Atualize este app antes de usá-lo.";
+    return texts().settings.databaseNewer;
   }
   if (check.foreign) {
-    return "Esse banco tem tabelas de outro programa. Use um banco vazio, só para o APC.";
+    return texts().settings.databaseForeign;
   }
   return undefined;
 }
@@ -164,19 +166,10 @@ export function formatRecoveryKey(key: string): string {
 /**
  * Says why an import can't start.
  * @param problem What the server's importProblem task found.
- * @returns The reason, in Portuguese.
+ * @returns The reason, in the main process's language.
  */
 export function importProblemMessage(problem: ImportProblem): string {
-  switch (problem) {
-    case "sourceBehind":
-      return "O banco antigo é de uma versão anterior do APC. Atualize-o primeiro: as migrações desta versão mudam a estrutura dele e mantêm os dados.";
-    case "sourceNewer":
-      return "O banco antigo é de uma versão mais nova do APC. Atualize este app antes de importar.";
-    case "sourceNotApc":
-      return "Esse banco não é de um servidor APC: não tem as tabelas dele.";
-    case "targetHasData":
-      return "O banco em uso já tem dados, como uma conta criada. Só dá para importar num banco vazio: importe antes de criar contas, ou troque para um banco vazio.";
-  }
+  return texts().importProblems[problem];
 }
 
 /**

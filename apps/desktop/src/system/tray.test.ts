@@ -6,6 +6,7 @@ import path from "node:path";
 import { after, test } from "node:test";
 import { INSTALLER_STARTUP_FILE, takeInstallerStartup } from "./startup.ts";
 import { phoneAddress, trayMenu } from "./tray.ts";
+import { setLanguage } from "../texts.ts";
 
 /** userData folders of this run, removed at the end. */
 const folders: string[] = [];
@@ -64,6 +65,26 @@ test("Desktop: the tray's menu opens the app, shows the phone's address, opens t
   assert.deepEqual(trayMenu({ address: "192.168.0.202", port: 3000, serverOn: false, phoneAccess: true, startsWithWindows: false, canStartWithWindows: false })[1], {
     id: "address",
     label: "Servidor desligado: veja Servidor e banco de dados",
+    enabled: false,
+  });
+});
+
+// Lists the tray's menu with English chosen in the page, the phone's access on, then off, and checks every item and
+// the address's label read in English.
+test("Desktop: the tray's menu reads in English", (t) => {
+  setLanguage("en-US");
+  t.after(() => setLanguage("pt-BR"));
+  assert.deepEqual(trayMenu({ address: "192.168.0.202", port: 3000, serverOn: true, phoneAccess: true, startsWithWindows: true, canStartWithWindows: true }), [
+    { id: "open", label: "Open APC" },
+    { id: "address", label: "Server on at https://192.168.0.202:3000 (click to copy)", enabled: true },
+    { id: "settings", label: "Server and database…" },
+    { id: "startup", label: "Start with Windows", checked: true },
+    { id: "separator" },
+    { id: "quit", label: "Quit" },
+  ]);
+  assert.deepEqual(trayMenu({ address: "192.168.0.202", port: 3000, serverOn: true, phoneAccess: false, startsWithWindows: false, canStartWithWindows: false })[1], {
+    id: "address",
+    label: "Server on for this computer only",
     enabled: false,
   });
 });

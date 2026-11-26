@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import type { Locale } from "./texts.ts";
 
 // The desktop app's settings, in config.json in its userData folder: the database of the server it ships (see
 // database.ts) and, for a server on another computer, its address, which APC_API_URL also sets. Without an address,
@@ -27,6 +28,8 @@ export type DesktopConfig = {
   httpsCertificate?: string;
   /** That certificate's private key, sealed by safeStorage, never in plain text (see certificate.ts). */
   httpsKey?: string;
+  /** The language the page keeps, for what the main process writes before it opens (see texts.ts). */
+  locale?: Locale;
   /** Whether the server the app runs listens on the network, for the phone, as the Servidor dialog turned it on. */
   phoneAccess?: boolean;
   /** The port the server the app runs listens on, once the user changed it (see ports.ts). */

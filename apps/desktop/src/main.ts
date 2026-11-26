@@ -5,7 +5,7 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, saf
 import electronUpdater from "electron-updater";
 import { localApiUrl, usesBundledServer } from "./server/bundledServer.js";
 import { certificateVerdict } from "./server/certificate.js";
-import { resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
+import { readConfig, resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./server/database.js";
 import { DEVICE_CHANNELS, devicePublicKey, ensureDeviceKey, signNonce } from "./system/deviceKey.js";
 import { windowsIdentity } from "./system/identity.js";
@@ -25,6 +25,7 @@ import {
 } from "./server/serverSettings.js";
 import { HIDDEN_ARG, takeInstallerStartup } from "./system/startup.js";
 import { phoneAddress, trayMenu, type TrayItem } from "./system/tray.js";
+import { isLocale, language, LOCALE_CHANNEL, setLanguage, texts } from "./texts.js";
 import {
   CHECK_INTERVAL_MS,
   checksForUpdates,
@@ -38,6 +39,7 @@ import {
   writeInstallMarker,
   type InstallMarker,
 } from "./system/update.js";
+import { statusPage } from "./window/statusPage.js";
 import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window/window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
@@ -57,6 +59,8 @@ import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window/windo
 // keeps working on its version. The server it ships is always on its version; a server on another computer that answers another one on
 // /health gets a warning. Only one copy runs at a time, since two would share the same localStorage, and opening it
 // again shows its window. What the main process and the updater say goes to logs/app.log in userData (see logs.ts).
+// What it writes itself follows the language the page keeps, which the page tells through the bridge and config.json
+// keeps for the next start (see texts.ts).
 // Quitting first writes the page's storage to disk, so a tab, theme or session chosen just before is there on the next
 // start, and waits for the server the app runs to exit.
 
@@ -154,11 +158,10 @@ function keepInTray(window: BrowserWindow, server: () => { port: number; phoneAc
     if (!noticeShown && Notification.isSupported()) {
       noticeShown = true;
       updateConfig(app.getPath("userData"), { trayNoticeShown: true });
+      const words = texts().trayNotice;
       new Notification({
-        title: "O APC continua ligado",
-        body: server().phoneAccess
-          ? "O servidor segue ligado para o celular. Para sair, use Sair no ícone do APC perto do relógio."
-          : "O servidor segue ligado. Para sair, use Sair no ícone do APC perto do relógio.",
+        title: words.title,
+        body: server().phoneAccess ? words.phone : words.server,
         icon: path.join(app.getAppPath(), "build", "icon.png"),
       }).show();
     }
@@ -234,9 +237,10 @@ function leaveToInstaller(marker: InstallMarker): void {
   console.log(`Version ${marker.version} is being installed; this start leaves the folder to the installer.`);
   app.setAppUserModelId(windowsIdentity({ isPackaged: app.isPackaged, execPath: process.execPath, appPath: app.getAppPath() }).appId);
   if (Notification.isSupported()) {
+    const words = texts().installing;
     new Notification({
-      title: "O APC está sendo atualizado",
-      body: marker.reopens ? "Ele abre sozinho em instantes, já na versão nova." : "Abra de novo em instantes, quando a versão nova estiver instalada.",
+      title: words.title,
+      body: marker.reopens ? words.reopens : words.openAgain,
       icon: path.join(app.getAppPath(), "build", "icon.png"),
     }).show();
   }
@@ -253,7 +257,7 @@ function leaveToInstaller(marker: InstallMarker): void {
  */
 async function restartToUpdate(window: BrowserWindow, userData: string, version: string): Promise<void> {
   console.log(`Restarting to install ${version}.`);
-  await window.loadFile(path.join(app.getAppPath(), "static", "updating.html")).catch(() => undefined);
+  await window.loadURL(statusPage("updating")).catch(() => undefined);
   writeInstallMarker(userData, { version, startedAt: Date.now(), reopens: true });
   session.defaultSession.flushStorageData();
   await stopOwnServer();
@@ -377,6 +381,11 @@ app.on("will-quit", (event) => {
 
 void app.whenReady().then(async () => {
   const userData = app.getPath("userData");
+  // The language the page kept on the last run, for what shows before it opens; Portuguese the first time.
+  const saved = readConfig(userData).locale;
+  if (isLocale(saved)) {
+    setLanguage(saved);
+  }
   const marker = readInstallMarker(userData);
   if (marker && installInProgress(marker, app.getVersion(), Date.now())) {
     leaveToInstaller(marker);
@@ -406,6 +415,13 @@ void app.whenReady().then(async () => {
   // The server the app runs, once it has one: its address follows a change of port in the Servidor dialog.
   let host: ServerHost | undefined;
   ipcMain.on(NOTIFY_CHANNEL, (event, payload) => notify(appUrl, event.sender, event.senderFrame?.url ?? "", payload));
+  // The page tells its language on opening and on each change; config.json keeps it for the next start.
+  ipcMain.on(LOCALE_CHANNEL, (event, locale: unknown) => {
+    if (isLocale(locale) && locale !== language() && (event.senderFrame?.url ?? "").startsWith(appUrl)) {
+      setLanguage(locale);
+      updateConfig(userData, { locale });
+    }
+  });
   // The device key's public half and its signatures of the API's nonces, for the app's own page only; the private key
   // stays here (see deviceKey.ts).
   let deviceKey: KeyObject | undefined;
@@ -447,7 +463,6 @@ void app.whenReady().then(async () => {
       window,
       appUrl,
       apiUrl,
-      startingPage: path.join(app.getAppPath(), "static", "starting.html"),
       setup: { serverDir, userData, port, phoneAccess: config.phoneAccess === true, version: app.getVersion() },
     };
     host = own;

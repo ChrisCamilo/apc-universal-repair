@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { texts } from "../texts.ts";
 
 // What leaves the server open to others while the phone's access is on: a network in use set to Public, or a firewall
 // rule that lets the app in on public networks, as Windows makes one when "Public networks" is ticked on its prompt.
@@ -28,7 +29,7 @@ const run = promisify(execFile);
 /**
  * Words what in a report leaves the server open on a public network, for the Servidor dialog.
  * @param report What PowerShell reported.
- * @returns A warning, in Portuguese, for each network set to Public, and one for any enabled rule that lets the app in
+ * @returns A warning, in the main process's language, for each network set to Public, and one for any enabled rule that lets the app in
  * on public networks; none when everything is private.
  */
 export function networkWarnings(report: NetworkReport): string[] {
@@ -36,15 +37,8 @@ export function networkWarnings(report: NetworkReport): string[] {
   const openRule = report.rules.some(
     (rule) => rule.enabled === "True" && rule.direction === "Inbound" && rule.action === "Allow" && /\b(Public|Any)\b/.test(rule.profile),
   );
-  return [
-    ...networks.map(
-      (network) =>
-        `A rede “${network.name}” está como Pública, então quem estiver nela chega ao servidor. Deixe-a como Privada nas configurações de Wi-Fi do Windows (passo 3 do guia do servidor em casa).`,
-    ),
-    ...(openRule
-      ? ["Uma regra do firewall do Windows libera o APC em redes públicas. Deixe-a só para redes privadas (passo 3 do guia do servidor em casa)."]
-      : []),
-  ];
+  const words = texts().network;
+  return [...networks.map((network) => words.publicNetwork(network.name)), ...(openRule ? [words.openRule] : [])];
 }
 
 /**

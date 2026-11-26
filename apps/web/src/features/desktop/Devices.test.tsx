@@ -73,7 +73,7 @@ function serveDevices(devices: Device[], listStatus = 200) {
 // and a Windows notification is asked for once; "Autorizar" sends the name typed and the dialog goes away.
 test('Web: a waiting device is asked about on the server\'s computer and authorized with a name', async () => {
   const notify = vi.fn()
-  window.apcDesktop = { notify, onOpenNotifications: () => () => {}, onUpdateReady: () => () => {}, restartToUpdate: () => {} }
+  window.apcDesktop = { notify, onOpenNotifications: () => () => {}, onUpdateReady: () => () => {}, restartToUpdate: () => {}, setLocale: () => {} }
   const api = serveDevices([DEVICE])
   const screen = await render(<DeviceApprovals />)
   const dialog = screen.getByRole('dialog', { name: DEVICE_MESSAGES['pt-BR'].approveTitle })
