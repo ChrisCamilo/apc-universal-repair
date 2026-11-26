@@ -3,10 +3,12 @@ import { AppState, Linking, NativeModules, PermissionsAndroid, Platform } from '
 import { TOAST_KIND_LOOKS } from '@apc/ui-spec/toast';
 import { save, themeStorage } from '../../app/theme';
 import { useToastFeed } from '../../components/Toast';
+import type { Locale } from '@apc/domain/locale';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // The app's notifications in the Android shade, the same as the desktop's Windows notifications: local ones, with no
-// push server, on the "Notificações do APC" channel (SystemNotificationsModule.kt). Android pauses the app's JavaScript
-// while it is out of sight, so what reaches the shade comes from the copy's sync in the background (see
+// push server, on the app's channel (SystemNotificationsModule.kt), named in the language chosen. Android pauses the
+// app's JavaScript while it is out of sight, so what reaches the shade comes from the copy's sync in the background (see
 // backgroundSync.ts): the changes the server refused and the items newly at their minimum; in the foreground the toasts
 // say them. Android 13 and later ask the user for the notification permission, which can only be asked with the app in
 // sight: the app asks once, the first time an error or warning shows with it open, and keeps working without it if
@@ -20,17 +22,29 @@ export const NOTIFICATIONS_ASKED_KEY = 'apc-notifications-asked';
 export const OPEN_NOTIFICATIONS_URL = 'apcuniversalrepair://notifications';
 
 /** The native side that shows the notifications (SystemNotificationsModule.kt). */
-const native = NativeModules.SystemNotifications as { show: (title: string, message: string) => Promise<void> };
+const native = NativeModules.SystemNotifications as {
+  show: (title: string, message: string, channel: string) => Promise<void>;
+  nameChannel: (channel: string) => Promise<void>;
+};
 /** Whether the link the app started on was already taken, so a later Dashboard doesn't open the notifications again. */
 let startTaken = false;
+
+/**
+ * Names the notifications' channel in Android's settings in a language, as the language chosen changes.
+ * @param locale The language.
+ */
+export async function nameNotificationChannel(locale: Locale): Promise<void> {
+  await native.nameChannel(PHONE_TEXTS[locale].notificationChannel).catch(() => {});
+}
 
 /**
  * Shows a notification in the Android shade; without the permission Android shows nothing, and nothing fails.
  * @param title Its title, e.g. "Aviso".
  * @param message Its text.
+ * @param locale The language the channel is named in.
  */
-export async function showSystemNotification(title: string, message: string): Promise<void> {
-  await native.show(title, message).catch(() => {});
+export async function showSystemNotification(title: string, message: string, locale: Locale): Promise<void> {
+  await native.show(title, message, PHONE_TEXTS[locale].notificationChannel).catch(() => {});
 }
 
 /**

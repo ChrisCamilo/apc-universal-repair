@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { DEFAULT_LOCALE, isLocale, LOCALE_STORAGE_KEY, type Catalog, type Locale } from '@apc/domain/locale';
 import { save, themeStorage } from './theme';
+import { nameNotificationChannel } from '../features/notifications/systemNotifications';
 
 // Holds the language chosen on this phone, Portuguese until changed, and saves every choice in the app's storage,
-// where the background sync reads it too (see @apc/domain/locale).
+// where the background sync reads it too (see @apc/domain/locale); Android's settings name the notifications' channel
+// in it.
 
-const LocaleContext = createContext<LocaleState>({ locale: DEFAULT_LOCALE, setLocale: () => {} });
+export const LocaleContext = createContext<LocaleState>({ locale: DEFAULT_LOCALE, setLocale: () => {} });
 
 export type LocaleState = {
   locale: Locale;
@@ -45,6 +47,13 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadLocale().then(setLocaleState);
   }, []);
+
+  // Name the notifications' channel in the language, at start and on each change.
+  useEffect(() => {
+    if (locale) {
+      nameNotificationChannel(locale);
+    }
+  }, [locale]);
 
   // Render nothing until the saved language is known, so the first frame is never in the wrong one.
   if (!locale) {
