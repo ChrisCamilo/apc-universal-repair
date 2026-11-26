@@ -8,6 +8,7 @@ import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
 import { useToast } from '../../../components/Toast'
 import { Text } from '../../../components/Typography'
+import { refusalReason } from '@apc/domain/refusals'
 
 // The confirmation that removes an item from the inventory, naming it and its code. Excluir sends the delete to
 // the API, shows a toast and hands the removal over; Cancel and Escape close it with nothing changed. A failed
@@ -37,7 +38,7 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
     setDeleting(true)
     const response = await apiFetch(`/api/items/${item.id}`, { method: 'DELETE' }).catch(() => null)
     setDeleting(false)
-    if (response?.status === 404) {
+    if (response && !response.ok && (await refusalReason(response)) === 'itemNotFound') {
       toast.info(texts.gone(item.name))
       onDeleted(item)
       return

@@ -4,6 +4,7 @@ import type { Prisma } from "../generated/prisma/client.js";
 import { mergeCatalogModel } from "../catalog/catalogTree.js";
 import { prisma } from "../db/client.js";
 import { conflict, done, notFound, refused, type Rejection, type Result } from "../http/replies.js";
+import type { RefusalReason } from "@apc/domain/refusals";
 
 // The lists the item form picks from, as their routes read and change them (see routes/lists.ts): categories, part
 // brands, vehicle brands and vehicle models. A list is read sorted by name. A name is added with the writing rule
@@ -28,9 +29,9 @@ const ENTRY = { id: true, name: true } as const;
 /** The columns a vehicle brand is read with: an entry's, and whether the catalog has it. */
 const BRAND = { ...ENTRY, catalog: { select: { brandId: true } } } as const;
 /** Refuses a vehicle brand id that doesn't exist. */
-const BRAND_NOT_FOUND = notFound("Vehicle brand not found.");
+const BRAND_NOT_FOUND = notFound("vehicleBrandNotFound", "Vehicle brand not found.");
 /** Refuses a list entry id that doesn't exist. */
-const ENTRY_NOT_FOUND = notFound("List entry not found.");
+const ENTRY_NOT_FOUND = notFound("entryNotFound", "List entry not found.");
 /** The items using an entry of each list: by their category, or through any of their brands or vehicles. */
 const ITEMS_USING: Record<ItemListKind, (id: string) => Prisma.ItemWhereInput> = {
   categories: (id) => ({ categoryId: id }),
@@ -164,12 +165,13 @@ async function dropRepeatedVehicles(tx: Prisma.TransactionClient, itemIds: reado
 
 /**
  * Refuses a change the list can't take.
+ * @param reason Why, as a key.
  * @param message What keeps it from being done.
- * @param reason How many items use the entry, or the entry that has the name, when that is the reason.
+ * @param held How many items use the entry, or the entry that has the name, when that is the reason.
  * @returns The refusal.
  */
-function entryConflict(message: string, reason: { itemCount?: number; entryId?: string } = {}): Rejection {
-  return conflict(message, [{ field: "id", message, ...reason }]);
+function entryConflict(reason: RefusalReason, message: string, held: { itemCount?: number; entryId?: string } = {}): Rejection {
+  return conflict(reason, message, [{ field: "id", message, ...held }]);
 }
 
 /**
@@ -180,7 +182,7 @@ function entryConflict(message: string, reason: { itemCount?: number; entryId?: 
  */
 async function inUse(kind: ItemListKind, entry: { id: string; name: string }): Promise<Rejection | null> {
   const itemCount = await prisma.item.count({ where: ITEMS_USING[kind](entry.id) });
-  return itemCount > 0 ? entryConflict(`"${entry.name}" is used by ${itemCount} items.`, { itemCount }) : null;
+  return itemCount > 0 ? entryConflict("entryInUse", `"${entry.name}" is used by ${itemCount} items.`, { itemCount }) : null;
 }
 
 /**
@@ -286,12 +288,12 @@ export async function mergeEntry(kind: NameListKind, id: string, into: string): 
     return refused(ENTRY_NOT_FOUND);
   }
   if (id === into) {
-    return refused(entryConflict("An entry can't be merged into itself."));
+    return refused(entryConflict("mergeSame", "An entry can't be merged into itself."));
   }
   // A part brand makes an item once: an item with both brands would hold the same part brand twice.
   const both = kind === "partBrands" ? await prisma.item.count({ where: { AND: [ITEMS_USING.partBrands(id), ITEMS_USING.partBrands(into)] } }) : 0;
   if (both > 0) {
-    return refused(entryConflict(`${both} items have both "${held.name}" and "${kept.name}".`, { itemCount: both }));
+    return refused(entryConflict("mergeShared", `${both} items have both "${held.name}" and "${kept.name}".`, { itemCount: both }));
   }
   return done({ moved: await mergeEntries(kind, id, into) });
 }
@@ -312,10 +314,10 @@ export async function mergeVehicleModel(id: string, into: string): Promise<Resul
     return refused(ENTRY_NOT_FOUND);
   }
   if (id === into) {
-    return refused(entryConflict("An entry can't be merged into itself."));
+    return refused(entryConflict("mergeSame", "An entry can't be merged into itself."));
   }
   if (held.brandId !== kept.brandId) {
-    return refused(entryConflict("A model can only be merged into a model of its brand."));
+    return refused(entryConflict("mergeOtherBrand", "A model can only be merged into a model of its brand."));
   }
   return done({ moved: await mergeEntries("vehicleModels", id, into) });
 }
@@ -374,7 +376,7 @@ export async function renameEntry(kind: NameListKind, id: string, typed: string)
   const nameKey = optionKey(name);
   const other = await list.find(nameKey);
   if (other && other.id !== id) {
-    return refused(entryConflict(`"${other.name}" is already in the list.`, { entryId: other.id }));
+    return refused(entryConflict("entryTaken", `"${other.name}" is already in the list.`, { entryId: other.id }));
   }
   return done(await list.rename(id, name, nameKey));
 }
@@ -394,7 +396,7 @@ export async function renameVehicleModel(id: string, typed: string): Promise<Res
   const nameKey = optionKey(name);
   const other = await prisma.vehicleModel.findUnique({ where: { brandId_nameKey: { brandId: held.brandId, nameKey } }, select: MODEL });
   if (other && other.id !== id) {
-    return refused(entryConflict(`"${other.name}" is already a model of this brand.`, { entryId: other.id }));
+    return refused(entryConflict("modelTaken", `"${other.name}" is already a model of this brand.`, { entryId: other.id }));
   }
   return done(toVehicleModel(await prisma.vehicleModel.update({ where: { id }, data: { name, nameKey }, select: MODEL })));
 }

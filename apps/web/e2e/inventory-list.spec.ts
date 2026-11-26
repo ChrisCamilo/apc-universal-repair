@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./support/fixtures.ts";
+import { expect, isApiCall, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { rgb } from "./support/expect.ts";
 import { atNotebookSizes } from "./support/sizes.ts";
@@ -64,7 +64,7 @@ test("Web: the Inventory panel fills the window and keeps its pagination", { tag
   for (const [state, open] of [
     ["a few items", () => serveItems(page, ITEMS.slice(0, 2))],
     ["no items", () => serveItems(page, [])],
-    ["an API error", () => page.route("**/api/**", (route) => route.fulfill({ status: 500, body: "" }))],
+    ["an API error", () => page.route(isApiCall, (route) => route.fulfill({ status: 500, body: "" }))],
   ] as const) {
     await open();
     await page.goto("/inventory");

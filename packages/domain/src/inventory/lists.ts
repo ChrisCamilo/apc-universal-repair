@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiFetch } from "../auth/apiFetch.ts";
 import { catalog, type Locale } from "../platform/locale/locale.ts";
 import { capitalizeFirst, optionKey, type Item } from "./items.ts";
+import { refusalReason } from "../platform/api/refusals.ts";
 
 // The lists an item's category, part brand, vehicle brand and vehicle model are picked from, kept by the API, grown
 // from the item form and tidied in the "Gerenciar listas" dialog: each name is unique ignoring case, accents and
@@ -451,11 +452,9 @@ export async function renameListEntry(
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ name }),
   }).catch(() => null);
-  if (response?.status === 409) {
-    return "taken";
-  }
   if (!response?.ok) {
-    return null;
+    const reason = response && (await refusalReason(response));
+    return reason === "entryTaken" || reason === "modelTaken" ? "taken" : null;
   }
   const body = await response.json();
   return kind === "vehicleModels" ? vehicleModelSchema.parse(body) : listEntrySchema.parse(body);

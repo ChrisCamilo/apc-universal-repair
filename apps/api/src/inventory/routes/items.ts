@@ -73,7 +73,7 @@ export function registerItemRoutes(app: FastifyInstance) {
         return await importItems(request.body.items);
       } catch (error) {
         if (error instanceof ImportConflict) {
-          return refuse(reply, conflict(error.message));
+          return refuse(reply, conflict("importConflict", error.message));
         }
         throw error;
       }

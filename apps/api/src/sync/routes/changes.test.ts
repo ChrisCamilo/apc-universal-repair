@@ -3,6 +3,7 @@ import { after, test } from "node:test";
 import { SYNC_PAGE_SIZE_MAX } from "@apc/domain/sync";
 import { buildApp } from "../../app.js";
 import { AUTHORIZED, TEST_SESSIONS } from "../../auth/testSessions.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // These requests are answered before any database call, so they run without a database, from the stand-in session.
 
@@ -14,7 +15,7 @@ after(() => app.close());
 // device.
 test("API: the change feed needs a session", async () => {
   const answer = await app.inject({ method: "GET", url: "/sync/changes" });
-  assert.equal(answer.statusCode, 401);
+  assertRefused(answer, 401, "loggedOut");
 });
 
 // Asks for pages of no changes, of more than the most a page holds and of a limit that isn't a number, and checks

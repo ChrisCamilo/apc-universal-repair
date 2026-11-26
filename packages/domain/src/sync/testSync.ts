@@ -17,10 +17,10 @@ import type { SyncChange, SyncChanges } from "./sync.ts";
  * @param catalog The catalog, as GET /catalog answers it, if the test has one.
  * @returns The answer.
  */
-export function syncAnswer(query: URLSearchParams, items: readonly Item[], catalog?: CatalogData) {
+export function syncAnswer(query: URLSearchParams, items: readonly Item[], catalog?: CatalogData): Response {
   return query.has("since")
-    ? { ok: false, status: 410, json: () => Promise.resolve({ statusCode: 410, error: "Gone", message: "Make a full copy." }) }
-    : { ok: true, status: 200, json: () => Promise.resolve(syncPageOf(items, undefined, catalog)) };
+    ? Response.json({ statusCode: 410, error: "Gone", message: "Make a full copy.", reason: "cursorGone" }, { status: 410 })
+    : Response.json(syncPageOf(items, undefined, catalog));
 }
 
 /**

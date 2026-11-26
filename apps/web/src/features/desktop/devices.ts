@@ -3,11 +3,12 @@ import { deviceListSchema, deviceSchema, type Device } from '@apc/domain/devices
 import type { Locale } from '@apc/domain/locale'
 import { API_BASE } from '../../app/api.ts'
 import { DESKTOP_TEXTS } from './desktopTexts.ts'
+import { refusalReason } from '@apc/domain/refusals'
 
 // The calls of the devices' screens on the server's computer (see DeviceApprovals.tsx and DevicesDialog.tsx): the
 // list, authorizing, renaming and removing a device, and the entry code that logs a phone in (see PairingCode.tsx).
-// Each answers what went wrong in the language chosen: the API's 401 when nobody is logged in here, its 403 when the
-// app isn't on the server's computer, and the message of a 501, as the web app's demo says it doesn't do it.
+// Each answers what went wrong in the language chosen, by the API's reason: nobody logged in here, or the app isn't on
+// the server's computer; and the message of a 501, as the web app's demo says it doesn't do it.
 
 /** How a call ended: what it answered, or what to say. */
 export type DevicesOutcome<T> = { ok: true; value: T } | { ok: false; message: string }
@@ -47,9 +48,9 @@ async function call<T>(
   if (response?.status === 501) {
     return { ok: false, message: ((await response.json()) as { message: string }).message }
   }
-  const status = response?.status
+  const reason = response && (await refusalReason(response))
   const failed = DESKTOP_TEXTS[locale].devicesFailed
-  return { ok: false, message: status === 401 ? failed.signedOut : status === 403 ? failed.elsewhere : failed.failed }
+  return { ok: false, message: reason === 'loggedOut' ? failed.signedOut : reason === 'notOnServer' ? failed.elsewhere : failed.failed }
 }
 
 /**

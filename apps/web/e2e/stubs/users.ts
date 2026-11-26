@@ -33,11 +33,11 @@ export async function serveUsers(page: Page): Promise<TestUser[]> {
   await page.route("**/api/users", (route) => {
     const parsed = userCreateRequestSchema.safeParse(route.request().postDataJSON());
     if (!parsed.success) {
-      return route.fulfill({ status: 400, json: { statusCode: 400, message: "One or more fields failed validation." } });
+      return route.fulfill({ status: 400, json: { statusCode: 400, error: "Bad Request", message: "One or more fields failed validation.", reason: "invalid" } });
     }
     const { username, displayName, password } = parsed.data;
     if (users.some((user) => user.username === username)) {
-      return route.fulfill({ status: 409, json: { statusCode: 409, message: `Username "${username}" is already taken.` } });
+      return route.fulfill({ status: 409, json: { statusCode: 409, error: "Conflict", message: `Username "${username}" is already taken.`, reason: "usernameTaken" } });
     }
     const user = { id: `user-${username}`, username, displayName, password };
     users.push(user);
@@ -48,7 +48,7 @@ export async function serveUsers(page: Page): Promise<TestUser[]> {
     const user = users.find((known) => known.username === username && known.password === password);
     return user
       ? route.fulfill({ status: 200, json: session(user) })
-      : route.fulfill({ status: 401, json: { statusCode: 401, message: "Wrong username or password." } });
+      : route.fulfill({ status: 401, json: { statusCode: 401, error: "Unauthorized", message: "Wrong username or password.", reason: "loginRefused" } });
   });
   await page.route("**/api/users/me/inventory-tutorial", async (route) => {
     seen.add((await route.request().headerValue("authorization"))!.replace("Bearer token-", ""));

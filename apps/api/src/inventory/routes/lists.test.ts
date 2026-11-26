@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { buildApp } from "../../app.js";
 import { AUTHORIZED, TEST_SESSIONS } from "../../auth/testSessions.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // These requests are rejected by validation before any database call, so they run without a database, from the
 // stand-in session.
@@ -24,10 +25,10 @@ test("API: creating in a list needs a name", async () => {
 // rejected, naming the field.
 test("API: a new vehicle model needs its vehicle brand", async () => {
   const missing = await app.inject({ headers: AUTHORIZED, method: "POST", url: "/vehicle-models", payload: { name: "Gol" } });
-  assert.equal(missing.statusCode, 400);
+  assertRefused(missing, 400, "invalid");
   assert.equal(missing.json().details[0].field, "vehicleBrandId");
   const wrong = await app.inject({ headers: AUTHORIZED, method: "POST", url: "/vehicle-models", payload: { name: "Gol", vehicleBrandId: "vw" } });
-  assert.equal(wrong.statusCode, 400);
+  assertRefused(wrong, 400, "invalid");
 });
 
 // Renames and deletes with ids that aren't UUIDs, and renames to a blank name, and checks each is rejected before

@@ -232,7 +232,7 @@ test("Shared: the API login saves the user and the token, refuses a 401 and reje
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), LOGGED_IN);
 
   const refused = memoryStore();
-  assert.equal(await createApiAuth(refused.store, "/api", DEVICE, answering(401).send).login({ username: "x", password: "y" }, "pt-BR"), null);
+  assert.equal(await createApiAuth(refused.store, "/api", DEVICE, answering(401, { statusCode: 401, error: "Unauthorized", message: "Wrong username or password.", reason: "loginRefused" }).send).login({ username: "x", password: "y" }, "pt-BR"), null);
   assert.equal(refused.saved.size, 0);
   await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).login({ username: "x", password: "y" }, "pt-BR"));
   await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(200, SESSION_USER).send).login({ username: "x", password: "y" }, "pt-BR"));
@@ -249,10 +249,10 @@ test("Shared: an entry code logs in through the API, or says why it was refused"
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), LOGGED_IN);
 
   const refused = memoryStore();
-  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, answering(401).send).pair("K7Q2ZD9M", "pt-BR"), { refused: PAIRING_REFUSED["pt-BR"] });
-  const waiting = answering(403, { statusCode: 403, error: "device_pending", message: "Device not authorized yet.", code: "K7Q2ZD" });
+  assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, answering(401, { statusCode: 401, error: "Unauthorized", message: "The entry code isn't valid.", reason: "entryRefused" }).send).pair("K7Q2ZD9M", "pt-BR"), { refused: PAIRING_REFUSED["pt-BR"] });
+  const waiting = answering(403, { statusCode: 403, error: "device_pending", message: "Device not authorized yet.", reason: "devicePending", code: "K7Q2ZD" });
   assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, waiting.send).pair("K7Q2ZD9M", "pt-BR"), { pending: "K7Q2ZD" });
-  const limited = withChallenge(async () => new Response("{}", { status: 429, headers: { "Retry-After": "840" } }));
+  const limited = withChallenge(async () => Response.json({ statusCode: 429, error: "Too Many Requests", message: "Too many attempts.", reason: "tooManyAttempts" }, { status: 429, headers: { "Retry-After": "840" } }));
   assert.deepEqual(await createApiAuth(refused.store, "/api", DEVICE, limited).pair("K7Q2ZD9M", "pt-BR"), { refused: "Muitas tentativas. Tente de novo em 14 min." });
   assert.equal(refused.saved.size, 0);
   await assert.rejects(createApiAuth(refused.store, "/api", DEVICE, answering(500).send).pair("K7Q2ZD9M", "pt-BR"));
@@ -271,7 +271,7 @@ test("Shared: the API sign-up saves the user and the token, or says why it was r
   assert.deepEqual(await createApiAuth(store, "/api", DEVICE, created.send).register(sent, "pt-BR"), { user });
   assert.deepEqual(created.sent, [{ url: "/api/users", body: { ...sent, device: PROOF } }]);
   assert.deepEqual(JSON.parse(saved.get(SESSION_STORAGE_KEY)!), { ...user, token: "t2" });
-  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, answering(409).send).register(sent, "pt-BR"), { refused: REGISTER_MESSAGES["pt-BR"].taken });
+  assert.deepEqual(await createApiAuth(store, "/api", DEVICE, answering(409, { statusCode: 409, error: "Conflict", message: "Username taken.", reason: "usernameTaken" }).send).register(sent, "pt-BR"), { refused: REGISTER_MESSAGES["pt-BR"].taken });
   assert.deepEqual(await createApiAuth(store, "/api", DEVICE, answering(400).send).register(sent, "pt-BR"), { refused: REGISTER_MESSAGES["pt-BR"].failed });
   const offline = (async () => {
     throw new TypeError("fetch failed");
@@ -410,7 +410,7 @@ test("Shared: too many attempts say how many minutes to wait", () => {
 // Has the API answer a login and a sign-up with 429, and checks both are refused saying when to try again, with
 // nothing saved.
 test("Shared: the API login and sign-up say when to try again after too many attempts", async () => {
-  const limited = withChallenge(async () => new Response(JSON.stringify({ statusCode: 429 }), { status: 429, headers: { "Retry-After": "840" } }));
+  const limited = withChallenge(async () => Response.json({ statusCode: 429, error: "Too Many Requests", message: "Too many attempts.", reason: "tooManyAttempts" }, { status: 429, headers: { "Retry-After": "840" } }));
   const { store, saved } = memoryStore();
   const auth = createApiAuth(store, "/api", DEVICE, limited);
   const refused = { refused: "Muitas tentativas. Tente de novo em 14 min." };
@@ -424,7 +424,7 @@ test("Shared: the API login and sign-up say when to try again after too many att
 // code, and checks each says so with the code and saves nothing; then asks whether it was authorized, with the
 // device's proof, and checks the answer, and that a failed answer rejects.
 test("Shared: a device waiting for authorization is told so with its code, and asks when it has it", async () => {
-  const waiting = answering(403, { statusCode: 403, error: "device_pending", message: "Device not authorized yet.", code: "K7Q2ZD" });
+  const waiting = answering(403, { statusCode: 403, error: "device_pending", message: "Device not authorized yet.", reason: "devicePending", code: "K7Q2ZD" });
   const { store, saved } = memoryStore();
   const auth = createApiAuth(store, "/api", DEVICE, waiting.send);
   assert.deepEqual(await auth.login({ username: USER.username, password: USER.password }, "pt-BR"), { pending: "K7Q2ZD" });

@@ -16,6 +16,10 @@
       "apc-dist": "./dist/platform/api/apiRoutes.js",
       "default": "./src/platform/api/apiRoutes.ts"
     },
+    "./refusals": {
+      "apc-dist": "./dist/platform/api/refusals.js",
+      "default": "./src/platform/api/refusals.ts"
+    },
     "./auth": {
       "apc-dist": "./dist/auth/auth.js",
       "default": "./src/auth/auth.ts"

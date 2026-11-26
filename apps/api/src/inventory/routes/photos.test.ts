@@ -8,6 +8,7 @@ import { buildApp } from "../../app.js";
 import { photosDir, storePhoto } from "../photos.js";
 import { signedPhotoPath } from "../../auth/sessions.js";
 import { AUTHORIZED, TEST_SESSION, TEST_SESSIONS } from "../../auth/testSessions.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // These requests are answered before any database call, so they run without a database, from the stand-in session.
 
@@ -69,23 +70,23 @@ test("API: photos that break the rules are refused before anything is stored", a
     { name: "photo", file: gif, type: "image/png" },
   ]);
   const wrongType = await app.inject({ method: "PUT", url, ...pngThenGif });
-  assert.equal(wrongType.statusCode, 400);
+  assertRefused(wrongType, 400, "photosInvalid");
   assert.deepEqual(wrongType.json().details, [{ field: "photos", message: "Photo 2 is not a JPG, PNG or WebP image." }]);
 
   const wrongPart = await app.inject({ method: "PUT", url, ...multipart([{ name: "keep", value: "123" }]) });
-  assert.equal(wrongPart.statusCode, 400);
+  assertRefused(wrongPart, 400, "photosInvalid");
   assert.match(wrongPart.json().details[0].message, /^Part 1 is neither/);
 
   const four = multipart(["aa", "ab", "ac", "ad"].map((end) => ({ name: "keep", value: PHOTO_ID.replace("aa", end) })));
   const tooMany = await app.inject({ method: "PUT", url, ...four });
-  assert.equal(tooMany.statusCode, 400);
+  assertRefused(tooMany, 400, "photosInvalid");
   assert.deepEqual(tooMany.json().details, [{ field: "photos", message: "A brand of an item holds at most 3 photos." }]);
 
   const one = multipart([{ name: "photo", file: png, type: "image/png" }]);
   const badId = await app.inject({ method: "PUT", url: `/items/123/brands/${ID}/photos`, ...one });
-  assert.equal(badId.statusCode, 400);
+  assertRefused(badId, 400, "invalid");
   const badBrand = await app.inject({ method: "PUT", url: `/items/${ID}/brands/123/photos`, ...one });
-  assert.equal(badBrand.statusCode, 400);
+  assertRefused(badBrand, 400, "invalid");
 });
 
 // Stores a photo and checks the photo and the thumbnail are served, without a token, at the paths signed for the
@@ -101,9 +102,9 @@ test("API: stored photos are served by their file name only, at a signed path", 
   assert.equal(thumb.headers["content-type"], "image/webp");
 
   const missing = await app.inject({ method: "GET", url: signedPhotoPath(TEST_SESSION, `${ID}.jpg`) });
-  assert.equal(missing.statusCode, 404);
+  assertRefused(missing, 404, "photoNotFound");
   const outside = await app.inject({ method: "GET", url: "/photos/..%2F..%2Fpackage.json" });
-  assert.equal(outside.statusCode, 400);
+  assertRefused(outside, 400, "invalid");
 });
 
 // Asks for a stored photo with no signature, with the token instead of one, with another file's signature, with a
@@ -124,5 +125,5 @@ test("API: a photo path not signed for a live session is refused", async () => {
     assert.notEqual(response.headers["content-type"], "image/webp", url);
   }
   const withToken = await app.inject({ method: "GET", url: `/photos/${stored.file}`, headers: AUTHORIZED });
-  assert.equal(withToken.statusCode, 401);
+  assertRefused(withToken, 401, "photoUnsigned");
 });

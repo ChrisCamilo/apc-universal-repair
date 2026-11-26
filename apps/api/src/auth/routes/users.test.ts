@@ -3,6 +3,7 @@ import { after, test } from "node:test";
 import { REGISTER_MESSAGES } from "@apc/domain/auth";
 import { buildApp } from "../../app.js";
 import { sessionOf } from "./users.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // These requests are rejected by validation before any database call, so they run without a database.
 
@@ -62,11 +63,11 @@ test("API: an address gets 30 logins in 15 minutes", async () => {
       assert.equal(response.statusCode, 400, `attempt ${attempt}`);
     }
     const refused = await limited.inject({ method: "POST", url: "/sessions", payload: {}, remoteAddress: "10.0.0.2" });
-    assert.equal(refused.statusCode, 429);
+    assertRefused(refused, 429, "tooManyAttempts");
     assert.equal(refused.headers["retry-after"], "900");
     assert.equal(refused.json().message, "Too many attempts. Try again in 15 min.");
     const other = await limited.inject({ method: "POST", url: "/sessions", payload: {}, remoteAddress: "10.0.0.3" });
-    assert.equal(other.statusCode, 400);
+    assertRefused(other, 400, "invalid");
   } finally {
     await limited.close();
   }
@@ -82,10 +83,10 @@ test("API: an address gets 10 sign-ups in 15 minutes", async () => {
       assert.equal(response.statusCode, 400, `attempt ${attempt}`);
     }
     const refused = await limited.inject({ method: "POST", url: "/users", payload: {}, remoteAddress: "10.0.0.2" });
-    assert.equal(refused.statusCode, 429);
+    assertRefused(refused, 429, "tooManyAttempts");
     assert.ok(Number(refused.headers["retry-after"]) > 0);
     const login = await limited.inject({ method: "POST", url: "/sessions", payload: {}, remoteAddress: "10.0.0.2" });
-    assert.equal(login.statusCode, 400);
+    assertRefused(login, 400, "invalid");
   } finally {
     await limited.close();
   }

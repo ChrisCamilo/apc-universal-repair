@@ -43,9 +43,9 @@ const PAIRING_LIMIT = 10;
 /** How many sign-ups an address gets in a window. */
 const SIGN_UP_LIMIT = 10;
 /** Refuses an entry code never handed out, used or ended. */
-const ENTRY_REFUSED = unauthorized("The entry code isn't valid. Read the one the computer shows now.");
+const ENTRY_REFUSED = unauthorized("entryRefused", "The entry code isn't valid. Read the one the computer shows now.");
 /** Refuses a username and password that don't match, without saying which was wrong. */
-const LOGIN_REFUSED = unauthorized("Wrong username or password.");
+const LOGIN_REFUSED = unauthorized("loginRefused", "Wrong username or password.");
 /** The columns a user is answered with. */
 const USER = { id: true, username: true, displayName: true, inventoryTutorialSeenAt: true } as const;
 /** A hash no password matches, checked when the username is unknown. */
@@ -57,7 +57,7 @@ const UNKNOWN_USER_HASH = hashPassword(randomBytes(32).toString("hex"));
  * @returns The refusal.
  */
 function devicePending(code: string): Rejection {
-  return { ...forbidden(DEVICE_MESSAGES["pt-BR"].pending), error: "device_pending", code };
+  return { ...forbidden("devicePending", DEVICE_MESSAGES["pt-BR"].pending), error: "device_pending", code };
 }
 
 /**
@@ -86,7 +86,7 @@ export function sessionOf({
  */
 function usernameTaken(username: string): Rejection {
   const message = `Username "${username}" is already taken.`;
-  return conflict(message, [{ field: "username", message }]);
+  return conflict("usernameTaken", message, [{ field: "username", message }]);
 }
 
 /**

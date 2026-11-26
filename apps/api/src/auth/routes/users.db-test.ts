@@ -6,6 +6,7 @@ import { prisma } from "../../db/client.js";
 import { testDevice, testProof } from "../../devices/testDevices.js";
 import { hashToken } from "../sessions.js";
 import { ATTEMPT_WINDOW_MS } from "../attempts.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // Wrong logins against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded with the test users.
 // Each test builds its own app, so it starts with no attempts counted, and the clock is held so a window can end.
@@ -64,7 +65,7 @@ test("API: 5 wrong logins block the username from that address for the window", 
       assert.equal((await login(app, USER.username, "errada")).statusCode, 401, `attempt ${attempt}`);
     }
     const blocked = await login(app, USER.username, USER.password);
-    assert.equal(blocked.statusCode, 429);
+    assertRefused(blocked, 429, "tooManyAttempts");
     assert.equal(blocked.headers["retry-after"], String(ATTEMPT_WINDOW_MS / 1000));
     assert.equal(blocked.json().message, "Too many attempts. Try again in 15 min.");
     const unknown = await login(app, USER.username, "outra");
@@ -89,7 +90,7 @@ test("API: a right login clears the count of wrong ones", async () => {
     for (let attempt = 1; attempt <= 4; attempt++) {
       await login(app, USER.username, "errada");
     }
-    assert.equal((await login(app, USER.username, "errada")).statusCode, 401);
+    assertRefused(await login(app, USER.username, "errada"), 401, "loginRefused");
   } finally {
     await app.close();
   }
@@ -103,7 +104,7 @@ test("API: a blocked username leaves other usernames and addresses alone", async
     for (let attempt = 1; attempt <= 5; attempt++) {
       await login(app, USER.username, "errada");
     }
-    assert.equal((await login(app, USER.username, USER.password)).statusCode, 429);
+    assertRefused(await login(app, USER.username, USER.password), 429, "tooManyAttempts");
     assert.equal((await login(app, OTHER.username, OTHER.password)).statusCode, 200);
     assert.equal((await login(app, USER.username, USER.password, "10.0.0.3")).statusCode, 200);
   } finally {

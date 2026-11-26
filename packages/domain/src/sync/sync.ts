@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { engineDriveSchema } from "../catalog/catalog.ts";
 import { itemBrandSchema, itemCreateSchema, itemPhotoSchema, itemSchema, itemUpdateSchema, MAX_QUANTITY, POSITIONS, SIDES } from "../inventory/items.ts";
+import { REFUSAL_REASONS } from "../platform/api/refusals.ts";
 
 // The server's change feed, which a phone's copy of the inventory follows (GET /sync/changes): every row of the
 // inventory, its lists and the catalog, as its table keeps it, each with a version that grows with every change of it,
@@ -203,6 +204,7 @@ export const syncOperationResultSchema = z.object({
   status: z.enum(["applied", "refused", "conflict"]),
   statusCode: z.int(),
   message: z.string().optional(),
+  reason: z.enum(REFUSAL_REASONS).optional(),
   details: z.array(z.record(z.string(), z.unknown())).optional(),
   conflicts: z.array(syncConflictSchema).optional(),
 });

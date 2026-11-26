@@ -75,6 +75,15 @@ async function png(name = 'foto.png'): Promise<File> {
   return new File([blob], name, { type: 'image/png' })
 }
 
+/**
+ * Reads a refusal's status and reason, the key the apps write their text from, as the API sends them.
+ * @param response The demo's answer.
+ * @returns Its status and its reason.
+ */
+async function refusal(response: Response): Promise<[number, string]> {
+  return [response.status, (await response.clone().json()).reason]
+}
+
 // Logs in as the demo's user and with a wrong password, signs up a new user and the same username again, and checks
 // the answers are the API's, every other route asks for a session, the tutorial is marked and logging out ends the
 // session; the health check is open, and every answer is marked as the demo's.
@@ -83,27 +92,29 @@ test('Web: the demo signs up, logs in and out as the API does', async () => {
   const health = await call('GET', '/health')
   expect([health.status, (await health.json()).status, health.headers.get(DEMO_HEADER)]).toEqual([200, 'ok', DEMO_MARKER])
   const wrong = await call('POST', '/sessions', { username: DEMO_USER.username, password: 'errada123', device: DEVICE })
+  expect(await refusal(wrong)).toEqual([401, 'loginRefused'])
   expect([wrong.status, (await wrong.json()).message]).toEqual([401, 'Wrong username or password.'])
-  expect((await call('GET', '/items')).status).toBe(401)
-  expect((await call('GET', '/items', undefined, 'not-a-session')).status).toBe(401)
+  expect(await refusal(await call('GET', '/items'))).toEqual([401, 'loggedOut'])
+  expect(await refusal(await call('GET', '/items', undefined, 'not-a-session'))).toEqual([401, 'loggedOut'])
 
   const signUp = { displayName: 'Ana Souza', username: 'Ana.Souza', email: 'ana@oficina.com', password: 'freio1234', device: DEVICE }
   const created = await call('POST', '/users', signUp)
   expect(created.status).toBe(201)
   expect(loggedInSchema.parse(await created.json())).toMatchObject({ username: 'ana.souza', initials: 'AS', inventoryTutorialSeen: false })
   const again = await call('POST', '/users', signUp)
+  expect(await refusal(again)).toEqual([409, 'usernameTaken'])
   expect([again.status, (await again.json()).details[0].field]).toEqual([409, 'username'])
   const invalid = await call('POST', '/users', { ...signUp, username: 'a', password: '1' })
-  expect(invalid.status).toBe(400)
+  expect(await refusal(invalid)).toEqual([400, 'invalid'])
   expect((await invalid.json()).details.map((detail: { field: string }) => detail.field)).toEqual(['username', 'password'])
 
   const ana = (await (await call('POST', '/sessions', { username: 'ana.souza', password: 'freio1234', device: DEVICE })).json()).token
   expect((await call('PUT', '/users/me/inventory-tutorial', undefined, ana)).status).toBe(204)
   expect((await (await call('POST', '/sessions', { username: 'ana.souza', password: 'freio1234', device: DEVICE })).json()).inventoryTutorialSeen).toBe(true)
   expect((await call('DELETE', '/sessions/current', undefined, ana)).status).toBe(204)
-  expect((await call('GET', '/items', undefined, ana)).status).toBe(401)
+  expect(await refusal(await call('GET', '/items', undefined, ana))).toEqual([401, 'loggedOut'])
   expect((await as('GET', '/items')).status).toBe(200)
-  expect((await as('GET', '/nada')).status).toBe(404)
+  expect(await refusal(await as('GET', '/nada'))).toEqual([404, 'routeNotFound'])
   expect(token).not.toBe(ana)
 })
 
@@ -129,7 +140,7 @@ test('Web: the demo lists its items as the API does', async () => {
   expect(cheap.items[0].name).toBe('Vela de ignição')
   const second = await (await as('GET', '/items?sort=price&order=asc&page=2&pageSize=25')).json()
   expect(second.items).toHaveLength(DEMO_ITEMS.length - 25)
-  expect((await as('GET', '/items?pageSize=7')).status).toBe(400)
+  expect(await refusal(await as('GET', '/items?pageSize=7'))).toEqual([400, 'invalid'])
 })
 
 // Creates an item with names written loosely, and one with a code another item uses and one with a field missing, and
@@ -152,7 +163,7 @@ test('Web: the demo creates items under the API rules', async () => {
   expect(listEntriesSchema.parse(await list('/part-brands')).map((entry) => entry.name)).toContain('Cobreq')
 
   const taken = await as('POST', '/items', { ...ITEM, brands: [{ ...BRAND, code: 'nv 1x' }, { ...BRAND, partBrand: 'Bosch', code: 'W712-95' }] })
-  expect(taken.status).toBe(409)
+  expect(await refusal(taken)).toEqual([409, 'codeTaken'])
   expect((await taken.json()).details[0]).toMatchObject({ field: 'brands/1/code', code: 'W712-95', itemName: 'Filtro de óleo' })
   const missing = await as('POST', '/items', { ...ITEM, vehicles: [] })
   expect([missing.status, (await missing.json()).details[0].field]).toEqual([400, 'vehicles'])
@@ -183,15 +194,16 @@ test('Web: the demo edits and deletes items under the API rules', async () => {
 
   const other = (await items()).find((item) => item.id !== pads.id)!
   const foreign = await as('PATCH', `/items/${pads.id}`, { brands: [{ ...BRAND, id: other.brands[0].id }] })
-  expect(foreign.status).toBe(400)
+  expect(await refusal(foreign)).toEqual([400, 'foreignBrand'])
   const twice = await as('PATCH', `/items/${pads.id}`, { originalCodes: ['ju 77'] })
+  expect(await refusal(twice)).toEqual([400, 'codeRepeated'])
   expect([twice.status, (await twice.json()).message]).toEqual([400, 'Code "ju 77" is repeated in the item.'])
   const taken = await as('PATCH', `/items/${pads.id}`, { originalCodes: [other.brands[0].code] })
   expect([taken.status, (await taken.json()).details[0].itemId]).toEqual([409, other.id])
 
   expect((await as('DELETE', `/items/${pads.id}`)).status).toBe(204)
-  expect((await as('DELETE', `/items/${pads.id}`)).status).toBe(404)
-  expect((await as('PATCH', `/items/${pads.id}`, { name: 'X' })).status).toBe(404)
+  expect(await refusal(await as('DELETE', `/items/${pads.id}`))).toEqual([404, 'itemNotFound'])
+  expect(await refusal(await as('PATCH', `/items/${pads.id}`, { name: 'X' }))).toEqual([404, 'itemNotFound'])
 })
 
 // Adds a category that is already listed and one that isn't, renames one onto another's name and then freely, merges
@@ -211,17 +223,19 @@ test('Web: the demo keeps the lists as the API does', async () => {
 
   const brakes = categories.find((entry) => entry.name === 'Freios')!
   const clash = await as('PATCH', `/categories/${body.id}`, { name: 'FREIOS' })
+  expect(await refusal(clash)).toEqual([409, 'entryTaken'])
   expect([clash.status, (await clash.json()).details[0].entryId]).toEqual([409, brakes.id])
   expect((await (await as('PATCH', `/categories/${brakes.id}`, { name: 'freios e embreagem' })).json()).name).toBe('Freios e embreagem')
   expect((await items()).filter((item) => item.category === 'Freios e embreagem')).toHaveLength(5)
 
   const used = await as('DELETE', `/categories/${brakes.id}`)
+  expect(await refusal(used)).toEqual([409, 'entryInUse'])
   expect([used.status, (await used.json()).details[0].itemCount]).toEqual([409, 5])
-  expect((await as('POST', `/categories/${brakes.id}/merge`, { into: brakes.id })).status).toBe(409)
+  expect(await refusal(await as('POST', `/categories/${brakes.id}/merge`, { into: brakes.id }))).toEqual([409, 'mergeSame'])
   const merged = await as('POST', `/categories/${brakes.id}/merge`, { into: body.id })
   expect(await merged.json()).toEqual({ moved: 5 })
   expect((await items()).filter((item) => item.category === 'Carroceria')).toHaveLength(5)
-  expect((await as('DELETE', `/categories/${brakes.id}`)).status).toBe(404)
+  expect(await refusal(await as('DELETE', `/categories/${brakes.id}`))).toEqual([404, 'entryNotFound'])
 
   const extra = (await (await as('POST', '/part-brands', { name: 'Sem uso' })).json()) as ListEntry
   expect((await as('DELETE', `/part-brands/${extra.id}`)).status).toBe(204)
@@ -273,8 +287,8 @@ test('Web: the demo merges vehicle models and brands as the API does', async () 
   const uno = models.find((model) => model.name === 'Uno')!
   expect((await as('POST', '/vehicle-models', { name: 'gol', vehicleBrandId: vw.id })).status).toBe(200)
   expect((await as('POST', '/vehicle-models', { name: 'Kombi', vehicleBrandId: vw.id })).status).toBe(201)
-  expect((await as('POST', '/vehicle-models', { name: 'Kombi', vehicleBrandId: crypto.randomUUID() })).status).toBe(404)
-  expect((await as('POST', `/vehicle-models/${gol.id}/merge`, { into: uno.id })).status).toBe(409)
+  expect(await refusal(await as('POST', '/vehicle-models', { name: 'Kombi', vehicleBrandId: crypto.randomUUID() }))).toEqual([404, 'vehicleBrandNotFound'])
+  expect(await refusal(await as('POST', `/vehicle-models/${gol.id}/merge`, { into: uno.id }))).toEqual([409, 'mergeOtherBrand'])
 
   const merged = await as('POST', `/vehicle-models/${parati.id}/merge`, { into: gol.id })
   expect(await merged.json()).toEqual({ moved: 1 })
@@ -319,7 +333,7 @@ test('Web: the demo keeps photos in the browser under the API rules', async () =
   expect(sent.url).toMatch(/^blob:/)
   expect((await (await fetch(sent.url)).blob()).type).toBe('image/png')
   expect((await call('GET', `/photos/${sent.id}.webp`)).status).toBe(200)
-  expect((await call('GET', `/photos/${crypto.randomUUID()}.webp`)).status).toBe(404)
+  expect(await refusal(await call('GET', `/photos/${crypto.randomUUID()}.webp`))).toEqual([404, 'photoNotFound'])
 
   const sample = drawn[0].brands[0].photos[0]
   const second = await sendPhotos(cable.id, brand.id, [
@@ -336,8 +350,9 @@ test('Web: the demo keeps photos in the browser under the API rules', async () =
   const text = await sendPhotos(cable.id, brand.id, [[PHOTO_PARTS.file, new File(['oi'], 'nota.png', { type: 'image/png' })]])
   expect((await text.json()).details[0].message).toBe('Photo 1 is not a JPG, PNG or WebP image.')
   const foreign = await sendPhotos(cable.id, brand.id, [[PHOTO_PARTS.keep, sample.id]])
+  expect(await refusal(foreign)).toEqual([400, 'photosInvalid'])
   expect((await foreign.json()).details[0].message).toBe("Kept photos must be this brand's photos, each kept once.")
-  expect((await sendPhotos(cable.id, crypto.randomUUID(), [])).status).toBe(404)
+  expect(await refusal(await sendPhotos(cable.id, crypto.randomUUID(), []))).toEqual([404, 'brandNotFound'])
 
   const none = await sendPhotos(cable.id, brand.id, [[PHOTO_PARTS.keep, three[1].id]])
   expect(itemSchema.parse(await none.json()).brands[0].photos).toEqual([three[1]])
@@ -384,9 +399,10 @@ test('Web: the demo imports a file whole or not at all, as the API does', async 
   ]
   for (const [item, message] of refusals) {
     const refused = await as('POST', '/items/import', { items: [valid, item] })
+    expect(await refusal(refused)).toEqual([409, 'importConflict'])
     expect([refused.status, (await refused.json()).message]).toEqual([409, message])
     expect((await items()).length).toBe(count)
   }
   expect((await items()).find((item) => item.name === 'Pastilha de freio dianteira')).toEqual(after)
-  expect((await as('POST', '/items/import', { items: [] })).status).toBe(400)
+  expect(await refusal(await as('POST', '/items/import', { items: [] }))).toEqual([400, 'invalid'])
 })

@@ -4,6 +4,7 @@ import { catalog, perLocale, type Locale } from "../platform/locale/locale.ts";
 import { codeKey, generationLabel, generationText, optionKey, readGeneration, searchKey, UNIVERSAL_BRAND, type Item, type ItemVehicle } from "../inventory/items.ts";
 import { EMPTY_ITEM_FILTERS, vehicleModelValue, type ItemFilters } from "../inventory/itemFilters.ts";
 import { distinct, generationInput } from "../inventory/itemForm.ts";
+import { refusalReason, type RefusalReason } from "../platform/api/refusals.ts";
 
 // The vehicle catalog of the Catalog tab, kept by the API (GET /catalog): the catalog brands, each a vehicle brand of
 // the Inventory's lists, in the rail's order, and under each its models, each a vehicle model of those lists, then
@@ -72,6 +73,8 @@ export const CATALOG_LEVEL_PATHS: Record<CatalogEditLevel, string> = {
 };
 /** Where a device remembers whether the Catalog shows only the vehicles some part fits ("true" when it does). */
 export const CATALOG_PARTS_ONLY_KEY = "apc.catalog.partsOnly";
+/** The refusals of a name or a period another node of the catalog has. */
+const CATALOG_TAKEN_REASONS: readonly RefusalReason[] = ["brandInCatalog", "modelInCatalog", "modelTaken", "periodTaken"];
 /** The years a generation or a period can have. */
 export const CATALOG_YEARS = { min: 1900, max: 2100 } as const;
 /** What a catalog year field says when it isn't a year of four digits in the catalog's range. */
@@ -881,8 +884,8 @@ export function joinCatalogTrees(
  * @param path The change's path, e.g. "/catalog/models/<id>/generations".
  * @param locale The language of the engines' names.
  * @param body What it sends, if anything.
- * @returns The catalog as it is after the change, "taken" when the API refuses a name or year another node has, or
- * null when the change couldn't be made.
+ * @returns The catalog as it is after the change, "taken" when the API refuses a name or year another node has,
+ * "inUse" when it refuses to delete what items use, or null when the change couldn't be made.
  */
 export async function changeCatalog(
   base: string,
@@ -890,15 +893,16 @@ export async function changeCatalog(
   path: string,
   locale: Locale,
   body?: object,
-): Promise<Catalog | "taken" | null> {
+): Promise<Catalog | "taken" | "inUse" | null> {
   const response = await apiFetch(`${base}${path}`, {
     method,
     ...(body && { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
   }).catch(() => null);
-  if (response?.status === 409) {
-    return "taken";
+  if (response?.ok) {
+    return catalogFrom(catalogSchema.parse(await response.json()), locale);
   }
-  return response?.ok ? catalogFrom(catalogSchema.parse(await response.json()), locale) : null;
+  const reason = response && (await refusalReason(response));
+  return reason === "nodeInUse" ? "inUse" : reason && CATALOG_TAKEN_REASONS.includes(reason) ? "taken" : null;
 }
 
 /**

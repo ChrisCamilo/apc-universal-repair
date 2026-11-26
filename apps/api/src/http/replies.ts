@@ -1,10 +1,13 @@
 import type { FastifyReply } from "fastify";
+import type { RefusalReason } from "@apc/domain/refusals";
 
-// How the API refuses a request: a status with { statusCode, error, message }, and details naming the fields or the
-// entries at fault when there are any. A route or a rule builds the refusal here, as data, and the route answers it
-// with refuse(), so every refusal has the same shape. A rule can refuse without knowing Fastify, as the item changes
-// do for the item routes and a phone's batch of operations alike (see inventory/itemChanges.ts): it gives a Result,
-// its value (done) or its refusal (refused), which the route answers with answer().
+// How the API refuses a request: a status with { statusCode, error, message, reason }, and details naming the fields or
+// the entries at fault when there are any. The reason is a stable key the apps write their text from, in the language
+// chosen (see @apc/domain/refusals); the message stays in English, for logs and developers. A route or a rule builds
+// the refusal here, as data, and the route answers it with refuse(), so every refusal has the same shape. A rule can
+// refuse without knowing Fastify, as the item changes do for the item routes and a phone's batch of operations alike
+// (see inventory/itemChanges.ts): it gives a Result, its value (done) or its refusal (refused), which the route answers
+// with answer().
 
 /** The name each status the API refuses with is sent with. */
 const ERRORS = {
@@ -22,6 +25,8 @@ export type Rejection = {
   statusCode: number;
   error: string;
   message: string;
+  /** Why, as a key the apps write their text from. */
+  reason: RefusalReason;
   /** The fields or entries at fault, each with its message. */
   details?: Record<string, unknown>[];
   /** The short code of a device waiting for authorization. */
@@ -43,22 +48,24 @@ export function answer<Value>(reply: FastifyReply, result: Result<Value>, status
 
 /**
  * Refuses a request the API can't take as it is sent.
+ * @param reason Why, as a key.
  * @param message What is wrong.
  * @param details The fields at fault, if any.
  * @returns The refusal.
  */
-export function badRequest(message: string, details?: Record<string, unknown>[]): Rejection {
-  return rejection(400, message, details);
+export function badRequest(reason: RefusalReason, message: string, details?: Record<string, unknown>[]): Rejection {
+  return rejection(400, reason, message, details);
 }
 
 /**
  * Refuses a change that clashes with what the database holds.
+ * @param reason Why, as a key.
  * @param message What clashes.
  * @param details The fields or entries at fault, if any.
  * @returns The refusal.
  */
-export function conflict(message: string, details?: Record<string, unknown>[]): Rejection {
-  return rejection(409, message, details);
+export function conflict(reason: RefusalReason, message: string, details?: Record<string, unknown>[]): Rejection {
+  return rejection(409, reason, message, details);
 }
 
 /**
@@ -72,29 +79,32 @@ export function done<Value>(value: Value): { ok: true; value: Value } {
 
 /**
  * Refuses a request from where it isn't allowed.
+ * @param reason Why, as a key.
  * @param message Why.
  * @returns The refusal.
  */
-export function forbidden(message: string): Rejection {
-  return rejection(403, message);
+export function forbidden(reason: RefusalReason, message: string): Rejection {
+  return rejection(403, reason, message);
 }
 
 /**
  * Refuses a request for something the API no longer keeps.
+ * @param reason Why, as a key.
  * @param message What is gone, and what to do instead.
  * @returns The refusal.
  */
-export function gone(message: string): Rejection {
-  return rejection(410, message);
+export function gone(reason: RefusalReason, message: string): Rejection {
+  return rejection(410, reason, message);
 }
 
 /**
  * Refuses a request for something that isn't there.
+ * @param reason Why, as a key.
  * @param message What isn't there.
  * @returns The refusal.
  */
-export function notFound(message: string): Rejection {
-  return rejection(404, message);
+export function notFound(reason: RefusalReason, message: string): Rejection {
+  return rejection(404, reason, message);
 }
 
 /**
@@ -119,28 +129,31 @@ export function refused(rejection: Rejection): { ok: false; rejection: Rejection
 /**
  * Builds a refusal.
  * @param statusCode Its status.
+ * @param reason Why, as a key.
  * @param message Why.
  * @param details The fields or entries at fault, if any.
  * @returns The refusal.
  */
-function rejection(statusCode: keyof typeof ERRORS, message: string, details?: Record<string, unknown>[]): Rejection {
-  return { statusCode, error: ERRORS[statusCode], message, ...(details && { details }) };
+function rejection(statusCode: keyof typeof ERRORS, reason: RefusalReason, message: string, details?: Record<string, unknown>[]): Rejection {
+  return { statusCode, error: ERRORS[statusCode], message, reason, ...(details && { details }) };
 }
 
 /**
  * Refuses a request past a limit of attempts.
+ * @param reason Why, as a key.
  * @param message Why, and when to try again.
  * @returns The refusal.
  */
-export function tooManyRequests(message: string): Rejection {
-  return rejection(429, message);
+export function tooManyRequests(reason: RefusalReason, message: string): Rejection {
+  return rejection(429, reason, message);
 }
 
 /**
  * Refuses a request without a session, or with a credential that doesn't hold.
+ * @param reason Why, as a key.
  * @param message What to do.
  * @returns The refusal.
  */
-export function unauthorized(message: string): Rejection {
-  return rejection(401, message);
+export function unauthorized(reason: RefusalReason, message: string): Rejection {
+  return rejection(401, reason, message);
 }

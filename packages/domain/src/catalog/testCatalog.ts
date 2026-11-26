@@ -1,5 +1,6 @@
 import { optionKey } from "../inventory/items.ts";
 import { listName } from "../inventory/lists.ts";
+import type { Refusal } from "../platform/api/refusals.ts";
 import {
   brandMark,
   CATALOG_CHILDREN,
@@ -332,6 +333,27 @@ export function catalogChangeOf(
     return { status: 200, change: { kind: "move", level, id, direction: body.direction as "up" | "down" } };
   }
   return method === "DELETE" ? { status: 200, change: { kind: "delete", level, id } } : null;
+}
+
+/**
+ * Writes the refusal the API answers a catalog change it can't make with, by why applyCatalogChange couldn't: a brand
+ * already in the catalog, a period its version has or a model its brand has; years outside a generation's, or a
+ * generation's years leaving its periods out; or a node that isn't there.
+ * @param change The change.
+ * @param why What applyCatalogChange answered.
+ * @returns The refusal, as its body.
+ */
+export function catalogRefusal(change: CatalogChange, why: "taken" | "invalid" | "missing"): Refusal {
+  if (why === "missing") {
+    return { statusCode: 404, error: "Not Found", message: "Catalog node not found.", reason: "nodeNotFound" };
+  }
+  const level = "level" in change ? change.level : undefined;
+  if (why === "invalid") {
+    const reason = level === "generation" ? "periodsOutsideYears" : "periodOutside";
+    return { statusCode: 400, error: "Bad Request", message: "A period must stay inside its generation's years.", reason };
+  }
+  const reason = change.kind === "addBrand" ? "brandInCatalog" : level === "year" ? "periodTaken" : "modelTaken";
+  return { statusCode: 409, error: "Conflict", message: "The catalog has it already.", reason };
 }
 
 /**

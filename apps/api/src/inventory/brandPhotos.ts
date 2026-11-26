@@ -17,7 +17,7 @@ import { checkPhoto, copyStoredPhoto, removePhotoFiles, storePhoto } from "./pho
 // left out are deleted with their files. The files go on disk through photos.ts.
 
 /** Refuses a brand that isn't one of the item's. */
-const BRAND_NOT_FOUND = notFound("Brand not found on this item.");
+const BRAND_NOT_FOUND = notFound("brandNotFound", "Brand not found on this item.");
 const uuidSchema = z.uuid();
 
 /** A part of the request, as read: a file with whether it came in cut short, or a field's value. */
@@ -31,7 +31,7 @@ type PhotoEntry = { keep: string } | { copy: string } | { buffer: Buffer };
  * @returns The refusal.
  */
 function badPhotos(messages: string[]): Rejection {
-  return badRequest("The photos can't be saved.", messages.map((message) => ({ field: "photos", message })));
+  return badRequest("photosInvalid", "The photos can't be saved.", messages.map((message) => ({ field: "photos", message })));
 }
 
 /**

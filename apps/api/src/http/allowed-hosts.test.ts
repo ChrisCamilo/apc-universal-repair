@@ -4,6 +4,7 @@ import { after, afterEach, test, mock } from "node:test";
 import { buildApp } from "../app.js";
 import { TEST_SESSIONS } from "../auth/testSessions.js";
 import { hostName } from "./allowed-hosts.js";
+import { assertRefused } from "./testReplies.js";
 
 // The host check answers before any database call, so these run without a database.
 
@@ -69,7 +70,7 @@ test("API: requests addressed to another host are refused", async () => {
     assert.match(response.json().message, /APC_ALLOWED_HOSTS/);
   }
   const items = await app.inject({ method: "GET", url: "/items", headers: { host: "evil.example:3333" } });
-  assert.equal(items.statusCode, 403);
+  assertRefused(items, 403, "hostNotAllowed");
 });
 
 // Gives the computer a Wi-Fi address after the API started, and checks a request addressed to it is answered, as the

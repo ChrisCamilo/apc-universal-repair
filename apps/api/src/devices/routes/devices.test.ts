@@ -6,6 +6,7 @@ import { checkProof, isLoopback, issueChallenge } from "../devices.js";
 import { entryCodeUser, HELD_MS, holdEntryCode, issueEntryCode, useEntryCode } from "../entryCodes.js";
 import { testDevice } from "../testDevices.js";
 import { AUTHORIZED, TEST_SESSIONS } from "../../auth/testSessions.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // The devices' rules and routes that answer before any database call: the nonces, the proof, and the routes kept to
 // the server's computer.
@@ -50,7 +51,7 @@ test("API: the demo's stand-in for a device is refused", async () => {
   assert.equal(await checkProof({ ...demo, nonce: issueChallenge() }), false);
   const { nonce } = (await app.inject({ method: "GET", url: "/devices/challenge" })).json();
   const status = await app.inject({ method: "POST", url: "/devices/status", payload: { ...demo, nonce } });
-  assert.equal(status.statusCode, 401);
+  assertRefused(status, 401, "deviceRefused");
 });
 
 // Calls each device route with a session, and asks for an entry code, from an address on the Wi-Fi, and checks every
@@ -69,7 +70,7 @@ test("API: devices are managed only from the server's computer", async () => {
     assert.equal(response.statusCode, 403, call.url);
     assert.equal(response.json().message, "Devices are managed only on the server's computer.");
   }
-  assert.equal((await app.inject({ method: "GET", url: "/devices", remoteAddress: "127.0.0.1" })).statusCode, 401);
+  assertRefused(await app.inject({ method: "GET", url: "/devices", remoteAddress: "127.0.0.1" }), 401, "loggedOut");
   assert.deepEqual(
     ["127.0.0.1", "::1", "::ffff:127.0.0.1", "192.168.0.15", "::ffff:192.168.0.15", "10.0.2.2"].map(isLoopback),
     [true, true, true, false, false, false],
@@ -99,7 +100,7 @@ test("API: a device's challenges stop at their limit, saying when to try again",
     assert.equal((await ask()).statusCode, 200);
   }
   const refused = await ask();
-  assert.equal(refused.statusCode, 429);
+  assertRefused(refused, 429, "tooManyAttempts");
   assert.equal(refused.headers["retry-after"], "900");
   assert.equal(refused.json().message, "Too many attempts. Try again in 15 min.");
 });
@@ -107,13 +108,13 @@ test("API: a device's challenges stop at their limit, saying when to try again",
 // Sends a login and a sign-up without the device's proof, and checks both are refused before anything else.
 test("API: a login and a sign-up need the device's proof", async () => {
   const login = await app.inject({ method: "POST", url: "/sessions", payload: { username: "ana.souza", password: "freio1234" } });
-  assert.equal(login.statusCode, 400);
+  assertRefused(login, 400, "invalid");
   const signUp = await app.inject({
     method: "POST",
     url: "/users",
     payload: { displayName: "Ana Souza", username: "ana.souza", email: "ana@oficina.com", password: "freio1234" },
   });
-  assert.equal(signUp.statusCode, 400);
+  assertRefused(signUp, 400, "invalid");
 });
 
 // Asks for an entry code on the server's computer, and checks it is 8 characters that don't read alike, ending in 5
@@ -160,12 +161,12 @@ test("API: an entry with a code needs the device's proof and a code handed out, 
   const pair = async (remoteAddress: string, code = "K7Q2ZD9M") =>
     app.inject({ method: "POST", url: "/sessions/pairing", payload: { code, device: await proveDevice(device, issueChallenge()) }, remoteAddress });
   const unproved = await app.inject({ method: "POST", url: "/sessions/pairing", payload: { code: "K7Q2ZD9M" }, remoteAddress: "10.0.0.6" });
-  assert.equal(unproved.statusCode, 400);
+  assertRefused(unproved, 400, "invalid");
   const unknown = await pair("10.0.0.7");
-  assert.equal(unknown.statusCode, 401);
+  assertRefused(unknown, 401, "entryRefused");
   for (let i = 2; i <= 10; i++) {
-    assert.equal((await pair("10.0.0.7")).statusCode, 401);
+    assertRefused(await pair("10.0.0.7"), 401, "entryRefused");
   }
-  assert.equal((await pair("10.0.0.7")).statusCode, 429);
-  assert.equal((await pair("10.0.0.8")).statusCode, 401);
+  assertRefused(await pair("10.0.0.7"), 429, "tooManyAttempts");
+  assertRefused(await pair("10.0.0.8"), 401, "entryRefused");
 });

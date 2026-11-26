@@ -2,7 +2,6 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { z } from "zod";
 import { entryCodeSchema } from "@apc/domain/auth";
-import { deviceCode } from "@apc/domain/device-crypto";
 import { deviceChallengeSchema, deviceListSchema, deviceNameSchema, deviceProofSchema, deviceSchema, deviceStatusSchema } from "@apc/domain/devices";
 import { prisma } from "../../db/client.js";
 import { limitByAddress } from "../../http/limits.js";
@@ -16,33 +15,23 @@ import { createLimiter } from "../../auth/attempts.js";
 // "authorized", or "unknown" once refused or removed), so a waiting device asks without logging in again; each address
 // gets CHALLENGE_LIMIT nonces and STATUS_LIMIT asks in a window. Behind a session, and only from the server's computer
 // itself: GET /devices lists every user's devices, pending first; POST /devices/:id/authorize authorizes one, naming
-// it; PATCH /devices/:id renames one; and DELETE /devices/:id removes one, ending its sessions. A blank name keeps
-// "Dispositivo <code>". POST /pairings hands out an entry code that logs a phone into the caller's account (see
-// entryCodes.ts and POST /sessions/pairing), replacing the one they had. From any other address these answer 403, so
-// a device on the Wi-Fi can't authorize itself or hand itself a code.
+// it; PATCH /devices/:id renames one; and DELETE /devices/:id removes one, ending its sessions. A blank name is kept
+// empty, and each app shows "Dispositivo <code>" in its language. POST /pairings hands out an entry code that logs a
+// phone into the caller's account (see entryCodes.ts and POST /sessions/pairing), replacing the one they had. From any
+// other address these answer 403, so a device on the Wi-Fi can't authorize itself or hand itself a code.
 
 /** How many nonces an address gets in a window. */
 const CHALLENGE_LIMIT = 300;
 /** How many times an address asks for a device's status in a window: one every 3 seconds. */
 const STATUS_LIMIT = 300;
 /** Refuses a device id that doesn't exist. */
-const DEVICE_NOT_FOUND = notFound("Device not found.");
+const DEVICE_NOT_FOUND = notFound("deviceNotFound", "Device not found.");
 /** A device's id in a path. */
 const deviceParamsSchema = z.object({ id: z.uuid() });
 /** Refuses managing devices from any address but the server's computer. */
-const NOT_HERE = forbidden("Devices are managed only on the server's computer.");
+const NOT_HERE = forbidden("notOnServer", "Devices are managed only on the server's computer.");
 /** What a device row is read with. */
 const ROW = { include: { user: { select: { username: true, displayName: true } } } } as const;
-
-/**
- * Names a device as the approver typed it, or "Dispositivo <code>" for a blank name.
- * @param name What was typed, if anything.
- * @param publicKey The device's key, for its code.
- * @returns The name to keep.
- */
-async function deviceName(name: string | undefined, publicKey: string): Promise<string> {
-  return name?.trim() || `Dispositivo ${await deviceCode(publicKey)}`;
-}
 
 /**
  * Answers 403 for a request from any address but the server's computer.
@@ -103,7 +92,7 @@ export function registerDeviceRoutes(app: FastifyInstance) {
       }
       const row = await prisma.device.update({
         where: { id: device.id },
-        data: { status: "AUTHORIZED", approvedAt: device.approvedAt ?? new Date(), name: await deviceName(request.body.name, device.publicKey) },
+        data: { status: "AUTHORIZED", approvedAt: device.approvedAt ?? new Date(), name: request.body.name ?? "" },
         ...ROW,
       });
       return deviceOf(row, request.session.deviceId);
@@ -118,7 +107,7 @@ export function registerDeviceRoutes(app: FastifyInstance) {
       if (!device) {
         return refuse(reply, DEVICE_NOT_FOUND);
       }
-      const row = await prisma.device.update({ where: { id: device.id }, data: { name: await deviceName(request.body.name, device.publicKey) }, ...ROW });
+      const row = await prisma.device.update({ where: { id: device.id }, data: { name: request.body.name ?? "" }, ...ROW });
       return deviceOf(row, request.session.deviceId);
     },
   );

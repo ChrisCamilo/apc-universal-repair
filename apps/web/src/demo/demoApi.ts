@@ -49,12 +49,13 @@ import {
 } from '@apc/domain/lists'
 import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_PARTS } from '@apc/domain/photos'
 import { SYNC_CHANGES_PATH, SYNC_OPERATIONS_PATH } from '@apc/domain/sync'
-import { applyCatalogChange, TEST_CATALOG_DATA, type CatalogChange } from '@apc/domain/test-catalog'
+import { applyCatalogChange, catalogRefusal, TEST_CATALOG_DATA, type CatalogChange } from '@apc/domain/test-catalog'
 import { DEFAULT_LOCALE, isLocale, LOCALE_STORAGE_KEY } from '@apc/domain/locale'
 import { readStored } from '../app/storage.ts'
 import { WEB_TEXTS } from '../app/webTexts.ts'
 import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
+import type { RefusalReason } from '@apc/domain/refusals'
 
 // The API of the web app's demo, answered in the browser: the demo has no server (it runs on GitHub Pages), so its
 // requests to /api never leave the page (see installDemoApi.ts). It answers every route of apps/api with the API's
@@ -173,6 +174,7 @@ function badPhotos(messages: string[]): Response {
     statusCode: 400,
     error: 'Bad Request',
     message: "The photos can't be saved.",
+    reason: 'photosInvalid',
     details: messages.map((message) => ({ field: 'photos', message })),
   })
 }
@@ -187,6 +189,7 @@ function badRequest(error: Issues): Response {
     statusCode: 400,
     error: 'Bad Request',
     message: 'One or more fields failed validation.',
+    reason: 'invalid',
     details: error.issues.map((issue) => ({ field: issue.path.join('/') || 'unknown', message: issue.message })),
   })
 }
@@ -213,13 +216,14 @@ function brandOf(db: Db, input: ItemBrandCreate, photos: ItemPhoto[] = []): Stor
 }
 
 /**
- * Answers 409 for a change a list can't take, as the API does.
+ * Answers 409 for a change a list or the catalog can't take, as the API does.
+ * @param reason Why, as the API's key.
  * @param message Why.
- * @param reason How many items use the entry, or the entry that has the name.
+ * @param held How many items use the entry, or the entry that has the name.
  * @returns The answer.
  */
-function conflict(message: string, reason: { itemCount?: number; entryId?: string } = {}): Response {
-  return json(409, { statusCode: 409, error: 'Conflict', message, details: [{ field: 'id', message, ...reason }] })
+function conflict(reason: RefusalReason, message: string, held: { itemCount?: number; entryId?: string } = {}): Response {
+  return json(409, { statusCode: 409, error: 'Conflict', message, reason, details: [{ field: 'id', message, ...held }] })
 }
 
 /**
@@ -267,7 +271,7 @@ export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; han
         const token = request.headers.get('authorization')?.replace(/^Bearer /, '')
         const userId = token ? db.sessions.get(token) : undefined
         if (!route.open && !userId) {
-          return json(401, { statusCode: 401, error: 'Unauthorized', message: 'Log in to use the API.' })
+          return json(401, { statusCode: 401, error: 'Unauthorized', message: 'Log in to use the API.', reason: 'loggedOut' })
         }
         let body: unknown
         if (!request.headers.get('content-type')?.startsWith('multipart/form-data')) {
@@ -275,12 +279,12 @@ export function createDemoApi(): { routes: Pick<Route, 'method' | 'path'>[]; han
           try {
             body = text ? JSON.parse(text) : undefined
           } catch {
-            return json(400, { statusCode: 400, error: 'Bad Request', message: 'The body is not valid JSON.' })
+            return json(400, { statusCode: 400, error: 'Bad Request', message: 'The body is not valid JSON.', reason: 'requestRefused' })
           }
         }
         return route.answer({ request, params, query: url.searchParams, body, token, userId })
       }
-      return json(404, { message: `Route ${request.method}:${path} not found`, error: 'Not Found', statusCode: 404 })
+      return json(404, { message: `Route ${request.method}:${path} not found`, error: 'Not Found', statusCode: 404, reason: 'routeNotFound' })
     },
   }
 }
@@ -311,17 +315,12 @@ function catalogRoutes(db: Db): Route[] {
   const change = (status: number, made: CatalogChange) => {
     const using = made.kind === 'deleteBrand' || made.kind === 'delete' ? itemsUsing(db, made.id) : 0
     if (using > 0) {
-      return conflict(`${using} ${using === 1 ? 'item uses' : 'items use'} it in the stock.`)
+      return conflict('nodeInUse', `${using} ${using === 1 ? 'item uses' : 'items use'} it in the stock.`)
     }
     const result = applyCatalogChange(named(), made)
-    if (result === 'missing') {
-      return json(404, { statusCode: 404, error: 'Not Found', message: 'Catalog node not found.' })
-    }
-    if (result === 'taken') {
-      return conflict('The catalog has it already.')
-    }
-    if (result === 'invalid') {
-      return json(400, { statusCode: 400, error: 'Bad Request', message: "A period must stay inside its generation's years." })
+    if (typeof result === 'string') {
+      const refusal = catalogRefusal(made, result)
+      return json(refusal.statusCode, refusal)
     }
     db.catalog = result
     return json(status, named())
@@ -370,7 +369,7 @@ function catalogRoutes(db: Db): Route[] {
           return sent.answer
         }
         if (!db.catalog.brands.some((brand) => brand.id === id.value.id)) {
-          return json(404, { statusCode: 404, error: 'Not Found', message: 'Catalog node not found.' })
+          return json(404, { statusCode: 404, error: 'Not Found', message: 'Catalog node not found.', reason: 'nodeNotFound' })
         }
         const name = listName(sent.value.name)
         const model =
@@ -435,7 +434,7 @@ function catalogRoutes(db: Db): Route[] {
           const name = listName(sent.value.name ?? '')
           const other = model && db.vehicleModels.find((held) => held.brandId === model.brandId && held.id !== model.id && optionKey(held.name) === optionKey(name))
           if (other) {
-            return conflict(`"${other.name}" is already a model of this brand.`)
+            return conflict('modelTaken', `"${other.name}" is already a model of this brand.`)
           }
           const answer = change(200, { kind: 'edit', level, id: id.value.id, values: sent.value })
           if (model && answer.status === 200) {
@@ -688,7 +687,7 @@ function itemRoutes(db: Db): Route[] {
         } catch (error) {
           if (error instanceof ImportConflict) {
             Object.assign(db, saved)
-            return json(409, { statusCode: 409, error: 'Conflict', message: error.message })
+            return json(409, { statusCode: 409, error: 'Conflict', message: error.message, reason: 'importConflict' })
           }
           throw error
         }
@@ -712,12 +711,12 @@ function itemRoutes(db: Db): Route[] {
         }
         const { brands, originalCodes, vehicles, ...fields } = sent.value
         if (brands?.some((brand) => brand.id && !item.brands.some((held) => held.id === brand.id))) {
-          return json(400, { statusCode: 400, error: 'Bad Request', message: "A brand sent with an id must be one of this item's." })
+          return json(400, { statusCode: 400, error: 'Bad Request', message: "A brand sent with an id must be one of this item's.", reason: 'foreignBrand' })
         }
         const codes = [...(brands ?? item.brands).map((brand) => brand.code), ...(originalCodes ?? item.originalCodes)]
         const repeated = codes.find((code, index) => codes.slice(0, index).some((other) => codeKey(other) === codeKey(code)))
         if (repeated) {
-          return json(400, { statusCode: 400, error: 'Bad Request', message: `Code "${repeated}" is repeated in the item.` })
+          return json(400, { statusCode: 400, error: 'Bad Request', message: `Code "${repeated}" is repeated in the item.`, reason: 'codeRepeated' })
         }
         const taken = findTakenCode(db, sent.value, item.id)
         if (taken) {
@@ -753,13 +752,14 @@ function itemRoutes(db: Db): Route[] {
       statusCode: 409,
       error: 'Conflict',
       message,
+      reason: 'codeTaken',
       details: [{ field: taken.field, message, code: taken.code, itemId: taken.owner.id, itemName: taken.owner.name }],
     })
   }
 
   /** Answers 404 for an item that doesn't exist. */
   function itemNotFound() {
-    return json(404, { statusCode: 404, error: 'Not Found', message: 'Item not found.' })
+    return json(404, { statusCode: 404, error: 'Not Found', message: 'Item not found.', reason: 'itemNotFound' })
   }
 }
 
@@ -872,7 +872,7 @@ function listRoutes(db: Db): Route[] {
           const name = listName(sent.value.name)
           const other = list().find((entry) => optionKey(entry.name) === optionKey(name))
           if (other && other.id !== held.id) {
-            return conflict(`"${other.name}" is already in the list.`, { entryId: other.id })
+            return conflict('entryTaken', `"${other.name}" is already in the list.`, { entryId: other.id })
           }
           held.name = name
           return json(200, toEntry(held))
@@ -896,11 +896,11 @@ function listRoutes(db: Db): Route[] {
             return entryNotFound()
           }
           if (held.id === kept.id) {
-            return conflict("An entry can't be merged into itself.")
+            return conflict('mergeSame', "An entry can't be merged into itself.")
           }
           const both = kind === 'partBrands' ? db.items.filter((item) => ITEMS_USING.partBrands(item, held.id) && ITEMS_USING.partBrands(item, kept.id)).length : 0
           if (both > 0) {
-            return conflict(`${both} items have both "${held.name}" and "${kept.name}".`, { itemCount: both })
+            return conflict('mergeShared', `${both} items have both "${held.name}" and "${kept.name}".`, { itemCount: both })
           }
           return json(200, { moved: merge(db, kind, held.id, kept.id) })
         },
@@ -919,7 +919,7 @@ function listRoutes(db: Db): Route[] {
           }
           const itemCount = db.items.filter((item) => ITEMS_USING[kind](item, held.id)).length
           if (itemCount > 0) {
-            return conflict(`"${held.name}" is used by ${itemCount} items.`, { itemCount })
+            return conflict('entryInUse', `"${held.name}" is used by ${itemCount} items.`, { itemCount })
           }
           list().splice(list().indexOf(held), 1)
           if (kind === 'vehicleBrands') {
@@ -954,7 +954,7 @@ function listRoutes(db: Db): Route[] {
         }
         const brandId = sent.value.vehicleBrandId
         if (!db.vehicleBrands.some((entry) => entry.id === brandId)) {
-          return json(404, { statusCode: 404, error: 'Not Found', message: 'Vehicle brand not found.' })
+          return json(404, { statusCode: 404, error: 'Not Found', message: 'Vehicle brand not found.', reason: 'vehicleBrandNotFound' })
         }
         const name = listName(sent.value.name)
         const held = db.vehicleModels.find((model) => model.brandId === brandId && optionKey(model.name) === optionKey(name))
@@ -980,7 +980,7 @@ function listRoutes(db: Db): Route[] {
         const name = listName(sent.value.name)
         const other = db.vehicleModels.find((model) => model.brandId === held.brandId && optionKey(model.name) === optionKey(name))
         if (other && other.id !== held.id) {
-          return conflict(`"${other.name}" is already a model of this brand.`, { entryId: other.id })
+          return conflict('modelTaken', `"${other.name}" is already a model of this brand.`, { entryId: other.id })
         }
         held.name = name
         return json(200, toModel(held))
@@ -1004,10 +1004,10 @@ function listRoutes(db: Db): Route[] {
           return entryNotFound()
         }
         if (held.id === kept.id) {
-          return conflict("An entry can't be merged into itself.")
+          return conflict('mergeSame', "An entry can't be merged into itself.")
         }
         if (held.brandId !== kept.brandId) {
-          return conflict('A model can only be merged into a model of its brand.')
+          return conflict('mergeOtherBrand', 'A model can only be merged into a model of its brand.')
         }
         return json(200, { moved: merge(db, 'vehicleModels', held.id, kept.id) })
       },
@@ -1026,7 +1026,7 @@ function listRoutes(db: Db): Route[] {
         }
         const itemCount = db.items.filter((item) => ITEMS_USING.vehicleModels(item, held.id)).length
         if (itemCount > 0) {
-          return conflict(`"${held.name}" is used by ${itemCount} items.`, { itemCount })
+          return conflict('entryInUse', `"${held.name}" is used by ${itemCount} items.`, { itemCount })
         }
         db.vehicleModels = db.vehicleModels.filter((model) => model.id !== held.id)
         // Its place in the catalog goes with it, with its tree.
@@ -1046,7 +1046,7 @@ function listRoutes(db: Db): Route[] {
 
   /** Answers 404 for an entry that doesn't exist. */
   function entryNotFound() {
-    return json(404, { statusCode: 404, error: 'Not Found', message: 'List entry not found.' })
+    return json(404, { statusCode: 404, error: 'Not Found', message: 'List entry not found.', reason: 'entryNotFound' })
   }
 }
 
@@ -1231,11 +1231,11 @@ function photoRoutes(db: Db): Route[] {
         }
         const item = db.items.find((each) => each.id === ids.value.id)
         if (!item) {
-          return json(404, { statusCode: 404, error: 'Not Found', message: 'Item not found.' })
+          return json(404, { statusCode: 404, error: 'Not Found', message: 'Item not found.', reason: 'itemNotFound' })
         }
         const brand = item.brands.find((each) => each.id === ids.value.brandId)
         if (!brand) {
-          return json(404, { statusCode: 404, error: 'Not Found', message: 'Brand not found on this item.' })
+          return json(404, { statusCode: 404, error: 'Not Found', message: 'Brand not found on this item.', reason: 'brandNotFound' })
         }
         const kept = entries.flatMap((entry) => ('keep' in entry ? [entry.keep] : []))
         if (kept.some((id) => !brand.photos.some((photo) => photo.id === id)) || new Set(kept).size < kept.length) {
@@ -1278,7 +1278,7 @@ function photoRoutes(db: Db): Route[] {
         const file = db.files.get(named[1])
         return file
           ? new Response(file, { headers: { 'content-type': file.type, [DEMO_HEADER]: DEMO_MARKER } })
-          : json(404, { statusCode: 404, error: 'Not Found', message: 'Photo not found.' })
+          : json(404, { statusCode: 404, error: 'Not Found', message: 'Photo not found.', reason: 'photoNotFound' })
       },
     },
   ]
@@ -1363,7 +1363,7 @@ function sessionRoutes(db: Db): Route[] {
         const { username, displayName, password } = sent.value
         if (db.users.some((user) => user.username === username)) {
           const message = `Username "${username}" is already taken.`
-          return json(409, { statusCode: 409, error: 'Conflict', message, details: [{ field: 'username', message }] })
+          return json(409, { statusCode: 409, error: 'Conflict', message, reason: 'usernameTaken', details: [{ field: 'username', message }] })
         }
         const user = { id: crypto.randomUUID(), username, displayName, password, inventoryTutorialSeen: false }
         db.users.push(user)
@@ -1380,7 +1380,7 @@ function sessionRoutes(db: Db): Route[] {
           return sent.answer
         }
         const user = db.users.find((each) => each.username === sent.value.username && each.password === sent.value.password)
-        return user ? loggedIn(200, user) : json(401, { statusCode: 401, error: 'Unauthorized', message: 'Wrong username or password.' })
+        return user ? loggedIn(200, user) : json(401, { statusCode: 401, error: 'Unauthorized', message: 'Wrong username or password.', reason: 'loginRefused' })
       },
     },
     {

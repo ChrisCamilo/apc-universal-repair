@@ -74,6 +74,7 @@ import { savePhotos } from '../photos/savePhotos.ts'
 import type { CreateListEntry } from '../lists/useItemLists.ts'
 import { VehiclesField } from './VehiclesField.tsx'
 import { useLocale } from '../../../app/useLocale.ts'
+import { refusalReason } from '@apc/domain/refusals'
 
 // The form that creates a new item or edits one, in a dialog whose content scrolls while Cancel and Save stay at the
 // bottom: first what the item's brands share (name, category, a short description of up to 30 characters, cut there
@@ -389,7 +390,8 @@ export function ItemFormDialog({
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(itemFormBody(form, options.colors)),
     }).catch(() => null)
-    if (response?.status === 409) {
+    const reason = response && !response.ok ? await refusalReason(response) : null
+    if (response && reason === 'codeTaken') {
       setSaving(false)
       const [taken] = (await response.json()).details
       const index = Math.max(
@@ -399,7 +401,7 @@ export function ItemFormDialog({
       brandError(index, 'code', codeTakenMessage(taken.itemName, locale))
       return
     }
-    if (item && response?.status === 404) {
+    if (item && reason === 'itemNotFound') {
       setSaving(false)
       toast.warning(itemGoneMessage(item.name, locale))
       onGone?.(item)

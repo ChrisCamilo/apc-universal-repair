@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog'
+import { applyCatalogChange, catalogRefusal, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog'
 import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH } from '@apc/ui-spec/screens'
 import { TABLE_CARD_BREAKPOINT } from '@apc/ui-spec/table'
 import { MODES, STYLES, themes } from '@apc/tokens/theme'
@@ -119,7 +119,8 @@ function answerChanges(start: CatalogData = TEST_CATALOG_DATA) {
     }
     const result = applyCatalogChange(catalog, made.change)
     if (typeof result === 'string') {
-      return new Response(null, { status: { missing: 404, taken: 409, invalid: 400 }[result] })
+      const refusal = catalogRefusal(made.change, result)
+      return Response.json(refusal, { status: refusal.statusCode })
     }
     catalog = result
     return new Response(JSON.stringify(catalog), { status: made.status })

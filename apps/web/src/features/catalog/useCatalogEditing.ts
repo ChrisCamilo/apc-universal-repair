@@ -68,7 +68,7 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
     setSaving(true)
     const result = await changeCatalog('/api', method, path, locale, body)
     setSaving(false)
-    if (result === 'taken' && method === 'DELETE') {
+    if (result === 'inUse') {
       toast.error(CATALOG_IN_USE[locale])
       return null
     }

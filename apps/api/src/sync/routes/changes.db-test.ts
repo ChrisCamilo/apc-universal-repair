@@ -7,6 +7,7 @@ import { buildApp } from "../../app.js";
 import { prisma } from "../../db/client.js";
 import { testDevice, testProof } from "../../devices/testDevices.js";
 import { pruneTombstones, TOMBSTONE_DAYS } from "../changes.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // The change feed against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded, on PostgreSQL or
 // SQLite: what the routes create, edit, merge and delete reaches the feed after the cursor it was made at, in order, a
@@ -252,7 +253,7 @@ test("API: a cursor the feed can't follow answers 410", async () => {
   assert.equal((await call("DELETE", `/items/${item.id}`)).statusCode, 204);
   // The deletion, and every one before it, is dropped once older than the feed keeps them.
   assert.ok((await pruneTombstones(new Date(Date.now() + (TOMBSTONE_DAYS + 1) * 86_400_000))) > 0);
-  assert.equal((await call("GET", `/sync/changes?since=${start}`)).statusCode, 410);
+  assertRefused(await call("GET", `/sync/changes?since=${start}`), 410, "cursorGone");
   // A full copy made in pages after the drop reaches its end, and its cursor goes on from there.
   const copy = await allAfter(undefined, 50);
   assert.ok(copy.changes.some((change) => change.kind === "item"));

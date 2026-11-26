@@ -7,6 +7,7 @@ import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
 import { hashToken } from "../auth/sessions.js";
 import { testDevice, testProof } from "./testDevices.js";
+import { assertRefused } from "../http/testReplies.js";
 
 // Authorizing devices against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded with the test
 // users. The phone logs in from the Wi-Fi (PHONE_ADDRESS); the desktop app, from the server's computer, authorizes it.
@@ -71,11 +72,12 @@ function bearer(token: string) {
 test("API: a new device is recorded as pending, and its login waits", async () => {
   const phone = await newDevice();
   const response = await login(phone, PHONE_ADDRESS);
-  assert.equal(response.statusCode, 403);
+  assertRefused(response, 403, "devicePending");
   assert.deepEqual(response.json(), {
     statusCode: 403,
     error: "device_pending",
     message: "Este dispositivo precisa ser autorizado no computador do servidor.",
+    reason: "devicePending",
     code: await deviceCode(await phone.publicKey()),
   });
   const row = (await prisma.device.findFirst({ where: { publicKey: await phone.publicKey() } }))!;
@@ -90,11 +92,12 @@ test("API: a new device is recorded as pending, and its login waits", async () =
     payload: { username: USER.username, password: "errada", device: await testProof(app, await newDevice()) },
     remoteAddress: PHONE_ADDRESS,
   });
-  assert.equal(wrong.statusCode, 401);
+  assertRefused(wrong, 401, "loginRefused");
 });
 
 // Logs in from the server's computer, whose device is authorized at once; lists the devices there and authorizes the
-// waiting phone with a name; and checks the phone is then told so, and its login goes through.
+// waiting phone with a name; and checks the phone is then told so, its login goes through, and a blank name is kept
+// empty, for each app to write "Dispositivo <code>" in its language.
 test("API: the server's computer authorizes a waiting device, which then logs in", async () => {
   const desktop = await newDevice();
   const here = await login(desktop);
@@ -102,7 +105,7 @@ test("API: the server's computer authorizes a waiting device, which then logs in
   const token = here.json().token;
 
   const phone = await newDevice();
-  assert.equal((await login(phone, PHONE_ADDRESS)).statusCode, 403);
+  assertRefused(await login(phone, PHONE_ADDRESS), 403, "devicePending");
   const listed = (await app.inject({ method: "GET", url: "/devices", headers: bearer(token) })).json().devices;
   const code = await deviceCode(await phone.publicKey());
   const waiting = listed.find((device: { code: string }) => device.code === code);
@@ -115,7 +118,7 @@ test("API: the server's computer authorizes a waiting device, which then logs in
   assert.equal((await login(phone, PHONE_ADDRESS)).statusCode, 200);
 
   const renamed = await app.inject({ method: "PATCH", url: `/devices/${waiting.id}`, headers: bearer(token), payload: { name: "" } });
-  assert.equal(renamed.json().name, `Dispositivo ${code}`);
+  assert.equal(renamed.json().name, "");
 });
 
 // Authorizes a phone and logs it in, then removes it from the server's computer, and checks its session ends with it,
@@ -131,9 +134,9 @@ test("API: removing a device ends its sessions", async () => {
 
   assert.equal((await app.inject({ method: "DELETE", url: `/devices/${row.id}`, headers: bearer(token) })).statusCode, 204);
   assert.equal(await prisma.session.count({ where: { tokenHash: hashToken(phoneToken) } }), 0);
-  assert.equal((await app.inject({ method: "GET", url: "/categories", headers: bearer(phoneToken) })).statusCode, 401);
+  assertRefused(await app.inject({ method: "GET", url: "/categories", headers: bearer(phoneToken) }), 401, "loggedOut");
   assert.equal(await statusOf(phone), "unknown");
-  assert.equal((await app.inject({ method: "DELETE", url: `/devices/${row.id}`, headers: bearer(token) })).statusCode, 404);
+  assertRefused(await app.inject({ method: "DELETE", url: `/devices/${row.id}`, headers: bearer(token) }), 404, "deviceNotFound");
 });
 
 // Logs in on the server's computer and asks for an entry code there; a new phone sends it from the Wi-Fi and checks it
@@ -150,12 +153,12 @@ test("API: an entry code logs a phone in once the server's computer authorizes i
   const pair = async (entry: string, device: DeviceSigner) =>
     app.inject({ method: "POST", url: "/sessions/pairing", payload: { code: entry, device: await testProof(app, device) }, remoteAddress: PHONE_ADDRESS });
   const waiting = await pair(code, phone);
-  assert.equal(waiting.statusCode, 403);
+  assertRefused(waiting, 403, "devicePending");
   assert.deepEqual([waiting.json().error, waiting.json().code], ["device_pending", await deviceCode(await phone.publicKey())]);
   const row = (await prisma.device.findFirst({ where: { publicKey: await phone.publicKey() } }))!;
   assert.equal(row.status, "PENDING");
   assert.equal(await prisma.session.count({ where: { deviceId: row.id } }), 0);
-  assert.equal((await pair(code, await newDevice())).statusCode, 401);
+  assertRefused(await pair(code, await newDevice()), 401, "entryRefused");
 
   assert.equal((await app.inject({ method: "POST", url: "/pairings", headers: bearer(token) })).statusCode, 201);
   await app.inject({ method: "POST", url: `/devices/${row.id}/authorize`, headers: bearer(token), payload: {} });
@@ -164,5 +167,5 @@ test("API: an entry code logs a phone in once the server's computer authorizes i
   assert.equal(paired.statusCode, 200);
   assert.deepEqual([paired.json().username, paired.json().displayName], [USER.username, USER.displayName]);
   assert.equal((await app.inject({ method: "GET", url: "/categories", headers: bearer(paired.json().token) })).statusCode, 200);
-  assert.equal((await pair(code, phone)).statusCode, 401);
+  assertRefused(await pair(code, phone), 401, "entryRefused");
 });

@@ -5,6 +5,7 @@ import { TEST_USERS } from "@apc/domain/test-users";
 import { buildApp } from "../../app.js";
 import { prisma } from "../../db/client.js";
 import { testDevice, testProof } from "../../devices/testDevices.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // Renaming and merging list entries against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded,
 // on PostgreSQL or SQLite: a rename to a held name is refused naming the entry that has it, and a merge moves every
@@ -77,16 +78,16 @@ test("API: a category merged into another takes its items there", async () => {
   const into = await prisma.category.findFirstOrThrow({ where: { name: `Para-choque ${RUN}` } });
 
   const renamed = await call("PATCH", `/categories/${from.id}`, { name: `para-choque ${RUN}` });
-  assert.equal(renamed.statusCode, 409);
+  assertRefused(renamed, 409, "entryTaken");
   assert.equal(renamed.json().details[0].entryId, into.id);
 
-  assert.equal((await call("POST", `/categories/${from.id}/merge`, { into: from.id })).statusCode, 409);
+  assertRefused(await call("POST", `/categories/${from.id}/merge`, { into: from.id }), 409, "mergeSame");
   const merged = await call("POST", `/categories/${from.id}/merge`, { into: into.id });
   assert.equal(merged.statusCode, 200);
   assert.deepEqual(merged.json(), { moved: 2 });
   assert.equal(await prisma.item.count({ where: { categoryId: into.id } }), 3);
   assert.equal(await prisma.category.findUnique({ where: { id: from.id } }), null);
-  assert.equal((await call("POST", `/categories/${from.id}/merge`, { into: into.id })).statusCode, 404);
+  assertRefused(await call("POST", `/categories/${from.id}/merge`, { into: into.id }), 404, "entryNotFound");
 });
 
 // Creates items on two vehicle brands, sharing a model name and each with a model of its own, merges one brand into
@@ -130,7 +131,7 @@ test("API: a vehicle model merges only into a model of its brand", async () => {
   const into = await prisma.vehicleModel.findFirstOrThrow({ where: { name: `Corcel 2 ${RUN}` } });
   const other = await prisma.vehicleModel.findFirstOrThrow({ where: { name: `Corcel ${RUN}` } });
 
-  assert.equal((await call("POST", `/vehicle-models/${from.id}/merge`, { into: other.id })).statusCode, 409);
+  assertRefused(await call("POST", `/vehicle-models/${from.id}/merge`, { into: other.id }), 409, "mergeOtherBrand");
   const merged = await call("POST", `/vehicle-models/${from.id}/merge`, { into: into.id });
   assert.deepEqual(merged.json(), { moved: 1 });
   assert.equal(await prisma.itemVehicle.count({ where: { vehicleModelId: into.id } }), 2);
@@ -158,6 +159,6 @@ test("API: a merge that meets in an item keeps its vehicle once, and a second ve
   await createItem("VV-2", { vehicles: [{ vehicleBrand: `Gurgel ${RUN}` }, { vehicleBrand: `Miura ${RUN}` }] });
   const miura = await prisma.brand.findFirstOrThrow({ where: { name: `Miura ${RUN}` } });
   const refused = await call("DELETE", `/vehicle-brands/${miura.id}`);
-  assert.equal(refused.statusCode, 409);
+  assertRefused(refused, 409, "entryInUse");
   assert.equal(await prisma.brand.count({ where: { id: miura.id } }), 1);
 });

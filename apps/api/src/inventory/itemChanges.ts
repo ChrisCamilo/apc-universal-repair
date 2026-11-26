@@ -25,11 +25,11 @@ export type ItemRow = Prisma.ItemGetPayload<{ include: typeof ITEM_INCLUDE }>;
 type SentCode = { code: string; field: string };
 
 /** Refuses an item id that doesn't exist. */
-export const ITEM_NOT_FOUND = notFound("Item not found.");
+export const ITEM_NOT_FOUND = notFound("itemNotFound", "Item not found.");
 /** Refuses a brand sent with the id of a brand that isn't the item's. */
-const FOREIGN_BRAND = badRequest("A brand sent with an id must be one of this item's.");
+const FOREIGN_BRAND = badRequest("foreignBrand", "A brand sent with an id must be one of this item's.");
 /** Refuses an id a phone gave an item or a brand that another one already has. */
-export const ID_TAKEN = conflict("The id of the item or of one of its brands is already taken.");
+export const ID_TAKEN = conflict("idTaken", "The id of the item or of one of its brands is already taken.");
 
 /**
  * Refuses a code an item would hold twice, as an original code and a brand's.
@@ -37,7 +37,7 @@ export const ID_TAKEN = conflict("The id of the item or of one of its brands is 
  * @returns Why.
  */
 function codeRepeated(code: string): Rejection {
-  return badRequest(`Code "${code}" is repeated in the item.`);
+  return badRequest("codeRepeated", `Code "${code}" is repeated in the item.`);
 }
 
 /**
@@ -47,7 +47,7 @@ function codeRepeated(code: string): Rejection {
  */
 function codeTaken(taken: SentCode & { owner: { id: string; name: string } }): Rejection {
   const message = `Code "${taken.code}" is already used by "${taken.owner.name}".`;
-  return conflict(message, [{ field: taken.field, message, code: taken.code, itemId: taken.owner.id, itemName: taken.owner.name }]);
+  return conflict("codeTaken", message, [{ field: taken.field, message, code: taken.code, itemId: taken.owner.id, itemName: taken.owner.name }]);
 }
 
 /**
@@ -185,7 +185,7 @@ export async function updateItem(
   const partBrands = (brands ?? []).map((brand) => optionKey(brand.partBrand));
   const partBrand = (brands ?? []).find((_, index) => partBrands.indexOf(partBrands[index]) !== index);
   if (partBrand) {
-    return refused(badRequest(`Part brand "${partBrand.partBrand}" is repeated in the item.`));
+    return refused(badRequest("partBrandRepeated", `Part brand "${partBrand.partBrand}" is repeated in the item.`));
   }
   const taken = await findTakenCode(tx, sentCodes(body), id);
   if (taken) {

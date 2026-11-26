@@ -13,6 +13,7 @@ import { buildApp } from "../../app.js";
 import { prisma } from "../../db/client.js";
 import { testDevice, testProof } from "../../devices/testDevices.js";
 import { hashToken } from "../../auth/sessions.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // The inventory against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded, on PostgreSQL or
 // SQLite: creating items with their brands and original codes, searching, filtering, sorting, editing them and their brands, photos, the
@@ -157,7 +158,7 @@ test("API: items are created with their brands and found by name and any code", 
   assert.equal((await call("POST", "/items", item([brand("BP-2", "Cobreq", { quantity: 1, unitPriceCents: 4990 })]))).statusCode, 201);
   assert.equal(await prisma.partBrand.count({ where: { name: `Fras-le ${RUN}` } }), 1);
   const taken = await call("POST", "/items", item([brand("NEW", "Bosch"), brand("FL 1", "Valeo")]));
-  assert.equal(taken.statusCode, 409);
+  assertRefused(taken, 409, "codeTaken");
   assert.deepEqual(taken.json().details[0], {
     field: "brands/1/code",
     message: `Code "FL 1-${RUN}" is already used by "Pastilha de freio ${RUN}".`,
@@ -270,7 +271,7 @@ test("API: an item is edited with its brands, and a brand left out goes with its
   const photos = await sendPhoto(found.id, second.id);
   assert.equal(photos.statusCode, 200);
   assert.equal(photos.json().brands[1].photos.length, 1);
-  assert.equal((await sendPhoto(found.id, (await find("bp2")).brands[0].id)).statusCode, 404);
+  assertRefused(await sendPhoto(found.id, (await find("bp2")).brands[0].id), 404, "brandNotFound");
   const [stored] = await prisma.itemPhoto.findMany({ where: { brandId: second.id } });
 
   const brands = await call("PATCH", `/items/${found.id}`, {
@@ -292,7 +293,7 @@ test("API: an item is edited with its brands, and a brand left out goes with its
   assert.equal(await prisma.itemPhoto.count({ where: { id: stored.id } }), 0);
   const [other] = (await find("bp2")).brands;
   const foreign = await call("PATCH", `/items/${found.id}`, { brands: [{ id: other.id, partBrand: other.partBrand, code: other.code, unitPriceCents: 1 }] });
-  assert.equal(foreign.statusCode, 400);
+  assertRefused(foreign, 400, "foreignBrand");
 });
 
 // Imports a file of three items: one whose first code is in use, with a new brand; one new; and one whose codes
@@ -304,7 +305,7 @@ test("API: an import adds brands to the item of a code in use, and refuses what 
   const fresh = item([brand("BP-3", "Cobreq")], { name: `Disco de freio ${RUN}` });
   const mixed = item([brand("BP-1A", "Cobreq"), brand("BP-3", "Bosch")]);
   const refused = await call("POST", "/items/import", { items: [update, fresh, mixed] });
-  assert.equal(refused.statusCode, 409);
+  assertRefused(refused, 409, "importConflict");
   assert.equal(await prisma.itemBrand.count({ where: { code: `FL-2-${RUN}` } }), 0);
 
   const imported = await call("POST", "/items/import", { items: [update, fresh] });
@@ -315,7 +316,7 @@ test("API: an import adds brands to the item of a code in use, and refuses what 
     [3, [`BP-2-${RUN}`, `FL-2-${RUN}`]],
   );
   const twice = await call("POST", "/items/import", { items: [item([brand("BP-2", "Cobreq"), brand("FL-9", "Fras-le")])] });
-  assert.equal(twice.statusCode, 409);
+  assertRefused(twice, 409, "importConflict");
 });
 
 // Creates an item with two original codes and checks they come back uppercase and in order and the search finds it by
@@ -336,16 +337,16 @@ test("API: items keep the vehicle maker's original codes and are found by each o
     [{ brands: [brand("OE-1", "Bosch")] }, "brands/0/code"],
   ] as const) {
     const taken = await call("POST", "/items", { ...item([brand("OEB-2", "Bosch")], { name: `Outra ${RUN}` }), ...sent });
-    assert.equal(taken.statusCode, 409);
+    assertRefused(taken, 409, "codeTaken");
     assert.deepEqual([taken.json().details[0].field, taken.json().details[0].itemName], [field, `Junta ${RUN}`]);
   }
   const twice = await call("POST", "/items", item([brand("OEB-3", "Bosch")], { name: `Outra ${RUN}`, originalCodes: [`OEB-3-${RUN}`] }));
-  assert.equal(twice.statusCode, 400);
+  assertRefused(twice, 400, "invalid");
   const id = created.json().id;
-  assert.equal((await call("PATCH", `/items/${id}`, { originalCodes: [`OEB1-${RUN}`] })).statusCode, 400);
+  assertRefused(await call("PATCH", `/items/${id}`, { originalCodes: [`OEB1-${RUN}`] }), 400, "codeRepeated");
   const [own] = created.json().brands;
   const moved = { id: own.id, partBrand: own.partBrand, code: `OE-2-${RUN}`, unitPriceCents: 8990 };
-  assert.equal((await call("PATCH", `/items/${id}`, { brands: [moved] })).statusCode, 400);
+  assertRefused(await call("PATCH", `/items/${id}`, { brands: [moved] }), 400, "codeRepeated");
 
   const edited = await call("PATCH", `/items/${id}`, { originalCodes: [`OE-3-${RUN}`] });
   assert.deepEqual(edited.json().originalCodes, [`OE-3-${RUN}`]);
@@ -371,7 +372,7 @@ test("API: an import finds the item of an original code and adds the codes it la
     ],
   );
   const crossed = await call("POST", "/items/import", { items: [item([brand("IMO-2", "Bosch")], { name: `Bieleta ${RUN}` })] });
-  assert.equal(crossed.statusCode, 409);
+  assertRefused(crossed, 409, "importConflict");
 });
 
 // Creates an item that fits three vehicles, one of any model of its brand, and checks they come back in order and the
@@ -398,9 +399,9 @@ test("API: an item fits several vehicles and is found by each one", async () => 
   assert.deepEqual(await names(`vehicleModel=${encodeURIComponent(`Gurgel ${RUN}|GTE ${RUN}`)}`), []);
 
   const twice = item([brand("VE-2", "Cofap")], { vehicles: [vehicles[0], { vehicleBrand: ` gurgel ${RUN}`, vehicleModel: `x12 ${RUN}` }] });
-  assert.equal((await call("POST", "/items", twice)).statusCode, 400);
+  assertRefused(await call("POST", "/items", twice), 400, "invalid");
   const universal = item([brand("VE-3", "Cofap")], { vehicles: [{ vehicleBrand: "Universal" }, vehicles[2]] });
-  assert.equal((await call("POST", "/items", universal)).statusCode, 400);
+  assertRefused(await call("POST", "/items", universal), 400, "invalid");
 
   const edited = await call("PATCH", `/items/${created.json().id}`, { vehicles: [vehicles[2]] });
   assert.deepEqual(edited.json().vehicles, [{ vehicleBrand: `Miura ${RUN}`, vehicleModel: null, firstYear: null, lastYear: null, generationNumber: null, version: null }]);
@@ -442,9 +443,9 @@ test("API: a vehicle keeps its generation and version, and is found by them", as
   assert.deepEqual(await names("generation=1988-1990"), []);
   assert.deepEqual(await names("version=Supermini"), [`Farol ${RUN}`]);
   const backwards = item([brand("GE-2", "Cofap")], { vehicles: [{ ...vehicles[0], firstYear: 1991, lastYear: 1988 }] });
-  assert.equal((await call("POST", "/items", backwards)).statusCode, 400);
+  assertRefused(await call("POST", "/items", backwards), 400, "invalid");
   const loose = item([brand("GE-3", "Cofap")], { vehicles: [{ vehicleBrand: `Gurgel ${RUN}`, vehicleModel: `BR-800 ${RUN}`, version: "Sl" }] });
-  assert.equal((await call("POST", "/items", loose)).statusCode, 400);
+  assertRefused(await call("POST", "/items", loose), 400, "invalid");
 
   await call("PATCH", `/catalog/versions/${first.versions[0].id}`, { name: "SL Turbo" });
   await call("PATCH", `/catalog/generations/${first.id}`, { name: "G1", firstYear: 1988, lastYear: 1992 });
@@ -465,7 +466,7 @@ test("API: an item keeps its material and short description, and an edit clears 
   assert.equal(created.statusCode, 201);
   assert.deepEqual([created.json().material, created.json().description], ["Cortiça", "Com furo extra"]);
   const long = await call("POST", "/items", item([brand("MD-2", "Sabó")], { description: "x".repeat(31) }));
-  assert.equal(long.statusCode, 400);
+  assertRefused(long, 400, "invalid");
   const edited = await call("PATCH", `/items/${created.json().id}`, { material: "", description: "" });
   assert.deepEqual([edited.json().material, edited.json().description], [null, null]);
 });
@@ -489,7 +490,7 @@ test("API: a duplicated item's photos are copies with files of their own", async
   assert.equal((await call("DELETE", `/items/${first.id}`)).statusCode, 204);
   await Promise.all(files.map((file) => access(path.join(process.env.PHOTOS_DIR!, file))));
   const unknown = await copyPhotos(copy.id, copy.brands[0].id, [first.id]);
-  assert.equal(unknown.statusCode, 400);
+  assertRefused(unknown, 400, "photosInvalid");
   assert.deepEqual(unknown.json().details, [{ field: "photos", message: "Copied photos must be saved photos." }]);
 });
 

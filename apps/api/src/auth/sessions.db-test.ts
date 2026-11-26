@@ -6,6 +6,7 @@ import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
 import { testDevice, testProof } from "../devices/testDevices.js";
 import { hashToken } from "./sessions.js";
+import { assertRefused } from "../http/testReplies.js";
 
 // Sessions against a real database (`pnpm --filter @apc/api test:db`), migrated and seeded with the test users, as
 // CI's migrations job builds one. Not for the database in use: each test adds sessions and users, and removes them.
@@ -86,8 +87,8 @@ test("API: logging out ends that session only", async () => {
   const photo = `/photos/00000000-0000-4000-8000-000000000001.webp?session=${id}&signature=x`;
 
   assert.equal((await app.inject({ method: "DELETE", url: "/sessions/current", headers: bearer(token) })).statusCode, 204);
-  assert.equal((await app.inject({ method: "GET", url: "/items", headers: bearer(token) })).statusCode, 401);
-  assert.equal((await app.inject({ method: "GET", url: photo })).statusCode, 401);
+  assertRefused(await app.inject({ method: "GET", url: "/items", headers: bearer(token) }), 401, "loggedOut");
+  assertRefused(await app.inject({ method: "GET", url: photo }), 401, "photoUnsigned");
   assert.equal(await prisma.session.count({ where: { id } }), 0);
   assert.equal((await app.inject({ method: "GET", url: "/items", headers: bearer(other) })).statusCode, 200);
   await app.inject({ method: "DELETE", url: "/sessions/current", headers: bearer(other) });
@@ -97,7 +98,7 @@ test("API: logging out ends that session only", async () => {
 test("API: an expired session's token is refused", async () => {
   const token = await login();
   await prisma.session.update({ where: { tokenHash: hashToken(token) }, data: { expiresAt: new Date(Date.now() - 1000) } });
-  assert.equal((await app.inject({ method: "GET", url: "/items", headers: bearer(token) })).statusCode, 401);
+  assertRefused(await app.inject({ method: "GET", url: "/items", headers: bearer(token) }), 401, "loggedOut");
   assert.equal(await prisma.session.count({ where: { tokenHash: hashToken(token) } }), 0);
 });
 

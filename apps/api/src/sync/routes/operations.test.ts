@@ -3,6 +3,7 @@ import { after, test } from "node:test";
 import { SYNC_OPERATIONS_MAX } from "@apc/domain/sync";
 import { buildApp } from "../../app.js";
 import { AUTHORIZED, TEST_SESSIONS } from "../../auth/testSessions.js";
+import { assertRefused } from "../../http/testReplies.js";
 
 // These requests are answered before any database call, so they run without a database, from the stand-in session.
 
@@ -24,7 +25,7 @@ function send(operations: unknown) {
 // Sends a batch without a session and checks it is refused, as only a logged-in device changes the stock.
 test("API: the phone's operations need a session", async () => {
   const answer = await app.inject({ method: "POST", url: "/sync/operations", payload: { operations: [] } });
-  assert.equal(answer.statusCode, 401);
+  assertRefused(answer, 401, "loggedOut");
 });
 
 // Sends an empty batch, one over the most a batch holds, an operation of no known type and a stock move that moves

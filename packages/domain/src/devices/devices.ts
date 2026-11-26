@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { catalog } from "../platform/locale/locale.ts";
+import { catalog, type Locale } from "../platform/locale/locale.ts";
 
 // Each device that logs in is authorized once on the server's computer. Every app makes, on its first run, a key pair
 // of its own, ECDSA P-256, whose private key never leaves the device: the phone keeps it in the Android Keystore, the
@@ -27,6 +27,7 @@ export const DEVICE_MESSAGES = catalog(
     refused: "Este dispositivo não foi autorizado. Entre de novo para pedir outra vez.",
     approveTitle: "Autorizar este dispositivo?",
     devices: "Dispositivos",
+    unnamed: (code: string) => `Dispositivo ${code}`,
   },
   {
     pending: "This device needs to be authorized on the server's computer.",
@@ -34,6 +35,7 @@ export const DEVICE_MESSAGES = catalog(
     refused: "This device wasn't authorized. Log in again to ask once more.",
     approveTitle: "Authorize this device?",
     devices: "Devices",
+    unnamed: (code) => `Device ${code}`,
   },
 );
 
@@ -88,6 +90,16 @@ export type DeviceSigner = {
 };
 /** Where a device stands. */
 export type DeviceStatus = z.infer<typeof deviceStatusSchema>["status"];
+
+/**
+ * Names a device as the approver typed it, or by its code in the language chosen when nothing was typed.
+ * @param device The device's name, empty when none was typed, and its code.
+ * @param locale The language.
+ * @returns E.g. "Celular da Ana", or "Dispositivo K7Q2ZD".
+ */
+export function deviceLabel(device: Pick<Device, "name" | "code">, locale: Locale): string {
+  return device.name || DEVICE_MESSAGES[locale].unnamed(device.code);
+}
 
 /**
  * Proves a device holds its key, for a nonce the server gave.

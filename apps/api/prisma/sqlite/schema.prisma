@@ -149,7 +149,7 @@ model Device {
   /// The device's ECDSA P-256 public key, SPKI in base64url; its private key never leaves the device.
   publicKey  String
   status     DeviceStatus    @default(PENDING)
-  /// The name the approver gave it; empty until then, when the apps show "Dispositivo <code>".
+  /// The name the approver typed; empty when none was, when each app shows "Dispositivo <code>" in its language.
   name       String          @default("")
   createdAt  DateTime        @default(now())
   approvedAt DateTime?
