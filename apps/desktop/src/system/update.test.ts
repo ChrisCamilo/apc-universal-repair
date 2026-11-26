@@ -110,7 +110,7 @@ test("Desktop: the installer asks nothing more on an update, and removes nothing
   assert.match(finish, /Function finishPagePre\s+\$\{If\} \$\{isUpdated\}\s+Call startAppAfterFinish\s+Abort/);
   assert.match(finish, /MUI_FINISHPAGE_RUN_FUNCTION startAppAfterFinish[\s\S]*MUI_PAGE_FINISH/);
   const pages = installerMacro("customPageAfterChangeDir");
-  assert.match(pages, /MUI_PAGE_CUSTOMFUNCTION_SHOW instFilesShow[\s\S]*\$\{If\} \$\{isUpdated\}\s+!insertmacro MUI_HEADER_TEXT "Atualizando o APC"/);
+  assert.match(pages, /MUI_PAGE_CUSTOMFUNCTION_SHOW instFilesShow[\s\S]*\$\{If\} \$\{isUpdated\}\s+!insertmacro MUI_HEADER_TEXT "\$\(apcUpdatingTitle\)"/);
   const install = installerMacro("customInstall");
   assert.match(install, /\$\{IfNot\} \$\{Silent\}[\s\S]*PBM_SETRANGE32\} 0 1[\s\S]*PBM_SETPOS\} 1 0/);
   for (const text of [mode, finish, pages, install]) {
@@ -129,5 +129,37 @@ test("Desktop: the uninstaller asks whether to keep the data, and deletes only t
   assert.match(page, /MB_DEFBUTTON2 \$R1 IDYES \+2\s+Abort\s+StrCpy \$dataChoice delete/);
   const uninstall = installerMacro("customUnInstall");
   assert.match(uninstall, /\$\{If\} \$dataChoice == delete\s+\$\{AndIfNot\} \$\{Silent\}\s+\$\{AndIfNot\} \$\{isUpdated\}[\s\S]*RMDir \/r "\$dataFolder"/);
-  assert.deepEqual(INSTALLER_SCRIPT.match(/\bDelete\b|\bRMDir\b|delete-app-data/g), ["RMDir"]);
+  // Its texts aside, which say "Delete" in English.
+  const instructions = INSTALLER_SCRIPT.split(/\r?\n/)
+    .filter((line) => !/^\s*LangString\b/.test(line))
+    .join("\n");
+  assert.deepEqual(instructions.match(/\bDelete\b|\bRMDir\b|delete-app-data/g), ["RMDir"]);
+});
+
+// Reads the installer's own script and checks every text it shows is a LangString written in both Portuguese and
+// English, the Portuguese ones as before, and every one it uses is written.
+test("Desktop: every text of the installer and the uninstaller is written in both languages", () => {
+  const strings = [...INSTALLER_SCRIPT.matchAll(/^\s*LangString (\w+) \$\{LANG_APC_(PT|EN)\} (.+)$/gm)];
+  const named = (language: string) => strings.filter((string) => string[2] === language).map((string) => string[1]);
+  assert.ok(named("PT").length >= 30);
+  assert.deepEqual(named("EN"), named("PT"));
+  const used = new Set([...INSTALLER_SCRIPT.matchAll(/\$\((apc\w+)\)/g)].map((use) => use[1]));
+  assert.deepEqual([...used].sort(), [...new Set(named("PT"))].sort());
+  assert.match(INSTALLER_SCRIPT, /LangString apcUpdatingTitle \$\{LANG_APC_PT\} "Atualizando o APC"/);
+  assert.match(INSTALLER_SCRIPT, /LangString apcDataDelete \$\{LANG_APC_PT\} "Apagar todos os dados do APC"/);
+  // A page's text is never written in the page itself.
+  assert.doesNotMatch(INSTALLER_SCRIPT, /\$\{NSD_Create\w+\}[^\r\n]*"[^"$]*[A-Za-zÀ-ú]{3}[^"]*"\s*$/m);
+});
+
+// Reads the installer's own script and checks it asks the language with Portuguese chosen, keeps the choice in the
+// app's own key, where the uninstaller reads it, and leaves it for the app on a fresh install only, as its language tag.
+test("Desktop: the installer asks the language, keeps it for the uninstaller and leaves it for the app", () => {
+  assert.match(installerMacro("preInit"), /StrCpy \$LANGUAGE \$\{LANG_APC_PT\}/);
+  assert.match(INSTALLER_SCRIPT, /!define LANGUAGE_KEY "Software\\\$\{APP_GUID\}"/);
+  assert.match(INSTALLER_SCRIPT, /!define MUI_LANGDLL_REGISTRY_KEY "\$\{LANGUAGE_KEY\}"/);
+  const install = installerMacro("customInstall");
+  assert.match(install, /WriteRegStr HKCU "\$\{LANGUAGE_KEY\}" "\$\{MUI_LANGDLL_REGISTRY_VALUENAME\}" \$LANGUAGE/);
+  assert.match(install, /\$\{IfNot\} \$\{Silent\}\s+\$\{AndIfNot\} \$\{isUpdated\}\s+\$\{If\} \$LANGUAGE == \$\{LANG_APC_EN\}\s+StrCpy \$R3 "en-US"\s+\$\{Else\}\s+StrCpy \$R3 "pt-BR"/);
+  assert.match(install, /installer-language\.txt/);
+  assert.match(installerMacro("customUnInit"), /StrCpy \$LANGUAGE \$\{LANG_APC_PT\}\s+ReadRegStr \$R0 HKCU "\$\{LANGUAGE_KEY\}"[\s\S]*StrCpy \$LANGUAGE \$R0/);
 });

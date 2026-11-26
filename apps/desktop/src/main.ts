@@ -5,7 +5,7 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, saf
 import electronUpdater from "electron-updater";
 import { localApiUrl, usesBundledServer } from "./server/bundledServer.js";
 import { certificateVerdict } from "./server/certificate.js";
-import { readConfig, resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
+import { resolveApiUrl, updateConfig, type DesktopConfig } from "./config.js";
 import { adoptInstallerChoice } from "./server/database.js";
 import { DEVICE_CHANNELS, devicePublicKey, ensureDeviceKey, signNonce } from "./system/deviceKey.js";
 import { windowsIdentity } from "./system/identity.js";
@@ -25,7 +25,7 @@ import {
 } from "./server/serverSettings.js";
 import { HIDDEN_ARG, takeInstallerStartup } from "./system/startup.js";
 import { phoneAddress, trayMenu, type TrayItem } from "./system/tray.js";
-import { isLocale, language, LOCALE_CHANNEL, setLanguage, texts } from "./texts.js";
+import { adoptInstallerLanguage, isLocale, language, LOCALE_ARG, LOCALE_CHANNEL, setLanguage, texts } from "./texts.js";
 import {
   CHECK_INTERVAL_MS,
   checksForUpdates,
@@ -107,7 +107,14 @@ function createWindow(appUrl: string, hidden: boolean): BrowserWindow {
     title: "APC Universal Repair",
     icon: path.join(app.getAppPath(), "build", process.platform === "win32" ? "icon.ico" : "icon.png"),
     backgroundColor: "#0B0C0E",
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: path.join(import.meta.dirname, "preload.cjs") },
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      preload: path.join(import.meta.dirname, "preload.cjs"),
+      // The language the page starts in while it has saved none: the one chosen at install, the first time.
+      additionalArguments: [`${LOCALE_ARG}${language()}`],
+    },
   });
   // What the window adds around its content, the title bar and the borders, is only known once it exists.
   const [outerWidth, outerHeight] = window.getSize();
@@ -381,11 +388,9 @@ app.on("will-quit", (event) => {
 
 void app.whenReady().then(async () => {
   const userData = app.getPath("userData");
-  // The language the page kept on the last run, for what shows before it opens; Portuguese the first time.
-  const saved = readConfig(userData).locale;
-  if (isLocale(saved)) {
-    setLanguage(saved);
-  }
+  // The language the page kept on the last run, or the first time the one chosen at install, for what shows before
+  // the page opens and for the page itself.
+  setLanguage(adoptInstallerLanguage(userData));
   const marker = readInstallMarker(userData);
   if (marker && installInProgress(marker, app.getVersion(), Date.now())) {
     leaveToInstaller(marker);

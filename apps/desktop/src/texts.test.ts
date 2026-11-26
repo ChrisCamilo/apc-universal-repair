@@ -1,7 +1,26 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { after, test } from "node:test";
 import { LOCALES as SHARED_LOCALES } from "@apc/domain/locale";
-import { DESKTOP_TEXTS, isLocale, language, LOCALES, setLanguage, texts } from "./texts.ts";
+import { readConfig, writeConfig } from "./config.ts";
+import { adoptInstallerLanguage, DESKTOP_TEXTS, INSTALLER_LANGUAGE_FILE, isLocale, language, LOCALES, setLanguage, texts } from "./texts.ts";
+
+/** userData folders of this run, removed at the end. */
+const folders: string[] = [];
+
+after(() => folders.forEach((folder) => rmSync(folder, { recursive: true, force: true })));
+
+/**
+ * Makes an empty userData folder for one test.
+ * @returns Its path.
+ */
+function userDataFolder(): string {
+  const folder = mkdtempSync(path.join(tmpdir(), "apc-texts-"));
+  folders.push(folder);
+  return folder;
+}
 
 /**
  * Lists a catalog's texts by their path, each with what it is: a text, a function with its number of arguments, or a
@@ -43,4 +62,28 @@ test("Desktop: the main process writes in Portuguese until the page chooses Engl
   setLanguage("en-US");
   t.after(() => setLanguage("pt-BR"));
   assert.equal(texts().tray.quit, "Quit");
+});
+
+// Leaves English from the installer in a fresh userData and checks the app takes it into config.json, removing the
+// installer's file; with config.json keeping a language already, the installer's is dropped and the kept one stays;
+// without either, the app is in Portuguese; and a file that isn't a language is dropped.
+test("Desktop: the app starts in the language chosen at install, until it keeps its own", () => {
+  const fresh = userDataFolder();
+  writeFileSync(path.join(fresh, INSTALLER_LANGUAGE_FILE), "en-US");
+  assert.equal(adoptInstallerLanguage(fresh), "en-US");
+  assert.equal(readConfig(fresh).locale, "en-US");
+  assert.equal(existsSync(path.join(fresh, INSTALLER_LANGUAGE_FILE)), false);
+  assert.equal(adoptInstallerLanguage(fresh), "en-US");
+
+  const kept = userDataFolder();
+  writeConfig(kept, { locale: "pt-BR" });
+  writeFileSync(path.join(kept, INSTALLER_LANGUAGE_FILE), "en-US");
+  assert.equal(adoptInstallerLanguage(kept), "pt-BR");
+  assert.equal(existsSync(path.join(kept, INSTALLER_LANGUAGE_FILE)), false);
+
+  assert.equal(adoptInstallerLanguage(userDataFolder()), "pt-BR");
+  const odd = userDataFolder();
+  writeFileSync(path.join(odd, INSTALLER_LANGUAGE_FILE), "es-ES");
+  assert.equal(adoptInstallerLanguage(odd), "pt-BR");
+  assert.equal(readConfig(odd).locale, undefined);
 });

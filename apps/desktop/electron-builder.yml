@@ -43,6 +43,12 @@ nsis:
   # The "Banco de dados" page, SQLite or PostgreSQL, after the folder page, and the uninstaller's "Dados do APC" page
   # (see the file).
   include: build/installer.nsh
+  # The installer's languages, Portuguese first, which it asks for as it starts; its pages and the uninstaller's follow
+  # the choice, and the app starts in it (see the file).
+  installerLanguages:
+    - pt_BR
+    - en_US
+  displayLanguageSelector: true
   # A newer installer run over the installed app upgrades it in place: it finds the installed version by the appId,
   # removes it silently and installs into the same folder, asking to close the app first when it is open. The data in
   # %APPDATA% (the session, the preferences, config.json) stays. Uninstalling asks whether to keep it, the default, or
