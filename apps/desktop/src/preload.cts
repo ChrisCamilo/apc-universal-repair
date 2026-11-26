@@ -8,6 +8,8 @@ import { contextBridge, ipcRenderer } from "electron";
 // sandboxed, so this preload can only load Electron's renderer modules; the channels are written here as in notify.ts,
 // update.ts, serverSettings.ts, deviceKey.ts and texts.ts.
 
+/** The language the main process gives the window as an argument (see texts.ts): the page starts in it. */
+const startLocale = process.argv.find((arg) => arg.startsWith("--apc-locale="))?.slice("--apc-locale=".length);
 /** The new version that is ready, kept for a listener that comes after the main process said so. */
 let readyVersion: string | undefined;
 ipcRenderer.on("apc:update-ready", (_event, version: string) => {
@@ -32,6 +34,11 @@ contextBridge.exposeInMainWorld("apcDesktop", {
      */
     sign: (nonce: string) => ipcRenderer.invoke("apc:device-sign", nonce),
   },
+  /**
+   * The language the main process writes in as the window opens: the one chosen at install the first time, which the
+   * page starts in until it saves its own.
+   */
+  locale: startLocale,
   /**
    * Asks for a Windows notification, which the main process shows only while the window isn't focused.
    * @param title The notification's title, e.g. "Aviso".

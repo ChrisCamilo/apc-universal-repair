@@ -13,3 +13,11 @@ test("Desktop: the preload uses the same server channels as the main process", (
   assert.ok(channels.has('"apc:server-failed"') && channels.has('"apc:server-retry"') && channels.has('"apc:locale"'));
   assert.deepEqual([...channels].filter((channel) => !preload.includes(channel)), []);
 });
+
+// The window gets the language the page starts in as an argument; checks the preload reads the same one.
+test("Desktop: the preload reads the language argument the main process gives the window", () => {
+  const read = (file: string) => readFileSync(path.join(import.meta.dirname, file), "utf8");
+  const argument = /export const LOCALE_ARG = "([^"]+)";/.exec(read("texts.ts"))![1];
+  assert.equal(argument, "--apc-locale=");
+  assert.ok(read("preload.cts").includes(`arg.startsWith("${argument}")`));
+});

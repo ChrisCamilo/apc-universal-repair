@@ -101,7 +101,7 @@ test("Desktop: the page gets only the bridge's calls, with no Node access", { ta
   expect(exposed).toEqual({
     require: "undefined",
     process: "undefined",
-    bridge: ["device", "notify", "onOpenNotifications", "onUpdateReady", "restartToUpdate", "server", "setLocale"],
+    bridge: ["device", "locale", "notify", "onOpenNotifications", "onUpdateReady", "restartToUpdate", "server", "setLocale"],
     device: ["publicKey", "sign"],
     server: [
       "changeKey",

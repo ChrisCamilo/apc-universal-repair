@@ -1,12 +1,22 @@
+import { readFileSync, rmSync } from "node:fs";
+import path from "node:path";
+import { readConfig, updateConfig } from "./config.ts";
+
 // What the main process writes, in the language the page keeps (LOCALE_STORAGE_KEY of @apc/domain/locale): its
 // notifications, the tray's menu, the warning about a server on another version, the pages shown while the server
 // starts or an update goes in, why the server isn't on, and what the Servidor dialog's changes answer. The page tells
 // the language through the preload's bridge, on opening and on each change, and config.json keeps it, so a dialog
-// shown before the window opens uses the last run's; Portuguese the first time. The packaged app doesn't carry
-// @apc/domain, so its languages are written here.
+// shown before the window opens uses the last run's. The first time, it is the one chosen in the installer, which a
+// fresh install leaves in INSTALLER_LANGUAGE_FILE (see build/installer.nsh); the window gets it as an argument, so the
+// page starts in it while it has saved none of its own; Portuguese without an installer. The packaged app doesn't
+// carry @apc/domain, so its languages are written here.
 
+/** The file a fresh install leaves the language chosen in, in userData: "pt-BR" or "en-US". */
+export const INSTALLER_LANGUAGE_FILE = "installer-language.txt";
 /** The languages, LOCALES of @apc/domain/locale. */
 export const LOCALES = ["pt-BR", "en-US"] as const;
+/** The window's argument with the language the page starts in (also written in preload.cts). */
+export const LOCALE_ARG = "--apc-locale=";
 /** The channel the page tells its language on (also written in preload.cts, which can't import this file). */
 export const LOCALE_CHANNEL = "apc:locale";
 
@@ -205,6 +215,28 @@ export const DESKTOP_TEXTS: Record<Locale, DesktopTexts> = {
 
 /** The language the main process writes in, until the page or config.json says another. */
 let current: Locale = "pt-BR";
+
+/**
+ * Gives the language config.json keeps, moving the installer's into it first unless it keeps one already, and removes
+ * the installer's file.
+ * @param userData The app's userData folder, where config.json is.
+ * @returns The language, Portuguese when none is kept.
+ */
+export function adoptInstallerLanguage(userData: string): Locale {
+  let config = readConfig(userData);
+  const file = path.join(userData, INSTALLER_LANGUAGE_FILE);
+  let left: string | undefined;
+  try {
+    left = readFileSync(file, "utf8").trim();
+    rmSync(file, { force: true });
+  } catch {
+    // No install left one.
+  }
+  if (isLocale(left) && !config.locale) {
+    config = updateConfig(userData, { locale: left });
+  }
+  return isLocale(config.locale) ? config.locale : "pt-BR";
+}
 
 /**
  * Tells whether a value is one of the languages.
