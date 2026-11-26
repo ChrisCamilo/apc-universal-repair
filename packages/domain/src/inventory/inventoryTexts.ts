@@ -98,6 +98,7 @@ export const INVENTORY_SCREEN_TEXTS = catalog(
       hint:
         "Use o modelo: uma linha por marca da peça, separada por vírgula ou ponto e vírgula, em UTF-8; as linhas com o mesmo número na coluna “item” são as marcas de um item. Os veículos vão em “vehicles”, como “Volkswagen / Gol | Fiat”, e os códigos originais em “original_codes”, separados por “|”. Com vírgula, um valor como “189,90” vai entre aspas. Um código que já está no estoque atualiza o item.",
       preview: "Prévia da importação",
+      row: (line: number) => `Linha ${line}`,
       submit: (count: number) => (count === 1 ? "Importar 1 item" : `Importar ${count} itens`),
     },
     importItems: "Importar Peças",
@@ -254,6 +255,7 @@ export const INVENTORY_SCREEN_TEXTS = catalog(
       hint:
         "Use the template: one line per brand of the part, separated by commas or semicolons, in UTF-8; the lines with the same number in the “item” column are the brands of one item. The vehicles go in “vehicles”, as “Volkswagen / Gol | Fiat”, and the original codes in “original_codes”, separated by “|”. With commas, a value such as “189,90” goes in quotes. A code already in stock updates its item.",
       preview: "Import preview",
+      row: (line) => `Line ${line}`,
       submit: (count) => (count === 1 ? "Import 1 item" : `Import ${count} items`),
     },
     importItems: "Import parts",

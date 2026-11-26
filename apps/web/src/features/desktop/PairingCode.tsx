@@ -3,6 +3,7 @@ import { encode } from 'uqr'
 import type { EntryCode } from '@apc/domain/auth'
 import { entryCodeGroups, fingerprintGroups, pairingLink, type Pairing } from '@apc/domain/pairing'
 import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { AUTH_TEXTS } from '@apc/domain/auth-texts'
 import { useLocale } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
 import { issueEntryCode, type DevicesOutcome } from './devices.ts'
@@ -33,7 +34,7 @@ function modulesPath(modules: boolean[][]): string {
 export function PairingCode({ pairing }: { pairing: Pairing }) {
   const { classes, ids } = pairingCode()
   const { locale } = useLocale()
-  const texts = DESKTOP_TEXTS[locale].pairing
+  const texts = { ...AUTH_TEXTS[locale].pairing, ...DESKTOP_TEXTS[locale].pairing }
   // The entry code, or why there is none; undefined while it is asked for.
   const [entry, setEntry] = useState<DevicesOutcome<EntryCode>>()
   // Counts the asks for a code, so a new one is asked for as the last one ends or at "Gerar outro".

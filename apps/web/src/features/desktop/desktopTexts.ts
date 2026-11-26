@@ -42,9 +42,6 @@ export const DESKTOP_TEXTS = catalog(
       useKey: 'Usar a chave de recuperação',
     },
     pairing: {
-      address: 'Endereço',
-      code: 'Código',
-      entry: 'Código de entrada',
       entryHint: 'Vale por 5 minutos, para a conta aberta neste computador. Depois, autorize o celular aqui.',
       another: 'Gerar outro',
       qr: 'QR code para conectar o celular',
@@ -191,9 +188,6 @@ export const DESKTOP_TEXTS = catalog(
       useKey: 'Use the recovery key',
     },
     pairing: {
-      address: 'Address',
-      code: 'Code',
-      entry: 'Entry code',
       entryHint: 'Valid for 5 minutes, for the account open on this computer. Then authorize the phone here.',
       another: 'Make another',
       qr: 'QR code to connect the phone',
