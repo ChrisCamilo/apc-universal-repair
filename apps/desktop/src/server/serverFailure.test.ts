@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { lastServerError, serverFailure } from "./serverFailure.ts";
+import { setLanguage } from "../texts.ts";
 
 const LOG = "C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\logs\\api.log";
 
@@ -53,5 +54,25 @@ test("Desktop: a taken port names the program holding it", () => {
   assert.equal(
     serverFailure("portInUse", log, LOG, { port: 3000 }).reason,
     "A porta 3000 já está em uso por outro programa. Feche esse programa e tente de novo, ou use outra porta.",
+  );
+});
+
+// Words a stop, a missing key and a taken port with English chosen in the page, and checks each reads in English, the
+// last error and the program holding the port included.
+test("Desktop: a server that isn't on says why in English", (t) => {
+  setLanguage("en-US");
+  t.after(() => setLanguage("pt-BR"));
+  const log = "2026-10-21T12:00:05.000Z Starting the server.\nError: listen EADDRINUSE: address already in use 127.0.0.1:3000";
+  assert.equal(
+    serverFailure("stopped", log, LOG).reason,
+    "The server stopped while starting, several times in a row. Last error: Error: listen EADDRINUSE: address already in use 127.0.0.1:3000",
+  );
+  assert.equal(
+    serverFailure("keyMissing", log, LOG).reason,
+    "The SQLite database's key isn't on this computer any more. Type the recovery key the app showed the first time to open the data.",
+  );
+  assert.equal(
+    serverFailure("portInUse", log, LOG, { port: 3000, owner: { pid: 4321, name: "node.exe" } }).reason,
+    "Port 3000 is already in use by the program node.exe (process 4321). Close that program and try again, or use another port.",
   );
 });

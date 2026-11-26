@@ -16,6 +16,7 @@ import {
   UPDATE_READY_CHANNEL,
   writeInstallMarker,
 } from "./update.ts";
+import { setLanguage } from "../texts.ts";
 
 /** The installer's own script, with the pages and macros electron-builder inserts into its installer and uninstaller. */
 const INSTALLER_SCRIPT = readFileSync(path.join(import.meta.dirname, "..", "..", "build", "installer.nsh"), "utf8");
@@ -82,6 +83,16 @@ test("Desktop: the warning about a remote server names both versions", () => {
     "O servidor APC está na versão 0.2.0, e este app na 0.2.1. Atualize o servidor no computador onde ele roda para evitar erros.",
   );
   assert.match(serverVersionWarning("0.2.1", undefined), /numa versão anterior à 0\.2\.0, e este app na 0\.2\.1/);
+});
+
+// Checks the same warning reads in English with English chosen in the page.
+test("Desktop: the warning about a remote server reads in English", (t) => {
+  setLanguage("en-US");
+  t.after(() => setLanguage("pt-BR"));
+  assert.equal(
+    serverVersionWarning("0.2.1", "0.2.0"),
+    "The APC server is on version 0.2.0, and this app on 0.2.1. Update the server on the computer it runs on to avoid errors.",
+  );
 });
 
 // Checks *Reiniciar agora* runs the installer with its window, so its progress shows, and starts the new version after.

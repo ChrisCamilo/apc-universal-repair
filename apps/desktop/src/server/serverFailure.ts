@@ -1,4 +1,5 @@
 import type { PortOwner } from "./ports.ts";
+import { texts } from "../texts.ts";
 
 // Why the server the app runs isn't on, in words the window shows (see serverSettings.ts) instead of a login that only
 // fails: the SQLite key that doesn't open with this Windows user, that isn't on this computer any more or that doesn't
@@ -20,7 +21,7 @@ export type ServerFailure = { kind: FailureKind; reason: string; log: string };
  * @param logText The end of logs/api.log, where the server wrote its errors.
  * @param log The log's path, shown to look at.
  * @param taken For a taken port: the port, and the program holding it when the system says which.
- * @returns What kept it off, the reason and the log.
+ * @returns What kept it off, the reason, in the main process's language, and the log.
  */
 export function serverFailure(
   kind: FailureKind,
@@ -28,21 +29,19 @@ export function serverFailure(
   log: string,
   taken?: { port: number; owner?: PortOwner },
 ): ServerFailure {
+  const words = texts().serverFailure;
   if (kind === "portInUse") {
-    const holder = taken?.owner ? `pelo programa ${taken.owner.name ?? "sem nome"} (processo ${taken.owner.pid})` : "por outro programa";
-    const reason = `A porta ${taken?.port} já está em uso ${holder}. Feche esse programa e tente de novo, ou use outra porta.`;
-    return { kind, reason, log };
+    return { kind, reason: words.portInUse(taken?.port, words.holder(taken?.owner)), log };
   }
-  const recovery = "Digite a chave de recuperação que o app mostrou na primeira vez para abrir os dados.";
   const reasons: Record<Exclude<FailureKind, "portInUse">, string> = {
-    key: `A chave do banco SQLite guardada neste computador não abre com este usuário do Windows. ${recovery}`,
-    keyMissing: `A chave do banco SQLite não está mais neste computador. ${recovery}`,
-    keyWrong: `A chave do banco SQLite guardada neste computador não abre o arquivo dele. ${recovery}`,
-    stopped: "O servidor parou ao ligar, várias vezes seguidas.",
-    timeout: "O servidor não respondeu a tempo.",
+    key: `${words.key} ${words.recovery}`,
+    keyMissing: `${words.keyMissing} ${words.recovery}`,
+    keyWrong: `${words.keyWrong} ${words.recovery}`,
+    stopped: words.stopped,
+    timeout: words.timeout,
   };
   const error = kind === "stopped" || kind === "timeout" ? lastServerError(logText) : undefined;
-  return { kind, reason: error ? `${reasons[kind]} Último erro: ${error}` : reasons[kind], log };
+  return { kind, reason: error ? `${reasons[kind]} ${words.lastError(error)}` : reasons[kind], log };
 }
 
 /**

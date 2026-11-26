@@ -3,9 +3,10 @@ import { contextBridge, ipcRenderer } from "electron";
 // The bridge between the web app and the desktop app's main process, the only thing the page gets from Electron: it
 // asks for a Windows notification, and hears when one was clicked so it opens the bell's menu; it hears when a new
 // version is ready, and asks to restart into it; it reads and changes the settings of the server the app runs, and
-// hears when that server isn't on, with why, and asks to try again; and it has the main process sign the API's nonces
-// with the app's device key. The window is sandboxed, so this preload can only load Electron's renderer modules; the
-// channels are written here as in notify.ts, update.ts, serverSettings.ts and deviceKey.ts.
+// hears when that server isn't on, with why, and asks to try again; it has the main process sign the API's nonces
+// with the app's device key; and it tells the language the page keeps, which the main process writes in. The window is
+// sandboxed, so this preload can only load Electron's renderer modules; the channels are written here as in notify.ts,
+// update.ts, serverSettings.ts, deviceKey.ts and texts.ts.
 
 /** The new version that is ready, kept for a listener that comes after the main process said so. */
 let readyVersion: string | undefined;
@@ -66,6 +67,11 @@ contextBridge.exposeInMainWorld("apcDesktop", {
   },
   /** Asks to close the app now and install the new version, which opens once it is in. */
   restartToUpdate: () => ipcRenderer.send("apc:restart-to-update"),
+  /**
+   * Tells the language the page keeps, which the main process writes its dialogs, tray and pages in (see texts.ts).
+   * @param locale The language, e.g. "en-US".
+   */
+  setLocale: (locale: string) => ipcRenderer.send("apc:locale", locale),
   /** The server the app runs and its settings, which the Servidor dialog shows and changes (see serverSettings.ts). */
   server: {
     /**
