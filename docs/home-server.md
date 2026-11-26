@@ -33,7 +33,7 @@ flowchart LR
 
 ### 1. Install the app
 
-Download `APC-Universal-Repair-Setup-<version>.exe` from the latest [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) and run it. Besides the folder, the installer asks two things:
+Download `APC-Universal-Repair-Setup-<version>.exe` from the latest [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) and run it. It first asks its language, Portuguese or English, which its pages, the uninstaller's and the app the first time it opens follow; the pages below are named as in Portuguese. Besides the folder, the installer asks two things:
 
 - **Banco de dados:** SQLite or PostgreSQL, see step 2.
 - **Iniciar com o Windows:** whether the app starts hidden in the tray when you sign in to Windows, with the server on, so the phone works without opening the app (yes by default). It can be changed later in *Iniciar com o Windows*, in the menu of the APC icon by the clock.
@@ -211,7 +211,7 @@ An update, or a newer installer run over the app, never shows the page and alway
 
 ### 1. Instalar o app
 
-Baixe o `APC-Universal-Repair-Setup-<versão>.exe` da [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) mais nova e rode. Além da pasta, o instalador pergunta duas coisas:
+Baixe o `APC-Universal-Repair-Setup-<versão>.exe` da [release](https://github.com/ChrisCamilo/apc-universal-repair/releases) mais nova e rode. Ele pergunta antes o idioma, português ou inglês, que as páginas dele, as do desinstalador e o app na primeira vez que abre seguem. Além da pasta, o instalador pergunta duas coisas:
 
 - **Banco de dados:** SQLite ou PostgreSQL, veja o passo 2.
 - **Iniciar com o Windows:** se o app liga escondido na bandeja quando você entra no Windows, com o servidor ligado, para o celular funcionar sem abrir o app (sim por padrão). Dá para trocar depois em *Iniciar com o Windows*, no menu do ícone do APC perto do relógio.
