@@ -1,6 +1,8 @@
 import { useId, useState } from 'react'
 import { closeIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { addCodes, codesInput, splitCodes } from '@apc/domain/item-form'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../../app/useLocale.ts'
 import { Icon } from '../../../components/Icon'
 import { Label, Text } from '../../../components/Typography'
 import { codeListField } from './CodeListField.styles.ts'
@@ -22,6 +24,7 @@ type CodeListFieldProps = {
 }
 
 export function CodeListField({ label, codes, onCodesChange, messages = [], helper }: CodeListFieldProps) {
+  const common = useMessages(COMMON_TEXTS)
   const inputId = useId()
   const [text, setText] = useState('')
   const { classes, ids } = codeListField()
@@ -54,7 +57,7 @@ export function CodeListField({ label, codes, onCodesChange, messages = [], help
               <span className={classes.code()} data-testid={ids.code}>
                 {code}
               </span>
-              <button type="button" className={classes.remove()} data-testid={ids.remove} aria-label={`Remover ${code}`} onClick={() => remove(index)}>
+              <button type="button" className={classes.remove()} data-testid={ids.remove} aria-label={common.removeNamed(code)} onClick={() => remove(index)}>
                 <Icon icon={closeIcon} size={ICON_SIZES.mark} />
               </button>
             </li>

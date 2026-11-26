@@ -51,10 +51,12 @@ import { TUTORIAL_CODE, type TutorialScreen } from '@apc/domain/inventory-tutori
 import type { InventoryLink } from '@apc/domain/catalog'
 import { pageForSize } from '@apc/ui-spec/pagination'
 import { perLocale, type Locale } from '@apc/domain/locale'
+import { COMMON_TEXTS, COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
 import { PAGE_SIZES, SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query'
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoAddress } from '@apc/domain/photos'
 import { API_BASE } from '../../app/api.ts'
-import { useLocale } from '../../app/useLocale.ts'
+import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { useSession } from '../auth/sessionContext.ts'
 import { ActionSheet } from '../../components/ActionSheet'
 import { Button } from '../../components/Button'
@@ -151,71 +153,75 @@ import { tutorialTarget } from './tutorial/tutorialTarget.ts'
 // The table's cells, styled once: the recipe has no variants they change.
 const CELLS = inventoryTab()
 // The columns after the item's name, each reading the row as one item (see rowItem).
-const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
-  { key: 'category', sortable: true, header: 'Categoria', cell: (row) => row.item.category },
-  { key: 'partBrand', sortable: true, header: 'Marca', cell: (row) => partBrandsLabel(rowItem(row)) },
-  {
-    key: 'vehicle',
-    header: 'Veículo',
-    sortable: true,
-    // The first vehicle, and how many more the item fits, every one in the tooltip.
-    cell: ({ item }) => {
-      const [first, ...others] = item.vehicles
-      return (
-        <span className={CELLS.classes.vehicle()} data-testid={CELLS.ids.vehicle} title={others.length > 0 ? itemVehiclesText(item) : undefined}>
-          <span>{first.vehicleBrand}</span>
-          <span className={CELLS.classes.model()} data-testid={CELLS.ids.model}>
-            {first.vehicleModel ?? 'qualquer modelo'}
-            {others.length > 0 && ` +${others.length}`}
+const COLUMNS = perLocale((locale): ComponentProps<typeof DataTable<InventoryRow>>['columns'] => {
+  const headers = FILTER_LABELS[locale].columns
+  const texts = INVENTORY_SCREEN_TEXTS[locale]
+  return [
+    { key: 'category', sortable: true, header: headers.category, cell: (row) => row.item.category },
+    { key: 'partBrand', sortable: true, header: headers.partBrand, cell: (row) => partBrandsLabel(rowItem(row)) },
+    {
+      key: 'vehicle',
+      header: headers.vehicle,
+      sortable: true,
+      // The first vehicle, and how many more the item fits, every one in the tooltip.
+      cell: ({ item }) => {
+        const [first, ...others] = item.vehicles
+        return (
+          <span className={CELLS.classes.vehicle()} data-testid={CELLS.ids.vehicle} title={others.length > 0 ? itemVehiclesText(item) : undefined}>
+            <span>{first.vehicleBrand}</span>
+            <span className={CELLS.classes.model()} data-testid={CELLS.ids.model}>
+              {first.vehicleModel ?? texts.anyModel}
+              {others.length > 0 && ` +${others.length}`}
+            </span>
           </span>
-        </span>
-      )
+        )
+      },
     },
-  },
-  { key: 'position', sortable: true, header: 'Posição', cell: ({ item }) => <PositionCell item={item} /> },
-  { key: 'side', sortable: true, header: 'Lado', cell: ({ item }) => <SideCell item={item} /> },
-  {
-    key: 'color',
-    sortable: true,
-    header: 'Cor',
-    cell: (row) => <ColorCell item={rowItem(row)} />,
-  },
-  {
-    key: 'material',
-    sortable: true,
-    header: 'Material',
-    // The item's, the same on each of its brands' rows; a dash, muted, when it has none.
-    cell: ({ item }) => (
-      <span className={inventoryTab({ muted: !item.material }).classes.coded()} data-testid={CELLS.ids.coded}>
-        {item.material ?? '—'}
-      </span>
-    ),
-  },
-  {
-    key: 'location',
-    sortable: true,
-    header: 'Local',
-    cell: (row) => <LocationCell item={rowItem(row)} />,
-  },
-  {
-    key: 'price',
-    header: 'Valor unit.',
-    sortLabel: 'Valor unitário',
-    sortable: true,
-    numeric: true,
-    cell: (row) => <PriceRange item={rowItem(row)} />,
-  },
-  {
-    key: 'quantity',
-    header: 'Qtd.',
-    sortLabel: 'Quantidade',
-    sortable: true,
-    numeric: true,
-    card: 'end',
-    // A brand's row is never tinted, since the stock status is the item's.
-    cell: (row) => <StockQuantity {...rowItem(row)} tinted={!row.brand} />,
-  },
-]
+    { key: 'position', sortable: true, header: headers.position, cell: ({ item }) => <PositionCell item={item} /> },
+    { key: 'side', sortable: true, header: headers.side, cell: ({ item }) => <SideCell item={item} /> },
+    {
+      key: 'color',
+      sortable: true,
+      header: headers.color,
+      cell: (row) => <ColorCell item={rowItem(row)} />,
+    },
+    {
+      key: 'material',
+      sortable: true,
+      header: headers.material,
+      // The item's, the same on each of its brands' rows; a dash, muted, when it has none.
+      cell: ({ item }) => (
+        <span className={inventoryTab({ muted: !item.material }).classes.coded()} data-testid={CELLS.ids.coded}>
+          {item.material ?? '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'location',
+      sortable: true,
+      header: headers.location,
+      cell: (row) => <LocationCell item={rowItem(row)} />,
+    },
+    {
+      key: 'price',
+      header: texts.priceShort,
+      sortLabel: headers.price,
+      sortable: true,
+      numeric: true,
+      cell: (row) => <PriceRange item={rowItem(row)} />,
+    },
+    {
+      key: 'quantity',
+      header: texts.quantityShort,
+      sortLabel: headers.quantity,
+      sortable: true,
+      numeric: true,
+      card: 'end',
+      // A brand's row is never tinted, since the stock status is the item's.
+      cell: (row) => <StockQuantity {...rowItem(row)} tinted={!row.brand} />,
+    },
+  ]
+})
 // The stock status chips, outside the menu: one at a time, none for every item.
 const STATUS_OPTIONS = perLocale((locale) => ITEM_STATUSES.map((value) => ({ value, label: STOCK_STATUS_LABELS[locale][value] })))
 
@@ -244,6 +250,8 @@ function rowItem(row: InventoryRow): Item {
 
 export function InventoryTab() {
   const { locale } = useLocale()
+  const texts = INVENTORY_SCREEN_TEXTS[locale]
+  const common = COMMON_TEXTS[locale]
   const { classes, ids } = inventoryTab()
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS)
   const [status, setStatus] = useState<ItemStatus | null>(null)
@@ -540,7 +548,7 @@ export function InventoryTab() {
     removing,
     busy: sentWith === items,
     phone,
-    target: (name) => tutorialTarget(name, TUTORIAL_CODE, testItem?.name),
+    target: (name) => tutorialTarget(name, TUTORIAL_CODE, testItem?.name, locale),
     openForm,
     setSearch: (value) => narrow(() => setSearch(value)),
     applyFilters: (values) => {
@@ -568,26 +576,26 @@ export function InventoryTab() {
           <div className={classes.search()} data-testid={ids.search}>
             <SearchField
               data-tour="search"
-              label="Procure pelo nome ou código da peça"
+              label={texts.search}
               value={search}
               onValueChange={(value) => narrow(() => setSearch(value))}
             />
           </div>
           {!phone && (
             <div className={classes.buttons()} data-testid={ids.buttons}>
-              <Menu label="Mais ações" variant="secondary" trigger="Mais ações">
+              <Menu label={common.moreActions} variant="secondary" trigger={common.moreActions}>
                 <MenuItem icon={listIcon} onSelect={() => setManaging(true)}>
-                  Gerenciar listas
+                  {texts.lists.title}
                 </MenuItem>
                 <MenuItem icon={importIcon} onSelect={openImporter}>
-                  Importar Peças
+                  {texts.importItems}
                 </MenuItem>
                 <MenuItem icon={exportIcon} onSelect={openExporter}>
-                  Exportar Peças
+                  {texts.exportItems}
                 </MenuItem>
               </Menu>
               <Button data-tour="new-item" onClick={() => openForm()}>
-                Novo item
+                {texts.newItem}
               </Button>
             </div>
           )}
@@ -597,7 +605,7 @@ export function InventoryTab() {
             <>
               <ToolButton
                 icon={filterIcon}
-                label={filterCount ? `Filtros, ${filterCount} ${filterCount === 1 ? 'ativo' : 'ativos'}` : 'Filtros'}
+                label={filterCount ? COMPONENT_TEXTS[locale].filterMenu.active(filterCount) : COMPONENT_TEXTS[locale].filterMenu.title}
                 active={filterCount > 0}
                 aria-expanded={filtering}
                 data-tour="filters"
@@ -605,7 +613,7 @@ export function InventoryTab() {
               />
               <ToolButton
                 icon={sortIcon}
-                label={sort ? `Ordenar, ${sortLabel}` : 'Ordenar'}
+                label={sort ? texts.sort(sortLabel ?? '') : COMPONENT_TEXTS[locale].filterSheet.sort}
                 active={sort !== null}
                 aria-expanded={sorting}
                 onClick={() => setSorting(true)}
@@ -614,8 +622,8 @@ export function InventoryTab() {
           ) : (
             <>
               <FilterMenu
-                label="Filtros do estoque"
-                title="Filtrar estoque"
+                label={texts.filters}
+                title={texts.filterTitle}
                 rows={(draft) => itemFilterRows(items, draft, locale)}
                 values={filters}
                 onApply={(values) => narrow(() => setFilters(values))}
@@ -626,7 +634,7 @@ export function InventoryTab() {
             </>
           )}
           <FilterChipGroup
-            label="Situação do estoque"
+            label={texts.status}
             options={phone ? phoneStatusOptions(state.status === 'ready' ? state.items : [], locale) : STATUS_OPTIONS[locale]}
             value={status}
             onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
@@ -649,20 +657,20 @@ export function InventoryTab() {
         <div className={inventoryTab({ centered: failed }).classes.list()} data-testid={ids.list}>
           {failed && (
             <ErrorState
-              title="Não foi possível carregar o estoque"
-              message="Verifique a conexão com o servidor e tente de novo."
-              action={{ label: 'Tentar de novo', onClick: reload }}
+              title={texts.error.title}
+              message={texts.error.message}
+              action={{ label: common.retry, onClick: reload }}
             />
           )}
           {!failed && listed.status === 'loading' && <LoadingRows />}
           {!failed && listed.status === 'ready' && (
             <DataTable
               fill
-              label="Itens do estoque"
+              label={texts.items}
               columns={[
                 {
                   key: 'expand',
-                  header: 'Expandir',
+                  header: texts.expand,
                   headerHidden: true,
                   card: 'lead',
                   // An item of several brands: a chevron that turns down while its brands' rows are open.
@@ -677,7 +685,7 @@ export function InventoryTab() {
                 },
                 {
                   key: 'photo',
-                  header: 'Foto',
+                  header: texts.photo,
                   headerHidden: true,
                   card: 'thumb',
                   cell: (row) => {
@@ -685,7 +693,7 @@ export function InventoryTab() {
                     return (
                       <TableThumbnail
                         src={brand.photos[0] && photoAddress(brand.photos[0].thumbUrl, API_BASE)}
-                        label={row.brand ? `Ver fotos de ${row.item.name} ${brand.partBrand}` : `Ver fotos de ${row.item.name}`}
+                        label={texts.photos.view(row.brand ? `${row.item.name} ${brand.partBrand}` : row.item.name)}
                         onOpen={() => setViewer({ item: row.item, brand, photos: heldPhotos(brand.photos, API_BASE) })}
                       />
                     )
@@ -693,7 +701,7 @@ export function InventoryTab() {
                 },
                 {
                   key: 'name',
-                  header: 'Item',
+                  header: FILTER_LABELS[locale].columns.name,
                   sortable: true,
                   card: 'main',
                   cell: (row) =>
@@ -706,17 +714,17 @@ export function InventoryTab() {
                         <TableTitle title={row.item.name} code={itemCodes(row.item)} details={itemDetails(row.item, locale)} />
                         {row.item.brands.length > 1 && (
                           <span className={classes.brands()} data-testid={ids.brands}>
-                            {row.item.brands.length} marcas
+                            {texts.brands(row.item.brands.length)}
                           </span>
                         )}
                       </span>
                     ),
                 },
                 // A phone's cards show no columns but the quantity, which hiding them on the desktop leaves there.
-                ...(phone ? COLUMNS : COLUMNS.filter((column) => !hidden.includes(column.key as ItemSortKey))),
+                ...(phone ? COLUMNS[locale] : COLUMNS[locale].filter((column) => !hidden.includes(column.key as ItemSortKey))),
                 {
                   key: 'actions',
-                  header: 'Ações',
+                  header: texts.actions,
                   headerHidden: true,
                   numeric: true,
                   card: 'actions',
@@ -725,10 +733,10 @@ export function InventoryTab() {
                     !brand &&
                     !phone && (
                       <span className={classes.actions()} data-testid={ids.actions}>
-                        <RowAction icon={pencilIcon} label={`Editar ${item.name}`} onClick={() => openForm(item)} />
+                        <RowAction icon={pencilIcon} label={common.editNamed(item.name)} onClick={() => openForm(item)} />
                         <RowAction
                           icon={trashIcon}
-                          label={`Excluir ${item.name}`}
+                          label={common.deleteNamed(item.name)}
                           tone="danger"
                           onClick={() => setRemoving(item)}
                         />
@@ -750,15 +758,15 @@ export function InventoryTab() {
               empty={
                 narrowed ? (
                   <EmptyState
-                    title="Nenhum item encontrado"
-                    message="Ajuste a busca ou limpe os filtros para ver o estoque inteiro."
-                    action={{ label: 'Limpar filtros', onClick: clearAll }}
+                    title={texts.empty.notFound.title}
+                    message={texts.empty.notFound.message}
+                    action={{ label: texts.empty.clear, onClick: clearAll }}
                   />
                 ) : (
                   <EmptyState
-                    title="Nenhum item cadastrado"
-                    message="Cadastre a primeira peça do estoque para ela aparecer aqui."
-                    action={{ label: 'Novo item', onClick: () => openForm() }}
+                    title={texts.empty.none.title}
+                    message={texts.empty.none.message}
+                    action={{ label: texts.newItem, onClick: () => openForm() }}
                   />
                 )
               }
@@ -771,7 +779,7 @@ export function InventoryTab() {
       </div>
       {!phone && (
         <Pagination
-          label="Páginas do estoque"
+          label={texts.pages}
           page={page}
           pageSize={pageSize}
           total={failed ? 0 : loadedTotal}
@@ -783,7 +791,7 @@ export function InventoryTab() {
       {phone && (
         <button
           type="button"
-          aria-label="Novo item"
+          aria-label={texts.newItem}
           data-tour="new-item"
           className={classes.fab()}
           data-testid={ids.fab}
@@ -820,12 +828,12 @@ export function InventoryTab() {
           <ActionSheet
             open={moreOpen}
             onClose={() => setMoreOpen(false)}
-            title="Mais ações"
+            title={common.moreActions}
             actions={[
-              { icon: listIcon, label: 'Gerenciar listas', onSelect: () => setManaging(true) },
-              { icon: importIcon, label: 'Importar Peças', onSelect: openImporter },
-              { icon: exportIcon, label: 'Exportar Peças', onSelect: openExporter },
-              { icon: playIcon, label: 'Tutorial do estoque', onSelect: tutorial.replay },
+              { icon: listIcon, label: texts.lists.title, onSelect: () => setManaging(true) },
+              { icon: importIcon, label: texts.importItems, onSelect: openImporter },
+              { icon: exportIcon, label: texts.exportItems, onSelect: openExporter },
+              { icon: playIcon, label: texts.tutorial, onSelect: tutorial.replay },
             ]}
           />
         </>
@@ -959,6 +967,7 @@ type ListEndProps = {
  */
 function ListEnd({ count, total, loading, onNear }: ListEndProps) {
   const { classes, ids } = inventoryTab()
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS)
   const mark = useRef<HTMLDivElement>(null)
   const near = useEffectEvent(onNear)
   const done = count >= total
@@ -977,7 +986,7 @@ function ListEnd({ count, total, loading, onNear }: ListEndProps) {
   if (done) {
     return (
       <p className={classes.end()} data-testid={ids.end}>
-        Fim da lista
+        {texts.end}
       </p>
     )
   }
@@ -991,9 +1000,10 @@ function ListEnd({ count, total, loading, onNear }: ListEndProps) {
 
 function LoadingRows() {
   const { classes, ids } = inventoryTab()
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS)
   return (
     <div aria-busy="true" className={classes.loading()} data-testid={ids.loading}>
-      <Spinner size="sm" label="Carregando o estoque" className={classes.spinner()} />
+      <Spinner size="sm" label={texts.loading} className={classes.spinner()} />
       {[0, 1, 2, 3, 4].map((row) => (
         <div key={row} className={classes.loadingRow()} data-testid={ids.loadingRow}>
           <Skeleton shape="block" width={LOADING_THUMB} height={LOADING_THUMB} />
@@ -1034,7 +1044,7 @@ function SideCell({ item }: { item: Item }) {
 function ColorCell({ item }: { item: Item }) {
   const { locale } = useLocale()
   const color = brandsValue(item, 'color', locale)!
-  return <Coded value={color} name={color === NOT_APPLICABLE ? 'Cor não se aplica' : color} />
+  return <Coded value={color} name={color === NOT_APPLICABLE ? INVENTORY_SCREEN_TEXTS[locale].colorNotApplicable : color} />
 }
 
 /** An item's location, or "Várias" in the language chosen when its brands differ. */

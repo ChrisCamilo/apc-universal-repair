@@ -11,6 +11,7 @@ import '../../../index.css'
 import { themeCss } from '../../../app/theme.ts'
 import { DeleteItemDialog } from './DeleteItemDialog.tsx'
 import { testItem } from '@apc/domain/test-items'
+import { LocaleContext } from '../../../app/useLocale.ts'
 
 const FILTER: Item = testItem({
   id: '00000000-0000-4000-8000-000000000001',
@@ -136,6 +137,19 @@ test('Web: Excluir is on screen at both minimum sizes', async () => {
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
     await screen.getByRole('button', { name: 'Cancelar' }).click()
   }
+})
+
+// Asks to delete an item in English, and checks the question, what it says and its buttons read in English.
+test('Web: Excluir item reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <Sample />
+    </LocaleContext.Provider>,
+  )
+  const dialog = screen.getByRole('dialog', { name: 'Delete item?' })
+  await expect.element(dialog.getByText(/leaves the inventory\. This can't be undone\./)).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Delete' })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible()
 })
 
 function Sample({ onDeleted = () => {} }: { onDeleted?: (item: Item) => void }) {

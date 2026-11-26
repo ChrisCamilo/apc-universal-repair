@@ -49,6 +49,9 @@ import {
 } from '@apc/domain/item-form'
 import { findEntry, ITEM_LIST_TEXTS, type ItemListKind, type ItemLists } from '@apc/domain/lists'
 import { copiedPhotos, heldPhotos, ITEM_PHOTO_LIMIT, photoParts, photosChanged } from '@apc/domain/photos'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
+import type { Locale } from '@apc/domain/locale'
 import { Button } from '../../../components/Button'
 import { Combobox } from '../../../components/Combobox'
 import { RowAction } from '../../../components/DataTable'
@@ -115,7 +118,6 @@ import { useLocale } from '../../../app/useLocale.ts'
 // part brand and code, then its quantity and price side by side, and its color and location; "Adicionar marca" dashed
 // after them, and only "Salvar item", or "Salvar alterações", across the bottom.
 
-const PHOTOS_LABEL = 'Fotos do item'
 const POSITION_OPTIONS = POSITIONS.map((value) => ({ value, label: value }))
 const SIDE_OPTIONS = SIDES.map((value) => ({ value, label: value }))
 
@@ -156,10 +158,12 @@ type ItemFormDialogProps = {
  * Names a brand's section, and its photos, for the screen and screen readers.
  * @param index The brand's place in the form.
  * @param count How many brands the form has.
+ * @param locale The language.
  * @returns E.g. "Marca 2", and "Fotos da marca 2"; the photos of an item of one brand are the item's.
  */
-function brandNames(index: number, count: number): { section: string; photos: string } {
-  return { section: `Marca ${index + 1}`, photos: count === 1 ? PHOTOS_LABEL : `Fotos da marca ${index + 1}` }
+function brandNames(index: number, count: number, locale: Locale): { section: string; photos: string } {
+  const texts = INVENTORY_SCREEN_TEXTS[locale].form
+  return { section: texts.brand(index + 1), photos: count === 1 ? texts.photos : texts.brandPhotos(index + 1) }
 }
 
 export function ItemFormDialog({
@@ -181,6 +185,8 @@ export function ItemFormDialog({
   onDelete,
 }: ItemFormDialogProps) {
   const { locale } = useLocale()
+  const texts = INVENTORY_SCREEN_TEXTS[locale]
+  const common = COMMON_TEXTS[locale]
   const toast = useToast()
   const phone = usePhone()
   const [viewing, setViewing] = useState(details && item !== undefined)
@@ -401,18 +407,18 @@ export function ItemFormDialog({
     }
     if (!response?.ok) {
       setSaving(false)
-      toast.error('Não foi possível salvar o item. Tente de novo.')
+      toast.error(texts.form.saveFailed)
       return
     }
     const saved = itemSchema.parse(await response.json())
     const withPhotos = await saveBrandPhotos(saved)
     setSaving(false)
     if (!withPhotos) {
-      toast.warning(`Item “${saved.name}” salvo, mas as fotos não foram salvas. Tente de novo.`)
+      toast.warning(texts.form.savedWithoutPhotos(saved.name))
       onSaved(saved)
       return
     }
-    toast.success(item ? `Item “${saved.name}” salvo.` : `Item “${saved.name}” cadastrado.`)
+    toast.success(item ? texts.form.saved(saved.name) : texts.form.created(saved.name))
     onSaved(withPhotos)
   }
 
@@ -422,47 +428,47 @@ export function ItemFormDialog({
         open={open}
         onClose={onClose}
         size="wide"
-        title={viewing ? 'Detalhes do item' : item ? (phone ? item.name : 'Editar item') : 'Novo item'}
+        title={viewing ? texts.form.details : item ? (phone ? item.name : texts.form.edit) : texts.form.new}
         closable={!screen}
-        back={screen ? 'Voltar ao estoque' : undefined}
+        back={screen ? texts.form.back : undefined}
         headerAction={screen && item && onDelete ? <RemoveItemButton onClick={() => onDelete(item)} /> : undefined}
         actions={
           screen ? (
             <>
               {onDuplicate && (
                 <Button variant="secondary" icon={copyIcon} className={classes.action()} onClick={() => setAsking(true)}>
-                  Duplicar
+                  {texts.form.duplicate}
                 </Button>
               )}
               <Button icon={pencilIcon} className={classes.action()} data-tour="form-edit" onClick={() => setViewing(false)}>
-                Editar
+                {common.edit}
               </Button>
             </>
           ) : phone && !viewing ? (
             <Button className={classes.action()} data-tour="form-save" loading={saving || creating > 0} onClick={save}>
-              {item ? 'Salvar alterações' : 'Salvar item'}
+              {item ? texts.form.saveChanges : texts.form.saveItem}
             </Button>
           ) : viewing ? (
             <>
               <Button variant="secondary" size="sm" onClick={onClose}>
-                Fechar
+                {common.close}
               </Button>
               {onDuplicate && (
                 <Button variant="secondary" size="sm" onClick={() => setAsking(true)}>
-                  Duplicar
+                  {texts.form.duplicate}
                 </Button>
               )}
               <Button size="sm" data-tour="form-edit" onClick={() => setViewing(false)}>
-                Editar
+                {common.edit}
               </Button>
             </>
           ) : (
             <>
               <Button variant="secondary" size="sm" onClick={onClose}>
-                Cancelar
+                {common.cancel}
               </Button>
               <Button size="sm" data-tour="form-save" loading={saving || creating > 0} onClick={save}>
-                {item ? 'Salvar alterações' : 'Salvar'}
+                {item ? texts.form.saveChanges : common.save}
               </Button>
             </>
           )
@@ -491,16 +497,16 @@ export function ItemFormDialog({
                   key={brand.id}
                   ref={brand.id === scrollToBrand ? scrolledBrand : undefined}
                   role="group"
-                  aria-label={brandNames(index, item.brands.length).section}
+                  aria-label={brandNames(index, item.brands.length, locale).section}
                   className={classes.brand()}
                   data-testid={ids.brand}
                 >
                   <div className={classes.brandHead()} data-testid={ids.brandHead}>
-                    <Heading level={4}>{brandNames(index, item.brands.length).section}</Heading>
+                    <Heading level={4}>{brandNames(index, item.brands.length, locale).section}</Heading>
                   </div>
                   <div className={classes.photos()} data-testid={ids.photos}>
                     <ImageUpload
-                      label={brandNames(index, item.brands.length).photos}
+                      label={brandNames(index, item.brands.length, locale).photos}
                       photos={photos[index] ?? []}
                       onPhotosChange={() => {}}
                       limit={ITEM_PHOTO_LIMIT}
@@ -520,7 +526,7 @@ export function ItemFormDialog({
               ref={name}
               data-tour="form-name"
               label={ITEM_FIELD_LABELS[locale].name}
-              placeholder={phone ? 'Ex.: Pastilha de freio' : undefined}
+              placeholder={phone ? texts.form.nameExample : undefined}
               value={form.name}
               onValueChange={(value) => change('name', value)}
               onBlur={() => change('name', form.name.trim() ? capitalizeFirst(form.name) : form.name)}
@@ -532,14 +538,14 @@ export function ItemFormDialog({
               onValueChange={(value) => change('category', value)}
               options={options.categories}
               onCreate={create('categories', (created) => change('category', created))}
-              noun="categoria"
-              toggleLabel="Mostrar categorias"
-              emptyLabel="Nenhuma categoria cadastrada"
+              noun={texts.combos.category.noun}
+              toggleLabel={texts.combos.category.toggle}
+              emptyLabel={texts.combos.category.empty}
               error={errors.category}
             />
             <TextField
               label={ITEM_NOTE_LABELS[locale].description}
-              placeholder={phone ? 'Ex.: Lado do motorista' : undefined}
+              placeholder={phone ? texts.form.descriptionExample : undefined}
               value={form.description ?? ''}
               onValueChange={(value) => changeNote('description', value)}
               helper={descriptionInput(form.description ?? '').counter}
@@ -547,7 +553,7 @@ export function ItemFormDialog({
             />
             <TextField
               label={ITEM_NOTE_LABELS[locale].material}
-              placeholder={phone ? 'Ex.: Alumínio' : undefined}
+              placeholder={phone ? texts.form.materialExample : undefined}
               value={form.material ?? ''}
               onValueChange={(value) => changeNote('material', value)}
             />
@@ -567,13 +573,12 @@ export function ItemFormDialog({
             ) : (
             <div role="group" aria-label={VEHICLES_LABEL[locale]} className={classes.vehicles()} data-testid={ids.vehicles}>
               <Text size="sm" tone="muted">
-                Os veículos em que a peça serve. Deixe o modelo vazio se serve em qualquer modelo da marca; a geração e a
-                versão são opcionais.
+                {texts.form.vehiclesHint}
               </Text>
               {form.vehicles.map((vehicle, index) => {
                 const brand = findEntry(lists.vehicleBrands, vehicle.vehicleBrand)
                 const shown = errors.vehicles?.[index] ?? {}
-                const line = `Veículo ${index + 1}`
+                const line = texts.form.vehicle(index + 1)
                 const suggested = vehicleSuggestions(catalog, vehicle)
                 return (
                   <div key={index} role="group" aria-label={line} className={classes.vehicle()} data-testid={ids.vehicle}>
@@ -583,9 +588,9 @@ export function ItemFormDialog({
                       onValueChange={(value) => changeVehicleBrand(index, value)}
                       options={options.vehicleBrands}
                       onCreate={create('vehicleBrands', (created) => changeVehicle(index, 'vehicleBrand', created))}
-                      noun="marca"
-                      toggleLabel="Mostrar marcas de veículo"
-                      emptyLabel="Nenhuma marca cadastrada"
+                      noun={texts.combos.vehicleBrand.noun}
+                      toggleLabel={texts.combos.vehicleBrand.toggle}
+                      emptyLabel={texts.combos.vehicleBrand.empty}
                       error={shown.vehicleBrand}
                     />
                     <Combobox
@@ -594,10 +599,10 @@ export function ItemFormDialog({
                       onValueChange={(value) => changeVehicle(index, 'vehicleModel', value)}
                       options={modelsOfBrand(lists, vehicle.vehicleBrand)}
                       onCreate={create('vehicleModels', (created) => changeVehicle(index, 'vehicleModel', created), brand?.id)}
-                      noun="modelo"
-                      toggleLabel="Mostrar modelos"
-                      emptyLabel="Nenhum modelo cadastrado para essa marca"
-                      placeholder={brand ? 'Qualquer modelo' : 'Escolha a marca do veículo primeiro'}
+                      noun={texts.combos.vehicleModel.noun}
+                      toggleLabel={texts.combos.vehicleModel.toggle}
+                      emptyLabel={texts.combos.vehicleModel.empty}
+                      placeholder={brand ? texts.combos.vehicleModel.any : texts.combos.vehicleModel.first}
                       error={shown.vehicleModel}
                       disabled={!brand}
                     />
@@ -606,10 +611,10 @@ export function ItemFormDialog({
                       value={vehicle.generation ?? ''}
                       onValueChange={(value) => changeVehicle(index, 'generation', value)}
                       options={suggested.generations}
-                      noun="geração"
-                      toggleLabel="Mostrar gerações"
-                      emptyLabel="Nenhuma geração conhecida para esse modelo"
-                      placeholder={vehicle.vehicleModel.trim() ? 'Ex.: 85/90' : 'Escolha o modelo primeiro'}
+                      noun={texts.combos.generation.noun}
+                      toggleLabel={texts.combos.generation.toggle}
+                      emptyLabel={texts.combos.generation.empty}
+                      placeholder={vehicle.vehicleModel.trim() ? texts.combos.generation.example : texts.combos.generation.first}
                       error={shown.generation}
                       disabled={!vehicle.vehicleModel.trim()}
                     />
@@ -618,16 +623,16 @@ export function ItemFormDialog({
                       value={vehicle.version ?? ''}
                       onValueChange={(value) => changeVehicle(index, 'version', value)}
                       options={suggested.versions}
-                      noun="versão"
-                      toggleLabel="Mostrar versões"
-                      emptyLabel="Nenhuma versão conhecida para esse modelo"
-                      placeholder={vehicle.generation?.trim() ? 'Ex.: 1.6 GLX' : 'Escolha a geração primeiro'}
+                      noun={texts.combos.version.noun}
+                      toggleLabel={texts.combos.version.toggle}
+                      emptyLabel={texts.combos.version.empty}
+                      placeholder={vehicle.generation?.trim() ? texts.combos.version.example : texts.combos.version.first}
                       error={shown.version}
                       disabled={!vehicle.generation?.trim()}
                     />
                     {form.vehicles.length > 1 && (
                       <div className={classes.removeVehicle()} data-testid={ids.removeVehicle}>
-                        <RowAction icon={trashIcon} label={`Remover ${line.toLowerCase()}`} tone="danger" onClick={() => removeVehicle(index)} />
+                        <RowAction icon={trashIcon} label={texts.form.removeNamed(line)} tone="danger" onClick={() => removeVehicle(index)} />
                       </div>
                     )}
                   </div>
@@ -635,7 +640,7 @@ export function ItemFormDialog({
               })}
               <div className={classes.addVehicle()} data-testid={ids.addVehicle}>
                 <Button variant="secondary" size="sm" className={classes.accent()} onClick={addVehicle}>
-                  Adicionar veículo
+                  {texts.form.addVehicle}
                 </Button>
               </div>
             </div>
@@ -667,7 +672,7 @@ export function ItemFormDialog({
                 onValueChange={changeMinimum}
                 max={MAX_QUANTITY}
                 error={errors.minQuantity}
-                helper="Abaixo disso, somando as marcas, o item fica com estoque baixo."
+                helper={texts.form.minimumHintShort}
               />
             ) : (
               <TextField
@@ -676,7 +681,7 @@ export function ItemFormDialog({
                 value={form.minQuantity}
                 onValueChange={changeMinimum}
                 error={errors.minQuantity}
-                helper="Abaixo disso, somando todas as marcas, o item aparece como estoque baixo."
+                helper={texts.form.minimumHint}
               />
             )}
             <div className={classes.codes()} data-testid={ids.codes}>
@@ -687,19 +692,19 @@ export function ItemFormDialog({
                 messages={originalCodeMessages(form, items, locale, item?.id)}
                 helper={
                   phone
-                    ? 'Os da montadora. Separe com vírgula.'
-                    : 'Os códigos da montadora, iguais em todas as marcas. Enter, vírgula ou ponto e vírgula separa um do outro.'
+                    ? texts.form.codesHintShort
+                    : texts.form.codesHint
                 }
               />
             </div>
             <div className={classes.brands()} data-testid={ids.brands}>
               {!phone && (
                 <Text size="sm" tone="muted">
-                  As marcas que fazem esta peça, cada uma com seu código, estoque e valor.
+                  {texts.form.brandsHint}
                 </Text>
               )}
               {form.brands.map((brand, index) => {
-                const names = brandNames(index, form.brands.length)
+                const names = brandNames(index, form.brands.length, locale)
                 const shown = errors.brands?.[index] ?? {}
                 // The tutorial points at the first brand's code and quantity.
                 const tour = (field: string) => (index === 0 ? field : undefined)
@@ -708,7 +713,7 @@ export function ItemFormDialog({
                     <div className={classes.brandHead()} data-testid={ids.brandHead}>
                       <Heading level={4}>{names.section}</Heading>
                       {form.brands.length > 1 && (
-                        <RowAction icon={trashIcon} label={`Remover ${names.section.toLowerCase()}`} tone="danger" onClick={() => removeBrand(index)} />
+                        <RowAction icon={trashIcon} label={texts.form.removeNamed(names.section)} tone="danger" onClick={() => removeBrand(index)} />
                       )}
                     </div>
                     <div className={classes.photos()} data-testid={ids.photos}>
@@ -723,7 +728,7 @@ export function ItemFormDialog({
                           <Button
                             variant="secondary"
                             size="sm"
-                            aria-label={`${PHOTO_PICKER[locale].open} para a ${names.section.toLowerCase()}`}
+                            aria-label={texts.form.photosFor(PHOTO_PICKER[locale].open, names.section)}
                             onClick={() => setPicker((current) => ({ brand: index, session: current.session + 1 }))}
                           >
                             {PHOTO_PICKER[locale].open}
@@ -738,9 +743,9 @@ export function ItemFormDialog({
                         onValueChange={(value) => changeBrand(index, 'partBrand', value)}
                         options={options.partBrands}
                         onCreate={create('partBrands', (created) => changeBrand(index, 'partBrand', created))}
-                        noun="marca"
-                        toggleLabel="Mostrar marcas de peça"
-                        emptyLabel="Nenhuma marca cadastrada"
+                        noun={texts.combos.partBrand.noun}
+                        toggleLabel={texts.combos.partBrand.toggle}
+                        emptyLabel={texts.combos.partBrand.empty}
                         error={shown.partBrand}
                       />
                     </div>
@@ -774,12 +779,12 @@ export function ItemFormDialog({
                       value={brand.color}
                       onValueChange={(value) => changeBrand(index, 'color', colorText(value))}
                       onBlur={() => changeBrand(index, 'color', colorInput(brand.color, options.colors))}
-                      placeholder={phone ? 'Se houver' : undefined}
-                      helper={phone ? undefined : 'Deixe vazio se a cor não se aplica.'}
+                      placeholder={phone ? texts.form.colorPlaceholder : undefined}
+                      helper={phone ? undefined : texts.form.colorHint}
                     />
                     <TextField
                       label={BRAND_FIELD_LABELS[locale].location}
-                      placeholder={phone ? 'Ex.: E-1' : undefined}
+                      placeholder={phone ? texts.form.locationExample : undefined}
                       value={brand.location}
                       onValueChange={(value) => changeBrand(index, 'location', value)}
                       onBlur={() => changeBrand(index, 'location', brand.location.trim() ? capitalizeFirst(brand.location) : brand.location)}
@@ -790,11 +795,11 @@ export function ItemFormDialog({
               <div className={classes.add()} data-testid={ids.add}>
                 {phone ? (
                   <Button variant="dashed" icon={plusIcon} onClick={addBrand}>
-                    Adicionar marca
+                    {texts.form.addBrand}
                   </Button>
                 ) : (
                   <Button variant="secondary" size="sm" className={classes.accent()} onClick={addBrand}>
-                    Adicionar marca
+                    {texts.form.addBrand}
                   </Button>
                 )}
               </div>

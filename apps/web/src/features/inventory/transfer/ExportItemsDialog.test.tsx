@@ -13,6 +13,7 @@ import '../../../index.css'
 import { themeCss } from '../../../app/theme.ts'
 import { ExportItemsDialog } from './ExportItemsDialog.tsx'
 import { testItem } from '@apc/domain/test-items'
+import { LocaleContext } from '../../../app/useLocale.ts'
 
 // An item as the API sends it, with a photo.
 const ITEM: Item = testItem({
@@ -123,6 +124,22 @@ for (const style of STYLES) {
     })
   }
 }
+
+// Opens Exportar Peças in English, and checks its title, what goes in the file and its switches read in English.
+test('Web: Exportar Peças reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <ToastProvider>
+        <ExportItemsDialog open query="" count={12} narrowed={false} onClose={() => {}} />
+      </ToastProvider>
+    </LocaleContext.Provider>,
+  )
+  const dialog = screen.getByRole('dialog', { name: 'Export parts' })
+  await expect.element(dialog.getByText("Every page goes in the file, in the import template's format.")).toBeVisible()
+  await expect.element(dialog.getByRole('switch', { name: 'Export to Mercado Livre' })).toBeVisible()
+  await expect.element(dialog.getByRole('switch', { name: "Include the photos' paths" })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Export' })).toBeVisible()
+})
 
 // Turns the photo paths on and exports, and checks every item of the list is fetched with the list query and no
 // page, the file is named after the day and has the photos column, a toast confirms it and the dialog closes.

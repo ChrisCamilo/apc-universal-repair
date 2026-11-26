@@ -1,3 +1,6 @@
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
+import { useMessages } from '../../../app/useLocale.ts'
 import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
 import { Text } from '../../../components/Typography'
@@ -16,28 +19,30 @@ type DuplicateItemDialogProps = {
 }
 
 export function DuplicateItemDialog({ open, name, onClose, onDuplicate }: DuplicateItemDialogProps) {
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS).duplicate
+  const common = useMessages(COMMON_TEXTS)
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      title="Duplicar item?"
+      title={texts.title}
       size="confirm"
       actions={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>
-            Cancelar
+            {common.cancel}
           </Button>
           <Button variant="secondary" size="sm" onClick={() => onDuplicate(false)}>
-            Copiar só os dados
+            {texts.dataOnly}
           </Button>
           <Button size="sm" onClick={() => onDuplicate(true)}>
-            Copiar dados e fotos
+            {texts.withPhotos}
           </Button>
         </>
       }
     >
       <Text size="sm" tone="muted">
-        Um item novo começa com os dados de {name}, sem os códigos e com o estoque zerado. Nada é salvo até você clicar em Salvar.
+        {texts.text(name)}
       </Text>
     </Dialog>
   )
