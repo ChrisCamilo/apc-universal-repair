@@ -11,6 +11,9 @@ import { Switch } from '../../../components/Switch';
 import { useToast } from '../../../components/Toast';
 import { Text } from '../../../components/Typography';
 import { shareCsv } from './csv';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts';
+import { PHONE_TEXTS } from '../../../app/phoneTexts';
 
 // The "Exportar Peças" dialog of the Inventory tab, the same as the web: it says which items go into the file, the whole
 // list as it is (the search, the filters, the stock status and the sort) across all its pages, and offers to add each
@@ -57,6 +60,8 @@ async function exportFile(query: string, { photos, mercadoLivre }: { photos: boo
 
 export function ExportItemsDialog({ open, query, count, narrowed, onClose, offline = false }: ExportItemsDialogProps) {
   const { locale } = useLocale();
+  const texts = INVENTORY_SCREEN_TEXTS[locale];
+  const common = COMMON_TEXTS[locale];
   const toast = useToast();
   const needsServer = useMessages(INVENTORY_NEEDS_SERVER);
   const [photos, setPhotos] = useState(false);
@@ -69,7 +74,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose, offli
     const file = await exportFile(query, { photos, mercadoLivre }, locale);
     if (!file) {
       setExporting(false);
-      toast.error(offline ? needsServer.export : 'Não foi possível exportar os itens. Tente de novo.');
+      toast.error(offline ? needsServer.export : texts.export.failed);
       return;
     }
     const shared = await shareCsv(file.name, file.csv);
@@ -84,15 +89,15 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose, offli
     <Dialog
       open={open}
       onClose={onClose}
-      title="Exportar Peças"
+      title={texts.exportItems}
       closable
       actions={
         <>
           <Button variant="secondary" size="sm" onPress={onClose}>
-            Cancelar
+            {common.cancel}
           </Button>
           <Button size="sm" loading={exporting} disabled={count === 0} onPress={submit}>
-            Exportar
+            {texts.export.submit}
           </Button>
         </>
       }
@@ -100,23 +105,22 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose, offli
       <Text size="sm">{exportScope(count, narrowed, locale)}</Text>
       <Text size="sm" tone="muted">
         {mercadoLivre
-          ? 'Todas as páginas vão no arquivo, um anúncio por marca, nas palavras do Mercado Livre.'
-          : 'Todas as páginas vão no arquivo, no formato do modelo de importação.'}
+          ? texts.export.scopeMercadoLivre
+          : texts.export.scopeTemplate}
       </Text>
       <Switch checked={mercadoLivre} onCheckedChange={setMercadoLivre} disabled={count === 0}>
-        Exportar para o Mercado Livre
+        {texts.export.mercadoLivre}
       </Switch>
       <Text size="sm" tone="muted">
-        Para copiar na planilha baixada do Anunciador em massa, na sua conta de vendedor. No celular vai só o CSV dos
-        anúncios; as fotos vêm no Exportar Peças do computador. Marcas sem estoque ou abaixo de R$ 8,00 ficam de fora.
+        {PHONE_TEXTS[locale].inventory.mercadoLivreHint}
       </Text>
       {!mercadoLivre && (
         <>
           <Switch checked={photos} onCheckedChange={setPhotos} disabled={count === 0}>
-            Incluir o caminho das fotos
+            {texts.export.photos}
           </Switch>
           <Text size="sm" tone="muted">
-            Para reaproveitar as mesmas fotos depois. Os caminhos vão na coluna “photos”, a capa primeiro.
+            {texts.export.photosHint}
           </Text>
         </>
       )}

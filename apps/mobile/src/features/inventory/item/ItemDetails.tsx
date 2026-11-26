@@ -5,10 +5,11 @@ import { brandPlaceText, ITEM_NOTE_LABELS, originalCodesText, positionSideText, 
 import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
 import { Icon } from '../../../components/Icon';
 import { ImageUpload, type UploadPhoto } from '../../../components/ImageUpload';
-import { useLocale } from '../../../app/locale';
+import { useLocale, useMessages } from '../../../app/locale';
 import { useTheme } from '../../../app/theme';
 import { useStyles } from './ItemDetails.styles';
 import { pickPhotos, takePhoto } from '../photos/photos';
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts';
 
 // An item's details, the same as the web on a phone (the Detalhes mockup), inside the item dialog that fills the
 // screen: the photos of every brand, or "Sem fotos"; the category as a chip over the item's name, and its short
@@ -28,6 +29,7 @@ type ItemDetailsProps = {
 };
 
 export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemDetailsProps) {
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS);
   const { colors } = useTheme();
   const { locale } = useLocale();
   const { styles, ids } = useStyles();
@@ -39,7 +41,7 @@ export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemD
     <View style={styles.content} testID={ids.content} onLayout={place('fields')}>
       {all.length > 0 ? (
         <ImageUpload
-          label="Fotos do item"
+          label={texts.form.photos}
           photos={all}
           onPhotosChange={() => {}}
           limit={ITEM_PHOTO_LIMIT * item.brands.length}
@@ -51,7 +53,7 @@ export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemD
         <View style={styles.noPhotos} testID={ids.noPhotos}>
           <Icon icon={imageIcon} size={ICON_SIZES.frame} color={colors.textMuted} />
           <Text style={styles.noPhotosLabel} testID={ids.noPhotosLabel}>
-            Sem fotos
+            {texts.details.noPhotos}
           </Text>
         </View>
       )}
@@ -69,21 +71,21 @@ export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemD
         )}
       </View>
       <View style={styles.tiles} testID={ids.tiles}>
-        <Tile label="Em estoque" value={item.quantity} />
-        <Tile label="Mínimo" value={item.minQuantity} />
+        <Tile label={texts.details.inStock} value={item.quantity} />
+        <Tile label={texts.details.minimum} value={item.minQuantity} />
       </View>
       <View style={styles.list} testID={ids.list}>
-        <Detail term="Veículos" value={vehiclesText(item, locale)} />
+        <Detail term={texts.details.vehicles} value={vehiclesText(item, locale)} />
         {item.material && <Detail term={ITEM_NOTE_LABELS[locale].material} value={item.material} />}
         <Detail
-          term="Posição · Lado"
+          term={texts.details.positionSide}
           value={positionSideText(item, locale)}
           none={item.position === NOT_APPLICABLE && item.side === NOT_APPLICABLE}
         />
-        <Detail term="Códigos originais" value={originalCodesText(item, locale)} none={item.originalCodes.length === 0} />
+        <Detail term={texts.details.originalCodes} value={originalCodesText(item, locale)} none={item.originalCodes.length === 0} />
       </View>
       <Text accessibilityRole="header" style={styles.brandsTitle} testID={ids.brandsTitle}>
-        {`Marcas · ${item.brands.length}`}
+        {texts.details.brands(item.brands.length)}
       </Text>
       <View style={styles.brands} testID={ids.brands} onLayout={place('brands')}>
         {item.brands.map((brand) => (
@@ -127,11 +129,12 @@ export function ItemDetails({ item, photos, scrollToBrand, onPlaceBrand }: ItemD
 /** The red round Excluir at the right of the details' title row, which asks to confirm deleting the item. */
 export function RemoveItemButton({ onPress }: { onPress: () => void }) {
   const { colors } = useTheme();
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS).details;
   const { styles, ids } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Excluir item"
+      accessibilityLabel={texts.remove}
       onPress={onPress}
       style={({ pressed }) => [styles.remove, pressed && styles.removePressed]}
       testID={ids.remove}

@@ -7,6 +7,8 @@ import { Icon } from '../../../components/Icon';
 import { useTheme } from '../../../app/theme';
 import { Label, Text } from '../../../components/Typography';
 import { REMOVE_HIT_SLOP, useStyles } from './CodeListField.styles';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../../app/locale';
 
 // A field of codes typed as chips, the same as the web, such as an item's original codes: a code typed joins the list
 // as a chip with the keyboard's return key, a comma or a semicolon, or on leaving the field, and several pasted at once
@@ -27,6 +29,7 @@ type CodeListFieldProps = {
 
 export function CodeListField({ label, codes, onCodesChange, messages = [], helper }: CodeListFieldProps) {
   const { colors } = useTheme();
+  const common = useMessages(COMMON_TEXTS);
   const { styles, ids } = useStyles();
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
@@ -57,7 +60,7 @@ export function CodeListField({ label, codes, onCodesChange, messages = [], help
               </NativeText>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Remover ${code}`}
+                accessibilityLabel={common.removeNamed(code)}
                 hitSlop={REMOVE_HIT_SLOP}
                 onPress={() => remove(index)}
                 style={styles.remove}

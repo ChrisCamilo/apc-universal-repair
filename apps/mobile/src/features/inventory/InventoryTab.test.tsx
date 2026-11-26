@@ -25,6 +25,8 @@ import { themeStorage, ThemeProvider } from '../../app/theme';
 import { InventoryCopyProvider } from '../sync/useInventoryCopy';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
 import { syncAnswer } from '@apc/domain/test-sync';
+import { LocaleContext } from '../../app/locale';
+import type { Locale } from '@apc/domain/locale';
 
 // A photo the API saved, as items carry it.
 const COVER = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.jpg', thumbUrl: '/photos/aa-thumb.webp' };
@@ -119,7 +121,7 @@ function answerItems(stock: Item[]) {
  * @param stock The items in stock; the test items by default.
  * @returns The rendered tree.
  */
-async function mount(stock: Item[] = ITEMS) {
+async function mount(stock: Item[] = ITEMS, locale: Locale = 'pt-BR') {
   answerItems(stock);
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
@@ -128,7 +130,9 @@ async function mount(stock: Item[] = ITEMS) {
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
           <Preferences>
-            <InventoryCopyProvider><InventoryTab /></InventoryCopyProvider>
+            <LocaleContext.Provider value={{ locale, setLocale: () => {} }}>
+              <InventoryCopyProvider><InventoryTab /></InventoryCopyProvider>
+            </LocaleContext.Provider>
           </Preferences>
         </ThemeProvider>
       </SafeAreaProvider>,
@@ -862,4 +866,13 @@ test('Mobile: an item of several brands opens its details', async () => {
   await ReactTestRenderer.act(async () => card.props.onPress());
   expect(texts(tree)).toEqual(expect.arrayContaining(['Marcas · 2', 'Cobreq', 'Fras-le']));
   expect(cards()).toHaveLength(1);
+});
+
+// Opens the Inventory in English, and checks the counter, the stock chips and the cards read in English.
+test('Mobile: the Inventory reads in English', async () => {
+  const tree = await mount(ITEMS, 'en-US');
+  const shown = texts(tree);
+  expect(shown.some((text) => /^\d+ of \d+ items? · \d+ low · \d+ out of stock$/.test(text))).toBe(true);
+  expect(shown.some((text) => /^Low · \d+$/.test(text))).toBe(true);
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'New item').length).toBeGreaterThan(0);
 });

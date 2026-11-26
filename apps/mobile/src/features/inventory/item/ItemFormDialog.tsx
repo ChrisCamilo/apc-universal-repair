@@ -62,6 +62,9 @@ import { PhotoPickerDialog } from '../photos/PhotoPickerDialog';
 import type { CreateListEntry } from '../lists/useItemLists';
 import { VehiclesField } from './VehiclesField';
 import { useLocale } from '../../../app/locale';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts';
+import type { Locale } from '@apc/domain/locale';
 
 // The form that creates a new item or edits one, the same as the web on a phone, as in the Novo item mockup: the × and
 // "Novo item", or the item's name, on top, the content scrolling under it in one column, and "Salvar item", or "Salvar
@@ -99,7 +102,6 @@ import { useLocale } from '../../../app/locale';
 // icon, and the red round Excluir at the right, which asks to confirm over the details (see DeleteItemDialog), deletes
 // the item and hands it over.
 
-const PHOTOS_LABEL = 'Fotos do item';
 
 type ItemFormDialogProps = {
   open: boolean;
@@ -138,10 +140,12 @@ type ItemFormDialogProps = {
  * Names a brand's section, and its photos, for the screen and screen readers.
  * @param index The brand's place in the form.
  * @param count How many brands the form has.
+ * @param locale The language.
  * @returns E.g. "Marca 2", and "Fotos da marca 2"; the photos of an item of one brand are the item's.
  */
-function brandNames(index: number, count: number): { section: string; photos: string } {
-  return { section: `Marca ${index + 1}`, photos: count === 1 ? PHOTOS_LABEL : `Fotos da marca ${index + 1}` };
+function brandNames(index: number, count: number, locale: Locale): { section: string; photos: string } {
+  const texts = INVENTORY_SCREEN_TEXTS[locale].form;
+  return { section: texts.brand(index + 1), photos: count === 1 ? texts.photos : texts.brandPhotos(index + 1) };
 }
 
 export function ItemFormDialog({
@@ -163,6 +167,8 @@ export function ItemFormDialog({
   onRemovingChange,
 }: ItemFormDialogProps) {
   const { locale } = useLocale();
+  const texts = INVENTORY_SCREEN_TEXTS[locale];
+  const common = COMMON_TEXTS[locale];
   const toast = useToast();
   const { styles, ids } = useStyles();
   const [viewing, setViewing] = useState(details && item !== undefined);
@@ -334,11 +340,11 @@ export function ItemFormDialog({
       await enqueue(changes);
     } catch {
       setSaving(false);
-      toast.error('Não foi possível salvar o item. Tente de novo.');
+      toast.error(texts.form.saveFailed);
       return;
     }
     setSaving(false);
-    toast.success(item ? `Item “${label}” salvo.` : `Item “${label}” cadastrado.`);
+    toast.success(item ? texts.form.saved(label) : texts.form.created(label));
     onSaved();
   };
 
@@ -346,9 +352,9 @@ export function ItemFormDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title={viewing ? 'Detalhes do item' : item ? item.name : 'Novo item'}
+      title={viewing ? texts.form.details : item ? item.name : texts.form.new}
       closable={!viewing}
-      back={viewing ? 'Voltar ao estoque' : undefined}
+      back={viewing ? texts.form.back : undefined}
       headerAction={
         viewing && onDeleted ? (
           <View ref={tourTarget('form-delete')} collapsable={false}>
@@ -363,20 +369,20 @@ export function ItemFormDialog({
             {onDuplicate && (
               <View style={styles.action} testID={ids.action}>
                 <Button variant="secondary" icon={copyIcon} align="stretch" onPress={() => setAsking(true)}>
-                  Duplicar
+                  {texts.form.duplicate}
                 </Button>
               </View>
             )}
             <View ref={tourTarget('form-edit')} collapsable={false} style={styles.action} testID={ids.action}>
               <Button icon={pencilIcon} align="stretch" onPress={() => setViewing(false)}>
-                Editar
+                {common.edit}
               </Button>
             </View>
           </>
         ) : (
           <View ref={tourTarget('form-save')} collapsable={false} style={styles.action} testID={ids.action}>
             <Button align="stretch" loading={saving || creating > 0} onPress={save}>
-              {item ? 'Salvar alterações' : 'Salvar item'}
+              {item ? texts.form.saveChanges : texts.form.saveItem}
             </Button>
           </View>
         )
@@ -389,7 +395,7 @@ export function ItemFormDialog({
           <View ref={tourTarget('form-name')} collapsable={false}>
             <TextField
               label={ITEM_FIELD_LABELS[locale].name}
-              placeholder="Ex.: Pastilha de freio"
+              placeholder={texts.form.nameExample}
               value={form.name}
               onValueChange={(value) => change('name', value)}
               onBlur={() => change('name', form.name.trim() ? capitalizeFirst(form.name) : form.name)}
@@ -402,14 +408,14 @@ export function ItemFormDialog({
             onValueChange={(value) => change('category', value)}
             options={options.categories}
             onCreate={create('categories', (created) => change('category', created))}
-            noun="categoria"
-            toggleLabel="Mostrar categorias"
-            emptyLabel="Nenhuma categoria cadastrada"
+            noun={texts.combos.category.noun}
+            toggleLabel={texts.combos.category.toggle}
+            emptyLabel={texts.combos.category.empty}
             error={errors.category}
           />
           <TextField
             label={ITEM_NOTE_LABELS[locale].description}
-            placeholder="Ex.: Lado do motorista"
+            placeholder={texts.form.descriptionExample}
             value={form.description ?? ''}
             onValueChange={(value) => changeNote('description', value)}
             helper={descriptionInput(form.description ?? '').counter}
@@ -417,7 +423,7 @@ export function ItemFormDialog({
           />
           <TextField
             label={ITEM_NOTE_LABELS[locale].material}
-            placeholder="Ex.: Alumínio"
+            placeholder={texts.form.materialExample}
             value={form.material ?? ''}
             onValueChange={(value) => changeNote('material', value)}
           />
@@ -459,18 +465,18 @@ export function ItemFormDialog({
             onValueChange={changeMinimum}
             max={MAX_QUANTITY}
             error={errors.minQuantity}
-            helper="Abaixo disso, somando as marcas, o item fica com estoque baixo."
+            helper={texts.form.minimumHintShort}
           />
           <CodeListField
             label={ORIGINAL_CODES_LABEL[locale]}
             codes={form.originalCodes}
             onCodesChange={(codes) => setForm((typed) => ({ ...typed, originalCodes: codes }))}
             messages={originalCodeMessages(form, items, locale, item?.id)}
-            helper="Os da montadora. Separe com vírgula."
+            helper={texts.form.codesHintShort}
           />
           <View style={styles.brands} testID={ids.brands}>
             {form.brands.map((brand, index) => {
-              const names = brandNames(index, form.brands.length);
+              const names = brandNames(index, form.brands.length, locale);
               const shown = errors.brands?.[index] ?? {};
               // The tutorial points at the first brand's code and quantity.
               const tour = (target: 'form-code' | 'form-quantity') => (index === 0 ? tourTarget(target) : undefined);
@@ -479,8 +485,8 @@ export function ItemFormDialog({
                   <View style={styles.brandHead} testID={ids.brandHead}>
                     <Heading level={4}>{names.section}</Heading>
                     {form.brands.length > 1 && (
-                      <Button variant="secondary" size="sm" label={`Remover ${names.section.toLowerCase()}`} onPress={() => removeBrand(index)}>
-                        Remover
+                      <Button variant="secondary" size="sm" label={texts.form.removeNamed(names.section)} onPress={() => removeBrand(index)}>
+                        {common.remove}
                       </Button>
                     )}
                   </View>
@@ -497,7 +503,7 @@ export function ItemFormDialog({
                       <Button
                         variant="secondary"
                         size="sm"
-                        label={`${PHOTO_PICKER[locale].open} para a ${names.section.toLowerCase()}`}
+                        label={texts.form.photosFor(PHOTO_PICKER[locale].open, names.section)}
                         onPress={() => setPicker((current) => ({ brand: index, session: current.session + 1 }))}
                       >
                         {PHOTO_PICKER[locale].open}
@@ -510,9 +516,9 @@ export function ItemFormDialog({
                     onValueChange={(value) => changeBrand(index, 'partBrand', value)}
                     options={options.partBrands}
                     onCreate={create('partBrands', (created) => changeBrand(index, 'partBrand', created))}
-                    noun="marca"
-                    toggleLabel="Mostrar marcas de peça"
-                    emptyLabel="Nenhuma marca cadastrada"
+                    noun={texts.combos.partBrand.noun}
+                    toggleLabel={texts.combos.partBrand.toggle}
+                    emptyLabel={texts.combos.partBrand.empty}
                     error={shown.partBrand}
                   />
                   <View ref={tour('form-code')} collapsable={false}>
@@ -548,7 +554,7 @@ export function ItemFormDialog({
                     <View style={styles.half} testID={ids.half}>
                       <TextField
                         label={BRAND_FIELD_LABELS[locale].color}
-                        placeholder="Se houver"
+                        placeholder={texts.form.colorPlaceholder}
                         value={brand.color}
                         onValueChange={(value) => changeBrand(index, 'color', colorText(value))}
                         onBlur={() => changeBrand(index, 'color', colorInput(brand.color, options.colors))}
@@ -557,7 +563,7 @@ export function ItemFormDialog({
                     <View style={styles.half} testID={ids.half}>
                       <TextField
                         label={BRAND_FIELD_LABELS[locale].location}
-                        placeholder="Ex.: E-1"
+                        placeholder={texts.form.locationExample}
                         value={brand.location}
                         onValueChange={(value) => changeBrand(index, 'location', value)}
                         onBlur={() => changeBrand(index, 'location', brand.location.trim() ? capitalizeFirst(brand.location) : brand.location)}
@@ -568,7 +574,7 @@ export function ItemFormDialog({
               );
             })}
             <Button variant="dashed" icon={plusIcon} align="stretch" onPress={addBrand}>
-              Adicionar marca
+              {texts.form.addBrand}
             </Button>
           </View>
         </View>

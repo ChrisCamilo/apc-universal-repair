@@ -9,6 +9,9 @@ import { useToast } from '../../../components/Toast';
 import { tourTarget } from '../../../components/Tour';
 import { Text } from '../../../components/Typography';
 import { enqueue } from '../../sync/inventoryCopy';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts';
+import { useMessages } from '../../../app/locale';
 
 // The confirmation that removes an item from the inventory, the same as the web: it names the item and its codes.
 // Excluir queues the delete (see @apc/domain/sync-queue), which takes the item out of the Inventory at once and goes to
@@ -27,6 +30,8 @@ type DeleteItemDialogProps = {
 
 export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemDialogProps) {
   const toast = useToast();
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS).delete;
+  const common = useMessages(COMMON_TEXTS);
   const [deleting, setDeleting] = useState(false);
 
   /** Queues the delete, then announces it and hands it over. */
@@ -37,7 +42,7 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
     setDeleting(true);
     await enqueue([{ id: newId(), type: 'deleteItem', itemId: item.id, seen: seenOf(item), at: new Date().toISOString(), label: item.name }]);
     setDeleting(false);
-    toast.success(`Item “${item.name}” excluído.`);
+    toast.success(texts.done(item.name));
     onDeleted(item);
   };
 
@@ -45,23 +50,23 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
     <Dialog
       open={open}
       onClose={onClose}
-      title="Excluir item?"
+      title={texts.title}
       size="confirm"
       actions={
         <>
           <Button variant="secondary" size="sm" onPress={onClose}>
-            Cancelar
+            {common.cancel}
           </Button>
           <View ref={tourTarget('confirm-delete')} collapsable={false}>
             <Button variant="danger" size="sm" loading={deleting} onPress={remove}>
-              Excluir
+              {common.delete}
             </Button>
           </View>
         </>
       }
     >
       <Text size="sm" tone="muted">
-        {`${item?.name} (${item && itemCodes(item)}) sai do estoque. Essa ação não pode ser desfeita.`}
+        {item && texts.text(item.name, itemCodes(item))}
       </Text>
     </Dialog>
   );

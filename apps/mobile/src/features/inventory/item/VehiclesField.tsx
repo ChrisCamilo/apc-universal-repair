@@ -23,6 +23,9 @@ import { useTheme } from '../../../app/theme';
 import { Label, Text } from '../../../components/Typography';
 import { useStyles } from './VehiclesField.styles';
 import { useLocale } from '../../../app/locale';
+import { PHONE_TEXTS } from '../../../app/phoneTexts';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts';
 
 // The vehicles an item fits in the item form, the same as the web on a phone: each vehicle a chip with its × (see
 // vehicleText), then a dashed "Adicionar veículo" that opens a new vehicle's brand and model, then its generation and
@@ -50,6 +53,8 @@ type VehiclesFieldProps = {
 
 export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, onVehiclesChange, onCreate }: VehiclesFieldProps) {
   const { locale } = useLocale();
+  const texts = INVENTORY_SCREEN_TEXTS[locale];
+  const common = COMMON_TEXTS[locale];
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   // The vehicle being added, open under the chips, and its messages.
@@ -114,7 +119,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
                 </NativeText>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Remover ${vehicleText(vehicleOfForm(vehicle), locale)}`}
+                  accessibilityLabel={common.removeNamed(vehicleText(vehicleOfForm(vehicle), locale))}
                   onPress={() => remove(index)}
                   style={styles.remove}
                   testID={ids.remove}
@@ -127,16 +132,16 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
         </View>
       )}
       {draft ? (
-        <View role="group" accessibilityLabel="Novo veículo" style={styles.draft} testID={ids.draft}>
+        <View role="group" accessibilityLabel={texts.vehicles.new} style={styles.draft} testID={ids.draft}>
           <Combobox
             label={VEHICLE_FIELD_LABELS[locale].vehicleBrand}
             value={draft.vehicleBrand}
             onValueChange={(value) => change('vehicleBrand', value)}
             options={brands}
             onCreate={onCreate('vehicleBrands', (created) => change('vehicleBrand', created))}
-            noun="marca"
-            toggleLabel="Mostrar marcas de veículo"
-            emptyLabel="Nenhuma marca cadastrada"
+            noun={texts.combos.vehicleBrand.noun}
+            toggleLabel={texts.combos.vehicleBrand.toggle}
+            emptyLabel={texts.combos.vehicleBrand.empty}
             error={draftErrors.vehicleBrand}
           />
           <Combobox
@@ -145,10 +150,10 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
             onValueChange={(value) => change('vehicleModel', value)}
             options={modelsOfBrand(lists, draft.vehicleBrand)}
             onCreate={onCreate('vehicleModels', (created) => change('vehicleModel', created), brand?.id)}
-            noun="modelo"
-            toggleLabel="Mostrar modelos"
-            emptyLabel="Nenhum modelo cadastrado para essa marca"
-            placeholder={brand ? 'Qualquer modelo' : 'Escolha a marca do veículo primeiro'}
+            noun={texts.combos.vehicleModel.noun}
+            toggleLabel={texts.combos.vehicleModel.toggle}
+            emptyLabel={texts.combos.vehicleModel.empty}
+            placeholder={brand ? texts.combos.vehicleModel.any : texts.combos.vehicleModel.first}
             error={draftErrors.vehicleModel}
             disabled={!brand}
           />
@@ -159,10 +164,10 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
                 value={draft.generation ?? ''}
                 onValueChange={(value) => change('generation', value)}
                 options={suggested.generations}
-                noun="geração"
-                toggleLabel="Mostrar gerações"
-                emptyLabel="Nenhuma geração conhecida para esse modelo"
-                placeholder={draft.vehicleModel.trim() ? 'Ex.: 85/90' : 'Escolha o modelo primeiro'}
+                noun={texts.combos.generation.noun}
+                toggleLabel={texts.combos.generation.toggle}
+                emptyLabel={texts.combos.generation.empty}
+                placeholder={draft.vehicleModel.trim() ? texts.combos.generation.example : texts.combos.generation.first}
                 error={draftErrors.generation}
                 disabled={!draft.vehicleModel.trim()}
               />
@@ -173,10 +178,10 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
                 value={draft.version ?? ''}
                 onValueChange={(value) => change('version', value)}
                 options={suggested.versions}
-                noun="versão"
-                toggleLabel="Mostrar versões"
-                emptyLabel="Nenhuma versão conhecida para esse modelo"
-                placeholder={draft.generation?.trim() ? 'Ex.: 1.6 GLX' : 'Escolha a geração primeiro'}
+                noun={texts.combos.version.noun}
+                toggleLabel={texts.combos.version.toggle}
+                emptyLabel={texts.combos.version.empty}
+                placeholder={draft.generation?.trim() ? texts.combos.version.example : texts.combos.version.first}
                 error={draftErrors.version}
                 disabled={!draft.generation?.trim()}
               />
@@ -184,16 +189,16 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
           </View>
           <View style={styles.draftActions} testID={ids.draftActions}>
             <Button variant="secondary" size="sm" onPress={() => setDraft(null)}>
-              Cancelar
+              {common.cancel}
             </Button>
             <Button size="sm" onPress={add}>
-              Adicionar
+              {common.add}
             </Button>
           </View>
         </View>
       ) : (
         <Button variant="dashed" icon={plusIcon} align="stretch" onPress={() => setDraft(EMPTY_VEHICLE_FORM)}>
-          Adicionar veículo
+          {texts.form.addVehicle}
         </Button>
       )}
       {notes.map((note) => (
@@ -202,7 +207,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
         </NativeText>
       ))}
       <Text size="sm" tone="muted">
-        Sem modelo, a peça serve em qualquer modelo da marca.
+        {PHONE_TEXTS[locale].inventory.vehiclesHint}
       </Text>
     </View>
   );

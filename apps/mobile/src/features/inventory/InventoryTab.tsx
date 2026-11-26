@@ -45,7 +45,6 @@ import { apiUrl } from '../../app/api';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
 import { Button } from '../../components/Button';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
-import { LOCAL_NETWORK_TEXTS } from '../../app/localNetwork';
 import { FieldScrollView } from '../../components/FieldScrollView';
 import { FilterChipGroup } from '../../components/FilterChip';
 import { ClearFilters } from '../../components/FilterMenu';
@@ -70,8 +69,8 @@ import { Skeleton } from '../../components/Skeleton';
 import { Spinner } from '../../components/Spinner';
 import { useToast } from '../../components/Toast';
 import { SearchField } from '../../components/TextField';
-import type { Locale } from '@apc/domain/locale';
-import { useLocale } from '../../app/locale';
+import { perLocale, type Locale } from '@apc/domain/locale';
+import { useLocale, useMessages } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { ToolButton } from '../../components/ToolButton';
 import { tourTarget } from '../../components/Tour';
@@ -82,6 +81,9 @@ import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './Inv
 import { InventoryTutorial } from './tutorial/InventoryTutorial';
 import { useInventoryLink } from '../dashboard/inventoryLinkContext';
 import { useMoreActions } from '../dashboard/moreActionsContext';
+import { COMMON_TEXTS, COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // The Inventory tab, the same as the web's on a phone (the Estoque mockup): on the canvas, with no panel around it, a
 // search by name or part code, the filters, the stock status chips with how many items each finds ("Baixo · 5"), a
@@ -125,9 +127,11 @@ import { useMoreActions } from '../dashboard/moreActionsContext';
 /** How often the copy syncs while the tab is on screen, in ms. */
 export const AUTO_SYNC_MS = 30_000;
 // The column after the item's name: its quantity, at the card's end.
-const COLUMNS: ComponentProps<typeof DataTable<InventoryRow>>['columns'] = [
-  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (row) => <StockQuantity {...row.item} /> },
-];
+const COLUMNS = perLocale((locale): ComponentProps<typeof DataTable<InventoryRow>>['columns'] => {
+  return [
+    { key: 'quantity', header: INVENTORY_SCREEN_TEXTS[locale].quantityShort, numeric: true, card: 'end', cell: (row) => <StockQuantity {...row.item} /> },
+  ];
+});
 /**
  * Names the stock status chips, outside the menu (one at a time, none for every item), in short, each with how many
  * items it finds.
@@ -145,12 +149,13 @@ type InventoryRow = { item: Item };
 /**
  * Builds the column of each card's name: the item's name, its first code with its part brand or how many brands make
  * it, and where it fits, what it is made of and its price, each on one line.
+ * @param locale The language of its header.
  * @returns The name column.
  */
-function nameColumn(): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
+function nameColumn(locale: Locale): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
   return {
     key: 'name',
-    header: 'Item',
+    header: FILTER_LABELS[locale].columns.name,
     card: 'main',
     cell: ({ item }) => (
       <View ref={isTestItem(item) ? tourTarget('tutorial-row') : undefined} collapsable={false}>
@@ -163,19 +168,24 @@ function nameColumn(): ComponentProps<typeof DataTable<InventoryRow>>['columns']
 /**
  * Builds the column of each card's thumbnail: the cover of the item's first brand, which opens that brand's photos.
  * @param onOpen Opens the photos of an item's brand in the viewer.
+ * @param locale The language of its header and its name.
  * @returns The photo column.
  */
-function photoColumn(onOpen: (item: Item, brand: ItemBrand) => void): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
+function photoColumn(
+  onOpen: (item: Item, brand: ItemBrand) => void,
+  locale: Locale,
+): ComponentProps<typeof DataTable<InventoryRow>>['columns'][number] {
+  const texts = INVENTORY_SCREEN_TEXTS[locale];
   return {
     key: 'photo',
-    header: 'Foto',
+    header: texts.photo,
     card: 'thumb',
     cell: ({ item }) => {
       const [brand] = item.brands;
       return (
         <TableThumbnail
           src={brand.photos[0] && photoSource(brand.photos[0], 'thumb')}
-          label={`Ver fotos de ${item.name}`}
+          label={texts.photos.view(item.name)}
           onOpen={() => onOpen(item, brand)}
         />
       );
@@ -190,6 +200,9 @@ type InventoryTabProps = {
 
 export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const { locale } = useLocale();
+  const texts = INVENTORY_SCREEN_TEXTS[locale];
+  const common = COMMON_TEXTS[locale];
+  const network = PHONE_TEXTS[locale].localNetwork;
   const { styles, ids } = useStyles();
   const { colors } = useTheme();
   const [filters, setFilters] = useState<FilterValues>(EMPTY_ITEM_FILTERS);
@@ -485,7 +498,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       >
         <View ref={tourTarget('search')} collapsable={false}>
           <SearchField
-            label="Procure pelo nome ou código da peça"
+            label={texts.search}
             value={search}
             onValueChange={(value) => narrow(() => setSearch(value))}
           />
@@ -494,7 +507,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           <View ref={tourTarget('filters')} collapsable={false}>
             <ToolButton
               icon={filterIcon}
-              label={filterCount ? `Filtros, ${filterCount} ${filterCount === 1 ? 'ativo' : 'ativos'}` : 'Filtros'}
+              label={filterCount ? COMPONENT_TEXTS[locale].filterMenu.active(filterCount) : COMPONENT_TEXTS[locale].filterMenu.title}
               active={filterCount > 0}
               expanded={filtering}
               onPress={() => setFiltering(true)}
@@ -502,13 +515,13 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           </View>
           <ToolButton
             icon={sortIcon}
-            label={sort ? `Ordenar, ${sortLabel}` : 'Ordenar'}
+            label={sort ? texts.sort(sortLabel ?? '') : COMPONENT_TEXTS[locale].filterSheet.sort}
             active={sort !== null}
             expanded={sorting}
             onPress={() => setSorting(true)}
           />
           <FilterChipGroup
-            label="Situação do estoque"
+            label={texts.status}
             options={statusOptions(items, locale)}
             value={status}
             onValueChange={(value) => narrow(() => setStatus(value as ItemStatus | null))}
@@ -527,7 +540,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           <View accessibilityLiveRegion="polite" style={styles.copy} testID={ids.copy}>
             <Text size="sm">
               {[
-                copy.blocked ? LOCAL_NETWORK_TEXTS.missing : copy.offline && copy.syncedAt && copyNotice(copy.syncedAt, locale),
+                copy.blocked ? network.missing : copy.offline && copy.syncedAt && copyNotice(copy.syncedAt, locale),
                 copy.waiting > 0 && waitingNotice(copy.waiting, locale),
                 copy.conflicts.length > 0 && conflictsNotice(copy.conflicts.length, locale),
               ]
@@ -536,12 +549,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             </Text>
             {copy.blocked && (
               <Button variant="secondary" size="sm" align="start" onPress={copy.allowNetwork}>
-                {LOCAL_NETWORK_TEXTS.allow}
+                {network.allow}
               </Button>
             )}
             {copy.conflicts.length > 0 && (
               <Button variant="secondary" size="sm" align="start" onPress={() => setSettling(true)}>
-                Resolver conflitos
+                {PHONE_TEXTS[locale].inventory.settleConflicts}
               </Button>
             )}
           </View>
@@ -549,9 +562,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         <View style={[styles.list, centered && styles.listCentered]} testID={ids.list}>
           {failed && (
             <ErrorState
-              title="Não foi possível carregar o estoque"
-              message={copy.blocked ? LOCAL_NETWORK_TEXTS.missing : 'Verifique a conexão com o servidor e tente de novo.'}
-              action={copy.blocked ? { label: LOCAL_NETWORK_TEXTS.allow, onPress: copy.allowNetwork } : { label: 'Tentar de novo', onPress: reload }}
+              title={texts.error.title}
+              message={copy.blocked ? network.missing : texts.error.message}
+              action={copy.blocked ? { label: network.allow, onPress: copy.allowNetwork } : { label: common.retry, onPress: reload }}
             />
           )}
           {!failed && listed.status === 'loading' && <LoadingRows />}
@@ -559,14 +572,14 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             <>
               <NumericReadout tone="muted">{resultSummary(listed.status === 'ready' ? listed.total : 0, items, locale)}</NumericReadout>
               <DataTable
-                label="Itens do estoque"
+                label={texts.items}
                 columns={[
                   photoColumn((item, brand) => {
                     keepFullPhotos(brand.photos);
                     setViewer({ item, brand, photos: heldPhotos(brand.photos) });
-                  }),
-                  nameColumn(),
-                  ...COLUMNS,
+                  }, locale),
+                  nameColumn(locale),
+                  ...COLUMNS[locale],
                 ]}
                 rows={rows}
                 rowKey={(row) => row.item.id}
@@ -579,15 +592,15 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
                 empty={
                   narrowed ? (
                     <EmptyState
-                      title="Nenhum item encontrado"
-                      message="Ajuste a busca ou limpe os filtros para ver o estoque inteiro."
-                      action={{ label: 'Limpar filtros', onPress: clearAll }}
+                      title={texts.empty.notFound.title}
+                      message={texts.empty.notFound.message}
+                      action={{ label: texts.empty.clear, onPress: clearAll }}
                     />
                   ) : (
                     <EmptyState
-                      title="Nenhum item cadastrado"
-                      message="Cadastre a primeira peça do estoque para ela aparecer aqui."
-                      action={{ label: 'Novo item', onPress: () => openForm() }}
+                      title={texts.empty.none.title}
+                      message={texts.empty.none.message}
+                      action={{ label: texts.newItem, onPress: () => openForm() }}
                     />
                   )
                 }
@@ -602,7 +615,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       <View ref={tourTarget('new-item')} collapsable={false} style={styles.fab} testID={ids.fab}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Novo item"
+          accessibilityLabel={texts.newItem}
           onPress={() => openForm()}
           style={({ pressed }) => [styles.fabButton, pressed && styles.fabButtonPressed]}
           testID={ids.fabButton}
@@ -637,12 +650,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       <ActionSheet
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
-        title="Mais ações"
+        title={common.moreActions}
         actions={[
-          { icon: listIcon, label: 'Gerenciar listas', onSelect: () => setManaging(true) },
-          { icon: importIcon, label: 'Importar Peças', onSelect: () => setImporter((current) => ({ open: true, session: current.session + 1 })) },
-          { icon: exportIcon, label: 'Exportar Peças', onSelect: () => setExporter((current) => ({ open: true, session: current.session + 1 })) },
-          { icon: playIcon, label: 'Tutorial do estoque', onSelect: tutorial.replay },
+          { icon: listIcon, label: texts.lists.title, onSelect: () => setManaging(true) },
+          { icon: importIcon, label: texts.importItems, onSelect: () => setImporter((current) => ({ open: true, session: current.session + 1 })) },
+          { icon: exportIcon, label: texts.exportItems, onSelect: () => setExporter((current) => ({ open: true, session: current.session + 1 })) },
+          { icon: playIcon, label: texts.tutorial, onSelect: tutorial.replay },
         ]}
       />
       <ItemFormDialog
@@ -793,10 +806,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
  */
 function ListEnd({ done, loading }: { done: boolean; loading: boolean }) {
   const { styles, ids } = useStyles();
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS);
   if (done) {
     return (
       <RNText style={styles.end} testID={ids.end}>
-        Fim da lista
+        {texts.end}
       </RNText>
     );
   }
@@ -805,9 +819,10 @@ function ListEnd({ done, loading }: { done: boolean; loading: boolean }) {
 
 function LoadingRows() {
   const { styles, ids } = useStyles();
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS);
   return (
     <View accessibilityState={{ busy: true }} style={styles.loading} testID={ids.loading}>
-      <Spinner size="sm" label="Carregando o estoque" />
+      <Spinner size="sm" label={texts.loading} />
       {[0, 1, 2, 3, 4].map((row) => (
         <View key={row} style={styles.loadingRow} testID={ids.loadingRow}>
           <Skeleton shape="block" width={LOADING_THUMB} height={LOADING_THUMB} />
