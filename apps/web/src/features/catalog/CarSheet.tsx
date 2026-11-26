@@ -1,10 +1,12 @@
 import { useId } from 'react'
 import { carSheet, type Catalog } from '@apc/domain/catalog'
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts'
+import { perLocale } from '@apc/domain/locale'
 import { itemCardCode, itemCardDetails, stockTint, type Item } from '@apc/domain/items'
 import { photoAddress } from '@apc/domain/photos'
 import { filterIcon } from '@apc/tokens/icons'
 import { API_BASE } from '../../app/api.ts'
-import { useLocale } from '../../app/useLocale.ts'
+import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
 import { DataTable, TableThumbnail, TableTitle } from '../../components/DataTable'
 import { EmptyState } from '../../components/EmptyState'
@@ -21,20 +23,23 @@ import { StockQuantity } from '../inventory/browse/StockQuantity.tsx'
 // Inventory with the filters that list them; with none, a note says so.
 
 // A part's row: its photo, its name and code, and its quantity.
-const PART_COLUMNS = [
-  {
-    key: 'photo',
-    header: 'Foto',
-    headerHidden: true,
-    card: 'thumb' as const,
-    cell: (item: Item) => {
-      const photo = item.brands.flatMap((brand) => brand.photos)[0]
-      return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, API_BASE)} label={`Foto de ${item.name}`} />
+const PART_COLUMNS = perLocale((locale) => {
+  const texts = CATALOG_SCREEN_TEXTS[locale]
+  return [
+    {
+      key: 'photo',
+      header: texts.photo,
+      headerHidden: true,
+      card: 'thumb' as const,
+      cell: (item: Item) => {
+        const photo = item.brands.flatMap((brand) => brand.photos)[0]
+        return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, API_BASE)} label={texts.photoOf(item.name)} />
+      },
     },
-  },
-  { key: 'name', header: 'Item', card: 'main' as const, cell: (item: Item) => <PartTitle item={item} /> },
-  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end' as const, cell: (item: Item) => <StockQuantity {...item} /> },
-]
+    { key: 'name', header: texts.item, card: 'main' as const, cell: (item: Item) => <PartTitle item={item} /> },
+    { key: 'quantity', header: texts.quantity, numeric: true, card: 'end' as const, cell: (item: Item) => <StockQuantity {...item} /> },
+  ]
+})
 
 type CarSheetProps = {
   catalog: Catalog
@@ -57,6 +62,7 @@ type CarPartsProps = {
 export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) {
   const phone = usePhone()
   const { classes, ids } = carSheetStyles()
+  const texts = useMessages(CATALOG_SCREEN_TEXTS)
   const sheet = carSheet(catalog, brandId, nodeId)
   const brand = catalog.brands.find((each) => each.id === brandId)!
   return (
@@ -66,7 +72,7 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
         {sheet.level === 'model' && (
           <div className={classes.fact()} data-testid={ids.fact}>
             <dt className={classes.term()} data-testid={ids.term}>
-              Marca
+              {texts.brand}
             </dt>
             <dd className={classes.value()} data-testid={ids.value}>
               {brand.name}
@@ -75,7 +81,7 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
         )}
         <div className={classes.fact()} data-testid={ids.fact}>
           <dt className={classes.term()} data-testid={ids.term}>
-            {sheet.level === 'model' ? 'Gerações' : 'Geração'}
+            {sheet.level === 'model' ? texts.generations : texts.generation}
           </dt>
           <dd className={classes.value()} data-testid={ids.value}>
             {sheet.generations.length > 0 ? (
@@ -97,13 +103,13 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
                 ))}
               </ul>
             ) : (
-              'Nenhuma geração cadastrada'
+              texts.noGenerations
             )}
           </dd>
         </div>
         <div className={classes.fact()} data-testid={ids.fact}>
           <dt className={classes.term()} data-testid={ids.term}>
-            Motores
+            {texts.engines}
           </dt>
           <dd className={classes.value()} data-testid={ids.value}>
             {sheet.engines.length > 0 ? (
@@ -117,7 +123,7 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
                 ))}
               </ul>
             ) : (
-              'Nenhum motor com ficha ainda'
+              texts.noEngines
             )}
           </dd>
         </div>
@@ -129,17 +135,18 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
 export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
   const { classes, ids } = carSheetStyles()
   const { locale } = useLocale()
+  const texts = CATALOG_SCREEN_TEXTS[locale].parts
   const headingId = useId()
   return (
     <section aria-labelledby={headingId} className={classes.parts()} data-testid={ids.parts}>
       <h3 id={headingId} className={classes.heading()} data-testid={ids.heading}>
-        Peças disponíveis · {parts.length}
+        {texts.count(parts.length)}
       </h3>
       {parts.length > 0 ? (
         <>
           <DataTable
-            label="Peças disponíveis"
-            columns={PART_COLUMNS}
+            label={texts.title}
+            columns={PART_COLUMNS[locale]}
             rows={parts}
             rowKey={(item) => item.id}
             rowStatus={(item) => stockTint(item, locale)}
@@ -151,11 +158,11 @@ export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
             onRowOpen={onPart}
           />
           <Button variant="secondary" icon={filterIcon} onClick={onAll}>
-            Ver todas as peças
+            {texts.all}
           </Button>
         </>
       ) : (
-        <EmptyState title="Nenhuma peça no estoque" message="As peças cadastradas para esse carro aparecem aqui." />
+        <EmptyState title={texts.empty.title} message={texts.empty.message} />
       )}
     </section>
   )

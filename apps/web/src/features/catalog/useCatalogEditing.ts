@@ -18,6 +18,7 @@ import {
   type CatalogSheetEditing,
   type CatalogValues,
 } from '@apc/domain/catalog'
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts'
 import { useToast } from '../../components/Toast'
 import { useLocale } from '../../app/useLocale.ts'
 
@@ -134,7 +135,7 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
       }
       const changed = await change('DELETE', `${CATALOG_BRANDS_PATH}/${removingBrand.id}`)
       if (changed) {
-        toast.success(`“${removingBrand.name}” saiu do catálogo.`)
+        toast.success(CATALOG_SCREEN_TEXTS[locale].left(removingBrand.name))
         setRemovingBrand(undefined)
         onBrandRemoved?.(changed)
       }
@@ -184,7 +185,7 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
         return
       }
       if (await change('DELETE', catalogNodePath(removing))) {
-        toast.success(`“${removing.label}” saiu do catálogo.`)
+        toast.success(CATALOG_SCREEN_TEXTS[locale].left(removing.label))
         setRemoving(undefined)
       }
     },

@@ -11,6 +11,8 @@ import {
   type EngineSheetNames,
 } from '@apc/domain/catalog'
 import { capitalizeFirst } from '@apc/domain/items'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts'
 import { Button } from '../../components/Button'
 import { Segmented } from '../../components/Segmented'
 import { TextField } from '../../components/TextField'
@@ -43,6 +45,7 @@ type EngineSheetFormProps = {
 
 export function EngineSheetForm({ id, actions = true, label, names, initial, saving = false, onSave, onCancel }: EngineSheetFormProps) {
   const { locale } = useLocale()
+  const texts = CATALOG_SCREEN_TEXTS[locale]
   const { classes, ids } = engineSheetForm()
   const [litres, setLitres] = useState(initial ? litresText(initial.displacementDl) : '')
   const [cylinders, setCylinders] = useState(initial?.cylinders.toString() ?? '')
@@ -68,20 +71,20 @@ export function EngineSheetForm({ id, actions = true, label, names, initial, sav
     <form id={id} aria-label={label} className={classes.base()} data-testid={ids.base} onSubmit={save} noValidate>
       <div className={classes.head()} data-testid={ids.head}>
         <p className={classes.kicker()} data-testid={ids.kicker}>
-          Ficha do motor
+          {texts.sheet.kicker}
         </p>
         <Heading level={3}>{preview?.title ?? `${names.year} · ${names.brand} ${names.model} ${names.version}`}</Heading>
       </div>
       <p className={classes.fromTree()} data-testid={ids.fromTree}>
-        Período {names.year}, do galho de cima
+        {texts.sheet.period(names.year)}
       </p>
       <div className={classes.pair()} data-testid={ids.pair}>
-        <TextField label="Cilindrada (L)" kind="decimal" value={litres} onValueChange={setLitres} error={problems.litres} autoFocus />
-        <TextField label="Cilindros" kind="number" value={cylinders} onValueChange={setCylinders} error={problems.cylinders} />
+        <TextField label={texts.sheet.litres} kind="decimal" value={litres} onValueChange={setLitres} error={problems.litres} autoFocus />
+        <TextField label={texts.sheet.cylinders} kind="number" value={cylinders} onValueChange={setCylinders} error={problems.cylinders} />
       </div>
       <div className={classes.drive()} data-testid={ids.drive}>
         <Segmented
-          label="Tração"
+          label={texts.sheet.drive}
           options={ENGINE_DRIVES.map((value) => ({ value, label: capitalizeFirst(ENGINE_DRIVE_LABELS[locale][value].toLowerCase()) }))}
           value={drive}
           onValueChange={setDrive}
@@ -92,11 +95,11 @@ export function EngineSheetForm({ id, actions = true, label, names, initial, sav
           </p>
         )}
       </div>
-      <TextField label="Resumo" value={summary} onValueChange={setSummary} lines={4} />
+      <TextField label={texts.sheet.summary} value={summary} onValueChange={setSummary} lines={4} />
       {sheet && preview && (
         <div className={classes.preview()} data-testid={ids.preview}>
           <Text size="sm" tone="muted">
-            Na árvore: {engineLabel(sheet, locale)}
+            {texts.sheet.tree(engineLabel(sheet, locale))}
           </Text>
           <div className={classes.readouts()} data-testid={ids.readouts}>
             {preview.specs.map((spec) => (
@@ -110,10 +113,10 @@ export function EngineSheetForm({ id, actions = true, label, names, initial, sav
       {actions && (
         <div className={classes.actions()} data-testid={ids.actions}>
           <Button variant="secondary" size="sm" onClick={onCancel}>
-            Cancelar
+            {COMMON_TEXTS[locale].cancel}
           </Button>
           <Button type="submit" size="sm" loading={saving}>
-            Salvar ficha
+            {texts.saveSheet}
           </Button>
         </div>
       )}

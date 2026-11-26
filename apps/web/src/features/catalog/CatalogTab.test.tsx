@@ -18,6 +18,7 @@ import { InventoryLinkContext } from '../dashboard/inventoryLinkContext.ts'
 import { CATALOG_PARTS_ONLY_KEY, CATALOG_YEAR_MESSAGE, type CatalogData, type InventoryLink } from '@apc/domain/catalog'
 import { EMPTY_ITEM_FILTERS } from '@apc/domain/item-filters'
 import { testItem, type FlatItem } from '@apc/domain/test-items'
+import { LocaleContext } from '../../app/useLocale.ts'
 
 const OPALA_25 = TEST_CATALOG.sheets[TEST_ENGINES.opala25]
 const OPALA_41 = TEST_CATALOG.sheets[TEST_ENGINES.opala41]
@@ -1016,6 +1017,23 @@ test('Web: on a phone an engine is added and its sheet edited in a full-screen f
   await edit.getByLabelText('Cilindros').fill('6')
   await edit.getByRole('button', { name: 'Salvar ficha' }).click()
   await expect.element(screen.getByRole('heading', { name: '1985 · Chevrolet Opala Diplomata 2.8' })).toBeVisible()
+})
+
+// Opens the Catalog in English, and checks its searches, buttons and headings read in English.
+test('Web: the Catalog reads in English', async () => {
+  answer([])
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <CatalogTab />
+    </LocaleContext.Provider>,
+  )
+  await expect.element(screen.getByRole('radio', { name: 'Chevrolet' })).toBeChecked()
+  await expect.element(screen.getByRole('searchbox', { name: 'Search brand' })).toBeVisible()
+  await expect.element(screen.getByRole('searchbox', { name: 'Search model or part code' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'New brand' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'New model' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Delete brand' })).toBeVisible()
+  await expect.element(screen.getByText(/^Models · \d+$/)).toBeVisible()
 })
 
 /** The Catalog under a phone Dashboard's header: the tab's name, or a deeper screen's title with its ←. */
