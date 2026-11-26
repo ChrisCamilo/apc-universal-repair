@@ -11,6 +11,7 @@ import {
   type DeviceStatus,
 } from "../devices/devices.ts";
 import { setSessionToken, withSession } from "./apiFetch.ts";
+import { refusalReason } from "../platform/api/refusals.ts";
 
 export { apiFetch, onSessionExpired } from "./apiFetch.ts";
 
@@ -244,13 +245,14 @@ export function createApiAuth(
   return {
     login: async (credentials, locale) => {
       const response = await post("/sessions", { ...credentials, device: await prove() });
-      if (response.status === 401) {
+      const reason = response.ok ? null : await refusalReason(response);
+      if (reason === "loginRefused") {
         return null;
       }
-      if (response.status === 403) {
+      if (reason === "devicePending") {
         return pending(response);
       }
-      if (response.status === 429) {
+      if (reason === "tooManyAttempts") {
         return { refused: tooManyAttempts(response.headers.get("Retry-After"), locale) };
       }
       if (!response.ok) {
@@ -260,13 +262,14 @@ export function createApiAuth(
     },
     pair: async (code, locale) => {
       const response = await post("/sessions/pairing", { code, device: await prove() });
-      if (response.status === 401) {
+      const reason = response.ok ? null : await refusalReason(response);
+      if (reason === "entryRefused") {
         return { refused: PAIRING_REFUSED[locale] };
       }
-      if (response.status === 403) {
+      if (reason === "devicePending") {
         return pending(response);
       }
-      if (response.status === 429) {
+      if (reason === "tooManyAttempts") {
         return { refused: tooManyAttempts(response.headers.get("Retry-After"), locale) };
       }
       if (!response.ok) {
@@ -278,13 +281,14 @@ export function createApiAuth(
       const response = await prove()
         .then((proof) => post("/users", { ...user, device: proof }))
         .catch(() => null);
-      if (response?.status === 409) {
+      const reason = response && !response.ok ? await refusalReason(response) : null;
+      if (reason === "usernameTaken") {
         return { refused: REGISTER_MESSAGES[locale].taken };
       }
-      if (response?.status === 403) {
+      if (response && reason === "devicePending") {
         return pending(response);
       }
-      if (response?.status === 429) {
+      if (response && reason === "tooManyAttempts") {
         return { refused: tooManyAttempts(response.headers.get("Retry-After"), locale) };
       }
       if (!response?.ok) {

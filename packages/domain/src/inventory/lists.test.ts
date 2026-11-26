@@ -164,7 +164,7 @@ test("Shared: renaming and deleting reach the entry by its id", async () => {
   assert.equal(url, `/api/categories/${BRAND_ID}`);
   assert.equal(init.method, "PATCH");
   assert.deepEqual(JSON.parse(String(init.body)), { name: "motor diesel" });
-  answer(() => ({ message: "taken" }), 409);
+  answer(() => ({ statusCode: 409, error: "Conflict", message: "taken", reason: "entryTaken" }), 409);
   assert.equal(await renameListEntry("/api", "categories", BRAND_ID, "Motor"), "taken");
   answer(() => ({ message: "down" }), 500);
   assert.equal(await renameListEntry("/api", "categories", BRAND_ID, "Motor"), null);
@@ -172,7 +172,7 @@ test("Shared: renaming and deleting reach the entry by its id", async () => {
   const removal = mock.method(globalThis, "fetch", async () => new Response(null, { status: 204 }));
   assert.equal(await deleteListEntry("/api", "vehicleBrands", BRAND_ID), true);
   assert.deepEqual(removal.mock.calls[0].arguments, [`/api/vehicle-brands/${BRAND_ID}`, { method: "DELETE" }]);
-  answer(() => ({ message: "in use" }), 409);
+  answer(() => ({ statusCode: 409, error: "Conflict", message: "in use", reason: "entryInUse" }), 409);
   assert.equal(await deleteListEntry("/api", "vehicleBrands", BRAND_ID), false);
 });
 

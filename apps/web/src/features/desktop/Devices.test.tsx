@@ -50,7 +50,12 @@ function serveDevices(devices: Device[], listStatus = 200) {
     if (url.endsWith('/devices') && method === 'GET') {
       return listStatus === 200
         ? Response.json({ devices })
-        : Response.json({ statusCode: listStatus, message: listStatus === 501 ? WEB_TEXTS['pt-BR'].demo.unavailable : 'Devices are managed only on the server\'s computer.' }, { status: listStatus })
+        : Response.json(
+            listStatus === 501
+              ? { statusCode: 501, message: WEB_TEXTS['pt-BR'].demo.unavailable }
+              : { statusCode: 403, error: 'Forbidden', message: 'Devices are managed only on the server\'s computer.', reason: 'notOnServer' },
+            { status: listStatus },
+          )
     }
     const id = url.split('/devices/')[1].split('/')[0]
     const device = devices.find((each) => each.id === id)!

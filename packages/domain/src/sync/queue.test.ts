@@ -200,20 +200,20 @@ test("Shared: an operation is sent without the queue's fields, and a refusal say
   };
   assert.deepEqual(sentOperation(move), { id: move.id, type: "moveStock", itemId: HELD.id, brandId: HELD.brands[0].id, delta: 1 });
   assert.equal(
-    refusedNotice(move, { statusCode: 404 }, "pt-BR"),
+    refusedNotice(move, { reason: "itemNotFound" }, "pt-BR"),
     "O servidor recusou a mudança de estoque de “Pastilha de freio”: o item não existe mais no servidor.",
   );
   const { operations } = itemOperations(itemFormBody(itemFormOf(HELD), []), undefined, { newId: ids(), at: AT });
   assert.equal(
-    refusedNotice(operations[0], { statusCode: 409, details: [{ code: "N-123", itemName: "Pastilha traseira" }] }, "pt-BR"),
+    refusedNotice(operations[0], { reason: "codeTaken", details: [{ code: "N-123", itemName: "Pastilha traseira" }] }, "pt-BR"),
     "O servidor recusou o cadastro de “Pastilha de freio”: o código N-123 já é usado por “Pastilha traseira”.",
   );
   assert.deepEqual([waitingNotice(1, "pt-BR"), waitingNotice(3, "pt-BR")], ["1 alteração esperando o servidor.", "3 alterações esperando o servidor."]);
 
   // The same notices in English, each operation in English's own sentence.
-  assert.equal(refusedNotice(move, { statusCode: 404 }, "en-US"), "The server refused the stock move of “Pastilha de freio”: the item no longer exists on the server.");
+  assert.equal(refusedNotice(move, { reason: "itemNotFound" }, "en-US"), "The server refused the stock move of “Pastilha de freio”: the item no longer exists on the server.");
   assert.equal(
-    refusedNotice(operations[0], { statusCode: 409, details: [{ code: "N-123", itemName: "Pastilha traseira" }] }, "en-US"),
+    refusedNotice(operations[0], { reason: "codeTaken", details: [{ code: "N-123", itemName: "Pastilha traseira" }] }, "en-US"),
     "The server refused the creation of “Pastilha de freio”: code N-123 is already used by “Pastilha traseira”.",
   );
   assert.equal(

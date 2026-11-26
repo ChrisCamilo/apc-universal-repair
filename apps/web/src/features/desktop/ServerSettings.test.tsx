@@ -122,7 +122,7 @@ function serveEntryCodes(...answers: (string | number)[]) {
     const answer = answers.shift()
     return typeof answer === 'string'
       ? Response.json({ code: answer, expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() }, { status: 201 })
-      : Response.json({ statusCode: answer }, { status: answer })
+      : Response.json({ statusCode: answer, error: 'Unauthorized', message: 'Log in to use the API.', reason: 'loggedOut' }, { status: answer })
   })
   vi.stubGlobal('fetch', api)
   return api

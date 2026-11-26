@@ -34,7 +34,7 @@ function answer(items: Item[]) {
   (fetch as jest.Mock).mockImplementation(async (url: string, init?: RequestInit) => {
     if (new URL(url).pathname === '/sync/operations') {
       const { operations } = JSON.parse(String(init?.body)) as { operations: { id: string }[] };
-      const results = operations.map((operation) => ({ id: operation.id, status: 'refused', statusCode: 404 }));
+      const results = operations.map((operation) => ({ id: operation.id, status: 'refused', statusCode: 404, reason: 'itemNotFound' }));
       return { ok: true, status: 200, json: async () => ({ results }) };
     }
     return { ok: true, status: 200, json: async () => syncPageOf(items, 'db.10') };

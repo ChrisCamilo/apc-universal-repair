@@ -30,6 +30,7 @@ import { apiUrl } from '../../app/api';
 import { loadLocale } from '../../app/locale';
 import { hasLocalNetwork } from '../../app/localNetwork';
 import { clearPhotos, keepThumbnails, releasePhotos } from './photoCache';
+import { refusalReason } from '@apc/domain/refusals';
 
 // The phone's copy of the paired server's inventory (see @apc/domain/sync-copy), which the Inventory reads, so it works
 // away from the server, and the queue of the changes made on the phone, waiting to be sent (see
@@ -193,7 +194,7 @@ async function sync(): Promise<SyncResult> {
   try {
     for (;;) {
       const response = await apiFetch(`${apiUrl()}${SYNC_CHANGES_PATH}${cursor ? `?${new URLSearchParams({ since: cursor })}` : ''}`);
-      if (response.status === 410 && !fresh) {
+      if (!response.ok && !fresh && (await refusalReason(response)) === 'cursorGone') {
         cursor = null;
         fresh = true;
         pages.length = 0;
@@ -324,7 +325,7 @@ async function sendItems(operations: QueuedItemOperation[], locale: Locale): Pro
   }).catch(() => null);
   if (!response?.ok) {
     return response && refuses(response.status)
-      ? new Map(operations.map((operation) => [operation.id, { refused: refusedNotice(operation, { statusCode: response.status }, locale) }]))
+      ? await refusedAll(operations, response, locale)
       : null;
   }
   const { results } = syncOperationsResultSchema.parse(await response.json());
@@ -395,11 +396,23 @@ async function sendName(operation: NameOperation & QueuedOperation, locale: Loca
  * @param locale The language of the notice.
  * @returns Accepted or refused, or null when the server couldn't be reached or didn't take it now.
  */
-function answerOf(operation: QueuedOperation, response: Response | null, locale: Locale): Answers | null {
+async function answerOf(operation: QueuedOperation, response: Response | null, locale: Locale): Promise<Answers | null> {
   if (response?.ok) {
     return new Map([[operation.id, {}]]);
   }
-  return response && refuses(response.status) ? new Map([[operation.id, { refused: refusedNotice(operation, { statusCode: response.status }, locale) }]]) : null;
+  return response && refuses(response.status) ? refusedAll([operation], response, locale) : null;
+}
+
+/**
+ * Says the server refused each of some operations, and why, by the reason of its refusal.
+ * @param operations The operations refused.
+ * @param response The refusal.
+ * @param locale The language of the notices.
+ * @returns Each operation's refusal.
+ */
+async function refusedAll(operations: QueuedOperation[], response: Response, locale: Locale): Promise<Answers> {
+  const reason = (await refusalReason(response)) ?? undefined;
+  return new Map(operations.map((operation) => [operation.id, { refused: refusedNotice(operation, { reason }, locale) }]));
 }
 
 /**

@@ -581,16 +581,16 @@ export function conflictsNotice(count: number, locale: Locale): string {
  * @param locale The language.
  * @returns E.g. "O servidor recusou o cadastro de “Filtro de óleo”: o código W 712 já é usado por “Filtro de ar”."
  */
-export function refusedNotice(operation: QueuedOperation, result: Pick<SyncOperationResult, "statusCode" | "details">, locale: Locale): string {
+export function refusedNotice(operation: QueuedOperation, result: Pick<SyncOperationResult, "reason" | "details">, locale: Locale): string {
   const messages = QUEUE_MESSAGES[locale];
   const [detail] = result.details ?? [];
-  const reason =
-    result.statusCode === 404
+  const why =
+    result.reason === "itemNotFound"
       ? messages.gone
-      : result.statusCode === 409 && typeof detail?.itemName === "string"
+      : result.reason === "codeTaken" && typeof detail?.itemName === "string"
         ? messages.codeTaken(String(detail.code), detail.itemName)
         : messages.notAccepted;
-  return messages.refused(messages.operations[operation.type], operation.label, reason);
+  return messages.refused(messages.operations[operation.type], operation.label, why);
 }
 
 /**

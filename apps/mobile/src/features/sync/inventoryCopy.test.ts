@@ -9,6 +9,9 @@ import type { SyncChanges } from '@apc/domain/sync';
 import { clearCopy, enqueue, loadCopy, loadQueue, onRefused, syncCopy } from './inventoryCopy';
 import { copyItems } from '@apc/domain/sync-copy';
 import { withQueue, type QueuedOperation } from '@apc/domain/sync-queue';
+import type { RefusalReason } from '@apc/domain/refusals';
+import { LOCALE_STORAGE_KEY } from '@apc/domain/locale';
+import { themeStorage } from '../../app/theme';
 
 // The phone's copy of the inventory against a stand-in server: a full copy first, then the changes after its cursor, a
 // full copy again when the server answers 410, the copy kept as it was while the server can't be reached, and nothing
@@ -42,7 +45,7 @@ function answerFeed(pages: Record<string, SyncChanges | 'offline'>): string[] {
     if (page === 'offline') {
       throw new TypeError('Network request failed');
     }
-    return page ? { ok: true, status: 200, json: async () => page } : { ok: false, status: 410, json: async () => ({}) };
+    return page ? { ok: true, status: 200, json: async () => page } : Response.json({ statusCode: 410, error: 'Gone', message: 'Make a full copy.', reason: 'cursorGone' }, { status: 410 });
   });
   return asked;
 }
@@ -145,7 +148,7 @@ test('Mobile: a sync asked for while one runs gets another after it', async () =
  * @param refused The results of the operations refused, by id.
  * @returns The requests, e.g. "POST /sync/operations moveStock,deleteItem", and whether the server is offline.
  */
-function answerServer(feed: Record<string, SyncChanges>, refused: Record<string, { statusCode: number; details?: object[] }> = {}) {
+function answerServer(feed: Record<string, SyncChanges>, refused: Record<string, { statusCode: number; reason: RefusalReason; details?: object[] }> = {}) {
   const server = { asked: [] as string[], offline: false };
   (fetch as jest.Mock).mockImplementation(async (url: string, init?: RequestInit) => {
     const { pathname, search, searchParams } = new URL(url);
@@ -156,13 +159,13 @@ function answerServer(feed: Record<string, SyncChanges>, refused: Record<string,
     if (pathname === '/sync/operations') {
       const { operations } = JSON.parse(String(init?.body)) as { operations: QueuedOperation[] };
       server.asked.push(`POST ${pathname} ${operations.map((operation) => operation.type).join(',')}`);
-      const results = operations.map((operation) => ({ id: operation.id, status: refused[operation.id] ? 'refused' : 'applied', statusCode: refused[operation.id]?.statusCode ?? 200, details: refused[operation.id]?.details }));
+      const results = operations.map((operation) => ({ id: operation.id, status: refused[operation.id] ? 'refused' : 'applied', statusCode: refused[operation.id]?.statusCode ?? 200, reason: refused[operation.id]?.reason, details: refused[operation.id]?.details }));
       return { ok: true, status: 200, json: async () => ({ results }) };
     }
     server.asked.push(`${method} ${pathname}${search}`);
     if (pathname === '/sync/changes') {
       const page = feed[searchParams.get('since') ?? ''];
-      return page ? { ok: true, status: 200, json: async () => page } : { ok: false, status: 410, json: async () => ({}) };
+      return page ? { ok: true, status: 200, json: async () => page } : Response.json({ statusCode: 410, error: 'Gone', message: 'Make a full copy.', reason: 'cursorGone' }, { status: 410 });
     }
     return { ok: true, status: 200, json: async () => ({ id: '00000000-0000-4000-8000-0000000000c1', name: 'Gurgel' }) };
   });
@@ -251,7 +254,7 @@ test('Mobile: a refused change leaves the queue with what waits on its new item,
   });
   const server = answerServer(
     { '': syncPageOf(ITEMS, 'db.10') },
-    { [created.id]: { statusCode: 409, details: [{ code: 'N-123', itemName: 'Pastilha de freio' }] } },
+    { [created.id]: { statusCode: 409, reason: 'codeTaken', details: [{ code: 'N-123', itemName: 'Pastilha de freio' }] } },
   );
   const heard = jest.fn();
   const stop = onRefused(heard);
@@ -265,6 +268,25 @@ test('Mobile: a refused change leaves the queue with what waits on its new item,
   expect(heard).toHaveBeenCalledWith(['O servidor recusou o cadastro de “Filtro de óleo”: o código N-123 já é usado por “Pastilha de freio”.']);
   expect(server.asked.filter((asked) => !asked.startsWith('GET'))).toEqual(['POST /sync/operations createItem,moveStock']);
   expect(await loadQueue()).toEqual([]);
+});
+
+// The same refusal with English kept on the phone: the server's reason, not its message, says the code is taken, so the
+// notice reads in English.
+test('Mobile: a refused change is said in English, by the refusal\'s reason', async () => {
+  await themeStorage.setItem(LOCALE_STORAGE_KEY, 'en-US');
+  const created = queued(1, {
+    type: 'createItem',
+    itemId: '30000000-0000-4000-8000-000000000001',
+    item: { name: 'Filtro de óleo', category: 'Motor', vehicles: [{ vehicleBrand: 'Volkswagen' }], brands: [{ id: '30000000-0000-4000-8000-0000000000b1', partBrand: 'Mann', code: 'N-123', unitPriceCents: 3990 }] },
+  });
+  answerServer({ '': syncPageOf(ITEMS, 'db.10') }, { [created.id]: { statusCode: 409, reason: 'codeTaken', details: [{ code: 'N-123', itemName: 'Pastilha de freio' }] } });
+  const heard = jest.fn();
+  const stop = onRefused(heard);
+  await enqueue([created]);
+  expect(await syncCopy()).toBe('synced');
+  stop();
+  await themeStorage.removeItem(LOCALE_STORAGE_KEY);
+  expect(heard).toHaveBeenCalledWith(['The server refused the creation of “Filtro de óleo”: code N-123 is already used by “Pastilha de freio”.']);
 });
 
 // Queues a change, then clears the copy as an expired session does, and checks the copy is gone and the change kept on

@@ -114,12 +114,26 @@ test('Web: a failed delete says so and keeps the confirmation open', async () =>
 // Confirms the delete of an item another device already deleted, the API answering 404, and checks it is taken as
 // deleted: a toast says so and the removal is handed over.
 test('Web: an item another device already deleted is taken as deleted', async () => {
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }))
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ statusCode: 404, error: 'Not Found', message: 'Item not found.', reason: 'itemNotFound' }, { status: 404 }))
   const onDeleted = vi.fn()
   const screen = await render(<Sample onDeleted={onDeleted} />)
   await screen.getByRole('button', { name: 'Excluir' }).click()
   await vi.waitFor(() => expect(onDeleted).toHaveBeenCalledWith(FILTER))
   await expect.element(screen.getByText('Item “Filtro de óleo” já tinha sido excluído em outro dispositivo.')).toBeVisible()
+})
+
+// The same refusal in English: the API's reason, not its message, says the item is gone, so the toast reads in English.
+test('Web: an item another device already deleted is said so in English, by the refusal\'s reason', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ statusCode: 404, error: 'Not Found', message: 'Item not found.', reason: 'itemNotFound' }, { status: 404 }))
+  const onDeleted = vi.fn()
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <Sample onDeleted={onDeleted} />
+    </LocaleContext.Provider>,
+  )
+  await screen.getByRole('button', { name: 'Delete' }).click()
+  await vi.waitFor(() => expect(onDeleted).toHaveBeenCalledWith(FILTER))
+  await expect.element(screen.getByText('Item “Filtro de óleo” had already been deleted on another device.')).toBeVisible()
 })
 
 // Opens the confirmation at 1280×720 and on a 360×780 phone and checks Excluir is on screen without scrolling and

@@ -195,7 +195,7 @@ test('Web: the code turns uppercase and a code in use names its item', async () 
   await screen.getByRole('button', { name: 'Salvar' }).click()
   await expect.element(screen.getByText(codeTakenMessage('Pastilha de freio', 'pt-BR'))).toBeVisible()
 
-  answerSave(409, { details: [{ field: 'brands/0/code', code: 'NOVA-1', itemName: 'Correia dentada' }] })
+  answerSave(409, { statusCode: 409, error: 'Conflict', message: 'Code "NOVA-1" is already used by "Correia dentada".', reason: 'codeTaken', details: [{ field: 'brands/0/code', code: 'NOVA-1', itemName: 'Correia dentada' }] })
   await fill(screen, { code: 'nova-1', name: 'Vela', category: 'Ignição', partBrand: 'NGK', vehicleBrand: 'Fiat', price: '10' })
   await screen.getByRole('button', { name: 'Salvar' }).click()
   await expect.element(screen.getByText(codeTakenMessage('Correia dentada', 'pt-BR'))).toBeVisible()
@@ -582,7 +582,7 @@ test('Web: Editar unlocks the details in place and saves like an edit', async ()
 // Edits an item another device deleted meanwhile, the API answering 404, and checks a toast says it was deleted and
 // not saved, and the form hands it over as gone instead of saved.
 test('Web: saving an item another device deleted says so', async () => {
-  answerSave(404, { statusCode: 404, error: 'Not Found', message: 'Item not found.' })
+  answerSave(404, { statusCode: 404, error: 'Not Found', message: 'Item not found.', reason: 'itemNotFound' })
   const onSaved = vi.fn()
   const onGone = vi.fn()
   const screen = await render(<Sample item={FILTER} onSaved={onSaved} onGone={onGone} />)

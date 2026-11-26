@@ -23,7 +23,7 @@ import { InventoryLinkContext } from '../dashboard/inventoryLinkContext';
 import { themeStorage, ThemeProvider } from '../../app/theme';
 import { ToastProvider } from '../../components/Toast';
 import { InventoryCopyProvider } from '../sync/useInventoryCopy';
-import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog';
+import { applyCatalogChange, catalogRefusal, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, TEST_ENGINES } from '@apc/domain/test-catalog';
 import { testItem, type FlatItem } from '@apc/domain/test-items';
 import { syncAnswer } from '@apc/domain/test-sync';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
@@ -586,7 +586,8 @@ function answerChanges() {
     if (change) {
       const result = applyCatalogChange(catalog, change.change);
       if (typeof result === 'string') {
-        return Promise.resolve({ ok: false, status: { missing: 404, taken: 409, invalid: 400 }[result], json: () => Promise.resolve({}) });
+        const refusal = catalogRefusal(change.change, result);
+        return Promise.resolve(Response.json(refusal, { status: refusal.statusCode }));
       }
       catalog = result;
     }
