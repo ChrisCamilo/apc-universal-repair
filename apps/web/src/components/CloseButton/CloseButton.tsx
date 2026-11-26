@@ -1,5 +1,7 @@
 import type { Ref } from 'react'
 import { closeIcon } from '@apc/tokens/icons'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { closeButton } from './CloseButton.styles.ts'
 import { Icon } from '../Icon/Icon.tsx'
 
@@ -13,11 +15,12 @@ type CloseButtonProps = {
 
 export function CloseButton({ onClick, ref }: CloseButtonProps) {
   const { classes, ids } = closeButton()
+  const common = useMessages(COMMON_TEXTS)
   return (
     <button
       ref={ref}
       type="button"
-      aria-label="Fechar"
+      aria-label={common.close}
       className={classes.base()}
       data-testid={ids.base}
       onClick={onClick}

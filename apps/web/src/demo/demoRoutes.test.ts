@@ -4,7 +4,8 @@ import { catalogSchema, type CatalogData } from '@apc/domain/catalog'
 import type { Item } from '@apc/domain/items'
 import { ITEM_LIST_PATHS, type ListEntry } from '@apc/domain/lists'
 import { PHOTO_PARTS } from '@apc/domain/photos'
-import { createDemoApi, DEMO_UNAVAILABLE, DEMO_UNAVAILABLE_ROUTES } from './demoApi.ts'
+import { WEB_TEXTS } from '../app/webTexts.ts'
+import { createDemoApi, DEMO_UNAVAILABLE_ROUTES } from './demoApi.ts'
 import { DEMO_USER } from './demoData.ts'
 import { DEMO_DEVICE_STAND_IN } from './demoDevice.ts'
 
@@ -189,7 +190,7 @@ test("Web: the demo answers each route with the API's bodies", async () => {
   for (const route of API_ROUTES) {
     const answer = await CALLS[named(route)](await startDemo())
     if (DEMO_UNAVAILABLE_ROUTES.includes(named(route))) {
-      expect([answer.status, ((await answer.json()) as { message: string }).message], named(route)).toEqual([501, DEMO_UNAVAILABLE])
+      expect([answer.status, ((await answer.json()) as { message: string }).message], named(route)).toEqual([501, WEB_TEXTS['pt-BR'].demo.unavailable])
       continue
     }
     expect(answer.ok, `${named(route)} answered ${answer.status}`).toBe(true)

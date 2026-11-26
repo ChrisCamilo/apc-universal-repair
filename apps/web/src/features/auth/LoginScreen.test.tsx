@@ -10,6 +10,7 @@ import { render } from 'vitest-browser-react'
 import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
 import { LoginScreen } from './LoginScreen.tsx'
+import { LocaleContext } from '../../app/useLocale.ts'
 
 // A login that keeps no session and answers at once.
 const AUTH = createMockAuth({ getItem: async () => null, setItem: async () => {}, removeItem: async () => {} }, TEST_USERS, 0)
@@ -346,4 +347,22 @@ test('Web: on a phone the login is one column, the brand on top and Criar conta 
   await register.click()
   expect(onRegister).toHaveBeenCalledOnce()
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+})
+
+// Renders the login in English on a phone, where the intro and the way to sign up show, and checks they, its buttons
+// and links read in English, and that a login sent empty says what is missing in English.
+test('Web: the login reads in English', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <LoginScreen auth={AUTH} onLoggedIn={() => {}} onRegister={() => {}} />
+    </LocaleContext.Provider>,
+  )
+  await expect.element(screen.getByText(LOGIN_INTRO['en-US'])).toBeVisible()
+  await expect.element(screen.getByText("Don't have an account yet?")).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Forgot your password?' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Create account' }).first()).toBeVisible()
+  await expect.element(screen.getByLabelText('Password', { exact: true })).toBeVisible()
+  await screen.getByRole('button', { name: 'Log in' }).click()
+  await expect.element(screen.getByText(LOGIN_MESSAGES['en-US'].username)).toBeVisible()
 })

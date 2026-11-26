@@ -5,6 +5,7 @@ import { themeCss } from '../../app/theme.ts'
 import type { ServerBridge, ServerFailure as Failure } from './desktopBridge.ts'
 import { ServerFailure } from './ServerFailure.tsx'
 import { ServerSettingsContext } from './serverSettingsContext.ts'
+import { LocaleContext } from '../../app/useLocale.ts'
 
 const LOG = 'C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\logs\\api.log'
 // The server stopped as it started, with the error its log ends with.
@@ -145,4 +146,18 @@ test('Web: a server that fails later is said so, and a failed retry says why aga
   await screen.getByRole('button', { name: 'Tentar de novo' }).click()
   await expect.element(screen.getByRole('alert').getByText(/Último erro: file is not a database/)).toBeVisible()
   expect(reload).not.toHaveBeenCalled()
+})
+
+// Opens with the server off in English, and checks the screen says so, and where its log is, in English.
+test('Web: the server failure screen reads in English', async () => {
+  giveServer(STOPPED)
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <ServerFailure />
+    </LocaleContext.Provider>,
+  )
+  const alert = screen.getByRole('alert')
+  await expect.element(alert).toMatchTextContent(/The server didn't start/)
+  await expect.element(alert).toMatchTextContent(/The server's log is at/)
+  await expect.element(screen.getByRole('button', { name: 'Try again' })).toBeVisible()
 })

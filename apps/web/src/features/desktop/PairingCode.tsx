@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react'
 import { encode } from 'uqr'
 import type { EntryCode } from '@apc/domain/auth'
 import { entryCodeGroups, fingerprintGroups, pairingLink, type Pairing } from '@apc/domain/pairing'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { useLocale } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
 import { issueEntryCode, type DevicesOutcome } from './devices.ts'
 import { pairingCode } from './PairingCode.styles.ts'
+import { DESKTOP_TEXTS } from './desktopTexts.ts'
 
 // What the phone pairs with, in the Servidor dialog while the phone's access is on: a QR code holding the pairing
 // link (see @apc/domain/pairing), which the phone's camera reads on its Conectar ao servidor screen, and the same
@@ -29,6 +32,8 @@ function modulesPath(modules: boolean[][]): string {
 
 export function PairingCode({ pairing }: { pairing: Pairing }) {
   const { classes, ids } = pairingCode()
+  const { locale } = useLocale()
+  const texts = DESKTOP_TEXTS[locale].pairing
   // The entry code, or why there is none; undefined while it is asked for.
   const [entry, setEntry] = useState<DevicesOutcome<EntryCode>>()
   // Counts the asks for a code, so a new one is asked for as the last one ends or at "Gerar outro".
@@ -38,7 +43,7 @@ export function PairingCode({ pairing }: { pairing: Pairing }) {
   useEffect(() => {
     let live = true
     let ending: ReturnType<typeof setTimeout> | undefined
-    void issueEntryCode().then((outcome) => {
+    void issueEntryCode(locale).then((outcome) => {
       if (!live) {
         return
       }
@@ -51,7 +56,7 @@ export function PairingCode({ pairing }: { pairing: Pairing }) {
       live = false
       clearTimeout(ending)
     }
-  }, [ask])
+  }, [ask, locale])
 
   const code = entry?.ok ? entry.value.code : undefined
   const qr = code && encode(pairingLink({ ...pairing, entry: code }), { ecc: 'M', border: QUIET_ZONE })
@@ -60,7 +65,7 @@ export function PairingCode({ pairing }: { pairing: Pairing }) {
       {qr && (
         <svg
           role="img"
-          aria-label="QR code para conectar o celular"
+          aria-label={texts.qr}
           viewBox={`0 0 ${qr.size} ${qr.size}`}
           shapeRendering="crispEdges"
           className={classes.code()}
@@ -71,13 +76,13 @@ export function PairingCode({ pairing }: { pairing: Pairing }) {
       )}
       <dl className={classes.facts()} data-testid={ids.facts}>
         <dt className={classes.term()} data-testid={ids.term}>
-          Endereço
+          {texts.address}
         </dt>
         <dd className={classes.value()} data-testid={ids.value}>
           {pairing.url}
         </dd>
         <dt className={classes.term()} data-testid={ids.term}>
-          Código
+          {texts.code}
         </dt>
         <dd className={classes.value()} data-testid={ids.value}>
           {fingerprintGroups(pairing.fingerprint)}
@@ -85,7 +90,7 @@ export function PairingCode({ pairing }: { pairing: Pairing }) {
         {entry && (
           <>
             <dt className={classes.term()} data-testid={ids.term}>
-              Código de entrada
+              {texts.entry}
             </dt>
             {code && (
               <dd className={classes.value()} data-testid={ids.value}>
@@ -93,9 +98,9 @@ export function PairingCode({ pairing }: { pairing: Pairing }) {
               </dd>
             )}
             <dd className={classes.note()} data-testid={ids.note}>
-              <span>{entry.ok ? 'Vale por 5 minutos, para a conta aberta neste computador. Depois, autorize o celular aqui.' : entry.message}</span>{' '}
+              <span>{entry.ok ? texts.entryHint : entry.message}</span>{' '}
               <Button variant="link" onClick={() => setAsk((asked) => asked + 1)}>
-                {entry.ok ? 'Gerar outro' : 'Tentar de novo'}
+                {entry.ok ? texts.another : COMMON_TEXTS[locale].retry}
               </Button>
             </dd>
           </>

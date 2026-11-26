@@ -19,6 +19,7 @@ import { themeCss } from '../../../app/theme.ts'
 import { ItemFormDialog } from './ItemFormDialog.tsx'
 import type { CreateListEntry } from '../lists/useItemLists.ts'
 import { testItem, type FlatItem } from '@apc/domain/test-items'
+import { LocaleContext } from '../../../app/useLocale.ts'
 
 // A photo the API saved, as items carry it.
 const SAVED_PHOTO = { id: '00000000-0000-4000-8000-0000000000aa', url: '/photos/aa.png', thumbUrl: '/photos/aa-thumb.webp' }
@@ -1132,6 +1133,22 @@ test("Web: a duplicated item opens without codes or stock and saves copies of th
   expect([firstUrl, firstInit?.method]).toEqual(['/api/items', 'POST'])
   expect(posted!.brands.map((brand) => [brand.code, brand.quantity])).toEqual([['W 712/96', 0]])
   expect([...(photosInit!.body as FormData).entries()]).toEqual([['copy', SAVED_PHOTO.id]])
+})
+
+// Opens a new item's form in English, and checks its title, hints and buttons read in English, and that saving it
+// blank says what is missing in English.
+test('Web: the item form reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <Sample />
+    </LocaleContext.Provider>,
+  )
+  await expect.element(screen.getByRole('dialog', { name: 'New item' })).toBeVisible()
+  await expect.element(screen.getByText(/The brands that make this part/)).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Add vehicle' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Add brand' })).toBeVisible()
+  await screen.getByRole('button', { name: 'Save' }).click()
+  await expect.element(screen.getByText(ITEM_FORM_MESSAGES['en-US'].name)).toBeVisible()
 })
 
 function Sample({

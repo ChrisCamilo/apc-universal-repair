@@ -1,6 +1,11 @@
 // Guided tour behavior shared by the web and mobile Tour: what a step is, where the step card goes next to
 // the target, how far the spotlight reaches around it, and the text of the card's header.
 
+/** The card header's texts in Portuguese, until the phone passes the language chosen. */
+const PORTUGUESE_HEADER: TourHeaderTexts = {
+  done: "Tutorial concluído",
+  part: (part, count, name) => `Parte ${part} de ${count} · ${name}`,
+};
 /** How long a step whose check passed stays on screen before the next one, in ms, so the user sees it worked. */
 export const TOUR_ADVANCE_DELAY_MS = 450;
 /** Room between the card and the target or the screen edges, in px. */
@@ -16,6 +21,8 @@ export const TOUR_PHONE_WIDTH = 520;
 /** Room the spotlight leaves around the target, in px. */
 export const TOUR_SPOT_PADDING = 6;
 
+/** How the card header writes a step's part and the tour's end, in one language. */
+export type TourHeaderTexts = { done: string; part: (part: number, count: number, name: string) => string };
 /** A box on screen, in px from the top left corner. */
 export type TourRect = { x: number; y: number; width: number; height: number };
 /** A step of a guided tour. `Target` is what the platform points at: an element on the web, a view on mobile. */
@@ -100,6 +107,7 @@ export function spotlightRect(target: TourRect): TourRect {
  * @param steps Every step of the tour.
  * @param index Index of the current step.
  * @param parts Names of the tour's parts, e.g. ["Criar um item", "Procurar e filtrar"].
+ * @param texts How a part and the end are written in the language chosen; in Portuguese unless given.
  * @returns E.g. { part: "Parte 1 de 3 · Criar um item", count: "2 / 18" }; the last step without a part reads
  * "Tutorial concluído", any other step without a part has no part text.
  */
@@ -107,11 +115,12 @@ export function stepHeader<Target>(
   steps: readonly TourStep<Target>[],
   index: number,
   parts: readonly string[],
+  texts: TourHeaderTexts = PORTUGUESE_HEADER,
 ): { part: string; count: string } {
   const { part } = steps[index];
   const last = index === steps.length - 1;
   return {
-    part: part ? `Parte ${part} de ${parts.length} · ${parts[part - 1]}` : last ? "Tutorial concluído" : "",
+    part: part ? texts.part(part, parts.length, parts[part - 1]) : last ? texts.done : "",
     count: `${index + 1} / ${steps.length}`,
   };
 }

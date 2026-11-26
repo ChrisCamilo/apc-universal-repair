@@ -23,7 +23,9 @@ import { useToast } from '../../../components/Toast'
 import { Heading, Text } from '../../../components/Typography'
 import { manageListsDialog } from './ManageListsDialog.styles.ts'
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists.ts'
-import { useLocale } from '../../../app/useLocale.ts'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
+import { useLocale, useMessages } from '../../../app/useLocale.ts'
 
 // The "Gerenciar listas" dialog of the Inventory tab, for fixing typos and cleaning up the lists the item form picks
 // from: a section for categories, part brands, vehicle brands and vehicle models, the models grouped by their brand.
@@ -68,6 +70,8 @@ export function ManageListsDialog({
   onClose,
 }: ManageListsDialogProps) {
   const { locale } = useLocale()
+  const screen = INVENTORY_SCREEN_TEXTS[locale].lists
+  const common = COMMON_TEXTS[locale]
   const toast = useToast()
   const { classes, ids } = manageListsDialog()
   // The entry being renamed, with the name typed and its message.
@@ -90,7 +94,7 @@ export function ManageListsDialog({
     const siblings: ListEntry[] =
       'vehicleBrandId' in entry ? lists.vehicleModels.filter((model) => model.vehicleBrandId === entry.vehicleBrandId) : lists[kind]
     if (!name.trim()) {
-      setEditing({ ...editing, error: 'Informe o nome.' })
+      setEditing({ ...editing, error: screen.name })
       return
     }
     const other = findEntry(siblings, name)
@@ -160,7 +164,7 @@ export function ManageListsDialog({
           <RenameRow
             key={entry.id}
             name={editing.name}
-            label={`Novo nome de “${entry.name}”`}
+            label={screen.newName(entry.name)}
             error={editing.error}
             saving={saving}
             onNameChange={(name) => setEditing({ ...editing, name, error: undefined })}
@@ -188,11 +192,11 @@ export function ManageListsDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="Gerenciar listas"
+      title={screen.title}
       closable
       actions={
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Fechar
+          {common.close}
         </Button>
       }
     >
@@ -201,7 +205,7 @@ export function ManageListsDialog({
           <Heading level={4}>{ITEM_LIST_TEXTS[locale][kind].title}</Heading>
           {lists[kind].length === 0 ? (
             <Text size="sm" tone="muted">
-              Nada cadastrado.
+              {screen.nothing}
             </Text>
           ) : kind === 'vehicleModels' ? (
             lists.vehicleBrands
@@ -211,7 +215,7 @@ export function ManageListsDialog({
                 <div
                   key={brand.id}
                   role="group"
-                  aria-label={`Modelos de ${brand.name}`}
+                  aria-label={screen.modelsOf(brand.name)}
                   className={classes.group()}
                   data-testid={ids.group}
                 >
@@ -229,13 +233,13 @@ export function ManageListsDialog({
       <Dialog
         open={removing !== undefined}
         onClose={() => setRemoving(undefined)}
-        title={blocked ? 'Não é possível excluir' : `Excluir “${removing?.entry.name ?? ''}”?`}
+        title={blocked ? screen.cantDelete : screen.deleteTitle(removing?.entry.name ?? '')}
         size="confirm"
         actions={
           blocked ? (
             <>
               <Button variant="secondary" size="sm" onClick={() => setRemoving(undefined)}>
-                Fechar
+                {common.close}
               </Button>
               {removing && (
                 <Button
@@ -245,17 +249,17 @@ export function ManageListsDialog({
                     onShowItems(entryFilters(removing.kind, removing.entry, lists))
                   }}
                 >
-                  Ver itens
+                  {screen.showItems}
                 </Button>
               )}
             </>
           ) : (
             <>
               <Button variant="secondary" size="sm" onClick={() => setRemoving(undefined)}>
-                Cancelar
+                {common.cancel}
               </Button>
               <Button variant="danger" size="sm" loading={deleting} onClick={remove}>
-                Excluir
+                {common.delete}
               </Button>
             </>
           )
@@ -272,15 +276,15 @@ export function ManageListsDialog({
       <Dialog
         open={merging !== undefined}
         onClose={() => setMerging(undefined)}
-        title={`Juntar “${merging?.entry.name ?? ''}” com “${merging?.into.name ?? ''}”?`}
+        title={screen.mergeTitle(merging?.entry.name ?? '', merging?.into.name ?? '')}
         size="confirm"
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={() => setMerging(undefined)}>
-              Cancelar
+              {common.cancel}
             </Button>
             <Button size="sm" loading={joining} onClick={merge}>
-              Juntar
+              {screen.merge}
             </Button>
           </>
         }
@@ -303,17 +307,19 @@ export function ManageListsDialog({
 /** A name of a list, how many items use it, and its pencil and trash. */
 function EntryRow({ name, uses, onRename, onRemove }: { name: string; uses: number; onRename: () => void; onRemove: () => void }) {
   const { classes, ids } = manageListsDialog()
+  const screen = useMessages(INVENTORY_SCREEN_TEXTS).lists
+  const common = useMessages(COMMON_TEXTS)
   return (
     <li className={classes.entry()} data-testid={ids.entry}>
       <span className={classes.name()} data-testid={ids.name} title={name}>
         {name}
       </span>
       <span className={classes.uses()} data-testid={ids.uses}>
-        {uses === 0 ? 'sem itens' : uses === 1 ? '1 item' : `${uses} itens`}
+        {screen.uses(uses)}
       </span>
       <span className={classes.actions()} data-testid={ids.actions}>
-        <RowAction icon={pencilIcon} label={`Renomear ${name}`} onClick={onRename} />
-        <RowAction icon={trashIcon} label={`Excluir ${name}`} tone="danger" onClick={onRemove} />
+        <RowAction icon={pencilIcon} label={common.renameNamed(name)} onClick={onRename} />
+        <RowAction icon={trashIcon} label={common.deleteNamed(name)} tone="danger" onClick={onRemove} />
       </span>
     </li>
   )
@@ -339,6 +345,7 @@ function RenameRow({
 }) {
   const field = useRef<HTMLInputElement>(null)
   const { classes, ids } = manageListsDialog()
+  const common = useMessages(COMMON_TEXTS)
 
   // Start on the field, with the name selected, ready to be typed over.
   useEffect(() => {
@@ -363,10 +370,10 @@ function RenameRow({
       <TextField ref={field} label={label} value={name} onValueChange={onNameChange} error={error} onKeyDown={onKeyDown} />
       <span className={classes.buttons()} data-testid={ids.buttons}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancelar
+          {common.cancel}
         </Button>
         <Button size="sm" loading={saving} onClick={onSave}>
-          Salvar
+          {common.save}
         </Button>
       </span>
     </li>

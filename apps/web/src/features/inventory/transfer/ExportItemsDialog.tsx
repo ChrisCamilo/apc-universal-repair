@@ -10,6 +10,8 @@ import { useToast } from '../../../components/Toast'
 import { Text } from '../../../components/Typography'
 import { usePhone } from '../../../components/usePhone.ts'
 import { mercadoLivreZip } from './mercadoLivreZip.ts'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
 import { useLocale } from '../../../app/useLocale.ts'
 
 // The "Exportar Peças" dialog of the Inventory tab: it says which items go into the file, the whole list as it is (the
@@ -67,6 +69,8 @@ async function exportFile(query: string, { photos, mercadoLivre }: { photos: boo
 
 export function ExportItemsDialog({ open, query, count, narrowed, onClose }: ExportItemsDialogProps) {
   const { locale } = useLocale()
+  const texts = INVENTORY_SCREEN_TEXTS[locale]
+  const common = COMMON_TEXTS[locale]
   const toast = useToast()
   const [photos, setPhotos] = useState(false)
   const [mercadoLivre, setMercadoLivre] = useState(false)
@@ -79,7 +83,7 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
     const file = await exportFile(query, { photos, mercadoLivre }, locale)
     setExporting(false)
     if (!file) {
-      toast.error('Não foi possível exportar os itens. Tente de novo.')
+      toast.error(texts.export.failed)
       return
     }
     download(file.name, file.blob)
@@ -91,16 +95,16 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
     <Dialog
       open={open}
       onClose={onClose}
-      title="Exportar Peças"
+      title={texts.exportItems}
       size={phone ? 'form' : 'confirm'}
       closable={phone}
       actions={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>
-            Cancelar
+            {common.cancel}
           </Button>
           <Button size="sm" loading={exporting} disabled={count === 0} onClick={submit}>
-            Exportar
+            {texts.export.submit}
           </Button>
         </>
       }
@@ -108,23 +112,22 @@ export function ExportItemsDialog({ open, query, count, narrowed, onClose }: Exp
       <Text size="sm">{exportScope(count, narrowed, locale)}</Text>
       <Text size="sm" tone="muted">
         {mercadoLivre
-          ? 'Todas as páginas vão no arquivo, um anúncio por marca, nas palavras do Mercado Livre.'
-          : 'Todas as páginas vão no arquivo, no formato do modelo de importação.'}
+          ? texts.export.scopeMercadoLivre
+          : texts.export.scopeTemplate}
       </Text>
       <Switch checked={mercadoLivre} onCheckedChange={setMercadoLivre} disabled={count === 0}>
-        Exportar para o Mercado Livre
+        {texts.export.mercadoLivre}
       </Switch>
       <Text size="sm" tone="muted">
-        Para copiar na planilha baixada do Anunciador em massa, na sua conta de vendedor. Vai um .zip com os anúncios e
-        as fotos, para o Gestor de fotos. Marcas sem estoque ou abaixo de R$ 8,00 ficam de fora.
+        {texts.export.mercadoLivreHint}
       </Text>
       {!mercadoLivre && (
         <>
           <Switch checked={photos} onCheckedChange={setPhotos} disabled={count === 0}>
-            Incluir o caminho das fotos
+            {texts.export.photos}
           </Switch>
           <Text size="sm" tone="muted">
-            Para reaproveitar as mesmas fotos depois. Os caminhos vão na coluna “photos”, a capa primeiro.
+            {texts.export.photosHint}
           </Text>
         </>
       )}

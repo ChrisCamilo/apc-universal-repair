@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { pageCount, pageForSize, pageRange, pageSlots } from '@apc/ui-spec/pagination'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
 import { useLocale } from '../../app/useLocale.ts'
 import { Icon } from '../Icon/Icon.tsx'
 import { pagination } from './Pagination.styles.ts'
@@ -45,13 +46,14 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
   const pages = pageCount(total, pageSize)
   const { classes, ids } = pagination()
   const { locale } = useLocale()
+  const texts = COMPONENT_TEXTS[locale].pagination
 
   return (
     <div className={classes.base()} data-testid={ids.base}>
       <div className={classes.size()} data-testid={ids.size}>
-        <Label aria-hidden="true">Itens por página</Label>
+        <Label aria-hidden="true">{texts.pageSize}</Label>
         <Segmented
-          label="Itens por página"
+          label={texts.pageSize}
           options={pageSizes.map((size) => ({ value: String(size), label: String(size) }))}
           value={String(pageSize)}
           onValueChange={(value) => {
@@ -61,10 +63,10 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
         />
       </div>
       <NumericReadout tone="muted" aria-live="polite" className={classes.range()}>
-        {pageRange(page, pageSize, total, locale)}
+        {pageRange(page, pageSize, total, locale, texts.of)}
       </NumericReadout>
       <nav aria-label={label} className={classes.pages()} data-testid={ids.pages}>
-        <PageButton target={page - 1} disabled={page === 1} label="Página anterior" onPageChange={onPageChange}>
+        <PageButton target={page - 1} disabled={page === 1} label={texts.previous} onPageChange={onPageChange}>
           <Icon icon={chevronIcon} size={ICON_SIZES.caret} className={classes.previous()} />
         </PageButton>
         {pageSlots(page, pages).map((slot, index) =>
@@ -78,12 +80,12 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
               …
             </span>
           ) : (
-            <PageButton key={slot} target={slot} current={slot === page} label={`Página ${slot}`} onPageChange={onPageChange}>
+            <PageButton key={slot} target={slot} current={slot === page} label={texts.page(slot)} onPageChange={onPageChange}>
               {slot}
             </PageButton>
           ),
         )}
-        <PageButton target={page + 1} disabled={page === pages} label="Próxima página" onPageChange={onPageChange}>
+        <PageButton target={page + 1} disabled={page === pages} label={texts.next} onPageChange={onPageChange}>
           <Icon icon={chevronIcon} size={ICON_SIZES.caret} />
         </PageButton>
       </nav>

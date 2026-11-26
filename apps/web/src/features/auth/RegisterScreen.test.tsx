@@ -9,6 +9,7 @@ import { render, type RenderResult } from 'vitest-browser-react'
 import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
 import { RegisterScreen } from './RegisterScreen.tsx'
+import { LocaleContext } from '../../app/useLocale.ts'
 
 // The fields as a new user fills them in.
 const NEW_USER = { displayName: 'Ana Souza', username: 'Ana.Souza', email: 'ana@oficina.com', password: 'freio1234' }
@@ -212,4 +213,21 @@ test('Web: on the desktop the sign-up keeps the badge beside the form', async ()
   expect(screen.getByLabelText('Nome').element().getBoundingClientRect().left).toBeGreaterThan(mark.right)
   await expect.element(screen.getByRole('button', { name: 'Voltar ao login' })).not.toBeInTheDocument()
   await expect.element(screen.getByRole('heading', { name: 'Criar conta' })).not.toBeInTheDocument()
+})
+
+// Renders the sign-up in English, and checks its fields, hint and link read in English, and that a sign-up sent empty
+// says what is missing in English.
+test('Web: the sign-up reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <RegisterScreen auth={mockAuth()} onRegistered={() => {}} onLogin={() => {}} />
+    </LocaleContext.Provider>,
+  )
+  for (const label of ['Name', 'Username', 'Email', 'Confirm password']) {
+    await expect.element(screen.getByLabelText(label, { exact: true })).toBeVisible()
+  }
+  await expect.element(screen.getByText('Lowercase letters, numbers, dots or hyphens.')).toBeVisible()
+  await expect.element(screen.getByText(/^Already have an account\? Log in$/)).toBeVisible()
+  await screen.getByRole('button', { name: 'Create account' }).click()
+  await expect.element(screen.getByText(REGISTER_MESSAGES['en-US'].displayName)).toBeVisible()
 })

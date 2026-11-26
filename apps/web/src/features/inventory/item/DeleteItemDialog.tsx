@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { apiFetch } from '@apc/domain/auth'
 import { itemCodes, type Item } from '@apc/domain/items'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
+import { useMessages } from '../../../app/useLocale.ts'
 import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
 import { useToast } from '../../../components/Toast'
@@ -22,6 +25,8 @@ type DeleteItemDialogProps = {
 
 export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemDialogProps) {
   const toast = useToast()
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS).delete
+  const common = useMessages(COMMON_TEXTS)
   const [deleting, setDeleting] = useState(false)
 
   /** Sends the delete, then announces it and hands it over, or says it failed. */
@@ -33,15 +38,15 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
     const response = await apiFetch(`/api/items/${item.id}`, { method: 'DELETE' }).catch(() => null)
     setDeleting(false)
     if (response?.status === 404) {
-      toast.info(`Item “${item.name}” já tinha sido excluído em outro dispositivo.`)
+      toast.info(texts.gone(item.name))
       onDeleted(item)
       return
     }
     if (!response?.ok) {
-      toast.error('Não foi possível excluir o item. Tente de novo.')
+      toast.error(texts.failed)
       return
     }
-    toast.success(`Item “${item.name}” excluído.`)
+    toast.success(texts.done(item.name))
     onDeleted(item)
   }
 
@@ -49,21 +54,21 @@ export function DeleteItemDialog({ open, item, onClose, onDeleted }: DeleteItemD
     <Dialog
       open={open}
       onClose={onClose}
-      title="Excluir item?"
+      title={texts.title}
       size="confirm"
       actions={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>
-            Cancelar
+            {common.cancel}
           </Button>
           <Button variant="danger" size="sm" data-tour="confirm-delete" loading={deleting} onClick={remove}>
-            Excluir
+            {common.delete}
           </Button>
         </>
       }
     >
       <Text size="sm" tone="muted">
-        {item?.name} ({item && itemCodes(item)}) sai do estoque. Essa ação não pode ser desfeita.
+        {item && texts.text(item.name, itemCodes(item))}
       </Text>
     </Dialog>
   )

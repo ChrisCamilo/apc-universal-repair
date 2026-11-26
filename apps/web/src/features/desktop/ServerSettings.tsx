@@ -1,4 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { COMMON_TEXTS, DASHBOARD_TEXTS } from '@apc/domain/app-texts'
+import { perLocale, type Locale } from '@apc/domain/locale'
+import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { Segmented } from '../../components/Segmented'
@@ -6,6 +9,7 @@ import { Switch } from '../../components/Switch'
 import { TextField } from '../../components/TextField'
 import { Heading, Text } from '../../components/Typography'
 import { desktopBridge, type ImportOutcome, type ImportSource, type ServerSettings } from './desktopBridge.ts'
+import { DESKTOP_TEXTS } from './desktopTexts.ts'
 import { PairingCode } from './PairingCode.tsx'
 import { serverSettings as serverSettingsRecipe } from './ServerSettings.styles.ts'
 import { EntryScreenContext, ServerSettingsContext, type ServerSettingsFocus } from './serverSettingsContext.ts'
@@ -40,24 +44,10 @@ const DATABASES = [
   { value: 'postgresql', label: 'PostgreSQL' },
 ]
 /** The old servers offered. */
-const SOURCES = [
-  { value: 'sqlite', label: 'Arquivo SQLite' },
+const SOURCES = perLocale((locale) => [
+  { value: 'sqlite', label: DESKTOP_TEXTS[locale].server.sqliteFile },
   { value: 'postgresql', label: 'PostgreSQL' },
-]
-/** Each table an import copies, by its server name, as the result lists it. */
-const TABLE_LABELS: Record<string, string> = {
-  user: 'Usuários',
-  device: 'Dispositivos',
-  category: 'Categorias',
-  partBrand: 'Marcas de peça',
-  brand: 'Marcas de veículo',
-  vehicleModel: 'Modelos de veículo',
-  item: 'Itens',
-  itemVehicle: 'Veículos dos itens',
-  itemOriginalCode: 'Códigos originais dos itens',
-  itemBrand: 'Marcas dos itens',
-  itemPhoto: 'Fotos dos itens',
-}
+])
 
 /** A message under a section: what went wrong, or what was done. */
 type Note = { tone: 'danger' | 'done'; text: string }
@@ -65,21 +55,11 @@ type Note = { tone: 'danger' | 'done'; text: string }
 /**
  * Words the phone's address.
  * @param settings The server's settings.
+ * @param locale The language.
  * @returns e.g. "http://192.168.0.10:3000", or that there is no network.
  */
-function phoneLine(settings: Extract<ServerSettings, { kind: 'own' }>): string {
-  return settings.phoneAddress ? `https://${settings.phoneAddress}:${settings.port}` : 'Sem rede para o celular'
-}
-
-/**
- * Words how many photo files an import copied.
- * @param photos The files copied and not found.
- * @returns e.g. "Fotos: 24 arquivos copiados, 2 não encontrados".
- */
-function photosLine(photos: { copied: number; missing: number }): string {
-  const copied = photos.copied === 1 ? '1 arquivo copiado' : `${photos.copied} arquivos copiados`
-  const missing = photos.missing === 0 ? '' : photos.missing === 1 ? ', 1 não encontrado' : `, ${photos.missing} não encontrados`
-  return `Arquivos de fotos: ${copied}${missing}`
+function phoneLine(settings: Extract<ServerSettings, { kind: 'own' }>, locale: Locale): string {
+  return settings.phoneAddress ? `https://${settings.phoneAddress}:${settings.port}` : DESKTOP_TEXTS[locale].server.noNetwork
 }
 
 type ServerSettingsProviderProps = {
@@ -214,25 +194,25 @@ type FirstStartDialogProps = {
 }
 
 function FirstStartDialog({ onImport, onLater, onScratch }: FirstStartDialogProps) {
+  const texts = useMessages(DESKTOP_TEXTS).server.firstStart
   return (
     <Dialog
       open
       onClose={onLater}
-      title="Começar o APC"
+      title={texts.title}
       actions={
         <>
           <Button variant="secondary" size="sm" onClick={() => void onScratch()}>
-            Começar do zero
+            {texts.scratch}
           </Button>
           <Button size="sm" onClick={onImport}>
-            Importar de um servidor antigo
+            {texts.import}
           </Button>
         </>
       }
     >
       <Text size="sm" tone="muted">
-        O banco deste computador está vazio. Se o APC já rodava em outro computador ou num clone, importe os dados antes
-        de criar contas: depois do primeiro cadastro, a importação não aceita mais este banco.
+        {texts.text}
       </Text>
     </Dialog>
   )
@@ -248,31 +228,31 @@ type RecoveryKeyDialogProps = {
 
 function RecoveryKeyDialog({ recoveryKey, onLater, onSaved }: RecoveryKeyDialogProps) {
   const { classes, ids } = serverSettingsRecipe()
+  const { later, recovery: texts } = useMessages(DESKTOP_TEXTS).server
   return (
     <Dialog
       open
       onClose={onLater}
-      title="Chave de recuperação do banco"
+      title={texts.title}
       actions={
         <>
           <Button variant="secondary" size="sm" onClick={onLater}>
-            Depois
+            {later}
           </Button>
           <Button size="sm" onClick={() => void onSaved()}>
-            Já guardei a chave
+            {texts.saved}
           </Button>
         </>
       }
     >
       <Text size="sm" tone="muted">
-        Os dados deste computador ficam num arquivo criptografado. Esta chave abre esse arquivo em outro computador, ou
-        depois de reinstalar o Windows: sem ela, uma cópia do arquivo não serve para nada.
+        {texts.text}
       </Text>
-      <p aria-label="Chave de recuperação" className={classes.recoveryKey()} data-testid={ids.recoveryKey}>
+      <p aria-label={texts.key} className={classes.recoveryKey()} data-testid={ids.recoveryKey}>
         {recoveryKey}
       </p>
       <Text size="sm" tone="muted">
-        Anote-a num papel ou num gerenciador de senhas, longe deste computador. Ela aparece até você dizer que guardou.
+        {texts.keep}
       </Text>
     </Dialog>
   )
@@ -293,6 +273,9 @@ type ServerSettingsDialogProps = {
 function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKeyChanged }: ServerSettingsDialogProps) {
   const server = desktopBridge()!.server!
   const { classes, ids } = serverSettingsRecipe()
+  const { locale } = useLocale()
+  const texts = DESKTOP_TEXTS[locale].server
+  const common = COMMON_TEXTS[locale]
   const databaseHeading = useId()
   const importHeading = useId()
   const portHeading = useId()
@@ -376,7 +359,7 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
       return
     }
     setAddress('')
-    setSwitchNote({ tone: 'done', text: to === 'postgresql' ? 'Pronto: o servidor ligou no PostgreSQL.' : 'Pronto: o servidor voltou ao SQLite.' })
+    setSwitchNote({ tone: 'done', text: to === 'postgresql' ? texts.done.postgresql : texts.done.sqlite })
     await onChanged()
   }
 
@@ -392,7 +375,7 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
       return
     }
     setTypedPort(undefined)
-    setPortNote({ tone: 'done', text: `Pronto: o servidor ligou na porta ${port}.` })
+    setPortNote({ tone: 'done', text: texts.done.port(port) })
     await onChanged()
   }
 
@@ -406,7 +389,7 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
       setAccessNote({ tone: 'danger', text: outcome.message })
       return
     }
-    setAccessNote({ tone: 'done', text: on ? 'Pronto: o celular já pode acessar o servidor.' : 'Pronto: o servidor responde só a este computador.' })
+    setAccessNote({ tone: 'done', text: on ? texts.done.phoneOn : texts.done.phoneOff })
     await onChanged()
   }
 
@@ -421,7 +404,7 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
       setKeyNote({ tone: 'danger', text: outcome.message })
       return
     }
-    setKeyNote({ tone: 'done', text: 'Pronto: o banco tem uma chave nova. Guarde a cópia de recuperação dela.' })
+    setKeyNote({ tone: 'done', text: texts.done.key })
     onKeyChanged()
   }
 
@@ -467,7 +450,7 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
       return
     }
     setResult(outcome)
-    setImportNote({ tone: 'done', text: 'Pronto: os dados do servidor antigo estão neste servidor.' })
+    setImportNote({ tone: 'done', text: texts.done.imported })
     await onChanged()
   }
 
@@ -483,28 +466,27 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
       <Dialog
         open={open}
         onClose={() => {}}
-        title="Banco de dados do servidor"
+        title={texts.setupTitle}
         actions={
           <>
             <Button variant="secondary" size="sm" disabled={switching} onClick={() => void switchDatabase('sqlite')}>
-              Usar SQLite
+              {texts.useSqlite}
             </Button>
             <Button size="sm" loading={switching} disabled={!address.trim()} onClick={() => void switchDatabase('postgresql')}>
-              Usar PostgreSQL
+              {texts.usePostgresql}
             </Button>
           </>
         }
       >
         <Text size="sm" tone="muted">
-          Na instalação você escolheu o PostgreSQL. Informe o endereço dele para o servidor ligar, ou use o SQLite, um
-          arquivo neste computador.
+          {texts.needsAddress}
         </Text>
         <TextField
-          label="Endereço do PostgreSQL"
+          label={texts.postgresql}
           kind="password"
           value={address}
           onValueChange={setAddress}
-          helper="postgresql://usuário:senha@servidor:5432/banco"
+          helper={texts.addressHint}
         />
         {note(switchNote)}
       </Dialog>
@@ -515,79 +497,78 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
     <Dialog
       open={open}
       onClose={onClose}
-      title="Servidor e banco de dados"
+      title={DASHBOARD_TEXTS[locale].serverSettings}
       closable
       actions={
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Fechar
+          {common.close}
         </Button>
       }
     >
       {settings?.kind === 'elsewhere' && (
         <Text size="sm" tone="muted">
-          Este app usa o servidor em {settings.address}. O banco de dados dele se configura no computador onde ele roda.
+          {texts.elsewhere(settings.address)}
         </Text>
       )}
       {settings?.kind === 'portTaken' && (
         <Text size="sm" tone="muted">
-          Outro servidor já respondia na porta {settings.port} quando o app abriu, talvez o de um clone antigo, e o app
-          usa ele. Para usar o servidor do app, desligue esse servidor e abra o app de novo.
+          {texts.portTaken(settings.port)}
         </Text>
       )}
       {own && (
         <>
           <dl className={classes.facts()} data-testid={ids.facts}>
             <dt className={classes.term()} data-testid={ids.term}>
-              Banco em uso
+              {texts.databaseInUse}
             </dt>
             <dd className={classes.value()} data-testid={ids.value}>
-              {own.database === 'sqlite' ? `SQLite criptografado, em ${own.location}` : `PostgreSQL, em ${own.location}`}
+              {own.database === 'sqlite' ? texts.sqliteAt(own.location) : texts.postgresqlAt(own.location)}
             </dd>
             <dt className={classes.term()} data-testid={ids.term}>
-              Fotos
+              {texts.photos}
             </dt>
             <dd className={classes.value()} data-testid={ids.value}>
               {own.photos}
             </dd>
             <dt className={classes.term()} data-testid={ids.term}>
-              Porta
+              {texts.port}
             </dt>
             <dd className={classes.value()} data-testid={ids.value}>
               {own.port}
             </dd>
             <dt className={classes.term()} data-testid={ids.term}>
-              Endereço para o celular
+              {texts.phone.address}
             </dt>
             <dd className={classes.value()} data-testid={ids.value}>
-              {own.phoneAccess ? phoneLine(own) : 'Desligado: só este computador acessa o servidor'}
+              {own.phoneAccess ? phoneLine(own, locale) : texts.phone.off}
             </dd>
           </dl>
           <section aria-labelledby={databaseHeading} className={classes.section()} data-testid={ids.section}>
             <Heading id={databaseHeading} level={4}>
-              Banco de dados
+              {texts.database}
             </Heading>
-            <Segmented label="Banco de dados" options={DATABASES} value={database} onValueChange={setPicked} />
+            <Segmented label={texts.database} options={DATABASES} value={database} onValueChange={setPicked} />
             {database === 'postgresql' && (
               <TextField
-                label="Endereço do PostgreSQL"
+                label={texts.postgresql}
                 kind="password"
                 value={address}
                 onValueChange={setAddress}
-                helper="postgresql://usuário:senha@servidor:5432/banco"
+                helper={texts.addressHint}
               />
             )}
             <Text size="sm" tone="muted">
-              Trocar de banco não leva os dados junto: para trazê-los, use Importar abaixo.
+              {texts.databaseHint}
             </Text>
             <div className={classes.buttons()} data-testid={ids.buttons}>
               {database === 'postgresql' && (
                 <Button size="sm" loading={switching} disabled={!address.trim()} onClick={() => void switchDatabase('postgresql')}>
-                  Usar PostgreSQL
+                  {texts.usePostgresql}
                 </Button>
               )}
               {database === 'sqlite' && own.database === 'postgresql' && (
                 <Button size="sm" loading={switching} onClick={() => void switchDatabase('sqlite')}>
-                  Voltar ao SQLite
+                  {texts.backToSqlite}
                 </Button>
               )}
             </div>
@@ -596,22 +577,21 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
           {own.database === 'sqlite' && (
             <section aria-labelledby={keyHeading} className={classes.section()} data-testid={ids.section}>
               <Heading id={keyHeading} level={4}>
-                Chave do banco
+                {texts.key.title}
               </Heading>
               <Text size="sm" tone="muted">
-                O arquivo é criptografado com uma chave. Troque-a se a cópia de recuperação dela vazou, ou de tempos em
-                tempos.
+                {texts.key.hint}
               </Text>
               {confirmingKey && (
-                <ul aria-label="O que muda com a chave nova" className={classes.results()} data-testid={ids.results}>
+                <ul aria-label={texts.key.changes} className={classes.results()} data-testid={ids.results}>
                   <li className={classes.result()} data-testid={ids.result}>
-                    O arquivo é criptografado de novo, com uma chave nova.
+                    {texts.key.newKey}
                   </li>
                   <li className={classes.result()} data-testid={ids.result}>
-                    A cópia de recuperação antiga deixa de abrir o arquivo: guarde a nova, que aparece em seguida.
+                    {texts.key.oldCopy}
                   </li>
                   <li className={classes.result()} data-testid={ids.result}>
-                    As cópias em data\backups, feitas antes das atualizações, continuam abrindo só com a cópia antiga.
+                    {texts.key.oldBackups}
                   </li>
                 </ul>
               )}
@@ -619,15 +599,15 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
                 {confirmingKey ? (
                   <>
                     <Button size="sm" loading={changingKey} onClick={() => void changeKey()}>
-                      Trocar a chave mesmo assim
+                      {texts.changeKeyAnyway}
                     </Button>
                     <Button variant="secondary" size="sm" disabled={changingKey} onClick={() => setConfirmingKey(false)}>
-                      Cancelar
+                      {common.cancel}
                     </Button>
                   </>
                 ) : (
                   <Button variant="secondary" size="sm" onClick={() => setConfirmingKey(true)}>
-                    Trocar a chave
+                    {texts.changeKey}
                   </Button>
                 )}
               </div>
@@ -636,22 +616,20 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
           )}
           <section aria-labelledby={phoneHeading} className={classes.section()} data-testid={ids.section}>
             <Heading id={phoneHeading} level={4}>
-              Acesso pelo celular
+              {texts.phone.title}
             </Heading>
             <Switch checked={own.phoneAccess} onCheckedChange={(on) => void switchPhoneAccess(on)} disabled={changingAccess}>
-              Deixar o celular acessar o servidor
+              {texts.phone.allow}
             </Switch>
             <Text size="sm" tone="muted">
               {own.phoneAccess
-                ? `Na rede de casa, o celular acessa ${phoneLine(own)}. Se o Windows perguntar sobre o firewall, marque só Redes privadas.`
-                : 'Desligado, o servidor só responde a este computador, e nada na rede o alcança. Ligue quando for usar o app do celular.'}
+                ? texts.phone.onHint(phoneLine(own, locale))
+                : texts.phone.offHint}
             </Text>
             {own.phoneAccess && own.pairing && (
               <>
                 <Text size="sm" tone="muted">
-                  No celular, aponte a câmera para o QR code, ou toque em Digitar manualmente e digite o endereço e os
-                  códigos. Autorize o celular quando este computador perguntar, e ele entra na conta aberta aqui. Se o
-                  endereço deste computador mudar, conecte o celular de novo.
+                  {texts.phone.pairingHint}
                 </Text>
                 <PairingCode pairing={own.pairing} />
               </>
@@ -666,11 +644,11 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
           </section>
           <section aria-labelledby={portHeading} className={classes.section()} data-testid={ids.section}>
             <Heading id={portHeading} level={4}>
-              Porta do servidor
+              {texts.portTitle}
             </Heading>
             <TextField
               ref={portField}
-              label="Porta"
+              label={texts.port}
               kind="number"
               value={port}
               onValueChange={(typed) => {
@@ -678,33 +656,31 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
                 setConfirming(false)
                 setPortNote(undefined)
               }}
-              helper="De 1024 a 65535. Troque se outro programa usa a porta do servidor."
+              helper={texts.portHint}
             />
             {confirming && own.phoneAccess && own.phoneAddress && (
               <Text size="sm" tone="muted">
-                O endereço do celular muda para https://{own.phoneAddress}:{port}. Depois de trocar, conecte o celular
-                de novo pelo código que aparece aqui.
+                {texts.portMoves(`https://${own.phoneAddress}:${port}`)}
               </Text>
             )}
             {confirming && own.phoneAccess && !own.phoneAddress && (
               <Text size="sm" tone="muted">
-                O endereço do celular muda para a porta {port}. Depois de trocar, conecte o celular de novo pelo código
-                que aparece aqui.
+                {texts.portMovesTo(port)}
               </Text>
             )}
             <div className={classes.buttons()} data-testid={ids.buttons}>
               {confirming ? (
                 <>
                   <Button size="sm" loading={movingPort} onClick={() => void movePort()}>
-                    Trocar mesmo assim
+                    {texts.changePortAnyway}
                   </Button>
                   <Button variant="secondary" size="sm" disabled={movingPort} onClick={() => setConfirming(false)}>
-                    Cancelar
+                    {common.cancel}
                   </Button>
                 </>
               ) : (
                 <Button size="sm" disabled={!port || Number(port) === own.port} onClick={() => setConfirming(true)}>
-                  Trocar a porta
+                  {texts.changePort}
                 </Button>
               )}
             </div>
@@ -712,15 +688,14 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
           </section>
           <section ref={importSection} aria-labelledby={importHeading} className={classes.section()} data-testid={ids.section}>
             <Heading id={importHeading} level={4}>
-              Importar dados de outro servidor
+              {texts.importTitle}
             </Heading>
             <Text size="sm" tone="muted">
-              Traz os dados e as fotos de um servidor antigo, como o de um clone, para o banco em uso, que precisa estar
-              vazio: importe antes de criar contas. O servidor fica desligado durante a cópia.
+              {texts.importHint}
             </Text>
             <Segmented
-              label="Servidor antigo"
-              options={SOURCES}
+              label={texts.oldServer}
+              options={SOURCES[locale]}
               value={sourceKind}
               onValueChange={(kind) => {
                 setSourceKind(kind)
@@ -731,35 +706,35 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
             {sourceKind === 'sqlite' && (
               <div className={classes.pick()} data-testid={ids.pick}>
                 <Button variant="secondary" size="sm" onClick={() => void chooseFile()}>
-                  {sourceFile ? 'Escolher outro arquivo' : 'Escolher o arquivo'}
+                  {sourceFile ? texts.chooseOtherFile : texts.chooseFile}
                 </Button>
                 <Text size="sm" tone="muted">
-                  {sourceFile ?? 'O apc.db em apps\\api\\data do clone'}
+                  {sourceFile ?? texts.cloneFile}
                 </Text>
               </div>
             )}
             {sourceKind === 'sqlite' && sourceFile && (
               <TextField
-                label="Chave de recuperação do arquivo"
+                label={texts.sourceKey}
                 kind="password"
                 value={sourceKey}
                 onValueChange={(key) => {
                   setSourceKey(key)
                   setBehind(false)
                 }}
-                helper="Só para o arquivo criptografado de outra instalação do app; o de um clone não tem"
+                helper={texts.sourceKeyHint}
               />
             )}
             {sourceKind === 'postgresql' && (
               <TextField
-                label="Endereço do PostgreSQL antigo"
+                label={texts.oldPostgresql}
                 kind="password"
                 value={sourceUrl}
                 onValueChange={(url) => {
                   setSourceUrl(url)
                   setBehind(false)
                 }}
-                helper="postgresql://usuário:senha@servidor:5432/banco"
+                helper={texts.addressHint}
               />
             )}
             <div className={classes.pick()} data-testid={ids.pick}>
@@ -768,33 +743,33 @@ function ServerSettingsDialog({ open, focus, settings, onClose, onChanged, onKey
                 size="sm"
                 onClick={async () => setPhotosFrom((await server.chooseFolder(photosFrom)) ?? photosFrom)}
               >
-                Escolher a pasta das fotos
+                {texts.choosePhotos}
               </Button>
               <Text size="sm" tone="muted">
-                {photosFrom ?? 'A pasta apps\\api\\uploads\\photos do clone'}
+                {photosFrom ?? texts.clonePhotos}
               </Text>
             </div>
             <div className={classes.buttons()} data-testid={ids.buttons}>
               {behind ? (
                 <Button size="sm" loading={importing} onClick={() => void runImport(true)}>
-                  Atualizar o banco antigo e importar
+                  {texts.updateAndImport}
                 </Button>
               ) : (
                 <Button size="sm" loading={importing} disabled={!source} onClick={() => void runImport(false)}>
-                  Importar
+                  {texts.import}
                 </Button>
               )}
             </div>
             {note(importNote)}
             {result && (
-              <ul aria-label="Linhas copiadas" className={classes.results()} data-testid={ids.results}>
+              <ul aria-label={texts.copied} className={classes.results()} data-testid={ids.results}>
                 {Object.entries(result.tables).map(([table, count]) => (
                   <li key={table} className={classes.result()} data-testid={ids.result}>
-                    {TABLE_LABELS[table] ?? table}: {count.target} de {count.source}
+                    {texts.tableCount(texts.tables[table] ?? table, count.target, count.source)}
                   </li>
                 ))}
                 <li className={classes.result()} data-testid={ids.result}>
-                  {photosLine(result.photos)}
+                  {texts.photoFiles(result.photos.copied, result.photos.missing)}
                 </li>
               </ul>
             )}

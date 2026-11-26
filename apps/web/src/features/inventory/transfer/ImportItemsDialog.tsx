@@ -20,7 +20,10 @@ import { useToast } from '../../../components/Toast'
 import { Heading, Text } from '../../../components/Typography'
 import { usePhone } from '../../../components/usePhone.ts'
 import { importItemsDialog } from './ImportItemsDialog.styles.ts'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
 import { useLocale } from '../../../app/useLocale.ts'
+import { WEB_TEXTS } from '../../../app/webTexts.ts'
 
 // The "Importar Peças" dialog of the Inventory tab: it explains the file, downloads the template and reads the file
 // chosen, UTF-8, comma or semicolon separated. The preview counts the items ready and the rows with errors, lists the
@@ -51,6 +54,8 @@ type ImportItemsDialogProps = {
 
 export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportItemsDialogProps) {
   const { locale } = useLocale()
+  const texts = INVENTORY_SCREEN_TEXTS[locale]
+  const common = COMMON_TEXTS[locale]
   const toast = useToast()
   const { classes, ids } = importItemsDialog()
   const picker = useRef<HTMLInputElement>(null)
@@ -92,7 +97,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
     const result = await importItems(API_BASE, rows)
     setImporting(false)
     if (!result) {
-      toast.error('Não foi possível importar os itens. Tente de novo.')
+      toast.error(texts.import.failed)
       return
     }
     toast.success(importedSummary(result, locale))
@@ -103,37 +108,34 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
     <Dialog
       open={open}
       onClose={onClose}
-      title="Importar Peças"
+      title={texts.importItems}
       closable={phone}
       actions={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>
-            Cancelar
+            {common.cancel}
           </Button>
           <Button size="sm" loading={importing} disabled={valid === 0} onClick={submit}>
-            {valid === 1 ? 'Importar 1 item' : `Importar ${valid} itens`}
+            {texts.import.submit(valid)}
           </Button>
         </>
       }
     >
       <Text size="sm" tone="muted">
-        Use o modelo: uma linha por marca da peça, separada por vírgula ou ponto e vírgula, em UTF-8; as linhas com o mesmo
-        número na coluna “item” são as marcas de um item. Os veículos vão em “vehicles”, como “Volkswagen / Gol | Fiat”, e os
-        códigos originais em “original_codes”, separados por “|”. Com vírgula, um valor como “189,90” vai entre aspas. Um
-        código que já está no estoque atualiza o item.
+        {texts.import.hint}
       </Text>
       <div className={classes.buttons()} data-testid={ids.buttons}>
         <Button variant="secondary" size="sm" onClick={downloadTemplate}>
-          Baixar modelo
+          {WEB_TEXTS[locale].import.template}
         </Button>
         <Button size="sm" onClick={() => picker.current?.click()}>
-          {read ? 'Escolher outro arquivo' : 'Escolher arquivo'}
+          {read ? texts.import.chooseOther : texts.import.chooseFile}
         </Button>
         <input
           ref={picker}
           type="file"
           accept=".csv,text/csv"
-          aria-label="Arquivo CSV"
+          aria-label={texts.import.file}
           className={classes.picker()}
           data-testid={ids.picker}
           onChange={(event) => {
@@ -148,13 +150,13 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
         </p>
       )}
       {read && 'rows' in read.result && (
-        <section aria-label="Prévia da importação" className={classes.preview()} data-testid={ids.preview}>
+        <section aria-label={texts.import.preview} className={classes.preview()} data-testid={ids.preview}>
           <Text size="sm">
             {read.name} · {rowsSummary(rows, locale)}
           </Text>
           {creates.length > 0 && (
             <div className={classes.creates()} data-testid={ids.creates}>
-              <Heading level={4}>Serão criados</Heading>
+              <Heading level={4}>{texts.import.created}</Heading>
               {creates.map((line) => (
                 <Text key={line} size="sm" tone="muted">
                   {line}
@@ -162,7 +164,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
               ))}
             </div>
           )}
-          <ul aria-label="Linhas do arquivo" className={classes.rows()} data-testid={ids.rows}>
+          <ul aria-label={WEB_TEXTS[locale].import.rows} className={classes.rows()} data-testid={ids.rows}>
             {rows.map(({ line, item, errors }) => (
               <li
                 key={line}
@@ -172,7 +174,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
               >
                 <span className={classes.head()} data-testid={ids.head}>
                   <span className={classes.line()} data-testid={ids.line}>
-                    Linha {line}
+                    {WEB_TEXTS[locale].import.row(line)}
                   </span>
                   <span className={classes.code()} data-testid={ids.code}>
                     {item.brands[0].code || '—'}

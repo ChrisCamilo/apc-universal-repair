@@ -9,6 +9,7 @@ import '../../../app/fonts.ts'
 import '../../../index.css'
 import { themeCss } from '../../../app/theme.ts'
 import { PhotoPickerDialog } from './PhotoPickerDialog.tsx'
+import { LocaleContext } from '../../../app/useLocale.ts'
 
 const root = document.documentElement
 /** A photo the API saved, by its id. */
@@ -129,3 +130,15 @@ for (const style of STYLES) {
     })
   }
 }
+
+// Opens the photo picker in English, and checks its search, its hint and its buttons read in English.
+test('Web: the photo picker reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <PhotoPickerDialog open onClose={() => {}} items={ITEMS} room={3} onPick={() => {}} />
+    </LocaleContext.Provider>,
+  )
+  await expect.element(screen.getByRole('searchbox', { name: 'Part code' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Use photos' })).toBeDisabled()
+})

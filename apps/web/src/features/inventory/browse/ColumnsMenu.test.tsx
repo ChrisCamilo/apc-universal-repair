@@ -8,6 +8,7 @@ import '../../../index.css'
 import { themeCss } from '../../../app/theme.ts'
 import { ColumnsMenu } from './ColumnsMenu.tsx'
 import { useHiddenColumns } from './useHiddenColumns.ts'
+import { LocaleContext } from '../../../app/useLocale.ts'
 
 const root = document.documentElement
 /** The menu's columns, in the table's order. */
@@ -109,6 +110,18 @@ for (const style of STYLES) {
     })
   }
 }
+
+// Opens the columns menu in English, and checks its trigger, its columns and the restore read in English.
+test('Web: the columns menu reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <Sample />
+    </LocaleContext.Provider>,
+  )
+  await screen.getByRole('button', { name: 'Table columns' }).click()
+  await expect.element(screen.getByRole('menuitemcheckbox', { name: 'Unit price' })).toBeVisible()
+  await expect.element(screen.getByRole('menuitem', { name: 'Restore default' })).toBeVisible()
+})
 
 /** The menu with the columns the device hides, kept as the Inventory tab keeps them, and written out under it. */
 function Sample() {

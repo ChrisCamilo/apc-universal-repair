@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-react'
 import '../index.css'
 import { themeCss } from '../app/theme.ts'
 import { DemoNotice, REPOSITORY_URL } from './DemoNotice.tsx'
+import { LocaleContext } from '../app/useLocale.ts'
 
 const root = document.documentElement
 
@@ -49,4 +50,15 @@ test('Web: the demo notice keeps its height in --top-inset as it wraps', async (
   screen.unmount()
   expect(topInset()).toBe('')
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
+})
+
+// Renders the demo's notice in English, and checks what it says and its link read in English.
+test('Web: the demo notice reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <DemoNotice />
+    </LocaleContext.Provider>,
+  )
+  await expect.element(screen.getByRole('note')).toMatchTextContent(/^Demo mode: the data is sample data/)
+  await expect.element(screen.getByRole('link', { name: 'See on GitHub' })).toBeVisible()
 })

@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { clearedFilters, offeredValues, selectionSummary, toggleValue, type FilterValues } from '@apc/ui-spec/filters'
 import { checkIcon, chevronIcon, ICON_SIZES, sortIcon } from '@apc/tokens/icons'
 import { sortFromValue, sortValue, type Sort } from '@apc/domain/list-query'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { BackButton } from '../BackButton/BackButton.tsx'
 import { BottomSheet } from '../BottomSheet/BottomSheet.tsx'
 import { Button } from '../Button/Button.tsx'
@@ -55,6 +57,7 @@ type View = { list: 'rows' } | { list: 'sort' } | { list: 'filter'; key: string 
 
 export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOptions, count, onApply }: FilterSheetProps) {
   const { classes, ids } = filterSheet()
+  const texts = useMessages(COMPONENT_TEXTS).filterSheet
   const [draft, setDraft] = useState(values)
   const [sorted, setSorted] = useState(sortValue(sort))
   const [view, setView] = useState<View>({ list: 'rows' })
@@ -107,7 +110,7 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
       open={open}
       onClose={onClose}
       onBack={view.list === 'rows' ? undefined : back}
-      title="Filtrar e ordenar"
+      title={texts.title}
       action={
         <button
           type="button"
@@ -118,19 +121,19 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
             setSorted('')
           }}
         >
-          Limpar
+          {texts.clear}
         </button>
       }
       footer={
         <Button className={classes.apply()} onClick={() => onApply(draft, sortFromValue(sorted))}>
-          {`Ver ${shown} ${shown === 1 ? 'item' : 'itens'}`}
+          {texts.show(shown)}
         </Button>
       }
     >
       <div ref={content} data-tour="filter-panel" className={classes.base()} data-testid={ids.base}>
         {view.list === 'sort' && (
           <OptionList
-            label="Ordenar por"
+            label={texts.sortBy}
             onBack={back}
             options={sortOptions}
             selected={(value) => value === sorted}
@@ -157,7 +160,7 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
             <SheetRow
               id="sort"
               icon
-              label="Ordenar por"
+              label={texts.sortBy}
               value={sortLabel}
               chosen={sorted !== ''}
               onClick={() => openList({ list: 'sort' }, 'sort')}
@@ -205,10 +208,11 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
 }
 
 export function SortSheet({ open, onClose, sort, options, onSortChange }: SortSheetProps) {
+  const texts = useMessages(COMPONENT_TEXTS).filterSheet
   return (
-    <BottomSheet open={open} onClose={onClose} title="Ordenar">
+    <BottomSheet open={open} onClose={onClose} title={texts.sort}>
       <OptionList
-        label="Ordenar"
+        label={texts.sort}
         options={options}
         selected={(value) => value === sortValue(sort)}
         onPick={(value) => {
@@ -274,11 +278,12 @@ type OptionListProps = {
 function OptionList({ label, onBack, options, multiple = false, selected, onPick }: OptionListProps) {
   const titleId = useId()
   const { classes, ids } = filterSheet()
+  const texts = useMessages(COMPONENT_TEXTS).filterSheet
   return (
     <>
       {onBack && (
         <div className={classes.listHeader()} data-testid={ids.listHeader}>
-          <BackButton label="Voltar aos filtros" onClick={onBack} />
+          <BackButton label={texts.back} onClick={onBack} />
           <span id={titleId} className={classes.listTitle()} data-testid={ids.listTitle}>
             {label}
           </span>

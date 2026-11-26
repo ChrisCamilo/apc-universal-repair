@@ -10,6 +10,8 @@ import {
   type TourRect,
   type TourStep,
 } from '@apc/ui-spec/tour'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { Button } from '../Button/Button.tsx'
 import { Panel } from '../Panel/Panel.tsx'
 import { cardBox, spotBox, tour } from './Tour.styles.ts'
@@ -84,6 +86,7 @@ export function Tour({ open, ...rest }: TourProps) {
 }
 
 function TourRun({ onClose, steps, parts = [], bottomInset = 0 }: Omit<TourProps, 'open'>) {
+  const texts = useMessages(COMPONENT_TEXTS).tour
   const titleId = useId()
   const textId = useId()
   const [index, setIndex] = useState(0)
@@ -91,7 +94,7 @@ function TourRun({ onClose, steps, parts = [], bottomInset = 0 }: Omit<TourProps
   const [layout, setLayout] = useState<Layout>(() => measure(steps[0], 0, bottomInset))
   const step = steps[index]
   const last = index === steps.length - 1
-  const header = stepHeader(steps, index, parts)
+  const header = stepHeader(steps, index, parts, texts)
 
   /** Moves on to the next step, or finishes after the last one. */
   const next = () => {
@@ -198,18 +201,18 @@ function TourRun({ onClose, steps, parts = [], bottomInset = 0 }: Omit<TourProps
           <div className={classes.actions()} data-testid={ids.actions}>
             {!last && (
               <Button variant="link" size="sm" onClick={onClose}>
-                Pular tutorial
+                {texts.skip}
               </Button>
             )}
             <span className={classes.buttons()} data-testid={ids.buttons}>
               {step.auto && (
                 <Button variant="secondary" size="sm" onClick={step.auto}>
-                  Fazer por mim
+                  {texts.doItForMe}
                 </Button>
               )}
               {!step.done && (
                 <Button size="sm" onClick={next}>
-                  {last ? 'Concluir' : 'Próximo'}
+                  {last ? texts.finish : texts.next}
                 </Button>
               )}
             </span>

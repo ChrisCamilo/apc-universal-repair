@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { useMessages } from '../app/useLocale.ts'
+import { WEB_TEXTS } from '../app/webTexts.ts'
 import { demoNotice } from './DemoNotice.styles.ts'
 
 // The notice above the web app's demo: what the demo is, and a link to the repository. It sits in the page's flow and
@@ -10,6 +12,7 @@ export const REPOSITORY_URL = 'https://github.com/ChrisCamilo/apc-universal-repa
 
 export function DemoNotice() {
   const { classes, ids } = demoNotice()
+  const texts = useMessages(WEB_TEXTS).demo
   const bar = useRef<HTMLDivElement>(null)
 
   // Keep the notice's height for the screens under it, as it wraps or unwraps.
@@ -26,10 +29,10 @@ export function DemoNotice() {
   return (
     <div ref={bar} role="note" className={classes.base()} data-testid={ids.base}>
       <p className={classes.text()} data-testid={ids.text}>
-        Modo demonstração: os dados são de exemplo, ficam só neste navegador e voltam ao início ao recarregar.
+        {texts.notice}
       </p>
       <a className={classes.link()} data-testid={ids.link} href={REPOSITORY_URL} target="_blank" rel="noreferrer">
-        Ver no GitHub
+        {texts.github}
       </a>
     </div>
   )

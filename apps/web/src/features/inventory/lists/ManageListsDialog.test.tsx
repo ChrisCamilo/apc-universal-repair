@@ -14,6 +14,7 @@ import { themeCss } from '../../../app/theme.ts'
 import { ManageListsDialog } from './ManageListsDialog.tsx'
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists.ts'
 import { testItem, type FlatItem } from '@apc/domain/test-items'
+import { LocaleContext } from '../../../app/useLocale.ts'
 
 const ITEMS = [
   item({ code: 'W 712/95', name: 'Filtro de óleo', category: 'Motor', vehicleBrand: 'Volkswagen', vehicleModel: 'Gol' }),
@@ -253,6 +254,20 @@ test('Web: Manage lists fits the smallest phone', async () => {
   const screen = await render(<Sample />)
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
   expect(screen.getByRole('button', { name: 'Excluir Motor' }).element().getBoundingClientRect().right).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+})
+
+// Opens Gerenciar listas in English, and checks its title, sections and row buttons read in English.
+test('Web: Gerenciar listas reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <Sample />
+    </LocaleContext.Provider>,
+  )
+  const dialog = screen.getByRole('dialog', { name: 'Manage lists' })
+  await expect.element(dialog.getByRole('heading', { name: 'Categories' })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: /^Rename / }).first()).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: /^Delete / }).first()).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Close' }).last()).toBeVisible()
 })
 
 function Sample({

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { ICON_SIZES, mechanicIcon } from '@apc/tokens/icons'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { Icon } from '../Icon/Icon.tsx'
 import { Panel } from '../Panel/Panel.tsx'
 import { Heading, Text } from '../Typography/Typography.tsx'
@@ -17,6 +19,7 @@ type WorkInProgressProps = {
 
 export function WorkInProgress({ label, children }: WorkInProgressProps) {
   const { classes, ids } = workInProgress()
+  const texts = useMessages(COMPONENT_TEXTS).workInProgress
   return (
     <div className={classes.base()} data-testid={ids.base}>
       <div inert className={classes.content()} data-testid={ids.content}>
@@ -27,9 +30,9 @@ export function WorkInProgress({ label, children }: WorkInProgressProps) {
           <span aria-hidden="true" className={classes.illustration()} data-testid={ids.illustration}>
             <Icon icon={mechanicIcon} size={ICON_SIZES.viewer} />
           </span>
-          <Heading level={3}>A aba {label} ainda não está pronta</Heading>
+          <Heading level={3}>{texts.title(label)}</Heading>
           <Text size="sm" tone="muted">
-            Estamos trabalhando nela. Volte em breve.
+            {texts.text}
           </Text>
         </Panel>
       </div>

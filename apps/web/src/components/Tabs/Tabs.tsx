@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { coneIcon, gripIcon, ICON_SIZES, type IconShape } from '@apc/tokens/icons'
 import { dropTab, moveTab, type DropSide } from '@apc/ui-spec/tabs'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { Icon } from '../Icon/Icon.tsx'
 import { tabPanel, tabs as tabsRecipe } from './Tabs.styles.ts'
 
@@ -82,6 +84,7 @@ function tabElementId(id: string): string {
 }
 
 export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorderable = false, onReorder, variant = 'line' }: TabsProps<T>) {
+  const texts = useMessages(COMPONENT_TEXTS).tabs
   const buttons = useRef(new Map<T, HTMLButtonElement>())
   // The tab moved with the keyboard, to focus again once it is drawn in its new place.
   const moved = useRef<T | null>(null)
@@ -104,7 +107,7 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
   const reorder = (next: T[], id: T) => {
     onReorder?.(next)
     const tab = tabs.find((t) => t.id === id)!
-    setAnnouncement(`Aba ${tab.label} na posição ${next.indexOf(id) + 1} de ${next.length}`)
+    setAnnouncement(texts.moved(tab.label, next.indexOf(id) + 1, next.length))
   }
 
   /** Marks the side of the tab under the pointer where the dragged tab will land. */
@@ -185,7 +188,7 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
               role="tab"
               id={tabElementId(tab.id)}
               aria-selected={isSelected}
-              aria-label={tab.wip ? `${tab.label}, em construção` : undefined}
+              aria-label={tab.wip ? texts.wip(tab.label) : undefined}
               aria-controls={panelElementId(tab.id)}
               tabIndex={isSelected ? 0 : -1}
               aria-keyshortcuts={reorderable ? 'Alt+ArrowLeft Alt+ArrowRight' : undefined}

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { useLocale } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
 import { ErrorState } from '../../components/EmptyState'
 import { Spinner } from '../../components/Spinner'
@@ -6,6 +8,7 @@ import { TextField } from '../../components/TextField'
 import { desktopBridge, type ServerFailure as Failure } from './desktopBridge.ts'
 import { serverFailure } from './ServerFailure.styles.ts'
 import { useOpenServerSettings } from './serverSettingsContext.ts'
+import { DESKTOP_TEXTS } from './desktopTexts.ts'
 
 // The screen the desktop app shows when the server it runs isn't on (see apps/desktop/src/server/serverFailure.ts),
 // in place of a login that would only fail: "O servidor não ligou", why, the log to look at, and "Tentar de novo",
@@ -35,6 +38,8 @@ export function ServerFailure({ reload = () => window.location.assign('/') }: Se
   const [recoveryKey, setRecoveryKey] = useState('')
   const [refused, setRefused] = useState<string>()
   const { classes, ids } = serverFailure()
+  const { locale } = useLocale()
+  const texts = DESKTOP_TEXTS[locale].failure
 
   // Ask why the server isn't on, and hear when it stops being on later.
   useEffect(() => {
@@ -82,38 +87,38 @@ export function ServerFailure({ reload = () => window.location.assign('/') }: Se
   return (
     <div className={classes.base()} data-testid={ids.base}>
       {retrying ? (
-        <Spinner label="Ligando o servidor" />
+        <Spinner label={texts.starting} />
       ) : (
         <div className={classes.content()} data-testid={ids.content}>
           <ErrorState
-            title="O servidor não ligou"
-            message={failure.kind === 'portInUse' || keyFailure ? failure.reason : `${failure.reason} O registro do servidor está em ${failure.log}.`}
-            action={{ label: 'Tentar de novo', onClick: () => void retry() }}
+            title={texts.title}
+            message={failure.kind === 'portInUse' || keyFailure ? failure.reason : texts.log(failure.reason, failure.log)}
+            action={{ label: COMMON_TEXTS[locale].retry, onClick: () => void retry() }}
           />
           {failure.kind === 'portInUse' && (
             <div className={classes.more()} data-testid={ids.more}>
               <Button variant="secondary" size="sm" onClick={() => openServerSettings('port')}>
-                Usar outra porta
+                {texts.otherPort}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => window.open(PORT_GUIDE_URL, '_blank')}>
-                Como liberar a porta
+                {texts.portGuide}
               </Button>
             </div>
           )}
           {keyFailure && (
             <div className={classes.recovery()} data-testid={ids.recovery}>
               <TextField
-                label="Chave de recuperação"
+                label={texts.key}
                 kind="password"
                 value={recoveryKey}
                 onValueChange={(typed) => {
                   setRecoveryKey(typed)
                   setRefused(undefined)
                 }}
-                helper="64 letras e números, em grupos de 8, como o app mostrou na primeira vez"
+                helper={texts.keyHint}
               />
               <Button size="sm" disabled={!recoveryKey.trim()} onClick={() => void bringKeyBack()}>
-                Usar a chave de recuperação
+                {texts.useKey}
               </Button>
               {refused && (
                 <p role="alert" className={classes.note()} data-testid={ids.note}>

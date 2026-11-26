@@ -3,7 +3,8 @@ import { ICON_SIZES, imageIcon, trashIcon } from '@apc/tokens/icons'
 import { formatPrice, NOT_APPLICABLE, QUANTITY_UNIT, type Item } from '@apc/domain/items'
 import { brandPlaceText, ITEM_NOTE_LABELS, originalCodesText, positionSideText, vehiclesText } from '@apc/domain/item-form'
 import { ITEM_PHOTO_LIMIT } from '@apc/domain/photos'
-import { useLocale } from '../../../app/useLocale.ts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
+import { useLocale, useMessages } from '../../../app/useLocale.ts'
 import { Icon } from '../../../components/Icon'
 import { ImageUpload, type UploadPhoto } from '../../../components/ImageUpload'
 import { Heading } from '../../../components/Typography'
@@ -29,17 +30,18 @@ type ItemDetailsProps = {
 export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetailsProps) {
   const { classes, ids } = itemDetails()
   const { locale } = useLocale()
+  const texts = INVENTORY_SCREEN_TEXTS[locale]
   const all = photos.flat()
   const noCodes = item.originalCodes.length === 0
   const noPlace = item.position === NOT_APPLICABLE && item.side === NOT_APPLICABLE
   return (
     <div className={classes.base()} data-testid={ids.base}>
       {all.length > 0 ? (
-        <ImageUpload label="Fotos do item" photos={all} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT * item.brands.length} readOnly />
+        <ImageUpload label={texts.form.photos} photos={all} onPhotosChange={() => {}} limit={ITEM_PHOTO_LIMIT * item.brands.length} readOnly />
       ) : (
         <div className={classes.noPhotos()} data-testid={ids.noPhotos}>
           <Icon icon={imageIcon} size={ICON_SIZES.frame} />
-          Sem fotos
+          {texts.details.noPhotos}
         </div>
       )}
       <div className={classes.head()} data-testid={ids.head}>
@@ -56,17 +58,17 @@ export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetai
         )}
       </div>
       <div className={classes.tiles()} data-testid={ids.tiles}>
-        <Tile label="Em estoque" value={item.quantity} />
-        <Tile label="Mínimo" value={item.minQuantity} />
+        <Tile label={texts.details.inStock} value={item.quantity} />
+        <Tile label={texts.details.minimum} value={item.minQuantity} />
       </div>
       <dl className={classes.list()} data-testid={ids.list}>
-        <Detail term="Veículos" value={vehiclesText(item, locale)} />
+        <Detail term={texts.details.vehicles} value={vehiclesText(item, locale)} />
         {item.material && <Detail term={ITEM_NOTE_LABELS[locale].material} value={item.material} />}
-        <Detail term="Posição · Lado" value={positionSideText(item, locale)} none={noPlace} />
-        <Detail term="Códigos originais" value={originalCodesText(item, locale)} none={noCodes} />
+        <Detail term={texts.details.positionSide} value={positionSideText(item, locale)} none={noPlace} />
+        <Detail term={texts.details.originalCodes} value={originalCodesText(item, locale)} none={noCodes} />
       </dl>
       <Heading level={3} className={classes.brands()}>
-        {`Marcas · ${item.brands.length}`}
+        {texts.details.brands(item.brands.length)}
       </Heading>
       {item.brands.map((brand) => (
         <div
@@ -104,10 +106,11 @@ export function ItemDetails({ item, photos, scrollToBrand, brandRef }: ItemDetai
 /** The red round Excluir at the right of the details' title row, which asks to confirm deleting the item. */
 export function RemoveItemButton({ onClick }: { onClick: () => void }) {
   const { classes, ids } = itemDetails()
+  const texts = useMessages(INVENTORY_SCREEN_TEXTS).details
   return (
     <button
       type="button"
-      aria-label="Excluir item"
+      aria-label={texts.remove}
       className={classes.remove()}
       data-testid={ids.remove}
       data-tour="form-delete"

@@ -11,6 +11,7 @@ import '../../../app/fonts.ts'
 import '../../../index.css'
 import { themeCss } from '../../../app/theme.ts'
 import { ImportItemsDialog } from './ImportItemsDialog.tsx'
+import { LocaleContext } from '../../../app/useLocale.ts'
 
 // The lists the API keeps: the Motor category, Mann, and Volkswagen with the Gol.
 const LISTS: ItemLists = {
@@ -161,4 +162,20 @@ test('Web: the CSV import fits the smallest phone', async () => {
   const action = button.element().getBoundingClientRect()
   expect(action.bottom).toBeLessThanOrEqual(MIN_MOBILE_HEIGHT)
   expect(action.right).toBeLessThanOrEqual(MIN_MOBILE_WIDTH)
+})
+
+// Opens Importar Peças in English, and checks its title, how to fill the file and its buttons read in English.
+test('Web: Importar Peças reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <ToastProvider>
+        <ImportItemsDialog open lists={LISTS} onClose={() => {}} onImported={() => {}} />
+      </ToastProvider>
+    </LocaleContext.Provider>,
+  )
+  const dialog = screen.getByRole('dialog', { name: 'Import parts' })
+  await expect.element(dialog.getByText(/^Use the template: one line per brand of the part/)).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Download template' })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Choose file' })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Import 0 items' })).toBeDisabled()
 })

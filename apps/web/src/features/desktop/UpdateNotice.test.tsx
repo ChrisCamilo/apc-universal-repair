@@ -4,6 +4,7 @@ import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
 import type { DesktopBridge } from './desktopBridge.ts'
 import { UpdateNotice } from './UpdateNotice.tsx'
+import { LocaleContext } from '../../app/useLocale.ts'
 
 const root = document.documentElement
 
@@ -68,4 +69,18 @@ test('Web: "Depois" hides the update notice without restarting', async () => {
   await expect.element(screen.getByRole('status')).toBeEmptyDOMElement()
   await expect.element(screen.getByRole('button', { name: 'Reiniciar agora' })).not.toBeInTheDocument()
   expect(bridge.restartToUpdate).not.toHaveBeenCalled()
+})
+
+// Shows a ready version in English, and checks the notice and its buttons read in English.
+test('Web: the update notice reads in English', async () => {
+  const bridge = giveBridge()
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <UpdateNotice />
+    </LocaleContext.Provider>,
+  )
+  bridge.ready('0.2.1')
+  await expect.element(screen.getByText('New version 0.2.1 ready. It installs when you close the app.')).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Restart now' })).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Later' })).toBeVisible()
 })

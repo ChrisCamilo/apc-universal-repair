@@ -1,5 +1,7 @@
 import { useEffect, useEffectEvent, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { activeFilterCount, clearedFilters, offeredValues, type FilterValues } from '@apc/ui-spec/filters'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { filterIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { Button } from '../Button/Button.tsx'
 import { FilterChipGroup } from '../FilterChip/FilterChip.tsx'
@@ -60,6 +62,7 @@ function rowKeys(row: Row): string[] {
 }
 
 export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open: openProp, onOpenChange }: FilterMenuProps) {
+  const texts = useMessages(COMPONENT_TEXTS).filterMenu
   const baseId = useId()
   const panelId = `${baseId}-panel`
   const [ownOpen, setOwnOpen] = useState(false)
@@ -137,13 +140,13 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label={count ? `Filtros, ${count} ${count === 1 ? 'ativo' : 'ativos'}` : 'Filtros'}
+        aria-label={count ? texts.active(count) : texts.title}
         className={classes.trigger()}
         data-testid={ids.trigger}
         onClick={() => show(!open)}
       >
         <Icon icon={filterIcon} size={ICON_SIZES.compact} />
-        Filtros
+        {texts.title}
         {count > 0 && (
           <span className={classes.count()} data-testid={ids.count}>
             {count}
@@ -208,10 +211,10 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
           })}
           <div className={classes.actions()} data-testid={ids.actions}>
             <Button size="sm" variant="secondary" onClick={() => apply(clearedFilters(draft))}>
-              Limpar
+              {texts.clear}
             </Button>
             <Button size="sm" onClick={() => apply(draft)}>
-              Aplicar
+              {texts.apply}
             </Button>
           </div>
         </Panel>
@@ -221,12 +224,13 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
 }
 
 export function ClearFilters({ active, onClear }: { active: boolean; onClear: () => void }) {
+  const texts = useMessages(COMPONENT_TEXTS).filterMenu
   if (!active) {
     return null
   }
   return (
     <Button variant="link" onClick={onClear}>
-      Limpar filtros
+      {texts.clearFilters}
     </Button>
   )
 }

@@ -1,5 +1,8 @@
 import { test, type Locator, type Page } from "@playwright/test";
 import { TABLE_CARD_BREAKPOINT } from "@apc/ui-spec/table";
+import { COMMON_TEXTS, COMPONENT_TEXTS } from "@apc/domain/app-texts";
+import { INVENTORY_SCREEN_TEXTS } from "@apc/domain/inventory-texts";
+import { DEFAULT_LOCALE, type Locale } from "@apc/domain/locale";
 import { dataTable, dialog, pagination } from "./common.ts";
 
 // The Inventory tab: its toolbar and search, the list's states, and its dialogs (the item form and details, Manage
@@ -12,10 +15,10 @@ import { dataTable, dialog, pagination } from "./common.ts";
  * @param name The action, e.g. "Importar Peças".
  * @returns The action, to click.
  */
-function otherAction(page: Page, name: string) {
+function otherAction(page: Page, name: string, locale: Locale) {
   return {
     async click() {
-      await page.getByRole("button", { name: "Mais ações" }).click();
+      await page.getByRole("button", { name: COMMON_TEXTS[locale].moreActions }).click();
       await page.getByRole("menuitem", { name, exact: true }).or(page.getByRole("button", { name, exact: true })).click();
     },
   };
@@ -51,57 +54,60 @@ function itemAction(page: Page, action: "Editar" | "Excluir", name: string) {
  * @param page The test's page.
  * @returns The tab's elements.
  */
-export function inventory(page: Page) {
+export function inventory(page: Page, locale: Locale = DEFAULT_LOCALE) {
   const body = page.getByTestId("inventory.inventory-tab.body");
+  const texts = INVENTORY_SCREEN_TEXTS[locale];
+  const components = COMPONENT_TEXTS[locale];
+  const more = COMMON_TEXTS[locale].moreActions;
   return {
     // The panel holding the tab's body; panels nest, so the innermost is the last.
     panel: page.getByTestId("common.panel").filter({ has: body }).last(),
     body,
-    table: page.getByRole("table", { name: "Itens do estoque" }),
+    table: page.getByRole("table", { name: texts.items }),
     toolbar: page.getByTestId("inventory.inventory-tab.toolbar"),
     searchBox: page.getByTestId("inventory.inventory-tab.search"),
-    search: page.getByRole("searchbox", { name: "Procure pelo nome ou código da peça" }),
-    clearSearch: page.getByRole("button", { name: "Limpar busca" }),
+    search: page.getByRole("searchbox", { name: texts.search }),
+    clearSearch: page.getByRole("button", { name: components.textField.clearSearch }),
     // The toolbar's, and the empty list's when there is one.
-    newItem: page.getByRole("button", { name: "Novo item" }),
+    newItem: page.getByRole("button", { name: texts.newItem }),
     // Named "Filtros", then with the count of active filters, e.g. "Filtros, 1 ativo".
-    filters: page.getByRole("button", { name: /^Filtros/ }),
+    filters: page.getByRole("button", { name: new RegExp(`^${components.filterMenu.title}`) }),
     // A phone's round Ordenar, named with the sort on, e.g. "Ordenar, Local (A → Z)".
-    sort: page.getByRole("button", { name: /^Ordenar(, .+)?$/ }),
+    sort: page.getByRole("button", { name: new RegExp(`^${components.filterSheet.sort}(, .+)?$`) }),
     // The toolbar's, and the empty search's when there is one.
-    clearFilters: page.getByRole("button", { name: "Limpar filtros" }),
+    clearFilters: page.getByRole("button", { name: texts.empty.clear }),
     // On a phone the chips name their counts in short: "Baixo · 5", "Esgotado · 4".
     lowStock: page.getByRole("button", { name: /^(Estoque baixo|Baixo · \d+)$/ }),
     outOfStock: page.getByRole("button", { name: /^Esgotado( · \d+)?$/ }),
     // A phone's card: the stock status under its quantity ("un.", "Baixo", "Esgotado").
     status: (row: Locator) => row.getByTestId("inventory.inventory-tab.quantity.tag"),
     // The toolbar's "Mais ações" menu's, or on a phone the "⋯" sheet's, which opens first.
-    manageLists: otherAction(page, "Gerenciar listas"),
-    importParts: otherAction(page, "Importar Peças"),
-    exportParts: otherAction(page, "Exportar Peças"),
+    manageLists: otherAction(page, texts.lists.title, locale),
+    importParts: otherAction(page, texts.importItems, locale),
+    exportParts: otherAction(page, texts.exportItems, locale),
     // The desktop toolbar's "Mais ações" menu trigger, or a phone's "⋯" in the header; the menu and the sheet they open.
-    more: page.getByRole("button", { name: "Mais ações" }),
-    moreMenu: page.getByRole("menu", { name: "Mais ações" }),
-    moreSheet: dialog(page, "Mais ações").root,
+    more: page.getByRole("button", { name: more }),
+    moreMenu: page.getByRole("menu", { name: more }),
+    moreSheet: dialog(page, more).root,
     count: page.getByTestId("inventory.inventory-tab.filters.count"),
     // The desktop's "Colunas" menu: its trigger, a column's switch and "Restaurar padrão".
     columns: page.getByRole("button", { name: "Colunas da tabela" }),
     column: (name: string) => page.getByRole("menuitemcheckbox", { name }),
     restoreColumns: page.getByRole("menuitem", { name: "Restaurar padrão" }),
     loadingRows: page.getByTestId("inventory.inventory-tab.loading.row"),
-    loading: page.getByRole("status", { name: "Carregando o estoque" }),
-    failed: page.getByRole("alert").filter({ hasText: "Não foi possível carregar o estoque" }),
-    nothingFound: page.getByRole("heading", { name: "Nenhum item encontrado" }),
-    empty: page.getByRole("heading", { name: "Nenhum item cadastrado" }),
+    loading: page.getByRole("status", { name: texts.loading }),
+    failed: page.getByRole("alert").filter({ hasText: texts.error.title }),
+    nothingFound: page.getByRole("heading", { name: texts.empty.notFound.title }),
+    empty: page.getByRole("heading", { name: texts.empty.none.title }),
     // An item's name in its row, whose click opens the item's details.
     name: (name: string) => page.getByTestId("common.data-table.table.row").getByText(name, { exact: true }),
     // The row's pencil and trash, or on a phone the item's details' Editar and Excluir.
     edit: (name: string) => itemAction(page, "Editar", name),
     remove: (name: string) => itemAction(page, "Excluir", name),
-    photos: (name: string) => page.getByRole("button", { name: `Ver fotos de ${name}` }),
-    pager: pagination(page, "Páginas do estoque"),
+    photos: (name: string) => page.getByRole("button", { name: texts.photos.view(name) }),
+    pager: pagination(page, texts.pages),
     // A phone's list end once every item is in, in place of the pagination.
-    listEnd: page.getByText("Fim da lista", { exact: true }),
+    listEnd: page.getByText(texts.end, { exact: true }),
   };
 }
 

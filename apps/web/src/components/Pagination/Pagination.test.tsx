@@ -113,8 +113,8 @@ test('Web: an empty list shows a single page with the arrows off', async () => {
   await expect.element(pages.getByRole('button', { name: 'Próxima página' })).toHaveAttribute('aria-disabled', 'true')
 })
 
-// Renders a list of thousands in Portuguese and in English and checks the range writes its numbers in each language's
-// way.
+// Renders a list of thousands in Portuguese and in English and checks the range is written in each language, its
+// numbers in each language's way, and the page buttons are named in it.
 test('Web: the range writes its numbers in the language chosen', async () => {
   const screen = await render(
     <>
@@ -125,7 +125,8 @@ test('Web: the range writes its numbers in the language chosen', async () => {
     </>,
   )
   await expect.element(screen.getByText('1–25 de 1.234')).toBeVisible()
-  await expect.element(screen.getByText('1–25 de 1,234')).toBeVisible()
+  await expect.element(screen.getByText('1–25 of 1,234')).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Next page' })).toBeVisible()
 })
 
 // Fits a long list in the width a 360px phone leaves inside its gutters and checks nothing overflows: the

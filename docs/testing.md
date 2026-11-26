@@ -117,6 +117,7 @@ Every spec imports `test` and `expect` from `e2e/support/fixtures.ts`, not from 
 
 - **a test user logged in,** unless the spec says `test.use({ signedIn: false })`, as the login, sign-up and guard specs do for the screens before the login;
 - **the spec's stock:** `test.use({ stock: { items: ITEMS } })` for the items `GET /api/items` answers with, copied for each test; none by default;
+- **Portuguese,** unless the spec says `test.use({ language: "en-US" })`, which saves English on the device before the page loads; the locators take the same language (`loginForm(page, "en-US")`) and read their names from the catalogs;
 - **the users' stand-in,** whose list a test reads from the `users` fixture to check a sign-up;
 - **the API guard:** any `/api/**` call no stand-in or test answered gets a 501, and the test fails after it ends, listing each call. So a test never reaches whatever API listens on port 3333, and a call a test forgot shows up in its result.
 
@@ -186,6 +187,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 |  | the fields, a wrong user, the session saved | `login` | both | `@smoke` |
 |  | the forgotten-password notice | `login` | both |  |
 |  | fits a 1360×768 notebook | `login` | desktop | `@layout` |
+|  | in English: the form, what is missing, the Dashboard after it | `login` | both |  |
 |  | the demo's login comes filled in | `demo` | both | `@demo` |
 | Sign-up | signs up, lands on the Dashboard, logs in again | `register` | both |  |
 |  | the fields, and the link back to the login | `register` | both |  |
@@ -229,6 +231,7 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 |  | loads more as it scrolls, keeps its place | `inventory-list` | mobile |  |
 |  | an item of several brands: a row per brand | `inventory-list` | desktop |  |
 |  | a card of several brands opens its details | `inventory-list` | mobile |  |
+|  | in English: the search, counter, filters, headers and Mais ações | `inventory-list` | both |  |
 |  | the compiled app's layout in a notebook's window | `desktop/window` | Electron | `@layout` |
 |  | the demo opens logged in, with its notice | `demo` | both | `@demo` `@layout` |
 | Toolbar | the buttons at the panel's right edge | `inventory-toolbar` | desktop | `@layout` |
@@ -566,6 +569,7 @@ Toda spec importa `test` e `expect` de `e2e/support/fixtures.ts`, não de `@play
 
 - **um usuário de teste logado,** a não ser que a spec diga `test.use({ signedIn: false })`, como fazem as specs de login, cadastro e guarda para as telas antes do login;
 - **o estoque da spec:** `test.use({ stock: { items: ITEMS } })` para os itens que o `GET /api/items` responde, copiados para cada teste; nenhum por padrão;
+- **o português,** a não ser que a spec diga `test.use({ language: "en-US" })`, que guarda o inglês no dispositivo antes de a página carregar; os locators recebem o mesmo idioma (`loginForm(page, "en-US")`) e leem os nomes dos catálogos;
 - **o substituto dos usuários,** cuja lista o teste lê na fixture `users` para conferir um cadastro;
 - **a guarda da API:** toda chamada a `/api/**` que nenhum substituto ou teste respondeu recebe um 501, e o teste falha quando termina, listando cada chamada. Assim um teste nunca alcança a API que estiver escutando na porta 3333, e uma chamada esquecida aparece no resultado dele.
 
@@ -635,6 +639,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 |  | os campos, um usuário errado, a sessão salva | `login` | ambos | `@smoke` |
 |  | o aviso de senha esquecida | `login` | ambos |  |
 |  | cabe num notebook de 1360×768 | `login` | desktop | `@layout` |
+|  | em inglês: o formulário, o que falta, o Dashboard depois | `login` | ambos |  |
 |  | o login da demo vem preenchido | `demo` | ambos | `@demo` |
 | Cadastro | cadastra, cai no Dashboard, entra de novo | `register` | ambos |  |
 |  | os campos, e o link de volta ao login | `register` | ambos |  |
@@ -677,6 +682,7 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 |  | carrega mais ao rolar, mantém o lugar | `inventory-list` | mobile |  |
 |  | item de várias marcas: uma linha por marca | `inventory-list` | desktop |  |
 |  | um card de várias marcas abre os detalhes | `inventory-list` | mobile |  |
+|  | em inglês: a busca, o contador, os filtros, os cabeçalhos e Mais ações | `inventory-list` | ambos |  |
 |  | o layout do app compilado na janela de um notebook | `desktop/window` | Electron | `@layout` |
 |  | a demo abre logada, com o aviso | `demo` | ambos | `@demo` `@layout` |
 | Barra de ferramentas | os botões na borda direita do painel | `inventory-toolbar` | desktop | `@layout` |

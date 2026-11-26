@@ -1,22 +1,27 @@
 import { test, type Page } from "@playwright/test";
+import { DASHBOARD_TEXTS } from "@apc/domain/app-texts";
+import { AUTH_TEXTS } from "@apc/domain/auth-texts";
+import { DEFAULT_LOCALE, type Locale } from "@apc/domain/locale";
 
 // The screens before the session starts: the login and the sign-up.
 
 /**
  * The login's form, the error it shows above it, and its links; in the desktop app, its button for the server too.
  * @param page The test's page.
+ * @param locale The language the page is in; Portuguese unless given.
  * @returns The login's elements.
  */
-export function loginForm(page: Page) {
+export function loginForm(page: Page, locale: Locale = DEFAULT_LOCALE) {
+  const texts = AUTH_TEXTS[locale].login;
   return {
-    username: page.getByLabel("Usuário", { exact: true }),
-    password: page.getByLabel("Senha", { exact: true }),
-    submit: page.getByRole("button", { name: "Entrar" }),
+    username: page.getByLabel(texts.username, { exact: true }),
+    password: page.getByLabel(texts.password, { exact: true }),
+    submit: page.getByRole("button", { name: texts.logIn }),
     error: page.getByRole("alert"),
-    forgotPassword: page.getByRole("button", { name: "Esqueceu a senha?" }),
-    signUp: page.getByRole("button", { name: "Criar conta" }),
+    forgotPassword: page.getByRole("button", { name: texts.forgot }),
+    signUp: page.getByRole("button", { name: texts.createAccount }),
     // The desktop app's, which opens the Servidor dialog.
-    server: page.getByRole("button", { name: "Servidor e banco de dados" }),
+    server: page.getByRole("button", { name: DASHBOARD_TEXTS[locale].serverSettings }),
   };
 }
 
@@ -24,12 +29,13 @@ export function loginForm(page: Page) {
  * Logs in from the form with "Entrar".
  * @param page The test's page, on the login.
  * @param user The username and password to type.
+ * @param locale The language the page is in; Portuguese unless given.
  */
-export async function logIn(page: Page, user: { username: string; password: string }) {
+export async function logIn(page: Page, user: { username: string; password: string }, locale: Locale = DEFAULT_LOCALE) {
   await test.step(
     `Log in as ${user.username}`,
     async () => {
-      const form = loginForm(page);
+      const form = loginForm(page, locale);
       await form.username.fill(user.username);
       await form.password.fill(user.password);
       await form.submit.click();

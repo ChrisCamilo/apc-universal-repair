@@ -6,7 +6,9 @@ import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { TextField } from '../../components/TextField'
 import { Text } from '../../components/Typography'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
 import { listDevices, removeDevice, renameDevice } from './devices.ts'
+import { DESKTOP_TEXTS } from './desktopTexts.ts'
 import { devices as devicesRecipe } from './Devices.styles.ts'
 
 // "Dispositivos", opened from the user menu on the server's computer: the authorized devices, each with its name over
@@ -28,6 +30,8 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
   const [removing, setRemoving] = useState<string>()
   const { classes, ids } = devicesRecipe()
   const { locale } = useLocale()
+  const texts = DESKTOP_TEXTS[locale].devices
+  const common = COMMON_TEXTS[locale]
 
   // List the devices each time the dialog opens.
   useEffect(() => {
@@ -35,7 +39,7 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
       return
     }
     let live = true
-    void listDevices().then((outcome) => {
+    void listDevices(locale).then((outcome) => {
       if (live) {
         setListed(outcome.ok ? outcome.value.filter((device) => device.status === 'authorized') : undefined)
         setNote(outcome.ok ? undefined : outcome.message)
@@ -44,11 +48,11 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
     return () => {
       live = false
     }
-  }, [open])
+  }, [open, locale])
 
   /** Saves the name typed for the device being renamed. */
   const saveName = async () => {
-    const outcome = await renameDevice(renaming!.id, renaming!.name)
+    const outcome = await renameDevice(renaming!.id, renaming!.name, locale)
     if (!outcome.ok) {
       setNote(outcome.message)
       return
@@ -62,7 +66,7 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
    * @param id The device.
    */
   const remove = async (id: string) => {
-    const outcome = await removeDevice(id)
+    const outcome = await removeDevice(id, locale)
     if (!outcome.ok) {
       setNote(outcome.message)
       return
@@ -79,22 +83,22 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
       closable
       actions={
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Fechar
+          {common.close}
         </Button>
       }
     >
       <div className={classes.base()} data-testid={ids.base}>
         {listed && (
-          <ul aria-label="Dispositivos autorizados" className={classes.list()} data-testid={ids.list}>
+          <ul aria-label={texts.authorized} className={classes.list()} data-testid={ids.list}>
             {listed.map((device) => (
               <li key={device.id} className={classes.row()} data-testid={ids.row}>
                 {renaming?.id === device.id ? (
-                  <TextField label="Nome do dispositivo" value={renaming.name} onValueChange={(name) => setRenaming({ id: device.id, name })} />
+                  <TextField label={texts.name} value={renaming.name} onValueChange={(name) => setRenaming({ id: device.id, name })} />
                 ) : (
                   <div className={classes.about()} data-testid={ids.about}>
-                    <Text>{device.current ? `${device.name} (este dispositivo)` : device.name}</Text>
+                    <Text>{device.current ? texts.current(device.name) : device.name}</Text>
                     <Text size="sm" tone="muted">
-                      {device.displayName} · {device.lastUsedAt ? `último uso em ${formatDateTime(new Date(device.lastUsedAt), locale)}` : 'ainda não entrou'}
+                      {device.displayName} · {device.lastUsedAt ? texts.lastUsed(formatDateTime(new Date(device.lastUsedAt), locale)) : texts.neverUsed}
                     </Text>
                   </div>
                 )}
@@ -102,29 +106,29 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
                   {renaming?.id === device.id ? (
                     <>
                       <Button size="sm" onClick={() => void saveName()}>
-                        Salvar
+                        {common.save}
                       </Button>
                       <Button variant="secondary" size="sm" onClick={() => setRenaming(undefined)}>
-                        Cancelar
+                        {common.cancel}
                       </Button>
                     </>
                   ) : removing === device.id ? (
                     <>
                       <Button variant="danger" size="sm" onClick={() => void remove(device.id)}>
-                        Remover mesmo assim
+                        {texts.removeAnyway}
                       </Button>
                       <Button variant="secondary" size="sm" onClick={() => setRemoving(undefined)}>
-                        Cancelar
+                        {common.cancel}
                       </Button>
                     </>
                   ) : (
                     <>
                       <Button variant="secondary" size="sm" onClick={() => setRenaming({ id: device.id, name: device.name })}>
-                        Renomear
+                        {common.rename}
                       </Button>
                       {!device.current && (
                         <Button variant="secondary" size="sm" onClick={() => setRemoving(device.id)}>
-                          Remover
+                          {common.remove}
                         </Button>
                       )}
                     </>
@@ -136,7 +140,7 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
         )}
         {removing && (
           <Text size="sm" tone="muted">
-            Remover encerra as sessões do dispositivo. Para entrar de novo, ele precisa ser autorizado outra vez.
+            {texts.removeHint}
           </Text>
         )}
         {note && (

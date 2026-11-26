@@ -34,16 +34,17 @@ export function pageForSize(page: number, pageSize: number, nextSize: number): n
  * @param pageSize Items per page.
  * @param total Number of items in the list.
  * @param locale The language the numbers are written in, e.g. "en-US"; Portuguese (Brasil) unless given.
+ * @param of The word between the range and the total in that language, e.g. "of"; "de" unless given.
  * @returns E.g. "1–25 de 64", or "0 de 0" for an empty list.
  */
-export function pageRange(page: number, pageSize: number, total: number, locale = "pt-BR"): string {
+export function pageRange(page: number, pageSize: number, total: number, locale = "pt-BR", of = "de"): string {
   const format = new Intl.NumberFormat(locale);
   if (total === 0) {
-    return "0 de 0";
+    return `0 ${of} 0`;
   }
   const first = (page - 1) * pageSize + 1;
   const last = Math.min(page * pageSize, total);
-  return `${format.format(first)}–${format.format(last)} de ${format.format(total)}`;
+  return `${format.format(first)}–${format.format(last)} ${of} ${format.format(total)}`;
 }
 
 /**

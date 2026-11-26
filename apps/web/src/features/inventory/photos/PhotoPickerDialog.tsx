@@ -4,6 +4,7 @@ import { PHOTO_PICKER, photoPickerTexts, photoSources } from '@apc/domain/item-f
 import { itemCardCode, type Item, type ItemPhoto } from '@apc/domain/items'
 import { photoAddress, photoCount, pickPhoto } from '@apc/domain/photos'
 import { API_BASE } from '../../../app/api.ts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
 import { useLocale } from '../../../app/useLocale.ts'
 import { Button } from '../../../components/Button'
 import { Dialog } from '../../../components/Dialog'
@@ -35,6 +36,7 @@ type PhotoPickerDialogProps = {
 
 export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPick }: PhotoPickerDialogProps) {
   const { locale } = useLocale()
+  const names = INVENTORY_SCREEN_TEXTS[locale].photos
   const [query, setQuery] = useState('')
   // The items opened to their photos, by id.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set())
@@ -94,7 +96,7 @@ export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPic
                     </span>
                   </button>
                   {shown && (
-                    <div role="group" aria-label={`Fotos de ${item.name}`} className={classes.photos()} data-testid={ids.photos}>
+                    <div role="group" aria-label={names.ofItem(item.name)} className={classes.photos()} data-testid={ids.photos}>
                       {photos.map(({ photo, index, brand }) => {
                         const checked = picked.some((each) => each.id === photo.id)
                         return (
@@ -103,7 +105,7 @@ export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPic
                             type="button"
                             role="checkbox"
                             aria-checked={checked}
-                            aria-label={`Foto ${index + 1} de ${item.name} · ${brand}`}
+                            aria-label={names.photo(index + 1, item.name, brand)}
                             disabled={full && !checked}
                             className={classes.photo()}
                             data-testid={ids.photo}

@@ -2,11 +2,12 @@ import { DEVICE_MESSAGES, type Device } from '@apc/domain/devices'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import '../../index.css'
-import { DEMO_UNAVAILABLE } from '../../demo/demoApi.ts'
+import { WEB_TEXTS } from '../../app/webTexts.ts'
 import { themeCss } from '../../app/theme.ts'
 import { DeviceApprovals } from './DeviceApprovals.tsx'
-import { DEVICES_FAILED } from './devices.ts'
+import { DESKTOP_TEXTS } from './desktopTexts.ts'
 import { DevicesDialog } from './DevicesDialog.tsx'
+import { LocaleContext } from '../../app/useLocale.ts'
 
 // The devices' screens on the server's computer, with the API stood in for: the approval of a waiting device and the
 // list of authorized ones; and what each says when the API can't list them.
@@ -49,7 +50,7 @@ function serveDevices(devices: Device[], listStatus = 200) {
     if (url.endsWith('/devices') && method === 'GET') {
       return listStatus === 200
         ? Response.json({ devices })
-        : Response.json({ statusCode: listStatus, message: listStatus === 501 ? DEMO_UNAVAILABLE : 'Devices are managed only on the server\'s computer.' }, { status: listStatus })
+        : Response.json({ statusCode: listStatus, message: listStatus === 501 ? WEB_TEXTS['pt-BR'].demo.unavailable : 'Devices are managed only on the server\'s computer.' }, { status: listStatus })
     }
     const id = url.split('/devices/')[1].split('/')[0]
     const device = devices.find((each) => each.id === id)!
@@ -122,10 +123,28 @@ test('Web: Dispositivos lists the authorized devices, to rename and remove', asy
 test('Web: Dispositivos says why it can\'t list the devices', async () => {
   serveDevices([], 501)
   const demo = await render(<DevicesDialog open onClose={() => {}} />)
-  await expect.element(demo.getByRole('alert')).toHaveTextContent(DEMO_UNAVAILABLE)
+  await expect.element(demo.getByRole('alert')).toHaveTextContent(WEB_TEXTS['pt-BR'].demo.unavailable)
   await demo.unmount()
 
   serveDevices([], 403)
   const elsewhere = await render(<DevicesDialog open onClose={() => {}} />)
-  await expect.element(elsewhere.getByRole('alert')).toHaveTextContent(DEVICES_FAILED.elsewhere)
+  await expect.element(elsewhere.getByRole('alert')).toHaveTextContent(DESKTOP_TEXTS['pt-BR'].devicesFailed.elsewhere)
+})
+
+// Opens Dispositivos in English, and checks the list, a device never used, this device and removing read in English.
+test('Web: Dispositivos reads in English', async () => {
+  const phone = { ...DEVICE, status: 'authorized' as const, name: 'Celular da Ana' }
+  const here = { ...DEVICE, id: 'd2', status: 'authorized' as const, name: 'Este computador', current: true }
+  serveDevices([phone, here])
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <DevicesDialog open onClose={() => {}} />
+    </LocaleContext.Provider>,
+  )
+  const list = screen.getByRole('dialog', { name: 'Devices' }).getByRole('list', { name: 'Authorized devices' })
+  await expect.element(list.getByText('Este computador (this device)')).toBeVisible()
+  await expect.element(list.getByText(/hasn't logged in yet/).first()).toBeVisible()
+  await list.getByRole('button', { name: 'Remove' }).click()
+  await expect.element(screen.getByText(/Removing ends the device’s sessions/)).toBeVisible()
+  await expect.element(list.getByRole('button', { name: 'Remove anyway' })).toBeVisible()
 })

@@ -15,6 +15,8 @@ import {
   type ItemVehicleFormErrors,
 } from '@apc/domain/item-form'
 import { findEntry, type ItemListKind, type ItemLists } from '@apc/domain/lists'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts'
 import { Button } from '../../../components/Button'
 import { Combobox } from '../../../components/Combobox'
 import { Icon } from '../../../components/Icon'
@@ -49,6 +51,8 @@ type VehiclesFieldProps = {
 
 export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, onVehiclesChange, onCreate }: VehiclesFieldProps) {
   const { locale } = useLocale()
+  const texts = INVENTORY_SCREEN_TEXTS[locale]
+  const common = COMMON_TEXTS[locale]
   const labelId = useId()
   // The vehicle being added, open under the chips, and its messages.
   const [draft, setDraft] = useState<ItemVehicleForm | null>(null)
@@ -125,7 +129,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
                 {vehicleText(vehicleOfForm(vehicle), locale)}
                 <button
                   type="button"
-                  aria-label={`Remover ${vehicleText(vehicleOfForm(vehicle), locale)}`}
+                  aria-label={common.removeNamed(vehicleText(vehicleOfForm(vehicle), locale))}
                   className={classes.remove()}
                   data-testid={ids.remove}
                   onClick={() => remove(index)}
@@ -138,16 +142,16 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
         </ul>
       )}
       {draft ? (
-        <div ref={draftBox} role="group" aria-label="Novo veículo" className={classes.draft()} data-testid={ids.draft}>
+        <div ref={draftBox} role="group" aria-label={texts.vehicles.new} className={classes.draft()} data-testid={ids.draft}>
           <Combobox
             label={VEHICLE_FIELD_LABELS[locale].vehicleBrand}
             value={draft.vehicleBrand}
             onValueChange={(value) => change('vehicleBrand', value)}
             options={brands}
             onCreate={onCreate('vehicleBrands', (created) => change('vehicleBrand', created))}
-            noun="marca"
-            toggleLabel="Mostrar marcas de veículo"
-            emptyLabel="Nenhuma marca cadastrada"
+            noun={texts.combos.vehicleBrand.noun}
+            toggleLabel={texts.combos.vehicleBrand.toggle}
+            emptyLabel={texts.combos.vehicleBrand.empty}
             error={draftErrors.vehicleBrand}
           />
           <Combobox
@@ -156,10 +160,10 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
             onValueChange={(value) => change('vehicleModel', value)}
             options={modelsOfBrand(lists, draft.vehicleBrand)}
             onCreate={onCreate('vehicleModels', (created) => change('vehicleModel', created), brand?.id)}
-            noun="modelo"
-            toggleLabel="Mostrar modelos"
-            emptyLabel="Nenhum modelo cadastrado para essa marca"
-            placeholder={brand ? 'Qualquer modelo' : 'Escolha a marca do veículo primeiro'}
+            noun={texts.combos.vehicleModel.noun}
+            toggleLabel={texts.combos.vehicleModel.toggle}
+            emptyLabel={texts.combos.vehicleModel.empty}
+            placeholder={brand ? texts.combos.vehicleModel.any : texts.combos.vehicleModel.first}
             error={draftErrors.vehicleModel}
             disabled={!brand}
           />
@@ -169,10 +173,10 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
               value={draft.generation ?? ''}
               onValueChange={(value) => change('generation', value)}
               options={suggested.generations}
-              noun="geração"
-              toggleLabel="Mostrar gerações"
-              emptyLabel="Nenhuma geração conhecida para esse modelo"
-              placeholder={draft.vehicleModel.trim() ? 'Ex.: 85/90' : 'Escolha o modelo primeiro'}
+              noun={texts.combos.generation.noun}
+              toggleLabel={texts.combos.generation.toggle}
+              emptyLabel={texts.combos.generation.empty}
+              placeholder={draft.vehicleModel.trim() ? texts.combos.generation.example : texts.combos.generation.first}
               error={draftErrors.generation}
               disabled={!draft.vehicleModel.trim()}
             />
@@ -181,27 +185,27 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
               value={draft.version ?? ''}
               onValueChange={(value) => change('version', value)}
               options={suggested.versions}
-              noun="versão"
-              toggleLabel="Mostrar versões"
-              emptyLabel="Nenhuma versão conhecida para esse modelo"
-              placeholder={draft.generation?.trim() ? 'Ex.: 1.6 GLX' : 'Escolha a geração primeiro'}
+              noun={texts.combos.version.noun}
+              toggleLabel={texts.combos.version.toggle}
+              emptyLabel={texts.combos.version.empty}
+              placeholder={draft.generation?.trim() ? texts.combos.version.example : texts.combos.version.first}
               error={draftErrors.version}
               disabled={!draft.generation?.trim()}
             />
           </div>
           <div className={classes.draftActions()} data-testid={ids.draftActions}>
             <Button variant="secondary" size="sm" onClick={() => setDraft(null)}>
-              Cancelar
+              {common.cancel}
             </Button>
             <Button size="sm" onClick={add}>
-              Adicionar
+              {common.add}
             </Button>
           </div>
         </div>
       ) : (
         <div ref={addBox} className={classes.add()} data-testid={ids.add}>
           <Button variant="dashed" icon={plusIcon} onClick={() => setDraft(EMPTY_VEHICLE_FORM)}>
-            Adicionar veículo
+            {texts.form.addVehicle}
           </Button>
         </div>
       )}
@@ -211,7 +215,7 @@ export function VehiclesField({ vehicles, errors = [], lists, brands, suggest, o
         </p>
       ))}
       <Text size="sm" tone="muted">
-        Sem modelo, a peça serve em qualquer modelo da marca. A geração e a versão são opcionais.
+        {texts.vehicles.hint}
       </Text>
     </div>
   )

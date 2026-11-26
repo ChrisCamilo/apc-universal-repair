@@ -6,7 +6,9 @@ import { imageUpload } from './ImageUpload.styles.ts'
 import { shrinkPhoto } from './shrinkPhoto.ts'
 import { Label, Text } from '../Typography/Typography.tsx'
 import { usePhone } from '../usePhone.ts'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
 import { useLocale } from '../../app/useLocale.ts'
+import { WEB_TEXTS } from '../../app/webTexts.ts'
 
 // The photo field of the item form. Photos show as thumbnails, the first one marked as the cover, each with
 // an × to remove it. Under them, a drop area that is also clickable takes several files at once and says how
@@ -40,6 +42,8 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
   const phone = usePhone()
   const { classes, ids } = imageUpload()
   const { locale } = useLocale()
+  const texts = COMPONENT_TEXTS[locale].imageUpload
+  const web = WEB_TEXTS[locale].imageUpload
   const left = limit - photos.length
 
   /** Reduces the files, takes the ones that pass the rules and fit, and says which were left out and why. */
@@ -101,7 +105,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
     <div role="group" aria-labelledby={labelId} className={classes.base()} data-testid={ids.base}>
       <Label id={labelId}>
         {label}
-        {phone && !readOnly && <span aria-hidden="true">{` · até ${limit}`}</span>}
+        {phone && !readOnly && <span aria-hidden="true">{` · ${texts.upTo(limit)}`}</span>}
       </Label>
       {photos.length > 0 && (
         <ul className={classes.photos()} data-testid={ids.photos}>
@@ -109,7 +113,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
             <li key={photo.url} className={classes.photo()} data-testid={ids.photo}>
               <img
                 src={photo.url}
-                alt={`Foto ${index + 1}${index === 0 ? ', capa' : ''}`}
+                alt={texts.photo(index + 1, index === 0)}
                 className={classes.image()}
                 data-testid={ids.image}
               />
@@ -121,7 +125,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
               {!readOnly && (
                 <button
                   type="button"
-                  aria-label={`Remover foto ${index + 1}`}
+                  aria-label={texts.remove(index + 1)}
                   className={classes.remove()}
                   data-testid={ids.remove}
                   onClick={() => remove(index)}
@@ -133,11 +137,11 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
           ))}
         </ul>
       )}
-      {readOnly && photos.length === 0 && <Text tone="muted">Sem fotos</Text>}
+      {readOnly && photos.length === 0 && <Text tone="muted">{texts.none}</Text>}
       {!readOnly && left > 0 && phone && (
         <div className={classes.pickers()} data-testid={ids.pickers}>
-          {picker('Tirar foto', cameraIcon, true)}
-          {picker('Galeria', imageIcon, false)}
+          {picker(texts.camera, cameraIcon, true)}
+          {picker(texts.gallery, imageIcon, false)}
         </div>
       )}
       {!readOnly && left > 0 && !phone && (
@@ -159,11 +163,11 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, readOnly = f
           <span className={classes.text()} data-testid={ids.text}>
             <span>
               {photos.length > 0
-                ? `Arraste mais ${photoCount(left, locale)} ou clique para escolher`
-                : `Arraste até ${photoCount(limit, locale)} ou clique para escolher`}
+                ? web.dragMore(photoCount(left, locale))
+                : web.dragUpTo(photoCount(limit, locale))}
             </span>
             <small className={classes.hint()} data-testid={ids.hint}>
-              JPG, PNG ou WebP, até 3 MB cada. A primeira vira a capa na lista.
+              {web.hint}
             </small>
           </span>
           <input

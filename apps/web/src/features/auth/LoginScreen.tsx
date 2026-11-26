@@ -9,6 +9,8 @@ import {
   type LoginErrors,
   type SessionUser,
 } from '@apc/domain/auth'
+import { DASHBOARD_TEXTS } from '@apc/domain/app-texts'
+import { AUTH_TEXTS } from '@apc/domain/auth-texts'
 import { DEVICE_MESSAGES } from '@apc/domain/devices'
 import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { lockIcon, userIcon } from '@apc/tokens/icons'
@@ -72,6 +74,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
   const passwordInput = useRef<HTMLInputElement>(null)
   const { classes, ids } = loginScreen()
   const deviceMessages = useMessages(DEVICE_MESSAGES)
+  const texts = AUTH_TEXTS[locale].login
   const device = useDeviceWait(auth, onLoggedIn, () => setRefused(deviceMessages.refused))
 
   /** Takes a field's new value and drops its message. */
@@ -156,7 +159,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
           {device.waiting && <DevicePending code={device.waiting.code} />}
           <TextField
             ref={usernameInput}
-            label="Usuário"
+            label={texts.username}
             kind="username"
             icon={userIcon}
             value={credentials.username}
@@ -165,7 +168,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
           />
           <TextField
             ref={passwordInput}
-            label="Senha"
+            label={texts.password}
             kind="password"
             icon={lockIcon}
             value={credentials.password}
@@ -174,35 +177,35 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onServerSett
           />
           <div className={classes.actions()} data-testid={ids.actions}>
             <Button type="submit" loading={sending} className={classes.submit()}>
-              Entrar
+              {texts.logIn}
             </Button>
             <Button type="button" variant="link" onClick={() => setForgot(true)} className={classes.forgot()}>
-              Esqueceu a senha?
+              {texts.forgot}
             </Button>
             <Button type="button" variant="link" onClick={onRegister} className={classes.registerLink()}>
-              Criar conta
+              {texts.createAccount}
             </Button>
             {onServerSettings && (
               <Button type="button" variant="link" onClick={onServerSettings}>
-                Servidor e banco de dados
+                {DASHBOARD_TEXTS[locale].serverSettings}
               </Button>
             )}
           </div>
         </form>
         <div className={classes.account()} data-testid={ids.account}>
-          <Text tone="muted">Ainda não tem conta?</Text>
+          <Text tone="muted">{texts.noAccount}</Text>
           <Button type="button" variant="secondary" onClick={onRegister} className={classes.accountButton()}>
-            Criar conta
+            {texts.createAccount}
           </Button>
         </div>
       </div>
       <Dialog
         open={forgot}
         onClose={() => setForgot(false)}
-        title="Esqueceu a senha?"
+        title={texts.forgot}
         size="confirm"
         dismissible
-        actions={<Button onClick={() => setForgot(false)}>Entendi</Button>}
+        actions={<Button onClick={() => setForgot(false)}>{texts.gotIt}</Button>}
       >
         <Text>{LOGIN_MESSAGES[locale].forgotPassword}</Text>
       </Dialog>

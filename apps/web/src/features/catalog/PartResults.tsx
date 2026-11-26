@@ -1,6 +1,8 @@
 import { useRef, type KeyboardEvent } from 'react'
 import { itemFit, type Catalog, type FoundPart, type PartResults as Results } from '@apc/domain/catalog'
 import { itemCardDetails, stockTint } from '@apc/domain/items'
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts'
+import { perLocale } from '@apc/domain/locale'
 import { photoAddress } from '@apc/domain/photos'
 import { API_BASE } from '../../app/api.ts'
 import { DataTable, TableThumbnail, TableTitle } from '../../components/DataTable'
@@ -21,25 +23,28 @@ import { useLocale } from '../../app/useLocale.ts'
 // and its quantity with its stock status, tinted by it. A tap on one opens its vehicle (see CatalogTab).
 
 // A found part's card, the columns of the Inventory's card: its photo, its name, code and details, and its quantity.
-const CARD_COLUMNS = [
-  {
-    key: 'photo',
-    header: 'Foto',
-    headerHidden: true,
-    card: 'thumb' as const,
-    cell: (part: FoundPart) => {
-      const photo = partBrand(part).photos[0]
-      return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, API_BASE)} label={`Foto de ${part.item.name}`} />
+const CARD_COLUMNS = perLocale((locale) => {
+  const texts = CATALOG_SCREEN_TEXTS[locale]
+  return [
+    {
+      key: 'photo',
+      header: texts.photo,
+      headerHidden: true,
+      card: 'thumb' as const,
+      cell: (part: FoundPart) => {
+        const photo = partBrand(part).photos[0]
+        return <TableThumbnail src={photo && photoAddress(photo.thumbUrl, API_BASE)} label={texts.photoOf(part.item.name)} />
+      },
     },
-  },
-  {
-    key: 'name',
-    header: 'Item',
-    card: 'main' as const,
-    cell: (part: FoundPart) => <FoundTitle part={part} />,
-  },
-  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end' as const, cell: (part: FoundPart) => <StockQuantity {...part.item} /> },
-]
+    {
+      key: 'name',
+      header: texts.item,
+      card: 'main' as const,
+      cell: (part: FoundPart) => <FoundTitle part={part} />,
+    },
+    { key: 'quantity', header: texts.quantity, numeric: true, card: 'end' as const, cell: (part: FoundPart) => <StockQuantity {...part.item} /> },
+  ]
+})
 
 type PartResultsProps = {
   /** The catalog, which says which vehicle each part fits. */
@@ -65,7 +70,7 @@ export function PartResults({ catalog, results, chosen, onChoose }: PartResultsP
   const { parts, more } = results
   const phone = usePhone()
   const { classes, ids } = partResults({ phone })
-  const named = parts.length === 1 ? 'Peça do estoque com esse código' : 'Peças do estoque com esse código'
+  const texts = CATALOG_SCREEN_TEXTS[locale].results
 
   /** Moves the choice with the arrows and follows it with the focus. */
   const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -82,14 +87,14 @@ export function PartResults({ catalog, results, chosen, onChoose }: PartResultsP
     return (
       <div className={classes.base()} data-testid={ids.base}>
         <h2 className={classes.heading()} data-testid={ids.heading}>
-          {named}
+          {texts.heading(parts.length)}
         </h2>
         <Text size="sm" tone="muted">
-          Toque na peça para abrir o veículo dela no catálogo.
+          {texts.tap}
         </Text>
         <DataTable
-          label="Peças do estoque com esse código"
-          columns={CARD_COLUMNS}
+          label={texts.label}
+          columns={CARD_COLUMNS[locale]}
           rows={parts}
           rowKey={(part) => part.id}
           rowStatus={(part) => stockTint(part.item, locale)}
@@ -102,7 +107,7 @@ export function PartResults({ catalog, results, chosen, onChoose }: PartResultsP
         />
         {more > 0 && (
           <Text size="sm" tone="muted">
-            Mais {more}. Digite mais do código para afinar.
+            {texts.more(more)}
           </Text>
         )}
       </div>
@@ -112,9 +117,9 @@ export function PartResults({ catalog, results, chosen, onChoose }: PartResultsP
   return (
     <div className={classes.base()} data-testid={ids.base}>
       <Text size="sm" tone="muted">
-        {parts.length === 1 ? 'Peça do estoque com esse código:' : 'Peças do estoque com esse código:'}
+        {texts.intro(parts.length)}
       </Text>
-      <div role="radiogroup" aria-label="Peças do estoque com esse código" className={classes.list()} data-testid={ids.list}>
+      <div role="radiogroup" aria-label={texts.label} className={classes.list()} data-testid={ids.list}>
         {parts.map((part, index) => (
           <button
             key={part.id}
@@ -139,7 +144,7 @@ export function PartResults({ catalog, results, chosen, onChoose }: PartResultsP
       </div>
       {more > 0 && (
         <Text size="sm" tone="muted">
-          Mais {more}. Digite mais do código para afinar.
+          {texts.more(more)}
         </Text>
       )}
     </div>

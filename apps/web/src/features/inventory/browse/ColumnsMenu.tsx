@@ -6,6 +6,7 @@ import { Menu, MenuItem } from '../../../components/Menu'
 import { Switch } from '../../../components/Switch'
 import { columnsMenu } from './ColumnsMenu.styles.ts'
 import { useLocale } from '../../../app/useLocale.ts'
+import { WEB_TEXTS } from '../../../app/webTexts.ts'
 
 // The Inventory toolbar's "Colunas" menu, on the desktop: a switch for each of the table's columns after the item's
 // name, on while it shows, which keeps the menu open, and "Restaurar padrão", which brings the default columns back
@@ -20,6 +21,7 @@ type ColumnsMenuProps = {
 
 export function ColumnsMenu({ hidden, onHiddenChange }: ColumnsMenuProps) {
   const { locale } = useLocale()
+  const texts = WEB_TEXTS[locale].columns
   const { classes, ids } = columnsMenu()
 
   /** Shows or hides a column, keeping the others as they are. */
@@ -28,12 +30,12 @@ export function ColumnsMenu({ hidden, onHiddenChange }: ColumnsMenuProps) {
 
   return (
     <Menu
-      label="Colunas da tabela"
+      label={texts.title}
       align="start"
       trigger={
         <span className={classes.base()} data-testid={ids.base}>
           <Icon icon={listIcon} size={ICON_SIZES.compact} />
-          Colunas
+          {texts.trigger}
         </span>
       }
     >
@@ -42,7 +44,7 @@ export function ColumnsMenu({ hidden, onHiddenChange }: ColumnsMenuProps) {
           {column.label}
         </Switch>
       ))}
-      <MenuItem onSelect={() => onHiddenChange([...ITEM_HIDDEN_COLUMNS_DEFAULT])}>Restaurar padrão</MenuItem>
+      <MenuItem onSelect={() => onHiddenChange([...ITEM_HIDDEN_COLUMNS_DEFAULT])}>{texts.restore}</MenuItem>
     </Menu>
   )
 }

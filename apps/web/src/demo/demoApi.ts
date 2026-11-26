@@ -50,6 +50,9 @@ import {
 import { ITEM_PHOTO_LIMIT, PHOTO_MAX_BYTES, PHOTO_PARTS } from '@apc/domain/photos'
 import { SYNC_CHANGES_PATH, SYNC_OPERATIONS_PATH } from '@apc/domain/sync'
 import { applyCatalogChange, TEST_CATALOG_DATA, type CatalogChange } from '@apc/domain/test-catalog'
+import { DEFAULT_LOCALE, isLocale, LOCALE_STORAGE_KEY } from '@apc/domain/locale'
+import { readStored } from '../app/storage.ts'
+import { WEB_TEXTS } from '../app/webTexts.ts'
 import { DEMO_ITEMS, DEMO_PHOTOS, DEMO_USER } from './demoData.ts'
 import { DEMO_HEADER, DEMO_MARKER } from './demoMarker.ts'
 
@@ -80,9 +83,7 @@ const CATALOG_INPUTS = {
 } as unknown as Record<CatalogLevel, Schema<CatalogValues>>
 /** One day, in milliseconds, between the demo's items' creation. */
 const DAY_MS = 86_400_000
-/** What the demo says of what it doesn't do, such as authorizing devices. */
-export const DEMO_UNAVAILABLE = 'Funcionalidade não disponível na demo.'
-/** The routes the demo answers 501 with DEMO_UNAVAILABLE, by "METHOD path". */
+/** The routes the demo answers 501 with what it says of what it doesn't do (WEB_TEXTS), by "METHOD path". */
 export const DEMO_UNAVAILABLE_ROUTES = [
   'GET /devices',
   'POST /devices/:id/authorize',
@@ -1315,11 +1316,14 @@ function deviceRoutes(): Route[] {
 }
 
 /**
- * Lists the routes the demo doesn't do (DEMO_UNAVAILABLE_ROUTES), each answered 501 with DEMO_UNAVAILABLE.
+ * Lists the routes the demo doesn't do (DEMO_UNAVAILABLE_ROUTES), each answered 501 saying so in the language chosen.
  * @returns The routes.
  */
 function unavailableRoutes(): Route[] {
-  const unavailable = () => json(501, { statusCode: 501, error: 'Not Implemented', message: DEMO_UNAVAILABLE })
+  const unavailable = () => {
+    const saved = readStored(LOCALE_STORAGE_KEY)
+    return json(501, { statusCode: 501, error: 'Not Implemented', message: WEB_TEXTS[isLocale(saved) ? saved : DEFAULT_LOCALE].demo.unavailable })
+  }
   return DEMO_UNAVAILABLE_ROUTES.map((route) => {
     const [method, path] = route.split(' ')
     // A phone logs in with an entry code before it has a session, as on the API.

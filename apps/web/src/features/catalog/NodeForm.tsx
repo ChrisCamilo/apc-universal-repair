@@ -9,6 +9,8 @@ import {
   type CatalogYearLimits,
 } from '@apc/domain/catalog'
 import { checkIcon, closeIcon } from '@apc/tokens/icons'
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts'
 import { RowAction } from '../../components/DataTable'
 import { TextField } from '../../components/TextField'
 import { nodeForm } from './NodeForm.styles.ts'
@@ -45,6 +47,8 @@ type NodeFormProps = {
 
 export function NodeForm({ id, buttons = true, level, label, initial = {}, limits, error, saving = false, onSave, onCancel }: NodeFormProps) {
   const { locale } = useLocale()
+  const texts = CATALOG_SCREEN_TEXTS[locale].form
+  const common = COMMON_TEXTS[locale]
   const { classes, ids } = nodeForm()
   const form = useRef<HTMLFormElement>(null)
   const [name, setName] = useState(initial.name ?? '')
@@ -79,14 +83,14 @@ export function NodeForm({ id, buttons = true, level, label, initial = {}, limit
     <form ref={form} id={id} aria-label={label} className={classes.base()} data-testid={ids.base} onSubmit={save} onKeyDown={onKeyDown} noValidate>
       {named && (
         <div className={classes.name()} data-testid={ids.name}>
-          <TextField label="Nome" value={name} onValueChange={setName} error={problems.name ?? error} autoFocus />
+          <TextField label={texts.name} value={name} onValueChange={setName} error={problems.name ?? error} autoFocus />
         </div>
       )}
       {level === 'generation' && (
         <>
           <div className={classes.year()} data-testid={ids.year}>
             <TextField
-              label="De"
+              label={texts.from}
               kind="number"
               placeholder={CATALOG_YEAR_PLACEHOLDER[locale]}
               value={firstYear}
@@ -96,7 +100,7 @@ export function NodeForm({ id, buttons = true, level, label, initial = {}, limit
           </div>
           <div className={classes.year()} data-testid={ids.year}>
             <TextField
-              label="Até"
+              label={texts.to}
               kind="number"
               placeholder={CATALOG_YEAR_PLACEHOLDER[locale]}
               value={lastYear}
@@ -110,7 +114,7 @@ export function NodeForm({ id, buttons = true, level, label, initial = {}, limit
         <>
           <div className={classes.year()} data-testid={ids.year}>
             <TextField
-              label="De"
+              label={texts.from}
               kind="number"
               placeholder={CATALOG_YEAR_PLACEHOLDER[locale]}
               value={year}
@@ -121,9 +125,9 @@ export function NodeForm({ id, buttons = true, level, label, initial = {}, limit
           </div>
           <div className={classes.year()} data-testid={ids.year}>
             <TextField
-              label="Até"
+              label={texts.to}
               kind="number"
-              placeholder="Mesmo ano"
+              placeholder={texts.sameYear}
               value={lastYear}
               onValueChange={(typed) => setLastYear(yearInput(typed))}
               error={problems.lastYear}
@@ -133,8 +137,8 @@ export function NodeForm({ id, buttons = true, level, label, initial = {}, limit
       )}
       {buttons && (
         <div className={classes.buttons()} data-testid={ids.buttons}>
-          <RowAction icon={checkIcon} label="Salvar" onClick={() => form.current?.requestSubmit()} disabled={saving} />
-          <RowAction icon={closeIcon} label="Cancelar" onClick={onCancel} />
+          <RowAction icon={checkIcon} label={common.save} onClick={() => form.current?.requestSubmit()} disabled={saving} />
+          <RowAction icon={closeIcon} label={common.cancel} onClick={onCancel} />
         </div>
       )}
     </form>

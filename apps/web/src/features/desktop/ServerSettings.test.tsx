@@ -8,6 +8,7 @@ import { themeCss } from '../../app/theme.ts'
 import type { ServerBridge, ServerSettings } from './desktopBridge.ts'
 import { ServerSettingsProvider } from './ServerSettings.tsx'
 import { useEntryScreen, useOpenServerSettings, type ServerSettingsFocus } from './serverSettingsContext.ts'
+import { LocaleContext } from '../../app/useLocale.ts'
 
 /** The app's own server on SQLite, as a fresh install has it once its key's recovery copy is kept. */
 const ON_SQLITE: Extract<ServerSettings, { kind: 'own' }> = {
@@ -563,6 +564,24 @@ for (const style of STYLES) {
     })
   }
 }
+
+// Opens the Servidor dialog in English, and checks the database in use, its sections and buttons read in English.
+test('Web: the Servidor dialog reads in English', async () => {
+  giveServer(ON_SQLITE)
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <ServerSettingsProvider>
+        <Opener />
+      </ServerSettingsProvider>
+    </LocaleContext.Provider>,
+  )
+  await screen.getByRole('button', { name: 'Abrir as configurações' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Server and database' })
+  await expect.element(dialog.getByText('Encrypted SQLite, at C:\\Users\\ana\\AppData\\Roaming\\APC Universal Repair\\data')).toBeVisible()
+  await expect.element(dialog.getByRole('heading', { name: 'Phone access' })).toBeVisible()
+  await expect.element(dialog.getByRole('heading', { name: 'Import data from another server' })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Close' }).first()).toBeVisible()
+})
 
 function EntryScreen() {
   useEntryScreen()
