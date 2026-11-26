@@ -91,6 +91,8 @@ export type ServerSettings =
 export type DesktopBridge = {
   /** The app's device key, which the main process keeps: the page gets its public key and signatures, never the key. */
   device?: DeviceSigner
+  /** The language the app's own dialogs are in as it opens: the one chosen at install the first time. */
+  locale?: Locale
   /** Asks for a Windows notification, which the app shows only while its window isn't focused. */
   notify: (title: string, message: string) => void
   /** Calls a listener each time a notification is clicked, and gives the way to stop. */

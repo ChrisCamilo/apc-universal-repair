@@ -129,6 +129,23 @@ test('Web: the desktop app is told the language on opening and on each change', 
   await expect.poll(() => setLocale.mock.calls).toEqual([['pt-BR'], ['en-US']])
 })
 
+// In the desktop app installed in English, with no language saved on the device yet, checks the menu opens in English
+// and the app is told English; then, with Português saved, checks the saved one wins.
+test('Web: the desktop app starts in the language chosen at install, until one is saved', async () => {
+  const setLocale = vi.fn()
+  window.apcDesktop = { locale: 'en-US', setLocale } as unknown as DesktopBridge
+  const english = await render(<Sample />)
+  await english.getByRole('button', { name: 'User menu' }).click()
+  await expect.element(english.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute('aria-checked', 'true')
+  expect(setLocale.mock.calls).toEqual([['en-US']])
+  expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBeNull()
+  await userEvent.keyboard('{Escape}')
+
+  localStorage.setItem(LOCALE_STORAGE_KEY, 'pt-BR')
+  const saved = await render(<Sample />)
+  await expect.element(saved.getByRole('button', { name: 'Menu do usuário' })).toBeVisible()
+})
+
 // Turns tab reordering on and checks it is saved on the device and comes back on when the menu is drawn again.
 test('Web: the tab reorder choice is saved and comes back', async () => {
   const screen = await render(<Sample />)
