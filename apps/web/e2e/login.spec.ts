@@ -1,7 +1,8 @@
 import { expect, test } from "./support/fixtures.ts";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { atNotebookSizes } from "./support/sizes.ts";
-import { loginForm } from "./locators/auth.ts";
+import { logIn, loginForm } from "./locators/auth.ts";
+import { inventory } from "./locators/inventory.ts";
 import { dialog } from "./locators/common.ts";
 import { dashboard } from "./locators/dashboard.ts";
 import { LOGIN_MESSAGES, SESSION_STORAGE_KEY } from "@apc/domain/auth";
@@ -94,5 +95,24 @@ test("Web: on a 1360×768 notebook the login fits without scrolling", { tag: [TE
     expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), size).toBe(0);
     await expect(page, size).not.toScrollSideways();
     await expect(loginForm(page).submit, size).toBeInViewport();
+  });
+});
+
+test.describe(() => {
+  test.use({ language: "en-US" });
+
+  // Opens /login in English, sends it empty and then as a test user, and checks the form and what is missing read in
+  // English, and that the Dashboard opens on the Inventory, its tab and its empty list in English.
+  test("Web: the login reads in English", { tag: [TEST_TAGS.auth] }, async ({ page }) => {
+    const form = loginForm(page, "en-US");
+    await page.goto("/login");
+    await expect(form.username).toBeVisible();
+    await expect(form.password).toBeVisible();
+    await expect(form.forgotPassword).toBeVisible();
+    await form.submit.click();
+    await expect(page.getByText(LOGIN_MESSAGES["en-US"].username)).toBeVisible();
+    await logIn(page, USER, "en-US");
+    await expect(dashboard(page, "en-US").tab("inventory")).toBeVisible();
+    await expect(inventory(page, "en-US").empty).toBeVisible();
   });
 });

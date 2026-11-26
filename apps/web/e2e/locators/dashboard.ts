@@ -1,5 +1,6 @@
 import { test, type Page } from "@playwright/test";
-import { DASHBOARD_TABS } from "@apc/ui-spec/tabs";
+import { DASHBOARD_TEXTS } from "@apc/domain/app-texts";
+import { DEFAULT_LOCALE, type Locale } from "@apc/domain/locale";
 import { dialog } from "./common.ts";
 
 // The shell around the tabs: the header, the tab bar, the user menu and its Sobre esta versão; on a phone, the open
@@ -9,16 +10,18 @@ import { dialog } from "./common.ts";
  * The Dashboard's header, tab bar and content; a tab and its panel are named by the tab's id, so the label is the
  * shared one.
  * @param page The test's page.
+ * @param locale The language the page is in; Portuguese unless given.
  * @returns The Dashboard's elements.
  */
-export function dashboard(page: Page) {
-  const label = (id: string) => DASHBOARD_TABS.find((tab) => tab.id === id)!.label;
+export function dashboard(page: Page, locale: Locale = DEFAULT_LOCALE) {
+  const texts = DASHBOARD_TEXTS[locale];
+  const label = (id: string) => (texts.tabs as Record<string, string>)[id];
   return {
     heading: page.getByRole("heading", { name: "APC Universal Repair" }),
     mark: page.getByRole("img", { name: "APC Universal Repair" }),
     header: page.locator("header"),
     main: page.getByRole("main"),
-    tabs: page.getByRole("tablist", { name: "Seções do Dashboard" }),
+    tabs: page.getByRole("tablist", { name: texts.sections }),
     tab: (id: string) => page.getByRole("tab", { name: label(id) }),
     panel: (id: string) => page.getByRole("tabpanel", { name: label(id) }),
     title: (id: string) => page.getByRole("heading", { level: 1, name: label(id) }),

@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { DEFAULT_LOCALE, type Locale } from "@apc/domain/locale";
 import { expect } from "./fixtures.ts";
 import { inventory } from "../locators/inventory.ts";
 import { serveItems } from "../stubs/items.ts";
@@ -9,11 +10,12 @@ import { ITEMS } from "../data/items.ts";
 /**
  * Answers GET /items with the test items and opens the Inventory tab.
  * @param page The test's page.
+ * @param locale The language the page is in; Portuguese unless given.
  */
-export async function openInventory(page: Page) {
+export async function openInventory(page: Page, locale: Locale = DEFAULT_LOCALE) {
   await serveItems(page, ITEMS);
   await page.goto("/inventory");
-  await expect(inventory(page).table).toBeVisible();
+  await expect(inventory(page, locale).table).toBeVisible();
 }
 
 /**

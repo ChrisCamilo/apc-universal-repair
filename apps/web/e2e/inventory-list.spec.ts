@@ -497,3 +497,27 @@ test("Web: a change made on another device shows when the window comes back", { 
   await expect(rows.first()).toContainText("Disco de freio");
   await expect(search).toHaveValue("freio");
 });
+
+test.describe(() => {
+  test.use({ language: "en-US" });
+
+  // Opens the Inventory in English, and checks its search, counter, filters, new item and the Mais ações menu (on a
+  // phone, the header's "⋯" sheet) read in English, and on the desktop the table's headers too.
+  test("Web: the inventory reads in English", { tag: [TEST_TAGS.inventory] }, async ({ page, isMobile }) => {
+    await openInventory(page, "en-US");
+    const list = inventory(page, "en-US");
+    await expect(list.search).toBeVisible();
+    await expect(list.count).toHaveText("4 of 4 items · 1 low · 1 out of stock");
+    await expect(list.filters).toBeVisible();
+    await expect(list.newItem).toBeVisible();
+    if (!isMobile) {
+      await expect(dataTable(page).head).toContainText("Category");
+      await expect(dataTable(page).head).toContainText("Unit price");
+    }
+    await list.more.click();
+    const actions = isMobile ? list.moreSheet : list.moreMenu;
+    await expect(actions).toContainText("Manage lists");
+    await expect(actions).toContainText("Import parts");
+    await expect(actions).toContainText("Export parts");
+  });
+});

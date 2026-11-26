@@ -1,6 +1,7 @@
 import { test as base, type Page } from "@playwright/test";
 import type { TestUser } from "@apc/domain/auth";
 import type { Item } from "@apc/domain/items";
+import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, type Locale } from "@apc/domain/locale";
 import { serveCatalog } from "../stubs/catalog.ts";
 import { serveItems } from "../stubs/items.ts";
 import { signIn } from "../stubs/session.ts";
@@ -31,6 +32,8 @@ type Options = {
    * Playwright reads an array given to test.use() as a fixture's value and its options.
    */
   stock: { items: Item[] };
+  /** The language the app is in, saved on the device before the page loads; Portuguese by default. */
+  language: Locale;
 };
 
 type Fixtures = {
@@ -57,8 +60,12 @@ export async function guardApi(page: Page): Promise<string[]> {
 export const test = base.extend<Options & Fixtures>({
   signedIn: [true, { option: true }],
   stock: [{ items: [] }, { option: true }],
-  page: async ({ page, signedIn, stock }, provide) => {
+  language: [DEFAULT_LOCALE, { option: true }],
+  page: async ({ page, signedIn, stock, language }, provide) => {
     const unanswered = await guardApi(page);
+    if (language !== DEFAULT_LOCALE) {
+      await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [LOCALE_STORAGE_KEY, language]);
+    }
     if (signedIn) {
       await signIn(page);
     }
