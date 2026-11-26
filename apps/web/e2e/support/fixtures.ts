@@ -49,12 +49,22 @@ type Fixtures = {
  */
 export async function guardApi(page: Page): Promise<string[]> {
   const unanswered: string[] = [];
-  await page.route("**/api/**", (route) => {
+  await page.route(isApiCall, (route) => {
     const { pathname } = new URL(route.request().url());
     unanswered.push(`${route.request().method()} ${pathname}`);
     return route.fulfill({ status: 501, json: { statusCode: 501, message: "No stand-in answers this call." } });
   });
   return unanswered;
+}
+
+/**
+ * Tells a call to the API, whose path starts with /api/, from a module the dev server sends with /api/ further on in
+ * its path, as packages/domain/src/platform/api/.
+ * @param url The request's address.
+ * @returns Whether it is an API call.
+ */
+export function isApiCall(url: URL): boolean {
+  return url.pathname.startsWith("/api/");
 }
 
 export const test = base.extend<Options & Fixtures>({
