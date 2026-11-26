@@ -42,6 +42,7 @@ import { serverFailure, type FailureKind, type ServerFailure } from "./serverFai
 import { runServerTask, type ServerTask } from "./serverTasks.js";
 import { phoneAddress } from "../system/tray.js";
 import { texts } from "../texts.js";
+import { statusPage } from "../window/statusPage.js";
 
 // The server the app runs (see bundledServer.ts) and its settings, which the page shows in its Servidor dialog through
 // the preload's bridge (see preload.cts): the database in use, SQLite with its folder or PostgreSQL with its server,
@@ -115,8 +116,6 @@ export type ServerHost = {
   apiUrl: string;
   /** The certificate the server answers HTTPS with while the phone's access is on, the only one the app trusts there. */
   certificate?: ServerCertificate;
-  /** The "Ligando o servidor" page, static/starting.html. */
-  startingPage: string;
   /** How it runs, but for the database; its port and the phone's access follow a change in the Servidor dialog. */
   setup: Omit<ServerSetup, "databaseUrl">;
 };
@@ -614,7 +613,7 @@ export async function startOwnServer(host: ServerHost): Promise<"started" | "wai
     console.log("PostgreSQL was chosen with no address yet; the page asks for it.");
     return "waiting";
   }
-  await host.window.loadFile(host.startingPage);
+  await host.window.loadURL(statusPage("starting"));
   await runServer(host, openDatabaseUrl(config, safeStorage));
   return "started";
 }
@@ -640,7 +639,7 @@ async function takeOverPort(host: ServerHost): Promise<void> {
   stopWatching = undefined;
   const config = readConfig(host.setup.userData);
   if (!needsDatabaseAddress(config, safeStorage)) {
-    await host.window.loadFile(host.startingPage);
+    await host.window.loadURL(statusPage("starting"));
     await runServer(host, openDatabaseUrl(config, safeStorage));
   }
   await host.window.loadURL(host.appUrl);

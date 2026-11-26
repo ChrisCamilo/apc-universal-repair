@@ -9,7 +9,6 @@ directories:
   buildResources: build
 files:
   - dist/**/*
-  - static/**/*
   - build/icon.png
   - build/icon.ico
   - package.json

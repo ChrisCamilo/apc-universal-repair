@@ -39,6 +39,7 @@ import {
   writeInstallMarker,
   type InstallMarker,
 } from "./system/update.js";
+import { statusPage } from "./window/statusPage.js";
 import { MIN_WINDOW_SIZE, openingContentSize, WINDOW_SIZE } from "./window/window.js";
 
 // The desktop app's main process: one window with the web app, served from app://apc (see protocol.ts), or from the
@@ -256,7 +257,7 @@ function leaveToInstaller(marker: InstallMarker): void {
  */
 async function restartToUpdate(window: BrowserWindow, userData: string, version: string): Promise<void> {
   console.log(`Restarting to install ${version}.`);
-  await window.loadFile(path.join(app.getAppPath(), "static", "updating.html")).catch(() => undefined);
+  await window.loadURL(statusPage("updating")).catch(() => undefined);
   writeInstallMarker(userData, { version, startedAt: Date.now(), reopens: true });
   session.defaultSession.flushStorageData();
   await stopOwnServer();
@@ -462,7 +463,6 @@ void app.whenReady().then(async () => {
       window,
       appUrl,
       apiUrl,
-      startingPage: path.join(app.getAppPath(), "static", "starting.html"),
       setup: { serverDir, userData, port, phoneAccess: config.phoneAccess === true, version: app.getVersion() },
     };
     host = own;
