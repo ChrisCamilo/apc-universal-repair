@@ -16,6 +16,8 @@ import { Panel } from '../Panel/Panel';
 import { dimBoxes, useStyles } from './Tour.styles';
 import { TourActionsContext, TourLayersContext, type TourLayerActions } from './tourContext';
 import { Heading, Label, NumericReadout, Text } from '../Typography/Typography';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
 
 // A step-by-step guide that points at parts of the screen, the same as the web. A ring marks the step's
 // target and the rest of the screen dims around it; touches pass through, so the user does the step on the
@@ -86,6 +88,7 @@ export function Tour({ open, ...rest }: TourProps) {
 
 function TourRun({ onClose, steps, parts = [], bottomInset = 0 }: Omit<TourProps, 'open'>) {
   const { styles, ids } = useStyles();
+  const texts = useMessages(COMPONENT_TEXTS).tour;
   const screen = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const tour = useContext(TourActionsContext);
@@ -94,7 +97,7 @@ function TourRun({ onClose, steps, parts = [], bottomInset = 0 }: Omit<TourProps
   const [cardHeight, setCardHeight] = useState(0);
   const step = steps[index];
   const last = index === steps.length - 1;
-  const header = stepHeader(steps, index, parts);
+  const header = stepHeader(steps, index, parts, texts);
   const spot = target && spotlightRect(target);
   // Placed below the status bar: the shared placement counts from the top of the room it is given.
   const placed = cardPlacement(target && { ...target, y: target.y - insets.top }, cardHeight, {
@@ -187,18 +190,18 @@ function TourRun({ onClose, steps, parts = [], bottomInset = 0 }: Omit<TourProps
           <View style={styles.actions} testID={ids.actions}>
             {!last && (
               <Button variant="link" size="sm" onPress={onClose}>
-                Pular tutorial
+                {texts.skip}
               </Button>
             )}
             <View style={styles.buttons} testID={ids.buttons}>
               {step.auto && (
                 <Button variant="secondary" size="sm" onPress={step.auto}>
-                  Fazer por mim
+                  {texts.doItForMe}
                 </Button>
               )}
               {!step.done && (
                 <Button size="sm" onPress={next}>
-                  {last ? 'Concluir' : 'Próximo'}
+                  {last ? texts.finish : texts.next}
                 </Button>
               )}
             </View>

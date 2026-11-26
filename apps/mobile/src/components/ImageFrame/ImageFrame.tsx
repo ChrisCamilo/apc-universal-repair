@@ -7,6 +7,8 @@ import { useInPanel } from '../Panel/Panel';
 import { Spinner } from '../Spinner/Spinner';
 import { useTheme } from '../../app/theme';
 import { Text } from '../Typography/Typography';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
 
 // The car photo frame, the same as the web. It keeps its aspect ratio whatever the photo's size and never
 // stretches the photo: the whole photo shows, letterboxed on the raised fill. While the photo loads the frame
@@ -31,9 +33,10 @@ export function ImageFrame({
   loading = false,
   alt,
   ratio = DEFAULT_RATIO,
-  emptyLabel = 'Sem foto',
+  emptyLabel,
 }: ImageFrameProps) {
   const { colors } = useTheme();
+  const texts = useMessages(COMPONENT_TEXTS).imageFrame;
   const { styles, ids } = useStyles();
   const nested = useInPanel();
   // The result belongs to one URL, so a new src starts loading again without an effect.
@@ -61,7 +64,7 @@ export function ImageFrame({
         <View style={styles.missing} testID={ids.missing}>
           <Icon icon={imageIcon} size={ICON_SIZES.frame} color={colors.textMuted} />
           <Text size="sm" tone="muted">
-            {emptyLabel}
+            {emptyLabel ?? texts.empty}
           </Text>
         </View>
       )}

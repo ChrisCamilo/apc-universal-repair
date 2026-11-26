@@ -10,6 +10,7 @@ import { Select } from '../Select/Select';
 import { useTheme } from '../../app/theme';
 import { Label } from '../Typography/Typography';
 import { useLocale } from '../../app/locale';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
 
 // The list of rows on a phone, the same as the web table below 720px: each row is a card (thumbnail |
 // main | end and actions) and a "Sort by" select takes the place of the header, unless the owner sorts in its own
@@ -138,10 +139,10 @@ export function DataTable<Row>({
     <View style={styles.base} testID={ids.base}>
       {sortSelect && sortable.length > 0 && (
         <View style={styles.sortBar} testID={ids.sortBar}>
-          <Label>Ordenar</Label>
+          <Label>{COMPONENT_TEXTS[locale].dataTable.sort}</Label>
           <View style={styles.sortSelect} testID={ids.sortSelect}>
             <Select
-              label="Ordenar"
+              label={COMPONENT_TEXTS[locale].dataTable.sort}
               options={sortOptions(
                 sortable.map((column) => ({ key: column.key, label: column.sortLabel ?? column.header, numeric: column.numeric })),
                 unsortedLabel, locale,

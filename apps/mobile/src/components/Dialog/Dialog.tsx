@@ -10,6 +10,8 @@ import { useOverlayMotion } from '../../app/motion';
 import { ToastLayer } from '../Toast/Toast';
 import { TourLayer } from '../Tour/Tour';
 import { Heading } from '../Typography/Typography';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
 
 const NO_INSETS = { top: 0, bottom: 0 };
 
@@ -64,6 +66,7 @@ export function Dialog({
   children,
 }: DialogProps) {
   const { styles, ids } = useStyles();
+  const common = useMessages(COMMON_TEXTS);
   const screen = useWindowDimensions();
   // The app's SafeAreaProvider gives the insets; a screen rendered without one, as in a test, has none.
   const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
@@ -85,7 +88,7 @@ export function Dialog({
   return (
     <Modal visible={motion.shown} transparent animationType="none" onRequestClose={onClose}>
       <Animated.View style={[styles.backdrop, motion.fade]} testID={ids.backdrop}>
-        {dismissible && <Pressable accessibilityLabel="Fechar" onPress={onClose} style={styles.outside} testID={ids.outside} />}
+        {dismissible && <Pressable accessibilityLabel={common.close} onPress={onClose} style={styles.outside} testID={ids.outside} />}
         <Animated.View
           accessibilityViewIsModal
           accessibilityLabel={title}

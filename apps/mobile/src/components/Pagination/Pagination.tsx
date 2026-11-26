@@ -9,6 +9,7 @@ import { Segmented } from '../Segmented/Segmented';
 import { useLocale } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { Label, NumericReadout } from '../Typography/Typography';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
 
 // Page navigation for long lists, the same as the web: the page size selector, the range shown ("1–25 de
 // 64", announced as it changes) and the page buttons, with the first page, the last page and the neighbors
@@ -45,18 +46,19 @@ type PageButtonProps = {
 export function Pagination({ label, page, pageSize, total, pageSizes, onPageChange, onPageSizeChange }: PaginationProps) {
   const { styles, ids } = useStyles();
   const { locale } = useLocale();
+  const texts = COMPONENT_TEXTS[locale].pagination;
   const pages = pageCount(total, pageSize);
 
   return (
     <View style={styles.bar} testID={ids.bar}>
       <View style={styles.size} testID={ids.size}>
         <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-          <Label>Itens por página</Label>
+          <Label>{texts.pageSize}</Label>
         </View>
         {/* The group aligns itself to the top of its parent; wrapped, the row centers it on the label. */}
         <View>
           <Segmented
-            label="Itens por página"
+            label={texts.pageSize}
             options={pageSizes.map((size) => ({ value: String(size), label: String(size) }))}
             value={String(pageSize)}
             onValueChange={(value) => {
@@ -67,10 +69,10 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
         </View>
       </View>
       <View accessibilityLiveRegion="polite" style={styles.range} testID={ids.range}>
-        <NumericReadout tone="muted">{pageRange(page, pageSize, total, locale)}</NumericReadout>
+        <NumericReadout tone="muted">{pageRange(page, pageSize, total, locale, texts.of)}</NumericReadout>
       </View>
       <View accessibilityLabel={label} style={styles.pages} testID={ids.pages}>
-        <PageButton target={page - 1} disabled={page === 1} label="Página anterior" onPageChange={onPageChange}>
+        <PageButton target={page - 1} disabled={page === 1} label={texts.previous} onPageChange={onPageChange}>
           {(color) => (
             <View style={styles.previous} testID={ids.previous}>
               <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={color} />
@@ -91,7 +93,7 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
               </NativeText>
             </View>
           ) : (
-            <PageButton key={slot} target={slot} current={slot === page} label={`Página ${slot}`} onPageChange={onPageChange}>
+            <PageButton key={slot} target={slot} current={slot === page} label={texts.page(slot)} onPageChange={onPageChange}>
               {(color) => (
                 <NativeText style={[styles.number, { color }]} testID={ids.number}>
                   {slot}
@@ -100,7 +102,7 @@ export function Pagination({ label, page, pageSize, total, pageSizes, onPageChan
             </PageButton>
           ),
         )}
-        <PageButton target={page + 1} disabled={page === pages} label="Próxima página" onPageChange={onPageChange}>
+        <PageButton target={page + 1} disabled={page === pages} label={texts.next} onPageChange={onPageChange}>
           {(color) => <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={color} />}
         </PageButton>
       </View>

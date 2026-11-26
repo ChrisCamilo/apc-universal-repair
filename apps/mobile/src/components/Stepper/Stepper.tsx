@@ -6,6 +6,8 @@ import { Icon } from '../Icon/Icon';
 import { useStyles } from './Stepper.styles';
 import { useTheme } from '../../app/theme';
 import { Label, Text } from '../Typography/Typography';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
 
 // A whole number between a − and a +, the same as the web, such as an item's minimum stock (see Stepper.styles.ts):
 // each press takes one away or adds one, from 0 up to the limit, the − locked at 0 and the + at the limit, and the
@@ -27,6 +29,7 @@ type StepperProps = {
 
 export function Stepper({ label, value, onValueChange, max, helper, error }: StepperProps) {
   const { colors } = useTheme();
+  const texts = useMessages(COMPONENT_TEXTS).stepper;
   const { styles, ids } = useStyles();
   const [focused, setFocused] = useState(false);
   const root = useRef<HostInstance>(null);
@@ -58,7 +61,7 @@ export function Stepper({ label, value, onValueChange, max, helper, error }: Ste
     <View ref={root} style={styles.field} testID={ids.field}>
       <Label>{label}</Label>
       <View style={styles.row} testID={ids.row}>
-        {step('Diminuir', minusIcon, count - 1, count <= 0)}
+        {step(texts.decrease, minusIcon, count - 1, count <= 0)}
         <TextInput
           value={value}
           onChangeText={onValueChange}
@@ -73,7 +76,7 @@ export function Stepper({ label, value, onValueChange, max, helper, error }: Ste
           style={[styles.input, focused && styles.inputFocused, !!error && styles.inputError]}
           testID={ids.input}
         />
-        {step('Aumentar', plusIcon, count + 1, count >= max)}
+        {step(texts.increase, plusIcon, count + 1, count >= max)}
       </View>
       {error ? (
         <NativeText accessibilityLiveRegion="polite" style={styles.error} testID={ids.error}>

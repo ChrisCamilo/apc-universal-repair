@@ -8,6 +8,7 @@ import { useStyles } from './ImageUpload.styles';
 import { useLocale } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { Label, Text } from '../Typography/Typography';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
 
 // The photo field of the item form, the same as the web on a phone. Photos show as thumbnails, the first one marked
 // as the cover, each with an × to remove it. The label says how many fit, and under the photos Tirar foto opens the
@@ -39,6 +40,7 @@ type ImageUploadProps = {
 export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTake, readOnly = false }: ImageUploadProps) {
   const { colors } = useTheme();
   const { locale } = useLocale();
+  const texts = COMPONENT_TEXTS[locale].imageUpload;
   const { styles, ids } = useStyles();
   const [problems, setProblems] = useState<string[]>([]);
   const left = limit - photos.length;
@@ -91,7 +93,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTa
 
   return (
     <View accessibilityLabel={label} style={styles.field} testID={ids.field}>
-      <Label>{readOnly ? label : `${label} · até ${limit}`}</Label>
+      <Label>{readOnly ? label : `${label} · ${texts.upTo(limit)}`}</Label>
       <View style={styles.body} testID={ids.body}>
         {photos.length > 0 && (
           <View style={styles.photos} testID={ids.photos}>
@@ -100,7 +102,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTa
                 <Image
                   source={{ uri: photo.url }}
                   resizeMode="cover"
-                  accessibilityLabel={`Foto ${index + 1}${index === 0 ? ', capa' : ''}`}
+                  accessibilityLabel={texts.photo(index + 1, index === 0)}
                   style={styles.image}
                   testID={ids.image}
                 />
@@ -114,7 +116,7 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTa
                 {!readOnly && (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Remover foto ${index + 1}`}
+                    accessibilityLabel={texts.remove(index + 1)}
                     hitSlop={scales.space.s2}
                     onPress={() => remove(index)}
                     style={({ pressed }) => [styles.remove, pressed && styles.removePressed]}
@@ -127,11 +129,11 @@ export function ImageUpload({ label, photos, onPhotosChange, limit, onPick, onTa
             ))}
           </View>
         )}
-        {readOnly && photos.length === 0 && <Text tone="muted">Sem fotos</Text>}
+        {readOnly && photos.length === 0 && <Text tone="muted">{texts.none}</Text>}
         {!readOnly && left > 0 && (
           <View style={styles.pickers} testID={ids.pickers}>
-            {picker('Tirar foto', cameraIcon, onTake)}
-            {picker('Galeria', imageIcon, onPick)}
+            {picker(texts.camera, cameraIcon, onTake)}
+            {picker(texts.gallery, imageIcon, onPick)}
           </View>
         )}
         {problems.length > 0 && (
