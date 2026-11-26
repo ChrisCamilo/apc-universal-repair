@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { DEVICE_MESSAGES, type Device } from '@apc/domain/devices'
+import { DEVICE_MESSAGES, deviceLabel, type Device } from '@apc/domain/devices'
 import { formatDateTime } from '@apc/domain/locale'
 import { useLocale } from '../../app/useLocale.ts'
 import { Button } from '../../components/Button'
@@ -96,7 +96,7 @@ export function DevicesDialog({ open, onClose }: DevicesDialogProps) {
                   <TextField label={texts.name} value={renaming.name} onValueChange={(name) => setRenaming({ id: device.id, name })} />
                 ) : (
                   <div className={classes.about()} data-testid={ids.about}>
-                    <Text>{device.current ? texts.current(device.name) : device.name}</Text>
+                    <Text>{device.current ? texts.current(deviceLabel(device, locale)) : deviceLabel(device, locale)}</Text>
                     <Text size="sm" tone="muted">
                       {device.displayName} · {device.lastUsedAt ? texts.lastUsed(formatDateTime(new Date(device.lastUsedAt), locale)) : texts.neverUsed}
                     </Text>

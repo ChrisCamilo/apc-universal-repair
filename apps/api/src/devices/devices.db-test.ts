@@ -96,7 +96,8 @@ test("API: a new device is recorded as pending, and its login waits", async () =
 });
 
 // Logs in from the server's computer, whose device is authorized at once; lists the devices there and authorizes the
-// waiting phone with a name; and checks the phone is then told so, and its login goes through.
+// waiting phone with a name; and checks the phone is then told so, its login goes through, and a blank name is kept
+// empty, for each app to write "Dispositivo <code>" in its language.
 test("API: the server's computer authorizes a waiting device, which then logs in", async () => {
   const desktop = await newDevice();
   const here = await login(desktop);
@@ -117,7 +118,7 @@ test("API: the server's computer authorizes a waiting device, which then logs in
   assert.equal((await login(phone, PHONE_ADDRESS)).statusCode, 200);
 
   const renamed = await app.inject({ method: "PATCH", url: `/devices/${waiting.id}`, headers: bearer(token), payload: { name: "" } });
-  assert.equal(renamed.json().name, `Dispositivo ${code}`);
+  assert.equal(renamed.json().name, "");
 });
 
 // Authorizes a phone and logs it in, then removes it from the server's computer, and checks its session ends with it,

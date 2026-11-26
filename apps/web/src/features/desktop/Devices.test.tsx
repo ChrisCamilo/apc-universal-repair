@@ -62,7 +62,7 @@ function serveDevices(devices: Device[], listStatus = 200) {
     if (method === 'DELETE') {
       return new Response(null, { status: 204 })
     }
-    const name = (JSON.parse(String(init!.body)) as { name: string }).name.trim() || `Dispositivo ${device.code}`
+    const name = (JSON.parse(String(init!.body)) as { name: string }).name.trim()
     return Response.json({ ...device, status: 'authorized', name })
   })
   vi.stubGlobal('fetch', api)
@@ -134,6 +134,22 @@ test('Web: Dispositivos says why it can\'t list the devices', async () => {
   serveDevices([], 403)
   const elsewhere = await render(<DevicesDialog open onClose={() => {}} />)
   await expect.element(elsewhere.getByRole('alert')).toHaveTextContent(DESKTOP_TEXTS['pt-BR'].devicesFailed.elsewhere)
+})
+
+// Lists a device authorized without a name, which the API keeps empty, and checks it is shown by its code in Portuguese
+// and, with English chosen, in English.
+test('Web: a device given no name is shown by its code, in the language chosen', async () => {
+  serveDevices([{ ...DEVICE, status: 'authorized' }])
+  const portuguese = await render(<DevicesDialog open onClose={() => {}} />)
+  await expect.element(portuguese.getByRole('list', { name: 'Dispositivos autorizados' }).getByText('Dispositivo K7Q2ZD')).toBeVisible()
+  await portuguese.unmount()
+
+  const english = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <DevicesDialog open onClose={() => {}} />
+    </LocaleContext.Provider>,
+  )
+  await expect.element(english.getByRole('list', { name: 'Authorized devices' }).getByText('Device K7Q2ZD')).toBeVisible()
 })
 
 // Opens Dispositivos in English, and checks the list, a device never used, this device and removing read in English.
