@@ -9,6 +9,7 @@ import type { UploadPhoto } from '../ImageUpload/ImageUpload.tsx'
 import { imageViewer, viewerBox } from './ImageViewer.styles.ts'
 import { ToastProvider } from '../Toast/Toast.tsx'
 import { useToast } from '../Toast/toastContext.ts'
+import { COMMON_TEXTS, COMPONENT_TEXTS } from '@apc/domain/app-texts'
 import { useLocale } from '../../app/useLocale.ts'
 import { Heading, NumericReadout, Text } from '../Typography/Typography.tsx'
 import { usePresence } from '../usePresence.ts'
@@ -103,6 +104,8 @@ export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
 function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosChange, limit }: ViewerBodyProps) {
   const toast = useToast()
   const { locale } = useLocale()
+  const texts = COMPONENT_TEXTS[locale].imageViewer
+  const common = COMMON_TEXTS[locale]
   const input = useRef<HTMLInputElement>(null)
   const { classes, ids } = imageViewer()
   const [index, setIndex] = useState(0)
@@ -140,7 +143,7 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
   const change = async (next: UploadPhoto[], done: string) => {
     const saved = await onPhotosChange(next)
     if (saved === false) {
-      toast.error('Não foi possível salvar as fotos. Tente de novo.')
+      toast.error(texts.saveFailed)
     } else {
       toast.success(done)
     }
@@ -158,11 +161,11 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
       release(photos[current])
       change(
         photos.map((p, i) => (i === current ? photo : p)),
-        'Foto trocada',
+        texts.replaced,
       )
     } else {
       setIndex(count)
-      change([...photos, photo], 'Foto adicionada')
+      change([...photos, photo], texts.added)
     }
   }
 
@@ -173,7 +176,7 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
     setProblems([])
     change(
       photos.filter((_, i) => i !== current),
-      'Foto removida',
+      texts.removed,
     )
   }
 
@@ -193,16 +196,16 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
           {count > 0 ? (
             <img
               src={photos[current].url}
-              alt={`Foto ${current + 1} de ${count} · ${name}`}
+              alt={texts.photo(current + 1, count, name)}
               className={classes.image()}
               data-testid={ids.image}
             />
           ) : (
             <div className={classes.empty()} data-testid={ids.empty}>
               <Icon icon={imageIcon} size={ICON_SIZES.viewer} />
-              <Heading level={4}>Este item ainda não tem fotos</Heading>
+              <Heading level={4}>{texts.emptyTitle}</Heading>
               <Text size="sm" tone="muted">
-                Adicione até {photoCount(limit, locale)}. A primeira vira a capa na lista.
+                {texts.emptyHint(photoCount(limit, locale))}
               </Text>
             </div>
           )}
@@ -211,7 +214,7 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
           <>
             <button
               type="button"
-              aria-label="Foto anterior"
+              aria-label={texts.previous}
               className={classes.nav({ side: 'prev' })}
               data-testid={ids.nav}
               onClick={() => step(-1)}
@@ -220,7 +223,7 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
             </button>
             <button
               type="button"
-              aria-label="Próxima foto"
+              aria-label={texts.next}
               className={classes.nav({ side: 'next' })}
               data-testid={ids.nav}
               onClick={() => step(1)}
@@ -241,7 +244,7 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
             <button
               key={photo.url}
               type="button"
-              aria-label={`Foto ${i + 1}`}
+              aria-label={texts.dot(i + 1)}
               aria-current={i === current}
               className={classes.dot()}
               data-testid={ids.dot}
@@ -260,23 +263,23 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
       <div className={classes.footer()} data-testid={ids.footer}>
         <Text size="sm" tone="muted">
           {full
-            ? `Limite de ${photoCount(limit, locale)} atingido. Troque ou remova uma para adicionar outra.`
-            : `JPG, PNG ou WebP, até 3 MB · ${count} de ${photoCount(limit, locale)}`}
+            ? texts.full(photoCount(limit, locale))
+            : texts.room(count, photoCount(limit, locale))}
         </Text>
         <span className={classes.buttons()} data-testid={ids.buttons}>
           {count > 0 && (
             <>
               <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
-                Remover esta foto
+                {texts.remove}
               </Button>
               <Button variant="secondary" size="sm" onClick={() => choose(true)}>
-                Trocar esta foto
+                {texts.replace}
               </Button>
             </>
           )}
           {!full && (
             <Button size="sm" onClick={() => choose(false)}>
-              Adicionar foto
+              {texts.add}
             </Button>
           )}
         </span>
@@ -301,22 +304,22 @@ function ViewerBody({ titleId, onClose, name, code, caption, photos, onPhotosCha
       <Dialog
         open={confirming}
         onClose={() => setConfirming(false)}
-        title="Remover esta foto?"
+        title={texts.confirmTitle}
         size="confirm"
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={() => setConfirming(false)}>
-              Cancelar
+              {common.cancel}
             </Button>
             <Button variant="danger" size="sm" onClick={remove}>
-              Remover
+              {common.remove}
             </Button>
           </>
         }
       >
         <Text size="sm" tone="muted">
-          Esta foto sai de {name} ({code}). Essa ação não pode ser desfeita.
-          {current === 0 && count > 1 && ' Ela é a capa; a próxima foto passa a ser a capa na lista.'}
+          {texts.confirm(name, code)}
+          {current === 0 && count > 1 && ` ${texts.cover}`}
         </Text>
       </Dialog>
     </div>

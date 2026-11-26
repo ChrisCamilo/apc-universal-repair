@@ -1,5 +1,7 @@
 import { useId, useRef, useState, type InputHTMLAttributes, type Ref } from 'react'
 import { FIELD_KINDS, type FieldKind } from '@apc/ui-spec/field'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { closeIcon, eyeIcon, searchIcon, type IconShape } from '@apc/tokens/icons'
 import { Icon } from '../Icon/Icon.tsx'
 import { searchField, textField } from './TextField.styles.ts'
@@ -48,6 +50,7 @@ export function TextField({
   disabled,
   ...rest
 }: TextFieldProps) {
+  const texts = useMessages(COMPONENT_TEXTS).textField
   const autoId = useId()
   const inputId = id ?? autoId
   const noteId = `${inputId}-note`
@@ -93,7 +96,7 @@ export function TextField({
             type="button"
             className={classes.toggle()}
             data-testid={ids.toggle}
-            aria-label={revealed ? 'Ocultar senha' : 'Mostrar senha'}
+            aria-label={revealed ? texts.hidePassword : texts.showPassword}
             aria-pressed={revealed}
             disabled={disabled}
             onClick={() => setRevealed((shown) => !shown)}
@@ -118,6 +121,7 @@ export function TextField({
 }
 
 export function SearchField({ label, value, onValueChange, disabled, onKeyDown, ...rest }: SearchFieldProps) {
+  const texts = useMessages(COMPONENT_TEXTS).textField
   const input = useRef<HTMLInputElement>(null)
   const spec = FIELD_KINDS.search
   const { classes, ids } = searchField({ disabled: Boolean(disabled) })
@@ -155,7 +159,7 @@ export function SearchField({ label, value, onValueChange, disabled, onKeyDown, 
         {...rest}
       />
       {value && !disabled && (
-        <button type="button" className={classes.clear()} data-testid={ids.clear} aria-label="Limpar busca" onClick={clear}>
+        <button type="button" className={classes.clear()} data-testid={ids.clear} aria-label={texts.clearSearch} onClick={clear}>
           <Icon icon={closeIcon} />
         </button>
       )}

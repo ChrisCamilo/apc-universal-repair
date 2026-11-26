@@ -6,6 +6,7 @@ import { dataTable, rowAction, tableThumbnail, tableTitle } from './DataTable.st
 import { Icon } from '../Icon/Icon.tsx'
 import { Select } from '../Select/Select.tsx'
 import { Label } from '../Typography/Typography.tsx'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
 import { useLocale } from '../../app/useLocale.ts'
 
 // A list of rows with sortable columns, for the inventory and later data screens. The owner sorts the rows
@@ -168,7 +169,7 @@ export function DataTable<Row>({
     <div className={classes.base()} data-testid={ids.base}>
       {sortSelect && sortable.length > 0 && (
         <div className={classes.sortBar()} data-testid={ids.sortBar}>
-          <Label htmlFor={sortId}>Ordenar</Label>
+          <Label htmlFor={sortId}>{COMPONENT_TEXTS[locale].dataTable.sort}</Label>
           <div className={classes.sortSelect()} data-testid={ids.sortSelect}>
             <Select
               id={sortId}

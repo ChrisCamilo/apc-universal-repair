@@ -1,5 +1,7 @@
 import { useId } from 'react'
 import { ICON_SIZES, minusIcon, plusIcon } from '@apc/tokens/icons'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { Icon } from '../Icon/Icon.tsx'
 import { stepper } from './Stepper.styles.ts'
 import { Label, Text } from '../Typography/Typography.tsx'
@@ -23,6 +25,7 @@ type StepperProps = {
 }
 
 export function Stepper({ label, value, onValueChange, max, helper, error }: StepperProps) {
+  const texts = useMessages(COMPONENT_TEXTS).stepper
   const labelId = useId()
   const inputId = useId()
   const noteId = `${inputId}-note`
@@ -38,7 +41,7 @@ export function Stepper({ label, value, onValueChange, max, helper, error }: Ste
       <div role="group" aria-labelledby={labelId} className={classes.row()} data-testid={ids.row}>
         <button
           type="button"
-          aria-label="Diminuir"
+          aria-label={texts.decrease}
           disabled={count <= 0}
           className={classes.button()}
           data-testid={ids.button}
@@ -58,7 +61,7 @@ export function Stepper({ label, value, onValueChange, max, helper, error }: Ste
         />
         <button
           type="button"
-          aria-label="Aumentar"
+          aria-label={texts.increase}
           disabled={count >= max}
           className={classes.button()}
           data-testid={ids.button}

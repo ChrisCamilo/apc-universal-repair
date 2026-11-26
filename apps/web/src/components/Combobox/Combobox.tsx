@@ -1,5 +1,7 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
 import { capitalizeFirst, findOption, matchingOptions } from '@apc/domain/items'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { chevronIcon, ICON_SIZES } from '@apc/tokens/icons'
 import { combobox } from './Combobox.styles.ts'
 import { Icon } from '../Icon/Icon.tsx'
@@ -53,6 +55,7 @@ export function Combobox({
   error,
   disabled,
 }: ComboboxProps) {
+  const texts = useMessages(COMPONENT_TEXTS).combobox
   const inputId = useId()
   const listId = `${inputId}-list`
   const noteId = `${inputId}-note`
@@ -194,7 +197,7 @@ export function Combobox({
                   pick(entry)
                 }}
               >
-                {entry.kind === 'create' ? `+ Criar ${noun} “${entry.value}”` : entry.value}
+                {entry.kind === 'create' ? texts.create(noun, entry.value) : entry.value}
               </li>
             ))}
           </ul>

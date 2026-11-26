@@ -2,6 +2,8 @@ import { useState, type HTMLAttributes } from 'react'
 import { ICON_SIZES, imageIcon } from '@apc/tokens/icons'
 import { Icon } from '../Icon/Icon.tsx'
 import { frameBox, imageFrame } from './ImageFrame.styles.ts'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { useMessages } from '../../app/useLocale.ts'
 import { useInPanel } from '../Panel/panelContext.ts'
 import { Spinner } from '../Spinner/Spinner.tsx'
 
@@ -25,7 +27,8 @@ type ImageFrameProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
 }
 type LoadState = { src: string; state: 'loaded' | 'failed' }
 
-export function ImageFrame({ src, loading = false, alt, ratio = DEFAULT_RATIO, emptyLabel = 'Sem foto', className, style, ...rest }: ImageFrameProps) {
+export function ImageFrame({ src, loading = false, alt, ratio = DEFAULT_RATIO, emptyLabel, className, style, ...rest }: ImageFrameProps) {
+  const texts = useMessages(COMPONENT_TEXTS).imageFrame
   const nested = useInPanel()
   // The result belongs to one URL, so a new src starts loading again without an effect.
   const [load, setLoad] = useState<LoadState | null>(null)
@@ -58,7 +61,7 @@ export function ImageFrame({ src, loading = false, alt, ratio = DEFAULT_RATIO, e
       {missing && (
         <span className={classes.missing()} data-testid={ids.missing}>
           <Icon icon={imageIcon} size={ICON_SIZES.frame} />
-          {emptyLabel}
+          {emptyLabel ?? texts.empty}
         </span>
       )}
     </div>
