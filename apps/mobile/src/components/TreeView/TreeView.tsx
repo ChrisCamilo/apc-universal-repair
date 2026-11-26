@@ -8,6 +8,8 @@ import { useReducedMotion } from '../../app/motion';
 import { Divider } from '../Panel/Panel';
 import { useTheme } from '../../app/theme';
 import { useStyles } from './TreeView.styles';
+import { useMessages } from '../../app/locale';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // Opens and closes a branch's children: their rows fade in or out while the rows below slide.
 const OPEN_ANIMATION = LayoutAnimation.create(scales.motion.durationMs, 'easeInEaseOut', 'opacity');
@@ -151,6 +153,7 @@ export function TreeView({
 
 function TreeItem({ node, level, tree }: TreeItemProps) {
   const { styles, ids } = useStyles();
+  const phone = useMessages(PHONE_TEXTS).components;
   const branch = canOpen(node);
   const leaf = isLeaf(node);
   const extra = node.children && tree.after?.(node.id);
@@ -169,7 +172,7 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
           role="treeitem"
           accessibilityLabel={node.detail ? `${node.label} ${node.detail}` : node.label}
           accessibilityState={{ expanded: branch ? open : undefined, selected: choosable ? selected : undefined }}
-          accessibilityValue={node.id === tree.highlighted ? { text: 'em destaque' } : undefined}
+          accessibilityValue={node.id === tree.highlighted ? { text: phone.highlighted } : undefined}
           onPress={() => tree.activate(node)}
           style={({ pressed }) => [styles.row, trail && styles.rowTrail, pressed && styles.rowPressed, accent && styles.rowActive]}
           testID={ids.row}
@@ -177,7 +180,7 @@ function TreeItem({ node, level, tree }: TreeItemProps) {
           {branch && choosable ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${open ? 'Fechar' : 'Abrir'} ${node.label}`}
+              accessibilityLabel={phone.toggleNode(open, node.label)}
               onPress={() => tree.toggle(node.id)}
               style={styles.toggle}
               testID={ids.toggle}

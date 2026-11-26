@@ -14,6 +14,7 @@ import { BOTTOM_BAR_HEIGHT } from './Dashboard.styles';
 import { enqueue } from '../sync/inventoryCopy';
 import { InventoryTutorial } from '../inventory/tutorial/InventoryTutorial';
 import { themeStorage, ThemeProvider } from '../../app/theme';
+import { LocaleContext } from '../../app/locale';
 
 // The Inventory tab holds bottom sheets, which pad their end for the screen's insets.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MOBILE_DESIGN_WIDTH, height: MOBILE_DESIGN_HEIGHT }, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
@@ -183,4 +184,11 @@ test('Mobile: a tab with no other actions has no "⋯"', async () => {
   await themeStorage.setItem(DASHBOARD_TAB_STORAGE_KEY, 'catalog');
   const tree = await mount('eighties', 'night', <Dashboard userMenu={<Text>christian.camilo</Text>} />);
   expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Mais ações')).toHaveLength(0);
+});
+
+// Opens the Dashboard in English, and checks its tabs read in English.
+test('Mobile: the Dashboard reads in English', async () => {
+  const tree = await mount('eighties', 'night', <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}><Dashboard userMenu={null} /></LocaleContext.Provider>);
+  expect(shows(tree, 'Inventory')).toBe(true);
+  expect(shows(tree, 'Catalog')).toBe(true);
 });

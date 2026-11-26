@@ -10,10 +10,11 @@ import { Icon } from '../Icon/Icon';
 import type { PickedPhoto, UploadPhoto } from '../ImageUpload/ImageUpload';
 import { FRAME_MAX_SHARE, useStyles, viewerBox } from './ImageViewer.styles';
 import { useOverlayMotion } from '../../app/motion';
-import { useLocale } from '../../app/locale';
+import { useLocale, useMessages } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { ToastProvider, useToast } from '../Toast/Toast';
 import { Heading, NumericReadout, Text } from '../Typography/Typography';
+import { COMMON_TEXTS, COMPONENT_TEXTS } from '@apc/domain/app-texts';
 
 // A large view of an item's photos, the same as the web: one photo at a time, as large as the screen allows
 // and never cropped, under the item's name and code. With more than one photo, arrows over the photo move
@@ -48,11 +49,12 @@ type ImageViewerProps = {
 export function ImageViewer({ open, onClose, ...rest }: ImageViewerProps) {
   const { styles, ids } = useStyles();
   const motion = useOverlayMotion(open, 'scale');
+  const common = useMessages(COMMON_TEXTS);
   return (
     <Modal visible={motion.shown} transparent animationType="none" onRequestClose={onClose}>
       <ToastProvider>
         <Animated.View style={[styles.backdrop, motion.fade]} testID={ids.backdrop}>
-          <Pressable accessibilityLabel="Fechar" onPress={onClose} style={styles.outside} testID={ids.outside} />
+          <Pressable accessibilityLabel={common.close} onPress={onClose} style={styles.outside} testID={ids.outside} />
           <ViewerBody onClose={onClose} moved={motion.moved} {...rest} />
         </Animated.View>
       </ToastProvider>
@@ -73,6 +75,8 @@ function ViewerBody({
 }: Omit<ImageViewerProps, 'open'> & { moved: ReturnType<typeof useOverlayMotion>['moved'] }) {
   const { colors } = useTheme();
   const { locale } = useLocale();
+  const texts = COMPONENT_TEXTS[locale].imageViewer;
+  const common = COMMON_TEXTS[locale];
   const { styles, ids } = useStyles();
   const screen = useWindowDimensions();
   const toast = useToast();
@@ -91,7 +95,7 @@ function ViewerBody({
   const change = async (next: UploadPhoto[], done: string) => {
     const saved = await onPhotosChange(next);
     if (saved === false) {
-      toast.error('Não foi possível salvar as fotos. Tente de novo.');
+      toast.error(texts.saveFailed);
     } else {
       toast.success(done);
     }
@@ -112,11 +116,11 @@ function ViewerBody({
     if (replace) {
       await change(
         photos.map((p, i) => (i === current ? photo : p)),
-        'Foto trocada',
+        texts.replaced,
       );
     } else {
       setIndex(count);
-      await change([...photos, photo], 'Foto adicionada');
+      await change([...photos, photo], texts.added);
     }
   };
 
@@ -126,7 +130,7 @@ function ViewerBody({
     setProblems([]);
     await change(
       photos.filter((_, i) => i !== current),
-      'Foto removida',
+      texts.removed,
     );
   };
 
@@ -146,16 +150,16 @@ function ViewerBody({
               <Image
                 source={{ uri: photos[current].url }}
                 resizeMode="contain"
-                accessibilityLabel={`Foto ${current + 1} de ${count} · ${name}`}
+                accessibilityLabel={texts.photo(current + 1, count, name)}
                 style={styles.image}
                 testID={ids.image}
               />
             ) : (
               <View style={styles.empty} testID={ids.empty}>
                 <Icon icon={imageIcon} size={ICON_SIZES.viewer} color={colors.textMuted} />
-                <Heading level={4}>Este item ainda não tem fotos</Heading>
+                <Heading level={4}>{texts.emptyTitle}</Heading>
                 <Text size="sm" tone="muted">
-                  {`Adicione até ${photoCount(limit, locale)}. A primeira vira a capa na lista.`}
+                  {texts.emptyHint(photoCount(limit, locale))}
                 </Text>
               </View>
             )}
@@ -165,7 +169,7 @@ function ViewerBody({
               <Pressable
                 key={side}
                 accessibilityRole="button"
-                accessibilityLabel={side === 'prev' ? 'Foto anterior' : 'Próxima foto'}
+                accessibilityLabel={side === 'prev' ? texts.previous : texts.next}
                 onPress={() => step(side === 'prev' ? -1 : 1)}
                 style={({ pressed }) => [styles.round, side === 'prev' ? styles.roundPrev : styles.roundNext, pressed && styles.roundPressed]}
                 testID={ids.round}
@@ -189,7 +193,7 @@ function ViewerBody({
               <Pressable
                 key={photo.url}
                 accessibilityRole="button"
-                accessibilityLabel={`Foto ${i + 1}`}
+                accessibilityLabel={texts.dot(i + 1)}
                 accessibilityState={{ selected: i === current }}
                 hitSlop={scales.space.s2}
                 onPress={() => setIndex(i)}
@@ -211,22 +215,22 @@ function ViewerBody({
         <Text size="sm" tone="muted">
           {full
             ? `Limite de ${photoCount(limit, locale)} atingido. Troque ou remova uma para adicionar outra.`
-            : `JPG, PNG ou WebP, até 3 MB · ${count} de ${photoCount(limit, locale)}`}
+            : texts.room(count, photoCount(limit, locale))}
         </Text>
         <View style={styles.buttons} testID={ids.buttons}>
           {count > 0 && (
             <>
               <Button variant="secondary" size="sm" onPress={() => setConfirming(true)}>
-                Remover esta foto
+                {texts.remove}
               </Button>
               <Button variant="secondary" size="sm" onPress={() => choose(true)}>
-                Trocar esta foto
+                {texts.replace}
               </Button>
             </>
           )}
           {!full && (
             <Button size="sm" onPress={() => choose(false)}>
-              Adicionar foto
+              {texts.add}
             </Button>
           )}
         </View>
@@ -234,22 +238,22 @@ function ViewerBody({
       <Dialog
         open={confirming}
         onClose={() => setConfirming(false)}
-        title="Remover esta foto?"
+        title={texts.confirmTitle}
         size="confirm"
         actions={
           <>
             <Button variant="secondary" size="sm" onPress={() => setConfirming(false)}>
-              Cancelar
+              {common.cancel}
             </Button>
             <Button variant="danger" size="sm" onPress={remove}>
-              Remover
+              {common.remove}
             </Button>
           </>
         }
       >
         <Text size="sm" tone="muted">
-          {`Esta foto sai de ${name} (${code}). Essa ação não pode ser desfeita.` +
-            (current === 0 && count > 1 ? ' Ela é a capa; a próxima foto passa a ser a capa na lista.' : '')}
+          {texts.confirm(name, code) +
+            (current === 0 && count > 1 ? ` ${texts.cover}` : '')}
         </Text>
       </Dialog>
     </Animated.View>

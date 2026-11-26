@@ -8,6 +8,7 @@ import { lowStockKey } from '@apc/domain/notifications';
 import { testItem } from '@apc/domain/test-items';
 import { syncPageOf } from '@apc/domain/test-sync';
 import type { Item } from '@apc/domain/items';
+import { LOCALE_STORAGE_KEY } from '@apc/domain/locale';
 import { themeStorage } from '../../app/theme';
 import { auth } from '../auth/auth';
 import { backgroundSync } from './backgroundSync';
@@ -53,9 +54,18 @@ afterEach(() => jest.restoreAllMocks());
 test('Mobile: the background sync shows the items newly at their minimum in the shade, once', async () => {
   answer([LOW, FULL]);
   await backgroundSync();
-  expect(native.SystemNotifications.show.mock.calls).toEqual([['Aviso', 'Estoque baixo: “Filtro de óleo” (2 de 3)']]);
+  expect(native.SystemNotifications.show.mock.calls).toEqual([['Aviso', 'Estoque baixo: “Filtro de óleo” (2 de 3)', 'Notificações do APC']]);
   await backgroundSync();
   expect(native.SystemNotifications.show).toHaveBeenCalledTimes(1);
+});
+
+// Keeps English as the phone's language and syncs a stock with an item at its minimum, and checks the shade warns of
+// it in English, on the channel named in English.
+test('Mobile: the background sync posts its notification in the language kept on the phone', async () => {
+  await themeStorage.setItem(LOCALE_STORAGE_KEY, 'en-US');
+  answer([LOW, FULL]);
+  await backgroundSync();
+  expect(native.SystemNotifications.show.mock.calls).toEqual([['Warning', 'Low stock: “Filtro de óleo” (2 of 3)', 'APC notifications']]);
 });
 
 // Marks the low item as already said by the bell and checks the background sync doesn't say it again.
@@ -71,7 +81,9 @@ test('Mobile: a change the server refuses in the background is shown in the shad
   answer([FULL]);
   await enqueue([{ id: '10000000-0000-4000-8000-000000000001', type: 'deleteItem', itemId: LOW.id, at: '2026-11-24T12:00:00.000Z', label: 'Filtro de óleo' }]);
   await backgroundSync();
-  expect(native.SystemNotifications.show.mock.calls).toEqual([['Erro', 'O servidor recusou a exclusão de “Filtro de óleo”: o item não existe mais no servidor.']]);
+  expect(native.SystemNotifications.show.mock.calls).toEqual([
+    ['Erro', 'O servidor recusou a exclusão de “Filtro de óleo”: o item não existe mais no servidor.', 'Notificações do APC'],
+  ]);
 });
 
 // Runs with no session, then with the copy behind the phone's lock, and checks neither asks the server anything.

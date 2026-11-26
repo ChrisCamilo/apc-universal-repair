@@ -15,6 +15,8 @@ import { Icon } from '../../components/Icon';
 import { NotificationsMenu } from './NotificationsMenu';
 import { themeStorage, ThemeProvider, withAlpha } from '../../app/theme';
 import { ToastProvider, useToast } from '../../components/Toast';
+import { LocaleContext } from '../../app/locale';
+import type { Locale } from '@apc/domain/locale';
 
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 const USER_ID = 'user-christian';
@@ -59,17 +61,19 @@ function button(tree: ReactTestRenderer.ReactTestRenderer, name: string): ReactT
  * @param userId The logged user's id.
  * @returns The rendered tree.
  */
-async function mount(userId = USER_ID): Promise<ReactTestRenderer.ReactTestRenderer> {
+async function mount(userId = USER_ID, locale: Locale = 'pt-BR'): Promise<ReactTestRenderer.ReactTestRenderer> {
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: 'eighties', [THEME_STORAGE_KEYS.mode]: 'night' });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
-          <ToastProvider>
-            <NotificationsMenu userId={userId} />
-            <Triggers />
-          </ToastProvider>
+          <LocaleContext.Provider value={{ locale, setLocale: () => {} }}>
+            <ToastProvider>
+              <NotificationsMenu userId={userId} />
+              <Triggers />
+            </ToastProvider>
+          </LocaleContext.Provider>
         </ThemeProvider>
       </SafeAreaProvider>,
     );
@@ -246,3 +250,12 @@ function Triggers() {
     </>
   );
 }
+
+// Opens the bell in English with nothing in it, and checks the bottom bar, the dialog and its settings read in English.
+test('Mobile: the notifications read in English', async () => {
+  const tree = await mount(USER_ID, 'en-US');
+  await press(tree, 'Alerts');
+  const shown = texts(tree.root);
+  expect(shown).toEqual(expect.arrayContaining(['Notifications', 'No notifications', 'Clear notifications']));
+  expect(shown.some((text) => text.startsWith('Toast time'))).toBe(true);
+});

@@ -14,9 +14,11 @@ import { TEST_USERS } from '@apc/domain/test-users';
 import { isStyleId } from '@apc/tokens/style-ids';
 import { MODES, STYLES, THEME_STORAGE_KEYS, themes, type Mode, type Style } from '@apc/tokens/theme';
 import { apiUrl, applyServer, SERVER_STORAGE_KEY } from '../../app/api';
-import { LOCAL_NETWORK_TEXTS } from '../../app/localNetwork';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 import { ConnectScreen } from './ConnectScreen';
 import { themeStorage, ThemeProvider } from '../../app/theme';
+import { LocaleContext } from '../../app/locale';
+import type { Locale } from '@apc/domain/locale';
 
 /** The home server, as the Servidor dialog's QR code carries it. */
 const SERVER = { url: 'https://192.168.0.10:3000', fingerprint: 'q1Wn7ZbX-0_aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV' };
@@ -58,13 +60,15 @@ function byId(tree: ReactTestRenderer.ReactTestRenderer, id: string): ReactTestR
  * @param mode Mode to start on.
  * @returns The rendered tree.
  */
-async function mount(props: Partial<React.ComponentProps<typeof ConnectScreen>> = {}, style: Style = 'eighties', mode: Mode = 'night') {
+async function mount(props: Partial<React.ComponentProps<typeof ConnectScreen>> = {}, style: Style = 'eighties', mode: Mode = 'night', locale: Locale = 'pt-BR') {
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <ThemeProvider>
-        <ConnectScreen onConnected={() => {}} {...props} />
+        <LocaleContext.Provider value={{ locale, setLocale: () => {} }}>
+          <ConnectScreen onConnected={() => {}} {...props} />
+        </LocaleContext.Provider>
       </ThemeProvider>,
     );
   });
@@ -166,19 +170,19 @@ test('Mobile: on Android 17 the local network is asked for before the server, an
   const onConnected = jest.fn();
   try {
     const tree = await mount({ onConnected });
-    expect(shows(tree, LOCAL_NETWORK_TEXTS.why)).toBe(true);
+    expect(shows(tree, PHONE_TEXTS['pt-BR'].localNetwork.why)).toBe(true);
 
     ask.mockResolvedValueOnce('denied');
     await scan(pairingLink(SERVER));
     expect(ask).toHaveBeenCalledWith(PermissionsAndroid.PERMISSIONS.ACCESS_LOCAL_NETWORK);
-    expect(shows(tree, LOCAL_NETWORK_TEXTS.denied)).toBe(true);
+    expect(shows(tree, PHONE_TEXTS['pt-BR'].localNetwork.denied)).toBe(true);
     expect(fetch).not.toHaveBeenCalled();
-    expect(button(tree, LOCAL_NETWORK_TEXTS.settings)).toBeUndefined();
+    expect(button(tree, PHONE_TEXTS['pt-BR'].localNetwork.settings)).toBeUndefined();
 
     ask.mockResolvedValueOnce('never_ask_again');
     await scan(pairingLink(SERVER));
-    expect(shows(tree, LOCAL_NETWORK_TEXTS.blocked)).toBe(true);
-    await press(tree, LOCAL_NETWORK_TEXTS.settings);
+    expect(shows(tree, PHONE_TEXTS['pt-BR'].localNetwork.blocked)).toBe(true);
+    await press(tree, PHONE_TEXTS['pt-BR'].localNetwork.settings);
     expect(settings).toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
 
@@ -433,4 +437,14 @@ test('Mobile: Conectar ao servidor carries its style ids', async () => {
   expect(byId(tree, 'auth.connect-screen.form')).toBeDefined();
   const ids = tree.root.findAll((n) => typeof n.type === 'string' && typeof n.props.testID === 'string').map((n) => n.props.testID);
   expect(ids.filter((id) => id.startsWith('auth.') && !isStyleId(id))).toEqual([]);
+});
+
+// Opens Conectar ao servidor in English, and checks its title and how to connect read in English, and that typing the
+// address in shows the pairing's fields named in English.
+test('Mobile: Conectar ao servidor reads in English', async () => {
+  const tree = await mount({}, 'eighties', 'night', 'en-US');
+  expect(shows(tree, 'Connect to the server')).toBe(true);
+  await press(tree, 'Type it in');
+  expect(tree.root.findAll((n) => n.props.label === 'Address' || n.props.accessibilityLabel === 'Address').length).toBeGreaterThan(0);
+  expect(tree.root.findAll((n) => n.props.label === 'Code' || n.props.accessibilityLabel === 'Code').length).toBeGreaterThan(0);
 });

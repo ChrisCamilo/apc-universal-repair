@@ -17,6 +17,8 @@ import {
 import { MenuContext, useMenu } from './menuContext';
 import { useOverlayMotion } from '../../app/motion';
 import { useTheme } from '../../app/theme';
+import { useMessages } from '../../app/locale';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // A dropdown menu, the same as the web (see Menu.styles.ts), such as the Dashboard's user menu: a trigger and a
 // popover anchored under it, kept inside the screen when the trigger isn't at its edge. Checkbox and radio items (Switch, Segmented) keep the menu open when chosen, and only
@@ -47,6 +49,7 @@ type MenuProps = {
 export function Menu({ label, trigger, onOpenChange, children }: MenuProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
+  const phone = useMessages(PHONE_TEXTS).components;
   const { width } = useWindowDimensions();
   const [open, setOpen] = useState(false);
   const motion = useOverlayMotion(open, 'translate');
@@ -87,7 +90,7 @@ export function Menu({ label, trigger, onOpenChange, children }: MenuProps) {
       <Modal visible={motion.shown} transparent animationType="none" onRequestClose={() => toggle(false)}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Fechar menu"
+          accessibilityLabel={phone.closeMenu}
           onPress={() => toggle(false)}
           style={styles.backdrop}
           testID={ids.backdrop}

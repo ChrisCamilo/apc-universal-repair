@@ -7,6 +7,8 @@ import { Icon } from '../Icon/Icon';
 import { FIELD_LINE_HEIGHT, TRAILING_HIT_SLOP, useSearchStyles, useStyles } from './TextField.styles';
 import { useTheme } from '../../app/theme';
 import { Label, Text } from '../Typography/Typography';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
 
 // The pill-shaped inputs, the same as the web (see TextField.styles.ts). Each field kind sets the keyboard, autofill
 // hint and capitalization (see @apc/ui-spec/field). Inside a FieldScrollView, a field that gets focus scrolls into sight
@@ -63,6 +65,7 @@ export function TextField({
   onBlur,
 }: TextFieldProps) {
   const { colors } = useTheme();
+  const texts = useMessages(COMPONENT_TEXTS).textField;
   const { styles, ids } = useStyles();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -116,7 +119,7 @@ export function TextField({
           {isPassword && (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={revealed ? 'Ocultar senha' : 'Mostrar senha'}
+              accessibilityLabel={revealed ? texts.hidePassword : texts.showPassword}
               accessibilityState={{ checked: revealed, disabled }}
               disabled={disabled}
               hitSlop={TRAILING_HIT_SLOP}
@@ -146,6 +149,7 @@ export function TextField({
 
 export function SearchField({ label, value, onValueChange, disabled = false }: SearchFieldProps) {
   const { colors } = useTheme();
+  const texts = useMessages(COMPONENT_TEXTS).textField;
   const { styles, ids } = useSearchStyles();
   const input = useRef<ComponentRef<typeof TextInput>>(null);
   const root = useRef<HostInstance>(null);
@@ -182,7 +186,7 @@ export function SearchField({ label, value, onValueChange, disabled = false }: S
         {value !== '' && !disabled && (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Limpar busca"
+            accessibilityLabel={texts.clearSearch}
             hitSlop={TRAILING_HIT_SLOP}
             onPress={() => {
               onValueChange('');

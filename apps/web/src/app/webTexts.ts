@@ -31,7 +31,6 @@ export const WEB_TEXTS = catalog(
       hint: 'JPG, PNG ou WebP, até 3 MB cada. A primeira vira a capa na lista.',
     },
     import: {
-      row: (line: number) => `Linha ${line}`,
       rows: 'Linhas do arquivo',
       template: 'Baixar modelo',
     },
@@ -61,7 +60,6 @@ export const WEB_TEXTS = catalog(
       hint: 'JPG, PNG or WebP, up to 3 MB each. The first one is the cover in the list.',
     },
     import: {
-      row: (line) => `Line ${line}`,
       rows: "The file's lines",
       template: 'Download template',
     },

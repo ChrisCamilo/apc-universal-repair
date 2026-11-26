@@ -14,16 +14,6 @@ const PERMISSION = PermissionsAndroid.PERMISSIONS.ACCESS_LOCAL_NETWORK;
 /** The access asked for: given, refused this time, or refused for good, so only Android's settings give it back. */
 export type LocalNetworkAccess = 'granted' | 'denied' | 'blocked';
 
-/** What the screens say of the access, in Portuguese. */
-export const LOCAL_NETWORK_TEXTS = {
-  why: 'O servidor fica no computador de casa, na mesma rede Wi-Fi: para chegar até ele, o Android vai pedir que o APC acesse os dispositivos próximos.',
-  denied: 'Sem acesso à rede local, o APC não chega ao servidor. Toque de novo e permita o acesso aos dispositivos próximos.',
-  blocked: 'O acesso à rede local está bloqueado para o APC, e sem ele o APC não chega ao servidor. Libere-o nas configurações do Android, em Permissões > Dispositivos próximos.',
-  missing: 'O APC não tem acesso à rede local, por onde chega ao servidor no computador de casa.',
-  allow: 'Permitir acesso',
-  settings: 'Abrir configurações',
-} as const;
-
 /**
  * Tells whether this phone asks for the local network at all.
  * @returns True on Android 17 and later.

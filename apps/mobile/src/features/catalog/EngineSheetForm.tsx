@@ -19,6 +19,8 @@ import { TextField } from '../../components/TextField';
 import { Heading, NumericReadout, Text } from '../../components/Typography';
 import { useStyles } from './EngineSheetForm.styles';
 import { useLocale } from '../../app/locale';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts';
 
 // An engine's sheet as a form, the same as the web on a phone: a full-screen dialog to add an engine under a period or
 // save its sheet again, with the displacement in litres (a comma or a dot), the cylinders, the drive and a summary. The
@@ -43,6 +45,8 @@ type EngineSheetFormProps = {
 
 export function EngineSheetForm({ open, title, names, initial, saving = false, onSave, onClose }: EngineSheetFormProps) {
   const { locale } = useLocale();
+  const texts = CATALOG_SCREEN_TEXTS[locale];
+  const common = COMMON_TEXTS[locale];
   const { styles, ids } = useStyles();
   const [litres, setLitres] = useState(initial ? litresText(initial.displacementDl) : '');
   const [cylinders, setCylinders] = useState(initial?.cylinders.toString() ?? '');
@@ -72,10 +76,10 @@ export function EngineSheetForm({ open, title, names, initial, saving = false, o
       actions={
         <>
           <Button variant="secondary" size="sm" onPress={onClose}>
-            Cancelar
+            {common.cancel}
           </Button>
           <Button size="sm" loading={saving} onPress={save}>
-            Salvar ficha
+            {texts.saveSheet}
           </Button>
         </>
       }
@@ -83,24 +87,24 @@ export function EngineSheetForm({ open, title, names, initial, saving = false, o
       <View style={styles.base} testID={ids.base}>
         <View style={styles.head} testID={ids.head}>
           <RNText style={styles.kicker} testID={ids.kicker}>
-            Ficha do motor
+            {texts.sheet.kicker}
           </RNText>
           <Heading level={3}>{preview?.title ?? `${names.year} · ${names.brand} ${names.model} ${names.version}`}</Heading>
         </View>
         <RNText style={styles.fromTree} testID={ids.fromTree}>
-          Período {names.year}, do galho de cima
+          {texts.sheet.period(names.year)}
         </RNText>
         <View style={styles.pair} testID={ids.pair}>
           <View style={styles.pairField} testID={ids.pairField}>
-            <TextField label="Cilindrada (L)" kind="decimal" value={litres} onValueChange={setLitres} error={problems.litres} />
+            <TextField label={texts.sheet.litres} kind="decimal" value={litres} onValueChange={setLitres} error={problems.litres} />
           </View>
           <View style={styles.pairField} testID={ids.pairField}>
-            <TextField label="Cilindros" kind="number" value={cylinders} onValueChange={setCylinders} error={problems.cylinders} />
+            <TextField label={texts.sheet.cylinders} kind="number" value={cylinders} onValueChange={setCylinders} error={problems.cylinders} />
           </View>
         </View>
         <View style={styles.drive} testID={ids.drive}>
           <Segmented
-            label="Tração"
+            label={texts.sheet.drive}
             options={ENGINE_DRIVES.map((value) => ({ value, label: capitalizeFirst(ENGINE_DRIVE_LABELS[locale][value].toLowerCase()) }))}
             value={drive}
             onValueChange={setDrive}
@@ -111,11 +115,11 @@ export function EngineSheetForm({ open, title, names, initial, saving = false, o
             </RNText>
           )}
         </View>
-        <TextField label="Resumo" value={summary} onValueChange={setSummary} lines={4} />
+        <TextField label={texts.sheet.summary} value={summary} onValueChange={setSummary} lines={4} />
         {sheet && preview && (
           <View style={styles.preview} testID={ids.preview}>
             <Text size="sm" tone="muted">
-              Na árvore: {engineLabel(sheet, locale)}
+              {texts.sheet.tree(engineLabel(sheet, locale))}
             </Text>
             <View style={styles.readouts} testID={ids.readouts}>
               {preview.specs.map((spec) => (

@@ -21,6 +21,9 @@ import { useToast } from '../../../components/Toast';
 import { Heading, NumericReadout, Text } from '../../../components/Typography';
 import { pickCsv, shareTemplate } from './csv';
 import { useStyles } from './ImportItemsDialog.styles';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts';
+import { PHONE_TEXTS } from '../../../app/phoneTexts';
 
 // The "Importar Peças" dialog of the Inventory tab, the same as the web: it explains the file, shares the template
 // (to save it or send it to a computer) and reads the file picked from the phone's files. The preview counts the items
@@ -53,6 +56,9 @@ type ImportItemsDialogProps = {
 
 export function ImportItemsDialog({ open, lists, onClose, onImported, offline = false }: ImportItemsDialogProps) {
   const { locale } = useLocale();
+  const texts = INVENTORY_SCREEN_TEXTS[locale];
+  const common = COMMON_TEXTS[locale];
+  const phone = PHONE_TEXTS[locale].inventory;
   const { styles, ids } = useStyles();
   const toast = useToast();
   const needsServer = useMessages(INVENTORY_NEEDS_SERVER);
@@ -73,7 +79,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
   /** Picks a file and reads it into the preview; a file that can't be opened says so in a toast. */
   const choose = async () => {
     const file = await pickCsv().catch(() => {
-      toast.error('Não foi possível abrir o arquivo. Tente de novo.');
+      toast.error(phone.fileFailed);
       return null;
     });
     if (file) {
@@ -87,7 +93,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
     const result = await importItems(apiUrl(), rows);
     setImporting(false);
     if (!result) {
-      toast.error(offline ? needsServer.import : 'Não foi possível importar os itens. Tente de novo.');
+      toast.error(offline ? needsServer.import : texts.import.failed);
       return;
     }
     toast.success(importedSummary(result, locale));
@@ -98,31 +104,28 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
     <Dialog
       open={open}
       onClose={onClose}
-      title="Importar Peças"
+      title={texts.importItems}
       closable
       actions={
         <>
           <Button variant="secondary" size="sm" onPress={onClose}>
-            Cancelar
+            {common.cancel}
           </Button>
           <Button size="sm" loading={importing} disabled={valid === 0} onPress={submit}>
-            {valid === 1 ? 'Importar 1 item' : `Importar ${valid} itens`}
+            {texts.import.submit(valid)}
           </Button>
         </>
       }
     >
       <Text size="sm" tone="muted">
-        Use o modelo: uma linha por marca da peça, separada por vírgula ou ponto e vírgula, em UTF-8; as linhas com o mesmo
-        número na coluna “item” são as marcas de um item. Os veículos vão em “vehicles”, como “Volkswagen / Gol | Fiat”, e os
-        códigos originais em “original_codes”, separados por “|”. Com vírgula, um valor como “189,90” vai entre aspas. Um
-        código que já está no estoque atualiza o item.
+        {texts.import.hint}
       </Text>
       <View style={styles.buttons} testID={ids.buttons}>
         <Button variant="secondary" size="sm" onPress={shareTemplate}>
-          Compartilhar modelo
+          {phone.shareTemplate}
         </Button>
         <Button size="sm" onPress={choose}>
-          {read ? 'Escolher outro arquivo' : 'Escolher arquivo'}
+          {read ? texts.import.chooseOther : texts.import.chooseFile}
         </Button>
       </View>
       {read && 'error' in read.result && (
@@ -131,11 +134,11 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
         </Text>
       )}
       {read && 'rows' in read.result && (
-        <View style={styles.preview} testID={ids.preview} accessibilityLabel="Prévia da importação">
+        <View style={styles.preview} testID={ids.preview} accessibilityLabel={texts.import.preview}>
           <Text size="sm">{`${read.name} · ${rowsSummary(rows, locale)}`}</Text>
           {creates.length > 0 && (
             <View style={styles.creates} testID={ids.creates}>
-              <Heading level={4}>Serão criados</Heading>
+              <Heading level={4}>{texts.import.created}</Heading>
               {creates.map((line) => (
                 <Text key={line} size="sm" tone="muted">
                   {line}
@@ -146,7 +149,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported, offline = 
           {rows.map(({ line, item, errors }) => (
             <View key={line} style={[styles.row, errors.length > 0 && styles.rowInvalid]} testID={ids.row}>
               <View style={styles.head} testID={ids.head}>
-                <NumericReadout tone="muted">{`Linha ${line}`}</NumericReadout>
+                <NumericReadout tone="muted">{texts.import.row(line)}</NumericReadout>
                 <NumericReadout>{item.brands[0].code || '—'}</NumericReadout>
                 <Text size="sm">{item.name || '—'}</Text>
               </View>

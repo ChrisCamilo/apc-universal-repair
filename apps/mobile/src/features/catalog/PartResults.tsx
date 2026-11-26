@@ -8,6 +8,8 @@ import { CardTitle, StockQuantity } from '../inventory/browse/ItemCard';
 import { photoSource } from '../sync/photoCache';
 import { useStyles } from './PartResults.styles';
 import { useLocale } from '../../app/locale';
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts';
+import { perLocale } from '@apc/domain/locale';
 
 // The inventory parts a Catalog search by code found, the same as the web on a phone (the "Catálogo no celular"
 // mockup): the Inventory's cards under a heading, each brand of an item whose code matched, or its original code, with
@@ -16,24 +18,27 @@ import { useLocale } from '../../app/locale';
 // fit, a line says how many more.
 
 // A found part's card, the columns of the Inventory's card: its photo, its name, code and details, and its quantity.
-const CARD_COLUMNS: ComponentProps<typeof DataTable<FoundPart>>['columns'] = [
-  {
-    key: 'photo',
-    header: 'Foto',
-    card: 'thumb',
-    cell: (part) => {
-      const photo = partBrand(part).photos[0];
-      return <TableThumbnail src={photo && photoSource(photo, 'thumb')} label={`Foto de ${part.item.name}`} />;
+const CARD_COLUMNS = perLocale((locale): ComponentProps<typeof DataTable<FoundPart>>['columns'] => {
+  const texts = CATALOG_SCREEN_TEXTS[locale];
+  return [
+    {
+      key: 'photo',
+      header: texts.photo,
+      card: 'thumb',
+      cell: (part) => {
+        const photo = partBrand(part).photos[0];
+        return <TableThumbnail src={photo && photoSource(photo, 'thumb')} label={texts.photoOf(part.item.name)} />;
+      },
     },
-  },
-  {
-    key: 'name',
-    header: 'Item',
-    card: 'main',
-    cell: (part) => <FoundTitle part={part} />,
-  },
-  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (part) => <StockQuantity {...part.item} /> },
-];
+    {
+      key: 'name',
+      header: texts.item,
+      card: 'main',
+      cell: (part) => <FoundTitle part={part} />,
+    },
+    { key: 'quantity', header: texts.quantity, numeric: true, card: 'end', cell: (part) => <StockQuantity {...part.item} /> },
+  ];
+});
 
 type PartResultsProps = {
   results: Results;
@@ -51,19 +56,20 @@ function partBrand({ id, item }: FoundPart) {
 
 export function PartResults({ results, onChoose }: PartResultsProps) {
   const { locale } = useLocale();
+  const texts = CATALOG_SCREEN_TEXTS[locale].results;
   const { styles, ids } = useStyles();
   const { parts, more } = results;
   return (
     <View style={styles.box} testID={ids.box}>
       <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
-        {parts.length === 1 ? 'Peça do estoque com esse código' : 'Peças do estoque com esse código'}
+        {texts.heading(parts.length)}
       </RNText>
       <Text size="sm" tone="muted">
-        Toque na peça para abrir o veículo dela no catálogo.
+        {texts.tap}
       </Text>
       <DataTable
-        label="Peças do estoque com esse código"
-        columns={CARD_COLUMNS}
+        label={texts.label}
+        columns={CARD_COLUMNS[locale]}
         rows={parts}
         rowKey={(part) => part.id}
         rowStatus={(part) => stockTint(part.item, locale)}
@@ -76,7 +82,7 @@ export function PartResults({ results, onChoose }: PartResultsProps) {
       />
       {more > 0 && (
         <Text size="sm" tone="muted">
-          {`Mais ${more}. Digite mais do código para afinar.`}
+          {texts.more(more)}
         </Text>
       )}
     </View>

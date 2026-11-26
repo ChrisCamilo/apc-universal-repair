@@ -8,12 +8,13 @@ import { BottomBarItem } from '../dashboard/BottomBarItem';
 import { useBarStyles } from '../dashboard/Dashboard.styles';
 import { Dialog } from '../../components/Dialog';
 import { Icon } from '../../components/Icon';
-import { useLocale } from '../../app/locale';
+import { useLocale, useMessages } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { useToastDuration } from '../../components/Toast';
 import { useSettingsStyles, useStyles } from './NotificationsMenu.styles';
 import { useNotifications } from './useNotifications';
 import { useSystemNotifications } from './systemNotifications';
+import { NOTIFICATION_TEXTS } from '@apc/domain/notification-texts';
 
 // The notifications, the same as the web's on a phone: Alertas in the Dashboard's bottom bar, the bell in its pill with
 // a badge counting the unread, opens a full screen listing the latest toasts, newest first, each with its kind's icon
@@ -29,6 +30,7 @@ type Opened = { fresh: readonly number[]; now: Date };
 
 export function NotificationsMenu({ userId }: { userId: string }) {
   const { colors } = useTheme();
+  const texts = useMessages(NOTIFICATION_TEXTS);
   const { list, markRead, clear } = useNotifications(userId);
   const [opened, setOpened] = useState<Opened>({ fresh: [], now: new Date() });
   const [open, setOpen] = useState(false);
@@ -47,7 +49,7 @@ export function NotificationsMenu({ userId }: { userId: string }) {
 
   return (
     <>
-      <BottomBarItem label="Alertas" name={badge ? `Alertas, ${badge} não lidas` : undefined} expanded={open} onPress={show}>
+      <BottomBarItem label={texts.alerts} name={badge ? texts.alertsUnread(badge) : undefined} expanded={open} onPress={show}>
         <Icon icon={bellIcon} size={ICON_SIZES.thumbnail} color={colors.textMuted} />
         {badge !== '' && (
           <View style={bar.styles.badge} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden testID={bar.ids.badge}>
@@ -60,11 +62,11 @@ export function NotificationsMenu({ userId }: { userId: string }) {
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title="Notificações"
+        title={texts.title}
         closable
         actions={
           <Button variant="secondary" disabled={list.length === 0} onPress={clear}>
-            Limpar notificações
+            {texts.clear}
           </Button>
         }
       >
@@ -73,11 +75,11 @@ export function NotificationsMenu({ userId }: { userId: string }) {
           <View style={styles.empty} testID={ids.empty}>
             <Icon icon={bellIcon} size={ICON_SIZES.thumbnail} color={colors.textMuted} />
             <Text style={styles.emptyText} testID={ids.emptyText}>
-              Nenhuma notificação
+              {texts.empty}
             </Text>
           </View>
         ) : (
-          <View accessibilityRole="list" accessibilityLabel="Últimas notificações" style={styles.list} testID={ids.list}>
+          <View accessibilityRole="list" accessibilityLabel={texts.latest} style={styles.list} testID={ids.list}>
             {list.map((notification) => (
               <NotificationEntry key={notification.id} notification={notification} fresh={opened.fresh.includes(notification.id)} now={opened.now} />
             ))}
@@ -91,6 +93,7 @@ export function NotificationsMenu({ userId }: { userId: string }) {
 /** "Tempo do aviso": how long a toast stays, between a − and a + button that stop at the shortest and the longest. */
 function DurationSetting() {
   const { colors } = useTheme();
+  const texts = useMessages(NOTIFICATION_TEXTS);
   const { ms, setMs } = useToastDuration();
   const { styles, ids } = useSettingsStyles();
   const step = (direction: 1 | -1, label: string, disabled: boolean) => (
@@ -107,19 +110,19 @@ function DurationSetting() {
     </Pressable>
   );
   return (
-    <View accessibilityLabel="Tempo do aviso" style={styles.setting} testID={ids.setting}>
+    <View accessibilityLabel={texts.duration} style={styles.setting} testID={ids.setting}>
       <Text style={styles.label} testID={ids.label}>
-        Tempo do aviso{'\n'}
+        {texts.duration}{'\n'}
         <Text style={styles.hint} testID={ids.hint}>
-          Quanto tempo cada aviso fica na tela
+          {texts.durationHint}
         </Text>
       </Text>
       <View style={styles.stepper} testID={ids.stepper}>
-        {step(-1, 'Diminuir o tempo do aviso', ms <= TOAST_DURATION.minMs)}
+        {step(-1, texts.decrease, ms <= TOAST_DURATION.minMs)}
         <Text accessibilityLiveRegion="polite" style={styles.value} testID={ids.value}>
           {toastDurationLabel(ms)}
         </Text>
-        {step(1, 'Aumentar o tempo do aviso', ms >= TOAST_DURATION.maxMs)}
+        {step(1, texts.increase, ms >= TOAST_DURATION.maxMs)}
       </View>
     </View>
   );

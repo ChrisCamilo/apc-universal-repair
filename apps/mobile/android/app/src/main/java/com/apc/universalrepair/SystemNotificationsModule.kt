@@ -15,9 +15,9 @@ import com.facebook.react.bridge.ReactMethod
 
 /**
  * The app's notifications in the Android shade (see src/features/notifications/systemNotifications.ts, as
- * NativeModules.SystemNotifications): local ones, with no push server, on the "Notificações do APC" channel, made the
- * first time one is shown. Each opens the app on OPEN_URL, which the app reads as a link and opens the bell's
- * notifications for, and goes away once tapped. Without the notification permission (Android 13 and later) or with the
+ * NativeModules.SystemNotifications): local ones, with no push server, on the app's channel, named in the language
+ * chosen ("Notificações do APC"), made the first time one is shown and renamed when the language changes. Each opens
+ * the app on OPEN_URL, which the app reads as a link and opens the bell's notifications for, and goes away once tapped. Without the notification permission (Android 13 and later) or with the
  * app's notifications turned off, Android shows nothing and nothing fails.
  */
 class SystemNotificationsModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
@@ -27,10 +27,11 @@ class SystemNotificationsModule(private val context: ReactApplicationContext) : 
    * Shows a notification in the shade.
    * @param title Its title, e.g. "Aviso".
    * @param message Its text.
+   * @param channel The channel's name in the language chosen, e.g. "Notificações do APC".
    * @param promise Resolved once handed to Android.
    */
   @ReactMethod
-  fun show(title: String, message: String, promise: Promise) {
+  fun show(title: String, message: String, channel: String, promise: Promise) {
     try {
       val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
       if (!manager.areNotificationsEnabled()) {
@@ -39,7 +40,7 @@ class SystemNotificationsModule(private val context: ReactApplicationContext) : 
       }
       val builder =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-          manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT))
+          manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, channel, NotificationManager.IMPORTANCE_DEFAULT))
           Notification.Builder(context, CHANNEL_ID)
         } else {
           @Suppress("DEPRECATION")
@@ -66,13 +67,31 @@ class SystemNotificationsModule(private val context: ReactApplicationContext) : 
     }
   }
 
+  /**
+   * Names the channel in the language chosen, making it when it isn't there yet; Android keeps the user's settings of
+   * it, as only its name changes. Before Android 8 there are no channels, and nothing happens.
+   * @param channel The channel's name, e.g. "APC notifications".
+   * @param promise Resolved once named.
+   */
+  @ReactMethod
+  fun nameChannel(channel: String, promise: Promise) {
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, channel, NotificationManager.IMPORTANCE_DEFAULT))
+      }
+      promise.resolve(null)
+    } catch (error: Exception) {
+      promise.reject("system_notifications", error)
+    }
+  }
+
   companion object {
     /** The name JavaScript reaches the module by, as NativeModules.SystemNotifications. */
     const val NAME = "SystemNotifications"
 
-    /** The channel's id, and its name in Android's settings. */
+    /** The channel's id, which stays as its name changes with the language. */
     private const val CHANNEL_ID = "apc-notifications"
-    private const val CHANNEL_NAME = "Notificações do APC"
     /** What a tap opens the app on, which it reads as the bell's notifications. */
     private const val OPEN_URL = "apcuniversalrepair://notifications"
     /** The next notification's id, so each one stays in the shade. */

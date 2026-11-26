@@ -16,6 +16,8 @@ import { DevicePending } from './DevicePending';
 import { useStyles } from './LoginScreen.styles';
 import { useDeviceWait } from './useDeviceWait';
 import { useLocale } from '../../app/locale';
+import { AUTH_TEXTS } from '@apc/domain/auth-texts';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // The first screen of the app, the same as the web's /login on a phone: one column with the APC mark over the name
 // and the tagline, which head the screen as "APC Universal Repair", and what the login asks for, then the form, with
@@ -35,7 +37,6 @@ import { useLocale } from '../../app/locale';
 // sent.
 
 /** How Conectar a outro servidor pairs the phone, said under its name and to screen readers. */
-const CONNECT_HINT = 'Leia o QR Code do computador';
 const FIELD_ORDER = ['username', 'password'] as const;
 
 type LoginScreenProps = {
@@ -66,6 +67,8 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
   const { styles, ids } = useStyles();
   const theme = useTheme();
   const deviceMessages = useMessages(DEVICE_MESSAGES);
+  const texts = AUTH_TEXTS[locale].login;
+  const phone = PHONE_TEXTS[locale].login;
   const device = useDeviceWait(auth, onLoggedIn, () => setRefused(deviceMessages.refused));
 
   /** Takes a field's new value and drops its message. */
@@ -151,7 +154,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
         {device.waiting && <DevicePending code={device.waiting.code} />}
         <TextField
           ref={usernameInput}
-          label="Usuário"
+          label={texts.username}
           kind="username"
           icon={userIcon}
           value={credentials.username}
@@ -162,7 +165,7 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
         />
         <TextField
           ref={passwordInput}
-          label="Senha"
+          label={texts.password}
           kind="password"
           icon={lockIcon}
           value={credentials.password}
@@ -173,24 +176,24 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
         />
         <View style={styles.actions} testID={ids.actions}>
           <Button variant="link" align="end" onPress={() => setForgot(true)}>
-            Esqueceu a senha?
+            {texts.forgot}
           </Button>
           <Button align="stretch" onPress={submit} loading={sending}>
-            Entrar
+            {texts.logIn}
           </Button>
         </View>
       </View>
       <View style={styles.account} testID={ids.account}>
         <Text tone="muted" align="center">
-          Ainda não tem conta?
+          {texts.noAccount}
         </Text>
         <Button variant="secondary" align="stretch" onPress={onRegister}>
-          Criar conta
+          {texts.createAccount}
         </Button>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Conectar a outro servidor"
-          accessibilityHint={CONNECT_HINT}
+          accessibilityLabel={phone.connectOther}
+          accessibilityHint={phone.connectHint}
           onPress={onConnect}
           style={({ pressed }) => [styles.connect, pressed && styles.connectPressed]}
           testID={ids.connect}
@@ -200,10 +203,10 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
           </View>
           <View style={styles.connectText} testID={ids.connectText}>
             <RNText style={styles.connectTitle} testID={ids.connectTitle}>
-              Conectar a outro servidor
+              {phone.connectOther}
             </RNText>
             <Text size="sm" tone="muted">
-              {CONNECT_HINT}
+              {phone.connectHint}
             </Text>
           </View>
           <Icon icon={chevronIcon} size={ICON_SIZES.caret} color={theme.colors.textMuted} />
@@ -212,10 +215,10 @@ export function LoginScreen({ auth, notice, onLoggedIn, onRegister, onConnect }:
       <Dialog
         open={forgot}
         onClose={() => setForgot(false)}
-        title="Esqueceu a senha?"
+        title={texts.forgot}
         size="confirm"
         dismissible
-        actions={<Button onPress={() => setForgot(false)}>Entendi</Button>}
+        actions={<Button onPress={() => setForgot(false)}>{texts.gotIt}</Button>}
       >
         <Text>{LOGIN_MESSAGES[locale].forgotPassword}</Text>
       </Dialog>

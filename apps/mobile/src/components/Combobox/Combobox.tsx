@@ -8,6 +8,8 @@ import { Icon } from '../Icon/Icon';
 import { useOverlayMotion } from '../../app/motion';
 import { useTheme } from '../../app/theme';
 import { Label, Text } from '../Typography/Typography';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
 
 // A text field with a list of options that filters as the user types, the same as the web: case and accents
 // don't matter, and when the text names no option the list ends with "+ Criar <noun> “<text>”", which creates
@@ -59,6 +61,7 @@ export function Combobox({
   disabled = false,
 }: ComboboxProps) {
   const { colors } = useTheme();
+  const texts = useMessages(COMPONENT_TEXTS).combobox;
   const { styles, ids } = useStyles();
   const [focused, setFocused] = useState(false);
   const [open, setOpen] = useState(false);
@@ -161,7 +164,7 @@ export function Combobox({
                 style={[styles.optionText, entry.value === current && styles.optionTextChosen, entry.kind === 'create' && styles.optionTextCreate]}
                 testID={ids.optionText}
               >
-                {entry.kind === 'create' ? `+ Criar ${noun} “${entry.value}”` : entry.value}
+                {entry.kind === 'create' ? texts.create(noun, entry.value) : entry.value}
               </NativeText>
             </Pressable>
           ))}

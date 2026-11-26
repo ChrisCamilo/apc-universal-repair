@@ -6,7 +6,7 @@ import { waitForDevice, type AuthService, type SessionUser } from '@apc/domain/a
 import { pencilIcon, qrIcon } from '@apc/tokens/icons';
 import { readEntryCode, readFingerprint, readPairingLink, readServerAddress, type Pairing, type PairingInvite } from '@apc/domain/pairing';
 import { applyServer, currentServer, saveServer } from '../../app/api';
-import { askLocalNetwork, hasLocalNetwork, LOCAL_NETWORK_TEXTS, openAppSettings } from '../../app/localNetwork';
+import { askLocalNetwork, hasLocalNetwork, openAppSettings } from '../../app/localNetwork';
 import { BackButton } from '../../components/BackButton';
 import { Button } from '../../components/Button';
 import { FieldScrollView } from '../../components/FieldScrollView';
@@ -14,7 +14,10 @@ import { TextField } from '../../components/TextField';
 import { Heading, Text } from '../../components/Typography';
 import { useStyles } from './ConnectScreen.styles';
 import { DevicePending } from './DevicePending';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
 import { useLocale } from '../../app/locale';
+import { AUTH_TEXTS } from '@apc/domain/auth-texts';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // Conectar ao servidor: how the phone pairs with the home server (see @apc/domain/pairing), before the login of a
 // phone with no server yet, and from the login or the user menu to pair again, as after the computer's address
@@ -42,28 +45,6 @@ import { useLocale } from '../../app/locale';
 const QR_CODE: TargetBarcodeFormat[] = ['qr-code'];
 /** How long the server has to answer before the phone gives up, in ms. */
 const ANSWER_TIMEOUT_MS = 8_000;
-/** What the screen says under its title, reading the QR code or typing, when pairing also logs in or not. */
-const INTRO = {
-  scan: 'No computador, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, aponte a câmera para o código que aparece lá.',
-  scanLogin:
-    'No computador, entre na sua conta, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, aponte a câmera para o código que aparece lá.',
-  type: 'No computador, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, digite o endereço e o código que aparecem lá.',
-  typeLogin:
-    'No computador, entre na sua conta, abra Servidor e banco de dados e ligue o Acesso pelo celular. Depois, digite o endereço e os códigos que aparecem lá.',
-} as const;
-/** What the screen says, in Portuguese. */
-const MESSAGES = {
-  address: 'Digite o endereço que aparece no computador, como 192.168.0.10:3000.',
-  blocked: 'A câmera está bloqueada para o APC. Libere-a nas configurações do Android, ou toque em Digitar manualmente.',
-  cameraFailed: 'A câmera não abriu. Toque em Digitar manualmente para digitar o endereço e o código.',
-  code: 'O código tem 43 letras, números, - e _, como aparece no computador.',
-  deviceRefused: 'Este celular não foi autorizado no computador. Leia o código de novo para pedir outra vez.',
-  entry: 'O código de entrada tem 8 letras e números, como aparece no computador.',
-  noEntry: 'Esse código não traz o código de entrada. Atualize o APC no computador e leia o código de novo.',
-  notApc: 'Esse código não é o do APC. Use o que aparece em Servidor e banco de dados, no computador.',
-  unreachable:
-    'O servidor não respondeu. Confira se o celular está no Wi-Fi de casa, se o Acesso pelo celular está ligado no computador e se o código é o que aparece lá agora.',
-} as const;
 
 type ConnectScreenProps = {
   /** Called with the server once it answered, kept on the phone and in use, and the user when pairing logged in. */
@@ -102,6 +83,9 @@ async function answers(url: string): Promise<boolean> {
 
 export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectScreenProps) {
   const { locale } = useLocale();
+  const { connect: texts, localNetwork } = PHONE_TEXTS[locale];
+  const { intro: INTRO, messages: MESSAGES } = texts;
+  const labels = AUTH_TEXTS[locale].pairing;
   const camera = useCameraPermission();
   const device = useCameraDevice('back');
   const [address, setAddress] = useState('');
@@ -161,7 +145,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
       }
     });
     return () => stop.abort();
-  }, [auth, waiting, locale]);
+  }, [auth, waiting, locale, MESSAGES.deviceRefused]);
 
   /** Stops waiting for the authorization, going back to the server in use before. */
   const stopWaiting = () => {
@@ -213,7 +197,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
     const access = await askLocalNetwork();
     setNeedsNetwork(access !== 'granted');
     if (access !== 'granted') {
-      setRefused(LOCAL_NETWORK_TEXTS[access]);
+      setRefused(localNetwork[access]);
       setNetworkBlocked(access === 'blocked');
       refusedLink.current = undefined;
       asking.current = false;
@@ -307,7 +291,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
     if (camera.canRequestPermission) {
       return (
         <Button variant="secondary" align="stretch" onPress={() => camera.requestPermission()}>
-          Ler o código com a câmera
+          {texts.camera}
         </Button>
       );
     }
@@ -318,13 +302,13 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
     <FieldScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID={ids.page}>
       <View style={styles.heading} testID={ids.heading}>
         <View style={[styles.title, onCancel && styles.titleWithBack]} testID={ids.title}>
-          {onCancel && <BackButton label="Voltar" onPress={leave} />}
+          {onCancel && <BackButton label={texts.back} onPress={leave} />}
           <RNText accessibilityRole="header" style={styles.titleText} testID={ids.titleText}>
-            Conectar ao servidor
+            {texts.title}
           </RNText>
         </View>
         {!waiting && <Text tone="muted">{manual ? (auth ? INTRO.typeLogin : INTRO.type) : auth ? INTRO.scanLogin : INTRO.scan}</Text>}
-        {!waiting && needsNetwork && !refused && <Text tone="muted">{LOCAL_NETWORK_TEXTS.why}</Text>}
+        {!waiting && needsNetwork && !refused && <Text tone="muted">{localNetwork.why}</Text>}
       </View>
       {notice && !tried && (
         <View accessibilityLiveRegion="polite" style={styles.notice} testID={ids.notice}>
@@ -333,13 +317,13 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
       )}
       {waiting ? (
         <View style={styles.waiting} testID={ids.waiting}>
-          <Heading level={3}>Aguardando autorização</Heading>
+          <Heading level={3}>{texts.waiting}</Heading>
           <DevicePending code={waiting.code} />
         </View>
       ) : manual ? (
         <View style={styles.form} testID={ids.form}>
           <TextField
-            label="Endereço"
+            label={labels.address}
             kind="code"
             value={address}
             onValueChange={(typed) => {
@@ -352,7 +336,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
           />
           <TextField
             ref={codeInput}
-            label="Código"
+            label={labels.code}
             kind="code"
             value={code}
             onValueChange={(typed) => {
@@ -366,7 +350,7 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
           {auth && (
             <TextField
               ref={entryInput}
-              label="Código de entrada"
+              label={labels.entry}
               kind="code"
               value={entry}
               onValueChange={(typed) => {
@@ -394,27 +378,27 @@ export function ConnectScreen({ onConnected, onCancel, auth, notice }: ConnectSc
       <View style={styles.actions} testID={ids.actions}>
         {networkBlocked && (
           <Button align="stretch" onPress={openAppSettings}>
-            {LOCAL_NETWORK_TEXTS.settings}
+            {localNetwork.settings}
           </Button>
         )}
         {waiting && (
           <Button variant="secondary" align="stretch" onPress={stopWaiting}>
-            Cancelar
+            {COMMON_TEXTS[locale].cancel}
           </Button>
         )}
         {!waiting && manual && (
           <Button align="stretch" onPress={submit} loading={connecting}>
-            Conectar
+            {texts.connect}
           </Button>
         )}
         {!waiting && !manual && (
           <Button variant="secondary" align="stretch" icon={pencilIcon} onPress={() => showTyping(true)}>
-            Digitar manualmente
+            {texts.typeIn}
           </Button>
         )}
         {!waiting && manual && device && (
           <Button variant="secondary" align="stretch" icon={qrIcon} onPress={() => showTyping(false)}>
-            Ler QR Code
+            {texts.readQr}
           </Button>
         )}
       </View>

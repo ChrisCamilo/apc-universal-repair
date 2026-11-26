@@ -10,6 +10,8 @@ import { useStyles } from './FilterSheet.styles';
 import { Icon } from '../Icon/Icon';
 import { Segmented } from '../Segmented/Segmented';
 import { useTheme } from '../../app/theme';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
 
 // A list's filters and sort in a bottom sheet, the same as the web on a phone (the Filtros mockup). "Ordenar por" comes
 // first, then a row per filter with what it has chosen ("Todas", "Freios", "Freios +2"), in the accent once something
@@ -59,6 +61,7 @@ type Shown = { list: 'rows' } | { list: 'sort' } | { list: 'filter'; key: string
 
 export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOptions, count, onApply, applyRef }: FilterSheetProps) {
   const { styles, ids } = useStyles();
+  const texts = useMessages(COMPONENT_TEXTS).filterSheet;
   const [draft, setDraft] = useState(values);
   const [sorted, setSorted] = useState(sortValue(sort));
   const [view, setView] = useState<Shown>({ list: 'rows' });
@@ -91,7 +94,7 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
       open={open}
       onClose={onClose}
       onBack={view.list === 'rows' ? undefined : back}
-      title="Filtrar e ordenar"
+      title={texts.title}
       action={
         <Pressable
           accessibilityRole="button"
@@ -103,20 +106,20 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
           testID={ids.clear}
         >
           <Text style={styles.clearLabel} testID={ids.clearLabel}>
-            Limpar
+            {texts.clear}
           </Text>
         </Pressable>
       }
       footer={
         <View ref={applyRef} collapsable={false}>
-          <Button align="stretch" onPress={() => onApply(draft, sortFromValue(sorted))}>{`Ver ${shown} ${shown === 1 ? 'item' : 'itens'}`}</Button>
+          <Button align="stretch" onPress={() => onApply(draft, sortFromValue(sorted))}>{texts.show(shown)}</Button>
         </View>
       }
     >
       <>
         {view.list === 'sort' && (
           <OptionList
-            label="Ordenar por"
+            label={texts.sortBy}
             onBack={back}
             options={sortOptions}
             selected={(value) => value === sorted}
@@ -149,7 +152,7 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
         )}
         {view.list === 'rows' && (
           <>
-            <SheetRow icon label="Ordenar por" value={sortLabel} chosen={sorted !== ''} onPress={() => setView({ list: 'sort' })} />
+            <SheetRow icon label={texts.sortBy} value={sortLabel} chosen={sorted !== ''} onPress={() => setView({ list: 'sort' })} />
             <View style={styles.strip} testID={ids.strip} />
             {rows.map((row) => {
               if ('groups' in row) {
@@ -194,10 +197,11 @@ export function FilterSheet({ open, onClose, rows: rowsFor, values, sort, sortOp
 }
 
 export function SortSheet({ open, onClose, sort, options, onSortChange }: SortSheetProps) {
+  const texts = useMessages(COMPONENT_TEXTS).filterSheet;
   return (
-    <BottomSheet open={open} onClose={onClose} title="Ordenar">
+    <BottomSheet open={open} onClose={onClose} title={texts.sort}>
       <OptionList
-        label="Ordenar"
+        label={texts.sort}
         options={options}
         selected={(value) => value === sortValue(sort)}
         onPick={(value) => {
@@ -264,11 +268,12 @@ type OptionListProps = {
 function OptionList({ label, onBack, options, multiple = false, selected, onPick }: OptionListProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
+  const texts = useMessages(COMPONENT_TEXTS).filterSheet;
   return (
     <>
       {onBack && (
         <View style={styles.listHeader} testID={ids.listHeader}>
-          <BackButton label="Voltar aos filtros" onPress={onBack} />
+          <BackButton label={texts.back} onPress={onBack} />
           <Text style={styles.listTitle} testID={ids.listTitle}>
             {label}
           </Text>

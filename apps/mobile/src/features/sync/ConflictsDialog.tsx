@@ -5,6 +5,9 @@ import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Heading, Label, Text } from '../../components/Typography';
 import { useStyles } from './ConflictsDialog.styles';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // The changes made on the phone that conflict with what changed on the computer meanwhile (see
 // @apc/domain/sync-conflicts), each in a card: the item and the field or the brand, the computer's value and the
@@ -23,6 +26,8 @@ type ConflictsDialogProps = {
 
 export function ConflictsDialog({ open, conflicts, onSettle, onClose }: ConflictsDialogProps) {
   const { styles, ids } = useStyles();
+  const texts = useMessages(PHONE_TEXTS).conflicts;
+  const common = useMessages(COMMON_TEXTS);
   // The conflict being settled, so its card's buttons wait and the others don't run meanwhile.
   const [settling, setSettling] = useState<string | null>(null);
 
@@ -36,18 +41,18 @@ export function ConflictsDialog({ open, conflicts, onSettle, onClose }: Conflict
     <Dialog
       open={open}
       onClose={onClose}
-      title="Conflitos com o computador"
+      title={texts.title}
       closable
       actions={
         <Button variant="secondary" size="sm" onPress={onClose}>
-          Fechar
+          {common.close}
         </Button>
       }
     >
       <Text size="sm" tone="muted">
         {conflicts.length > 0
-          ? 'Estas alterações feitas no celular conflitam com o que mudou no computador. Escolha o que manter em cada uma.'
-          : 'Nenhum conflito para resolver.'}
+          ? texts.text
+          : texts.none}
       </Text>
       <View style={styles.list} testID={ids.list}>
         {conflicts.map((card) => (
@@ -58,11 +63,11 @@ export function ConflictsDialog({ open, conflicts, onSettle, onClose }: Conflict
             ) : (
               <View style={styles.sides} testID={ids.sides}>
                 <View style={styles.side} testID={ids.side}>
-                  <Label>No computador</Label>
+                  <Label>{texts.onComputer}</Label>
                   <Text size="sm">{card.theirs}</Text>
                 </View>
                 <View style={styles.side} testID={ids.side}>
-                  <Label>No celular</Label>
+                  <Label>{texts.onPhone}</Label>
                   <Text size="sm">{card.mine}</Text>
                 </View>
               </View>

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import type { SessionUser } from '@apc/domain/auth';
-import { isLocale, LOCALE_MESSAGES, LOCALE_NAMES, LOCALES } from '@apc/domain/locale';
+import { isLocale, LOCALE_MESSAGES, LOCALE_NAMES, LOCALES, perLocale } from '@apc/domain/locale';
 import { playIcon } from '@apc/tokens/icons';
-import { isStyle, STYLE_LABELS, STYLES } from '@apc/tokens/theme';
+import { isStyle, STYLES } from '@apc/tokens/theme';
 import { BottomSheet } from '../../components/BottomSheet';
 import { MenuHeader, MenuItem, MenuLabel } from '../../components/Menu';
 import { MenuContext } from '../../components/Menu';
@@ -21,6 +21,8 @@ import { useInventoryTutorial } from '../inventory/tutorial/inventoryTutorialCon
 import { lastSync, syncBadge, syncOutcome } from '../sync/syncStatus';
 import { useInventoryCopy } from '../sync/useInventoryCopy';
 import { useTabReorder } from './tabReorderContext';
+import { DASHBOARD_TEXTS } from '@apc/domain/app-texts';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // The user menu, the same as the web's on a phone: Conta at the end of the Dashboard's bottom bar, the logged user's
 // initials in its pill, opening the display preferences in a bottom sheet, as a menu. Dark mode and the theme go through the
@@ -41,8 +43,7 @@ import { useTabReorder } from './tabReorderContext';
 const LANGUAGE_SWITCH = __DEV__;
 const LOCALE_OPTIONS = LOCALES.map((value) => ({ value, label: LOCALE_NAMES[value] }));
 /** What the menu says on a phone with no screen lock. */
-export const NO_LOCK_TEXT = 'Este celular não tem bloqueio de tela. Defina uma digital, o rosto ou um PIN para proteger o estoque guardado nele.';
-const STYLE_OPTIONS = STYLES.map((style) => ({ value: style, label: STYLE_LABELS[style] }));
+const STYLE_OPTIONS = perLocale((locale) => STYLES.map((style) => ({ value: style, label: DASHBOARD_TEXTS[locale].styles[style] })));
 
 type UserMenuProps = {
   user: SessionUser;
@@ -56,6 +57,8 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
   const { style, mode, setStyle, setMode } = useTheme();
   const { locale, setLocale } = useLocale();
   const messages = useMessages(LOCALE_MESSAGES);
+  const texts = DASHBOARD_TEXTS[locale];
+  const phone = PHONE_TEXTS[locale].userMenu;
   const { reorderable, setReorderable } = useTabReorder();
   const tutorial = useInventoryTutorial();
   const copy = useInventoryCopy();
@@ -86,53 +89,53 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
 
   return (
     <>
-      <BottomBarItem label="Conta" expanded={open} onPress={() => setOpen(true)}>
+      <BottomBarItem label={texts.account} expanded={open} onPress={() => setOpen(true)}>
         <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={bar.styles.initials} testID={bar.ids.initials}>
           <Text style={bar.styles.initialsText} testID={bar.ids.initialsText}>
             {user.initials}
           </Text>
         </View>
       </BottomBarItem>
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="Conta">
-        <View accessibilityRole="menu" accessibilityLabel="Menu do usuário" style={styles.menu} testID={ids.menu}>
+      <BottomSheet open={open} onClose={() => setOpen(false)} title={texts.account}>
+        <View accessibilityRole="menu" accessibilityLabel={texts.userMenu} style={styles.menu} testID={ids.menu}>
           <MenuContext.Provider value={{ close: () => setOpen(false) }}>
             <MenuHeader title={user.username} subtitle={user.displayName} />
-            <MenuLabel>Aparência</MenuLabel>
+            <MenuLabel>{texts.appearance}</MenuLabel>
             <Switch checked={mode === 'night'} onCheckedChange={(dark) => setMode(dark ? 'night' : 'day')}>
-              Modo escuro
+              {texts.darkMode}
             </Switch>
-            <Segmented label="Tema" options={STYLE_OPTIONS} value={style} onValueChange={(next) => isStyle(next) && setStyle(next)} />
+            <Segmented label={texts.style} options={STYLE_OPTIONS[locale]} value={style} onValueChange={(next) => isStyle(next) && setStyle(next)} />
             {LANGUAGE_SWITCH && (
               <Segmented label={messages.language} options={LOCALE_OPTIONS} value={locale} onValueChange={(next) => isLocale(next) && setLocale(next)} />
             )}
-            <MenuLabel>Abas</MenuLabel>
+            <MenuLabel>{texts.tabsTitle}</MenuLabel>
             <Switch
               checked={reorderable}
               onCheckedChange={setReorderable}
-              description="Troque a ordem pelo puxador ou com Alt + setas"
+              description={texts.reorderHint}
             >
-              Arrastar para reordenar
+              {texts.reorder}
             </Switch>
-            <MenuLabel>Estoque</MenuLabel>
+            <MenuLabel>{texts.inventory}</MenuLabel>
             <MenuItem icon={playIcon} onSelect={tutorial.replay}>
-              Tutorial do estoque
+              {texts.inventoryTutorial}
             </MenuItem>
-            <MenuLabel>Sincronização</MenuLabel>
-            <MenuItem description={[lastSync(copy.syncedAt), syncBadge(copy)].filter(Boolean).join(' · ')} onSelect={syncNow}>
-              Sincronizar agora
+            <MenuLabel>{phone.sync}</MenuLabel>
+            <MenuItem description={[lastSync(copy.syncedAt, locale), syncBadge(copy, locale)].filter(Boolean).join(' · ')} onSelect={syncNow}>
+              {phone.syncNow}
             </MenuItem>
             {!locked && (
               <>
-                <MenuLabel>Segurança</MenuLabel>
-                <MenuItem description={NO_LOCK_TEXT} onSelect={openLockSettings}>
-                  Definir bloqueio de tela
+                <MenuLabel>{phone.security}</MenuLabel>
+                <MenuItem description={phone.noLock} onSelect={openLockSettings}>
+                  {phone.setLock}
                 </MenuItem>
               </>
             )}
-            <MenuLabel>Servidor</MenuLabel>
-            <MenuItem onSelect={onConnect}>Conectar ao servidor</MenuItem>
+            <MenuLabel>{texts.server}</MenuLabel>
+            <MenuItem onSelect={onConnect}>{phone.connect}</MenuItem>
             <Divider />
-            <MenuItem onSelect={onLogout}>Sair</MenuItem>
+            <MenuItem onSelect={onLogout}>{texts.logOut}</MenuItem>
           </MenuContext.Provider>
         </View>
       </BottomSheet>

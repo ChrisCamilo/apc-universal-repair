@@ -11,6 +11,10 @@ import { dropTab, initialTab, moveTab, type DropSide } from '@apc/ui-spec/tabs';
 import { Icon } from '../Icon/Icon';
 import { useStyles } from './Tabs.styles';
 import { save, themeStorage, useTheme } from '../../app/theme';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { perLocale } from '@apc/domain/locale';
+import { useLocale } from '../../app/locale';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // Top-level navigation of the Dashboard, the same as the web: the selected tab takes the accent with an
 // underline, which glows where the style has a glow; pressing shows what hover shows on the web. Pair it
@@ -22,10 +26,10 @@ import { save, themeStorage, useTheme } from '../../app/theme';
 // The `bar` variant draws the tabs as a phone's bottom bar, each one's icon in a pill over its label (see
 // Tabs.styles.ts); it behaves the same.
 
-const ACTIONS = [
-  { name: 'moveLeft', label: 'Mover para a esquerda' },
-  { name: 'moveRight', label: 'Mover para a direita' },
-];
+const ACTIONS = perLocale((locale) => [
+  { name: 'moveLeft', label: PHONE_TEXTS[locale].components.moveLeft },
+  { name: 'moveRight', label: PHONE_TEXTS[locale].components.moveRight },
+]);
 type TabItem<T extends string> = {
   id: T;
   label: string;
@@ -78,6 +82,8 @@ export function useStoredTab<T extends string>(storageKey: string, ids: readonly
 
 export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorderable = false, onReorder, variant = 'line' }: TabsProps<T>) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
+  const texts = COMPONENT_TEXTS[locale].tabs;
   const { styles, ids } = useStyles();
   // Where each tab sits in the list, and where the list starts on screen while a tab is being dragged.
   const layouts = useRef(new Map<T, { x: number; width: number }>());
@@ -96,7 +102,7 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
     }
     onReorder?.(next);
     const tab = tabs.find((t) => t.id === id)!;
-    AccessibilityInfo.announceForAccessibility(`Aba ${tab.label} na posição ${next.indexOf(id) + 1} de ${next.length}`);
+    AccessibilityInfo.announceForAccessibility(texts.moved(tab.label, next.indexOf(id) + 1, next.length));
   };
 
   /** Picks a tab up after a long press, noting where the list starts on screen. */
@@ -145,9 +151,9 @@ export function Tabs<T extends string>({ label, tabs, selected, onSelect, reorde
           <Pressable
             key={tab.id}
             accessibilityRole="tab"
-            accessibilityLabel={tab.wip ? `${tab.label}, em construção` : undefined}
+            accessibilityLabel={tab.wip ? texts.wip(tab.label) : undefined}
             accessibilityState={{ selected: isSelected }}
-            accessibilityActions={reorderable ? ACTIONS : undefined}
+            accessibilityActions={reorderable ? ACTIONS[locale] : undefined}
             onAccessibilityAction={(event) =>
               reorder(moveTab(order, tab.id, event.nativeEvent.actionName === 'moveLeft' ? -1 : 1), tab.id)
             }

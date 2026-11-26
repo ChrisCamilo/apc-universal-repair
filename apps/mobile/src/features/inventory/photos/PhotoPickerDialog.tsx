@@ -12,6 +12,7 @@ import { Dialog } from '../../../components/Dialog';
 import { Icon } from '../../../components/Icon';
 import { SearchField } from '../../../components/TextField';
 import { useStyles } from './PhotoPickerDialog.styles';
+import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts';
 
 // The photo picker, the same as the web: opened from "Usar fotos de outra peça" under a brand's photos in the item
 // form, a search by code lists the items with photos (see photoSources), the item being edited left out. A tap on an
@@ -37,6 +38,7 @@ type PhotoPickerDialogProps = {
 export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPick }: PhotoPickerDialogProps) {
   const { colors } = useTheme();
   const { locale } = useLocale();
+  const names = INVENTORY_SCREEN_TEXTS[locale].photos;
   const { styles, ids } = useStyles();
   const [query, setQuery] = useState('');
   // The items opened to their photos, by id.
@@ -103,7 +105,7 @@ export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPic
                     </View>
                   </Pressable>
                   {shown && (
-                    <View accessibilityLabel={`Fotos de ${item.name}`} style={styles.photos} testID={ids.photos}>
+                    <View accessibilityLabel={names.ofItem(item.name)} style={styles.photos} testID={ids.photos}>
                       {photos.map(({ photo, index, brand }) => {
                         const checked = picked.some((each) => each.id === photo.id);
                         const disabled = full && !checked;
@@ -111,7 +113,7 @@ export function PhotoPickerDialog({ open, onClose, items, editingId, room, onPic
                           <Pressable
                             key={photo.id}
                             accessibilityRole="checkbox"
-                            accessibilityLabel={`Foto ${index + 1} de ${item.name} · ${brand}`}
+                            accessibilityLabel={names.photo(index + 1, item.name, brand)}
                             accessibilityState={{ checked, disabled }}
                             disabled={disabled}
                             onPress={() => setPicked((held) => pickPhoto(held, photo, room))}

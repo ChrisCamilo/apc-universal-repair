@@ -43,7 +43,6 @@ import { Button } from '../../components/Button';
 import { RowAction } from '../../components/DataTable';
 import { Dialog } from '../../components/Dialog';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
-import { LOCAL_NETWORK_TEXTS } from '../../app/localNetwork';
 import { FieldScrollView } from '../../components/FieldScrollView';
 import { Icon } from '../../components/Icon';
 import { ImageFrame } from '../../components/ImageFrame';
@@ -51,7 +50,7 @@ import { Panel } from '../../components/Panel';
 import { Spinner } from '../../components/Spinner';
 import { Switch } from '../../components/Switch';
 import { SearchField } from '../../components/TextField';
-import { useLocale } from '../../app/locale';
+import { useLocale, useMessages } from '../../app/locale';
 import { useTheme } from '../../app/theme';
 import { TreeView } from '../../components/TreeView';
 import { Heading, NumericReadout, Text } from '../../components/Typography';
@@ -67,6 +66,9 @@ import { useCatalogEditing } from './useCatalogEditing';
 import { usePartsOnly } from './usePartsOnly';
 import { useInventoryLink } from '../dashboard/inventoryLinkContext';
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // The Catalog tab, the same as the web's on a phone: a stack of screens, as in the "Catálogo no celular" mockup (see
 // CatalogScreen in @apc/domain/catalog). The brands, each on a line with how many models and sheets it has; a brand's
@@ -121,6 +123,9 @@ type CatalogProps = {
 };
 
 export function CatalogTab() {
+  const texts = useMessages(CATALOG_SCREEN_TEXTS);
+  const common = useMessages(COMMON_TEXTS);
+  const network = useMessages(PHONE_TEXTS).localNetwork;
   const copy = useInventoryCopy();
   const { locale } = useLocale();
   const state = useCopyCatalog(copy);
@@ -139,19 +144,19 @@ export function CatalogTab() {
         onPartsOnly={setPartsOnly}
         onChanged={state.replace}
         offline={copy.offline}
-        notice={copy.blocked ? LOCAL_NETWORK_TEXTS.missing : copy.offline && copy.syncedAt ? copyNotice(copy.syncedAt, locale) : undefined}
+        notice={copy.blocked ? network.missing : copy.offline && copy.syncedAt ? copyNotice(copy.syncedAt, locale) : undefined}
         onAllowNetwork={copy.blocked ? copy.allowNetwork : undefined}
       />
     );
   }
   return (
     <View style={styles.status} testID={ids.status}>
-      {(state.status === 'loading' || (state.status === 'ready' && waiting)) && <Spinner label="Carregando o catálogo" />}
+      {(state.status === 'loading' || (state.status === 'ready' && waiting)) && <Spinner label={texts.loading} />}
       {state.status === 'error' && (
         <ErrorState
-          title="Não foi possível carregar o catálogo"
-          message={copy.blocked ? LOCAL_NETWORK_TEXTS.missing : 'Verifique a conexão com o servidor e tente de novo.'}
-          action={copy.blocked ? { label: LOCAL_NETWORK_TEXTS.allow, onPress: copy.allowNetwork } : { label: 'Tentar de novo', onPress: state.reload }}
+          title={texts.error.title}
+          message={copy.blocked ? network.missing : texts.error.message}
+          action={copy.blocked ? { label: network.allow, onPress: copy.allowNetwork } : { label: common.retry, onPress: state.reload }}
         />
       )}
       {state.status === 'ready' && !waiting && <EmptyCatalog onChanged={state.replace} offline={copy.offline} />}
@@ -162,19 +167,21 @@ export function CatalogTab() {
 /** A catalog with no brand: says so, and adds the first. */
 function EmptyCatalog({ onChanged, offline }: { onChanged: (catalog: Catalog) => void; offline: boolean }) {
   const editor = useCatalogEditing({ onChanged, offline });
+  const texts = useMessages(CATALOG_SCREEN_TEXTS);
+  const common = useMessages(COMMON_TEXTS);
   return (
     <>
       <EmptyState
-        title="Nenhuma marca no catálogo"
-        message="As marcas do catálogo aparecem aqui."
-        action={{ label: 'Nova marca', onPress: () => editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } }) }}
+        title={texts.empty.title}
+        message={texts.empty.message}
+        action={{ label: texts.newBrand, onPress: () => editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } }) }}
       />
       {editor.editing && (
         <NodeForm
           open
-          title="Nova marca"
+          title={texts.newBrand}
           level="brand"
-          submitLabel="Adicionar"
+          submitLabel={common.add}
           error={editor.error}
           saving={editor.saving}
           onSave={editor.save}
@@ -202,6 +209,8 @@ function useShown<T>(value: T | null): { last: T | null; session: number } {
 /** The Catalog's screens, one at a time: the brands, a brand's models or an engine's sheet, edited in sheets. */
 function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged, offline, notice, onAllowNetwork }: CatalogProps) {
   const { locale } = useLocale();
+  const texts = CATALOG_SCREEN_TEXTS[locale];
+  const common = COMMON_TEXTS[locale];
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
   const setHeader = usePhoneHeader();
@@ -277,7 +286,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
     if (acting.level === 'engine') {
       return [
         { icon: copyIcon, label: ENGINE_CLIPBOARD[locale].copy, onSelect: () => editor.copyEngine(acting) },
-        { icon: closeIcon, label: 'Fechar', onSelect: () => {} },
+        { icon: closeIcon, label: common.close, onSelect: () => {} },
       ];
     }
     const siblings = catalogSiblings(brand.models, acting.id);
@@ -287,20 +296,20 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
       ...(acting.level === 'year' && editor.copied ? [{ icon: importIcon, label: ENGINE_CLIPBOARD[locale].paste, onSelect: () => editor.pasteEngine(acting) }] : []),
       {
         icon: pencilIcon,
-        label: acting.level === 'generation' ? 'Renomear e mudar os anos' : acting.level === 'year' ? 'Mudar os anos' : 'Renomear',
+        label: acting.level === 'generation' ? texts.renameAndYears : acting.level === 'year' ? texts.years : common.rename,
         onSelect: () => editor.edit({ kind: 'rename', node: acting }),
       },
-      ...(at > 0 ? [{ icon: sortIcon, label: 'Mover para cima', onSelect: () => editor.move(acting, 'up') }] : []),
-      ...(at < siblings.length - 1 ? [{ icon: sortIcon, label: 'Mover para baixo', onSelect: () => editor.move(acting, 'down') }] : []),
-      { icon: trashIcon, label: 'Excluir…', onSelect: () => editor.askRemove(acting) },
-      { icon: closeIcon, label: 'Fechar', onSelect: () => {} },
+      ...(at > 0 ? [{ icon: sortIcon, label: texts.moveUp, onSelect: () => editor.move(acting, 'up') }] : []),
+      ...(at < siblings.length - 1 ? [{ icon: sortIcon, label: texts.moveDown, onSelect: () => editor.move(acting, 'down') }] : []),
+      { icon: trashIcon, label: texts.deleteMore, onSelect: () => editor.askRemove(acting) },
+      { icon: closeIcon, label: common.close, onSelect: () => {} },
     ];
   };
 
   /** A row's "⋯", which opens its actions: an engine's copy it. */
   const rowActions = (id: string) => {
     const node = nodes.get(id);
-    return node ? <RowAction icon={moreIcon} label={`Ações de ${node.label}`} onPress={() => setActing(node)} /> : null;
+    return node ? <RowAction icon={moreIcon} label={texts.actionsOf(node.label)} onPress={() => setActing(node)} /> : null;
   };
 
   /** The line after a branch's children: a year's "Novo motor", or the button to add an empty branch's first. */
@@ -311,7 +320,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
     }
     return (
       <Button variant="dashed" size="sm" icon={plusIcon} onPress={() => editor.addUnder(node)}>
-        {`${CATALOG_ADD[locale][node.level]} em ${node.label}`}
+        {texts.addIn(CATALOG_ADD[locale][node.level], node.label)}
       </Button>
     );
   };
@@ -322,19 +331,19 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
       return '';
     }
     if (shown.kind === 'rename') {
-      return `Renomear ${shown.node.label}`;
+      return common.renameNamed(shown.node.label);
     }
     const parent = shown.parent.level === 'brand' ? undefined : nodes.get(shown.parent.id);
-    const add = shown.level === 'brand' ? 'Nova marca' : CATALOG_ADD[locale][shown.parent.level];
-    return parent ? `${add} em ${parent.label}` : shown.level === 'model' && brand ? `${add} em ${brand.name}` : add;
+    const add = shown.level === 'brand' ? texts.newBrand : CATALOG_ADD[locale][shown.parent.level];
+    return parent ? texts.addIn(add, parent.label) : shown.level === 'model' && brand ? texts.addIn(add, brand.name) : add;
   };
 
   /** What the engine sheet's dialog is titled. */
-  const sheetTitle = (shown: CatalogSheetEditing) => (shown.kind === 'add' ? `Novo motor em ${shown.year.label}` : `Ficha do ${shown.engine.label}`);
+  const sheetTitle = (shown: CatalogSheetEditing) => (shown.kind === 'add' ? texts.newEngine(shown.year.label) : texts.sheetOf(shown.engine.label));
 
   const search = (
     <>
-      <SearchField label="Procure modelo ou código da peça" value={query} onValueChange={setQuery} />
+      <SearchField label={texts.searchModel} value={query} onValueChange={setQuery} />
       {searchingParts && <PartResults results={results} onChoose={choosePart} />}
     </>
   );
@@ -350,7 +359,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
               {path}
             </RNText>
           )}
-          <ImageFrame alt={`Foto do ${carSheet(catalog, screen.brandId, screen.nodeId).title}`} emptyLabel="Sem foto do modelo" />
+          <ImageFrame alt={texts.sheetPhoto(carSheet(catalog, screen.brandId, screen.nodeId).title)} emptyLabel={texts.noModelPhoto} />
           <CarSheet
             catalog={catalog}
             brandId={screen.brandId}
@@ -373,7 +382,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
           <RNText style={styles.path} testID={ids.path}>
             {enginePath(catalog, screen.brandId, screen.engineId)}
           </RNText>
-          <ImageFrame alt={`Foto do ${sheet.title}`} emptyLabel="Sem foto do modelo" />
+          <ImageFrame alt={texts.sheetPhoto(sheet.title)} emptyLabel={texts.noModelPhoto} />
           <Heading level={2}>{sheet.title}</Heading>
           <View style={styles.readouts} testID={ids.readouts}>
             {sheet.specs.map((spec, index) => (
@@ -387,7 +396,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
           </View>
           <Text tone="muted">{sheet.summary}</Text>
           <Button variant="secondary" icon={pencilIcon} onPress={() => editor.editSheet({ kind: 'edit', engine: nodes.get(screen.engineId)! })}>
-            Editar ficha
+            {texts.editSheet}
           </Button>
         </>
       );
@@ -406,7 +415,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
           )}
           <View style={styles.screenHead} testID={ids.screenHead}>
             <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
-              {`Modelos · ${models.length}`}
+              {texts.modelsCount(models.length)}
             </RNText>
             <Button
               variant="ghost"
@@ -417,20 +426,20 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
                 editor.edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } });
               }}
             >
-              Novo modelo
+              {texts.newModel}
             </Button>
           </View>
           {models.length > 0 ? (
             <TreeView
               key={`${brandId}-${modelId}-${nodeId}`}
-              label={`Modelos ${brand!.name}`}
+              label={texts.models(brand!.name)}
               nodes={models}
               selected={nodeId}
               onSelect={(id) => setScreen(hasCarSheet(nodes.get(id)) ? { view: 'car', brandId, nodeId: id } : { view: 'sheet', brandId, engineId: id })}
               selectable={(id) => hasCarSheet(nodes.get(id))}
               highlighted={modelId}
               defaultExpanded={nodeId ? treePath(catalog, brandId, nodeId).map((node) => node.id) : modelId ? [modelId] : undefined}
-              leafTag="Ver ficha"
+              leafTag={texts.viewSheet}
               rowActions={rowActions}
               after={after}
               reveal={editor.editing?.kind === 'add' && editor.editing.parent.level !== 'brand' ? editor.editing.parent.id : undefined}
@@ -440,7 +449,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
             <NoModel none={brand!.models.length === 0} />
           )}
           <Button variant="secondary" icon={trashIcon} onPress={() => editor.askRemoveBrand(brand)}>
-            Excluir marca
+            {texts.deleteBrand}
           </Button>
         </>
       );
@@ -452,11 +461,11 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
       <>
         {search}
         <Switch checked={partsOnly} onCheckedChange={onPartsOnly} disabled={withParts.brands.length === 0}>
-          Só com peças
+          {texts.partsOnly}
         </Switch>
         <View style={styles.screenHead} testID={ids.screenHead}>
           <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
-            {`Marcas · ${brands.length}`}
+            {texts.brandsCount(brands.length)}
           </RNText>
           <Button
             variant="ghost"
@@ -467,7 +476,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
               editor.edit({ kind: 'add', level: 'brand', parent: { level: 'brand', id: '' } });
             }}
           >
-            Nova marca
+            {texts.newBrand}
           </Button>
         </View>
         {brands.length > 0 ? (
@@ -519,7 +528,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
             <Text size="sm">{notice}</Text>
             {onAllowNetwork && (
               <Button variant="secondary" size="sm" align="start" onPress={onAllowNetwork}>
-                {LOCAL_NETWORK_TEXTS.allow}
+                {PHONE_TEXTS[locale].localNetwork.allow}
               </Button>
             )}
           </View>
@@ -535,7 +544,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
           level={shownEditing.kind === 'rename' ? (shownEditing.node.level as CatalogEditLevel) : shownEditing.level}
           initial={shownEditing.kind === 'rename' ? catalogValuesOf(shownEditing.node) : undefined}
           limits={catalogYearLimits(brand?.models ?? [], shownEditing)}
-          submitLabel={shownEditing.kind === 'rename' ? 'Salvar' : 'Adicionar'}
+          submitLabel={shownEditing.kind === 'rename' ? common.save : common.add}
           error={editor.error}
           saving={editor.saving}
           onSave={editor.save}
@@ -590,25 +599,27 @@ function DeleteDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const texts = useMessages(CATALOG_SCREEN_TEXTS);
+  const common = useMessages(COMMON_TEXTS);
   return (
     <Dialog
       open={open}
       onClose={onCancel}
-      title={`Excluir “${name}”?`}
+      title={texts.deleteTitle(name)}
       size="confirm"
       actions={
         <>
           <Button variant="secondary" size="sm" onPress={onCancel}>
-            Cancelar
+            {common.cancel}
           </Button>
           <Button variant="danger" size="sm" loading={saving} onPress={onConfirm}>
-            Excluir
+            {common.delete}
           </Button>
         </>
       }
     >
       <Text size="sm" tone="muted">
-        {below ? `Vão junto ${below}. ` : ''}As peças do estoque continuam cadastradas. Isso não pode ser desfeito.
+        {texts.deleteText(below)}
       </Text>
     </Dialog>
   );
@@ -616,9 +627,7 @@ function DeleteDialog({
 
 /** Says no model has the name searched, or, for a brand with none yet, where to add the first. */
 function NoModel({ none = false }: { none?: boolean }) {
-  return none ? (
-    <EmptyState title="Nenhum modelo nessa marca" message="Adicione o primeiro em Novo modelo." />
-  ) : (
-    <EmptyState title="Nenhum modelo com esse nome" message="Procure por outro nome ou pelo código de uma peça do estoque." />
-  );
+  const texts = useMessages(CATALOG_SCREEN_TEXTS);
+  const { title, message } = none ? texts.noModel : texts.noModelNamed;
+  return <EmptyState title={title} message={message} />;
 }

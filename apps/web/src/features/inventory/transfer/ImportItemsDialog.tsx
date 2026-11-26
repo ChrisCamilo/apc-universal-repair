@@ -174,7 +174,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
               >
                 <span className={classes.head()} data-testid={ids.head}>
                   <span className={classes.line()} data-testid={ids.line}>
-                    {WEB_TEXTS[locale].import.row(line)}
+                    {texts.import.row(line)}
                   </span>
                   <span className={classes.code()} data-testid={ids.code}>
                     {item.brands[0].code || '—'}

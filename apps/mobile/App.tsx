@@ -26,16 +26,8 @@ import { ToastProvider } from './src/components/Toast';
 import { TourProvider } from './src/components/Tour';
 import { UpdatePrompt } from './src/features/updates/UpdatePrompt';
 import { useLocale } from './src/app/locale';
+import { PHONE_TEXTS } from './src/app/phoneTexts';
 
-/**
- * What Conectar ao servidor says when the API refused the session's token, while pairing is the login: the session
- * ended, or the phone was removed on the computer; and, when changes made on the phone wait, that they are kept.
- */
-const ENDED = {
-  expired: 'Sua sessão expirou. Leia o código do computador de novo.',
-  removed: 'Este celular foi removido no computador. Leia o código do computador para pedir acesso de novo.',
-  kept: 'As alterações feitas no celular continuam guardadas e vão para o servidor quando você entrar.',
-} as const;
 const SCREEN_STYLE = { flex: 1 };
 
 // While pairing is the login (PASSWORD_LOGIN off, see passwordLogin.ts), starts on the Dashboard when a session is
@@ -59,6 +51,8 @@ const SCREEN_STYLE = { flex: 1 };
 // phone's copy of the inventory does, behind the phone's own lock (see AppLock.tsx).
 function Screen() {
   const { locale } = useLocale();
+  // What Conectar ao servidor says when the API refused the session's token, while pairing is the login.
+  const ended = PHONE_TEXTS[locale].session;
   const theme = useTheme();
   // The logged user: undefined while the saved session is read, null when nobody is logged in.
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
@@ -153,7 +147,7 @@ function Screen() {
         {user === undefined || server === undefined ? null : !PASSWORD_LOGIN && (!user || pairing) ? (
           <ConnectScreen
             auth={auth}
-            notice={!user && expired ? [expired.removed ? ENDED.removed : ENDED.expired, expired.kept && ENDED.kept].filter(Boolean).join(' ') : undefined}
+            notice={!user && expired ? [expired.removed ? ended.removed : ended.expired, expired.kept && ended.kept].filter(Boolean).join(' ') : undefined}
             onConnected={connected}
             onCancel={user ? () => setPairing(false) : undefined}
           />

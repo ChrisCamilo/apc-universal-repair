@@ -6,6 +6,8 @@ import { Panel } from '../Panel/Panel';
 import { useTheme } from '../../app/theme';
 import { Heading, Text } from '../Typography/Typography';
 import { useStyles } from './WorkInProgress.styles';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
 
 // A screen still being built, such as a Dashboard tab marked `wip`, the same as the web: its content shows under the
 // tint and out of reach (it can't be pressed or read out) behind a notice with a mechanic at work, saying the screen
@@ -20,6 +22,7 @@ type WorkInProgressProps = {
 
 export function WorkInProgress({ label, children }: WorkInProgressProps) {
   const { colors } = useTheme();
+  const texts = useMessages(COMPONENT_TEXTS).workInProgress;
   const { styles, ids } = useStyles();
   return (
     <View style={styles.base} testID={ids.base}>
@@ -37,9 +40,9 @@ export function WorkInProgress({ label, children }: WorkInProgressProps) {
           <View style={styles.illustration} testID={ids.illustration}>
             <Icon icon={mechanicIcon} size={ICON_SIZES.viewer} color={colors.accent} />
           </View>
-          <Heading level={3} align="center">{`A aba ${label} ainda não está pronta`}</Heading>
+          <Heading level={3} align="center">{texts.title(label)}</Heading>
           <Text size="sm" tone="muted" align="center">
-            Estamos trabalhando nela. Volte em breve.
+            {texts.text}
           </Text>
         </Panel>
       </View>

@@ -1,13 +1,13 @@
 import { lowStockAlerts, lowStockKey, lowStockMessage, readLowStockWarned } from '@apc/domain/notifications';
 import { copyItems } from '@apc/domain/sync-copy';
 import { withQueue } from '@apc/domain/sync-queue';
-import { TOAST_KIND_LOOKS } from '@apc/ui-spec/toast';
 import { loadServer } from '../../app/api';
 import { loadLocale } from '../../app/locale';
 import { save, themeStorage } from '../../app/theme';
 import { auth } from '../auth/auth';
 import { showSystemNotification } from '../notifications/systemNotifications';
 import { loadCopy, loadQueue, onRefused, syncCopy } from './inventoryCopy';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
 
 // The copy's sync while the app is out of sight, which Android pauses the app's JavaScript for: every 15 minutes or
 // so, with a network, BackgroundSyncJob.kt runs this as a headless task, with no screen. It reads the paired server and
@@ -48,7 +48,7 @@ export async function backgroundSync(): Promise<void> {
   const stop = onRefused((each) => notices.push(...each));
   const result = await syncCopy().finally(stop);
   for (const notice of notices) {
-    await showSystemNotification(TOAST_KIND_LOOKS.error.title, notice);
+    await showSystemNotification(COMPONENT_TEXTS[locale].toast.error, notice, locale);
   }
   if (result !== 'synced') {
     return;
@@ -60,6 +60,6 @@ export async function backgroundSync(): Promise<void> {
   const { alerts, warned: low } = lowStockAlerts(items, [...readLowStockWarned(warned), ...readLowStockWarned(notified)]);
   save(lowStockNotifiedKey(user.id), JSON.stringify(low));
   if (alerts.length > 0) {
-    await showSystemNotification(TOAST_KIND_LOOKS.warning.title, lowStockMessage(alerts, locale));
+    await showSystemNotification(COMPONENT_TEXTS[locale].toast.warning, lowStockMessage(alerts, locale), locale);
   }
 }

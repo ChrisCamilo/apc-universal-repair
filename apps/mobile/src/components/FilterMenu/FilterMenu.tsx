@@ -12,6 +12,9 @@ import { Select } from '../Select/Select';
 import { useTheme } from '../../app/theme';
 import { TourLayer } from '../Tour/Tour';
 import { Label } from '../Typography/Typography';
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts';
+import { useMessages } from '../../app/locale';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
 
 // The detailed filters of a list, the same as the web: a button that opens a panel with one row per filter.
 // A row holds a multiple-choice Select, or toggle chips split into labeled groups; a row with any value
@@ -64,6 +67,8 @@ function rowKeys(row: Row): string[] {
 export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open: openProp, onOpenChange, panelRef }: FilterMenuProps) {
   const { colors } = useTheme();
   const { styles, ids } = useStyles();
+  const texts = useMessages(COMPONENT_TEXTS).filterMenu;
+  const phone = useMessages(PHONE_TEXTS).components;
   const { width } = useWindowDimensions();
   const [ownOpen, setOwnOpen] = useState(false);
   const open = openProp ?? ownOpen;
@@ -102,7 +107,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
     <>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={count ? `Filtros, ${count} ${count === 1 ? 'ativo' : 'ativos'}` : 'Filtros'}
+        accessibilityLabel={count ? texts.active(count) : texts.title}
         accessibilityState={{ expanded: open }}
         onPress={() => show(true)}
         style={[styles.trigger, count > 0 && styles.triggerActive]}
@@ -110,7 +115,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
       >
         <Icon icon={filterIcon} size={ICON_SIZES.compact} color={tint} />
         <Text style={[styles.triggerLabel, count > 0 && styles.triggerLabelActive]} testID={ids.triggerLabel}>
-          Filtros
+          {texts.title}
         </Text>
         {count > 0 && (
           <Text style={styles.count} testID={ids.count}>
@@ -121,7 +126,7 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
       <Modal visible={motion.shown} transparent animationType="none" onRequestClose={() => show(false)}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Fechar filtros"
+          accessibilityLabel={phone.closeFilters}
           onPress={() => show(false)}
           style={styles.backdrop}
           testID={ids.backdrop}
@@ -169,10 +174,10 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
               })}
               <View style={styles.actions} testID={ids.actions}>
                 <Button size="sm" variant="secondary" onPress={() => apply(clearedFilters(draft))}>
-                  Limpar
+                  {texts.clear}
                 </Button>
                 <Button size="sm" onPress={() => apply(draft)}>
-                  Aplicar
+                  {texts.apply}
                 </Button>
               </View>
             </ScrollView>
@@ -186,12 +191,13 @@ export function FilterMenu({ label, title, rows: rowsFor, values, onApply, open:
 }
 
 export function ClearFilters({ active, onClear }: { active: boolean; onClear: () => void }) {
+  const texts = useMessages(COMPONENT_TEXTS).filterMenu;
   if (!active) {
     return null;
   }
   return (
     <Button variant="link" onPress={onClear}>
-      Limpar filtros
+      {texts.clearFilters}
     </Button>
   );
 }

@@ -22,6 +22,7 @@ import {
 import { apiUrl } from '../../app/api';
 import { useToast } from '../../components/Toast';
 import { useLocale } from '../../app/locale';
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts';
 
 // The Catalog's editing, the same as the web's: what is being added or renamed and why it couldn't
 // be saved, the engine sheet being filled in, the node or brand whose deletion is being confirmed, and the changes themselves,
@@ -139,7 +140,7 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
       }
       const changed = await change('DELETE', `${CATALOG_BRANDS_PATH}/${removingBrand.id}`);
       if (changed) {
-        toast.success(`“${removingBrand.name}” saiu do catálogo.`);
+        toast.success(CATALOG_SCREEN_TEXTS[locale].left(removingBrand.name));
         setRemovingBrand(undefined);
         onBrandRemoved?.(changed);
       }
@@ -189,7 +190,7 @@ export function useCatalogEditing({ onChanged, onBrandAdded, onEngineAdded, onBr
         return;
       }
       if (await change('DELETE', catalogNodePath(removing))) {
-        toast.success(`“${removing.label}” saiu do catálogo.`);
+        toast.success(CATALOG_SCREEN_TEXTS[locale].left(removing.label));
         setRemoving(undefined);
       }
     },

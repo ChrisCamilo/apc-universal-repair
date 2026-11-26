@@ -14,7 +14,8 @@ import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/ui-s
 import { THEME_STORAGE_KEYS } from '@apc/tokens/theme';
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../inventory/tutorial/inventoryTutorialContext';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
-import { NO_LOCK_TEXT, UserMenu } from './UserMenu';
+import { PHONE_TEXTS } from '../../app/phoneTexts';
+import { UserMenu } from './UserMenu';
 import { loadLocale, LocaleProvider } from '../../app/locale';
 import { themeStorage, ThemeProvider, useTheme } from '../../app/theme';
 import { ToastProvider } from '../../components/Toast';
@@ -183,7 +184,7 @@ test('Mobile: dark mode and the theme apply and are saved at once, keeping the m
 });
 
 // Picks English under "Idioma", Português chosen until then, and checks it is saved on the phone, where the background
-// sync reads it too, keeping the menu open, and comes back chosen when the app starts again.
+// sync reads it too, keeping the menu open, and comes back chosen when the app starts again, the menu then in English.
 test('Mobile: the language is saved at once and comes back after a restart', async () => {
   const tree = await openMenu();
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Idioma').length).toBeGreaterThan(0);
@@ -193,8 +194,11 @@ test('Mobile: the language is saved at once and comes back after a restart', asy
   expect(sheetOpen(tree)).toBe(true);
   expect(await themeStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en-US');
   expect(await loadLocale()).toBe('en-US');
-  const again = await openMenu();
+  const again = await mount();
+  await press(again, 'Account');
   expect(byName(again, 'English').props.accessibilityState).toMatchObject({ checked: true });
+  expect(byName(again, 'Log out')).toBeDefined();
+  expect(byName(again, 'Sync now')).toBeDefined();
 });
 
 // Turns tab reordering on and checks it is saved on the device and comes back on when the menu is drawn again.
@@ -284,7 +288,7 @@ test('Mobile: a phone with no screen lock is told one would protect the inventor
   native.hasLock.mockResolvedValueOnce(false);
   tree = await openMenu();
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Segurança')).not.toHaveLength(0);
-  expect(byName(tree, 'Definir bloqueio de tela').props.accessibilityHint).toBe(NO_LOCK_TEXT);
+  expect(byName(tree, 'Definir bloqueio de tela').props.accessibilityHint).toBe(PHONE_TEXTS['pt-BR'].userMenu.noLock);
   await press(tree, 'Definir bloqueio de tela');
   expect(native.openLockSettings).toHaveBeenCalledTimes(1);
 });
