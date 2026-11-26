@@ -27,6 +27,8 @@ import { applyCatalogChange, catalogChangeOf, TEST_CATALOG, TEST_CATALOG_DATA, T
 import { testItem, type FlatItem } from '@apc/domain/test-items';
 import { syncAnswer } from '@apc/domain/test-sync';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
+import { LocaleContext } from '../../app/locale';
+import type { Locale } from '@apc/domain/locale';
 
 const OPALA_41 = TEST_CATALOG.sheets[TEST_ENGINES.opala41];
 // A phone's screen with no insets, for the sheets and dialogs.
@@ -64,14 +66,16 @@ const PARTS: Item[] = [
 /** Trees the tests rendered, unmounted after each so the copy's syncs don't outlive it. */
 const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
 
-async function mount(style: Style, mode: Mode, open: (link: InventoryLink) => void = () => {}) {
+async function mount(style: Style, mode: Mode, open: (link: InventoryLink) => void = () => {}, locale: Locale = 'pt-BR') {
   await themeStorage.setMany({ [THEME_STORAGE_KEYS.style]: style, [THEME_STORAGE_KEYS.mode]: mode });
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <ThemeProvider>
-          <Harness open={open} />
+          <LocaleContext.Provider value={{ locale, setLocale: () => {} }}>
+            <Harness open={open} />
+          </LocaleContext.Provider>
         </ThemeProvider>
       </SafeAreaProvider>,
     );
@@ -723,3 +727,13 @@ function Harness({ open }: { open: (link: InventoryLink) => void }) {
     </PhoneHeaderContext.Provider>
   );
 }
+
+// Opens the Catalog in English, and checks the brands' screen, its search and its buttons read in English.
+test('Mobile: the Catalog reads in English', async () => {
+  answer(() => ({ ok: true, json: () => Promise.resolve({ items: [], total: 0 }) }));
+  const tree = await mount('eighties', 'night', () => {}, 'en-US');
+  expect(shows(tree, 'Only with parts')).toBe(true);
+  expect(shows(tree, 'New brand')).toBe(true);
+  expect(showsPart(tree, 'Brands · ')).toBe(true);
+  expect(showsPart(tree, ' models · ')).toBe(true);
+});

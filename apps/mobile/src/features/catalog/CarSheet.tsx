@@ -7,10 +7,12 @@ import { Button } from '../../components/Button';
 import { DataTable, TableThumbnail } from '../../components/DataTable';
 import { EmptyState } from '../../components/EmptyState';
 import { Heading } from '../../components/Typography';
-import { useLocale } from '../../app/locale';
+import { useLocale, useMessages } from '../../app/locale';
 import { CardTitle, StockQuantity } from '../inventory/browse/ItemCard';
 import { photoSource } from '../sync/photoCache';
 import { useStyles } from './CarSheet.styles';
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts';
+import { perLocale } from '@apc/domain/locale';
 
 // A model's or a version's sheet in the Catalog, the same as the web on a phone (see carSheet in @apc/domain/catalog):
 // its title; a model's brand and its generations, each with its years ("85/90") and versions; a version's generation
@@ -20,24 +22,27 @@ import { useStyles } from './CarSheet.styles';
 // Inventory, and "Ver todas as peças" opens the Inventory with the filters that list them; with none, a note says so.
 
 // A part's card: its photo, its name, code and details, and its quantity.
-const PART_COLUMNS: ComponentProps<typeof DataTable<Item>>['columns'] = [
-  {
-    key: 'photo',
-    header: 'Foto',
-    card: 'thumb',
-    cell: (item) => {
-      const photo = item.brands.flatMap((brand) => brand.photos)[0];
-      return <TableThumbnail src={photo && photoSource(photo, 'thumb')} label={`Foto de ${item.name}`} />;
+const PART_COLUMNS = perLocale((locale): ComponentProps<typeof DataTable<Item>>['columns'] => {
+  const texts = CATALOG_SCREEN_TEXTS[locale];
+  return [
+    {
+      key: 'photo',
+      header: texts.photo,
+      card: 'thumb',
+      cell: (item) => {
+        const photo = item.brands.flatMap((brand) => brand.photos)[0];
+        return <TableThumbnail src={photo && photoSource(photo, 'thumb')} label={texts.photoOf(item.name)} />;
+      },
     },
-  },
-  {
-    key: 'name',
-    header: 'Item',
-    card: 'main',
-    cell: (item) => <PartTitle item={item} />,
-  },
-  { key: 'quantity', header: 'Qtd.', numeric: true, card: 'end', cell: (item) => <StockQuantity {...item} /> },
-];
+    {
+      key: 'name',
+      header: texts.item,
+      card: 'main',
+      cell: (item) => <PartTitle item={item} />,
+    },
+    { key: 'quantity', header: texts.quantity, numeric: true, card: 'end', cell: (item) => <StockQuantity {...item} /> },
+  ];
+});
 
 type CarSheetProps = {
   catalog: Catalog;
@@ -59,6 +64,7 @@ type CarPartsProps = {
 
 export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) {
   const { styles, ids } = useStyles();
+  const texts = useMessages(CATALOG_SCREEN_TEXTS);
   const sheet = carSheet(catalog, brandId, nodeId);
   const brand = catalog.brands.find((each) => each.id === brandId)!;
   return (
@@ -67,7 +73,7 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
       {sheet.level === 'model' && (
         <View style={styles.fact} testID={ids.fact}>
           <RNText style={styles.term} testID={ids.term}>
-            Marca
+            {texts.brand}
           </RNText>
           <RNText style={styles.value} testID={ids.value}>
             {brand.name}
@@ -76,7 +82,7 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
       )}
       <View style={styles.fact} testID={ids.fact}>
         <RNText style={styles.term} testID={ids.term}>
-          {sheet.level === 'model' ? 'Gerações' : 'Geração'}
+          {sheet.level === 'model' ? texts.generations : texts.generation}
         </RNText>
         {sheet.generations.length > 0 ? (
           sheet.generations.map((generation) => (
@@ -96,13 +102,13 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
           ))
         ) : (
           <RNText style={styles.value} testID={ids.value}>
-            Nenhuma geração cadastrada
+            {texts.noGenerations}
           </RNText>
         )}
       </View>
       <View style={styles.fact} testID={ids.fact}>
         <RNText style={styles.term} testID={ids.term}>
-          Motores
+          {texts.engines}
         </RNText>
         {sheet.engines.length > 0 ? (
           sheet.engines.map((engine) => (
@@ -114,7 +120,7 @@ export function CarSheet({ catalog, brandId, nodeId, onEngine }: CarSheetProps) 
           ))
         ) : (
           <RNText style={styles.value} testID={ids.value}>
-            Nenhum motor com ficha ainda
+            {texts.noEngines}
           </RNText>
         )}
       </View>
@@ -128,13 +134,13 @@ export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
   return (
     <View style={styles.parts} testID={ids.parts}>
       <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
-        {`Peças disponíveis · ${parts.length}`}
+        {CATALOG_SCREEN_TEXTS[locale].parts.count(parts.length)}
       </RNText>
       {parts.length > 0 ? (
         <>
           <DataTable
-            label="Peças disponíveis"
-            columns={PART_COLUMNS}
+            label={CATALOG_SCREEN_TEXTS[locale].parts.title}
+            columns={PART_COLUMNS[locale]}
             rows={parts}
             rowKey={(item) => item.id}
             rowStatus={(item) => stockTint(item, locale)}
@@ -146,11 +152,11 @@ export function CarParts({ parts, onPart, onAll }: CarPartsProps) {
             sortSelect={false}
           />
           <Button variant="secondary" icon={filterIcon} onPress={onAll}>
-            Ver todas as peças
+            {CATALOG_SCREEN_TEXTS[locale].parts.all}
           </Button>
         </>
       ) : (
-        <EmptyState title="Nenhuma peça no estoque" message="As peças cadastradas para esse carro aparecem aqui." />
+        <EmptyState title={CATALOG_SCREEN_TEXTS[locale].parts.empty.title} message={CATALOG_SCREEN_TEXTS[locale].parts.empty.message} />
       )}
     </View>
   );

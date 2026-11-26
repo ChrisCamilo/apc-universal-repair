@@ -14,6 +14,8 @@ import { Button } from '../../components/Button';
 import { TextField } from '../../components/TextField';
 import { useStyles } from './NodeForm.styles';
 import { useLocale } from '../../app/locale';
+import { COMMON_TEXTS } from '@apc/domain/app-texts';
+import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts';
 
 // The sheet that adds or renames a node of the Catalog's tree, or a brand, the same as the web on a phone: a brand, a
 // model or a version by its name, a generation by its name and its first and last years (the last one empty while it
@@ -46,6 +48,8 @@ type NodeFormProps = {
 
 export function NodeForm({ open, title, level, initial = {}, limits, submitLabel, error, saving = false, onSave, onClose }: NodeFormProps) {
   const { locale } = useLocale();
+  const texts = CATALOG_SCREEN_TEXTS[locale].form;
+  const common = COMMON_TEXTS[locale];
   const { styles, ids } = useStyles();
   const [name, setName] = useState(initial.name ?? '');
   const [firstYear, setFirstYear] = useState(initial.firstYear?.toString() ?? '');
@@ -71,7 +75,7 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
         <View style={styles.buttons} testID={ids.buttons}>
           <View style={styles.button} testID={ids.button}>
             <Button variant="secondary" align="stretch" onPress={onClose}>
-              Cancelar
+              {common.cancel}
             </Button>
           </View>
           <View style={styles.button} testID={ids.button}>
@@ -87,7 +91,7 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
           <View style={styles.years} testID={ids.years}>
             <View style={styles.year} testID={ids.year}>
               <TextField
-                label="De"
+                label={texts.from}
                 kind="number"
                 placeholder={CATALOG_YEAR_PLACEHOLDER[locale]}
                 value={year}
@@ -97,9 +101,9 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
             </View>
             <View style={styles.year} testID={ids.year}>
               <TextField
-                label="Até"
+                label={texts.to}
                 kind="number"
-                placeholder="Mesmo ano"
+                placeholder={texts.sameYear}
                 value={lastYear}
                 onValueChange={(typed) => setLastYear(yearInput(typed))}
                 error={problems.lastYear}
@@ -110,14 +114,14 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
           </View>
         ) : (
           <View style={styles.name} testID={ids.name}>
-            <TextField label="Nome" value={name} onValueChange={setName} error={problems.name ?? error} returnKeyType="done" onSubmitEditing={save} />
+            <TextField label={texts.name} value={name} onValueChange={setName} error={problems.name ?? error} returnKeyType="done" onSubmitEditing={save} />
           </View>
         )}
         {level === 'generation' && (
           <View style={styles.years} testID={ids.years}>
             <View style={styles.year} testID={ids.year}>
               <TextField
-                label="De"
+                label={texts.from}
                 kind="number"
                 placeholder={CATALOG_YEAR_PLACEHOLDER[locale]}
                 value={firstYear}
@@ -127,7 +131,7 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
             </View>
             <View style={styles.year} testID={ids.year}>
               <TextField
-                label="Até"
+                label={texts.to}
                 kind="number"
                 placeholder={CATALOG_YEAR_PLACEHOLDER[locale]}
                 value={lastYear}
