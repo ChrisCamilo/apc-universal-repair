@@ -1,11 +1,14 @@
+import { COMMON_TEXTS } from '@apc/domain/app-texts'
+import { useLocale } from '../../app/useLocale.ts'
+import { WEB_TEXTS } from '../../app/webTexts.ts'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { Markdown } from '../../components/Markdown'
 import { NumericReadout, Text } from '../../components/Typography'
 import { aboutDialog } from './AboutDialog.styles.ts'
-import { portugueseNotes, RELEASES_URL } from './releaseNotes.ts'
+import { notesIn, RELEASES_URL } from './releaseNotes.ts'
 
-// "Sobre esta versão", opened from the user menu: the version in use, its release notes in Portuguese, and a link to
+// "Sobre esta versão", opened from the user menu: the version in use, its release notes in the language chosen, and a link to
 // every release on GitHub, which opens in a new window (the computer's browser, in the desktop app). The version and
 // the notes come with the build (see vite.config.ts), so they show offline; a version with no notes yet says so.
 // Fechar, the × and Escape close it.
@@ -21,15 +24,17 @@ type AboutDialogProps = {
 
 export function AboutDialog({ open, onClose, version, notes }: AboutDialogProps) {
   const { classes, ids } = aboutDialog()
+  const { locale } = useLocale()
+  const texts = WEB_TEXTS[locale].about
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      title="Sobre esta versão"
+      title={texts.title}
       closable
       actions={
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Fechar
+          {COMMON_TEXTS[locale].close}
         </Button>
       }
     >
@@ -38,15 +43,15 @@ export function AboutDialog({ open, onClose, version, notes }: AboutDialogProps)
           APC Universal Repair <NumericReadout>{version}</NumericReadout>
         </Text>
         <Button variant="link" size="sm" onClick={() => window.open(RELEASES_URL, '_blank')}>
-          Ver todas as versões no GitHub
+          {texts.allVersions}
         </Button>
       </div>
       {notes === undefined ? (
         <Text size="sm" tone="muted">
-          Esta versão não tem notas.
+          {texts.noNotes}
         </Text>
       ) : (
-        <Markdown>{portugueseNotes(notes)}</Markdown>
+        <Markdown>{notesIn(notes, locale)}</Markdown>
       )}
     </Dialog>
   )

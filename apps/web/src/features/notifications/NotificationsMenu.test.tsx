@@ -5,7 +5,7 @@ import { MIN_DESKTOP_HEIGHT, MIN_DESKTOP_WIDTH, MIN_MOBILE_HEIGHT, MIN_MOBILE_WI
 import { scales, themes } from '@apc/tokens/theme'
 import { TOAST_DURATION, TOAST_DURATION_STORAGE_KEY } from '@apc/ui-spec/toast'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
-import { page } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../../index.css'
 import { SessionContext } from '../auth/sessionContext.ts'
@@ -14,6 +14,7 @@ import { ToastProvider } from '../../components/Toast'
 import { useToast } from '../../components/Toast'
 import { themeCss } from '../../app/theme.ts'
 import { NotificationsMenu } from './NotificationsMenu.tsx'
+import { LocaleContext } from '../../app/useLocale.ts'
 
 const root = document.documentElement
 const ANA: SessionUser = { id: 'user-ana', username: 'ana.souza', displayName: 'Ana Souza', initials: 'AS', inventoryTutorialSeen: true }
@@ -238,6 +239,23 @@ test('Web: on a phone the notifications open from Alertas as a full screen', asy
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Alertas', exact: true })).toBeVisible()
   await expect.element(screen.getByTestId('dashboard.bottom-bar.item.pill.badge')).not.toBeInTheDocument()
+})
+
+// Renders the bell in English, and checks the empty list, the settings and the unread count read in English.
+test('Web: the notifications read in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <Sample />
+    </LocaleContext.Provider>,
+  )
+  const bell = screen.getByRole('button', { name: /^Notifications/ })
+  await expect.element(bell).toHaveAccessibleName('Notifications')
+  await bell.click()
+  await expect.element(screen.getByText('No notifications')).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Notification settings' })).toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  await screen.getByRole('button', { name: 'Sucesso' }).click()
+  await expect.element(bell).toHaveAccessibleName('Notifications, 1 unread')
 })
 
 function Sample() {

@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { registerErrors, type AuthService, type RegisterErrors, type Registration, type SessionUser } from '@apc/domain/auth'
+import { AUTH_TEXTS } from '@apc/domain/auth-texts'
 import { DEVICE_MESSAGES } from '@apc/domain/devices'
 import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { lockIcon, userIcon } from '@apc/tokens/icons'
@@ -47,6 +48,7 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
   const inputs = useRef<Partial<Record<keyof Registration, HTMLInputElement | null>>>({})
   const { classes, ids } = registerScreen()
   const deviceMessages = useMessages(DEVICE_MESSAGES)
+  const { login, register: texts } = AUTH_TEXTS[locale]
   const device = useDeviceWait(auth, onRegistered, () => setRefused(deviceMessages.refused))
 
   /** Takes a field's new value and drops its message. */
@@ -100,9 +102,9 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
           </h1>
         </Panel>
         <header className={classes.header()} data-testid={ids.header}>
-          <BackButton label="Voltar ao login" onClick={onLogin} />
+          <BackButton label={texts.back} onClick={onLogin} />
           <h1 className={classes.headerTitle()} data-testid={ids.headerTitle}>
-            Criar conta
+            {texts.title}
           </h1>
         </header>
         <form noValidate className={classes.form()} data-testid={ids.form} onSubmit={submit}>
@@ -112,21 +114,21 @@ export function RegisterScreen({ auth, onRegistered, onLogin }: RegisterScreenPr
             </Text>
           )}
           {device.waiting && <DevicePending code={device.waiting.code} />}
-          <TextField label="Nome" kind="name" {...field('displayName')} />
-          <TextField label="Usuário" kind="username" icon={userIcon} helper="Letras minúsculas, números, pontos ou hífens." {...field('username')} />
-          <TextField label="E-mail" kind="email" {...field('email')} />
-          <TextField label="Senha" kind="newPassword" icon={lockIcon} {...field('password')} />
-          <TextField label="Confirmar senha" kind="newPassword" icon={lockIcon} {...field('confirm')} />
+          <TextField label={texts.name} kind="name" {...field('displayName')} />
+          <TextField label={login.username} kind="username" icon={userIcon} helper={texts.usernameHint} {...field('username')} />
+          <TextField label={texts.email} kind="email" {...field('email')} />
+          <TextField label={login.password} kind="newPassword" icon={lockIcon} {...field('password')} />
+          <TextField label={texts.confirm} kind="newPassword" icon={lockIcon} {...field('confirm')} />
           <div className={classes.actions()} data-testid={ids.actions}>
             <Button type="submit" loading={sending} className={classes.submit()}>
-              Criar conta
+              {texts.title}
             </Button>
             <Button type="button" variant="link" onClick={onLogin} className={classes.login()}>
               {/* One piece of text, so "Entrar" sits right after the question, without the button's gap. */}
               <span>
-                Já tem conta?{' '}
+                {texts.hasAccount}{' '}
                 <span className={classes.loginAction()} data-testid={ids.loginAction}>
-                  Entrar
+                  {login.logIn}
                 </span>
               </span>
             </Button>

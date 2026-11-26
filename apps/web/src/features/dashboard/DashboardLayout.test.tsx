@@ -14,6 +14,7 @@ import { DashboardLayout } from './DashboardLayout.tsx'
 import { BOTTOM_BAR_HEIGHT } from './DashboardLayout.styles.ts'
 import { useMoreActions } from './moreActionsContext.ts'
 import { useTabReorder } from './tabReorderContext.ts'
+import { LocaleContext } from '../../app/useLocale.ts'
 
 // The first test user, as the session keeps them.
 const SESSION_USER = { ...TEST_USERS[0], initials: initials(TEST_USERS[0].displayName), inventoryTutorialSeen: false }
@@ -159,6 +160,18 @@ test('Web: on a phone the open tab may put a "⋯" in its header', async () => {
   await expect.element(more).toBeVisible()
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
   await expect.element(screen.getByRole('button', { name: 'Mais ações' })).not.toBeInTheDocument()
+})
+
+// Opens the Dashboard in English, and checks its tabs and their navigation are named in English.
+test('Web: the Dashboard reads in English', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <Dashboard />
+    </LocaleContext.Provider>,
+  )
+  const tabs = screen.getByRole('tablist', { name: 'Dashboard sections' })
+  await expect.element(tabs.getByRole('tab', { name: 'Inventory' })).toHaveAttribute('aria-selected', 'true')
+  await expect.element(tabs.getByRole('tab', { name: 'Catalog' })).toBeVisible()
 })
 
 function Dashboard() {

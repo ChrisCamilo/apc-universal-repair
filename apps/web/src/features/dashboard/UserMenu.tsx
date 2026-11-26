@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router'
 import { RELEASE_NOTES, RELEASE_VERSION } from 'virtual:apc-release'
 import { gearIcon, infoIcon, lockIcon, playIcon } from '@apc/tokens/icons'
 import { PAGE_SIZES } from '@apc/domain/list-query'
-import { isLocale, LOCALE_MESSAGES, LOCALE_NAMES, LOCALES } from '@apc/domain/locale'
-import { isStyle, STYLE_LABELS, STYLES } from '@apc/tokens/theme'
+import { COMPONENT_TEXTS, DASHBOARD_TEXTS } from '@apc/domain/app-texts'
+import { isLocale, LOCALE_MESSAGES, LOCALE_NAMES, LOCALES, perLocale } from '@apc/domain/locale'
+import { isStyle, STYLES } from '@apc/tokens/theme'
 import { auth } from '../auth/auth.ts'
 import { useSession } from '../auth/sessionContext.ts'
 import { BottomSheet } from '../../components/BottomSheet'
@@ -19,6 +20,7 @@ import { DevicesDialog } from '../desktop/DevicesDialog.tsx'
 import { useOpenServerSettings } from '../desktop/serverSettingsContext.ts'
 import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { useTheme } from '../../app/useTheme.ts'
+import { WEB_TEXTS } from '../../app/webTexts.ts'
 import { AboutDialog } from './AboutDialog.tsx'
 import { BottomBarItem } from './BottomBarItem.tsx'
 import { bottomBar } from './DashboardLayout.styles.ts'
@@ -46,7 +48,7 @@ import { useTabReorder } from './tabReorderContext.ts'
 const LANGUAGE_SWITCH = import.meta.env.DEV
 const LOCALE_OPTIONS = LOCALES.map((value) => ({ value, label: LOCALE_NAMES[value] }))
 const PAGE_SIZE_OPTIONS = PAGE_SIZES.map((size) => ({ value: String(size), label: String(size) }))
-const STYLE_OPTIONS = STYLES.map((style) => ({ value: style, label: STYLE_LABELS[style] }))
+const STYLE_OPTIONS = perLocale((locale) => STYLES.map((style) => ({ value: style, label: DASHBOARD_TEXTS[locale].styles[style] })))
 
 export function UserMenu() {
   const { user, setUser } = useSession()
@@ -54,6 +56,7 @@ export function UserMenu() {
   const { style, mode, setStyle, setMode } = useTheme()
   const { locale, setLocale } = useLocale()
   const messages = useMessages(LOCALE_MESSAGES)
+  const texts = DASHBOARD_TEXTS[locale]
   const { reorderable, setReorderable } = useTabReorder()
   const { pageSize, setPageSize } = usePageSize()
   const tutorial = useInventoryTutorial()
@@ -70,28 +73,28 @@ export function UserMenu() {
   const items = (
     <>
       <MenuHeader title={user.username} subtitle={user.displayName} />
-      <MenuLabel>Aparência</MenuLabel>
+      <MenuLabel>{texts.appearance}</MenuLabel>
       <Switch checked={mode === 'night'} onCheckedChange={(dark) => setMode(dark ? 'night' : 'day')}>
-        Modo escuro
+        {texts.darkMode}
       </Switch>
-      <Segmented label="Tema" options={STYLE_OPTIONS} value={style} onValueChange={(next) => isStyle(next) && setStyle(next)} />
+      <Segmented label={texts.style} options={STYLE_OPTIONS[locale]} value={style} onValueChange={(next) => isStyle(next) && setStyle(next)} />
       {LANGUAGE_SWITCH && (
         <Segmented label={messages.language} options={LOCALE_OPTIONS} value={locale} onValueChange={(next) => isLocale(next) && setLocale(next)} />
       )}
-      <MenuLabel>Abas</MenuLabel>
+      <MenuLabel>{texts.tabsTitle}</MenuLabel>
       <Switch
         checked={reorderable}
         onCheckedChange={setReorderable}
-        description="Troque a ordem pelo puxador ou com Alt + setas"
+        description={texts.reorderHint}
       >
-        Arrastar para reordenar
+        {texts.reorder}
       </Switch>
-      <MenuLabel>Estoque</MenuLabel>
+      <MenuLabel>{texts.inventory}</MenuLabel>
       {/* A phone's list loads more as it scrolls, with no pages. */}
       {!phone && (
         <Segmented
-          label="Itens por página"
-          description="Padrão ao abrir o estoque"
+          label={COMPONENT_TEXTS[locale].pagination.pageSize}
+          description={texts.pageSizeHint}
           options={PAGE_SIZE_OPTIONS}
           value={String(pageSize)}
           onValueChange={(size) => setPageSize(Number(size))}
@@ -104,24 +107,24 @@ export function UserMenu() {
           tutorial.replay()
         }}
       >
-        Tutorial do estoque
+        {texts.inventoryTutorial}
       </MenuItem>
       {(desktopBridge()?.server || import.meta.env.VITE_DEMO) && (
         <>
-          <MenuLabel>Servidor</MenuLabel>
+          <MenuLabel>{texts.server}</MenuLabel>
           {desktopBridge()?.server && (
             <MenuItem icon={gearIcon} onSelect={openServerSettings}>
-              Servidor e banco de dados
+              {texts.serverSettings}
             </MenuItem>
           )}
           <MenuItem icon={lockIcon} onSelect={() => setDevices(true)}>
-            Dispositivos
+            {texts.devices}
           </MenuItem>
         </>
       )}
       <Divider />
       <MenuItem icon={infoIcon} onSelect={() => setAbout(true)}>
-        Sobre esta versão
+        {WEB_TEXTS[locale].about.title}
       </MenuItem>
       <MenuItem
         onSelect={async () => {
@@ -130,7 +133,7 @@ export function UserMenu() {
           navigate('/login', { replace: true })
         }}
       >
-        Sair
+        {texts.logOut}
       </MenuItem>
     </>
   )
@@ -138,19 +141,19 @@ export function UserMenu() {
     <>
       {phone ? (
         <>
-          <BottomBarItem label="Conta" expanded={sheet} onClick={() => setSheet(true)}>
+          <BottomBarItem label={texts.account} expanded={sheet} onClick={() => setSheet(true)}>
             <span aria-hidden="true" className={bar.classes.initials()} data-testid={bar.ids.initials}>
               {user.initials}
             </span>
           </BottomBarItem>
-          <BottomSheet open={sheet} onClose={() => setSheet(false)} title="Conta">
-            <div role="menu" aria-label="Menu do usuário">
+          <BottomSheet open={sheet} onClose={() => setSheet(false)} title={texts.account}>
+            <div role="menu" aria-label={texts.userMenu}>
               <MenuContext.Provider value={{ close: () => setSheet(false) }}>{items}</MenuContext.Provider>
             </div>
           </BottomSheet>
         </>
       ) : (
-        <Menu label="Menu do usuário" trigger={<UserBadge initials={user.initials} name={user.username} />}>
+        <Menu label={texts.userMenu} trigger={<UserBadge initials={user.initials} name={user.username} />}>
           {items}
         </Menu>
       )}

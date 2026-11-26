@@ -96,8 +96,8 @@ test('Web: dark mode and the theme apply and are saved at once, keeping the menu
   await expect.element(screen.getByRole('menu')).toBeVisible()
 })
 
-// Picks English under "Idioma", Português chosen until then, and checks the page is marked English and the choice is
-// saved on the device, keeping the menu open, and comes back chosen when the menu is drawn again.
+// Picks English under "Idioma", Português chosen until then, and checks the page is marked English, the menu reads in
+// English, and the choice is saved on the device, keeping the menu open, and comes back chosen when it is drawn again.
 test('Web: the language applies and is saved at once, and comes back', async () => {
   const screen = await render(<Sample />)
   await screen.getByRole('button', { name: 'Menu do usuário' }).click()
@@ -108,10 +108,12 @@ test('Web: the language applies and is saved at once, and comes back', async () 
   await expect.poll(() => root.lang).toBe('en-US')
   expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en-US')
   await expect.element(screen.getByRole('menu')).toBeVisible()
+  await expect.element(screen.getByRole('menu').getByText('Appearance')).toBeVisible()
+  await expect.element(screen.getByRole('menuitem', { name: 'Log out' })).toBeVisible()
   await userEvent.keyboard('{Escape}')
 
   const again = await render(<Sample />)
-  await again.getByRole('button', { name: 'Menu do usuário' }).last().click()
+  await again.getByRole('button', { name: 'User menu' }).last().click()
   await expect.element(again.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute('aria-checked', 'true')
 })
 

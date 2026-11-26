@@ -1,8 +1,11 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import { bellIcon, gearIcon, ICON_SIZES, minusIcon, plusIcon } from '@apc/tokens/icons'
+import { COMPONENT_TEXTS } from '@apc/domain/app-texts'
+import { NOTIFICATION_TEXTS } from '@apc/domain/notification-texts'
 import { timeAgo, unreadBadge, type Notification } from '@apc/domain/notifications'
 import { stepToastDuration, TOAST_DURATION, TOAST_KIND_LOOKS, toastDurationLabel } from '@apc/ui-spec/toast'
-import { useLocale } from '../../app/useLocale.ts'
+import { useLocale, useMessages } from '../../app/useLocale.ts'
+import { WEB_TEXTS } from '../../app/webTexts.ts'
 import { useSession } from '../auth/sessionContext.ts'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
@@ -43,6 +46,8 @@ function UserNotifications({ userId }: { userId: string }) {
   const [settings, setSettings] = useState(false)
   const [open, setOpen] = useState(false)
   const phone = usePhone()
+  const { locale } = useLocale()
+  const texts = NOTIFICATION_TEXTS[locale]
   const badge = unreadBadge(list)
   const { classes, ids } = bellBadge()
   const menu = notificationsMenu()
@@ -60,7 +65,7 @@ function UserNotifications({ userId }: { userId: string }) {
   // In the desktop app, ask for a Windows notification of each error and warning.
   useToastFeed((kind, message) => {
     if (TOAST_KIND_LOOKS[kind].urgent) {
-      desktopBridge()?.notify(TOAST_KIND_LOOKS[kind].title, message)
+      desktopBridge()?.notify(COMPONENT_TEXTS[locale].toast[kind], message)
     }
   })
 
@@ -72,10 +77,10 @@ function UserNotifications({ userId }: { userId: string }) {
     list.length === 0 ? (
       <p className={menu.classes.empty()} data-testid={menu.ids.empty}>
         <Icon icon={bellIcon} size={ICON_SIZES.thumbnail} />
-        Nenhuma notificação
+        {texts.empty}
       </p>
     ) : (
-      <ol aria-label="Últimas notificações" className={menu.classes.list({ phone })} data-testid={menu.ids.list}>
+      <ol aria-label={texts.latest} className={menu.classes.list({ phone })} data-testid={menu.ids.list}>
         {list.map((notification) => (
           <NotificationEntry key={notification.id} notification={notification} fresh={opened.fresh.includes(notification.id)} now={opened.now} />
         ))}
@@ -86,7 +91,7 @@ function UserNotifications({ userId }: { userId: string }) {
     const bar = bottomBar()
     return (
       <>
-        <BottomBarItem label="Alertas" name={badge ? `Alertas, ${badge} não lidas` : undefined} expanded={open} onClick={() => openChange(true)}>
+        <BottomBarItem label={texts.alerts} name={badge ? texts.alertsUnread(badge) : undefined} expanded={open} onClick={() => openChange(true)}>
           <Icon icon={bellIcon} size={ICON_SIZES.thumbnail} />
           {badge && (
             <span aria-hidden="true" className={bar.classes.badge()} data-testid={bar.ids.badge}>
@@ -97,11 +102,11 @@ function UserNotifications({ userId }: { userId: string }) {
         <Dialog
           open={open}
           onClose={() => setOpen(false)}
-          title="Notificações"
+          title={texts.title}
           closable
           actions={
             <Button variant="secondary" disabled={list.length === 0} onClick={clear}>
-              Limpar notificações
+              {texts.clear}
             </Button>
           }
         >
@@ -114,7 +119,7 @@ function UserNotifications({ userId }: { userId: string }) {
 
   return (
     <Menu
-      label={badge ? `Notificações, ${badge} não lidas` : 'Notificações'}
+      label={badge ? texts.unread(badge) : texts.title}
       anchor="container"
       open={open}
       onOpenChange={openChange}
@@ -130,7 +135,7 @@ function UserNotifications({ userId }: { userId: string }) {
       }
     >
       <MenuHeader
-        title="Notificações"
+        title={texts.title}
         action={<SettingsButton open={settings} onPress={() => setSettings((shown) => !shown)} />}
       />
       {settings && <DurationSetting />}
@@ -138,7 +143,7 @@ function UserNotifications({ userId }: { userId: string }) {
       {list.length > 0 && (
         <>
           <Divider />
-          <MenuItem onSelect={clear}>Limpar notificações</MenuItem>
+          <MenuItem onSelect={clear}>{texts.clear}</MenuItem>
         </>
       )}
     </Menu>
@@ -148,10 +153,11 @@ function UserNotifications({ userId }: { userId: string }) {
 /** The gear in the menu's header, which shows or hides the settings. */
 function SettingsButton({ open, onPress }: { open: boolean; onPress: () => void }) {
   const { classes, ids } = notificationsSettings({ open })
+  const web = useMessages(WEB_TEXTS)
   return (
     <button
       type="button"
-      aria-label="Configurações das notificações"
+      aria-label={web.notificationSettings}
       aria-expanded={open}
       className={classes.button()}
       data-testid={ids.button}
@@ -166,18 +172,19 @@ function SettingsButton({ open, onPress }: { open: boolean; onPress: () => void 
 function DurationSetting() {
   const { ms, setMs } = useToastDuration()
   const { classes, ids } = notificationsSettings()
+  const texts = useMessages(NOTIFICATION_TEXTS)
   return (
-    <div role="group" aria-label="Tempo do aviso" className={classes.base()} data-testid={ids.base}>
+    <div role="group" aria-label={texts.duration} className={classes.base()} data-testid={ids.base}>
       <span className={classes.label()} data-testid={ids.label}>
-        Tempo do aviso
+        {texts.duration}
         <small className={classes.hint()} data-testid={ids.hint}>
-          Quanto tempo cada aviso fica na tela
+          {texts.durationHint}
         </small>
       </span>
       <span className={classes.stepper()} data-testid={ids.stepper}>
         <button
           type="button"
-          aria-label="Diminuir o tempo do aviso"
+          aria-label={texts.decrease}
           disabled={ms <= TOAST_DURATION.minMs}
           className={classes.button()}
           data-testid={ids.button}
@@ -190,7 +197,7 @@ function DurationSetting() {
         </output>
         <button
           type="button"
-          aria-label="Aumentar o tempo do aviso"
+          aria-label={texts.increase}
           disabled={ms >= TOAST_DURATION.maxMs}
           className={classes.button()}
           data-testid={ids.button}

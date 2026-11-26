@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import type { InventoryLink } from '@apc/domain/catalog'
 import { ICON_SIZES, ICONS, moreIcon } from '@apc/tokens/icons'
+import { COMMON_TEXTS, DASHBOARD_TEXTS } from '@apc/domain/app-texts'
+import { perLocale } from '@apc/domain/locale'
 import { DASHBOARD_TAB_STORAGE_KEY, DASHBOARD_TABS, initialTab, orderTabs, TAB_ORDER_STORAGE_KEY } from '@apc/ui-spec/tabs'
 import { AppFrame } from '../../components/AppFrame'
 import { HEADER_MARK_SIZE } from '../../components/AppFrame'
@@ -12,6 +14,7 @@ import { TabPanel, Tabs } from '../../components/Tabs'
 import { usePhone } from '../../components/usePhone.ts'
 import { WorkInProgress } from '../../components/WorkInProgress'
 import { readStored, writeStored } from '../../app/storage.ts'
+import { useLocale, useMessages } from '../../app/useLocale.ts'
 import { bottomBar, phoneDashboard } from './DashboardLayout.styles.ts'
 import { InventoryTutorialContext, useInventoryTutorialChoice } from '../inventory/tutorial/inventoryTutorialContext.ts'
 import { MoreActionsContext } from './moreActionsContext.ts'
@@ -39,7 +42,14 @@ import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
 
 const TAB_IDS = DASHBOARD_TABS.map((tab) => tab.id)
 // Each tab as the tab bar draws it, by id.
-const TABS = Object.fromEntries(DASHBOARD_TABS.map(({ id, label, icon, wip }) => [id, { id, label, icon: ICONS[icon], wip }]))
+const TABS = perLocale((locale) =>
+  Object.fromEntries(
+    DASHBOARD_TABS.map(({ id, label, icon, wip }) => [
+      id,
+      { id, label: (DASHBOARD_TEXTS[locale].tabs as Record<string, string>)[id] ?? label, icon: ICONS[icon], wip },
+    ]),
+  ),
+)
 
 type DashboardLayoutProps = {
   /** The user menu, at the right of the header, or at the end of the bottom bar on a phone. */
@@ -59,6 +69,9 @@ function tabOfPath(pathname: string): string | undefined {
 export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const { locale } = useLocale()
+  const texts = DASHBOARD_TEXTS[locale]
+  const tabsOf = TABS[locale]
   const tab = tabOfPath(pathname)
   const reorder = useReorderChoice()
   const pageSize = usePageSizeChoice()
@@ -95,8 +108,8 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
 
   const tabs = (
     <Tabs
-      label="Seções do Dashboard"
-      tabs={order.map((id) => TABS[id])}
+      label={texts.sections}
+      tabs={order.map((id) => tabsOf[id])}
       selected={tab}
       onSelect={(id) => navigate(`/${id}`)}
       reorderable={reorder.reorderable}
@@ -109,8 +122,8 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
   )
   const panel = (
     <TabPanel id={tab} selected={tab}>
-      {TABS[tab].wip ? (
-        <WorkInProgress label={TABS[tab].label}>
+      {tabsOf[tab].wip ? (
+        <WorkInProgress label={tabsOf[tab].label}>
           <Outlet />
         </WorkInProgress>
       ) : (
@@ -127,11 +140,11 @@ export function DashboardLayout({ userMenu }: DashboardLayoutProps) {
             <PhoneHeaderContext.Provider value={setHeader}>
               <InventoryLinkContext.Provider value={links}>
                 {phone ? (
-                  <PhoneDashboard title={header?.title ?? TABS[tab].label} back={header?.back} tabs={tabs} end={userMenu} more={more}>
+                  <PhoneDashboard title={header?.title ?? tabsOf[tab].label} back={header?.back} tabs={tabs} end={userMenu} more={more}>
                     {panel}
                   </PhoneDashboard>
                 ) : (
-                  <AppFrame navLabel="Seções do Dashboard" nav={tabs} end={userMenu}>
+                  <AppFrame navLabel={texts.sections} nav={tabs} end={userMenu}>
                     {panel}
                   </AppFrame>
                 )}
@@ -163,6 +176,8 @@ type PhoneDashboardProps = {
 function PhoneDashboard({ title, back, tabs, end, more, children }: PhoneDashboardProps) {
   const { classes, ids } = phoneDashboard({ back: Boolean(back) })
   const bar = bottomBar()
+  const common = useMessages(COMMON_TEXTS)
+  const texts = useMessages(DASHBOARD_TEXTS)
   return (
     <div className={classes.base()} data-testid={ids.base}>
       <header className={classes.header()} data-testid={ids.header}>
@@ -171,7 +186,7 @@ function PhoneDashboard({ title, back, tabs, end, more, children }: PhoneDashboa
           {title}
         </h1>
         {more && (
-          <button type="button" aria-label="Mais ações" aria-haspopup="dialog" className={classes.more()} data-testid={ids.more} onClick={more}>
+          <button type="button" aria-label={common.moreActions} aria-haspopup="dialog" className={classes.more()} data-testid={ids.more} onClick={more}>
             <Icon icon={moreIcon} size={ICON_SIZES.fab} />
           </button>
         )}
@@ -179,7 +194,7 @@ function PhoneDashboard({ title, back, tabs, end, more, children }: PhoneDashboa
       <main className={classes.main()} data-testid={ids.main}>
         {children}
       </main>
-      <nav aria-label="Seções do Dashboard" className={bar.classes.base()} data-testid={bar.ids.base}>
+      <nav aria-label={texts.sections} className={bar.classes.base()} data-testid={bar.ids.base}>
         {tabs}
         {end}
       </nav>

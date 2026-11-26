@@ -4,8 +4,9 @@ import { page } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '../../index.css'
 import { themeCss } from '../../app/theme.ts'
+import { LocaleContext } from '../../app/useLocale.ts'
 import { AboutDialog } from './AboutDialog.tsx'
-import { portugueseNotes, RELEASES_URL } from './releaseNotes.ts'
+import { notesIn, RELEASES_URL } from './releaseNotes.ts'
 
 // A release's notes as docs/releases holds them: in English, a line of "---", then in Portuguese.
 const NOTES = [
@@ -34,10 +35,12 @@ afterEach(async () => {
   await page.viewport(MIN_DESKTOP_WIDTH, MIN_DESKTOP_HEIGHT)
 })
 
-// Takes the Portuguese half of notes with both languages, and checks a file with no "---" is kept whole.
-test('Web: the release notes shown are the Portuguese half', () => {
-  expect(portugueseNotes(NOTES)).toBe('**Windows:** os apps instalados se atualizam sozinhos.\r\n\r\n### Novidades\r\n- **Desinstalar pergunta sobre os dados** (#299).')
-  expect(portugueseNotes('### Novidades\n- Um.\n')).toBe('### Novidades\n- Um.')
+// Takes each language's half of notes with both, and checks a file with no "---" is kept whole in either.
+test('Web: the release notes shown are the half of the language chosen', () => {
+  expect(notesIn(NOTES, 'pt-BR')).toBe('**Windows:** os apps instalados se atualizam sozinhos.\r\n\r\n### Novidades\r\n- **Desinstalar pergunta sobre os dados** (#299).')
+  expect(notesIn(NOTES, 'en-US')).toBe("**Windows:** installed apps update themselves.\r\n\r\n### What's new\r\n- **Uninstalling asks about the data** (#299).")
+  expect(notesIn('### Novidades\n- Um.\n', 'pt-BR')).toBe('### Novidades\n- Um.')
+  expect(notesIn('### Novidades\n- Um.\n', 'en-US')).toBe('### Novidades\n- Um.')
 })
 
 // Opens the dialog on a version with notes, and checks it names the version and shows the Portuguese notes, not the
@@ -52,6 +55,20 @@ test('Web: Sobre esta versão shows the version and its notes in Portuguese', as
   await expect.element(dialog.getByText("What's new")).not.toBeInTheDocument()
   await dialog.getByRole('button', { name: 'Fechar' }).last().click()
   expect(onClose).toHaveBeenCalledTimes(1)
+})
+
+// Opens the dialog in English, and checks its title, its buttons and the notes are the English ones.
+test('Web: Sobre esta versão reads in English, with the English notes', async () => {
+  const screen = await render(
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: () => {} }}>
+      <AboutDialog open onClose={() => {}} version="0.6.5" notes={NOTES} />
+    </LocaleContext.Provider>,
+  )
+  const dialog = screen.getByRole('dialog', { name: 'About this version' })
+  await expect.element(dialog.getByRole('heading', { name: "What's new" })).toBeVisible()
+  await expect.element(dialog.getByText('Novidades')).not.toBeInTheDocument()
+  await expect.element(dialog.getByRole('button', { name: 'See every version on GitHub' })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Close' }).last()).toBeVisible()
 })
 
 // Clicks the link to every release, and checks it opens GitHub's releases page in a new window, which the desktop app
