@@ -5,6 +5,7 @@ import { networkInterfaces } from "node:os";
 import path from "node:path";
 import type { ElectronApplication, Page } from "@playwright/test";
 import { APP_DIR, expect, freePort, logIn, test } from "./support/fixtures.ts";
+import { LOCALE_STORAGE_KEY } from "@apc/domain/locale";
 import { fingerprintGroups } from "@apc/domain/pairing";
 import { TEST_TAGS } from "@apc/domain/test-tags";
 import { readConfig, writeConfig } from "../src/config.ts";
@@ -13,6 +14,7 @@ import { phoneAddress } from "../src/system/tray.ts";
 import { loginForm, registerForm } from "../../web/e2e/locators/auth.ts";
 import { tour } from "../../web/e2e/locators/common.ts";
 import { aboutDialog, dashboard, userMenu } from "../../web/e2e/locators/dashboard.ts";
+import { WEB_TEXTS } from "../../web/src/app/webTexts.ts";
 import { inventory } from "../../web/e2e/locators/inventory.ts";
 import { databaseChoice, firstStart, recoveryKey, serverFailure, serverSettings } from "../../web/e2e/locators/setup.ts";
 
@@ -147,6 +149,31 @@ test("Desktop: Sobre esta versão shows the app's version and its notes", { tag:
   await menu.trigger.click();
   await menu.item("Sobre esta versão").click();
   const about = aboutDialog(page);
+  await expect(about.version(version)).toBeVisible();
+  await expect(about.heading(heading).first()).toBeVisible();
+});
+
+// Signs up on a fresh install and keeps English as "Idioma" in the user menu saves it (the switch shows only in
+// development builds, and the app runs the production one), then reloads; checks the page tells the main process on
+// opening, as config.json keeps it for what it writes before the window opens, and "About this version" shows the
+// first heading of the English half of this version's notes.
+test("Desktop: with English chosen, About this version shows the English notes", { tag: [TEST_TAGS.dashboard, TEST_TAGS.bundled] }, async ({ launchApp }) => {
+  const { app, userData } = await launchApp();
+  const page = await app.firstWindow();
+  await expect(page).toHaveURL(/^app:\/\/apc\/login/, { timeout: 60_000 });
+  await keepRecoveryKey(page);
+  await startFromScratch(page);
+  await signUp(page);
+  const version = await app.evaluate(({ app: electronApp }) => electronApp.getVersion());
+  const notes = readFileSync(path.join(APP_DIR, "..", "..", "docs", "releases", `v${version}.md`), "utf8");
+  const heading = /^### (.+)$/m.exec(notes.slice(0, notes.search(/^---\s*$/m)))![1].trim();
+
+  await page.evaluate((key) => localStorage.setItem(key, "en-US"), LOCALE_STORAGE_KEY);
+  await page.reload();
+  await expect.poll(() => readConfig(userData).locale).toBe("en-US");
+  await userMenu(page, "en-US").trigger.click();
+  await userMenu(page, "en-US").item(WEB_TEXTS["en-US"].about.title).click();
+  const about = aboutDialog(page, "en-US");
   await expect(about.version(version)).toBeVisible();
   await expect(about.heading(heading).first()).toBeVisible();
 });

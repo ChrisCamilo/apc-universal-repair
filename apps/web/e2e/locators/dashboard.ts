@@ -1,6 +1,7 @@
 import { test, type Page } from "@playwright/test";
 import { DASHBOARD_TEXTS } from "@apc/domain/app-texts";
 import { DEFAULT_LOCALE, type Locale } from "@apc/domain/locale";
+import { WEB_TEXTS } from "../../src/app/webTexts.ts";
 import { dialog } from "./common.ts";
 
 // The shell around the tabs: the header, the tab bar, the user menu and its Sobre esta versão; on a phone, the open
@@ -33,14 +34,16 @@ export function dashboard(page: Page, locale: Locale = DEFAULT_LOCALE) {
  * The user menu: its trigger, the menu, and its choices by name. On a phone the trigger is Conta in the bottom bar, and
  * the menu opens in a bottom sheet.
  * @param page The test's page.
+ * @param locale The language the page is in; Portuguese unless given.
  * @returns The menu's elements.
  */
-export function userMenu(page: Page) {
+export function userMenu(page: Page, locale: Locale = DEFAULT_LOCALE) {
+  const texts = DASHBOARD_TEXTS[locale];
   return {
-    trigger: page.getByRole("button", { name: /^(Menu do usuário|Conta)$/ }),
-    menu: page.getByRole("menu", { name: "Menu do usuário" }),
+    trigger: page.getByRole("button", { name: new RegExp(`^(${texts.userMenu}|${texts.account})$`) }),
+    menu: page.getByRole("menu", { name: texts.userMenu }),
     // The bottom sheet the menu opens in on a phone.
-    sheet: page.getByRole("dialog", { name: "Conta" }),
+    sheet: page.getByRole("dialog", { name: texts.account }),
     item: (name: string) => page.getByRole("menuitem", { name }),
     checkbox: (name: string | RegExp) => page.getByRole("menuitemcheckbox", { name }),
     radio: (name: string) => page.getByRole("menuitemradio", { name }),
@@ -50,10 +53,11 @@ export function userMenu(page: Page) {
 /**
  * Sobre esta versão, from the user menu: the app's name and version, and a heading of that version's notes.
  * @param page The test's page.
+ * @param locale The language the page is in; Portuguese unless given.
  * @returns The dialog and its parts.
  */
-export function aboutDialog(page: Page) {
-  const box = dialog(page, "Sobre esta versão");
+export function aboutDialog(page: Page, locale: Locale = DEFAULT_LOCALE) {
+  const box = dialog(page, WEB_TEXTS[locale].about.title);
   return {
     ...box,
     version: (version: string) => box.root.getByText(`APC Universal Repair ${version}`),
