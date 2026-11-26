@@ -20,6 +20,10 @@
       "apc-dist": "./dist/auth/auth.js",
       "default": "./src/auth/auth.ts"
     },
+    "./auth-texts": {
+      "apc-dist": "./dist/auth/authTexts.js",
+      "default": "./src/auth/authTexts.ts"
+    },
     "./devices": {
       "apc-dist": "./dist/devices/devices.js",
       "default": "./src/devices/devices.ts"
@@ -31,6 +35,10 @@
     "./catalog": {
       "apc-dist": "./dist/catalog/catalog.js",
       "default": "./src/catalog/catalog.ts"
+    },
+    "./catalog-texts": {
+      "apc-dist": "./dist/catalog/catalogTexts.js",
+      "default": "./src/catalog/catalogTexts.ts"
     },
     "./test-catalog": {
       "apc-dist": "./dist/catalog/testCatalog.js",
@@ -68,6 +76,10 @@
       "apc-dist": "./dist/inventory/lists.js",
       "default": "./src/inventory/lists.ts"
     },
+    "./inventory-texts": {
+      "apc-dist": "./dist/inventory/inventoryTexts.js",
+      "default": "./src/inventory/inventoryTexts.ts"
+    },
     "./test-items": {
       "apc-dist": "./dist/inventory/testItems.js",
       "default": "./src/inventory/testItems.ts"
@@ -84,6 +96,10 @@
       "apc-dist": "./dist/notifications/notifications.js",
       "default": "./src/notifications/notifications.ts"
     },
+    "./notification-texts": {
+      "apc-dist": "./dist/notifications/notificationTexts.js",
+      "default": "./src/notifications/notificationTexts.ts"
+    },
     "./photos": {
       "apc-dist": "./dist/inventory/photos.js",
       "default": "./src/inventory/photos.ts"
@@ -91,6 +107,10 @@
     "./locale": {
       "apc-dist": "./dist/platform/locale/locale.js",
       "default": "./src/platform/locale/locale.ts"
+    },
+    "./app-texts": {
+      "apc-dist": "./dist/platform/locale/appTexts.js",
+      "default": "./src/platform/locale/appTexts.ts"
     },
     "./server": {
       "apc-dist": "./dist/platform/server/ports.js",

@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { LOGIN_MESSAGES, REGISTER_MESSAGES, tooManyAttempts } from "../../auth/auth.ts";
+import { AUTH_TEXTS } from "../../auth/authTexts.ts";
 import { belowNode, brandSummary, CATALOG_TAKEN, partFit, periodOutsideMessage, readEngineFields } from "../../catalog/catalog.ts";
+import { CATALOG_SCREEN_TEXTS } from "../../catalog/catalogTexts.ts";
 import { TEST_CATALOG } from "../../catalog/testCatalog.ts";
 import { DEVICE_MESSAGES } from "../../devices/devices.ts";
+import { INVENTORY_SCREEN_TEXTS } from "../../inventory/inventoryTexts.ts";
 import { INVENTORY_TUTORIAL_PARTS } from "../../inventory/inventoryTutorial.ts";
 import { CSV_MESSAGES, exportScope, importedSummary } from "../../inventory/itemCsv.ts";
 import { FILTER_LABELS, ITEM_SORT_OPTIONS } from "../../inventory/itemFilters.ts";
@@ -12,10 +15,12 @@ import { itemCardCode, resultSummary, STOCK_STATUS_LABELS } from "../../inventor
 import { catalogDeleteNote, ITEM_LIST_TEXTS } from "../../inventory/lists.ts";
 import { mercadoLivreSummary } from "../../inventory/mercadoLivreCsv.ts";
 import { photoCount, takePhotos } from "../../inventory/photos.ts";
+import { NOTIFICATION_TEXTS } from "../../notifications/notificationTexts.ts";
 import { CONFLICT_MESSAGES } from "../../sync/conflicts.ts";
 import { copyNotice } from "../../sync/copy.ts";
 import { INVENTORY_NEEDS_SERVER } from "../../sync/queue.ts";
 import { sortOptions } from "../query/listQuery.ts";
+import { COMMON_TEXTS, COMPONENT_TEXTS, DASHBOARD_TEXTS } from "./appTexts.ts";
 
 // Each feature's catalog in English: its messages built with values, singular and plural, so the English half can't
 // fall behind the Portuguese one unnoticed. The Portuguese half is checked by each feature's own tests.
@@ -94,4 +99,19 @@ test("Shared: the photos, the sync and the tutorial speak English", () => {
   assert.equal(INVENTORY_NEEDS_SERVER["en-US"].export, "No connection to the server. Exporting can only be done with it.");
   assert.equal(CONFLICT_MESSAGES["en-US"].keepMine, "Keep the phone's");
   assert.deepEqual(INVENTORY_TUTORIAL_PARTS["en-US"], ["Add an item", "Search and filter", "Edit and delete"]);
+});
+
+// Builds the screens' texts both apps write in English: the shared actions, the components, the Dashboard, the login,
+// the notifications, the Catalog and the Inventory, one and many.
+test("Shared: the screens speak English", () => {
+  assert.deepEqual([COMMON_TEXTS["en-US"].retry, COMMON_TEXTS["en-US"].deleteNamed("Gol")], ["Try again", "Delete Gol"]);
+  assert.deepEqual([COMPONENT_TEXTS["en-US"].filterMenu.active(1), COMPONENT_TEXTS["en-US"].filterSheet.show(1), COMPONENT_TEXTS["en-US"].filterSheet.show(3)], ["Filters, 1 on", "Show 1 item", "Show 3 items"]);
+  assert.equal(COMPONENT_TEXTS["en-US"].tour.part(1, 3, "Add an item"), "Part 1 of 3 · Add an item");
+  assert.deepEqual(DASHBOARD_TEXTS["en-US"].tabs, { inventory: "Inventory", catalog: "Catalog" });
+  assert.equal(AUTH_TEXTS["en-US"].login.logIn, "Log in");
+  assert.equal(NOTIFICATION_TEXTS["en-US"].unread("2"), "Notifications, 2 unread");
+  assert.deepEqual([CATALOG_SCREEN_TEXTS["en-US"].results.heading(1), CATALOG_SCREEN_TEXTS["en-US"].results.heading(2)], ["Part in stock with this code", "Parts in stock with this code"]);
+  assert.equal(CATALOG_SCREEN_TEXTS["en-US"].deleteText("2 generations"), "It takes 2 generations with it. The inventory's parts stay. This can't be undone.");
+  assert.deepEqual([0, 1, 4].map((count) => INVENTORY_SCREEN_TEXTS["en-US"].lists.uses(count)), ["no items", "1 item", "4 items"]);
+  assert.deepEqual([INVENTORY_SCREEN_TEXTS["en-US"].import.submit(1), INVENTORY_SCREEN_TEXTS["en-US"].import.submit(5)], ["Import 1 item", "Import 5 items"]);
 });
