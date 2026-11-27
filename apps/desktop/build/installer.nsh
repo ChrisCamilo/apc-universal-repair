@@ -11,7 +11,8 @@
 ; A silent install shows neither page and leaves no answers.
 ; The installer starts by asking its language, Portuguese or English (electron-builder's displayLanguageSelector),
 ; with Portuguese chosen; its pages, electron-builder's and these, follow it. The choice is kept in the registry, under
-; the app's own key, so an update or an install over the app asks nothing, and the uninstaller speaks it
+; the app's own key, so an update or an install over the app asks nothing (an update from before, with none kept,
+; keeps Portuguese), and the uninstaller speaks it
 ; (customUnInit). A fresh install also leaves it in installer-language.txt, which the app takes as its language the
 ; first time, until the user picks another (see src/texts.ts). Every text here is a LangString in both languages.
 ; *Reiniciar agora* runs the installer of the new version with its window (see src/system/update.ts), so its progress
@@ -137,9 +138,16 @@
   LangString apcDataDeleting ${LANG_APC_EN} "Deleting APC's data: $dataFolder"
 !endif
 
-; Starts the language dialog on Portuguese; a language kept from an earlier install replaces it.
+; Starts the language dialog on Portuguese; a language kept from an earlier install replaces it. An update from a
+; version that kept none, as 0.9.1, keeps Portuguese without asking, as an update asks nothing.
 !macro preInit
   StrCpy $LANGUAGE ${LANG_APC_PT}
+  ${If} ${isUpdated}
+    ReadRegStr $R0 HKCU "${LANGUAGE_KEY}" "${MUI_LANGDLL_REGISTRY_VALUENAME}"
+    ${If} $R0 == ""
+      WriteRegStr HKCU "${LANGUAGE_KEY}" "${MUI_LANGDLL_REGISTRY_VALUENAME}" ${LANG_APC_PT}
+    ${EndIf}
+  ${EndIf}
 !macroend
 
 !macro customPageAfterChangeDir
