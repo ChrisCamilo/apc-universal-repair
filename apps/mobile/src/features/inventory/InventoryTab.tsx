@@ -93,6 +93,7 @@ import { PhotosTutorial } from './tutorial/PhotosTutorial';
 import { ImportTutorial } from './tutorial/ImportTutorial';
 import { ListsTutorial } from './tutorial/ListsTutorial';
 import { LISTS_TUTORIAL, LISTS_TUTORIAL_NAMES } from '@apc/domain/lists-tutorial';
+import { CATALOG_TREE_TUTORIAL } from '@apc/domain/catalog-tree-tutorial';
 import { createListEntry } from '@apc/domain/lists';
 import { shareTemplate } from './transfer/csv';
 import { samplePhotos } from './tutorial/samplePhotos';
@@ -492,7 +493,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // Run the tour by itself the first time, from its first part on, once the items are in and the server answered, and a
   // tutorial of its when one is asked for, while the server can be reached.
   const reachable = !copy.offline && !copy.syncing;
-  const { asked } = tutorial;
+  // The Catalog's tour is the Catalog tab's.
+  const asked = tutorial.asked?.id === CATALOG_TREE_TUTORIAL ? null : tutorial.asked;
   if (!tour && !photosTour && !importTour && !listsTour && reachable && ((tutorial.seen === false && state.status === 'ready') || asked)) {
     if (asked?.id === PHOTOS_TUTORIAL) {
       setPhotosTour(true);
