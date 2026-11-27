@@ -21,19 +21,19 @@ async function rings(spotlight: Locator, target: Locator): Promise<boolean> {
   return Boolean(spot && box) && spot!.x <= box!.x && spot!.y <= box!.y && spot!.x + spot!.width >= box!.x + box!.width && spot!.y + spot!.height >= box!.y + box!.height;
 }
 
-// Starts "As listas" from the Estoque and checks its first step rings "Mais ações" (the toolbar's menu, or a phone's
-// "⋯"), with no "Fazer por mim", and its second sits in the middle with no spotlight; Concluir ends it.
-test("Web: As listas explains the lists from Mais ações", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
+// Starts "Exportar para o Mercado Livre" from the Estoque and checks its first step rings "Mais ações" (the toolbar's
+// menu, or a phone's "⋯"), with no "Fazer por mim", and its second sits in the middle with no spotlight; Concluir ends it.
+test("Web: Exportar para o Mercado Livre explains the export from Mais ações", { tag: [TEST_TAGS.inventory] }, async ({ page }) => {
   await page.goto("/inventory");
   const guide = tour(page);
-  await startTutorial(page, "As listas");
-  await expect(guide.step("Gerenciar listas")).toBeVisible();
-  await expect(guide.card).toContainText("As listas");
+  await startTutorial(page, "Exportar para o Mercado Livre");
+  await expect(guide.step("Exportar Peças")).toBeVisible();
+  await expect(guide.card).toContainText("Exportar para o Mercado Livre");
   await expect(guide.card).toContainText("1 / 2");
   await expect(guide.doIt).toBeHidden();
   await expect.poll(() => rings(guide.spotlight, inventory(page).more)).toBe(true);
   await guide.next.click();
-  await expect(guide.step("Renomear e juntar")).toBeVisible();
+  await expect(guide.step("No Mercado Livre")).toBeVisible();
   await expect(guide.spotlight).toBeHidden();
   await guide.done.click();
   await expect(guide.card).toBeHidden();

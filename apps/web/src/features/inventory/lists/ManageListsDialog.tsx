@@ -15,6 +15,7 @@ import {
   type ListEntryChange,
   type VehicleModel,
 } from '@apc/domain/lists'
+import { LISTS_TUTORIAL_NAMES } from '@apc/domain/lists-tutorial'
 import { Button } from '../../../components/Button'
 import { RowAction } from '../../../components/DataTable'
 import { Dialog } from '../../../components/Dialog'
@@ -40,6 +41,12 @@ import { useLocale, useMessages } from '../../../app/useLocale.ts'
 // the owner hears of each rename and merge, for its filters.
 
 const KINDS: ItemListKind[] = ['categories', 'partBrands', 'vehicleBrands', 'vehicleModels']
+// The lists tour's test categories, by the name its steps point at their rows by.
+const TOUR_ROWS: Record<string, string> = {
+  [LISTS_TUTORIAL_NAMES.first]: 'entry-first',
+  [LISTS_TUTORIAL_NAMES.renamed]: 'entry-renamed',
+  [LISTS_TUTORIAL_NAMES.second]: 'entry-second',
+}
 
 /** An entry of one of the lists. */
 type Entry = { kind: ItemListKind; entry: ListEntry | VehicleModel }
@@ -56,6 +63,8 @@ type ManageListsDialogProps = {
   /** Shows the items using a name in the list, with the filters given. */
   onShowItems: (filters: ItemFilters) => void
   onClose: () => void
+  /** Called with whether the question to join is open and the name the question to delete asks about, e.g. for the lists tour. */
+  onAskChange?: (ask: { merging: boolean; removing: string | null }) => void
 }
 
 export function ManageListsDialog({
@@ -68,6 +77,7 @@ export function ManageListsDialog({
   onChanged,
   onShowItems,
   onClose,
+  onAskChange,
 }: ManageListsDialogProps) {
   const { locale } = useLocale()
   const screen = INVENTORY_SCREEN_TEXTS[locale].lists
@@ -83,6 +93,11 @@ export function ManageListsDialog({
   // The entry the delete dialog asks about.
   const [removing, setRemoving] = useState<Entry>()
   const [deleting, setDeleting] = useState(false)
+
+  // Tell the owner which question is open.
+  useEffect(() => {
+    onAskChange?.({ merging: merging !== undefined, removing: removing?.entry.name ?? null })
+  }, [merging, removing, onAskChange])
 
   /** Checks the typed name and renames the entry, asks to merge it into the entry that has the name, or says why not. */
   const rename = async () => {
@@ -176,6 +191,7 @@ export function ManageListsDialog({
             key={entry.id}
             name={entry.name}
             uses={itemsUsing(items, kind, entry, lists)}
+            tour={kind === 'categories' ? TOUR_ROWS[entry.name] : undefined}
             onRename={() => setEditing({ kind, entry, name: entry.name })}
             onRemove={() => setRemoving({ kind, entry })}
           />
@@ -258,7 +274,7 @@ export function ManageListsDialog({
               <Button variant="secondary" size="sm" onClick={() => setRemoving(undefined)}>
                 {common.cancel}
               </Button>
-              <Button variant="danger" size="sm" loading={deleting} onClick={remove}>
+              <Button variant="danger" size="sm" data-tour="remove-confirm" loading={deleting} onClick={remove}>
                 {common.delete}
               </Button>
             </>
@@ -283,7 +299,7 @@ export function ManageListsDialog({
             <Button variant="secondary" size="sm" onClick={() => setMerging(undefined)}>
               {common.cancel}
             </Button>
-            <Button size="sm" loading={joining} onClick={merge}>
+            <Button size="sm" data-tour="merge" loading={joining} onClick={merge}>
               {screen.merge}
             </Button>
           </>
@@ -304,13 +320,13 @@ export function ManageListsDialog({
   )
 }
 
-/** A name of a list, how many items use it, and its pencil and trash. */
-function EntryRow({ name, uses, onRename, onRemove }: { name: string; uses: number; onRename: () => void; onRemove: () => void }) {
+/** A name of a list, how many items use it, and its pencil and trash; `tour` marks it for a tutorial to point at. */
+function EntryRow({ name, uses, tour, onRename, onRemove }: { name: string; uses: number; tour?: string; onRename: () => void; onRemove: () => void }) {
   const { classes, ids } = manageListsDialog()
   const screen = useMessages(INVENTORY_SCREEN_TEXTS).lists
   const common = useMessages(COMMON_TEXTS)
   return (
-    <li className={classes.entry()} data-testid={ids.entry}>
+    <li className={classes.entry()} data-testid={ids.entry} data-tour={tour}>
       <span className={classes.name()} data-testid={ids.name} title={name}>
         {name}
       </span>
@@ -366,7 +382,7 @@ function RenameRow({
   }
 
   return (
-    <li className={classes.rename()} data-testid={ids.rename}>
+    <li className={classes.rename()} data-testid={ids.rename} data-tour="list-rename">
       <TextField ref={field} label={label} value={name} onValueChange={onNameChange} error={error} onKeyDown={onKeyDown} />
       <span className={classes.buttons()} data-testid={ids.buttons}>
         <Button variant="secondary" size="sm" onClick={onCancel}>

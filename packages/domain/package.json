@@ -132,6 +132,10 @@
       "apc-dist": "./dist/inventory/importTutorial.js",
       "default": "./src/inventory/importTutorial.ts"
     },
+    "./lists-tutorial": {
+      "apc-dist": "./dist/inventory/listsTutorial.js",
+      "default": "./src/inventory/listsTutorial.ts"
+    },
     "./photos-tutorial": {
       "apc-dist": "./dist/inventory/photosTutorial.js",
       "default": "./src/inventory/photosTutorial.ts"

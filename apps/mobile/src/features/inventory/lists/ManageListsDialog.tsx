@@ -25,6 +25,8 @@ import { TextField } from '../../../components/TextField';
 import { useToast } from '../../../components/Toast';
 import { Heading, Text } from '../../../components/Typography';
 import { useStyles } from './ManageListsDialog.styles';
+import { tourTarget } from '../../../components/Tour';
+import { LISTS_TUTORIAL_NAMES } from '@apc/domain/lists-tutorial';
 import type { MergeListEntries, RemoveListEntry, RenameListEntry } from './useItemLists';
 import { useLocale } from '../../../app/locale';
 import { COMMON_TEXTS } from '@apc/domain/app-texts';
@@ -42,6 +44,12 @@ import { INVENTORY_SCREEN_TEXTS } from '@apc/domain/inventory-texts';
 // filters. They need the server: while it can't be reached, a change that fails says so.
 
 const KINDS: ItemListKind[] = ['categories', 'partBrands', 'vehicleBrands', 'vehicleModels'];
+// The lists tour's test categories, by the name its steps point at their rows by.
+const TOUR_ROWS: Record<string, string> = {
+  [LISTS_TUTORIAL_NAMES.first]: 'entry-first',
+  [LISTS_TUTORIAL_NAMES.renamed]: 'entry-renamed',
+  [LISTS_TUTORIAL_NAMES.second]: 'entry-second',
+};
 
 /** An entry of one of the lists. */
 type Entry = { kind: ItemListKind; entry: ListEntry | VehicleModel };
@@ -60,6 +68,8 @@ type ManageListsDialogProps = {
   onClose: () => void;
   /** Whether the server can't be reached, which a change that fails then says. */
   offline?: boolean;
+  /** Called with whether the question to join is open and the name the question to delete asks about, e.g. for the lists tour. */
+  onAskChange?: (ask: { merging: boolean; removing: string | null }) => void;
 };
 
 export function ManageListsDialog({
@@ -73,6 +83,7 @@ export function ManageListsDialog({
   onChanged,
   onShowItems,
   onClose,
+  onAskChange,
 }: ManageListsDialogProps) {
   const { locale } = useLocale();
   const screen = INVENTORY_SCREEN_TEXTS[locale].lists;
@@ -89,6 +100,11 @@ export function ManageListsDialog({
   // The entry the delete dialog asks about.
   const [removing, setRemoving] = useState<Entry>();
   const [deleting, setDeleting] = useState(false);
+
+  // Tell the owner which question is open.
+  useEffect(() => {
+    onAskChange?.({ merging: merging !== undefined, removing: removing?.entry.name ?? null });
+  }, [merging, removing, onAskChange]);
 
   /** Checks the typed name and renames the entry, asks to merge it into the entry that has the name, or says why not. */
   const rename = async () => {
@@ -177,7 +193,13 @@ export function ManageListsDialog({
           onCancel={() => setEditing(undefined)}
         />
       ) : (
-        <View key={entry.id} style={styles.entry} testID={ids.entry}>
+        <View
+          key={entry.id}
+          ref={kind === 'categories' && TOUR_ROWS[entry.name] ? tourTarget(TOUR_ROWS[entry.name]) : undefined}
+          collapsable={false}
+          style={styles.entry}
+          testID={ids.entry}
+        >
           <View style={styles.name} testID={ids.name}>
             <Text lines={1}>{entry.name}</Text>
           </View>
@@ -260,9 +282,11 @@ export function ManageListsDialog({
               <Button variant="secondary" size="sm" onPress={() => setRemoving(undefined)}>
                 {common.cancel}
               </Button>
-              <Button variant="danger" size="sm" loading={deleting} onPress={remove}>
-                {common.delete}
-              </Button>
+              <View ref={tourTarget('remove-confirm')} collapsable={false}>
+                <Button variant="danger" size="sm" loading={deleting} onPress={remove}>
+                  {common.delete}
+                </Button>
+              </View>
             </>
           )
         }
@@ -285,9 +309,11 @@ export function ManageListsDialog({
             <Button variant="secondary" size="sm" onPress={() => setMerging(undefined)}>
               {common.cancel}
             </Button>
-            <Button size="sm" loading={joining} onPress={merge}>
-              {screen.merge}
-            </Button>
+            <View ref={tourTarget('merge')} collapsable={false}>
+              <Button size="sm" loading={joining} onPress={merge}>
+                {screen.merge}
+              </Button>
+            </View>
           </>
         }
       >
@@ -334,7 +360,7 @@ function RenameRow({
   }, []);
 
   return (
-    <View style={styles.rename} testID={ids.rename}>
+    <View ref={tourTarget('list-rename')} collapsable={false} style={styles.rename} testID={ids.rename}>
       <TextField ref={field} label={label} value={name} onValueChange={onNameChange} error={error} onSubmitEditing={onSave} />
       <View style={styles.buttons} testID={ids.buttons}>
         <Button variant="secondary" size="sm" onPress={onCancel}>

@@ -110,6 +110,8 @@ import { usePageSize } from '../dashboard/pageSizeContext.ts'
 import { tutorialTarget } from './tutorial/tutorialTarget.ts'
 import { PhotosTutorial } from './tutorial/PhotosTutorial.tsx'
 import { ImportTutorial } from './tutorial/ImportTutorial.tsx'
+import { ListsTutorial } from './tutorial/ListsTutorial.tsx'
+import { LISTS_TUTORIAL, LISTS_TUTORIAL_NAMES, type ListsTutorialScreen } from '@apc/domain/lists-tutorial'
 import { downloadCsvTemplate } from './transfer/csvTemplate.ts'
 import { importedSummary, importItems, readItemsCsv, type CsvItemRow } from '@apc/domain/item-csv'
 import { useToast } from '../../components/Toast'
@@ -351,6 +353,9 @@ export function InventoryTab() {
   const [importTour, setImportTour] = useState(false)
   const [importRows, setImportRows] = useState<readonly CsvItemRow[]>([])
   const [templateTaken, setTemplateTaken] = useState(false)
+  // Whether the lists tour runs, with the question Gerenciar listas asks.
+  const [listsTour, setListsTour] = useState(false)
+  const [listsAsk, setListsAsk] = useState<{ merging: boolean; removing: string | null }>({ merging: false, removing: null })
   const [sentWith, setSentWith] = useState<Item[]>()
   // The item the delete confirmation asks about, while it is open.
   const [removing, setRemoving] = useState<Item>()
@@ -409,7 +414,8 @@ export function InventoryTab() {
       viewer !== undefined ||
       tour !== null ||
       photosTour ||
-      importTour,
+      importTour ||
+      listsTour,
   )
 
   /**
@@ -544,9 +550,12 @@ export function InventoryTab() {
   // Run the tour by itself the first time, from its first part on, once the items are in, and a tutorial of its when
   // one is asked for: a part of the tour, or the photos tour.
   const { asked } = tutorial
-  if (!tour && !photosTour && !importTour && ((!tutorial.seen && state.status === 'ready') || asked)) {
+  if (!tour && !photosTour && !importTour && !listsTour && ((!tutorial.seen && state.status === 'ready') || asked)) {
     if (asked?.id === PHOTOS_TUTORIAL) {
       setPhotosTour(true)
+    } else if (asked?.id === LISTS_TUTORIAL) {
+      setListsTour(true)
+      setManaging(false)
     } else if (asked?.id === IMPORT_TUTORIAL) {
       setImportTour(true)
       setTemplateTaken(false)
@@ -580,6 +589,27 @@ export function InventoryTab() {
       photosStarted()
     }
   }, [photosTour])
+
+  /** Deletes the lists tour's test categories that are in the lists. */
+  const deleteTestCategories = async () => {
+    const names: string[] = Object.values(LISTS_TUTORIAL_NAMES)
+    for (const entry of lists.categories.filter((each) => names.includes(each.name))) {
+      await removeEntry('categories', entry.id)
+    }
+  }
+
+  // The lists tour starts on its two test categories, made anew.
+  const listsStarted = useEffectEvent(async () => {
+    tutorial.started()
+    await deleteTestCategories()
+    await createEntry('categories', LISTS_TUTORIAL_NAMES.first)
+    await createEntry('categories', LISTS_TUTORIAL_NAMES.second)
+  })
+  useEffect(() => {
+    if (listsTour) {
+      void listsStarted()
+    }
+  }, [listsTour])
 
   // The import tour starts without the test items of a run that didn't end.
   const importStarted = useEffectEvent(() => {
@@ -657,6 +687,35 @@ export function InventoryTab() {
     if (testItem) {
       openForm(testItem, false, typed?.values, [photos])
     }
+  }
+  /** Finds a category by name. */
+  const category = (name: string) => lists.categories.find((entry) => entry.name === name)
+  const listsScreen: Omit<ListsTutorialScreen<Element>, 'target'> = {
+    managing,
+    categories: lists.categories.map((entry) => entry.name),
+    merging: managing && listsAsk.merging,
+    removing: managing ? listsAsk.removing : null,
+    busy: false,
+    phone,
+    openLists: () => setManaging(true),
+    rename: (from, to) => {
+      const entry = category(from)
+      if (entry) {
+        void renameEntry('categories', entry.id, to)
+      }
+    },
+    merge: (from, into) => {
+      const [entry, other] = [category(from), category(into)]
+      if (entry && other) {
+        void mergeEntry('categories', entry.id, other.id)
+      }
+    },
+    remove: (name) => {
+      const entry = category(name)
+      if (entry) {
+        void removeEntry('categories', entry.id)
+      }
+    },
   }
   const importScreen: Omit<ImportTutorialScreen<Element>, 'target'> = {
     importer: importer.open
@@ -1049,6 +1108,7 @@ export function InventoryTab() {
           })
         }}
         onClose={() => setManaging(false)}
+        onAskChange={setListsAsk}
       />
       <InventoryTutorial
         open={tour !== null}
@@ -1070,6 +1130,16 @@ export function InventoryTab() {
         screen={photosScreen}
         code={TUTORIAL_CODE}
         itemName={testItem?.name}
+      />
+      <ListsTutorial
+        open={listsTour}
+        onClose={() => {
+          setListsTour(false)
+          setManaging(false)
+          clearForTutorial()
+          void deleteTestCategories()
+        }}
+        screen={listsScreen}
       />
       <ImportTutorial
         open={importTour}

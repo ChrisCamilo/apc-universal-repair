@@ -246,8 +246,8 @@ test('Web: Tutoriais opens the tutorials by feature, and a tutorial starts its t
   const dialog = screen.getByRole('dialog', { name: 'Tutoriais' })
   await expect.element(dialog.getByRole('button', { name: /Estoque/ })).toHaveAttribute('aria-expanded', 'true')
   await expect.element(dialog.getByText('8 tutoriais')).toBeVisible()
-  await expect.element(dialog.getByRole('button', { name: 'As listas' })).toHaveAccessibleDescription(
-    'Renomeie e junte categorias, marcas de peça e modelos de veículo. Explicação · 2 passos',
+  await expect.element(dialog.getByRole('button', { name: 'Exportar para o Mercado Livre' })).toHaveAccessibleDescription(
+    'Gere os anúncios das peças para o Anunciador em massa. Explicação · 2 passos',
   )
   await expect.element(dialog.getByRole('button', { name: /Catálogo/ })).toHaveAttribute('aria-expanded', 'true')
   await expect.element(dialog.getByRole('button', { name: /Notificações/ })).toHaveAttribute('aria-expanded', 'true')

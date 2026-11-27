@@ -1,5 +1,6 @@
 import { INVENTORY_TUTORIAL_PARTS, INVENTORY_TUTORIALS, inventoryTutorialPartSteps, type InventoryTutorialId } from "../inventory/inventoryTutorial.ts";
 import { IMPORT_TUTORIAL, importTutorialStepCount, importTutorialTitle } from "../inventory/importTutorial.ts";
+import { LISTS_TUTORIAL, listsTutorialStepCount, listsTutorialTitle } from "../inventory/listsTutorial.ts";
 import { PHOTOS_TUTORIAL, photosTutorialStepCount, photosTutorialTitle } from "../inventory/photosTutorial.ts";
 import { DASHBOARD_TEXTS } from "../platform/locale/appTexts.ts";
 import { catalog, type Locale } from "../platform/locale/locale.ts";
@@ -7,8 +8,9 @@ import { catalog, type Locale } from "../platform/locale/locale.ts";
 // The apps' tutorials, by feature, which the user menu's Tutoriais lists: each one's feature, its kind, the apps it shows
 // in and its texts. A guided tour is done on the screen, step by step, or with "Fazer por mim"; an explanation only
 // points at the screen and explains, one to three steps with Next. A tutorial on a tab's feature opens the tab before
-// it starts. The Inventory's guided tour is three tutorials, one per part (see inventoryTutorial.ts), and a brand's photos
-// and importing a CSV have guided tours of their own (see photosTutorial.ts and importTutorial.ts); an explanation's
+// it starts. The Inventory's guided tour is three tutorials, one per part (see inventoryTutorial.ts), and a brand's photos,
+// importing a CSV and the lists have guided tours of their own (see photosTutorial.ts, importTutorial.ts and
+// listsTutorial.ts); an explanation's
 // steps point at the parts of the screen its targets name, which each app finds its own way (data-tour on the web, a
 // tourTarget ref on the phone), the card sitting in the middle of the screen for a step with no target or one not on
 // screen.
@@ -21,7 +23,6 @@ export const TUTORIAL_PLATFORMS = ["web", "desktop", "phone"] as const;
  * that points at nothing.
  */
 export const EXPLANATIONS = [
-  { id: "inventory-lists", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["more-actions", null] },
   { id: "inventory-mercado-livre", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["more-actions", null] },
   { id: "inventory-low-stock", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["status", "items"] },
   { id: "catalog-browse", feature: "catalog", platforms: TUTORIAL_PLATFORMS, targets: ["catalog-brands", "catalog-search"] },
@@ -38,7 +39,7 @@ export const EXPLANATIONS = [
 /** An explanation, as the Dashboard runs it. */
 export type ExplanationId = (typeof EXPLANATIONS)[number]["id"];
 /** A guided tour, which its tab runs. */
-export type TourId = InventoryTutorialId | typeof PHOTOS_TUTORIAL | typeof IMPORT_TUTORIAL;
+export type TourId = InventoryTutorialId | typeof PHOTOS_TUTORIAL | typeof IMPORT_TUTORIAL | typeof LISTS_TUTORIAL;
 /** A tutorial, as its tab or the Dashboard knows it. */
 export type TutorialId = TourId | ExplanationId;
 /** What a tutorial is about, which the dialog groups it under: a tab, or a part of the apps beside the tabs. */
@@ -82,6 +83,7 @@ export const TUTORIALS: readonly Tutorial[] = [
   })),
   { id: PHOTOS_TUTORIAL, feature: "inventory", tab: "inventory", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: photosTutorialStepCount() },
   { id: IMPORT_TUTORIAL, feature: "inventory", tab: "inventory", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: importTutorialStepCount() },
+  { id: LISTS_TUTORIAL, feature: "inventory", tab: "inventory", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: listsTutorialStepCount() },
   ...EXPLANATIONS.map(({ id, feature, platforms, targets }): Tutorial => ({
     id,
     feature,
@@ -110,7 +112,7 @@ export const TUTORIAL_TEXTS = catalog(
       "inventory-search": "Ache a peça de teste pela busca e pelos filtros.",
       "inventory-edit": "Edite a peça de teste até ela ficar baixa e esgotada, e depois exclua.",
       "inventory-photos": "Adicione duas fotos à peça de teste, deixe a segunda como capa e salve.",
-      "inventory-lists": "Renomeie e junte categorias, marcas de peça e modelos de veículo.",
+      "inventory-lists": "Renomeie, junte e exclua duas categorias de teste em Gerenciar listas.",
       "inventory-import": "Importe um arquivo de exemplo com duas peças de teste, conferindo a prévia antes.",
       "inventory-mercado-livre": "Gere os anúncios das peças para o Anunciador em massa.",
       "inventory-low-stock": "Como o estoque mostra as peças que estão acabando.",
@@ -125,19 +127,6 @@ export const TUTORIAL_TEXTS = catalog(
       "offline-conflict": "O que fazer quando o celular e o computador mudaram o mesmo item.",
     } as Record<TutorialId, string>,
     explanations: {
-      "inventory-lists": {
-        title: "As listas",
-        steps: [
-          {
-            title: "Gerenciar listas",
-            text: "Em Mais ações, Gerenciar listas abre as categorias, as marcas de peça e os modelos de veículo que os itens usam, cada nome com quantos itens o usam.",
-          },
-          {
-            title: "Renomear e juntar",
-            text: "Renomeie um nome, e os itens passam a usar o novo. Juntar une dois nomes num só, levando os itens junto. Excluir só vale para um nome que nenhum item usa.",
-          },
-        ],
-      },
       "inventory-mercado-livre": {
         title: "Exportar para o Mercado Livre",
         steps: [
@@ -266,7 +255,7 @@ export const TUTORIAL_TEXTS = catalog(
       "inventory-search": "Find the test part with the search and the filters.",
       "inventory-edit": "Edit the test part until it is low and out of stock, then delete it.",
       "inventory-photos": "Add two photos to the test part, make the second the cover and save.",
-      "inventory-lists": "Rename and join categories, part brands and vehicle models.",
+      "inventory-lists": "Rename, join and delete two test categories in Manage lists.",
       "inventory-import": "Import a sample file of two test parts, checking the preview first.",
       "inventory-mercado-livre": "Make the parts' listings for the Bulk lister.",
       "inventory-low-stock": "How the inventory shows the parts running out.",
@@ -281,19 +270,6 @@ export const TUTORIAL_TEXTS = catalog(
       "offline-conflict": "What to do when the phone and the computer changed the same item.",
     },
     explanations: {
-      "inventory-lists": {
-        title: "The lists",
-        steps: [
-          {
-            title: "Manage lists",
-            text: "In More actions, Manage lists opens the categories, part brands and vehicle models the items use, each name with how many items use it.",
-          },
-          {
-            title: "Rename and join",
-            text: "Rename a name, and the items use the new one. Join turns two names into one, taking their items along. Delete only works for a name no item uses.",
-          },
-        ],
-      },
       "inventory-mercado-livre": {
         title: "Exporting for Mercado Livre",
         steps: [
@@ -462,5 +438,8 @@ export function tutorialTitle(id: TutorialId, locale: Locale): string {
   if (id === PHOTOS_TUTORIAL) {
     return photosTutorialTitle(locale);
   }
-  return id === IMPORT_TUTORIAL ? importTutorialTitle(locale) : INVENTORY_TUTORIAL_PARTS[locale][INVENTORY_TUTORIALS.indexOf(id)];
+  if (id === IMPORT_TUTORIAL) {
+    return importTutorialTitle(locale);
+  }
+  return id === LISTS_TUTORIAL ? listsTutorialTitle(locale) : INVENTORY_TUTORIAL_PARTS[locale][INVENTORY_TUTORIALS.indexOf(id)];
 }

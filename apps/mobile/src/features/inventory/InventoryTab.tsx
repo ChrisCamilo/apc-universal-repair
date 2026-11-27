@@ -91,6 +91,9 @@ import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './Inv
 import { InventoryTutorial } from './tutorial/InventoryTutorial';
 import { PhotosTutorial } from './tutorial/PhotosTutorial';
 import { ImportTutorial } from './tutorial/ImportTutorial';
+import { ListsTutorial } from './tutorial/ListsTutorial';
+import { LISTS_TUTORIAL, LISTS_TUTORIAL_NAMES } from '@apc/domain/lists-tutorial';
+import { createListEntry } from '@apc/domain/lists';
 import { shareTemplate } from './transfer/csv';
 import { samplePhotos } from './tutorial/samplePhotos';
 import { useInventoryLink } from '../dashboard/inventoryLinkContext';
@@ -298,6 +301,9 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   const [importTour, setImportTour] = useState(false);
   const [importRows, setImportRows] = useState<readonly CsvItemRow[]>([]);
   const [templateTaken, setTemplateTaken] = useState(false);
+  // Whether the lists tour runs, with the question Gerenciar listas asks.
+  const [listsTour, setListsTour] = useState(false);
+  const [listsAsk, setListsAsk] = useState<{ merging: boolean; removing: string | null }>({ merging: false, removing: null });
   const [sentWith, setSentWith] = useState<Item[]>();
   // The item the delete confirmation asks about, while it is open; and whether the details' own one is open.
   const [removing, setRemoving] = useState<Item>();
@@ -362,7 +368,8 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     settling ||
     tour !== null ||
     photosTour ||
-    importTour;
+    importTour ||
+    listsTour;
   const { sync } = copy;
   useEffect(() => {
     if (overlaid) {
@@ -486,9 +493,12 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // tutorial of its when one is asked for, while the server can be reached.
   const reachable = !copy.offline && !copy.syncing;
   const { asked } = tutorial;
-  if (!tour && !photosTour && !importTour && reachable && ((tutorial.seen === false && state.status === 'ready') || asked)) {
+  if (!tour && !photosTour && !importTour && !listsTour && reachable && ((tutorial.seen === false && state.status === 'ready') || asked)) {
     if (asked?.id === PHOTOS_TUTORIAL) {
       setPhotosTour(true);
+    } else if (asked?.id === LISTS_TUTORIAL) {
+      setListsTour(true);
+      setManaging(false);
     } else if (asked?.id === IMPORT_TUTORIAL) {
       setImportTour(true);
       setTemplateTaken(false);
@@ -522,6 +532,29 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
       photosStarted();
     }
   }, [photosTour]);
+
+  /** Deletes the lists tour's test categories that are in the lists, then syncs the copy. */
+  const deleteTestCategories = async () => {
+    const names: string[] = Object.values(LISTS_TUTORIAL_NAMES);
+    for (const entry of lists.categories.filter((each) => names.includes(each.name))) {
+      await removeEntry('categories', entry.id);
+    }
+    reload();
+  };
+
+  // The lists tour starts on its two test categories, made anew on the server, as renaming and joining need it.
+  const listsStarted = useEffectEvent(async () => {
+    tutorial.started();
+    await deleteTestCategories();
+    await createListEntry(apiUrl(), 'categories', LISTS_TUTORIAL_NAMES.first);
+    await createListEntry(apiUrl(), 'categories', LISTS_TUTORIAL_NAMES.second);
+    reload();
+  });
+  useEffect(() => {
+    if (listsTour) {
+      listsStarted();
+    }
+  }, [listsTour]);
 
   // The import tour starts without the test items of a run that didn't end.
   const importStarted = useEffectEvent(() => {
@@ -749,7 +782,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         onClose={() => setMoreOpen(false)}
         title={common.moreActions}
         actions={[
-          { icon: listIcon, label: texts.lists.title, onSelect: () => setManaging(true) },
+          { icon: listIcon, label: texts.lists.title, onSelect: () => setManaging(true), tour: 'lists-action' },
           { icon: importIcon, label: texts.importItems, onSelect: () => setImporter((current) => ({ open: true, session: current.session + 1 })), tour: 'import-action' },
           { icon: exportIcon, label: texts.exportItems, onSelect: () => setExporter((current) => ({ open: true, session: current.session + 1 })) },
           { icon: playIcon, label: texts.tutorial, onSelect: () => tutorial.start('inventory-add', true) },
@@ -819,6 +852,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           });
         }}
         onClose={() => setManaging(false)}
+        onAskChange={setListsAsk}
       />
       <InventoryTutorial
         open={tour !== null}
@@ -863,6 +897,43 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
             setRemoving(undefined);
             setForm((current) => ({ ...current, open: false }));
             send(`${apiUrl()}/items/${item.id}`, 'DELETE');
+          },
+        }}
+      />
+      <ListsTutorial
+        open={listsTour}
+        onClose={() => {
+          setListsTour(false);
+          setManaging(false);
+          clearForTutorial();
+          deleteTestCategories();
+        }}
+        screen={{
+          managing,
+          categories: lists.categories.map((entry) => entry.name),
+          merging: managing && listsAsk.merging,
+          removing: managing ? listsAsk.removing : null,
+          busy: false,
+          phone: true,
+          openLists: () => setManaging(true),
+          // Each change goes to the server, then the copy syncs, so the lists follow.
+          rename: (from, to) => {
+            const entry = lists.categories.find((each) => each.name === from);
+            if (entry) {
+              renameEntry('categories', entry.id, to).then(reload);
+            }
+          },
+          merge: (from, into) => {
+            const [entry, other] = [from, into].map((name) => lists.categories.find((each) => each.name === name));
+            if (entry && other) {
+              mergeEntry('categories', entry.id, other.id).then(reload);
+            }
+          },
+          remove: (name) => {
+            const entry = lists.categories.find((each) => each.name === name);
+            if (entry) {
+              removeEntry('categories', entry.id).then(reload);
+            }
           },
         }}
       />
