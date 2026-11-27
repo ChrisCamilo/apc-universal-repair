@@ -103,6 +103,7 @@ test("Shared: the photos, the sync and the tutorial speak English", () => {
   const tutorials = TUTORIAL_TEXTS["en-US"];
   assert.deepEqual([tutorials.title, tutorials.count(1), tutorials.count(3), tutorials.steps(1), tutorials.steps(4)], ["Tutorials", "1 tutorial", "3 tutorials", "1 step", "4 steps"]);
   assert.deepEqual([tutorials.kinds.tour, tutorials.descriptions["inventory-search"]], ["Guided tour", "Find the test part with the search and the filters."]);
+  assert.deepEqual([tutorials.features.offline, tutorials.explanations["catalog-tree"].title], ["Offline mode", "A model's tree"]);
 });
 
 // Builds the screens' texts both apps write in English: the shared actions, the components, the Dashboard, the login,
