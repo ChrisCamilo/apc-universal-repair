@@ -34,7 +34,36 @@ import { apiUrl } from "../support/api.ts";
 // a name, or gives back the one a list already holds; a PATCH renames an entry and the items using it, refusing a
 // name another entry has; a merge moves an entry's items to another and removes it (a category or part brand; brands
 // and models aren't merged here); a DELETE removes an entry no item uses, a vehicle brand or model of the catalog
-// included, and refuses one in use. A part brand is a name of each brand of an item. savedItem answers a create or edit as the API would.
+// included, and refuses one in use. A part brand is a name of each brand of an item. A name an item uses that its list
+// lacks, as an item a test creates or edits brings, is added before the list is answered, as the API adds the names an
+// item saved uses. savedItem answers a create or edit as the API would.
+
+/**
+ * Adds to the item lists the names the items use that they lack, as the API adds the names of an item it saves.
+ * @param lists The item lists, changed in place.
+ * @param stock The items in stock.
+ */
+function addUsedNames(lists: ReturnType<typeof itemListsOf>, stock: readonly Item[]) {
+  const add = (list: ListEntry[], name: string, more: Record<string, string> = {}) => {
+    const held = findEntry(list.filter((entry) => !more.vehicleBrandId || ("vehicleBrandId" in entry && entry.vehicleBrandId === more.vehicleBrandId)), name);
+    if (held) {
+      return held;
+    }
+    const created = { id: crypto.randomUUID(), name: listName(name), ...more };
+    list.push(created);
+    return created;
+  };
+  for (const item of stock) {
+    add(lists.categories, item.category);
+    item.brands.forEach((brand) => add(lists.partBrands, brand.partBrand));
+    for (const vehicle of item.vehicles) {
+      const brand = add(lists.vehicleBrands, vehicle.vehicleBrand);
+      if (vehicle.vehicleModel) {
+        add(lists.vehicleModels, vehicle.vehicleModel, { vehicleBrandId: brand.id });
+      }
+    }
+  }
+}
 
 /**
  * Answers GET /api/items, with or without a query, from a list of items the test may change as it goes, and the
@@ -92,6 +121,7 @@ export async function serveItems(page: Page, stock: Item[], onQuery?: (query: UR
     apiUrl(listPaths),
     (route) => {
       const kind = kindOf(new URL(route.request().url()))!;
+      addUsedNames(lists, stock);
       const list: ListEntry[] = lists[kind];
       if (route.request().method() !== "POST") {
         return route.fulfill({ json: list });
