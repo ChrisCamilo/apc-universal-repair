@@ -9,8 +9,9 @@
     "android:apk": "react-native build-android --tasks assembleRelease",
     "android:install": "adb install -r android/app/build/outputs/apk/release/app-release.apk",
     "ios": "react-native run-ios",
-    "lint": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint . && pnpm run lint:styles",
+    "lint": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint . && pnpm run lint:styles && pnpm run lint:texts",
     "lint:styles": "node --experimental-strip-types ../../packages/tokens/src/styles/checkStyles.ts mobile src",
+    "lint:texts": "node --experimental-strip-types ../../packages/domain/src/platform/locale/checkTexts.ts src",
     "start": "react-native start",
     "test": "jest",
     "typecheck": "tsc --noEmit"
