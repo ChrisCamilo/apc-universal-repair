@@ -37,7 +37,7 @@ Playwright's MCP (`playwright`) and its test agents (`playwright-test-planner`, 
 
 ## Skills
 
-`.claude/skills/` holds this repo's workflows as Claude Code skills, loaded when a task matches them or called as `/<name>`: `apc-pr`, `apc-task`, `apc-test`, `apc-component`, `apc-api-route`, `apc-dependency`, `apc-release`, `apc-publish`, `apc-installer` and `apc-readme-progress`. They point to AGENTS.md rather than repeat it: a convention changes in AGENTS.md, and a skill only when its steps change.
+`.claude/skills/` holds this repo's workflows as Claude Code skills, loaded when a task matches them or called as `/<name>`: `apc-pr`, `apc-task`, `apc-test`, `apc-component`, `apc-api-route`, `apc-dependency`, `apc-release`, `apc-installer` and `apc-readme-progress`. They point to AGENTS.md rather than repeat it: a convention changes in AGENTS.md, and a skill only when its steps change.
 
 ## Build / Lint / Test
 
