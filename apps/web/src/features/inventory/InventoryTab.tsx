@@ -47,7 +47,7 @@ import {
   matchingCount,
 } from '@apc/domain/item-filters'
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form'
-import { TUTORIAL_CODE, type TutorialScreen } from '@apc/domain/inventory-tutorial'
+import { INVENTORY_TUTORIALS, inventoryTutorialParts, TUTORIAL_CODE, TUTORIAL_ITEM, type TutorialScreen } from '@apc/domain/inventory-tutorial'
 import type { InventoryLink } from '@apc/domain/catalog'
 import { pageForSize } from '@apc/ui-spec/pagination'
 import { perLocale, type Locale } from '@apc/domain/locale'
@@ -90,7 +90,7 @@ import { useItems } from './browse/useItems.ts'
 import { useAutoReload } from './browse/useAutoReload.ts'
 import { useLowStockAlerts } from '../notifications/useLowStockAlerts.ts'
 import { useCatalog } from '../catalog/useCatalog.ts'
-import { useInventoryTutorial } from './tutorial/inventoryTutorialContext.ts'
+import { useTutorials } from '../dashboard/tutorialsContext.ts'
 import { inventoryTab, LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB } from './InventoryTab.styles.ts'
 import { InventoryTutorial } from './tutorial/InventoryTutorial.tsx'
 import { StockQuantity } from './browse/StockQuantity.tsx'
@@ -129,8 +129,9 @@ import { tutorialTarget } from './tutorial/tutorialTarget.ts'
 // the list follows. Low and
 // out-of-stock rows are tinted by the table, and an item that reaches its minimum raises a warning in the bell, once
 // while it stays there (a toast too when a save or an import brought it there). At phone width the row becomes a card and the columns that leave it
-// show as one line under the name. The Inventory tutorial runs over the tab by itself the first time, and again from
-// the user menu: it starts and ends with the test item deleted and the search, filters and sort off. The Catalog can
+// show as one line under the name. The Inventory tour runs over the tab by itself the first time, its three parts in a
+// row, again from Mais ações, and a part alone from the user menu's Tutoriais: it starts and ends with the test item
+// deleted and the search, filters and sort off, a part after the first making the test item it needs. The Catalog can
 // open the tab on a part's details, or with the filters that list the parts that fit a car, the search and the stock
 // status off (see inventoryLinkContext.ts). What another device changes shows by itself: the list and the lists load
 // again when the window comes back to the foreground and every 30 seconds, while nothing is open over the list (see
@@ -318,10 +319,11 @@ export function InventoryTab() {
   // Whether the Filtros menu (a phone's filter sheet) is open, and a phone's sort sheet.
   const [filtering, setFiltering] = useState(false)
   const [sorting, setSorting] = useState(false)
-  const tutorial = useInventoryTutorial()
-  // Whether the tutorial runs, and the items on screen when it, or a save or delete of the user, last sent a change:
-  // until the list loads again, the change is still on its way, and the tutorial doesn't take it as left undone.
-  const [touring, setTouring] = useState(false)
+  const tutorial = useTutorials()
+  // The parts of the tour that runs, while it runs, and the items on screen when it, or a save or delete of the user,
+  // last sent a change: until the list loads again, the change is still on its way, and the tour doesn't take it as
+  // left undone.
+  const [tour, setTour] = useState<number[] | null>(null)
   const [sentWith, setSentWith] = useState<Item[]>()
   // The item the delete confirmation asks about, while it is open.
   const [removing, setRemoving] = useState<Item>()
@@ -378,7 +380,7 @@ export function InventoryTab() {
       sorting ||
       removing !== undefined ||
       viewer !== undefined ||
-      touring,
+      tour !== null,
   )
 
   /**
@@ -470,6 +472,20 @@ export function InventoryTab() {
     reload()
   }
 
+  /**
+   * Deletes the test item left from a run that didn't end and, for a part of the tour that needs one, makes it again.
+   * @param needed Whether the part needs the test item, as a part after the first does.
+   */
+  const readyTestItem = async (needed: boolean) => {
+    await deleteTestItem()
+    if (needed) {
+      const body = JSON.stringify(itemFormBody(TUTORIAL_ITEM, itemFormOptions(items, lists).colors))
+      await apiFetch(`${API_BASE}/items`, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => null)
+      reload()
+      reloadLists()
+    }
+  }
+
   /** Closes what is open and turns off the search, filters and sort, as the tutorial starts and ends. */
   const clearForTutorial = () => {
     setForm((current) => ({ ...current, open: false }))
@@ -492,23 +508,26 @@ export function InventoryTab() {
     return () => handMore(null)
   }, [phone, handMore])
 
-  // Run the tutorial by itself the first time, once the items are in, and again when the user menu asks.
-  if (!touring && ((!tutorial.seen && state.status === 'ready') || tutorial.replayAsked)) {
-    setTouring(true)
+  // Run the tour by itself the first time, from its first part on, once the items are in, and a tutorial of its when
+  // one is asked for.
+  const asked = tutorial.asked && (INVENTORY_TUTORIALS as readonly string[]).includes(tutorial.asked.id) ? tutorial.asked : null
+  if (!tour && ((!tutorial.seen && state.status === 'ready') || asked)) {
+    setTour(asked ? inventoryTutorialParts(asked.id, asked.onward) : inventoryTutorialParts('inventory-add', true))
     clearForTutorial()
   }
 
-  // Once it runs, the tutorial counts as seen, and starts without a test item left from a run that didn't end.
+  // Once it runs, the tour counts as seen, and starts without a test item left from a run that didn't end; a part after
+  // the first, which starts where the one before leaves the test item, makes it.
   const tutorialStarted = useEffectEvent(() => {
     tutorial.setSeen()
-    tutorial.replayStarted()
-    void deleteTestItem()
+    tutorial.started()
+    void readyTestItem(tour![0] > 1)
   })
   useEffect(() => {
-    if (touring) {
+    if (tour) {
       tutorialStarted()
     }
-  }, [touring])
+  }, [tour])
 
   // Another tab's link: the filters it sets, with the search and the stock status off, or an item's details once the
   // items are in; then it is let go.
@@ -833,7 +852,7 @@ export function InventoryTab() {
               { icon: listIcon, label: texts.lists.title, onSelect: () => setManaging(true) },
               { icon: importIcon, label: texts.importItems, onSelect: openImporter },
               { icon: exportIcon, label: texts.exportItems, onSelect: openExporter },
-              { icon: playIcon, label: texts.tutorial, onSelect: tutorial.replay },
+              { icon: playIcon, label: texts.tutorial, onSelect: () => tutorial.start('inventory-add', true) },
             ]}
           />
         </>
@@ -912,9 +931,10 @@ export function InventoryTab() {
         onClose={() => setManaging(false)}
       />
       <InventoryTutorial
-        open={touring}
+        open={tour !== null}
+        parts={tour ?? []}
         onClose={() => {
-          setTouring(false)
+          setTour(null)
           clearForTutorial()
           void deleteTestItem()
         }}

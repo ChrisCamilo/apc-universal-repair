@@ -265,7 +265,8 @@ What each Playwright test checks, by area and by screen or flow, so a test that 
 | CSV | importing: preview, errors, updates | `inventory-import` | both |  |
 |  | exporting every page of the list as it is | `inventory-export` | both |  |
 |  | exporting for Mercado Livre: the zip with the listings and photos | `inventory-export` | both |  |
-| Tutorial | the guided tutorial, start to replay | `inventory-tutorial` | both |  |
+| Tutorial | the guided tutorial at the first login, its three parts in a row | `inventory-tutorial` | both |  |
+|  | each of the three tutorials alone from Tutoriais, a part after the first making the test item | `inventory-tutorial` | both |  |
 | Demo | the demo's find, filter, add, edit, delete | `demo` | both | `@demo` |
 
 #### Catalog (`@catalog`)
@@ -719,7 +720,8 @@ O que cada teste do Playwright confere, por área e por tela ou fluxo, para que 
 | CSV | importar: prévia, erros, atualizações | `inventory-import` | ambos |  |
 |  | exportar todas as páginas da lista como está | `inventory-export` | ambos |  |
 |  | exportar para o Mercado Livre: o zip com os anúncios e as fotos | `inventory-export` | ambos |  |
-| Tutorial | o tutorial guiado, do início à repetição | `inventory-tutorial` | ambos |  |
+| Tutorial | o tutorial guiado no primeiro login, as três partes seguidas | `inventory-tutorial` | ambos |  |
+|  | cada um dos três tutoriais sozinho pelo Tutoriais, uma parte depois da primeira criando o item de teste | `inventory-tutorial` | ambos |  |
 | Demo | buscar, filtrar, cadastrar, editar, excluir na demo | `demo` | ambos | `@demo` |
 
 #### Catálogo (`@catalog`)

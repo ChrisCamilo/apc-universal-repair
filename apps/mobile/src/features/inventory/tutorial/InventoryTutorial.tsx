@@ -5,8 +5,8 @@ import { findTourTarget } from '../../../components/Tour';
 import { BOTTOM_BAR_HEIGHT } from '../../dashboard/Dashboard.styles';
 import { useLocale } from '../../../app/locale';
 
-// The Inventory tutorial on mobile, the same as the web: the shared steps (see inventoryTutorialSteps) run by the
-// Tour over the Inventory tab, which hands its screen over on every render; the Tour checks the latest steps, so
+// The Inventory tutorial on mobile, the same as the web: the shared steps of the parts asked for (see
+// inventoryTutorialSteps) run by the Tour over the Inventory tab, which hands its screen over on every render; the Tour checks the latest steps, so
 // they read the screen as it is now. The card keeps clear of the Dashboard's bottom bar while nothing covers the tab.
 
 /** The marked view each part of the screen is, by its tourTarget name. */
@@ -30,15 +30,17 @@ const TARGET_VIEWS: Record<TutorialTarget, string> = {
 
 type InventoryTutorialProps = {
   open: boolean;
+  /** The parts of the tour to run, from 1, e.g. [2] for "Procurar e filtrar" alone. */
+  parts: readonly number[];
   /** Called on Skip and on Finish. */
   onClose: () => void;
   /** The Inventory tab as it is now; its target is filled in here. */
   screen: Omit<TutorialScreen<HostInstance>, 'target'>;
 };
 
-export function InventoryTutorial({ open, onClose, screen }: InventoryTutorialProps) {
+export function InventoryTutorial({ open, parts, onClose, screen }: InventoryTutorialProps) {
   const { locale } = useLocale();
-  const steps = inventoryTutorialSteps(() => ({ ...screen, target: (name) => findTourTarget(TARGET_VIEWS[name]) }), locale);
+  const steps = inventoryTutorialSteps(() => ({ ...screen, target: (name) => findTourTarget(TARGET_VIEWS[name]) }), locale, parts);
   const covered = screen.form !== null || screen.filtersOpen || screen.removing !== undefined;
   return (
     <Tour open={open} onClose={onClose} steps={steps} parts={INVENTORY_TUTORIAL_PARTS[locale]} bottomInset={covered ? 0 : BOTTOM_BAR_HEIGHT} />

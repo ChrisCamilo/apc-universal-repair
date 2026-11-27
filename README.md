@@ -19,7 +19,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 **MVP ✅ (done, on web and mobile)**
 
 - 🔐 Login and account sign-up (name, username, e-mail and password), with the users kept in the database and the passwords stored hashed, sessions the API checks on every call, and a forgotten-password notice saying whom to ask
-- 🗂️ Dashboard with tabs that can be dragged into a new order, and a user menu with the visual style, dark mode, the list preferences, the tutorial and logout
+- 🗂️ Dashboard with tabs that can be dragged into a new order, and a user menu with the visual style, dark mode, the list preferences, the tutorials and logout
 - 📦 Parts inventory: add, view, edit and delete parts, each with its category, the vehicles it fits (each a vehicle brand and, optionally, its model), position, side, minimum stock and the vehicle maker's original codes, made by one or more part brands, each with its own part code, color, location, quantity, unit price (R$) and photos
 - 👯 *Duplicar* in a part's details opens a new part filled in as a copy of it, with or without copies of its photos, its codes left blank and its stock at 0
 - 🏷️ Categories, part brands and vehicle models created right from the item form, and renamed, merged or deleted in their own lists
@@ -28,7 +28,7 @@ It also includes a **parts inventory**, so a workshop can keep track of the part
 - 🚦 Low-stock and out-of-stock rows highlighted in color
 - 🖼️ Up to 3 photos per part, with a large viewer, and photos of other parts reused through *Usar fotos de outra peça*, found by code
 - 📄 Batch import of parts from CSV (*Importar Peças*), the rows of one item's brands grouped by its "item" column, its vehicles in "vehicles" and its original codes in "original_codes", and export of the list (*Exportar Peças*: every page, optionally with the photo paths) in the same format, both in the toolbar's *Mais ações* menu
-- 🎓 Guided tutorial the first time the Inventory tab is opened, available again from the user menu
+- 🎓 Guided tutorial the first time the Inventory tab is opened, in three parts, and *Tutoriais* in the user menu, which lists the tutorials by feature and starts any of them alone
 - 🎨 Four visual styles — **Anos 80**, **GT4**, **BMW 90** and **Fiat 90** — each with light and dark modes; by day each one is tinted in its own hue (sand, steel blue, warm grey-red and sage), with no white panels
 
 **Mobile Redesign ✅**
@@ -290,7 +290,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 **MVP ✅ (pronto, na web e no celular)**
 
 - 🔐 Login e cadastro de conta (nome, usuário, e-mail e senha), com os usuários guardados no banco e as senhas em hash, sessões conferidas pela API em toda chamada, e um aviso de senha esquecida dizendo a quem pedir
-- 🗂️ Dashboard com abas que podem ser arrastadas para outra ordem, e um menu do usuário com o estilo visual, o modo escuro, as preferências da lista, o tutorial e a saída
+- 🗂️ Dashboard com abas que podem ser arrastadas para outra ordem, e um menu do usuário com o estilo visual, o modo escuro, as preferências da lista, os tutoriais e a saída
 - 📦 Estoque de peças: adicionar, ver, editar e excluir peças, cada uma com categoria, os veículos em que serve (cada um uma marca de veículo e, se quiser, o modelo), posição, lado, estoque mínimo e os códigos originais da montadora, feita por uma ou mais marcas de peça, cada uma com o próprio código da peça, cor, local, quantidade, valor unitário (R$) e fotos
 - 👯 *Duplicar*, nos detalhes de uma peça, abre uma peça nova preenchida como cópia dela, com ou sem cópias das fotos, os códigos em branco e o estoque zerado
 - 🏷️ Categorias, marcas de peça e modelos de veículo criados direto no formulário do item, e renomeados, juntados ou excluídos nas próprias listas
@@ -299,7 +299,7 @@ Ele também inclui um **estoque de peças**, para a oficina controlar as peças 
 - 🚦 Linhas com estoque baixo e esgotado destacadas por cor
 - 🖼️ Até 3 fotos por peça, com visualizador em tamanho grande, e fotos de outras peças reaproveitadas em *Usar fotos de outra peça*, achadas pelo código
 - 📄 Importação de peças em lote por CSV (*Importar Peças*), as linhas das marcas de um item agrupadas pela coluna "item", os veículos dele em "vehicles" e os códigos originais em "original_codes", e exportação da lista (*Exportar Peças*: todas as páginas, com o caminho das fotos se quiser) no mesmo formato, as duas no menu *Mais ações* da barra
-- 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, disponível de novo no menu do usuário
+- 🎓 Tutorial guiado na primeira vez que a aba Estoque é aberta, em três partes, e o *Tutoriais* no menu do usuário, que lista os tutoriais por funcionalidade e começa qualquer um deles sozinho
 - 🎨 Quatro estilos visuais — **Anos 80**, **GT4**, **BMW 90** e **Fiat 90** — cada um com modo claro e escuro; de dia cada um é tingido no seu próprio tom (areia, azul-aço, cinza-avermelhado e sálvia), sem painéis brancos
 
 **Redesign para celular ✅**

@@ -12,7 +12,8 @@ import { playIcon } from '@apc/tokens/icons';
 import { REORDER_TABS_STORAGE_KEY } from '@apc/ui-spec/tabs';
 import { MIN_MOBILE_HEIGHT, MIN_MOBILE_WIDTH, MIN_TOUCH_TARGET } from '@apc/ui-spec/screens';
 import { THEME_STORAGE_KEYS } from '@apc/tokens/theme';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from '../inventory/tutorial/inventoryTutorialContext';
+import { TutorialsContext } from './tutorialsContext';
+import { TutorialsDialog } from './TutorialsDialog';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 import { PHONE_TEXTS } from '../../app/phoneTexts';
 import { UserMenu } from './UserMenu';
@@ -23,6 +24,8 @@ import { InventoryCopyProvider } from '../sync/useInventoryCopy';
 
 // A phone's screen with no notch, for the bottom sheet.
 const SAFE_AREA = { frame: { x: 0, y: 0, width: MIN_MOBILE_WIDTH, height: MIN_MOBILE_HEIGHT }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
+// What the tutorials' start was asked, as the Dashboard holds it.
+const start = jest.fn();
 const USER: SessionUser = { id: 'user-christian', username: 'christian.camilo', displayName: 'Christian Camilo', initials: 'CC', inventoryTutorialSeen: true };
 
 /**
@@ -125,7 +128,7 @@ afterEach(async () => {
 
 // Checks the user menu is Conta, at least 44px tall, with the user's initials in its pill, hidden from screen readers,
 // which hear "Conta". It opens the bottom sheet titled "Conta", holding the menu, named "Menu do usuário"; an action,
-// such as "Tutorial do estoque", closes it, as it closes a menu.
+// such as "Tutoriais", closes it, as it closes a menu.
 test('Mobile: Conta opens the user menu in a bottom sheet', async () => {
   const tree = await mount();
   const conta = byName(tree, 'Conta');
@@ -143,7 +146,7 @@ test('Mobile: Conta opens the user menu in a bottom sheet', async () => {
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Conta').length).toBeGreaterThan(1);
   const menu = tree.root.find((n) => n.props.accessibilityRole === 'menu' && typeof n.type === 'string');
   expect(menu.props.accessibilityLabel).toBe('Menu do usuário');
-  await press(tree, 'Tutorial do estoque');
+  await press(tree, 'Tutoriais');
   expect(byName(tree, 'Conta').props.accessibilityState).toMatchObject({ expanded: false });
 });
 
@@ -160,10 +163,10 @@ test('Mobile: the user menu shows the logged user and the display preferences', 
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Abrir item ao clicar na linha')).toHaveLength(0);
 });
 
-// Opens the menu and checks "Tutorial do estoque" shows the play icon, its ring and triangle.
-test('Mobile: Tutorial do estoque shows the play icon', async () => {
+// Opens the menu and checks "Tutoriais" shows the play icon, its ring and triangle.
+test('Mobile: Tutoriais shows the play icon', async () => {
   const tree = await openMenu();
-  const item = byName(tree, 'Tutorial do estoque');
+  const item = byName(tree, 'Tutoriais');
   expect(item.findAll((n) => n.props.r === (playIcon[0] as { r: number }).r && typeof n.type !== 'string')).not.toHaveLength(0);
   expect(item.findAll((n) => n.props.d === (playIcon[1] as { d: string }).d && typeof n.type !== 'string')).not.toHaveLength(0);
 });
@@ -210,11 +213,11 @@ test('Mobile: the tab reorder choice is saved and comes back', async () => {
   expect(byName(again, 'Arrastar para reordenar').props.accessibilityState).toMatchObject({ checked: true });
 });
 
-// Opens the menu and checks the Inventory's section has its tutorial and no "Itens por página", since the list loads
+// Opens the menu and checks the Inventory's section has the tutorials and no "Itens por página", since the list loads
 // more as it scrolls.
 test('Mobile: the user menu has no items per page choice', async () => {
   const tree = await openMenu();
-  expect(byName(tree, 'Tutorial do estoque')).toBeDefined();
+  expect(byName(tree, 'Tutoriais')).toBeDefined();
   expect(tree.root.findAll((n) => n.type === Text && n.props.children === 'Itens por página')).toHaveLength(0);
 });
 
@@ -264,6 +267,32 @@ test('Mobile: Sair comes last, apart from the preferences, and logs out', async 
   expect(onLogout).toHaveBeenCalledTimes(1);
 });
 
+// Presses "Tutoriais" and checks it opens the phone's tutorials by feature, the Inventory's section open with its three
+// tutorials, each saying what it is, its kind and its steps; pressing one closes the dialog and starts it alone.
+test('Mobile: Tutoriais opens the tutorials by feature, and a tutorial starts its tour', async () => {
+  start.mockClear();
+  const tree = await openMenu();
+  await press(tree, 'Tutoriais');
+  expect(tree.root.findByType(TutorialsDialog).props.open).toBe(true);
+  expect(byName(tree, 'Estoque, 3 tutoriais').props.accessibilityState).toEqual({ expanded: true });
+  expect(byName(tree, 'Procurar e filtrar').props.accessibilityHint).toBe('Ache a peça de teste pela busca e pelos filtros. Tour guiado · 4 passos');
+  expect(byName(tree, 'Cadastrar um item')).toBeDefined();
+  expect(byName(tree, 'Editar e excluir').props.accessibilityHint).toMatch(/Tour guiado · 10 passos$/);
+  await press(tree, 'Procurar e filtrar');
+  expect(start).toHaveBeenCalledWith('inventory-search');
+  expect(tree.root.findByType(TutorialsDialog).props.open).toBe(false);
+});
+
+// With English chosen, presses "Tutorials" and checks the dialog, its section and a tutorial read in English.
+test('Mobile: Tutoriais reads in English', async () => {
+  await themeStorage.setItem(LOCALE_STORAGE_KEY, 'en-US');
+  const tree = await mount();
+  await press(tree, 'Account');
+  await press(tree, 'Tutorials');
+  expect(byName(tree, 'Inventory, 3 tutorials')).toBeDefined();
+  expect(byName(tree, 'Add an item').props.accessibilityHint).toBe('Add a test part, with its code, vehicle, stock and price. Guided tour · 4 steps');
+});
+
 function ActiveTheme() {
   const { style, mode } = useTheme();
   return <Text testID="active-theme">{`${style}/${mode}`}</Text>;
@@ -272,7 +301,7 @@ function ActiveTheme() {
 function Preferences({ children }: { children: React.ReactNode }) {
   return (
     <TabReorderContext.Provider value={useReorderChoice()}>
-      <InventoryTutorialContext.Provider value={useInventoryTutorialChoice(true, () => {})}>{children}</InventoryTutorialContext.Provider>
+      <TutorialsContext.Provider value={{ seen: true, setSeen: () => {}, asked: null, start, started: () => {} }}>{children}</TutorialsContext.Provider>
     </TabReorderContext.Provider>
   );
 }

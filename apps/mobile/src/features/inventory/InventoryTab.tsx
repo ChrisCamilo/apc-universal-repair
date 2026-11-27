@@ -34,7 +34,7 @@ import {
   matchingCount,
 } from '@apc/domain/item-filters';
 import { duplicateForm, EMPTY_ITEM_FORM, itemFormBody, itemFormOptions, type ItemForm } from '@apc/domain/item-form';
-import { isTestItem, TUTORIAL_CODE } from '@apc/domain/inventory-tutorial';
+import { INVENTORY_TUTORIALS, inventoryTutorialParts, isTestItem, TUTORIAL_CODE, TUTORIAL_ITEM } from '@apc/domain/inventory-tutorial';
 import { catalogFrom, type InventoryLink } from '@apc/domain/catalog';
 import { SCROLL_PAGE_SIZE, sortValue, type Sort } from '@apc/domain/list-query';
 import { copiedPhotos, ITEM_PHOTO_LIMIT } from '@apc/domain/photos';
@@ -75,7 +75,7 @@ import { useTheme } from '../../app/theme';
 import { ToolButton } from '../../components/ToolButton';
 import { tourTarget } from '../../components/Tour';
 import { NumericReadout, Text } from '../../components/Typography';
-import { useInventoryTutorial } from './tutorial/inventoryTutorialContext';
+import { useTutorials } from '../dashboard/tutorialsContext';
 import { CardTitle, StockQuantity } from './browse/ItemCard';
 import { LOADING_LINES, LOADING_QUANTITY, LOADING_THUMB, useStyles } from './InventoryTab.styles';
 import { InventoryTutorial } from './tutorial/InventoryTutorial';
@@ -117,8 +117,9 @@ import { PHONE_TEXTS } from '../../app/phoneTexts';
 // in stock, the empty state offers "Novo item", and when the search or the filters leave nothing, it offers to clear
 // them; when the API fails, the error state offers to try again. Each card's thumbnail shows the item's cover and
 // opens its photos in the ImageViewer (a brand's card, that brand's photos), where each photo removed, changed or added is saved at once and the list
-// follows. The Inventory tutorial runs over the tab by itself the first time, and again from the user menu: it starts
-// and ends with the test item deleted and the search, filters and sort off. The Catalog can open the tab on a part's
+// follows. The Inventory tour runs over the tab by itself the first time, its three parts in a row, again from Mais ações,
+// and a part alone from the user menu's Tutoriais: it starts and ends with the test item deleted and the search, filters
+// and sort off, a part after the first making the test item it needs. The Catalog can open the tab on a part's
 // details, or with the filters that list the parts that fit a car, the search and the stock status off (see
 // inventoryLinkContext.ts). Gerenciar listas, Importar Peças, Exportar Peças
 // and Tutorial do estoque sit in a bottom sheet the header's "⋯" opens (the Mais ações mockup), as the web does on a
@@ -259,10 +260,11 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
   // Whether the filter sheet is open, and the sort sheet.
   const [filtering, setFiltering] = useState(false);
   const [sorting, setSorting] = useState(false);
-  const tutorial = useInventoryTutorial();
-  // Whether the tutorial runs, and the items on screen when it, or a save or delete of the user, last sent a change:
-  // until the list loads again, the change is still on its way, and the tutorial doesn't take it as left undone.
-  const [touring, setTouring] = useState(false);
+  const tutorial = useTutorials();
+  // The parts of the tour that runs, while it runs, and the items on screen when it, or a save or delete of the user,
+  // last sent a change: until the list loads again, the change is still on its way, and the tour doesn't take it as
+  // left undone.
+  const [tour, setTour] = useState<number[] | null>(null);
   const [sentWith, setSentWith] = useState<Item[]>();
   // The item the delete confirmation asks about, while it is open; and whether the details' own one is open.
   const [removing, setRemoving] = useState<Item>();
@@ -325,7 +327,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     removing !== undefined ||
     viewer !== undefined ||
     settling ||
-    touring;
+    tour !== null;
   const { sync } = copy;
   useEffect(() => {
     if (overlaid) {
@@ -409,6 +411,19 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     reload();
   };
 
+  /**
+   * Deletes the test item left from a run that didn't end and, for a part of the tour that needs one, makes it again.
+   * @param needed Whether the part needs the test item, as a part after the first does.
+   */
+  const readyTestItem = async (needed: boolean) => {
+    await deleteTestItem();
+    if (needed) {
+      const body = JSON.stringify(itemFormBody(TUTORIAL_ITEM, itemFormOptions(items, lists).colors));
+      await apiFetch(`${apiUrl()}/items`, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => null);
+      reload();
+    }
+  };
+
   /** Closes what is open and turns off the search, filters and sort, as the tutorial starts and ends. */
   const clearForTutorial = () => {
     setForm((current) => ({ ...current, open: false }));
@@ -428,36 +443,38 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
     return () => handMore(null);
   }, [handMore]);
 
-  // Run the tutorial by itself the first time, once the items are in and the server answered, and again when the user
-  // menu asks, while the server can be reached.
+  // Run the tour by itself the first time, from its first part on, once the items are in and the server answered, and a
+  // tutorial of its when one is asked for, while the server can be reached.
   const reachable = !copy.offline && !copy.syncing;
-  if (!touring && reachable && ((tutorial.seen === false && state.status === 'ready') || tutorial.replayAsked)) {
-    setTouring(true);
+  const asked = tutorial.asked && (INVENTORY_TUTORIALS as readonly string[]).includes(tutorial.asked.id) ? tutorial.asked : null;
+  if (!tour && reachable && ((tutorial.seen === false && state.status === 'ready') || asked)) {
+    setTour(asked ? inventoryTutorialParts(asked.id, asked.onward) : inventoryTutorialParts('inventory-add', true));
     clearForTutorial();
   }
 
-  // Once it runs, the tutorial counts as seen, and starts without a test item left from a run that didn't end.
+  // Once it runs, the tour counts as seen, and starts without a test item left from a run that didn't end; a part after
+  // the first, which starts where the one before leaves the test item, makes it.
   const tutorialStarted = useEffectEvent(() => {
     tutorial.setSeen();
-    tutorial.replayStarted();
-    deleteTestItem();
+    tutorial.started();
+    readyTestItem(tour![0] > 1);
   });
   useEffect(() => {
-    if (touring) {
+    if (tour) {
       tutorialStarted();
     }
-  }, [touring]);
+  }, [tour]);
 
-  // Asked for while the server can't be reached, the tutorial says it needs it.
-  const replayRefused = useEffectEvent(() => {
-    tutorial.replayStarted();
+  // Asked for while the server can't be reached, the tour says it needs it.
+  const askRefused = useEffectEvent(() => {
+    tutorial.started();
     toast.error(INVENTORY_NEEDS_SERVER[locale].tutorial);
   });
   useEffect(() => {
-    if (tutorial.replayAsked && copy.offline) {
-      replayRefused();
+    if (asked && copy.offline) {
+      askRefused();
     }
-  }, [tutorial.replayAsked, copy.offline]);
+  }, [asked, copy.offline]);
 
   // The server's refusals of changes queued are said in toasts.
   useEffect(() => onRefused((notices) => notices.forEach((notice) => toast.error(notice))), [toast]);
@@ -655,7 +672,7 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
           { icon: listIcon, label: texts.lists.title, onSelect: () => setManaging(true) },
           { icon: importIcon, label: texts.importItems, onSelect: () => setImporter((current) => ({ open: true, session: current.session + 1 })) },
           { icon: exportIcon, label: texts.exportItems, onSelect: () => setExporter((current) => ({ open: true, session: current.session + 1 })) },
-          { icon: playIcon, label: texts.tutorial, onSelect: tutorial.replay },
+          { icon: playIcon, label: texts.tutorial, onSelect: () => tutorial.start('inventory-add', true) },
         ]}
       />
       <ItemFormDialog
@@ -721,9 +738,10 @@ export function InventoryTab({ userId = '' }: InventoryTabProps) {
         onClose={() => setManaging(false)}
       />
       <InventoryTutorial
-        open={touring}
+        open={tour !== null}
+        parts={tour ?? []}
         onClose={() => {
-          setTouring(false);
+          setTour(null);
           clearForTutorial();
           deleteTestItem();
         }}

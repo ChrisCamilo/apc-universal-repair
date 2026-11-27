@@ -14,7 +14,8 @@ import { syncAnswer } from '@apc/domain/test-sync';
 import { MOBILE_DESIGN_HEIGHT, MOBILE_DESIGN_WIDTH } from '@apc/ui-spec/screens';
 import { syncCopy } from '../../sync/inventoryCopy';
 import { InventoryTab } from '../InventoryTab';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from './inventoryTutorialContext';
+import type { TutorialId } from '@apc/domain/tutorials';
+import { TutorialsContext, useTutorialsChoice } from '../../dashboard/tutorialsContext';
 import { themeStorage, ThemeProvider } from '../../../app/theme';
 import { ToastProvider } from '../../../components/Toast';
 import { TourProvider } from '../../../components/Tour';
@@ -87,9 +88,10 @@ function answerApi(stock: Item[]): string[] {
 
 /**
  * Renders the Inventory tab with the Dashboard's preferences, the toasts and the tour, and lets the items load.
+ * @param seen Whether the user has seen the tour, so it doesn't start by itself; a first login by default.
  * @returns The rendered tree.
  */
-async function mount() {
+async function mount(seen = false) {
   let tree: ReactTestRenderer.ReactTestRenderer | undefined;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(
@@ -97,7 +99,7 @@ async function mount() {
         <ThemeProvider>
           <ToastProvider>
             <TourProvider>
-              <Preferences>
+              <Preferences seen={seen}>
                 <InventoryCopyProvider><InventoryTab /></InventoryCopyProvider>
               </Preferences>
             </TourProvider>
@@ -224,9 +226,9 @@ test('Mobile: the Inventory tutorial edits and deletes the test item through its
   expect(stock).toEqual([]);
 });
 
-// Skips the tutorial once the test item exists and checks the test item is deleted and the tutorial closes; a replay
-// from the user menu starts it again.
-test('Mobile: skipping the Inventory tutorial deletes the test item, and it can be replayed', async () => {
+// Skips the tutorial once the test item exists and checks the test item is deleted and the tutorial closes; Tutoriais
+// starts it again.
+test('Mobile: skipping the Inventory tutorial deletes the test item, and it can be started again', async () => {
   const stock: Item[] = [];
   const changes = answerApi(stock);
   const tree = await mount();
@@ -240,9 +242,66 @@ test('Mobile: skipping the Inventory tutorial deletes the test item, and it can 
   expect(stock).toEqual([]);
   expect(texts(tree)).not.toContain('Procure pelo nome');
 
-  await ReactTestRenderer.act(async () => replay?.());
+  await ReactTestRenderer.act(async () => start?.('inventory-add'));
   await wait(500);
   expect(texts(tree)).toContain('Abra o cadastro');
+});
+
+// Starts "Cadastrar um item" as Tutoriais does, for a user who has seen the tour, and checks it runs part 1 alone, from
+// opening the form to saving the test item, and ends there, deleting it.
+test('Mobile: Cadastrar um item runs alone from Tutoriais', async () => {
+  const stock: Item[] = [];
+  const changes = answerApi(stock);
+  const tree = await mount(true);
+  expect(texts(tree)).not.toContain('Abra o cadastro');
+  await ReactTestRenderer.act(async () => start?.('inventory-add'));
+  await wait(500);
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Parte 1 de 3 · Cadastrar um item', '1 / 4']));
+  for (const title of ['Abra o cadastro', 'Diga que peça é', 'Diga onde e quantas', 'Salve o item']) {
+    expect(texts(tree)).toContain(title);
+    await press(tree, 'Fazer por mim');
+    await wait(1000);
+  }
+  expect(texts(tree)).not.toContain('Procure pelo nome');
+  expect(changes).toEqual(['POST /items', 'DELETE /items/:id']);
+  expect(stock).toEqual([]);
+});
+
+// Starts "Procurar e filtrar" as Tutoriais does, with no test item, and checks it makes one, runs part 2 alone, finding
+// it with the search and the filters, and ends on "Achou", deleting it.
+test('Mobile: Procurar e filtrar runs alone from Tutoriais, making the test item', async () => {
+  const stock: Item[] = [];
+  const changes = answerApi(stock);
+  const tree = await mount(true);
+  await ReactTestRenderer.act(async () => start?.('inventory-search'));
+  await wait(1000);
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Parte 2 de 3 · Procurar e filtrar', 'Procure pelo nome']));
+  expect(stock.map((held) => held.brands.map((brand) => brand.code))).toEqual([[TUTORIAL_CODE]]);
+  await skipTo(tree, 'Achou');
+  await press(tree, 'Concluir');
+  await wait(500);
+  expect(texts(tree)).not.toContain('Achou');
+  expect(changes).toEqual(['POST /items', 'DELETE /items/:id']);
+  expect(stock).toEqual([]);
+});
+
+// Starts "Editar e excluir" as Tutoriais does, and checks it makes the test item and runs part 3 alone, through its
+// details, to a low and an out-of-stock item and its delete, ending once it is deleted, with no "Pronto!".
+test('Mobile: Editar e excluir runs alone from Tutoriais, making the test item', async () => {
+  const stock: Item[] = [];
+  const changes = answerApi(stock);
+  const tree = await mount(true);
+  await ReactTestRenderer.act(async () => start?.('inventory-edit'));
+  await wait(1000);
+  expect(texts(tree)).toEqual(expect.arrayContaining(['Parte 3 de 3 · Editar e excluir', 'Abra o item']));
+  await skipTo(tree, 'Confirme');
+  await press(tree, 'Fazer por mim');
+  await wait(1000);
+  expect(texts(tree)).not.toContain('Pronto!');
+  expect(texts(tree)).not.toContain('Confirme');
+  // Fazer por mim deletes it from the confirmation straight away, as the web does.
+  expect(changes).toEqual(['POST /items', 'PATCH /items/:id', 'PATCH /items/:id', 'DELETE /items/:id']);
+  expect(stock).toEqual([]);
 });
 
 // Opens the Inventory tab on the user's first login with a copy on the phone and the server away, and checks the
@@ -253,26 +312,24 @@ test('Mobile: away from the server, the Inventory tutorial waits, and asked for 
   (fetch as jest.Mock).mockImplementation(() => Promise.reject(new TypeError('Network request failed')));
   const tree = await mount();
   expect(texts(tree)).not.toContain('Abra o cadastro');
-  await ReactTestRenderer.act(async () => replay?.());
+  await ReactTestRenderer.act(async () => start?.('inventory-add'));
   await wait(500);
   expect(texts(tree)).not.toContain('Abra o cadastro');
   expect(texts(tree)).toContain(INVENTORY_NEEDS_SERVER['pt-BR'].tutorial);
 });
 
-// The replay of the tutorial, as the user menu asks for it.
-let replay: (() => void) | undefined;
+// The tutorials' start, as Tutoriais asks for one.
+let start: ((id: TutorialId, onward?: boolean) => void) | undefined;
 // How many times the tutorial was marked seen on the user.
 let markedSeen = 0;
 
-function Preferences({ children }: { children: React.ReactNode }) {
-  // A user on their first login, until the tutorial marks them.
-  const [seen, setSeen] = React.useState(false);
-  const tutorial = useInventoryTutorialChoice(seen, () => {
+function Preferences({ seen: seenAtFirst, children }: { seen: boolean; children: React.ReactNode }) {
+  // A user on their first login, until the tutorial marks them, or one who has seen it.
+  const [seen, setSeen] = React.useState(seenAtFirst);
+  const tutorials = useTutorialsChoice(seen, () => {
     markedSeen += 1;
     setSeen(true);
   });
-  replay = tutorial.replay;
-  return (
-    <InventoryTutorialContext.Provider value={tutorial}>{children}</InventoryTutorialContext.Provider>
-  );
+  start = tutorials.start;
+  return <TutorialsContext.Provider value={tutorials}>{children}</TutorialsContext.Provider>;
 }

@@ -7,21 +7,23 @@ import { Tour } from '../../../components/Tour'
 import { BOTTOM_BAR_HEIGHT } from '../../dashboard/DashboardLayout.styles.ts'
 import { useLocale } from '../../../app/useLocale.ts'
 
-// The Inventory tutorial on the web: the shared steps (see inventoryTutorialSteps) run by the Tour over the Inventory
-// tab, which hands its screen over on every render; the Tour checks the latest steps, so they read the screen as it
-// is now. On a phone the card keeps clear of the Dashboard's bottom bar while nothing covers the tab.
+// The Inventory tutorial on the web: the shared steps of the parts asked for (see inventoryTutorialSteps) run by the
+// Tour over the Inventory tab, which hands its screen over on every render; the Tour checks the latest steps, so they
+// read the screen as it is now. On a phone the card keeps clear of the Dashboard's bottom bar while nothing covers the tab.
 
 type InventoryTutorialProps = {
   open: boolean
+  /** The parts of the tour to run, from 1, e.g. [2] for "Procurar e filtrar" alone. */
+  parts: readonly number[]
   /** Called on Skip and on Finish. */
   onClose: () => void
   /** The Inventory tab as it is now. */
   screen: TutorialScreen<Element>
 }
 
-export function InventoryTutorial({ open, onClose, screen }: InventoryTutorialProps) {
+export function InventoryTutorial({ open, parts, onClose, screen }: InventoryTutorialProps) {
   const { locale } = useLocale()
-  const steps = inventoryTutorialSteps(() => screen, locale)
+  const steps = inventoryTutorialSteps(() => screen, locale, parts)
   const covered = screen.form !== null || screen.filtersOpen || screen.removing !== undefined
   return (
     <Tour

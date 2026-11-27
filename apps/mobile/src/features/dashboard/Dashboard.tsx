@@ -12,7 +12,7 @@ import { WorkInProgress } from '../../components/WorkInProgress';
 import { CatalogTab } from '../catalog/CatalogTab';
 import { MARK_SIZE, useBarStyles, useStyles } from './Dashboard.styles';
 import { InventoryTab } from '../inventory/InventoryTab';
-import { InventoryTutorialContext, useInventoryTutorialChoice } from '../inventory/tutorial/inventoryTutorialContext';
+import { TutorialsContext, useTutorialsChoice } from './tutorialsContext';
 import { syncBadge } from '../sync/syncStatus';
 import { InventoryCopyProvider, useInventoryCopy } from '../sync/useInventoryCopy';
 import { InventoryLinkContext, type InventoryLinks } from './inventoryLinkContext';
@@ -21,6 +21,7 @@ import { PhoneHeaderContext, type PhoneHeader } from './phoneHeaderContext';
 import { TabReorderContext, useReorderChoice } from './tabReorderContext';
 import { COMMON_TEXTS, DASHBOARD_TEXTS } from '@apc/domain/app-texts';
 import { perLocale } from '@apc/domain/locale';
+import { TUTORIALS } from '@apc/domain/tutorials';
 import { useLocale } from '../../app/locale';
 
 // The frame of the Dashboard, the same as the web's on a phone: the open tab's header, with the APC mark and the tab's
@@ -29,8 +30,9 @@ import { useLocale } from '../../app/locale';
 // NotificationsMenu and UserMenu). The app reopens on the last tab used. While "Arrastar para reordenar" is on in the
 // user menu, the bar's tabs can be picked up with a long press (or moved with the screen reader's actions) into a new
 // order, which is saved and comes back, with tabs added later at its end;
-// the open tab stays open. The Dashboard also holds the Inventory tutorial's state, which the Inventory tab runs (by
-// itself on the user's first login, whatever the device) and the user menu replays, on the Inventory tab. A tab still being built (`wip` in
+// the open tab stays open. The Dashboard also holds the tutorials' state: a tutorial the user menu's Tutoriais starts
+// opens its tab, which runs it, as the Inventory tab runs its tour by itself on the user's first login, whatever the
+// device (see tutorialsContext.ts). A tab still being built (`wip` in
 // DASHBOARD_TABS) opens behind a notice saying it isn't ready yet. The open tab may put a "⋯" at the right of its name,
 // which opens what the tab hands over (see moreActionsContext.ts), such as the Inventory's other actions. A tab gone a
 // screen deeper, such as the Catalog's models of a brand, puts that screen's title there, with a ← in place of the mark
@@ -67,7 +69,7 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
   const bar = useBarStyles();
   const [tab, setTab] = useStoredTab(DASHBOARD_TAB_STORAGE_KEY, TAB_IDS);
   const reorder = useReorderChoice();
-  const tutorial = useInventoryTutorialChoice(tutorialSeen, onTutorialSeen);
+  const tutorials = useTutorialsChoice(tutorialSeen, onTutorialSeen);
   const [order, setOrder] = useState<string[] | null>(null);
   const { colors } = useTheme();
   // What the header's "⋯" opens, as the open tab hands it over; none without a "⋯".
@@ -108,13 +110,13 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
   return (
     <InventoryCopyProvider>
       <TabReorderContext.Provider value={reorder}>
-        <InventoryTutorialContext.Provider
+        <TutorialsContext.Provider
           value={{
-            ...tutorial,
-            // A replay from the user menu happens on the Inventory tab.
-            replay: () => {
-              setTab('inventory');
-              tutorial.replay();
+            ...tutorials,
+            // A tutorial runs on its feature's tab.
+            start: (id, onward) => {
+              setTab(TUTORIALS.find((tutorial) => tutorial.id === id)!.feature);
+              tutorials.start(id, onward);
             },
           }}
         >
@@ -171,7 +173,7 @@ export function Dashboard({ userMenu, tutorialSeen = true, onTutorialSeen = () =
               </InventoryLinkContext.Provider>
             </PhoneHeaderContext.Provider>
           </MoreActionsContext.Provider>
-        </InventoryTutorialContext.Provider>
+        </TutorialsContext.Provider>
       </TabReorderContext.Provider>
     </InventoryCopyProvider>
   );

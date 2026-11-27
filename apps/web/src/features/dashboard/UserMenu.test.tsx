@@ -20,6 +20,7 @@ import { LocaleProvider } from '../../app/LocaleProvider.tsx'
 import { ThemeProvider } from '../../app/ThemeProvider.tsx'
 import { PageSizeContext, usePageSizeChoice } from './pageSizeContext.ts'
 import { TabReorderContext, useReorderChoice } from './tabReorderContext.ts'
+import { TutorialsContext } from './tutorialsContext.ts'
 import { UserMenu } from './UserMenu.tsx'
 
 const root = document.documentElement
@@ -70,11 +71,11 @@ test('Web: the user menu shows the logged user and the display preferences', asy
   expect(screen.getByRole('menuitemcheckbox', { name: /Abrir item ao clicar na linha/ }).elements()).toHaveLength(0)
 })
 
-// Opens the menu and checks "Tutorial do estoque" shows the play icon, its ring and triangle, in the accent.
-test('Web: Tutorial do estoque shows the play icon', async () => {
+// Opens the menu and checks "Tutoriais" shows the play icon, its ring and triangle, in the accent.
+test('Web: Tutoriais shows the play icon', async () => {
   const screen = await render(<Sample />)
   await screen.getByRole('button', { name: 'Menu do usuário' }).click()
-  const icon = screen.getByRole('menuitem', { name: 'Tutorial do estoque' }).element().querySelector('svg')!
+  const icon = screen.getByRole('menuitem', { name: 'Tutoriais' }).element().querySelector('svg')!
   expect(icon.querySelector('circle')).not.toBeNull()
   expect(icon.querySelector('path')!.getAttribute('d')).toBe((playIcon[1] as { d: string }).d)
   expect(getComputedStyle(icon).color).toBe(rgb(themes.eighties.night.colors.accent))
@@ -234,12 +235,60 @@ test('Web: on a phone the user menu opens from Conta as a bottom sheet', async (
   await expect.element(screen.getByRole('dialog', { name: 'Sobre esta versão' })).toBeVisible()
 })
 
+// Opens "Tutoriais" and checks it lists the Inventory's three tutorials in its open section, each saying what it is, its
+// kind and its steps; pressing one closes the dialog and starts that tutorial alone.
+test('Web: Tutoriais opens the tutorials by feature, and a tutorial starts its tour', async () => {
+  const start = vi.fn()
+  const screen = await render(<Sample start={start} />)
+  await screen.getByRole('button', { name: 'Menu do usuário' }).click()
+  await screen.getByRole('menuitem', { name: 'Tutoriais' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Tutoriais' })
+  await expect.element(dialog.getByRole('button', { name: /Estoque/ })).toHaveAttribute('aria-expanded', 'true')
+  await expect.element(dialog.getByText('3 tutoriais')).toBeVisible()
+  const search = dialog.getByRole('button', { name: 'Procurar e filtrar' })
+  await expect.element(search).toHaveAccessibleDescription('Ache a peça de teste pela busca e pelos filtros. Tour guiado · 4 passos')
+  await expect.element(dialog.getByRole('button', { name: 'Cadastrar um item' })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Editar e excluir' })).toHaveAccessibleDescription(/Tour guiado · 10 passos$/)
+  await search.click()
+  expect(start).toHaveBeenCalledWith('inventory-search')
+  await expect.element(dialog).not.toBeInTheDocument()
+})
+
+// On a 360×780 phone, opens "Tutoriais" from Conta and checks it fills the screen, headed by its title, with a ← that
+// closes it.
+test('Web: on a phone Tutoriais fills the screen, with a back button', async () => {
+  await page.viewport(MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT)
+  const screen = await render(<Sample />)
+  await screen.getByRole('button', { name: 'Conta' }).click()
+  await screen.getByRole('menuitem', { name: 'Tutoriais' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Tutoriais' })
+  await expect.element(dialog.getByText('Tutoriais', { exact: true }).last()).toBeVisible()
+  const box = dialog.element().getBoundingClientRect()
+  expect([box.width, box.height]).toEqual([MIN_MOBILE_WIDTH, MIN_MOBILE_HEIGHT])
+  await dialog.getByRole('button', { name: 'Voltar' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+})
+
+// With English chosen, opens "Tutorials" and checks the dialog, its section and a tutorial read in English.
+test('Web: Tutoriais reads in English', async () => {
+  localStorage.setItem(LOCALE_STORAGE_KEY, 'en-US')
+  const screen = await render(<Sample />)
+  await screen.getByRole('button', { name: 'User menu' }).click()
+  await screen.getByRole('menuitem', { name: 'Tutorials' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Tutorials' })
+  await expect.element(dialog.getByText('3 tutorials')).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: /Inventory/ })).toBeVisible()
+  await expect.element(dialog.getByRole('button', { name: 'Add an item' })).toHaveAccessibleDescription(
+    'Add a test part, with its code, vehicle, stock and price. Guided tour · 4 steps',
+  )
+})
+
 // In a browser the menu has no Servidor item; in the desktop app it has "Servidor e banco de dados", which opens the
 // Servidor dialog.
 test('Web: in the desktop app the user menu opens the Servidor dialog', async () => {
   const plain = await render(<Sample />)
   await plain.getByRole('button', { name: 'Menu do usuário' }).click()
-  await expect.element(plain.getByRole('menuitem', { name: 'Tutorial do estoque' })).toBeVisible()
+  await expect.element(plain.getByRole('menuitem', { name: 'Tutoriais' })).toBeVisible()
   await expect.element(plain.getByRole('menuitem', { name: 'Servidor e banco de dados' })).not.toBeInTheDocument()
   plain.unmount()
 
@@ -251,9 +300,10 @@ test('Web: in the desktop app the user menu opens the Servidor dialog', async ()
   expect(openServerSettings).toHaveBeenCalledOnce()
 })
 
-function Sample({ openServerSettings = () => {} }: { openServerSettings?: () => void }) {
+function Sample({ openServerSettings = () => {}, start = () => {} }: { openServerSettings?: () => void; start?: () => void }) {
   const [user, setUser] = useState<SessionUser | null>(USER)
   return (
+    <TutorialsContext.Provider value={{ seen: true, setSeen: () => {}, asked: null, start, started: () => {} }}>
     <ServerSettingsContext.Provider value={openServerSettings}>
       <MemoryRouter initialEntries={['/inventory']}>
         <ThemeProvider>
@@ -278,6 +328,7 @@ function Sample({ openServerSettings = () => {} }: { openServerSettings?: () => 
         </ThemeProvider>
       </MemoryRouter>
     </ServerSettingsContext.Provider>
+    </TutorialsContext.Provider>
   )
 }
 
