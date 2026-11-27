@@ -134,7 +134,7 @@ export function UserMenu() {
     <>
       {phone ? (
         <>
-          <BottomBarItem label={texts.account} expanded={sheet} onClick={() => setSheet(true)}>
+          <BottomBarItem label={texts.account} data-tour="user-menu" expanded={sheet} onClick={() => setSheet(true)}>
             <span aria-hidden="true" className={bar.classes.initials()} data-testid={bar.ids.initials}>
               {user.initials}
             </span>
@@ -146,7 +146,7 @@ export function UserMenu() {
           </BottomSheet>
         </>
       ) : (
-        <Menu label={texts.userMenu} trigger={<UserBadge initials={user.initials} name={user.username} />}>
+        <Menu label={texts.userMenu} data-tour="user-menu" trigger={<UserBadge initials={user.initials} name={user.username} />}>
           {items}
         </Menu>
       )}

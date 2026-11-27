@@ -15,9 +15,11 @@ type BottomBarItemProps = {
   onClick: () => void
   /** The picture in the pill, e.g. the bell with its badge. */
   children: ReactNode
+  /** Names the item for a tutorial to point at. */
+  'data-tour'?: string
 }
 
-export function BottomBarItem({ label, name, expanded, onClick, children }: BottomBarItemProps) {
+export function BottomBarItem({ label, name, expanded, onClick, children, 'data-tour': tour }: BottomBarItemProps) {
   const { classes, ids } = bottomBar()
   return (
     <button
@@ -27,6 +29,7 @@ export function BottomBarItem({ label, name, expanded, onClick, children }: Bott
       aria-expanded={expanded}
       className={classes.item()}
       data-testid={ids.item}
+      data-tour={tour}
       onClick={onClick}
     >
       <span className={classes.pill()} data-testid={ids.pill}>

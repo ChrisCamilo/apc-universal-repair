@@ -91,7 +91,7 @@ function UserNotifications({ userId }: { userId: string }) {
     const bar = bottomBar()
     return (
       <>
-        <BottomBarItem label={texts.alerts} name={badge ? texts.alertsUnread(badge) : undefined} expanded={open} onClick={() => openChange(true)}>
+        <BottomBarItem data-tour="bell" label={texts.alerts} name={badge ? texts.alertsUnread(badge) : undefined} expanded={open} onClick={() => openChange(true)}>
           <Icon icon={bellIcon} size={ICON_SIZES.thumbnail} />
           {badge && (
             <span aria-hidden="true" className={bar.classes.badge()} data-testid={bar.ids.badge}>
@@ -119,6 +119,7 @@ function UserNotifications({ userId }: { userId: string }) {
 
   return (
     <Menu
+      data-tour="bell"
       label={badge ? texts.unread(badge) : texts.title}
       anchor="container"
       open={open}
