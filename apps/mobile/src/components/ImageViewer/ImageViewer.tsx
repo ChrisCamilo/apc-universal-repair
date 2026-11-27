@@ -213,9 +213,7 @@ function ViewerBody({
           </View>
         )}
         <Text size="sm" tone="muted">
-          {full
-            ? `Limite de ${photoCount(limit, locale)} atingido. Troque ou remova uma para adicionar outra.`
-            : texts.room(count, photoCount(limit, locale))}
+          {full ? texts.full(photoCount(limit, locale)) : texts.room(count, photoCount(limit, locale))}
         </Text>
         <View style={styles.buttons} testID={ids.buttons}>
           {count > 0 && (
