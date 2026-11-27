@@ -13,6 +13,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { Button } from '../../components/Button';
 import { TextField } from '../../components/TextField';
 import { useStyles } from './NodeForm.styles';
+import { tourTarget } from '../../components/Tour';
 import { useLocale } from '../../app/locale';
 import { COMMON_TEXTS } from '@apc/domain/app-texts';
 import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts';
@@ -78,7 +79,7 @@ export function NodeForm({ open, title, level, initial = {}, limits, submitLabel
               {common.cancel}
             </Button>
           </View>
-          <View style={styles.button} testID={ids.button}>
+          <View ref={tourTarget('catalog-form')} collapsable={false} style={styles.button} testID={ids.button}>
             <Button align="stretch" loading={saving} onPress={save}>
               {submitLabel}
             </Button>

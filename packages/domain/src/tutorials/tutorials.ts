@@ -1,4 +1,5 @@
 import { INVENTORY_TUTORIAL_PARTS, INVENTORY_TUTORIALS, inventoryTutorialPartSteps, type InventoryTutorialId } from "../inventory/inventoryTutorial.ts";
+import { CATALOG_TREE_TUTORIAL, catalogTreeTutorialStepCount, catalogTreeTutorialTitle } from "../catalog/catalogTreeTutorial.ts";
 import { IMPORT_TUTORIAL, importTutorialStepCount, importTutorialTitle } from "../inventory/importTutorial.ts";
 import { LISTS_TUTORIAL, listsTutorialStepCount, listsTutorialTitle } from "../inventory/listsTutorial.ts";
 import { PHOTOS_TUTORIAL, photosTutorialStepCount, photosTutorialTitle } from "../inventory/photosTutorial.ts";
@@ -10,7 +11,7 @@ import { catalog, type Locale } from "../platform/locale/locale.ts";
 // points at the screen and explains, one to three steps with Next. A tutorial on a tab's feature opens the tab before
 // it starts. The Inventory's guided tour is three tutorials, one per part (see inventoryTutorial.ts), and a brand's photos,
 // importing a CSV and the lists have guided tours of their own (see photosTutorial.ts, importTutorial.ts and
-// listsTutorial.ts); an explanation's
+// listsTutorial.ts), and so has a model's tree in the Catalog (see catalogTreeTutorial.ts); an explanation's
 // steps point at the parts of the screen its targets name, which each app finds its own way (data-tour on the web, a
 // tourTarget ref on the phone), the card sitting in the middle of the screen for a step with no target or one not on
 // screen.
@@ -26,7 +27,6 @@ export const EXPLANATIONS = [
   { id: "inventory-mercado-livre", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["more-actions", null] },
   { id: "inventory-low-stock", feature: "inventory", platforms: TUTORIAL_PLATFORMS, targets: ["status", "items"] },
   { id: "catalog-browse", feature: "catalog", platforms: TUTORIAL_PLATFORMS, targets: ["catalog-brands", "catalog-search"] },
-  { id: "catalog-tree", feature: "catalog", platforms: TUTORIAL_PLATFORMS, targets: ["catalog-models", null] },
   { id: "catalog-sheet", feature: "catalog", platforms: TUTORIAL_PLATFORMS, targets: ["catalog-sheet", null] },
   { id: "catalog-parts", feature: "catalog", platforms: TUTORIAL_PLATFORMS, targets: ["catalog-sheet", null] },
   { id: "notifications-bell", feature: "notifications", platforms: TUTORIAL_PLATFORMS, targets: ["bell", "bell"] },
@@ -39,7 +39,7 @@ export const EXPLANATIONS = [
 /** An explanation, as the Dashboard runs it. */
 export type ExplanationId = (typeof EXPLANATIONS)[number]["id"];
 /** A guided tour, which its tab runs. */
-export type TourId = InventoryTutorialId | typeof PHOTOS_TUTORIAL | typeof IMPORT_TUTORIAL | typeof LISTS_TUTORIAL;
+export type TourId = InventoryTutorialId | typeof PHOTOS_TUTORIAL | typeof IMPORT_TUTORIAL | typeof LISTS_TUTORIAL | typeof CATALOG_TREE_TUTORIAL;
 /** A tutorial, as its tab or the Dashboard knows it. */
 export type TutorialId = TourId | ExplanationId;
 /** What a tutorial is about, which the dialog groups it under: a tab, or a part of the apps beside the tabs. */
@@ -84,6 +84,7 @@ export const TUTORIALS: readonly Tutorial[] = [
   { id: PHOTOS_TUTORIAL, feature: "inventory", tab: "inventory", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: photosTutorialStepCount() },
   { id: IMPORT_TUTORIAL, feature: "inventory", tab: "inventory", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: importTutorialStepCount() },
   { id: LISTS_TUTORIAL, feature: "inventory", tab: "inventory", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: listsTutorialStepCount() },
+  { id: CATALOG_TREE_TUTORIAL, feature: "catalog", tab: "catalog", kind: "tour", platforms: TUTORIAL_PLATFORMS, steps: catalogTreeTutorialStepCount() },
   ...EXPLANATIONS.map(({ id, feature, platforms, targets }): Tutorial => ({
     id,
     feature,
@@ -117,7 +118,7 @@ export const TUTORIAL_TEXTS = catalog(
       "inventory-mercado-livre": "Gere os anúncios das peças para o Anunciador em massa.",
       "inventory-low-stock": "Como o estoque mostra as peças que estão acabando.",
       "catalog-browse": "Passe de uma marca para os modelos dela e procure no Catálogo.",
-      "catalog-tree": "Monte as gerações, versões, períodos e motores de um modelo.",
+      "catalog-tree": "Monte a árvore de um modelo de teste, da geração ao motor com a ficha.",
       "catalog-sheet": "Veja e edite a ficha de um motor.",
       "catalog-parts": "Veja quais peças do estoque servem num veículo.",
       "notifications-bell": "Onde ficam as notificações e os avisos de peças acabando.",
@@ -155,16 +156,6 @@ export const TUTORIAL_TEXTS = catalog(
         steps: [
           { title: "As marcas", text: "Escolha uma marca para ver os modelos dela. Só com peças deixa só os modelos em que alguma peça do estoque serve." },
           { title: "A busca", text: "Procure um modelo pelo nome, ou uma peça do estoque pelo código, para ver onde ela serve." },
-        ],
-      },
-      "catalog-tree": {
-        title: "A árvore de um modelo",
-        steps: [
-          { title: "Os níveis", text: "Cada modelo abre em gerações, cada geração em versões, cada versão em períodos de anos e cada período em motores." },
-          {
-            title: "Editar no lugar",
-            text: "O + de cada nível adiciona o próximo, e cada linha se renomeia ou se exclui ali mesmo. Copiar motor e Colar motor, ou Ctrl+C e Ctrl+V, levam um motor para outro período.",
-          },
         ],
       },
       "catalog-sheet": {
@@ -260,7 +251,7 @@ export const TUTORIAL_TEXTS = catalog(
       "inventory-mercado-livre": "Make the parts' listings for the Bulk lister.",
       "inventory-low-stock": "How the inventory shows the parts running out.",
       "catalog-browse": "Go from a brand to its models and search the Catalog.",
-      "catalog-tree": "Build a model's generations, versions, periods and engines.",
+      "catalog-tree": "Build a test model's tree, from the generation to the engine with its sheet.",
       "catalog-sheet": "See and edit an engine's sheet.",
       "catalog-parts": "See which parts in stock fit a vehicle.",
       "notifications-bell": "Where the notifications and the warnings of parts running out are.",
@@ -298,16 +289,6 @@ export const TUTORIAL_TEXTS = catalog(
         steps: [
           { title: "The brands", text: "Choose a brand to see its models. Only with parts keeps only the models some part in stock fits." },
           { title: "The search", text: "Search a model by name, or a part in stock by its code, to see where it fits." },
-        ],
-      },
-      "catalog-tree": {
-        title: "A model's tree",
-        steps: [
-          { title: "The levels", text: "Each model opens into generations, each generation into versions, each version into year periods and each period into engines." },
-          {
-            title: "Edit in place",
-            text: "Each level's + adds the next one, and each row is renamed or deleted right there. Copy engine and Paste engine, or Ctrl+C and Ctrl+V, take an engine to another period.",
-          },
         ],
       },
       "catalog-sheet": {
@@ -441,5 +422,8 @@ export function tutorialTitle(id: TutorialId, locale: Locale): string {
   if (id === IMPORT_TUTORIAL) {
     return importTutorialTitle(locale);
   }
-  return id === LISTS_TUTORIAL ? listsTutorialTitle(locale) : INVENTORY_TUTORIAL_PARTS[locale][INVENTORY_TUTORIALS.indexOf(id)];
+  if (id === LISTS_TUTORIAL) {
+    return listsTutorialTitle(locale);
+  }
+  return id === CATALOG_TREE_TUTORIAL ? catalogTreeTutorialTitle(locale) : INVENTORY_TUTORIAL_PARTS[locale][INVENTORY_TUTORIALS.indexOf(id)];
 }

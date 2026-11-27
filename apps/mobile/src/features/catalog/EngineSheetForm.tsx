@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Text as RNText, View } from 'react-native';
+import { tourTarget } from '../../components/Tour';
 import {
   ENGINE_DRIVE_LABELS,
   ENGINE_DRIVES,
@@ -78,9 +79,11 @@ export function EngineSheetForm({ open, title, names, initial, saving = false, o
           <Button variant="secondary" size="sm" onPress={onClose}>
             {common.cancel}
           </Button>
-          <Button size="sm" loading={saving} onPress={save}>
-            {texts.saveSheet}
-          </Button>
+          <View ref={tourTarget('catalog-form')} collapsable={false}>
+            <Button size="sm" loading={saving} onPress={save}>
+              {texts.saveSheet}
+            </Button>
+          </View>
         </>
       }
     >

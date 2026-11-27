@@ -55,7 +55,15 @@ test("Shared: each feature explains itself, the server on the desktop and the of
     ["Inventory", "Catalog", "Notifications"],
   );
   assert.deepEqual(idsOf("web", "inventory").slice(6), ["inventory-mercado-livre", "inventory-low-stock"]);
-  assert.deepEqual(idsOf("phone", "catalog"), ["catalog-browse", "catalog-tree", "catalog-sheet", "catalog-parts"]);
+  assert.deepEqual(idsOf("phone", "catalog"), ["catalog-tree", "catalog-browse", "catalog-sheet", "catalog-parts"]);
+  assert.deepEqual(
+    tutorialSections("web", "pt-BR")[1].tutorials.map(({ kind, steps }) => [kind, steps]).slice(0, 2),
+    [
+      ["tour", 8],
+      ["explanation", 2],
+    ],
+  );
+  assert.equal(tutorialTitle("catalog-tree", "en-US"), "Building a model's tree");
   assert.deepEqual(idsOf("desktop", "server"), ["server-pairing", "server-devices"]);
   assert.deepEqual(idsOf("phone", "offline"), ["offline-copy", "offline-conflict"]);
 });
@@ -76,7 +84,7 @@ test("Shared: an explanation has one to three steps, written in both languages",
   }
   assert.equal(isExplanation("inventory-add"), false);
   const tab = (id: string) => TUTORIALS.find((tutorial) => tutorial.id === id)?.tab;
-  assert.deepEqual(["catalog-tree", "offline-copy", "notifications-bell", "server-pairing"].map(tab), ["catalog", "inventory", undefined, undefined]);
+  assert.deepEqual(["catalog-browse", "offline-copy", "notifications-bell", "server-pairing"].map(tab), ["catalog", "inventory", undefined, undefined]);
 });
 
 // Lists an explanation's steps in Portuguese and checks each one's id, target and texts, the step with no target

@@ -7,7 +7,7 @@ import { themeStorage } from '../../app/theme';
 export const TutorialsContext = createContext<TutorialsChoice | null>(null);
 
 /** A guided tour asked for: which, and whether it goes on through the next ones, until its tab starts it. */
-export type TutorialRequest = { id: TourId; onward: boolean };
+export type TutorialRequest = { [Id in TourId]: { id: Id; onward: boolean } }[TourId];
 export type TutorialsChoice = {
   /** Whether the logged user has seen the Inventory tour, on any device; until then it runs by itself. */
   seen: boolean;

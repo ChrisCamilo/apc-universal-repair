@@ -112,6 +112,7 @@ import { PhotosTutorial } from './tutorial/PhotosTutorial.tsx'
 import { ImportTutorial } from './tutorial/ImportTutorial.tsx'
 import { ListsTutorial } from './tutorial/ListsTutorial.tsx'
 import { LISTS_TUTORIAL, LISTS_TUTORIAL_NAMES, type ListsTutorialScreen } from '@apc/domain/lists-tutorial'
+import { CATALOG_TREE_TUTORIAL } from '@apc/domain/catalog-tree-tutorial'
 import { downloadCsvTemplate } from './transfer/csvTemplate.ts'
 import { importedSummary, importItems, readItemsCsv, type CsvItemRow } from '@apc/domain/item-csv'
 import { useToast } from '../../components/Toast'
@@ -549,7 +550,8 @@ export function InventoryTab() {
 
   // Run the tour by itself the first time, from its first part on, once the items are in, and a tutorial of its when
   // one is asked for: a part of the tour, or the photos tour.
-  const { asked } = tutorial
+  // The Catalog's tour is the Catalog tab's.
+  const asked = tutorial.asked?.id === CATALOG_TREE_TUTORIAL ? null : tutorial.asked
   if (!tour && !photosTour && !importTour && !listsTour && ((!tutorial.seen && state.status === 'ready') || asked)) {
     if (asked?.id === PHOTOS_TUTORIAL) {
       setPhotosTour(true)

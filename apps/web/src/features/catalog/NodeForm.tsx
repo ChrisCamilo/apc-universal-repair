@@ -80,7 +80,7 @@ export function NodeForm({ id, buttons = true, level, label, initial = {}, limit
   }
 
   return (
-    <form ref={form} id={id} aria-label={label} className={classes.base()} data-testid={ids.base} onSubmit={save} onKeyDown={onKeyDown} noValidate>
+    <form ref={form} id={id} aria-label={label} className={classes.base()} data-testid={ids.base} data-tour="catalog-form" onSubmit={save} onKeyDown={onKeyDown} noValidate>
       {named && (
         <div className={classes.name()} data-testid={ids.name}>
           <TextField label={texts.name} value={name} onValueChange={setName} error={problems.name ?? error} autoFocus />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { useContext, useEffect, useEffectEvent, useRef, useState, type ComponentRef } from 'react';
 import { BackHandler, Pressable, ScrollView, Text as RNText, View } from 'react-native';
 import {
   belowBrand,
@@ -66,6 +66,10 @@ import { useCatalogEditing } from './useCatalogEditing';
 import { usePartsOnly } from './usePartsOnly';
 import { useInventoryLink } from '../dashboard/inventoryLinkContext';
 import { usePhoneHeader } from '../dashboard/phoneHeaderContext';
+import { TutorialsContext } from '../dashboard/tutorialsContext';
+import { CATALOG_TREE_TUTORIAL, changeCatalogTree, removeCatalogTreeModel } from '@apc/domain/catalog-tree-tutorial';
+import { apiUrl } from '../../app/api';
+import { CatalogTreeTutorial } from './CatalogTreeTutorial';
 import { COMMON_TEXTS } from '@apc/domain/app-texts';
 import { CATALOG_SCREEN_TEXTS } from '@apc/domain/catalog-texts';
 import { PHONE_TEXTS } from '../../app/phoneTexts';
@@ -121,6 +125,10 @@ type CatalogProps = {
   notice?: string;
   /** Asks for the access to the local network, when the phone lacks it, which the notice then says. */
   onAllowNetwork?: () => void;
+  /** The screen to open on, e.g. the brand of the tree tour; the brands by default. */
+  start?: CatalogScreen;
+  /** Bumped when the tree tour makes a change itself, which closes what is being edited. */
+  closeEdits?: number;
 };
 
 export function CatalogTab() {
@@ -135,19 +143,89 @@ export function CatalogTab() {
   usePhotoCache();
   const [partsOnly, setPartsOnly] = usePartsOnly();
   const { styles, ids } = useStyles();
+  const tutorials = useContext(TutorialsContext);
+  // Whether the tree tour runs, and how many times it started, which opens the screens anew on its brand.
+  const [tour, setTour] = useState(false);
+  const [tours, setTours] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [closeEdits, setCloseEdits] = useState(0);
   const waiting = partsOnly === null || (partsOnly && stock.status === 'loading');
-  if (state.status === 'ready' && state.catalog.brands.length > 0 && !waiting) {
+  const ready = state.status === 'ready' && state.catalog.brands.length > 0;
+  // The tour's brand: the catalog's first.
+  const brand = ready ? state.catalog.brands[0] : null;
+
+  // The tree tour, asked for from Tutoriais, runs once the catalog is in, on all its models.
+  if (ready && !tour && tutorials?.asked?.id === CATALOG_TREE_TUTORIAL) {
+    setTour(true);
+    setTours((count) => count + 1);
+    setPartsOnly(false);
+  }
+
+  /** Deletes the tour's test model, with its tree, and syncs the copy. */
+  const removeTestModel = async () => {
+    if (brand && (await removeCatalogTreeModel(apiUrl(), locale, brand))) {
+      state.reload();
+    }
+  };
+
+  // It starts without a test model left from a run that didn't end.
+  const tourStarted = useEffectEvent(() => {
+    tutorials?.started();
+    removeTestModel();
+  });
+  useEffect(() => {
+    if (tour) {
+      tourStarted();
+    }
+  }, [tour]);
+
+  /** Makes a change of the test tree, as "Fazer por mim" asks, and shows the catalog it answers. */
+  const changeTree = async (change: Parameters<typeof changeCatalogTree>[2]) => {
+    setCloseEdits((count) => count + 1);
+    setBusy(true);
+    const changed = await changeCatalogTree(apiUrl(), locale, change);
+    setBusy(false);
+    if (changed) {
+      state.replace(changed);
+    }
+  };
+
+  if (ready && !waiting) {
     return (
-      <CatalogScreens
-        catalog={state.catalog}
-        items={stock.status === 'ready' ? stock.items : []}
-        partsOnly={partsOnly}
-        onPartsOnly={setPartsOnly}
-        onChanged={state.replace}
-        offline={copy.offline}
-        notice={copy.blocked ? network.missing : copy.offline && copy.syncedAt ? copyNotice(copy.syncedAt, locale) : undefined}
-        onAllowNetwork={copy.blocked ? copy.allowNetwork : undefined}
-      />
+      <>
+        <CatalogScreens
+          key={tours}
+          start={tours > 0 && brand ? { view: 'models', brandId: brand.id } : undefined}
+          closeEdits={closeEdits}
+          catalog={state.catalog}
+          items={stock.status === 'ready' ? stock.items : []}
+          partsOnly={partsOnly}
+          onPartsOnly={setPartsOnly}
+          onChanged={state.replace}
+          offline={copy.offline}
+          notice={copy.blocked ? network.missing : copy.offline && copy.syncedAt ? copyNotice(copy.syncedAt, locale) : undefined}
+          onAllowNetwork={copy.blocked ? copy.allowNetwork : undefined}
+        />
+        <CatalogTreeTutorial
+          open={tour}
+          onClose={() => {
+            setTour(false);
+            removeTestModel();
+          }}
+          screen={{
+            brand,
+            busy,
+            phone: true,
+            addModel: () => {
+              if (brand) {
+                changeTree({ addModel: brand });
+              }
+            },
+            addUnder: (node, values) => changeTree({ addUnder: node, values }),
+            moveUp: (node) => changeTree({ moveUp: node }),
+          }}
+        />
+      </>
     );
   }
   return (
@@ -208,7 +286,7 @@ function useShown<T>(value: T | null): { last: T | null; session: number } {
 }
 
 /** The Catalog's screens, one at a time: the brands, a brand's models or an engine's sheet, edited in sheets. */
-function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged, offline, notice, onAllowNetwork }: CatalogProps) {
+function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, onChanged, offline, notice, onAllowNetwork, start, closeEdits = 0 }: CatalogProps) {
   const { locale } = useLocale();
   const texts = CATALOG_SCREEN_TEXTS[locale];
   const common = COMMON_TEXTS[locale];
@@ -219,7 +297,7 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
   const withParts = catalogWithParts(all, items);
   const partsOnly = wanted && withParts.brands.length > 0;
   const catalog = partsOnly ? withParts : all;
-  const [screen, setScreen] = useState<CatalogScreen>(CATALOG_HOME);
+  const [screen, setScreen] = useState<CatalogScreen>(start ?? CATALOG_HOME);
   const [query, setQuery] = useState('');
   const links = useInventoryLink();
   // The node whose actions are open in a sheet.
@@ -236,6 +314,13 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
     },
     onBrandRemoved: () => setScreen(CATALOG_HOME),
   });
+  // The tree tour's "Fazer por mim" makes the change itself: what was being edited, and the actions open, close.
+  const [closed, setClosed] = useState(closeEdits);
+  if (closeEdits !== closed) {
+    setClosed(closeEdits);
+    editor.edit(null);
+    setActing(undefined);
+  }
   const editing = useShown<CatalogEditing>(editor.editing);
   const sheetEditing = useShown<CatalogSheetEditing>(editor.sheet);
   const removing = useShown<CatalogNode>(editor.removing ?? null);
@@ -293,14 +378,14 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
     const siblings = catalogSiblings(brand.models, acting.id);
     const at = siblings.findIndex((each) => each.id === acting.id);
     return [
-      { icon: plusIcon, label: CATALOG_ADD[locale][acting.level as CatalogEditLevel], onSelect: () => editor.addUnder(acting) },
+      { icon: plusIcon, label: CATALOG_ADD[locale][acting.level as CatalogEditLevel], onSelect: () => editor.addUnder(acting), tour: 'catalog-add' },
       ...(acting.level === 'year' && editor.copied ? [{ icon: importIcon, label: ENGINE_CLIPBOARD[locale].paste, onSelect: () => editor.pasteEngine(acting) }] : []),
       {
         icon: pencilIcon,
         label: acting.level === 'generation' ? texts.renameAndYears : acting.level === 'year' ? texts.years : common.rename,
         onSelect: () => editor.edit({ kind: 'rename', node: acting }),
       },
-      ...(at > 0 ? [{ icon: sortIcon, label: texts.moveUp, onSelect: () => editor.move(acting, 'up') }] : []),
+      ...(at > 0 ? [{ icon: sortIcon, label: texts.moveUp, onSelect: () => editor.move(acting, 'up'), tour: 'catalog-move-up' }] : []),
       ...(at < siblings.length - 1 ? [{ icon: sortIcon, label: texts.moveDown, onSelect: () => editor.move(acting, 'down') }] : []),
       { icon: trashIcon, label: texts.deleteMore, onSelect: () => editor.askRemove(acting) },
       { icon: closeIcon, label: common.close, onSelect: () => {} },
@@ -310,7 +395,11 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
   /** A row's "⋯", which opens its actions: an engine's copy it. */
   const rowActions = (id: string) => {
     const node = nodes.get(id);
-    return node ? <RowAction icon={moreIcon} label={texts.actionsOf(node.label)} onPress={() => setActing(node)} /> : null;
+    return node ? (
+      <View ref={tourTarget(`catalog-node ${id}`)} collapsable={false}>
+        <RowAction icon={moreIcon} label={texts.actionsOf(node.label)} onPress={() => setActing(node)} />
+      </View>
+    ) : null;
   };
 
   /** The line after a branch's children: a year's "Novo motor", or the button to add an empty branch's first. */
@@ -320,9 +409,11 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
       return null;
     }
     return (
-      <Button variant="dashed" size="sm" icon={plusIcon} onPress={() => editor.addUnder(node)}>
-        {texts.addIn(CATALOG_ADD[locale][node.level], node.label)}
-      </Button>
+      <View ref={tourTarget(`catalog-after ${id}`)} collapsable={false}>
+        <Button variant="dashed" size="sm" icon={plusIcon} onPress={() => editor.addUnder(node)}>
+          {texts.addIn(CATALOG_ADD[locale][node.level], node.label)}
+        </Button>
+      </View>
     );
   };
 
@@ -420,17 +511,19 @@ function CatalogScreens({ catalog: all, items, partsOnly: wanted, onPartsOnly, o
             <RNText accessibilityRole="header" style={styles.heading} testID={ids.heading}>
               {texts.modelsCount(models.length)}
             </RNText>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={plusIcon}
-              onPress={() => {
-                onPartsOnly(false);
-                editor.edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } });
-              }}
-            >
-              {texts.newModel}
-            </Button>
+            <View ref={tourTarget('catalog-new-model')} collapsable={false}>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={plusIcon}
+                onPress={() => {
+                  onPartsOnly(false);
+                  editor.edit({ kind: 'add', level: 'model', parent: { level: 'brand', id: brandId } });
+                }}
+              >
+                {texts.newModel}
+              </Button>
+            </View>
           </View>
           {models.length > 0 ? (
             <TreeView

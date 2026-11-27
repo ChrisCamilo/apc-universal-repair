@@ -68,7 +68,7 @@ export function EngineSheetForm({ id, actions = true, label, names, initial, sav
   }
 
   return (
-    <form id={id} aria-label={label} className={classes.base()} data-testid={ids.base} onSubmit={save} noValidate>
+    <form id={id} aria-label={label} className={classes.base()} data-testid={ids.base} data-tour="catalog-form" onSubmit={save} noValidate>
       <div className={classes.head()} data-testid={ids.head}>
         <p className={classes.kicker()} data-testid={ids.kicker}>
           {texts.sheet.kicker}
