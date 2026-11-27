@@ -1,7 +1,5 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  CSV_TEMPLATE,
-  CSV_TEMPLATE_NAME,
   importedDetails,
   importedItems,
   importedSummary,
@@ -9,8 +7,10 @@ import {
   newListNames,
   readItemsCsv,
   rowsSummary,
+  type CsvItemRow,
   type CsvItems,
 } from '@apc/domain/item-csv'
+import { downloadCsvTemplate } from './csvTemplate.ts'
 import { ITEM_LIST_TEXTS, type ItemLists } from '@apc/domain/lists'
 import { perLocale } from '@apc/domain/locale'
 import { API_BASE } from '../../../app/api.ts'
@@ -33,6 +33,8 @@ import { WEB_TEXTS } from '../../../app/webTexts.ts'
 // can't be read says why, and another can be chosen. On a phone it fills the screen, as every form does, with the × at
 // the left of its title.
 
+/** The rows before a file is read, the same on every render. */
+const NO_ROWS: CsvItemRow[] = []
 /** How each list's new names are worded in the preview, e.g. "Categorias: Ignição, Turbo". */
 const NEW_NAMES = perLocale(
   (locale) =>
@@ -50,9 +52,15 @@ type ImportItemsDialogProps = {
   onClose: () => void
   /** Called once the items are imported, so the inventory and the lists load again. */
   onImported: () => void
+  /** A file the dialog opens having read, as if chosen, e.g. the import tour's sample. */
+  initialFile?: { name: string; text: string }
+  /** Called with the rows of the file read, on each file, e.g. for the import tour. */
+  onRowsChange?: (rows: readonly CsvItemRow[]) => void
+  /** Called once the template is handed over, e.g. for the import tour. */
+  onTemplate?: () => void
 }
 
-export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportItemsDialogProps) {
+export function ImportItemsDialog({ open, lists, onClose, onImported, initialFile, onRowsChange, onTemplate }: ImportItemsDialogProps) {
   const { locale } = useLocale()
   const texts = INVENTORY_SCREEN_TEXTS[locale]
   const common = COMMON_TEXTS[locale]
@@ -60,10 +68,12 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
   const { classes, ids } = importItemsDialog()
   const picker = useRef<HTMLInputElement>(null)
   // The file read, with its name.
-  const [read, setRead] = useState<{ name: string; result: CsvItems }>()
+  const [read, setRead] = useState<{ name: string; result: CsvItems } | undefined>(
+    () => initialFile && { name: initialFile.name, result: readItemsCsv(initialFile.text, lists, locale) },
+  )
   const [importing, setImporting] = useState(false)
   const phone = usePhone()
-  const rows = read && 'rows' in read.result ? read.result.rows : []
+  const rows = read && 'rows' in read.result ? read.result.rows : NO_ROWS
   // The items the import sends: the rows of one item count once.
   const valid = importedItems(rows).length
   const created = newListNames(rows, lists)
@@ -74,14 +84,15 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
       : []),
   ]
 
+  // Tell the owner the rows of each file read.
+  useEffect(() => {
+    onRowsChange?.(rows)
+  }, [rows, onRowsChange])
+
   /** Hands over the template as a file to save. */
   const downloadTemplate = () => {
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' }))
-    link.download = CSV_TEMPLATE_NAME
-    link.click()
-    // Let go of the file once the download has it.
-    setTimeout(() => URL.revokeObjectURL(link.href))
+    downloadCsvTemplate()
+    onTemplate?.()
   }
 
   /** Reads the file chosen into the preview. */
@@ -115,7 +126,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
           <Button variant="secondary" size="sm" onClick={onClose}>
             {common.cancel}
           </Button>
-          <Button size="sm" loading={importing} disabled={valid === 0} onClick={submit}>
+          <Button size="sm" data-tour="import-submit" loading={importing} disabled={valid === 0} onClick={submit}>
             {texts.import.submit(valid)}
           </Button>
         </>
@@ -125,10 +136,10 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
         {texts.import.hint}
       </Text>
       <div className={classes.buttons()} data-testid={ids.buttons}>
-        <Button variant="secondary" size="sm" onClick={downloadTemplate}>
+        <Button variant="secondary" size="sm" data-tour="import-template" onClick={downloadTemplate}>
           {WEB_TEXTS[locale].import.template}
         </Button>
-        <Button size="sm" onClick={() => picker.current?.click()}>
+        <Button size="sm" data-tour="import-choose" onClick={() => picker.current?.click()}>
           {read ? texts.import.chooseOther : texts.import.chooseFile}
         </Button>
         <input
@@ -150,7 +161,7 @@ export function ImportItemsDialog({ open, lists, onClose, onImported }: ImportIt
         </p>
       )}
       {read && 'rows' in read.result && (
-        <section aria-label={texts.import.preview} className={classes.preview()} data-testid={ids.preview}>
+        <section aria-label={texts.import.preview} className={classes.preview()} data-testid={ids.preview} data-tour="import-preview">
           <Text size="sm">
             {read.name} · {rowsSummary(rows, locale)}
           </Text>
