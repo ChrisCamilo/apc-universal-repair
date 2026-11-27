@@ -27,9 +27,8 @@ import { PHONE_TEXTS } from '../../app/phoneTexts';
 // The user menu, the same as the web's on a phone: Conta at the end of the Dashboard's bottom bar, the logged user's
 // initials in its pill, opening the display preferences in a bottom sheet, as a menu. Dark mode and the theme go through the
 // ThemeProvider, which applies and saves them at once, and "Idioma" (Português · English) through the LocaleProvider the
-// same way, shown in development builds only until every screen follows it; "Arrastar para reordenar" goes through the Dashboard
-// (TabReorderContext), which saves it and makes the tabs reorderable while it is on. There is no "Itens por página", as
-// the Inventory loads more as it scrolls. Every choice keeps the menu open, so several can be changed in a row; an
+// same way; "Arrastar para reordenar" goes through the Dashboard (TabReorderContext), which saves it and makes the tabs
+// reorderable while it is on. There is no "Itens por página", as the Inventory loads more as it scrolls. Every choice keeps the menu open, so several can be changed in a row; an
 // action closes the sheet. "Tutorial do estoque", with a play icon, goes to the Inventory tab and runs its tutorial again.
 // "Sincronizar agora", under when the phone's copy last caught up with the server and what waits, syncs it, and a toast
 // says how it went, or why it failed: the server out of reach, or the phone without the local network access (see
@@ -39,8 +38,6 @@ import { PHONE_TEXTS } from '../../app/phoneTexts';
 // "Sair", at the end and set apart from the preferences, hands the logout to the owner, which ends the session and
 // goes back to the login; the preferences stay on the device for the next login.
 
-/** Whether "Idioma" shows: in development builds only, until every screen reads its texts in the language chosen. */
-const LANGUAGE_SWITCH = __DEV__;
 const LOCALE_OPTIONS = LOCALES.map((value) => ({ value, label: LOCALE_NAMES[value] }));
 /** What the menu says on a phone with no screen lock. */
 const STYLE_OPTIONS = perLocale((locale) => STYLES.map((style) => ({ value: style, label: DASHBOARD_TEXTS[locale].styles[style] })));
@@ -105,9 +102,7 @@ export function UserMenu({ user, onLogout, onConnect }: UserMenuProps) {
               {texts.darkMode}
             </Switch>
             <Segmented label={texts.style} options={STYLE_OPTIONS[locale]} value={style} onValueChange={(next) => isStyle(next) && setStyle(next)} />
-            {LANGUAGE_SWITCH && (
-              <Segmented label={messages.language} options={LOCALE_OPTIONS} value={locale} onValueChange={(next) => isLocale(next) && setLocale(next)} />
-            )}
+            <Segmented label={messages.language} options={LOCALE_OPTIONS} value={locale} onValueChange={(next) => isLocale(next) && setLocale(next)} />
             <MenuLabel>{texts.tabsTitle}</MenuLabel>
             <Switch
               checked={reorderable}

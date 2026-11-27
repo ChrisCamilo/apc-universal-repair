@@ -30,9 +30,9 @@ import { useTabReorder } from './tabReorderContext.ts'
 
 // The user menu at the right of the Dashboard header: the logged user's initials and username on the trigger
 // (initials only on phones), and the display preferences. Dark mode and the theme go through the ThemeProvider,
-// which applies and saves them at once, and "Idioma" (Português · English) through the LocaleProvider the same way, shown
-// in development builds only until every screen follows it; "Arrastar para reordenar" goes through the Dashboard (TabReorderContext),
-// which saves it and makes the tabs reorderable while it is on; "Itens por página" sets how many items the Inventory
+// which applies and saves them at once, and "Idioma" (Português · English) through the LocaleProvider the same way;
+// "Arrastar para reordenar" goes through the Dashboard (TabReorderContext), which saves it and makes the tabs reorderable
+// while it is on; "Itens por página" sets how many items the Inventory
 // list shows, now and each time it opens. Every choice keeps the menu open, so several can be changed in a row. "Tutorial do estoque",
 // with a play icon, goes to the Inventory tab and runs its tutorial again. In the desktop app, "Servidor e banco de
 // dados", with a gear, opens the Servidor dialog (see ServerSettings.tsx), and "Dispositivos", with a lock, the devices
@@ -44,8 +44,6 @@ import { useTabReorder } from './tabReorderContext.ts'
 // sheet, as a menu, without "Itens por página", since the Inventory loads more as it scrolls there; an action closes
 // it, as it closes the menu.
 
-/** Whether "Idioma" shows: in development builds only, until every screen reads its texts in the language chosen. */
-const LANGUAGE_SWITCH = import.meta.env.DEV
 const LOCALE_OPTIONS = LOCALES.map((value) => ({ value, label: LOCALE_NAMES[value] }))
 const PAGE_SIZE_OPTIONS = PAGE_SIZES.map((size) => ({ value: String(size), label: String(size) }))
 const STYLE_OPTIONS = perLocale((locale) => STYLES.map((style) => ({ value: style, label: DASHBOARD_TEXTS[locale].styles[style] })))
@@ -78,9 +76,7 @@ export function UserMenu() {
         {texts.darkMode}
       </Switch>
       <Segmented label={texts.style} options={STYLE_OPTIONS[locale]} value={style} onValueChange={(next) => isStyle(next) && setStyle(next)} />
-      {LANGUAGE_SWITCH && (
-        <Segmented label={messages.language} options={LOCALE_OPTIONS} value={locale} onValueChange={(next) => isLocale(next) && setLocale(next)} />
-      )}
+      <Segmented label={messages.language} options={LOCALE_OPTIONS} value={locale} onValueChange={(next) => isLocale(next) && setLocale(next)} />
       <MenuLabel>{texts.tabsTitle}</MenuLabel>
       <Switch
         checked={reorderable}
